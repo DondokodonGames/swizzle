@@ -1,0 +1,107 @@
+{
+  "projectName": "Swizzle - Short Game Platform",
+  "lastUpdated": "2025-01-27T15:30:00Z",
+  "currentPhase": "Template Implementation Phase",
+  "environment": {
+    "url": "https://zany-yodel-g46jwq7v9g952995g.github.dev/",
+    "framework": "React 18 + TypeScript + PixiJS 7.x",
+    "serverCommand": "npm run dev",
+    "testModeAccess": "🧪テストモードボタン"
+  },
+  "implementationProgress": {
+    "total": 20,
+    "completed": 2,
+    "remaining": 18,
+    "completionRate": "10%"
+  },
+  "workingTemplates": {
+    "cute_tap": {
+      "status": "fully_implemented",
+      "completedDate": "2025-01-27",
+      "autoProgression": "working",
+      "keyFeatures": ["character tap", "score counting", "timer", "auto end"],
+      "knownIssues": "none"
+    },
+    "memory_match": {
+      "status": "fully_implemented", 
+      "completedDate": "2025-01-27",
+      "autoProgression": "working",
+      "keyFeatures": ["card flipping", "pair matching", "difficulty scaling"],
+      "knownIssues": "none"
+    }
+  },
+  "nextImplementationQueue": [
+    {
+      "templateId": "quick_dodge",
+      "priority": "high",
+      "estimatedDifficulty": "medium",
+      "keyMechanics": ["swipe movement", "falling obstacles", "collision detection"]
+    },
+    {
+      "templateId": "timing_perfect",
+      "priority": "high", 
+      "estimatedDifficulty": "low",
+      "keyMechanics": ["timing tap", "target zone", "precision scoring"]
+    },
+    {
+      "templateId": "collect_items",
+      "priority": "high",
+      "estimatedDifficulty": "medium", 
+      "keyMechanics": ["drag and drop", "item collection", "target counting"]
+    }
+  ],
+  "recentFixes": [
+    {
+      "timestamp": "2025-01-27T15:20:00Z",
+      "issue": "CuteTap auto progression not working",
+      "rootCause": "showResult callback not calling onGameEnd",
+      "solution": "Fixed showResult override and GameCanvas callback setting",
+      "modifiedFiles": ["CuteTapGame.ts", "GameCanvas.tsx", "GameTemplate.ts"]
+    },
+    {
+      "timestamp": "2025-01-27T14:30:00Z", 
+      "issue": "MemoryMatch not registering as implemented",
+      "rootCause": "GameTemplateFactory missing import and registration",
+      "solution": "Added dynamic import and proper Factory registration", 
+      "modifiedFiles": ["GameTemplateFactory.ts", "MemoryMatchGame.ts"]
+    },
+    {
+      "timestamp": "2025-01-27T14:00:00Z",
+      "issue": "PIXI Application initialization errors",
+      "rootCause": "app.stage null during GameTemplate constructor",
+      "solution": "Added null checks and fallback dimension handling",
+      "modifiedFiles": ["GameTemplate.ts", "CuteTapGame.ts", "GameCanvas.tsx"]
+    }
+  ],
+  "developmentPatterns": {
+    "templateImplementation": {
+      "requiredStructure": [
+        "export class [Name]Game extends GameTemplate",
+        "public onGameEnd?: (success: boolean, score: number) => void",
+        "async createScene(): Promise<void> { this.createUI(); }",
+        "protected showResult(result) { if(this.onGameEnd) this.onGameEnd(result.success, result.score); }"
+      ],
+      "factoryRegistration": "Add to GameTemplateFactory.ts createInstance method",
+      "testingProcess": ["Create file", "Register in Factory", "Test mode check", "Play test", "Auto progression test"]
+    }
+  },
+  "troubleshooting": {
+    "commonIssues": [
+      {
+        "symptom": "Template shows yellow in test mode",
+        "cause": "Not registered in GameTemplateFactory",
+        "solution": "Add import and case to createInstance method"
+      },
+      {
+        "symptom": "Game doesn't auto-progress", 
+        "cause": "onGameEnd callback not set or not called",
+        "solution": "Check showResult override and GameCanvas callback setting"
+      },
+      {
+        "symptom": "PIXI initialization errors",
+        "cause": "Null app.stage or missing properties",
+        "solution": "Add null checks and property fallbacks"
+      }
+    ]
+  }
+}
