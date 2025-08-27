@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
 import { GameTemplate, GameSettings } from './GameTemplate';
-import { CuteTapGame, CuteTapSettings } from './CuteTapGame';
+import { CuteTapGame } from './CuteTapGame';
 
 // 動的に拡張可能なゲームタイプ（将来1000種類対応）
 export type GameType = string;
@@ -77,11 +77,11 @@ interface TemplateConfigData {
   difficulty?: DifficultyType;
 }
 
-// 拡張可能CuteTapSettings（カスタム表示対応）
-interface ExtendedCuteTapSettings extends CuteTapSettings {
-  displayName?: string;
-  displayInstruction?: string;
-}
+// 拡張可能CuteTapSettings（カスタム表示対応）- 将来使用予定
+// interface ExtendedCuteTapSettings extends CuteTapSettings {
+//   displayName?: string;
+//   displayInstruction?: string;
+// }
 
 // ゲームテンプレートファクトリ
 export class GameTemplateFactory {
@@ -299,16 +299,16 @@ export class GameTemplateFactory {
   }
 
   // 外部ファイルからの設定読み込み（将来実装）
-  private static async loadFromExternalSource(url: string): Promise<TemplateConfigData[]> {
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      return data.templates || [];
-    } catch (error) {
-      console.warn(`Failed to load external templates from ${url}:`, error);
-      return [];
-    }
-  }
+  // private static async loadFromExternalSource(url: string): Promise<TemplateConfigData[]> {
+  //   try {
+  //     const response = await fetch(url);
+  //     const data = await response.json();
+  //     return data.templates || [];
+  //   } catch (error) {
+  //     console.warn(`Failed to load external templates from ${url}:`, error);
+  //     return [];
+  //   }
+  // }
 
   // コアテンプレート登録
   private static registerCoreTemplates(): void {
