@@ -62,7 +62,7 @@ export interface TemplateInfo {
 // テンプレート登録情報
 interface TemplateRegistration {
   info: TemplateInfo;
-  createInstance: (app: PIXI.Application, settings: UnifiedGameSettings) => GameTemplate | null;
+  createInstance: (app: PIXI.Application, settings: UnifiedGameSettings) => Promise<GameTemplate | null>;
 }
 
 // テンプレート設定データ型（JSON/外部ファイル用）
@@ -464,7 +464,7 @@ export class GameTemplateFactory {
       // 新しい登録情報で上書き
       this.registry.set(gameType, {
         info: { ...existing.info, implementationStatus: 'implemented' },
-        createInstance: (app, settings) => new templateClass(app, settings)
+        createInstance: async (app, settings) => new templateClass(app, settings)
       });
       
       console.log(`Template ${gameType} upgraded to implemented`);
