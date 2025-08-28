@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import GameCanvas from './GameCanvas';
+import EnhancedGameCanvas from './EnhancedGameCanvas'; // 変更: GameCanvas → EnhancedGameCanvas
 import { GameConfig } from './GameSelector';
 import { GameTemplateFactory, GameType, TemplateInfo } from '../game-engine/GameTemplateFactory';
 
@@ -155,7 +155,7 @@ const TemplateTestMode: React.FC<TemplateTestModeProps> = ({ onExit }) => {
             🧪 テストモード: {selectedTemplate}
           </div>
           <div style={{ color: '#374151' }}>
-            テスト実行中...
+            テスト実行中...（エラーハンドリング強化版）
           </div>
           {testResult && (
             <div style={{ 
@@ -188,7 +188,7 @@ const TemplateTestMode: React.FC<TemplateTestModeProps> = ({ onExit }) => {
           テスト終了
         </button>
 
-        {/* ゲームキャンバス */}
+        {/* EnhancedGameCanvas */}
         <div style={{ border: '3px solid #d946ef', borderRadius: '12px' }}>
           <TestConfigProvider templateId={selectedTemplate} onGameEnd={handleTestResult} />
         </div>
@@ -206,10 +206,10 @@ const TemplateTestMode: React.FC<TemplateTestModeProps> = ({ onExit }) => {
         borderRadius: '12px'
       }}>
         <h2 style={{ color: '#d946ef', margin: '0 0 10px 0' }}>
-          🧪 テンプレート動作確認モード
+          🧪 テンプレート動作確認モード (強化版)
         </h2>
         <p style={{ color: '#6b7280', margin: 0, fontSize: '14px' }}>
-          各テンプレートを個別にテストして動作を確認できます
+          各テンプレートを個別にテスト + エラーハンドリング確認
         </p>
       </div>
 
@@ -265,7 +265,7 @@ const TemplateTestMode: React.FC<TemplateTestModeProps> = ({ onExit }) => {
               backgroundColor = '#f0f9ff';
               borderColor = '#0ea5e9'; 
               textColor = '#0284c7';
-              buttonText = '🧪 テスト実行';
+              buttonText = '🧪 テスト実行 (強化版)';
               buttonColor = '#10b981';
               statusIcon = '✅';
               statusText = '実装完了';
@@ -283,7 +283,7 @@ const TemplateTestMode: React.FC<TemplateTestModeProps> = ({ onExit }) => {
               backgroundColor = '#fef2f2';
               borderColor = '#ef4444';
               textColor = '#dc2626';
-              buttonText = '🚨 エラー確認';
+              buttonText = '🚨 エラー確認 (強化版)';
               buttonColor = '#ef4444';
               statusIcon = '❌';
               statusText = 'エラー';
@@ -292,7 +292,7 @@ const TemplateTestMode: React.FC<TemplateTestModeProps> = ({ onExit }) => {
               backgroundColor = '#fef3c7';
               borderColor = '#f59e0b';
               textColor = '#d97706';
-              buttonText = '⚠️ 代用テスト';
+              buttonText = '⚠️ 代用テスト (強化版)';
               buttonColor = '#f59e0b';
               statusIcon = '⏳';
               statusText = 'ChatGPT制作待ち';
@@ -396,7 +396,7 @@ const TemplateTestMode: React.FC<TemplateTestModeProps> = ({ onExit }) => {
         color: '#92400e'
       }}>
         <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-          🔍 テスト手順
+          🔍 強化版テスト手順
         </div>
         <div style={{ lineHeight: '1.4' }}>
           1. 「🧪 テスト」ボタンをクリック<br/>
@@ -404,7 +404,9 @@ const TemplateTestMode: React.FC<TemplateTestModeProps> = ({ onExit }) => {
           3. キャラクター・UI・操作が正常かチェック<br/>
           4. 制限時間・勝利条件が機能するかチェック<br/>
           5. ゲーム終了時に結果が表示されるかチェック<br/>
-          6. エラーが出た場合は実装修正が必要
+          6. <strong>エラー発生時の自動復旧機能をチェック</strong><br/>
+          7. <strong>FPS・メモリ使用量の表示確認</strong><br/>
+          8. <strong>エラーモーダルの表示・操作確認</strong>
         </div>
       </div>
     </div>
@@ -458,7 +460,7 @@ const TestConfigProvider: React.FC<TestConfigProviderProps> = ({ templateId, onG
     );
   }
 
-  return <GameCanvas config={config} onGameEnd={onGameEnd} />;
+  return <EnhancedGameCanvas config={config} onGameEnd={onGameEnd} />; // 変更: GameCanvas → EnhancedGameCanvas
 };
 
 export default TemplateTestMode;

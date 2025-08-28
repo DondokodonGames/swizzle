@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import GameCanvas from './GameCanvas';
+import EnhancedGameCanvas from './EnhancedGameCanvas'; // 変更: GameCanvas → EnhancedGameCanvas
 import { GameConfig } from './GameSelector';
 import { GameTemplateFactory, GameType, TemplateInfo } from '../game-engine/GameTemplateFactory';
 
@@ -90,7 +90,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
       }, 1000);
       return () => clearTimeout(timer);
     } else if (showInstruction && instructionCountdown === 0) {
-      // 指示終了 → ゲーム開始（GameCanvasが自動で開始）
+      // 指示終了 → ゲーム開始（EnhancedGameCanvasが自動で開始）
       setShowInstruction(false);
     }
   }, [showInstruction, instructionCountdown]);
@@ -411,8 +411,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
         終了
       </button>
 
-      {/* ゲームキャンバス */}
-      <GameCanvas 
+      {/* EnhancedGameCanvas */}
+      <EnhancedGameCanvas 
         key={gameKey}
         config={currentGame.config}
         onGameEnd={handleGameEnd}

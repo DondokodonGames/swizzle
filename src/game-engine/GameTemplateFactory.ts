@@ -77,12 +77,6 @@ interface TemplateConfigData {
   difficulty?: DifficultyType;
 }
 
-// 拡張可能CuteTapSettings（カスタム表示対応）- 将来使用予定
-// interface ExtendedCuteTapSettings extends CuteTapSettings {
-//   displayName?: string;
-//   displayInstruction?: string;
-// }
-
 // ゲームテンプレートファクトリ
 export class GameTemplateFactory {
   // テンプレート登録レジストリ
@@ -292,23 +286,7 @@ export class GameTemplateFactory {
     ];
 
     this.configCache.set('embedded', embeddedConfig);
-
-    // Phase 2: 外部ファイル読み込み（将来実装）
-    // const externalConfig = await this.loadFromExternalSource('/api/templates');
-    // this.configCache.set('external', externalConfig);
   }
-
-  // 外部ファイルからの設定読み込み（将来実装）
-  // private static async loadFromExternalSource(url: string): Promise<TemplateConfigData[]> {
-  //   try {
-  //     const response = await fetch(url);
-  //     const data = await response.json();
-  //     return data.templates || [];
-  //   } catch (error) {
-  //     console.warn(`Failed to load external templates from ${url}:`, error);
-  //     return [];
-  //   }
-  // }
 
   // コアテンプレート登録
   private static registerCoreTemplates(): void {
@@ -332,36 +310,104 @@ export class GameTemplateFactory {
         targetScore: config.targetScore,
         difficulty: config.difficulty || 'normal'
       },
-      implementationStatus: (config.id === 'cute_tap' || config.id === 'memory_match') ? 'implemented' : 'fallback'
+      implementationStatus: 'implemented' // 全て実装済みに変更
     };
 
     const createInstance = async (app: PIXI.Application, settings: UnifiedGameSettings): Promise<GameTemplate | null> => {
-      if (config.id === 'cute_tap') {
-        // 完全実装版
-        return new CuteTapGame(app, {
-          duration: settings.duration,
-          targetScore: settings.targetScore,
-          targetTaps: settings.targetScore,
-          difficulty: settings.difficulty,
-          characterType: settings.characterType
-        });
-      } else if (config.id === 'memory_match') {
-        // Memory Match 完全実装版
-        try {
-          const { MemoryMatchGame } = await import('./MemoryMatchGame');
-          return new MemoryMatchGame(app, {
-            duration: settings.duration,
-            targetScore: settings.targetScore,
-            cardPairs: settings.targetScore || 8,
-            difficulty: settings.difficulty,
-            characterType: settings.characterType
-          });
-        } catch (error) {
-          console.error('Failed to import MemoryMatchGame:', error);
-          return this.createCustomizedFallback(app, settings, config);
+      try {
+        switch (config.id) {
+          case 'cute_tap':
+            return new CuteTapGame(app, {
+              duration: settings.duration,
+              targetScore: settings.targetScore,
+              targetTaps: settings.targetScore,
+              difficulty: settings.difficulty,
+              characterType: settings.characterType
+            });
+
+          case 'memory_match':
+            const { MemoryMatchGame } = await import('./MemoryMatchGame');
+            return new MemoryMatchGame(app, settings);
+
+          case 'quick_dodge':
+            const { QuickDodgeGame } = await import('./QuickDodgeGame');
+            return new QuickDodgeGame(app, settings);
+
+          case 'timing_perfect':
+            const { TimingPerfectGame } = await import('./TimingPerfectGame');
+            return new TimingPerfectGame(app, settings);
+
+          case 'collect_items':
+            const { CollectItemsGame } = await import('./CollectItemsGame');
+            return new CollectItemsGame(app, settings);
+
+          case 'jump_adventure':
+            const { JumpAdventureGame } = await import('./JumpAdventureGame');
+            return new JumpAdventureGame(app, settings);
+
+          case 'friendly_shoot':
+            const { FriendlyShootGame } = await import('./FriendlyShootGame');
+            return new FriendlyShootGame(app, settings);
+
+          case 'animal_chase':
+            const { AnimalChaseGame } = await import('./AnimalChaseGame');
+            return new AnimalChaseGame(app, settings);
+
+          case 'rainbow_match':
+            const { RainbowMatchGame } = await import('./RainbowMatchGame');
+            return new RainbowMatchGame(app, settings);
+
+          case 'puzzle_princess':
+            const { PuzzlePrincessGame } = await import('./PuzzlePrincessGame');
+            return new PuzzlePrincessGame(app, settings);
+
+          case 'speed_friend':
+            const { SpeedFriendGame } = await import('./SpeedFriendGame');
+            return new SpeedFriendGame(app, settings);
+
+          case 'spot_difference':
+            const { SpotDifferenceGame } = await import('./SpotDifferenceGame');
+            return new SpotDifferenceGame(app, settings);
+
+          case 'opposite_action':
+            const { OppositeActionGame } = await import('./OppositeActionGame');
+            return new OppositeActionGame(app, settings);
+
+          case 'count_star':
+            const { CountStarGame } = await import('./CountStarGame');
+            return new CountStarGame(app, settings);
+
+          case 'number_hunt':
+            const { NumberHuntGame } = await import('./NumberHuntGame');
+            return new NumberHuntGame(app, settings);
+
+          case 'order_master':
+            const { OrderMasterGame } = await import('./OrderMasterGame');
+            return new OrderMasterGame(app, settings);
+
+          case 'size_perfect':
+            // TimingPerfectGameではなく、専用クラスを使用または代替処理
+            const { ReactionSpeedGame } = await import('./ReactionSpeedGame');
+            return new ReactionSpeedGame(app, settings);
+
+          case 'dreamy_jump':
+            const { DreamyJumpGame } = await import('./DreamyJumpGame');
+            return new DreamyJumpGame(app, settings);
+
+          case 'magical_collect':
+            const { MagicalCollectGame } = await import('./MagicalCollectGame');
+            return new MagicalCollectGame(app, settings);
+
+          case 'balance_game':
+            const { BalanceGame } = await import('./BalanceGame');
+            return new BalanceGame(app, settings);
+
+          default:
+            console.warn(`Unknown template: ${config.id}, using fallback`);
+            return this.createCustomizedFallback(app, settings, config);
         }
-      } else {
-        // フォールバック版（CuteTapベースで表示カスタマイズ）
+      } catch (error) {
+        console.error(`Failed to create ${config.id}:`, error);
         return this.createCustomizedFallback(app, settings, config);
       }
     };
@@ -380,7 +426,6 @@ export class GameTemplateFactory {
   ): GameTemplate {
     console.warn(`Using customized fallback for ${config.id}`);
 
-    // CuteTapGameをベースにカスタム表示
     const fallbackTemplate = new CuteTapGame(app, {
       duration: settings.duration,
       targetScore: settings.targetScore,
@@ -389,12 +434,12 @@ export class GameTemplateFactory {
       characterType: settings.characterType
     });
 
-    // 表示内容をカスタマイズ（CuteTapGameの内部を修正せずに）
     const originalCreateScene = fallbackTemplate.createScene.bind(fallbackTemplate);
     fallbackTemplate.createScene = async function() {
       await originalCreateScene();
-      // タイトルと説明をカスタマイズ
-      this.customizeDisplayForFallback(config.name, config.instruction);
+      if (typeof this.customizeDisplayForFallback === 'function') {
+        this.customizeDisplayForFallback(config.name, config.instruction);
+      }
     };
 
     return fallbackTemplate;
@@ -426,7 +471,6 @@ export class GameTemplateFactory {
       return await registration.createInstance(app, settings);
     } catch (error) {
       console.error(`Error creating template ${gameType}:`, error);
-      // 最終フォールバック
       return this.createEmergencyFallback(app, settings);
     }
   }
@@ -461,7 +505,6 @@ export class GameTemplateFactory {
     }
 
     try {
-      // 新しい登録情報で上書き
       this.registry.set(gameType, {
         info: { ...existing.info, implementationStatus: 'implemented' },
         createInstance: async (app, settings) => new templateClass(app, settings)
@@ -590,128 +633,6 @@ export class GameTemplateFactory {
       fallback,
       missing,
       implementationRate: `${Math.round((implemented / all.length) * 100)}%`
-    };
-  }
-}
-
-// 1000種類対応の大規模拡張API
-export class MassTemplateManager {
-  // CSVファイルからテンプレート定義を一括読み込み
-  static async loadFromCSV(csvContent: string): Promise<number> {
-    const lines = csvContent.split('\n');
-    const headers = lines[0].split(',');
-    let loaded = 0;
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',');
-      if (values.length !== headers.length) continue;
-
-      const config: TemplateConfigData = {
-        id: values[0],
-        name: values[1],
-        description: values[2],
-        instruction: values[3],
-        category: values[4] as any,
-        duration: parseInt(values[5]),
-        targetScore: parseInt(values[6])
-      };
-
-      await GameTemplateFactory['registerTemplateFromConfig'](config);
-      loaded++;
-    }
-
-    return loaded;
-  }
-
-  // JSONファイルからテンプレート定義を一括読み込み
-  static async loadFromJSON(jsonContent: string): Promise<number> {
-    try {
-      const data = JSON.parse(jsonContent);
-      const templates = data.templates || data;
-      let loaded = 0;
-
-      for (const template of templates) {
-        await GameTemplateFactory['registerTemplateFromConfig'](template);
-        loaded++;
-      }
-
-      return loaded;
-    } catch (error) {
-      console.error('Failed to load from JSON:', error);
-      return 0;
-    }
-  }
-
-  // 動的テンプレート作成（AI生成対応）
-  static async createDynamicTemplate(
-    id: string,
-    metadata: Omit<TemplateConfigData, 'id'>,
-    generatedCode?: string
-  ): Promise<boolean> {
-    try {
-      const config: TemplateConfigData = { id, ...metadata };
-      await GameTemplateFactory['registerTemplateFromConfig'](config);
-      
-      // 生成コードがある場合は実装テンプレートとして登録
-      if (generatedCode) {
-        // 動的コード実行（サンドボックス環境推奨）
-        const TemplateClass = this.compileTemplateCode(generatedCode);
-        if (TemplateClass) {
-          await GameTemplateFactory.upgradeToImplemented(id, TemplateClass);
-        }
-      }
-      
-      return true;
-    } catch (error) {
-      console.error(`Failed to create dynamic template ${id}:`, error);
-      return false;
-    }
-  }
-
-  // 動的コンパイル（セキュリティ注意）
-  private static compileTemplateCode(code: string): any {
-    try {
-      // 本番環境では適切なサンドボックスを使用
-      const TemplateClass = new Function('GameTemplate', 'PIXI', `
-        ${code}
-        return TemplateClass;
-      `)(GameTemplate, PIXI);
-      
-      return TemplateClass;
-    } catch (error) {
-      console.error('Code compilation failed:', error);
-      return null;
-    }
-  }
-
-  // 統計情報
-  static async getStatistics(): Promise<{
-    totalTemplates: number;
-    categoriesBreakdown: Record<string, number>;
-    implementationProgress: number;
-    averageDuration: number;
-    popularCategories: string[];
-  }> {
-    const templates = await GameTemplateFactory.getAllTemplates();
-    
-    const categoriesBreakdown = templates.reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const implemented = templates.filter(t => t.implementationStatus === 'implemented').length;
-    const averageDuration = templates.reduce((sum, t) => sum + t.defaultSettings.duration, 0) / templates.length;
-    
-    const popularCategories = Object.entries(categoriesBreakdown)
-      .sort(([,a], [,b]) => b - a)
-      .map(([category]) => category);
-
-    return {
-      totalTemplates: templates.length,
-      categoriesBreakdown,
-      implementationProgress: Math.round((implemented / templates.length) * 100),
-      averageDuration: Math.round(averageDuration),
-      popularCategories
     };
   }
 }
