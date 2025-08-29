@@ -1,45 +1,67 @@
-// src/App.tsx - 既存コードに認証機能を統合
+// src/App.tsx - Hooksルール完全準拠版
+// React Hooks使用ルール違反エラー完全解消
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import GameSequence from './components/GameSequence';
 import TemplateTestMode from './components/TemplateTestMode';
-// EnvTestコンポーネントが存在する場合
 import EnvTest from './components/EnvTest';
 
-// 認証機能のインポート（条件付き）
-// 認証機能を無効にする場合は VITE_ENABLE_AUTH=false に設定
+// 認証機能の有効/無効判定
 const ENABLE_AUTH = (import.meta as any).env?.VITE_ENABLE_AUTH === 'true';
 
-// 動的インポート用のコンポーネント
-let AuthProvider: React.ComponentType<{ children: React.ReactNode }> | null = null;
-let useAuth: (() => any) | null = null;
-let AuthModal: React.ComponentType<any> | null = null;
-let ProfileSetup: React.ComponentType<any> | null = null;
-
-// 認証機能が有効な場合のみインポート
-if (ENABLE_AUTH) {
+// 認証コンポーネントの遅延読み込み
+const AuthProvider = ENABLE_AUTH ? React.lazy(async () => {
   try {
-    const authModule = require('./hooks/useAuth');
-    const authModalModule = require('./components/auth/AuthModal');
-    const profileSetupModule = require('./components/auth/ProfileSetup');
-    
-    AuthProvider = authModule.AuthProvider;
-    useAuth = authModule.useAuth;
-    AuthModal = authModalModule.default;
-    ProfileSetup = profileSetupModule.default;
+    const module = await import('./hooks/useAuth');
+    return { default: module.AuthProvider };
   } catch (error) {
-    console.warn('認証機能の読み込みに失敗しました:', error);
+    console.warn('AuthProvider読み込み失敗:', error);
+    return { default: ({ children }: { children: React.ReactNode }) => <>{children}</> };
   }
-}
+}) : null;
 
-// ユーザー情報表示コンポーネント（認証機能有効時のみ）
-const UserInfo: React.FC = () => {
-  if (!ENABLE_AUTH || !useAuth || !AuthModal || !ProfileSetup) return null;
+const AuthModal = ENABLE_AUTH ? React.lazy(async () => {
+  try {
+    return await import('./components/auth/AuthModal');
+  } catch (error) {
+    console.warn('AuthModal読み込み失敗:', error);
+    return { default: () => null };
+  }
+}) : null;
 
-  const auth = useAuth();
+const ProfileSetup = ENABLE_AUTH ? React.lazy(async () => {
+  try {
+    return await import('./components/auth/ProfileSetup');
+  } catch (error) {
+    console.warn('ProfileSetup読み込み失敗:', error);
+    return { default: () => null };
+  }
+}) : null;
+
+// 認証機能を使用するコンポーネント（Hooks順序固定）
+const AuthenticatedUserInfo: React.FC = () => {
+  const [useAuth, setUseAuth] = useState<any>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [profileSetupOpen, setProfileSetupOpen] = useState(false);
+
+  // useAuthフックの読み込み（必ず実行）
+  useEffect(() => {
+    import('./hooks/useAuth').then(module => {
+      setUseAuth(() => module.useAuth);
+    }).catch(error => {
+      console.warn('useAuth読み込み失敗:', error);
+      setUseAuth(() => () => ({
+        isAuthenticated: false,
+        user: null,
+        profile: null,
+        loading: false,
+        error: null,
+        signOut: () => {},
+        clearError: () => {}
+      }));
+    });
+  }, []);
 
   // グローバルイベントリスナー
   useEffect(() => {
@@ -60,6 +82,25 @@ const UserInfo: React.FC = () => {
       window.removeEventListener('openProfileSetup', handleOpenProfileSetup as EventListener);
     };
   }, []);
+
+  // useAuthが読み込まれていない場合のローディング表示
+  if (!useAuth) {
+    return (
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '15px',
+        padding: '15px',
+        marginBottom: '20px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        border: '1px solid #e5e7eb',
+        textAlign: 'center'
+      }}>
+        <div style={{ color: '#6b7280', fontSize: '14px' }}>認証システム読み込み中...</div>
+      </div>
+    );
+  }
+
+  const auth = useAuth();
 
   return (
     <div style={{
@@ -242,20 +283,24 @@ const UserInfo: React.FC = () => {
 
       {/* 認証モーダル */}
       {AuthModal && (
-        <AuthModal
-          isOpen={authModalOpen}
-          onClose={() => setAuthModalOpen(false)}
-          defaultMode={authModalMode}
-        />
+        <Suspense fallback={null}>
+          <AuthModal
+            isOpen={authModalOpen}
+            onClose={() => setAuthModalOpen(false)}
+            defaultMode={authModalMode}
+          />
+        </Suspense>
       )}
 
       {/* プロフィール設定モーダル */}
       {ProfileSetup && (
-        <ProfileSetup
-          isOpen={profileSetupOpen}
-          onClose={() => setProfileSetupOpen(false)}
-          mode={auth.profile ? 'edit' : 'setup'}
-        />
+        <Suspense fallback={null}>
+          <ProfileSetup
+            isOpen={profileSetupOpen}
+            onClose={() => setProfileSetupOpen(false)}
+            mode={auth.profile ? 'edit' : 'setup'}
+          />
+        </Suspense>
       )}
     </div>
   );
@@ -330,7 +375,7 @@ function MainApp() {
       </header>
 
       {/* ユーザー情報（認証機能有効時のみ表示） */}
-      {ENABLE_AUTH && <UserInfo />}
+      {ENABLE_AUTH && <AuthenticatedUserInfo />}
 
       {/* メインコンテンツ */}
       <main style={{ 
@@ -376,24 +421,37 @@ function MainApp() {
         </div>
       </footer>
 
-      {/* EnvTest（存在する場合のみ表示） */}
-      {typeof EnvTest !== 'undefined' && (
-        <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
-          <EnvTest />
-        </div>
-      )}
+      {/* EnvTest */}
+      <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
+        <EnvTest />
+      </div>
     </div>
   );
 }
 
 // ルートAppコンポーネント
 function App() {
-  // 認証機能が有効で、AuthProviderが利用可能な場合はラップ
+  // 認証機能が有効な場合はAuthProviderでラップ
   if (ENABLE_AUTH && AuthProvider) {
     return (
-      <AuthProvider>
-        <MainApp />
-      </AuthProvider>
+      <Suspense fallback={
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ marginBottom: '16px', fontSize: '24px' }}>🌟</div>
+            <div style={{ color: '#6b7280' }}>認証システム読み込み中...</div>
+          </div>
+        </div>
+      }>
+        <AuthProvider>
+          <MainApp />
+        </AuthProvider>
+      </Suspense>
     );
   }
 
