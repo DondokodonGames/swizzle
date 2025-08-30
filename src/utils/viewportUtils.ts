@@ -239,7 +239,8 @@ export function createViewportObserver(
 ): () => void {
   const { throttleMs = 100, includeOrientation = true } = options;
   
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  // Node.js環境では number 型、ブラウザでは NodeJS.Timeout 型となる問題を解決
+  let timeoutId: number | NodeJS.Timeout | null = null;
   let lastViewport = getCurrentViewport();
   
   const handleResize = () => {
@@ -247,7 +248,8 @@ export function createViewportObserver(
       clearTimeout(timeoutId);
     }
     
-    timeoutId = window.setTimeout(() => {
+    // setTimeout の戻り値を適切に型指定
+    timeoutId = setTimeout(() => {
       const currentViewport = getCurrentViewport();
       
       // 変更があった場合のみコールバック実行

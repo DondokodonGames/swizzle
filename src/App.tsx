@@ -1,10 +1,11 @@
-// src/App.tsx - Hooksルール完全準拠版
-// React Hooks使用ルール違反エラー完全解消
+// src/App.tsx - Hooksルール完全準拠版 + ViewportTest統合
+// React Hooks使用ルール違反エラー完全解消 + Phase 4 Week 1統合テスト
 
 import React, { useState, useEffect, Suspense } from 'react';
 import GameSequence from './components/GameSequence';
 import TemplateTestMode from './components/TemplateTestMode';
 import EnvTest from './components/EnvTest';
+import { ViewportTestWrapper } from './components/SimpleViewportTest';
 
 // 認証機能の有効/無効判定
 const ENABLE_AUTH = (import.meta as any).env?.VITE_ENABLE_AUTH === 'true';
@@ -354,6 +355,20 @@ function MainApp() {
           }
         </p>
 
+        {/* Phase 4 Week 1 統合状況表示 */}
+        <div style={{ 
+          marginTop: '10px',
+          padding: '6px 12px',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          border: '1px solid #10b981',
+          borderRadius: '15px',
+          fontSize: '12px',
+          color: '#065f46',
+          display: 'inline-block'
+        }}>
+          🚀 Phase 4 Week 1: ビューポート統合テスト実行中
+        </div>
+
         {/* モード切り替えボタン */}
         <div style={{ marginTop: '15px' }}>
           <button
@@ -402,7 +417,7 @@ function MainApp() {
         textAlign: 'center'
       }}>
         <div>
-          Phase {ENABLE_AUTH ? '3' : '2'}: {mode === 'sequence' ? '完全自動連続プレイ' : 'テンプレート動作確認'} | 
+          Phase {ENABLE_AUTH ? '4' : '4'}: {mode === 'sequence' ? '完全自動連続プレイ' : 'テンプレート動作確認'} | 
           🎯 {mode === 'sequence' ? '真のメイドイン俺体験' : '品質保証テスト'} ✨
         </div>
         {ENABLE_AUTH && (
@@ -410,6 +425,9 @@ function MainApp() {
             🔐 認証システム統合完了 | ユーザー管理・プロフィール機能対応
           </div>
         )}
+        <div style={{ fontSize: '12px', marginTop: '5px', color: '#3b82f6' }}>
+          📱 Week 1: ビューポート統合・アセット仕様策定 | 9:16アスペクト比対応
+        </div>
         <div style={{ fontSize: '12px', marginTop: '5px' }}>
           💡 {mode === 'sequence' ? 
             '修正点: 即座開始、指示画面、結果表示、完全自動進行' : 
@@ -417,11 +435,11 @@ function MainApp() {
           }
         </div>
         <div style={{ fontSize: '11px', marginTop: '8px', color: '#9ca3af' }}>
-          🚀 進捗: 基盤完成 → テンプレート量産中 → {ENABLE_AUTH ? '認証システム統合' : '動作確認段階'}
+          🚀 進捗: 基盤完成 → テンプレート量産中 → 認証システム統合 → 📱 画面サイズ統一完了
         </div>
       </footer>
 
-      {/* EnvTest */}
+      {/* EnvTest（位置調整：ViewportTestと重複回避） */}
       <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
         <EnvTest />
       </div>
@@ -429,40 +447,51 @@ function MainApp() {
   );
 }
 
-// ルートAppコンポーネント
+// ルートAppコンポーネント（ViewportTestWrapper統合）
 function App() {
-  // 認証機能が有効な場合はAuthProviderでラップ
-  if (ENABLE_AUTH && AuthProvider) {
-    return (
-      <Suspense fallback={
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh',
-          background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ marginBottom: '16px', fontSize: '24px' }}>🌟</div>
-            <div style={{ color: '#6b7280' }}>認証システム読み込み中...</div>
+  // ViewportTestWrapperで全体をラップしてPhase 4機能を統合
+  const AppContent = () => {
+    // 認証機能が有効な場合はAuthProviderでラップ
+    if (ENABLE_AUTH && AuthProvider) {
+      return (
+        <Suspense fallback={
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: '100vh',
+            background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ marginBottom: '16px', fontSize: '24px' }}>🌟</div>
+              <div style={{ color: '#6b7280' }}>認証システム読み込み中...</div>
+            </div>
           </div>
-        </div>
-      }>
-        <AuthProvider>
-          <MainApp />
-        </AuthProvider>
-      </Suspense>
-    );
-  }
+        }>
+          <AuthProvider>
+            <MainApp />
+          </AuthProvider>
+        </Suspense>
+      );
+    }
 
-  // 認証機能が無効な場合は既存機能のみ
-  return <MainApp />;
+    // 認証機能が無効な場合は既存機能のみ
+    return <MainApp />;
+  };
+
+  // ViewportTestWrapperで全体をラップしてビューポート機能を統合
+  return (
+    <ViewportTestWrapper>
+      <AppContent />
+    </ViewportTestWrapper>
+  );
 }
 
-// 開発モードでの設定表示
+// 開発モードでの設定表示（Phase 4対応版）
 if ((import.meta as any).env?.DEV) {
-  console.log('🚀 App Configuration:', {
+  console.log('🚀 App Configuration (Phase 4):', {
     AUTH_ENABLED: ENABLE_AUTH,
+    VIEWPORT_INTEGRATION: true,
     NODE_ENV: (import.meta as any).env?.NODE_ENV,
     SUPABASE_URL: (import.meta as any).env?.VITE_SUPABASE_URL ? '✅ Set' : '❌ Missing',
     SUPABASE_KEY: (import.meta as any).env?.VITE_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing'
