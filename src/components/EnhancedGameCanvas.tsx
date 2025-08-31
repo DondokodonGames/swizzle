@@ -1,9 +1,7 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as PIXI from 'pixi.js';
-import { GameTemplate } from '../game-engine/GameTemplate';
 import { GameTemplateFactory } from '../game-engine/GameTemplateFactory';
 import { GameConfig } from './GameSelector';
-import { GameErrorManager, GameError } from '../game-engine/GameErrorManager';
 
 interface EnhancedGameCanvasProps {
   width?: number;
@@ -13,13 +11,9 @@ interface EnhancedGameCanvasProps {
   bgmVolume?: number;
   seVolume?: number;
   isMuted?: boolean;
-}
-
-interface ErrorNotification {
-  error: GameError;
-  message: string;
-  canRetry: boolean;
-  userAction?: string;
+  // ボタン機能用のProps追加
+  onSkip?: () => void;
+  onExit?: () => void;
 }
 
 const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({ 
@@ -27,533 +21,726 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
   height = 600,
   config,
   onGameEnd,
-  bgmVolume = 0.7,
-  seVolume = 0.8,
-  isMuted = false
+  bgmVolume = 0.5,
+  seVolume = 0.5,
+  isMuted = false,
+  onSkip,
+  onExit
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
-  const appRef = useRef<PIXI.Application | null>(null);
-  const gameRef = useRef<GameTemplate | null>(null);
-  const errorManager = useRef(GameErrorManager.getInstance());
-  const isInitializingRef = useRef(false);
-  
-  const [isGameLoaded, setIsGameLoaded] = useState(false);
   const [gameStatus, setGameStatus] = useState<string>('読み込み中...');
-  const [errorNotification, setErrorNotification] = useState<ErrorNotification | null>(null);
-  const [performanceStats, setPerformanceStats] = useState({ fps: 60, memoryUsage: 0 });
-  // 🔍 デバッグ情報追加
-  const [debugInfo, setDebugInfo] = useState<{
-    pixiInitialized: boolean;
-    canvasAttached: boolean;
-    gameTemplateCreated: boolean;
-    sceneCreated: boolean;
-    gameStarted: boolean;
-    lastError: string | null;
-  }>({
-    pixiInitialized: false,
-    canvasAttached: false,
-    gameTemplateCreated: false,
-    sceneCreated: false,
-    gameStarted: false,
-    lastError: null
-  });
+  const [showLoginOverlay, setShowLoginOverlay] = useState(false);
+  const [showVolumeOverlay, setShowVolumeOverlay] = useState(false);
+  const [localBgmVolume, setLocalBgmVolume] = useState(bgmVolume);
+  const [localSeVolume, setLocalSeVolume] = useState(seVolume);
+  const [localIsMuted, setLocalIsMuted] = useState(isMuted);
+  const gameRef = useRef<any>(null); // ゲーム一時停止用
 
-  // エラー通知の処理
   useEffect(() => {
-    const handleGameError = (event: CustomEvent) => {
-      const { error, message, canRetry, userAction } = event.detail;
-      setErrorNotification({ error, message, canRetry, userAction });
-      setGameStatus('エラー');
-      setDebugInfo(prev => ({ ...prev, lastError: message }));
-    };
-
-    window.addEventListener('gameError', handleGameError as EventListener);
-    return () => window.removeEventListener('gameError', handleGameError as EventListener);
-  }, []);
-
-  // パフォーマンス監視
-  useEffect(() => {
-    let animationId: number;
-    let lastTime = performance.now();
-    let frameCount = 0;
+    let app: PIXI.Application | null = null;
     
-    const measurePerformance = () => {
-      const currentTime = performance.now();
-      frameCount++;
-      
-      if (currentTime - lastTime >= 1000) {
-        const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
-        const memoryUsage = (performance as any).memory ? 
-          Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024) : 0;
-        
-        setPerformanceStats({ fps, memoryUsage });
-        frameCount = 0;
-        lastTime = currentTime;
-      }
-      
-      animationId = requestAnimationFrame(measurePerformance);
-    };
-    
-    animationId = requestAnimationFrame(measurePerformance);
-    return () => cancelAnimationFrame(animationId);
-  }, [config.gameType]);
+    const initGame = async () => {
+      if (!canvasRef.current) return;
 
-  // 🚑 デバッグ強化版ゲーム初期化
-  const initializeGame = useCallback(async () => {
-    if (isInitializingRef.current) {
-      console.log('🔄 Game initialization already in progress, skipping...');
-      return;
-    }
-    
-    if (!canvasRef.current) {
-      console.error('❌ Canvas ref not available');
-      setDebugInfo(prev => ({ ...prev, lastError: 'Canvas ref not available' }));
-      return;
-    }
-
-    console.log('🚀 Starting game initialization...');
-    isInitializingRef.current = true;
-    
-    // デバッグ情報リセット
-    setDebugInfo({
-      pixiInitialized: false,
-      canvasAttached: false,
-      gameTemplateCreated: false,
-      sceneCreated: false,
-      gameStarted: false,
-      lastError: null
-    });
-    
-    try {
-      setGameStatus('PixiJS初期化中...');
-      setErrorNotification(null);
-
-      // 🧹 既存リソースのクリーンアップ
-      console.log('🧹 Cleaning up existing resources...');
-      if (appRef.current) {
-        try {
-          appRef.current.destroy(true, { children: true, texture: false });
-          console.log('✅ Previous PIXI app destroyed');
-        } catch (error) {
-          console.warn('⚠️ Previous app cleanup warning:', error);
-        }
-        appRef.current = null;
-      }
-
-      if (gameRef.current) {
-        try {
-          gameRef.current.destroy();
-          console.log('✅ Previous game destroyed');
-        } catch (error) {
-          console.warn('⚠️ Previous game cleanup warning:', error);
-        }
-        gameRef.current = null;
-      }
-
-      // Canvas DOM要素クリーンアップ
-      while (canvasRef.current.firstChild) {
-        canvasRef.current.removeChild(canvasRef.current.firstChild);
-      }
-      console.log('✅ Canvas DOM cleaned');
-
-      // 🎨 PixiJS初期化
-      console.log('🎨 Initializing PixiJS...');
-      const app = new PIXI.Application({
-        width,
-        height,
-        backgroundColor: 0xfce7ff,
-        antialias: true,
-        resolution: Math.min(window.devicePixelRatio || 1, 2),
-        autoDensity: true,
-      });
-
-      if (!app || !app.stage) {
-        throw new Error('PixiJS initialization failed - no stage');
-      }
-
-      appRef.current = app;
-      console.log('✅ PixiJS initialized successfully');
-      setDebugInfo(prev => ({ ...prev, pixiInitialized: true }));
-      
-      // 🖼️ Canvas DOM追加
-      console.log('🖼️ Attaching canvas to DOM...');
-      if (app.view && canvasRef.current) {
-        canvasRef.current.appendChild(app.view as HTMLCanvasElement);
-        console.log('✅ Canvas attached to DOM');
-        setDebugInfo(prev => ({ ...prev, canvasAttached: true }));
-      } else {
-        throw new Error('Failed to append canvas to DOM - no view');
-      }
-
-      // 🔍 テスト描画（PIXI動作確認）
-      console.log('🔍 Adding test graphics to verify PIXI...');
-      const testGraphics = new PIXI.Graphics();
-      testGraphics.beginFill(0xff0000);
-      testGraphics.drawCircle(width / 2, height / 2, 50);
-      testGraphics.endFill();
-      app.stage.addChild(testGraphics);
-      console.log('✅ Test red circle added to stage');
-
-      setGameStatus('ゲームテンプレート作成中...');
-
-      // 🎮 ゲーム設定準備
-      const settings = {
-        gameType: config.gameType,
-        characterType: config.characterType,
-        difficulty: config.difficulty,
-        duration: config.duration,
-        targetScore: config.targetScore,
-        bgmVolume: isMuted ? 0 : bgmVolume,
-        seVolume: isMuted ? 0 : seVolume
-      };
-
-      console.log('🎮 Creating game template with settings:', settings);
-
-      // 🏭 ゲームテンプレート作成
-      let game: GameTemplate | null = null;
       try {
-        const gamePromise = GameTemplateFactory.createTemplate(config.gameType, app, settings);
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error(`Game load timeout after 10 seconds`)), 10000);
+        console.log('🎮 ゲーム初期化開始:', config.gameType);
+        setGameStatus('初期化中...');
+
+        // PIXI初期化
+        app = new PIXI.Application({
+          width,
+          height,
+          backgroundColor: 0xfce7ff,
         });
 
-        game = await Promise.race([gamePromise, timeoutPromise]);
-        
+        // Canvas追加
+        canvasRef.current.appendChild(app.view as HTMLCanvasElement);
+        console.log('✅ Canvas追加完了');
+
+        // ゲーム作成
+        const game = await GameTemplateFactory.createTemplate(config.gameType, app, {
+          gameType: config.gameType,
+          characterType: config.characterType,
+          difficulty: config.difficulty,
+          duration: config.duration,
+          targetScore: config.targetScore
+        });
+
         if (!game) {
-          throw new Error('Game template creation returned null');
+          throw new Error('ゲーム作成失敗');
         }
 
+        // ゲーム参照を保存（一時停止用）
         gameRef.current = game;
-        console.log('✅ Game template created:', config.gameType);
-        setDebugInfo(prev => ({ ...prev, gameTemplateCreated: true }));
 
-      } catch (templateError) {
-        console.error('❌ Game template creation failed:', templateError);
-        
-        // 🚑 フォールバック: 基本的なCuteTapGameを直接作成
-        console.log('🚑 Attempting fallback to CuteTap...');
-        try {
-          const { CuteTapGame } = await import('../game-engine/CuteTapGame');
-          game = new CuteTapGame(app, {
-            duration: settings.duration,
-            targetScore: settings.targetScore,
-            difficulty: settings.difficulty,
-            targetTaps: settings.targetScore,
-            characterType: settings.characterType
-          });
-          gameRef.current = game;
-          console.log('✅ Fallback CuteTap game created');
-          setDebugInfo(prev => ({ ...prev, gameTemplateCreated: true }));
-        } catch (fallbackError) {
-          console.error('❌ Fallback game creation also failed:', fallbackError);
-          throw new Error(`Both main and fallback game creation failed: ${templateError.message}`);
+        console.log('✅ ゲーム作成完了');
+
+        // シーン作成
+        if (game.createScene) {
+          await game.createScene();
+          console.log('✅ シーン作成完了');
         }
-      }
 
-      // テスト描画を削除
-      if (app.stage.children.includes(testGraphics)) {
-        app.stage.removeChild(testGraphics);
-        console.log('🧹 Test graphics removed');
-      }
-
-      setGameStatus('ゲームシーン作成中...');
-
-      // 🎬 ゲームシーン作成
-      if (game && typeof game.createScene === 'function') {
-        console.log('🎬 Creating game scene...');
-        await game.createScene();
-        console.log('✅ Game scene created');
-        setDebugInfo(prev => ({ ...prev, sceneCreated: true }));
-      } else {
-        console.warn('⚠️ Game has no createScene method, skipping...');
-      }
-
-      // 🔧 ゲーム初期化
-      if (game && typeof game.initialize === 'function') {
-        console.log('🔧 Initializing game...');
-        await game.initialize();
-        console.log('✅ Game initialized');
-      }
-
-      // 📞 コールバック設定
-      if (game) {
-        (game as any).onGameEnd = (success: boolean, score: number) => {
-          console.log('🏁 Game ended:', success, score);
-          setGameStatus('ゲーム終了');
-          if (onGameEnd) {
-            onGameEnd(success, score);
-          }
-        };
-      }
-
-      setIsGameLoaded(true);
-      setGameStatus('ゲーム開始準備完了');
-
-      // ⏰ 自動ゲーム開始
-      console.log('⏰ Scheduling game start...');
-      setTimeout(() => {
-        if (gameRef.current && typeof gameRef.current.start === 'function') {
-          console.log('🎯 Starting game...');
-          try {
-            gameRef.current.start();
-            console.log('✅ Game started successfully');
-            setGameStatus('ゲーム実行中...');
-            setDebugInfo(prev => ({ ...prev, gameStarted: true }));
-          } catch (startError) {
-            console.error('❌ Game start failed:', startError);
-            setDebugInfo(prev => ({ ...prev, lastError: `Game start failed: ${startError.message}` }));
-          }
-        } else {
-          console.error('❌ Cannot start game - no start method or game reference');
-          setDebugInfo(prev => ({ ...prev, lastError: 'No start method available' }));
+        // ゲーム開始
+        if (game.start) {
+          game.start();
+          console.log('✅ ゲーム開始');
+          setGameStatus('ゲーム実行中');
         }
-      }, 800);
 
-    } catch (error) {
-      console.error('❌ Game initialization error:', error);
-      setDebugInfo(prev => ({ ...prev, lastError: error.message }));
-      
-      await errorManager.current.handleError({
-        error: error as Error,
-        gameType: config.gameType,
-        context: { 
-          gameState: 'initialization',
-          screenSize: { 
-            width: window.innerWidth, 
-            height: window.innerHeight 
-          }
-        },
-        forceUserNotification: true
-      });
-    } finally {
-      isInitializingRef.current = false;
-      console.log('🏁 Game initialization process completed');
-    }
-  }, [width, height, config, onGameEnd, bgmVolume, seVolume, isMuted]);
-
-  // 🧹 クリーンアップ
-  const cleanupGame = useCallback(() => {
-    console.log('🧹 Starting cleanup...');
-    
-    try {
-      if (gameRef.current) {
-        try {
-          gameRef.current.destroy();
-          console.log('✅ Game destroyed');
-        } catch (error) {
-          console.warn('⚠️ Game cleanup warning:', error);
+        // 終了コールバック
+        if ('onGameEnd' in game) {
+          (game as any).onGameEnd = (success: boolean, score: number) => {
+            console.log('🏁 ゲーム終了:', success, score);
+            onGameEnd?.(success, score);
+          };
         }
-        gameRef.current = null;
-      }
-      
-      if (appRef.current) {
-        try {
-          appRef.current.destroy(true, { 
-            children: true, 
-            texture: false,
-            baseTexture: false 
-          });
-          console.log('✅ PIXI app destroyed');
-        } catch (error) {
-          console.warn('⚠️ PIXI cleanup warning:', error);
-        }
-        appRef.current = null;
-      }
-      
-      setIsGameLoaded(false);
-      setGameStatus('読み込み中...');
-      setErrorNotification(null);
-      
-    } catch (error) {
-      console.error('❌ Cleanup error:', error);
-    }
-    
-    console.log('✅ Cleanup completed');
-  }, []);
 
-  // メインEffect
-  useEffect(() => {
-    console.log('🔄 EnhancedGameCanvas effect triggered, config:', config.gameType);
-    initializeGame();
-
-    return () => {
-      console.log('🧹 EnhancedGameCanvas effect cleanup');
-      cleanupGame();
+      } catch (error) {
+        console.error('❌ エラー発生:', error);
+        setGameStatus('エラー発生');
+      }
     };
-  }, [config.gameType, config.characterType, config.difficulty, config.duration, config.targetScore]);
 
-  // 音量変更監視
+    initGame();
+
+    // クリーンアップ
+    return () => {
+      if (app) {
+        try {
+          app.destroy(true);
+          console.log('🗑️ リソース削除完了');
+        } catch (e) {
+          console.warn('クリーンアップエラー:', e);
+        }
+      }
+    };
+  }, [config, width, height, onGameEnd]);
+
+  // ログインオーバーレイの表示制御（ゲーム一時停止付き）
   useEffect(() => {
-    if (gameRef.current && typeof (gameRef.current as any).updateAudioSettings === 'function') {
-      (gameRef.current as any).updateAudioSettings({
-        bgmVolume: isMuted ? 0 : bgmVolume,
-        seVolume: isMuted ? 0 : seVolume,
-        isMuted
-      });
-    }
-  }, [bgmVolume, seVolume, isMuted]);
-
-  const handleRetry = async () => {
-    console.log('🔄 Manual retry requested');
-    setErrorNotification(null);
-    cleanupGame();
-    setTimeout(() => {
-      initializeGame();
-    }, 500);
-  };
-
-  const handleManualRetry = async () => {
-    if (errorNotification) {
-      console.log('🛠️ Manual error recovery requested');
-      const success = await errorManager.current.manualRetry(errorNotification.error.id);
-      if (success) {
-        setErrorNotification(null);
-        setGameStatus('再試行中...');
-        await handleRetry();
+    if (showLoginOverlay || showVolumeOverlay) {
+      // ゲーム一時停止
+      if (gameRef.current && typeof gameRef.current.pause === 'function') {
+        gameRef.current.pause();
+      }
+    } else {
+      // ゲーム再開
+      if (gameRef.current && typeof gameRef.current.resume === 'function') {
+        gameRef.current.resume();
       }
     }
+  }, [showLoginOverlay, showVolumeOverlay]);
+
+  const handleLoginClose = () => {
+    setShowLoginOverlay(false);
   };
 
-  const dismissError = () => {
-    setErrorNotification(null);
-    setGameStatus('準備完了');
+  const handleVolumeClose = () => {
+    setShowVolumeOverlay(false);
+  };
+
+  const handleVolumeApply = () => {
+    // TODO: 実際の音量設定を親コンポーネントに通知
+    console.log('音量設定適用:', { localBgmVolume, localSeVolume, localIsMuted });
+    setShowVolumeOverlay(false);
   };
 
   return (
     <div className="enhanced-game-canvas-container">
-      {/* メインキャンバス */}
-      <div 
-        ref={canvasRef} 
-        style={{ 
-          position: 'relative',
-          width: `${width}px`,
-          height: `${height}px`,
-          margin: '0 auto',
-          background: 'linear-gradient(135deg, #fce7ff 0%, #e5e7eb 100%)',
-          borderRadius: '12px',
-          overflow: 'hidden',
-          border: '2px solid #d946ef' // 🔍 デバッグ用境界線
-        }}
-      />
-      
-      {/* エラー通知 */}
-      {errorNotification && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <div className="flex items-center mb-4">
-              <div className="text-red-500 text-2xl mr-3">⚠️</div>
-              <h3 className="text-lg font-bold text-gray-800">エラーが発生しました</h3>
+      {/* Step 1: ゲーム上部バー */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '10px 15px',
+        backgroundColor: '#f8fafc',
+        borderBottom: '1px solid #e2e8f0'
+      }}>
+        {/* 左側: 音量・ログイン */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button style={{
+            padding: '8px 12px',
+            backgroundColor: '#d946ef',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            cursor: 'pointer'
+          }}
+          onClick={() => setShowVolumeOverlay(true)}
+          >
+            🔊 音量
+          </button>
+          
+          <button style={{
+            padding: '8px 12px',
+            backgroundColor: '#6366f1',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            cursor: 'pointer'
+          }}
+          onClick={() => setShowLoginOverlay(true)}
+          >
+            ログイン
+          </button>
+        </div>
+
+        {/* 右側: 再読み込み・Skip・Exit */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+          >
+            🔄
+          </button>
+          
+          <button style={{
+            padding: '8px 12px',
+            backgroundColor: '#f59e0b',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            cursor: 'pointer'
+          }}
+          onClick={onSkip}
+          >
+            Skip
+          </button>
+          
+          <button style={{
+            padding: '8px 12px',
+            backgroundColor: '#ef4444',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            fontSize: '14px',
+            cursor: 'pointer'
+          }}
+          onClick={onExit}
+          >
+            Exit
+          </button>
+        </div>
+      </div>
+
+      {/* Step 2: ゲームタイトル（上部バー直下） */}
+      <div style={{
+        padding: '10px 15px',
+        backgroundColor: '#fce7ff',
+        borderBottom: '1px solid #e2e8f0',
+        textAlign: 'center'
+      }}>
+        <h3 style={{ 
+          margin: '0',
+          color: '#d946ef',
+          fontSize: '18px',
+          fontWeight: 'bold'
+        }}>
+          🌟 {config.gameType}
+        </h3>
+      </div>
+
+      {/* 音量設定オーバーレイ */}
+      {showVolumeOverlay && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999
+          }}
+          onClick={handleVolumeClose}
+        >
+          <div 
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              padding: '24px',
+              width: '320px',
+              maxWidth: '90vw',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h2 style={{
+                fontSize: '20px',
+                fontWeight: 'bold',
+                color: '#1f2937',
+                margin: 0
+              }}>
+                🔊 音量設定
+              </h2>
+              <button
+                onClick={handleVolumeClose}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  color: '#6b7280',
+                  cursor: 'pointer',
+                  padding: '0',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
             </div>
             
-            <div className="mb-4">
-              <p className="text-gray-600 whitespace-pre-line">{errorNotification.message}</p>
-            </div>
-
-            <div className="flex flex-col space-y-2">
+            {/* ミュート切り替え */}
+            <div style={{ marginBottom: '20px', textAlign: 'center' }}>
               <button
-                onClick={handleRetry}
-                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+                onClick={() => setLocalIsMuted(!localIsMuted)}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: localIsMuted ? '#ef4444' : '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
               >
-                🔄 再試行
-              </button>
-              
-              {errorNotification.canRetry && (
-                <button
-                  onClick={handleManualRetry}
-                  className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
-                >
-                  🛠️ 自動修復を試す
-                </button>
-              )}
-              
-              <button
-                onClick={dismissError}
-                className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 transition-colors"
-              >
-                ❌ 閉じる
+                {localIsMuted ? '🔇 ミュート中' : '🔊 音声ON'}
               </button>
             </div>
 
-            <details className="mt-4">
-              <summary className="cursor-pointer text-sm text-gray-500">技術詳細</summary>
-              <pre className="text-xs bg-gray-100 p-2 rounded mt-2 overflow-auto max-h-32">
-                {JSON.stringify(errorNotification.error, null, 2)}
-              </pre>
-            </details>
+            {/* BGM音量 */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                🎵 BGM音量: {Math.round(localBgmVolume * 100)}%
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={localBgmVolume}
+                onChange={(e) => setLocalBgmVolume(parseFloat(e.target.value))}
+                disabled={localIsMuted}
+                style={{
+                  width: '100%',
+                  height: '6px',
+                  borderRadius: '3px',
+                  background: localIsMuted ? '#d1d5db' : 
+                    `linear-gradient(to right, #d946ef 0%, #d946ef ${localBgmVolume * 100}%, #e5e7eb ${localBgmVolume * 100}%, #e5e7eb 100%)`,
+                  outline: 'none',
+                  cursor: localIsMuted ? 'not-allowed' : 'pointer'
+                }}
+              />
+            </div>
+
+            {/* SE音量 */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                🎯 効果音量: {Math.round(localSeVolume * 100)}%
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={localSeVolume}
+                onChange={(e) => setLocalSeVolume(parseFloat(e.target.value))}
+                disabled={localIsMuted}
+                style={{
+                  width: '100%',
+                  height: '6px',
+                  borderRadius: '3px',
+                  background: localIsMuted ? '#d1d5db' : 
+                    `linear-gradient(to right, #14b8a6 0%, #14b8a6 ${localSeVolume * 100}%, #e5e7eb ${localSeVolume * 100}%, #e5e7eb 100%)`,
+                  outline: 'none',
+                  cursor: localIsMuted ? 'not-allowed' : 'pointer'
+                }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                style={{
+                  flex: 1,
+                  backgroundColor: '#d946ef',
+                  color: 'white',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+                onClick={handleVolumeApply}
+              >
+                適用
+              </button>
+              
+              <button
+                type="button"
+                style={{
+                  flex: 1,
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+                onClick={handleVolumeClose}
+              >
+                キャンセル
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ゲーム情報（デバッグ情報強化版） */}
-      <div className="game-info" style={{ 
-        padding: '15px', 
+      {/* ログインオーバーレイ（ゲーム停止版） */}
+      {showLoginOverlay && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999 // 最高優先度
+          }}
+          onClick={handleLoginClose}
+        >
+          <div 
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '16px',
+              padding: '24px',
+              width: '320px',
+              maxWidth: '90vw',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              transform: showLoginOverlay ? 'scale(1)' : 'scale(0.9)',
+              transition: 'transform 0.2s ease-out'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h2 style={{
+                fontSize: '20px',
+                fontWeight: 'bold',
+                color: '#1f2937',
+                margin: 0
+              }}>
+                🔐 ログイン
+              </h2>
+              <button
+                onClick={handleLoginClose}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  color: '#6b7280',
+                  cursor: 'pointer',
+                  padding: '0',
+                  width: '30px',
+                  height: '30px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '50%'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '4px'
+              }}>
+                メールアドレス
+              </label>
+              <input
+                type="email"
+                placeholder="example@email.com"
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => {
+                  const target = e.target as HTMLInputElement;
+                  target.style.borderColor = '#3b82f6';
+                }}
+                onBlur={(e) => {
+                  const target = e.target as HTMLInputElement;
+                  target.style.borderColor = '#e5e7eb';
+                }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '4px'
+              }}>
+                パスワード
+              </label>
+              <input
+                type="password"
+                placeholder="パスワードを入力"
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => {
+                  const target = e.target as HTMLInputElement;
+                  target.style.borderColor = '#3b82f6';
+                }}
+                onBlur={(e) => {
+                  const target = e.target as HTMLInputElement;
+                  target.style.borderColor = '#e5e7eb';
+                }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <button
+                type="button"
+                style={{
+                  flex: 1,
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onClick={() => {
+                  // TODO: 実際のログイン処理
+                  alert('ログイン機能は後で実装予定');
+                  handleLoginClose();
+                }}
+                onMouseOver={(e) => {
+                  const target = e.target as HTMLButtonElement;
+                  target.style.backgroundColor = '#2563eb';
+                }}
+                onMouseOut={(e) => {
+                  const target = e.target as HTMLButtonElement;
+                  target.style.backgroundColor = '#3b82f6';
+                }}
+              >
+                ログイン
+              </button>
+              
+              <button
+                type="button"
+                style={{
+                  flex: 1,
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onClick={() => {
+                  // TODO: 新規登録機能
+                  alert('新規登録機能は後で実装予定');
+                  handleLoginClose();
+                }}
+                onMouseOver={(e) => {
+                  const target = e.target as HTMLButtonElement;
+                  target.style.backgroundColor = '#4b5563';
+                }}
+                onMouseOut={(e) => {
+                  const target = e.target as HTMLButtonElement;
+                  target.style.backgroundColor = '#6b7280';
+                }}
+              >
+                新規登録
+              </button>
+            </div>
+            
+            <div style={{
+              textAlign: 'center',
+              fontSize: '12px',
+              color: '#6b7280'
+            }}>
+              ゲスト使用も可能です
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* ログインオーバーレイ */}
+      {showLoginOverlay && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setShowLoginOverlay(false)}
+        >
+          <div 
+            className="bg-white rounded-xl p-6 w-80 max-w-sm mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">ログイン</h2>
+              <button
+                onClick={() => setShowLoginOverlay(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            <form className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  メールアドレス
+                </label>
+                <input
+                  type="email"
+                  placeholder="example@email.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  パスワード
+                </label>
+                <input
+                  type="password"
+                  placeholder="パスワードを入力"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
+                  onClick={() => {
+                    // TODO: 実際のログイン処理
+                    alert('ログイン機能は後で実装予定');
+                    setShowLoginOverlay(false);
+                  }}
+                >
+                  ログイン
+                </button>
+                
+                <button
+                  type="button"
+                  className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors"
+                  onClick={() => {
+                    // TODO: 新規登録機能
+                    alert('新規登録機能は後で実装予定');
+                    setShowLoginOverlay(false);
+                  }}
+                >
+                  新規登録
+                </button>
+              </div>
+            </form>
+            
+            <div className="mt-4 text-center text-sm text-gray-600">
+              ゲスト使用も可能です
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 下部情報エリア（タイトル削除・ステータスのみ） */}
+      <div style={{ 
+        padding: '10px 15px', 
         textAlign: 'center',
-        fontFamily: 'Inter, sans-serif'
+        fontFamily: 'Arial, sans-serif',
+        backgroundColor: '#f8fafc',
+        borderTop: '1px solid #e2e8f0'
       }}>
-        <h3 style={{ 
-          margin: '10px 0 5px 0', 
-          color: '#d946ef',
-          fontSize: '18px'
-        }}>
-          🌟 {config.gameType}
-        </h3>
-        
         <p style={{ 
           fontSize: '14px', 
-          color: errorNotification ? '#dc2626' : 
-               gameStatus.includes('実行中') ? '#10b981' : '#52525b', 
-          margin: '8px 0',
-          fontWeight: '500'
+          color: '#666',
+          margin: '0 0 5px 0'
         }}>
           {gameStatus}
         </p>
-
-        {/* 🔍 デバッグ情報表示 */}
-        <div style={{
-          backgroundColor: '#f3f4f6',
-          borderRadius: '8px',
-          padding: '10px',
-          margin: '10px 0',
-          fontSize: '11px',
-          textAlign: 'left'
-        }}>
-          <div style={{ fontWeight: 'bold', marginBottom: '5px', color: '#374151' }}>
-            🔍 デバッグ状況:
-          </div>
-          <div style={{ color: debugInfo.pixiInitialized ? '#10b981' : '#ef4444' }}>
-            ✓ PixiJS初期化: {debugInfo.pixiInitialized ? '完了' : '未完了'}
-          </div>
-          <div style={{ color: debugInfo.canvasAttached ? '#10b981' : '#ef4444' }}>
-            ✓ Canvas添付: {debugInfo.canvasAttached ? '完了' : '未完了'}
-          </div>
-          <div style={{ color: debugInfo.gameTemplateCreated ? '#10b981' : '#ef4444' }}>
-            ✓ テンプレート作成: {debugInfo.gameTemplateCreated ? '完了' : '未完了'}
-          </div>
-          <div style={{ color: debugInfo.sceneCreated ? '#10b981' : '#ef4444' }}>
-            ✓ シーン作成: {debugInfo.sceneCreated ? '完了' : '未完了'}
-          </div>
-          <div style={{ color: debugInfo.gameStarted ? '#10b981' : '#ef4444' }}>
-            ✓ ゲーム開始: {debugInfo.gameStarted ? '完了' : '未完了'}
-          </div>
-          {debugInfo.lastError && (
-            <div style={{ color: '#ef4444', marginTop: '5px' }}>
-              ❌ 最新エラー: {debugInfo.lastError}
-            </div>
-          )}
+        
+        {/* 音量表示 */}
+        <div style={{ fontSize: '12px', color: '#999', margin: '0' }}>
+          BGM: {isMuted ? 'ミュート' : `${Math.round(bgmVolume * 100)}%`} | 
+          SE: {isMuted ? 'ミュート' : `${Math.round(seVolume * 100)}%`}
         </div>
-
-        {/* パフォーマンス表示 */}
-        <div className="text-xs text-gray-400 mt-2">
-          FPS: {performanceStats.fps} | Memory: {performanceStats.memoryUsage}MB
-        </div>
-
-        <button
-          onClick={handleRetry}
-          disabled={gameStatus.includes('読み込み中') || isInitializingRef.current}
-          className="mt-3 bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          🔄 再読み込み
-        </button>
       </div>
     </div>
   );
