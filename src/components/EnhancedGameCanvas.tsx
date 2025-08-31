@@ -11,7 +11,7 @@ interface EnhancedGameCanvasProps {
   bgmVolume?: number;
   seVolume?: number;
   isMuted?: boolean;
-  // ボタン機能用のProps追加
+  // ボタン機能用のProps追加 
   onSkip?: () => void;
   onExit?: () => void;
 }
@@ -35,6 +35,11 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
   const [localSeVolume, setLocalSeVolume] = useState(seVolume);
   const [localIsMuted, setLocalIsMuted] = useState(isMuted);
   const gameRef = useRef<any>(null); // ゲーム一時停止用
+  
+  // ✅ Step 3: 残り時間バー用の状態
+  const [timeRemaining, setTimeRemaining] = useState(config.duration);
+  const [totalTime] = useState(config.duration);
+  const [isGameRunning, setIsGameRunning] = useState(false);
 
   useEffect(() => {
     let app: PIXI.Application | null = null;
@@ -54,6 +59,7 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
         });
 
         // Canvas追加
+        canvasRef.current.innerHTML = ''; // 前の内容をクリア
         canvasRef.current.appendChild(app.view as HTMLCanvasElement);
         console.log('✅ Canvas追加完了');
 
@@ -86,12 +92,14 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
           game.start();
           console.log('✅ ゲーム開始');
           setGameStatus('ゲーム実行中');
+          setIsGameRunning(true); // ✅ タイマー開始
         }
 
         // 終了コールバック
         if ('onGameEnd' in game) {
           (game as any).onGameEnd = (success: boolean, score: number) => {
-            console.log('🏁 ゲーム終了:', success, score);
+            console.log('🎁 ゲーム終了:', success, score);
+            setIsGameRunning(false); // ✅ タイマー停止
             onGameEnd?.(success, score);
           };
         }
@@ -117,6 +125,39 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
     };
   }, [config, width, height, onGameEnd]);
 
+  // ✅ Step 3: 残り時間タイマー（1秒間隔）
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    if (isGameRunning && timeRemaining > 0 && !showLoginOverlay && !showVolumeOverlay) {
+      timer = setInterval(() => {
+        setTimeRemaining(prev => {
+          const newTime = Math.max(0, prev - 0.1); // 0.1秒刻み
+          
+          // 時間切れ処理
+          if (newTime <= 0) {
+            setIsGameRunning(false);
+            // ゲーム強制終了（時間切れ）
+            if (gameRef.current && typeof gameRef.current.forceEnd === 'function') {
+              gameRef.current.forceEnd(false, 0);
+            } else {
+              // fallback: 直接onGameEndを呼び出し
+              setTimeout(() => onGameEnd?.(false, 0), 100);
+            }
+          }
+          
+          return newTime;
+        });
+      }, 100); // 0.1秒間隔でスムーズな更新
+    }
+    
+    return () => {
+      if (timer) {
+        clearInterval(timer);
+      }
+    };
+  }, [isGameRunning, timeRemaining, showLoginOverlay, showVolumeOverlay, onGameEnd]);
+
   // ログインオーバーレイの表示制御（ゲーム一時停止付き）
   useEffect(() => {
     if (showLoginOverlay || showVolumeOverlay) {
@@ -124,11 +165,13 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
       if (gameRef.current && typeof gameRef.current.pause === 'function') {
         gameRef.current.pause();
       }
+      // ✅ タイマーも一時停止（上のuseEffectで依存関係により自動停止）
     } else {
       // ゲーム再開
       if (gameRef.current && typeof gameRef.current.resume === 'function') {
         gameRef.current.resume();
       }
+      // ✅ タイマーも再開（isGameRunning = trueのため自動再開）
     }
   }, [showLoginOverlay, showVolumeOverlay]);
 
@@ -147,7 +190,12 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
   };
 
   return (
-    <div className="enhanced-game-canvas-container">
+    <div className="enhanced-game-canvas-container" style={{
+      position: 'relative',
+      width: '100%',
+      maxWidth: '400px',
+      margin: '0 auto'
+    }}>
       {/* Step 1: ゲーム上部バー */}
       <div style={{
         display: 'flex',
@@ -252,7 +300,98 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
         </h3>
       </div>
 
-      {/* 音量設定オーバーレイ */}
+      {/* ✅ 修復: Canvas描画エリア（明確に表示） */}
+      <div 
+        ref={canvasRef}
+        style={{
+          position: 'relative',
+          width: `${width}px`,
+          height: `${height}px`,
+          margin: '0 auto',
+          backgroundColor: '#fce7ff', // 確認用背景色
+          border: '2px solid #d946ef', // 確認用境界線
+          overflow: 'hidden',
+          zIndex: 1 // ゲーム画面のz-index
+        }}
+      />
+
+      {/* Step 3: 下部情報エリア（ステータス + 残り時間表示） */}
+      <div style={{ 
+        padding: '10px 15px', 
+        textAlign: 'center',
+        fontFamily: 'Arial, sans-serif',
+        backgroundColor: '#f8fafc',
+        borderTop: '1px solid #e2e8f0'
+      }}>
+        <p style={{ 
+          fontSize: '14px', 
+          color: '#666',
+          margin: '0 0 5px 0'
+        }}>
+          {gameStatus}
+        </p>
+        
+        {/* 音量表示 */}
+        <div style={{ fontSize: '12px', color: '#999', margin: '0 0 10px 0' }}>
+          BGM: {isMuted ? 'ミュート' : `${Math.round(bgmVolume * 100)}%`} | 
+          SE: {isMuted ? 'ミュート' : `${Math.round(seVolume * 100)}%`}
+        </div>
+        
+        {/* ✅ 残り時間デジタル表示 */}
+        <div style={{ 
+          fontSize: '14px', 
+          color: timeRemaining <= 3 ? '#ef4444' : '#d946ef',
+          fontWeight: 'bold',
+          margin: '0'
+        }}>
+          ⏱️ 残り時間: {timeRemaining.toFixed(1)}秒
+        </div>
+      </div>
+
+      {/* ✅ Step 3: 残り時間プログレスバー（画面最下部） */}
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '8px',
+        backgroundColor: '#e5e7eb',
+        overflow: 'hidden',
+        borderRadius: '0 0 4px 4px'
+      }}>
+        <div style={{
+          height: '100%',
+          backgroundColor: timeRemaining <= 3 ? '#ef4444' : timeRemaining <= 10 ? '#f59e0b' : '#d946ef',
+          width: `${Math.max(0, (timeRemaining / totalTime) * 100)}%`,
+          transition: 'width 0.1s linear, background-color 0.3s ease',
+          borderRadius: '0 4px 4px 0',
+          boxShadow: timeRemaining <= 5 ? '0 0 8px rgba(239, 68, 68, 0.6)' : 'none'
+        }} />
+        
+        {/* ✅ パルス効果（残り3秒以下） */}
+        {timeRemaining <= 3 && timeRemaining > 0 && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '100%',
+            backgroundColor: '#ef4444',
+            opacity: 0.3,
+            animation: 'pulse 0.5s ease-in-out infinite alternate'
+          }} />
+        )}
+      </div>
+      
+      {/* ✅ パルスアニメーション定義 */}
+      <style>{`
+        @keyframes pulse {
+          from { opacity: 0.3; }
+          to { opacity: 0.7; }
+        }
+      `}</style>
+
+      {/* ✅ 音量設定オーバーレイ（z-index: 9999） */}
       {showVolumeOverlay && (
         <div 
           style={{
@@ -437,7 +576,7 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
         </div>
       )}
 
-      {/* ログインオーバーレイ（ゲーム停止版） */}
+      {/* ✅ ログインオーバーレイ（ゲーム停止版・z-index: 9999） */}
       {showLoginOverlay && (
         <div 
           style={{
@@ -642,106 +781,6 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
           </div>
         </div>
       )}
-      
-      {/* ログインオーバーレイ */}
-      {showLoginOverlay && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-          onClick={() => setShowLoginOverlay(false)}
-        >
-          <div 
-            className="bg-white rounded-xl p-6 w-80 max-w-sm mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">ログイン</h2>
-              <button
-                onClick={() => setShowLoginOverlay(false)}
-                className="text-gray-500 hover:text-gray-700 text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            
-            <form className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  メールアドレス
-                </label>
-                <input
-                  type="email"
-                  placeholder="example@email.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  パスワード
-                </label>
-                <input
-                  type="password"
-                  placeholder="パスワードを入力"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div className="flex space-x-3">
-                <button
-                  type="button"
-                  className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
-                  onClick={() => {
-                    // TODO: 実際のログイン処理
-                    alert('ログイン機能は後で実装予定');
-                    setShowLoginOverlay(false);
-                  }}
-                >
-                  ログイン
-                </button>
-                
-                <button
-                  type="button"
-                  className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors"
-                  onClick={() => {
-                    // TODO: 新規登録機能
-                    alert('新規登録機能は後で実装予定');
-                    setShowLoginOverlay(false);
-                  }}
-                >
-                  新規登録
-                </button>
-              </div>
-            </form>
-            
-            <div className="mt-4 text-center text-sm text-gray-600">
-              ゲスト使用も可能です
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* 下部情報エリア（タイトル削除・ステータスのみ） */}
-      <div style={{ 
-        padding: '10px 15px', 
-        textAlign: 'center',
-        fontFamily: 'Arial, sans-serif',
-        backgroundColor: '#f8fafc',
-        borderTop: '1px solid #e2e8f0'
-      }}>
-        <p style={{ 
-          fontSize: '14px', 
-          color: '#666',
-          margin: '0 0 5px 0'
-        }}>
-          {gameStatus}
-        </p>
-        
-        {/* 音量表示 */}
-        <div style={{ fontSize: '12px', color: '#999', margin: '0' }}>
-          BGM: {isMuted ? 'ミュート' : `${Math.round(bgmVolume * 100)}%`} | 
-          SE: {isMuted ? 'ミュート' : `${Math.round(seVolume * 100)}%`}
-        </div>
-      </div>
     </div>
   );
 };
