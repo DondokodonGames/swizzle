@@ -5,20 +5,14 @@ import { GameTemplateFactory } from '../game-engine/GameTemplateFactory';
 import { GameConfig } from './GameSelector';
 import { GameErrorManager, GameError } from '../game-engine/GameErrorManager';
 
-// Week 2新機能: 音量設定の型定義
-interface VolumeSettings {
-  bgm: number
-  se: number
-  muted: boolean
-}
-
 interface EnhancedGameCanvasProps {
   width?: number;
   height?: number;
   config: GameConfig;
   onGameEnd?: (success?: boolean, score?: number) => void;
-  // Week 2新機能: 音量設定Props
-  volumeSettings?: VolumeSettings;
+  bgmVolume?: number;
+  seVolume?: number;
+  isMuted?: boolean;
 }
 
 interface ErrorNotification {
@@ -28,118 +22,44 @@ interface ErrorNotification {
   userAction?: string;
 }
 
-// Week 2新機能: タッチエフェクト用の型定義
-interface TouchEffect {
-  id: number;
-  x: number;
-  y: number;
-  timestamp: number;
-}
-
 const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({ 
   width = 375, 
   height = 600,
   config,
   onGameEnd,
-  // Week 2新機能: 音量設定のデフォルト値
-  volumeSettings = { bgm: 0.7, se: 0.8, muted: false }
+  bgmVolume = 0.7,
+  seVolume = 0.8,
+  isMuted = false
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
   const gameRef = useRef<GameTemplate | null>(null);
   const errorManager = useRef(GameErrorManager.getInstance());
+  const isInitializingRef = useRef(false);
   
   const [isGameLoaded, setIsGameLoaded] = useState(false);
   const [gameStatus, setGameStatus] = useState<string>('読み込み中...');
   const [errorNotification, setErrorNotification] = useState<ErrorNotification | null>(null);
   const [performanceStats, setPerformanceStats] = useState({ fps: 60, memoryUsage: 0 });
   
-  // Week 2新機能: タッチエフェクト状態管理
-  const [touchEffects, setTouchEffects] = useState<TouchEffect[]>([]);
-
-  // Week 2新機能: タッチエフェクト生成関数
-  const createTouchEffect = useCallback((x: number, y: number) => {
-    const effectId = Date.now() + Math.random();
-    const newEffect: TouchEffect = {
-      id: effectId,
-      x,
-      y,
-      timestamp: Date.now()
-    };
-
-    setTouchEffects(prev => [...prev, newEffect]);
-    
-    // 1秒後に自動削除
-    setTimeout(() => {
-      setTouchEffects(prev => prev.filter(effect => effect.id !== effectId));
-    }, 1000);
-
-    // Week 2新機能: タッチ音効果再生（音量設定適用）
-    if (!volumeSettings.muted && volumeSettings.se > 0) {
-      playTouchSound();
-    }
-  }, [volumeSettings]);
-
-  // Week 2新機能: タッチ音再生関数
-  const playTouchSound = useCallback(() => {
-    // 簡単なWeb Audio APIを使った効果音
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      oscillator.frequency.value = 800; // 800Hz の音
-      gainNode.gain.setValueAtTime(volumeSettings.se * 0.1, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.1);
-    } catch (error) {
-      console.warn('タッチ音再生エラー:', error);
-    }
-  }, [volumeSettings.se]);
-
-  // Week 2新機能: DOM イベントハンドラ（TypeScriptエラー修正）
-  const handleDOMTouchStart = useCallback((event: Event) => {
-    const touchEvent = event as TouchEvent;
-    if (!canvasRef.current || !touchEvent.touches[0]) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const touch = touchEvent.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    
-    createTouchEffect(x, y);
-  }, [createTouchEffect]);
-
-  const handleDOMMouseDown = useCallback((event: Event) => {
-    const mouseEvent = event as MouseEvent;
-    if (!canvasRef.current) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = mouseEvent.clientX - rect.left;
-    const y = mouseEvent.clientY - rect.top;
-    
-    createTouchEffect(x, y);
-  }, [createTouchEffect]);
-
-  // Week 2新機能: React イベントハンドラ（予備用）
-  const handleCanvasInteraction = useCallback((event: React.TouchEvent | React.MouseEvent) => {
-    if (!canvasRef.current) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const clientX = 'touches' in event ? event.touches[0]?.clientX : event.clientX;
-    const clientY = 'touches' in event ? event.touches[0]?.clientY : event.clientY;
-    
-    if (clientX !== undefined && clientY !== undefined) {
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
-      createTouchEffect(x, y);
-    }
-  }, [createTouchEffect]);
+  // デバッグ情報
+  const [debugInfo, setDebugInfo] = useState<{
+    pixiInitialized: boolean;
+    stageReady: boolean;
+    canvasAttached: boolean;
+    gameTemplateCreated: boolean;
+    sceneCreated: boolean;
+    gameStarted: boolean;
+    lastError: string | null;
+  }>({
+    pixiInitialized: false,
+    stageReady: false,
+    canvasAttached: false,
+    gameTemplateCreated: false,
+    sceneCreated: false,
+    gameStarted: false,
+    lastError: null
+  });
 
   // エラー通知の処理
   useEffect(() => {
@@ -147,6 +67,7 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
       const { error, message, canRetry, userAction } = event.detail;
       setErrorNotification({ error, message, canRetry, userAction });
       setGameStatus('エラー');
+      setDebugInfo(prev => ({ ...prev, lastError: message }));
     };
 
     window.addEventListener('gameError', handleGameError as EventListener);
@@ -163,22 +84,12 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
       const currentTime = performance.now();
       frameCount++;
       
-      if (currentTime - lastTime >= 1000) { // 1秒ごと
+      if (currentTime - lastTime >= 1000) {
         const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
         const memoryUsage = (performance as any).memory ? 
           Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024) : 0;
         
         setPerformanceStats({ fps, memoryUsage });
-        
-        // パフォーマンス警告
-        if (fps < 30) {
-          errorManager.current.handleError({
-            error: new Error(`Low FPS detected: ${fps}`),
-            gameType: config.gameType,
-            context: { gameState: 'performance_warning' }
-          });
-        }
-        
         frameCount = 0;
         lastTime = currentTime;
       }
@@ -190,309 +101,380 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
     return () => cancelAnimationFrame(animationId);
   }, [config.gameType]);
 
-  // Week 2新機能: 音量設定変更時の処理
-  useEffect(() => {
-    // グローバル音量設定の更新
-    if (typeof window !== 'undefined') {
-      (window as any).gameVolumeSettings = volumeSettings;
-    }
-
-    // 既存のゲームインスタンスに音量設定を適用
-    if (gameRef.current && typeof (gameRef.current as any).updateVolume === 'function') {
-      (gameRef.current as any).updateVolume(volumeSettings);
-    }
-
-    console.log('EnhancedGameCanvas: 音量設定適用', volumeSettings);
-  }, [volumeSettings]);
-
+  // 🚑 Stage初期化問題対応版ゲーム初期化
   const initializeGame = useCallback(async () => {
-    if (!canvasRef.current) return;
+    if (isInitializingRef.current) {
+      console.log('🔄 Game initialization already in progress, skipping...');
+      return;
+    }
+    
+    if (!canvasRef.current) {
+      console.error('❌ Canvas ref not available');
+      setDebugInfo(prev => ({ ...prev, lastError: 'Canvas ref not available' }));
+      return;
+    }
 
+    console.log('🚀 Starting game initialization...');
+    isInitializingRef.current = true;
+    
+    // デバッグ情報リセット
+    setDebugInfo({
+      pixiInitialized: false,
+      stageReady: false,
+      canvasAttached: false,
+      gameTemplateCreated: false,
+      sceneCreated: false,
+      gameStarted: false,
+      lastError: null
+    });
+    
     try {
       setGameStatus('PixiJS初期化中...');
       setErrorNotification(null);
 
-      // PixiJS初期化（エラーハンドリング強化）
+      // 🧹 リソースクリーンアップ
+      console.log('🧹 Cleaning up existing resources...');
+      if (appRef.current) {
+        try {
+          appRef.current.destroy(true, { children: true, texture: false });
+          console.log('✅ Previous PIXI app destroyed');
+        } catch (error) {
+          console.warn('⚠️ Previous app cleanup warning:', error);
+        }
+        appRef.current = null;
+      }
+
+      if (gameRef.current) {
+        try {
+          gameRef.current.destroy();
+          console.log('✅ Previous game destroyed');
+        } catch (error) {
+          console.warn('⚠️ Previous game cleanup warning:', error);
+        }
+        gameRef.current = null;
+      }
+
+      // Canvas DOM要素クリーンアップ
+      while (canvasRef.current.firstChild) {
+        canvasRef.current.removeChild(canvasRef.current.firstChild);
+      }
+      console.log('✅ Canvas DOM cleaned');
+
+      // 🎨 PixiJS初期化（PixiJS 7.x標準方法）
+      console.log('🎨 Initializing PixiJS...');
+      
       const app = new PIXI.Application({
         width,
         height,
         backgroundColor: 0xfce7ff,
         antialias: true,
-        resolution: Math.min(window.devicePixelRatio || 1, 2), // 解像度制限
+        resolution: Math.min(window.devicePixelRatio || 1, 2),
         autoDensity: true,
       });
 
-      // PixiJS初期化確認
+      console.log('🔍 PIXI App created, checking components...');
+      console.log('- app exists:', !!app);
+      console.log('- app.stage exists:', !!app.stage);
+      console.log('- app.view exists:', !!app.view);
+      console.log('- app.canvas exists:', !!(app as any).canvas);
+      console.log('- app.renderer exists:', !!app.renderer);
+      console.log('- app.ticker exists:', !!app.ticker);
+
+      if (!app) {
+        throw new Error('PIXI Application creation failed');
+      }
       if (!app.stage) {
-        throw new Error('PixiJS stage initialization failed');
+        throw new Error('PIXI Stage creation failed');
       }
 
       appRef.current = app;
-      canvasRef.current.appendChild(app.view as HTMLCanvasElement);
+      console.log('✅ PixiJS initialized successfully');
+      setDebugInfo(prev => ({ ...prev, pixiInitialized: true }));
+      
+      // 🕐 Stage準備完了を待つ（強化版）
+      console.log('🕐 Waiting for stage to be ready...');
+      let stageReadyAttempts = 0;
+      const maxAttempts = 10;
+      
+      while (stageReadyAttempts < maxAttempts) {
+        if (app.stage && app.stage.children !== undefined && app.stage.children !== null) {
+          console.log(`✅ Stage ready after ${stageReadyAttempts} attempts`);
+          setDebugInfo(prev => ({ ...prev, stageReady: true }));
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 50));
+        stageReadyAttempts++;
+      }
+      
+      if (stageReadyAttempts >= maxAttempts) {
+        throw new Error('Stage failed to initialize within timeout');
+      }
+      
+      // 🖼️ Canvas DOM追加（シンプル版）
+      console.log('🖼️ Attaching canvas to DOM...');
+      console.log('🔍 app.view type:', typeof app.view);
+      console.log('🔍 app.view:', app.view);
+      
+      // PixiJS 7.x でのcanvas取得
+      const canvasElement = app.view as HTMLCanvasElement;
+      
+      if (canvasElement && canvasRef.current) {
+        console.log('🔍 Canvas element found, tagName:', canvasElement.tagName);
+        canvasRef.current.appendChild(canvasElement);
+        console.log('✅ Canvas attached to DOM successfully');
+        setDebugInfo(prev => ({ ...prev, canvasAttached: true }));
+      } else {
+        console.error('❌ Canvas attachment failed');
+        console.log('- canvasElement:', !!canvasElement);
+        console.log('- canvasRef.current:', !!canvasRef.current);
+        console.log('- app.view:', app.view);
+        throw new Error('Failed to append canvas to DOM - canvas or container missing');
+      }
 
-      // Week 2新機能: キャンバスにDOMイベントリスナー追加（TypeScriptエラー修正済み）
-      const canvas = app.view as HTMLCanvasElement;
-      canvas.addEventListener('touchstart', handleDOMTouchStart);
-      canvas.addEventListener('mousedown', handleDOMMouseDown);
-      canvas.style.touchAction = 'none'; // スクロール防止
+      // 🔍 テスト描画（PIXI動作確認）
+      console.log('🔍 Adding test graphics to verify PIXI...');
+      const testGraphics = new PIXI.Graphics();
+      testGraphics.beginFill(0xff0000);
+      testGraphics.drawCircle(width / 2, height / 2, 30);
+      testGraphics.endFill();
+      app.stage.addChild(testGraphics);
+      console.log('✅ Test red circle added to stage');
 
-      setGameStatus('ゲーム準備中...');
+      setGameStatus('ゲームテンプレート作成中...');
 
-      // ゲーム設定（Week 2新機能: 音量設定を含む）
+      // 🎮 ゲーム設定準備
       const settings = {
         gameType: config.gameType,
         characterType: config.characterType,
         difficulty: config.difficulty,
         duration: config.duration,
         targetScore: config.targetScore,
-        // Week 2新機能: 音量設定を settings に含める
-        volumeSettings: volumeSettings
+        bgmVolume: isMuted ? 0 : bgmVolume,
+        seVolume: isMuted ? 0 : seVolume
       };
 
-      // ゲームテンプレート作成（タイムアウト付き）
-      const gamePromise = GameTemplateFactory.createTemplate(config.gameType, app, settings);
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Game load timeout after 10 seconds')), 10000);
-      });
+      console.log('🎮 Creating game template with settings:', settings);
 
-      const game = await Promise.race([gamePromise, timeoutPromise]);
-      
-      if (!game) {
-        throw new Error('Game template creation returned null');
-      }
-
-      gameRef.current = game;
-
-      // Week 2新機能: ゲームインスタンスに音量更新メソッドを追加
-      if (typeof (game as any).updateVolume !== 'function') {
-        (game as any).updateVolume = (newVolumeSettings: VolumeSettings) => {
-          console.log('Game instance volume updated:', newVolumeSettings);
-          // ゲーム内音量設定の更新処理
-          // TODO: 実際のPixiJS Sound統合時に実装
-        };
-      }
-
-      // コールバック設定（Week 2新機能: 音量設定考慮）
-      (game as any).onGameEnd = (success: boolean, score: number) => {
-        setGameStatus('ゲーム終了');
+      // 🏭 ゲームテンプレート作成（安全性強化）
+      let game: GameTemplate | null = null;
+      try {
+        game = await GameTemplateFactory.createTemplate(config.gameType, app, settings);
         
-        // Week 2新機能: ゲーム終了音（成功・失敗で異なる音）
-        if (!volumeSettings.muted && volumeSettings.se > 0) {
-          playGameEndSound(success);
+        if (!game) {
+          throw new Error('Game template creation returned null');
         }
-        
-        onGameEnd?.(success, score);
-      };
 
-      // シーン作成
-      if (typeof game.createScene === 'function') {
-        await game.createScene();
+        gameRef.current = game;
+        console.log('✅ Game template created:', config.gameType);
+        setDebugInfo(prev => ({ ...prev, gameTemplateCreated: true }));
+
+      } catch (templateError: unknown) {
+        const errorMessage = templateError instanceof Error ? templateError.message : 'Unknown template error';
+        console.error('❌ Game template creation failed:', errorMessage);
+        console.log('🚑 Attempting emergency fallback...');
+        
+        // 🚑 緊急フォールバック：最小限のCuteTapGame
+        try {
+          const { CuteTapGame } = await import('../game-engine/CuteTapGame');
+          game = new CuteTapGame(app, {
+            duration: settings.duration,
+            targetScore: settings.targetScore,
+            difficulty: settings.difficulty,
+            targetTaps: settings.targetScore,
+            characterType: settings.characterType
+          });
+          gameRef.current = game;
+          console.log('✅ Emergency fallback CuteTap game created');
+          setDebugInfo(prev => ({ ...prev, gameTemplateCreated: true }));
+        } catch (fallbackError: unknown) {
+          const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : 'Unknown fallback error';
+          console.error('❌ Emergency fallback also failed:', fallbackMessage);
+          throw new Error(`All game creation attempts failed: ${errorMessage}`);
+        }
+      }
+
+      // テスト描画削除
+      if (app.stage.children.includes(testGraphics)) {
+        app.stage.removeChild(testGraphics);
+        console.log('🧹 Test graphics removed');
+      }
+
+      setGameStatus('ゲーム初期化中...');
+
+      // 🔧 ゲーム初期化（順序重要）
+      console.log('🔧 Initializing game...');
+      if (game && typeof game.initialize === 'function') {
+        await game.initialize();
+        console.log('✅ Game initialized');
+        setDebugInfo(prev => ({ ...prev, sceneCreated: true }));
       } else {
-        throw new Error('Game createScene method not found');
+        console.warn('⚠️ Game has no initialize method');
+      }
+
+      // 📞 コールバック設定
+      if (game) {
+        (game as any).onGameEnd = (success: boolean, score: number) => {
+          console.log('🏁 Game ended:', success, score);
+          setGameStatus('ゲーム終了');
+          if (onGameEnd) {
+            onGameEnd(success, score);
+          }
+        };
       }
 
       setIsGameLoaded(true);
       setGameStatus('ゲーム開始準備完了');
 
-      // 自動開始
+      // ⏰ 自動ゲーム開始
+      console.log('⏰ Scheduling game start...');
       setTimeout(() => {
         if (gameRef.current && typeof gameRef.current.start === 'function') {
-          gameRef.current.start();
-          setGameStatus('ゲーム実行中...');
-          
-          // Week 2新機能: ゲーム開始音
-          if (!volumeSettings.muted && volumeSettings.bgm > 0) {
-            playGameStartSound();
+          console.log('🎯 Starting game...');
+          try {
+            gameRef.current.start();
+            console.log('✅ Game started successfully');
+            setGameStatus('ゲーム実行中...');
+            setDebugInfo(prev => ({ ...prev, gameStarted: true }));
+          } catch (startError: unknown) {
+            const errorMessage = startError instanceof Error ? startError.message : 'Unknown start error';
+            console.error('❌ Game start failed:', errorMessage);
+            setDebugInfo(prev => ({ ...prev, lastError: `Game start failed: ${errorMessage}` }));
           }
+        } else {
+          console.error('❌ Cannot start game - no start method or game reference');
+          setDebugInfo(prev => ({ ...prev, lastError: 'No start method available' }));
         }
-      }, 500);
+      }, 1000); // 少し長めの待機時間
 
-    } catch (error) {
-      // Week 2修正: GameErrorContextから volumeSettings を除外（型エラー解消）
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown initialization error';
+      console.error('❌ Game initialization error:', errorMessage);
+      setDebugInfo(prev => ({ ...prev, lastError: errorMessage }));
+      
       await errorManager.current.handleError({
-        error: error as Error,
+        error: error instanceof Error ? error : new Error(errorMessage),
         gameType: config.gameType,
         context: { 
           gameState: 'initialization',
-          gameSettings: config
+          screenSize: { 
+            width: window.innerWidth, 
+            height: window.innerHeight 
+          }
         },
         forceUserNotification: true
       });
+    } finally {
+      isInitializingRef.current = false;
+      console.log('🏁 Game initialization process completed');
     }
-  }, [width, height, config, onGameEnd, handleDOMTouchStart, handleDOMMouseDown, volumeSettings]);
+  }, [width, height, config, onGameEnd, bgmVolume, seVolume, isMuted]);
 
-  // Week 2新機能: ゲーム開始音
-  const playGameStartSound = useCallback(() => {
+  // 🧹 安全なクリーンアップ
+  const cleanupGame = useCallback(() => {
+    console.log('🧹 Starting cleanup...');
+    
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      // 上昇音階で開始感を演出
-      oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.3);
-      
-      gainNode.gain.setValueAtTime(volumeSettings.bgm * 0.1, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.5);
-    } catch (error) {
-      console.warn('ゲーム開始音再生エラー:', error);
-    }
-  }, [volumeSettings.bgm]);
-
-  // Week 2新機能: ゲーム終了音
-  const playGameEndSound = useCallback((success: boolean) => {
-    try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-      
-      if (success) {
-        // 成功: 上昇音階
-        oscillator.frequency.setValueAtTime(523, audioContext.currentTime); // C5
-        oscillator.frequency.exponentialRampToValueAtTime(659, audioContext.currentTime + 0.2); // E5
-        oscillator.frequency.exponentialRampToValueAtTime(784, audioContext.currentTime + 0.4); // G5
-      } else {
-        // 失敗: 下降音階
-        oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // A4
-        oscillator.frequency.exponentialRampToValueAtTime(349, audioContext.currentTime + 0.3); // F4
-      }
-      
-      gainNode.gain.setValueAtTime(volumeSettings.se * 0.15, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
-      
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.5);
-    } catch (error) {
-      console.warn('ゲーム終了音再生エラー:', error);
-    }
-  }, [volumeSettings.se]);
-
-  useEffect(() => {
-    initializeGame();
-
-    return () => {
       if (gameRef.current) {
         try {
-          if (typeof gameRef.current.destroy === 'function') {
-            gameRef.current.destroy();
-          }
+          gameRef.current.destroy();
+          console.log('✅ Game destroyed');
         } catch (error) {
-          console.warn('Error during game cleanup:', error);
+          console.warn('⚠️ Game cleanup warning:', error);
         }
         gameRef.current = null;
       }
       
       if (appRef.current) {
         try {
-          // Week 2新機能: イベントリスナークリーンアップ（TypeScriptエラー修正済み）
-          const canvas = appRef.current.view as HTMLCanvasElement;
-          if (canvas) {
-            canvas.removeEventListener('touchstart', handleDOMTouchStart);
-            canvas.removeEventListener('mousedown', handleDOMMouseDown);
-          }
-          
-          appRef.current.destroy(true, { children: true, texture: true });
+          appRef.current.destroy(true, { 
+            children: true, 
+            texture: false,
+            baseTexture: false 
+          });
+          console.log('✅ PIXI app destroyed');
         } catch (error) {
-          console.warn('Error during PIXI cleanup:', error);
+          console.warn('⚠️ PIXI cleanup warning:', error);
         }
         appRef.current = null;
       }
+      
+      setIsGameLoaded(false);
+      setGameStatus('読み込み中...');
+      setErrorNotification(null);
+      
+    } catch (error) {
+      console.error('❌ Cleanup error:', error);
+    }
+    
+    console.log('✅ Cleanup completed');
+  }, []);
+
+  // メインEffect
+  useEffect(() => {
+    console.log('🔄 EnhancedGameCanvas effect triggered, config:', config.gameType);
+    initializeGame();
+
+    return () => {
+      console.log('🧹 EnhancedGameCanvas effect cleanup');
+      cleanupGame();
     };
-  }, [initializeGame, handleDOMTouchStart, handleDOMMouseDown]);
+  }, [config.gameType, config.characterType, config.difficulty, config.duration, config.targetScore]);
+
+  // 音量変更監視
+  useEffect(() => {
+    if (gameRef.current && typeof (gameRef.current as any).updateAudioSettings === 'function') {
+      (gameRef.current as any).updateAudioSettings({
+        bgmVolume: isMuted ? 0 : bgmVolume,
+        seVolume: isMuted ? 0 : seVolume,
+        isMuted
+      });
+    }
+  }, [bgmVolume, seVolume, isMuted]);
 
   const handleRetry = async () => {
+    console.log('🔄 Manual retry requested');
     setErrorNotification(null);
-    await initializeGame();
+    cleanupGame();
+    setTimeout(() => {
+      initializeGame();
+    }, 500);
   };
 
   const handleManualRetry = async () => {
     if (errorNotification) {
+      console.log('🛠️ Manual error recovery requested');
       const success = await errorManager.current.manualRetry(errorNotification.error.id);
       if (success) {
         setErrorNotification(null);
         setGameStatus('再試行中...');
-        await initializeGame();
+        await handleRetry();
       }
     }
   };
 
   const dismissError = () => {
     setErrorNotification(null);
+    setGameStatus('準備完了');
   };
 
   return (
-    <div className="enhanced-game-canvas-container" style={{ position: 'relative' }}>
+    <div className="enhanced-game-canvas-container">
       {/* メインキャンバス */}
       <div 
-        ref={canvasRef}
-        style={{ position: 'relative' }}
-        onTouchStart={handleCanvasInteraction}
-        onMouseDown={handleCanvasInteraction}
+        ref={canvasRef} 
+        style={{ 
+          position: 'relative',
+          width: `${width}px`,
+          height: `${height}px`,
+          margin: '0 auto',
+          background: 'linear-gradient(135deg, #fce7ff 0%, #e5e7eb 100%)',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          border: '2px solid #d946ef' // デバッグ用境界線
+        }}
       />
       
-      {/* Week 2新機能: タッチエフェクト */}
-      {touchEffects.map(effect => (
-        <div
-          key={effect.id}
-          style={{
-            position: 'absolute',
-            left: effect.x - 20,
-            top: effect.y - 20,
-            width: 40,
-            height: 40,
-            pointerEvents: 'none',
-            zIndex: 5
-          }}
-        >
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              background: volumeSettings.muted 
-                ? 'radial-gradient(circle, rgba(156, 163, 175, 0.6) 0%, transparent 70%)'
-                : 'radial-gradient(circle, rgba(168, 85, 247, 0.6) 0%, transparent 70%)',
-              borderRadius: '50%',
-              animation: 'ripple 1s ease-out',
-              transform: 'scale(0)'
-            }}
-          />
-        </div>
-      ))}
-      
-      {/* Week 2新機能: 音量インジケーター */}
-      <div style={{
-        position: 'absolute',
-        top: '8px',
-        left: '8px',
-        background: 'rgba(0, 0, 0, 0.6)',
-        color: 'white',
-        padding: '4px 8px',
-        borderRadius: '8px',
-        fontSize: '12px',
-        fontWeight: '600',
-        zIndex: 10,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '4px'
-      }}>
-        <span>{volumeSettings.muted ? '🔇' : '🔊'}</span>
-        {!volumeSettings.muted && (
-          <span style={{ fontFamily: 'monospace' }}>
-            {Math.round(volumeSettings.bgm * 100)}%
-          </span>
-        )}
-      </div>
-      
-      {/* エラー通知（強化版） */}
+      {/* エラー通知 */}
       {errorNotification && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
@@ -503,10 +485,6 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
             
             <div className="mb-4">
               <p className="text-gray-600 whitespace-pre-line">{errorNotification.message}</p>
-              {/* Week 2新機能: 音量設定状態も表示 */}
-              <p className="text-xs text-gray-500 mt-2">
-                音量設定: {volumeSettings.muted ? 'ミュート' : `BGM ${Math.round(volumeSettings.bgm * 100)}% SE ${Math.round(volumeSettings.se * 100)}%`}
-              </p>
             </div>
 
             <div className="flex flex-col space-y-2">
@@ -534,7 +512,6 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
               </button>
             </div>
 
-            {/* エラー詳細（開発用） */}
             <details className="mt-4">
               <summary className="cursor-pointer text-sm text-gray-500">技術詳細</summary>
               <pre className="text-xs bg-gray-100 p-2 rounded mt-2 overflow-auto max-h-32">
@@ -545,7 +522,7 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
         </div>
       )}
 
-      {/* ゲーム情報（既存のUIを維持 + Week 2機能追加） */}
+      {/* ゲーム情報（詳細デバッグ版） */}
       <div className="game-info" style={{ 
         padding: '15px', 
         textAlign: 'center',
@@ -561,62 +538,82 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
         
         <p style={{ 
           fontSize: '14px', 
-          color: errorNotification ? '#dc2626' : '#52525b', 
+          color: errorNotification ? '#dc2626' : 
+               gameStatus.includes('実行中') ? '#10b981' : '#52525b', 
           margin: '8px 0',
           fontWeight: '500'
         }}>
           {gameStatus}
         </p>
 
-        {/* Week 2新機能: 音量設定表示 */}
+        {/* 🔍 詳細デバッグ情報表示 */}
         <div style={{
-          fontSize: '12px',
-          color: '#6b7280',
-          margin: '4px 0',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '8px'
+          backgroundColor: '#f3f4f6',
+          borderRadius: '8px',
+          padding: '10px',
+          margin: '10px 0',
+          fontSize: '11px',
+          textAlign: 'left'
         }}>
-          <span>{volumeSettings.muted ? '🔇 ミュート' : '🔊 音量ON'}</span>
-          {!volumeSettings.muted && (
-            <span style={{ fontFamily: 'monospace' }}>
-              BGM:{Math.round(volumeSettings.bgm * 100)}% SE:{Math.round(volumeSettings.se * 100)}%
-            </span>
+          <div style={{ fontWeight: 'bold', marginBottom: '5px', color: '#374151' }}>
+            🔍 初期化プロセス:
+          </div>
+          <div style={{ color: debugInfo.pixiInitialized ? '#10b981' : '#ef4444' }}>
+            1️⃣ PixiJS初期化: {debugInfo.pixiInitialized ? '✅完了' : '❌未完了'}
+          </div>
+          <div style={{ color: debugInfo.stageReady ? '#10b981' : '#ef4444' }}>
+            2️⃣ Stage準備: {debugInfo.stageReady ? '✅完了' : '❌未完了'}
+          </div>
+          <div style={{ color: debugInfo.canvasAttached ? '#10b981' : '#ef4444' }}>
+            3️⃣ Canvas添付: {debugInfo.canvasAttached ? '✅完了' : '❌未完了'}
+          </div>
+          <div style={{ color: debugInfo.gameTemplateCreated ? '#10b981' : '#ef4444' }}>
+            4️⃣ テンプレート作成: {debugInfo.gameTemplateCreated ? '✅完了' : '❌未完了'}
+          </div>
+          <div style={{ color: debugInfo.sceneCreated ? '#10b981' : '#ef4444' }}>
+            5️⃣ シーン作成: {debugInfo.sceneCreated ? '✅完了' : '❌未完了'}
+          </div>
+          <div style={{ color: debugInfo.gameStarted ? '#10b981' : '#ef4444' }}>
+            6️⃣ ゲーム開始: {debugInfo.gameStarted ? '✅完了' : '❌未完了'}
+          </div>
+          {debugInfo.lastError && (
+            <div style={{ color: '#ef4444', marginTop: '8px', padding: '5px', backgroundColor: '#fee2e2', borderRadius: '4px' }}>
+              ❌ エラー: {debugInfo.lastError}
+            </div>
           )}
         </div>
 
-        {/* パフォーマンス表示（開発モード） */}
+        {/* パフォーマンス表示 */}
         <div className="text-xs text-gray-400 mt-2">
           FPS: {performanceStats.fps} | Memory: {performanceStats.memoryUsage}MB
         </div>
 
-        <button
-          onClick={handleRetry}
-          disabled={gameStatus.includes('読み込み中')}
-          className="mt-3 bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          🔄 再読み込み
-        </button>
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '10px' }}>
+          <button
+            onClick={handleRetry}
+            disabled={gameStatus.includes('読み込み中') || isInitializingRef.current}
+            className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            🔄 再読み込み
+          </button>
+          
+          <button
+            onClick={() => {
+              console.log('=== 詳細デバッグ情報 ===');
+              console.log('App ref:', appRef.current);
+              console.log('Game ref:', gameRef.current);
+              console.log('Canvas ref:', canvasRef.current);
+              console.log('Debug info:', debugInfo);
+              if (appRef.current) {
+                console.log('PIXI stage children count:', appRef.current.stage?.children?.length || 'undefined');
+              }
+            }}
+            className="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 text-xs"
+          >
+            🔍 詳細ログ
+          </button>
+        </div>
       </div>
-
-      {/* Week 2新機能: タッチエフェクト用CSS */}
-      <style>{`
-        @keyframes ripple {
-          0% {
-            transform: scale(0);
-            opacity: 1;
-          }
-          50% {
-            transform: scale(1.5);
-            opacity: 0.8;
-          }
-          100% {
-            transform: scale(2.5);
-            opacity: 0;
-          }
-        }
-      `}</style>
     </div>
   );
 };
