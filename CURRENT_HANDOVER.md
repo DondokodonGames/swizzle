@@ -1,48 +1,46 @@
-# ショートゲームプラットフォーム 現在状況
+# ショートゲームプラットフォーム 引き継ぎプロンプト
 
-## 基本情報
-- **プロジェクト**: Swizzle - Short Game Platform
-- **現在フェーズ**: Phase 5.5 - EditableTemplate統合
-- **更新日時**: $(date)
+## 📋 プロジェクト基本情報
+**現在フェーズ**: Phase 6.1 - エディター機能実装開始（データ構造・基盤実装）
+**完了**: Phase 5.5 EditableTemplate統合完了（TypeScriptエラー修正済み）
+**次の作業**: エディター仕様書に基づくデータ構造実装
 
-## 作業環境情報
-- **Codespace**: zany-yodel (Active)
-- **開発サーバー**: npm run dev
-- **環境URL**: https://zany-yodel-g46jwq7v9g952995g-3000.app.github.dev/
-- **基本状況**: implementation-status.json参照
+## 🎯 エディター機能開発開始
 
-## 現在の作業状況
-### 完了済み
-- EditableTemplate基盤システム実装
-- 作業環境アクセス復旧完了
-- CuteTap EditableTemplate化
+### 仕様書参照
+プロジェクト内 `docs/editor/editor-specification.md` を必ず参照してください。
+- データ構造全体設計
+- UI仕様詳細  
+- 4タブ構成（絵・音・スクリプト・設定公開）
+- 容量制限・最適化仕様
 
-### 進行中の問題
-### TypeScriptエラー詳細
-src/App.tsx(486,13): error TS2322: Type '{ onExit: () => void; volumeSettings: VolumeSettings; onVolumeChange: (newSettings: VolumeSettings) => void; }' is not assignable to type 'IntrinsicAttributes & GameSequenceProps'.
-  Property 'volumeSettings' does not exist on type 'IntrinsicAttributes & GameSequenceProps'.
-src/game-engine/template/EditableTemplate.ts(2,30): error TS2307: Cannot find module './GameTemplate' or its corresponding type declarations.
-src/game-engine/template/EditableTemplate.ts(3,37): error TS2307: Cannot find module './GameTemplateFactory' or its corresponding type declarations.
-src/game-engine/template/EditableTemplate.ts(238,17): error TS2339: Property 'app' does not exist on type 'EditableTemplate'.
-src/game-engine/template/EditableTemplate.ts(307,10): error TS2339: Property 'end' does not exist on type 'EditableTemplate'.
-src/game-engine/template/EditableTemplate.ts(317,10): error TS2339: Property 'end' does not exist on type 'EditableTemplate'.
-src/game-engine/template/cute-tap/CuteTapGame.ts(89,25): error TS2339: Property 'app' does not exist on type 'CuteTapGame'.
-src/game-engine/template/cute-tap/CuteTapGame.ts(90,25): error TS2339: Property 'app' does not exist on type 'CuteTapGame'.
-src/game-engine/template/cute-tap/CuteTapGame.ts(94,31): error TS2339: Property 'app' does not exist on type 'CuteTapGame'.
+### Phase 6.1: データ構造・基盤実装（Day 1-3）
+**Day 1**: 型定義・インターフェース実装
+- [ ] `src/types/editor/GameProject.ts`
+- [ ] `src/types/editor/ProjectAssets.ts`  
+- [ ] `src/types/editor/GameScript.ts`
+- [ ] `src/constants/EditorLimits.ts`
 
-### ファイル構造状況
-total 24
-drwxrwxrwx+ 3 codespace codespace  4096 Aug 31 12:50 .
-drwxrwxrwx+ 3 root      root       4096 Aug 31 12:25 ..
--rw-rw-rw-  1 codespace codespace 10915 Aug 31 12:51 EditableTemplate.ts
-drwxrwxrwx+ 2 codespace codespace  4096 Aug 31 12:52 cute-tap
+**Day 2**: メインエディター画面実装
+- [ ] `src/components/editor/GameEditor.tsx`
+- [ ] `src/components/editor/ProjectSelector.tsx`
+- [ ] タブ切り替え基本UI
 
-## 次回作業の優先順位
-1. **最優先**: EditableTemplate.ts import パス修正
-2. **高優先**: CuteTapGame 継承エラー解決
-3. **中優先**: App.tsx プロパティエラー修正
-4. **確認**: Vercelビルド成功・デプロイ確認
+**Day 3**: プロジェクト管理システム
+- [ ] `src/hooks/editor/useGameProject.ts`
+- [ ] `src/services/editor/ProjectStorage.ts`
 
-## 引き継ぎ指示
-新しいチャットでは以下を実行：
-'implementation-status.json と CURRENT_HANDOVER.md を確認して作業を継続してください'
+## 🌐 作業環境
+- GitHub Codespace: zany-yodel
+- 開発サーバー: `npm run dev`
+- 仕様書: `docs/editor/editor-specification.md`
+- 進捗: `docs/editor/implementation-progress.json`
+
+## 💡 重要原則
+1. 既存機能（Phase 1-5）完全保護
+2. EditableTemplateシステムとの統合
+3. 「小学生でも使える」ユーザビリティ
+4. 段階的実装・動作確認重視
+
+## 🚀 開始指示
+エディター仕様書を読み、Phase 6.1 Day 1のTypeScript型定義実装から開始してください。
