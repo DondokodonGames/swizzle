@@ -1,0 +1,46 @@
+{
+  "editorDevelopment": {
+    "currentPhase": "6.1",
+    "startDate": "2025-09-01",
+    "totalDays": 21,
+    "completedDays": 0,
+    "phases": {
+      "6.1": {
+        "name": "データ構造・基盤実装",
+        "duration": 3,
+        "progress": 0,
+        "tasks": [
+          {
+            "day": 1,
+            "task": "型定義・インターフェース",
+            "status": "pending",
+            "files": [
+              "src/types/editor/GameProject.ts",
+              "src/types/editor/ProjectAssets.ts",
+              "src/types/editor/GameScript.ts",
+              "src/constants/EditorLimits.ts"
+            ]
+          },
+          {
+            "day": 2,
+            "task": "メインエディター画面",
+            "status": "pending", 
+            "files": [
+              "src/components/editor/GameEditor.tsx",
+              "src/components/editor/ProjectSelector.tsx"
+            ]
+          },
+          {
+            "day": 3,
+            "task": "プロジェクト管理システム",
+            "status": "pending",
+            "files": [
+              "src/hooks/editor/useGameProject.ts",
+              "src/services/editor/ProjectStorage.ts"
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
