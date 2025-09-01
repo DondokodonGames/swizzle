@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import EnhancedGameCanvas from './EnhancedGameCanvas';
 import { GameConfig } from './GameSelector';
 import { GameTemplateFactory, GameType, TemplateInfo } from '../game-engine/GameTemplateFactory';
+import RandomGameManager from '../managers/RandomGameManager';
 
 interface GameSequenceItem {
   id: string;
@@ -15,59 +16,74 @@ interface GameSequenceProps {
 }
 
 const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
-  const [currentGameIndex, setCurrentGameIndex] = useState(0);
+  const [currentGame, setCurrentGame] = useState<GameSequenceItem | null>(null);
   const [gameKey, setGameKey] = useState(0);
   const [showInstruction, setShowInstruction] = useState(true);
-  const [instructionCountdown, setInstructionCountdown] = useState(2);
+  const [instructionCountdown, setInstructionCountdown] = useState(1); // 2秒→1秒短縮
   const [gameResult, setGameResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [gameSequence, setGameSequence] = useState<GameSequenceItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // 動的にテンプレートを生成するゲームシーケンス（非同期対応）
-  const generateGameSequence = async (): Promise<GameSequenceItem[]> => {
+  // RandomGameManagerインスタンス
+  const gameManagerRef = useRef<RandomGameManager>(RandomGameManager.getInstance());
+
+  // 次のゲーム生成（RandomGameManager使用）
+  const generateNextGame = async (): Promise<GameSequenceItem> => {
     try {
-      const templates = await GameTemplateFactory.getAllTemplates();
+      const gameManager = gameManagerRef.current;
+      const gameConfig = gameManager.getNextRandomGame();
       
-      if (!templates || templates.length === 0) {
-        throw new Error('テンプレートが見つかりません');
+      // テンプレート情報取得
+      const allTemplates = await GameTemplateFactory.getAllTemplates();
+      const templateInfo = allTemplates.find(t => t.id === gameConfig.gameType);
+      
+      if (!templateInfo) {
+        throw new Error(`テンプレート ${gameConfig.gameType} が見つかりません`);
       }
 
-      const characterTypes: ('girl' | 'animal' | 'child')[] = ['girl', 'animal', 'child'];
+      // 作者名を適用（RandomGameManagerで生成された値またはデフォルト）
       const creators = ['あいうえお', 'ねこすき', 'たのしい', 'はやい', 'どうぶつ', 'まほう', 'げーまー'];
-      
-      return templates.slice(0, 5).map((template, index) => {
-        const characterType = characterTypes[index % characterTypes.length];
-        return {
-          id: `${template.id}_${index}`,
-          templateInfo: template,
-          config: {
-            gameType: template.id as any,
-            characterType,
-            difficulty: template.defaultSettings.difficulty,
-            duration: template.defaultSettings.duration,
-            targetScore: template.defaultSettings.targetScore
-          },
-          creator: creators[index % creators.length]
-        };
+      const creator = creators[Math.floor(Math.random() * creators.length)];
+
+      const gameItem: GameSequenceItem = {
+        id: `${templateInfo.id}_${Date.now()}`,
+        templateInfo,
+        config: gameConfig,
+        creator
+      };
+
+      console.log('RandomGameManager統合: 新しいゲーム生成', {
+        template: templateInfo.name,
+        characterType: gameConfig.characterType,
+        creator,
+        status: gameManager.getStatus()
       });
+
+      return gameItem;
     } catch (error) {
-      console.error('ゲームシーケンス生成エラー:', error);
+      console.error('ゲーム生成エラー:', error);
       throw error;
     }
   };
 
-  // 初期化処理
+  // 初期化処理（RandomGameManager初期化）
   useEffect(() => {
-    const initializeGameSequence = async () => {
+    const initializeRandomGameManager = async () => {
       setIsLoading(true);
       setError(null);
       
       try {
-        console.log('ゲームシーケンスを初期化中...');
-        const sequence = await generateGameSequence();
-        setGameSequence(sequence);
-        console.log(`${sequence.length}個のゲームでシーケンス初期化完了`);
+        console.log('RandomGameManager統合: 初期化開始...');
+        const gameManager = gameManagerRef.current;
+        
+        // 全テンプレート読み込み
+        await gameManager.loadAllTemplates();
+        
+        // 最初のゲーム生成
+        const firstGame = await generateNextGame();
+        setCurrentGame(firstGame);
+        
+        console.log('RandomGameManager統合: 初期化完了');
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : '不明なエラーが発生しました';
         setError(errorMessage);
@@ -77,12 +93,10 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
       }
     };
 
-    initializeGameSequence();
+    initializeRandomGameManager();
   }, []);
 
-  const currentGame = gameSequence[currentGameIndex];
-
-  // 指示画面のカウントダウン（2秒）
+  // 指示画面のカウントダウン（2秒→1秒に短縮予定）
   useEffect(() => {
     if (showInstruction && instructionCountdown > 0) {
       const timer = setTimeout(() => {
@@ -90,13 +104,13 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
       }, 1000);
       return () => clearTimeout(timer);
     } else if (showInstruction && instructionCountdown === 0) {
-      // 指示終了 → ゲーム開始（EnhancedGameCanvasが自動で開始）
+      // 指示終了 → ゲーム開始
       setShowInstruction(false);
     }
   }, [showInstruction, instructionCountdown]);
 
-  // ゲーム終了時の処理
-  const handleGameEnd = (success?: boolean, score?: number) => {
+  // ゲーム終了時の処理（RandomGameManager統合）
+  const handleGameEnd = async (success?: boolean, score?: number) => {
     console.log('Game ended:', success, score);
     
     // 結果表示
@@ -106,15 +120,22 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
     
     setGameResult({ success: success || false, message });
     
-    // 1.5秒後に次のゲームへ
-    setTimeout(() => {
-      setGameResult(null);
-      const nextIndex = (currentGameIndex + 1) % gameSequence.length;
-      setCurrentGameIndex(nextIndex);
-      setGameKey(prev => prev + 1);
-      setShowInstruction(true);
-      setInstructionCountdown(2);
-    }, 1500);
+    // 次のゲーム事前準備（プリロード）
+    try {
+      const nextGame = await generateNextGame();
+      
+      // 0.5秒後に次のゲームへ（高速化）
+      setTimeout(() => {
+        setGameResult(null);
+        setCurrentGame(nextGame);
+        setGameKey(prev => prev + 1);
+        setShowInstruction(true);
+        setInstructionCountdown(1); // 1秒に短縮
+      }, 500); // 1.5秒→0.5秒短縮
+    } catch (error) {
+      console.error('次のゲーム準備エラー:', error);
+      setError('次のゲームの準備に失敗しました');
+    }
   };
 
   // スキップ機能
@@ -151,10 +172,10 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
           🎮
         </div>
         <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>
-          ゲームを準備中...
+          RandomGameManager準備中...
         </div>
         <div style={{ fontSize: '14px', opacity: 0.8 }}>
-          テンプレート読み込み中
+          全20テンプレート読み込み中
         </div>
         <style>{`
           @keyframes spin {
@@ -167,7 +188,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
   }
 
   // エラー画面
-  if (error || gameSequence.length === 0) {
+  if (error || !currentGame) {
     return (
       <div style={{
         height: '600px',
@@ -188,7 +209,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
           ❌
         </div>
         <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>
-          読み込みエラー
+          RandomGameManager エラー
         </div>
         <div style={{ 
           fontSize: '14px', 
@@ -196,7 +217,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
           maxWidth: '300px',
           marginBottom: '20px'
         }}>
-          {error || 'ゲームテンプレートが見つかりません'}
+          {error || 'ゲーム生成に失敗しました'}
         </div>
         <button
           onClick={() => window.location.reload()}
@@ -256,7 +277,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
           fontSize: '14px',
           opacity: 0.8
         }}>
-          次のゲームまで...
+          次のランダムゲームまで... (高速遷移)
         </div>
       </div>
     );
@@ -276,7 +297,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
         color: '#a21caf',
         position: 'relative'
       }}>
-        {/* 簡素化されたゲーム指示 */}
         <div style={{
           fontSize: '80px',
           marginBottom: '20px'
@@ -294,6 +314,15 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
         </div>
 
         <div style={{
+          fontSize: '12px',
+          opacity: 0.6,
+          textAlign: 'center',
+          marginBottom: '10px'
+        }}>
+          {currentGame.templateInfo.name} - {currentGame.creator}作
+        </div>
+
+        <div style={{
           fontSize: '14px',
           opacity: 0.8,
           textAlign: 'center'
@@ -304,7 +333,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
     );
   }
 
-  // ゲーム実行画面（新UI適用）
+  // ゲーム実行画面（RandomGameManager統合）
   return (
     <div style={{ position: 'relative' }}>
       <EnhancedGameCanvas 

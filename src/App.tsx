@@ -1,20 +1,18 @@
-// src/App.tsx - Hooksルール完全準拠版 + ViewportTest統合 + Week 2音量設定機能
-// React Hooks使用ルール違反エラー完全解消 + Phase 4 Week 1統合テスト + Week 2統合
-
+// src/App.tsx - UI機能完成版（不要機能削除・デバッグ画面統合）
 import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import GameSequence from './components/GameSequence';
 import TemplateTestMode from './components/TemplateTestMode';
-import EnvTest from './components/EnvTest';
+import DebugPanel from './components/DebugPanel';
 import { ViewportTestWrapper } from './components/SimpleViewportTest';
 
-// Week 2新機能: 音量設定の型定義
+// 音量設定の型定義
 interface VolumeSettings {
   bgm: number
   se: number
   muted: boolean
 }
 
-// Week 2新機能: 音量設定のデフォルト値
+// 音量設定のデフォルト値
 const DEFAULT_VOLUME: VolumeSettings = {
   bgm: 0.7,
   se: 0.8,
@@ -24,7 +22,7 @@ const DEFAULT_VOLUME: VolumeSettings = {
 // 認証機能の有効/無効判定
 const ENABLE_AUTH = (import.meta as any).env?.VITE_ENABLE_AUTH === 'true';
 
-// 認証コンポーネントの遅延読み込み
+// 認証コンポーネントの遅延読み込み（既存機能保護）
 const AuthProvider = ENABLE_AUTH ? React.lazy(async () => {
   try {
     const module = await import('./hooks/useAuth');
@@ -53,7 +51,7 @@ const ProfileSetup = ENABLE_AUTH ? React.lazy(async () => {
   }
 }) : null;
 
-// 認証機能を使用するコンポーネント（Hooks順序固定）
+// ✅ 認証機能（既存保護・UI統合済みのため簡素化）
 const AuthenticatedUserInfo: React.FC = () => {
   const [useAuth, setUseAuth] = useState<any>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -321,200 +319,15 @@ const AuthenticatedUserInfo: React.FC = () => {
   );
 };
 
-// Week 2新機能: 音量設定UIコンポーネント
-const VolumeControlUI: React.FC<{
-  volumeSettings: VolumeSettings;
-  onVolumeChange: (settings: VolumeSettings) => void;
-}> = ({ volumeSettings, onVolumeChange }) => {
-  // BGM音量変更ハンドラ
-  const handleBGMVolumeChange = useCallback((value: number) => {
-    const newSettings = { ...volumeSettings, bgm: value }
-    onVolumeChange(newSettings)
-  }, [volumeSettings, onVolumeChange])
-
-  // SE音量変更ハンドラ
-  const handleSEVolumeChange = useCallback((value: number) => {
-    const newSettings = { ...volumeSettings, se: value }
-    onVolumeChange(newSettings)
-  }, [volumeSettings, onVolumeChange])
-
-  // ミュート切り替えハンドラ
-  const handleMuteToggle = useCallback(() => {
-    const newSettings = { ...volumeSettings, muted: !volumeSettings.muted }
-    onVolumeChange(newSettings)
-  }, [volumeSettings, onVolumeChange])
-
-  return (
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '15px',
-      padding: '15px',
-      marginBottom: '20px',
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-      border: '1px solid #e5e7eb'
-    }}>
-      <h3 style={{
-        fontSize: '16px',
-        fontWeight: '600',
-        color: '#a21caf',
-        textAlign: 'center',
-        margin: '0 0 15px 0'
-      }}>
-        🎵 音量設定
-      </h3>
-      
-      {/* ミュートボタン */}
-      <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-        <button
-          onClick={handleMuteToggle}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
-            borderRadius: '20px',
-            border: 'none',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            background: volumeSettings.muted 
-              ? 'linear-gradient(45deg, #ef4444, #dc2626)'
-              : 'linear-gradient(45deg, #10b981, #059669)',
-            color: 'white'
-          }}
-        >
-          <span style={{ fontSize: '16px' }}>
-            {volumeSettings.muted ? '🔇' : '🔊'}
-          </span>
-          {volumeSettings.muted ? 'ミュート中' : '音声ON'}
-        </button>
-      </div>
-
-      {/* BGM音量スライダー */}
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          marginBottom: '6px' 
-        }}>
-          <label style={{ 
-            fontSize: '12px', 
-            fontWeight: '600', 
-            color: '#6b7280' 
-          }}>
-            🎵 BGM音量
-          </label>
-          <span style={{ 
-            fontSize: '12px', 
-            color: '#a21caf', 
-            fontWeight: '600' 
-          }}>
-            {Math.round(volumeSettings.bgm * 100)}%
-          </span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.1"
-          value={volumeSettings.bgm}
-          onChange={(e) => handleBGMVolumeChange(parseFloat(e.target.value))}
-          disabled={volumeSettings.muted}
-          style={{
-            width: '100%',
-            height: '6px',
-            borderRadius: '3px',
-            background: volumeSettings.muted 
-              ? '#d1d5db' 
-              : `linear-gradient(to right, #a21caf 0%, #a21caf ${volumeSettings.bgm * 100}%, #e5e7eb ${volumeSettings.bgm * 100}%, #e5e7eb 100%)`,
-            outline: 'none',
-            cursor: volumeSettings.muted ? 'not-allowed' : 'pointer'
-          }}
-        />
-      </div>
-
-      {/* SE音量スライダー */}
-      <div style={{ marginBottom: '12px' }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          marginBottom: '6px' 
-        }}>
-          <label style={{ 
-            fontSize: '12px', 
-            fontWeight: '600', 
-            color: '#6b7280' 
-          }}>
-            🔊 SE音量
-          </label>
-          <span style={{ 
-            fontSize: '12px', 
-            color: '#a21caf', 
-            fontWeight: '600' 
-          }}>
-            {Math.round(volumeSettings.se * 100)}%
-          </span>
-        </div>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.1"
-          value={volumeSettings.se}
-          onChange={(e) => handleSEVolumeChange(parseFloat(e.target.value))}
-          disabled={volumeSettings.muted}
-          style={{
-            width: '100%',
-            height: '6px',
-            borderRadius: '3px',
-            background: volumeSettings.muted 
-              ? '#d1d5db' 
-              : `linear-gradient(to right, #a21caf 0%, #a21caf ${volumeSettings.se * 100}%, #e5e7eb ${volumeSettings.se * 100}%, #e5e7eb 100%)`,
-            outline: 'none',
-            cursor: volumeSettings.muted ? 'not-allowed' : 'pointer'
-          }}
-        />
-      </div>
-
-      {/* 音量テストボタン */}
-      <div style={{ textAlign: 'center' }}>
-        <button
-          onClick={() => {
-            console.log('音量テスト:', volumeSettings)
-            // TODO: 実際の音声再生機能と連携
-          }}
-          disabled={volumeSettings.muted}
-          style={{
-            padding: '6px 12px',
-            borderRadius: '15px',
-            border: 'none',
-            fontSize: '12px',
-            fontWeight: '600',
-            cursor: volumeSettings.muted ? 'not-allowed' : 'pointer',
-            background: volumeSettings.muted 
-              ? '#f3f4f6' 
-              : 'linear-gradient(45deg, #fce7ff, #e7e5ff)',
-            color: volumeSettings.muted ? '#9ca3af' : '#a21caf'
-          }}
-        >
-          🎵 音量テスト
-        </button>
-      </div>
-    </div>
-  )
-}
-
 // メインアプリケーションコンポーネント
 function MainApp() {
-  const [mode, setMode] = useState<'sequence' | 'test' | 'week2-test'>('sequence');
+  const [mode, setMode] = useState<'sequence' | 'test'>('sequence'); // ✅ Week2テスト削除
+  const [showDebugPanel, setShowDebugPanel] = useState(false); // ✅ デバッグ画面追加
   
-  // Week 2新機能: 音量設定状態
+  // 音量設定状態
   const [volumeSettings, setVolumeSettings] = useState<VolumeSettings>(DEFAULT_VOLUME)
 
-  // Week 2新機能: 音量設定の読み込み（ローカルストレージから）
+  // 音量設定の読み込み（ローカルストレージから）
   useEffect(() => {
     try {
       const savedVolume = localStorage.getItem('gameVolumeSettings')
@@ -527,7 +340,7 @@ function MainApp() {
     }
   }, [])
 
-  // Week 2新機能: 音量設定の保存
+  // 音量設定の保存
   const saveVolumeSettings = useCallback((newSettings: VolumeSettings) => {
     try {
       localStorage.setItem('gameVolumeSettings', JSON.stringify(newSettings))
@@ -552,11 +365,6 @@ function MainApp() {
 
   const handleSwitchToSequence = () => {
     setMode('sequence');
-  };
-
-  // Week 2新機能: Week 2テストモードへの切り替え
-  const handleSwitchToWeek2Test = () => {
-    setMode('week2-test');
   };
 
   return (
@@ -587,27 +395,22 @@ function MainApp() {
         }}>
           {mode === 'sequence' ? 
             'メイドイン俺風・完全自動連続ゲーム体験' : 
-            mode === 'test' ?
-            'テンプレート動作確認モード' :
-            'Week 2統合テストモード'
+            'テンプレート動作確認モード'
           }
         </p>
 
-        {/* Phase 4 Week 2 統合状況表示 */}
+        {/* ✅ UI機能完成ステータス表示 */}
         <div style={{ 
           marginTop: '10px',
           padding: '6px 12px',
-          backgroundColor: mode === 'week2-test' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-          border: mode === 'week2-test' ? '1px solid #22c55e' : '1px solid #10b981',
+          backgroundColor: 'rgba(34, 197, 94, 0.1)',
+          border: '1px solid #22c55e',
           borderRadius: '15px',
           fontSize: '12px',
-          color: mode === 'week2-test' ? '#15803d' : '#065f46',
+          color: '#15803d',
           display: 'inline-block'
         }}>
-          {mode === 'week2-test' ? 
-            '🧪 Phase 4 Week 2: 音量設定UI統合テスト実行中' :
-            '🚀 Phase 4 Week 1: ビューポート統合テスト実行中'
-          }
+          🎉 UI機能完成版: 統合デバッグ画面・残り時間バー・オーバーレイUI統合完了
         </div>
 
         {/* モード切り替えボタン */}
@@ -642,13 +445,13 @@ function MainApp() {
           >
             🧪 テストモード
           </button>
-          {/* Week 2新機能: Week 2テストモードボタン */}
+          {/* ✅ 統合デバッグ画面ボタン */}
           <button
-            onClick={handleSwitchToWeek2Test}
+            onClick={() => setShowDebugPanel(true)}
             style={{
-              backgroundColor: mode === 'week2-test' ? '#22c55e' : 'white',
-              color: mode === 'week2-test' ? 'white' : '#22c55e',
-              border: '2px solid #22c55e',
+              backgroundColor: '#8b5cf6',
+              color: 'white',
+              border: '2px solid #8b5cf6',
               borderRadius: '20px',
               padding: '8px 16px',
               fontSize: '12px',
@@ -656,7 +459,7 @@ function MainApp() {
               fontWeight: 'bold'
             }}
           >
-            🔊 Week 2テスト
+            🔧 デバッグ画面
           </button>
         </div>
       </header>
@@ -664,11 +467,8 @@ function MainApp() {
       {/* ユーザー情報（認証機能有効時のみ表示） */}
       {ENABLE_AUTH && <AuthenticatedUserInfo />}
 
-      {/* Week 2新機能: 音量設定UI */}
-      <VolumeControlUI 
-        volumeSettings={volumeSettings}
-        onVolumeChange={saveVolumeSettings}
-      />
+      {/* ✅ 音量設定UI削除（ゲーム内統合済み） */}
+      {/* VolumeControlUI は削除 - ゲーム内オーバーレイに統合完了 */}
 
       {/* メインコンテンツ */}
       <main style={{ 
@@ -688,105 +488,6 @@ function MainApp() {
           />
         )}
         {mode === 'test' && <TemplateTestMode onExit={handleSwitchToSequence} />}
-        {mode === 'week2-test' && (
-          /* Week 2新機能: Week 2統合テスト画面 */
-          <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <h2 style={{ 
-              fontSize: '24px', 
-              fontWeight: 'bold', 
-              color: '#22c55e', 
-              marginBottom: '20px' 
-            }}>
-              🧪 Week 2統合テスト
-            </h2>
-            <p style={{ 
-              color: '#6b7280', 
-              marginBottom: '30px', 
-              lineHeight: '1.6' 
-            }}>
-              音量設定UIが正常にメインシステムに統合されました！<br/>
-              上部の音量設定で各種機能をテストできます。
-            </p>
-            
-            <div style={{ 
-              backgroundColor: '#f0fdf4', 
-              border: '1px solid #bbf7d0', 
-              borderRadius: '12px', 
-              padding: '20px',
-              marginBottom: '20px',
-              textAlign: 'left'
-            }}>
-              <h4 style={{ 
-                fontSize: '16px', 
-                fontWeight: '600', 
-                color: '#15803d', 
-                marginBottom: '12px' 
-              }}>
-                ✅ 統合完了機能:
-              </h4>
-              <ul style={{ 
-                margin: 0, 
-                paddingLeft: '20px', 
-                color: '#166534',
-                fontSize: '14px',
-                lineHeight: '1.8'
-              }}>
-                <li>音量設定UI（BGM・SE・ミュート切り替え）</li>
-                <li>ローカルストレージ自動保存・読み込み</li>
-                <li>GameSequenceコンポーネントとの連携</li>
-                <li>グローバル音量設定（window.gameVolumeSettings）</li>
-                <li>既存認証・ビューポート機能との共存</li>
-              </ul>
-            </div>
-
-            <div style={{ 
-              backgroundColor: '#fffbeb', 
-              border: '1px solid #fed7aa', 
-              borderRadius: '12px', 
-              padding: '20px',
-              textAlign: 'left'
-            }}>
-              <h4 style={{ 
-                fontSize: '16px', 
-                fontWeight: '600', 
-                color: '#d97706', 
-                marginBottom: '12px' 
-              }}>
-                🎯 次の実装予定（Week 3）:
-              </h4>
-              <ul style={{ 
-                margin: 0, 
-                paddingLeft: '20px', 
-                color: '#92400e',
-                fontSize: '14px',
-                lineHeight: '1.8'
-              }}>
-                <li>完全ランダム再生（固定5順序→全20種ランダム）</li>
-                <li>動的テンプレート管理（templates/フォルダ構造）</li>
-                <li>ゲーム内メッセージ管理・多言語対応準備</li>
-                <li>リザルト簡素化・遷移高速化</li>
-              </ul>
-            </div>
-
-            <div style={{ marginTop: '30px' }}>
-              <button
-                onClick={handleSwitchToSequence}
-                style={{
-                  background: 'linear-gradient(45deg, #22c55e, #16a34a)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '20px',
-                  padding: '12px 24px',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
-              >
-                🎮 音量設定付きでゲームプレイ
-              </button>
-            </div>
-          </div>
-        )}
       </main>
 
       {/* フッター */}
@@ -798,15 +499,9 @@ function MainApp() {
       }}>
         <div>
           Phase {ENABLE_AUTH ? '4' : '4'}: {
-            mode === 'sequence' ? '完全自動連続プレイ' : 
-            mode === 'test' ? 'テンプレート動作確認' :
-            'Week 2統合テスト'
+            mode === 'sequence' ? '完全自動連続プレイ' : 'テンプレート動作確認'
           } | 
-          🎯 {
-            mode === 'sequence' ? '真のメイドイン俺体験' : 
-            mode === 'test' ? '品質保証テスト' :
-            '音量設定統合テスト'
-          } ✨
+          🎯 UI機能完成版 ✨
         </div>
         {ENABLE_AUTH && (
           <div style={{ fontSize: '12px', marginTop: '5px', color: '#10b981' }}>
@@ -814,30 +509,34 @@ function MainApp() {
           </div>
         )}
         <div style={{ fontSize: '12px', marginTop: '5px', color: '#3b82f6' }}>
-          📱 Week 1: ビューポート統合・アセット仕様策定 | 9:16アスペクト比対応
+          📱 ビューポート統合・アセット仕様策定 | 9:16アスペクト比対応
         </div>
-        {/* Week 2新機能: Week 2統合状況表示 */}
         <div style={{ fontSize: '12px', marginTop: '5px', color: '#22c55e' }}>
-          🔊 Week 2: 音量設定UI統合完了 | BGM・SE・ミュート機能・ローカル保存対応
+          🔊 音量設定・ゲーム内UI統合完了 | 残り時間バー・オーバーレイ統合
+        </div>
+        <div style={{ fontSize: '12px', marginTop: '5px', color: '#8b5cf6' }}>
+          🔧 統合デバッグ画面完成 | Viewport・環境変数・FPS・Memory・ゲーム状態統合
         </div>
         <div style={{ fontSize: '12px', marginTop: '5px' }}>
           💡 {
             mode === 'sequence' ? 
-            '修正点: 即座開始、指示画面、結果表示、完全自動進行 + 音量設定' : 
-            mode === 'test' ?
-            'ChatGPT制作テンプレートの動作確認・デバッグ用' :
-            'Week 2統合テスト: 音量設定・GameSequence連携・ローカル保存テスト'
+            '完成: 上部バー・タイトル・残り時間バー・ログイン/音量オーバーレイ' : 
+            'ChatGPT制作テンプレートの動作確認・デバッグ用'
           }
         </div>
         <div style={{ fontSize: '11px', marginTop: '8px', color: '#9ca3af' }}>
-          🚀 進捗: 基盤完成 → テンプレート量産中 → 認証システム統合 → 📱 画面サイズ統一完了 → 🔊 音量設定統合完了
+          🚀 進捗: 基盤完成 → テンプレート量産中 → 認証統合 → 画面統一 → 音量統合 → 🎉 UI機能完成
         </div>
       </footer>
 
-      {/* EnvTest（位置調整：ViewportTestと重複回避） */}
-      <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 1000 }}>
-        <EnvTest />
-      </div>
+      {/* ✅ 統合デバッグ画面（EnvTest・ViewportTest統合） */}
+      <DebugPanel 
+        isOpen={showDebugPanel}
+        onClose={() => setShowDebugPanel(false)}
+      />
+      
+      {/* ✅ 従来の個別デバッグ表示は削除（統合デバッグ画面に移行） */}
+      {/* EnvTest・ViewportTest個別表示は非表示 */}
     </div>
   );
 }
@@ -874,7 +573,7 @@ function App() {
     return <MainApp />;
   };
 
-  // ViewportTestWrapperで全体をラップしてビューポート機能を統合
+  // ViewportTestWrapperで全体をラップしてビューポート機能を統合（背景で動作）
   return (
     <ViewportTestWrapper>
       <AppContent />
@@ -882,12 +581,14 @@ function App() {
   );
 }
 
-// 開発モードでの設定表示（Phase 4 Week 2対応版）
+// 開発モードでの設定表示（UI機能完成版）
 if ((import.meta as any).env?.DEV) {
-  console.log('🚀 App Configuration (Phase 4 Week 2):', {
+  console.log('🎉 App Configuration (UI機能完成版):', {
     AUTH_ENABLED: ENABLE_AUTH,
     VIEWPORT_INTEGRATION: true,
-    VOLUME_CONTROL_INTEGRATION: true, // Week 2新機能
+    VOLUME_CONTROL_INTEGRATION: true,
+    DEBUG_PANEL_INTEGRATION: true, // 新機能
+    GAME_UI_INTEGRATION: true, // 新機能
     NODE_ENV: (import.meta as any).env?.NODE_ENV,
     SUPABASE_URL: (import.meta as any).env?.VITE_SUPABASE_URL ? '✅ Set' : '❌ Missing',
     SUPABASE_KEY: (import.meta as any).env?.VITE_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing'

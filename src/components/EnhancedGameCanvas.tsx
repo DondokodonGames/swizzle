@@ -36,10 +36,26 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
   const [localIsMuted, setLocalIsMuted] = useState(isMuted);
   const gameRef = useRef<any>(null); // ゲーム一時停止用
   
-  // ✅ Step 3: 残り時間バー用の状態
+  // 残り時間バー用の状態
   const [timeRemaining, setTimeRemaining] = useState(config.duration);
   const [totalTime] = useState(config.duration);
   const [isGameRunning, setIsGameRunning] = useState(false);
+  
+  // ✅ デバッグ画面用の状態をwindowオブジェクトに公開
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).gameDebugData = {
+        gameStatus,
+        bgmVolume,
+        seVolume,
+        isMuted,
+        timeRemaining,
+        totalTime,
+        isGameRunning,
+        gameType: config.gameType
+      };
+    }
+  }, [gameStatus, bgmVolume, seVolume, isMuted, timeRemaining, totalTime, isGameRunning, config.gameType]);
 
   useEffect(() => {
     let app: PIXI.Application | null = null;
@@ -92,14 +108,14 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
           game.start();
           console.log('✅ ゲーム開始');
           setGameStatus('ゲーム実行中');
-          setIsGameRunning(true); // ✅ タイマー開始
+          setIsGameRunning(true); // タイマー開始
         }
 
         // 終了コールバック
         if ('onGameEnd' in game) {
           (game as any).onGameEnd = (success: boolean, score: number) => {
             console.log('🎁 ゲーム終了:', success, score);
-            setIsGameRunning(false); // ✅ タイマー停止
+            setIsGameRunning(false); // タイマー停止
             onGameEnd?.(success, score);
           };
         }
@@ -125,7 +141,7 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
     };
   }, [config, width, height, onGameEnd]);
 
-  // ✅ Step 3: 残り時間タイマー（1秒間隔）
+  // 残り時間タイマー（0.1秒間隔）
   useEffect(() => {
     let timer: NodeJS.Timeout;
     
@@ -158,20 +174,18 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
     };
   }, [isGameRunning, timeRemaining, showLoginOverlay, showVolumeOverlay, onGameEnd]);
 
-  // ログインオーバーレイの表示制御（ゲーム一時停止付き）
+  // オーバーレイ表示制御（ゲーム一時停止付き）
   useEffect(() => {
     if (showLoginOverlay || showVolumeOverlay) {
       // ゲーム一時停止
       if (gameRef.current && typeof gameRef.current.pause === 'function') {
         gameRef.current.pause();
       }
-      // ✅ タイマーも一時停止（上のuseEffectで依存関係により自動停止）
     } else {
       // ゲーム再開
       if (gameRef.current && typeof gameRef.current.resume === 'function') {
         gameRef.current.resume();
       }
-      // ✅ タイマーも再開（isGameRunning = trueのため自動再開）
     }
   }, [showLoginOverlay, showVolumeOverlay]);
 
@@ -196,7 +210,7 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
       maxWidth: '400px',
       margin: '0 auto'
     }}>
-      {/* Step 1: ゲーム上部バー */}
+      {/* ゲーム上部バー */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -283,7 +297,7 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
         </div>
       </div>
 
-      {/* Step 2: ゲームタイトル（上部バー直下） */}
+      {/* ゲームタイトル（上部バー直下） */}
       <div style={{
         padding: '10px 15px',
         backgroundColor: '#fce7ff',
@@ -300,90 +314,63 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
         </h3>
       </div>
 
-      {/* ✅ 修復: Canvas描画エリア（明確に表示） */}
-      <div 
-        ref={canvasRef}
-        style={{
-          position: 'relative',
-          width: `${width}px`,
-          height: `${height}px`,
-          margin: '0 auto',
-          backgroundColor: '#fce7ff', // 確認用背景色
-          border: '2px solid #d946ef', // 確認用境界線
-          overflow: 'hidden',
-          zIndex: 1 // ゲーム画面のz-index
-        }}
-      />
-
-      {/* Step 3: 下部情報エリア（ステータス + 残り時間表示） */}
-      <div style={{ 
-        padding: '10px 15px', 
-        textAlign: 'center',
-        fontFamily: 'Arial, sans-serif',
-        backgroundColor: '#f8fafc',
-        borderTop: '1px solid #e2e8f0'
-      }}>
-        <p style={{ 
-          fontSize: '14px', 
-          color: '#666',
-          margin: '0 0 5px 0'
-        }}>
-          {gameStatus}
-        </p>
-        
-        {/* 音量表示 */}
-        <div style={{ fontSize: '12px', color: '#999', margin: '0 0 10px 0' }}>
-          BGM: {isMuted ? 'ミュート' : `${Math.round(bgmVolume * 100)}%`} | 
-          SE: {isMuted ? 'ミュート' : `${Math.round(seVolume * 100)}%`}
-        </div>
-        
-        {/* ✅ 残り時間デジタル表示 */}
-        <div style={{ 
-          fontSize: '14px', 
-          color: timeRemaining <= 3 ? '#ef4444' : '#d946ef',
-          fontWeight: 'bold',
-          margin: '0'
-        }}>
-          ⏱️ 残り時間: {timeRemaining.toFixed(1)}秒
-        </div>
-      </div>
-
-      {/* ✅ Step 3: 残り時間プログレスバー（画面最下部） */}
+      {/* ✅ Canvas描画エリア（残り時間バー一体型） */}
       <div style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '8px',
-        backgroundColor: '#e5e7eb',
+        position: 'relative',
+        width: `${width}px`,
+        height: `${height}px`,
+        margin: '0 auto',
+        backgroundColor: '#fce7ff',
         overflow: 'hidden',
-        borderRadius: '0 0 4px 4px'
+        zIndex: 1
       }}>
-        <div style={{
-          height: '100%',
-          backgroundColor: timeRemaining <= 3 ? '#ef4444' : timeRemaining <= 10 ? '#f59e0b' : '#d946ef',
-          width: `${Math.max(0, (timeRemaining / totalTime) * 100)}%`,
-          transition: 'width 0.1s linear, background-color 0.3s ease',
-          borderRadius: '0 4px 4px 0',
-          boxShadow: timeRemaining <= 5 ? '0 0 8px rgba(239, 68, 68, 0.6)' : 'none'
-        }} />
-        
-        {/* ✅ パルス効果（残り3秒以下） */}
-        {timeRemaining <= 3 && timeRemaining > 0 && (
-          <div style={{
+        {/* Canvas本体 */}
+        <div 
+          ref={canvasRef}
+          style={{
             position: 'absolute',
             top: 0,
             left: 0,
-            right: 0,
+            width: '100%',
+            height: '100%'
+          }}
+        />
+        
+        {/* ✅ 残り時間バー（ゲーム画面の下端に一致） */}
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '8px',
+          backgroundColor: '#e5e7eb',
+          overflow: 'hidden'
+        }}>
+          <div style={{
             height: '100%',
-            backgroundColor: '#ef4444',
-            opacity: 0.3,
-            animation: 'pulse 0.5s ease-in-out infinite alternate'
+            backgroundColor: timeRemaining <= 3 ? '#ef4444' : timeRemaining <= 10 ? '#f59e0b' : '#d946ef',
+            width: `${Math.max(0, (timeRemaining / totalTime) * 100)}%`,
+            transition: 'width 0.1s linear, background-color 0.3s ease',
+            boxShadow: timeRemaining <= 5 ? '0 0 8px rgba(239, 68, 68, 0.6)' : 'none'
           }} />
-        )}
+          
+          {/* パルス効果（残り3秒以下） */}
+          {timeRemaining <= 3 && timeRemaining > 0 && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '100%',
+              backgroundColor: '#ef4444',
+              opacity: 0.3,
+              animation: 'pulse 0.5s ease-in-out infinite alternate'
+            }} />
+          )}
+        </div>
       </div>
-      
-      {/* ✅ パルスアニメーション定義 */}
+
+      {/* パルスアニメーション定義 */}
       <style>{`
         @keyframes pulse {
           from { opacity: 0.3; }
@@ -391,7 +378,7 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
         }
       `}</style>
 
-      {/* ✅ 音量設定オーバーレイ（z-index: 9999） */}
+      {/* 音量設定オーバーレイ */}
       {showVolumeOverlay && (
         <div 
           style={{
@@ -576,7 +563,7 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
         </div>
       )}
 
-      {/* ✅ ログインオーバーレイ（ゲーム停止版・z-index: 9999） */}
+      {/* ログインオーバーレイ */}
       {showLoginOverlay && (
         <div 
           style={{
@@ -589,7 +576,7 @@ const EnhancedGameCanvas: React.FC<EnhancedGameCanvasProps> = ({
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            zIndex: 9999 // 最高優先度
+            zIndex: 9999
           }}
           onClick={handleLoginClose}
         >
