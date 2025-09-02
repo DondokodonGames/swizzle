@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js';
-import { GameTemplate } from './GameTemplate';
-import { UnifiedGameSettings } from './GameTemplateFactory';
+import { GameTemplate } from '../GameTemplate';
+import { UnifiedGameSettings } from '../GameTemplateFactory';
 
 /**
  * エディター対応アセット管理システム
@@ -86,13 +86,17 @@ export abstract class EditableTemplate extends GameTemplate {
   protected loadedTextures = new Map<string, PIXI.Texture>();
   protected loadedSounds = new Map<string, HTMLAudioElement>();
 
+  // ✅ GameTemplateから継承される必須プロパティ
+  public onGameEnd?: (success: boolean, score: number) => void;
+
   constructor(
     app: PIXI.Application, 
     settings: UnifiedGameSettings,
     config: EditableTemplateConfig,
     assets?: Partial<EditableAssets>
   ) {
-    super(app);
+    // ✅ 親クラスのコンストラクタに正しく引数を渡す
+    super(app, settings);
     this.config = config;
     
     // アセット統合（カスタム + デフォルト）
@@ -298,23 +302,38 @@ export abstract class EditableTemplate extends GameTemplate {
   }
 
   /**
-   * 成功時処理（共通）
+   * 成功時処理（共通） - endGameを呼び出し
    */
   protected handleSuccess(score: number = 0): void {
     this.playSound('success');
     const message = this.getText('successMessage');
     console.log(`🎉 ${this.config.name} 成功: ${message}`);
-    this.end(true, score);
+    this.endGame(true, score);
   }
 
   /**
-   * 失敗時処理（共通）
+   * 失敗時処理（共通） - endGameを呼び出し
    */
   protected handleFailure(score: number = 0): void {
     this.playSound('failure');
     const message = this.getText('failureMessage');
     console.log(`😅 ${this.config.name} 失敗: ${message}`);
-    this.end(false, score);
+    this.endGame(false, score);
+  }
+
+  /**
+   * ゲーム終了処理 - 親クラスのメソッドを呼び出し
+   */
+  protected endGame(success: boolean, score: number = 0): void {
+    // 親クラスのendメソッドがあればそれを呼び出し、なければonGameEndを直接呼び出し
+    if (typeof (this as any).end === 'function') {
+      (this as any).end(success, score);
+    }
+    
+    // onGameEndコールバック実行
+    if (this.onGameEnd) {
+      this.onGameEnd(success, score);
+    }
   }
 
   /**
@@ -356,15 +375,24 @@ export abstract class EditableTemplate extends GameTemplate {
     });
     this.loadedSounds.clear();
     
-    super.dispose();
+    // 親クラスのdisposeメソッドがあれば呼び出し
+    if (typeof (this as any).dispose === 'function') {
+      (this as any).dispose.call(this);
+    }
+    
     console.log(`${this.config.name}: リソース解放完了`);
   }
 
   // 抽象メソッド（各テンプレートで実装）
   abstract createScene(): Promise<void>;
   abstract start(): void;
-  abstract update(deltaTime: number): void;
+  abstract updateGame(deltaTime: number): void;  // ✅ updateをupdateGameに変更
   abstract handleInput(event: PIXI.FederatedPointerEvent): void;
+
+  // ✅ 親クラスのupdateメソッドを実装（updateGameを呼び出し）
+  update(deltaTime: number): void {
+    this.updateGame(deltaTime);
+  }
 }
 
 export default EditableTemplate;

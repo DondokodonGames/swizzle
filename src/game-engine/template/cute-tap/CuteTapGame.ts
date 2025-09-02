@@ -18,7 +18,8 @@ export class CuteTapGame extends EditableTemplate {
   private background!: PIXI.Sprite;
   private character!: PIXI.Sprite;
   private tapEffectContainer!: PIXI.Container;
-  private messageText!: PIXI.Text;
+  // ✅ messageTextを削除（親クラスから継承される可能性があるため）
+  private gameMessageText!: PIXI.Text;
   
   // ゲーム状態
   private currentTaps = 0;
@@ -133,7 +134,7 @@ export class CuteTapGame extends EditableTemplate {
    * メッセージテキスト作成
    */
   private createMessageText(): void {
-    this.messageText = new PIXI.Text('', {
+    this.gameMessageText = new PIXI.Text('', {
       fontSize: 28,
       fill: 0xffffff,
       align: 'center',
@@ -145,12 +146,12 @@ export class CuteTapGame extends EditableTemplate {
       dropShadowAlpha: 0.5
     });
     
-    this.messageText.anchor.set(0.5);
-    this.messageText.x = this.app.screen.width / 2;
-    this.messageText.y = this.app.screen.height * 0.15; // 画面上部
-    this.messageText.alpha = 0;
+    this.gameMessageText.anchor.set(0.5);
+    this.gameMessageText.x = this.app.screen.width / 2;
+    this.gameMessageText.y = this.app.screen.height * 0.15; // 画面上部
+    this.gameMessageText.alpha = 0;
     
-    this.container.addChild(this.messageText);
+    this.container.addChild(this.gameMessageText);
   }
 
   /**
@@ -185,7 +186,7 @@ export class CuteTapGame extends EditableTemplate {
     
     // 目標達成チェック
     if (this.currentTaps >= this.targetTaps) {
-      this.handleSuccess(this.currentTaps);
+      this.handleGameSuccess(this.currentTaps);
     }
     
     console.log(`Tap: ${this.currentTaps}/${this.targetTaps}`);
@@ -258,10 +259,10 @@ export class CuteTapGame extends EditableTemplate {
     
     // ランダムメッセージ選択
     const message = this.tapMessages[Math.floor(Math.random() * this.tapMessages.length)];
-    this.messageText.text = message;
+    this.gameMessageText.text = message;
     
     // フェードイン/アウト
-    this.messageText.alpha = 1;
+    this.gameMessageText.alpha = 1;
     
     // 前のタイマーをクリア
     if (this.messageTimeout) {
@@ -270,7 +271,7 @@ export class CuteTapGame extends EditableTemplate {
     
     // 1秒後にフェードアウト
     this.messageTimeout = setTimeout(() => {
-      if (this.messageText) {
+      if (this.gameMessageText) {
         const startTime = Date.now();
         const duration = 300;
         
@@ -278,8 +279,8 @@ export class CuteTapGame extends EditableTemplate {
           const elapsed = Date.now() - startTime;
           const progress = Math.min(elapsed / duration, 1);
           
-          if (this.messageText) {
-            this.messageText.alpha = 1 - progress;
+          if (this.gameMessageText) {
+            this.gameMessageText.alpha = 1 - progress;
             
             if (progress < 1) {
               requestAnimationFrame(fadeOut);
@@ -375,18 +376,18 @@ export class CuteTapGame extends EditableTemplate {
     setTimeout(() => {
       if (this.isGameActive) {
         if (this.currentTaps >= this.targetTaps) {
-          this.handleSuccess(this.currentTaps);
+          this.handleGameSuccess(this.currentTaps);
         } else {
-          this.handleFailure(this.currentTaps);
+          this.handleGameFailure(this.currentTaps);
         }
       }
     }, duration);
   }
 
   /**
-   * フレーム更新
+   * フレーム更新 - ✅ updateGameメソッドを実装
    */
-  update(deltaTime: number): void {
+  updateGame(deltaTime: number): void {
     // 特別な更新処理は不要（タップベースゲーム）
   }
 
@@ -399,9 +400,9 @@ export class CuteTapGame extends EditableTemplate {
   }
 
   /**
-   * 成功時処理（オーバーライド）
+   * 成功時処理（メソッド名変更でコンフリクト回避）
    */
-  protected handleSuccess(score: number = 0): void {
+  private handleGameSuccess(score: number = 0): void {
     this.isGameActive = false;
     
     // 成功音再生
@@ -409,8 +410,8 @@ export class CuteTapGame extends EditableTemplate {
     
     // 達成時特別メッセージ表示
     const successMessage = this.getText('successMessage');
-    this.messageText.text = successMessage;
-    this.messageText.alpha = 1;
+    this.gameMessageText.text = successMessage;
+    this.gameMessageText.alpha = 1;
     
     // キャラクター勝利ポーズ（タッチ後画像固定）
     const tappedTexture = this.getTexture('characterTapped');
@@ -425,14 +426,15 @@ export class CuteTapGame extends EditableTemplate {
     
     // 1秒後にゲーム終了
     setTimeout(() => {
-      this.end(true, score);
+      // ✅ 親クラスのendGameメソッドを呼び出し
+      this.endGame(true, score);
     }, 1000);
   }
 
   /**
-   * 失敗時処理（オーバーライド）
+   * 失敗時処理（メソッド名変更でコンフリクト回避）
    */
-  protected handleFailure(score: number = 0): void {
+  private handleGameFailure(score: number = 0): void {
     this.isGameActive = false;
     
     // 失敗音再生
@@ -440,14 +442,15 @@ export class CuteTapGame extends EditableTemplate {
     
     // 失敗メッセージ表示
     const failureMessage = this.getText('failureMessage');
-    this.messageText.text = failureMessage;
-    this.messageText.alpha = 1;
+    this.gameMessageText.text = failureMessage;
+    this.gameMessageText.alpha = 1;
     
     console.log(`😅 CuteTapGame 失敗: ${score}/${this.targetTaps} タップ`);
     
     // 1秒後にゲーム終了
     setTimeout(() => {
-      this.end(false, score);
+      // ✅ 親クラスのendGameメソッドを呼び出し
+      this.endGame(false, score);
     }, 1000);
   }
 

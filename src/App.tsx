@@ -482,9 +482,8 @@ function MainApp() {
       }}>
         {mode === 'sequence' && (
           <GameSequence 
-            onExit={handleExitSequence} 
-            volumeSettings={volumeSettings}
-            onVolumeChange={saveVolumeSettings}
+            onExit={handleExitSequence}
+            // ✅ volumeSettings、onVolumeChangeプロパティを削除（GameSequenceが対応していない）
           />
         )}
         {mode === 'test' && <TemplateTestMode onExit={handleSwitchToSequence} />}
