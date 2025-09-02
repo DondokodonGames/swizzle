@@ -1,28 +1,53 @@
 {
   "editorDevelopment": {
     "currentPhase": "6.1",
+    "nextPhase": "6.2",
     "startDate": "2025-09-01",
     "completedDays": 1,
+    "totalDays": 21,
+    "overallProgress": 15,
     "phases": {
       "6.1": {
         "name": "データ構造・基盤実装",
         "duration": 3,
-        "progress": 33,
-        "tasks": [
-          {
-            "day": 1,
-            "task": "型定義・インターフェース",
-            "status": "completed",
-            "files": [
-              "src/constants/EditorLimits.ts",
-              "src/types/editor/ProjectAssets.ts",
-              "src/types/editor/GameScript.ts", 
-              "src/types/editor/GameProject.ts"
-            ],
-            "completedAt": "2025-09-01"
-          }
+        "progress": 100,
+        "status": "completed",
+        "completedAt": "2025-09-01",
+        "achievements": [
+          "TypeScriptエラー0件達成",
+          "EditableTemplate基盤完成", 
+          "包括的型システム構築",
+          "既存システム完全保護"
+        ]
+      },
+      "6.2": {
+        "name": "メインエディター画面実装",
+        "duration": 4,
+        "progress": 0,
+        "status": "ready",
+        "nextTasks": [
+          "GameEditor.tsx実装",
+          "4タブ切り替えUI",
+          "ProjectSelector.tsx",
+          "プロジェクト管理システム"
         ]
       }
+    },
+    "keyFiles": {
+      "completed": [
+        "src/constants/EditorLimits.ts",
+        "src/types/editor/GameProject.ts",
+        "src/types/editor/ProjectAssets.ts", 
+        "src/types/editor/GameScript.ts",
+        "src/game-engine/template/EditableTemplate.ts",
+        "docs/editor/editor-specification.md"
+      ],
+      "nextToCreate": [
+        "src/components/editor/GameEditor.tsx",
+        "src/components/editor/ProjectSelector.tsx",
+        "src/hooks/editor/useGameProject.ts",
+        "src/services/editor/ProjectStorage.ts"
+      ]
     }
   }
 }

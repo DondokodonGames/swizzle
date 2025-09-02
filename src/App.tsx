@@ -1,9 +1,69 @@
-// src/App.tsx - UI機能完成版（不要機能削除・デバッグ画面統合）
+// src/App.tsx - エディター機能統合版（Phase 6.2対応）
 import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import GameSequence from './components/GameSequence';
 import TemplateTestMode from './components/TemplateTestMode';
 import DebugPanel from './components/DebugPanel';
 import { ViewportTestWrapper } from './components/SimpleViewportTest';
+
+// エディターアプリのプロパティ型を定義
+interface EditorAppProps {
+  onClose?: () => void;
+  initialProjectId?: string;
+  className?: string;
+}
+
+// フォールバックコンポーネントを別途定義
+const EditorFallback: React.FC<EditorAppProps> = ({ onClose }) => (
+  <div style={{
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+  }}>
+    <div style={{
+      backgroundColor: 'white',
+      padding: '40px',
+      borderRadius: '20px',
+      textAlign: 'center',
+      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+    }}>
+      <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
+      <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>エディター機能を読み込めませんでした</h2>
+      <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+        エディター機能の実装が必要です。<br />
+        Phase 6.2のファイルが正しく配置されていることを確認してください。
+      </p>
+      <button
+        onClick={onClose || (() => {})}
+        style={{
+          padding: '12px 24px',
+          backgroundColor: '#3b82f6',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontSize: '16px'
+        }}
+      >
+        ゲームに戻る
+      </button>
+    </div>
+  </div>
+);
+
+// ✨ Phase 6.2 エディター機能の遅延読み込み
+const EditorApp = React.lazy((): Promise<{ default: React.FC<EditorAppProps> }> => 
+  import('./components/editor/EditorApp').then(module => ({ 
+    default: module.EditorApp 
+  })).catch(error => {
+    console.warn('EditorApp読み込み失敗:', error);
+    // フォールバック：エディターが利用できない旨を表示するダミーコンポーネント
+    return { 
+      default: EditorFallback
+    };
+  })
+);
 
 // 音量設定の型定義
 interface VolumeSettings {
@@ -18,6 +78,9 @@ const DEFAULT_VOLUME: VolumeSettings = {
   se: 0.8,
   muted: false
 }
+
+// アプリケーションモード
+type AppMode = 'sequence' | 'test' | 'editor';
 
 // 認証機能の有効/無効判定
 const ENABLE_AUTH = (import.meta as any).env?.VITE_ENABLE_AUTH === 'true';
@@ -321,8 +384,8 @@ const AuthenticatedUserInfo: React.FC = () => {
 
 // メインアプリケーションコンポーネント
 function MainApp() {
-  const [mode, setMode] = useState<'sequence' | 'test'>('sequence'); // ✅ Week2テスト削除
-  const [showDebugPanel, setShowDebugPanel] = useState(false); // ✅ デバッグ画面追加
+  const [mode, setMode] = useState<AppMode>('sequence'); // ✨ editorモード追加
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
   
   // 音量設定状態
   const [volumeSettings, setVolumeSettings] = useState<VolumeSettings>(DEFAULT_VOLUME)
@@ -367,6 +430,43 @@ function MainApp() {
     setMode('sequence');
   };
 
+  // ✨ エディターモードへの切り替え
+  const handleSwitchToEditor = () => {
+    setMode('editor');
+  };
+
+  // ✨ エディターからの戻り処理
+  const handleExitEditor = () => {
+    setMode('sequence');
+  };
+
+  // エディターモード時は独立したフルスクリーン表示
+  if (mode === 'editor') {
+    return (
+      <Suspense fallback={
+        <div style={{ 
+          minHeight: '100vh',
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ marginBottom: '16px', fontSize: '48px' }}>🎨</div>
+            <div style={{ color: '#6b7280', fontSize: '18px', fontWeight: '600' }}>
+              エディターを読み込み中...
+            </div>
+            <div style={{ color: '#9ca3af', fontSize: '14px', marginTop: '8px' }}>
+              Phase 6.2 ゲームエディター機能
+            </div>
+          </div>
+        </div>
+      }>
+        <EditorApp onClose={handleExitEditor} />
+      </Suspense>
+    );
+  }
+
   return (
     <div className="App" style={{ 
       minHeight: '100vh',
@@ -399,18 +499,18 @@ function MainApp() {
           }
         </p>
 
-        {/* ✅ UI機能完成ステータス表示 */}
+        {/* ✨ Phase 6.2 エディター機能完成ステータス表示 */}
         <div style={{ 
           marginTop: '10px',
           padding: '6px 12px',
-          backgroundColor: 'rgba(34, 197, 94, 0.1)',
-          border: '1px solid #22c55e',
+          backgroundColor: 'rgba(236, 72, 153, 0.1)',
+          border: '1px solid #ec4899',
           borderRadius: '15px',
           fontSize: '12px',
-          color: '#15803d',
+          color: '#be185d',
           display: 'inline-block'
         }}>
-          🎉 UI機能完成版: 統合デバッグ画面・残り時間バー・オーバーレイUI統合完了
+          ✨ Phase 6.2: ゲームエディター機能実装完了 - プロジェクト作成・管理・4タブUI
         </div>
 
         {/* モード切り替えボタン */}
@@ -445,7 +545,43 @@ function MainApp() {
           >
             🧪 テストモード
           </button>
-          {/* ✅ 統合デバッグ画面ボタン */}
+          
+          {/* ✨ エディターボタン追加 */}
+          <button
+            onClick={handleSwitchToEditor}
+            style={{
+              backgroundColor: '#ec4899',
+              color: 'white',
+              border: '2px solid #ec4899',
+              borderRadius: '20px',
+              padding: '8px 16px',
+              fontSize: '12px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            <span style={{ position: 'relative', zIndex: 2 }}>
+              🎨 エディター
+            </span>
+            {/* 新機能アニメーション */}
+            <div style={{
+              position: 'absolute',
+              top: '-2px',
+              right: '-2px',
+              background: 'linear-gradient(45deg, #fbbf24, #f59e0b)',
+              color: 'white',
+              fontSize: '8px',
+              padding: '2px 4px',
+              borderRadius: '4px',
+              fontWeight: 'bold',
+              animation: 'pulse 2s infinite'
+            }}>
+              NEW
+            </div>
+          </button>
+          
           <button
             onClick={() => setShowDebugPanel(true)}
             style={{
@@ -467,9 +603,6 @@ function MainApp() {
       {/* ユーザー情報（認証機能有効時のみ表示） */}
       {ENABLE_AUTH && <AuthenticatedUserInfo />}
 
-      {/* ✅ 音量設定UI削除（ゲーム内統合済み） */}
-      {/* VolumeControlUI は削除 - ゲーム内オーバーレイに統合完了 */}
-
       {/* メインコンテンツ */}
       <main style={{ 
         backgroundColor: 'white',
@@ -483,7 +616,6 @@ function MainApp() {
         {mode === 'sequence' && (
           <GameSequence 
             onExit={handleExitSequence}
-            // ✅ volumeSettings、onVolumeChangeプロパティを削除（GameSequenceが対応していない）
           />
         )}
         {mode === 'test' && <TemplateTestMode onExit={handleSwitchToSequence} />}
@@ -497,10 +629,12 @@ function MainApp() {
         textAlign: 'center'
       }}>
         <div>
-          Phase {ENABLE_AUTH ? '4' : '4'}: {
-            mode === 'sequence' ? '完全自動連続プレイ' : 'テンプレート動作確認'
+          Phase 6.2: {
+            mode === 'sequence' ? '完全自動連続プレイ' : 
+            mode === 'test' ? 'テンプレート動作確認' : 
+            'ゲームエディター'
           } | 
-          🎯 UI機能完成版 ✨
+          🎯 エディター機能実装完了 ✨
         </div>
         {ENABLE_AUTH && (
           <div style={{ fontSize: '12px', marginTop: '5px', color: '#10b981' }}>
@@ -516,26 +650,39 @@ function MainApp() {
         <div style={{ fontSize: '12px', marginTop: '5px', color: '#8b5cf6' }}>
           🔧 統合デバッグ画面完成 | Viewport・環境変数・FPS・Memory・ゲーム状態統合
         </div>
+        
+        {/* ✨ エディター機能の説明追加 */}
+        <div style={{ fontSize: '12px', marginTop: '5px', color: '#ec4899' }}>
+          🎨 エディター機能: プロジェクト作成・4タブUI（絵・音・ルール・公開）・容量管理
+        </div>
+        
         <div style={{ fontSize: '12px', marginTop: '5px' }}>
           💡 {
             mode === 'sequence' ? 
             '完成: 上部バー・タイトル・残り時間バー・ログイン/音量オーバーレイ' : 
-            'ChatGPT制作テンプレートの動作確認・デバッグ用'
+            mode === 'test' ?
+            'ChatGPT制作テンプレートの動作確認・デバッグ用' :
+            '5-30秒ショートゲームの簡単作成・公開プラットフォーム'
           }
         </div>
         <div style={{ fontSize: '11px', marginTop: '8px', color: '#9ca3af' }}>
-          🚀 進捗: 基盤完成 → テンプレート量産中 → 認証統合 → 画面統一 → 音量統合 → 🎉 UI機能完成
+          🚀 進捗: 基盤完成 → テンプレート量産 → 認証統合 → 画面統一 → 音量統合 → UI完成 → ✨ エディター実装
         </div>
       </footer>
 
-      {/* ✅ 統合デバッグ画面（EnvTest・ViewportTest統合） */}
+      {/* 統合デバッグ画面 */}
       <DebugPanel 
         isOpen={showDebugPanel}
         onClose={() => setShowDebugPanel(false)}
       />
       
-      {/* ✅ 従来の個別デバッグ表示は削除（統合デバッグ画面に移行） */}
-      {/* EnvTest・ViewportTest個別表示は非表示 */}
+      {/* ✨ NEWバッジのCSSアニメーション */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -580,14 +727,22 @@ function App() {
   );
 }
 
-// 開発モードでの設定表示（UI機能完成版）
+// 開発モードでの設定表示（エディター機能統合版）
 if ((import.meta as any).env?.DEV) {
-  console.log('🎉 App Configuration (UI機能完成版):', {
+  console.log('🎨 App Configuration (Phase 6.2 エディター統合版):', {
     AUTH_ENABLED: ENABLE_AUTH,
     VIEWPORT_INTEGRATION: true,
     VOLUME_CONTROL_INTEGRATION: true,
-    DEBUG_PANEL_INTEGRATION: true, // 新機能
-    GAME_UI_INTEGRATION: true, // 新機能
+    DEBUG_PANEL_INTEGRATION: true,
+    GAME_UI_INTEGRATION: true,
+    EDITOR_INTEGRATION: true, // ✨ 新機能
+    EDITOR_FEATURES: [
+      'プロジェクト作成・管理',
+      '4タブUI（絵・音・ルール・公開）',
+      '容量制限・監視',
+      'IndexedDB + localStorage',
+      'インポート・エクスポート'
+    ],
     NODE_ENV: (import.meta as any).env?.NODE_ENV,
     SUPABASE_URL: (import.meta as any).env?.VITE_SUPABASE_URL ? '✅ Set' : '❌ Missing',
     SUPABASE_KEY: (import.meta as any).env?.VITE_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing'
