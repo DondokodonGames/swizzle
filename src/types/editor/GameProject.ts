@@ -386,7 +386,7 @@ export const DEFAULT_PROJECT_METADATA: ProjectMetadata = {
 };
 
 /**
- * デフォルトプロジェクト作成関数
+ * デフォルトプロジェクト作成関数 - 修正版
  */
 export const createDefaultGameProject = (name: string, userId?: string): GameProject => {
   const now = new Date().toISOString();
@@ -405,7 +405,7 @@ export const createDefaultGameProject = (name: string, userId?: string): GamePro
       isAnonymous: !userId
     },
     
-    // アセット（空の初期状態）
+    // アセット（ProjectAssets型に準拠）
     assets: {
       background: null,
       objects: [],
@@ -417,7 +417,7 @@ export const createDefaultGameProject = (name: string, userId?: string): GamePro
       statistics: {
         totalImageSize: 0,
         totalAudioSize: 0,
-        totalSize: 0,        // ★ 修正: totalSize プロパティ追加
+        totalSize: 0,
         usedSlots: {
           background: 0,
           objects: 0,
@@ -425,12 +425,15 @@ export const createDefaultGameProject = (name: string, userId?: string): GamePro
           bgm: 0,
           se: 0
         },
-        limitations: {       // ★ 修正: limitations プロパティ追加
-          nearCapacity: false,
-          exceededLimits: [],
-          warnings: []
+        // ProjectAssets.tsで定義されている正しい型構造に修正
+        limitations: {
+          isNearImageLimit: false,
+          isNearAudioLimit: false,
+          isNearTotalLimit: false,
+          hasViolations: false
         }
-      }
+      },
+      lastModified: now  // ProjectAssets型で必須のlastModifiedプロパティを追加
     },
     
     // スクリプト（空の初期状態）
