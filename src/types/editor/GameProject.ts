@@ -299,3 +299,269 @@ export interface ProjectValidationResult {
     recommendations: string[];
   };
 }
+
+// ★★★ 以下、SettingsTab対応用のデフォルト値・ヘルパー関数を追加 ★★★
+
+/**
+ * デフォルトゲーム設定
+ */
+export const DEFAULT_GAME_SETTINGS: GameSettings = {
+  name: '',
+  description: '',
+  duration: {
+    type: 'fixed',
+    seconds: 10
+  },
+  difficulty: 'normal',
+  publishing: {
+    isPublished: false,
+    visibility: 'private',
+    allowComments: true,
+    allowRemix: false
+  },
+  preview: {},
+  export: {
+    includeSourceData: true,
+    compressionLevel: 'medium',
+    format: 'json'
+  }
+};
+
+/**
+ * デフォルトエディター状態
+ */
+export const DEFAULT_EDITOR_STATE: EditorState = {
+  activeTab: 'assets',
+  lastSaved: new Date().toISOString(),
+  autoSaveEnabled: true,
+  tabStates: {
+    assets: {
+      selectedAssetType: null,
+      selectedAssetId: null,
+      showAnimationEditor: false
+    },
+    audio: {
+      selectedAudioType: null,
+      selectedAudioId: null,
+      isPlaying: false
+    },
+    script: {
+      mode: 'layout',
+      selectedObjectId: null,
+      selectedRuleId: null,
+      showRuleEditor: false
+    },
+    settings: {
+      showTestPlay: false,
+      lastTestResult: null
+    }
+  },
+  ui: {
+    sidebarCollapsed: false,
+    previewVisible: true,
+    capacityMeterExpanded: false
+  }
+};
+
+/**
+ * デフォルトプロジェクトメタデータ
+ */
+export const DEFAULT_PROJECT_METADATA: ProjectMetadata = {
+  statistics: {
+    totalEditTime: 0,
+    saveCount: 0,
+    testPlayCount: 0,
+    publishCount: 0
+  },
+  usage: {
+    lastOpened: new Date().toISOString(),
+    totalOpenCount: 1,
+    averageSessionTime: 0
+  },
+  performance: {
+    lastBuildTime: 0,
+    averageFPS: 60,
+    memoryUsage: 0
+  }
+};
+
+/**
+ * デフォルトプロジェクト作成関数
+ */
+export const createDefaultGameProject = (name: string, userId?: string): GameProject => {
+  const now = new Date().toISOString();
+  const projectId = `project_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  return {
+    id: projectId,
+    name: name || 'New Game Project',
+    createdAt: now,
+    lastModified: now,
+    version: '1.0.0',
+    
+    creator: {
+      userId: userId,
+      username: userId ? undefined : 'Anonymous',
+      isAnonymous: !userId
+    },
+    
+    // アセット（空の初期状態）
+    assets: {
+      background: null,
+      objects: [],
+      texts: [],
+      audio: {
+        bgm: null,
+        se: []
+      },
+      statistics: {
+        totalImageSize: 0,
+        totalAudioSize: 0,
+        totalSize: 0,        // ★ 修正: totalSize プロパティ追加
+        usedSlots: {
+          background: 0,
+          objects: 0,
+          texts: 0,
+          bgm: 0,
+          se: 0
+        },
+        limitations: {       // ★ 修正: limitations プロパティ追加
+          nearCapacity: false,
+          exceededLimits: [],
+          warnings: []
+        }
+      }
+    },
+    
+    // スクリプト（空の初期状態）
+    script: {
+      layout: {
+        background: {
+          visible: false,
+          initialAnimation: 0,
+          animationSpeed: 12,
+          autoStart: false
+        },
+        objects: [],
+        texts: [],
+        stage: {
+          backgroundColor: '#87CEEB'  // スカイブルー
+        }
+      },
+      flags: [],
+      rules: [],
+      successConditions: [],
+      statistics: {
+        totalRules: 0,
+        totalConditions: 0,
+        totalActions: 0,
+        complexityScore: 0,
+        usedTriggerTypes: [],
+        usedActionTypes: [],
+        flagCount: 0,
+        estimatedCPUUsage: 'low',
+        estimatedMemoryUsage: 0,
+        maxConcurrentEffects: 0
+      },
+      version: '1.0.0',
+      lastModified: now
+    },
+    
+    // ゲーム設定（SettingsTabで使用）
+    settings: {
+      ...DEFAULT_GAME_SETTINGS,
+      name: name || 'My Awesome Game'
+    },
+    
+    status: 'draft',
+    totalSize: 0,
+    
+    editorState: DEFAULT_EDITOR_STATE,
+    metadata: DEFAULT_PROJECT_METADATA,
+    versionHistory: [],
+    
+    projectSettings: {
+      autoSaveInterval: 30000,  // 30秒
+      backupEnabled: true,
+      compressionEnabled: false,
+      maxVersionHistory: 10
+    }
+  };
+};
+
+/**
+ * プロジェクト設定更新ヘルパー関数
+ */
+export const updateProjectSettings = (
+  project: GameProject, 
+  settingsUpdate: Partial<GameSettings>
+): GameProject => {
+  return {
+    ...project,
+    settings: {
+      ...project.settings,
+      ...settingsUpdate
+    },
+    lastModified: new Date().toISOString()
+  };
+};
+
+/**
+ * プロジェクト検証関数（基本版）
+ */
+export const validateGameProject = (project: GameProject): ProjectValidationResult => {
+  const errors: Array<{
+    type: 'missing_assets' | 'broken_references' | 'size_limit' | 'configuration';
+    message: string;
+    severity: 'error' | 'warning';
+  }> = [];
+  
+  // 基本チェック
+  if (!project.settings.name?.trim()) {
+    errors.push({
+      type: 'configuration',
+      message: 'ゲーム名が設定されていません',
+      severity: 'error'
+    });
+  }
+  
+  if (!project.assets.objects.length && !project.assets.background) {
+    errors.push({
+      type: 'missing_assets',
+      message: '最低1つのオブジェクトまたは背景が必要です',
+      severity: 'error'
+    });
+  }
+  
+  if (!project.script.rules.length && !project.script.successConditions.length) {
+    errors.push({
+      type: 'configuration',
+      message: 'ゲームルールまたは成功条件を設定してください',
+      severity: 'warning'
+    });
+  }
+  
+  // サイズ制限チェック（50MBを超えている場合）
+  const SIZE_LIMIT = 50 * 1024 * 1024; // 50MB
+  if (project.totalSize > SIZE_LIMIT) {
+    errors.push({
+      type: 'size_limit',
+      message: `プロジェクトサイズが制限(${SIZE_LIMIT / 1024 / 1024}MB)を超えています`,
+      severity: 'error'
+    });
+  }
+  
+  const hasErrors = errors.some(e => e.severity === 'error');
+  
+  return {
+    isValid: !hasErrors,
+    assetsValidation: { isValid: true, errors: [], warnings: [] } as any, // 簡略化
+    scriptValidation: { isValid: true, errors: [], warnings: [] } as any,  // 簡略化
+    projectErrors: errors,
+    publishReadiness: {
+      canPublish: !hasErrors,
+      requiredFixes: errors.filter(e => e.severity === 'error').map(e => e.message),
+      recommendations: errors.filter(e => e.severity === 'warning').map(e => e.message)
+    }
+  };
+};

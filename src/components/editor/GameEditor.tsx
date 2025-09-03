@@ -3,6 +3,8 @@ import { GameProject } from '../../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../../constants/EditorLimits';
 import { AssetsTab } from './tabs/AssetsTab';
 import { AudioTab } from './tabs/AudioTab';
+import ScriptTab from './tabs/ScriptTab';
+import SettingsTab from './tabs/SettingsTab';
 
 // タブタイプ定義
 type EditorTab = 'assets' | 'audio' | 'script' | 'settings';
@@ -91,12 +93,36 @@ export const GameEditor: React.FC<GameEditorProps> = ({
   const totalSize = calculateTotalSize();
   const sizePercentage = (totalSize / EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE) * 100;
 
-  // タブの設定
+  // タブの設定（動的バッジ表示）
   const tabs = customTabs || [
-    { id: 'assets' as EditorTab, label: '絵', icon: '🎨', description: 'キャラクター・背景管理' },
-    { id: 'audio' as EditorTab, label: '音', icon: '🎵', description: '音楽・効果音管理' },
-    { id: 'script' as EditorTab, label: 'ルール', icon: '⚙️', description: 'ゲーム動作設定' },
-    { id: 'settings' as EditorTab, label: '公開', icon: '🚀', description: '設定・テスト・公開' }
+    { 
+      id: 'assets' as EditorTab, 
+      label: '絵', 
+      icon: '🎨', 
+      description: 'キャラクター・背景・テキスト管理',
+      badge: project.assets.objects.length + (project.assets.background ? 1 : 0) + project.assets.texts.length || undefined
+    },
+    { 
+      id: 'audio' as EditorTab, 
+      label: '音', 
+      icon: '🎵', 
+      description: '音楽・効果音管理',
+      badge: (project.assets.audio.bgm ? 1 : 0) + project.assets.audio.se.length || undefined
+    },
+    { 
+      id: 'script' as EditorTab, 
+      label: 'ルール', 
+      icon: '⚙️', 
+      description: 'ゲーム動作・条件設定',
+      badge: project.script.rules.length || undefined
+    },
+    { 
+      id: 'settings' as EditorTab, 
+      label: '公開', 
+      icon: '🚀', 
+      description: 'ゲーム設定・テスト・公開',
+      badge: project.settings.publishing?.isPublished ? '✓' : undefined
+    }
   ];
 
   return (
@@ -109,11 +135,12 @@ export const GameEditor: React.FC<GameEditorProps> = ({
             <div className="flex items-center space-x-4">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  {project.name || 'マイゲーム'}
+                  {project.name || project.settings.name || 'マイゲーム'}
                 </h1>
                 <p className="text-sm text-gray-500">
                   最終更新: {new Date(project.lastModified).toLocaleDateString('ja-JP')}
                   {hasUnsavedChanges && <span className="text-orange-500 ml-2">• 未保存</span>}
+                  {project.status === 'published' && <span className="text-green-500 ml-2">• 公開中</span>}
                 </p>
               </div>
             </div>
@@ -182,7 +209,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 px-6 py-3 rounded-full font-semibold transition-all duration-200 ${
+                className={`relative flex items-center space-x-2 px-6 py-3 rounded-full font-semibold transition-all duration-200 ${
                   activeTab === tab.id
                     ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md scale-105'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:scale-102'
@@ -190,6 +217,16 @@ export const GameEditor: React.FC<GameEditorProps> = ({
               >
                 <span className="text-lg">{tab.icon}</span>
                 <span>{tab.label}</span>
+                {/* バッジ表示 */}
+                {tab.badge && (
+                  <span className={`absolute -top-1 -right-1 min-w-5 h-5 flex items-center justify-center text-xs font-bold rounded-full ${
+                    activeTab === tab.id 
+                      ? 'bg-white text-purple-600' 
+                      : 'bg-red-500 text-white'
+                  }`}>
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -211,56 +248,29 @@ export const GameEditor: React.FC<GameEditorProps> = ({
             {activeTab === 'assets' && (
               <AssetsTab 
                 project={project} 
-                onProjectUpdate={onProjectUpdate}
+                onProjectUpdate={handleProjectUpdate}
               />
             )}
 
             {activeTab === 'audio' && (
               <AudioTab
                 project={project}
-                onProjectUpdate={onProjectUpdate}
+                onProjectUpdate={handleProjectUpdate}
               />
             )}
 
             {activeTab === 'script' && (
-              <div className="text-center py-20">
-                <div className="text-6xl mb-4">⚙️</div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">ルール設定画面</h3>
-                <p className="text-gray-600 mb-8">
-                  ゲームの動作ルールと成功条件を設定します
-                </p>
-                <div className="bg-gray-50 rounded-xl p-8 max-w-md mx-auto">
-                  <div className="text-gray-500 text-sm">
-                    <p>• ルール: {project.script.rules.length}個</p>
-                    <p>• 成功条件: {project.script.successConditions.length}個</p>
-                    <p>• フラグ: {project.script.flags.length}個</p>
-                  </div>
-                  <div className="mt-4 text-blue-600 text-sm">
-                    🚧 Phase 6.4で実装予定
-                  </div>
-                </div>
-              </div>
+              <ScriptTab
+                project={project}
+                onProjectUpdate={handleProjectUpdate}
+              />
             )}
 
             {activeTab === 'settings' && (
-              <div className="text-center py-20">
-                <div className="text-6xl mb-4">🚀</div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">設定・公開画面</h3>
-                <p className="text-gray-600 mb-8">
-                  ゲーム情報の設定とテスト、公開を行います
-                </p>
-                <div className="bg-gray-50 rounded-xl p-8 max-w-md mx-auto">
-                  <div className="text-gray-500 text-sm">
-                    <p>• ゲーム名: {project.name}</p>
-                    <p>• 時間設定: {project.settings.duration.type === 'fixed' ? `${project.settings.duration.seconds}秒` : '無制限'}</p>
-                    <p>• 難易度: {project.settings.difficulty}</p>
-                    <p>• 状態: {project.status}</p>
-                  </div>
-                  <div className="mt-4 text-blue-600 text-sm">
-                    🚧 Phase 6.4で実装予定
-                  </div>
-                </div>
-              </div>
+              <SettingsTab
+                project={project}
+                onProjectUpdate={handleProjectUpdate}
+              />
             )}
           </div>
         </div>
@@ -272,6 +282,16 @@ export const GameEditor: React.FC<GameEditorProps> = ({
           <span className="text-xl">❓</span>
         </button>
       </div>
+
+      {/* 開発進捗表示（デバッグ用） */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="fixed bottom-6 left-6 bg-black bg-opacity-80 text-white text-xs p-3 rounded-lg">
+          <div>🎯 Phase 6.4 完了</div>
+          <div>📊 Assets: {project.assets.objects.length}, Rules: {project.script.rules.length}</div>
+          <div>💾 Size: {(totalSize / 1024 / 1024).toFixed(1)}MB</div>
+        </div>
+      )}
     </div>
   );
 };
+
