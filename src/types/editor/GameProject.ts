@@ -143,9 +143,11 @@ export interface GameProject {
   // 基本情報
   id: string;                             // UUID
   name: string;                           // プロジェクト名
+  description?: string;                   // プロジェクト説明 ← 追加
   createdAt: string;                      // 作成日時（ISO文字列）
   lastModified: string;                   // 最終更新日時（ISO文字列）
   version: string;                        // プロジェクトバージョン
+  thumbnailDataUrl?: string;              // サムネイル画像 ← 追加
   
   // 作成者情報
   creator: {

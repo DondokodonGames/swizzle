@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { EDITOR_LIMITS } from '../../../constants/EditorLimits';
+import { EDITOR_LIMITS } from '../../constants/EditorLimits';
+
 
 interface FileUploaderProps {
   accept: string;

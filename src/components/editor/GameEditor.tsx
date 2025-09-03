@@ -46,7 +46,34 @@ export const GameEditor: React.FC<GameEditorProps> = ({
         ...updatedProject.editorState,
         activeTab,
         lastSaved: new Date().toISOString(),
-        autoSaveEnabled
+        autoSaveEnabled,
+        tabStates: updatedProject.editorState?.tabStates || {
+          assets: {
+            selectedAssetType: null,
+            selectedAssetId: null,
+            showAnimationEditor: false
+          },
+          audio: {
+            selectedAudioType: null,
+            selectedAudioId: null,
+            isPlaying: false
+          },
+          script: {
+            mode: 'layout',
+            selectedObjectId: null,
+            selectedRuleId: null,
+            showRuleEditor: false
+          },
+          settings: {
+            showTestPlay: false,
+            lastTestResult: null
+          }
+        },
+        ui: updatedProject.editorState?.ui || {
+          sidebarCollapsed: false,
+          previewVisible: true,
+          capacityMeterExpanded: false
+        }
       }
     });
     setHasUnsavedChanges(true);

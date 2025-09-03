@@ -5,6 +5,9 @@ import { EDITOR_LIMITS } from '../../constants/EditorLimits';
 interface ProjectSelectorProps {
   onProjectSelect: (project: GameProject) => void;
   onCreateNew: (name: string) => void;
+  onDelete?: (projectId: string) => void;      // ← 追加
+  onDuplicate?: (projectId: string) => void;   // ← 追加 
+  onExport?: (projectId: string) => void;      // ← 追加
 }
 
 interface ProjectCardProps {
@@ -182,14 +185,35 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   id: 'obj1',
                   name: 'キャラクター1',
                   frames: [],
-                  animationSettings: { speed: 10, loop: true, pingPong: false },
+                  animationSettings: { speed: 10, loop: true, pingPong: false, autoStart: true },
                   totalSize: 2 * 1024 * 1024,
-                  createdAt: '2025-09-01T10:00:00.000Z'
+                  createdAt: '2025-09-01T10:00:00.000Z',
+                  lastModified: '2025-09-01T10:00:00.000Z',
+                  defaultScale: 1.0,
+                  defaultOpacity: 1.0,
                 }
               ],
               texts: [],
               audio: { bgm: null, se: [] },
-              statistics: { totalImageSize: 0, totalAudioSize: 0, usedSlots: { objects: 1, texts: 0, sounds: 0 }}
+              statistics: { 
+                totalImageSize: 0, 
+                totalAudioSize: 0, 
+                totalSize: 0,
+                usedSlots: { 
+                  background: 0,
+                  objects: 1, 
+                  texts: 0, 
+                  bgm: 0,
+                  se: 0 
+                },
+                limitations: {
+                  isNearImageLimit: false,
+                  isNearAudioLimit: false,
+                  isNearTotalLimit: false,
+                  hasViolations: false
+                }
+              },
+              lastModified: '2025-09-01T10:00:00.000Z'
             },
             script: {
               layout: {
@@ -201,7 +225,20 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
               flags: [],
               rules: [],
               successConditions: [],
-              statistics: { totalRules: 0, totalConditions: 0, totalActions: 0, complexityScore: 0 }
+              statistics: { 
+                totalRules: 0, 
+                totalConditions: 0, 
+                totalActions: 0, 
+                complexityScore: 0,
+                usedTriggerTypes: [],
+                usedActionTypes: [],
+                flagCount: 0,
+                estimatedCPUUsage: 'low',
+                estimatedMemoryUsage: 0,
+                maxConcurrentEffects: 0
+              },
+              version: '1.0.0',
+              lastModified: '2025-09-01T10:00:00.000Z'
             },
             settings: {
               name: 'マイゲーム1',
@@ -213,7 +250,33 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 allowComments: true,
                 allowRemix: true
               },
-              export: { includeSourceData: true, compressionLevel: 'medium' }
+              preview: {},
+              export: { includeSourceData: true, compressionLevel: 'medium', format: 'json' }
+            },
+            metadata: {
+              statistics: {
+                totalEditTime: 0,
+                saveCount: 0,
+                testPlayCount: 0,
+                publishCount: 0
+              },
+              usage: {
+                lastOpened: '2025-09-01T10:00:00.000Z',
+                totalOpenCount: 1,
+                averageSessionTime: 0
+              },
+              performance: {
+                lastBuildTime: 0,
+                averageFPS: 60,
+                memoryUsage: 0
+              }
+            },
+            versionHistory: [],
+            projectSettings: {
+              autoSaveInterval: 30000,
+              backupEnabled: true,
+              compressionEnabled: false,
+              maxVersionHistory: 10
             }
           }
         ];
