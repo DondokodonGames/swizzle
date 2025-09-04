@@ -141,7 +141,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
             id: crypto.randomUUID(),
             name: 'Background',
             frames: [frame],
-            animationSettings: { speed: 10, loop: true, pingPong: false, autoStart: true }, // autoStart追加
+            animationSettings: { speed: 10, loop: true, pingPong: false, autoStart: true },
             totalSize: frame.fileSize,
             createdAt: now,
             lastModified: now
@@ -151,7 +151,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
             id: crypto.randomUUID(),
             name: `オブジェクト${updatedAssets.objects.length + 1}`,
             frames: [frame],
-            animationSettings: { speed: 10, loop: true, pingPong: false, autoStart: true }, // autoStart追加
+            animationSettings: { speed: 10, loop: true, pingPong: false, autoStart: true },
             totalSize: frame.fileSize,
             createdAt: now,
             lastModified: now,
@@ -234,7 +234,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         fontFamily: 'Inter, sans-serif'
       },
       createdAt: now,
-      lastModified: now  // lastModified追加
+      lastModified: now
     };
 
     const updatedAssets = { ...project.assets };
@@ -396,3 +396,312 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
               activeAssetType === tab.id
                 ? 'bg-white text-purple-600 shadow-sm'
                 : 'text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            <span>{tab.icon}</span>
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* 背景管理セクション */}
+      {activeAssetType === 'background' && (
+        <div>
+          <h3 className="text-lg font-semibold mb-4 flex items-center">
+            🖼️ 背景
+            <span className="ml-2 text-sm text-gray-500">(1枚まで)</span>
+          </h3>
+
+          {project.assets.background ? (
+            <div className="bg-white rounded-xl border-2 border-gray-200 p-4 mb-4">
+              <div className="flex items-center space-x-4">
+                <img
+                  src={project.assets.background.frames[0].dataUrl}
+                  alt="背景プレビュー"
+                  className="w-20 h-36 object-cover rounded-lg border border-gray-200"
+                />
+                <div className="flex-1">
+                  <h4 className="font-medium text-lg">{project.assets.background.name}</h4>
+                  <p className="text-sm text-gray-500">
+                    {project.assets.background.frames[0].width}×{project.assets.background.frames[0].height}px
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {formatFileSize(project.assets.background.totalSize)}
+                  </p>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => deleteAsset('background')}
+                    className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 font-medium"
+                  >
+                    🗑️ 削除
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+                dragOver ? 'border-purple-400 bg-purple-50' : 'border-gray-300 hover:border-gray-400'
+              }`}
+            >
+              <div className="text-6xl mb-4">🖼️</div>
+              <p className="text-lg font-medium text-gray-700 mb-2">背景画像をアップロード</p>
+              <p className="text-sm text-gray-500 mb-4">
+                画像をドラッグ&ドロップするか、クリックしてファイルを選択
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50"
+              >
+                {uploading ? '処理中...' : 'ファイルを選択'}
+              </button>
+              <p className="text-xs text-gray-400 mt-4">
+                推奨サイズ: 1080×1920px (9:16) • 最大{formatFileSize(EDITOR_LIMITS.IMAGE.BACKGROUND_FRAME_MAX_SIZE)}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* オブジェクト管理セクション */}
+      {activeAssetType === 'objects' && (
+        <div>
+          <h3 className="text-lg font-semibold mb-4 flex items-center">
+            🎨 オブジェクト
+            <span className="ml-2 text-sm text-gray-500">
+              ({project.assets.objects.length}/{EDITOR_LIMITS.PROJECT.MAX_OBJECTS})
+            </span>
+          </h3>
+
+          {/* 既存オブジェクト一覧 */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+            {project.assets.objects.map((obj) => (
+              <div key={obj.id} className="bg-white rounded-xl border-2 border-gray-200 p-4">
+                <img
+                  src={obj.frames[0].dataUrl}
+                  alt={obj.name}
+                  className="w-full aspect-square object-cover rounded-lg mb-3"
+                />
+                <h4 className="font-medium text-sm">{obj.name}</h4>
+                <p className="text-xs text-gray-500">
+                  {formatFileSize(obj.totalSize)}
+                </p>
+                <button
+                  onClick={() => deleteAsset('objects', obj.id)}
+                  className="mt-2 w-full px-3 py-2 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200"
+                >
+                  🗑️ 削除
+                </button>
+              </div>
+            ))}
+
+            {/* 新規追加ボタン */}
+            {project.assets.objects.length < EDITOR_LIMITS.PROJECT.MAX_OBJECTS && (
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center aspect-square cursor-pointer transition-colors ${
+                  dragOver ? 'border-purple-400 bg-purple-50' : 'border-gray-300 hover:border-gray-400'
+                }`}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className="text-2xl mb-2">➕</div>
+                <span className="text-sm font-medium text-gray-600">オブジェクト追加</span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                  className="hidden"
+                />
+              </div>
+            )}
+          </div>
+
+          {project.assets.objects.length >= EDITOR_LIMITS.PROJECT.MAX_OBJECTS && (
+            <p className="text-center text-sm text-gray-500 py-4">
+              オブジェクトは最大{EDITOR_LIMITS.PROJECT.MAX_OBJECTS}個まで追加できます
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* テキスト管理セクション */}
+      {activeAssetType === 'texts' && (
+        <div>
+          <h3 className="text-lg font-semibold mb-4 flex items-center">
+            📝 テキスト
+            <span className="ml-2 text-sm text-gray-500">
+              ({project.assets.texts.length}/{EDITOR_LIMITS.TEXT.MAX_COUNT})
+            </span>
+          </h3>
+
+          {/* 既存テキスト一覧 */}
+          <div className="space-y-3 mb-6">
+            {project.assets.texts.map((text) => (
+              <div key={text.id} className="bg-white rounded-xl border-2 border-gray-200 p-4">
+                <div className="flex items-center justify-between">
+                  <div
+                    className="flex-1 text-2xl"
+                    style={{
+                      fontSize: `${text.style.fontSize}px`,
+                      color: text.style.color,
+                      fontWeight: text.style.fontWeight
+                    }}
+                  >
+                    {text.content}
+                  </div>
+                  <button
+                    onClick={() => deleteAsset('texts', text.id)}
+                    className="ml-4 px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 新規テキスト追加 */}
+          {project.assets.texts.length < EDITOR_LIMITS.TEXT.MAX_COUNT && (
+            <div className="bg-white rounded-xl border-2 border-gray-200 p-4">
+              <h4 className="font-medium mb-4">新しいテキストを追加</h4>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    テキスト内容 ({textContent.length}/{EDITOR_LIMITS.TEXT.MAX_LENGTH})
+                  </label>
+                  <input
+                    type="text"
+                    value={textContent}
+                    onChange={(e) => setTextContent(e.target.value)}
+                    maxLength={EDITOR_LIMITS.TEXT.MAX_LENGTH}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="テキストを入力..."
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      文字色
+                    </label>
+                    <input
+                      type="color"
+                      value={textColor}
+                      onChange={(e) => setTextColor(e.target.value)}
+                      className="w-full h-10 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      文字サイズ ({fontSize}px)
+                    </label>
+                    <input
+                      type="range"
+                      min={EDITOR_LIMITS.TEXT.MIN_FONT_SIZE}
+                      max={EDITOR_LIMITS.TEXT.MAX_FONT_SIZE}
+                      value={fontSize}
+                      onChange={(e) => setFontSize(parseInt(e.target.value))}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    フォントの太さ
+                  </label>
+                  <select
+                    value={fontWeight}
+                    onChange={(e) => setFontWeight(e.target.value as 'normal' | 'bold')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  >
+                    <option value="normal">標準</option>
+                    <option value="bold">太字</option>
+                  </select>
+                </div>
+
+                {/* プレビュー */}
+                <div className="p-4 bg-gray-100 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">プレビュー:</p>
+                  <div
+                    style={{
+                      fontSize: `${fontSize}px`,
+                      color: textColor,
+                      fontWeight: fontWeight
+                    }}
+                  >
+                    {textContent || 'テキストのプレビュー'}
+                  </div>
+                </div>
+
+                <button
+                  onClick={addTextAsset}
+                  disabled={!textContent.trim()}
+                  className="w-full px-4 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ✨ テキストを追加
+                </button>
+              </div>
+            </div>
+          )}
+
+          {project.assets.texts.length >= EDITOR_LIMITS.TEXT.MAX_COUNT && (
+            <p className="text-center text-sm text-gray-500 py-4">
+              テキストは最大{EDITOR_LIMITS.TEXT.MAX_COUNT}個まで追加できます
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* アップロード中オーバーレイ */}
+      {uploading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 text-center">
+            <div className="animate-spin text-4xl mb-4">🎨</div>
+            <p className="text-lg font-semibold">画像を処理中...</p>
+            <p className="text-sm text-gray-600 mt-2">少々お待ちください</p>
+          </div>
+        </div>
+      )}
+
+      {/* ドラッグオーバーレイ */}
+      {dragOver && (
+        <div className="fixed inset-0 bg-purple-600 bg-opacity-20 flex items-center justify-center z-40 pointer-events-none">
+          <div className="bg-white rounded-2xl p-8 text-center shadow-2xl">
+            <div className="text-6xl mb-4">📎</div>
+            <p className="text-xl font-semibold text-gray-800">ファイルをドロップしてください</p>
+            <p className="text-sm text-gray-600 mt-2">画像ファイルをここにドロップして追加</p>
+          </div>
+        </div>
+      )}
+
+      {/* 使用方法のヒント */}
+      <div className="mt-8 p-4 bg-blue-50 rounded-xl">
+        <h4 className="font-medium text-blue-800 mb-2">💡 アセット管理のヒント</h4>
+        <ul className="text-sm text-blue-700 space-y-1">
+          <li>• 背景は9:16（縦向き）の比率が推奨です</li>
+          <li>• オブジェクトは透明背景のPNG形式が推奨です</li>
+          <li>• テキストは{EDITOR_LIMITS.TEXT.MAX_LENGTH}文字以内で入力してください</li>
+          <li>• ファイルサイズが大きい場合は自動で最適化されます</li>
+        </ul>
+      </div>
+    </div>
+  );
+};

@@ -2,7 +2,6 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
 import { AudioAsset } from '../../../types/editor/ProjectAssets';
 import { EDITOR_LIMITS } from '../../../constants/EditorLimits';
-import { FileUploader, AssetUploaderPresets } from '../../common/FileUploader';
 
 interface AudioTabProps {
   project: GameProject;
@@ -10,6 +9,80 @@ interface AudioTabProps {
 }
 
 type AudioType = 'bgm' | 'se';
+
+// FileUploader コンポーネント（簡易版 - インライン実装）
+interface FileUploaderProps {
+  accept: string;
+  maxSize: number;
+  onUpload: (files: FileList) => void;
+  disabled?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}
+
+const FileUploader: React.FC<FileUploaderProps> = ({
+  accept,
+  maxSize,
+  onUpload,
+  disabled = false,
+  className = '',
+  children
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!disabled) setDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    
+    if (disabled) return;
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      onUpload(files);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      onUpload(files);
+    }
+  };
+
+  return (
+    <div
+      className={`${className} ${dragOver ? 'bg-purple-50 border-purple-400' : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={accept}
+        onChange={handleFileSelect}
+        disabled={disabled}
+        className="hidden"
+      />
+      <div
+        onClick={() => !disabled && fileInputRef.current?.click()}
+        className="cursor-pointer"
+      >
+        {children}
+      </div>
+    </div>
+  );
+};
 
 // 音声ファイルの情報を取得
 const getAudioInfo = (file: File): Promise<{
@@ -117,6 +190,11 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
 
     try {
       const file = files[0];
+      
+      if (!file || !file.type.startsWith('audio/')) {
+        alert('音声ファイルを選択してください');
+        return;
+      }
       
       // 音声情報取得
       const audioInfo = await getAudioInfo(file);
@@ -497,11 +575,26 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
             </div>
           ) : (
             <FileUploader
-              {...AssetUploaderPresets.BGM}
+              accept="audio/*"
+              maxSize={EDITOR_LIMITS.AUDIO.BGM_MAX_SIZE}
               onUpload={(files: FileList) => handleAudioUpload(files, 'bgm')}
               disabled={uploading}
               className="mb-4"
-            />
+            >
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-400 hover:bg-purple-50 transition-colors">
+                <div className="text-6xl mb-4">🎵</div>
+                <p className="text-lg font-medium text-gray-700 mb-2">BGMをアップロード</p>
+                <p className="text-sm text-gray-500 mb-4">
+                  音声ファイルをドラッグ&ドロップするか、クリックして選択
+                </p>
+                <div className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium inline-block">
+                  {uploading ? '処理中...' : 'ファイルを選択'}
+                </div>
+                <p className="text-xs text-gray-400 mt-4">
+                  最大{EDITOR_LIMITS.AUDIO.BGM_MAX_DURATION}秒 • {formatFileSize(EDITOR_LIMITS.AUDIO.BGM_MAX_SIZE)}まで
+                </p>
+              </div>
+            </FileUploader>
           )}
         </div>
       )}
@@ -590,11 +683,26 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
           {/* 新規効果音追加 */}
           {project.assets.audio.se.length < EDITOR_LIMITS.PROJECT.MAX_SE_COUNT && (
             <FileUploader
-              {...AssetUploaderPresets.AUDIO}
+              accept="audio/*"
+              maxSize={EDITOR_LIMITS.AUDIO.SE_MAX_SIZE}
               onUpload={(files: FileList) => handleAudioUpload(files, 'se')}
               disabled={uploading}
               className="mb-4"
-            />
+            >
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-purple-400 hover:bg-purple-50 transition-colors">
+                <div className="text-4xl mb-3">🔊</div>
+                <p className="text-lg font-medium text-gray-700 mb-2">効果音を追加</p>
+                <p className="text-sm text-gray-500 mb-3">
+                  音声ファイルをドラッグ&ドロップ
+                </p>
+                <div className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium inline-block">
+                  {uploading ? '処理中...' : 'ファイルを選択'}
+                </div>
+                <p className="text-xs text-gray-400 mt-3">
+                  最大{EDITOR_LIMITS.AUDIO.SE_MAX_DURATION}秒 • {formatFileSize(EDITOR_LIMITS.AUDIO.SE_MAX_SIZE)}まで
+                </p>
+              </div>
+            </FileUploader>
           )}
         </div>
       )}

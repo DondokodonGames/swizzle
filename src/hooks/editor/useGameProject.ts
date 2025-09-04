@@ -50,6 +50,56 @@ const createDefaultProject = (name: string): GameProject => {
     status: 'draft',
     totalSize: 0,
     
+    // 修正: 不足プロパティ追加
+    metadata: {
+      statistics: {
+        totalEditTime: 0,
+        saveCount: 0,
+        testPlayCount: 0,
+        publishCount: 0
+      },
+      usage: {
+        lastOpened: new Date().toISOString(),
+        totalOpenCount: 1,
+        averageSessionTime: 0
+      },
+      performance: {
+        lastBuildTime: 0,
+        averageFPS: 60,
+        memoryUsage: 0
+      }
+    },
+    
+    versionHistory: [
+      {
+        id: crypto.randomUUID(),
+        version: '1.0.0',
+        createdAt: new Date().toISOString(),
+        description: 'プロジェクト作成',
+        author: 'Anonymous',
+        changes: [
+          {
+            type: 'added',
+            category: 'assets',
+            description: 'プロジェクト作成',
+            affectedItems: []
+          }
+        ],
+        snapshot: {
+          assetsCount: { background: 0, objects: 0, texts: 0, bgm: 0, se: 0 },
+          rulesCount: 0,
+          totalSize: 0
+        }
+      }
+    ],
+    
+    projectSettings: {
+      autoSaveInterval: 30000,
+      backupEnabled: true,
+      compressionEnabled: false,
+      maxVersionHistory: 10
+    },
+    
     assets: {
       background: null,
       objects: [],
@@ -58,8 +108,22 @@ const createDefaultProject = (name: string): GameProject => {
       statistics: {
         totalImageSize: 0,
         totalAudioSize: 0,
-        usedSlots: { objects: 0, texts: 0, sounds: 0 }
-      }
+        totalSize: 0,
+        usedSlots: { 
+          background: 0,
+          objects: 0, 
+          texts: 0, 
+          bgm: 0,    // 修正: sounds → bgm
+          se: 0      // 修正: sounds → se
+        },
+        limitations: {
+          isNearImageLimit: false,
+          isNearAudioLimit: false,
+          isNearTotalLimit: false,
+          hasViolations: false
+        }
+      },
+      lastModified: new Date().toISOString()
     },
     
     script: {
@@ -72,7 +136,22 @@ const createDefaultProject = (name: string): GameProject => {
       flags: [],
       rules: [],
       successConditions: [],
-      statistics: { totalRules: 0, totalConditions: 0, totalActions: 0, complexityScore: 0 }
+      statistics: { 
+        totalRules: 0, 
+        totalConditions: 0, 
+        totalActions: 0, 
+        complexityScore: 0,
+        // 修正: 不足プロパティ追加
+        usedTriggerTypes: [],
+        usedActionTypes: [],
+        flagCount: 0,
+        estimatedCPUUsage: 'low' as const,
+        estimatedMemoryUsage: 0,
+        maxConcurrentEffects: 0
+      },
+      // 修正: 不足プロパティ追加
+      version: '1.0.0',
+      lastModified: new Date().toISOString()
     },
     
     settings: {
@@ -85,13 +164,46 @@ const createDefaultProject = (name: string): GameProject => {
         allowComments: true,
         allowRemix: true
       },
-      export: { includeSourceData: true, compressionLevel: 'medium' }
+      preview: {},
+      export: { 
+        includeSourceData: true, 
+        compressionLevel: 'medium',
+        format: 'json' // 修正: format追加
+      }
     },
     
+    // 修正: EditorState完全化
     editorState: {
       activeTab: 'assets',
       lastSaved: new Date().toISOString(),
-      autoSaveEnabled: true
+      autoSaveEnabled: true,
+      tabStates: {
+        assets: {
+          selectedAssetType: null,
+          selectedAssetId: null,
+          showAnimationEditor: false
+        },
+        audio: {
+          selectedAudioType: null,
+          selectedAudioId: null,
+          isPlaying: false
+        },
+        script: {
+          mode: 'layout',
+          selectedObjectId: null,
+          selectedRuleId: null,
+          showRuleEditor: false
+        },
+        settings: {
+          showTestPlay: false,
+          lastTestResult: null
+        }
+      },
+      ui: {
+        sidebarCollapsed: false,
+        previewVisible: true,
+        capacityMeterExpanded: false
+      }
     }
   };
 };
@@ -572,7 +684,7 @@ const calculateTotalSize = (project: GameProject): number => {
   return total;
 };
 
-// アセット統計計算
+// アセット統計計算（修正版）
 const calculateAssetStatistics = (assets: ProjectAssets): ProjectAssets['statistics'] => {
   let totalImageSize = 0;
   let totalAudioSize = 0;
@@ -596,15 +708,24 @@ const calculateAssetStatistics = (assets: ProjectAssets): ProjectAssets['statist
   return {
     totalImageSize,
     totalAudioSize,
+    totalSize: totalImageSize + totalAudioSize,
     usedSlots: {
+      background: assets.background ? 1 : 0,
       objects: assets.objects.length,
       texts: assets.texts.length,
-      sounds: assets.audio.se.length + (assets.audio.bgm ? 1 : 0)
+      bgm: assets.audio.bgm ? 1 : 0,    // 修正: sounds → bgm
+      se: assets.audio.se.length        // 修正: sounds → se
+    },
+    limitations: {
+      isNearImageLimit: false,
+      isNearAudioLimit: false,
+      isNearTotalLimit: false,
+      hasViolations: false
     }
   };
 };
 
-// スクリプト統計計算
+// スクリプト統計計算（修正版）
 const calculateScriptStatistics = (script: GameScript): GameScript['statistics'] => {
   let totalConditions = 0;
   let totalActions = 0;
@@ -627,6 +748,13 @@ const calculateScriptStatistics = (script: GameScript): GameScript['statistics']
     totalRules: script.rules.length,
     totalConditions,
     totalActions,
-    complexityScore
+    complexityScore,
+    // 修正: 不足プロパティ追加
+    usedTriggerTypes: [],
+    usedActionTypes: [],
+    flagCount: script.flags.length,
+    estimatedCPUUsage: complexityScore < 30 ? 'low' : complexityScore < 70 ? 'medium' : 'high',
+    estimatedMemoryUsage: script.rules.length * 1024, // 概算
+    maxConcurrentEffects: Math.min(10, script.rules.length)
   };
 };
