@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { GameProject } from '../../types/editor/GameProject';
-import { EDITOR_LIMITS } from '../../constants/EditorLimits';
+import { GameProject } from '../../../types/editor/GameProject';
+import { EDITOR_LIMITS } from '../../../constants/EditorLimits';
 
 export interface ProjectCardProps {
   project: GameProject;
@@ -73,14 +73,14 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   const sizeInMB = (stats.totalSize / 1024 / 1024).toFixed(1);
   const sizePercentage = (stats.totalSize / EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE) * 100;
 
-  // ステータス設定
+  // ステータス設定（型安全に修正）
   const statusConfig = {
     published: { label: '公開済み', class: 'bg-green-100 text-green-800' },
     testing: { label: 'テスト中', class: 'bg-blue-100 text-blue-800' },
     draft: { label: '下書き', class: 'bg-gray-100 text-gray-800' }
-  };
+  } as const;
 
-  const status = statusConfig[project.status] || statusConfig.draft;
+  const status = statusConfig[project.status as keyof typeof statusConfig] || statusConfig.draft;
 
   // 完成度計算
   const completionScore = Math.round(

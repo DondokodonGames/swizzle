@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
 import { AudioAsset } from '../../../types/editor/ProjectAssets';
 import { EDITOR_LIMITS } from '../../../constants/EditorLimits';
-import { FileUploader, AssetUploaderPresets } from '../common/FileUploader';
+import { FileUploader, AssetUploaderPresets } from '../../common/FileUploader';
 
 interface AudioTabProps {
   project: GameProject;
@@ -110,7 +110,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
                      (EDITOR_LIMITS.AUDIO.SE_MAX_SIZE * EDITOR_LIMITS.PROJECT.MAX_SE_COUNT);
   const audioSizePercentage = (audioSize / maxAudioSize) * 100;
 
-  // 音声ファイルアップロード処理
+  // 音声ファイルアップロード処理（修正版 - files型指定）
   const handleAudioUpload = useCallback(async (files: FileList, type: AudioType) => {
     if (uploading) return;
     setUploading(true);
@@ -138,6 +138,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
       const reader = new FileReader();
       reader.onload = (e) => {
         const dataUrl = e.target?.result as string;
+        const now = new Date().toISOString();
         
         const newAudioAsset: AudioAsset = {
           id: crypto.randomUUID(),
@@ -149,7 +150,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
           format: audioInfo.format,
           volume: 0.8,
           loop: type === 'bgm',
-          uploadedAt: new Date().toISOString()
+          uploadedAt: now
         };
 
         // プロジェクト更新
@@ -161,21 +162,38 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
           updatedAssets.audio.se.push(newAudioAsset);
         }
 
-        // 統計更新
+        // 統計更新（修正版 - sounds → bgm + se分離）
+        const imageSize = updatedAssets.objects.reduce((sum, obj) => sum + obj.totalSize, 0) + 
+                         (updatedAssets.background?.totalSize || 0);
+        const audioSize = (updatedAssets.audio.bgm?.fileSize || 0) + 
+                         updatedAssets.audio.se.reduce((sum, se) => sum + se.fileSize, 0);
+
         updatedAssets.statistics = {
-          ...updatedAssets.statistics,
-          totalAudioSize: getAudioSize() + file.size,
+          totalImageSize: imageSize,
+          totalAudioSize: audioSize,
+          totalSize: imageSize + audioSize,
           usedSlots: {
-            ...updatedAssets.statistics.usedSlots,
-            sounds: updatedAssets.audio.se.length + (updatedAssets.audio.bgm ? 1 : 0)
+            background: updatedAssets.background ? 1 : 0,
+            objects: updatedAssets.objects.length,
+            texts: updatedAssets.texts.length,
+            bgm: updatedAssets.audio.bgm ? 1 : 0,
+            se: updatedAssets.audio.se.length
+          },
+          limitations: {
+            isNearImageLimit: false,
+            isNearAudioLimit: audioSize > maxAudioSize * 0.8,
+            isNearTotalLimit: (imageSize + audioSize) > EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE * 0.8,
+            hasViolations: false
           }
         };
+
+        updatedAssets.lastModified = now;
 
         onProjectUpdate({
           ...project,
           assets: updatedAssets,
-          totalSize: project.totalSize + file.size,
-          lastModified: new Date().toISOString()
+          totalSize: imageSize + audioSize,
+          lastModified: now
         });
       };
 
@@ -186,7 +204,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
     } finally {
       setUploading(false);
     }
-  }, [project, onProjectUpdate, uploading, getAudioSize]);
+  }, [project, onProjectUpdate, uploading, maxAudioSize]);
 
   // 音声再生
   const playAudio = useCallback((audio: AudioAsset) => {
@@ -225,6 +243,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
   const deleteAudio = useCallback((type: AudioType, id?: string) => {
     const updatedAssets = { ...project.assets };
     let removedSize = 0;
+    const now = new Date().toISOString();
 
     if (type === 'bgm' && updatedAssets.audio.bgm) {
       removedSize = updatedAssets.audio.bgm.fileSize;
@@ -243,27 +262,45 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
       stopAudio();
     }
 
-    // 統計更新
+    // 統計更新（修正版 - sounds → bgm + se分離）
+    const imageSize = updatedAssets.objects.reduce((sum, obj) => sum + obj.totalSize, 0) + 
+                     (updatedAssets.background?.totalSize || 0);
+    const audioSize = (updatedAssets.audio.bgm?.fileSize || 0) + 
+                     updatedAssets.audio.se.reduce((sum, se) => sum + se.fileSize, 0);
+
     updatedAssets.statistics = {
-      ...updatedAssets.statistics,
-      totalAudioSize: updatedAssets.statistics.totalAudioSize - removedSize,
+      totalImageSize: imageSize,
+      totalAudioSize: audioSize,
+      totalSize: imageSize + audioSize,
       usedSlots: {
-        ...updatedAssets.statistics.usedSlots,
-        sounds: updatedAssets.audio.se.length + (updatedAssets.audio.bgm ? 1 : 0)
+        background: updatedAssets.background ? 1 : 0,
+        objects: updatedAssets.objects.length,
+        texts: updatedAssets.texts.length,
+        bgm: updatedAssets.audio.bgm ? 1 : 0,
+        se: updatedAssets.audio.se.length
+      },
+      limitations: {
+        isNearImageLimit: false,
+        isNearAudioLimit: false,
+        isNearTotalLimit: false,
+        hasViolations: false
       }
     };
+
+    updatedAssets.lastModified = now;
 
     onProjectUpdate({
       ...project,
       assets: updatedAssets,
       totalSize: project.totalSize - removedSize,
-      lastModified: new Date().toISOString()
+      lastModified: now
     });
   }, [project, onProjectUpdate, playingId, stopAudio]);
 
   // 音声プロパティ更新
   const updateAudioProperty = useCallback((type: AudioType, id: string, property: string, value: any) => {
     const updatedAssets = { ...project.assets };
+    const now = new Date().toISOString();
     
     if (type === 'bgm' && updatedAssets.audio.bgm?.id === id) {
       updatedAssets.audio.bgm = {
@@ -280,10 +317,12 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
       }
     }
 
+    updatedAssets.lastModified = now;
+
     onProjectUpdate({
       ...project,
       assets: updatedAssets,
-      lastModified: new Date().toISOString()
+      lastModified: now
     });
   }, [project, onProjectUpdate]);
 
@@ -459,7 +498,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
           ) : (
             <FileUploader
               {...AssetUploaderPresets.BGM}
-              onUpload={(files) => handleAudioUpload(files, 'bgm')}
+              onUpload={(files: FileList) => handleAudioUpload(files, 'bgm')}
               disabled={uploading}
               className="mb-4"
             />
@@ -552,7 +591,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
           {project.assets.audio.se.length < EDITOR_LIMITS.PROJECT.MAX_SE_COUNT && (
             <FileUploader
               {...AssetUploaderPresets.AUDIO}
-              onUpload={(files) => handleAudioUpload(files, 'se')}
+              onUpload={(files: FileList) => handleAudioUpload(files, 'se')}
               disabled={uploading}
               className="mb-4"
             />
