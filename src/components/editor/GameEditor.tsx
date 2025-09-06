@@ -1,4 +1,4 @@
-// src/components/editor/GameEditor.tsx - テーマシステム統合版
+// src/components/editor/GameEditor.tsx - TypeScriptエラー修正版
 import React, { useState, useEffect } from 'react';
 import { useGameTheme, ThemeType, GameCategory } from '../ui/GameThemeProvider';
 import GameThemeProvider from '../ui/GameThemeProvider';
@@ -41,7 +41,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
 
-  // テーマシステム統合
+  // テーマシステム統合（修正版）
   const { 
     currentTheme, 
     themeType, 
@@ -185,9 +185,9 @@ export const GameEditor: React.FC<GameEditorProps> = ({
           <option value="arcade">🕹️ アーケード</option>
           <option value="retro">📺 レトロ</option>
           <option value="neon">💫 ネオン</option>
-          <option value="pastel">🌸 パステル</option>
+          <option value="cute">🌸 かわいい</option>
           <option value="dark">🌙 ダーク</option>
-          <option value="light">☀️ ライト</option>
+          <option value="minimal">☀️ ミニマル</option>
         </select>
       </div>
 
@@ -453,7 +453,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
             borderColor: currentTheme.colors.border
           }}
         >
-          <div>🎯 Phase 7 Week 1 Day 2完了</div>
+          <div>🎯 Phase 7 Week 1 Day 3完了</div>
           <div>🎨 テーマ: {currentTheme.name}</div>
           <div>📊 Assets: {project.assets.objects.length}, Rules: {project.script.rules.length}</div>
           <div>💾 Size: {(totalSize / 1024 / 1024).toFixed(1)}MB</div>

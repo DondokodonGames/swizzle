@@ -1,4 +1,4 @@
-// src/components/ui/ArcadeButton.tsx
+// src/components/ui/ArcadeButton.tsx - TypeScriptエラー修正版
 import React, { ButtonHTMLAttributes, forwardRef, useState, useCallback } from 'react';
 import { useGameTheme } from './GameThemeProvider';
 
@@ -45,7 +45,7 @@ export interface ArcadeButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonE
   children: React.ReactNode;
 }
 
-// 🎯 バリアント別スタイル定義
+// 🎯 バリアント別スタイル定義（修正版）
 const getVariantStyles = (variant: ButtonVariant, colors: any) => {
   const styles = {
     primary: {
@@ -91,7 +91,7 @@ const getVariantStyles = (variant: ButtonVariant, colors: any) => {
       boxShadow: 'none'
     },
     gradient: {
-      background: `linear-gradient(135deg, ${colors.gradientFrom}, ${colors.gradientTo})`,
+      background: `linear-gradient(135deg, ${colors.gradientFrom || colors.primary}, ${colors.gradientTo || colors.secondary})`,
       color: colors.text,
       border: 'none',
       boxShadow: `0 6px 16px ${colors.primary}30`
@@ -174,7 +174,7 @@ const getEffectClasses = (effects: ButtonEffects, isActive: boolean) => {
   return classes.join(' ');
 };
 
-// 🎮 ArcadeButton コンポーネント
+// 🎮 ArcadeButton コンポーネント（修正版）
 export const ArcadeButton = forwardRef<HTMLButtonElement, ArcadeButtonProps>(({
   variant = 'primary',
   size = 'md',
@@ -190,6 +190,7 @@ export const ArcadeButton = forwardRef<HTMLButtonElement, ArcadeButtonProps>(({
   style = {},
   ...props
 }, ref) => {
+  // テーマフック使用（修正版）
   const { currentTheme } = useGameTheme();
   const [isPressed, setIsPressed] = useState(false);
   const [isHovered, setIsHovered] = useState(false);

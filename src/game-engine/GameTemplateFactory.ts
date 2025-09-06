@@ -5,9 +5,9 @@ import { CuteTapGame } from './CuteTapGame';
 // 動的に拡張可能なゲームタイプ（将来1000種類対応）
 export type GameType = string;
 
-// 基本ゲームタイプ（最初の20種類）
+// 基本ゲームタイプ（最初の22種類・cute-tap統一）
 export type BaseGameType = 
-  | 'cute_tap'
+  | 'cute-tap'
   | 'memory_match'
   | 'quick_dodge' 
   | 'timing_perfect'
@@ -26,7 +26,9 @@ export type BaseGameType =
   | 'size_perfect'
   | 'dreamy_jump'
   | 'magical_collect'
-  | 'balance_game';
+  | 'balance_game'
+  | 'shape_sort'
+  | 'lane_runner';
 
 // キャラクタータイプ
 export type CharacterType = 'girl' | 'animal' | 'child';
@@ -101,16 +103,16 @@ export class GameTemplateFactory {
 
   // 外部設定ファイルの読み込み（将来的にJSON/CSV対応）
   private static async loadTemplateConfigurations(): Promise<void> {
-    // Phase 1: 埋め込み設定データ
+    // Phase 1: 埋め込み設定データ（cute-tap最小限対応）
     const embeddedConfig: TemplateConfigData[] = [
       {
-        id: 'cute_tap',
-        name: 'キュートタップ',
-        description: 'キャラクターをタップしてスコアを稼ごう！',
-        instruction: 'キャラクターをタップして\n魔力を集めよう！',
+        id: 'cute-tap',
+        name: 'キュートタップ（削除予定）',
+        description: 'エラー表示のみ・Phase7で再実装予定',
+        instruction: 'ErrorCuteTap\n削除予定',
         category: 'action',
         duration: 10,
-        targetScore: 30
+        targetScore: 1
       },
       {
         id: 'memory_match',
@@ -282,6 +284,24 @@ export class GameTemplateFactory {
         category: 'timing',
         duration: 30,
         targetScore: 1
+      },
+      {
+        id: 'shape_sort',
+        name: 'シェイプソート',
+        description: '形を正しく分類しよう！',
+        instruction: '形をドラッグして\n正しいボックスに入れて！',
+        category: 'puzzle',
+        duration: 25,
+        targetScore: 10
+      },
+      {
+        id: 'lane_runner',
+        name: 'レーンランナー',
+        description: 'レーンを切り替えて障害物を避けよう！',
+        instruction: 'タップでレーン移動して\n障害物を避けて！',
+        category: 'action',
+        duration: 20,
+        targetScore: 15
       }
     ];
 
@@ -310,22 +330,21 @@ export class GameTemplateFactory {
         targetScore: config.targetScore,
         difficulty: config.difficulty || 'normal'
       },
-      implementationStatus: 'implemented' // 全て実装済みに変更
+      implementationStatus: config.id === 'cute-tap' ? 'fallback' : 'implemented'
     };
 
     const createInstance = async (app: PIXI.Application, settings: UnifiedGameSettings): Promise<GameTemplate | null> => {
       try {
         switch (config.id) {
-          case 'cute_tap':
-            case 'cute-tap':
-              return new CuteTapGame(app, {
-                timeLimit: 10,
-                difficulty: 'normal',
-                theme: 'cute',
-                duration: 10,
-                targetScore: 100
-              });
-            return await cuteTapTemplate.createInstance(app, settings, undefined);
+          case 'cute-tap':
+            // 最小限設定でCuteTapGameを作成（エラー表示のみ）
+            return new CuteTapGame(app, {
+              ...settings,
+              // GameSettingsで必須のdurationを確実に設定
+              duration: settings.duration || 10,
+              theme: 'cute',
+              targetScore: settings.targetScore || 1
+            });
 
           case 'memory_match':
             const { MemoryMatchGame } = await import('./MemoryMatchGame');
@@ -388,7 +407,6 @@ export class GameTemplateFactory {
             return new OrderMasterGame(app, settings);
 
           case 'size_perfect':
-            // TimingPerfectGameではなく、専用クラスを使用または代替処理
             const { ReactionSpeedGame } = await import('./ReactionSpeedGame');
             return new ReactionSpeedGame(app, settings);
 
@@ -403,6 +421,14 @@ export class GameTemplateFactory {
           case 'balance_game':
             const { BalanceGame } = await import('./BalanceGame');
             return new BalanceGame(app, settings);
+
+          case 'shape_sort':
+            const { ShapeSortGame } = await import('./ShapeSortGame');
+            return new ShapeSortGame(app, settings);
+
+          case 'lane_runner':
+            const { LaneRunnerGame } = await import('./LaneRunnerGame');
+            return new LaneRunnerGame(app, settings);
 
           default:
             console.warn(`Unknown template: ${config.id}, using fallback`);
@@ -429,22 +455,14 @@ export class GameTemplateFactory {
     console.warn(`Using customized fallback for ${config.id}`);
 
     try {
-//      // MemoryMatchGameをフォールバックとして使用
-//      const { MemoryMatchGame } = await import('./MemoryMatchGame');
-//      const fallbackTemplate = new MemoryMatchGame(app, settings);
+      // MemoryMatchGameをフォールバックとして使用
+      const { MemoryMatchGame } = await import('./MemoryMatchGame');
+      const fallbackTemplate = new MemoryMatchGame(app, settings);
 
-      const originalCreateScene = fallbackTemplate.createScene.bind(fallbackTemplate);
-      fallbackTemplate.createScene = async function() {
-        await originalCreateScene();
-        if (typeof this.customizeDisplayForFallback === 'function') {
-          this.customizeDisplayForFallback(config.name, config.instruction);
-        }
-      };
-
+      // フォールバック表示は一旦無効化（エラー回避）
       return fallbackTemplate;
     } catch (fallbackError) {
       console.error('Fallback template creation failed:', fallbackError);
-      // 最後の手段として、シンプルなGameTemplateを返す
       return this.createEmergencyFallback(app, settings);
     }
   }
@@ -490,7 +508,7 @@ export class GameTemplateFactory {
     }
   }
 
-  // 緊急時フォールバック（MemoryMatch固定）
+  // 緊急時フォールバック（修正版：pixiApp -> app）
   private static async createEmergencyFallback(
     app: PIXI.Application,
     settings: UnifiedGameSettings
@@ -510,42 +528,16 @@ export class GameTemplateFactory {
             fill: 0xff0000,
             align: 'center'
           });
+          // pixiApp -> app に修正
           text.x = this.app.screen.width / 2;
           text.y = this.app.screen.height / 2;
           text.anchor.set(0.5);
-          this.stage.addChild(text);
+          this.container.addChild(text);
         }
         
         handleInput(): void {}
         updateGame(): void {}
       })(app, settings);
-    }
-  }
-
-  // 実装済みテンプレートの動的アップグレード
-  static async upgradeToImplemented(
-    gameType: GameType,
-    templateClass: new (app: PIXI.Application, settings: UnifiedGameSettings) => GameTemplate
-  ): Promise<boolean> {
-    await this.ensureInitialized();
-    
-    const existing = this.registry.get(gameType);
-    if (!existing) {
-      console.error(`Template ${gameType} not found for upgrade`);
-      return false;
-    }
-
-    try {
-      this.registry.set(gameType, {
-        info: { ...existing.info, implementationStatus: 'implemented' },
-        createInstance: async (app, settings) => new templateClass(app, settings)
-      });
-      
-      console.log(`Template ${gameType} upgraded to implemented`);
-      return true;
-    } catch (error) {
-      console.error(`Failed to upgrade template ${gameType}:`, error);
-      return false;
     }
   }
 
