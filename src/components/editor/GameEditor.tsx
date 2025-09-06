@@ -1,12 +1,16 @@
+// src/components/editor/GameEditor.tsx - テーマシステム統合版
 import React, { useState, useEffect } from 'react';
+import { useGameTheme, ThemeType, GameCategory } from '../ui/GameThemeProvider';
+import GameThemeProvider from '../ui/GameThemeProvider';
+import ArcadeButton from '../ui/ArcadeButton';
 import { GameProject } from '../../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../../constants/EditorLimits';
 import { AssetsTab } from './tabs/AssetsTab';
 import { AudioTab } from './tabs/AudioTab';
-import ScriptTab from './tabs/ScriptTab';
-import SettingsTab from './tabs/SettingsTab';
+import { ScriptTab } from './tabs/ScriptTab';
+import { SettingsTab } from './tabs/SettingsTab';
 
-// タブタイプ定義
+// タブタイプ定義（既存保護）
 type EditorTab = 'assets' | 'audio' | 'script' | 'settings';
 
 interface GameEditorProps {
@@ -37,7 +41,16 @@ export const GameEditor: React.FC<GameEditorProps> = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
 
-  // プロジェクト更新時の処理
+  // テーマシステム統合
+  const { 
+    currentTheme, 
+    themeType, 
+    gameCategory, 
+    setThemeType, 
+    setGameCategory 
+  } = useGameTheme();
+
+  // プロジェクト更新時の処理（既存保護）
   const handleProjectUpdate = (updatedProject: GameProject) => {
     onProjectUpdate({
       ...updatedProject,
@@ -79,7 +92,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     setHasUnsavedChanges(true);
   };
 
-  // 自動保存機能
+  // 自動保存機能（既存保護）
   useEffect(() => {
     if (autoSaveEnabled && hasUnsavedChanges) {
       const autoSaveTimer = setTimeout(() => {
@@ -91,7 +104,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     }
   }, [autoSaveEnabled, hasUnsavedChanges, onSave]);
 
-  // 容量計算
+  // 容量計算（既存保護）
   const calculateTotalSize = (): number => {
     const assets = project.assets;
     let total = 0;
@@ -120,7 +133,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
   const totalSize = calculateTotalSize();
   const sizePercentage = (totalSize / EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE) * 100;
 
-  // タブの設定（動的バッジ表示）
+  // タブの設定（既存保護 + テーマ連動）
   const tabs = customTabs || [
     { 
       id: 'assets' as EditorTab, 
@@ -152,42 +165,121 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     }
   ];
 
+  // テーマセレクター
+  const renderThemeSelector = () => (
+    <div className="flex items-center space-x-3 mb-4">
+      <div className="flex items-center space-x-2">
+        <label className="text-sm font-medium" style={{ color: currentTheme.colors.text }}>
+          🎨 テーマ:
+        </label>
+        <select
+          value={themeType}
+          onChange={(e) => setThemeType(e.target.value as ThemeType)}
+          className="px-3 py-1 rounded-lg border text-sm"
+          style={{
+            background: currentTheme.colors.surface,
+            color: currentTheme.colors.text,
+            borderColor: currentTheme.colors.border
+          }}
+        >
+          <option value="arcade">🕹️ アーケード</option>
+          <option value="retro">📺 レトロ</option>
+          <option value="neon">💫 ネオン</option>
+          <option value="pastel">🌸 パステル</option>
+          <option value="dark">🌙 ダーク</option>
+          <option value="light">☀️ ライト</option>
+        </select>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <label className="text-sm font-medium" style={{ color: currentTheme.colors.text }}>
+          🎯 カテゴリ:
+        </label>
+        <select
+          value={gameCategory || ''}
+          onChange={(e) => setGameCategory(e.target.value as GameCategory || null)}
+          className="px-3 py-1 rounded-lg border text-sm"
+          style={{
+            background: currentTheme.colors.surface,
+            color: currentTheme.colors.text,
+            borderColor: currentTheme.colors.border
+          }}
+        >
+          <option value="">選択してください</option>
+          <option value="action">⚡ アクション</option>
+          <option value="puzzle">🧩 パズル</option>
+          <option value="timing">⏰ タイミング</option>
+          <option value="reaction">⚡ リアクション</option>
+        </select>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
-      {/* ヘッダー */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+    <div 
+      className="min-h-screen"
+      style={{ 
+        background: `linear-gradient(135deg, ${currentTheme.colors.background}, ${currentTheme.colors.surface})`,
+        color: currentTheme.colors.text
+      }}
+    >
+      {/* ヘッダー（テーマ適用） */}
+      <header 
+        className="shadow-sm border-b"
+        style={{ 
+          background: currentTheme.colors.surface,
+          borderColor: currentTheme.colors.border
+        }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             {/* プロジェクト情報 */}
             <div className="flex items-center space-x-4">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 
+                  className="text-2xl font-bold gradient-text"
+                  style={{ color: currentTheme.colors.text }}
+                >
                   {project.name || project.settings.name || 'マイゲーム'}
                 </h1>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
                   最終更新: {new Date(project.lastModified).toLocaleDateString('ja-JP')}
-                  {hasUnsavedChanges && <span className="text-orange-500 ml-2">• 未保存</span>}
-                  {project.status === 'published' && <span className="text-green-500 ml-2">• 公開中</span>}
+                  {hasUnsavedChanges && <span style={{ color: currentTheme.colors.warning }} className="ml-2">• 未保存</span>}
+                  {project.status === 'published' && <span style={{ color: currentTheme.colors.success }} className="ml-2">• 公開中</span>}
                 </p>
               </div>
             </div>
 
-            {/* アクション */}
+            {/* テーマセレクター */}
+            <div className="hidden lg:block">
+              {renderThemeSelector()}
+            </div>
+
+            {/* アクション（ArcadeButton使用） */}
             <div className="flex items-center space-x-3">
-              {/* 容量表示 */}
+              {/* 容量表示（テーマ適用） */}
               <div className="text-sm">
                 <div className="flex items-center space-x-2">
-                  <span className="text-gray-600">容量:</span>
-                  <div className="w-20 bg-gray-200 rounded-full h-2">
+                  <span style={{ color: currentTheme.colors.textSecondary }}>容量:</span>
+                  <div 
+                    className="w-20 rounded-full h-2"
+                    style={{ background: currentTheme.colors.border }}
+                  >
                     <div 
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        sizePercentage > 90 ? 'bg-red-500' : 
-                        sizePercentage > 70 ? 'bg-yellow-500' : 'bg-green-500'
-                      }`}
-                      style={{ width: `${Math.min(sizePercentage, 100)}%` }}
+                      className="h-2 rounded-full transition-all duration-300"
+                      style={{
+                        background: sizePercentage > 90 ? currentTheme.colors.error : 
+                                  sizePercentage > 70 ? currentTheme.colors.warning : currentTheme.colors.success,
+                        width: `${Math.min(sizePercentage, 100)}%`
+                      }}
                     />
                   </div>
-                  <span className={`text-xs ${sizePercentage > 90 ? 'text-red-600' : 'text-gray-600'}`}>
+                  <span 
+                    className="text-xs"
+                    style={{ 
+                      color: sizePercentage > 90 ? currentTheme.colors.error : currentTheme.colors.textSecondary 
+                    }}
+                  >
                     {(totalSize / 1024 / 1024).toFixed(1)}MB
                   </span>
                 </div>
@@ -201,56 +293,86 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                   onChange={(e) => setAutoSaveEnabled(e.target.checked)}
                   className="rounded"
                 />
-                <span className="text-gray-600">自動保存</span>
+                <span style={{ color: currentTheme.colors.textSecondary }}>自動保存</span>
               </label>
 
-              {/* アクションボタン */}
-              <button
+              {/* アクションボタン（ArcadeButton使用） */}
+              <ArcadeButton
+                variant="secondary"
+                size="sm"
                 onClick={onSave}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium text-gray-700 transition-colors"
+                disabled={!hasUnsavedChanges}
               >
                 💾 保存
-              </button>
-              <button
+              </ArcadeButton>
+              
+              <ArcadeButton
+                variant="primary"
+                size="sm"
                 onClick={onTestPlay}
-                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+                effects={{ glow: true }}
               >
                 ▶️ テスト
-              </button>
-              <button
+              </ArcadeButton>
+              
+              <ArcadeButton
+                variant="gradient"
+                size="sm"
                 onClick={onPublish}
-                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-medium transition-colors"
+                effects={{ glow: true, pulse: true }}
               >
                 🚀 公開
-              </button>
+              </ArcadeButton>
             </div>
+          </div>
+
+          {/* モバイル用テーマセレクター */}
+          <div className="lg:hidden pb-4">
+            {renderThemeSelector()}
           </div>
         </div>
       </header>
 
-      {/* タブナビゲーション */}
-      <nav className="bg-white shadow-sm">
+      {/* タブナビゲーション（テーマ適用） */}
+      <nav 
+        className="shadow-sm"
+        style={{ background: currentTheme.colors.surface }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-1 py-3">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex items-center space-x-2 px-6 py-3 rounded-full font-semibold transition-all duration-200 ${
-                  activeTab === tab.id
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md scale-105'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:scale-102'
+                className={`relative flex items-center space-x-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+                  activeTab === tab.id ? 'scale-105' : 'hover:scale-102'
                 }`}
+                style={{
+                  background: activeTab === tab.id 
+                    ? `linear-gradient(135deg, ${currentTheme.colors.primary}, ${currentTheme.colors.secondary})`
+                    : currentTheme.colors.background,
+                  color: activeTab === tab.id ? currentTheme.colors.text : currentTheme.colors.textSecondary,
+                  borderColor: currentTheme.colors.border,
+                  boxShadow: activeTab === tab.id 
+                    ? `0 4px 12px ${currentTheme.colors.primary}40` 
+                    : 'none'
+                }}
               >
                 <span className="text-lg">{tab.icon}</span>
                 <span>{tab.label}</span>
-                {/* バッジ表示 */}
+                {/* バッジ表示（テーマ適用） */}
                 {tab.badge && (
-                  <span className={`absolute -top-1 -right-1 min-w-5 h-5 flex items-center justify-center text-xs font-bold rounded-full ${
-                    activeTab === tab.id 
-                      ? 'bg-white text-purple-600' 
-                      : 'bg-red-500 text-white'
-                  }`}>
+                  <span 
+                    className="absolute -top-1 -right-1 min-w-5 h-5 flex items-center justify-center text-xs font-bold rounded-full"
+                    style={{
+                      background: activeTab === tab.id 
+                        ? currentTheme.colors.surface
+                        : currentTheme.colors.accent,
+                      color: activeTab === tab.id 
+                        ? currentTheme.colors.primary
+                        : currentTheme.colors.text
+                    }}
+                  >
                     {tab.badge}
                   </span>
                 )}
@@ -260,18 +382,24 @@ export const GameEditor: React.FC<GameEditorProps> = ({
           
           {/* タブ説明 */}
           <div className="pb-3">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
               {tabs.find(tab => tab.id === activeTab)?.description}
             </p>
           </div>
         </div>
       </nav>
 
-      {/* メインコンテンツエリア */}
+      {/* メインコンテンツエリア（テーマ適用） */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 min-h-[600px]">
+        <div 
+          className="rounded-2xl shadow-lg border min-h-[600px]"
+          style={{ 
+            background: currentTheme.colors.surface,
+            borderColor: currentTheme.colors.border
+          }}
+        >
           <div className="p-6">
-            {/* タブ別コンテンツ */}
+            {/* タブ別コンテンツ（既存保護） */}
             {activeTab === 'assets' && (
               <AssetsTab 
                 project={project} 
@@ -303,17 +431,30 @@ export const GameEditor: React.FC<GameEditorProps> = ({
         </div>
       </main>
 
-      {/* フローティングヘルプボタン */}
+      {/* フローティングヘルプボタン（テーマ適用） */}
       <div className="fixed bottom-6 right-6">
-        <button className="bg-purple-500 hover:bg-purple-600 text-white p-4 rounded-full shadow-lg transition-colors">
+        <ArcadeButton
+          variant="primary"
+          size="lg"
+          effects={{ glow: true, pulse: true }}
+          style={{ borderRadius: '50%', padding: '16px' }}
+        >
           <span className="text-xl">❓</span>
-        </button>
+        </ArcadeButton>
       </div>
 
-      {/* 開発進捗表示（デバッグ用） */}
+      {/* 開発進捗表示（デバッグ用・テーマ適用） */}
       {process.env.NODE_ENV === 'development' && (
-        <div className="fixed bottom-6 left-6 bg-black bg-opacity-80 text-white text-xs p-3 rounded-lg">
-          <div>🎯 Phase 6.4 完了</div>
+        <div 
+          className="fixed bottom-6 left-6 text-xs p-3 rounded-lg"
+          style={{ 
+            background: `${currentTheme.colors.background}E6`,
+            color: currentTheme.colors.text,
+            borderColor: currentTheme.colors.border
+          }}
+        >
+          <div>🎯 Phase 7 Week 1 Day 2完了</div>
+          <div>🎨 テーマ: {currentTheme.name}</div>
           <div>📊 Assets: {project.assets.objects.length}, Rules: {project.script.rules.length}</div>
           <div>💾 Size: {(totalSize / 1024 / 1024).toFixed(1)}MB</div>
         </div>
@@ -321,4 +462,3 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     </div>
   );
 };
-

@@ -1,9 +1,7 @@
 // src/App.tsx - エディター機能統合版（Phase 6.2対応）
 import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import GameSequence from './components/GameSequence';
-import TemplateTestMode from './components/TemplateTestMode';
-import DebugPanel from './components/DebugPanel';
-import { ViewportTestWrapper } from './components/SimpleViewportTest';
+import './styles/arcade-theme.css';
 
 // エディターアプリのプロパティ型を定義
 interface EditorAppProps {
@@ -384,7 +382,7 @@ const AuthenticatedUserInfo: React.FC = () => {
 
 // メインアプリケーションコンポーネント
 function MainApp() {
-  const [mode, setMode] = useState<AppMode>('sequence'); // ✨ editorモード追加
+  const [mode, setMode] = useState<AppMode>('sequence'); // ✨ editorモード追加 
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   
   // 音量設定状態
@@ -618,7 +616,31 @@ function MainApp() {
             onExit={handleExitSequence}
           />
         )}
-        {mode === 'test' && <TemplateTestMode onExit={handleSwitchToSequence} />}
+        {/* ❌ コメントアウト: TemplateTestMode は存在しないため */}
+        {/* {mode === 'test' && <TemplateTestMode onExit={handleSwitchToSequence} />} */}
+        {mode === 'test' && (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
+            <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>テストモード未実装</h2>
+            <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+              TemplateTestModeコンポーネントが見つかりません。
+            </p>
+            <button
+              onClick={handleSwitchToSequence}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              通常プレイに戻る
+            </button>
+          </div>
+        )}
       </main>
 
       {/* フッター */}
@@ -645,11 +667,12 @@ function MainApp() {
           📱 ビューポート統合・アセット仕様策定 | 9:16アスペクト比対応
         </div>
         <div style={{ fontSize: '12px', marginTop: '5px', color: '#22c55e' }}>
-          🔊 音量設定・ゲーム内UI統合完了 | 残り時間バー・オーバーレイ統合
+          📊 音量設定・ゲーム内UI統合完了 | 残り時間バー・オーバーレイ統合
         </div>
-        <div style={{ fontSize: '12px', marginTop: '5px', color: '#8b5cf6' }}>
+        {/* ❌ コメントアウト: DebugPanel参照を削除 */}
+        {/* <div style={{ fontSize: '12px', marginTop: '5px', color: '#8b5cf6' }}>
           🔧 統合デバッグ画面完成 | Viewport・環境変数・FPS・Memory・ゲーム状態統合
-        </div>
+        </div> */}
         
         {/* ✨ エディター機能の説明追加 */}
         <div style={{ fontSize: '12px', marginTop: '5px', color: '#ec4899' }}>
@@ -670,11 +693,55 @@ function MainApp() {
         </div>
       </footer>
 
-      {/* 統合デバッグ画面 */}
-      <DebugPanel 
+      {/* ❌ コメントアウト: DebugPanel は存在しないため */}
+      {/* <DebugPanel 
         isOpen={showDebugPanel}
         onClose={() => setShowDebugPanel(false)}
-      />
+      /> */}
+      
+      {/* デバッグパネルの代替表示 */}
+      {showDebugPanel && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '40px',
+            borderRadius: '20px',
+            textAlign: 'center',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
+            <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>デバッグパネル未実装</h2>
+            <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+              DebugPanelコンポーネントが見つかりません。
+            </p>
+            <button
+              onClick={() => setShowDebugPanel(false)}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* ✨ NEWバッジのCSSアニメーション */}
       <style>{`
@@ -689,6 +756,7 @@ function MainApp() {
 
 // ルートAppコンポーネント（ViewportTestWrapper統合）
 function App() {
+  // ❌ コメントアウト: ViewportTestWrapperは存在しないため
   // ViewportTestWrapperで全体をラップしてPhase 4機能を統合
   const AppContent = () => {
     // 認証機能が有効な場合はAuthProviderでラップ
@@ -719,21 +787,25 @@ function App() {
     return <MainApp />;
   };
 
+  // ❌ コメントアウト: ViewportTestWrapperは存在しないため
   // ViewportTestWrapperで全体をラップしてビューポート機能を統合（背景で動作）
-  return (
-    <ViewportTestWrapper>
-      <AppContent />
-    </ViewportTestWrapper>
-  );
+  // return (
+  //   <ViewportTestWrapper>
+  //     <AppContent />
+  //   </ViewportTestWrapper>
+  // );
+
+  // 直接AppContentを返す
+  return <AppContent />;
 }
 
 // 開発モードでの設定表示（エディター機能統合版）
 if ((import.meta as any).env?.DEV) {
   console.log('🎨 App Configuration (Phase 6.2 エディター統合版):', {
     AUTH_ENABLED: ENABLE_AUTH,
-    VIEWPORT_INTEGRATION: true,
+    VIEWPORT_INTEGRATION: false, // コメントアウトのため無効
     VOLUME_CONTROL_INTEGRATION: true,
-    DEBUG_PANEL_INTEGRATION: true,
+    DEBUG_PANEL_INTEGRATION: false, // コメントアウトのため無効
     GAME_UI_INTEGRATION: true,
     EDITOR_INTEGRATION: true, // ✨ 新機能
     EDITOR_FEATURES: [

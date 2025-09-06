@@ -317,13 +317,15 @@ export class GameTemplateFactory {
       try {
         switch (config.id) {
           case 'cute_tap':
-            return new CuteTapGame(app, {
-              duration: settings.duration,
-              targetScore: settings.targetScore,
-              targetTaps: settings.targetScore,
-              difficulty: settings.difficulty,
-              characterType: settings.characterType
-            });
+            case 'cute-tap':
+              return new CuteTapGame(app, {
+                timeLimit: 10,
+                difficulty: 'normal',
+                theme: 'cute',
+                duration: 10,
+                targetScore: 100
+              });
+            return await cuteTapTemplate.createInstance(app, settings, undefined);
 
           case 'memory_match':
             const { MemoryMatchGame } = await import('./MemoryMatchGame');
@@ -419,30 +421,32 @@ export class GameTemplateFactory {
   }
 
   // カスタマイズされたフォールバック作成
-  private static createCustomizedFallback(
+  private static async createCustomizedFallback(
     app: PIXI.Application,
     settings: UnifiedGameSettings,
     config: TemplateConfigData
-  ): GameTemplate {
+  ): Promise<GameTemplate> {
     console.warn(`Using customized fallback for ${config.id}`);
 
-    const fallbackTemplate = new CuteTapGame(app, {
-      duration: settings.duration,
-      targetScore: settings.targetScore,
-      targetTaps: settings.targetScore,
-      difficulty: settings.difficulty,
-      characterType: settings.characterType
-    });
+    try {
+//      // MemoryMatchGameをフォールバックとして使用
+//      const { MemoryMatchGame } = await import('./MemoryMatchGame');
+//      const fallbackTemplate = new MemoryMatchGame(app, settings);
 
-    const originalCreateScene = fallbackTemplate.createScene.bind(fallbackTemplate);
-    fallbackTemplate.createScene = async function() {
-      await originalCreateScene();
-      if (typeof this.customizeDisplayForFallback === 'function') {
-        this.customizeDisplayForFallback(config.name, config.instruction);
-      }
-    };
+      const originalCreateScene = fallbackTemplate.createScene.bind(fallbackTemplate);
+      fallbackTemplate.createScene = async function() {
+        await originalCreateScene();
+        if (typeof this.customizeDisplayForFallback === 'function') {
+          this.customizeDisplayForFallback(config.name, config.instruction);
+        }
+      };
 
-    return fallbackTemplate;
+      return fallbackTemplate;
+    } catch (fallbackError) {
+      console.error('Fallback template creation failed:', fallbackError);
+      // 最後の手段として、シンプルなGameTemplateを返す
+      return this.createEmergencyFallback(app, settings);
+    }
   }
 
   // 遅延初期化の確保
@@ -458,37 +462,64 @@ export class GameTemplateFactory {
     app: PIXI.Application, 
     settings: UnifiedGameSettings
   ): Promise<GameTemplate | null> {
+    console.log(`🎮 Creating template for gameType: "${gameType}"`);
+    console.log('📋 Provided settings:', settings);
+    
     await this.ensureInitialized();
     
     const registration = this.registry.get(gameType);
     
     if (!registration) {
-      console.error(`Template ${gameType} not registered`);
+      console.error(`❌ Template ${gameType} not registered`);
+      console.log('📝 Available templates:', Array.from(this.registry.keys()));
       return null;
     }
 
+    console.log(`✅ Template registration found for ${gameType}`);
+    console.log('📄 Template info:', registration.info);
+
     try {
-      return await registration.createInstance(app, settings);
+      console.log(`🚀 Calling createInstance for ${gameType}...`);
+      const result = await registration.createInstance(app, settings);
+      console.log(`✅ Template ${gameType} created successfully:`, result);
+      return result;
     } catch (error) {
-      console.error(`Error creating template ${gameType}:`, error);
+      console.error(`❌ Error creating template ${gameType}:`, error);
+      console.log('🔄 Moving to emergency fallback...');
       return this.createEmergencyFallback(app, settings);
     }
   }
 
-  // 緊急時フォールバック（CuteTap固定）
-  private static createEmergencyFallback(
+  // 緊急時フォールバック（MemoryMatch固定）
+  private static async createEmergencyFallback(
     app: PIXI.Application,
     settings: UnifiedGameSettings
-  ): GameTemplate {
-    console.error('Using emergency fallback - CuteTap');
+  ): Promise<GameTemplate> {
+    console.error('Using emergency fallback - MemoryMatch');
     
-    return new CuteTapGame(app, {
-      duration: settings.duration,
-      targetScore: settings.targetScore,
-      targetTaps: settings.targetScore,
-      difficulty: settings.difficulty,
-      characterType: settings.characterType
-    });
+    try {
+      const { MemoryMatchGame } = await import('./MemoryMatchGame');
+      return new MemoryMatchGame(app, settings);
+    } catch (error) {
+      console.error('Emergency fallback failed:', error);
+      // 最後の手段として基本的なGameTemplateを作成
+      return new (class extends GameTemplate {
+        async createScene(): Promise<void> {
+          const text = new PIXI.Text('Template Loading Error', {
+            fontSize: 24,
+            fill: 0xff0000,
+            align: 'center'
+          });
+          text.x = this.app.screen.width / 2;
+          text.y = this.app.screen.height / 2;
+          text.anchor.set(0.5);
+          this.stage.addChild(text);
+        }
+        
+        handleInput(): void {}
+        updateGame(): void {}
+      })(app, settings);
+    }
   }
 
   // 実装済みテンプレートの動的アップグレード
