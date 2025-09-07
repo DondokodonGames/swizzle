@@ -4,6 +4,9 @@ import { GameEditor } from './GameEditor';
 import { ProjectSelector } from './ProjectSelector';
 import { useGameProject } from '../../hooks/editor/useGameProject';
 import { DEFAULT_EDITOR_TABS, getProgressTabConfig } from './common/TabNavigation';
+import { DESIGN_TOKENS } from '../../constants/DesignSystem';
+import { ModernButton } from '../ui/ModernButton';
+import { ModernCard } from '../ui/ModernCard';
 
 type AppMode = 'selector' | 'editor';
 
@@ -22,6 +25,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'info';
     message: string;
+    id: string;
   } | null>(null);
 
   const {
@@ -48,8 +52,11 @@ export const EditorApp: React.FC<EditorAppProps> = ({
 
   // 通知表示
   const showNotification = useCallback((type: 'success' | 'error' | 'info', message: string) => {
-    setNotification({ type, message });
-    setTimeout(() => setNotification(null), 5000);
+    const notificationId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    setNotification({ type, message, id: notificationId });
+    setTimeout(() => {
+      setNotification(prev => prev?.id === notificationId ? null : prev);
+    }, 5000);
   }, []);
 
   // プロジェクト選択
@@ -96,7 +103,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       return;
     }
 
-    // TODO: 実際のテストプレイ機能を実装
     showNotification('info', 'テストプレイ機能は準備中です');
     console.log('Test play for project:', currentProject.name);
   }, [currentProject, getValidationErrors, showNotification]);
@@ -132,13 +138,12 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       await saveProject();
 
       showNotification('success', 'ゲームを公開しました！');
-      // TODO: 実際の公開処理（API呼び出し等）
     } catch (error: any) {
       showNotification('error', `公開に失敗しました: ${error.message}`);
     }
   }, [currentProject, getValidationErrors, saveProject, updateProject, showNotification]);
 
-  // ✨ エディターから戻る処理（修正版）
+  // エディターから戻る処理
   const handleBackToSelector = useCallback(async () => {
     if (hasUnsavedChanges) {
       const shouldSave = window.confirm('未保存の変更があります。保存してから戻りますか？\n\n「OK」→保存して戻る\n「キャンセル」→保存せずに戻る');
@@ -149,7 +154,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           showNotification('success', '保存完了');
         } catch (error) {
           console.error('Save failed:', error);
-          // 保存失敗でも戻る処理は続行
         }
       }
     }
@@ -158,7 +162,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     showNotification('info', 'プロジェクト一覧に戻りました');
   }, [hasUnsavedChanges, handleSave, showNotification]);
 
-  // ✨ アプリ全体を閉じる処理（修正版）
+  // アプリ全体を閉じる処理
   const handleExitToMain = useCallback(async () => {
     if (hasUnsavedChanges) {
       const shouldSave = window.confirm('未保存の変更があります。保存してから終了しますか？\n\n「OK」→保存して終了\n「キャンセル」→保存せずに終了');
@@ -167,14 +171,12 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         try {
           await handleSave();
           showNotification('success', '保存完了');
-          // 少し待ってから終了
           setTimeout(() => {
             if (onClose) onClose();
           }, 1000);
           return;
         } catch (error) {
           console.error('Save failed:', error);
-          // 保存失敗でも終了処理は続行
         }
       }
     }
@@ -182,7 +184,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     if (onClose) {
       onClose();
     } else {
-      // フォールバック: ページリロード
       showNotification('info', 'メイン画面に戻ります...');
       setTimeout(() => {
         window.location.reload();
@@ -190,7 +191,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
   }, [hasUnsavedChanges, handleSave, showNotification, onClose]);
 
-  // プロジェクト削除（プロジェクトセレクターから）
+  // プロジェクト削除
   const handleProjectDelete = useCallback(async (projectId: string) => {
     try {
       await deleteProject(projectId);
@@ -215,15 +216,13 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   // エクスポート処理
   const handleExport = useCallback(async (projectId: string) => {
     try {
-      // ProjectStorageを使用したエクスポートは既にProjectSelectorで実装済み
-      // ここでは通知のみ表示
       showNotification('success', 'プロジェクトをエクスポートしました');
     } catch (error: any) {
       showNotification('error', `エクスポートに失敗しました: ${error.message}`);
     }
   }, [showNotification]);
 
-  // キーボードショートカット（改善版）
+  // キーボードショートカット
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Ctrl+S で保存
@@ -264,57 +263,138 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   }, [hasUnsavedChanges]);
 
   return (
-    <div className={`editor-app min-h-screen bg-gray-50 ${className}`}>
+    <div 
+      className={`editor-app ${className}`}
+      style={{
+        minHeight: '100vh',
+        backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans
+      }}
+    >
       {/* ローディング表示 */}
       {loading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 shadow-2xl text-center">
-            <div className="animate-spin text-4xl mb-4">⏳</div>
-            <p className="text-lg font-semibold text-gray-800">読み込み中...</p>
-          </div>
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: DESIGN_TOKENS.zIndex.modal,
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          <ModernCard variant="elevated" size="lg">
+            <div style={{ textAlign: 'center' }}>
+              <div 
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  border: '4px solid transparent',
+                  borderTop: `4px solid ${DESIGN_TOKENS.colors.primary[500]}`,
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  margin: `0 auto ${DESIGN_TOKENS.spacing[4]} auto`
+                }}
+              />
+              <p 
+                style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                  color: DESIGN_TOKENS.colors.neutral[800],
+                  margin: 0
+                }}
+              >
+                読み込み中...
+              </p>
+            </div>
+          </ModernCard>
         </div>
       )}
 
       {/* 通知表示 */}
       {notification && (
-        <div className="fixed top-4 right-4 z-40 max-w-md">
-          <div className={`p-4 rounded-2xl shadow-lg border-l-4 ${
-            notification.type === 'success' ? 'bg-green-50 border-green-500 text-green-800' :
-            notification.type === 'error' ? 'bg-red-50 border-red-500 text-red-800' :
-            'bg-blue-50 border-blue-500 text-blue-800'
-          }`}>
-            <div className="flex items-center">
-              <span className="text-xl mr-3">
+        <div 
+          style={{
+            position: 'fixed',
+            top: DESIGN_TOKENS.spacing[4],
+            right: DESIGN_TOKENS.spacing[4],
+            zIndex: DESIGN_TOKENS.zIndex.notification,
+            maxWidth: '400px'
+          }}
+        >
+          <ModernCard variant="elevated" size="sm">
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ 
+                fontSize: DESIGN_TOKENS.typography.fontSize.xl, 
+                marginRight: DESIGN_TOKENS.spacing[3] 
+              }}>
                 {notification.type === 'success' ? '✅' :
                  notification.type === 'error' ? '❌' : 'ℹ️'}
               </span>
-              <p className="font-medium">{notification.message}</p>
-              <button
+              <p style={{ 
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                margin: 0,
+                flex: 1,
+                color: notification.type === 'success' 
+                  ? DESIGN_TOKENS.colors.success[800] 
+                  : notification.type === 'error' 
+                    ? DESIGN_TOKENS.colors.error[800] 
+                    : DESIGN_TOKENS.colors.primary[800]
+              }}>
+                {notification.message}
+              </p>
+              <ModernButton
+                variant="ghost"
+                size="xs"
                 onClick={() => setNotification(null)}
-                className="ml-auto text-gray-500 hover:text-gray-700"
+                style={{ marginLeft: DESIGN_TOKENS.spacing[2] }}
               >
                 ✕
-              </button>
+              </ModernButton>
             </div>
-          </div>
+          </ModernCard>
         </div>
       )}
 
       {/* エラー表示 */}
       {error && (
-        <div className="fixed top-4 left-4 right-4 z-40">
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 shadow-lg">
-            <div className="flex items-center">
-              <span className="text-red-500 text-xl mr-3">⚠️</span>
-              <p className="text-red-800 font-medium flex-1">{error}</p>
-              <button
+        <div 
+          style={{
+            position: 'fixed',
+            top: DESIGN_TOKENS.spacing[4],
+            left: DESIGN_TOKENS.spacing[4],
+            right: DESIGN_TOKENS.spacing[4],
+            zIndex: DESIGN_TOKENS.zIndex.notification
+          }}
+        >
+          <ModernCard variant="elevated" size="md">
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ 
+                fontSize: DESIGN_TOKENS.typography.fontSize.xl, 
+                marginRight: DESIGN_TOKENS.spacing[3] 
+              }}>
+                ⚠️
+              </span>
+              <p style={{ 
+                color: DESIGN_TOKENS.colors.error[800], 
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                flex: 1,
+                margin: 0
+              }}>
+                {error}
+              </p>
+              <ModernButton
+                variant="error"
+                size="sm"
                 onClick={() => window.location.reload()}
-                className="ml-4 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm transition-colors"
+                style={{ marginLeft: DESIGN_TOKENS.spacing[4] }}
               >
                 再読み込み
-              </button>
+              </ModernButton>
             </div>
-          </div>
+          </ModernCard>
         </div>
       )}
 
@@ -328,49 +408,180 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           onExport={handleExport}
         />
       ) : currentProject ? (
-        <div>
-          {/* ✨ エディターヘッダー（ナビゲーション改善版） */}
-          <div className="bg-white shadow-sm border-b border-gray-200">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex items-center py-2">
-                {/* 戻るボタン（改善版） */}
-                <div className="flex items-center space-x-2">
-                  <button
+        <div style={{ minHeight: '100vh', backgroundColor: DESIGN_TOKENS.colors.neutral[0] }}>
+          {/* エディターヘッダー */}
+          <header 
+            style={{
+              backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+              borderBottom: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+              boxShadow: DESIGN_TOKENS.shadows.sm,
+              position: 'sticky',
+              top: 0,
+              zIndex: DESIGN_TOKENS.zIndex.sticky
+            }}
+          >
+            <div 
+              style={{
+                maxWidth: '1280px',
+                margin: '0 auto',
+                padding: `0 ${DESIGN_TOKENS.spacing[4]}`
+              }}
+            >
+              <div 
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  height: '64px'
+                }}
+              >
+                {/* 左側: ナビゲーション */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3] }}>
+                  <ModernButton
+                    variant="ghost"
+                    size="sm"
+                    icon="←"
                     onClick={handleBackToSelector}
-                    className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all"
-                    title="プロジェクト一覧に戻る (Esc)"
+                    style={{ fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}
                   >
-                    <span className="text-lg">←</span>
-                    <span>一覧に戻る</span>
-                  </button>
+                    一覧に戻る
+                  </ModernButton>
                   
-                  <div className="h-6 w-px bg-gray-300"></div>
+                  <div 
+                    style={{
+                      width: '1px',
+                      height: '24px',
+                      backgroundColor: DESIGN_TOKENS.colors.neutral[300]
+                    }}
+                  />
                   
-                  <button
+                  <ModernButton
+                    variant="ghost"
+                    size="sm"
+                    icon="🏠"
                     onClick={handleExitToMain}
-                    className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all"
-                    title="メイン画面に戻る (Ctrl+Q)"
+                    style={{ fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}
                   >
-                    <span className="text-lg">🏠</span>
-                    <span>メイン画面</span>
-                  </button>
+                    メイン画面
+                  </ModernButton>
                 </div>
-                
-                {/* プロジェクト進捗表示 */}
-                <div className="ml-auto flex items-center space-x-4 text-sm">
-                  <div className="text-gray-600">
-                    容量: {(getTotalSize() / 1024 / 1024).toFixed(1)}MB
+
+                {/* 中央: プロジェクト情報 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
+                  <div>
+                    <h1 
+                      style={{
+                        fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                        fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                        color: DESIGN_TOKENS.colors.neutral[800],
+                        margin: 0
+                      }}
+                    >
+                      {currentProject.name || currentProject.settings.name || 'マイゲーム'}
+                    </h1>
                   </div>
-                  {hasUnsavedChanges && (
-                    <div className="text-orange-600 font-medium flex items-center space-x-1">
-                      <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                      <span>未保存</span>
-                    </div>
-                  )}
+
+                  {/* ステータス表示 */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                    {hasUnsavedChanges && (
+                      <div 
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: DESIGN_TOKENS.spacing[1],
+                          padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                          backgroundColor: DESIGN_TOKENS.colors.warning[100],
+                          color: DESIGN_TOKENS.colors.warning[800],
+                          borderRadius: DESIGN_TOKENS.borderRadius.md,
+                          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                          fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
+                        }}
+                      >
+                        <span 
+                          style={{
+                            width: '6px',
+                            height: '6px',
+                            backgroundColor: DESIGN_TOKENS.colors.warning[500],
+                            borderRadius: '50%'
+                          }}
+                        />
+                        未保存
+                      </div>
+                    )}
+                    
+                    {currentProject.status === 'published' && (
+                      <div 
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: DESIGN_TOKENS.spacing[1],
+                          padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                          backgroundColor: DESIGN_TOKENS.colors.success[100],
+                          color: DESIGN_TOKENS.colors.success[800],
+                          borderRadius: DESIGN_TOKENS.borderRadius.md,
+                          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                          fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
+                        }}
+                      >
+                        <span 
+                          style={{
+                            width: '6px',
+                            height: '6px',
+                            backgroundColor: DESIGN_TOKENS.colors.success[500],
+                            borderRadius: '50%'
+                          }}
+                        />
+                        公開中
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 右側: アクション */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                  {/* 容量表示 */}
+                  <div 
+                    style={{
+                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                      color: DESIGN_TOKENS.colors.neutral[600],
+                      marginRight: DESIGN_TOKENS.spacing[2]
+                    }}
+                  >
+                    {(getTotalSize() / 1024 / 1024).toFixed(1)}MB
+                  </div>
+
+                  {/* アクションボタン */}
+                  <ModernButton
+                    variant="secondary"
+                    size="sm"
+                    icon="💾"
+                    onClick={handleSave}
+                    disabled={!hasUnsavedChanges}
+                  >
+                    保存
+                  </ModernButton>
+                  
+                  <ModernButton
+                    variant="outline"
+                    size="sm"
+                    icon="▶️"
+                    onClick={handleTestPlay}
+                  >
+                    テスト
+                  </ModernButton>
+                  
+                  <ModernButton
+                    variant="primary"
+                    size="sm"
+                    icon="🚀"
+                    onClick={handlePublish}
+                  >
+                    公開
+                  </ModernButton>
                 </div>
               </div>
             </div>
-          </div>
+          </header>
           
           {/* エディター本体 */}
           <GameEditor
@@ -383,31 +594,70 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           />
         </div>
       ) : (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="text-6xl mb-4">📂</div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">プロジェクトが選択されていません</h2>
-            <div className="space-y-3">
-              <button
-                onClick={handleBackToSelector}
-                className="block px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-medium transition-colors"
+        <div 
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '100vh',
+            backgroundColor: DESIGN_TOKENS.colors.neutral[50]
+          }}
+        >
+          <ModernCard variant="elevated" size="xl">
+            <div style={{ textAlign: 'center' }}>
+              <div 
+                style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize['6xl'],
+                  marginBottom: DESIGN_TOKENS.spacing[4]
+                }}
               >
-                プロジェクト一覧に戻る
-              </button>
-              <button
-                onClick={handleExitToMain}
-                className="block px-6 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-xl font-medium transition-colors"
+                📂
+              </div>
+              <h2 
+                style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                  color: DESIGN_TOKENS.colors.neutral[800],
+                  margin: `0 0 ${DESIGN_TOKENS.spacing[2]} 0`
+                }}
               >
-                メイン画面に戻る
-              </button>
+                プロジェクトが選択されていません
+              </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[3] }}>
+                <ModernButton
+                  variant="primary"
+                  size="lg"
+                  icon="📁"
+                  onClick={handleBackToSelector}
+                >
+                  プロジェクト一覧に戻る
+                </ModernButton>
+                <ModernButton
+                  variant="outline"
+                  size="lg"
+                  icon="🏠"
+                  onClick={handleExitToMain}
+                >
+                  メイン画面に戻る
+                </ModernButton>
+              </div>
             </div>
-          </div>
+          </ModernCard>
         </div>
       )}
 
-      {/* キーボードショートカットヘルプ（フッター） */}
-      <div className="fixed bottom-2 left-2 text-xs text-gray-400">
-        <div>Game Editor v1.0.0 - ナビゲーション修正版</div>
+      {/* キーボードショートカットヘルプ */}
+      <div 
+        style={{
+          position: 'fixed',
+          bottom: DESIGN_TOKENS.spacing[2],
+          left: DESIGN_TOKENS.spacing[2],
+          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+          color: DESIGN_TOKENS.colors.neutral[400],
+          zIndex: DESIGN_TOKENS.zIndex[10]
+        }}
+      >
+        <div>Game Editor v1.0.0 - Phase 1-B モダンアプリ版</div>
         <div>💡 Ctrl+S: 保存 | Esc: 一覧に戻る | Ctrl+Q: メイン画面に戻る</div>
       </div>
     </div>

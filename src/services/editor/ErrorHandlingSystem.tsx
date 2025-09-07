@@ -3,8 +3,9 @@
 // 基準: 引継ぎプロンプト・確実性重視・ユーザーフレンドリー
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { AlertTriangle, X, RefreshCcw, Save, Home } from 'lucide-react';
-import { useGameTheme } from '../ui/GameThemeProvider';
+import { useGameTheme } from '../../components/ui/GameThemeProvider';
+import { IconAlertTriangle, IconX } from '@tabler/icons-react';
+// import { useGameTheme } from '../ui/GameThemeProvider';
 
 // エラー型定義
 interface AppError {
