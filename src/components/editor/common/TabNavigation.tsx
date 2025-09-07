@@ -1,7 +1,10 @@
 import React from 'react';
+import { GameProject } from '../../../types/editor/GameProject';
 
+// エディタータブ型定義
 export type EditorTab = 'assets' | 'audio' | 'script' | 'settings';
 
+// タブ設定インターフェース
 export interface TabConfig {
   id: EditorTab;
   label: string;
@@ -9,157 +12,289 @@ export interface TabConfig {
   description: string;
   disabled?: boolean;
   badge?: string | number;
+  progress?: number; // 0-100 完成度
 }
 
+// デフォルトタブ設定
+export const DEFAULT_EDITOR_TABS: TabConfig[] = [
+  {
+    id: 'assets',
+    label: '絵',
+    icon: '🎨',
+    description: 'キャラクター・背景・テキスト管理',
+    progress: 0
+  },
+  {
+    id: 'audio',
+    label: '音',
+    icon: '🎵',
+    description: '音楽・効果音管理',
+    progress: 0
+  },
+  {
+    id: 'script',
+    label: 'ルール',
+    icon: '⚙️',
+    description: 'ゲーム動作・条件設定',
+    progress: 0
+  },
+  {
+    id: 'settings',
+    label: '公開',
+    icon: '🚀',
+    description: 'ゲーム設定・テスト・公開',
+    progress: 0
+  }
+];
+
+// プロジェクトの進捗を反映したタブ設定生成
+export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
+  if (!project) return DEFAULT_EDITOR_TABS;
+
+  // 各タブの完成度計算
+  const calculateAssetsProgress = () => {
+    let progress = 0;
+    const totalSteps = 4; // 背景、オブジェクト、テキスト、音声の4要素
+    
+    // 背景があれば25%
+    if (project.assets.background) progress += 25;
+    
+    // オブジェクトがあれば25%
+    if (project.assets.objects.length > 0) progress += 25;
+    
+    // テキストまたは音声があれば25%
+    if (project.assets.texts.length > 0) progress += 25;
+    
+    // 音声（BGMまたはSE）があれば25%
+    if (project.assets.audio.bgm || project.assets.audio.se.length > 0) progress += 25;
+    
+    return Math.min(progress, 100);
+  };
+
+  const calculateAudioProgress = () => {
+    let progress = 0;
+    
+    // BGMがあれば50%
+    if (project.assets.audio.bgm) progress += 50;
+    
+    // SEがあれば50%
+    if (project.assets.audio.se.length > 0) progress += 50;
+    
+    return Math.min(progress, 100);
+  };
+
+  const calculateScriptProgress = () => {
+    let progress = 0;
+    
+    // ルールがあれば50%
+    if (project.script.rules.length > 0) progress += 50;
+    
+    // 成功条件があれば50%
+    if (project.script.successConditions.length > 0) progress += 50;
+    
+    return Math.min(progress, 100);
+  };
+
+  const calculateSettingsProgress = () => {
+    let progress = 0;
+    
+    // ゲーム名があれば25%
+    if (project.settings.name?.trim()) progress += 25;
+    
+    // 説明があれば25%
+    if (project.settings.description?.trim()) progress += 25;
+    
+    // 時間設定があれば25%
+    if (project.settings.duration.type === 'fixed' && project.settings.duration.seconds) progress += 25;
+    
+    // 公開設定が完了していれば25%
+    if (project.settings.publishing.isPublished) progress += 25;
+    
+    return Math.min(progress, 100);
+  };
+
+  return [
+    {
+      id: 'assets',
+      label: '絵',
+      icon: '🎨',
+      description: 'キャラクター・背景・テキスト管理',
+      badge: project.assets.objects.length + (project.assets.background ? 1 : 0) + project.assets.texts.length || undefined,
+      progress: calculateAssetsProgress()
+    },
+    {
+      id: 'audio',
+      label: '音',
+      icon: '🎵',
+      description: '音楽・効果音管理',
+      badge: (project.assets.audio.bgm ? 1 : 0) + project.assets.audio.se.length || undefined,
+      progress: calculateAudioProgress()
+    },
+    {
+      id: 'script',
+      label: 'ルール',
+      icon: '⚙️',
+      description: 'ゲーム動作・条件設定',
+      badge: project.script.rules.length || undefined,
+      progress: calculateScriptProgress()
+    },
+    {
+      id: 'settings',
+      label: '公開',
+      icon: '🚀',
+      description: 'ゲーム設定・テスト・公開',
+      badge: project.settings.publishing?.isPublished ? '✓' : undefined,
+      progress: calculateSettingsProgress()
+    }
+  ];
+};
+
+// タブナビゲーション判定ヘルパー
+export const getTabValidationStatus = (project: GameProject, tabId: EditorTab): {
+  canNavigate: boolean;
+  warnings: string[];
+  errors: string[];
+} => {
+  const warnings: string[] = [];
+  const errors: string[] = [];
+  
+  switch (tabId) {
+    case 'assets':
+      if (!project.assets.background && project.assets.objects.length === 0) {
+        warnings.push('背景またはオブジェクトを追加することをおすすめします');
+      }
+      break;
+      
+    case 'audio':
+      if (!project.assets.audio.bgm && project.assets.audio.se.length === 0) {
+        warnings.push('音声を追加するとゲームがより楽しくなります');
+      }
+      break;
+      
+    case 'script':
+      if (project.script.rules.length === 0) {
+        warnings.push('ゲームルールを設定してください');
+      }
+      if (project.script.successConditions.length === 0) {
+        warnings.push('成功条件を設定してください');
+      }
+      break;
+      
+    case 'settings':
+      if (!project.settings.name?.trim()) {
+        errors.push('ゲーム名は必須です');
+      }
+      if (project.assets.objects.length === 0 && !project.assets.background) {
+        errors.push('公開するには最低1つのアセットが必要です');
+      }
+      break;
+  }
+  
+  return {
+    canNavigate: errors.length === 0,
+    warnings,
+    errors
+  };
+};
+
+// タブナビゲーションコンポーネント（基本版）
 interface TabNavigationProps {
-  activeTab: EditorTab;
-  onTabChange: (tab: EditorTab) => void;
   tabs: TabConfig[];
-  className?: string;
+  activeTab: EditorTab;
+  onTabChange: (tabId: EditorTab) => void;
+  project?: GameProject;
 }
 
 export const TabNavigation: React.FC<TabNavigationProps> = ({
+  tabs,
   activeTab,
   onTabChange,
-  tabs,
-  className = ''
+  project
 }) => {
   return (
-    <nav className={`bg-white shadow-sm ${className}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* モバイル対応ドロップダウン（画面幅狭い時） */}
-        <div className="sm:hidden">
-          <select
-            value={activeTab}
-            onChange={(e) => onTabChange(e.target.value as EditorTab)}
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          >
-            {tabs.map((tab) => (
-              <option key={tab.id} value={tab.id} disabled={tab.disabled}>
-                {tab.icon} {tab.label}
-                {tab.badge && ` (${tab.badge})`}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* デスクトップ・タブレット対応タブ */}
-        <div className="hidden sm:flex space-x-1 py-3">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => !tab.disabled && onTabChange(tab.id)}
-              disabled={tab.disabled}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-full font-semibold transition-all duration-200 relative ${
-                activeTab === tab.id
-                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md scale-105'
-                  : tab.disabled
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:scale-102'
-              }`}
-            >
-              <span className="text-lg">{tab.icon}</span>
-              <span>{tab.label}</span>
-              
-              {/* バッジ表示 */}
-              {tab.badge && (
-                <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                  activeTab === tab.id
-                    ? 'bg-white bg-opacity-20 text-white'
-                    : 'bg-purple-100 text-purple-600'
-                }`}>
-                  {tab.badge}
-                </span>
-              )}
-
-              {/* 無効状態のオーバーレイ */}
-              {tab.disabled && (
-                <div className="absolute inset-0 bg-gray-200 bg-opacity-50 rounded-full flex items-center justify-center">
-                  <span className="text-xs bg-gray-600 text-white px-2 py-1 rounded">準備中</span>
-                </div>
-              )}
-            </button>
-          ))}
-        </div>
+    <nav className="flex space-x-1 bg-gray-100 p-1 rounded-xl">
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.id;
+        const validation = project ? getTabValidationStatus(project, tab.id) : { canNavigate: true, warnings: [], errors: [] };
         
-        {/* タブ説明 */}
-        <div className="pb-3">
-          <p className="text-sm text-gray-500">
-            {tabs.find(tab => tab.id === activeTab)?.description}
-          </p>
-        </div>
-      </div>
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onTabChange(tab.id)}
+            disabled={tab.disabled}
+            className={`relative flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
+              isActive
+                ? 'bg-white text-purple-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            } ${tab.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title={`${tab.description}${validation.warnings.length > 0 ? '\n⚠️ ' + validation.warnings.join('\n') : ''}${validation.errors.length > 0 ? '\n❌ ' + validation.errors.join('\n') : ''}`}
+          >
+            <span className="text-lg">{tab.icon}</span>
+            <span>{tab.label}</span>
+            
+            {/* バッジ表示 */}
+            {tab.badge && (
+              <span className={`absolute -top-1 -right-1 min-w-5 h-5 flex items-center justify-center text-xs font-bold rounded-full ${
+                isActive 
+                  ? 'bg-purple-100 text-purple-600'
+                  : 'bg-gray-300 text-gray-600'
+              }`}>
+                {tab.badge}
+              </span>
+            )}
+            
+            {/* 進捗バー */}
+            {typeof tab.progress === 'number' && tab.progress > 0 && (
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 rounded-b-lg overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-300 ${
+                    tab.progress === 100 ? 'bg-green-500' :
+                    tab.progress >= 50 ? 'bg-yellow-500' : 'bg-blue-500'
+                  }`}
+                  style={{ width: `${tab.progress}%` }}
+                />
+              </div>
+            )}
+            
+            {/* エラー・警告インジケーター */}
+            {validation.errors.length > 0 && (
+              <span className="absolute -top-1 -left-1 w-3 h-3 bg-red-500 rounded-full"></span>
+            )}
+            {validation.warnings.length > 0 && validation.errors.length === 0 && (
+              <span className="absolute -top-1 -left-1 w-3 h-3 bg-yellow-500 rounded-full"></span>
+            )}
+          </button>
+        );
+      })}
     </nav>
   );
 };
 
-// プリセット用のタブ設定
-export const DEFAULT_EDITOR_TABS: TabConfig[] = [
-  { 
-    id: 'assets', 
-    label: '絵', 
-    icon: '🎨', 
-    description: '背景、キャラクター、テキストを管理します' 
-  },
-  { 
-    id: 'audio', 
-    label: '音', 
-    icon: '🎵', 
-    description: 'BGMと効果音を管理します' 
-  },
-  { 
-    id: 'script', 
-    label: 'ルール', 
-    icon: '⚙️', 
-    description: 'ゲームの動作ルールと成功条件を設定します' 
-  },
-  { 
-    id: 'settings', 
-    label: '公開', 
-    icon: '🚀', 
-    description: 'ゲーム情報の設定とテスト、公開を行います' 
-  }
-];
-
-// タブの進捗チェック用ヘルパー関数
-export const getTabCompletionStatus = (tab: EditorTab, project: any): { completed: boolean; progress: number } => {
-  switch (tab) {
-    case 'assets':
-      const hasBackground = !!project.assets?.background;
-      const hasObjects = project.assets?.objects?.length > 0;
-      const assetsProgress = (hasBackground ? 50 : 0) + (hasObjects ? 50 : 0);
-      return { completed: assetsProgress === 100, progress: assetsProgress };
-      
-    case 'audio':
-      const hasBGM = !!project.assets?.audio?.bgm;
-      const hasSE = project.assets?.audio?.se?.length > 0;
-      const audioProgress = (hasBGM ? 50 : 0) + (hasSE ? 50 : 0);
-      return { completed: audioProgress === 100, progress: audioProgress };
-      
-    case 'script':
-      const hasRules = project.script?.rules?.length > 0;
-      const hasSuccess = project.script?.successConditions?.length > 0;
-      const scriptProgress = (hasRules ? 50 : 0) + (hasSuccess ? 50 : 0);
-      return { completed: scriptProgress === 100, progress: scriptProgress };
-      
-    case 'settings':
-      const hasName = !!project.name?.trim();
-      const hasSettings = !!project.settings?.duration;
-      const settingsProgress = (hasName ? 50 : 0) + (hasSettings ? 50 : 0);
-      return { completed: settingsProgress === 100, progress: settingsProgress };
-      
-    default:
-      return { completed: false, progress: 0 };
-  }
+// タブ完成度の総合計算
+export const calculateOverallProgress = (project: GameProject): number => {
+  const tabs = getProgressTabConfig(project);
+  const totalProgress = tabs.reduce((sum, tab) => sum + (tab.progress || 0), 0);
+  return Math.round(totalProgress / tabs.length);
 };
 
-// プログレス付きタブ設定を生成
-export const getProgressTabConfig = (project: any): TabConfig[] => {
-  return DEFAULT_EDITOR_TABS.map(tab => {
-    const { completed, progress } = getTabCompletionStatus(tab.id, project);
-    return {
-      ...tab,
-      badge: completed ? '✓' : progress > 0 ? `${progress}%` : undefined
-    };
-  });
+// 次に推奨するタブの取得
+export const getRecommendedNextTab = (project: GameProject, currentTab: EditorTab): EditorTab | null => {
+  const tabs = getProgressTabConfig(project);
+  
+  // 現在のタブのインデックス
+  const currentIndex = tabs.findIndex(tab => tab.id === currentTab);
+  
+  // 完成度の低いタブを優先
+  const sortedTabs = [...tabs].sort((a, b) => (a.progress || 0) - (b.progress || 0));
+  
+  // 現在のタブより完成度が低く、まだ完成していないタブ
+  const recommendedTab = sortedTabs.find(tab => 
+    tab.id !== currentTab && 
+    (tab.progress || 0) < 100 &&
+    (tab.progress || 0) < (tabs[currentIndex]?.progress || 0)
+  );
+  
+  return recommendedTab?.id || null;
 };
+
+export default TabNavigation;

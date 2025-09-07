@@ -47,7 +47,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
       },
       actions: [],
       createdAt: now,
-      lastModified: now // ★ 修正: lastModified プロパティを追加
+      lastModified: now
     };
     
     setEditingRule(newRule);
@@ -71,19 +71,17 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
       updatedScript.rules.push(updatedRule);
     }
     
-    // ★ 修正: 統計更新（完全な型に対応）
+    // 統計更新
     updatedScript.statistics = {
       totalRules: updatedScript.rules.length,
       totalConditions: updatedScript.rules.reduce((sum, r) => sum + r.triggers.conditions.length, 0),
       totalActions: updatedScript.rules.reduce((sum, r) => sum + r.actions.length, 0),
       complexityScore: Math.min(100, updatedScript.rules.length * 10),
-      
-      // 追加のプロパティ
       usedTriggerTypes: [...new Set(updatedScript.rules.flatMap(r => r.triggers.conditions.map(c => c.type)))],
       usedActionTypes: [...new Set(updatedScript.rules.flatMap(r => r.actions.map(a => a.type)))],
       flagCount: updatedScript.flags.length,
       estimatedCPUUsage: updatedScript.rules.length > 20 ? 'high' : updatedScript.rules.length > 10 ? 'medium' : 'low',
-      estimatedMemoryUsage: updatedScript.rules.length * 0.5, // MB概算
+      estimatedMemoryUsage: updatedScript.rules.length * 0.5,
       maxConcurrentEffects: Math.max(0, ...updatedScript.rules.map(r => 
         r.actions.filter(a => a.type === 'effect').length
       ))
@@ -178,23 +176,52 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
               onDragOver={handleDragOver}
               onDrop={handleDrop}
             >
-              {/* 背景表示 */}
+              {/* 背景表示 - 修正版 */}
               {project.script.layout.background.visible && project.assets.background && (
                 <div 
                   className="absolute inset-0 bg-cover bg-center"
                   style={{
-                    backgroundImage: project.assets.background.frames[0]?.dataUrl 
+                    backgroundImage: project.assets.background.frames?.[0]?.dataUrl 
                       ? `url(${project.assets.background.frames[0].dataUrl})` 
-                      : undefined
+                      : 'linear-gradient(to bottom, #87CEEB, #90EE90)'
                   }}
                 />
               )}
               
-              {/* オブジェクト表示 */}
+              {/* オブジェクト表示 - 修正版 */}
               {project.script.layout.objects.map((layoutObj, index) => {
                 const asset = project.assets.objects.find(obj => obj.id === layoutObj.objectId);
-                if (!asset || !asset.frames[0]) return null;
                 
+                // アセットが存在しない場合はプレースホルダーを表示
+                if (!asset) {
+                  return (
+                    <div
+                      key={`placeholder-${index}`}
+                      className={`absolute cursor-move border-2 border-dashed transition-all bg-gray-200 rounded flex items-center justify-center ${
+                        selectedObjectId === layoutObj.objectId 
+                          ? 'border-blue-500 shadow-lg' 
+                          : 'border-gray-400 hover:border-blue-300'
+                      }`}
+                      style={{
+                        left: `${layoutObj.position.x * 100}%`,
+                        top: `${layoutObj.position.y * 100}%`,
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: layoutObj.zIndex,
+                        width: '64px',
+                        height: '64px'
+                      }}
+                      onClick={() => setSelectedObjectId(layoutObj.objectId)}
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggedItem({ id: layoutObj.objectId, type: 'object' });
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                    >
+                      <span className="text-xs text-gray-600">Object</span>
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={layoutObj.objectId}
@@ -216,20 +243,44 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                       e.dataTransfer.effectAllowed = 'move';
                     }}
                   >
-                    <img
-                      src={asset.frames[0].dataUrl}
-                      alt={asset.name}
-                      className="max-w-16 max-h-16 object-contain"
-                      style={{
-                        transform: `scale(${layoutObj.scale.x}, ${layoutObj.scale.y}) rotate(${layoutObj.rotation}deg)`
-                      }}
-                    />
+                    {asset.frames?.[0]?.dataUrl ? (
+                      <img
+                        src={asset.frames[0].dataUrl}
+                        alt={asset.name}
+                        className="max-w-16 max-h-16 object-contain"
+                        style={{
+                          transform: `scale(${layoutObj.scale.x}, ${layoutObj.scale.y}) rotate(${layoutObj.rotation}deg)`
+                        }}
+                      />
+                    ) : (
+                      <div className="w-16 h-16 bg-gray-300 rounded flex items-center justify-center">
+                        <span className="text-xs text-gray-600">{asset.name}</span>
+                      </div>
+                    )}
                     <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs bg-black bg-opacity-70 text-white px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                       {asset.name}
                     </div>
                   </div>
                 );
               })}
+              
+              {/* デモ用オブジェクト追加ボタン - データがない場合 */}
+              {project.assets.objects.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center p-6 bg-white bg-opacity-90 rounded-lg">
+                    <div className="text-4xl mb-2">📁</div>
+                    <p className="text-gray-600 mb-3">オブジェクトがありません</p>
+                    <button
+                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                      onClick={() => {
+                        console.log('Assets Tabでオブジェクトを追加してください');
+                      }}
+                    >
+                      オブジェクトを追加
+                    </button>
+                  </div>
+                </div>
+              )}
               
               {/* グリッドヘルパー（開発時のみ表示） */}
               <div className="absolute inset-0 pointer-events-none opacity-10">
@@ -243,7 +294,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
             </div>
           </div>
           
-          {/* オブジェクト設定パネル */}
+          {/* オブジェクト設定パネル - 修正版 */}
           <div className="w-80 bg-gray-50 rounded-lg p-4">
             <h4 className="font-semibold text-gray-800 mb-3">🔧 オブジェクト設定</h4>
             
@@ -253,20 +304,28 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                   const selectedObj = project.script.layout.objects.find(obj => obj.objectId === selectedObjectId);
                   const selectedAsset = project.assets.objects.find(obj => obj.id === selectedObjectId);
                   
-                  if (!selectedObj || !selectedAsset) return <p className="text-gray-500">オブジェクトが見つかりません</p>;
+                  if (!selectedObj) {
+                    return <p className="text-gray-500">オブジェクトが見つかりません</p>;
+                  }
                   
                   return (
                     <>
                       <div className="text-center">
-                        <img 
-                          src={selectedAsset.frames[0]?.dataUrl} 
-                          alt={selectedAsset.name}
-                          className="w-16 h-16 mx-auto object-contain border rounded-lg"
-                        />
-                        <p className="mt-2 font-medium">{selectedAsset.name}</p>
+                        {selectedAsset?.frames?.[0]?.dataUrl ? (
+                          <img 
+                            src={selectedAsset.frames[0].dataUrl} 
+                            alt={selectedAsset.name}
+                            className="w-16 h-16 mx-auto object-contain border rounded-lg"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 mx-auto bg-gray-200 border rounded-lg flex items-center justify-center">
+                            <span className="text-xs text-gray-500">No Image</span>
+                          </div>
+                        )}
+                        <p className="mt-2 font-medium">{selectedAsset?.name || selectedObjectId}</p>
                       </div>
                       
-                      {/* 位置設定 */}
+                      {/* 位置設定 - 実際に動作するように修正 */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">位置</label>
                         <div className="grid grid-cols-2 gap-2">
@@ -278,10 +337,13 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                               max="1"
                               step="0.01"
                               value={selectedObj.position.x}
-                              onChange={(e) => handleObjectPositionUpdate(selectedObjectId, {
-                                x: parseFloat(e.target.value),
-                                y: selectedObj.position.y
-                              })}
+                              onChange={(e) => {
+                                const newX = parseFloat(e.target.value);
+                                handleObjectPositionUpdate(selectedObjectId, {
+                                  x: newX,
+                                  y: selectedObj.position.y
+                                });
+                              }}
                               className="w-full"
                             />
                             <span className="text-xs text-gray-500">{Math.round(selectedObj.position.x * 100)}%</span>
@@ -294,10 +356,13 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                               max="1"
                               step="0.01"
                               value={selectedObj.position.y}
-                              onChange={(e) => handleObjectPositionUpdate(selectedObjectId, {
-                                x: selectedObj.position.x,
-                                y: parseFloat(e.target.value)
-                              })}
+                              onChange={(e) => {
+                                const newY = parseFloat(e.target.value);
+                                handleObjectPositionUpdate(selectedObjectId, {
+                                  x: selectedObj.position.x,
+                                  y: newY
+                                });
+                              }}
                               className="w-full"
                             />
                             <span className="text-xs text-gray-500">{Math.round(selectedObj.position.y * 100)}%</span>
@@ -305,7 +370,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                         </div>
                       </div>
                       
-                      {/* 初期状態設定 */}
+                      {/* 初期状態設定 - 実際に動作するように修正 */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">初期状態</label>
                         <div className="space-y-2">
@@ -352,6 +417,13 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
               <div className="text-center text-gray-500 py-8">
                 <div className="text-4xl mb-2">👆</div>
                 <p>オブジェクトをタップして<br />設定を変更できます</p>
+                {project.script.layout.objects.length === 0 && (
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <p className="text-xs text-yellow-700">
+                      まずAssetsタブでオブジェクトを追加してください
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -478,7 +550,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
   );
 };
 
-// ルール編集モーダルコンポーネント
+// ルール編集モーダルコンポーネント - 修正版
 interface RuleEditorModalProps {
   rule: GameRule;
   project: GameProject;
@@ -491,6 +563,62 @@ const RuleEditorModal: React.FC<RuleEditorModalProps> = ({ rule: initialRule, pr
 
   const handleSave = () => {
     onSave(rule);
+  };
+
+  // 条件追加処理 - 実際に動作するように修正
+  const handleAddCondition = (conditionType: string) => {
+    const newCondition: TriggerCondition = {
+      type: conditionType as any,
+      target: 'self',
+      // 条件タイプに応じたデフォルト値を設定
+      ...(conditionType === 'time' && { seconds: 5 }),
+      ...(conditionType === 'collision' && { targetObjectId: 'any' }),
+      ...(conditionType === 'flag' && { flagName: 'flag1' })
+    } as any;
+    
+    setRule({
+      ...rule,
+      triggers: {
+        ...rule.triggers,
+        conditions: [...rule.triggers.conditions, newCondition]
+      }
+    });
+  };
+
+  // アクション追加処理 - 実際に動作するように修正
+  const handleAddAction = (actionType: string) => {
+    const newAction: GameAction = {
+      type: actionType as any,
+      // アクションタイプに応じたデフォルト値を設定
+      ...(actionType === 'move' && { 
+        targetPosition: { x: 0.5, y: 0.5 },
+        duration: 1,
+        easing: 'linear'
+      }),
+      ...(actionType === 'playSound' && { soundId: 'default' }),
+      ...(actionType === 'show' && { targetObjectId: 'self' }),
+      ...(actionType === 'hide' && { targetObjectId: 'self' })
+    } as any;
+    
+    setRule({
+      ...rule,
+      actions: [...rule.actions, newAction]
+    });
+  };
+
+  // 条件削除処理
+  const handleRemoveCondition = (index: number) => {
+    const newConditions = rule.triggers.conditions.filter((_, i) => i !== index);
+    setRule({
+      ...rule,
+      triggers: { ...rule.triggers, conditions: newConditions }
+    });
+  };
+
+  // アクション削除処理
+  const handleRemoveAction = (index: number) => {
+    const newActions = rule.actions.filter((_, i) => i !== index);
+    setRule({ ...rule, actions: newActions });
   };
 
   return (
@@ -530,7 +658,7 @@ const RuleEditorModal: React.FC<RuleEditorModalProps> = ({ rule: initialRule, pr
             </select>
           </div>
           
-          {/* 条件設定 */}
+          {/* 条件設定 - 実際に動作するように修正 */}
           <div className="mb-6">
             <h4 className="text-lg font-medium text-gray-800 mb-3">🎯 発動条件</h4>
             <div className="bg-gray-50 p-4 rounded-lg">
@@ -549,26 +677,13 @@ const RuleEditorModal: React.FC<RuleEditorModalProps> = ({ rule: initialRule, pr
                 </select>
               </div>
               
-              {/* 条件ライブラリ */}
+              {/* 条件ライブラリ - 実際に動作するように修正 */}
               <div className="grid grid-cols-3 gap-2 mb-4">
                 {CONDITIONS_LIBRARY.map((condition) => (
                   <button
                     key={condition.type}
-                    onClick={() => {
-                      const newCondition: TriggerCondition = {
-                        type: condition.type as any,
-                        target: 'self'
-                      } as any;
-                      
-                      setRule({
-                        ...rule,
-                        triggers: {
-                          ...rule.triggers,
-                          conditions: [...rule.triggers.conditions, newCondition]
-                        }
-                      });
-                    }}
-                    className={`p-3 text-center rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-500 transition-colors ${condition.color}`}
+                    onClick={() => handleAddCondition(condition.type)}
+                    className={`p-3 text-center rounded-lg border-2 border-dashed border-gray-300 hover:border-blue-500 transition-colors ${condition.color} hover:shadow-md`}
                   >
                     <div className="text-2xl mb-1">{condition.icon}</div>
                     <div className="text-xs font-medium">{condition.label}</div>
@@ -576,51 +691,65 @@ const RuleEditorModal: React.FC<RuleEditorModalProps> = ({ rule: initialRule, pr
                 ))}
               </div>
               
-              {/* 追加された条件一覧 */}
+              {/* 追加された条件一覧 - 実際に動作するように修正 */}
               <div className="space-y-2">
-                {rule.triggers.conditions.map((condition, index) => (
-                  <div key={index} className="flex items-center gap-2 bg-white p-2 rounded border">
-                    <span className="text-sm">
-                      {CONDITIONS_LIBRARY.find(c => c.type === condition.type)?.label || condition.type}
-                    </span>
-                    <button
-                      onClick={() => {
-                        const newConditions = rule.triggers.conditions.filter((_, i) => i !== index);
-                        setRule({
-                          ...rule,
-                          triggers: { ...rule.triggers, conditions: newConditions }
-                        });
-                      }}
-                      className="text-red-500 hover:text-red-700 text-sm"
-                    >
-                      削除
-                    </button>
+                {rule.triggers.conditions.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    <p>条件を追加してください</p>
                   </div>
-                ))}
+                ) : (
+                  rule.triggers.conditions.map((condition, index) => (
+                    <div key={index} className="flex items-center gap-2 bg-white p-3 rounded border">
+                      <div className="flex-1">
+                        <span className="text-sm font-medium">
+                          {CONDITIONS_LIBRARY.find(c => c.type === condition.type)?.label || condition.type}
+                        </span>
+                        {/* 条件の詳細設定 */}
+                        {condition.type === 'time' && (
+                          <div className="mt-1">
+                            <input
+                              type="number"
+                              value={(condition as any).seconds || 5}
+                              onChange={(e) => {
+                                const newConditions = [...rule.triggers.conditions];
+                                (newConditions[index] as any).seconds = parseInt(e.target.value);
+                                setRule({
+                                  ...rule,
+                                  triggers: { ...rule.triggers, conditions: newConditions }
+                                });
+                              }}
+                              className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                              min="1"
+                              max="30"
+                            />
+                            <span className="text-xs text-gray-500 ml-1">秒後</span>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleRemoveCondition(index)}
+                        className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 hover:bg-red-50 rounded"
+                      >
+                        削除
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
           
-          {/* アクション設定 */}
+          {/* アクション設定 - 実際に動作するように修正 */}
           <div className="mb-6">
             <h4 className="text-lg font-medium text-gray-800 mb-3">⚡ アクション</h4>
             <div className="bg-gray-50 p-4 rounded-lg">
-              {/* アクションライブラリ */}
+              {/* アクションライブラリ - 実際に動作するように修正 */}
               <div className="grid grid-cols-4 gap-2 mb-4">
                 {ACTIONS_LIBRARY.map((action) => (
                   <button
                     key={action.type}
-                    onClick={() => {
-                      const newAction: GameAction = {
-                        type: action.type as any
-                      } as any;
-                      
-                      setRule({
-                        ...rule,
-                        actions: [...rule.actions, newAction]
-                      });
-                    }}
-                    className={`p-3 text-center rounded-lg border-2 border-dashed border-gray-300 hover:border-green-500 transition-colors ${action.color}`}
+                    onClick={() => handleAddAction(action.type)}
+                    className={`p-3 text-center rounded-lg border-2 border-dashed border-gray-300 hover:border-green-500 transition-colors ${action.color} hover:shadow-md`}
                   >
                     <div className="text-xl mb-1">{action.icon}</div>
                     <div className="text-xs font-medium">{action.label}</div>
@@ -628,24 +757,72 @@ const RuleEditorModal: React.FC<RuleEditorModalProps> = ({ rule: initialRule, pr
                 ))}
               </div>
               
-              {/* 追加されたアクション一覧 */}
+              {/* 追加されたアクション一覧 - 実際に動作するように修正 */}
               <div className="space-y-2">
-                {rule.actions.map((action, index) => (
-                  <div key={index} className="flex items-center gap-2 bg-white p-2 rounded border">
-                    <span className="text-sm">
-                      {ACTIONS_LIBRARY.find(a => a.type === action.type)?.label || action.type}
-                    </span>
-                    <button
-                      onClick={() => {
-                        const newActions = rule.actions.filter((_, i) => i !== index);
-                        setRule({ ...rule, actions: newActions });
-                      }}
-                      className="text-red-500 hover:text-red-700 text-sm"
-                    >
-                      削除
-                    </button>
+                {rule.actions.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    <p>アクションを追加してください</p>
                   </div>
-                ))}
+                ) : (
+                  rule.actions.map((action, index) => (
+                    <div key={index} className="flex items-center gap-2 bg-white p-3 rounded border">
+                      <div className="flex-1">
+                        <span className="text-sm font-medium">
+                          {ACTIONS_LIBRARY.find(a => a.type === action.type)?.label || action.type}
+                        </span>
+                        {/* アクションの詳細設定 */}
+                        {action.type === 'move' && (
+                          <div className="mt-1 grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-xs text-gray-500">X座標</label>
+                              <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.1"
+                                value={(action as any).targetPosition?.x || 0.5}
+                                onChange={(e) => {
+                                  const newActions = [...rule.actions];
+                                  if (!(newActions[index] as any).targetPosition) {
+                                    (newActions[index] as any).targetPosition = { x: 0.5, y: 0.5 };
+                                  }
+                                  (newActions[index] as any).targetPosition.x = parseFloat(e.target.value);
+                                  setRule({ ...rule, actions: newActions });
+                                }}
+                                className="w-full"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-500">Y座標</label>
+                              <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.1"
+                                value={(action as any).targetPosition?.y || 0.5}
+                                onChange={(e) => {
+                                  const newActions = [...rule.actions];
+                                  if (!(newActions[index] as any).targetPosition) {
+                                    (newActions[index] as any).targetPosition = { x: 0.5, y: 0.5 };
+                                  }
+                                  (newActions[index] as any).targetPosition.y = parseFloat(e.target.value);
+                                  setRule({ ...rule, actions: newActions });
+                                }}
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleRemoveAction(index)}
+                        className="text-red-500 hover:text-red-700 text-sm font-medium px-2 py-1 hover:bg-red-50 rounded"
+                      >
+                        削除
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -661,7 +838,8 @@ const RuleEditorModal: React.FC<RuleEditorModalProps> = ({ rule: initialRule, pr
           </button>
           <button
             onClick={handleSave}
-            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
+            disabled={rule.triggers.conditions.length === 0 && rule.actions.length === 0}
+            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
           >
             保存
           </button>

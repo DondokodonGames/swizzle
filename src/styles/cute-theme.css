@@ -1,0 +1,366 @@
+/* src/styles/cute-theme.css */
+/* かわいい・パステル風テーマ - ピンク・丸み・やわらか・アニメ風 */
+
+:root[data-theme="cute"] {
+  /* パステルカラーパレット */
+  --color-primary: #f472b6;        /* かわいいピンク */
+  --color-secondary: #a78bfa;      /* ラベンダー */
+  --color-success: #4ade80;        /* やわらかグリーン */
+  --color-warning: #fbbf24;        /* やわらかイエロー */
+  --color-error: #fb7185;          /* やわらかレッド */
+  
+  /* 背景・テキスト */
+  --color-background: #fef7ff;     /* ソフトピンク背景 */
+  --color-surface: #ffffff;        /* ピュアホワイト */
+  --color-text: #831843;           /* ダークピンクテキスト */
+  --color-text-secondary: #be185d; /* セカンダリピンク */
+  
+  /* かわいい効果 */
+  --font-family: 'Comic Neue', 'Quicksand', 'Nunito', 'Comfortaa', system-ui, sans-serif;
+  --cute-shadow: 0 4px 20px rgba(244, 114, 182, 0.2);
+  --kawaii-glow: 0 0 20px rgba(244, 114, 182, 0.3);
+  --heart-pattern: '💖';
+  --sparkle-pattern: '✨';
+  
+  /* ボーダー・角丸 */
+  --border-radius: 20px;           /* 丸みたっぷり */
+  --border-width: 2px;
+  --cute-border: 2px solid #f472b6;
+}
+
+/* かわいいアニメーション */
+@keyframes bounce-cute {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  40%, 43% {
+    transform: translate3d(0, -8px, 0);
+  }
+  70% {
+    transform: translate3d(0, -4px, 0);
+  }
+  90% {
+    transform: translate3d(0, -2px, 0);
+  }
+}
+
+@keyframes kawaii-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: var(--cute-shadow);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: var(--kawaii-glow);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: var(--cute-shadow);
+  }
+}
+
+@keyframes sparkle-float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(-10px) rotate(180deg);
+    opacity: 1;
+  }
+}
+
+@keyframes heart-beat {
+  0%, 50%, 100% {
+    transform: scale(1);
+  }
+  25%, 75% {
+    transform: scale(1.1);
+  }
+}
+
+/* かわいいボタンスタイル */
+[data-theme="cute"] .arcade-button {
+  background: linear-gradient(135deg, #fdf2f8, #fce7f3, #fbcfe8);
+  border: var(--cute-border);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  border-radius: var(--border-radius);
+  box-shadow: var(--cute-shadow);
+  position: relative;
+  font-weight: 600;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="cute"] .arcade-button::before {
+  content: '✨';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  animation: sparkle-float 2s ease-in-out infinite;
+}
+
+[data-theme="cute"] .arcade-button::after {
+  content: '💖';
+  position: absolute;
+  bottom: 5px;
+  left: 5px;
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  animation: heart-beat 1.5s ease-in-out infinite;
+}
+
+[data-theme="cute"] .arcade-button:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--kawaii-glow);
+  animation: kawaii-pulse 1s ease-in-out infinite;
+  background: linear-gradient(135deg, #fce7f3, #fbcfe8, #f9a8d4);
+}
+
+[data-theme="cute"] .arcade-button:hover::before,
+[data-theme="cute"] .arcade-button:hover::after {
+  opacity: 1;
+}
+
+[data-theme="cute"] .arcade-button:active {
+  transform: translateY(-1px) scale(0.98);
+  animation: bounce-cute 0.6s ease-out;
+}
+
+/* ゲームエディター */
+[data-theme="cute"] .game-editor {
+  background: var(--color-background);
+  background-image: 
+    radial-gradient(circle at 20% 20%, rgba(244, 114, 182, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(167, 139, 250, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 60%, rgba(74, 222, 128, 0.05) 0%, transparent 50%);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  position: relative;
+}
+
+/* 浮遊スパークル効果 */
+[data-theme="cute"] .game-editor::before {
+  content: '✨ 💖 🌸 ⭐ 💫 🎀';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  font-size: 20px;
+  color: rgba(244, 114, 182, 0.3);
+  pointer-events: none;
+  z-index: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  animation: sparkle-float 15s linear infinite;
+  letter-spacing: 100px;
+  line-height: 200px;
+}
+
+/* かわいいカード */
+[data-theme="cute"] .card,
+[data-theme="cute"] .panel {
+  background: var(--color-surface);
+  border: var(--cute-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--cute-shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="cute"] .card::before,
+[data-theme="cute"] .panel::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(244, 114, 182, 0.1) 0%,
+    transparent 70%
+  );
+  animation: kawaii-pulse 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* かわいいテキスト */
+[data-theme="cute"] h1,
+[data-theme="cute"] h2,
+[data-theme="cute"] h3,
+[data-theme="cute"] h4 {
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-weight: 700;
+  position: relative;
+}
+
+[data-theme="cute"] h1::after,
+[data-theme="cute"] h2::after {
+  content: ' 💖';
+  animation: heart-beat 2s ease-in-out infinite;
+}
+
+[data-theme="cute"] h3::after,
+[data-theme="cute"] h4::after {
+  content: ' ✨';
+  animation: sparkle-float 2s ease-in-out infinite;
+}
+
+/* 入力フィールド */
+[data-theme="cute"] input,
+[data-theme="cute"] textarea,
+[data-theme="cute"] select {
+  background: var(--color-surface);
+  border: 2px solid rgba(244, 114, 182, 0.3);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  border-radius: var(--border-radius);
+  padding: 12px 16px;
+  transition: all 0.3s ease;
+}
+
+[data-theme="cute"] input:focus,
+[data-theme="cute"] textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--kawaii-glow);
+  outline: none;
+  background: #fef7ff;
+}
+
+[data-theme="cute"] input::placeholder,
+[data-theme="cute"] textarea::placeholder {
+  color: rgba(131, 24, 67, 0.5);
+  font-style: italic;
+}
+
+/* プログレスバー */
+[data-theme="cute"] .progress-bar {
+  background: rgba(244, 114, 182, 0.1);
+  border: var(--cute-border);
+  border-radius: var(--border-radius);
+  height: 28px;
+  overflow: hidden;
+  position: relative;
+}
+
+[data-theme="cute"] .progress-fill {
+  background: linear-gradient(90deg, #f472b6, #a78bfa, #4ade80);
+  height: 100%;
+  border-radius: calc(var(--border-radius) - 2px);
+  position: relative;
+  animation: kawaii-pulse 2s ease-in-out infinite;
+}
+
+[data-theme="cute"] .progress-fill::before {
+  content: '💖';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+  animation: heart-beat 1s ease-in-out infinite;
+}
+
+[data-theme="cute"] .progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  animation: progress-shimmer 2s linear infinite;
+}
+
+@keyframes progress-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* かわいい通知 */
+[data-theme="cute"] .notification,
+[data-theme="cute"] .alert {
+  background: var(--color-surface);
+  border: var(--cute-border);
+  border-radius: var(--border-radius);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  box-shadow: var(--cute-shadow);
+  position: relative;
+  padding: 16px 20px;
+  overflow: hidden;
+}
+
+[data-theme="cute"] .notification::before,
+[data-theme="cute"] .alert::before {
+  content: '🌸';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 16px;
+  animation: sparkle-float 2s ease-in-out infinite;
+}
+
+/* ラブリースクロールバー */
+[data-theme="cute"] ::-webkit-scrollbar {
+  width: 12px;
+}
+
+[data-theme="cute"] ::-webkit-scrollbar-track {
+  background: rgba(244, 114, 182, 0.1);
+  border-radius: 10px;
+}
+
+[data-theme="cute"] ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #f472b6, #a78bfa);
+  border-radius: 10px;
+  border: 2px solid var(--color-surface);
+}
+
+[data-theme="cute"] ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #ec4899, #8b5cf6);
+  animation: kawaii-pulse 1s ease-in-out infinite;
+}
+
+/* パーティクル効果 */
+[data-theme="cute"] .particle-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+
+[data-theme="cute"] .heart-particle {
+  position: absolute;
+  font-size: 14px;
+  color: rgba(244, 114, 182, 0.6);
+  animation: heart-float 4s ease-out forwards;
+}
+
+@keyframes heart-float {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100vh) rotate(360deg);
+    opacity: 0;
+  }
+}

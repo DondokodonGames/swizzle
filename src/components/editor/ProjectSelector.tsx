@@ -1,22 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../../constants/EditorLimits';
+import { useGameProject } from '../../hooks/editor/useGameProject';
 
 interface ProjectSelectorProps {
   onProjectSelect: (project: GameProject) => void;
   onCreateNew: (name: string) => void;
-  onDelete?: (projectId: string) => void;      // ← 追加
-  onDuplicate?: (projectId: string) => void;   // ← 追加 
-  onExport?: (projectId: string) => void;      // ← 追加
+  onDelete?: (projectId: string) => void;
+  onDuplicate?: (projectId: string) => void;
+  onExport?: (projectId: string) => void;
 }
 
 interface ProjectCardProps {
   project: GameProject;
   onSelect: () => void;
   onDelete: () => void;
+  onDuplicate: () => void;
+  onExport: () => void;
 }
 
-const ProjectCard: React.FC<ProjectCardProps> = ({ project, onSelect, onDelete }) => {
+const ProjectCard: React.FC<ProjectCardProps> = ({ 
+  project, 
+  onSelect, 
+  onDelete, 
+  onDuplicate, 
+  onExport 
+}) => {
   const lastModified = new Date(project.lastModified);
   const isRecent = Date.now() - lastModified.getTime() < 24 * 60 * 60 * 1000; // 24時間以内
 
@@ -71,18 +80,41 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onSelect, onDelete }
           </div>
         )}
 
-        {/* 削除ボタン */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (window.confirm(`「${project.name}」を削除しますか？この操作は取り消せません。`)) {
-              onDelete();
-            }
-          }}
-          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 hover:bg-red-600 text-white p-1 rounded-full text-xs"
-        >
-          🗑️
-        </button>
+        {/* アクションボタン（改善版）*/}
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onExport();
+            }}
+            className="bg-blue-500 hover:bg-blue-600 text-white p-1 rounded-full text-xs"
+            title="エクスポート"
+          >
+            💾
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDuplicate();
+            }}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white p-1 rounded-full text-xs"
+            title="複製"
+          >
+            📄
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm(`「${project.name}」を削除しますか？この操作は取り消せません。`)) {
+                onDelete();
+              }
+            }}
+            className="bg-red-500 hover:bg-red-600 text-white p-1 rounded-full text-xs"
+            title="削除"
+          >
+            🗑️
+          </button>
+        </div>
       </div>
 
       {/* プロジェクト情報 */}
@@ -130,9 +162,12 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onSelect, onDelete }
           </div>
         </div>
 
-        {/* 最終更新日時 */}
+        {/* 最終更新日時・保存回数 */}
         <div className="text-xs text-gray-500 mb-4">
-          最終更新: {lastModified.toLocaleDateString('ja-JP')} {lastModified.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+          <div>最終更新: {lastModified.toLocaleDateString('ja-JP')} {lastModified.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</div>
+          {project.metadata.statistics.saveCount > 0 && (
+            <div>保存回数: {project.metadata.statistics.saveCount}回</div>
+          )}
         </div>
 
         {/* 編集ボタン */}
@@ -149,147 +184,51 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onSelect, onDelete }
 
 export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   onProjectSelect,
-  onCreateNew
+  onCreateNew,
+  onDelete,
+  onDuplicate,
+  onExport
 }) => {
   const [projects, setProjects] = useState<GameProject[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error' | 'info';
+    message: string;
+  } | null>(null);
 
-  // プロジェクト一覧の読み込み（実際の実装ではローカルストレージやAPIから取得）
+  // ✨ useGameProject統合
+  const {
+    loading,
+    error,
+    createProject,
+    deleteProject,
+    duplicateProject,
+    exportProject,
+    listProjects
+  } = useGameProject();
+
+  // 通知表示ヘルパー
+  const showNotification = (type: 'success' | 'error' | 'info', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 5000);
+  };
+
+  // プロジェクト一覧の読み込み（✨ 実際のストレージから）
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        setLoading(true);
-        // TODO: 実際のプロジェクト読み込み処理を実装
-        // const loadedProjects = await ProjectStorage.listProjects();
-        // setProjects(loadedProjects);
-        
-        // デモデータ
-        const demoProjects: GameProject[] = [
-          {
-            id: 'demo-1',
-            name: 'マイゲーム1',
-            description: '初めて作ったゲームです',
-            createdAt: '2025-09-01T10:00:00.000Z',
-            lastModified: '2025-09-01T15:30:00.000Z',
-            version: '1.0.0',
-            creator: { isAnonymous: true },
-            status: 'draft',
-            totalSize: 12 * 1024 * 1024, // 12MB
-            assets: {
-              background: null,
-              objects: [
-                {
-                  id: 'obj1',
-                  name: 'キャラクター1',
-                  frames: [],
-                  animationSettings: { speed: 10, loop: true, pingPong: false, autoStart: true },
-                  totalSize: 2 * 1024 * 1024,
-                  createdAt: '2025-09-01T10:00:00.000Z',
-                  lastModified: '2025-09-01T10:00:00.000Z',
-                  defaultScale: 1.0,
-                  defaultOpacity: 1.0,
-                }
-              ],
-              texts: [],
-              audio: { bgm: null, se: [] },
-              statistics: { 
-                totalImageSize: 0, 
-                totalAudioSize: 0, 
-                totalSize: 0,
-                usedSlots: { 
-                  background: 0,
-                  objects: 1, 
-                  texts: 0, 
-                  bgm: 0,
-                  se: 0 
-                },
-                limitations: {
-                  isNearImageLimit: false,
-                  isNearAudioLimit: false,
-                  isNearTotalLimit: false,
-                  hasViolations: false
-                }
-              },
-              lastModified: '2025-09-01T10:00:00.000Z'
-            },
-            script: {
-              layout: {
-                background: { visible: true, initialAnimation: 0, animationSpeed: 10, autoStart: true },
-                objects: [],
-                texts: [],
-                stage: { backgroundColor: '#ffffff' }
-              },
-              flags: [],
-              rules: [],
-              successConditions: [],
-              statistics: { 
-                totalRules: 0, 
-                totalConditions: 0, 
-                totalActions: 0, 
-                complexityScore: 0,
-                usedTriggerTypes: [],
-                usedActionTypes: [],
-                flagCount: 0,
-                estimatedCPUUsage: 'low',
-                estimatedMemoryUsage: 0,
-                maxConcurrentEffects: 0
-              },
-              version: '1.0.0',
-              lastModified: '2025-09-01T10:00:00.000Z'
-            },
-            settings: {
-              name: 'マイゲーム1',
-              duration: { type: 'fixed', seconds: 10 },
-              difficulty: 'easy',
-              publishing: {
-                isPublished: false,
-                visibility: 'private',
-                allowComments: true,
-                allowRemix: true
-              },
-              preview: {},
-              export: { includeSourceData: true, compressionLevel: 'medium', format: 'json' }
-            },
-            metadata: {
-              statistics: {
-                totalEditTime: 0,
-                saveCount: 0,
-                testPlayCount: 0,
-                publishCount: 0
-              },
-              usage: {
-                lastOpened: '2025-09-01T10:00:00.000Z',
-                totalOpenCount: 1,
-                averageSessionTime: 0
-              },
-              performance: {
-                lastBuildTime: 0,
-                averageFPS: 60,
-                memoryUsage: 0
-              }
-            },
-            versionHistory: [],
-            projectSettings: {
-              autoSaveInterval: 30000,
-              backupEnabled: true,
-              compressionEnabled: false,
-              maxVersionHistory: 10
-            }
-          }
-        ];
-        setProjects(demoProjects);
+        const loadedProjects = await listProjects();
+        setProjects(loadedProjects);
       } catch (error) {
-        console.error('プロジェクトの読み込みに失敗しました:', error);
-      } finally {
-        setLoading(false);
+        console.error('プロジェクト一覧の読み込みに失敗:', error);
+        showNotification('error', 'プロジェクト一覧の読み込みに失敗しました');
       }
     };
 
     loadProjects();
-  }, []);
+  }, [listProjects]);
 
   // 検索フィルター
   const filteredProjects = projects.filter(project =>
@@ -297,23 +236,129 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     (project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
   );
 
-  // 新規プロジェクト作成
-  const handleCreateNew = () => {
-    if (newProjectName.trim()) {
+  // 新規プロジェクト作成（✨ 実際のストレージ使用）
+  const handleCreateNew = async () => {
+    if (!newProjectName.trim()) return;
+
+    try {
+      const newProject = await createProject(newProjectName.trim());
+      setProjects(prev => [newProject, ...prev]);
       onCreateNew(newProjectName.trim());
       setShowNewProjectModal(false);
       setNewProjectName('');
+      showNotification('success', `「${newProject.name}」を作成しました`);
+    } catch (error: any) {
+      showNotification('error', `プロジェクト作成に失敗しました: ${error.message}`);
     }
   };
 
-  // プロジェクト削除
-  const handleDeleteProject = (projectId: string) => {
-    setProjects(prev => prev.filter(p => p.id !== projectId));
-    // TODO: 実際のストレージからも削除
+  // プロジェクト削除（✨ 実際のストレージ使用）
+  const handleDeleteProject = async (projectId: string) => {
+    try {
+      await deleteProject(projectId);
+      setProjects(prev => prev.filter(p => p.id !== projectId));
+      if (onDelete) onDelete(projectId);
+      showNotification('success', 'プロジェクトを削除しました');
+    } catch (error: any) {
+      showNotification('error', `削除に失敗しました: ${error.message}`);
+    }
+  };
+
+  // プロジェクト複製（✨ 実際のストレージ使用）
+  const handleDuplicateProject = async (projectId: string) => {
+    try {
+      const originalProject = projects.find(p => p.id === projectId);
+      if (!originalProject) return;
+
+      const newName = `${originalProject.name} のコピー`;
+      const duplicated = await duplicateProject(projectId, newName);
+      setProjects(prev => [duplicated, ...prev]);
+      if (onDuplicate) onDuplicate(projectId);
+      showNotification('success', `「${duplicated.name}」を作成しました`);
+    } catch (error: any) {
+      showNotification('error', `複製に失敗しました: ${error.message}`);
+    }
+  };
+
+  // プロジェクトエクスポート（✨ 実際のストレージ使用）
+  const handleExportProject = async (projectId: string) => {
+    try {
+      const project = projects.find(p => p.id === projectId);
+      if (!project) return;
+
+      const blob = await exportProject(projectId);
+      
+      // ダウンロード
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.name}_export.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      if (onExport) onExport(projectId);
+      showNotification('success', 'プロジェクトをエクスポートしました');
+    } catch (error: any) {
+      showNotification('error', `エクスポートに失敗しました: ${error.message}`);
+    }
+  };
+
+  // ファイルインポート処理
+  const handleFileImport = async (file: File) => {
+    try {
+      const importedProject = await (async () => {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        return data.project || data; // ProjectExportData形式または直接GameProject形式に対応
+      })();
+
+      setProjects(prev => [importedProject, ...prev]);
+      showNotification('success', `「${importedProject.name}」をインポートしました`);
+    } catch (error: any) {
+      showNotification('error', `インポートに失敗しました: ${error.message}`);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50">
+      {/* エラー・通知表示 */}
+      {error && (
+        <div className="fixed top-4 left-4 right-4 z-50">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 shadow-lg">
+            <div className="flex items-center">
+              <span className="text-red-500 text-xl mr-3">⚠️</span>
+              <p className="text-red-800 font-medium flex-1">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 max-w-md">
+          <div className={`p-4 rounded-2xl shadow-lg border-l-4 ${
+            notification.type === 'success' ? 'bg-green-50 border-green-500 text-green-800' :
+            notification.type === 'error' ? 'bg-red-50 border-red-500 text-red-800' :
+            'bg-blue-50 border-blue-500 text-blue-800'
+          }`}>
+            <div className="flex items-center">
+              <span className="text-xl mr-3">
+                {notification.type === 'success' ? '✅' :
+                 notification.type === 'error' ? '❌' : 'ℹ️'}
+              </span>
+              <p className="font-medium">{notification.message}</p>
+              <button
+                onClick={() => setNotification(null)}
+                className="ml-auto text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ヘッダー */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -324,6 +369,12 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
             <p className="text-lg text-gray-600">
               簡単にゲームを作って、みんなに遊んでもらおう！
             </p>
+            
+            {/* ストレージ統計表示 */}
+            <div className="mt-4 text-sm text-gray-500">
+              プロジェクト数: {projects.length}個 | 
+              総容量: {(projects.reduce((sum, p) => sum + p.totalSize, 0) / 1024 / 1024).toFixed(1)}MB
+            </div>
           </div>
         </div>
       </header>
@@ -340,18 +391,39 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
-          <button
-            onClick={() => setShowNewProjectModal(true)}
-            className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-semibold transition-all duration-200 hover:scale-105 shadow-lg"
-          >
-            ✨ 新しいゲームを作る
-          </button>
+          
+          <div className="flex gap-3">
+            {/* インポートボタン */}
+            <label className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl font-semibold transition-all duration-200 hover:scale-105 shadow-lg cursor-pointer">
+              📂 インポート
+              <input
+                type="file"
+                accept=".json"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleFileImport(file);
+                    e.target.value = ''; // リセット
+                  }
+                }}
+                className="hidden"
+              />
+            </label>
+            
+            {/* 新規作成ボタン */}
+            <button
+              onClick={() => setShowNewProjectModal(true)}
+              className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-semibold transition-all duration-200 hover:scale-105 shadow-lg"
+            >
+              ✨ 新しいゲームを作る
+            </button>
+          </div>
         </div>
 
         {/* プロジェクト一覧 */}
         {loading ? (
           <div className="text-center py-20">
-            <div className="text-4xl mb-4">⏳</div>
+            <div className="text-4xl mb-4 animate-spin">⏳</div>
             <p className="text-gray-600">プロジェクトを読み込み中...</p>
           </div>
         ) : filteredProjects.length === 0 ? (
@@ -380,6 +452,8 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 project={project}
                 onSelect={() => onProjectSelect(project)}
                 onDelete={() => handleDeleteProject(project.id)}
+                onDuplicate={() => handleDuplicateProject(project.id)}
+                onExport={() => handleExportProject(project.id)}
               />
             ))}
           </div>
@@ -422,16 +496,17 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   setShowNewProjectModal(false);
                   setNewProjectName('');
                 }}
-                className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors"
+                disabled={loading}
+                className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors disabled:opacity-50"
               >
                 キャンセル
               </button>
               <button
                 onClick={handleCreateNew}
-                disabled={!newProjectName.trim()}
+                disabled={!newProjectName.trim() || loading}
                 className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                作成
+                {loading ? '作成中...' : '作成'}
               </button>
             </div>
 
@@ -450,6 +525,12 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
         <button className="bg-purple-500 hover:bg-purple-600 text-white p-4 rounded-full shadow-lg transition-colors">
           <span className="text-xl">❓</span>
         </button>
+      </div>
+
+      {/* 開発者情報 */}
+      <div className="fixed bottom-2 left-2 text-xs text-gray-400">
+        <div>Game Editor v1.0.0 - Phase 1-A ストレージ統合完了</div>
+        <div>💡 Ctrl+Q: メイン画面に戻る</div>
       </div>
     </div>
   );
