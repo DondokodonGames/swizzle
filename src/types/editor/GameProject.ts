@@ -4,7 +4,7 @@
  */
 
 import { ProjectAssets } from './ProjectAssets';
-import { GameScript } from './GameScript';
+import { GameScript, createDefaultInitialState } from './GameScript';
 import { EditorTab, ProjectStatus, DifficultyLevel, GameDurationOption } from '../../constants/EditorLimits';
 
 // ゲーム設定
@@ -441,6 +441,8 @@ export const createDefaultGameProject = (name: string, userId?: string): GamePro
     
     // スクリプト（空の初期状態）
     script: {
+      // 🔧 修正: initialState追加
+      initialState: createDefaultInitialState(),
       layout: {
         background: {
           visible: false,

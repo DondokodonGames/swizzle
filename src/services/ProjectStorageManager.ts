@@ -1,9 +1,9 @@
 // src/services/ProjectStorageManager.ts - 実際のファイルベース修正版
 
-// 🔧 インポート修正: 個別ファイルから直接インポート
+// 🔧 インポート修正: 個別ファイルから直接インポート + createDefaultInitialState追加
 import { GameProject } from '../types/editor/GameProject';
 import { ProjectAssets } from '../types/editor/ProjectAssets';
-import { GameScript } from '../types/editor/GameScript';
+import { GameScript, createDefaultInitialState } from '../types/editor/GameScript';
 import { GameSettings } from '../types/editor/GameSettings';
 
 // インターフェース定義（設計書準拠）
@@ -152,7 +152,6 @@ export class ProjectStorageManager {
       createdAt: now, // 🔧 string型
       lastModified: now, // 🔧 updatedAt → lastModified
 
-
       // プロジェクトデータ初期化
       assets: {
         background: null,
@@ -183,6 +182,8 @@ export class ProjectStorageManager {
         lastModified: now // 🔧 ProjectAssets型に合わせて追加
       },
       script: {
+        // 🔧 修正: initialState追加
+        initialState: createDefaultInitialState(),
         rules: [],
         layout: {
           background: {
@@ -211,21 +212,16 @@ export class ProjectStorageManager {
           estimatedMemoryUsage: 0,
           maxConcurrentEffects: 0
         },
-        version: '',
-        lastModified: ''
+        version: '1.0.0',
+        lastModified: now
       },
       settings: {
         // 🔧 GameSettings型に存在するプロパティのみ使用
-        difficulty: "normal"
-        // gameTemplate, theme, gameName プロパティ削除
-        ,
-
-
-        name: '',
+        name: name,
+        difficulty: "normal",
         duration: {
           type: 'fixed',
-          seconds: undefined,
-          maxSeconds: undefined
+          seconds: 10
         },
         publishing: {
           isPublished: false,
@@ -257,7 +253,7 @@ export class ProjectStorageManager {
           publishCount: 0
         },
         usage: {
-          lastOpened: '',
+          lastOpened: now,
           totalOpenCount: 0,
           averageSessionTime: 0
         },
@@ -276,10 +272,10 @@ export class ProjectStorageManager {
       totalSize: 0,
       versionHistory: [],
       projectSettings: {
-        autoSaveInterval: 0,
+        autoSaveInterval: 30000,
         backupEnabled: false,
         compressionEnabled: false,
-        maxVersionHistory: 0
+        maxVersionHistory: 10
       }
     };
 

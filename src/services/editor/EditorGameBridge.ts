@@ -236,7 +236,7 @@ export class EditorGameBridge {
         };
       });
 
-      // 🔧 型安全なルール変換
+      // 🔧 型安全なルール変換（型重複・型ガード修正）
       const rules = project.script.rules.map((rule, index) => {
         const firstCondition = rule.triggers?.conditions?.[0];
         const firstAction = rule.actions?.[0];
@@ -245,13 +245,13 @@ export class EditorGameBridge {
           id: rule.id,
           type: 'touch' as const, // デフォルトタッチルール
           condition: firstCondition ? {
-            type: firstCondition.type,
-            target: firstCondition.target || 'self',
-            ...firstCondition // 既存プロパティを安全に展開
+            // 🔧 修正: 型重複回避 - typeは展開に含まれるため個別指定を削除
+            target: ('target' in firstCondition ? firstCondition.target : 'self'),
+            ...firstCondition // 既存プロパティを安全に展開（type含む）
           } : null,
           action: firstAction ? {
-            type: firstAction.type,
-            ...firstAction // 既存プロパティを安全に展開
+            // 🔧 修正: 型重複回避 - typeは展開に含まれるため個別指定を削除
+            ...firstAction // 既存プロパティを安全に展開（type含む）
           } : null,
           priority: rule.priority || index,
           enabled: rule.enabled !== undefined ? rule.enabled : true
@@ -440,8 +440,14 @@ export class EditorGameBridge {
                   conditionMet = true;
                 }
               } else if (rule.condition?.type === 'time' && eventType === 'time') {
-                const targetTime = rule.condition.seconds || 5;
+                // 🔧 修正: 型安全なアクセス
+                const targetTime = typeof rule.condition.seconds === 'number' ? rule.condition.seconds : 5;
                 if (Math.abs(gameState.timeElapsed - targetTime) < 0.1) {
+                  conditionMet = true;
+                }
+              } else if (rule.condition?.type === 'score' && eventType === 'score') {
+                // 🔧 修正: 型安全なアクセス（Line 581対応）
+                if (typeof rule.condition.target === 'number' && gameState.score >= rule.condition.target) {
                   conditionMet = true;
                 }
               }
@@ -578,7 +584,7 @@ export class EditorGameBridge {
 
         // 成功条件チェック
         gameData.successConditions.forEach(condition => {
-          if (condition.type === 'score' && gameState.score >= condition.target) {
+          if (condition.type === 'score' && typeof condition.target === 'number' && gameState.score >= condition.target) {
             gameState.running = false;
             gameState.completed = true;
           }

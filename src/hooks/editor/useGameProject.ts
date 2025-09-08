@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { ProjectAssets } from '../../types/editor/ProjectAssets';
-import { GameScript } from '../../types/editor/GameScript';
+import { GameScript, createDefaultInitialState } from '../../types/editor/GameScript';
 import { GameSettings } from '../../types/editor/GameSettings';
 import { EDITOR_LIMITS } from '../../constants/EditorLimits';
 import { ProjectStorage } from '../../services/editor/ProjectStorage';
@@ -133,6 +133,8 @@ const createDefaultProject = (name: string): GameProject => {
     },
     
     script: {
+      // 🔧 修正: initialState追加
+      initialState: createDefaultInitialState(),
       layout: {
         background: { visible: false, initialAnimation: 0, animationSpeed: 10, autoStart: false },
         objects: [],
