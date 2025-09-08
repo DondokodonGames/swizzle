@@ -1,9 +1,9 @@
 // src/components/editor/tabs/ScriptTab.tsx
-// 現行動作版 + RuleEngine統合 + ビジュアル強化版
+// 現行動作版 + RuleEngine統合 + ビジュアル強化版 + 配置システム修復・初期条件連携
 
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
-import { GameRule, TriggerCondition, GameAction, MovementPattern, EffectPattern } from '../../../types/editor/GameScript';
+import { GameRule, TriggerCondition, GameAction, MovementPattern, EffectPattern, createDefaultInitialState, syncInitialStateWithLayout } from '../../../types/editor/GameScript';
 import { CONDITIONS_LIBRARY, ACTIONS_LIBRARY, MOVEMENT_PATTERNS } from '../../../constants/EditorLimits';
 import RuleEngine from '../../../services/rule-engine/RuleEngine';
 
@@ -13,12 +13,13 @@ interface ScriptTabProps {
 }
 
 export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }) => {
-  const [mode, setMode] = useState<'layout' | 'rules'>('rules'); // デフォルトをrulesに変更
+  const [mode, setMode] = useState<'layout' | 'rules'>('layout'); // 🔧 デフォルトをlayoutに変更
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [editingRule, setEditingRule] = useState<GameRule | null>(null);
   const [showRuleModal, setShowRuleModal] = useState(false);
   const [draggedItem, setDraggedItem] = useState<any>(null);
-  const [ruleTestMode, setRuleTestMode] = useState(false); // 🔧 追加：ルールテストモード
+  const [ruleTestMode, setRuleTestMode] = useState(false);
+  const [showInitialStateEditor, setShowInitialStateEditor] = useState(false); // 🔧 追加
   const gamePreviewRef = useRef<HTMLDivElement>(null);
 
   // 🔧 RuleEngine インスタンス
@@ -45,16 +46,157 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     });
   }, [project, updateProject, ruleEngine]);
 
-  // レイアウトモード: オブジェクト配置
-  const handleObjectPositionUpdate = useCallback((objectId: string, position: { x: number; y: number }) => {
-    const updatedScript = { ...project.script };
-    const objectIndex = updatedScript.layout.objects.findIndex(obj => obj.objectId === objectId);
-    
-    if (objectIndex !== -1) {
-      updatedScript.layout.objects[objectIndex].position = position;
-      updateProject({ script: updatedScript });
+  // 🔧 初期条件の取得・作成ヘルパー
+  const ensureInitialState = useCallback(() => {
+    if (!project.script.initialState) {
+      console.log('⚠️ 初期条件なし→デフォルト作成');
+      const defaultInitialState = createDefaultInitialState();
+      const syncedInitialState = syncInitialStateWithLayout(defaultInitialState, project.script.layout);
+      
+      updateScript({
+        initialState: syncedInitialState
+      });
+      
+      return syncedInitialState;
     }
+    return project.script.initialState;
+  }, [project.script, updateScript]);
+
+  // 🔧 強化: オブジェクト配置更新（初期条件連携）
+  const handleObjectPositionUpdate = useCallback((objectId: string, position: { x: number; y: number }) => {
+    console.log('🔧 オブジェクト配置更新:', objectId, position);
+    
+    const updatedScript = { ...project.script };
+    
+    // 1. レイアウト配置データ更新
+    const layoutObjectIndex = updatedScript.layout.objects.findIndex(obj => obj.objectId === objectId);
+    if (layoutObjectIndex !== -1) {
+      updatedScript.layout.objects[layoutObjectIndex].position = position;
+    } else {
+      // 新規オブジェクトの場合はレイアウトに追加
+      const asset = project.assets.objects.find(obj => obj.id === objectId);
+      if (asset) {
+        updatedScript.layout.objects.push({
+          objectId: objectId,
+          position: position,
+          scale: { x: 1, y: 1 },
+          rotation: 0,
+          zIndex: updatedScript.layout.objects.length + 1,
+          initialState: {
+            visible: true,
+            animation: 0,
+            animationSpeed: 12,
+            autoStart: false
+          }
+        });
+      }
+    }
+    
+    // 2. 初期条件の確保・同期更新
+    if (!updatedScript.initialState) {
+      updatedScript.initialState = createDefaultInitialState();
+    }
+    
+    const initialObjectIndex = updatedScript.initialState.layout.objects.findIndex(obj => obj.id === objectId);
+    if (initialObjectIndex !== -1) {
+      // 既存の初期条件を更新
+      updatedScript.initialState.layout.objects[initialObjectIndex].position = position;
+    } else {
+      // 新規オブジェクトの初期条件を追加
+      const asset = project.assets.objects.find(obj => obj.id === objectId);
+      if (asset) {
+        updatedScript.initialState.layout.objects.push({
+          id: objectId,
+          position: position,
+          visible: true,
+          scale: { x: 1, y: 1 },
+          rotation: 0,
+          zIndex: updatedScript.layout.objects.length,
+          animationIndex: 0,
+          animationSpeed: 12,
+          autoStart: false
+        });
+      }
+    }
+    
+    // 3. 統計情報更新
+    updatedScript.statistics = {
+      ...updatedScript.statistics,
+      totalRules: updatedScript.rules.length,
+      totalConditions: updatedScript.rules.reduce((sum, r) => sum + r.triggers.conditions.length, 0),
+      totalActions: updatedScript.rules.reduce((sum, r) => sum + r.actions.length, 0)
+    };
+    
+    updateProject({ script: updatedScript });
+    
+    console.log('✅ 配置更新完了 - レイアウト・初期条件両方同期');
+  }, [project, updateProject]);
+
+  // 🔧 新規: アセットからのオブジェクト追加
+  const handleAddObjectToLayout = useCallback((assetId: string, position?: { x: number; y: number }) => {
+    console.log('➕ オブジェクトをレイアウトに追加:', assetId);
+    
+    const asset = project.assets.objects.find(obj => obj.id === assetId);
+    if (!asset) {
+      console.warn('アセットが見つかりません:', assetId);
+      return;
+    }
+    
+    // デフォルト配置位置
+    const defaultPosition = position || {
+      x: 0.3 + (Math.random() * 0.4), // 0.3-0.7の範囲
+      y: 0.3 + (Math.random() * 0.4)  // 0.3-0.7の範囲
+    };
+    
+    handleObjectPositionUpdate(assetId, defaultPosition);
+  }, [project.assets.objects, handleObjectPositionUpdate]);
+
+  // 🔧 新規: オブジェクト初期状態更新
+  const handleObjectInitialStateUpdate = useCallback((objectId: string, updates: Partial<{
+    visible: boolean;
+    scale: { x: number; y: number };
+    rotation: number;
+    animationIndex: number;
+    animationSpeed: number;
+    autoStart: boolean;
+  }>) => {
+    console.log('🔧 オブジェクト初期状態更新:', objectId, updates);
+    
+    const updatedScript = { ...project.script };
+    
+    // 初期条件の確保
+    if (!updatedScript.initialState) {
+      updatedScript.initialState = createDefaultInitialState();
+    }
+    
+    const initialObjectIndex = updatedScript.initialState.layout.objects.findIndex(obj => obj.id === objectId);
+    if (initialObjectIndex !== -1) {
+      updatedScript.initialState.layout.objects[initialObjectIndex] = {
+        ...updatedScript.initialState.layout.objects[initialObjectIndex],
+        ...updates
+      };
+    }
+    
+    // レイアウトの同期（initialStateがある場合）
+    const layoutObjectIndex = updatedScript.layout.objects.findIndex(obj => obj.objectId === objectId);
+    if (layoutObjectIndex !== -1 && updates.visible !== undefined) {
+      updatedScript.layout.objects[layoutObjectIndex].initialState.visible = updates.visible;
+      if (updates.animationIndex !== undefined) {
+        updatedScript.layout.objects[layoutObjectIndex].initialState.animation = updates.animationIndex;
+      }
+      if (updates.animationSpeed !== undefined) {
+        updatedScript.layout.objects[layoutObjectIndex].initialState.animationSpeed = updates.animationSpeed;
+      }
+      if (updates.autoStart !== undefined) {
+        updatedScript.layout.objects[layoutObjectIndex].initialState.autoStart = updates.autoStart;
+      }
+    }
+    
+    updateProject({ script: updatedScript });
   }, [project.script, updateProject]);
+
+  // レイアウトモード: オブジェクト配置（既存のまま使用）
+  // [既存のhandleObjectPositionUpdateは上で強化版に置き換え済み]
 
   // ルール追加
   const handleAddRule = useCallback(() => {
@@ -64,7 +206,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
       name: '新しいルール',
       enabled: true,
       priority: project.script.rules.length + 1,
-      targetObjectId: 'stage',
+      targetObjectId: selectedObjectId || 'stage',
       triggers: {
         operator: 'AND',
         conditions: []
@@ -76,7 +218,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     
     setEditingRule(newRule);
     setShowRuleModal(true);
-  }, [project.script.rules.length]);
+  }, [project.script.rules.length, selectedObjectId]);
 
   // ルール保存（RuleEngine統合版）
   const handleSaveRule = useCallback((rule: GameRule) => {
@@ -198,9 +340,17 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     const clampedX = Math.max(0, Math.min(1, x));
     const clampedY = Math.max(0, Math.min(1, y));
     
-    handleObjectPositionUpdate(draggedItem.id, { x: clampedX, y: clampedY });
+    console.log('🎯 ドロップ:', draggedItem, { x: clampedX, y: clampedY });
+    
+    if (draggedItem.type === 'object') {
+      handleObjectPositionUpdate(draggedItem.id, { x: clampedX, y: clampedY });
+    } else if (draggedItem.type === 'asset') {
+      // アセットパネルからのドロップ
+      handleAddObjectToLayout(draggedItem.id, { x: clampedX, y: clampedY });
+    }
+    
     setDraggedItem(null);
-  }, [mode, draggedItem, handleObjectPositionUpdate]);
+  }, [mode, draggedItem, handleObjectPositionUpdate, handleAddObjectToLayout]);
 
   // 🔧 条件・アクションの視覚的フォーマット（改良版）
   const formatConditionVisual = useCallback((condition: TriggerCondition): { icon: string; text: string; color: string } => {
@@ -247,10 +397,18 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
 
   return (
     <div className="script-tab h-full flex flex-col">
-      {/* タブ切り替え + RuleEngineステータス */}
+      {/* タブ切り替え + RuleEngineステータス + 初期条件状態 */}
       <div className="flex-shrink-0 border-b border-gray-200 bg-white p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex space-x-1">
+            <button
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                mode === 'layout' ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              onClick={() => setMode('layout')}
+            >
+              🎨 レイアウト・配置
+            </button>
             <button
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 mode === 'rules' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-100'
@@ -259,20 +417,17 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
             >
               🎯 ルール設定
             </button>
-            <button
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                mode === 'layout' ? 'bg-green-500 text-white' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-              onClick={() => setMode('layout')}
-            >
-              🎨 レイアウト
-            </button>
           </div>
 
-          {/* 🔧 RuleEngineステータス表示 */}
+          {/* 🔧 RuleEngineステータス + 初期条件状態表示 */}
           <div className="flex items-center gap-4">
             <div className="text-xs text-gray-500">
               Engine: <span className="text-green-600 font-medium">Ready</span>
+            </div>
+            <div className="text-xs text-gray-500">
+              初期条件: <span className={`font-medium ${project.script.initialState ? 'text-green-600' : 'text-orange-600'}`}>
+                {project.script.initialState ? '設定済み' : '未設定'}
+              </span>
             </div>
             {mode === 'rules' && (
               <button
@@ -287,11 +442,19 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                 {ruleTestMode ? '⚡ テスト中...' : '🧪 ルールテスト'}
               </button>
             )}
+            {mode === 'layout' && (
+              <button
+                onClick={() => setShowInitialStateEditor(!showInitialStateEditor)}
+                className="px-3 py-1 rounded text-sm font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
+              >
+                ⚙️ 初期条件
+              </button>
+            )}
           </div>
         </div>
 
         {/* 統計情報（強化版） */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-5 gap-4">
           <div className="bg-blue-50 p-3 rounded-lg text-center">
             <div className="text-2xl font-bold text-blue-600">{project.script.statistics?.totalRules || 0}</div>
             <div className="text-sm text-blue-700">ルール数</div>
@@ -308,13 +471,385 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
             <div className="text-2xl font-bold text-orange-600">{project.script.statistics?.complexityScore || 0}</div>
             <div className="text-sm text-orange-700">複雑度</div>
           </div>
+          <div className="bg-indigo-50 p-3 rounded-lg text-center">
+            <div className="text-2xl font-bold text-indigo-600">{project.script.layout.objects.length}</div>
+            <div className="text-sm text-indigo-700">配置数</div>
+          </div>
         </div>
       </div>
 
       {/* メインコンテンツ */}
       <div className="flex-1 overflow-auto">
         
-        {/* ルールモード（強化版） */}
+        {/* 🔧 強化: レイアウトモード（配置システム修復版） */}
+        {mode === 'layout' && (
+          <div className="flex flex-1 gap-4 p-6">
+            {/* ゲームプレビューエリア */}
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-800">🎮 ゲーム画面</h3>
+                <div className="text-sm text-gray-600">
+                  オブジェクトをドラッグして配置してください
+                </div>
+              </div>
+              
+              <div
+                ref={gamePreviewRef}
+                className="relative w-full bg-gradient-to-b from-sky-200 to-green-200 rounded-xl border-2 border-gray-300 overflow-hidden cursor-crosshair"
+                style={{ aspectRatio: '9/16', minHeight: '400px' }}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              >
+                {/* 背景表示 */}
+                {project.script.layout.background.visible && project.assets.background && (
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{
+                      backgroundImage: project.assets.background.frames?.[0]?.dataUrl 
+                        ? `url(${project.assets.background.frames[0].dataUrl})` 
+                        : 'linear-gradient(to bottom, #87CEEB, #90EE90)'
+                    }}
+                  />
+                )}
+                
+                {/* 🔧 配置オブジェクト表示（初期条件反映版） */}
+                {project.script.layout.objects.map((layoutObj, index) => {
+                  const asset = project.assets.objects.find(obj => obj.id === layoutObj.objectId);
+                  const initialState = project.script.initialState?.layout.objects.find(obj => obj.id === layoutObj.objectId);
+                  
+                  if (!asset) {
+                    return (
+                      <div
+                        key={`placeholder-${index}`}
+                        className={`absolute cursor-move border-2 border-dashed transition-all bg-gray-200 rounded flex items-center justify-center ${
+                          selectedObjectId === layoutObj.objectId 
+                            ? 'border-blue-500 shadow-lg' 
+                            : 'border-gray-400 hover:border-blue-300'
+                        }`}
+                        style={{
+                          left: `${layoutObj.position.x * 100}%`,
+                          top: `${layoutObj.position.y * 100}%`,
+                          transform: 'translate(-50%, -50%)',
+                          zIndex: layoutObj.zIndex,
+                          width: '64px',
+                          height: '64px',
+                          opacity: initialState?.visible !== false ? 1 : 0.3
+                        }}
+                        onClick={() => setSelectedObjectId(layoutObj.objectId)}
+                        draggable
+                        onDragStart={(e) => {
+                          setDraggedItem({ id: layoutObj.objectId, type: 'object' });
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                      >
+                        <span className="text-xs text-gray-600">Missing Asset</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={layoutObj.objectId}
+                      className={`absolute cursor-move border-2 border-dashed transition-all ${
+                        selectedObjectId === layoutObj.objectId 
+                          ? 'border-blue-500 shadow-lg bg-blue-50' 
+                          : 'border-transparent hover:border-blue-300 hover:bg-blue-50'
+                      }`}
+                      style={{
+                        left: `${layoutObj.position.x * 100}%`,
+                        top: `${layoutObj.position.y * 100}%`,
+                        transform: 'translate(-50%, -50%)',
+                        zIndex: layoutObj.zIndex,
+                        opacity: initialState?.visible !== false ? 1 : 0.3
+                      }}
+                      onClick={() => setSelectedObjectId(layoutObj.objectId)}
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggedItem({ id: layoutObj.objectId, type: 'object' });
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                    >
+                      {asset.frames?.[0]?.dataUrl ? (
+                        <img
+                          src={asset.frames[0].dataUrl}
+                          alt={asset.name}
+                          className="max-w-16 max-h-16 object-contain pointer-events-none"
+                          style={{
+                            transform: `scale(${layoutObj.scale.x}, ${layoutObj.scale.y}) rotate(${layoutObj.rotation}deg)`
+                          }}
+                        />
+                      ) : (
+                        <div className="w-16 h-16 bg-gray-300 rounded flex items-center justify-center">
+                          <span className="text-xs text-gray-600">{asset.name}</span>
+                        </div>
+                      )}
+                      
+                      {/* 選択状態の表示 */}
+                      {selectedObjectId === layoutObj.objectId && (
+                        <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                          {asset.name}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                
+                {/* 🔧 アセットライブラリからドロップ可能なオブジェクト表示 */}
+                {project.assets.objects.length > 0 && project.script.layout.objects.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center p-6 bg-white bg-opacity-90 rounded-lg max-w-sm">
+                      <div className="text-4xl mb-2">🎯</div>
+                      <h4 className="font-medium text-gray-800 mb-2">オブジェクトを配置しよう</h4>
+                      <p className="text-gray-600 mb-3 text-sm">
+                        右のパネルからオブジェクトをドラッグして、<br />
+                        ゲーム画面に配置してください
+                      </p>
+                      <div className="text-xs text-gray-500">
+                        配置後にルールを設定できます
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* アセットなしの場合 */}
+                {project.assets.objects.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center p-6 bg-white bg-opacity-90 rounded-lg">
+                      <div className="text-4xl mb-2">📁</div>
+                      <p className="text-gray-600 mb-3">アセットタブでオブジェクトを追加してください</p>
+                      <div className="text-xs text-gray-500">
+                        Assets タブ → オブジェクト追加 → ここで配置
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {/* 🔧 強化: 右サイドパネル（オブジェクト管理 + 初期条件設定） */}
+            <div className="w-80 space-y-4">
+              
+              {/* オブジェクト設定パネル */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                  🔧 オブジェクト設定
+                  {selectedObjectId && (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                      選択中
+                    </span>
+                  )}
+                </h4>
+                
+                {selectedObjectId ? (
+                  <div className="space-y-4">
+                    {(() => {
+                      const selectedObj = project.script.layout.objects.find(obj => obj.objectId === selectedObjectId);
+                      const selectedAsset = project.assets.objects.find(obj => obj.id === selectedObjectId);
+                      const initialState = project.script.initialState?.layout.objects.find(obj => obj.id === selectedObjectId);
+                      
+                      if (!selectedObj) {
+                        return <p className="text-gray-500">オブジェクトが見つかりません</p>;
+                      }
+                      
+                      return (
+                        <>
+                          <div className="text-center">
+                            {selectedAsset?.frames?.[0]?.dataUrl ? (
+                              <img 
+                                src={selectedAsset.frames[0].dataUrl} 
+                                alt={selectedAsset.name}
+                                className="w-16 h-16 mx-auto object-contain border rounded-lg"
+                              />
+                            ) : (
+                              <div className="w-16 h-16 mx-auto bg-gray-200 border rounded-lg flex items-center justify-center">
+                                <span className="text-xs text-gray-500">No Image</span>
+                              </div>
+                            )}
+                            <p className="mt-2 font-medium">{selectedAsset?.name || selectedObjectId}</p>
+                          </div>
+                          
+                          {/* 位置設定 */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">位置</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs text-gray-500">X座標</label>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="1"
+                                  step="0.01"
+                                  value={selectedObj.position.x}
+                                  onChange={(e) => {
+                                    const newX = parseFloat(e.target.value);
+                                    handleObjectPositionUpdate(selectedObjectId, {
+                                      x: newX,
+                                      y: selectedObj.position.y
+                                    });
+                                  }}
+                                  className="w-full"
+                                />
+                                <span className="text-xs text-gray-500">{Math.round(selectedObj.position.x * 100)}%</span>
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-500">Y座標</label>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="1"
+                                  step="0.01"
+                                  value={selectedObj.position.y}
+                                  onChange={(e) => {
+                                    const newY = parseFloat(e.target.value);
+                                    handleObjectPositionUpdate(selectedObjectId, {
+                                      x: selectedObj.position.x,
+                                      y: newY
+                                    });
+                                  }}
+                                  className="w-full"
+                                />
+                                <span className="text-xs text-gray-500">{Math.round(selectedObj.position.y * 100)}%</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* 🔧 強化: 初期状態設定 */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">初期状態</label>
+                            <div className="space-y-2">
+                              <label className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={initialState?.visible !== false}
+                                  onChange={(e) => {
+                                    handleObjectInitialStateUpdate(selectedObjectId, {
+                                      visible: e.target.checked
+                                    });
+                                  }}
+                                  className="mr-2"
+                                />
+                                <span className="text-sm">最初から表示</span>
+                              </label>
+                              
+                              <label className="flex items-center">
+                                <input
+                                  type="checkbox"
+                                  checked={initialState?.autoStart || false}
+                                  onChange={(e) => {
+                                    handleObjectInitialStateUpdate(selectedObjectId, {
+                                      autoStart: e.target.checked
+                                    });
+                                  }}
+                                  className="mr-2"
+                                />
+                                <span className="text-sm">アニメ自動開始</span>
+                              </label>
+                              
+                              <div>
+                                <label className="text-xs text-gray-500">初期回転</label>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="360"
+                                  value={initialState?.rotation || 0}
+                                  onChange={(e) => {
+                                    handleObjectInitialStateUpdate(selectedObjectId, {
+                                      rotation: parseInt(e.target.value)
+                                    });
+                                  }}
+                                  className="w-full"
+                                />
+                                <span className="text-xs text-gray-500">{initialState?.rotation || 0}°</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* ルール設定ボタン */}
+                          <div className="pt-2 border-t">
+                            <button
+                              onClick={() => {
+                                setMode('rules');
+                                handleAddRule();
+                              }}
+                              className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                            >
+                              🎯 このオブジェクトにルール設定
+                            </button>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    <div className="text-4xl mb-2">👆</div>
+                    <p>オブジェクトをタップして<br />設定を変更できます</p>
+                  </div>
+                )}
+              </div>
+              
+              {/* 🔧 アセットライブラリ（ドラッグ可能） */}
+              <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <h4 className="font-semibold text-gray-800 mb-3">📦 オブジェクト一覧</h4>
+                
+                {project.assets.objects.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2">
+                    {project.assets.objects.map((asset) => {
+                      const isPlaced = project.script.layout.objects.some(obj => obj.objectId === asset.id);
+                      
+                      return (
+                        <div
+                          key={asset.id}
+                          className={`relative p-2 border rounded-lg cursor-move transition-all hover:scale-105 ${
+                            isPlaced 
+                              ? 'bg-green-50 border-green-300' 
+                              : 'bg-gray-50 border-gray-300 hover:bg-blue-50 hover:border-blue-300'
+                          }`}
+                          draggable
+                          onDragStart={(e) => {
+                            setDraggedItem({ id: asset.id, type: 'asset' });
+                            e.dataTransfer.effectAllowed = 'copy';
+                          }}
+                          onClick={() => {
+                            if (!isPlaced) {
+                              handleAddObjectToLayout(asset.id);
+                            }
+                          }}
+                        >
+                          {asset.frames?.[0]?.dataUrl ? (
+                            <img
+                              src={asset.frames[0].dataUrl}
+                              alt={asset.name}
+                              className="w-full h-12 object-contain"
+                            />
+                          ) : (
+                            <div className="w-full h-12 bg-gray-200 rounded flex items-center justify-center">
+                              <span className="text-xs text-gray-500">No Image</span>
+                            </div>
+                          )}
+                          <div className="text-xs text-center mt-1 truncate">{asset.name}</div>
+                          
+                          {isPlaced && (
+                            <div className="absolute top-1 right-1 bg-green-500 text-white rounded-full w-4 h-4 flex items-center justify-center">
+                              <span className="text-xs">✓</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center text-gray-500 py-4">
+                    <div className="text-2xl mb-1">📁</div>
+                    <div className="text-sm">Assets タブで<br />オブジェクトを追加</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ルールモード（既存版を保持） */}
         {mode === 'rules' && (
           <div className="p-6">
             
@@ -324,6 +859,9 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                 <h3 className="text-lg font-semibold text-gray-800">⚙️ IF-THEN ルール設定</h3>
                 <p className="text-sm text-gray-600 mt-1">
                   アイコンでゲームの動作ルールを直感的に設定
+                  {selectedObjectId && (
+                    <span className="text-blue-600 font-medium"> - 選択中: {selectedObjectId}</span>
+                  )}
                 </p>
               </div>
               <button
@@ -467,250 +1005,6 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                     </div>
                   </div>
                 ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* レイアウトモード（既存の動作版を保持） */}
-        {mode === 'layout' && (
-          <div className="flex flex-1 gap-4 p-6">
-            {/* ゲームプレビューエリア */}
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold mb-3 text-gray-800">🎮 ゲーム画面</h3>
-              <div
-                ref={gamePreviewRef}
-                className="relative w-full bg-gradient-to-b from-sky-200 to-green-200 rounded-xl border-2 border-gray-300 overflow-hidden"
-                style={{ aspectRatio: '9/16', minHeight: '400px' }}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-              >
-                {/* 背景表示 */}
-                {project.script.layout.background.visible && project.assets.background && (
-                  <div 
-                    className="absolute inset-0 bg-cover bg-center"
-                    style={{
-                      backgroundImage: project.assets.background.frames?.[0]?.dataUrl 
-                        ? `url(${project.assets.background.frames[0].dataUrl})` 
-                        : 'linear-gradient(to bottom, #87CEEB, #90EE90)'
-                    }}
-                  />
-                )}
-                
-                {/* オブジェクト表示 */}
-                {project.script.layout.objects.map((layoutObj, index) => {
-                  const asset = project.assets.objects.find(obj => obj.id === layoutObj.objectId);
-                  
-                  if (!asset) {
-                    return (
-                      <div
-                        key={`placeholder-${index}`}
-                        className={`absolute cursor-move border-2 border-dashed transition-all bg-gray-200 rounded flex items-center justify-center ${
-                          selectedObjectId === layoutObj.objectId 
-                            ? 'border-blue-500 shadow-lg' 
-                            : 'border-gray-400 hover:border-blue-300'
-                        }`}
-                        style={{
-                          left: `${layoutObj.position.x * 100}%`,
-                          top: `${layoutObj.position.y * 100}%`,
-                          transform: 'translate(-50%, -50%)',
-                          zIndex: layoutObj.zIndex,
-                          width: '64px',
-                          height: '64px'
-                        }}
-                        onClick={() => setSelectedObjectId(layoutObj.objectId)}
-                        draggable
-                        onDragStart={(e) => {
-                          setDraggedItem({ id: layoutObj.objectId, type: 'object' });
-                          e.dataTransfer.effectAllowed = 'move';
-                        }}
-                      >
-                        <span className="text-xs text-gray-600">Object</span>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div
-                      key={layoutObj.objectId}
-                      className={`absolute cursor-move border-2 border-dashed transition-all ${
-                        selectedObjectId === layoutObj.objectId 
-                          ? 'border-blue-500 shadow-lg' 
-                          : 'border-transparent hover:border-blue-300'
-                      }`}
-                      style={{
-                        left: `${layoutObj.position.x * 100}%`,
-                        top: `${layoutObj.position.y * 100}%`,
-                        transform: 'translate(-50%, -50%)',
-                        zIndex: layoutObj.zIndex
-                      }}
-                      onClick={() => setSelectedObjectId(layoutObj.objectId)}
-                      draggable
-                      onDragStart={(e) => {
-                        setDraggedItem({ id: layoutObj.objectId, type: 'object' });
-                        e.dataTransfer.effectAllowed = 'move';
-                      }}
-                    >
-                      {asset.frames?.[0]?.dataUrl ? (
-                        <img
-                          src={asset.frames[0].dataUrl}
-                          alt={asset.name}
-                          className="max-w-16 max-h-16 object-contain"
-                          style={{
-                            transform: `scale(${layoutObj.scale.x}, ${layoutObj.scale.y}) rotate(${layoutObj.rotation}deg)`
-                          }}
-                        />
-                      ) : (
-                        <div className="w-16 h-16 bg-gray-300 rounded flex items-center justify-center">
-                          <span className="text-xs text-gray-600">{asset.name}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                
-                {/* デモ用オブジェクト追加ボタン */}
-                {project.assets.objects.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center p-6 bg-white bg-opacity-90 rounded-lg">
-                      <div className="text-4xl mb-2">📁</div>
-                      <p className="text-gray-600 mb-3">オブジェクトがありません</p>
-                      <button
-                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                        onClick={() => console.log('Assets Tabでオブジェクトを追加してください')}
-                      >
-                        オブジェクトを追加
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* オブジェクト設定パネル（既存版を保持） */}
-            <div className="w-80 bg-gray-50 rounded-lg p-4">
-              <h4 className="font-semibold text-gray-800 mb-3">🔧 オブジェクト設定</h4>
-              
-              {selectedObjectId ? (
-                <div className="space-y-4">
-                  {(() => {
-                    const selectedObj = project.script.layout.objects.find(obj => obj.objectId === selectedObjectId);
-                    const selectedAsset = project.assets.objects.find(obj => obj.id === selectedObjectId);
-                    
-                    if (!selectedObj) {
-                      return <p className="text-gray-500">オブジェクトが見つかりません</p>;
-                    }
-                    
-                    return (
-                      <>
-                        <div className="text-center">
-                          {selectedAsset?.frames?.[0]?.dataUrl ? (
-                            <img 
-                              src={selectedAsset.frames[0].dataUrl} 
-                              alt={selectedAsset.name}
-                              className="w-16 h-16 mx-auto object-contain border rounded-lg"
-                            />
-                          ) : (
-                            <div className="w-16 h-16 mx-auto bg-gray-200 border rounded-lg flex items-center justify-center">
-                              <span className="text-xs text-gray-500">No Image</span>
-                            </div>
-                          )}
-                          <p className="mt-2 font-medium">{selectedAsset?.name || selectedObjectId}</p>
-                        </div>
-                        
-                        {/* 位置設定 */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">位置</label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="text-xs text-gray-500">X座標</label>
-                              <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.01"
-                                value={selectedObj.position.x}
-                                onChange={(e) => {
-                                  const newX = parseFloat(e.target.value);
-                                  handleObjectPositionUpdate(selectedObjectId, {
-                                    x: newX,
-                                    y: selectedObj.position.y
-                                  });
-                                }}
-                                className="w-full"
-                              />
-                              <span className="text-xs text-gray-500">{Math.round(selectedObj.position.x * 100)}%</span>
-                            </div>
-                            <div>
-                              <label className="text-xs text-gray-500">Y座標</label>
-                              <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.01"
-                                value={selectedObj.position.y}
-                                onChange={(e) => {
-                                  const newY = parseFloat(e.target.value);
-                                  handleObjectPositionUpdate(selectedObjectId, {
-                                    x: selectedObj.position.x,
-                                    y: newY
-                                  });
-                                }}
-                                className="w-full"
-                              />
-                              <span className="text-xs text-gray-500">{Math.round(selectedObj.position.y * 100)}%</span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        {/* 初期状態設定 */}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">初期状態</label>
-                          <div className="space-y-2">
-                            <label className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={selectedObj.initialState.visible}
-                                onChange={(e) => {
-                                  const updatedScript = { ...project.script };
-                                  const objIndex = updatedScript.layout.objects.findIndex(obj => obj.objectId === selectedObjectId);
-                                  if (objIndex !== -1) {
-                                    updatedScript.layout.objects[objIndex].initialState.visible = e.target.checked;
-                                    updateProject({ script: updatedScript });
-                                  }
-                                }}
-                                className="mr-2"
-                              />
-                              <span className="text-sm">最初から表示</span>
-                            </label>
-                            
-                            <label className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={selectedObj.initialState.autoStart}
-                                onChange={(e) => {
-                                  const updatedScript = { ...project.script };
-                                  const objIndex = updatedScript.layout.objects.findIndex(obj => obj.objectId === selectedObjectId);
-                                  if (objIndex !== -1) {
-                                    updatedScript.layout.objects[objIndex].initialState.autoStart = e.target.checked;
-                                    updateProject({ script: updatedScript });
-                                  }
-                                }}
-                                className="mr-2"
-                              />
-                              <span className="text-sm">アニメ自動開始</span>
-                            </label>
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              ) : (
-                <div className="text-center text-gray-500 py-8">
-                  <div className="text-4xl mb-2">👆</div>
-                  <p>オブジェクトをタップして<br />設定を変更できます</p>
-                </div>
               )}
             </div>
           </div>

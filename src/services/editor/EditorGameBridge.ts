@@ -1,10 +1,11 @@
 // src/services/editor/EditorGameBridge.ts
-// エディター↔ゲーム連携システム - Phase 1-C実装
+// エディター↔ゲーム連携システム - Phase 1-C実装 + 型安全性修正・初期条件対応
 
 import { GameProject } from '../../types/editor/GameProject';
 import { GameTemplate } from '../../game-engine/GameTemplate';
+import { createDefaultInitialState, syncInitialStateWithLayout } from '../../types/editor/GameScript';
 
-// ゲーム実行用データ形式
+// ゲーム実行用データ形式（型安全性強化版）
 export interface GameExecutionData {
   id: string;
   name: string;
@@ -17,12 +18,17 @@ export interface GameExecutionData {
     autoStart: boolean;
   };
   
-  // アセットデータ
+  // 🔧 強化: 初期条件を含むアセットデータ
   assets: {
     background?: {
       url: string;
       width: number;
       height: number;
+      // 🔧 追加: 初期条件
+      initialVisible: boolean;
+      initialFrame: number;
+      animationSpeed: number;
+      autoStart: boolean;
     };
     objects: Array<{
       id: string;
@@ -32,6 +38,15 @@ export interface GameExecutionData {
       height: number;
       scale: number;
       opacity: number;
+      // 🔧 追加: 初期配置・状態
+      initialX: number;         // 0-1正規化座標
+      initialY: number;         // 0-1正規化座標
+      initialVisible: boolean;
+      initialRotation: number;
+      zIndex: number;
+      animationIndex: number;
+      animationSpeed: number;
+      autoStartAnimation: boolean;
     }>;
     texts: Array<{
       id: string;
@@ -42,45 +57,88 @@ export interface GameExecutionData {
       color: string;
       fontWeight: 'normal' | 'bold';
       fontFamily: string;
+      // 🔧 追加: 初期状態
+      initialVisible: boolean;
+      initialRotation: number;
+      zIndex: number;
     }>;
     audio?: {
-      bgm?: string;
+      bgm?: {
+        url: string;
+        volume: number;
+        autoPlay: boolean;
+      };
       se: Array<{
         id: string;
         url: string;
         trigger: string;
+        volume: number;
       }>;
+      // 🔧 追加: 音声初期設定
+      masterVolume: number;
+      seVolume: number;
     };
   };
   
-  // ゲームルール
+  // 🔧 型安全性強化: ゲームルール
   rules: Array<{
     id: string;
     type: 'touch' | 'timer' | 'collision' | 'condition';
-    condition: any;
-    action: any;
+    condition: {
+      type: string;
+      target?: string;
+      [key: string]: any;        // 拡張可能な条件データ
+    } | null;
+    action: {
+      type: string;
+      [key: string]: any;        // 拡張可能なアクションデータ
+    } | null;
     priority: number;
+    enabled: boolean;
   }>;
   
-  // 成功条件
+  // 🔧 型安全性強化: 成功条件
   successConditions: Array<{
+    id: string;
     type: 'score' | 'time' | 'collection' | 'custom';
     target: number | string;
     current: number;
+    comparison?: '>=' | '>' | '==' | '<' | '<=';
+    description?: string;
   }>;
+  
+  // 🔧 追加: 初期ゲーム状態
+  initialGameState: {
+    score: number;
+    timeLimit?: number;
+    targetScore?: number;
+    lives?: number;
+    level?: number;
+    flags: Record<string, boolean>;
+  };
 }
 
-// ゲーム実行結果
+// ゲーム実行結果（詳細情報追加）
 export interface GameExecutionResult {
   success: boolean;
   score?: number;
   timeElapsed: number;
   completed: boolean;
   errors: string[];
+  warnings: string[];           // 🔧 追加: 警告情報
   performance: {
     averageFPS: number;
     memoryUsage: number;
     renderTime: number;
+    objectCount: number;        // 🔧 追加: オブジェクト数
+    ruleExecutions: number;     // 🔧 追加: ルール実行回数
+  };
+  // 🔧 追加: ゲーム終了時の状態
+  finalState?: {
+    score: number;
+    timeElapsed: number;
+    objectsInteracted: string[];
+    rulesTriggered: string[];
   };
 }
 
@@ -98,11 +156,20 @@ export class EditorGameBridge {
     return this.instance;
   }
 
-  // プロジェクト → ゲーム実行データ変換
+  // 🔧 修正: プロジェクト → ゲーム実行データ変換（型安全性・初期条件対応）
   convertProjectToGameData(project: GameProject): GameExecutionData {
-    console.log('プロジェクト→ゲームデータ変換開始:', project.name);
+    console.log('🔄 プロジェクト→ゲームデータ変換開始:', project.name);
     
     try {
+      // 🔧 初期条件の取得・作成
+      let initialState = project.script.initialState;
+      if (!initialState) {
+        console.log('⚠️ 初期条件なし→デフォルト作成');
+        initialState = createDefaultInitialState();
+        // レイアウトと同期
+        initialState = syncInitialStateWithLayout(initialState, project.script.layout);
+      }
+
       // 基本設定変換
       const settings = {
         duration: project.settings.duration?.type === 'unlimited' 
@@ -112,57 +179,124 @@ export class EditorGameBridge {
         autoStart: true
       };
 
-      // 背景アセット変換
+      // 🔧 背景アセット変換（初期条件対応）
       const background = project.assets.background?.frames?.[0] ? {
         url: project.assets.background.frames[0].dataUrl,
         width: project.assets.background.frames[0].width,
-        height: project.assets.background.frames[0].height
+        height: project.assets.background.frames[0].height,
+        // 初期条件適用
+        initialVisible: initialState.layout.background.visible,
+        initialFrame: initialState.layout.background.frameIndex,
+        animationSpeed: initialState.layout.background.animationSpeed,
+        autoStart: initialState.layout.background.autoStart
       } : undefined;
 
-      // オブジェクトアセット変換
-      const objects = project.assets.objects.map((obj, index) => ({
-        id: obj.id,
-        name: obj.name,
-        url: obj.frames[0].dataUrl,
-        width: obj.frames[0].width,
-        height: obj.frames[0].height,
-        scale: obj.defaultScale || 1.0,
-        opacity: obj.defaultOpacity || 1.0
-      }));
+      // 🔧 オブジェクトアセット変換（初期条件対応）
+      const objects = project.assets.objects.map((asset, index) => {
+        // 初期条件からマッチする設定を検索
+        const initialObj = initialState.layout.objects.find(obj => obj.id === asset.id);
+        
+        return {
+          id: asset.id,
+          name: asset.name,
+          url: asset.frames[0].dataUrl,
+          width: asset.frames[0].width,
+          height: asset.frames[0].height,
+          scale: asset.defaultScale || 1.0,
+          opacity: asset.defaultOpacity || 1.0,
+          // 初期条件適用（フォールバック付き）
+          initialX: initialObj?.position.x || (0.2 + (index * 0.15) % 0.6),
+          initialY: initialObj?.position.y || (0.3 + (index * 0.1) % 0.4),
+          initialVisible: initialObj?.visible !== undefined ? initialObj.visible : true,
+          initialRotation: initialObj?.rotation || 0,
+          zIndex: initialObj?.zIndex || index + 1,
+          animationIndex: initialObj?.animationIndex || 0,
+          animationSpeed: initialObj?.animationSpeed || 12,
+          autoStartAnimation: initialObj?.autoStart || false
+        };
+      });
 
-      // 🔧 テキストアセット変換（fontFamily undefined対応）
-      const texts = project.assets.texts.map((text, index) => ({
-        id: text.id,
-        content: text.content,
-        x: 50 + (index * 100), // デフォルト配置
-        y: 100 + (index * 50),
-        fontSize: text.style.fontSize,
-        color: text.style.color,
-        fontWeight: text.style.fontWeight,
-        fontFamily: text.style.fontFamily || 'Inter, sans-serif' // 🔧 undefined対応
-      }));
+      // 🔧 テキストアセット変換（初期条件対応・fontFamily対応）
+      const texts = project.assets.texts.map((text, index) => {
+        const initialText = initialState.layout.texts.find(t => t.id === text.id);
+        
+        return {
+          id: text.id,
+          content: text.content,
+          x: initialText?.position.x || (50 + (index * 100)),
+          y: initialText?.position.y || (100 + (index * 50)),
+          fontSize: text.style.fontSize,
+          color: text.style.color,
+          fontWeight: text.style.fontWeight,
+          fontFamily: text.style.fontFamily || 'Inter, sans-serif', // 🔧 undefined対応
+          // 初期条件適用
+          initialVisible: initialText?.visible !== undefined ? initialText.visible : true,
+          initialRotation: initialText?.rotation || 0,
+          zIndex: initialText?.zIndex || index + 1
+        };
+      });
 
-      // 🔧 ルール変換（正しい型アクセス）
-      const rules = project.script.rules.map((rule, index) => ({
-        id: rule.id,
-        type: 'touch' as const, // デフォルトタッチルール
-        // 🔧 修正: rule.triggers.conditions から安全にアクセス
-        condition: rule.triggers?.conditions?.[0] || null,
-        // 🔧 修正: rule.actions から安全にアクセス  
-        action: rule.actions?.[0] || null,
-        priority: index
-      }));
+      // 🔧 型安全なルール変換
+      const rules = project.script.rules.map((rule, index) => {
+        const firstCondition = rule.triggers?.conditions?.[0];
+        const firstAction = rule.actions?.[0];
+        
+        return {
+          id: rule.id,
+          type: 'touch' as const, // デフォルトタッチルール
+          condition: firstCondition ? {
+            type: firstCondition.type,
+            target: firstCondition.target || 'self',
+            ...firstCondition // 既存プロパティを安全に展開
+          } : null,
+          action: firstAction ? {
+            type: firstAction.type,
+            ...firstAction // 既存プロパティを安全に展開
+          } : null,
+          priority: rule.priority || index,
+          enabled: rule.enabled !== undefined ? rule.enabled : true
+        };
+      });
 
-      // 🔧 成功条件変換（正しい型アクセス）
-      const successConditions = project.script.successConditions.map(condition => ({
-        // 🔧 修正: condition.conditions[0]?.type から安全にアクセス
-        type: (condition.conditions?.[0]?.type as 'score' | 'time' | 'collection' | 'custom') || 'custom',
-        // 🔧 修正: 具体的な条件値を安全に取得
-        target: condition.conditions?.[0]?.scoreValue || 
-                condition.conditions?.[0]?.timeValue || 
-                'default',
-        current: 0
-      }));
+      // 🔧 型安全な成功条件変換
+      const successConditions = project.script.successConditions.map((condition, index) => {
+        const firstCondition = condition.conditions?.[0];
+        
+        return {
+          id: condition.id || `success_${index}`,
+          type: (firstCondition?.type as 'score' | 'time' | 'collection' | 'custom') || 'custom',
+          target: firstCondition?.scoreValue || 
+                  firstCondition?.timeValue || 
+                  firstCondition?.objectValue || 
+                  100, // デフォルト目標値
+          current: 0,
+          comparison: firstCondition?.scoreComparison || 
+                     firstCondition?.timeComparison || 
+                     '>=',
+          description: condition.name || '目標達成'
+        };
+      });
+
+      // 🔧 音声アセット変換（初期条件対応）
+      const audio = project.assets.audio.bgm || project.assets.audio.se.length > 0 ? {
+        bgm: project.assets.audio.bgm ? {
+          url: project.assets.audio.bgm.dataUrl,
+          volume: initialState.audio.bgm?.volume || 0.8,
+          autoPlay: initialState.audio.bgm?.autoPlay || false
+        } : undefined,
+        se: project.assets.audio.se.map(se => ({
+          id: se.id,
+          url: se.dataUrl,
+          trigger: 'touch', // デフォルト
+          volume: initialState.audio.seVolume
+        })),
+        masterVolume: initialState.audio.masterVolume,
+        seVolume: initialState.audio.seVolume
+      } : {
+        se: [],
+        masterVolume: initialState.audio.masterVolume,
+        seVolume: initialState.audio.seVolume
+      };
 
       const gameData: GameExecutionData = {
         id: project.id,
@@ -173,47 +307,46 @@ export class EditorGameBridge {
           background,
           objects,
           texts,
-          audio: project.assets.audio.bgm ? {
-            bgm: project.assets.audio.bgm.dataUrl,
-            se: project.assets.audio.se.map(se => ({
-              id: se.id,
-              url: se.dataUrl,
-              trigger: 'touch' // デフォルト
-            }))
-          } : { se: [] }
+          audio
         },
         rules,
-        successConditions
+        successConditions,
+        initialGameState: initialState.gameState
       };
 
-      console.log('変換完了:', {
+      console.log('✅ 変換完了:', {
         name: gameData.name,
         objectCount: objects.length,
         textCount: texts.length,
         ruleCount: rules.length,
         duration: settings.duration,
-        gameSpeed: settings.gameSpeed
+        gameSpeed: settings.gameSpeed,
+        initialGameState: initialState.gameState
       });
 
       this.currentGameData = gameData;
       return gameData;
       
     } catch (error) {
-      console.error('プロジェクト変換エラー:', error);
+      console.error('❌ プロジェクト変換エラー:', error);
       throw new Error(`ゲームデータ変換に失敗しました: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  // ゲーム実行（テストプレイ）
+  // 🔧 強化: ゲーム実行（テストプレイ）
   async executeGame(
     gameData: GameExecutionData,
     canvasElement: HTMLCanvasElement
   ): Promise<GameExecutionResult> {
-    console.log('ゲーム実行開始:', gameData.name);
+    console.log('🎮 ゲーム実行開始:', gameData.name);
     
     const startTime = performance.now();
     let averageFPS = 60;
     let memoryUsage = 0;
+    let ruleExecutions = 0;
+    const warnings: string[] = [];
+    const objectsInteracted: string[] = [];
+    const rulesTriggered: string[] = [];
     
     try {
       // キャンバス初期化
@@ -226,21 +359,39 @@ export class EditorGameBridge {
       canvasElement.width = 360;  // モバイル対応
       canvasElement.height = 640;
       
-      // ゲーム状態初期化
+      // 🔧 初期ゲーム状態設定
       const gameState = {
-        score: 0,
+        score: gameData.initialGameState.score,
         timeElapsed: 0,
+        timeLimit: gameData.initialGameState.timeLimit,
         running: true,
         completed: false,
+        flags: { ...gameData.initialGameState.flags }, // コピーして独立性確保
+        
+        // オブジェクト状態（初期条件適用）
         objects: gameData.assets.objects.map(obj => ({
           ...obj,
-          x: Math.random() * (canvasElement.width - 100) + 50,
-          y: Math.random() * (canvasElement.height - 100) + 50,
+          x: obj.initialX * canvasElement.width,   // 正規化座標→実座標変換
+          y: obj.initialY * canvasElement.height,
+          visible: obj.initialVisible,
+          rotation: obj.initialRotation,
+          currentAnimation: obj.animationIndex,
           vx: (Math.random() - 0.5) * 2 * gameData.settings.gameSpeed,
           vy: (Math.random() - 0.5) * 2 * gameData.settings.gameSpeed
         })),
-        texts: gameData.assets.texts
+        texts: gameData.assets.texts.map(text => ({
+          ...text,
+          visible: text.initialVisible,
+          rotation: text.initialRotation
+        }))
       };
+
+      // 背景状態
+      const backgroundState = gameData.assets.background ? {
+        visible: gameData.assets.background.initialVisible,
+        currentFrame: gameData.assets.background.initialFrame,
+        animationTimer: 0
+      } : null;
 
       // 画像リソース読み込み
       const imageCache = new Map<string, HTMLImageElement>();
@@ -248,9 +399,12 @@ export class EditorGameBridge {
       // 背景画像読み込み
       if (gameData.assets.background) {
         const bgImg = new Image();
-        await new Promise((resolve, reject) => {
-          bgImg.onload = resolve;
-          bgImg.onerror = reject;
+        await new Promise<void>((resolve, reject) => {
+          bgImg.onload = () => resolve();
+          bgImg.onerror = () => {
+            warnings.push('背景画像の読み込みに失敗しました');
+            resolve(); // エラーでも継続
+          };
           bgImg.src = gameData.assets.background!.url;
         });
         imageCache.set('background', bgImg);
@@ -259,13 +413,75 @@ export class EditorGameBridge {
       // オブジェクト画像読み込み
       for (const obj of gameData.assets.objects) {
         const img = new Image();
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = () => resolve(null); // エラーは無視
+        await new Promise<void>((resolve) => {
+          img.onload = () => resolve();
+          img.onerror = () => {
+            warnings.push(`オブジェクト画像 "${obj.name}" の読み込みに失敗しました`);
+            resolve(); // エラーでも継続
+          };
           img.src = obj.url;
         });
         imageCache.set(obj.id, img);
       }
+
+      // 🔧 ルール実行エンジン
+      const executeRules = (eventType: string, eventData?: any) => {
+        gameData.rules
+          .filter(rule => rule.enabled && rule.condition)
+          .sort((a, b) => b.priority - a.priority) // 優先度順
+          .forEach(rule => {
+            try {
+              // 条件チェック（基本実装）
+              let conditionMet = false;
+              
+              if (rule.condition?.type === 'touch' && eventType === 'touch') {
+                if (rule.condition.target === 'stage' || 
+                    (eventData?.objectId && rule.condition.target === eventData.objectId)) {
+                  conditionMet = true;
+                }
+              } else if (rule.condition?.type === 'time' && eventType === 'time') {
+                const targetTime = rule.condition.seconds || 5;
+                if (Math.abs(gameState.timeElapsed - targetTime) < 0.1) {
+                  conditionMet = true;
+                }
+              }
+              
+              // アクション実行
+              if (conditionMet && rule.action) {
+                ruleExecutions++;
+                rulesTriggered.push(rule.id);
+                
+                switch (rule.action.type) {
+                  case 'addScore':
+                    gameState.score += (rule.action as any).points || 10;
+                    break;
+                    
+                  case 'success':
+                    gameState.score += (rule.action as any).score || 100;
+                    gameState.running = false;
+                    gameState.completed = true;
+                    break;
+                    
+                  case 'failure':
+                    gameState.running = false;
+                    gameState.completed = false;
+                    break;
+                    
+                  case 'setFlag':
+                    const flagId = (rule.action as any).flagId;
+                    const flagValue = (rule.action as any).value;
+                    if (flagId) {
+                      gameState.flags[flagId] = flagValue;
+                    }
+                    break;
+                }
+              }
+            } catch (error) {
+              console.warn('ルール実行エラー:', rule.id, error);
+              warnings.push(`ルール "${rule.id}" の実行でエラーが発生しました`);
+            }
+          });
+      };
 
       // ゲームループ
       const gameLoop = () => {
@@ -274,7 +490,7 @@ export class EditorGameBridge {
         // 背景描画
         ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
         
-        if (imageCache.has('background')) {
+        if (backgroundState?.visible && imageCache.has('background')) {
           const bgImg = imageCache.get('background')!;
           ctx.drawImage(bgImg, 0, 0, canvasElement.width, canvasElement.height);
         } else {
@@ -288,6 +504,8 @@ export class EditorGameBridge {
 
         // オブジェクト更新・描画
         gameState.objects.forEach(obj => {
+          if (!obj.visible) return;
+          
           // 位置更新
           obj.x += obj.vx;
           obj.y += obj.vy;
@@ -305,10 +523,12 @@ export class EditorGameBridge {
           if (img) {
             ctx.save();
             ctx.globalAlpha = obj.opacity;
+            ctx.translate(obj.x + obj.width/2, obj.y + obj.height/2);
+            ctx.rotate(obj.rotation * Math.PI / 180);
             ctx.drawImage(
               img,
-              obj.x,
-              obj.y,
+              -obj.width * obj.scale / 2,
+              -obj.height * obj.scale / 2,
               obj.width * obj.scale,
               obj.height * obj.scale
             );
@@ -322,11 +542,15 @@ export class EditorGameBridge {
 
         // テキスト描画
         gameState.texts.forEach(text => {
+          if (!text.visible) return;
+          
           ctx.save();
           ctx.font = `${text.fontWeight} ${text.fontSize}px ${text.fontFamily}`;
           ctx.fillStyle = text.color;
           ctx.textAlign = 'left';
-          ctx.fillText(text.content, text.x, text.y);
+          ctx.translate(text.x, text.y);
+          ctx.rotate(text.rotation * Math.PI / 180);
+          ctx.fillText(text.content, 0, 0);
           ctx.restore();
         });
 
@@ -342,12 +566,23 @@ export class EditorGameBridge {
 
         // 時間更新
         gameState.timeElapsed += 1/60; // 60FPS想定
+        
+        // 時間ルール実行
+        executeRules('time');
 
         // ゲーム終了判定
         if (gameData.settings.duration && gameState.timeElapsed >= gameData.settings.duration) {
           gameState.running = false;
           gameState.completed = true;
         }
+
+        // 成功条件チェック
+        gameData.successConditions.forEach(condition => {
+          if (condition.type === 'score' && gameState.score >= condition.target) {
+            gameState.running = false;
+            gameState.completed = true;
+          }
+        });
 
         // 次フレーム
         if (gameState.running) {
@@ -365,16 +600,29 @@ export class EditorGameBridge {
         const y = clientY - rect.top;
 
         // オブジェクトクリック判定
+        let hitObject = false;
         gameState.objects.forEach(obj => {
+          if (!obj.visible) return;
+          
           if (x >= obj.x && x <= obj.x + obj.width * obj.scale &&
               y >= obj.y && y <= obj.y + obj.height * obj.scale) {
-            gameState.score += 10;
             
-            // オブジェクト位置リセット
+            hitObject = true;
+            objectsInteracted.push(obj.id);
+            
+            // タッチルール実行
+            executeRules('touch', { objectId: obj.id });
+            
+            // デフォルト動作（位置リセット）
             obj.x = Math.random() * (canvasElement.width - obj.width);
             obj.y = Math.random() * (canvasElement.height - obj.height);
           }
         });
+        
+        // ステージタッチルール実行
+        if (!hitObject) {
+          executeRules('touch', { objectId: 'stage' });
+        }
       };
 
       canvasElement.addEventListener('click', handleInteraction);
@@ -409,38 +657,69 @@ export class EditorGameBridge {
         timeElapsed: gameState.timeElapsed,
         completed: gameState.completed,
         errors: [],
+        warnings,
         performance: {
           averageFPS,
           memoryUsage,
-          renderTime
+          renderTime,
+          objectCount: gameData.assets.objects.length,
+          ruleExecutions
+        },
+        finalState: {
+          score: gameState.score,
+          timeElapsed: gameState.timeElapsed,
+          objectsInteracted: [...new Set(objectsInteracted)],
+          rulesTriggered: [...new Set(rulesTriggered)]
         }
       };
 
-      console.log('ゲーム実行完了:', result);
+      console.log('✅ ゲーム実行完了:', result);
       return result;
 
     } catch (error) {
-      console.error('ゲーム実行エラー:', error);
+      console.error('❌ ゲーム実行エラー:', error);
       
       return {
         success: false,
         timeElapsed: (performance.now() - startTime) / 1000,
         completed: false,
         errors: [error instanceof Error ? error.message : 'Unknown error'],
+        warnings,
         performance: {
           averageFPS: 0,
           memoryUsage: 0,
-          renderTime: performance.now() - startTime
+          renderTime: performance.now() - startTime,
+          objectCount: 0,
+          ruleExecutions: 0
         }
       };
     }
   }
 
-  // 簡易テストプレイ（SettingsTabで使用）
+  // 🔧 強化: 簡易テストプレイ（SettingsTabで使用）
   async quickTestPlay(project: GameProject): Promise<GameExecutionResult> {
-    console.log('クイックテストプレイ開始:', project.name);
+    console.log('🧪 クイックテストプレイ開始:', project.name);
     
     try {
+      // プロジェクト検証
+      const validationErrors: string[] = [];
+      
+      if (!project.settings.name?.trim()) {
+        validationErrors.push('ゲーム名が設定されていません');
+      }
+      
+      if (!project.assets.objects.length && !project.assets.background) {
+        validationErrors.push('最低1つのオブジェクトまたは背景が必要です');
+      }
+      
+      if (!project.script.rules.length) {
+        validationErrors.push('最低1つのルールが必要です');
+      }
+      
+      if (validationErrors.length > 0) {
+        throw new Error(validationErrors.join('\n'));
+      }
+      
       // 仮想キャンバス作成
       const canvas = document.createElement('canvas');
       canvas.width = 360;
@@ -449,29 +728,32 @@ export class EditorGameBridge {
       // プロジェクト変換
       const gameData = this.convertProjectToGameData(project);
       
-      // 短縮実行（2秒間）
+      // 短縮実行（3秒間）
       const originalDuration = gameData.settings.duration;
-      gameData.settings.duration = 2; // 2秒でテスト
+      gameData.settings.duration = 3; // 3秒でテスト
       
       const result = await this.executeGame(gameData, canvas);
       
       // 元の設定に戻す
       gameData.settings.duration = originalDuration;
       
-      console.log('クイックテストプレイ完了:', result);
+      console.log('✅ クイックテストプレイ完了:', result);
       return result;
       
     } catch (error) {
-      console.error('クイックテストプレイエラー:', error);
+      console.error('❌ クイックテストプレイエラー:', error);
       return {
         success: false,
         timeElapsed: 0,
         completed: false,
         errors: [error instanceof Error ? error.message : 'Test failed'],
+        warnings: [],
         performance: {
           averageFPS: 0,
           memoryUsage: 0,
-          renderTime: 0
+          renderTime: 0,
+          objectCount: 0,
+          ruleExecutions: 0
         }
       };
     }
@@ -483,7 +765,7 @@ export class EditorGameBridge {
     targetElement: HTMLElement,
     onGameEnd?: (result: GameExecutionResult) => void
   ): Promise<void> {
-    console.log('フルゲーム実行開始:', project.name);
+    console.log('🎮 フルゲーム実行開始:', project.name);
     
     try {
       // ゲーム用キャンバス作成
@@ -509,10 +791,10 @@ export class EditorGameBridge {
         onGameEnd(result);
       }
       
-      console.log('フルゲーム実行完了:', result);
+      console.log('✅ フルゲーム実行完了:', result);
       
     } catch (error) {
-      console.error('フルゲーム実行エラー:', error);
+      console.error('❌ フルゲーム実行エラー:', error);
       
       // エラー表示
       targetElement.innerHTML = `
@@ -529,7 +811,8 @@ export class EditorGameBridge {
           timeElapsed: 0,
           completed: false,
           errors: [error instanceof Error ? error.message : 'Launch failed'],
-          performance: { averageFPS: 0, memoryUsage: 0, renderTime: 0 }
+          warnings: [],
+          performance: { averageFPS: 0, memoryUsage: 0, renderTime: 0, objectCount: 0, ruleExecutions: 0 }
         });
       }
     }
@@ -544,7 +827,7 @@ export class EditorGameBridge {
   reset(): void {
     this.currentGameData = null;
     this.gameInstance = null;
-    console.log('EditorGameBridge リセット完了');
+    console.log('🔄 EditorGameBridge リセット完了');
   }
 }
 

@@ -1,6 +1,6 @@
 /**
  * ゲームスクリプト・ロジック型定義
- * Phase 6: ゲームエディター実装用
+ * Phase 6: ゲームエディター実装用 + 初期条件システム追加
  */
 
 // TextStyleをインポート
@@ -16,6 +16,73 @@ export interface Position {
 export interface Scale {
   x: number; // 0.1-3.0
   y: number; // 0.1-3.0
+}
+
+// 🔧 追加: ゲーム初期条件システム
+export interface GameInitialState {
+  // レイアウト初期状態
+  layout: {
+    background: {
+      visible: boolean;
+      frameIndex: number;               // 初期フレーム番号（0-3）
+      animationSpeed: number;           // アニメーション速度（fps）
+      autoStart: boolean;               // 自動再生開始
+    };
+    objects: Array<{
+      id: string;                       // アセットID（ProjectAssets.objects[].id）
+      position: { x: number; y: number }; // 初期配置座標（0-1正規化）
+      visible: boolean;                 // 初期表示状態
+      scale: { x: number; y: number };  // 初期スケール
+      rotation: number;                 // 初期回転角度（degree）
+      zIndex: number;                   // 描画順序
+      animationIndex: number;           // 初期アニメーション番号
+      animationSpeed: number;           // アニメーション速度（fps）
+      autoStart: boolean;               // アニメ自動開始
+    }>;
+    texts: Array<{
+      id: string;                       // テキストアセットID
+      position: { x: number; y: number }; // 初期配置座標
+      visible: boolean;                 // 初期表示状態
+      scale: number;                    // 初期スケール倍率
+      rotation: number;                 // 初期回転角度
+      zIndex: number;                   // 描画順序
+    }>;
+  };
+  
+  // 音声初期設定
+  audio: {
+    bgm: {
+      id: string;                       // BGMアセットID
+      volume: number;                   // 初期音量（0.0-1.0）
+      autoPlay: boolean;                // 自動再生
+    } | null;
+    masterVolume: number;               // マスター音量（0.0-1.0）
+    seVolume: number;                   // SE音量（0.0-1.0）
+  };
+  
+  // ゲーム状態初期値
+  gameState: {
+    flags: Record<string, boolean>;     // カスタムフラグの初期値
+    score: number;                      // 初期スコア
+    timeLimit?: number;                 // 制限時間（秒）。undefinedは無制限
+    targetScore?: number;               // 目標スコア
+    lives?: number;                     // 残機数
+    level?: number;                     // レベル・ステージ
+  };
+  
+  // 開始時自動実行ルール
+  autoRules: Array<{
+    id: string;                         // ルールID（GameRule.idを参照）
+    delay: number;                      // 実行遅延（秒）
+    priority: number;                   // 実行優先度
+  }>;
+  
+  // 初期条件メタデータ
+  metadata: {
+    version: string;                    // 初期条件のバージョン
+    createdAt: string;                  // 作成日時
+    lastModified: string;               // 最終更新日時
+  };
 }
 
 // ゲームレイアウト設定
@@ -298,8 +365,11 @@ export interface ScriptStatistics {
   maxConcurrentEffects: number;           // 最大同時エフェクト数
 }
 
-// ゲームスクリプト全体
+// 🔧 修正: ゲームスクリプト全体（初期条件追加）
 export interface GameScript {
+  // 🔧 追加: 初期条件設定
+  initialState: GameInitialState;
+  
   // 初期レイアウト設定
   layout: GameLayout;
   
@@ -345,3 +415,81 @@ export interface ScriptValidationResult {
     bottlenecks: string[];
   };
 }
+
+// 🔧 追加: デフォルト初期条件作成ヘルパー関数
+export const createDefaultInitialState = (): GameInitialState => {
+  const now = new Date().toISOString();
+  
+  return {
+    layout: {
+      background: {
+        visible: false,
+        frameIndex: 0,
+        animationSpeed: 12,
+        autoStart: false
+      },
+      objects: [],
+      texts: []
+    },
+    audio: {
+      bgm: null,
+      masterVolume: 0.8,
+      seVolume: 0.8
+    },
+    gameState: {
+      flags: {},
+      score: 0,
+      timeLimit: undefined,  // 無制限
+      targetScore: undefined,
+      lives: undefined,
+      level: 1
+    },
+    autoRules: [],
+    metadata: {
+      version: '1.0.0',
+      createdAt: now,
+      lastModified: now
+    }
+  };
+};
+
+// 🔧 追加: 初期条件とレイアウトの同期ヘルパー関数
+export const syncInitialStateWithLayout = (
+  initialState: GameInitialState,
+  layout: GameLayout
+): GameInitialState => {
+  return {
+    ...initialState,
+    layout: {
+      background: {
+        visible: layout.background.visible,
+        frameIndex: layout.background.initialAnimation,
+        animationSpeed: layout.background.animationSpeed,
+        autoStart: layout.background.autoStart
+      },
+      objects: layout.objects.map(obj => ({
+        id: obj.objectId,
+        position: obj.position,
+        visible: obj.initialState.visible,
+        scale: obj.scale,
+        rotation: obj.rotation,
+        zIndex: obj.zIndex,
+        animationIndex: obj.initialState.animation,
+        animationSpeed: obj.initialState.animationSpeed,
+        autoStart: obj.initialState.autoStart
+      })),
+      texts: layout.texts.map(text => ({
+        id: text.textId,
+        position: text.position,
+        visible: text.visible,
+        scale: text.scale,
+        rotation: text.rotation,
+        zIndex: text.zIndex
+      }))
+    },
+    metadata: {
+      ...initialState.metadata,
+      lastModified: new Date().toISOString()
+    }
+  };
+};

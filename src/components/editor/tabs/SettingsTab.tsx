@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
 import { GameSettings } from '../../../types/editor/GameProject';
+// 🔧 追加: EditorGameBridge統合
+import EditorGameBridge, { GameExecutionResult } from '../../../services/editor/EditorGameBridge';
 
 // 🔧 Props型定義修正: onTestPlay と onSave を追加
 interface SettingsTabProps {
@@ -36,11 +38,25 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 }) => {
   const [isTestPlaying, setIsTestPlaying] = useState(false);
   const [testPlayResult, setTestPlayResult] = useState<'success' | 'failure' | null>(null);
+  const [testPlayDetails, setTestPlayDetails] = useState<GameExecutionResult | null>(null); // 🔧 追加
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [generateThumbnail, setGenerateThumbnail] = useState(false);
   const [isSaving, setIsSaving] = useState(false); // 🔧 追加
+  const [showFullGame, setShowFullGame] = useState(false); // 🔧 追加: フルゲーム表示
   const gameTestRef = useRef<HTMLDivElement>(null);
+  const fullGameRef = useRef<HTMLDivElement>(null); // 🔧 追加
+
+  // 🔧 EditorGameBridge インスタンス
+  const bridgeRef = useRef<EditorGameBridge | null>(null);
+  
+  useEffect(() => {
+    bridgeRef.current = EditorGameBridge.getInstance();
+    return () => {
+      // クリーンアップ
+      bridgeRef.current?.reset();
+    };
+  }, []);
 
   // プロジェクト更新ヘルパー
   const updateProject = useCallback((updates: Partial<GameProject>) => {
@@ -89,10 +105,12 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     });
   }, [updateProject, project.metadata]);
 
-  // 🔧 強化されたテストプレイ機能
+  // 🔧 強化されたテストプレイ機能（EditorGameBridge統合）
   const handleTestPlay = useCallback(async () => {
+    console.log('🧪 テストプレイ開始:', project.name);
     setIsTestPlaying(true);
     setTestPlayResult(null);
+    setTestPlayDetails(null);
     
     try {
       // プロジェクトバリデーション
@@ -106,39 +124,106 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         validationErrors.push('最低1つのオブジェクトまたは背景を追加してください');
       }
       
+      if (!project.script.rules.length) {
+        validationErrors.push('最低1つのルールを設定してください');
+      }
+      
       if (validationErrors.length > 0) {
         throw new Error(validationErrors.join('\n'));
       }
 
-      // 🔧 外部テストプレイ処理がある場合は実行
-      if (onTestPlay) {
-        await onTestPlay();
-        setTestPlayResult('success');
-      } else {
-        // 内部テストプレイシミュレーション
-        console.log('テストプレイ開始:', {
-          projectName: project.settings.name,
-          objects: project.assets.objects.length,
-          rules: project.script.rules.length,
-          duration: project.settings.duration?.seconds || 'unlimited'
-        });
-        
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const hasValidAssets = project.assets.objects.length > 0 || project.assets.background;
-        const hasValidSettings = project.settings.name && project.settings.duration;
-        const success = Math.random() < (hasValidAssets && hasValidSettings ? 0.9 : 0.7);
-        
-        setTestPlayResult(success ? 'success' : 'failure');
+      // 🔧 EditorGameBridge を使用したテストプレイ実行
+      const bridge = bridgeRef.current;
+      if (!bridge) {
+        throw new Error('ゲームエンジンが初期化されていません');
       }
+
+      console.log('🔄 EditorGameBridge でテストプレイ実行...');
+      const result = await bridge.quickTestPlay(project);
+      
+      console.log('📊 テストプレイ結果:', result);
+      setTestPlayDetails(result);
+      
+      if (result.success && result.completed) {
+        setTestPlayResult('success');
+        console.log('✅ テストプレイ成功:', {
+          score: result.score,
+          timeElapsed: result.timeElapsed,
+          objectsInteracted: result.finalState?.objectsInteracted?.length || 0,
+          rulesTriggered: result.finalState?.rulesTriggered?.length || 0
+        });
+      } else {
+        setTestPlayResult('failure');
+        console.warn('⚠️ テストプレイ失敗:', {
+          errors: result.errors,
+          warnings: result.warnings
+        });
+        if (result.errors.length > 0) {
+          alert(`テストプレイで問題が発生しました:\n${result.errors.join('\n')}`);
+        }
+      }
+      
+      // 統計更新
+      updateProject({
+        metadata: {
+          ...project.metadata,
+          statistics: {
+            ...project.metadata.statistics,
+            testPlayCount: (project.metadata.statistics.testPlayCount || 0) + 1
+          }
+        }
+      });
+      
     } catch (error) {
-      console.error('テストプレイエラー:', error);
+      console.error('❌ テストプレイエラー:', error);
       setTestPlayResult('failure');
+      setTestPlayDetails({
+        success: false,
+        timeElapsed: 0,
+        completed: false,
+        errors: [error instanceof Error ? error.message : 'Unknown error'],
+        warnings: [],
+        performance: { averageFPS: 0, memoryUsage: 0, renderTime: 0, objectCount: 0, ruleExecutions: 0 }
+      });
       alert(`テストプレイエラー:\n${error instanceof Error ? error.message : 'テストプレイに失敗しました'}`);
     } finally {
       setIsTestPlaying(false);
     }
-  }, [project, onTestPlay]);
+  }, [project, updateProject]);
+
+  // 🔧 新規: フルゲーム実行機能
+  const handleFullGamePlay = useCallback(async () => {
+    console.log('🎮 フルゲーム実行開始:', project.name);
+    
+    if (!fullGameRef.current || !bridgeRef.current) {
+      alert('ゲーム実行環境が準備できていません');
+      return;
+    }
+    
+    try {
+      setShowFullGame(true);
+      
+      await bridgeRef.current.launchFullGame(
+        project,
+        fullGameRef.current,
+        (result) => {
+          console.log('🏁 フルゲーム終了:', result);
+          setShowFullGame(false);
+          
+          if (result.success) {
+            alert(`ゲーム完了！\nスコア: ${result.score || 0}\n時間: ${result.timeElapsed.toFixed(1)}秒`);
+          } else {
+            alert(`ゲームエラー:\n${result.errors.join('\n')}`);
+          }
+        }
+      );
+      
+    } catch (error) {
+      console.error('❌ フルゲーム実行エラー:', error);
+      setShowFullGame(false);
+      alert(`フルゲーム実行エラー:\n${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [project]);
 
   // 🔧 強化された保存機能
   const handleSave = useCallback(async () => {
@@ -171,6 +256,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         }
         
         localStorage.setItem('editor_projects', JSON.stringify(savedProjects));
+        console.log('💾 プロジェクト保存完了:', project.name);
       }
     } catch (error) {
       console.error('保存エラー:', error);
@@ -484,7 +570,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </div>
         </section>
 
-        {/* テストプレイ */}
+        {/* 🔧 強化: テストプレイセクション */}
         <section className="mb-8">
           <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
             🎯 テストプレイ
@@ -501,13 +587,22 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   <p className="text-gray-600 mb-6">
                     作成したゲームが正しく動作するか確認できます
                   </p>
-                  <button
-                    onClick={handleTestPlay}
-                    disabled={!project.settings.name || isTestPlaying}
-                    className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-medium transition-colors"
-                  >
-                    ▶️ テストプレイ開始
-                  </button>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={handleTestPlay}
+                      disabled={!project.settings.name || isTestPlaying}
+                      className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-medium transition-colors"
+                    >
+                      🧪 クイックテスト (3秒)
+                    </button>
+                    <button
+                      onClick={handleFullGamePlay}
+                      disabled={!project.settings.name || isTestPlaying}
+                      className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-medium transition-colors"
+                    >
+                      ▶️ フルゲーム実行
+                    </button>
+                  </div>
                 </>
               )}
               
@@ -524,33 +619,75 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 </>
               )}
               
-              {testPlayResult === 'success' && (
+              {testPlayResult === 'success' && testPlayDetails && (
                 <>
                   <div className="text-6xl mb-4">🎉</div>
                   <h4 className="text-lg font-medium text-green-600 mb-2">
                     テスト成功！
                   </h4>
-                  <p className="text-gray-600 mb-4">
-                    ゲームが正常に動作しています
-                  </p>
-                  <button
-                    onClick={() => setTestPlayResult(null)}
-                    className="text-blue-500 hover:text-blue-700 font-medium"
-                  >
-                    もう一度テスト
-                  </button>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 max-w-md">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">{testPlayDetails.score || 0}</div>
+                        <div className="text-green-700">スコア</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">{testPlayDetails.timeElapsed.toFixed(1)}s</div>
+                        <div className="text-green-700">プレイ時間</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">{testPlayDetails.finalState?.objectsInteracted?.length || 0}</div>
+                        <div className="text-green-700">操作回数</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">{testPlayDetails.finalState?.rulesTriggered?.length || 0}</div>
+                        <div className="text-green-700">ルール実行</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setTestPlayResult(null)}
+                      className="text-blue-500 hover:text-blue-700 font-medium"
+                    >
+                      もう一度テスト
+                    </button>
+                    <button
+                      onClick={handleFullGamePlay}
+                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium"
+                    >
+                      フルゲーム実行
+                    </button>
+                  </div>
                 </>
               )}
               
-              {testPlayResult === 'failure' && (
+              {testPlayResult === 'failure' && testPlayDetails && (
                 <>
                   <div className="text-6xl mb-4">⚠️</div>
                   <h4 className="text-lg font-medium text-red-600 mb-2">
                     テストで問題発見
                   </h4>
-                  <p className="text-gray-600 mb-4">
-                    ゲーム設定を確認して、再度テストしてください
-                  </p>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 max-w-md">
+                    <div className="text-sm text-red-700">
+                      <strong>エラー:</strong>
+                      <ul className="list-disc list-inside mt-2">
+                        {testPlayDetails.errors.map((error, index) => (
+                          <li key={index}>{error}</li>
+                        ))}
+                      </ul>
+                      {testPlayDetails.warnings.length > 0 && (
+                        <>
+                          <strong className="block mt-3">警告:</strong>
+                          <ul className="list-disc list-inside mt-2">
+                            {testPlayDetails.warnings.map((warning, index) => (
+                              <li key={index}>{warning}</li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                    </div>
+                  </div>
                   <div className="flex gap-3">
                     <button
                       onClick={() => setTestPlayResult(null)}
@@ -564,6 +701,30 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             </div>
           </div>
         </section>
+
+        {/* 🔧 フルゲーム表示エリア */}
+        {showFullGame && (
+          <section className="mb-8">
+            <div className="bg-black rounded-lg border border-gray-400 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-medium text-white">🎮 ゲーム実行中</h4>
+                <button
+                  onClick={() => setShowFullGame(false)}
+                  className="text-white hover:text-gray-300 px-3 py-1 rounded bg-red-600 hover:bg-red-700"
+                >
+                  ✕ 終了
+                </button>
+              </div>
+              <div
+                ref={fullGameRef}
+                className="w-full flex justify-center"
+                style={{ minHeight: '400px' }}
+              >
+                {/* ゲームキャンバスがここに挿入される */}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* サムネイル設定 */}
         <section className="mb-8">
@@ -650,13 +811,21 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             disabled={!project.settings.name || isTestPlaying}
             className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
-            🎯 テストプレイ
+            🧪 クイックテスト
+          </button>
+
+          <button
+            onClick={handleFullGamePlay}
+            disabled={!project.settings.name || isTestPlaying}
+            className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors"
+          >
+            🎮 フルプレイ
           </button>
           
           <button
             onClick={handlePublish}
             disabled={!project.settings.name || isPublishing || (!project.assets.objects.length && !project.assets.background)}
-            className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
             {isPublishing ? '公開中...' : project.settings.publishing?.isPublished ? '🔄 更新' : '🚀 公開'}
           </button>
@@ -683,10 +852,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </div>
         )}
         
-        {/* ゲーム統計情報 */}
+        {/* 🔧 強化: ゲーム統計情報 */}
         <section className="mt-8 bg-gray-50 rounded-lg p-6">
           <h4 className="text-lg font-medium text-gray-800 mb-4">📊 ゲーム統計</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">
                 {project.assets.objects.length}
@@ -710,6 +879,42 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 {Math.round((project.totalSize || 0) / 1024 / 1024 * 10) / 10}MB
               </div>
               <div className="text-sm text-gray-600">総容量</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-indigo-600">
+                {project.metadata?.statistics?.testPlayCount || 0}
+              </div>
+              <div className="text-sm text-gray-600">テスト回数</div>
+            </div>
+          </div>
+          
+          {/* 🔧 追加: 初期条件・プロジェクト健全性 */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${project.script.initialState ? 'text-green-600' : 'text-orange-600'}`}>
+                  {project.script.initialState ? '✓' : '⚠️'}
+                </div>
+                <div className="text-sm text-gray-600">初期条件</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${project.script.layout.objects.length > 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                  {project.script.layout.objects.length}
+                </div>
+                <div className="text-sm text-gray-600">配置済み</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${project.script.successConditions.length > 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                  {project.script.successConditions.length}
+                </div>
+                <div className="text-sm text-gray-600">成功条件</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${project.script.statistics?.complexityScore || 0 > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                  {project.script.statistics?.complexityScore || 0}
+                </div>
+                <div className="text-sm text-gray-600">複雑度</div>
+              </div>
             </div>
           </div>
         </section>
