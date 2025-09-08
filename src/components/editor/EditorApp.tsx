@@ -1,6 +1,6 @@
 // src/components/editor/EditorApp.tsx
-// 修正版: フォントファミリー型修正
-import React, { useState, useCallback, useEffect } from 'react';
+// Phase 1-C版: EditorGameBridge統合・実際のテストプレイ機能実装
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { GameEditor } from './GameEditor';
 import { ProjectSelector } from './ProjectSelector';
@@ -9,8 +9,9 @@ import { DEFAULT_EDITOR_TABS, getProgressTabConfig } from './common/TabNavigatio
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 import { ModernButton } from '../ui/ModernButton';
 import { ModernCard } from '../ui/ModernCard';
+import { EditorGameBridge, GameExecutionResult } from '../../services/editor/EditorGameBridge';
 
-type AppMode = 'selector' | 'editor';
+type AppMode = 'selector' | 'editor' | 'testplay';
 
 interface EditorAppProps {
   onClose?: () => void;
@@ -29,6 +30,12 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     message: string;
     id: string;
   } | null>(null);
+  
+  // 🔧 テストプレイ関連状態追加
+  const [isTestPlaying, setIsTestPlaying] = useState(false);
+  const [testPlayResult, setTestPlayResult] = useState<GameExecutionResult | null>(null);
+  const testPlayContainerRef = useRef<HTMLDivElement>(null);
+  const gameBridge = useRef(EditorGameBridge.getInstance());
 
   const {
     currentProject,
@@ -83,20 +90,37 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
   }, [createProject, showNotification]);
 
-  // プロジェクト保存
+  // 🔧 強化されたプロジェクト保存
   const handleSave = useCallback(async () => {
     if (!currentProject) return;
 
     try {
+      // プロジェクトの最終チェック
+      const errors = getValidationErrors();
+      if (errors.length > 0) {
+        console.warn('保存時に警告があります:', errors);
+      }
+
       await saveProject();
       showNotification('success', 'プロジェクトを保存しました');
+      
+      // 保存後にメタデータ更新
+      updateProject({
+        metadata: {
+          ...currentProject.metadata,
+          statistics: {
+            ...currentProject.metadata.statistics,
+            saveCount: (currentProject.metadata.statistics.saveCount || 0) + 1
+          }
+        }
+      });
     } catch (error: any) {
       showNotification('error', `保存に失敗しました: ${error.message}`);
     }
-  }, [currentProject, saveProject, showNotification]);
+  }, [currentProject, saveProject, getValidationErrors, updateProject, showNotification]);
 
-  // テストプレイ
-  const handleTestPlay = useCallback(() => {
+  // 🔧 実際のテストプレイ機能実装
+  const handleTestPlay = useCallback(async () => {
     if (!currentProject) return;
 
     const errors = getValidationErrors();
@@ -105,9 +129,71 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       return;
     }
 
-    showNotification('info', 'テストプレイ機能は準備中です');
-    console.log('Test play for project:', currentProject.name);
-  }, [currentProject, getValidationErrors, showNotification]);
+    // 基本的な要件チェック
+    if (!currentProject.settings.name?.trim()) {
+      showNotification('error', 'ゲーム名を入力してください');
+      return;
+    }
+
+    if (!currentProject.assets.objects.length && !currentProject.assets.background) {
+      showNotification('error', '最低1つのオブジェクトまたは背景を追加してください');
+      return;
+    }
+
+    setIsTestPlaying(true);
+    setMode('testplay');
+    showNotification('info', 'テストプレイを開始します...');
+
+    try {
+      // 🔧 EditorGameBridge経由でテストプレイ実行
+      if (testPlayContainerRef.current) {
+        await gameBridge.current.launchFullGame(
+          currentProject,
+          testPlayContainerRef.current,
+          (result: GameExecutionResult) => {
+            setTestPlayResult(result);
+            setIsTestPlaying(false);
+            
+            if (result.success) {
+              showNotification('success', `テストプレイ完了！スコア: ${result.score || 0}`);
+            } else {
+              showNotification('error', `テストプレイエラー: ${result.errors.join(', ')}`);
+            }
+
+            // プレイ統計更新
+            updateProject({
+              metadata: {
+                ...currentProject.metadata,
+                statistics: {
+                  ...currentProject.metadata.statistics,
+                  testPlayCount: (currentProject.metadata.statistics.testPlayCount || 0) + 1
+                },
+                performance: {
+                  ...currentProject.metadata.performance,
+                  lastBuildTime: result.performance.renderTime,
+                  averageFPS: result.performance.averageFPS,
+                  memoryUsage: result.performance.memoryUsage
+                }
+              }
+            });
+          }
+        );
+      }
+    } catch (error: any) {
+      console.error('テストプレイエラー:', error);
+      setIsTestPlaying(false);
+      showNotification('error', `テストプレイに失敗しました: ${error.message}`);
+      setMode('editor');
+    }
+  }, [currentProject, getValidationErrors, updateProject, showNotification]);
+
+  // 🔧 テストプレイ終了
+  const handleTestPlayEnd = useCallback(() => {
+    setMode('editor');
+    setTestPlayResult(null);
+    gameBridge.current.reset();
+    showNotification('info', 'エディターに戻りました');
+  }, [showNotification]);
 
   // プロジェクト公開
   const handlePublish = useCallback(async () => {
@@ -132,6 +218,13 @@ export const EditorApp: React.FC<EditorAppProps> = ({
             ...currentProject.settings.publishing,
             isPublished: true,
             publishedAt: new Date().toISOString()
+          }
+        },
+        metadata: {
+          ...currentProject.metadata,
+          statistics: {
+            ...currentProject.metadata.statistics,
+            publishCount: (currentProject.metadata.statistics.publishCount || 0) + 1
           }
         }
       });
@@ -161,6 +254,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
     
     setMode('selector');
+    gameBridge.current.reset();
     showNotification('info', 'プロジェクト一覧に戻りました');
   }, [hasUnsavedChanges, handleSave, showNotification]);
 
@@ -182,6 +276,8 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         }
       }
     }
+    
+    gameBridge.current.reset();
     
     if (onClose) {
       onClose();
@@ -218,11 +314,39 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   // エクスポート処理
   const handleExport = useCallback(async (projectId: string) => {
     try {
-      showNotification('success', 'プロジェクトをエクスポートしました');
+      if (currentProject) {
+        // 🔧 実際のエクスポート処理
+        const exportData = {
+          ...currentProject,
+          exportedAt: new Date().toISOString(),
+          exportSettings: {
+            format: 'json',
+            version: '1.0.0',
+            platform: 'web',
+            creator: 'Swizzle Game Editor'
+          }
+        };
+        
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
+          type: 'application/json' 
+        });
+        
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${(currentProject.settings.name || 'my-game').replace(/[^a-zA-Z0-9]/g, '_')}.json`;
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showNotification('success', 'プロジェクトをエクスポートしました');
+      }
     } catch (error: any) {
       showNotification('error', `エクスポートに失敗しました: ${error.message}`);
     }
-  }, [showNotification]);
+  }, [currentProject, showNotification]);
 
   // キーボードショートカット
   useEffect(() => {
@@ -230,14 +354,18 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       // Ctrl+S で保存
       if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         event.preventDefault();
-        if (mode === 'editor' && currentProject) {
+        if ((mode === 'editor' || mode === 'testplay') && currentProject) {
           handleSave();
         }
       }
       
       // Esc でプロジェクトセレクターに戻る（エディター時のみ）
-      if (event.key === 'Escape' && mode === 'editor') {
-        handleBackToSelector();
+      if (event.key === 'Escape') {
+        if (mode === 'testplay') {
+          handleTestPlayEnd();
+        } else if (mode === 'editor') {
+          handleBackToSelector();
+        }
       }
 
       // Ctrl+Q でメイン画面に戻る
@@ -245,11 +373,19 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         event.preventDefault();
         handleExitToMain();
       }
+
+      // 🔧 Ctrl+T でテストプレイ（エディター時のみ）
+      if ((event.ctrlKey || event.metaKey) && event.key === 't') {
+        event.preventDefault();
+        if (mode === 'editor' && currentProject && !isTestPlaying) {
+          handleTestPlay();
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [mode, currentProject, handleSave, handleBackToSelector, handleExitToMain]);
+  }, [mode, currentProject, isTestPlaying, handleSave, handleBackToSelector, handleExitToMain, handleTestPlay, handleTestPlayEnd]);
 
   // ウィンドウ閉じる前の確認
   useEffect(() => {
@@ -270,7 +406,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       style={{
         minHeight: '100vh',
         backgroundColor: DESIGN_TOKENS.colors.neutral[50],
-        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')  // 🔧 フォント修正
+        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')
       }}
     >
       {/* ローディング表示 */}
@@ -409,6 +545,276 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           onDuplicate={handleProjectDuplicate}
           onExport={handleExport}
         />
+      ) : mode === 'testplay' ? (
+        // 🔧 テストプレイ画面
+        <div style={{ minHeight: '100vh', backgroundColor: DESIGN_TOKENS.colors.neutral[900] }}>
+          {/* テストプレイヘッダー */}
+          <header 
+            style={{
+              backgroundColor: DESIGN_TOKENS.colors.neutral[800],
+              borderBottom: `1px solid ${DESIGN_TOKENS.colors.neutral[700]}`,
+              boxShadow: DESIGN_TOKENS.shadows.lg
+            }}
+          >
+            <div 
+              style={{
+                maxWidth: '1280px',
+                margin: '0 auto',
+                padding: `0 ${DESIGN_TOKENS.spacing[4]}`
+              }}
+            >
+              <div 
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  height: '64px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
+                  <h1 
+                    style={{
+                      fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                      fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                      color: DESIGN_TOKENS.colors.neutral[100],
+                      margin: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: DESIGN_TOKENS.spacing[2]
+                    }}
+                  >
+                    🎮 {currentProject?.settings.name || 'テストプレイ'}
+                  </h1>
+                  
+                  {isTestPlaying && (
+                    <div 
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: DESIGN_TOKENS.spacing[2],
+                        padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+                        backgroundColor: DESIGN_TOKENS.colors.primary[600],
+                        color: DESIGN_TOKENS.colors.neutral[0],
+                        borderRadius: DESIGN_TOKENS.borderRadius.md,
+                        fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                        fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
+                      }}
+                    >
+                      <div 
+                        style={{
+                          width: '8px',
+                          height: '8px',
+                          backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                          borderRadius: '50%',
+                          animation: 'pulse 1.5s ease-in-out infinite'
+                        }}
+                      />
+                      実行中
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                  <ModernButton
+                    variant="secondary"
+                    size="sm"
+                    icon="🔄"
+                    onClick={handleTestPlay}
+                    disabled={isTestPlaying}
+                  >
+                    再実行
+                  </ModernButton>
+                  
+                  <ModernButton
+                    variant="outline"
+                    size="sm"
+                    icon="←"
+                    onClick={handleTestPlayEnd}
+                  >
+                    エディターに戻る
+                  </ModernButton>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* テストプレイコンテンツ */}
+          <div 
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 'calc(100vh - 64px)',
+              padding: DESIGN_TOKENS.spacing[6]
+            }}
+          >
+            <div 
+              ref={testPlayContainerRef}
+              style={{
+                width: '100%',
+                maxWidth: '360px',
+                height: '640px',
+                backgroundColor: DESIGN_TOKENS.colors.neutral[800],
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                boxShadow: DESIGN_TOKENS.shadows.xl,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative'
+              }}
+            >
+              {!isTestPlaying && !testPlayResult && (
+                <div style={{ textAlign: 'center', color: DESIGN_TOKENS.colors.neutral[400] }}>
+                  <div style={{ fontSize: '4rem', marginBottom: DESIGN_TOKENS.spacing[4] }}>🎮</div>
+                  <p>ゲームを準備中...</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* テストプレイ結果表示 */}
+          {testPlayResult && (
+            <div 
+              style={{
+                position: 'fixed',
+                bottom: DESIGN_TOKENS.spacing[6],
+                left: DESIGN_TOKENS.spacing[6],
+                right: DESIGN_TOKENS.spacing[6],
+                maxWidth: '600px',
+                margin: '0 auto'
+              }}
+            >
+              <ModernCard variant="elevated" size="lg">
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                    {testPlayResult.success ? '🎉' : '⚠️'}
+                  </div>
+                  <h3 
+                    style={{
+                      fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                      fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                      color: testPlayResult.success 
+                        ? DESIGN_TOKENS.colors.success[600] 
+                        : DESIGN_TOKENS.colors.error[600],
+                      marginBottom: DESIGN_TOKENS.spacing[3]
+                    }}
+                  >
+                    {testPlayResult.success ? 'テストプレイ成功！' : 'テストプレイ失敗'}
+                  </h3>
+                  
+                  {testPlayResult.success && (
+                    <div 
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                        gap: DESIGN_TOKENS.spacing[4],
+                        marginBottom: DESIGN_TOKENS.spacing[4]
+                      }}
+                    >
+                      <div style={{ textAlign: 'center' }}>
+                        <div 
+                          style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+                            fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                            color: DESIGN_TOKENS.colors.primary[600]
+                          }}
+                        >
+                          {testPlayResult.score || 0}
+                        </div>
+                        <div 
+                          style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                            color: DESIGN_TOKENS.colors.neutral[600]
+                          }}
+                        >
+                          スコア
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div 
+                          style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+                            fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                            color: DESIGN_TOKENS.colors.success[600]
+                          }}
+                        >
+                          {testPlayResult.timeElapsed.toFixed(1)}s
+                        </div>
+                        <div 
+                          style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                            color: DESIGN_TOKENS.colors.neutral[600]
+                          }}
+                        >
+                          プレイ時間
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <div 
+                          style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+                            fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                            color: DESIGN_TOKENS.colors.secondary[600]
+                          }}
+                        >
+                          {Math.round(testPlayResult.performance.averageFPS)}
+                        </div>
+                        <div 
+                          style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                            color: DESIGN_TOKENS.colors.neutral[600]
+                          }}
+                        >
+                          平均FPS
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {testPlayResult.errors.length > 0 && (
+                    <div 
+                      style={{
+                        padding: DESIGN_TOKENS.spacing[3],
+                        backgroundColor: DESIGN_TOKENS.colors.error[50],
+                        borderRadius: DESIGN_TOKENS.borderRadius.md,
+                        marginBottom: DESIGN_TOKENS.spacing[4]
+                      }}
+                    >
+                      <p 
+                        style={{
+                          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                          color: DESIGN_TOKENS.colors.error[600],
+                          margin: 0
+                        }}
+                      >
+                        エラー: {testPlayResult.errors.join(', ')}
+                      </p>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[3], justifyContent: 'center' }}>
+                    <ModernButton
+                      variant="primary"
+                      size="md"
+                      icon="🔄"
+                      onClick={handleTestPlay}
+                    >
+                      もう一度テスト
+                    </ModernButton>
+                    <ModernButton
+                      variant="outline"
+                      size="md"
+                      icon="←"
+                      onClick={handleTestPlayEnd}
+                    >
+                      エディターに戻る
+                    </ModernButton>
+                  </div>
+                </div>
+              </ModernCard>
+            </div>
+          )}
+        </div>
       ) : currentProject ? (
         <div style={{ minHeight: '100vh', backgroundColor: DESIGN_TOKENS.colors.neutral[0] }}>
           {/* エディターヘッダー */}
@@ -568,6 +974,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
                     size="sm"
                     icon="▶️"
                     onClick={handleTestPlay}
+                    disabled={isTestPlaying}
                   >
                     テスト
                   </ModernButton>
@@ -659,8 +1066,8 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           zIndex: DESIGN_TOKENS.zIndex[10]
         }}
       >
-        <div>Game Editor v1.0.0 - Phase 1-B モダンアプリ版</div>
-        <div>💡 Ctrl+S: 保存 | Esc: 一覧に戻る | Ctrl+Q: メイン画面に戻る</div>
+        <div>Game Editor v1.0.0 - Phase 1-C テストプレイ対応版</div>
+        <div>💡 Ctrl+S: 保存 | Ctrl+T: テストプレイ | Esc: 戻る | Ctrl+Q: メイン画面</div>
       </div>
     </div>
   );

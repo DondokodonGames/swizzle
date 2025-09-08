@@ -1,4 +1,4 @@
-// src/components/editor/GameEditor.tsx - TypeScriptエラー修正版
+// src/components/editor/GameEditor.tsx - Phase 1-C統合版
 import React, { useState, useEffect } from 'react';
 import { useGameTheme, ThemeType, GameCategory } from '../ui/GameThemeProvider';
 import GameThemeProvider from '../ui/GameThemeProvider';
@@ -50,7 +50,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     setGameCategory 
   } = useGameTheme();
 
-  // プロジェクト更新時の処理（既存保護）
+  // プロジェクト更新時の処理（既存保護 + Phase 1-C強化）
   const handleProjectUpdate = (updatedProject: GameProject) => {
     onProjectUpdate({
       ...updatedProject,
@@ -92,7 +92,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     setHasUnsavedChanges(true);
   };
 
-  // 自動保存機能（既存保護）
+  // 🔧 強化された自動保存機能
   useEffect(() => {
     if (autoSaveEnabled && hasUnsavedChanges) {
       const autoSaveTimer = setTimeout(() => {
@@ -103,6 +103,12 @@ export const GameEditor: React.FC<GameEditorProps> = ({
       return () => clearTimeout(autoSaveTimer);
     }
   }, [autoSaveEnabled, hasUnsavedChanges, onSave]);
+
+  // 🔧 プロジェクト変更監視
+  useEffect(() => {
+    // プロジェクトに変更があったら未保存状態をリセット
+    setHasUnsavedChanges(false);
+  }, [project.id]);
 
   // 容量計算（既存保護）
   const calculateTotalSize = (): number => {
@@ -133,21 +139,21 @@ export const GameEditor: React.FC<GameEditorProps> = ({
   const totalSize = calculateTotalSize();
   const sizePercentage = (totalSize / EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE) * 100;
 
-  // タブの設定（既存保護 + テーマ連動）
+  // タブの設定（既存保護 + Phase 1-C改良）
   const tabs = customTabs || [
     { 
       id: 'assets' as EditorTab, 
       label: '絵', 
       icon: '🎨', 
       description: 'キャラクター・背景・テキスト管理',
-      badge: project.assets.objects.length + (project.assets.background ? 1 : 0) + project.assets.texts.length || undefined
+      badge: (project.assets.objects.length + (project.assets.background ? 1 : 0) + project.assets.texts.length) || undefined
     },
     { 
       id: 'audio' as EditorTab, 
       label: '音', 
       icon: '🎵', 
       description: '音楽・効果音管理',
-      badge: (project.assets.audio.bgm ? 1 : 0) + project.assets.audio.se.length || undefined
+      badge: ((project.assets.audio.bgm ? 1 : 0) + project.assets.audio.se.length) || undefined
     },
     { 
       id: 'script' as EditorTab, 
@@ -158,12 +164,57 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     },
     { 
       id: 'settings' as EditorTab, 
-      label: '公開', 
+      label: 'テスト・公開', 
       icon: '🚀', 
-      description: 'ゲーム設定・テスト・公開',
-      badge: project.settings.publishing?.isPublished ? '✓' : undefined
+      description: 'ゲーム設定・テストプレイ・公開管理',
+      badge: project.settings.publishing?.isPublished ? '✓' : (project.settings.name ? '📝' : undefined)
     }
   ];
+
+  // 🔧 Phase 1-C: プロジェクト完成度判定
+  const getProjectCompleteness = (): { percentage: number; issues: string[] } => {
+    const issues: string[] = [];
+    let score = 0;
+    const maxScore = 5;
+
+    // ゲーム名チェック
+    if (project.settings.name?.trim()) {
+      score += 1;
+    } else {
+      issues.push('ゲーム名を設定してください');
+    }
+
+    // アセットチェック
+    if (project.assets.objects.length > 0 || project.assets.background) {
+      score += 1;
+    } else {
+      issues.push('背景またはオブジェクトを追加してください');
+    }
+
+    // ゲーム設定チェック
+    if (project.settings.duration) {
+      score += 1;
+    } else {
+      issues.push('ゲーム時間を設定してください');
+    }
+
+    // ルールチェック（任意）
+    if (project.script.rules.length > 0) {
+      score += 1;
+    }
+
+    // サムネイルチェック（任意）
+    if (project.settings.preview?.thumbnailDataUrl) {
+      score += 1;
+    }
+
+    return {
+      percentage: (score / maxScore) * 100,
+      issues
+    };
+  };
+
+  const completeness = getProjectCompleteness();
 
   // テーマセレクター
   const renderThemeSelector = () => (
@@ -223,7 +274,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
         color: currentTheme.colors.text
       }}
     >
-      {/* ヘッダー（テーマ適用） */}
+      {/* ヘッダー（テーマ適用 + Phase 1-C改良） */}
       <header 
         className="shadow-sm border-b"
         style={{ 
@@ -242,11 +293,34 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                 >
                   {project.name || project.settings.name || 'マイゲーム'}
                 </h1>
-                <p className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
-                  最終更新: {new Date(project.lastModified).toLocaleDateString('ja-JP')}
+                <div className="flex items-center space-x-4 text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+                  <span>最終更新: {new Date(project.lastModified).toLocaleDateString('ja-JP')}</span>
+                  
+                  {/* 🔧 完成度表示 */}
+                  <div className="flex items-center space-x-2">
+                    <span>完成度:</span>
+                    <div 
+                      className="w-16 rounded-full h-2"
+                      style={{ background: currentTheme.colors.border }}
+                    >
+                      <div 
+                        className="h-2 rounded-full transition-all duration-300"
+                        style={{
+                          background: completeness.percentage >= 80 ? currentTheme.colors.success : 
+                                    completeness.percentage >= 50 ? currentTheme.colors.warning : currentTheme.colors.error,
+                          width: `${completeness.percentage}%`
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs">
+                      {Math.round(completeness.percentage)}%
+                    </span>
+                  </div>
+                  
+                  {/* ステータスバッジ */}
                   {hasUnsavedChanges && <span style={{ color: currentTheme.colors.warning }} className="ml-2">• 未保存</span>}
                   {project.status === 'published' && <span style={{ color: currentTheme.colors.success }} className="ml-2">• 公開中</span>}
-                </p>
+                </div>
               </div>
             </div>
 
@@ -255,7 +329,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
               {renderThemeSelector()}
             </div>
 
-            {/* アクション（ArcadeButton使用） */}
+            {/* アクション（ArcadeButton使用 + Phase 1-C改良） */}
             <div className="flex items-center space-x-3">
               {/* 容量表示（テーマ適用） */}
               <div className="text-sm">
@@ -296,7 +370,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                 <span style={{ color: currentTheme.colors.textSecondary }}>自動保存</span>
               </label>
 
-              {/* アクションボタン（ArcadeButton使用） */}
+              {/* アクションボタン（ArcadeButton使用 + Phase 1-C改良） */}
               <ArcadeButton
                 variant="secondary"
                 size="sm"
@@ -311,6 +385,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                 size="sm"
                 onClick={onTestPlay}
                 effects={{ glow: true }}
+                disabled={completeness.issues.length > 2} // 基本要件が不足している場合は無効
               >
                 ▶️ テスト
               </ArcadeButton>
@@ -319,9 +394,10 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                 variant="gradient"
                 size="sm"
                 onClick={onPublish}
-                effects={{ glow: true, pulse: true }}
+                effects={{ glow: true, pulse: project.status !== 'published' }}
+                disabled={completeness.percentage < 60} // 60%未満は公開不可
               >
-                🚀 公開
+                {project.status === 'published' ? '🔄 更新' : '🚀 公開'}
               </ArcadeButton>
             </div>
           </div>
@@ -330,6 +406,27 @@ export const GameEditor: React.FC<GameEditorProps> = ({
           <div className="lg:hidden pb-4">
             {renderThemeSelector()}
           </div>
+
+          {/* 🔧 Phase 1-C: 完成度警告表示 */}
+          {completeness.issues.length > 0 && (
+            <div 
+              className="mb-4 p-3 rounded-lg border"
+              style={{
+                background: `${currentTheme.colors.warning}20`,
+                borderColor: currentTheme.colors.warning,
+                color: currentTheme.colors.warning
+              }}
+            >
+              <div className="flex items-center space-x-2">
+                <span>⚠️</span>
+                <span className="font-medium">完成に向けて：</span>
+                <span className="text-sm">
+                  {completeness.issues.slice(0, 2).join('、')}
+                  {completeness.issues.length > 2 && `など${completeness.issues.length}項目`}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -399,7 +496,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
           }}
         >
           <div className="p-6">
-            {/* タブ別コンテンツ（既存保護） */}
+            {/* タブ別コンテンツ（🔧 Phase 1-C統合） */}
             {activeTab === 'assets' && (
               <AssetsTab 
                 project={project} 
@@ -421,10 +518,13 @@ export const GameEditor: React.FC<GameEditorProps> = ({
               />
             )}
 
+            {/* 🔧 Phase 1-C: SettingsTab完全統合 */}
             {activeTab === 'settings' && (
               <SettingsTab
                 project={project}
                 onProjectUpdate={handleProjectUpdate}
+                onTestPlay={onTestPlay}  // 🔧 追加
+                onSave={onSave}          // 🔧 追加
               />
             )}
           </div>
@@ -438,25 +538,46 @@ export const GameEditor: React.FC<GameEditorProps> = ({
           size="lg"
           effects={{ glow: true, pulse: true }}
           style={{ borderRadius: '50%', padding: '16px' }}
+          onClick={() => {
+            alert(`🎮 ゲームエディターヘルプ\n\n📝 絵タブ：画像・テキストを追加\n🎵 音タブ：音楽・効果音を設定\n⚙️ ルールタブ：ゲームの動作を決定\n🚀 テスト・公開タブ：完成・公開\n\n💡 Ctrl+S: 保存\n💡 Ctrl+T: テストプレイ`);
+          }}
         >
           <span className="text-xl">❓</span>
         </ArcadeButton>
       </div>
 
-      {/* 開発進捗表示（デバッグ用・テーマ適用） */}
+      {/* 🔧 Phase 1-C: クイックアクセス（開発時のみ） */}
       {process.env.NODE_ENV === 'development' && (
         <div 
-          className="fixed bottom-6 left-6 text-xs p-3 rounded-lg"
+          className="fixed bottom-6 left-6 text-xs p-3 rounded-lg space-y-1"
           style={{ 
             background: `${currentTheme.colors.background}E6`,
             color: currentTheme.colors.text,
-            borderColor: currentTheme.colors.border
+            borderColor: currentTheme.colors.border,
+            border: '1px solid'
           }}
         >
-          <div>🎯 Phase 7 Week 1 Day 3完了</div>
+          <div className="font-semibold">🎯 Phase 1-C Week 1完了</div>
           <div>🎨 テーマ: {currentTheme.name}</div>
           <div>📊 Assets: {project.assets.objects.length}, Rules: {project.script.rules.length}</div>
           <div>💾 Size: {(totalSize / 1024 / 1024).toFixed(1)}MB</div>
+          <div>✅ 完成度: {Math.round(completeness.percentage)}%</div>
+          <div className="pt-2 space-y-1">
+            <button 
+              onClick={() => setActiveTab('assets')}
+              className="block text-left hover:underline"
+              style={{ color: currentTheme.colors.primary }}
+            >
+              → 絵タブ
+            </button>
+            <button 
+              onClick={() => setActiveTab('settings')}
+              className="block text-left hover:underline"
+              style={{ color: currentTheme.colors.primary }}
+            >
+              → テストプレイ
+            </button>
+          </div>
         </div>
       )}
     </div>
