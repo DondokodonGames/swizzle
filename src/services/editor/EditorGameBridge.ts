@@ -130,7 +130,7 @@ export class EditorGameBridge {
         opacity: obj.defaultOpacity || 1.0
       }));
 
-      // テキストアセット変換
+      // 🔧 テキストアセット変換（fontFamily undefined対応）
       const texts = project.assets.texts.map((text, index) => ({
         id: text.id,
         content: text.content,
@@ -139,22 +139,28 @@ export class EditorGameBridge {
         fontSize: text.style.fontSize,
         color: text.style.color,
         fontWeight: text.style.fontWeight,
-        fontFamily: text.style.fontFamily
+        fontFamily: text.style.fontFamily || 'Inter, sans-serif' // 🔧 undefined対応
       }));
 
-      // ルール変換（簡略化）
+      // 🔧 ルール変換（正しい型アクセス）
       const rules = project.script.rules.map((rule, index) => ({
         id: rule.id,
         type: 'touch' as const, // デフォルトタッチルール
-        condition: rule.condition,
-        action: rule.action,
+        // 🔧 修正: rule.triggers.conditions から安全にアクセス
+        condition: rule.triggers?.conditions?.[0] || null,
+        // 🔧 修正: rule.actions から安全にアクセス  
+        action: rule.actions?.[0] || null,
         priority: index
       }));
 
-      // 成功条件変換
+      // 🔧 成功条件変換（正しい型アクセス）
       const successConditions = project.script.successConditions.map(condition => ({
-        type: condition.type as 'score' | 'time' | 'collection' | 'custom',
-        target: condition.target,
+        // 🔧 修正: condition.conditions[0]?.type から安全にアクセス
+        type: (condition.conditions?.[0]?.type as 'score' | 'time' | 'collection' | 'custom') || 'custom',
+        // 🔧 修正: 具体的な条件値を安全に取得
+        target: condition.conditions?.[0]?.scoreValue || 
+                condition.conditions?.[0]?.timeValue || 
+                'default',
         current: 0
       }));
 
