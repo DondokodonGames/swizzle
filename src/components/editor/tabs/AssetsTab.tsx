@@ -1,3 +1,5 @@
+// src/components/editor/tabs/AssetsTab.tsx
+// 修正版: フォントファミリー型修正
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
 import { ProjectAssets, BackgroundAsset, ObjectAsset, TextAsset, AssetFrame } from '../../../types/editor/ProjectAssets';
@@ -379,7 +381,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
     <div 
       style={{ 
         padding: DESIGN_TOKENS.spacing[6],
-        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans,
+        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', '),  // 🔧 フォント修正
         backgroundColor: DESIGN_TOKENS.colors.neutral[50],
         minHeight: '100%'
       }}

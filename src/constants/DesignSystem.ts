@@ -1,6 +1,7 @@
 /**
  * モダンアプリケーション風デザインシステム
  * Phase 1-B: 基本UI・ファイル管理改善用
+ * 修正版: 不足カラーパレット補完（24個のエラー修正）
  */
 
 // 🎨 モダンカラーパレット（Material Design 3 + Custom）
@@ -8,6 +9,7 @@ export const DESIGN_TOKENS = {
   colors: {
     // Primary Colors（ブランドカラー）
     primary: {
+      25: '#f0f9ff',    // 🆕 追加 - DragDropZone用
       50: '#f0f9ff',
       100: '#e0f2fe', 
       200: '#bae6fd',
@@ -39,20 +41,27 @@ export const DESIGN_TOKENS = {
     // Semantic Colors（意味を持つ色）
     success: {
       50: '#f0fdf4',
-      500: '#22c55e',  // 成功
+      100: '#dcfce7',   // 🆕 追加 - エディター通知用
+      200: '#bbf7d0',   // 🆕 追加 - ProjectSelector用
+      500: '#22c55e',   // 成功
       600: '#16a34a',
+      800: '#166534',   // 🆕 追加 - テキスト色用
       900: '#14532d'
     },
     warning: {
       50: '#fffbeb',
-      500: '#f59e0b',  // 警告
+      100: '#fef3c7',   // 🆕 追加 - 警告背景用
+      500: '#f59e0b',   // 警告
       600: '#d97706',
+      800: '#92400e',   // 🆕 追加 - テキスト色用
       900: '#92400e'
     },
     error: {
       50: '#fef2f2',
-      500: '#ef4444',  // エラー
+      200: '#fecaca',   // 🆕 追加 - エラー背景用
+      500: '#ef4444',   // エラー
       600: '#dc2626',
+      800: '#991b1b',   // 🆕 追加 - テキスト色用
       900: '#7f1d1d'
     },
     
@@ -123,8 +132,8 @@ export const DESIGN_TOKENS = {
   // 📝 Typography（フォントシステム）
   typography: {
     fontFamily: {
-      sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-      mono: ['JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'monospace']
+      sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'] as const,
+      mono: ['JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'monospace'] as const
     },
     fontSize: {
       xs: '12px',    // 0.75rem
@@ -253,7 +262,7 @@ export const COMPONENT_STYLES = {
   // ボタンスタイル
   button: {
     base: {
-      fontFamily: DESIGN_TOKENS.typography.fontFamily.sans,
+      fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', '),  // 🔧 文字列化修正
       fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
       borderRadius: DESIGN_TOKENS.borderRadius.md,
       transition: `all ${DESIGN_TOKENS.animation.duration.normal} ${DESIGN_TOKENS.animation.easing.inOut}`,
@@ -338,7 +347,7 @@ export const COMPONENT_STYLES = {
   // 入力フィールドスタイル
   input: {
     base: {
-      fontFamily: DESIGN_TOKENS.typography.fontFamily.sans,
+      fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', '),  // 🔧 文字列化修正
       fontSize: DESIGN_TOKENS.typography.fontSize.base,
       backgroundColor: DESIGN_TOKENS.colors.neutral[0],
       border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,

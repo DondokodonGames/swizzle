@@ -1,3 +1,5 @@
+// src/components/editor/ProjectSelector.tsx
+// 修正版: フォントファミリー型修正
 import React, { useState, useEffect, useCallback } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../../constants/EditorLimits';
@@ -178,7 +180,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       style={{ 
         minHeight: '100vh',
         backgroundColor: DESIGN_TOKENS.colors.neutral[50],
-        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans
+        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')  // 🔧 フォント修正
       }}
     >
       {/* エラー・通知表示 */}

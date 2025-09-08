@@ -1,9 +1,10 @@
 // src/components/navigation/NavigationManager.tsx
 // Phase 1-A: エディター↔ゲーム切り替えナビゲーション実装
-// 基準: 引継ぎプロンプト・UI/UX設計指針書
+// 修正版: lucide-reactインポートエラー修正
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { ArrowLeft, Home, Play, Edit, Save, Settings } from 'lucide-react';
+// 🔧 lucide-reactインポート削除（パッケージが利用不可）
+// import { ArrowLeft, Home, Play, Edit, Save, Settings } from 'lucide-react';
 import { GameProject } from '../../types/editor/GameProject';
 import { useGameTheme } from '../ui/GameThemeProvider';
 
@@ -241,7 +242,8 @@ const NavigationHeader: React.FC<NavigationHeaderProps> = ({
           }}
           title="戻る (Alt+←)"
         >
-          <ArrowLeft size={20} />
+          {/* 🔧 ArrowLeftアイコンを絵文字に置換 */}
+          <span style={{ fontSize: '20px' }}>←</span>
         </button>
       )}
 
@@ -262,7 +264,8 @@ const NavigationHeader: React.FC<NavigationHeaderProps> = ({
         }}
         title="ホーム (Esc)"
       >
-        <Home size={20} />
+        {/* 🔧 Homeアイコンを絵文字に置換 */}
+        <span style={{ fontSize: '20px' }}>🏠</span>
       </button>
 
       {/* プロジェクト名 */}
@@ -325,7 +328,8 @@ const NavigationHeader: React.FC<NavigationHeaderProps> = ({
             }}
             title="保存 (Ctrl+S)"
           >
-            <IconSave size={16} />
+            {/* 🔧 IconSaveを絵文字に置換 */}
+            <span style={{ fontSize: '16px' }}>💾</span>
             保存
           </button>
         )}
@@ -351,7 +355,8 @@ const NavigationHeader: React.FC<NavigationHeaderProps> = ({
             }}
             title="テストプレイ"
           >
-            <IconPlay size={16} />
+            {/* 🔧 IconPlayを絵文字に置換 */}
+            <span style={{ fontSize: '16px' }}>▶️</span>
             テスト
           </button>
         )}
@@ -377,7 +382,8 @@ const NavigationHeader: React.FC<NavigationHeaderProps> = ({
             }}
             title="エディターに戻る"
           >
-            <IconEdit size={16} />
+            {/* 🔧 IconEditを絵文字に置換 */}
+            <span style={{ fontSize: '16px' }}>✏️</span>
             エディター
           </button>
         )}

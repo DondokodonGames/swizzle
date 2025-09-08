@@ -1,3 +1,5 @@
+// src/components/editor/EditorApp.tsx
+// 修正版: フォントファミリー型修正
 import React, { useState, useCallback, useEffect } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { GameEditor } from './GameEditor';
@@ -268,7 +270,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       style={{
         minHeight: '100vh',
         backgroundColor: DESIGN_TOKENS.colors.neutral[50],
-        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans
+        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')  // 🔧 フォント修正
       }}
     >
       {/* ローディング表示 */}
