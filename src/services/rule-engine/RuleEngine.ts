@@ -1,5 +1,5 @@
 // src/services/rule-engine/RuleEngine.ts
-// IF-THENルールエンジン - アイコン中心・直感的ゲームロジック設定
+// IF-THENルールエンジン - アイコン中心・直感的ゲームロジック設定（修正版）
 
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../types/editor/GameScript';
 
@@ -282,11 +282,173 @@ export class RuleEngine {
     }
   }
 
-  // その他の条件評価（簡略実装）
-  private evaluateCollisionCondition(): boolean { return false; }
-  private evaluateAnimationCondition(): boolean { return false; }
-  private evaluateGameStateCondition(): boolean { return false; }
-  private evaluatePositionCondition(): boolean { return false; }
+  // 🔧 修正：衝突条件評価（正しい引数シグネチャ）
+  private evaluateCollisionCondition(
+    condition: Extract<TriggerCondition, { type: 'collision' }>,
+    context: RuleExecutionContext,
+    targetObjectId: string
+  ): boolean {
+    try {
+      const targetId = condition.target === 'self' ? targetObjectId : condition.target;
+      const targetObj = context.objects.get(targetId);
+      
+      if (!targetObj || !targetObj.visible) {
+        return false;
+      }
+      
+      // 基本的な衝突判定（矩形ベース）
+      // 実際の実装では、checkModeに応じてhitboxまたはpixel判定を行う
+      console.log(`衝突条件評価: ${targetId} - ${condition.collisionType}`);
+      
+      // 暫定実装：常にfalseを返す（詳細実装は後で）
+      return false;
+    } catch (error) {
+      console.error('衝突条件評価エラー:', error);
+      return false;
+    }
+  }
+
+  // 🔧 修正：アニメーション条件評価（正しい引数シグネチャ）
+  private evaluateAnimationCondition(
+    condition: Extract<TriggerCondition, { type: 'animation' }>,
+    context: RuleExecutionContext
+  ): boolean {
+    try {
+      const targetObj = context.objects.get(condition.target);
+      
+      if (!targetObj) {
+        return false;
+      }
+      
+      // アニメーション状態チェック
+      switch (condition.condition) {
+        case 'end':
+          // アニメーション終了の判定（暫定実装）
+          console.log(`アニメーション終了チェック: ${condition.target}`);
+          return false;
+          
+        case 'start':
+          // アニメーション開始の判定
+          return false;
+          
+        case 'frame':
+          // 特定フレーム到達の判定
+          if (condition.frameNumber !== undefined) {
+            return targetObj.animationIndex === condition.frameNumber;
+          }
+          return false;
+          
+        case 'loop':
+          // ループ完了の判定
+          return false;
+          
+        default:
+          return false;
+      }
+    } catch (error) {
+      console.error('アニメーション条件評価エラー:', error);
+      return false;
+    }
+  }
+
+  // 🔧 修正：ゲーム状態条件評価（正しい引数シグネチャ）
+  private evaluateGameStateCondition(
+    condition: Extract<TriggerCondition, { type: 'gameState' }>,
+    context: RuleExecutionContext
+  ): boolean {
+    try {
+      const { gameState } = context;
+      
+      // ゲーム状態のチェック
+      switch (condition.state) {
+        case 'playing':
+          return condition.checkType === 'is' ? gameState.isPlaying : !gameState.isPlaying;
+          
+        case 'success':
+          // 成功状態の判定（カスタム実装が必要）
+          console.log('ゲーム成功状態チェック');
+          return false;
+          
+        case 'failure':
+          // 失敗状態の判定（カスタム実装が必要）
+          console.log('ゲーム失敗状態チェック');
+          return false;
+          
+        case 'paused':
+          // 一時停止状態の判定
+          return !gameState.isPlaying;
+          
+        default:
+          return false;
+      }
+    } catch (error) {
+      console.error('ゲーム状態条件評価エラー:', error);
+      return false;
+    }
+  }
+
+  // 🔧 修正：位置条件評価（正しい引数シグネチャ）
+  private evaluatePositionCondition(
+    condition: Extract<TriggerCondition, { type: 'position' }>,
+    context: RuleExecutionContext
+  ): boolean {
+    try {
+      const targetObj = context.objects.get(condition.target);
+      
+      if (!targetObj) {
+        return false;
+      }
+      
+      const { region } = condition;
+      
+      // 矩形領域での位置判定
+      if (region.shape === 'rect' && region.width && region.height) {
+        const inRect = targetObj.x >= region.x && 
+                      targetObj.x <= region.x + region.width &&
+                      targetObj.y >= region.y && 
+                      targetObj.y <= region.y + region.height;
+        
+        switch (condition.area) {
+          case 'inside':
+            return inRect;
+          case 'outside':
+            return !inRect;
+          case 'crossing':
+            // 境界を跨いでいるかの判定（詳細実装が必要）
+            return false;
+          default:
+            return false;
+        }
+      }
+      
+      // 円形領域での位置判定
+      if (region.shape === 'circle' && region.radius) {
+        const distance = Math.sqrt(
+          Math.pow(targetObj.x - region.x, 2) + 
+          Math.pow(targetObj.y - region.y, 2)
+        );
+        
+        const inCircle = distance <= region.radius;
+        
+        switch (condition.area) {
+          case 'inside':
+            return inCircle;
+          case 'outside':
+            return !inCircle;
+          case 'crossing':
+            // 境界を跨いでいるかの判定
+            return Math.abs(distance - region.radius) < 5; // 5px以内
+          default:
+            return false;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('位置条件評価エラー:', error);
+      return false;
+    }
+  }
 
   // アクション実行（THEN部分）
   private executeActions(

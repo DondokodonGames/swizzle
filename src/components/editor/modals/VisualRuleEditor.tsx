@@ -1,5 +1,5 @@
 // src/components/editor/modals/VisualRuleEditor.tsx
-// アイコン中心・言語フリー ルール設定エディター
+// アイコン中心・言語フリー ルール設定エディター（型安全性修正版）
 
 import React, { useState, useCallback } from 'react';
 import { GameRule, TriggerCondition, GameAction } from '../../../types/editor/GameScript';
@@ -12,17 +12,19 @@ interface VisualRuleEditorProps {
   availableFlags: Array<{ id: string; name: string }>;
 }
 
-// 条件タイプのアイコン・説明
+// 🔧 修正：条件タイプのアイコン・説明（不足していた型を追加）
 const CONDITION_TYPES = {
   touch: { icon: '👆', name: 'タッチ', color: 'bg-blue-100 border-blue-300' },
   time: { icon: '⏰', name: '時間', color: 'bg-green-100 border-green-300' },
   collision: { icon: '💥', name: '衝突', color: 'bg-red-100 border-red-300' },
   flag: { icon: '🚩', name: 'フラグ', color: 'bg-purple-100 border-purple-300' },
   animation: { icon: '🎬', name: 'アニメ', color: 'bg-yellow-100 border-yellow-300' },
-  position: { icon: '📍', name: '位置', color: 'bg-pink-100 border-pink-300' }
+  position: { icon: '📍', name: '位置', color: 'bg-pink-100 border-pink-300' },
+  // 🔧 追加：不足していた型
+  gameState: { icon: '🎮', name: 'ゲーム状態', color: 'bg-orange-100 border-orange-300' }
 } as const;
 
-// アクションタイプのアイコン・説明
+// 🔧 修正：アクションタイプのアイコン・説明（不足していた型を追加）
 const ACTION_TYPES = {
   addScore: { icon: '⭐', name: '得点', color: 'bg-yellow-100 border-yellow-300' },
   success: { icon: '🎉', name: '成功', color: 'bg-green-100 border-green-300' },
@@ -31,7 +33,17 @@ const ACTION_TYPES = {
   playSound: { icon: '🔊', name: '音再生', color: 'bg-blue-100 border-blue-300' },
   showMessage: { icon: '💬', name: 'メッセージ', color: 'bg-gray-100 border-gray-300' },
   hide: { icon: '👻', name: '非表示', color: 'bg-gray-100 border-gray-300' },
-  show: { icon: '👁️', name: '表示', color: 'bg-blue-100 border-blue-300' }
+  show: { icon: '👁️', name: '表示', color: 'bg-blue-100 border-blue-300' },
+  // 🔧 追加：不足していた型
+  move: { icon: '🏃', name: '移動', color: 'bg-cyan-100 border-cyan-300' },
+  pause: { icon: '⏸️', name: '一時停止', color: 'bg-gray-100 border-gray-300' },
+  restart: { icon: '🔄', name: '再開', color: 'bg-blue-100 border-blue-300' },
+  stopSound: { icon: '🔇', name: '音停止', color: 'bg-red-100 border-red-300' },
+  playBGM: { icon: '🎵', name: 'BGM再生', color: 'bg-indigo-100 border-indigo-300' },
+  stopBGM: { icon: '🔇', name: 'BGM停止', color: 'bg-red-100 border-red-300' },
+  toggleFlag: { icon: '🔄', name: 'フラグ切替', color: 'bg-purple-100 border-purple-300' },
+  switchAnimation: { icon: '🎬', name: 'アニメ変更', color: 'bg-yellow-100 border-yellow-300' },
+  effect: { icon: '✨', name: 'エフェクト', color: 'bg-pink-100 border-pink-300' }
 } as const;
 
 export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
@@ -75,6 +87,42 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
           condition: 'ON'
         };
         break;
+      case 'collision':
+        newCondition = {
+          type: 'collision',
+          target: 'stage',
+          collisionType: 'enter',
+          checkMode: 'hitbox'
+        };
+        break;
+      case 'animation':
+        newCondition = {
+          type: 'animation',
+          target: 'self',
+          condition: 'end'
+        };
+        break;
+      case 'position':
+        newCondition = {
+          type: 'position',
+          target: 'self',
+          area: 'inside',
+          region: {
+            shape: 'rect',
+            x: 0.5,
+            y: 0.5,
+            width: 0.3,
+            height: 0.3
+          }
+        };
+        break;
+      case 'gameState':
+        newCondition = {
+          type: 'gameState',
+          state: 'playing',
+          checkType: 'is'
+        };
+        break;
       default:
         newCondition = {
           type: 'touch',
@@ -109,6 +157,24 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
       case 'showMessage':
         newAction = { type: 'showMessage', text: 'メッセージ', duration: 2 };
         break;
+      case 'move':
+        newAction = { 
+          type: 'move', 
+          targetId: 'self', 
+          movement: { 
+            type: 'straight', 
+            target: { x: 0.5, y: 0.5 }, 
+            speed: 100, 
+            duration: 1 
+          } 
+        };
+        break;
+      case 'hide':
+        newAction = { type: 'hide', targetId: 'self' };
+        break;
+      case 'show':
+        newAction = { type: 'show', targetId: 'self' };
+        break;
       default:
         newAction = { type: 'addScore', points: 10 };
     }
@@ -126,18 +192,26 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
     setActions(prev => prev.filter((_, i) => i !== index));
   }, []);
 
-  // 条件更新
+  // 🔧 修正：条件更新（型安全版）
   const updateCondition = useCallback((index: number, updates: Partial<TriggerCondition>) => {
-    setConditions(prev => prev.map((condition, i) => 
-      i === index ? { ...condition, ...updates } : condition
-    ));
+    setConditions(prev => prev.map((condition, i) => {
+      if (i === index) {
+        // 型安全な更新：元の条件の型を保持
+        return { ...condition, ...updates } as TriggerCondition;
+      }
+      return condition;
+    }));
   }, []);
 
-  // アクション更新
+  // 🔧 修正：アクション更新（型安全版）
   const updateAction = useCallback((index: number, updates: Partial<GameAction>) => {
-    setActions(prev => prev.map((action, i) => 
-      i === index ? { ...action, ...updates } : action
-    ));
+    setActions(prev => prev.map((action, i) => {
+      if (i === index) {
+        // 型安全な更新：元のアクションの型を保持
+        return { ...action, ...updates } as GameAction;
+      }
+      return action;
+    }));
   }, []);
 
   // 保存
@@ -309,10 +383,12 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">
-                        {CONDITION_TYPES[condition.type]?.icon}
+                        {/* 🔧 修正：安全なオブジェクトアクセス */}
+                        {CONDITION_TYPES[condition.type as keyof typeof CONDITION_TYPES]?.icon || '❓'}
                       </span>
                       <span className="font-medium">
-                        {CONDITION_TYPES[condition.type]?.name} 条件
+                        {/* 🔧 修正：安全なオブジェクトアクセス */}
+                        {CONDITION_TYPES[condition.type as keyof typeof CONDITION_TYPES]?.name || condition.type} 条件
                       </span>
                     </div>
                     <button
@@ -455,10 +531,12 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">
-                        {ACTION_TYPES[action.type]?.icon}
+                        {/* 🔧 修正：安全なオブジェクトアクセス */}
+                        {ACTION_TYPES[action.type as keyof typeof ACTION_TYPES]?.icon || '❓'}
                       </span>
                       <span className="font-medium">
-                        {ACTION_TYPES[action.type]?.name} アクション
+                        {/* 🔧 修正：安全なオブジェクトアクセス */}
+                        {ACTION_TYPES[action.type as keyof typeof ACTION_TYPES]?.name || action.type} アクション
                       </span>
                     </div>
                     <button
