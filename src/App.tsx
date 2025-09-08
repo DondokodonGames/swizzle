@@ -79,6 +79,8 @@ const DEFAULT_VOLUME: VolumeSettings = {
 
 // アプリケーションモード（TypeScriptエラー修正）
 type AppMode = 'sequence' | 'test' | 'editor' | 'system';
+  const [mode, setMode] = useState<AppMode>('sequence');
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
 
 // 認証機能の有効/無効判定
 const ENABLE_AUTH = (import.meta as any).env?.VITE_ENABLE_AUTH === 'true';
@@ -558,8 +560,8 @@ function MainApp() {
           <button
             onClick={handleSwitchToEditor}
             style={{
-              backgroundColor: mode === 'editor' ? '#ec4899' : 'white',
-              color: mode === 'editor' ? 'white' : '#ec4899',
+              backgroundColor: (mode as string) === 'editor' ? '#ec4899' : 'white',
+              color: (mode as string) === 'editor' ? 'white' : '#ec4899',
               border: '2px solid #ec4899',
               borderRadius: '20px',
               padding: '8px 16px',
@@ -685,7 +687,7 @@ function MainApp() {
             '完成: 上部バー・タイトル・残り時間バー・ログイン/音量オーバーレイ' : 
             mode === 'test' ?
             'ChatGPT制作テンプレートの動作確認・デバッグ用' :
-            mode === 'editor' ? 
+            (mode as string) === 'editor' ?
             '5-30秒ショートゲームの簡単作成・公開プラットフォーム' : 'システム管理'
           }
         </div>

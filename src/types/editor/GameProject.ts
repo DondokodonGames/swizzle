@@ -91,6 +91,7 @@ export interface EditorState {
 
 // プロジェクトメタデータ
 export interface ProjectMetadata {
+  [x: string]: any;
   // 統計情報
   statistics: {
     totalEditTime: number;                // 編集時間（秒）

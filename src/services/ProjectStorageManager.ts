@@ -1,8 +1,10 @@
-// src/services/editor/ProjectStorageManager.ts
-// Phase 1-A: プロジェクト保存・読み込みシステム実装
-// 基準: エディター機能要件定義書・プロジェクト管理システム設計書
+// src/services/ProjectStorageManager.ts - 実際のファイルベース修正版
 
-import { GameProject, ProjectAssets, GameScript, GameSettings } from '../types/editor/GameProject';
+// 🔧 インポート修正: 個別ファイルから直接インポート
+import { GameProject } from '../types/editor/GameProject';
+import { ProjectAssets } from '../types/editor/ProjectAssets';
+import { GameScript } from '../types/editor/GameScript';
+import { GameSettings } from '../types/editor/GameSettings';
 
 // インターフェース定義（設計書準拠）
 interface SaveOptions {
@@ -30,13 +32,14 @@ interface ProjectCacheEntry {
   dirty: boolean;
 }
 
+// 🔧 ProjectSummary型修正: 日付型をstringに統一
 interface ProjectSummary {
   id: string;
   name: string;
   description: string;
   thumbnail?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;    // 🔧 Date → string
+  updatedAt: string;    // 🔧 Date → string
   size: number;
   version: string;
 }
@@ -123,7 +126,7 @@ export class ProjectStorageManager {
         if (!db.objectStoreNames.contains('projects')) {
           const projectStore = db.createObjectStore('projects', { keyPath: 'id' });
           projectStore.createIndex('name', 'name', { unique: false });
-          projectStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+          projectStore.createIndex('lastModified', 'lastModified', { unique: false }); // 🔧 updatedAt → lastModified
         }
         
         // バージョンストア
@@ -139,54 +142,144 @@ export class ProjectStorageManager {
   // 新規プロジェクト作成（設計書準拠）
   async createProject(name: string, template?: string): Promise<GameProject> {
     const projectId = this.generateProjectId();
-    const now = new Date();
+    const now = new Date().toISOString(); // 🔧 文字列に統一
 
     const project: GameProject = {
       id: projectId,
       name: name,
       description: '',
       version: '1.0.0',
-      createdAt: now,
-      updatedAt: now,
-      lastOpenedAt: now,
+      createdAt: now, // 🔧 string型
+      lastModified: now, // 🔧 updatedAt → lastModified
+
 
       // プロジェクトデータ初期化
       assets: {
         background: null,
         objects: [],
+        texts: [], // 🔧 ProjectAssets型に合わせて追加
         audio: {
           bgm: null,
           se: []
-        }
+        },
+        statistics: {
+          totalSize: 0,
+          totalImageSize: 0,
+          totalAudioSize: 0,
+          usedSlots: {
+            background: 0,
+            objects: 0,
+            texts: 0,
+            bgm: 0,
+            se: 0
+          },
+          limitations: {
+            isNearImageLimit: false,
+            isNearAudioLimit: false,
+            isNearTotalLimit: false,
+            hasViolations: false
+          }
+        },
+        lastModified: now // 🔧 ProjectAssets型に合わせて追加
       },
       script: {
         rules: [],
         layout: {
-          objects: []
+          background: {
+            visible: true,
+            initialAnimation: 0,
+            animationSpeed: 1,
+            autoStart: false
+          },
+          objects: [],
+          texts: [], // 🔧 GameLayout型に合わせて追加
+          stage: {
+            backgroundColor: "#ffffff"
+          }
         },
-        gameConditions: {
-          timeLimit: 10,
-          successCondition: 'all_objects_collected',
-          failureCondition: 'time_up'
-        }
+        flags: [],
+        successConditions: [],
+        statistics: {
+          totalConditions: 0,
+          totalActions: 0,
+          totalRules: 0,
+          complexityScore: 0,
+          usedTriggerTypes: [],
+          usedActionTypes: [],
+          flagCount: 0,
+          estimatedCPUUsage: 'medium',
+          estimatedMemoryUsage: 0,
+          maxConcurrentEffects: 0
+        },
+        version: '',
+        lastModified: ''
       },
       settings: {
-        gameTemplate: template || 'memory-match',
-        theme: 'arcade',
-        language: 'ja',
-        difficulty: 'normal',
-        timeLimit: 10,
-        isPublic: false
+        // 🔧 GameSettings型に存在するプロパティのみ使用
+        difficulty: "normal"
+        // gameTemplate, theme, gameName プロパティ削除
+        ,
+
+
+        name: '',
+        duration: {
+          type: 'fixed',
+          seconds: undefined,
+          maxSeconds: undefined
+        },
+        publishing: {
+          isPublished: false,
+          publishedAt: undefined,
+          visibility: 'public',
+          allowComments: false,
+          allowRemix: false,
+          tags: undefined,
+          category: undefined
+        },
+        preview: {
+          thumbnailDataUrl: undefined,
+          previewGif: undefined,
+          screenshotDataUrls: undefined
+        },
+        export: {
+          includeSourceData: false,
+          compressionLevel: 'medium',
+          format: 'json'
+        }
       },
 
       // メタデータ
       metadata: {
-        tags: [],
-        category: 'game',
-        difficulty: 1,
-        estimatedPlayTime: 10,
-        author: 'user',
-        isPublic: false
+        statistics: {
+          totalEditTime: 0,
+          saveCount: 0,
+          testPlayCount: 0,
+          publishCount: 0
+        },
+        usage: {
+          lastOpened: '',
+          totalOpenCount: 0,
+          averageSessionTime: 0
+        },
+        performance: {
+          lastBuildTime: 0,
+          averageFPS: 0,
+          memoryUsage: 0
+        }
+      },
+      creator: {
+        userId: undefined,
+        username: undefined,
+        isAnonymous: false
+      },
+      status: 'draft',
+      totalSize: 0,
+      versionHistory: [],
+      projectSettings: {
+        autoSaveInterval: 0,
+        backupEnabled: false,
+        compressionEnabled: false,
+        maxVersionHistory: 0
       }
     };
 
@@ -245,7 +338,7 @@ export class ProjectStorageManager {
 
     try {
       // プロジェクトデータ更新
-      project.updatedAt = new Date();
+      project.lastModified = new Date().toISOString(); // 🔧 string型に統一
 
       // Level 1: メモリキャッシュ更新
       this.memoryCache.set(project.id, {
@@ -292,10 +385,10 @@ export class ProjectStorageManager {
           const projects = request.result.map((project: GameProject) => ({
             id: project.id,
             name: project.name,
-            description: project.description,
-            thumbnail: project.metadata.thumbnail,
-            createdAt: project.createdAt,
-            updatedAt: project.updatedAt,
+            description: project.description || '', // 🔧 undefined対策
+            thumbnail: project.metadata?.thumbnail,  // 🔧 オプショナルチェーン
+            createdAt: project.createdAt,           // 🔧 string型
+            updatedAt: project.lastModified,        // 🔧 lastModified使用
             size: this.calculateProjectSize(project),
             version: project.version
           }));

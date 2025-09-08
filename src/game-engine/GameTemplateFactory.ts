@@ -342,7 +342,7 @@ export class GameTemplateFactory {
               ...settings,
               // GameSettingsで必須のdurationを確実に設定
               duration: settings.duration || 10,
-              theme: 'cute',
+              //theme: 'cute',
               targetScore: settings.targetScore || 1
             });
 
