@@ -1,5 +1,5 @@
 // src/components/editor/tabs/AssetsTab.tsx
-// 修正版: フォントファミリー型修正
+// 🔧 修正版: 背景追加時にlayout.background.visible=true設定 + フォントファミリー型修正
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
 import { ProjectAssets, BackgroundAsset, ObjectAsset, TextAsset, AssetFrame } from '../../../types/editor/ProjectAssets';
@@ -8,6 +8,7 @@ import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
 import { ModernButton } from '../../ui/ModernButton';
 import { ModernCard } from '../../ui/ModernCard';
 import { DragDropZone, FileProcessingResult } from '../../ui/DragDropZone';
+import { createDefaultInitialState, syncInitialStateWithLayout } from '../../../types/editor/GameScript';
 
 interface AssetsTabProps {
   project: GameProject;
@@ -98,7 +99,24 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
   const totalSize = getTotalSize();
   const sizePercentage = (totalSize / EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE) * 100;
 
-  // 複数ファイルアップロード処理（DragDropZone統合）
+  // 🔧 強化: プロジェクト更新ヘルパー（script・layout同期機能付き）
+  const updateProjectWithSync = useCallback((updates: Partial<GameProject>) => {
+    const updatedProject = { ...project, ...updates };
+    
+    // 初期条件の確保・同期
+    if (updates.assets && !updatedProject.script.initialState) {
+      console.log('🔧 初期条件なし→デフォルト作成・同期');
+      updatedProject.script.initialState = createDefaultInitialState();
+      updatedProject.script.initialState = syncInitialStateWithLayout(
+        updatedProject.script.initialState, 
+        updatedProject.script.layout
+      );
+    }
+    
+    onProjectUpdate(updatedProject);
+  }, [project, onProjectUpdate]);
+
+  // 🔧 修正: 複数ファイルアップロード処理（layout.background.visible=true設定）
   const handleMultipleFileUpload = useCallback(async (results: FileProcessingResult[]) => {
     if (uploading) return;
     setUploading(true);
@@ -106,6 +124,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
     try {
       const now = new Date().toISOString();
       const updatedAssets = { ...project.assets };
+      const updatedScript = { ...project.script };
       let addedCount = 0;
 
       for (const result of results) {
@@ -157,6 +176,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
 
             // プロジェクト更新
             if (activeAssetType === 'background') {
+              // 🔧 背景アセット作成
               updatedAssets.background = {
                 id: crypto.randomUUID(),
                 name: 'Background',
@@ -166,7 +186,30 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
                 createdAt: now,
                 lastModified: now
               };
+              
+              // 🔧 重要: layout.background.visible を true に設定
+              updatedScript.layout.background = {
+                ...updatedScript.layout.background,
+                visible: true,
+                animationSpeed: 10,
+                autoStart: false,
+                initialAnimation: 0
+              };
+              
+              // 🔧 初期条件の背景状態も更新
+              if (!updatedScript.initialState) {
+                updatedScript.initialState = createDefaultInitialState();
+              }
+              updatedScript.initialState.layout.background = {
+                visible: true,
+                frameIndex: 0,
+                animationSpeed: 10,
+                autoStart: false
+              };
+              
+              console.log('✅ 背景追加: layout.background.visible = true 設定完了');
               addedCount++;
+              
             } else if (activeAssetType === 'objects') {
               // オブジェクト数制限チェック
               if (updatedAssets.objects.length >= EDITOR_LIMITS.PROJECT.MAX_OBJECTS) {
@@ -225,10 +268,12 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         };
 
         updatedAssets.lastModified = now;
+        updatedScript.lastModified = now;
 
-        onProjectUpdate({
-          ...project,
+        // 🔧 script と assets 両方を同期更新
+        updateProjectWithSync({
           assets: updatedAssets,
+          script: updatedScript,
           totalSize: imageSize + audioSize,
           lastModified: now
         });
@@ -241,7 +286,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
     } finally {
       setUploading(false);
     }
-  }, [activeAssetType, project, onProjectUpdate, uploading, showNotification]);
+  }, [activeAssetType, project, updateProjectWithSync, uploading, showNotification]);
 
   // テキストアセット追加
   const addTextAsset = useCallback(() => {
@@ -304,8 +349,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
       }
     };
 
-    onProjectUpdate({
-      ...project,
+    updateProjectWithSync({
       assets: updatedAssets,
       lastModified: now
     });
@@ -314,11 +358,12 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
     setTextContent('');
     setEditMode('none');
     showNotification('success', 'テキストを追加しました');
-  }, [textContent, textColor, fontSize, fontWeight, project, onProjectUpdate, showNotification]);
+  }, [textContent, textColor, fontSize, fontWeight, project, updateProjectWithSync, showNotification]);
 
-  // アセット削除
+  // 🔧 修正: アセット削除（layout同期対応）
   const deleteAsset = useCallback((type: AssetType, id?: string) => {
     const updatedAssets = { ...project.assets };
+    const updatedScript = { ...project.script };
     let removedSize = 0;
     const now = new Date().toISOString();
 
@@ -326,12 +371,35 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
       if (updatedAssets.background) {
         removedSize = updatedAssets.background.totalSize;
         updatedAssets.background = null;
+        
+        // 🔧 layout.background.visible も false に設定
+        updatedScript.layout.background = {
+          ...updatedScript.layout.background,
+          visible: false
+        };
+        
+        // 🔧 初期条件の背景状態も更新
+        if (updatedScript.initialState) {
+          updatedScript.initialState.layout.background.visible = false;
+        }
+        
+        console.log('🗑️ 背景削除: layout.background.visible = false 設定完了');
       }
     } else if (type === 'objects' && id) {
       const index = updatedAssets.objects.findIndex(obj => obj.id === id);
       if (index >= 0) {
         removedSize = updatedAssets.objects[index].totalSize;
         updatedAssets.objects.splice(index, 1);
+        
+        // 🔧 レイアウトからも削除
+        updatedScript.layout.objects = updatedScript.layout.objects.filter(obj => obj.objectId !== id);
+        
+        // 🔧 初期条件からも削除
+        if (updatedScript.initialState) {
+          updatedScript.initialState.layout.objects = updatedScript.initialState.layout.objects.filter(obj => obj.id !== id);
+        }
+        
+        console.log('🗑️ オブジェクト削除: layoutからも削除完了');
       }
     } else if (type === 'texts' && id) {
       const index = updatedAssets.texts.findIndex(text => text.id === id);
@@ -366,16 +434,17 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
     };
 
     updatedAssets.lastModified = now;
+    updatedScript.lastModified = now;
 
-    onProjectUpdate({
-      ...project,
+    updateProjectWithSync({
       assets: updatedAssets,
+      script: updatedScript,
       totalSize: project.totalSize - removedSize,
       lastModified: now
     });
 
     showNotification('success', 'アセットを削除しました');
-  }, [project, onProjectUpdate, showNotification]);
+  }, [project, updateProjectWithSync, showNotification]);
 
   return (
     <div 
@@ -430,6 +499,26 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
           </ModernCard>
         </div>
       )}
+
+      {/* 🔧 layout.background.visible状態表示 */}
+      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-blue-600 font-medium">🔧 デバッグ情報:</span>
+            <span className="text-sm">
+              layout.background.visible = 
+              <span className={`font-bold ml-1 ${project.script.layout.background.visible ? 'text-green-600' : 'text-red-600'}`}>
+                {project.script.layout.background.visible ? 'true' : 'false'}
+              </span>
+            </span>
+          </div>
+          {project.assets.background && !project.script.layout.background.visible && (
+            <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
+              背景非表示中
+            </span>
+          )}
+        </div>
+      </div>
 
       {/* 容量表示 */}
       <ModernCard variant="filled" size="sm" style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
@@ -636,6 +725,15 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
                   >
                     {formatFileSize(project.assets.background.totalSize)}
                   </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      project.script.layout.background.visible 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-red-100 text-red-700'
+                    }`}>
+                      {project.script.layout.background.visible ? '✅ 表示中' : '❌ 非表示'}
+                    </span>
+                  </div>
                 </div>
                 <ModernButton
                   variant="error"
@@ -685,6 +783,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
               <li>9:16（縦向き）の比率が推奨です</li>
               <li>最大{formatFileSize(EDITOR_LIMITS.IMAGE.BACKGROUND_FRAME_MAX_SIZE)}まで対応</li>
               <li>ファイルサイズが大きい場合は自動で最適化されます</li>
+              <li>🔧 追加すると自動的に表示設定されます</li>
             </ul>
           </ModernCard>
         </div>
@@ -743,49 +842,66 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
               marginBottom: DESIGN_TOKENS.spacing[6]
             }}
           >
-            {project.assets.objects.map((obj) => (
-              <ModernCard key={obj.id} variant="elevated" size="sm">
-                <img
-                  src={obj.frames[0].dataUrl}
-                  alt={obj.name}
-                  style={{
-                    width: '100%',
-                    aspectRatio: '1',
-                    objectFit: 'cover',
-                    borderRadius: DESIGN_TOKENS.borderRadius.md,
-                    marginBottom: DESIGN_TOKENS.spacing[3]
-                  }}
-                />
-                <h4 
-                  style={{
-                    fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                    fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                    color: DESIGN_TOKENS.colors.neutral[800],
-                    margin: `0 0 ${DESIGN_TOKENS.spacing[1]} 0`
-                  }}
-                >
-                  {obj.name}
-                </h4>
-                <p 
-                  style={{
-                    fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                    color: DESIGN_TOKENS.colors.neutral[500],
-                    margin: `0 0 ${DESIGN_TOKENS.spacing[3]} 0`
-                  }}
-                >
-                  {formatFileSize(obj.totalSize)}
-                </p>
-                <ModernButton
-                  variant="error"
-                  size="xs"
-                  fullWidth
-                  icon="🗑️"
-                  onClick={() => deleteAsset('objects', obj.id)}
-                >
-                  削除
-                </ModernButton>
-              </ModernCard>
-            ))}
+            {project.assets.objects.map((obj) => {
+              // 🔧 レイアウト配置状況確認
+              const isPlaced = project.script.layout.objects.some(layoutObj => layoutObj.objectId === obj.id);
+              
+              return (
+                <ModernCard key={obj.id} variant="elevated" size="sm">
+                  <img
+                    src={obj.frames[0].dataUrl}
+                    alt={obj.name}
+                    style={{
+                      width: '100%',
+                      aspectRatio: '1',
+                      objectFit: 'cover',
+                      borderRadius: DESIGN_TOKENS.borderRadius.md,
+                      marginBottom: DESIGN_TOKENS.spacing[3]
+                    }}
+                  />
+                  <h4 
+                    style={{
+                      fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                      fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                      color: DESIGN_TOKENS.colors.neutral[800],
+                      margin: `0 0 ${DESIGN_TOKENS.spacing[1]} 0`
+                    }}
+                  >
+                    {obj.name}
+                  </h4>
+                  <p 
+                    style={{
+                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                      color: DESIGN_TOKENS.colors.neutral[500],
+                      margin: `0 0 ${DESIGN_TOKENS.spacing[2]} 0`
+                    }}
+                  >
+                    {formatFileSize(obj.totalSize)}
+                  </p>
+                  
+                  {/* 🔧 配置状況表示 */}
+                  <div className="mb-3">
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      isPlaced 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {isPlaced ? '✅ 配置済み' : '📦 未配置'}
+                    </span>
+                  </div>
+                  
+                  <ModernButton
+                    variant="error"
+                    size="xs"
+                    fullWidth
+                    icon="🗑️"
+                    onClick={() => deleteAsset('objects', obj.id)}
+                  >
+                    削除
+                  </ModernButton>
+                </ModernCard>
+              );
+            })}
           </div>
 
           {project.assets.objects.length >= EDITOR_LIMITS.PROJECT.MAX_OBJECTS && (
@@ -805,7 +921,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         </div>
       )}
 
-      {/* テキスト管理セクション */}
+      {/* テキスト管理セクション（既存維持） */}
       {activeAssetType === 'texts' && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: DESIGN_TOKENS.spacing[4] }}>
