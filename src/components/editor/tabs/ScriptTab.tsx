@@ -1,5 +1,5 @@
 // src/components/editor/tabs/ScriptTab.tsx
-// 完成版 - デバッグ削除・ルール設定連携・手軽さ重視
+// 修正版 - サムネイル画像表示 + サイドパネル簡素化
 
 import React, { useState, useRef } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
@@ -69,7 +69,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     setSelectedObjectId(objectId);
   };
 
-  // 🔧 ルール設定モードに移行
+  // ルール設定モードに移行
   const handleObjectRuleEdit = (objectId: string) => {
     const asset = project.assets.objects.find(obj => obj.id === objectId);
     if (!asset) return;
@@ -102,6 +102,11 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     setMode('rules');
     setShowRuleModal(true);
     console.log(`[ScriptTab] ルール編集開始: ${asset.name}`);
+  };
+
+  // 🎯 ルール設定済み判定
+  const hasRuleForObject = (objectId: string): boolean => {
+    return project.script.rules.some(rule => rule.targetObjectId === objectId);
   };
 
   // 背景画像URL取得
@@ -278,11 +283,25 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                       ))}
                     </div>
                     
-                    {/* レイヤー4: オブジェクト（シンプル表示） */}
+                    {/* 🎯 レイヤー4: オブジェクト（サムネイル画像表示） */}
                     {project.script.layout.objects.map((layoutObj, index) => {
                       const asset = project.assets.objects.find(obj => obj.id === layoutObj.objectId);
                       const isSelected = selectedObjectId === layoutObj.objectId;
+                      const hasRule = hasRuleForObject(layoutObj.objectId);
                       
+                      // 状態に応じた枠線色
+                      const borderColor = isSelected 
+                        ? '#1d4ed8' // 青（選択中）
+                        : hasRule 
+                          ? '#16a34a' // 緑（ルール設定済み）
+                          : '#dc2626'; // 赤（未設定）
+                      
+                      const boxShadowColor = isSelected 
+                        ? 'rgba(59, 130, 246, 0.4)'
+                        : hasRule 
+                          ? 'rgba(34, 197, 94, 0.4)'
+                          : 'rgba(239, 68, 68, 0.3)';
+
                       return (
                         <div
                           key={`object-${layoutObj.objectId}-${index}-${forceRender}`}
@@ -291,23 +310,16 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                             left: `${layoutObj.position.x * 100}%`,
                             top: `${layoutObj.position.y * 100}%`,
                             transform: 'translate(-50%, -50%)',
-                            width: '50px',
-                            height: '50px',
+                            width: '60px',
+                            height: '60px',
                             zIndex: layoutObj.zIndex + 20,
-                            backgroundColor: isSelected ? '#3b82f6' : '#ef4444',
-                            border: `3px solid ${isSelected ? '#1d4ed8' : '#dc2626'}`,
+                            border: `3px solid ${borderColor}`,
                             borderRadius: '12px',
                             cursor: 'pointer',
                             transition: 'all 0.2s ease',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontWeight: 'bold',
-                            fontSize: '24px',
-                            boxShadow: isSelected 
-                              ? '0 4px 16px rgba(59, 130, 246, 0.4)' 
-                              : '0 2px 8px rgba(0, 0, 0, 0.2)'
+                            boxShadow: `0 4px 16px ${boxShadowColor}`,
+                            overflow: 'hidden',
+                            backgroundColor: '#ffffff'
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -327,8 +339,57 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                             console.log(`[ScriptTab] ドラッグ開始: ${asset?.name}`);
                           }}
                         >
-                          {/* 🔧 シンプルアイコン表示（画像なし） */}
-                          {index < 9 ? (index + 1).toString() : '★'}
+                          {/* 🖼️ サムネイル画像表示 */}
+                          {asset?.frames?.[0]?.dataUrl ? (
+                            <img
+                              src={asset.frames[0].dataUrl}
+                              alt={asset.name}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'contain',
+                                pointerEvents: 'none'
+                              }}
+                            />
+                          ) : (
+                            // フォールバック：画像がない場合
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '100%',
+                                height: '100%',
+                                backgroundColor: '#f3f4f6',
+                                color: '#6b7280',
+                                fontSize: '24px',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              {index < 9 ? (index + 1).toString() : '★'}
+                            </div>
+                          )}
+                          
+                          {/* 🎯 状態インジケーター（小さなアイコン） */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              bottom: '2px',
+                              right: '2px',
+                              width: '16px',
+                              height: '16px',
+                              backgroundColor: hasRule ? '#16a34a' : '#f59e0b',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'white',
+                              fontSize: '10px',
+                              fontWeight: 'bold'
+                            }}
+                          >
+                            {hasRule ? '✓' : '!'}
+                          </div>
                         </div>
                       );
                     })}
@@ -349,7 +410,10 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                         <div className="text-center p-6 bg-white bg-opacity-95 rounded-lg shadow-lg">
                           <div className="text-4xl mb-3">🎯</div>
                           <h4 className="font-semibold text-gray-800 mb-2">オブジェクトを配置</h4>
-                          <p className="text-gray-600 text-sm">右のリストからドラッグ&ドロップしてください</p>
+                          <p className="text-gray-600 text-sm">
+                            Assetsタブで追加したオブジェクトを<br/>
+                            この画面にドラッグ&ドロップして配置してください
+                          </p>
                         </div>
                       </div>
                     )}
@@ -357,9 +421,12 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                     {project.script.layout.objects.length > 0 && (
                       <div className="absolute bottom-2 left-2 right-2" style={{ zIndex: 30 }}>
                         <div className="text-center p-3 bg-black bg-opacity-75 text-white rounded-lg">
-                          <div className="text-sm font-medium mb-1">💡 ヒント</div>
+                          <div className="text-sm font-medium mb-1">💡 操作ヒント</div>
                           <div className="text-xs">
-                            オブジェクトをクリック → ルール設定 | ドラッグ → 移動
+                            <span style={{color: '#3b82f6'}}>■</span> 選択中 | 
+                            <span style={{color: '#16a34a'}}>■</span> ルール設定済み | 
+                            <span style={{color: '#dc2626'}}>■</span> ルール未設定<br/>
+                            クリック → ルール設定 | ドラッグ → 移動
                           </div>
                         </div>
                       </div>
@@ -375,10 +442,8 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                 </div>
               </div>
               
-              {/* サイドパネル */}
-              <div className="w-full xl:w-80 space-y-4">
-                
-                {/* 背景制御 */}
+              {/* 🔧 サイドパネル（背景制御のみ） */}
+              <div className="w-full xl:w-80">
                 <div className="bg-green-50 rounded-lg p-4 border-2 border-green-200">
                   <h4 className="font-semibold text-green-800 mb-3 flex items-center">
                     🌄 背景制御
@@ -415,41 +480,18 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                         '❌ 背景データなし (Assetsタブで追加)'
                       )}
                     </div>
+                    
+                    
+                    {/* 状態説明 */}
+                    <div className="mt-4 p-3 bg-green-100 rounded text-xs text-green-600">
+                      💡 <strong>操作方法</strong><br/>
+                      • Assetsタブでオブジェクトを追加<br/>
+                      • ゲーム画面にドラッグ&ドロップで配置<br/>
+                      • オブジェクトクリックでルール設定<br/>
+                      • 色付き枠線で状態確認
+                    </div>
                   </div>
                 </div>
-                
-                {/* 🔧 オブジェクト配置ガイド */}
-                {project.assets.objects.length > 0 && (
-                  <div className="bg-blue-50 rounded-lg p-4 border-2 border-blue-200">
-                    <h4 className="font-semibold text-blue-800 mb-3">
-                      🎯 オブジェクト操作
-                    </h4>
-                    
-                    <div className="space-y-2 text-sm text-blue-700">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-blue-500 rounded"></div>
-                        <span>選択中（クリックでルール設定）</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-red-500 rounded"></div>
-                        <span>未選択（ドラッグで移動）</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-gray-400 rounded" style={{borderStyle: 'dashed'}}></div>
-                        <span>ルール未設定</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-4 h-4 border-2 border-gray-400 rounded" style={{borderStyle: 'solid'}}></div>
-                        <span>ルール設定済み</span>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-3 p-2 bg-blue-100 rounded text-xs text-blue-600">
-                      💡 Assetsタブでオブジェクトを追加してから、<br/>
-                      ゲーム画面にドラッグ&ドロップで配置できます
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
