@@ -119,7 +119,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
   }, [currentProject, saveProject, getValidationErrors, updateProject, showNotification]);
 
-  // 🔧 実際のテストプレイ機能実装
+  // 🔧 修正: 実際のテストプレイ機能実装（DOM要素待機対応版）
   const handleTestPlay = useCallback(async () => {
     if (!currentProject) return;
 
@@ -141,44 +141,64 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
 
     setIsTestPlaying(true);
-    setMode('testplay');
     showNotification('info', 'テストプレイを開始します...');
 
     try {
-      // 🔧 EditorGameBridge経由でテストプレイ実行
-      if (testPlayContainerRef.current) {
-        await gameBridge.current.launchFullGame(
-          currentProject,
-          testPlayContainerRef.current,
-          (result: GameExecutionResult) => {
-            setTestPlayResult(result);
-            setIsTestPlaying(false);
-            
-            if (result.success) {
-              showNotification('success', `テストプレイ完了！スコア: ${result.score || 0}`);
-            } else {
-              showNotification('error', `テストプレイエラー: ${result.errors.join(', ')}`);
-            }
-
-            // プレイ統計更新
-            updateProject({
-              metadata: {
-                ...currentProject.metadata,
-                statistics: {
-                  ...currentProject.metadata.statistics,
-                  testPlayCount: (currentProject.metadata.statistics.testPlayCount || 0) + 1
-                },
-                performance: {
-                  ...currentProject.metadata.performance,
-                  lastBuildTime: result.performance.renderTime,
-                  averageFPS: result.performance.averageFPS,
-                  memoryUsage: result.performance.memoryUsage
-                }
-              }
-            });
+      // 🔧 修正: まずモード切り替え
+      setMode('testplay');
+      
+      // 🔧 修正: DOM要素が作成されるまで待機
+      await new Promise<void>((resolve) => {
+        const checkElement = () => {
+          if (testPlayContainerRef.current) {
+            resolve();
+          } else {
+            // requestAnimationFrame で次のレンダリングサイクルを待つ
+            requestAnimationFrame(checkElement);
           }
-        );
+        };
+        checkElement();
+      });
+
+      // 🔧 修正: 再度確認（安全措置）
+      if (!testPlayContainerRef.current) {
+        throw new Error('テストプレイ画面の準備に失敗しました');
       }
+
+      console.log('✅ テストプレイ画面準備完了、ゲーム実行開始');
+
+      // 🔧 EditorGameBridge経由でテストプレイ実行
+      await gameBridge.current.launchFullGame(
+        currentProject,
+        testPlayContainerRef.current,
+        (result: GameExecutionResult) => {
+          setTestPlayResult(result);
+          setIsTestPlaying(false);
+          
+          if (result.success) {
+            showNotification('success', `テストプレイ完了！スコア: ${result.score || 0}`);
+          } else {
+            showNotification('error', `テストプレイエラー: ${result.errors.join(', ')}`);
+          }
+
+          // プレイ統計更新
+          updateProject({
+            metadata: {
+              ...currentProject.metadata,
+              statistics: {
+                ...currentProject.metadata.statistics,
+                testPlayCount: (currentProject.metadata.statistics.testPlayCount || 0) + 1
+              },
+              performance: {
+                ...currentProject.metadata.performance,
+                lastBuildTime: result.performance.renderTime,
+                averageFPS: result.performance.averageFPS,
+                memoryUsage: result.performance.memoryUsage
+              }
+            }
+          });
+        }
+      );
     } catch (error: any) {
       console.error('テストプレイエラー:', error);
       setIsTestPlaying(false);

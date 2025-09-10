@@ -1,6 +1,6 @@
 /**
  * エディター機能の制限値・定数定義
- * Phase 6: ゲームエディター実装用
+ * Phase 6: ゲームエディター実装用 + SimpleRuleModal拡張対応
  */
 
 export const EDITOR_LIMITS = {
@@ -61,8 +61,6 @@ export const EDITOR_LIMITS = {
     MAX_CONCURRENT_SOUNDS: 8,            // 同時再生音数
     SCRIPT_EXECUTION_TIMEOUT: 5000       // スクリプト実行タイムアウト(ms)
   },
-  
-  // ★★★ Phase 6.4 新規追加分 ★★★
   
   // ゲーム設定制限
   GAME_SETTINGS: {
@@ -155,34 +153,88 @@ export const ANIMATION_SETTINGS = {
   MAX_OBJECT_FRAMES: 8
 } as const;
 
-// ★★★ Phase 6.4 新規追加の定数 ★★★
-
-// 条件ライブラリ（ScriptTab用）
+// 🔧 拡張: 条件ライブラリ（SimpleRuleModal対応版）
 export const CONDITIONS_LIBRARY = [
-  { type: 'touch', label: 'タッチしたとき', icon: '👆', color: 'bg-blue-100' },
-  { type: 'time', label: '○秒後', icon: '⏰', color: 'bg-green-100' },
-  { type: 'collision', label: 'ぶつかったとき', icon: '💥', color: 'bg-red-100' },
-  { type: 'animation', label: 'アニメ終了時', icon: '🎬', color: 'bg-purple-100' },
-  { type: 'flag', label: 'フラグがONのとき', icon: '🚩', color: 'bg-yellow-100' },
+  // 基本条件
+  { type: 'touch', label: 'タッチしたとき', icon: '👆', color: 'bg-blue-100', description: 'オブジェクトをタップしたら発動' },
+  { type: 'time', label: '時間経過', icon: '⏰', color: 'bg-green-100', description: '指定時間後に自動発動' },
+  
+  // 🔧 新規追加: 位置・移動条件
+  { type: 'position', label: '位置にいるとき', icon: '📍', color: 'bg-purple-100', description: '指定エリアに入った・出た時' },
+  { type: 'collision', label: 'ぶつかったとき', icon: '💥', color: 'bg-red-100', description: '他のオブジェクトと衝突時' },
+  
+  // 🔧 新規追加: アニメーション・状態条件
+  { type: 'animation', label: 'アニメ終了時', icon: '🎬', color: 'bg-orange-100', description: 'アニメーションが終了した時' },
+  { type: 'flag', label: 'フラグがONのとき', icon: '🚩', color: 'bg-yellow-100', description: 'カスタムフラグの状態確認' },
+  
+  // 🔧 新規追加: ゲーム状態条件
+  { type: 'gameState', label: 'ゲーム状態', icon: '🎮', color: 'bg-indigo-100', description: 'ゲーム全体の状態確認' },
+  { type: 'score', label: 'スコア条件', icon: '🏆', color: 'bg-emerald-100', description: 'スコアが特定値に達した時' },
 ] as const;
 
-// アクションライブラリ（ScriptTab用）
+// 🔧 拡張: アクションライブラリ（SimpleRuleModal対応版）
 export const ACTIONS_LIBRARY = [
-  { type: 'move', label: '移動する', icon: '🏃', color: 'bg-cyan-100' },
-  { type: 'playSound', label: '音を鳴らす', icon: '🔊', color: 'bg-indigo-100' },
-  { type: 'success', label: 'ゲームクリア!', icon: '🎉', color: 'bg-emerald-100' },
-  { type: 'failure', label: 'ゲームオーバー', icon: '💀', color: 'bg-rose-100' },
-  { type: 'switchAnimation', label: 'アニメ変更', icon: '🔄', color: 'bg-orange-100' },
-  { type: 'show', label: '表示する', icon: '👁️', color: 'bg-teal-100' },
-  { type: 'hide', label: '隠す', icon: '🫥', color: 'bg-gray-100' },
+  // ゲーム制御アクション
+  { type: 'success', label: 'ゲームクリア！', icon: '🎉', color: 'bg-emerald-100', description: '成功でゲーム終了' },
+  { type: 'failure', label: 'ゲームオーバー', icon: '💀', color: 'bg-rose-100', description: '失敗でゲーム終了' },
+  { type: 'pause', label: 'ポーズ', icon: '⏸️', color: 'bg-gray-100', description: 'ゲームを一時停止' },
+  { type: 'restart', label: 'リスタート', icon: '🔄', color: 'bg-blue-100', description: 'ゲームを最初から' },
+  
+  // 音響アクション
+  { type: 'playSound', label: '音を鳴らす', icon: '🔊', color: 'bg-indigo-100', description: '効果音を再生' },
+  { type: 'playBGM', label: 'BGM再生', icon: '🎵', color: 'bg-violet-100', description: 'バックグラウンドミュージック再生' },
+  { type: 'stopSound', label: '音停止', icon: '🔇', color: 'bg-gray-100', description: '音声再生を停止' },
+  
+  // 🔧 新規追加: オブジェクト制御アクション
+  { type: 'move', label: '移動する', icon: '🏃', color: 'bg-cyan-100', description: '指定位置に移動' },
+  { type: 'show', label: '表示する', icon: '👁️', color: 'bg-teal-100', description: 'オブジェクトを表示' },
+  { type: 'hide', label: '隠す', icon: '🫥', color: 'bg-gray-100', description: 'オブジェクトを非表示' },
+  { type: 'switchAnimation', label: 'アニメ変更', icon: '🔄', color: 'bg-orange-100', description: 'アニメーションを切り替え' },
+  
+  // 🔧 新規追加: エフェクトアクション
+  { type: 'effect', label: 'エフェクト', icon: '✨', color: 'bg-yellow-100', description: 'フラッシュ・シェイク等' },
+  { type: 'particles', label: 'パーティクル', icon: '🎆', color: 'bg-pink-100', description: 'パーティクルエフェクト' },
+  
+  // スコア・メッセージ関連は削除（ユーザー要求により）
+  { type: 'setFlag', label: 'フラグ設定', icon: '🚩', color: 'bg-yellow-100', description: 'カスタムフラグをON/OFF' },
 ] as const;
 
-// 移動パターン（ScriptTab用）
+// 🔧 新規追加: 移動パターンライブラリ
 export const MOVEMENT_PATTERNS = [
-  { type: 'straight', label: 'まっすぐ移動', icon: '➡️' },
-  { type: 'teleport', label: '瞬間移動', icon: '⚡' },
-  { type: 'wander', label: 'ふらふら移動', icon: '🔄' },
-  { type: 'bounce', label: 'ぴょんぴょん', icon: '🦘' },
+  { type: 'straight', label: 'まっすぐ移動', icon: '➡️', description: '指定位置へ直線移動' },
+  { type: 'teleport', label: '瞬間移動', icon: '⚡', description: '即座に位置変更' },
+  { type: 'wander', label: 'ふらふら移動', icon: '🔄', description: 'ランダムな方向に移動' },
+  { type: 'bounce', label: 'ぴょんぴょん', icon: '🦘', description: '跳ねるような移動' },
+  { type: 'orbit', label: '回転移動', icon: '🌀', description: '円形軌道で移動' },
+  { type: 'approach', label: '追跡移動', icon: '🎯', description: '他のオブジェクトに近づく' },
+] as const;
+
+// 🔧 新規追加: エフェクトパターンライブラリ
+export const EFFECT_PATTERNS = [
+  { type: 'flash', label: 'フラッシュ', icon: '⚡', description: '画面・オブジェクトを光らせる' },
+  { type: 'shake', label: 'シェイク', icon: '🥶', description: '振動・揺れエフェクト' },
+  { type: 'scale', label: '拡大縮小', icon: '📏', description: 'サイズ変更エフェクト' },
+  { type: 'rotate', label: '回転', icon: '🔄', description: '回転エフェクト' },
+  { type: 'fade', label: 'フェード', icon: '🌫️', description: 'フェードイン・アウト' },
+  { type: 'particles', label: 'パーティクル', icon: '✨', description: 'パーティクル放出' },
+] as const;
+
+// 🔧 新規追加: 位置エリアプリセット
+export const POSITION_AREAS = [
+  { type: 'center', label: '中央エリア', icon: '🎯', region: { x: 0.3, y: 0.3, width: 0.4, height: 0.4 } },
+  { type: 'top', label: '上部エリア', icon: '⬆️', region: { x: 0.2, y: 0.0, width: 0.6, height: 0.3 } },
+  { type: 'bottom', label: '下部エリア', icon: '⬇️', region: { x: 0.2, y: 0.7, width: 0.6, height: 0.3 } },
+  { type: 'left', label: '左側エリア', icon: '⬅️', region: { x: 0.0, y: 0.2, width: 0.3, height: 0.6 } },
+  { type: 'right', label: '右側エリア', icon: '➡️', region: { x: 0.7, y: 0.2, width: 0.3, height: 0.6 } },
+  { type: 'corners', label: '四隅', icon: '📐', region: { x: 0.0, y: 0.0, width: 0.25, height: 0.25 } },
+] as const;
+
+// 🔧 新規追加: 移動速度プリセット  
+export const MOVEMENT_SPEEDS = [
+  { type: 'slow', label: 'ゆっくり', icon: '🐌', speed: 100, description: '100px/秒' },
+  { type: 'normal', label: '普通', icon: '🚶', speed: 300, description: '300px/秒' },
+  { type: 'fast', label: '早い', icon: '🏃', speed: 600, description: '600px/秒' },
+  { type: 'instant', label: '瞬間', icon: '⚡', speed: 9999, description: '即座移動' },
 ] as const;
 
 // 時間プリセット（SettingsTab用）

@@ -1,57 +1,100 @@
 // src/components/editor/script/SimpleRuleModal.tsx
-// Option A実装版 - 1つの条件→1つのアクション（タッチ→成功）
+// 段階的拡張版 - 条件ライブラリ拡張（Phase 1）
 
 import React, { useState } from 'react';
 import { GameRule, TriggerCondition, GameAction } from '../../../types/editor/GameScript';
-import { CONDITIONS_LIBRARY, ACTIONS_LIBRARY } from '../../../constants/EditorLimits';
+import { GameProject } from '../../../types/editor/GameProject';
 
 interface SimpleRuleModalProps {
   rule: GameRule;
+  project: GameProject; // プロジェクト情報を追加（オブジェクト・音声データ参照用）
   onSave: (rule: GameRule) => void;
   onClose: () => void;
 }
 
-// Option A用の簡易条件タイプ
-type SimpleConditionType = 'touch' | 'time' | 'none';
+// 🔧 拡張: 条件タイプ（段階的追加）
+type ExpandedConditionType = 
+  | 'touch'           // 👆 タッチ（既存）
+  | 'time'            // ⏰ 時間（既存）
+  | 'position'        // 📍 位置条件（新規）
+  | 'collision'       // 💥 衝突条件（新規）
+  | 'animation'       // 🎬 アニメーション条件（新規）
+  | 'none';
 
-// Option A用の簡易アクションタイプ
-type SimpleActionType = 'success' | 'failure' | 'playSound' | 'none';
+// 🔧 拡張: アクションタイプ（段階的追加）
+type ExpandedActionType = 
+  | 'success'         // 🎉 成功（既存）
+  | 'failure'         // 💀 失敗（既存）
+  | 'playSound'       // 🔊 音再生（既存）
+  | 'move'            // 🏃 移動（新規）
+  | 'effect'          // ✨ エフェクト（新規）
+  | 'show'            // 👁️ 表示（新規）
+  | 'hide'            // 🫥 非表示（新規）
+  | 'none';
 
-export const SimpleRuleModal: React.FC<SimpleRuleModalProps> = ({ rule: initialRule, onSave, onClose }) => {
+// 拡張された条件ライブラリ
+const EXPANDED_CONDITIONS = [
+  // 既存条件
+  { type: 'touch', label: 'タッチしたとき', icon: '👆', color: 'bg-blue-100', description: 'オブジェクトをタップしたら発動' },
+  { type: 'time', label: '時間経過', icon: '⏰', color: 'bg-green-100', description: '指定時間後に自動発動' },
+  
+  // 新規条件
+  { type: 'position', label: '位置にいるとき', icon: '📍', color: 'bg-purple-100', description: '指定エリアに入った・出た時' },
+  { type: 'collision', label: 'ぶつかったとき', icon: '💥', color: 'bg-red-100', description: '他のオブジェクトと衝突時' },
+  { type: 'animation', label: 'アニメ終了時', icon: '🎬', color: 'bg-orange-100', description: 'アニメーションが終了した時' },
+] as const;
+
+// 拡張されたアクションライブラリ
+const EXPANDED_ACTIONS = [
+  // 既存アクション
+  { type: 'success', label: 'ゲームクリア！', icon: '🎉', color: 'bg-emerald-100', description: '成功でゲーム終了' },
+  { type: 'failure', label: 'ゲームオーバー', icon: '💀', color: 'bg-rose-100', description: '失敗でゲーム終了' },
+  { type: 'playSound', label: '音を鳴らす', icon: '🔊', color: 'bg-indigo-100', description: '効果音を再生' },
+  
+  // 新規アクション
+  { type: 'move', label: '移動する', icon: '🏃', color: 'bg-cyan-100', description: '指定位置に移動' },
+  { type: 'effect', label: 'エフェクト', icon: '✨', color: 'bg-yellow-100', description: 'フラッシュ・シェイク等' },
+  { type: 'show', label: '表示する', icon: '👁️', color: 'bg-teal-100', description: 'オブジェクトを表示' },
+  { type: 'hide', label: '隠す', icon: '🫥', color: 'bg-gray-100', description: 'オブジェクトを非表示' },
+] as const;
+
+export const SimpleRuleModal: React.FC<SimpleRuleModalProps> = ({ rule: initialRule, project, onSave, onClose }) => {
   const [rule, setRule] = useState<GameRule>(initialRule);
   
-  // シンプルな条件選択（1つのみ）
-  const [selectedCondition, setSelectedCondition] = useState<SimpleConditionType>(() => {
+  // 条件選択状態
+  const [selectedCondition, setSelectedCondition] = useState<ExpandedConditionType>(() => {
     if (rule.triggers.conditions.length > 0) {
       const firstCondition = rule.triggers.conditions[0];
-      if (firstCondition.type === 'touch') return 'touch';
-      if (firstCondition.type === 'time') return 'time';
+      return firstCondition.type as ExpandedConditionType;
     }
     return 'none';
   });
 
-  // シンプルなアクション選択（1つのみ）
-  const [selectedAction, setSelectedAction] = useState<SimpleActionType>(() => {
+  // アクション選択状態
+  const [selectedAction, setSelectedAction] = useState<ExpandedActionType>(() => {
     if (rule.actions.length > 0) {
       const firstAction = rule.actions[0];
-      if (firstAction.type === 'success') return 'success';
-      if (firstAction.type === 'failure') return 'failure';
-      if (firstAction.type === 'playSound') return 'playSound';
+      return firstAction.type as ExpandedActionType;
     }
     return 'none';
   });
 
-  // 時間条件用のパラメータ
-  const [timeSeconds, setTimeSeconds] = useState<number>(() => {
-    const timeCondition = rule.triggers.conditions.find(c => c.type === 'time') as any;
-    return timeCondition?.seconds || 3;
-  });
-
-  // 音声アクション用のパラメータ
-  const [selectedSoundId, setSelectedSoundId] = useState<string>(() => {
-    const soundAction = rule.actions.find(a => a.type === 'playSound') as any;
-    return soundAction?.soundId || '';
-  });
+  // パラメータ状態
+  const [timeSeconds, setTimeSeconds] = useState<number>(3);
+  const [selectedSoundId, setSelectedSoundId] = useState<string>('');
+  
+  // 🔧 新規: 位置条件パラメータ
+  const [positionArea, setPositionArea] = useState<'center' | 'top' | 'bottom' | 'left' | 'right'>('center');
+  
+  // 🔧 新規: 衝突条件パラメータ  
+  const [collisionTarget, setCollisionTarget] = useState<string>('background');
+  
+  // 🔧 新規: 移動アクションパラメータ
+  const [moveTarget, setMoveTarget] = useState<'center' | 'random' | 'position'>('center');
+  const [moveSpeed, setMoveSpeed] = useState<'slow' | 'normal' | 'fast'>('normal');
+  
+  // 🔧 新規: エフェクトパラメータ
+  const [effectType, setEffectType] = useState<'flash' | 'shake' | 'scale'>('flash');
 
   const handleSave = () => {
     if (!rule.name.trim()) {
@@ -84,6 +127,45 @@ export const SimpleRuleModal: React.FC<SimpleRuleModalProps> = ({ rule: initialR
         timeType: 'exact',
         seconds: timeSeconds
       });
+    } else if (selectedCondition === 'position') {
+      // 🔧 新規: 位置条件実装
+      const positionMap = {
+        center: { x: 0.5, y: 0.5, width: 0.3, height: 0.3 },
+        top: { x: 0.5, y: 0.2, width: 0.6, height: 0.2 },
+        bottom: { x: 0.5, y: 0.8, width: 0.6, height: 0.2 },
+        left: { x: 0.2, y: 0.5, width: 0.2, height: 0.6 },
+        right: { x: 0.8, y: 0.5, width: 0.2, height: 0.6 }
+      };
+      
+      const pos = positionMap[positionArea];
+      conditions.push({
+        type: 'position',
+        target: rule.targetObjectId,
+        area: 'inside',
+        region: {
+          shape: 'rect',
+          x: pos.x - pos.width/2,
+          y: pos.y - pos.height/2,
+          width: pos.width,
+          height: pos.height
+        }
+      });
+    } else if (selectedCondition === 'collision') {
+      // 🔧 新規: 衝突条件実装
+      conditions.push({
+        type: 'collision',
+        target: collisionTarget,
+        collisionType: 'enter',
+        checkMode: 'hitbox'
+      });
+    } else if (selectedCondition === 'animation') {
+      // 🔧 新規: アニメーション条件実装
+      conditions.push({
+        type: 'animation',
+        target: rule.targetObjectId,
+        condition: 'end',
+        animationIndex: 0
+      });
     }
 
     // アクションを作成
@@ -105,6 +187,51 @@ export const SimpleRuleModal: React.FC<SimpleRuleModalProps> = ({ rule: initialR
         soundId: selectedSoundId,
         volume: 0.8
       });
+    } else if (selectedAction === 'move') {
+      // 🔧 新規: 移動アクション実装
+      const speedMap = { slow: 100, normal: 300, fast: 600 };
+      const targetMap = {
+        center: { x: 0.5, y: 0.5 },
+        random: { x: Math.random(), y: Math.random() },
+        position: { x: 0.5, y: 0.3 }
+      };
+      
+      actions.push({
+        type: 'move',
+        targetId: rule.targetObjectId,
+        movement: {
+          type: 'straight',
+          target: targetMap[moveTarget],
+          speed: speedMap[moveSpeed],
+          duration: 2.0,
+          easing: 'ease-out'
+        }
+      });
+    } else if (selectedAction === 'effect') {
+      // 🔧 新規: エフェクトアクション実装
+      actions.push({
+        type: 'effect',
+        targetId: rule.targetObjectId,
+        effect: {
+          type: effectType,
+          duration: 1.0,
+          intensity: 0.8
+        }
+      });
+    } else if (selectedAction === 'show') {
+      actions.push({
+        type: 'show',
+        targetId: rule.targetObjectId,
+        fadeIn: true,
+        duration: 0.5
+      });
+    } else if (selectedAction === 'hide') {
+      actions.push({
+        type: 'hide',
+        targetId: rule.targetObjectId,
+        fadeOut: true,
+        duration: 0.5
+      });
     }
 
     const updatedRule: GameRule = {
@@ -122,11 +249,11 @@ export const SimpleRuleModal: React.FC<SimpleRuleModalProps> = ({ rule: initialR
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="bg-blue-500 text-white p-4 rounded-t-xl">
-          <h3 className="text-xl font-bold">🎯 ルール設定（簡易版）</h3>
+          <h3 className="text-xl font-bold">🎯 ルール設定（拡張版）</h3>
           <p className="text-blue-100 text-sm mt-1">
-            1つの条件 → 1つのアクション
+            1つの条件 → 1つのアクション | {EXPANDED_CONDITIONS.length}種類の条件 × {EXPANDED_ACTIONS.length}種類のアクション
           </p>
         </div>
         
@@ -139,59 +266,50 @@ export const SimpleRuleModal: React.FC<SimpleRuleModalProps> = ({ rule: initialR
               value={rule.name}
               onChange={(e) => setRule({ ...rule, name: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="例: タッチで成功"
+              placeholder="例: 中央エリアでタッチして移動"
             />
           </div>
 
           {/* 条件選択 */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-3">🔥 発動条件</label>
-            <div className="space-y-2">
-              <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                <input
-                  type="radio"
-                  name="condition"
-                  value="touch"
-                  checked={selectedCondition === 'touch'}
-                  onChange={(e) => setSelectedCondition(e.target.value as SimpleConditionType)}
-                  className="mr-3"
-                />
-                <div className="flex items-center">
-                  <span className="text-lg mr-2">👆</span>
-                  <div>
-                    <div className="font-medium">タッチしたとき</div>
-                    <div className="text-xs text-gray-500">オブジェクトをタップしたら発動</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {EXPANDED_CONDITIONS.map((condition) => (
+                <label 
+                  key={condition.type}
+                  className={`flex items-center p-3 border-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-all ${
+                    selectedCondition === condition.type 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="condition"
+                    value={condition.type}
+                    checked={selectedCondition === condition.type}
+                    onChange={(e) => setSelectedCondition(e.target.value as ExpandedConditionType)}
+                    className="mr-3"
+                  />
+                  <div className="flex items-center">
+                    <span className="text-xl mr-3">{condition.icon}</span>
+                    <div>
+                      <div className="font-medium">{condition.label}</div>
+                      <div className="text-xs text-gray-500">{condition.description}</div>
+                    </div>
                   </div>
-                </div>
-              </label>
-              
-              <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                <input
-                  type="radio"
-                  name="condition"
-                  value="time"
-                  checked={selectedCondition === 'time'}
-                  onChange={(e) => setSelectedCondition(e.target.value as SimpleConditionType)}
-                  className="mr-3"
-                />
-                <div className="flex items-center">
-                  <span className="text-lg mr-2">⏰</span>
-                  <div className="flex-1">
-                    <div className="font-medium">時間経過</div>
-                    <div className="text-xs text-gray-500">指定時間後に自動発動</div>
-                  </div>
-                </div>
-              </label>
+                </label>
+              ))}
             </div>
 
-            {/* 時間条件のパラメータ */}
+            {/* 条件パラメータ設定 */}
             {selectedCondition === 'time' && (
-              <div className="mt-3 ml-8">
-                <label className="block text-xs text-gray-600 mb-1">秒数</label>
+              <div className="mt-4 p-4 bg-green-50 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">秒数設定</label>
                 <select
                   value={timeSeconds}
                   onChange={(e) => setTimeSeconds(Number(e.target.value))}
-                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                  className="border border-gray-300 rounded-lg px-3 py-2"
                 >
                   <option value={1}>1秒後</option>
                   <option value={2}>2秒後</option>
@@ -201,86 +319,133 @@ export const SimpleRuleModal: React.FC<SimpleRuleModalProps> = ({ rule: initialR
                 </select>
               </div>
             )}
+
+            {selectedCondition === 'position' && (
+              <div className="mt-4 p-4 bg-purple-50 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">エリア設定</label>
+                <select
+                  value={positionArea}
+                  onChange={(e) => setPositionArea(e.target.value as any)}
+                  className="border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="center">🎯 中央エリア</option>
+                  <option value="top">⬆️ 上部エリア</option>
+                  <option value="bottom">⬇️ 下部エリア</option>
+                  <option value="left">⬅️ 左側エリア</option>
+                  <option value="right">➡️ 右側エリア</option>
+                </select>
+              </div>
+            )}
+
+            {selectedCondition === 'collision' && (
+              <div className="mt-4 p-4 bg-red-50 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">衝突対象</label>
+                <select
+                  value={collisionTarget}
+                  onChange={(e) => setCollisionTarget(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="background">🌄 背景</option>
+                  <option value="stage">🎮 画面端</option>
+                  {project.assets.objects.map(obj => (
+                    <option key={obj.id} value={obj.id}>📦 {obj.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* アクション選択 */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-3">⚡ 実行アクション</label>
-            <div className="space-y-2">
-              <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                <input
-                  type="radio"
-                  name="action"
-                  value="success"
-                  checked={selectedAction === 'success'}
-                  onChange={(e) => setSelectedAction(e.target.value as SimpleActionType)}
-                  className="mr-3"
-                />
-                <div className="flex items-center">
-                  <span className="text-lg mr-2">🎉</span>
-                  <div>
-                    <div className="font-medium">ゲームクリア！</div>
-                    <div className="text-xs text-gray-500">成功でゲーム終了</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {EXPANDED_ACTIONS.map((action) => (
+                <label 
+                  key={action.type}
+                  className={`flex items-center p-3 border-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-all ${
+                    selectedAction === action.type 
+                      ? 'border-green-500 bg-green-50' 
+                      : 'border-gray-200'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="action"
+                    value={action.type}
+                    checked={selectedAction === action.type}
+                    onChange={(e) => setSelectedAction(e.target.value as ExpandedActionType)}
+                    className="mr-3"
+                  />
+                  <div className="flex items-center">
+                    <span className="text-xl mr-3">{action.icon}</span>
+                    <div>
+                      <div className="font-medium">{action.label}</div>
+                      <div className="text-xs text-gray-500">{action.description}</div>
+                    </div>
                   </div>
-                </div>
-              </label>
-              
-              <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                <input
-                  type="radio"
-                  name="action"
-                  value="failure"
-                  checked={selectedAction === 'failure'}
-                  onChange={(e) => setSelectedAction(e.target.value as SimpleActionType)}
-                  className="mr-3"
-                />
-                <div className="flex items-center">
-                  <span className="text-lg mr-2">💀</span>
-                  <div>
-                    <div className="font-medium">ゲームオーバー</div>
-                    <div className="text-xs text-gray-500">失敗でゲーム終了</div>
-                  </div>
-                </div>
-              </label>
-
-              <label className="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                <input
-                  type="radio"
-                  name="action"
-                  value="playSound"
-                  checked={selectedAction === 'playSound'}
-                  onChange={(e) => setSelectedAction(e.target.value as SimpleActionType)}
-                  className="mr-3"
-                />
-                <div className="flex items-center">
-                  <span className="text-lg mr-2">🔊</span>
-                  <div>
-                    <div className="font-medium">音を鳴らす</div>
-                    <div className="text-xs text-gray-500">効果音を再生</div>
-                  </div>
-                </div>
-              </label>
+                </label>
+              ))}
             </div>
 
-            {/* 音声アクションのパラメータ */}
+            {/* アクションパラメータ設定 */}
             {selectedAction === 'playSound' && (
-              <div className="mt-3 ml-8">
-                <label className="block text-xs text-gray-600 mb-1">効果音選択</label>
+              <div className="mt-4 p-4 bg-indigo-50 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">効果音選択</label>
                 <select
                   value={selectedSoundId}
                   onChange={(e) => setSelectedSoundId(e.target.value)}
-                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                  className="border border-gray-300 rounded-lg px-3 py-2"
                 >
                   <option value="">選択してください</option>
-                  {/* プロジェクトのSEから選択 */}
-                  {rule && (
-                    <>
-                      {/* 仮のサウンドIDリスト - 実際のプロジェクトデータから取得する必要がある */}
-                      <option value="se_001">効果音1</option>
-                      <option value="se_002">効果音2</option>
-                      <option value="se_003">効果音3</option>
-                    </>
-                  )}
+                  {project.assets.audio?.se?.map(sound => (
+                    <option key={sound.id} value={sound.id}>🔊 {sound.name}</option>
+                  )) || []}
+                </select>
+              </div>
+            )}
+
+            {selectedAction === 'move' && (
+              <div className="mt-4 p-4 bg-cyan-50 rounded-lg">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">移動先</label>
+                    <select
+                      value={moveTarget}
+                      onChange={(e) => setMoveTarget(e.target.value as any)}
+                      className="border border-gray-300 rounded-lg px-3 py-2 w-full"
+                    >
+                      <option value="center">🎯 中央</option>
+                      <option value="random">🎲 ランダム</option>
+                      <option value="position">📍 上部</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">移動速度</label>
+                    <select
+                      value={moveSpeed}
+                      onChange={(e) => setMoveSpeed(e.target.value as any)}
+                      className="border border-gray-300 rounded-lg px-3 py-2 w-full"
+                    >
+                      <option value="slow">🐌 ゆっくり</option>
+                      <option value="normal">🚶 普通</option>
+                      <option value="fast">🏃 早い</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {selectedAction === 'effect' && (
+              <div className="mt-4 p-4 bg-yellow-50 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">エフェクト種類</label>
+                <select
+                  value={effectType}
+                  onChange={(e) => setEffectType(e.target.value as any)}
+                  className="border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="flash">⚡ フラッシュ</option>
+                  <option value="shake">🥶 シェイク</option>
+                  <option value="scale">📏 拡大縮小</option>
                 </select>
               </div>
             )}
@@ -288,15 +453,22 @@ export const SimpleRuleModal: React.FC<SimpleRuleModalProps> = ({ rule: initialR
 
           {/* プレビュー */}
           {selectedCondition !== 'none' && selectedAction !== 'none' && (
-            <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+            <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <h4 className="text-sm font-medium text-blue-800 mb-2">📋 ルールプレビュー</h4>
-              <div className="text-sm text-blue-700">
-                {selectedCondition === 'touch' && '👆 タッチしたとき'}
-                {selectedCondition === 'time' && `⏰ ${timeSeconds}秒経過したとき`}
-                <span className="mx-2">→</span>
-                {selectedAction === 'success' && '🎉 ゲームクリア！'}
-                {selectedAction === 'failure' && '💀 ゲームオーバー'}
-                {selectedAction === 'playSound' && '🔊 音を鳴らす'}
+              <div className="text-sm text-blue-700 flex items-center flex-wrap gap-1">
+                <span className="inline-flex items-center gap-1">
+                  {EXPANDED_CONDITIONS.find(c => c.type === selectedCondition)?.icon}
+                  {EXPANDED_CONDITIONS.find(c => c.type === selectedCondition)?.label}
+                  {selectedCondition === 'time' && ` (${timeSeconds}秒)`}
+                  {selectedCondition === 'position' && ` (${positionArea}エリア)`}
+                </span>
+                <span className="mx-2 text-gray-500">→</span>
+                <span className="inline-flex items-center gap-1">
+                  {EXPANDED_ACTIONS.find(a => a.type === selectedAction)?.icon}
+                  {EXPANDED_ACTIONS.find(a => a.type === selectedAction)?.label}
+                  {selectedAction === 'move' && ` (${moveTarget}/${moveSpeed})`}
+                  {selectedAction === 'effect' && ` (${effectType})`}
+                </span>
               </div>
             </div>
           )}

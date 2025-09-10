@@ -191,17 +191,39 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }
   }, [project, updateProject]);
 
-  // 🔧 新規: フルゲーム実行機能
+  // 🔧 修正: フルゲーム実行機能（DOM要素待機対応版）
   const handleFullGamePlay = useCallback(async () => {
     console.log('🎮 フルゲーム実行開始:', project.name);
     
-    if (!fullGameRef.current || !bridgeRef.current) {
-      alert('ゲーム実行環境が準備できていません');
+    // 🔧 修正: bridgeRef のみをチェック（fullGameRef は後で確認）
+    if (!bridgeRef.current) {
+      alert('ゲーム実行環境が準備されていません');
       return;
     }
     
     try {
+      // 🔧 修正: まず UI を表示状態にする
       setShowFullGame(true);
+      
+      // 🔧 修正: DOM要素が作成されるまで待機
+      await new Promise<void>((resolve) => {
+        const checkElement = () => {
+          if (fullGameRef.current) {
+            resolve();
+          } else {
+            // requestAnimationFrame で次のレンダリングサイクルを待つ
+            requestAnimationFrame(checkElement);
+          }
+        };
+        checkElement();
+      });
+      
+      // 🔧 修正: 再度確認（安全措置）
+      if (!fullGameRef.current) {
+        throw new Error('DOM要素の作成に失敗しました');
+      }
+      
+      console.log('✅ DOM要素準備完了、ゲーム実行開始');
       
       await bridgeRef.current.launchFullGame(
         project,
