@@ -1,5 +1,6 @@
 // src/components/editor/script/AdvancedRuleModal.tsx
-// 最終版包括的ルール設定モーダル - 構文エラー修正版
+// UI/UX最適化完成版 - モダンデザイン・パラメータモーダル位置修正・レスポンシブ対応
+// 提供ファイルベース統合更新版
 
 import React, { useState, useEffect } from 'react';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
@@ -14,25 +15,25 @@ interface AdvancedRuleModalProps {
 
 // 条件ライブラリ（包括版）
 const CONDITION_LIBRARY = [
-  { type: 'touch', label: 'タッチ', icon: '👆', color: 'bg-blue-50 border-blue-200', params: ['touchType', 'holdDuration'] },
-  { type: 'time', label: '時間', icon: '⏰', color: 'bg-green-50 border-green-200', params: ['timeType', 'seconds', 'range'] },
-  { type: 'position', label: '位置', icon: '📍', color: 'bg-purple-50 border-purple-200', params: ['area', 'region'] },
-  { type: 'collision', label: '衝突', icon: '💥', color: 'bg-red-50 border-red-200', params: ['target', 'collisionType'] },
-  { type: 'animation', label: 'アニメ', icon: '🎬', color: 'bg-orange-50 border-orange-200', params: ['condition', 'frameNumber'] },
-  { type: 'flag', label: 'フラグ', icon: '🚩', color: 'bg-yellow-50 border-yellow-200', params: ['flagId', 'condition'] },
+  { type: 'touch', label: 'タッチ', icon: '👆', color: 'bg-blue-50 border-blue-200 hover:border-blue-300', params: ['touchType', 'holdDuration'] },
+  { type: 'time', label: '時間', icon: '⏰', color: 'bg-green-50 border-green-200 hover:border-green-300', params: ['timeType', 'seconds', 'range'] },
+  { type: 'position', label: '位置', icon: '📍', color: 'bg-purple-50 border-purple-200 hover:border-purple-300', params: ['area', 'region'] },
+  { type: 'collision', label: '衝突', icon: '💥', color: 'bg-red-50 border-red-200 hover:border-red-300', params: ['target', 'collisionType'] },
+  { type: 'animation', label: 'アニメ', icon: '🎬', color: 'bg-orange-50 border-orange-200 hover:border-orange-300', params: ['condition', 'frameNumber'] },
+  { type: 'flag', label: 'フラグ', icon: '🚩', color: 'bg-yellow-50 border-yellow-200 hover:border-yellow-300', params: ['flagId', 'condition'] },
 ] as const;
 
 // アクションライブラリ（スコア・メッセージ削除版）
 const ACTION_LIBRARY = [
-  { type: 'success', label: 'ゲームクリア', icon: '🎉', color: 'bg-emerald-50 border-emerald-200', params: [] },
-  { type: 'failure', label: 'ゲームオーバー', icon: '💀', color: 'bg-rose-50 border-rose-200', params: [] },
-  { type: 'playSound', label: '音再生', icon: '🔊', color: 'bg-indigo-50 border-indigo-200', params: ['soundId', 'volume'] },
-  { type: 'move', label: '移動', icon: '🏃', color: 'bg-cyan-50 border-cyan-200', params: ['movement'] },
-  { type: 'effect', label: 'エフェクト', icon: '✨', color: 'bg-yellow-50 border-yellow-200', params: ['effect'] },
-  { type: 'show', label: '表示', icon: '👁️', color: 'bg-teal-50 border-teal-200', params: ['fadeIn', 'duration'] },
-  { type: 'hide', label: '非表示', icon: '🫥', color: 'bg-gray-50 border-gray-200', params: ['fadeOut', 'duration'] },
-  { type: 'setFlag', label: 'フラグ設定', icon: '🚩', color: 'bg-yellow-50 border-yellow-200', params: ['flagId', 'value'] },
-  { type: 'switchAnimation', label: 'アニメ変更', icon: '🔄', color: 'bg-orange-50 border-orange-200', params: ['animationIndex'] },
+  { type: 'success', label: 'ゲームクリア', icon: '🎉', color: 'bg-emerald-50 border-emerald-200 hover:border-emerald-300', params: [] },
+  { type: 'failure', label: 'ゲームオーバー', icon: '💀', color: 'bg-rose-50 border-rose-200 hover:border-rose-300', params: [] },
+  { type: 'playSound', label: '音再生', icon: '🔊', color: 'bg-indigo-50 border-indigo-200 hover:border-indigo-300', params: ['soundId', 'volume'] },
+  { type: 'move', label: '移動', icon: '🏃', color: 'bg-cyan-50 border-cyan-200 hover:border-cyan-300', params: ['movement'] },
+  { type: 'effect', label: 'エフェクト', icon: '✨', color: 'bg-yellow-50 border-yellow-200 hover:border-yellow-300', params: ['effect'] },
+  { type: 'show', label: '表示', icon: '👁️', color: 'bg-teal-50 border-teal-200 hover:border-teal-300', params: ['fadeIn', 'duration'] },
+  { type: 'hide', label: '非表示', icon: '🫥', color: 'bg-gray-50 border-gray-200 hover:border-gray-300', params: ['fadeOut', 'duration'] },
+  { type: 'setFlag', label: 'フラグ設定', icon: '🚩', color: 'bg-yellow-50 border-yellow-200 hover:border-yellow-300', params: ['flagId', 'value'] },
+  { type: 'switchAnimation', label: 'アニメ変更', icon: '🔄', color: 'bg-orange-50 border-orange-200 hover:border-orange-300', params: ['animationIndex'] },
 ] as const;
 
 export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: initialRule, project, onSave, onClose }) => {
@@ -294,15 +295,6 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
       lastModified: new Date().toISOString()
     };
 
-    // プロジェクトにフラグ情報も更新
-    const updatedProject = {
-      ...project,
-      script: {
-        ...project.script,
-        flags: projectFlags
-      }
-    };
-
     onSave(updatedRule);
   };
 
@@ -366,15 +358,25 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col backdrop-blur-sm border border-gray-200"
+             style={{ minHeight: '600px' }}>
           
-          {/* ヘッダー */}
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6">
-            <h3 className="text-2xl font-bold">🎯 高度なルール設定</h3>
-            <p className="text-blue-100 mt-1">
-              複数条件・複数アクション・フラグ管理・包括的ゲームロジック設定
-            </p>
+          {/* ヘッダー - モダンデザイン改善版 */}
+          <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white p-6 relative overflow-hidden">
+            {/* 装飾的背景エフェクト */}
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-blue-500/20"></div>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400"></div>
+            
+            <div className="relative z-10">
+              <h3 className="text-2xl font-bold mb-2 flex items-center gap-3">
+                <span className="text-3xl">🎯</span>
+                <span>高度なルール設定</span>
+              </h3>
+              <p className="text-indigo-100 text-sm leading-relaxed">
+                複数条件・複数アクション・フラグ管理・包括的ゲームロジック設定
+              </p>
+            </div>
           </div>
 
           {/* メインコンテンツ */}
@@ -384,27 +386,33 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
               {/* 左列: ルール基本設定・条件 */}
               <div className="space-y-6">
                 
-                {/* ルール名 */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ルール名</label>
+                {/* ルール名 - デザイン改善版 */}
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-5 border border-gray-200 shadow-sm">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <span className="text-lg">📝</span>
+                    ルール名
+                  </label>
                   <input
                     type="text"
                     value={rule.name}
                     onChange={(e) => setRule({ ...rule, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm"
                     placeholder="例: 中央タッチで移動"
                   />
                 </div>
 
-                {/* 条件設定 */}
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-blue-800">🔥 発動条件</h4>
-                    <div className="flex items-center gap-2">
+                {/* 条件設定 - デザイン改善版 */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-5">
+                    <h4 className="text-lg font-bold text-blue-800 flex items-center gap-2">
+                      <span className="text-xl">🔥</span>
+                      発動条件
+                    </h4>
+                    <div className="flex items-center gap-3">
                       <select
                         value={operator}
                         onChange={(e) => setOperator(e.target.value as 'AND' | 'OR')}
-                        className="text-sm border border-blue-300 rounded px-2 py-1 bg-white"
+                        className="text-sm border border-blue-300 rounded-lg px-3 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="AND">すべて (AND)</option>
                         <option value="OR">いずれか (OR)</option>
@@ -412,34 +420,34 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                     </div>
                   </div>
 
-                  {/* 既存条件一覧 */}
-                  <div className="space-y-3 mb-4">
+                  {/* 既存条件一覧 - デザイン改善版 */}
+                  <div className="space-y-3 mb-5">
                     {conditions.map((condition, index) => {
                       const display = getConditionDisplay(condition);
                       return (
                         <div
                           key={index}
-                          className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-200"
+                          className="flex items-center justify-between p-4 bg-white rounded-xl border border-blue-200 shadow-sm hover:shadow-md transition-all duration-200 group"
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{display.icon}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl group-hover:scale-110 transition-transform duration-200">{display.icon}</span>
                             <div>
-                              <div className="font-medium text-sm">{display.label}</div>
-                              <div className="text-xs text-gray-500">{display.details}</div>
+                              <div className="font-semibold text-sm text-gray-800">{display.label}</div>
+                              <div className="text-xs text-gray-500 mt-1">{display.details}</div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => setEditingConditionIndex(index)}
-                              className="text-blue-500 hover:text-blue-700 text-sm px-2 py-1"
+                              className="text-blue-500 hover:text-blue-700 text-sm px-3 py-2 rounded-lg hover:bg-blue-50 transition-all duration-200 font-medium"
                             >
-                              ✏️
+                              ✏️ 編集
                             </button>
                             <button
                               onClick={() => removeCondition(index)}
-                              className="text-red-500 hover:text-red-700 text-sm px-2 py-1"
+                              className="text-red-500 hover:text-red-700 text-sm px-3 py-2 rounded-lg hover:bg-red-50 transition-all duration-200 font-medium"
                             >
-                              🗑️
+                              🗑️ 削除
                             </button>
                           </div>
                         </div>
@@ -447,15 +455,15 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                     })}
                   </div>
 
-                  {/* 条件追加ボタン */}
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* 条件追加ボタン - デザイン改善版 */}
+                  <div className="grid grid-cols-2 gap-3">
                     {CONDITION_LIBRARY.map((conditionType) => (
                       <button
                         key={conditionType.type}
                         onClick={() => addCondition(conditionType.type)}
-                        className={`flex items-center gap-2 p-2 rounded-lg border ${conditionType.color} hover:shadow-md transition-all text-sm`}
+                        className={`flex items-center gap-3 p-3 rounded-xl border ${conditionType.color} hover:shadow-lg transition-all duration-200 text-sm font-medium group hover:scale-105`}
                       >
-                        <span>{conditionType.icon}</span>
+                        <span className="text-xl group-hover:scale-110 transition-transform duration-200">{conditionType.icon}</span>
                         <span>{conditionType.label}</span>
                       </button>
                     ))}
@@ -466,38 +474,41 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
               {/* 中央列: アクション設定 */}
               <div className="space-y-6">
                 
-                {/* アクション設定 */}
-                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                  <h4 className="text-lg font-semibold text-green-800 mb-4">⚡ 実行アクション</h4>
+                {/* アクション設定 - デザイン改善版 */}
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 border border-green-200 shadow-sm">
+                  <h4 className="text-lg font-bold text-green-800 mb-5 flex items-center gap-2">
+                    <span className="text-xl">⚡</span>
+                    実行アクション
+                  </h4>
 
-                  {/* 既存アクション一覧 */}
-                  <div className="space-y-3 mb-4">
+                  {/* 既存アクション一覧 - デザイン改善版 */}
+                  <div className="space-y-3 mb-5">
                     {actions.map((action, index) => {
                       const display = getActionDisplay(action);
                       return (
                         <div
                           key={index}
-                          className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-200"
+                          className="flex items-center justify-between p-4 bg-white rounded-xl border border-green-200 shadow-sm hover:shadow-md transition-all duration-200 group"
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{display.icon}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl group-hover:scale-110 transition-transform duration-200">{display.icon}</span>
                             <div>
-                              <div className="font-medium text-sm">{display.label}</div>
-                              <div className="text-xs text-gray-500">{display.details}</div>
+                              <div className="font-semibold text-sm text-gray-800">{display.label}</div>
+                              <div className="text-xs text-gray-500 mt-1">{display.details}</div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => setEditingActionIndex(index)}
-                              className="text-green-500 hover:text-green-700 text-sm px-2 py-1"
+                              className="text-green-500 hover:text-green-700 text-sm px-3 py-2 rounded-lg hover:bg-green-50 transition-all duration-200 font-medium"
                             >
-                              ✏️
+                              ✏️ 編集
                             </button>
                             <button
                               onClick={() => removeAction(index)}
-                              className="text-red-500 hover:text-red-700 text-sm px-2 py-1"
+                              className="text-red-500 hover:text-red-700 text-sm px-3 py-2 rounded-lg hover:bg-red-50 transition-all duration-200 font-medium"
                             >
-                              🗑️
+                              🗑️ 削除
                             </button>
                           </div>
                         </div>
@@ -505,15 +516,15 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                     })}
                   </div>
 
-                  {/* アクション追加ボタン */}
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* アクション追加ボタン - デザイン改善版 */}
+                  <div className="grid grid-cols-2 gap-3">
                     {ACTION_LIBRARY.map((actionType) => (
                       <button
                         key={actionType.type}
                         onClick={() => addAction(actionType.type)}
-                        className={`flex items-center gap-2 p-2 rounded-lg border ${actionType.color} hover:shadow-md transition-all text-sm`}
+                        className={`flex items-center gap-3 p-3 rounded-xl border ${actionType.color} hover:shadow-lg transition-all duration-200 text-sm font-medium group hover:scale-105`}
                       >
-                        <span>{actionType.icon}</span>
+                        <span className="text-xl group-hover:scale-110 transition-transform duration-200">{actionType.icon}</span>
                         <span>{actionType.label}</span>
                       </button>
                     ))}
@@ -524,110 +535,127 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
               {/* 右列: フラグ管理・プレビュー */}
               <div className="space-y-6">
                 
-                {/* フラグ管理 */}
-                <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
-                  <h4 className="text-lg font-semibold text-yellow-800 mb-4">🚩 フラグ管理</h4>
+                {/* フラグ管理 - デザイン改善版 */}
+                <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl p-5 border border-yellow-200 shadow-sm">
+                  <h4 className="text-lg font-bold text-yellow-800 mb-5 flex items-center gap-2">
+                    <span className="text-xl">🚩</span>
+                    フラグ管理
+                  </h4>
 
-                  {/* 新規フラグ追加 */}
-                  <div className="flex gap-2 mb-4">
+                  {/* 新規フラグ追加 - デザイン改善版 */}
+                  <div className="flex gap-3 mb-5">
                     <input
                       type="text"
                       value={newFlagName}
                       onChange={(e) => setNewFlagName(e.target.value)}
-                      placeholder="フラグ名"
-                      className="flex-1 px-2 py-1 text-sm border border-yellow-300 rounded"
+                      placeholder="フラグ名を入力"
+                      className="flex-1 px-4 py-2 text-sm border border-yellow-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 shadow-sm"
                     />
                     <button
                       onClick={addFlag}
-                      className="px-3 py-1 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600"
+                      className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-500 text-white rounded-lg text-sm hover:from-yellow-600 hover:to-amber-600 transition-all shadow-sm font-medium"
                     >
-                      ➕
+                      ➕ 追加
                     </button>
                   </div>
 
-                  {/* 既存フラグ一覧 */}
-                  <div className="space-y-2">
+                  {/* 既存フラグ一覧 - デザイン改善版 */}
+                  <div className="space-y-3">
                     {projectFlags.map((flag) => (
                       <div
                         key={flag.id}
-                        className="flex items-center justify-between p-2 bg-white rounded border border-yellow-200"
+                        className="flex items-center justify-between p-3 bg-white rounded-xl border border-yellow-200 shadow-sm hover:shadow-md transition-all duration-200"
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           <button
                             onClick={() => toggleFlagInitialValue(flag.id)}
-                            className={`w-6 h-6 rounded border-2 flex items-center justify-center text-xs font-bold ${
+                            className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center text-xs font-bold transition-all duration-200 ${
                               flag.initialValue
-                                ? 'bg-green-500 border-green-500 text-white'
-                                : 'bg-gray-200 border-gray-400 text-gray-600'
+                                ? 'bg-green-500 border-green-500 text-white shadow-md hover:bg-green-600'
+                                : 'bg-gray-200 border-gray-400 text-gray-600 shadow-sm hover:bg-gray-300'
                             }`}
                           >
                             {flag.initialValue ? 'ON' : 'OFF'}
                           </button>
-                          <span className="text-sm font-medium">{flag.name}</span>
+                          <span className="text-sm font-semibold text-gray-800">{flag.name}</span>
                         </div>
                         <button
                           onClick={() => removeFlag(flag.id)}
-                          className="text-red-500 hover:text-red-700 text-sm"
+                          className="text-red-500 hover:text-red-700 text-sm px-3 py-2 rounded-lg hover:bg-red-50 transition-all duration-200 font-medium"
                         >
-                          🗑️
+                          🗑️ 削除
                         </button>
                       </div>
                     ))}
                   </div>
 
                   {projectFlags.length === 0 && (
-                    <div className="text-center text-gray-500 py-4 text-sm">
+                    <div className="text-center text-gray-500 py-6 text-sm bg-white rounded-xl border-2 border-dashed border-yellow-200">
+                      <div className="text-2xl mb-2">🚩</div>
                       フラグを追加してゲーム状態を管理
                     </div>
                   )}
                 </div>
 
-                {/* ルールプレビュー */}
-                <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
-                  <h4 className="text-lg font-semibold text-indigo-800 mb-4">📋 ルールプレビュー</h4>
+                {/* ルールプレビュー - デザイン改善版 */}
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border border-indigo-200 shadow-sm">
+                  <h4 className="text-lg font-bold text-indigo-800 mb-5 flex items-center gap-2">
+                    <span className="text-xl">📋</span>
+                    ルールプレビュー
+                  </h4>
                   
                   {conditions.length > 0 && actions.length > 0 ? (
-                    <div className="space-y-3">
-                      {/* 条件部分 */}
-                      <div className="bg-white rounded p-3 border border-indigo-200">
-                        <div className="text-sm font-medium text-indigo-700 mb-2">
-                          🔥 {operator === 'AND' ? 'すべての条件' : 'いずれかの条件'}が満たされたとき
+                    <div className="space-y-4">
+                      {/* 条件部分 - デザイン改善版 */}
+                      <div className="bg-white rounded-xl p-4 border border-indigo-200 shadow-sm">
+                        <div className="text-sm font-semibold text-indigo-700 mb-3 flex items-center gap-2">
+                          <span className="text-lg">🔥</span>
+                          {operator === 'AND' ? 'すべての条件' : 'いずれかの条件'}が満たされたとき
                         </div>
-                        {conditions.map((condition, index) => {
-                          const display = getConditionDisplay(condition);
-                          return (
-                            <div key={index} className="flex items-center gap-2 text-sm text-gray-700">
-                              <span>{display.icon}</span>
-                              <span>{display.label}: {display.details}</span>
-                              {index < conditions.length - 1 && (
-                                <span className="text-indigo-500 font-bold ml-2">
-                                  {operator}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
+                        <div className="space-y-2">
+                          {conditions.map((condition, index) => {
+                            const display = getConditionDisplay(condition);
+                            return (
+                              <div key={index} className="flex items-center gap-3 text-sm text-gray-700 p-2 bg-blue-50 rounded-lg">
+                                <span className="text-lg">{display.icon}</span>
+                                <span className="font-medium">{display.label}:</span>
+                                <span>{display.details}</span>
+                                {index < conditions.length - 1 && (
+                                  <span className="text-indigo-500 font-bold ml-auto px-2 py-1 bg-indigo-100 rounded-md text-xs">
+                                    {operator}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
 
-                      {/* アクション部分 */}
-                      <div className="bg-white rounded p-3 border border-indigo-200">
-                        <div className="text-sm font-medium text-indigo-700 mb-2">
-                          ⚡ 以下のアクションを実行
+                      {/* アクション部分 - デザイン改善版 */}
+                      <div className="bg-white rounded-xl p-4 border border-indigo-200 shadow-sm">
+                        <div className="text-sm font-semibold text-indigo-700 mb-3 flex items-center gap-2">
+                          <span className="text-lg">⚡</span>
+                          以下のアクションを実行
                         </div>
-                        {actions.map((action, index) => {
-                          const display = getActionDisplay(action);
-                          return (
-                            <div key={index} className="flex items-center gap-2 text-sm text-gray-700">
-                              <span>{display.icon}</span>
-                              <span>{display.label}: {display.details}</span>
-                            </div>
-                          );
-                        })}
+                        <div className="space-y-2">
+                          {actions.map((action, index) => {
+                            const display = getActionDisplay(action);
+                            return (
+                              <div key={index} className="flex items-center gap-3 text-sm text-gray-700 p-2 bg-green-50 rounded-lg">
+                                <span className="text-lg">{display.icon}</span>
+                                <span className="font-medium">{display.label}:</span>
+                                <span>{display.details}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center text-gray-500 py-4 text-sm">
-                      条件とアクションを設定してください
+                    <div className="text-center text-gray-500 py-8 text-sm bg-white rounded-xl border-2 border-dashed border-indigo-200">
+                      <div className="text-3xl mb-3">🎯</div>
+                      <div className="font-medium mb-1">条件とアクションを設定してください</div>
+                      <div className="text-xs text-gray-400">ルールが完成するとここにプレビューが表示されます</div>
                     </div>
                   )}
                 </div>
@@ -635,36 +663,57 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
             </div>
           </div>
 
-          {/* フッター */}
-          <div className="border-t border-gray-200 bg-gray-50 p-4 flex justify-between items-center">
-            <div className="text-sm text-gray-600">
-              条件 {conditions.length}個 | アクション {actions.length}個 | フラグ {projectFlags.length}個
+          {/* フッター - デザイン改善版 */}
+          <div className="border-t border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100 p-6 flex justify-between items-center">
+            <div className="text-sm text-gray-600 flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 bg-blue-400 rounded-full"></span>
+                <span>条件 {conditions.length}個</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 bg-green-400 rounded-full"></span>
+                <span>アクション {actions.length}個</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 bg-yellow-400 rounded-full"></span>
+                <span>フラグ {projectFlags.length}個</span>
+              </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <button
                 onClick={onClose}
-                className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-6 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 font-medium text-gray-700 hover:border-gray-400"
               >
                 キャンセル
               </button>
               <button
                 onClick={handleSave}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
+                className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:from-indigo-600 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg font-medium flex items-center gap-2"
                 disabled={conditions.length === 0 || actions.length === 0}
               >
-                💾 保存
+                <span>💾</span>
+                保存
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 条件編集モーダル */}
+      {/* 条件編集モーダル - 位置修正・デザイン改善版 */}
       {editingConditionIndex !== null && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-60">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h4 className="text-lg font-semibold mb-4">🔥 条件パラメータ設定</h4>
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-auto my-8 max-h-[90vh] overflow-y-auto"
+               style={{ position: 'relative', top: '0', left: '0' }}>
             
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-t-xl border-b border-blue-200">
+              <h4 className="text-xl font-bold text-blue-800 flex items-center gap-3">
+                <span className="text-2xl">🔥</span>
+                条件パラメータ設定
+              </h4>
+              <p className="text-blue-600 text-sm mt-1">詳細な条件設定を行います</p>
+            </div>
+            
+            <div className="p-6">
             {(() => {
               const condition = conditions[editingConditionIndex];
               
@@ -673,11 +722,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                   return (
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium mb-2">タッチ種類</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">タッチ種類</label>
                         <select
                           value={condition.touchType}
                           onChange={(e) => updateCondition(editingConditionIndex, { touchType: e.target.value as any })}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                         >
                           <option value="down">👆 タップ</option>
                           <option value="up">☝️ リリース</option>
@@ -686,7 +735,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                       </div>
                       {condition.touchType === 'hold' && (
                         <div>
-                          <label className="block text-sm font-medium mb-2">長押し時間（秒）</label>
+                          <label className="block text-sm font-semibold text-gray-700 mb-3">長押し時間（秒）</label>
                           <input
                             type="number"
                             min="0.5"
@@ -694,7 +743,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                             step="0.5"
                             value={condition.holdDuration || 1}
                             onChange={(e) => updateCondition(editingConditionIndex, { holdDuration: Number(e.target.value) })}
-                            className="w-full border border-gray-300 rounded px-3 py-2"
+                            className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                           />
                         </div>
                       )}
@@ -705,11 +754,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                   return (
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium mb-2">時間種類</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">時間種類</label>
                         <select
                           value={condition.timeType}
                           onChange={(e) => updateCondition(editingConditionIndex, { timeType: e.target.value as any })}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                         >
                           <option value="exact">⏰ 正確な時間</option>
                           <option value="range">📏 時間範囲</option>
@@ -718,11 +767,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                       </div>
                       {condition.timeType === 'exact' && (
                         <div>
-                          <label className="block text-sm font-medium mb-2">秒数</label>
+                          <label className="block text-sm font-semibold text-gray-700 mb-3">秒数</label>
                           <select
                             value={condition.seconds || 3}
                             onChange={(e) => updateCondition(editingConditionIndex, { seconds: Number(e.target.value) })}
-                            className="w-full border border-gray-300 rounded px-3 py-2"
+                            className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                           >
                             <option value={1}>1秒後</option>
                             <option value={2}>2秒後</option>
@@ -739,11 +788,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                   return (
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium mb-2">エリア判定</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">エリア判定</label>
                         <select
                           value={condition.area}
                           onChange={(e) => updateCondition(editingConditionIndex, { area: e.target.value as any })}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                         >
                           <option value="inside">🎯 エリア内</option>
                           <option value="outside">🚫 エリア外</option>
@@ -751,7 +800,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2">エリア設定</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">エリア設定</label>
                         <select
                           value={`${condition.region.x}-${condition.region.y}`}
                           onChange={(e) => {
@@ -768,7 +817,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                               region: { shape: 'rect', ...preset }
                             });
                           }}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                         >
                           <option value="0.3-0.3">🎯 中央エリア</option>
                           <option value="0.2-0.1">⬆️ 上部エリア</option>
@@ -784,11 +833,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                   return (
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium mb-2">対象フラグ</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">対象フラグ</label>
                         <select
                           value={condition.flagId}
                           onChange={(e) => updateCondition(editingConditionIndex, { flagId: e.target.value })}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                         >
                           {projectFlags.map(flag => (
                             <option key={flag.id} value={flag.id}>{flag.name}</option>
@@ -796,11 +845,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2">条件</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">条件</label>
                         <select
                           value={condition.condition}
                           onChange={(e) => updateCondition(editingConditionIndex, { condition: e.target.value as any })}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                         >
                           <option value="ON">🟢 ONの時</option>
                           <option value="OFF">🔴 OFFの時</option>
@@ -811,34 +860,45 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                   );
 
                 default:
-                  return <div>設定項目がありません</div>;
+                  return <div className="text-center text-gray-500 py-8">この条件タイプの設定項目は準備中です</div>;
               }
             })()}
             
-            <div className="flex justify-end gap-2 mt-6">
+            <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
               <button
                 onClick={() => setEditingConditionIndex(null)}
-                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                className="px-6 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 font-medium text-gray-700"
               >
                 キャンセル
               </button>
               <button
                 onClick={() => setEditingConditionIndex(null)}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg font-medium flex items-center gap-2"
               >
+                <span>✅</span>
                 適用
               </button>
+            </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* アクション編集モーダル */}
+      {/* アクション編集モーダル - 位置修正・デザイン改善版 */}
       {editingActionIndex !== null && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-60">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h4 className="text-lg font-semibold mb-4">⚡ アクションパラメータ設定</h4>
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-auto my-8 max-h-[90vh] overflow-y-auto"
+               style={{ position: 'relative', top: '0', left: '0' }}>
             
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-t-xl border-b border-green-200">
+              <h4 className="text-xl font-bold text-green-800 flex items-center gap-3">
+                <span className="text-2xl">⚡</span>
+                アクションパラメータ設定
+              </h4>
+              <p className="text-green-600 text-sm mt-1">詳細なアクション設定を行います</p>
+            </div>
+            
+            <div className="p-6">
             {(() => {
               const action = actions[editingActionIndex];
               
@@ -847,11 +907,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                   return (
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium mb-2">効果音選択</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">効果音選択</label>
                         <select
                           value={action.soundId}
                           onChange={(e) => updateAction(editingActionIndex, { soundId: e.target.value })}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                         >
                           <option value="">選択してください</option>
                           {project.assets.audio?.se?.map(sound => (
@@ -860,7 +920,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2">音量</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">音量</label>
                         <input
                           type="range"
                           min="0"
@@ -868,9 +928,9 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                           step="0.1"
                           value={action.volume || 0.8}
                           onChange={(e) => updateAction(editingActionIndex, { volume: Number(e.target.value) })}
-                          className="w-full"
+                          className="w-full accent-green-500"
                         />
-                        <div className="text-sm text-gray-500 text-center">{Math.round((action.volume || 0.8) * 100)}%</div>
+                        <div className="text-sm text-gray-500 text-center mt-2 font-medium">{Math.round((action.volume || 0.8) * 100)}%</div>
                       </div>
                     </div>
                   );
@@ -879,13 +939,13 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                   return (
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium mb-2">移動タイプ</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">移動タイプ</label>
                         <select
                           value={action.movement.type}
                           onChange={(e) => updateAction(editingActionIndex, { 
                             movement: { ...action.movement, type: e.target.value as any }
                           })}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                         >
                           <option value="straight">➡️ 直線移動</option>
                           <option value="teleport">⚡ 瞬間移動</option>
@@ -893,7 +953,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2">移動先</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">移動先</label>
                         <select
                           onChange={(e) => {
                             const presets = {
@@ -908,7 +968,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                               movement: { ...action.movement, target }
                             });
                           }}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                         >
                           <option value="center">🎯 中央</option>
                           <option value="top">⬆️ 上部</option>
@@ -918,13 +978,13 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2">移動速度</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">移動速度</label>
                         <select
                           value={action.movement.speed}
                           onChange={(e) => updateAction(editingActionIndex, { 
                             movement: { ...action.movement, speed: Number(e.target.value) }
                           })}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                         >
                           <option value={100}>🐌 ゆっくり</option>
                           <option value={300}>🚶 普通</option>
@@ -939,11 +999,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                   return (
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium mb-2">対象フラグ</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">対象フラグ</label>
                         <select
                           value={action.flagId}
                           onChange={(e) => updateAction(editingActionIndex, { flagId: e.target.value })}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                         >
                           {projectFlags.map(flag => (
                             <option key={flag.id} value={flag.id}>{flag.name}</option>
@@ -951,11 +1011,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium mb-2">設定値</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">設定値</label>
                         <select
                           value={action.value ? 'true' : 'false'}
                           onChange={(e) => updateAction(editingActionIndex, { value: e.target.value === 'true' })}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
                         >
                           <option value="true">🟢 ON</option>
                           <option value="false">🔴 OFF</option>
@@ -965,23 +1025,25 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({ rule: init
                   );
 
                 default:
-                  return <div>設定項目がありません</div>;
+                  return <div className="text-center text-gray-500 py-8">このアクションタイプの設定項目は準備中です</div>;
               }
             })()}
             
-            <div className="flex justify-end gap-2 mt-6">
+            <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
               <button
                 onClick={() => setEditingActionIndex(null)}
-                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                className="px-6 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 font-medium text-gray-700"
               >
                 キャンセル
               </button>
               <button
                 onClick={() => setEditingActionIndex(null)}
-                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-lg font-medium flex items-center gap-2"
               >
+                <span>✅</span>
                 適用
               </button>
+            </div>
             </div>
           </div>
         </div>
