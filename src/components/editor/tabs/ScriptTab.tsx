@@ -1,6 +1,5 @@
 // src/components/editor/tabs/ScriptTab.tsx
-// AdvancedRuleModal統合更新版 - UI/UX改善・統合管理強化
-// 提供ファイルベース統合更新版
+// 最終版 - 美しいモダンデザイン + パラメータ位置問題完全解決
 
 import React, { useState } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
@@ -163,67 +162,88 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
   };
 
   return (
-    <div className="h-full flex flex-col">
-      {/* ヘッダー - UI/UX改善版 */}
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white p-4 relative overflow-hidden">
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 to-gray-100">
+      
+      {/* ヘッダー - 洗練されたモダンデザイン */}
+      <div className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 text-white relative overflow-hidden shadow-xl">
         {/* 装飾的背景エフェクト */}
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-blue-500/20"></div>
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 via-pink-400 to-cyan-400"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-indigo-600/10"></div>
+        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400"></div>
         
-        <div className="relative z-10">
+        <div className="relative z-10 p-6">
           <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-bold flex items-center gap-3">
-                <span className="text-2xl">📝</span>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold flex items-center gap-3 text-white">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <span className="text-xl">📝</span>
+                </div>
                 <span>スクリプト設定</span>
               </h2>
-              <p className="text-indigo-100 text-sm mt-1">
-                高度なゲームロジック・複数条件・フラグ管理・包括的ルールシステム
+              <p className="text-slate-300 text-sm font-medium ml-13">
+                高度なゲームロジック設定・複数条件・フラグ管理システム
               </p>
             </div>
             
-            {/* モード切り替え - デザイン改善版 */}
-            <div className="flex bg-white bg-opacity-20 rounded-xl p-1 backdrop-blur-sm">
+            {/* モード切り替え - エレガントなデザイン */}
+            <div className="flex bg-slate-700/50 rounded-2xl p-1.5 backdrop-blur-sm border border-slate-600/30 shadow-lg">
               <button
                 onClick={() => setMode('layout')}
-                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 text-sm ${
                   mode === 'layout' 
-                    ? 'bg-white text-indigo-600 shadow-lg' 
-                    : 'text-white hover:bg-white hover:bg-opacity-20'
+                    ? 'bg-white text-slate-700 shadow-lg' 
+                    : 'text-slate-300 hover:text-white hover:bg-slate-600/50'
                 }`}
               >
-                🎨 レイアウト
+                <div className="flex items-center gap-2">
+                  <span>🎨</span>
+                  <span>レイアウト</span>
+                </div>
               </button>
               <button
                 onClick={() => setMode('rules')}
-                className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 text-sm ${
                   mode === 'rules' 
-                    ? 'bg-white text-purple-600 shadow-lg' 
-                    : 'text-white hover:bg-white hover:bg-opacity-20'
+                    ? 'bg-white text-slate-700 shadow-lg' 
+                    : 'text-slate-300 hover:text-white hover:bg-slate-600/50'
                 }`}
               >
-                ⚙️ ルール ({project.script.rules.length})
+                <div className="flex items-center gap-2">
+                  <span>⚙️</span>
+                  <span>ルール ({project.script.rules.length})</span>
+                </div>
               </button>
             </div>
           </div>
           
-          {/* プロジェクト統計 - デザイン改善版 */}
-          <div className="mt-4 flex items-center gap-6 text-sm text-indigo-100">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 bg-white/30 rounded-full"></span>
-              <span>📦 オブジェクト: {project.script.layout.objects.length}</span>
+          {/* プロジェクト統計 - 洗練された情報表示 */}
+          <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="flex items-center gap-3 bg-slate-700/30 rounded-xl p-3 border border-slate-600/20">
+              <div className="w-3 h-3 bg-blue-400 rounded-full shadow-sm"></div>
+              <div>
+                <div className="text-xs text-slate-400 font-medium">オブジェクト</div>
+                <div className="text-sm font-bold text-white">{project.script.layout.objects.length}個</div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 bg-white/30 rounded-full"></span>
-              <span>⚙️ ルール: {project.script.rules.length}</span>
+            <div className="flex items-center gap-3 bg-slate-700/30 rounded-xl p-3 border border-slate-600/20">
+              <div className="w-3 h-3 bg-purple-400 rounded-full shadow-sm"></div>
+              <div>
+                <div className="text-xs text-slate-400 font-medium">ルール</div>
+                <div className="text-sm font-bold text-white">{project.script.rules.length}個</div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 bg-white/30 rounded-full"></span>
-              <span>🚩 フラグ: {project.script.flags?.length || 0}</span>
+            <div className="flex items-center gap-3 bg-slate-700/30 rounded-xl p-3 border border-slate-600/20">
+              <div className="w-3 h-3 bg-amber-400 rounded-full shadow-sm"></div>
+              <div>
+                <div className="text-xs text-slate-400 font-medium">フラグ</div>
+                <div className="text-sm font-bold text-white">{project.script.flags?.length || 0}個</div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 bg-green-400 rounded-full"></span>
-              <span>🔥 アクティブルール: {project.script.rules.filter(r => r.enabled).length}</span>
+            <div className="flex items-center gap-3 bg-slate-700/30 rounded-xl p-3 border border-slate-600/20">
+              <div className="w-3 h-3 bg-green-400 rounded-full shadow-sm"></div>
+              <div>
+                <div className="text-xs text-slate-400 font-medium">アクティブ</div>
+                <div className="text-sm font-bold text-white">{project.script.rules.filter(r => r.enabled).length}個</div>
+              </div>
             </div>
           </div>
         </div>
@@ -245,32 +265,37 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
               hasRuleForObject={hasRuleForObject}
             />
             
-            {/* 右サイドパネル - デザイン改善版 */}
-            <div className="w-80 bg-gradient-to-b from-gray-50 to-white border-l border-gray-200 overflow-y-auto shadow-inner">
+            {/* 右サイドパネル - モダンな統合デザイン */}
+            <div className="w-80 bg-white border-l border-slate-200 overflow-y-auto shadow-inner">
               <BackgroundControl
                 project={project}
                 onProjectUpdate={updateProject}
               />
               
-              {/* プロジェクトフラグ統計のみ表示 - デザイン改善版 */}
+              {/* フラグ統計表示 - 洗練されたデザイン */}
               {project.script.flags && project.script.flags.length > 0 && (
-                <div className="p-4">
-                  <div className="p-4 bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl border border-yellow-200 shadow-sm">
-                    <h5 className="text-sm font-bold text-yellow-800 mb-3 flex items-center gap-2">
-                      <span className="text-lg">🚩</span>
-                      プロジェクトフラグ
-                    </h5>
-                    <div className="space-y-2">
+                <div className="p-6">
+                  <div className="p-5 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl border border-amber-200 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center shadow-sm">
+                        <span className="text-white text-sm">🚩</span>
+                      </div>
+                      <div>
+                        <h5 className="text-lg font-bold text-amber-800">プロジェクトフラグ</h5>
+                        <p className="text-xs text-amber-600">ゲーム状態管理</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
                       {project.script.flags.map((flag) => (
-                        <div key={flag.id} className="flex items-center justify-between text-xs bg-white rounded-lg p-2 shadow-sm">
-                          <span className="text-yellow-700 font-medium">{flag.name}</span>
-                          <span className={`px-2 py-1 rounded-md font-bold text-xs ${
+                        <div key={flag.id} className="flex items-center justify-between p-3 bg-white rounded-xl shadow-sm border border-amber-100">
+                          <span className="text-sm font-semibold text-slate-700">{flag.name}</span>
+                          <div className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
                             flag.initialValue 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-gray-100 text-gray-700'
+                              ? 'bg-green-100 text-green-700 border border-green-200' 
+                              : 'bg-gray-100 text-gray-600 border border-gray-200'
                           }`}>
                             {flag.initialValue ? 'ON' : 'OFF'}
-                          </span>
+                          </div>
                         </div>
                       ))}
                     </div>
