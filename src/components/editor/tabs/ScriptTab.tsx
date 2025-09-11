@@ -1,5 +1,5 @@
 // src/components/editor/tabs/ScriptTab.tsx
-// 最終版 - 美しいモダンデザイン + パラメータ位置問題完全解決
+// Step 1完全改善版: デザインシステム統一 + 3つの修正適用
 
 import React, { useState } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
@@ -8,6 +8,9 @@ import { GamePreview } from '../script/GamePreview';
 import { BackgroundControl } from '../script/BackgroundControl';
 import { RuleList } from '../script/RuleList';
 import { AdvancedRuleModal } from '../script/AdvancedRuleModal';
+import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
+import { ModernCard } from '../../ui/ModernCard';
+import { ModernButton } from '../../ui/ModernButton';
 
 interface ScriptTabProps {
   project: GameProject;
@@ -23,6 +26,18 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
   const [showRuleModal, setShowRuleModal] = useState(false);
   const [forceRender, setForceRender] = useState(0);
 
+  // 通知システム（AssetsTabパターン）
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error' | 'info';
+    message: string;
+  } | null>(null);
+
+  // 通知表示ヘルパー
+  const showNotification = (type: 'success' | 'error' | 'info', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
   // プロジェクト更新（強制再レンダリング付き）
   const updateProject = (updates: Partial<GameProject>) => {
     const updatedProject = {
@@ -34,6 +49,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     console.log('[ScriptTab] プロジェクト更新:', Object.keys(updates).join(', '));
     onProjectUpdate(updatedProject);
     setForceRender(prev => prev + 1);
+    showNotification('success', 'プロジェクトを更新しました');
   };
 
   // オブジェクト配置更新
@@ -116,9 +132,11 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     if (existingIndex >= 0) {
       // 既存ルール更新
       updatedScript.rules[existingIndex] = rule;
+      showNotification('success', 'ルールを更新しました');
     } else {
       // 新規ルール追加
       updatedScript.rules.push(rule);
+      showNotification('success', 'ルールを追加しました');
     }
     
     updateProject({ script: updatedScript });
@@ -162,144 +180,302 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
   };
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 to-gray-100">
+    <div 
+      style={{ 
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', '),
+        backgroundColor: DESIGN_TOKENS.colors.neutral[50]
+      }}
+    >
       
-      {/* ヘッダー - 洗練されたモダンデザイン */}
-      <div className="bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 text-white relative overflow-hidden shadow-xl">
-        {/* 装飾的背景エフェクト */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-indigo-600/10"></div>
-        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400"></div>
-        
-        <div className="relative z-10 p-6">
-          <div className="flex justify-between items-center">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold flex items-center gap-3 text-white">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <span className="text-xl">📝</span>
-                </div>
-                <span>スクリプト設定</span>
-              </h2>
-              <p className="text-slate-300 text-sm font-medium ml-13">
-                高度なゲームロジック設定・複数条件・フラグ管理システム
+      {/* 通知表示（AssetsTabパターン） */}
+      {notification && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: DESIGN_TOKENS.spacing[4],
+            right: DESIGN_TOKENS.spacing[4],
+            zIndex: DESIGN_TOKENS.zIndex.notification,
+            maxWidth: '400px'
+          }}
+        >
+          <ModernCard variant="elevated" size="sm">
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ 
+                fontSize: DESIGN_TOKENS.typography.fontSize.xl, 
+                marginRight: DESIGN_TOKENS.spacing[3] 
+              }}>
+                {notification.type === 'success' ? '✅' :
+                 notification.type === 'error' ? '❌' : 'ℹ️'}
+              </span>
+              <p style={{ 
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                margin: 0,
+                flex: 1,
+                color: notification.type === 'success' 
+                  ? DESIGN_TOKENS.colors.success[800] 
+                  : notification.type === 'error' 
+                    ? DESIGN_TOKENS.colors.error[800] 
+                    : DESIGN_TOKENS.colors.primary[800]
+              }}>
+                {notification.message}
               </p>
-            </div>
-            
-            {/* モード切り替え - エレガントなデザイン */}
-            <div className="flex bg-slate-700/50 rounded-2xl p-1.5 backdrop-blur-sm border border-slate-600/30 shadow-lg">
-              <button
-                onClick={() => setMode('layout')}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 text-sm ${
-                  mode === 'layout' 
-                    ? 'bg-white text-slate-700 shadow-lg' 
-                    : 'text-slate-300 hover:text-white hover:bg-slate-600/50'
-                }`}
+              <ModernButton
+                variant="ghost"
+                size="xs"
+                onClick={() => setNotification(null)}
+                style={{ marginLeft: DESIGN_TOKENS.spacing[2] }}
               >
-                <div className="flex items-center gap-2">
-                  <span>🎨</span>
-                  <span>レイアウト</span>
-                </div>
-              </button>
-              <button
-                onClick={() => setMode('rules')}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 text-sm ${
-                  mode === 'rules' 
-                    ? 'bg-white text-slate-700 shadow-lg' 
-                    : 'text-slate-300 hover:text-white hover:bg-slate-600/50'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span>⚙️</span>
-                  <span>ルール ({project.script.rules.length})</span>
-                </div>
-              </button>
+                ✕
+              </ModernButton>
             </div>
+          </ModernCard>
+        </div>
+      )}
+
+      {/* ヘッダー - ModernCard + purple系統一 */}
+      <ModernCard 
+        variant="filled" 
+        size="lg"
+        style={{ 
+          backgroundColor: DESIGN_TOKENS.colors.purple[600],
+          color: DESIGN_TOKENS.colors.neutral[0],
+          marginBottom: 0,
+          borderRadius: 0
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2 
+              style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: DESIGN_TOKENS.spacing[3],
+                color: DESIGN_TOKENS.colors.neutral[0]
+              }}
+            >
+              <div 
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                  borderRadius: DESIGN_TOKENS.borderRadius.xl,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: DESIGN_TOKENS.shadows.lg
+                }}
+              >
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xl, color: DESIGN_TOKENS.colors.purple[600] }}>📝</span>
+              </div>
+              <span>スクリプト設定</span>
+            </h2>
+            <p 
+              style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                color: DESIGN_TOKENS.colors.purple[100],
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                margin: `${DESIGN_TOKENS.spacing[2]} 0 0 53px`
+              }}
+            >
+              高度なゲームロジック設定・複数条件・フラグ管理システム
+            </p>
           </div>
           
-          {/* プロジェクト統計 - 洗練された情報表示 */}
-          <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="flex items-center gap-3 bg-slate-700/30 rounded-xl p-3 border border-slate-600/20">
-              <div className="w-3 h-3 bg-blue-400 rounded-full shadow-sm"></div>
-              <div>
-                <div className="text-xs text-slate-400 font-medium">オブジェクト</div>
-                <div className="text-sm font-bold text-white">{project.script.layout.objects.length}個</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 bg-slate-700/30 rounded-xl p-3 border border-slate-600/20">
-              <div className="w-3 h-3 bg-purple-400 rounded-full shadow-sm"></div>
-              <div>
-                <div className="text-xs text-slate-400 font-medium">ルール</div>
-                <div className="text-sm font-bold text-white">{project.script.rules.length}個</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 bg-slate-700/30 rounded-xl p-3 border border-slate-600/20">
-              <div className="w-3 h-3 bg-amber-400 rounded-full shadow-sm"></div>
-              <div>
-                <div className="text-xs text-slate-400 font-medium">フラグ</div>
-                <div className="text-sm font-bold text-white">{project.script.flags?.length || 0}個</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 bg-slate-700/30 rounded-xl p-3 border border-slate-600/20">
-              <div className="w-3 h-3 bg-green-400 rounded-full shadow-sm"></div>
-              <div>
-                <div className="text-xs text-slate-400 font-medium">アクティブ</div>
-                <div className="text-sm font-bold text-white">{project.script.rules.filter(r => r.enabled).length}個</div>
-              </div>
-            </div>
+          {/* モード切り替え - AssetsTabタブ方式 */}
+          <div 
+            style={{
+              display: 'flex',
+              backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+              borderRadius: DESIGN_TOKENS.borderRadius.lg,
+              padding: DESIGN_TOKENS.spacing[1],
+              boxShadow: DESIGN_TOKENS.shadows.sm
+            }}
+          >
+            {[
+              { id: 'layout' as 'layout' | 'rules', label: 'レイアウト', icon: '🎨' },
+              { id: 'rules' as 'layout' | 'rules', label: 'ルール', icon: '⚙️' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setMode(tab.id)}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: DESIGN_TOKENS.spacing[2],
+                  padding: `${DESIGN_TOKENS.spacing[3]} ${DESIGN_TOKENS.spacing[4]}`,
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  backgroundColor: mode === tab.id 
+                    ? DESIGN_TOKENS.colors.purple[500]
+                    : 'transparent',
+                  color: mode === tab.id 
+                    ? DESIGN_TOKENS.colors.neutral[0]
+                    : DESIGN_TOKENS.colors.neutral[600],
+                  border: 'none',
+                  borderRadius: DESIGN_TOKENS.borderRadius.md,
+                  cursor: 'pointer',
+                  transition: `all ${DESIGN_TOKENS.animation.duration.fast} ${DESIGN_TOKENS.animation.easing.inOut}`
+                }}
+                onMouseEnter={(e) => {
+                  if (mode !== tab.id) {
+                    e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.neutral[100];
+                    e.currentTarget.style.color = DESIGN_TOKENS.colors.neutral[800];
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (mode !== tab.id) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = DESIGN_TOKENS.colors.neutral[600];
+                  }
+                }}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            ))}
           </div>
         </div>
-      </div>
+      </ModernCard>
 
       {/* コンテンツエリア */}
-      <div className="flex-1 overflow-hidden">
+      <div style={{ flex: 1, overflow: 'hidden', color: DESIGN_TOKENS.colors.neutral[800] }}>
         {mode === 'layout' ? (
-          <div className="h-full flex">
-            {/* ゲームプレビュー */}
-            <GamePreview
-              project={project}
-              selectedObjectId={selectedObjectId}
-              draggedItem={draggedItem}
-              forceRender={forceRender}
-              onObjectPositionUpdate={handleObjectPositionUpdate}
-              onObjectRuleEdit={handleObjectRuleEdit}
-              onSetDraggedItem={setDraggedItem}
-              hasRuleForObject={hasRuleForObject}
-            />
+          <div style={{ height: '100%', display: 'flex' }}>
+            {/* ゲームプレビュー - 中央配置 */}
+            <div 
+              style={{ 
+                flex: 1, 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+                padding: DESIGN_TOKENS.spacing[6],
+                color: DESIGN_TOKENS.colors.neutral[800] // 濃いテキスト色を明示的に指定
+              }}
+            >
+              <GamePreview
+                project={project}
+                selectedObjectId={selectedObjectId}
+                draggedItem={draggedItem}
+                forceRender={forceRender}
+                onObjectPositionUpdate={handleObjectPositionUpdate}
+                onObjectRuleEdit={handleObjectRuleEdit}
+                onSetDraggedItem={setDraggedItem}
+                hasRuleForObject={hasRuleForObject}
+              />
+            </div>
             
-            {/* 右サイドパネル - モダンな統合デザイン */}
-            <div className="w-80 bg-white border-l border-slate-200 overflow-y-auto shadow-inner">
+            {/* 右サイドパネル - ModernCard統一 */}
+            <div 
+              style={{
+                width: '320px',
+                backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                borderLeft: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+                overflowY: 'auto',
+                boxShadow: DESIGN_TOKENS.shadows.inner
+              }}
+            >
               <BackgroundControl
                 project={project}
                 onProjectUpdate={updateProject}
               />
               
-              {/* フラグ統計表示 - 洗練されたデザイン */}
+              {/* フラグ統計表示 - purple系統一 */}
               {project.script.flags && project.script.flags.length > 0 && (
-                <div className="p-6">
-                  <div className="p-5 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl border border-amber-200 shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center shadow-sm">
-                        <span className="text-white text-sm">🚩</span>
+                <div style={{ padding: DESIGN_TOKENS.spacing[6] }}>
+                  <ModernCard variant="filled" size="md" style={{ backgroundColor: DESIGN_TOKENS.colors.purple[50] }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3], marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                      <div 
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          backgroundColor: DESIGN_TOKENS.colors.purple[500],
+                          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: DESIGN_TOKENS.shadows.sm
+                        }}
+                      >
+                        <span style={{ color: DESIGN_TOKENS.colors.neutral[0], fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>🚩</span>
                       </div>
                       <div>
-                        <h5 className="text-lg font-bold text-amber-800">プロジェクトフラグ</h5>
-                        <p className="text-xs text-amber-600">ゲーム状態管理</p>
+                        <h5 
+                          style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                            fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                            color: DESIGN_TOKENS.colors.purple[800],
+                            margin: 0
+                          }}
+                        >
+                          プロジェクトフラグ
+                        </h5>
+                        <p 
+                          style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                            color: DESIGN_TOKENS.colors.purple[600],
+                            margin: 0
+                          }}
+                        >
+                          ゲーム状態管理
+                        </p>
                       </div>
                     </div>
-                    <div className="space-y-3">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[3] }}>
                       {project.script.flags.map((flag) => (
-                        <div key={flag.id} className="flex items-center justify-between p-3 bg-white rounded-xl shadow-sm border border-amber-100">
-                          <span className="text-sm font-semibold text-slate-700">{flag.name}</span>
-                          <div className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                            flag.initialValue 
-                              ? 'bg-green-100 text-green-700 border border-green-200' 
-                              : 'bg-gray-100 text-gray-600 border border-gray-200'
-                          }`}>
+                        <div 
+                          key={flag.id} 
+                          style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between', 
+                            padding: DESIGN_TOKENS.spacing[3], 
+                            backgroundColor: DESIGN_TOKENS.colors.neutral[0], 
+                            borderRadius: DESIGN_TOKENS.borderRadius.xl, 
+                            boxShadow: DESIGN_TOKENS.shadows.sm, 
+                            border: `1px solid ${DESIGN_TOKENS.colors.purple[100]}`
+                          }}
+                        >
+                          <span 
+                            style={{
+                              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                              fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                              color: DESIGN_TOKENS.colors.neutral[700]
+                            }}
+                          >
+                            {flag.name}
+                          </span>
+                          <div 
+                            style={{
+                              padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[3]}`,
+                              borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                              fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                              backgroundColor: flag.initialValue 
+                                ? DESIGN_TOKENS.colors.success[100] 
+                                : DESIGN_TOKENS.colors.neutral[100],
+                              color: flag.initialValue 
+                                ? DESIGN_TOKENS.colors.success[600] 
+                                : DESIGN_TOKENS.colors.neutral[600],
+                              border: `1px solid ${flag.initialValue 
+                                ? DESIGN_TOKENS.colors.success[200] 
+                                : DESIGN_TOKENS.colors.neutral[200]}`
+                            }}
+                          >
                             {flag.initialValue ? 'ON' : 'OFF'}
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
+                  </ModernCard>
                 </div>
               )}
             </div>

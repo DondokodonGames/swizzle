@@ -1,6 +1,7 @@
 /**
  * モダンアプリケーション風ボタンコンポーネント
  * Phase 1-B: 基本UI・ファイル管理改善用
+ * 🔧 修正版: childrenオプション化・アイコンのみボタン対応・型安全修正
  */
 
 import React, { ButtonHTMLAttributes, forwardRef, useState, useCallback } from 'react';
@@ -19,7 +20,7 @@ export type ModernButtonVariant =
 // 📏 モダンボタンサイズ
 export type ModernButtonSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
-// ✨ モダンボタンProps
+// ✨ モダンボタンProps（🔧 修正: childrenオプション化）
 export interface ModernButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'> {
   variant?: ModernButtonVariant;
   size?: ModernButtonSize;
@@ -27,7 +28,7 @@ export interface ModernButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonE
   loading?: boolean;
   icon?: React.ReactNode;
   iconPosition?: 'left' | 'right';
-  children: React.ReactNode;
+  children?: React.ReactNode; // 🔧 修正: オプション化（アイコンのみボタン対応）
 }
 
 // 🎨 バリアント別スタイル計算
@@ -191,12 +192,16 @@ export const ModernButton = forwardRef<HTMLButtonElement, ModernButtonProps>(({
     }
   }, [disabled, loading, onClick]);
 
+  // 🔧 アイコンのみボタン対応（型安全修正）
+  const isIconOnly = icon && !children;
+
   // 🎨 最終スタイル統合
   const buttonStyle: React.CSSProperties = {
     ...baseStyles,
     ...sizeStyles,
     ...variantStyles,
-    width: fullWidth ? '100%' : 'auto',
+    width: fullWidth ? '100%' : isIconOnly ? sizeStyles.height : 'auto', // 型安全修正
+    padding: isIconOnly ? '0' : sizeStyles.padding, // アイコンのみの場合はパディングリセット
     opacity: disabled ? 0.5 : 1,
     cursor: disabled || loading ? 'not-allowed' : 'pointer',
     transform: isPressed ? 'translateY(1px) scale(0.98)' : 'translateY(0) scale(1)',
@@ -251,15 +256,15 @@ export const ModernButton = forwardRef<HTMLButtonElement, ModernButtonProps>(({
         />
       )}
 
-      {/* アイコン（左） */}
-      {icon && iconPosition === 'left' && !loading && (
+      {/* アイコン（左）または アイコンのみ */}
+      {icon && (iconPosition === 'left' || isIconOnly) && !loading && (
         <span style={{ display: 'flex', alignItems: 'center', fontSize: '1.1em' }}>
           {icon}
         </span>
       )}
 
-      {/* テキストコンテンツ */}
-      {!loading && (
+      {/* テキストコンテンツ（アイコンのみの場合は表示しない） */}
+      {!loading && children && (
         <span style={{ 
           whiteSpace: 'nowrap',
           fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
@@ -269,7 +274,7 @@ export const ModernButton = forwardRef<HTMLButtonElement, ModernButtonProps>(({
       )}
 
       {/* アイコン（右） */}
-      {icon && iconPosition === 'right' && !loading && (
+      {icon && iconPosition === 'right' && !loading && !isIconOnly && (
         <span style={{ display: 'flex', alignItems: 'center', fontSize: '1.1em' }}>
           {icon}
         </span>

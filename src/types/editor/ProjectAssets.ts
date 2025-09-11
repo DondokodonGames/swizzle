@@ -1,6 +1,7 @@
 /**
  * エディター用アセット管理型定義
  * Phase 6: ゲームエディター実装用
+ * 🔧 修正版: データ構造保持・UI機能のみ削除（互換性確保）
  */
 
 // 基本アセットフレーム
@@ -56,7 +57,7 @@ export interface ObjectAsset {
   defaultOpacity: number; // デフォルト透明度（0.0-1.0）
 }
 
-// テキストスタイル
+// テキストスタイル（データ構造保持）
 export interface TextStyle {
   fontSize: number;       // フォントサイズ（12-72）
   color: string;          // hex color (#ffffff)
@@ -78,7 +79,7 @@ export interface TextStyle {
   };
 }
 
-// テキストアセット（最大5個、8文字以内）
+// テキストアセット（最大5個、8文字以内）- データ構造保持
 export interface TextAsset {
   id: string;
   content: string;        // 8文字制限
@@ -109,11 +110,11 @@ export interface AssetStatistics {
   totalAudioSize: number;     // 全音声サイズ合計
   totalSize: number;          // プロジェクト全体サイズ
   
-  // 使用スロット数
+  // 使用スロット数（修正: texts復活）
   usedSlots: {
     background: number;       // 0 or 1
     objects: number;          // 0-15
-    texts: number;            // 0-5
+    texts: number;            // 0-5（データ構造保持・UI非表示）
     bgm: number;              // 0 or 1  
     se: number;               // 0-15
   };
@@ -135,8 +136,8 @@ export interface ProjectAssets {
   // オブジェクト（最大15個）
   objects: ObjectAsset[];     // 最大15個
   
-  // テキスト（最大5個）
-  texts: TextAsset[];         // 最大5個
+  // テキスト（最大5個）- データ構造保持・UI非表示
+  texts: TextAsset[];         // 最大5個（空配列運用・既存コード互換性確保）
   
   // 音声
   audio: {
@@ -151,14 +152,14 @@ export interface ProjectAssets {
   lastModified: string;
 }
 
-// アセット検証結果
+// アセット検証結果（修正: text復活）
 export interface AssetValidationResult {
   isValid: boolean;
   errors: Array<{
     type: 'size' | 'format' | 'dimensions' | 'duration' | 'count';
     message: string;
     assetId?: string;
-    assetType?: 'background' | 'object' | 'text' | 'bgm' | 'se';
+    assetType?: 'background' | 'object' | 'text' | 'bgm' | 'se'; // 'text'復活
   }>;
   warnings: Array<{
     type: 'optimization' | 'compatibility' | 'performance';

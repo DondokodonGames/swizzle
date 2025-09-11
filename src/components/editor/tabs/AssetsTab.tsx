@@ -116,7 +116,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [editingAudioId, setEditingAudioId] = useState<string | null>(null);
-  const [masterVolume, setMasterVolume] = useState<number>(1.0);
+  //const [masterVolume, setMasterVolume] = useState<number>(1.0);
   
   // 音声再生用Ref
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -227,6 +227,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
           usedSlots: {
             background: updatedAssets.background ? 1 : 0,
             objects: updatedAssets.objects.length,
+            texts: updatedAssets.texts.length,
             bgm: updatedAssets.audio.bgm ? 1 : 0,
             se: updatedAssets.audio.se.length
           },
@@ -270,7 +271,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
     }
 
     audioRef.current.src = audio.dataUrl;
-    audioRef.current.volume = audio.volume * masterVolume;
+    audioRef.current.volume = audio.volume ; //* masterVolume
     audioRef.current.loop = audio.loop;
     
     audioRef.current.play().then(() => {
@@ -279,7 +280,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
       console.error('音声再生エラー:', error);
       showNotification('error', '音声の再生に失敗しました');
     });
-  }, [playingId, masterVolume, showNotification]);
+  }, [playingId, showNotification]); //masterVolume
 
   // 音声停止
   const stopAudio = useCallback(() => {
@@ -327,6 +328,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
       usedSlots: {
         background: updatedAssets.background ? 1 : 0,
         objects: updatedAssets.objects.length,
+        texts: updatedAssets.texts.length,
         bgm: updatedAssets.audio.bgm ? 1 : 0,
         se: updatedAssets.audio.se.length
       },
@@ -536,6 +538,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
           usedSlots: {
             background: updatedAssets.background ? 1 : 0,
             objects: updatedAssets.objects.length,
+            texts: updatedAssets.texts.length,
             bgm: updatedAssets.audio.bgm ? 1 : 0,
             se: updatedAssets.audio.se.length
           },
@@ -624,6 +627,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
       usedSlots: {
         background: updatedAssets.background ? 1 : 0,
         objects: updatedAssets.objects.length,
+        texts: updatedAssets.texts.length,
         bgm: updatedAssets.audio.bgm ? 1 : 0,
         se: updatedAssets.audio.se.length
       },
@@ -1228,44 +1232,45 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
             ))}
           </div>
 
-          {/* マスター音量 */}
-          <ModernCard variant="filled" size="sm" style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: DESIGN_TOKENS.spacing[2] }}>
-              <span 
-                style={{
-                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                  color: DESIGN_TOKENS.colors.neutral[700]
-                }}
-              >
-                🔊 マスター音量
-              </span>
-              <span 
-                style={{
-                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                  color: DESIGN_TOKENS.colors.neutral[600]
-                }}
-              >
-                {Math.round(masterVolume * 100)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={masterVolume}
-              onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
-              style={{
-                width: '100%',
-                height: '6px',
-                borderRadius: DESIGN_TOKENS.borderRadius.full,
-                background: DESIGN_TOKENS.colors.neutral[200],
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            />
-          </ModernCard>
+{/* マスター音量UI - 将来復活用にコメントアウト
+      <ModernCard variant="filled" size="sm" style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: DESIGN_TOKENS.spacing[2] }}>
+          <span 
+            style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.neutral[700]
+            }}
+          >
+            🔊 マスター音量
+          </span>
+          <span 
+            style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              color: DESIGN_TOKENS.colors.neutral[600]
+            }}
+          >
+            {Math.round(masterVolume * 100)}%
+          </span>
+        </div>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.1"
+          value={masterVolume}
+          onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
+          style={{
+            width: '100%',
+            height: '6px',
+            borderRadius: DESIGN_TOKENS.borderRadius.full,
+            background: DESIGN_TOKENS.colors.neutral[200],
+            outline: 'none',
+            cursor: 'pointer'
+          }}
+        />
+      </ModernCard>
+*/}
 
           {/* BGM管理 */}
           {activeSoundType === 'bgm' && (
