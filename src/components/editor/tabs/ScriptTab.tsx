@@ -1,5 +1,5 @@
 // src/components/editor/tabs/ScriptTab.tsx
-// Step 1完全改善版: デザインシステム統一 + 3つの修正適用
+// 複数ルール対応・RulePreview統合版: 段階的拡張・既存機能完全保護
 
 import React, { useState } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
@@ -8,6 +8,7 @@ import { GamePreview } from '../script/GamePreview';
 import { BackgroundControl } from '../script/BackgroundControl';
 import { RuleList } from '../script/RuleList';
 import { AdvancedRuleModal } from '../script/AdvancedRuleModal';
+import { RulePreview } from '../script/RulePreview';
 import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
 import { ModernCard } from '../../ui/ModernCard';
 import { ModernButton } from '../../ui/ModernButton';
@@ -25,6 +26,10 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
   const [editingRule, setEditingRule] = useState<GameRule | null>(null);
   const [showRuleModal, setShowRuleModal] = useState(false);
   const [forceRender, setForceRender] = useState(0);
+
+  // 🔧 新規追加: 複数ルール管理状態
+  const [showRuleSelectionModal, setShowRuleSelectionModal] = useState(false);
+  const [objectRulesForSelection, setObjectRulesForSelection] = useState<GameRule[]>([]);
 
   // 通知システム（AssetsTabパターン）
   const [notification, setNotification] = useState<{
@@ -52,7 +57,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     showNotification('success', 'プロジェクトを更新しました');
   };
 
-  // オブジェクト配置更新
+  // オブジェクト配置更新（既存機能保護）
   const handleObjectPositionUpdate = (objectId: string, position: { x: number; y: number }) => {
     console.log(`[ScriptTab] 位置更新: ${objectId} → (${position.x.toFixed(2)}, ${position.y.toFixed(2)})`);
     
@@ -88,38 +93,76 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     updateProject({ script: updatedScript });
   };
 
-  // オブジェクトルール編集
+  // 🔧 拡張: オブジェクトの全ルール取得
+  const getObjectRules = (objectId: string): GameRule[] => {
+    return project.script.rules.filter(rule => rule.targetObjectId === objectId);
+  };
+
+  // 🔧 拡張: オブジェクトルール編集（複数対応）
   const handleObjectRuleEdit = (objectId: string) => {
     console.log(`[ScriptTab] ルール編集: ${objectId}`);
     setSelectedObjectId(objectId);
     
-    // 既存ルールを検索
-    const existingRule = project.script.rules.find(rule => rule.targetObjectId === objectId);
+    // 🔧 修正: 該当オブジェクトの全ルールを取得
+    const existingRules = getObjectRules(objectId);
     
-    if (existingRule) {
-      // 既存ルール編集
-      setEditingRule(existingRule);
+    if (existingRules.length === 0) {
+      // ルールなし → 新規作成
+      handleCreateNewRule(objectId);
+    } else if (existingRules.length === 1) {
+      // 1つのルール → 直接編集（既存動作保護）
+      setEditingRule(existingRules[0]);
+      setShowRuleModal(true);
     } else {
-      // 新規ルール作成
-      const asset = project.assets.objects.find(obj => obj.id === objectId);
-      const newRule: GameRule = {
-        id: `rule_${Date.now()}`,
-        name: `${asset?.name || 'オブジェクト'}のルール`,
-        enabled: true,
-        priority: 50,
-        targetObjectId: objectId,
-        triggers: {
-          operator: 'AND',
-          conditions: []
-        },
-        actions: [],
-        createdAt: new Date().toISOString(),
-        lastModified: new Date().toISOString()
-      };
-      setEditingRule(newRule);
+      // 複数ルール → 選択画面表示
+      setObjectRulesForSelection(existingRules);
+      setShowRuleSelectionModal(true);
+    }
+  };
+
+  // 🔧 新規: 新しいルール作成ヘルパー
+  const handleCreateNewRule = (objectId: string) => {
+    const asset = project.assets.objects.find(obj => obj.id === objectId);
+    const existingRules = getObjectRules(objectId);
+    
+    // 🔧 制限チェック（32個まで）
+    if (existingRules.length >= 32) {
+      showNotification('error', 'ルール数が上限（32個）に達しています');
+      return;
     }
     
+    const newRule: GameRule = {
+      id: `rule_${Date.now()}`,
+      name: `${asset?.name || 'オブジェクト'}のルール${existingRules.length + 1}`,
+      enabled: true,
+      priority: 50,
+      targetObjectId: objectId,
+      triggers: {
+        operator: 'AND',
+        conditions: []
+      },
+      actions: [],
+      createdAt: new Date().toISOString(),
+      lastModified: new Date().toISOString()
+    };
+    
+    setEditingRule(newRule);
     setShowRuleModal(true);
+  };
+
+  // 🔧 新規: ルール選択からの編集
+  const handleSelectRuleForEdit = (rule: GameRule) => {
+    setEditingRule(rule);
+    setShowRuleSelectionModal(false);
+    setShowRuleModal(true);
+  };
+
+  // 🔧 新規: 選択画面からの新規作成
+  const handleCreateRuleFromSelection = () => {
+    if (selectedObjectId) {
+      setShowRuleSelectionModal(false);
+      handleCreateNewRule(selectedObjectId);
+    }
   };
 
   // ルール保存（フラグ情報も同時更新）
@@ -144,39 +187,34 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     setEditingRule(null);
   };
 
-  // 新規ルール作成
+  // 新規ルール作成（既存機能保護）
   const handleCreateRule = () => {
     if (!selectedObjectId) return;
-    
-    const asset = project.assets.objects.find(obj => obj.id === selectedObjectId);
-    const newRule: GameRule = {
-      id: `rule_${Date.now()}`,
-      name: `${asset?.name || 'オブジェクト'}のルール`,
-      enabled: true,
-      priority: 50,
-      targetObjectId: selectedObjectId,
-      triggers: {
-        operator: 'AND',
-        conditions: []
-      },
-      actions: [],
-      createdAt: new Date().toISOString(),
-      lastModified: new Date().toISOString()
-    };
-    
-    setEditingRule(newRule);
-    setShowRuleModal(true);
+    handleCreateNewRule(selectedObjectId);
   };
 
-  // ルール編集
+  // ルール編集（既存機能保護）
   const handleEditRule = (rule: GameRule) => {
     setEditingRule(rule);
     setShowRuleModal(true);
   };
 
-  // オブジェクトのルール有無確認
+  // 🔧 拡張: オブジェクトのルール有無確認（複数対応）
   const hasRuleForObject = (objectId: string): boolean => {
-    return project.script.rules.some(rule => rule.targetObjectId === objectId && rule.enabled);
+    const rules = getObjectRules(objectId);
+    return rules.some(rule => rule.enabled);
+  };
+
+  // 🔧 新規: オブジェクトのルール数取得
+  const getRuleCountForObject = (objectId: string): number => {
+    return getObjectRules(objectId).length;
+  };
+
+  // 🔧 新規: オブジェクト名取得ヘルパー
+  const getObjectName = (objectId: string) => {
+    if (objectId === 'stage') return '🌟 ゲーム全体';
+    const obj = project.assets.objects.find(obj => obj.id === objectId);
+    return obj ? obj.name : objectId;
   };
 
   return (
@@ -283,7 +321,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                 margin: `${DESIGN_TOKENS.spacing[2]} 0 0 53px`
               }}
             >
-              高度なゲームロジック設定・複数条件・フラグ管理システム
+              複数ルール対応・高度なゲームロジック設定・フラグ管理システム
             </p>
           </div>
           
@@ -388,6 +426,20 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                 onProjectUpdate={updateProject}
               />
               
+              {/* 🔧 追加: 複数ルールプレビュー表示 */}
+              {selectedObjectId && getObjectRules(selectedObjectId).length > 1 && (
+                <div style={{ padding: DESIGN_TOKENS.spacing[6] }}>
+                  <RulePreview
+                    objectRules={getObjectRules(selectedObjectId)}
+                    project={project}
+                    projectFlags={project.script?.flags || []}
+                    mode="multiple"
+                    showTitle={true}
+                    compact={true}
+                  />
+                </div>
+              )}
+
               {/* フラグ統計表示 - purple系統一 */}
               {project.script.flags && project.script.flags.length > 0 && (
                 <div style={{ padding: DESIGN_TOKENS.spacing[6] }}>
@@ -491,6 +543,184 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
           />
         )}
       </div>
+
+      {/* 🔧 新規: ルール選択モーダル */}
+      {showRuleSelectionModal && selectedObjectId && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: DESIGN_TOKENS.zIndex.modal,
+            padding: DESIGN_TOKENS.spacing[4]
+          }}
+        >
+          <ModernCard 
+            variant="elevated" 
+            size="lg"
+            style={{
+              backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+              maxWidth: '600px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            {/* ヘッダー */}
+            <div 
+              style={{
+                padding: DESIGN_TOKENS.spacing[6],
+                borderBottom: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+                backgroundColor: DESIGN_TOKENS.colors.purple[50]
+              }}
+            >
+              <h3 
+                style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                  color: DESIGN_TOKENS.colors.purple[800],
+                  margin: 0,
+                  marginBottom: DESIGN_TOKENS.spacing[2],
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: DESIGN_TOKENS.spacing[3]
+                }}
+              >
+                <span>📝</span>
+                ルール選択 - {getObjectName(selectedObjectId)}
+              </h3>
+              <p 
+                style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.purple[600],
+                  margin: 0
+                }}
+              >
+                編集するルールを選択してください（{objectRulesForSelection.length}/32）
+              </p>
+            </div>
+
+            {/* ルール一覧 */}
+            <div 
+              style={{
+                flex: 1,
+                padding: DESIGN_TOKENS.spacing[6],
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: DESIGN_TOKENS.spacing[4]
+              }}
+            >
+              {objectRulesForSelection.map((rule, index) => (
+                <ModernCard
+                  key={rule.id}
+                  variant="outlined"
+                  size="md"
+                  style={{
+                    border: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`,
+                    cursor: 'pointer',
+                    transition: `all ${DESIGN_TOKENS.animation.duration.normal} ${DESIGN_TOKENS.animation.easing.inOut}`
+                  }}
+                  onClick={() => handleSelectRuleForEdit(rule)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = DESIGN_TOKENS.colors.purple[400];
+                    e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.purple[50];
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = DESIGN_TOKENS.colors.purple[200];
+                    e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.neutral[0];
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                        fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                        color: DESIGN_TOKENS.colors.neutral[800],
+                        marginBottom: DESIGN_TOKENS.spacing[2]
+                      }}>
+                        ルール{index + 1}: {rule.name}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
+                        <div style={{
+                          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                          color: DESIGN_TOKENS.colors.neutral[600]
+                        }}>
+                          🔥 {rule.triggers.conditions.length}条件 ⚡ {rule.actions.length}アクション
+                        </div>
+                        <div 
+                          style={{
+                            padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[3]}`,
+                            borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                            fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                            backgroundColor: rule.enabled 
+                              ? DESIGN_TOKENS.colors.success[100] 
+                              : DESIGN_TOKENS.colors.neutral[200],
+                            color: rule.enabled 
+                              ? DESIGN_TOKENS.colors.success[800] 
+                              : DESIGN_TOKENS.colors.neutral[600],
+                            border: `1px solid ${rule.enabled 
+                              ? DESIGN_TOKENS.colors.success[600] 
+                              : DESIGN_TOKENS.colors.neutral[400]}`
+                          }}
+                        >
+                          {rule.enabled ? '✅ 有効' : '⏸️ 無効'}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{
+                      fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+                      color: DESIGN_TOKENS.colors.purple[500]
+                    }}>
+                      ✏️
+                    </div>
+                  </div>
+                </ModernCard>
+              ))}
+            </div>
+
+            {/* フッター */}
+            <div 
+              style={{
+                padding: DESIGN_TOKENS.spacing[6],
+                borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+                backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <ModernButton
+                variant="primary"
+                size="md"
+                onClick={handleCreateRuleFromSelection}
+                disabled={objectRulesForSelection.length >= 32}
+                style={{
+                  backgroundColor: DESIGN_TOKENS.colors.success[600],
+                  borderColor: DESIGN_TOKENS.colors.success[600]
+                }}
+              >
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>➕</span>
+                新規ルール作成
+              </ModernButton>
+              
+              <ModernButton
+                variant="secondary"
+                size="md"
+                onClick={() => setShowRuleSelectionModal(false)}
+              >
+                キャンセル
+              </ModernButton>
+            </div>
+          </ModernCard>
+        </div>
+      )}
 
       {/* AdvancedRuleModal - 統合版 */}
       {showRuleModal && editingRule && (
