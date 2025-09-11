@@ -44,7 +44,7 @@ interface UseGameProjectReturn {
   importProject: (file: File) => Promise<GameProject>;
 }
 
-// デフォルトプロジェクト作成（修正版）
+// 🔧 修正: デフォルトプロジェクト作成（3タブ統合版）
 const createDefaultProject = (name: string): GameProject => {
   const now = new Date().toISOString();
   return {
@@ -178,21 +178,18 @@ const createDefaultProject = (name: string): GameProject => {
       }
     },
     
+    // 🔧 修正: editorState（3タブ統合版）
     editorState: {
       activeTab: 'assets',
       lastSaved: now,
       autoSaveEnabled: true,
       tabStates: {
         assets: {
-          selectedAssetType: null,
+          selectedAssetType: null, // 🔧 音声タイプも含む（'bgm'・'se'追加）
           selectedAssetId: null,
           showAnimationEditor: false
         },
-        audio: {
-          selectedAudioType: null,
-          selectedAudioId: null,
-          isPlaying: false
-        },
+        // 🔧 削除: audioタブ（assetsに統合）
         script: {
           mode: 'layout',
           selectedObjectId: null,

@@ -1,6 +1,7 @@
 /**
  * エディター機能の制限値・定数定義
  * Phase 6: ゲームエディター実装用 + SimpleRuleModal拡張対応
+ * 🔧 修正: 4タブ→3タブ統合（AUDIO削除、ASSETS統合）
  */
 
 export const EDITOR_LIMITS = {
@@ -112,12 +113,11 @@ export const EDITOR_LIMITS = {
   }
 } as const;
 
-// エディタータブ種類
+// 🔧 修正: エディタータブ種類（4タブ→3タブ統合）
 export const EDITOR_TABS = {
-  ASSETS: 'assets',
-  AUDIO: 'audio', 
-  SCRIPT: 'script',
-  SETTINGS: 'settings'
+  ASSETS: 'assets',    // 🎨 統合アセット（画像+音声+テキスト）
+  SCRIPT: 'script',    // ⚙️ ルール
+  SETTINGS: 'settings' // 🚀 公開
 } as const;
 
 export type EditorTab = typeof EDITOR_TABS[keyof typeof EDITOR_TABS];

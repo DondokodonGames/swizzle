@@ -1,17 +1,14 @@
-// src/components/editor/GameEditor.tsx - Phase 1-C統合版
+// src/components/editor/GameEditor.tsx - 3タブ統合版
 import React, { useState, useEffect } from 'react';
 import { useGameTheme, ThemeType, GameCategory } from '../ui/GameThemeProvider';
 import GameThemeProvider from '../ui/GameThemeProvider';
 import ArcadeButton from '../ui/ArcadeButton';
 import { GameProject } from '../../types/editor/GameProject';
-import { EDITOR_LIMITS } from '../../constants/EditorLimits';
+import { EDITOR_LIMITS, EditorTab } from '../../constants/EditorLimits'; // 🔧 修正: EditorTab型をインポート
 import { AssetsTab } from './tabs/AssetsTab';
-import { AudioTab } from './tabs/AudioTab';
+// 🔧 削除: AudioTab import（統合により不要）
 import { ScriptTab } from './tabs/ScriptTab';
 import { SettingsTab } from './tabs/SettingsTab';
-
-// タブタイプ定義（既存保護）
-type EditorTab = 'assets' | 'audio' | 'script' | 'settings';
 
 interface GameEditorProps {
   project: GameProject;
@@ -50,7 +47,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     setGameCategory 
   } = useGameTheme();
 
-  // プロジェクト更新時の処理（既存保護 + Phase 1-C強化）
+  // プロジェクト更新時の処理（🔧 修正: 3タブ対応）
   const handleProjectUpdate = (updatedProject: GameProject) => {
     onProjectUpdate({
       ...updatedProject,
@@ -62,15 +59,11 @@ export const GameEditor: React.FC<GameEditorProps> = ({
         autoSaveEnabled,
         tabStates: updatedProject.editorState?.tabStates || {
           assets: {
-            selectedAssetType: null,
+            selectedAssetType: null, // 🔧 追加: 音声アセットタイプも含む
             selectedAssetId: null,
             showAnimationEditor: false
           },
-          audio: {
-            selectedAudioType: null,
-            selectedAudioId: null,
-            isPlaying: false
-          },
+          // 🔧 削除: audio tabState（AssetsTabに統合）
           script: {
             mode: 'layout',
             selectedObjectId: null,
@@ -139,21 +132,20 @@ export const GameEditor: React.FC<GameEditorProps> = ({
   const totalSize = calculateTotalSize();
   const sizePercentage = (totalSize / EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE) * 100;
 
-  // タブの設定（既存保護 + Phase 1-C改良）
+  // 🔧 修正: タブの設定（3タブ統合版）
   const tabs = customTabs || [
     { 
       id: 'assets' as EditorTab, 
-      label: '絵', 
+      label: 'アセット', 
       icon: '🎨', 
-      description: 'キャラクター・背景・テキスト管理',
-      badge: (project.assets.objects.length + (project.assets.background ? 1 : 0) + project.assets.texts.length) || undefined
-    },
-    { 
-      id: 'audio' as EditorTab, 
-      label: '音', 
-      icon: '🎵', 
-      description: '音楽・効果音管理',
-      badge: ((project.assets.audio.bgm ? 1 : 0) + project.assets.audio.se.length) || undefined
+      description: '画像・音声・テキスト管理',
+      badge: (
+        project.assets.objects.length + 
+        (project.assets.background ? 1 : 0) + 
+        project.assets.texts.length +
+        (project.assets.audio.bgm ? 1 : 0) + 
+        project.assets.audio.se.length
+      ) || undefined
     },
     { 
       id: 'script' as EditorTab, 
@@ -164,9 +156,9 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     },
     { 
       id: 'settings' as EditorTab, 
-      label: 'テスト・公開', 
+      label: '公開', 
       icon: '🚀', 
-      description: 'ゲーム設定・テストプレイ・公開管理',
+      description: 'テストプレイ・公開管理',
       badge: project.settings.publishing?.isPublished ? '✓' : (project.settings.name ? '📝' : undefined)
     }
   ];
@@ -496,7 +488,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
           }}
         >
           <div className="p-6">
-            {/* タブ別コンテンツ（🔧 Phase 1-C統合） */}
+            {/* 🔧 修正: タブ別コンテンツ（3タブ統合版） */}
             {activeTab === 'assets' && (
               <AssetsTab 
                 project={project} 
@@ -504,12 +496,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
               />
             )}
 
-            {activeTab === 'audio' && (
-              <AudioTab
-                project={project}
-                onProjectUpdate={handleProjectUpdate}
-              />
-            )}
+            {/* 🔧 削除: AudioTab条件分岐（統合により不要） */}
 
             {activeTab === 'script' && (
               <ScriptTab
@@ -539,7 +526,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
           effects={{ glow: true, pulse: true }}
           style={{ borderRadius: '50%', padding: '16px' }}
           onClick={() => {
-            alert(`🎮 ゲームエディターヘルプ\n\n📝 絵タブ：画像・テキストを追加\n🎵 音タブ：音楽・効果音を設定\n⚙️ ルールタブ：ゲームの動作を決定\n🚀 テスト・公開タブ：完成・公開\n\n💡 Ctrl+S: 保存\n💡 Ctrl+T: テストプレイ`);
+            alert(`🎮 ゲームエディターヘルプ\n\n🎨 アセットタブ：画像・音声・テキストを追加\n⚙️ ルールタブ：ゲームの動作を決定\n🚀 公開タブ：テストプレイ・完成・公開\n\n💡 Ctrl+S: 保存\n💡 Ctrl+T: テストプレイ`);
           }}
         >
           <span className="text-xl">❓</span>
@@ -557,9 +544,9 @@ export const GameEditor: React.FC<GameEditorProps> = ({
             border: '1px solid'
           }}
         >
-          <div className="font-semibold">🎯 Phase 1-C Week 1完了</div>
+          <div className="font-semibold">🎯 3タブ統合完了</div>
           <div>🎨 テーマ: {currentTheme.name}</div>
-          <div>📊 Assets: {project.assets.objects.length}, Rules: {project.script.rules.length}</div>
+          <div>📊 Assets: {(project.assets.objects.length + (project.assets.background ? 1 : 0) + project.assets.texts.length + (project.assets.audio.bgm ? 1 : 0) + project.assets.audio.se.length)}, Rules: {project.script.rules.length}</div>
           <div>💾 Size: {(totalSize / 1024 / 1024).toFixed(1)}MB</div>
           <div>✅ 完成度: {Math.round(completeness.percentage)}%</div>
           <div className="pt-2 space-y-1">
@@ -568,14 +555,14 @@ export const GameEditor: React.FC<GameEditorProps> = ({
               className="block text-left hover:underline"
               style={{ color: currentTheme.colors.primary }}
             >
-              → 絵タブ
+              → アセットタブ
             </button>
             <button 
               onClick={() => setActiveTab('settings')}
               className="block text-left hover:underline"
               style={{ color: currentTheme.colors.primary }}
             >
-              → テストプレイ
+              → 公開タブ
             </button>
           </div>
         </div>

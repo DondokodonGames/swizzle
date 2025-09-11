@@ -1,6 +1,7 @@
 /**
  * ゲームプロジェクト全体管理型定義
  * Phase 6: ゲームエディター実装用
+ * 🔧 修正: 3タブ統合対応（audioタブ削除）
  */
 
 import { ProjectAssets } from './ProjectAssets';
@@ -51,24 +52,20 @@ export interface GameSettings {
   };
 }
 
-// エディター状態管理
+// 🔧 修正: エディター状態管理（3タブ統合）
 export interface EditorState {
   activeTab: EditorTab;                   // 現在のタブ
   lastSaved: string;                      // 最終保存日時（ISO文字列）
   autoSaveEnabled: boolean;               // 自動保存ON/OFF
   
-  // 各タブの状態
+  // 🔧 修正: 各タブの状態（audioタブ削除、assetsに音声管理統合）
   tabStates: {
     assets: {
-      selectedAssetType: 'background' | 'objects' | 'texts' | null;
+      selectedAssetType: 'background' | 'objects' | 'texts' | 'bgm' | 'se' | null; // 🔧 音声タイプ追加
       selectedAssetId: string | null;
       showAnimationEditor: boolean;
     };
-    audio: {
-      selectedAudioType: 'bgm' | 'se' | null;
-      selectedAudioId: string | null;
-      isPlaying: boolean;
-    };
+    // 🔧 削除: audio tabState（assetsに統合）
     script: {
       mode: 'layout' | 'rules';
       selectedObjectId: string | null;
@@ -331,7 +328,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
 };
 
 /**
- * デフォルトエディター状態
+ * 🔧 修正: デフォルトエディター状態（3タブ統合）
  */
 export const DEFAULT_EDITOR_STATE: EditorState = {
   activeTab: 'assets',
@@ -339,15 +336,11 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   autoSaveEnabled: true,
   tabStates: {
     assets: {
-      selectedAssetType: null,
+      selectedAssetType: null, // 🔧 音声タイプも含む
       selectedAssetId: null,
       showAnimationEditor: false
     },
-    audio: {
-      selectedAudioType: null,
-      selectedAudioId: null,
-      isPlaying: false
-    },
+    // 🔧 削除: audio tabState（assetsに統合）
     script: {
       mode: 'layout',
       selectedObjectId: null,

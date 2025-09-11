@@ -1,8 +1,8 @@
 import React from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
 
-// エディタータブ型定義
-export type EditorTab = 'assets' | 'audio' | 'script' | 'settings';
+// 🔧 修正: エディタータブ型定義（3タブ統合）
+export type EditorTab = 'assets' | 'script' | 'settings';
 
 // タブ設定インターフェース
 export interface TabConfig {
@@ -15,20 +15,13 @@ export interface TabConfig {
   progress?: number; // 0-100 完成度
 }
 
-// デフォルトタブ設定
+// 🔧 修正: デフォルトタブ設定（3タブ統合）
 export const DEFAULT_EDITOR_TABS: TabConfig[] = [
   {
     id: 'assets',
-    label: '絵',
+    label: 'アセット',
     icon: '🎨',
-    description: 'キャラクター・背景・テキスト管理',
-    progress: 0
-  },
-  {
-    id: 'audio',
-    label: '音',
-    icon: '🎵',
-    description: '音楽・効果音管理',
+    description: '画像・音声・テキスト管理',
     progress: 0
   },
   {
@@ -42,16 +35,16 @@ export const DEFAULT_EDITOR_TABS: TabConfig[] = [
     id: 'settings',
     label: '公開',
     icon: '🚀',
-    description: 'ゲーム設定・テスト・公開',
+    description: 'テストプレイ・公開管理',
     progress: 0
   }
 ];
 
-// プロジェクトの進捗を反映したタブ設定生成
+// 🔧 修正: プロジェクトの進捗を反映したタブ設定生成（3タブ統合）
 export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
   if (!project) return DEFAULT_EDITOR_TABS;
 
-  // 各タブの完成度計算
+  // 🔧 修正: アセット進捗計算（音声を含む統合版）
   const calculateAssetsProgress = () => {
     let progress = 0;
     const totalSteps = 4; // 背景、オブジェクト、テキスト、音声の4要素
@@ -62,23 +55,11 @@ export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
     // オブジェクトがあれば25%
     if (project.assets.objects.length > 0) progress += 25;
     
-    // テキストまたは音声があれば25%
+    // テキストがあれば25%
     if (project.assets.texts.length > 0) progress += 25;
     
     // 音声（BGMまたはSE）があれば25%
     if (project.assets.audio.bgm || project.assets.audio.se.length > 0) progress += 25;
-    
-    return Math.min(progress, 100);
-  };
-
-  const calculateAudioProgress = () => {
-    let progress = 0;
-    
-    // BGMがあれば50%
-    if (project.assets.audio.bgm) progress += 50;
-    
-    // SEがあれば50%
-    if (project.assets.audio.se.length > 0) progress += 50;
     
     return Math.min(progress, 100);
   };
@@ -116,19 +97,17 @@ export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
   return [
     {
       id: 'assets',
-      label: '絵',
+      label: 'アセット',
       icon: '🎨',
-      description: 'キャラクター・背景・テキスト管理',
-      badge: project.assets.objects.length + (project.assets.background ? 1 : 0) + project.assets.texts.length || undefined,
+      description: '画像・音声・テキスト管理',
+      badge: (
+        project.assets.objects.length + 
+        (project.assets.background ? 1 : 0) + 
+        project.assets.texts.length +
+        (project.assets.audio.bgm ? 1 : 0) + 
+        project.assets.audio.se.length
+      ) || undefined,
       progress: calculateAssetsProgress()
-    },
-    {
-      id: 'audio',
-      label: '音',
-      icon: '🎵',
-      description: '音楽・効果音管理',
-      badge: (project.assets.audio.bgm ? 1 : 0) + project.assets.audio.se.length || undefined,
-      progress: calculateAudioProgress()
     },
     {
       id: 'script',
@@ -142,14 +121,14 @@ export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
       id: 'settings',
       label: '公開',
       icon: '🚀',
-      description: 'ゲーム設定・テスト・公開',
+      description: 'テストプレイ・公開管理',
       badge: project.settings.publishing?.isPublished ? '✓' : undefined,
       progress: calculateSettingsProgress()
     }
   ];
 };
 
-// タブナビゲーション判定ヘルパー
+// 🔧 修正: タブナビゲーション判定ヘルパー（3タブ対応）
 export const getTabValidationStatus = (project: GameProject, tabId: EditorTab): {
   canNavigate: boolean;
   warnings: string[];
@@ -163,13 +142,12 @@ export const getTabValidationStatus = (project: GameProject, tabId: EditorTab): 
       if (!project.assets.background && project.assets.objects.length === 0) {
         warnings.push('背景またはオブジェクトを追加することをおすすめします');
       }
-      break;
-      
-    case 'audio':
       if (!project.assets.audio.bgm && project.assets.audio.se.length === 0) {
         warnings.push('音声を追加するとゲームがより楽しくなります');
       }
       break;
+      
+    // 🔧 削除: audioケース（assetsに統合）
       
     case 'script':
       if (project.script.rules.length === 0) {
