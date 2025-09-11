@@ -1,8 +1,8 @@
 // src/components/editor/tabs/AssetsTab.tsx
-// 🔧 修正版: 背景追加時にlayout.background.visible=true設定 + フォントファミリー型修正
+// 🎨 Phase 2完成版: テキスト機能削除・音声機能統合・3タブ対応
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
-import { ProjectAssets, BackgroundAsset, ObjectAsset, TextAsset, AssetFrame } from '../../../types/editor/ProjectAssets';
+import { ProjectAssets, BackgroundAsset, ObjectAsset, AssetFrame, AudioAsset } from '../../../types/editor/ProjectAssets';
 import { EDITOR_LIMITS } from '../../../constants/EditorLimits';
 import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
 import { ModernButton } from '../../ui/ModernButton';
@@ -15,8 +15,10 @@ interface AssetsTabProps {
   onProjectUpdate: (project: GameProject) => void;
 }
 
-type AssetType = 'background' | 'objects' | 'texts';
-type EditMode = 'none' | 'background' | 'object' | 'text' | 'animation';
+// 🔧 修正: テキスト削除・サウンド追加
+type AssetType = 'background' | 'objects' | 'sound';
+type EditMode = 'none' | 'background' | 'object' | 'animation';
+type SoundType = 'bgm' | 'se';
 
 // ファイルサイズを人間が読みやすい形式に変換
 const formatFileSize = (bytes: number): string => {
@@ -25,6 +27,39 @@ const formatFileSize = (bytes: number): string => {
   const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+// 時間フォーマット (秒 → mm:ss)
+const formatTime = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+// 音声ファイルの情報を取得
+const getAudioInfo = (file: File): Promise<{
+  duration: number;
+  format: string;
+}> => {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio();
+    const url = URL.createObjectURL(file);
+    
+    audio.addEventListener('loadedmetadata', () => {
+      resolve({
+        duration: audio.duration,
+        format: file.type.split('/')[1] || 'unknown'
+      });
+      URL.revokeObjectURL(url);
+    });
+    
+    audio.addEventListener('error', () => {
+      reject(new Error('音声ファイルの読み込みに失敗しました'));
+      URL.revokeObjectURL(url);
+    });
+    
+    audio.src = url;
+  });
 };
 
 // 画像ファイルをリサイズ・最適化
@@ -75,12 +110,16 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
     type: 'success' | 'error' | 'info';
     message: string;
   } | null>(null);
+
+  // サウンド管理用状態
+  const [activeSoundType, setActiveSoundType] = useState<SoundType>('bgm');
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [editingAudioId, setEditingAudioId] = useState<string | null>(null);
+  const [masterVolume, setMasterVolume] = useState<number>(1.0);
   
-  // テキストエディット用状態
-  const [textContent, setTextContent] = useState('');
-  const [textColor, setTextColor] = useState('#000000');
-  const [fontSize, setFontSize] = useState(24);
-  const [fontWeight, setFontWeight] = useState<'normal' | 'bold'>('normal');
+  // 音声再生用Ref
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   // 通知表示ヘルパー
   const showNotification = useCallback((type: 'success' | 'error' | 'info', message: string) => {
@@ -88,18 +127,20 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
     setTimeout(() => setNotification(null), 4000);
   }, []);
 
-  // 容量計算
+  // 容量計算（画像+音声）
   const getTotalSize = useCallback(() => {
     let total = 0;
     if (project.assets.background) total += project.assets.background.totalSize;
     project.assets.objects.forEach(obj => total += obj.totalSize);
+    if (project.assets.audio.bgm) total += project.assets.audio.bgm.fileSize;
+    project.assets.audio.se.forEach(se => total += se.fileSize);
     return total;
   }, [project.assets]);
 
   const totalSize = getTotalSize();
   const sizePercentage = (totalSize / EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE) * 100;
 
-  // 🔧 強化: プロジェクト更新ヘルパー（script・layout同期機能付き）
+  // プロジェクト更新ヘルパー（script・layout同期機能付き）
   const updateProjectWithSync = useCallback((updates: Partial<GameProject>) => {
     const updatedProject = { ...project, ...updates };
     
@@ -116,7 +157,247 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
     onProjectUpdate(updatedProject);
   }, [project, onProjectUpdate]);
 
-  // 🔧 修正: 複数ファイルアップロード処理（layout.background.visible=true設定）
+  // 音声ファイルアップロード処理
+  const handleAudioUpload = useCallback(async (files: FileList, type: SoundType) => {
+    if (uploading) return;
+    setUploading(true);
+
+    try {
+      const file = files[0];
+      
+      if (!file || !file.type.startsWith('audio/')) {
+        showNotification('error', '音声ファイルを選択してください');
+        return;
+      }
+      
+      // 音声情報取得
+      const audioInfo = await getAudioInfo(file);
+      
+      // 時間制限チェック
+      const maxDuration = type === 'bgm' ? EDITOR_LIMITS.AUDIO.BGM_MAX_DURATION : EDITOR_LIMITS.AUDIO.SE_MAX_DURATION;
+      if (audioInfo.duration > maxDuration) {
+        showNotification('error', `音声が長すぎます。最大${maxDuration}秒までです。`);
+        return;
+      }
+
+      // 容量制限チェック
+      if (type === 'se' && project.assets.audio.se.length >= EDITOR_LIMITS.PROJECT.MAX_SE_COUNT) {
+        showNotification('error', `効果音は最大${EDITOR_LIMITS.PROJECT.MAX_SE_COUNT}個まで追加できます`);
+        return;
+      }
+
+      // Base64変換
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        const now = new Date().toISOString();
+        
+        const newAudioAsset: AudioAsset = {
+          id: crypto.randomUUID(),
+          name: file.name.replace(/\.[^/.]+$/, ''), // 拡張子除去
+          dataUrl,
+          originalName: file.name,
+          duration: audioInfo.duration,
+          fileSize: file.size,
+          format: audioInfo.format,
+          volume: 0.8,
+          loop: type === 'bgm',
+          uploadedAt: now
+        };
+
+        // プロジェクト更新
+        const updatedAssets = { ...project.assets };
+        
+        if (type === 'bgm') {
+          updatedAssets.audio.bgm = newAudioAsset;
+        } else {
+          updatedAssets.audio.se.push(newAudioAsset);
+        }
+
+        // 統計更新
+        const imageSize = updatedAssets.objects.reduce((sum, obj) => sum + obj.totalSize, 0) + 
+                         (updatedAssets.background?.totalSize || 0);
+        const audioSize = (updatedAssets.audio.bgm?.fileSize || 0) + 
+                         updatedAssets.audio.se.reduce((sum, se) => sum + se.fileSize, 0);
+
+        updatedAssets.statistics = {
+          totalImageSize: imageSize,
+          totalAudioSize: audioSize,
+          totalSize: imageSize + audioSize,
+          usedSlots: {
+            background: updatedAssets.background ? 1 : 0,
+            objects: updatedAssets.objects.length,
+            bgm: updatedAssets.audio.bgm ? 1 : 0,
+            se: updatedAssets.audio.se.length
+          },
+          limitations: {
+            isNearImageLimit: false,
+            isNearAudioLimit: audioSize > (EDITOR_LIMITS.AUDIO.BGM_MAX_SIZE + EDITOR_LIMITS.AUDIO.SE_MAX_SIZE * EDITOR_LIMITS.PROJECT.MAX_SE_COUNT) * 0.8,
+            isNearTotalLimit: (imageSize + audioSize) > EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE * 0.8,
+            hasViolations: false
+          }
+        };
+
+        updatedAssets.lastModified = now;
+
+        updateProjectWithSync({
+          assets: updatedAssets,
+          totalSize: imageSize + audioSize,
+          lastModified: now
+        });
+
+        showNotification('success', `${type === 'bgm' ? 'BGM' : '効果音'}をアップロードしました`);
+      };
+
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('音声アップロードエラー:', error);
+      showNotification('error', '音声ファイルのアップロードに失敗しました');
+    } finally {
+      setUploading(false);
+    }
+  }, [project, updateProjectWithSync, uploading, showNotification]);
+
+  // 音声再生
+  const playAudio = useCallback((audio: AudioAsset) => {
+    if (!audioRef.current) return;
+
+    // 既に再生中の場合は停止
+    if (playingId === audio.id) {
+      audioRef.current.pause();
+      setPlayingId(null);
+      return;
+    }
+
+    audioRef.current.src = audio.dataUrl;
+    audioRef.current.volume = audio.volume * masterVolume;
+    audioRef.current.loop = audio.loop;
+    
+    audioRef.current.play().then(() => {
+      setPlayingId(audio.id);
+    }).catch(error => {
+      console.error('音声再生エラー:', error);
+      showNotification('error', '音声の再生に失敗しました');
+    });
+  }, [playingId, masterVolume, showNotification]);
+
+  // 音声停止
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    setPlayingId(null);
+    setCurrentTime(0);
+  }, []);
+
+  // 音声削除
+  const deleteAudio = useCallback((type: SoundType, id?: string) => {
+    const updatedAssets = { ...project.assets };
+    let removedSize = 0;
+    const now = new Date().toISOString();
+
+    if (type === 'bgm' && updatedAssets.audio.bgm) {
+      removedSize = updatedAssets.audio.bgm.fileSize;
+      updatedAssets.audio.bgm = null;
+    } else if (type === 'se' && id) {
+      const index = updatedAssets.audio.se.findIndex(se => se.id === id);
+      if (index >= 0) {
+        removedSize = updatedAssets.audio.se[index].fileSize;
+        updatedAssets.audio.se.splice(index, 1);
+      }
+    }
+
+    // 再生中の音声を削除した場合は停止
+    if ((type === 'bgm' && playingId === project.assets.audio.bgm?.id) ||
+        (type === 'se' && playingId === id)) {
+      stopAudio();
+    }
+
+    // 統計更新
+    const imageSize = updatedAssets.objects.reduce((sum, obj) => sum + obj.totalSize, 0) + 
+                     (updatedAssets.background?.totalSize || 0);
+    const audioSize = (updatedAssets.audio.bgm?.fileSize || 0) + 
+                     updatedAssets.audio.se.reduce((sum, se) => sum + se.fileSize, 0);
+
+    updatedAssets.statistics = {
+      totalImageSize: imageSize,
+      totalAudioSize: audioSize,
+      totalSize: imageSize + audioSize,
+      usedSlots: {
+        background: updatedAssets.background ? 1 : 0,
+        objects: updatedAssets.objects.length,
+        bgm: updatedAssets.audio.bgm ? 1 : 0,
+        se: updatedAssets.audio.se.length
+      },
+      limitations: {
+        isNearImageLimit: false,
+        isNearAudioLimit: false,
+        isNearTotalLimit: false,
+        hasViolations: false
+      }
+    };
+
+    updatedAssets.lastModified = now;
+
+    updateProjectWithSync({
+      assets: updatedAssets,
+      totalSize: project.totalSize - removedSize,
+      lastModified: now
+    });
+
+    showNotification('success', '音声を削除しました');
+  }, [project, updateProjectWithSync, playingId, stopAudio, showNotification]);
+
+  // 音声プロパティ更新
+  const updateAudioProperty = useCallback((type: SoundType, id: string, property: string, value: any) => {
+    const updatedAssets = { ...project.assets };
+    const now = new Date().toISOString();
+    
+    if (type === 'bgm' && updatedAssets.audio.bgm?.id === id) {
+      updatedAssets.audio.bgm = {
+        ...updatedAssets.audio.bgm,
+        [property]: value
+      };
+    } else if (type === 'se') {
+      const index = updatedAssets.audio.se.findIndex(se => se.id === id);
+      if (index >= 0) {
+        updatedAssets.audio.se[index] = {
+          ...updatedAssets.audio.se[index],
+          [property]: value
+        };
+      }
+    }
+
+    updatedAssets.lastModified = now;
+
+    updateProjectWithSync({
+      assets: updatedAssets,
+      lastModified: now
+    });
+  }, [project, updateProjectWithSync]);
+
+  // 音声再生時間更新
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const updateTime = () => setCurrentTime(audio.currentTime);
+    const onEnded = () => {
+      setPlayingId(null);
+      setCurrentTime(0);
+    };
+
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('ended', onEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('ended', onEnded);
+    };
+  }, []);
+
+  // 画像ファイルアップロード処理
   const handleMultipleFileUpload = useCallback(async (results: FileProcessingResult[]) => {
     if (uploading) return;
     setUploading(true);
@@ -176,7 +457,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
 
             // プロジェクト更新
             if (activeAssetType === 'background') {
-              // 🔧 背景アセット作成
+              // 背景アセット作成
               updatedAssets.background = {
                 id: crypto.randomUUID(),
                 name: 'Background',
@@ -187,7 +468,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
                 lastModified: now
               };
               
-              // 🔧 重要: layout.background.visible を true に設定
+              // layout.background.visible を true に設定
               updatedScript.layout.background = {
                 ...updatedScript.layout.background,
                 visible: true,
@@ -196,7 +477,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
                 initialAnimation: 0
               };
               
-              // 🔧 初期条件の背景状態も更新
+              // 初期条件の背景状態も更新
               if (!updatedScript.initialState) {
                 updatedScript.initialState = createDefaultInitialState();
               }
@@ -255,7 +536,6 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
           usedSlots: {
             background: updatedAssets.background ? 1 : 0,
             objects: updatedAssets.objects.length,
-            texts: updatedAssets.texts.length,
             bgm: updatedAssets.audio.bgm ? 1 : 0,
             se: updatedAssets.audio.se.length
           },
@@ -270,7 +550,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         updatedAssets.lastModified = now;
         updatedScript.lastModified = now;
 
-        // 🔧 script と assets 両方を同期更新
+        // script と assets 両方を同期更新
         updateProjectWithSync({
           assets: updatedAssets,
           script: updatedScript,
@@ -288,79 +568,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
     }
   }, [activeAssetType, project, updateProjectWithSync, uploading, showNotification]);
 
-  // テキストアセット追加
-  const addTextAsset = useCallback(() => {
-    if (project.assets.texts.length >= EDITOR_LIMITS.TEXT.MAX_COUNT) {
-      showNotification('error', `テキストは最大${EDITOR_LIMITS.TEXT.MAX_COUNT}個まで追加できます`);
-      return;
-    }
-
-    if (!textContent.trim()) {
-      showNotification('error', 'テキストを入力してください');
-      return;
-    }
-
-    if (textContent.length > EDITOR_LIMITS.TEXT.MAX_LENGTH) {
-      showNotification('error', `テキストは${EDITOR_LIMITS.TEXT.MAX_LENGTH}文字以内で入力してください`);
-      return;
-    }
-
-    const now = new Date().toISOString();
-
-    const newText: TextAsset = {
-      id: crypto.randomUUID(),
-      content: textContent.trim(),
-      style: {
-        fontSize,
-        color: textColor,
-        fontWeight,
-        fontFamily: 'Inter, sans-serif'
-      },
-      createdAt: now,
-      lastModified: now
-    };
-
-    const updatedAssets = { ...project.assets };
-    updatedAssets.texts.push(newText);
-    updatedAssets.lastModified = now;
-
-    // 統計更新
-    const imageSize = updatedAssets.objects.reduce((sum, obj) => sum + obj.totalSize, 0) + 
-                     (updatedAssets.background?.totalSize || 0);
-    const audioSize = (updatedAssets.audio.bgm?.fileSize || 0) + 
-                     updatedAssets.audio.se.reduce((sum, se) => sum + se.fileSize, 0);
-
-    updatedAssets.statistics = {
-      totalImageSize: imageSize,
-      totalAudioSize: audioSize,
-      totalSize: imageSize + audioSize,
-      usedSlots: {
-        background: updatedAssets.background ? 1 : 0,
-        objects: updatedAssets.objects.length,
-        texts: updatedAssets.texts.length,
-        bgm: updatedAssets.audio.bgm ? 1 : 0,
-        se: updatedAssets.audio.se.length
-      },
-      limitations: {
-        isNearImageLimit: false,
-        isNearAudioLimit: false,
-        isNearTotalLimit: false,
-        hasViolations: false
-      }
-    };
-
-    updateProjectWithSync({
-      assets: updatedAssets,
-      lastModified: now
-    });
-
-    // フォームリセット
-    setTextContent('');
-    setEditMode('none');
-    showNotification('success', 'テキストを追加しました');
-  }, [textContent, textColor, fontSize, fontWeight, project, updateProjectWithSync, showNotification]);
-
-  // 🔧 修正: アセット削除（layout同期対応）
+  // アセット削除（layout同期対応）
   const deleteAsset = useCallback((type: AssetType, id?: string) => {
     const updatedAssets = { ...project.assets };
     const updatedScript = { ...project.script };
@@ -372,13 +580,13 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         removedSize = updatedAssets.background.totalSize;
         updatedAssets.background = null;
         
-        // 🔧 layout.background.visible も false に設定
+        // layout.background.visible も false に設定
         updatedScript.layout.background = {
           ...updatedScript.layout.background,
           visible: false
         };
         
-        // 🔧 初期条件の背景状態も更新
+        // 初期条件の背景状態も更新
         if (updatedScript.initialState) {
           updatedScript.initialState.layout.background.visible = false;
         }
@@ -391,20 +599,15 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         removedSize = updatedAssets.objects[index].totalSize;
         updatedAssets.objects.splice(index, 1);
         
-        // 🔧 レイアウトからも削除
+        // レイアウトからも削除
         updatedScript.layout.objects = updatedScript.layout.objects.filter(obj => obj.objectId !== id);
         
-        // 🔧 初期条件からも削除
+        // 初期条件からも削除
         if (updatedScript.initialState) {
           updatedScript.initialState.layout.objects = updatedScript.initialState.layout.objects.filter(obj => obj.id !== id);
         }
         
         console.log('🗑️ オブジェクト削除: layoutからも削除完了');
-      }
-    } else if (type === 'texts' && id) {
-      const index = updatedAssets.texts.findIndex(text => text.id === id);
-      if (index >= 0) {
-        updatedAssets.texts.splice(index, 1);
       }
     }
 
@@ -421,7 +624,6 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
       usedSlots: {
         background: updatedAssets.background ? 1 : 0,
         objects: updatedAssets.objects.length,
-        texts: updatedAssets.texts.length,
         bgm: updatedAssets.audio.bgm ? 1 : 0,
         se: updatedAssets.audio.se.length
       },
@@ -450,7 +652,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
     <div 
       style={{ 
         padding: DESIGN_TOKENS.spacing[6],
-        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', '),  // 🔧 フォント修正
+        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', '),
         backgroundColor: DESIGN_TOKENS.colors.neutral[50],
         minHeight: '100%'
       }}
@@ -500,7 +702,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         </div>
       )}
 
-      {/* 🔧 layout.background.visible状態表示 */}
+      {/* デバッグ情報（layout.background.visible状態表示） */}
       <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -520,7 +722,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         </div>
       </div>
 
-      {/* 容量表示 */}
+      {/* 容量表示（画像+音声統合） */}
       <ModernCard variant="filled" size="sm" style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: DESIGN_TOKENS.spacing[2] }}>
           <span 
@@ -530,7 +732,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
               color: DESIGN_TOKENS.colors.neutral[700] 
             }}
           >
-            使用容量
+            使用容量（画像+音声）
           </span>
           <span 
             style={{ 
@@ -576,7 +778,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         )}
       </ModernCard>
 
-      {/* タブ切り替え */}
+      {/* メインタブ切り替え（背景・オブジェクト・サウンド） */}
       <div 
         style={{
           display: 'flex',
@@ -590,7 +792,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         {[
           { id: 'background' as AssetType, label: '背景', icon: '🖼️', count: project.assets.background ? 1 : 0 },
           { id: 'objects' as AssetType, label: 'オブジェクト', icon: '🎨', count: project.assets.objects.length },
-          { id: 'texts' as AssetType, label: 'テキスト', icon: '📝', count: project.assets.texts.length }
+          { id: 'sound' as AssetType, label: 'サウンド', icon: '🎵', count: (project.assets.audio.bgm ? 1 : 0) + project.assets.audio.se.length }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -783,7 +985,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
               <li>9:16（縦向き）の比率が推奨です</li>
               <li>最大{formatFileSize(EDITOR_LIMITS.IMAGE.BACKGROUND_FRAME_MAX_SIZE)}まで対応</li>
               <li>ファイルサイズが大きい場合は自動で最適化されます</li>
-              <li>🔧 追加すると自動的に表示設定されます</li>
+              <li>追加すると自動的に表示設定されます</li>
             </ul>
           </ModernCard>
         </div>
@@ -843,7 +1045,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
             }}
           >
             {project.assets.objects.map((obj) => {
-              // 🔧 レイアウト配置状況確認
+              // レイアウト配置状況確認
               const isPlaced = project.script.layout.objects.some(layoutObj => layoutObj.objectId === obj.id);
               
               return (
@@ -879,7 +1081,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
                     {formatFileSize(obj.totalSize)}
                   </p>
                   
-                  {/* 🔧 配置状況表示 */}
+                  {/* 配置状況表示 */}
                   <div className="mb-3">
                     <span className={`text-xs px-2 py-1 rounded ${
                       isPlaced 
@@ -921,8 +1123,8 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         </div>
       )}
 
-      {/* テキスト管理セクション（既存維持） */}
-      {activeAssetType === 'texts' && (
+      {/* サウンド管理セクション（AudioTab統合版） */}
+      {activeAssetType === 'sound' && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: DESIGN_TOKENS.spacing[4] }}>
             <h3 
@@ -936,7 +1138,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
                 gap: DESIGN_TOKENS.spacing[2]
               }}
             >
-              📝 テキスト
+              🎵 サウンド
               <span 
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -944,226 +1146,482 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
                   fontWeight: DESIGN_TOKENS.typography.fontWeight.normal
                 }}
               >
-                ({project.assets.texts.length}/{EDITOR_LIMITS.TEXT.MAX_COUNT})
+                (BGM: {project.assets.audio.bgm ? 1 : 0}/1, SE: {project.assets.audio.se.length}/{EDITOR_LIMITS.PROJECT.MAX_SE_COUNT})
               </span>
             </h3>
           </div>
 
-          {/* 既存テキスト一覧 */}
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
-            {project.assets.texts.map((text) => (
-              <ModernCard key={text.id} variant="elevated" size="md" style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div
+          {/* サウンドタブ切り替え（BGM・SE） */}
+          <div 
+            style={{
+              display: 'flex',
+              backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+              borderRadius: DESIGN_TOKENS.borderRadius.lg,
+              padding: DESIGN_TOKENS.spacing[1],
+              marginBottom: DESIGN_TOKENS.spacing[6],
+              boxShadow: DESIGN_TOKENS.shadows.sm
+            }}
+          >
+            {[
+              { id: 'bgm' as SoundType, label: 'BGM', icon: '🎵', count: project.assets.audio.bgm ? 1 : 0 },
+              { id: 'se' as SoundType, label: '効果音', icon: '🔊', count: project.assets.audio.se.length }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveSoundType(tab.id)}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: DESIGN_TOKENS.spacing[2],
+                  padding: `${DESIGN_TOKENS.spacing[3]} ${DESIGN_TOKENS.spacing[4]}`,
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  backgroundColor: activeSoundType === tab.id 
+                    ? DESIGN_TOKENS.colors.purple[500]
+                    : 'transparent',
+                  color: activeSoundType === tab.id 
+                    ? DESIGN_TOKENS.colors.neutral[0]
+                    : DESIGN_TOKENS.colors.neutral[600],
+                  border: 'none',
+                  borderRadius: DESIGN_TOKENS.borderRadius.md,
+                  cursor: 'pointer',
+                  transition: `all ${DESIGN_TOKENS.animation.duration.fast} ${DESIGN_TOKENS.animation.easing.inOut}`
+                }}
+                onMouseEnter={(e) => {
+                  if (activeSoundType !== tab.id) {
+                    e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.neutral[100];
+                    e.currentTarget.style.color = DESIGN_TOKENS.colors.neutral[800];
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeSoundType !== tab.id) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = DESIGN_TOKENS.colors.neutral[600];
+                  }
+                }}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+                {tab.count > 0 && (
+                  <span 
                     style={{
-                      flex: 1,
-                      fontSize: `${text.style.fontSize}px`,
-                      color: text.style.color,
-                      fontWeight: text.style.fontWeight,
-                      fontFamily: text.style.fontFamily
+                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                      padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                      backgroundColor: activeSoundType === tab.id 
+                        ? DESIGN_TOKENS.colors.neutral[0]
+                        : DESIGN_TOKENS.colors.purple[100],
+                      color: activeSoundType === tab.id 
+                        ? DESIGN_TOKENS.colors.purple[600]
+                        : DESIGN_TOKENS.colors.purple[700],
+                      borderRadius: DESIGN_TOKENS.borderRadius.full,
+                      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                      minWidth: '20px',
+                      textAlign: 'center'
                     }}
                   >
-                    {text.content}
-                  </div>
-                  <ModernButton
-                    variant="error"
-                    size="xs"
-                    icon="🗑️"
-                    onClick={() => deleteAsset('texts', text.id)}
-                    style={{ marginLeft: DESIGN_TOKENS.spacing[4] }}
-                  >
-                    削除
-                  </ModernButton>
-                </div>
-              </ModernCard>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
             ))}
           </div>
 
-          {/* 新規テキスト追加 */}
-          {project.assets.texts.length < EDITOR_LIMITS.TEXT.MAX_COUNT && (
-            <ModernCard variant="elevated" size="lg">
-              <h4 
+          {/* マスター音量 */}
+          <ModernCard variant="filled" size="sm" style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: DESIGN_TOKENS.spacing[2] }}>
+              <span 
                 style={{
-                  fontSize: DESIGN_TOKENS.typography.fontSize.lg,
-                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                  color: DESIGN_TOKENS.colors.neutral[800],
-                  margin: `0 0 ${DESIGN_TOKENS.spacing[4]} 0`
-                }}
-              >
-                新しいテキストを追加
-              </h4>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[4] }}>
-                <div>
-                  <label 
-                    style={{
-                      display: 'block',
-                      fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                      fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                      color: DESIGN_TOKENS.colors.neutral[700],
-                      marginBottom: DESIGN_TOKENS.spacing[2]
-                    }}
-                  >
-                    テキスト内容 ({textContent.length}/{EDITOR_LIMITS.TEXT.MAX_LENGTH})
-                  </label>
-                  <input
-                    type="text"
-                    value={textContent}
-                    onChange={(e) => setTextContent(e.target.value)}
-                    maxLength={EDITOR_LIMITS.TEXT.MAX_LENGTH}
-                    placeholder="テキストを入力..."
-                    style={{
-                      width: '100%',
-                      padding: `${DESIGN_TOKENS.spacing[3]} ${DESIGN_TOKENS.spacing[4]}`,
-                      fontSize: DESIGN_TOKENS.typography.fontSize.base,
-                      backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-                      border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
-                      borderRadius: DESIGN_TOKENS.borderRadius.md,
-                      outline: 'none',
-                      transition: `all ${DESIGN_TOKENS.animation.duration.normal} ${DESIGN_TOKENS.animation.easing.inOut}`
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = DESIGN_TOKENS.colors.primary[500];
-                      e.target.style.boxShadow = `0 0 0 3px ${DESIGN_TOKENS.colors.primary[500]}20`;
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = DESIGN_TOKENS.colors.neutral[300];
-                      e.target.style.boxShadow = 'none';
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: DESIGN_TOKENS.spacing[4] }}>
-                  <div>
-                    <label 
-                      style={{
-                        display: 'block',
-                        fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                        fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                        color: DESIGN_TOKENS.colors.neutral[700],
-                        marginBottom: DESIGN_TOKENS.spacing[2]
-                      }}
-                    >
-                      文字色
-                    </label>
-                    <input
-                      type="color"
-                      value={textColor}
-                      onChange={(e) => setTextColor(e.target.value)}
-                      style={{
-                        width: '100%',
-                        height: '40px',
-                        border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
-                        borderRadius: DESIGN_TOKENS.borderRadius.md,
-                        cursor: 'pointer'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label 
-                      style={{
-                        display: 'block',
-                        fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                        fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                        color: DESIGN_TOKENS.colors.neutral[700],
-                        marginBottom: DESIGN_TOKENS.spacing[2]
-                      }}
-                    >
-                      文字サイズ ({fontSize}px)
-                    </label>
-                    <input
-                      type="range"
-                      min={EDITOR_LIMITS.TEXT.MIN_FONT_SIZE}
-                      max={EDITOR_LIMITS.TEXT.MAX_FONT_SIZE}
-                      value={fontSize}
-                      onChange={(e) => setFontSize(parseInt(e.target.value))}
-                      style={{ width: '100%' }}
-                    />
-                  </div>
-
-                  <div>
-                    <label 
-                      style={{
-                        display: 'block',
-                        fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                        fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                        color: DESIGN_TOKENS.colors.neutral[700],
-                        marginBottom: DESIGN_TOKENS.spacing[2]
-                      }}
-                    >
-                      フォントの太さ
-                    </label>
-                    <select
-                      value={fontWeight}
-                      onChange={(e) => setFontWeight(e.target.value as 'normal' | 'bold')}
-                      style={{
-                        width: '100%',
-                        padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
-                        fontSize: DESIGN_TOKENS.typography.fontSize.base,
-                        backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-                        border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
-                        borderRadius: DESIGN_TOKENS.borderRadius.md,
-                        outline: 'none'
-                      }}
-                    >
-                      <option value="normal">標準</option>
-                      <option value="bold">太字</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* プレビュー */}
-                <ModernCard variant="filled" size="sm">
-                  <p 
-                    style={{
-                      fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                      color: DESIGN_TOKENS.colors.neutral[600],
-                      margin: `0 0 ${DESIGN_TOKENS.spacing[2]} 0`
-                    }}
-                  >
-                    プレビュー:
-                  </p>
-                  <div
-                    style={{
-                      fontSize: `${fontSize}px`,
-                      color: textColor,
-                      fontWeight: fontWeight,
-                      fontFamily: 'Inter, sans-serif'
-                    }}
-                  >
-                    {textContent || 'テキストのプレビュー'}
-                  </div>
-                </ModernCard>
-
-                <ModernButton
-                  variant="primary"
-                  size="lg"
-                  fullWidth
-                  icon="✨"
-                  onClick={addTextAsset}
-                  disabled={!textContent.trim()}
-                >
-                  テキストを追加
-                </ModernButton>
-              </div>
-            </ModernCard>
-          )}
-
-          {project.assets.texts.length >= EDITOR_LIMITS.TEXT.MAX_COUNT && (
-            <ModernCard variant="filled" size="sm">
-              <p 
-                style={{
-                  textAlign: 'center',
                   fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                  color: DESIGN_TOKENS.colors.neutral[600],
-                  margin: 0
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  color: DESIGN_TOKENS.colors.neutral[700]
                 }}
               >
-                テキストは最大{EDITOR_LIMITS.TEXT.MAX_COUNT}個まで追加できます
-              </p>
-            </ModernCard>
+                🔊 マスター音量
+              </span>
+              <span 
+                style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.neutral[600]
+                }}
+              >
+                {Math.round(masterVolume * 100)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={masterVolume}
+              onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
+              style={{
+                width: '100%',
+                height: '6px',
+                borderRadius: DESIGN_TOKENS.borderRadius.full,
+                background: DESIGN_TOKENS.colors.neutral[200],
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+          </ModernCard>
+
+          {/* BGM管理 */}
+          {activeSoundType === 'bgm' && (
+            <div>
+              {project.assets.audio.bgm ? (
+                <ModernCard variant="elevated" size="md" style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
+                    <div style={{ flex: 1 }}>
+                      <h4 
+                        style={{
+                          fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                          fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                          color: DESIGN_TOKENS.colors.neutral[800],
+                          margin: `0 0 ${DESIGN_TOKENS.spacing[1]} 0`
+                        }}
+                      >
+                        {project.assets.audio.bgm.name}
+                      </h4>
+                      <p 
+                        style={{
+                          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                          color: DESIGN_TOKENS.colors.neutral[500],
+                          margin: 0
+                        }}
+                      >
+                        {formatTime(project.assets.audio.bgm.duration)} • {formatFileSize(project.assets.audio.bgm.fileSize)}
+                      </p>
+                      {playingId === project.assets.audio.bgm.id && (
+                        <p 
+                          style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                            color: DESIGN_TOKENS.colors.primary[600],
+                            margin: `${DESIGN_TOKENS.spacing[1]} 0 0 0`
+                          }}
+                        >
+                          再生時間: {formatTime(currentTime)} / {formatTime(project.assets.audio.bgm.duration)}
+                        </p>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}>
+                      <ModernButton
+                        variant={playingId === project.assets.audio.bgm.id ? "secondary" : "primary"}
+                        size="sm"
+                        icon={playingId === project.assets.audio.bgm.id ? '⏹️' : '▶️'}
+                        onClick={() => playAudio(project.assets.audio.bgm!)}
+                      >
+                        {playingId === project.assets.audio.bgm.id ? '停止' : '再生'}
+                      </ModernButton>
+                      <ModernButton
+                        variant="outline"
+                        size="sm"
+                        icon="⚙️"
+                        onClick={() => setEditingAudioId(
+                          editingAudioId === project.assets.audio.bgm!.id ? null : project.assets.audio.bgm!.id
+                        )}
+                      >
+                        設定
+                      </ModernButton>
+                      <ModernButton
+                        variant="error"
+                        size="sm"
+                        icon="🗑️"
+                        onClick={() => deleteAudio('bgm')}
+                      >
+                        削除
+                      </ModernButton>
+                    </div>
+                  </div>
+
+                  {/* BGM設定パネル */}
+                  {editingAudioId === project.assets.audio.bgm.id && (
+                    <div 
+                      style={{
+                        borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+                        paddingTop: DESIGN_TOKENS.spacing[4],
+                        marginTop: DESIGN_TOKENS.spacing[4]
+                      }}
+                    >
+                      <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                        <label 
+                          style={{
+                            display: 'block',
+                            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                            color: DESIGN_TOKENS.colors.neutral[700],
+                            marginBottom: DESIGN_TOKENS.spacing[2]
+                          }}
+                        >
+                          音量 ({Math.round(project.assets.audio.bgm.volume * 100)}%)
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.1"
+                          value={project.assets.audio.bgm.volume}
+                          onChange={(e) => updateAudioProperty('bgm', project.assets.audio.bgm!.id, 'volume', parseFloat(e.target.value))}
+                          style={{
+                            width: '100%',
+                            height: '6px',
+                            borderRadius: DESIGN_TOKENS.borderRadius.full,
+                            background: DESIGN_TOKENS.colors.neutral[200],
+                            outline: 'none',
+                            cursor: 'pointer'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                          <input
+                            type="checkbox"
+                            checked={project.assets.audio.bgm.loop}
+                            onChange={(e) => updateAudioProperty('bgm', project.assets.audio.bgm!.id, 'loop', e.target.checked)}
+                          />
+                          <span 
+                            style={{
+                              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                              color: DESIGN_TOKENS.colors.neutral[700]
+                            }}
+                          >
+                            ループ再生
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </ModernCard>
+              ) : (
+                <DragDropZone
+                  accept={['audio/*']}
+                  maxFiles={1}
+                  maxSize={EDITOR_LIMITS.AUDIO.BGM_MAX_SIZE}
+                  variant="large"
+                  title="BGMをアップロード"
+                  description="音声ファイルをドラッグ&ドロップするか、クリックしてファイルを選択"
+                  buttonText="ファイルを選択"
+                  onFilesDrop={(results) => {
+                    const files = new DataTransfer();
+                    results.forEach(result => {
+                      if (result.accepted) files.items.add(result.file);
+                    });
+                    handleAudioUpload(files.files, 'bgm');
+                  }}
+                  loading={uploading}
+                  style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}
+                />
+              )}
+
+              <ModernCard variant="filled" size="sm">
+                <h4 
+                  style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                    fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                    color: DESIGN_TOKENS.colors.primary[800],
+                    margin: `0 0 ${DESIGN_TOKENS.spacing[2]} 0`
+                  }}
+                >
+                  💡 BGMのヒント
+                </h4>
+                <ul 
+                  style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                    color: DESIGN_TOKENS.colors.primary[700],
+                    margin: 0,
+                    paddingLeft: DESIGN_TOKENS.spacing[4],
+                    lineHeight: DESIGN_TOKENS.typography.lineHeight.relaxed
+                  }}
+                >
+                  <li>最大{EDITOR_LIMITS.AUDIO.BGM_MAX_DURATION}秒、{formatFileSize(EDITOR_LIMITS.AUDIO.BGM_MAX_SIZE)}まで</li>
+                  <li>対応形式: MP3, WAV, OGG</li>
+                  <li>自動ループ再生されます</li>
+                </ul>
+              </ModernCard>
+            </div>
           )}
+
+          {/* SE（効果音）管理 */}
+          {activeSoundType === 'se' && (
+            <div>
+              {/* 既存効果音一覧 */}
+              <div style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
+                {project.assets.audio.se.map((se) => (
+                  <ModernCard key={se.id} variant="elevated" size="md" style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
+                      <div style={{ flex: 1 }}>
+                        <h4 
+                          style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                            color: DESIGN_TOKENS.colors.neutral[800],
+                            margin: `0 0 ${DESIGN_TOKENS.spacing[1]} 0`
+                          }}
+                        >
+                          {se.name}
+                        </h4>
+                        <p 
+                          style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                            color: DESIGN_TOKENS.colors.neutral[500],
+                            margin: 0
+                          }}
+                        >
+                          {formatTime(se.duration)} • {formatFileSize(se.fileSize)}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}>
+                        <ModernButton
+                          variant={playingId === se.id ? "secondary" : "primary"}
+                          size="xs"
+                          icon={playingId === se.id ? '⏹️' : '▶️'}
+                          onClick={() => playAudio(se)}
+                        />
+                        <ModernButton
+                          variant="outline"
+                          size="xs"
+                          icon="⚙️"
+                          onClick={() => setEditingAudioId(editingAudioId === se.id ? null : se.id)}
+                        />
+                        <ModernButton
+                          variant="error"
+                          size="xs"
+                          icon="🗑️"
+                          onClick={() => deleteAudio('se', se.id)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* SE設定パネル */}
+                    {editingAudioId === se.id && (
+                      <div 
+                        style={{
+                          borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+                          paddingTop: DESIGN_TOKENS.spacing[4],
+                          marginTop: DESIGN_TOKENS.spacing[4]
+                        }}
+                      >
+                        <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                          <label 
+                            style={{
+                              display: 'block',
+                              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                              color: DESIGN_TOKENS.colors.neutral[700],
+                              marginBottom: DESIGN_TOKENS.spacing[2]
+                            }}
+                          >
+                            効果音名
+                          </label>
+                          <input
+                            type="text"
+                            value={se.name}
+                            onChange={(e) => updateAudioProperty('se', se.id, 'name', e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+                              fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                              backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                              border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                              borderRadius: DESIGN_TOKENS.borderRadius.md,
+                              outline: 'none'
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label 
+                            style={{
+                              display: 'block',
+                              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                              color: DESIGN_TOKENS.colors.neutral[700],
+                              marginBottom: DESIGN_TOKENS.spacing[2]
+                            }}
+                          >
+                            音量 ({Math.round(se.volume * 100)}%)
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.1"
+                            value={se.volume}
+                            onChange={(e) => updateAudioProperty('se', se.id, 'volume', parseFloat(e.target.value))}
+                            style={{
+                              width: '100%',
+                              height: '6px',
+                              borderRadius: DESIGN_TOKENS.borderRadius.full,
+                              background: DESIGN_TOKENS.colors.neutral[200],
+                              outline: 'none',
+                              cursor: 'pointer'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </ModernCard>
+                ))}
+              </div>
+
+              {/* 新規効果音追加 */}
+              {project.assets.audio.se.length < EDITOR_LIMITS.PROJECT.MAX_SE_COUNT && (
+                <DragDropZone
+                  accept={['audio/*']}
+                  maxFiles={EDITOR_LIMITS.PROJECT.MAX_SE_COUNT - project.assets.audio.se.length}
+                  maxSize={EDITOR_LIMITS.AUDIO.SE_MAX_SIZE}
+                  variant="default"
+                  title="効果音を追加"
+                  description={`音声ファイルをドラッグ&ドロップ（最大${EDITOR_LIMITS.PROJECT.MAX_SE_COUNT - project.assets.audio.se.length}個）`}
+                  buttonText="ファイルを選択"
+                  onFilesDrop={(results) => {
+                    results.forEach(result => {
+                      if (result.accepted) {
+                        const files = new DataTransfer();
+                        files.items.add(result.file);
+                        handleAudioUpload(files.files, 'se');
+                      }
+                    });
+                  }}
+                  loading={uploading}
+                  style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}
+                />
+              )}
+
+              <ModernCard variant="filled" size="sm">
+                <h4 
+                  style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                    fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                    color: DESIGN_TOKENS.colors.primary[800],
+                    margin: `0 0 ${DESIGN_TOKENS.spacing[2]} 0`
+                  }}
+                >
+                  💡 効果音のヒント
+                </h4>
+                <ul 
+                  style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                    color: DESIGN_TOKENS.colors.primary[700],
+                    margin: 0,
+                    paddingLeft: DESIGN_TOKENS.spacing[4],
+                    lineHeight: DESIGN_TOKENS.typography.lineHeight.relaxed
+                  }}
+                >
+                  <li>最大{EDITOR_LIMITS.AUDIO.SE_MAX_DURATION}秒、{formatFileSize(EDITOR_LIMITS.AUDIO.SE_MAX_SIZE)}まで</li>
+                  <li>対応形式: MP3, WAV, OGG</li>
+                  <li>1回再生（ループなし）で実行されます</li>
+                </ul>
+              </ModernCard>
+            </div>
+          )}
+
+          {/* 隠し音声要素 */}
+          <audio
+            ref={audioRef}
+            preload="none"
+            style={{ display: 'none' }}
+          />
         </div>
       )}
 
@@ -1201,7 +1659,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
                   margin: 0
                 }}
               >
-                画像を処理中...
+                {activeAssetType === 'sound' ? '音声を処理中...' : '画像を処理中...'}
               </p>
               <p 
                 style={{
