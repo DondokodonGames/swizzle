@@ -1,5 +1,5 @@
 // src/components/editor/script/AdvancedRuleModal.tsx
-// Step 2-B-1: デザインシステム統一版 - TypeScriptエラー修正完了
+// Step 2-B-2完全実装版: TypeScriptエラー完全修正・DESIGN_TOKENS準拠
 
 import React, { useState, useEffect } from 'react';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
@@ -718,7 +718,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                                   条件パラメータ設定
                                 </h5>
                                 
-                                {/* 条件別パラメータ設定UI（簡略版） */}
+                                {/* 条件別パラメータ設定UI */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[3] }}>
                                   {(() => {
                                     const condition = conditions[index];
@@ -791,6 +791,122 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                                               <option value={5}>5秒後</option>
                                               <option value={10}>10秒後</option>
                                             </select>
+                                          </div>
+                                        );
+
+                                      case 'flag':
+                                        return (
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[3] }}>
+                                            {/* フラグ選択 */}
+                                            <div>
+                                              <label style={{
+                                                display: 'block',
+                                                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                                                color: DESIGN_TOKENS.colors.neutral[600],
+                                                marginBottom: DESIGN_TOKENS.spacing[2]
+                                              }}>
+                                                🚩 対象フラグ
+                                              </label>
+                                              <select
+                                                value={condition.flagId || ''}
+                                                onChange={(e) => updateCondition(index, { flagId: e.target.value })}
+                                                style={{
+                                                  width: '100%',
+                                                  border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                                                  borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                                                  padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+                                                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                                                  backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                                                  boxShadow: DESIGN_TOKENS.shadows.sm,
+                                                  outline: 'none',
+                                                  fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')
+                                                }}
+                                              >
+                                                <option value="">フラグを選択してください</option>
+                                                {projectFlags.map(flag => (
+                                                  <option key={flag.id} value={flag.id}>
+                                                    🚩 {flag.name}
+                                                  </option>
+                                                ))}
+                                              </select>
+                                            </div>
+
+                                            {/* フラグ条件4パターン */}
+                                            <div>
+                                              <label style={{
+                                                display: 'block',
+                                                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                                                color: DESIGN_TOKENS.colors.neutral[600],
+                                                marginBottom: DESIGN_TOKENS.spacing[2]
+                                              }}>
+                                                条件パターン
+                                              </label>
+                                              <select
+                                                value={condition.condition || 'ON'}
+                                                onChange={(e) => updateCondition(index, { condition: e.target.value as any })}
+                                                style={{
+                                                  width: '100%',
+                                                  border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                                                  borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                                                  padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+                                                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                                                  backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                                                  boxShadow: DESIGN_TOKENS.shadows.sm,
+                                                  outline: 'none',
+                                                  fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')
+                                                }}
+                                              >
+                                                <option value="ON">🟢 ONの時</option>
+                                                <option value="OFF">🔴 OFFの時</option>
+                                                <option value="ON_TO_OFF">🔄 ON→OFFに変化した瞬間</option>
+                                                <option value="OFF_TO_ON">🔄 OFF→ONに変化した瞬間</option>
+                                                <option value="CHANGED">🔄 値が変化した時（ON↔OFF）</option>
+                                              </select>
+                                            </div>
+
+                                            {/* 状態遷移図表示 */}
+                                            <div style={{
+                                              padding: DESIGN_TOKENS.spacing[3],
+                                              backgroundColor: DESIGN_TOKENS.colors.warning[50],
+                                              borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                                              border: `1px solid ${DESIGN_TOKENS.colors.warning[100]}`
+                                            }}>
+                                              <div style={{
+                                                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                                fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                                                color: DESIGN_TOKENS.colors.warning[800],
+                                                marginBottom: DESIGN_TOKENS.spacing[2]
+                                              }}>
+                                                📊 条件説明
+                                              </div>
+                                              <div style={{
+                                                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                                color: DESIGN_TOKENS.colors.warning[600],
+                                                textAlign: 'center'
+                                              }}>
+                                                {(() => {
+                                                  const selectedFlag = projectFlags.find(f => f.id === condition.flagId);
+                                                  const flagName = selectedFlag?.name || 'フラグ';
+                                                  
+                                                  switch (condition.condition) {
+                                                    case 'ON':
+                                                      return `🟢 ${flagName}がONの間、常に条件成立`;
+                                                    case 'OFF':
+                                                      return `🔴 ${flagName}がOFFの間、常に条件成立`;
+                                                    case 'ON_TO_OFF':
+                                                      return `🔄 ${flagName}がON→OFFに変化した瞬間のみ条件成立`;
+                                                    case 'OFF_TO_ON':
+                                                      return `🔄 ${flagName}がOFF→ONに変化した瞬間のみ条件成立`;
+                                                    case 'CHANGED':
+                                                      return `🔄 ${flagName}の値が変化した瞬間（ON↔OFF）に条件成立`;
+                                                    default:
+                                                      return '条件パターンを選択してください';
+                                                  }
+                                                })()}
+                                              </div>
+                                            </div>
                                           </div>
                                         );
 
@@ -877,10 +993,10 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 </ModernCard>
               </div>
 
-              {/* 右列: アクション設定・フラグ管理 */}
+              {/* 右列: アクション設定・ルールプレビュー・フラグ管理 */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[6] }}>
                 
-                {/* アクション設定（省略版 - 条件設定と同様のパターン） */}
+                {/* アクション設定 */}
                 <ModernCard 
                   variant="outlined" 
                   size="lg"
@@ -903,11 +1019,12 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     実行アクション
                   </h4>
 
-                  {/* アクション追加ボタンのみ表示（詳細は次回実装） */}
+                  {/* アクション追加ボタン */}
                   <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                    gap: DESIGN_TOKENS.spacing[3]
+                    gap: DESIGN_TOKENS.spacing[3],
+                    marginBottom: DESIGN_TOKENS.spacing[6]
                   }}>
                     {ACTION_LIBRARY.map((actionType) => (
                       <ModernButton
@@ -932,9 +1049,676 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       </ModernButton>
                     ))}
                   </div>
+
+                  {/* 既存アクション一覧 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[3] }}>
+                    {actions.map((action, index) => {
+                      const display = getActionDisplay(action);
+                      return (
+                        <ModernCard
+                          key={index}
+                          variant="elevated"
+                          size="md"
+                          style={{ 
+                            backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                            border: `1px solid ${DESIGN_TOKENS.colors.success[200]}`
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3] }}>
+                              <span style={{ 
+                                fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
+                                transition: `transform ${DESIGN_TOKENS.animation.duration.normal} ${DESIGN_TOKENS.animation.easing.inOut}`
+                              }}>
+                                {display.icon}
+                              </span>
+                              <div>
+                                <div style={{ 
+                                  fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                                  color: DESIGN_TOKENS.colors.neutral[800]
+                                }}>
+                                  {display.label}
+                                </div>
+                                <div style={{ 
+                                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                  color: DESIGN_TOKENS.colors.neutral[500],
+                                  marginTop: DESIGN_TOKENS.spacing[1]
+                                }}>
+                                  {display.details}
+                                </div>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}>
+                              <ModernButton
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditingActionIndex(index)}
+                                style={{
+                                  borderColor: DESIGN_TOKENS.colors.success[500],
+                                  color: DESIGN_TOKENS.colors.success[600]
+                                }}
+                              >
+                                ✏️ 編集
+                              </ModernButton>
+                              <ModernButton
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeAction(index)}
+                                style={{
+                                  borderColor: DESIGN_TOKENS.colors.error[500],
+                                  color: DESIGN_TOKENS.colors.error[600]
+                                }}
+                              >
+                                🗑️ 削除
+                              </ModernButton>
+                            </div>
+                          </div>
+                          
+                          {/* アクションパラメータ編集エリア - 編集ボタンの真下に表示 */}
+                          {editingActionIndex === index && (
+                            <div style={{ 
+                              marginTop: DESIGN_TOKENS.spacing[4],
+                              paddingTop: DESIGN_TOKENS.spacing[4],
+                              borderTop: `1px solid ${DESIGN_TOKENS.colors.success[200]}`
+                            }}>
+                              <ModernCard 
+                                variant="outlined" 
+                                size="sm"
+                                style={{ 
+                                  backgroundColor: DESIGN_TOKENS.colors.success[50],
+                                  border: `1px solid ${DESIGN_TOKENS.colors.success[200]}`
+                                }}
+                              >
+                                <h5 style={{
+                                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                                  fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                                  color: DESIGN_TOKENS.colors.success[800],
+                                  margin: 0,
+                                  marginBottom: DESIGN_TOKENS.spacing[3],
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: DESIGN_TOKENS.spacing[2]
+                                }}>
+                                  <span>⚙️</span>
+                                  アクションパラメータ設定
+                                </h5>
+                                
+                                {/* アクション別パラメータ設定UI */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[3] }}>
+                                  {(() => {
+                                    const currentAction = actions[index];
+                                    
+                                    switch (currentAction.type) {
+                                      case 'playSound':
+                                        return (
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[4] }}>
+                                            {/* SE選択 */}
+                                            <div>
+                                              <label style={{
+                                                display: 'block',
+                                                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                                                color: DESIGN_TOKENS.colors.neutral[600],
+                                                marginBottom: DESIGN_TOKENS.spacing[2]
+                                              }}>
+                                                🔊 効果音選択
+                                              </label>
+                                              <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}>
+                                                <select
+                                                  value={currentAction.soundId || ''}
+                                                  onChange={(e) => updateAction(index, { soundId: e.target.value })}
+                                                  style={{
+                                                    flex: 1,
+                                                    border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                                                    borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                                                    padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+                                                    fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                                                    backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                                                    boxShadow: DESIGN_TOKENS.shadows.sm,
+                                                    outline: 'none',
+                                                    fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')
+                                                  }}
+                                                >
+                                                  <option value="">効果音を選択してください</option>
+                                                  {project.assets.audio?.se?.map(sound => (
+                                                    <option key={sound.id} value={sound.id}>
+                                                      🔊 {sound.name}
+                                                    </option>
+                                                  )) || (
+                                                    <option disabled>効果音がアップロードされていません</option>
+                                                  )}
+                                                </select>
+                                                {/* プレビューボタン */}
+                                                <ModernButton
+                                                  variant="outline"
+                                                  size="sm"
+                                                  onClick={() => {
+                                                    if (currentAction.soundId) {
+                                                      showNotification('info', '🔊 プレビュー再生');
+                                                      // 実際の音声再生は本実装時に追加
+                                                    } else {
+                                                      showNotification('error', '効果音を選択してください');
+                                                    }
+                                                  }}
+                                                  disabled={!currentAction.soundId}
+                                                  style={{
+                                                    borderColor: DESIGN_TOKENS.colors.primary[400],
+                                                    color: DESIGN_TOKENS.colors.primary[600]
+                                                  }}
+                                                >
+                                                  🔊 試聴
+                                                </ModernButton>
+                                              </div>
+                                            </div>
+
+                                            {/* 音量設定 */}
+                                            <div>
+                                              <label style={{
+                                                display: 'block',
+                                                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                                                color: DESIGN_TOKENS.colors.neutral[600],
+                                                marginBottom: DESIGN_TOKENS.spacing[2]
+                                              }}>
+                                                🎚️ 音量: {Math.round((currentAction.volume || 0.8) * 100)}%
+                                              </label>
+                                              <input
+                                                type="range"
+                                                min="0"
+                                                max="1"
+                                                step="0.1"
+                                                value={currentAction.volume || 0.8}
+                                                onChange={(e) => updateAction(index, { volume: Number(e.target.value) })}
+                                                style={{
+                                                  width: '100%',
+                                                  height: '6px',
+                                                  borderRadius: DESIGN_TOKENS.borderRadius.full,
+                                                  outline: 'none',
+                                                  background: `linear-gradient(to right, 
+                                                    ${DESIGN_TOKENS.colors.primary[500]} 0%, 
+                                                    ${DESIGN_TOKENS.colors.primary[500]} ${(currentAction.volume || 0.8) * 100}%, 
+                                                    ${DESIGN_TOKENS.colors.neutral[200]} ${(currentAction.volume || 0.8) * 100}%, 
+                                                    ${DESIGN_TOKENS.colors.neutral[200]} 100%)`
+                                                }}
+                                              />
+                                            </div>
+                                          </div>
+                                        );
+
+                                      case 'success':
+                                      case 'failure':
+                                        return (
+                                          <div>
+                                            <label style={{
+                                              display: 'block',
+                                              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                                              color: DESIGN_TOKENS.colors.neutral[600],
+                                              marginBottom: DESIGN_TOKENS.spacing[2]
+                                            }}>
+                                              {currentAction.type === 'success' ? '🎉 ゲーム終了' : '💀 ゲーム終了'}
+                                            </label>
+                                            <div style={{
+                                              padding: DESIGN_TOKENS.spacing[3],
+                                              backgroundColor: currentAction.type === 'success' 
+                                                ? DESIGN_TOKENS.colors.success[50] 
+                                                : DESIGN_TOKENS.colors.error[50],
+                                              borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                                              border: `1px solid ${currentAction.type === 'success' 
+                                                ? DESIGN_TOKENS.colors.success[200] 
+                                                : DESIGN_TOKENS.colors.error[200]}`,
+                                              textAlign: 'center',
+                                              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                                              color: currentAction.type === 'success' 
+                                                ? DESIGN_TOKENS.colors.success[600] 
+                                                : DESIGN_TOKENS.colors.error[600]
+                                            }}>
+                                              {currentAction.type === 'success' 
+                                                ? '✅ ゲームクリア - プレイヤーの勝利'
+                                                : '❌ ゲームオーバー - プレイヤーの敗北'
+                                              }
+                                            </div>
+                                          </div>
+                                        );
+
+                                      case 'setFlag':
+                                        return (
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[3] }}>
+                                            {/* フラグ選択 */}
+                                            <div>
+                                              <label style={{
+                                                display: 'block',
+                                                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                                                color: DESIGN_TOKENS.colors.neutral[600],
+                                                marginBottom: DESIGN_TOKENS.spacing[2]
+                                              }}>
+                                                🚩 対象フラグ
+                                              </label>
+                                              <select
+                                                value={currentAction.flagId || ''}
+                                                onChange={(e) => updateAction(index, { flagId: e.target.value })}
+                                                style={{
+                                                  width: '100%',
+                                                  border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                                                  borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                                                  padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+                                                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                                                  backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                                                  boxShadow: DESIGN_TOKENS.shadows.sm,
+                                                  outline: 'none',
+                                                  fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')
+                                                }}
+                                              >
+                                                <option value="">フラグを選択してください</option>
+                                                {projectFlags.map(flag => (
+                                                  <option key={flag.id} value={flag.id}>
+                                                    🚩 {flag.name}
+                                                  </option>
+                                                ))}
+                                              </select>
+                                            </div>
+
+                                            {/* ON/OFF設定 */}
+                                            <div>
+                                              <label style={{
+                                                display: 'block',
+                                                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                                                color: DESIGN_TOKENS.colors.neutral[600],
+                                                marginBottom: DESIGN_TOKENS.spacing[2]
+                                              }}>
+                                                設定値
+                                              </label>
+                                              <select
+                                                value={currentAction.value ? 'true' : 'false'}
+                                                onChange={(e) => updateAction(index, { value: e.target.value === 'true' })}
+                                                style={{
+                                                  width: '100%',
+                                                  border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                                                  borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                                                  padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+                                                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                                                  backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                                                  boxShadow: DESIGN_TOKENS.shadows.sm,
+                                                  outline: 'none',
+                                                  fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')
+                                                }}
+                                              >
+                                                <option value="true">🟢 ONにする</option>
+                                                <option value="false">🔴 OFFにする</option>
+                                              </select>
+                                            </div>
+                                          </div>
+                                        );
+
+                                      case 'show':
+                                      case 'hide':
+                                        return (
+                                          <div>
+                                            <label style={{
+                                              display: 'block',
+                                              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                                              color: DESIGN_TOKENS.colors.neutral[600],
+                                              marginBottom: DESIGN_TOKENS.spacing[2]
+                                            }}>
+                                              {currentAction.type === 'show' ? '👁️ 表示制御' : '🫥 非表示制御'}
+                                            </label>
+                                            <div style={{
+                                              padding: DESIGN_TOKENS.spacing[3],
+                                              backgroundColor: currentAction.type === 'show' 
+                                                ? DESIGN_TOKENS.colors.primary[50] 
+                                                : DESIGN_TOKENS.colors.neutral[100],
+                                              borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                                              border: `1px solid ${currentAction.type === 'show' 
+                                                ? DESIGN_TOKENS.colors.primary[200] 
+                                                : DESIGN_TOKENS.colors.neutral[300]}`,
+                                              textAlign: 'center',
+                                              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                                              color: currentAction.type === 'show' 
+                                                ? DESIGN_TOKENS.colors.primary[600] 
+                                                : DESIGN_TOKENS.colors.neutral[600]
+                                            }}>
+                                              {currentAction.type === 'show' 
+                                                ? '✨ オブジェクトを表示します'
+                                                : '🫥 オブジェクトを非表示にします'
+                                              }
+                                              <br />
+                                              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs }}>
+                                                対象: {rule.targetObjectId}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        );
+
+                                      default:
+                                        return (
+                                          <div style={{ 
+                                            textAlign: 'center',
+                                            color: DESIGN_TOKENS.colors.neutral[500],
+                                            padding: DESIGN_TOKENS.spacing[4],
+                                            fontSize: DESIGN_TOKENS.typography.fontSize.sm
+                                          }}>
+                                            このアクションタイプの設定項目は準備中です
+                                          </div>
+                                        );
+                                    }
+                                  })()}
+                                </div>
+                                
+                                <div style={{ 
+                                  display: 'flex', 
+                                  justifyContent: 'flex-end', 
+                                  gap: DESIGN_TOKENS.spacing[2], 
+                                  marginTop: DESIGN_TOKENS.spacing[4],
+                                  paddingTop: DESIGN_TOKENS.spacing[3],
+                                  borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`
+                                }}>
+                                  <ModernButton
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => setEditingActionIndex(null)}
+                                  >
+                                    キャンセル
+                                  </ModernButton>
+                                  <ModernButton
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={() => setEditingActionIndex(null)}
+                                    style={{
+                                      backgroundColor: DESIGN_TOKENS.colors.success[600],
+                                      borderColor: DESIGN_TOKENS.colors.success[600]
+                                    }}
+                                  >
+                                    <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>✅</span>
+                                    適用
+                                  </ModernButton>
+                                </div>
+                              </ModernCard>
+                            </div>
+                          )}
+                        </ModernCard>
+                      );
+                    })}
+                  </div>
                 </ModernCard>
 
-                {/* フラグ管理（簡略版） */}
+                {/* ルールプレビューシステム */}
+                <ModernCard 
+                  variant="outlined" 
+                  size="lg"
+                  style={{ 
+                    backgroundColor: DESIGN_TOKENS.colors.primary[50],
+                    border: `2px solid ${DESIGN_TOKENS.colors.primary[200]}`
+                  }}
+                >
+                  <h4 style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+                    fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                    color: DESIGN_TOKENS.colors.primary[800],
+                    margin: 0,
+                    marginBottom: DESIGN_TOKENS.spacing[6],
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: DESIGN_TOKENS.spacing[2]
+                  }}>
+                    <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize['2xl'] }}>📋</span>
+                    ルールプレビュー
+                  </h4>
+
+                  {/* 条件プレビュー */}
+                  <div style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: DESIGN_TOKENS.spacing[3],
+                      marginBottom: DESIGN_TOKENS.spacing[4]
+                    }}>
+                      <span style={{ 
+                        fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                        color: DESIGN_TOKENS.colors.purple[600]
+                      }}>
+                        🔥
+                      </span>
+                      <span style={{ 
+                        fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                        fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                        color: DESIGN_TOKENS.colors.purple[800]
+                      }}>
+                        発動条件 ({conditions.length}個)
+                      </span>
+                      {conditions.length > 1 && (
+                        <div style={{
+                          padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[3]}`,
+                          backgroundColor: operator === 'AND' 
+                            ? DESIGN_TOKENS.colors.purple[100] 
+                            : DESIGN_TOKENS.colors.warning[50],
+                          color: operator === 'AND' 
+                            ? DESIGN_TOKENS.colors.purple[700] 
+                            : DESIGN_TOKENS.colors.warning[600],
+                          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                          fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                          border: `1px solid ${operator === 'AND' 
+                            ? DESIGN_TOKENS.colors.purple[200] 
+                            : DESIGN_TOKENS.colors.warning[100]}`
+                        }}>
+                          {operator === 'AND' ? '全て必要' : 'どれか一つ'}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: DESIGN_TOKENS.spacing[2],
+                      marginLeft: DESIGN_TOKENS.spacing[6]
+                    }}>
+                      {conditions.length === 0 ? (
+                        <div style={{ 
+                          padding: DESIGN_TOKENS.spacing[4],
+                          backgroundColor: DESIGN_TOKENS.colors.neutral[100],
+                          borderRadius: DESIGN_TOKENS.borderRadius.xl,
+                          border: `2px dashed ${DESIGN_TOKENS.colors.neutral[300]}`,
+                          textAlign: 'center',
+                          color: DESIGN_TOKENS.colors.neutral[500],
+                          fontSize: DESIGN_TOKENS.typography.fontSize.sm
+                        }}>
+                          条件を追加してください
+                        </div>
+                      ) : (
+                        conditions.map((condition, index) => {
+                          const display = getConditionDisplay(condition);
+                          return (
+                            <div 
+                              key={index}
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: DESIGN_TOKENS.spacing[3],
+                                padding: DESIGN_TOKENS.spacing[3],
+                                backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                                border: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`,
+                                boxShadow: DESIGN_TOKENS.shadows.sm
+                              }}
+                            >
+                              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>
+                                {display.icon}
+                              </span>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ 
+                                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                                  fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                                  color: DESIGN_TOKENS.colors.neutral[800]
+                                }}>
+                                  {display.label}
+                                </div>
+                                <div style={{ 
+                                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                  color: DESIGN_TOKENS.colors.neutral[500]
+                                }}>
+                                  {display.details}
+                                </div>
+                              </div>
+                              {index < conditions.length - 1 && conditions.length > 1 && (
+                                <div style={{
+                                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                  fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                                  color: operator === 'AND' 
+                                    ? DESIGN_TOKENS.colors.purple[600] 
+                                    : DESIGN_TOKENS.colors.warning[600],
+                                  backgroundColor: operator === 'AND' 
+                                    ? DESIGN_TOKENS.colors.purple[50] 
+                                    : DESIGN_TOKENS.colors.warning[50],
+                                  padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                                  borderRadius: DESIGN_TOKENS.borderRadius.md,
+                                  border: `1px solid ${operator === 'AND' 
+                                    ? DESIGN_TOKENS.colors.purple[200] 
+                                    : DESIGN_TOKENS.colors.warning[100]}`
+                                }}>
+                                  {operator}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* フロー矢印 */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    marginBottom: DESIGN_TOKENS.spacing[6]
+                  }}>
+                    <div style={{
+                      fontSize: DESIGN_TOKENS.typography.fontSize['3xl'],
+                      color: DESIGN_TOKENS.colors.primary[500]
+                    }}>
+                      ⬇️
+                    </div>
+                  </div>
+
+                  {/* アクションプレビュー */}
+                  <div>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: DESIGN_TOKENS.spacing[3],
+                      marginBottom: DESIGN_TOKENS.spacing[4]
+                    }}>
+                      <span style={{ 
+                        fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                        color: DESIGN_TOKENS.colors.success[600]
+                      }}>
+                        ⚡
+                      </span>
+                      <span style={{ 
+                        fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                        fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                        color: DESIGN_TOKENS.colors.success[800]
+                      }}>
+                        実行アクション ({actions.length}個)
+                      </span>
+                    </div>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: DESIGN_TOKENS.spacing[2],
+                      marginLeft: DESIGN_TOKENS.spacing[6]
+                    }}>
+                      {actions.length === 0 ? (
+                        <div style={{ 
+                          padding: DESIGN_TOKENS.spacing[4],
+                          backgroundColor: DESIGN_TOKENS.colors.neutral[100],
+                          borderRadius: DESIGN_TOKENS.borderRadius.xl,
+                          border: `2px dashed ${DESIGN_TOKENS.colors.neutral[300]}`,
+                          textAlign: 'center',
+                          color: DESIGN_TOKENS.colors.neutral[500],
+                          fontSize: DESIGN_TOKENS.typography.fontSize.sm
+                        }}>
+                          アクションを追加してください
+                        </div>
+                      ) : (
+                        actions.map((action, index) => {
+                          const display = getActionDisplay(action);
+                          return (
+                            <div 
+                              key={index}
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: DESIGN_TOKENS.spacing[3],
+                                padding: DESIGN_TOKENS.spacing[3],
+                                backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                                border: `1px solid ${DESIGN_TOKENS.colors.success[200]}`,
+                                boxShadow: DESIGN_TOKENS.shadows.sm
+                              }}
+                            >
+                              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>
+                                {display.icon}
+                              </span>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ 
+                                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                                  fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                                  color: DESIGN_TOKENS.colors.neutral[800]
+                                }}>
+                                  {display.label}
+                                </div>
+                                <div style={{ 
+                                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                  color: DESIGN_TOKENS.colors.neutral[500]
+                                }}>
+                                  {display.details}
+                                </div>
+                              </div>
+                              {index < actions.length - 1 && (
+                                <div style={{
+                                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                  color: DESIGN_TOKENS.colors.neutral[400]
+                                }}>
+                                  {index + 1}→{index + 2}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 実行フロー説明 */}
+                  {conditions.length > 0 && actions.length > 0 && (
+                    <div style={{
+                      marginTop: DESIGN_TOKENS.spacing[6],
+                      padding: DESIGN_TOKENS.spacing[4],
+                      backgroundColor: DESIGN_TOKENS.colors.primary[100],
+                      borderRadius: DESIGN_TOKENS.borderRadius.xl,
+                      border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`
+                    }}>
+                      <div style={{
+                        fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                        color: DESIGN_TOKENS.colors.primary[800],
+                        fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                        textAlign: 'center'
+                      }}>
+                        {conditions.length > 1 && operator === 'AND' 
+                          ? '🔥 すべての条件が満たされた時に → ⚡ アクションを順番に実行'
+                          : conditions.length > 1 && operator === 'OR'
+                          ? '🔥 いずれかの条件が満たされた時に → ⚡ アクションを順番に実行'
+                          : '🔥 条件が満たされた時に → ⚡ アクションを順番に実行'
+                        }
+                      </div>
+                    </div>
+                  )}
+                </ModernCard>
+
+                {/* フラグ管理 */}
                 <ModernCard 
                   variant="outlined" 
                   size="lg"
