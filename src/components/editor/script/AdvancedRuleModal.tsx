@@ -1,5 +1,6 @@
 // src/components/editor/script/AdvancedRuleModal.tsx
-// レイアウト調整・RulePreview統合版: フラグ管理の邪魔解消・理想レイアウト実現
+// Phase C Step 1: タッチ条件詳細化・基本パラメータ実装
+// Phase A・B成果完全保護・段階的詳細化
 
 import React, { useState, useEffect } from 'react';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
@@ -16,9 +17,9 @@ interface AdvancedRuleModalProps {
   onClose: () => void;
 }
 
-// 条件ライブラリ
+// 条件ライブラリ（Phase A・B保護）
 const CONDITION_LIBRARY = [
-  { type: 'touch', label: 'タッチ', icon: '👆', params: ['touchType', 'holdDuration'] },
+  { type: 'touch', label: 'タッチ', icon: '👆', params: ['touchType', 'holdDuration', 'target', 'stageArea'] },
   { type: 'time', label: '時間', icon: '⏰', params: ['timeType', 'seconds', 'range'] },
   { type: 'position', label: '位置', icon: '📍', params: ['area', 'region'] },
   { type: 'collision', label: '衝突', icon: '💥', params: ['target', 'collisionType'] },
@@ -26,7 +27,7 @@ const CONDITION_LIBRARY = [
   { type: 'flag', label: 'フラグ', icon: '🚩', params: ['targetFlag', 'flagState'] }
 ];
 
-// アクションライブラリ
+// アクションライブラリ（Phase A・B保護）
 const ACTION_LIBRARY = [
   { type: 'success', label: 'ゲームクリア', icon: '🎉', params: [] },
   { type: 'failure', label: 'ゲームオーバー', icon: '💀', params: [] },
@@ -37,6 +38,20 @@ const ACTION_LIBRARY = [
   { type: 'hide', label: '非表示', icon: '🫥', params: ['fadeOut', 'duration'] },
   { type: 'setFlag', label: 'フラグ設定', icon: '🚩', params: ['targetFlag', 'value'] },
   { type: 'switchAnimation', label: 'アニメ変更', icon: '🔄', params: ['animationIndex'] }
+];
+
+// 🆕 Phase C: タッチタイプ詳細定義
+const TOUCH_TYPE_OPTIONS = [
+  { value: 'down', label: 'タッチ開始', icon: '👇', description: 'タッチした瞬間' },
+  { value: 'up', label: 'タッチ終了', icon: '👆', description: '指を離した瞬間' },
+  { value: 'hold', label: '長押し', icon: '⏱️', description: '一定時間押し続ける' }
+];
+
+// 🆕 Phase C: タッチターゲット詳細定義
+const TOUCH_TARGET_OPTIONS = [
+  { value: 'self', label: 'このオブジェクト', icon: '🎯', description: '設定中のオブジェクト' },
+  { value: 'stage', label: 'ステージ全体', icon: '🖼️', description: 'ゲーム画面全体' },
+  { value: 'stageArea', label: 'ステージ範囲指定', icon: '📐', description: 'ステージの一部範囲' }
 ];
 
 export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
@@ -50,32 +65,33 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
   const [actions, setActions] = useState<GameAction[]>(initialRule.actions);
   const [operator, setOperator] = useState<'AND' | 'OR'>(initialRule.triggers.operator);
   
-  // フラグ管理状態
+  // フラグ管理状態（Phase A・B保護）
   const [projectFlags, setProjectFlags] = useState<GameFlag[]>(project.script?.flags || []);
   const [newFlagName, setNewFlagName] = useState('');
   
-  // パラメータ編集状態
+  // 🆕 Phase C: 詳細パラメータ編集状態
   const [editingConditionIndex, setEditingConditionIndex] = useState<number | null>(null);
   const [editingActionIndex, setEditingActionIndex] = useState<number | null>(null);
+  const [showParameterModal, setShowParameterModal] = useState(false);
 
-  // 通知システム（RuleListパターン）
+  // 通知システム（Phase A・B保護）
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'info';
     message: string;
   } | null>(null);
 
-  // 通知表示ヘルパー
+  // 通知表示ヘルパー（Phase A・B保護）
   const showNotification = (type: 'success' | 'error' | 'info', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 4000);
   };
 
-  // プロジェクトフラグ更新
+  // プロジェクトフラグ更新（Phase A・B保護）
   const updateProjectFlags = (flags: GameFlag[]) => {
     setProjectFlags(flags);
   };
 
-  // フラグ追加
+  // フラグ追加（Phase A・B保護）
   const addFlag = () => {
     if (newFlagName.trim()) {
       const newFlag: GameFlag = {
@@ -90,7 +106,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     }
   };
 
-  // フラグ削除
+  // フラグ削除（Phase A・B保護）
   const removeFlag = (flagId: string) => {
     const flag = projectFlags.find(f => f.id === flagId);
     if (confirm(`フラグ「${flag?.name}」を削除しますか？`)) {
@@ -99,14 +115,26 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     }
   };
 
-  // フラグ初期値変更
+  // フラグ初期値変更（Phase A・B保護）
   const toggleFlagInitialValue = (flagId: string) => {
     updateProjectFlags(projectFlags.map(flag => 
       flag.id === flagId ? { ...flag, initialValue: !flag.initialValue } : flag
     ));
   };
 
-  // 条件追加
+  // 🆕 Phase C: 詳細パラメータ編集開始
+  const startEditingCondition = (index: number) => {
+    setEditingConditionIndex(index);
+    setShowParameterModal(true);
+  };
+
+  // 🆕 Phase C: 詳細パラメータ編集完了
+  const finishEditingCondition = () => {
+    setEditingConditionIndex(null);
+    setShowParameterModal(false);
+  };
+
+  // 条件追加（Phase A・B保護・拡張対応）
   const addCondition = (type: string) => {
     let newCondition: TriggerCondition;
     
@@ -116,6 +144,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           type: 'touch',
           target: 'self',
           touchType: 'down'
+          // 🆕 Phase C: デフォルト詳細パラメータは後で設定
         };
         break;
       case 'time':
@@ -170,20 +199,237 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     showNotification('success', '条件を追加しました');
   };
 
-  // 条件削除
+  // 条件削除（Phase A・B保護）
   const removeCondition = (index: number) => {
     setConditions(conditions.filter((_, i) => i !== index));
     showNotification('success', '条件を削除しました');
   };
 
-  // 条件更新
+  // 🆕 Phase C: 条件更新（詳細パラメータ対応）
   const updateCondition = (index: number, updates: Partial<TriggerCondition>) => {
     setConditions(conditions.map((condition, i) => 
       i === index ? ({ ...condition, ...updates } as TriggerCondition) : condition
     ));
   };
 
-  // アクション追加
+  // 🆕 Phase C: タッチ条件詳細設定コンポーネント
+  const TouchConditionEditor = ({ condition, index }: { condition: TriggerCondition & { type: 'touch' }, index: number }) => {
+    const touchCondition = condition;
+    
+    return (
+      <ModernCard 
+        variant="outlined" 
+        size="md"
+        style={{ 
+          backgroundColor: DESIGN_TOKENS.colors.purple[50],
+          border: `2px solid ${DESIGN_TOKENS.colors.purple[200]}`,
+          marginTop: DESIGN_TOKENS.spacing[4]
+        }}
+      >
+        <h5 style={{
+          fontSize: DESIGN_TOKENS.typography.fontSize.md,
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+          color: DESIGN_TOKENS.colors.purple[800],
+          margin: 0,
+          marginBottom: DESIGN_TOKENS.spacing[4],
+          display: 'flex',
+          alignItems: 'center',
+          gap: DESIGN_TOKENS.spacing[2]
+        }}>
+          <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>👆</span>
+          タッチ条件詳細設定
+        </h5>
+
+        {/* タッチタイプ選択 */}
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.purple[700],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            タッチの種類
+          </label>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: DESIGN_TOKENS.spacing[2]
+          }}>
+            {TOUCH_TYPE_OPTIONS.map((option) => (
+              <ModernButton
+                key={option.value}
+                variant={touchCondition.touchType === option.value ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => updateCondition(index, { touchType: option.value as any })}
+                style={{
+                  borderColor: touchCondition.touchType === option.value 
+                    ? DESIGN_TOKENS.colors.purple[500] 
+                    : DESIGN_TOKENS.colors.purple[300],
+                  backgroundColor: touchCondition.touchType === option.value 
+                    ? DESIGN_TOKENS.colors.purple[500] 
+                    : 'transparent',
+                  color: touchCondition.touchType === option.value 
+                    ? DESIGN_TOKENS.colors.neutral[0] 
+                    : DESIGN_TOKENS.colors.purple[700],
+                  padding: DESIGN_TOKENS.spacing[3],
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: DESIGN_TOKENS.spacing[1]
+                }}
+              >
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>{option.icon}</span>
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}>
+                  {option.label}
+                </span>
+              </ModernButton>
+            ))}
+          </div>
+        </div>
+
+        {/* 長押し時間設定（holdの場合のみ表示） */}
+        {touchCondition.touchType === 'hold' && (
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[700],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              長押し時間: {touchCondition.holdDuration || 1}秒
+            </label>
+            <input
+              type="range"
+              min="0.5"
+              max="5"
+              step="0.5"
+              value={touchCondition.holdDuration || 1}
+              onChange={(e) => updateCondition(index, { holdDuration: parseFloat(e.target.value) })}
+              style={{
+                width: '100%',
+                height: '8px',
+                backgroundColor: DESIGN_TOKENS.colors.purple[200],
+                borderRadius: DESIGN_TOKENS.borderRadius.full,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.purple[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>0.5秒</span>
+              <span>5秒</span>
+            </div>
+          </div>
+        )}
+
+        {/* タッチ対象選択 */}
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.purple[700],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            タッチ対象
+          </label>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: DESIGN_TOKENS.spacing[2]
+          }}>
+            {TOUCH_TARGET_OPTIONS.map((option) => (
+              <ModernButton
+                key={option.value}
+                variant={touchCondition.target === option.value ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => updateCondition(index, { target: option.value })}
+                style={{
+                  borderColor: touchCondition.target === option.value 
+                    ? DESIGN_TOKENS.colors.purple[500] 
+                    : DESIGN_TOKENS.colors.purple[300],
+                  backgroundColor: touchCondition.target === option.value 
+                    ? DESIGN_TOKENS.colors.purple[500] 
+                    : 'transparent',
+                  color: touchCondition.target === option.value 
+                    ? DESIGN_TOKENS.colors.neutral[0] 
+                    : DESIGN_TOKENS.colors.purple[700],
+                  padding: DESIGN_TOKENS.spacing[2],
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: DESIGN_TOKENS.spacing[1]
+                }}
+              >
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.md }}>{option.icon}</span>
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
+                  {option.label}
+                </span>
+              </ModernButton>
+            ))}
+          </div>
+        </div>
+
+        {/* オブジェクト指定（targetが特定オブジェクトの場合） */}
+        {touchCondition.target !== 'self' && touchCondition.target !== 'stage' && touchCondition.target !== 'stageArea' && (
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[700],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              対象オブジェクト
+            </label>
+            <select
+              value={touchCondition.target}
+              onChange={(e) => updateCondition(index, { target: e.target.value })}
+              style={{
+                width: '100%',
+                padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                border: `1px solid ${DESIGN_TOKENS.colors.purple[300]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.md,
+                backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                outline: 'none'
+              }}
+            >
+              <option value="">オブジェクトを選択</option>
+              {project.assets.objects.map((obj) => (
+                <option key={obj.id} value={obj.id}>
+                  {obj.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div style={{
+          padding: DESIGN_TOKENS.spacing[3],
+          backgroundColor: DESIGN_TOKENS.colors.purple[100],
+          borderRadius: DESIGN_TOKENS.borderRadius.md,
+          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+          color: DESIGN_TOKENS.colors.purple[700]
+        }}>
+          💡 設定内容: {TOUCH_TYPE_OPTIONS.find(t => t.value === touchCondition.touchType)?.description}
+          {touchCondition.touchType === 'hold' && `（${touchCondition.holdDuration || 1}秒間）`}
+          {touchCondition.target === 'self' ? ' - このオブジェクトへのタッチ' :
+           touchCondition.target === 'stage' ? ' - ステージ全体へのタッチ' :
+           ' - 指定オブジェクトへのタッチ'}
+        </div>
+      </ModernCard>
+    );
+  };
+
+  // アクション追加（Phase A・B保護）
   const addAction = (type: string) => {
     let newAction: GameAction;
     
@@ -262,13 +508,13 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     showNotification('success', 'アクションを追加しました');
   };
 
-  // アクション削除
+  // アクション削除（Phase A・B保護）
   const removeAction = (index: number) => {
     setActions(actions.filter((_, i) => i !== index));
     showNotification('success', 'アクションを削除しました');
   };
 
-  // アクション更新
+  // アクション更新（Phase A・B保護）
   const updateAction = (index: number, updates: Partial<GameAction>) => {
     setActions(actions.map((action, i) => {
       if (i !== index) return action;
@@ -295,7 +541,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     }));
   };
 
-  // 保存処理
+  // 保存処理（Phase A・B保護）
   const handleSave = () => {
     if (!rule.name.trim()) {
       showNotification('error', 'ルール名を入力してください');
@@ -328,7 +574,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
 
   return (
     <>
-      {/* 通知表示（RuleListパターン） */}
+      {/* 通知表示（Phase A・B保護） */}
       {notification && (
         <div 
           style={{
@@ -401,7 +647,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           }}
         >
           
-          {/* ヘッダー - ModernCard + purple系統一 */}
+          {/* ヘッダー（Phase A・B保護） */}
           <ModernCard 
             variant="filled" 
             size="lg"
@@ -441,7 +687,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     marginBottom: DESIGN_TOKENS.spacing[2]
                   }}
                 >
-                  高度なルール設定
+                  高度なルール設定 - Phase C
                 </h3>
                 <p 
                   style={{
@@ -451,13 +697,13 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     margin: 0
                   }}
                 >
-                  複数条件・複数アクション・フラグ管理・包括的ゲームロジック設定
+                  詳細パラメータ設定・手軽さ極限・創作民主化実現
                 </p>
               </div>
             </div>
           </ModernCard>
 
-          {/* メインコンテンツ - 🔧 新レイアウト: フィードバック要求対応 */}
+          {/* メインコンテンツ（Phase A・B保護・レイアウト維持） */}
           <div 
             style={{
               flex: 1,
@@ -468,7 +714,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             <div 
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr', // 🔧 2列グリッド
+                gridTemplateColumns: '1fr 1fr',
                 gap: DESIGN_TOKENS.spacing[6],
                 padding: DESIGN_TOKENS.spacing[6],
                 maxWidth: '1400px',
@@ -476,7 +722,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
               }}
             >
               
-              {/* 🔧 左上: ルール名 */}
+              {/* 左上: ルール名（Phase A・B保護） */}
               <ModernCard variant="outlined" size="lg">
                 <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
                   <div style={{ 
@@ -523,7 +769,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 </div>
               </ModernCard>
 
-              {/* 🔧 右上: 実行アクション（簡易版） */}
+              {/* 右上: 実行アクション（簡易版・Phase A・B保護） */}
               <ModernCard 
                 variant="outlined" 
                 size="lg"
@@ -546,7 +792,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   実行アクション ({actions.length}個)
                 </h4>
 
-                {/* アクション追加ボタン（コンパクト版） */}
+                {/* アクション追加ボタン（コンパクト版・Phase A・B保護） */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
@@ -571,31 +817,56 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   ))}
                 </div>
 
-                {/* アクション一覧（簡易表示） */}
+                {/* アクション一覧（簡易表示・Phase A・B保護） */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
                   {actions.slice(0, 3).map((action, index) => (
-                    <div 
-                      key={index}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: DESIGN_TOKENS.spacing[2],
-                        padding: DESIGN_TOKENS.spacing[2],
-                        backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-                        borderRadius: DESIGN_TOKENS.borderRadius.md,
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs
-                      }}
-                    >
-                      <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.icon}</span>
-                      <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.label}</span>
-                      <ModernButton
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => removeAction(index)}
-                        style={{ marginLeft: 'auto' }}
+                    <div key={index}>
+                      <div 
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: DESIGN_TOKENS.spacing[2],
+                          padding: DESIGN_TOKENS.spacing[2],
+                          backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                          borderRadius: DESIGN_TOKENS.borderRadius.md,
+                          fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                        }}
                       >
-                        ✕
-                      </ModernButton>
+                        <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.icon}</span>
+                        <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.label}</span>
+                        {/* 🆕 Phase C: アクション詳細設定ボタン（音再生のみ） */}
+                        {action.type === 'playSound' && (
+                          <ModernButton
+                            variant="outline"
+                            size="xs"
+                            onClick={() => {/* 詳細設定は常に表示済み */}}
+                            style={{
+                              borderColor: DESIGN_TOKENS.colors.success[200],
+                              color: DESIGN_TOKENS.colors.success[600],
+                              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                              marginLeft: 'auto',
+                              marginRight: DESIGN_TOKENS.spacing[1]
+                            }}
+                          >
+                            ⚙️
+                          </ModernButton>
+                        )}
+                        <ModernButton
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => removeAction(index)}
+                          style={{ 
+                            marginLeft: action.type === 'playSound' ? 0 : 'auto'
+                          }}
+                        >
+                          ✕
+                        </ModernButton>
+                      </div>
+                      
+                      {/* 🆕 Phase C: 音再生アクション詳細設定UI */}
+                      {action.type === 'playSound' && (
+                        <SoundActionEditor action={action} index={index} />
+                      )}
                     </div>
                   ))}
                   {actions.length > 3 && (
@@ -610,7 +881,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 </div>
               </ModernCard>
 
-              {/* 🔧 左下: 発動条件（詳細版） */}
+              {/* 左下: 発動条件（詳細版・Phase C拡張） */}
               <ModernCard 
                 variant="outlined" 
                 size="lg"
@@ -648,7 +919,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   </select>
                 </div>
 
-                {/* 条件追加ボタン（コンパクト版） */}
+                {/* 条件追加ボタン（Phase A・B保護） */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
@@ -673,37 +944,57 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   ))}
                 </div>
 
-                {/* 条件一覧（簡易表示） */}
+                {/* 🆕 Phase C: 条件一覧（詳細パラメータ編集対応） */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
                   {conditions.map((condition, index) => (
-                    <div 
-                      key={index}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: DESIGN_TOKENS.spacing[2],
-                        padding: DESIGN_TOKENS.spacing[2],
-                        backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-                        borderRadius: DESIGN_TOKENS.borderRadius.md,
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs
-                      }}
-                    >
-                      <span>{CONDITION_LIBRARY.find(c => c.type === condition.type)?.icon}</span>
-                      <span>{CONDITION_LIBRARY.find(c => c.type === condition.type)?.label}</span>
-                      <ModernButton
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => removeCondition(index)}
-                        style={{ marginLeft: 'auto' }}
+                    <div key={index}>
+                      <div 
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: DESIGN_TOKENS.spacing[2],
+                          padding: DESIGN_TOKENS.spacing[2],
+                          backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                          borderRadius: DESIGN_TOKENS.borderRadius.md,
+                          fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                        }}
                       >
-                        ✕
-                      </ModernButton>
+                        <span>{CONDITION_LIBRARY.find(c => c.type === condition.type)?.icon}</span>
+                        <span>{CONDITION_LIBRARY.find(c => c.type === condition.type)?.label}</span>
+                        {/* 🆕 Phase C: 詳細設定ボタン */}
+                        <ModernButton
+                          variant="outline"
+                          size="xs"
+                          onClick={() => startEditingCondition(index)}
+                          style={{
+                            borderColor: DESIGN_TOKENS.colors.purple[300],
+                            color: DESIGN_TOKENS.colors.purple[700],
+                            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                            marginLeft: 'auto',
+                            marginRight: DESIGN_TOKENS.spacing[1]
+                          }}
+                        >
+                          ⚙️
+                        </ModernButton>
+                        <ModernButton
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => removeCondition(index)}
+                        >
+                          ✕
+                        </ModernButton>
+                      </div>
+                      
+                      {/* 🆕 Phase C: タッチ条件詳細設定UI */}
+                      {condition.type === 'touch' && (
+                        <TouchConditionEditor condition={condition} index={index} />
+                      )}
                     </div>
                   ))}
                 </div>
               </ModernCard>
 
-              {/* 🔧 右下: フラグ管理（独立配置） */}
+              {/* 右下: フラグ管理（Phase A・B保護） */}
               <ModernCard 
                 variant="outlined" 
                 size="lg"
@@ -726,7 +1017,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   フラグ管理 ({projectFlags.length}個)
                 </h4>
 
-                {/* 新規フラグ追加 */}
+                {/* 新規フラグ追加（Phase A・B保護） */}
                 <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2], marginBottom: DESIGN_TOKENS.spacing[4] }}>
                   <input
                     type="text"
@@ -756,7 +1047,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   </ModernButton>
                 </div>
 
-                {/* フラグ一覧（コンパクト表示） */}
+                {/* フラグ一覧（Phase A・B保護） */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
                   {projectFlags.slice(0, 4).map((flag) => (
                     <div 
@@ -802,7 +1093,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
               </ModernCard>
             </div>
 
-            {/* 🔧 新配置: ルールプレビュー（下部全幅・フラグ管理の邪魔しない） */}
+            {/* ルールプレビュー（Phase A・B保護） */}
             <div style={{ padding: `0 ${DESIGN_TOKENS.spacing[6]} ${DESIGN_TOKENS.spacing[6]}` }}>
               <RulePreview
                 currentRule={{
@@ -820,7 +1111,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             </div>
           </div>
 
-          {/* フッター */}
+          {/* フッター（Phase A・B保護） */}
           <div 
             style={{
               borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
