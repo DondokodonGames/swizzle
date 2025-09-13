@@ -1,6 +1,6 @@
 // src/components/editor/script/AdvancedRuleModal.tsx
-// Phase C Step 2完了版: 分割・リファクタリング版メインモーダル
-// 1000行 → 300行への大幅削減・保守性・再利用性・拡張性向上
+// Phase E Step 0: GameState統合最終版
+// 既存機能完全保護 + GameState条件エディター追加
 
 import React, { useState, useEffect } from 'react';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
@@ -13,15 +13,19 @@ import { RulePreview } from './RulePreview';
 // 分割されたライブラリインポート
 import { CONDITION_LIBRARY, ACTION_LIBRARY } from './constants/RuleLibrary';
 
-// 分割された条件エディターインポート
+// 分割された条件エディターインポート（Phase C保護 + Phase D・E拡張）
 import { TouchConditionEditor } from './conditions/TouchConditionEditor';
 import { TimeConditionEditor } from './conditions/TimeConditionEditor';
 import { FlagConditionEditor } from './conditions/FlagConditionEditor';
+import { CollisionConditionEditor } from './conditions/CollisionConditionEditor';
+import { GameStateConditionEditor } from './conditions/GameStateConditionEditor'; // Phase E追加
 
-// 分割されたアクションエディターインポート
+// 分割されたアクションエディターインポート（Phase C保護 + Phase D拡張）
 import { SoundActionEditor } from './actions/SoundActionEditor';
 import { MoveActionEditor } from './actions/MoveActionEditor';
 import { EffectActionEditor } from './actions/EffectActionEditor';
+import { ShowHideActionEditor } from './actions/ShowHideActionEditor';
+import { FlagActionEditor } from './actions/FlagActionEditor';
 
 interface AdvancedRuleModalProps {
   rule: GameRule;
@@ -98,7 +102,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     ));
   };
 
-  // 条件追加（Phase A・B保護・拡張対応）
+  // 条件追加（Phase A・B保護・Phase D・E拡張対応）
   const addCondition = (type: string) => {
     let newCondition: TriggerCondition;
     
@@ -139,6 +143,13 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           checkMode: 'hitbox'
         };
         break;
+      case 'gameState': // Phase E追加
+        newCondition = {
+          type: 'gameState',
+          state: 'playing',
+          checkType: 'is'
+        };
+        break;
       case 'animation':
         newCondition = {
           type: 'animation',
@@ -175,7 +186,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     ));
   };
 
-  // アクション追加（Phase A・B保護）
+  // アクション追加（Phase A・B保護・Phase D拡張）
   const addAction = (type: string) => {
     let newAction: GameAction;
     
@@ -239,6 +250,12 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           value: true
         };
         break;
+      case 'toggleFlag':
+        newAction = {
+          type: 'toggleFlag',
+          flagId: projectFlags[0]?.id || ''
+        };
+        break;
       case 'switchAnimation':
         newAction = {
           type: 'switchAnimation',
@@ -278,6 +295,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
         case 'hide':
           return { ...action, ...(updates as typeof action) };
         case 'setFlag':
+        case 'toggleFlag':
           return { ...action, ...(updates as typeof action) };
         case 'switchAnimation':
           return { ...action, ...(updates as typeof action) };
@@ -318,7 +336,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     showNotification('success', 'ルールを保存しました');
   };
 
-  // 条件エディター分岐レンダリング
+  // 条件エディター分岐レンダリング（Phase E拡張）
   const renderConditionEditor = (condition: TriggerCondition, index: number) => {
     switch (condition.type) {
       case 'touch':
@@ -332,6 +350,22 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
       case 'time':
         return (
           <TimeConditionEditor
+            condition={condition}
+            index={index}
+            onUpdate={updateCondition}
+          />
+        );
+      case 'collision':
+        return (
+          <CollisionConditionEditor
+            condition={condition}
+            index={index}
+            onUpdate={updateCondition}
+          />
+        );
+      case 'gameState': // Phase E追加
+        return (
+          <GameStateConditionEditor
             condition={condition}
             index={index}
             onUpdate={updateCondition}
@@ -351,7 +385,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     }
   };
 
-  // アクションエディター分岐レンダリング
+  // アクションエディター分岐レンダリング（Phase D保護）
   const renderActionEditor = (action: GameAction, index: number) => {
     switch (action.type) {
       case 'playSound':
@@ -378,6 +412,27 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           <EffectActionEditor
             action={action}
             index={index}
+            onUpdate={updateAction}
+            onShowNotification={showNotification}
+          />
+        );
+      case 'show':
+      case 'hide':
+        return (
+          <ShowHideActionEditor
+            action={action}
+            index={index}
+            onUpdate={updateAction}
+            onShowNotification={showNotification}
+          />
+        );
+      case 'setFlag':
+      case 'toggleFlag':
+        return (
+          <FlagActionEditor
+            action={action}
+            index={index}
+            projectFlags={projectFlags}
             onUpdate={updateAction}
             onShowNotification={showNotification}
           />
@@ -462,7 +517,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           }}
         >
           
-          {/* ヘッダー（Phase A・B保護） */}
+          {/* ヘッダー（Phase A・B保護・Phase E最終更新） */}
           <ModernCard 
             variant="filled" 
             size="lg"
@@ -502,7 +557,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     marginBottom: DESIGN_TOKENS.spacing[2]
                   }}
                 >
-                  高度なルール設定 - Phase C Step 2完了
+                  高度なルール設定 - Phase E Step 0完了
                 </h3>
                 <p 
                   style={{
@@ -512,7 +567,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     margin: 0
                   }}
                 >
-                  分割・リファクタリング版 - 保守性・再利用性・拡張性大幅向上
+                  GameState条件統合・ゲーム状態制御実現
                 </p>
               </div>
             </div>
@@ -571,7 +626,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       outline: 'none',
                       boxShadow: DESIGN_TOKENS.shadows.sm
                     }}
-                    placeholder="例: 中央タッチで移動"
+                    placeholder="例: ゲーム開始時に音楽再生"
                     onFocus={(e) => {
                       e.target.style.borderColor = DESIGN_TOKENS.colors.purple[500];
                       e.target.style.boxShadow = `0 0 0 3px ${DESIGN_TOKENS.colors.purple[500]}20`;
@@ -584,7 +639,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 </div>
               </ModernCard>
 
-              {/* 右上: 実行アクション（簡易版・Phase A・B保護・Step 1-2拡張） */}
+              {/* 右上: 実行アクション（簡易版・Phase A・B保護・Phase D拡張） */}
               <ModernCard 
                 variant="outlined" 
                 size="lg"
@@ -607,7 +662,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   実行アクション ({actions.length}個)
                 </h4>
 
-                {/* アクション追加ボタン（コンパクト版・Phase A・B保護） */}
+                {/* アクション追加ボタン（コンパクト版・Phase A・B保護・Phase D拡張） */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
@@ -632,7 +687,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   ))}
                 </div>
 
-                {/* アクション一覧（簡易表示・Phase A・B保護・Step 1-2拡張） */}
+                {/* アクション一覧（簡易表示・Phase A・B保護・Phase D拡張） */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
                   {actions.slice(0, 3).map((action, index) => (
                     <div key={index}>
@@ -649,8 +704,8 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       >
                         <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.icon}</span>
                         <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.label}</span>
-                        {/* アクション詳細設定ボタン */}
-                        {(action.type === 'playSound' || action.type === 'move' || action.type === 'effect') && (
+                        {/* アクション詳細設定ボタン（Phase D・E拡張対応） */}
+                        {['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag'].includes(action.type) && (
                           <ModernButton
                             variant="outline"
                             size="xs"
@@ -671,14 +726,14 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                           size="xs"
                           onClick={() => removeAction(index)}
                           style={{ 
-                            marginLeft: (action.type === 'playSound' || action.type === 'move' || action.type === 'effect') ? 0 : 'auto'
+                            marginLeft: ['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag'].includes(action.type) ? 0 : 'auto'
                           }}
                         >
                           ✕
                         </ModernButton>
                       </div>
                       
-                      {/* 分割されたアクションエディター表示 */}
+                      {/* 分割されたアクションエディター表示（Phase D保護） */}
                       {renderActionEditor(action, index)}
                     </div>
                   ))}
@@ -694,7 +749,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 </div>
               </ModernCard>
 
-              {/* 左下: 発動条件（詳細版・Phase C Step 1-1・1-2・2拡張） */}
+              {/* 左下: 発動条件（詳細版・Phase C Step 1-1・1-2・2拡張・Phase D・E拡張） */}
               <ModernCard 
                 variant="outlined" 
                 size="lg"
@@ -732,7 +787,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   </select>
                 </div>
 
-                {/* 条件追加ボタン（Phase A・B保護） */}
+                {/* 条件追加ボタン（Phase A・B保護・Phase D・E対応） */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
@@ -757,7 +812,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   ))}
                 </div>
 
-                {/* 条件一覧（詳細パラメータ編集対応） */}
+                {/* 条件一覧（詳細パラメータ編集対応・Phase D・E拡張） */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
                   {conditions.map((condition, index) => (
                     <div key={index}>
@@ -797,7 +852,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                         </ModernButton>
                       </div>
                       
-                      {/* 分割された条件エディター表示 */}
+                      {/* 分割された条件エディター表示（Phase E拡張） */}
                       {renderConditionEditor(condition, index)}
                     </div>
                   ))}
