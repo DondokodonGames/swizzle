@@ -1,6 +1,6 @@
 // src/components/editor/script/AdvancedRuleModal.tsx
-// Phase C Step 1: タッチ条件詳細化・基本パラメータ実装
-// Phase A・B成果完全保護・段階的詳細化
+// Phase C Step 1-2: 音再生・フラグ詳細化実装（TypeScriptエラー修正版）
+// Phase A・B・Step 1-1完全保護・段階的詳細化
 
 import React, { useState, useEffect } from 'react';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
@@ -40,18 +40,26 @@ const ACTION_LIBRARY = [
   { type: 'switchAnimation', label: 'アニメ変更', icon: '🔄', params: ['animationIndex'] }
 ];
 
-// 🆕 Phase C: タッチタイプ詳細定義
+// Phase C Step 1-1: タッチタイプ詳細定義（保護）
 const TOUCH_TYPE_OPTIONS = [
   { value: 'down', label: 'タッチ開始', icon: '👇', description: 'タッチした瞬間' },
   { value: 'up', label: 'タッチ終了', icon: '👆', description: '指を離した瞬間' },
   { value: 'hold', label: '長押し', icon: '⏱️', description: '一定時間押し続ける' }
 ];
 
-// 🆕 Phase C: タッチターゲット詳細定義
+// Phase C Step 1-1: タッチターゲット詳細定義（保護）
 const TOUCH_TARGET_OPTIONS = [
   { value: 'self', label: 'このオブジェクト', icon: '🎯', description: '設定中のオブジェクト' },
   { value: 'stage', label: 'ステージ全体', icon: '🖼️', description: 'ゲーム画面全体' },
   { value: 'stageArea', label: 'ステージ範囲指定', icon: '📐', description: 'ステージの一部範囲' }
+];
+
+// 🆕 Phase C Step 1-2: フラグ条件4パターン定義
+const FLAG_CONDITION_OPTIONS = [
+  { value: 'ON', label: 'ON状態', icon: '🟢', description: 'フラグがONの時' },
+  { value: 'OFF', label: 'OFF状態', icon: '🔴', description: 'フラグがOFFの時' },
+  { value: 'OFF_TO_ON', label: 'OFF→ON', icon: '🟢⬆️', description: 'OFFからONに変化した瞬間' },
+  { value: 'ON_TO_OFF', label: 'ON→OFF', icon: '🔴⬇️', description: 'ONからOFFに変化した瞬間' }
 ];
 
 export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
@@ -69,7 +77,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
   const [projectFlags, setProjectFlags] = useState<GameFlag[]>(project.script?.flags || []);
   const [newFlagName, setNewFlagName] = useState('');
   
-  // 🆕 Phase C: 詳細パラメータ編集状態
+  // Phase C: 詳細パラメータ編集状態（Step 1-1保護・拡張）
   const [editingConditionIndex, setEditingConditionIndex] = useState<number | null>(null);
   const [editingActionIndex, setEditingActionIndex] = useState<number | null>(null);
   const [showParameterModal, setShowParameterModal] = useState(false);
@@ -122,13 +130,12 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     ));
   };
 
-  // 🆕 Phase C: 詳細パラメータ編集開始
+  // Phase C: 詳細パラメータ編集（Step 1-1保護・拡張）
   const startEditingCondition = (index: number) => {
     setEditingConditionIndex(index);
     setShowParameterModal(true);
   };
 
-  // 🆕 Phase C: 詳細パラメータ編集完了
   const finishEditingCondition = () => {
     setEditingConditionIndex(null);
     setShowParameterModal(false);
@@ -144,7 +151,6 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           type: 'touch',
           target: 'self',
           touchType: 'down'
-          // 🆕 Phase C: デフォルト詳細パラメータは後で設定
         };
         break;
       case 'time':
@@ -205,14 +211,14 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     showNotification('success', '条件を削除しました');
   };
 
-  // 🆕 Phase C: 条件更新（詳細パラメータ対応）
+  // Phase C: 条件更新（詳細パラメータ対応）
   const updateCondition = (index: number, updates: Partial<TriggerCondition>) => {
     setConditions(conditions.map((condition, i) => 
       i === index ? ({ ...condition, ...updates } as TriggerCondition) : condition
     ));
   };
 
-  // 🆕 Phase C: タッチ条件詳細設定コンポーネント
+  // Phase C Step 1-1: タッチ条件詳細設定コンポーネント（保護・エラー修正）
   const TouchConditionEditor = ({ condition, index }: { condition: TriggerCondition & { type: 'touch' }, index: number }) => {
     const touchCondition = condition;
     
@@ -227,7 +233,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
         }}
       >
         <h5 style={{
-          fontSize: DESIGN_TOKENS.typography.fontSize.md,
+          fontSize: DESIGN_TOKENS.typography.fontSize.base,
           fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
           color: DESIGN_TOKENS.colors.purple[800],
           margin: 0,
@@ -245,7 +251,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           <label style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
             fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-            color: DESIGN_TOKENS.colors.purple[700],
+            color: DESIGN_TOKENS.colors.purple[800],
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
@@ -265,13 +271,13 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 style={{
                   borderColor: touchCondition.touchType === option.value 
                     ? DESIGN_TOKENS.colors.purple[500] 
-                    : DESIGN_TOKENS.colors.purple[300],
+                    : DESIGN_TOKENS.colors.purple[200],
                   backgroundColor: touchCondition.touchType === option.value 
                     ? DESIGN_TOKENS.colors.purple[500] 
                     : 'transparent',
                   color: touchCondition.touchType === option.value 
                     ? DESIGN_TOKENS.colors.neutral[0] 
-                    : DESIGN_TOKENS.colors.purple[700],
+                    : DESIGN_TOKENS.colors.purple[800],
                   padding: DESIGN_TOKENS.spacing[3],
                   display: 'flex',
                   flexDirection: 'column',
@@ -294,7 +300,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
               fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.purple[700],
+              color: DESIGN_TOKENS.colors.purple[800],
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
@@ -320,7 +326,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
               display: 'flex',
               justifyContent: 'space-between',
               fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-              color: DESIGN_TOKENS.colors.purple[600],
+              color: DESIGN_TOKENS.colors.purple[500],
               marginTop: DESIGN_TOKENS.spacing[1]
             }}>
               <span>0.5秒</span>
@@ -334,7 +340,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           <label style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
             fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-            color: DESIGN_TOKENS.colors.purple[700],
+            color: DESIGN_TOKENS.colors.purple[800],
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
@@ -354,13 +360,13 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 style={{
                   borderColor: touchCondition.target === option.value 
                     ? DESIGN_TOKENS.colors.purple[500] 
-                    : DESIGN_TOKENS.colors.purple[300],
+                    : DESIGN_TOKENS.colors.purple[200],
                   backgroundColor: touchCondition.target === option.value 
                     ? DESIGN_TOKENS.colors.purple[500] 
                     : 'transparent',
                   color: touchCondition.target === option.value 
                     ? DESIGN_TOKENS.colors.neutral[0] 
-                    : DESIGN_TOKENS.colors.purple[700],
+                    : DESIGN_TOKENS.colors.purple[800],
                   padding: DESIGN_TOKENS.spacing[2],
                   display: 'flex',
                   flexDirection: 'column',
@@ -368,7 +374,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   gap: DESIGN_TOKENS.spacing[1]
                 }}
               >
-                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.md }}>{option.icon}</span>
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
                 <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
                   {option.label}
                 </span>
@@ -377,53 +383,321 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           </div>
         </div>
 
-        {/* オブジェクト指定（targetが特定オブジェクトの場合） */}
-        {touchCondition.target !== 'self' && touchCondition.target !== 'stage' && touchCondition.target !== 'stageArea' && (
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.purple[700],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              対象オブジェクト
-            </label>
-            <select
-              value={touchCondition.target}
-              onChange={(e) => updateCondition(index, { target: e.target.value })}
-              style={{
-                width: '100%',
-                padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
-                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                border: `1px solid ${DESIGN_TOKENS.colors.purple[300]}`,
-                borderRadius: DESIGN_TOKENS.borderRadius.md,
-                backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-                outline: 'none'
-              }}
-            >
-              <option value="">オブジェクトを選択</option>
-              {project.assets.objects.map((obj) => (
-                <option key={obj.id} value={obj.id}>
-                  {obj.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         <div style={{
           padding: DESIGN_TOKENS.spacing[3],
           backgroundColor: DESIGN_TOKENS.colors.purple[100],
-          borderRadius: DESIGN_TOKENS.borderRadius.md,
+          borderRadius: DESIGN_TOKENS.borderRadius.lg,
           fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-          color: DESIGN_TOKENS.colors.purple[700]
+          color: DESIGN_TOKENS.colors.purple[800]
         }}>
           💡 設定内容: {TOUCH_TYPE_OPTIONS.find(t => t.value === touchCondition.touchType)?.description}
           {touchCondition.touchType === 'hold' && `（${touchCondition.holdDuration || 1}秒間）`}
           {touchCondition.target === 'self' ? ' - このオブジェクトへのタッチ' :
            touchCondition.target === 'stage' ? ' - ステージ全体へのタッチ' :
            ' - 指定オブジェクトへのタッチ'}
+        </div>
+      </ModernCard>
+    );
+  };
+
+  // 🆕 Phase C Step 1-2: フラグ条件詳細設定コンポーネント（エラー修正）
+  const FlagConditionEditor = ({ condition, index }: { condition: TriggerCondition & { type: 'flag' }, index: number }) => {
+    const flagCondition = condition;
+    
+    return (
+      <ModernCard 
+        variant="outlined" 
+        size="md"
+        style={{ 
+          backgroundColor: DESIGN_TOKENS.colors.purple[50],
+          border: `2px solid ${DESIGN_TOKENS.colors.purple[200]}`,
+          marginTop: DESIGN_TOKENS.spacing[4]
+        }}
+      >
+        <h5 style={{
+          fontSize: DESIGN_TOKENS.typography.fontSize.base,
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+          color: DESIGN_TOKENS.colors.purple[800],
+          margin: 0,
+          marginBottom: DESIGN_TOKENS.spacing[4],
+          display: 'flex',
+          alignItems: 'center',
+          gap: DESIGN_TOKENS.spacing[2]
+        }}>
+          <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🚩</span>
+          フラグ条件詳細設定
+        </h5>
+
+        {/* フラグ選択 */}
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.purple[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            対象フラグ
+          </label>
+          <select
+            value={flagCondition.flagId}
+            onChange={(e) => updateCondition(index, { flagId: e.target.value })}
+            style={{
+              width: '100%',
+              padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              border: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`,
+              borderRadius: DESIGN_TOKENS.borderRadius.lg,
+              backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+              outline: 'none'
+            }}
+          >
+            <option value="">フラグを選択</option>
+            {projectFlags.map((flag) => (
+              <option key={flag.id} value={flag.id}>
+                {flag.name} ({flag.initialValue ? 'ON' : 'OFF'}初期値)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* フラグ条件タイプ選択 */}
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.purple[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            条件タイプ
+          </label>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: DESIGN_TOKENS.spacing[2]
+          }}>
+            {FLAG_CONDITION_OPTIONS.map((option) => (
+              <ModernButton
+                key={option.value}
+                variant={flagCondition.condition === option.value ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => updateCondition(index, { condition: option.value as any })}
+                style={{
+                  borderColor: flagCondition.condition === option.value 
+                    ? DESIGN_TOKENS.colors.purple[500] 
+                    : DESIGN_TOKENS.colors.purple[200],
+                  backgroundColor: flagCondition.condition === option.value 
+                    ? DESIGN_TOKENS.colors.purple[500] 
+                    : 'transparent',
+                  color: flagCondition.condition === option.value 
+                    ? DESIGN_TOKENS.colors.neutral[0] 
+                    : DESIGN_TOKENS.colors.purple[800],
+                  padding: DESIGN_TOKENS.spacing[2],
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: DESIGN_TOKENS.spacing[1]
+                }}
+              >
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
+                  {option.label}
+                </span>
+              </ModernButton>
+            ))}
+          </div>
+        </div>
+
+        <div style={{
+          padding: DESIGN_TOKENS.spacing[3],
+          backgroundColor: DESIGN_TOKENS.colors.purple[100],
+          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+          color: DESIGN_TOKENS.colors.purple[800]
+        }}>
+          💡 設定内容: {FLAG_CONDITION_OPTIONS.find(f => f.value === flagCondition.condition)?.description}
+          {flagCondition.flagId && projectFlags.find(f => f.id === flagCondition.flagId) && 
+            ` - 「${projectFlags.find(f => f.id === flagCondition.flagId)?.name}」フラグ`}
+        </div>
+      </ModernCard>
+    );
+  };
+
+  // 🆕 Phase C Step 1-2: 音再生アクション詳細設定コンポーネント（エラー修正）
+  const SoundActionEditor = ({ action, index }: { action: GameAction & { type: 'playSound' }, index: number }) => {
+    const soundAction = action;
+    
+    return (
+      <ModernCard 
+        variant="outlined" 
+        size="md"
+        style={{ 
+          backgroundColor: DESIGN_TOKENS.colors.success[50],
+          border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
+          marginTop: DESIGN_TOKENS.spacing[3]
+        }}
+      >
+        <h5 style={{
+          fontSize: DESIGN_TOKENS.typography.fontSize.base,
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+          color: DESIGN_TOKENS.colors.success[800],
+          margin: 0,
+          marginBottom: DESIGN_TOKENS.spacing[4],
+          display: 'flex',
+          alignItems: 'center',
+          gap: DESIGN_TOKENS.spacing[2]
+        }}>
+          <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🔊</span>
+          音再生詳細設定
+        </h5>
+
+        {/* SE選択 */}
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.success[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            音声選択
+          </label>
+          <select
+            value={soundAction.soundId}
+            onChange={(e) => updateAction(index, { soundId: e.target.value })}
+            style={{
+              width: '100%',
+              padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              border: `1px solid ${DESIGN_TOKENS.colors.success[200]}`,
+              borderRadius: DESIGN_TOKENS.borderRadius.lg,
+              backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+              outline: 'none'
+            }}
+          >
+            <option value="">音声を選択</option>
+            {project.assets.audio?.se?.map((sound) => (
+              <option key={sound.id} value={sound.id}>
+                {sound.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* 音量調整 */}
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.success[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            音量: {Math.round((soundAction.volume || 0.8) * 100)}%
+          </label>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
+            value={soundAction.volume || 0.8}
+            onChange={(e) => updateAction(index, { volume: parseFloat(e.target.value) })}
+            style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: DESIGN_TOKENS.colors.success[200],
+              borderRadius: DESIGN_TOKENS.borderRadius.full,
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          />
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+            color: DESIGN_TOKENS.colors.success[600],
+            marginTop: DESIGN_TOKENS.spacing[1]
+          }}>
+            <span>0%</span>
+            <span>100%</span>
+          </div>
+        </div>
+
+        {/* 音量レベル表示 */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: DESIGN_TOKENS.spacing[2],
+          marginBottom: DESIGN_TOKENS.spacing[4]
+        }}>
+          <span style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+            color: DESIGN_TOKENS.colors.success[800],
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
+          }}>
+            音量レベル:
+          </span>
+          <div style={{
+            flex: 1,
+            height: '8px',
+            backgroundColor: DESIGN_TOKENS.colors.neutral[200],
+            borderRadius: DESIGN_TOKENS.borderRadius.full,
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${(soundAction.volume || 0.8) * 100}%`,
+              backgroundColor: DESIGN_TOKENS.colors.success[500],
+              transition: `width ${DESIGN_TOKENS.animation.duration.fast} ${DESIGN_TOKENS.animation.easing.inOut}`
+            }} />
+          </div>
+          <span style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+            color: DESIGN_TOKENS.colors.success[800],
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+            minWidth: '40px',
+            textAlign: 'right'
+          }}>
+            {Math.round((soundAction.volume || 0.8) * 100)}%
+          </span>
+        </div>
+
+        {/* プレビュー再生ボタン */}
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <ModernButton
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // TODO: Phase C Step 2で実装予定
+              showNotification('info', 'プレビュー再生機能は今後実装予定です');
+            }}
+            style={{
+              borderColor: DESIGN_TOKENS.colors.success[200],
+              color: DESIGN_TOKENS.colors.success[600],
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: DESIGN_TOKENS.spacing[2]
+            }}
+          >
+            <span>▶️</span>
+            <span>プレビュー再生</span>
+          </ModernButton>
+        </div>
+
+        <div style={{
+          padding: DESIGN_TOKENS.spacing[3],
+          backgroundColor: DESIGN_TOKENS.colors.success[100],
+          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+          color: DESIGN_TOKENS.colors.success[800]
+        }}>
+          💡 設定内容: 
+          {soundAction.soundId 
+            ? `「${project.assets.audio?.se?.find(s => s.id === soundAction.soundId)?.name || '音声'}」を${Math.round((soundAction.volume || 0.8) * 100)}%で再生`
+            : '音声を選択してください'}
         </div>
       </ModernCard>
     );
@@ -514,7 +788,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     showNotification('success', 'アクションを削除しました');
   };
 
-  // アクション更新（Phase A・B保護）
+  // アクション更新（Phase A・B保護・拡張）
   const updateAction = (index: number, updates: Partial<GameAction>) => {
     setActions(actions.map((action, i) => {
       if (i !== index) return action;
@@ -687,7 +961,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     marginBottom: DESIGN_TOKENS.spacing[2]
                   }}
                 >
-                  高度なルール設定 - Phase C
+                  高度なルール設定 - Phase C Step 1-2完了
                 </h3>
                 <p 
                   style={{
@@ -697,7 +971,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     margin: 0
                   }}
                 >
-                  詳細パラメータ設定・手軽さ極限・創作民主化実現
+                  タッチ・音再生・フラグ詳細設定完了・TypeScriptエラー修正・手軽さ極限実現
                 </p>
               </div>
             </div>
@@ -769,7 +1043,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 </div>
               </ModernCard>
 
-              {/* 右上: 実行アクション（簡易版・Phase A・B保護） */}
+              {/* 右上: 実行アクション（簡易版・Phase A・B保護・Step 1-2拡張） */}
               <ModernCard 
                 variant="outlined" 
                 size="lg"
@@ -817,7 +1091,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   ))}
                 </div>
 
-                {/* アクション一覧（簡易表示・Phase A・B保護） */}
+                {/* アクション一覧（簡易表示・Phase A・B保護・Step 1-2拡張） */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
                   {actions.slice(0, 3).map((action, index) => (
                     <div key={index}>
@@ -828,13 +1102,13 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                           gap: DESIGN_TOKENS.spacing[2],
                           padding: DESIGN_TOKENS.spacing[2],
                           backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-                          borderRadius: DESIGN_TOKENS.borderRadius.md,
+                          borderRadius: DESIGN_TOKENS.borderRadius.lg,
                           fontSize: DESIGN_TOKENS.typography.fontSize.xs
                         }}
                       >
                         <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.icon}</span>
                         <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.label}</span>
-                        {/* 🆕 Phase C: アクション詳細設定ボタン（音再生のみ） */}
+                        {/* Phase C Step 1-2: アクション詳細設定ボタン */}
                         {action.type === 'playSound' && (
                           <ModernButton
                             variant="outline"
@@ -863,7 +1137,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                         </ModernButton>
                       </div>
                       
-                      {/* 🆕 Phase C: 音再生アクション詳細設定UI */}
+                      {/* Phase C Step 1-2: 音再生アクション詳細設定UI */}
                       {action.type === 'playSound' && (
                         <SoundActionEditor action={action} index={index} />
                       )}
@@ -881,7 +1155,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 </div>
               </ModernCard>
 
-              {/* 左下: 発動条件（詳細版・Phase C拡張） */}
+              {/* 左下: 発動条件（詳細版・Phase C Step 1-1・1-2拡張） */}
               <ModernCard 
                 variant="outlined" 
                 size="lg"
@@ -908,7 +1182,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     onChange={(e) => setOperator(e.target.value as 'AND' | 'OR')}
                     style={{
                       fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                      border: `1px solid ${DESIGN_TOKENS.colors.purple[300]}`,
+                      border: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`,
                       borderRadius: DESIGN_TOKENS.borderRadius.lg,
                       padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
                       backgroundColor: DESIGN_TOKENS.colors.neutral[0]
@@ -933,8 +1207,8 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       size="xs"
                       onClick={() => addCondition(conditionType.type)}
                       style={{
-                        borderColor: DESIGN_TOKENS.colors.purple[300],
-                        color: DESIGN_TOKENS.colors.purple[700],
+                        borderColor: DESIGN_TOKENS.colors.purple[200],
+                        color: DESIGN_TOKENS.colors.purple[800],
                         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                         padding: DESIGN_TOKENS.spacing[1]
                       }}
@@ -944,7 +1218,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   ))}
                 </div>
 
-                {/* 🆕 Phase C: 条件一覧（詳細パラメータ編集対応） */}
+                {/* Phase C Step 1-1・1-2: 条件一覧（詳細パラメータ編集対応） */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
                   {conditions.map((condition, index) => (
                     <div key={index}>
@@ -955,20 +1229,20 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                           gap: DESIGN_TOKENS.spacing[2],
                           padding: DESIGN_TOKENS.spacing[2],
                           backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-                          borderRadius: DESIGN_TOKENS.borderRadius.md,
+                          borderRadius: DESIGN_TOKENS.borderRadius.lg,
                           fontSize: DESIGN_TOKENS.typography.fontSize.xs
                         }}
                       >
                         <span>{CONDITION_LIBRARY.find(c => c.type === condition.type)?.icon}</span>
                         <span>{CONDITION_LIBRARY.find(c => c.type === condition.type)?.label}</span>
-                        {/* 🆕 Phase C: 詳細設定ボタン */}
+                        {/* Phase C: 詳細設定ボタン */}
                         <ModernButton
                           variant="outline"
                           size="xs"
                           onClick={() => startEditingCondition(index)}
                           style={{
-                            borderColor: DESIGN_TOKENS.colors.purple[300],
-                            color: DESIGN_TOKENS.colors.purple[700],
+                            borderColor: DESIGN_TOKENS.colors.purple[200],
+                            color: DESIGN_TOKENS.colors.purple[800],
                             fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                             marginLeft: 'auto',
                             marginRight: DESIGN_TOKENS.spacing[1]
@@ -985,9 +1259,14 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                         </ModernButton>
                       </div>
                       
-                      {/* 🆕 Phase C: タッチ条件詳細設定UI */}
+                      {/* Phase C Step 1-1: タッチ条件詳細設定UI（保護） */}
                       {condition.type === 'touch' && (
                         <TouchConditionEditor condition={condition} index={index} />
+                      )}
+                      
+                      {/* Phase C Step 1-2: フラグ条件詳細設定UI */}
+                      {condition.type === 'flag' && (
+                        <FlagConditionEditor condition={condition} index={index} />
                       )}
                     </div>
                   ))}
@@ -1058,7 +1337,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                         gap: DESIGN_TOKENS.spacing[2],
                         padding: DESIGN_TOKENS.spacing[2],
                         backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-                        borderRadius: DESIGN_TOKENS.borderRadius.md,
+                        borderRadius: DESIGN_TOKENS.borderRadius.lg,
                         fontSize: DESIGN_TOKENS.typography.fontSize.xs
                       }}
                     >
