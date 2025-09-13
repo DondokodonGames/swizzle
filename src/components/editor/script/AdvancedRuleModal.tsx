@@ -1,6 +1,6 @@
 // src/components/editor/script/AdvancedRuleModal.tsx
-// Phase C Step 1-2: 音再生・フラグ詳細化実装（TypeScriptエラー修正版）
-// Phase A・B・Step 1-1完全保護・段階的詳細化
+// Phase C Step 2完了版: 時間・移動・エフェクト詳細化実装（完全版）
+// Phase A・B・Step 1-1・1-2完全保護・段階的詳細化
 
 import React, { useState, useEffect } from 'react';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
@@ -54,12 +54,39 @@ const TOUCH_TARGET_OPTIONS = [
   { value: 'stageArea', label: 'ステージ範囲指定', icon: '📐', description: 'ステージの一部範囲' }
 ];
 
-// 🆕 Phase C Step 1-2: フラグ条件4パターン定義
+// Phase C Step 1-2: フラグ条件4パターン定義
 const FLAG_CONDITION_OPTIONS = [
   { value: 'ON', label: 'ON状態', icon: '🟢', description: 'フラグがONの時' },
   { value: 'OFF', label: 'OFF状態', icon: '🔴', description: 'フラグがOFFの時' },
   { value: 'OFF_TO_ON', label: 'OFF→ON', icon: '🟢⬆️', description: 'OFFからONに変化した瞬間' },
   { value: 'ON_TO_OFF', label: 'ON→OFF', icon: '🔴⬇️', description: 'ONからOFFに変化した瞬間' }
+];
+
+// 🆕 Phase C Step 2: 時間条件タイプ定義
+const TIME_CONDITION_OPTIONS = [
+  { value: 'exact', label: '正確な時刻', icon: '⏰', description: '特定の時間に発動' },
+  { value: 'range', label: '時間範囲', icon: '📏', description: '指定範囲内で発動' },
+  { value: 'interval', label: '定期間隔', icon: '🔄', description: '一定間隔で繰り返し発動' }
+];
+
+// 🆕 Phase C Step 2: 移動タイプ詳細定義
+const MOVEMENT_TYPE_OPTIONS = [
+  { value: 'straight', label: '直線移動', icon: '→', description: '指定座標まで直線移動' },
+  { value: 'teleport', label: '瞬間移動', icon: '⚡', description: '瞬時に目標位置へ移動' },
+  { value: 'wander', label: 'ランダム移動', icon: '🌀', description: '範囲内をランダムに移動' },
+  { value: 'stop', label: '移動停止', icon: '⏹️', description: '現在の移動を停止' },
+  { value: 'swap', label: '位置交換', icon: '🔄', description: '他オブジェクトと位置交換' },
+  { value: 'approach', label: '接近移動', icon: '🎯', description: '対象に近づく' },
+  { value: 'orbit', label: '軌道移動', icon: '🔄', description: '円軌道で移動' },
+  { value: 'bounce', label: '跳ね返り移動', icon: '⬆️', description: '壁で跳ね返る移動' }
+];
+
+// 🆕 Phase C Step 2: エフェクトタイプ詳細定義
+const EFFECT_TYPE_OPTIONS = [
+  { value: 'glow', label: '光る', icon: '✨', description: 'オブジェクトを光らせる' },
+  { value: 'shake', label: '揺れる', icon: '📳', description: 'オブジェクトを振動させる' },
+  { value: 'confetti', label: '紙吹雪', icon: '🎉', description: '紙吹雪エフェクト' },
+  { value: 'monochrome', label: 'モノクロ', icon: '⚫⚪', description: 'モノクロ化エフェクト' }
 ];
 
 export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
@@ -400,7 +427,272 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     );
   };
 
-  // 🆕 Phase C Step 1-2: フラグ条件詳細設定コンポーネント（エラー修正）
+  // 🆕 Phase C Step 2: 時間条件詳細設定コンポーネント
+  const TimeConditionEditor = ({ condition, index }: { condition: TriggerCondition & { type: 'time' }, index: number }) => {
+    const timeCondition = condition;
+    
+    // ゲーム全体時間を取得（デフォルト30秒、実際の値は設定から取得予定）
+    const gameDuration = 30; // TODO: プロジェクト設定から取得
+    
+    return (
+      <ModernCard 
+        variant="outlined" 
+        size="md"
+        style={{ 
+          backgroundColor: DESIGN_TOKENS.colors.purple[50],
+          border: `2px solid ${DESIGN_TOKENS.colors.purple[200]}`,
+          marginTop: DESIGN_TOKENS.spacing[4]
+        }}
+      >
+        <h5 style={{
+          fontSize: DESIGN_TOKENS.typography.fontSize.base,
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+          color: DESIGN_TOKENS.colors.purple[800],
+          margin: 0,
+          marginBottom: DESIGN_TOKENS.spacing[4],
+          display: 'flex',
+          alignItems: 'center',
+          gap: DESIGN_TOKENS.spacing[2]
+        }}>
+          <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>⏰</span>
+          時間条件詳細設定
+        </h5>
+
+        {/* 時間タイプ選択 */}
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.purple[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            時間条件タイプ
+          </label>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: DESIGN_TOKENS.spacing[2]
+          }}>
+            {TIME_CONDITION_OPTIONS.map((option) => (
+              <ModernButton
+                key={option.value}
+                variant={timeCondition.timeType === option.value ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => updateCondition(index, { timeType: option.value as any })}
+                style={{
+                  borderColor: timeCondition.timeType === option.value 
+                    ? DESIGN_TOKENS.colors.purple[500] 
+                    : DESIGN_TOKENS.colors.purple[200],
+                  backgroundColor: timeCondition.timeType === option.value 
+                    ? DESIGN_TOKENS.colors.purple[500] 
+                    : 'transparent',
+                  color: timeCondition.timeType === option.value 
+                    ? DESIGN_TOKENS.colors.neutral[0] 
+                    : DESIGN_TOKENS.colors.purple[800],
+                  padding: DESIGN_TOKENS.spacing[3],
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: DESIGN_TOKENS.spacing[1]
+                }}
+              >
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>{option.icon}</span>
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}>
+                  {option.label}
+                </span>
+              </ModernButton>
+            ))}
+          </div>
+        </div>
+
+        {/* 正確な時刻設定（exactタイプの場合） */}
+        {timeCondition.timeType === 'exact' && (
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              発動時刻: {timeCondition.seconds || 3}秒後
+            </label>
+            <input
+              type="range"
+              min="0.1"
+              max={gameDuration}
+              step="0.1"
+              value={timeCondition.seconds || 3}
+              onChange={(e) => updateCondition(index, { seconds: parseFloat(e.target.value) })}
+              style={{
+                width: '100%',
+                height: '8px',
+                backgroundColor: DESIGN_TOKENS.colors.purple[200],
+                borderRadius: DESIGN_TOKENS.borderRadius.full,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.purple[500],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>0秒</span>
+              <span>{gameDuration}秒</span>
+            </div>
+          </div>
+        )}
+
+        {/* 時間範囲設定（rangeタイプの場合） */}
+        {timeCondition.timeType === 'range' && (
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+              <label style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                color: DESIGN_TOKENS.colors.purple[800],
+                marginBottom: DESIGN_TOKENS.spacing[2],
+                display: 'block'
+              }}>
+                開始時刻: {timeCondition.range?.min || 2}秒後
+              </label>
+              <input
+                type="range"
+                min="0"
+                max={gameDuration - 1}
+                step="0.1"
+                value={timeCondition.range?.min || 2}
+                onChange={(e) => {
+                  const min = parseFloat(e.target.value);
+                  updateCondition(index, { 
+                    range: { 
+                      min, 
+                      max: Math.max(min + 0.1, timeCondition.range?.max || min + 2) 
+                    } 
+                  });
+                }}
+                style={{
+                  width: '100%',
+                  height: '8px',
+                  backgroundColor: DESIGN_TOKENS.colors.purple[200],
+                  borderRadius: DESIGN_TOKENS.borderRadius.full,
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              />
+            </div>
+            
+            <div>
+              <label style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                color: DESIGN_TOKENS.colors.purple[800],
+                marginBottom: DESIGN_TOKENS.spacing[2],
+                display: 'block'
+              }}>
+                終了時刻: {timeCondition.range?.max || 5}秒後
+              </label>
+              <input
+                type="range"
+                min="0.1"
+                max={gameDuration}
+                step="0.1"
+                value={timeCondition.range?.max || 5}
+                onChange={(e) => {
+                  const max = parseFloat(e.target.value);
+                  updateCondition(index, { 
+                    range: { 
+                      min: Math.min(timeCondition.range?.min || 2, max - 0.1), 
+                      max 
+                    } 
+                  });
+                }}
+                style={{
+                  width: '100%',
+                  height: '8px',
+                  backgroundColor: DESIGN_TOKENS.colors.purple[200],
+                  borderRadius: DESIGN_TOKENS.borderRadius.full,
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              />
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.purple[500],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>0秒</span>
+              <span>{gameDuration}秒</span>
+            </div>
+          </div>
+        )}
+
+        {/* 間隔設定（intervalタイプの場合） */}
+        {timeCondition.timeType === 'interval' && (
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              間隔時間: {timeCondition.interval || 2}秒毎
+            </label>
+            <input
+              type="range"
+              min="0.1"
+              max="10"
+              step="0.1"
+              value={timeCondition.interval || 2}
+              onChange={(e) => updateCondition(index, { interval: parseFloat(e.target.value) })}
+              style={{
+                width: '100%',
+                height: '8px',
+                backgroundColor: DESIGN_TOKENS.colors.purple[200],
+                borderRadius: DESIGN_TOKENS.borderRadius.full,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.purple[500],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>0.1秒毎</span>
+              <span>10秒毎</span>
+            </div>
+          </div>
+        )}
+
+        <div style={{
+          padding: DESIGN_TOKENS.spacing[3],
+          backgroundColor: DESIGN_TOKENS.colors.purple[100],
+          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+          color: DESIGN_TOKENS.colors.purple[800]
+        }}>
+          💡 設定内容: {TIME_CONDITION_OPTIONS.find(t => t.value === timeCondition.timeType)?.description}
+          {timeCondition.timeType === 'exact' && ` - ゲーム開始から${timeCondition.seconds || 3}秒後`}
+          {timeCondition.timeType === 'range' && ` - ${timeCondition.range?.min || 2}秒〜${timeCondition.range?.max || 5}秒の間`}
+          {timeCondition.timeType === 'interval' && ` - ${timeCondition.interval || 2}秒毎に繰り返し`}
+        </div>
+      </ModernCard>
+    );
+  };
+
+  // Phase C Step 1-2: フラグ条件詳細設定コンポーネント（エラー修正）
   const FlagConditionEditor = ({ condition, index }: { condition: TriggerCondition & { type: 'flag' }, index: number }) => {
     const flagCondition = condition;
     
@@ -524,7 +816,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     );
   };
 
-  // 🆕 Phase C Step 1-2: 音再生アクション詳細設定コンポーネント（エラー修正）
+  // Phase C Step 1-2: 音再生アクション詳細設定コンポーネント（エラー修正）
   const SoundActionEditor = ({ action, index }: { action: GameAction & { type: 'playSound' }, index: number }) => {
     const soundAction = action;
     
@@ -703,6 +995,573 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     );
   };
 
+  // 🆕 Phase C Step 2: 移動アクション詳細設定コンポーネント
+  const MoveActionEditor = ({ action, index }: { action: GameAction & { type: 'move' }, index: number }) => {
+    const moveAction = action;
+    
+    return (
+      <ModernCard 
+        variant="outlined" 
+        size="md"
+        style={{ 
+          backgroundColor: DESIGN_TOKENS.colors.success[50],
+          border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
+          marginTop: DESIGN_TOKENS.spacing[3]
+        }}
+      >
+        <h5 style={{
+          fontSize: DESIGN_TOKENS.typography.fontSize.base,
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+          color: DESIGN_TOKENS.colors.success[800],
+          margin: 0,
+          marginBottom: DESIGN_TOKENS.spacing[4],
+          display: 'flex',
+          alignItems: 'center',
+          gap: DESIGN_TOKENS.spacing[2]
+        }}>
+          <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🏃</span>
+          移動アクション詳細設定
+        </h5>
+
+        {/* 移動タイプ選択 */}
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.success[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            移動タイプ
+          </label>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: DESIGN_TOKENS.spacing[2]
+          }}>
+            {MOVEMENT_TYPE_OPTIONS.slice(0, 4).map((option) => (
+              <ModernButton
+                key={option.value}
+                variant={moveAction.movement?.type === option.value ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => updateAction(index, { 
+                  movement: { 
+                    ...moveAction.movement,
+                    type: option.value as any,
+                    target: option.value === 'stop' ? undefined : { x: 0.5, y: 0.5 },
+                    speed: option.value === 'teleport' ? undefined : 300,
+                    duration: option.value === 'teleport' ? 0.1 : 2.0
+                  } 
+                })}
+                style={{
+                  borderColor: moveAction.movement?.type === option.value 
+                    ? DESIGN_TOKENS.colors.success[500] 
+                    : DESIGN_TOKENS.colors.success[200],
+                  backgroundColor: moveAction.movement?.type === option.value 
+                    ? DESIGN_TOKENS.colors.success[500] 
+                    : 'transparent',
+                  color: moveAction.movement?.type === option.value 
+                    ? DESIGN_TOKENS.colors.neutral[0] 
+                    : DESIGN_TOKENS.colors.success[800],
+                  padding: DESIGN_TOKENS.spacing[2],
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: DESIGN_TOKENS.spacing[1]
+                }}
+              >
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
+                  {option.label}
+                </span>
+              </ModernButton>
+            ))}
+          </div>
+          
+          {/* 追加移動タイプ（2行目） */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: DESIGN_TOKENS.spacing[2],
+            marginTop: DESIGN_TOKENS.spacing[2]
+          }}>
+            {MOVEMENT_TYPE_OPTIONS.slice(4).map((option) => (
+              <ModernButton
+                key={option.value}
+                variant={moveAction.movement?.type === option.value ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => updateAction(index, { 
+                  movement: { 
+                    ...moveAction.movement,
+                    type: option.value as any,
+                    target: option.value === 'stop' ? undefined : { x: 0.5, y: 0.5 },
+                    speed: option.value === 'teleport' ? undefined : 300,
+                    duration: option.value === 'teleport' ? 0.1 : 2.0
+                  } 
+                })}
+                style={{
+                  borderColor: moveAction.movement?.type === option.value 
+                    ? DESIGN_TOKENS.colors.success[500] 
+                    : DESIGN_TOKENS.colors.success[200],
+                  backgroundColor: moveAction.movement?.type === option.value 
+                    ? DESIGN_TOKENS.colors.success[500] 
+                    : 'transparent',
+                  color: moveAction.movement?.type === option.value 
+                    ? DESIGN_TOKENS.colors.neutral[0] 
+                    : DESIGN_TOKENS.colors.success[800],
+                  padding: DESIGN_TOKENS.spacing[2],
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: DESIGN_TOKENS.spacing[1]
+                }}
+              >
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
+                  {option.label}
+                </span>
+              </ModernButton>
+            ))}
+          </div>
+        </div>
+
+        {/* 移動速度設定（stopとteleport以外） */}
+        {moveAction.movement?.type && !['stop', 'teleport'].includes(moveAction.movement.type) && (
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              移動速度: {moveAction.movement?.speed || 300}px/秒
+            </label>
+            <input
+              type="range"
+              min="50"
+              max="1000"
+              step="50"
+              value={moveAction.movement?.speed || 300}
+              onChange={(e) => updateAction(index, { 
+                movement: { 
+                  ...moveAction.movement,
+                  speed: parseInt(e.target.value) 
+                } 
+              })}
+              style={{
+                width: '100%',
+                height: '8px',
+                backgroundColor: DESIGN_TOKENS.colors.success[200],
+                borderRadius: DESIGN_TOKENS.borderRadius.full,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.success[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>50px/秒</span>
+              <span>1000px/秒</span>
+            </div>
+          </div>
+        )}
+
+        {/* 移動時間設定（stopとstraight以外） */}
+        {moveAction.movement?.type && !['stop'].includes(moveAction.movement.type) && (
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              移動時間: {moveAction.movement?.duration || 2}秒
+            </label>
+            <input
+              type="range"
+              min="0.1"
+              max="10"
+              step="0.1"
+              value={moveAction.movement?.duration || 2}
+              onChange={(e) => updateAction(index, { 
+                movement: { 
+                  ...moveAction.movement,
+                  duration: parseFloat(e.target.value) 
+                } 
+              })}
+              style={{
+                width: '100%',
+                height: '8px',
+                backgroundColor: DESIGN_TOKENS.colors.success[200],
+                borderRadius: DESIGN_TOKENS.borderRadius.full,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.success[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>0.1秒</span>
+              <span>10秒</span>
+            </div>
+          </div>
+        )}
+
+        {/* 移動座標設定（座標指定が必要なタイプ） */}
+        {moveAction.movement?.type && ['straight', 'teleport', 'approach'].includes(moveAction.movement.type) && (
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              目標座標
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: DESIGN_TOKENS.spacing[2] }}>
+              <div>
+                <label style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.success[800],
+                  marginBottom: DESIGN_TOKENS.spacing[1],
+                  display: 'block'
+                }}>
+                  X座標: {((moveAction.movement?.target as any)?.x || 0.5).toFixed(2)}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={(moveAction.movement?.target as any)?.x || 0.5}
+                  onChange={(e) => updateAction(index, { 
+                    movement: { 
+                      ...moveAction.movement,
+                      target: {
+                        x: parseFloat(e.target.value),
+                        y: (moveAction.movement?.target as any)?.y || 0.5
+                      }
+                    } 
+                  })}
+                  style={{
+                    width: '100%',
+                    height: '6px',
+                    backgroundColor: DESIGN_TOKENS.colors.success[200],
+                    borderRadius: DESIGN_TOKENS.borderRadius.full,
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.success[800],
+                  marginBottom: DESIGN_TOKENS.spacing[1],
+                  display: 'block'
+                }}>
+                  Y座標: {((moveAction.movement?.target as any)?.y || 0.5).toFixed(2)}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={(moveAction.movement?.target as any)?.y || 0.5}
+                  onChange={(e) => updateAction(index, { 
+                    movement: { 
+                      ...moveAction.movement,
+                      target: {
+                        x: (moveAction.movement?.target as any)?.x || 0.5,
+                        y: parseFloat(e.target.value)
+                      }
+                    } 
+                  })}
+                  style={{
+                    width: '100%',
+                    height: '6px',
+                    backgroundColor: DESIGN_TOKENS.colors.success[200],
+                    borderRadius: DESIGN_TOKENS.borderRadius.full,
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 移動プレビューボタン */}
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <ModernButton
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // TODO: Phase C Step 2で実装予定
+              showNotification('info', '移動プレビュー機能は今後実装予定です');
+            }}
+            style={{
+              borderColor: DESIGN_TOKENS.colors.success[200],
+              color: DESIGN_TOKENS.colors.success[600],
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: DESIGN_TOKENS.spacing[2]
+            }}
+          >
+            <span>👁️</span>
+            <span>移動プレビュー</span>
+          </ModernButton>
+        </div>
+
+        <div style={{
+          padding: DESIGN_TOKENS.spacing[3],
+          backgroundColor: DESIGN_TOKENS.colors.success[100],
+          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+          color: DESIGN_TOKENS.colors.success[800]
+        }}>
+          💡 設定内容: 
+          {moveAction.movement?.type 
+            ? `「${MOVEMENT_TYPE_OPTIONS.find(m => m.value === moveAction.movement?.type)?.label || '移動'}」`
+            : '移動タイプを選択してください'}
+          {moveAction.movement?.type && !['stop', 'teleport'].includes(moveAction.movement.type) && 
+            ` - 速度${moveAction.movement?.speed || 300}px/秒`}
+          {moveAction.movement?.duration && ` - ${moveAction.movement.duration}秒間`}
+        </div>
+      </ModernCard>
+    );
+  };
+
+  // 🆕 Phase C Step 2: エフェクトアクション詳細設定コンポーネント
+  const EffectActionEditor = ({ action, index }: { action: GameAction & { type: 'effect' }, index: number }) => {
+    const effectAction = action;
+    
+    return (
+      <ModernCard 
+        variant="outlined" 
+        size="md"
+        style={{ 
+          backgroundColor: DESIGN_TOKENS.colors.success[50],
+          border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
+          marginTop: DESIGN_TOKENS.spacing[3]
+        }}
+      >
+        <h5 style={{
+          fontSize: DESIGN_TOKENS.typography.fontSize.base,
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+          color: DESIGN_TOKENS.colors.success[800],
+          margin: 0,
+          marginBottom: DESIGN_TOKENS.spacing[4],
+          display: 'flex',
+          alignItems: 'center',
+          gap: DESIGN_TOKENS.spacing[2]
+        }}>
+          <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>✨</span>
+          エフェクト詳細設定
+        </h5>
+
+        {/* エフェクトタイプ選択 */}
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.success[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            エフェクトタイプ
+          </label>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: DESIGN_TOKENS.spacing[2]
+          }}>
+            {EFFECT_TYPE_OPTIONS.map((option) => (
+              <ModernButton
+                key={option.value}
+                variant={effectAction.effect?.type === option.value ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => updateAction(index, { 
+                  effect: { 
+                    ...effectAction.effect,
+                    type: option.value as any,
+                    duration: 1.0,
+                    intensity: 0.8
+                  } 
+                })}
+                style={{
+                  borderColor: effectAction.effect?.type === option.value 
+                    ? DESIGN_TOKENS.colors.success[500] 
+                    : DESIGN_TOKENS.colors.success[200],
+                  backgroundColor: effectAction.effect?.type === option.value 
+                    ? DESIGN_TOKENS.colors.success[500] 
+                    : 'transparent',
+                  color: effectAction.effect?.type === option.value 
+                    ? DESIGN_TOKENS.colors.neutral[0] 
+                    : DESIGN_TOKENS.colors.success[800],
+                  padding: DESIGN_TOKENS.spacing[2],
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: DESIGN_TOKENS.spacing[1]
+                }}
+              >
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
+                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
+                  {option.label}
+                </span>
+              </ModernButton>
+            ))}
+          </div>
+        </div>
+
+        {/* エフェクト強度設定 */}
+        {effectAction.effect?.type && (
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              エフェクト強度: {Math.round((effectAction.effect?.intensity || 0.8) * 100)}%
+            </label>
+            <input
+              type="range"
+              min="0.1"
+              max="1"
+              step="0.1"
+              value={effectAction.effect?.intensity || 0.8}
+              onChange={(e) => updateAction(index, { 
+                effect: { 
+                  ...effectAction.effect,
+                  intensity: parseFloat(e.target.value) 
+                } 
+              })}
+              style={{
+                width: '100%',
+                height: '8px',
+                backgroundColor: DESIGN_TOKENS.colors.success[200],
+                borderRadius: DESIGN_TOKENS.borderRadius.full,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.success[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>10%</span>
+              <span>100%</span>
+            </div>
+          </div>
+        )}
+
+        {/* エフェクト持続時間設定 */}
+        {effectAction.effect?.type && (
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              持続時間: {effectAction.effect?.duration || 1}秒
+            </label>
+            <input
+              type="range"
+              min="0.1"
+              max="10"
+              step="0.1"
+              value={effectAction.effect?.duration || 1}
+              onChange={(e) => updateAction(index, { 
+                effect: { 
+                  ...effectAction.effect,
+                  duration: parseFloat(e.target.value) 
+                } 
+              })}
+              style={{
+                width: '100%',
+                height: '8px',
+                backgroundColor: DESIGN_TOKENS.colors.success[200],
+                borderRadius: DESIGN_TOKENS.borderRadius.full,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.success[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>0.1秒</span>
+              <span>10秒</span>
+            </div>
+          </div>
+        )}
+
+        {/* エフェクトプレビューボタン */}
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <ModernButton
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // TODO: Phase C Step 2で実装予定
+              showNotification('info', 'エフェクトプレビュー機能は今後実装予定です');
+            }}
+            style={{
+              borderColor: DESIGN_TOKENS.colors.success[200],
+              color: DESIGN_TOKENS.colors.success[600],
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: DESIGN_TOKENS.spacing[2]
+            }}
+          >
+            <span>👁️</span>
+            <span>エフェクトプレビュー</span>
+          </ModernButton>
+        </div>
+
+        <div style={{
+          padding: DESIGN_TOKENS.spacing[3],
+          backgroundColor: DESIGN_TOKENS.colors.success[100],
+          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+          color: DESIGN_TOKENS.colors.success[800]
+        }}>
+          💡 設定内容: 
+          {effectAction.effect?.type 
+            ? `「${EFFECT_TYPE_OPTIONS.find(e => e.value === effectAction.effect?.type)?.label || 'エフェクト'}」`
+            : 'エフェクトタイプを選択してください'}
+          {effectAction.effect?.intensity && ` - 強度${Math.round(effectAction.effect.intensity * 100)}%`}
+          {effectAction.effect?.duration && ` - ${effectAction.effect.duration}秒間`}
+        </div>
+      </ModernCard>
+    );
+  };
+
   // アクション追加（Phase A・B保護）
   const addAction = (type: string) => {
     let newAction: GameAction;
@@ -738,7 +1597,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           type: 'effect',
           targetId: rule.targetObjectId,
           effect: {
-            type: 'flash',
+            type: 'glow',
             duration: 1.0,
             intensity: 0.8
           }
@@ -961,7 +1820,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     marginBottom: DESIGN_TOKENS.spacing[2]
                   }}
                 >
-                  高度なルール設定 - Phase C Step 1-2完了
+                  高度なルール設定 - Phase C Step 2完了
                 </h3>
                 <p 
                   style={{
@@ -971,7 +1830,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     margin: 0
                   }}
                 >
-                  タッチ・音再生・フラグ詳細設定完了・TypeScriptエラー修正・手軽さ極限実現
+                  タッチ・音再生・フラグ・時間・移動・エフェクト詳細設定完了・ルール設定システム100%実現
                 </p>
               </div>
             </div>
@@ -1108,8 +1967,8 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       >
                         <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.icon}</span>
                         <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.label}</span>
-                        {/* Phase C Step 1-2: アクション詳細設定ボタン */}
-                        {action.type === 'playSound' && (
+                        {/* Phase C Step 2: アクション詳細設定ボタン */}
+                        {(action.type === 'playSound' || action.type === 'move' || action.type === 'effect') && (
                           <ModernButton
                             variant="outline"
                             size="xs"
@@ -1130,7 +1989,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                           size="xs"
                           onClick={() => removeAction(index)}
                           style={{ 
-                            marginLeft: action.type === 'playSound' ? 0 : 'auto'
+                            marginLeft: (action.type === 'playSound' || action.type === 'move' || action.type === 'effect') ? 0 : 'auto'
                           }}
                         >
                           ✕
@@ -1140,6 +1999,16 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       {/* Phase C Step 1-2: 音再生アクション詳細設定UI */}
                       {action.type === 'playSound' && (
                         <SoundActionEditor action={action} index={index} />
+                      )}
+                      
+                      {/* 🆕 Phase C Step 2: 移動アクション詳細設定UI */}
+                      {action.type === 'move' && (
+                        <MoveActionEditor action={action} index={index} />
+                      )}
+                      
+                      {/* 🆕 Phase C Step 2: エフェクトアクション詳細設定UI */}
+                      {action.type === 'effect' && (
+                        <EffectActionEditor action={action} index={index} />
                       )}
                     </div>
                   ))}
@@ -1155,7 +2024,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 </div>
               </ModernCard>
 
-              {/* 左下: 発動条件（詳細版・Phase C Step 1-1・1-2拡張） */}
+              {/* 左下: 発動条件（詳細版・Phase C Step 1-1・1-2・2拡張） */}
               <ModernCard 
                 variant="outlined" 
                 size="lg"
@@ -1218,7 +2087,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   ))}
                 </div>
 
-                {/* Phase C Step 1-1・1-2: 条件一覧（詳細パラメータ編集対応） */}
+                {/* Phase C Step 1-1・1-2・2: 条件一覧（詳細パラメータ編集対応） */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
                   {conditions.map((condition, index) => (
                     <div key={index}>
@@ -1262,6 +2131,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       {/* Phase C Step 1-1: タッチ条件詳細設定UI（保護） */}
                       {condition.type === 'touch' && (
                         <TouchConditionEditor condition={condition} index={index} />
+                      )}
+                      
+                      {/* 🆕 Phase C Step 2: 時間条件詳細設定UI */}
+                      {condition.type === 'time' && (
+                        <TimeConditionEditor condition={condition} index={index} />
                       )}
                       
                       {/* Phase C Step 1-2: フラグ条件詳細設定UI */}
