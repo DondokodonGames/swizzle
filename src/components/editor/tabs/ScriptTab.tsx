@@ -1,5 +1,5 @@
 // src/components/editor/tabs/ScriptTab.tsx
-// 複数ルール対応・RulePreview統合版: 段階的拡張・既存機能完全保護
+// 全blueカラー修正版: blue→primary置き換え・TypeScriptエラー0件
 
 import React, { useState } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
@@ -55,6 +55,63 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     onProjectUpdate(updatedProject);
     setForceRender(prev => prev + 1);
     showNotification('success', 'プロジェクトを更新しました');
+  };
+
+  // 🔧 新規: オブジェクトを初期配置（ドラッグ&ドロップの代替）
+  const handleAddObjectToLayout = (objectId: string) => {
+    console.log(`[ScriptTab] レイアウトにオブジェクト追加: ${objectId}`);
+    
+    const updatedScript = JSON.parse(JSON.stringify(project.script));
+    
+    // 既に配置済みかチェック
+    const existingIndex = updatedScript.layout.objects.findIndex((obj: any) => obj.objectId === objectId);
+    
+    if (existingIndex >= 0) {
+      showNotification('info', 'このオブジェクトは既に配置されています');
+      return;
+    }
+    
+    // 新しい位置を計算（重複しないように配置）
+    const existingCount = updatedScript.layout.objects.length;
+    const baseX = 0.2 + (existingCount % 3) * 0.3; // 3列配置
+    const baseY = 0.2 + Math.floor(existingCount / 3) * 0.3; // 行を下に
+    
+    const asset = project.assets.objects.find(obj => obj.id === objectId);
+    if (asset) {
+      updatedScript.layout.objects.push({
+        objectId: objectId,
+        position: { x: baseX, y: baseY },
+        scale: { x: 1.0, y: 1.0 },
+        rotation: 0,
+        zIndex: existingCount + 10,
+        initialState: {
+          visible: true,
+          animation: 0,
+          animationSpeed: 12,
+          autoStart: false
+        }
+      });
+      
+      updateProject({ script: updatedScript });
+      setSelectedObjectId(objectId); // 自動選択
+      showNotification('success', `「${asset.name}」をレイアウトに追加しました`);
+    }
+  };
+
+  // 🔧 新規: レイアウトからオブジェクト削除
+  const handleRemoveObjectFromLayout = (objectId: string) => {
+    const updatedScript = JSON.parse(JSON.stringify(project.script));
+    const beforeCount = updatedScript.layout.objects.length;
+    
+    updatedScript.layout.objects = updatedScript.layout.objects.filter((obj: any) => obj.objectId !== objectId);
+    
+    if (updatedScript.layout.objects.length < beforeCount) {
+      updateProject({ script: updatedScript });
+      if (selectedObjectId === objectId) {
+        setSelectedObjectId(null);
+      }
+      showNotification('success', 'オブジェクトをレイアウトから削除しました');
+    }
   };
 
   // オブジェクト配置更新（既存機能保護）
@@ -217,6 +274,11 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     return obj ? obj.name : objectId;
   };
 
+  // 🔧 新規: レイアウト配置済みオブジェクト判定
+  const isObjectInLayout = (objectId: string): boolean => {
+    return project.script.layout.objects.some(obj => obj.objectId === objectId);
+  };
+
   return (
     <div 
       style={{ 
@@ -321,7 +383,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                 margin: `${DESIGN_TOKENS.spacing[2]} 0 0 53px`
               }}
             >
-              複数ルール対応・高度なゲームロジック設定・フラグ管理システム
+              オブジェクト配置・複数ルール対応・高度なゲームロジック設定
             </p>
           </div>
           
@@ -411,10 +473,10 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
               />
             </div>
             
-            {/* 右サイドパネル - ModernCard統一 */}
+            {/* 右サイドパネル - ModernCard統一 + オブジェクト選択UI復旧 */}
             <div 
               style={{
-                width: '320px',
+                width: '360px',
                 backgroundColor: DESIGN_TOKENS.colors.neutral[0],
                 borderLeft: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
                 overflowY: 'auto',
@@ -425,6 +487,208 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                 project={project}
                 onProjectUpdate={updateProject}
               />
+              
+              {/* 🔧 新規追加: オブジェクト選択・配置UI */}
+              {project.assets.objects.length > 0 && (
+                <div style={{ padding: DESIGN_TOKENS.spacing[6] }}>
+                  <ModernCard 
+                    variant="filled" 
+                    size="md" 
+                    style={{ backgroundColor: DESIGN_TOKENS.colors.primary[50] }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3], marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                      <div 
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          backgroundColor: DESIGN_TOKENS.colors.primary[500],
+                          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: DESIGN_TOKENS.shadows.sm
+                        }}
+                      >
+                        <span style={{ color: DESIGN_TOKENS.colors.neutral[0], fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>🎯</span>
+                      </div>
+                      <div>
+                        <h5 
+                          style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                            fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                            color: DESIGN_TOKENS.colors.primary[800],
+                            margin: 0
+                          }}
+                        >
+                          オブジェクト配置
+                        </h5>
+                        <p 
+                          style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                            color: DESIGN_TOKENS.colors.primary[600],
+                            margin: 0
+                          }}
+                        >
+                          レイアウト:{project.script.layout.objects.length}/{project.assets.objects.length}個配置済み
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[3] }}>
+                      {project.assets.objects.map((asset) => {
+                        const isInLayout = isObjectInLayout(asset.id);
+                        const ruleCount = getRuleCountForObject(asset.id);
+                        const isSelected = selectedObjectId === asset.id;
+                        
+                        return (
+                          <div 
+                            key={asset.id} 
+                            style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'space-between', 
+                              padding: DESIGN_TOKENS.spacing[3], 
+                              backgroundColor: isSelected 
+                                ? DESIGN_TOKENS.colors.primary[100]
+                                : DESIGN_TOKENS.colors.neutral[0], 
+                              borderRadius: DESIGN_TOKENS.borderRadius.xl, 
+                              boxShadow: DESIGN_TOKENS.shadows.sm, 
+                              border: isSelected 
+                                ? `2px solid ${DESIGN_TOKENS.colors.primary[500]}`
+                                : `1px solid ${DESIGN_TOKENS.colors.primary[100]}`,
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => {
+                              setSelectedObjectId(isSelected ? null : asset.id);
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3] }}>
+                              {/* サムネイル */}
+                              <div style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: DESIGN_TOKENS.borderRadius.md,
+                                overflow: 'hidden',
+                                backgroundColor: DESIGN_TOKENS.colors.neutral[100]
+                              }}>
+                                {asset.frames[0]?.dataUrl ? (
+                                  <img 
+                                    src={asset.frames[0].dataUrl}
+                                    alt={asset.name}
+                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                  />
+                                ) : (
+                                  <div style={{
+                                    width: '100%', 
+                                    height: '100%', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    fontSize: DESIGN_TOKENS.typography.fontSize.sm
+                                  }}>
+                                    🎮
+                                  </div>
+                                )}
+                              </div>
+                              
+                              <div>
+                                <div
+                                  style={{
+                                    fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                                    fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                                    color: DESIGN_TOKENS.colors.neutral[800]
+                                  }}
+                                >
+                                  {asset.name}
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                    color: isInLayout 
+                                      ? DESIGN_TOKENS.colors.success[600]
+                                      : DESIGN_TOKENS.colors.neutral[500]
+                                  }}
+                                >
+                                  {isInLayout ? '✅ 配置済み' : '⚪ 未配置'} 
+                                  {ruleCount > 0 && ` • ${ruleCount}ルール`}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[1] }}>
+                              {!isInLayout ? (
+                                <ModernButton
+                                  variant="primary"
+                                  size="xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddObjectToLayout(asset.id);
+                                  }}
+                                  style={{
+                                    backgroundColor: DESIGN_TOKENS.colors.success[500],
+                                    borderColor: DESIGN_TOKENS.colors.success[500],
+                                    fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                                  }}
+                                >
+                                  📍 配置
+                                </ModernButton>
+                              ) : (
+                                <>
+                                  <ModernButton
+                                    variant="outline"
+                                    size="xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleObjectRuleEdit(asset.id);
+                                    }}
+                                    style={{
+                                      borderColor: DESIGN_TOKENS.colors.purple[200],
+                                      color: DESIGN_TOKENS.colors.purple[800],
+                                      fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                                    }}
+                                  >
+                                    ⚙️ ルール
+                                  </ModernButton>
+                                  <ModernButton
+                                    variant="ghost"
+                                    size="xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRemoveObjectFromLayout(asset.id);
+                                    }}
+                                    style={{
+                                      color: DESIGN_TOKENS.colors.error[600],
+                                      fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                                    }}
+                                  >
+                                    🗑️
+                                  </ModernButton>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* ヒント表示 */}
+                    <div style={{
+                      marginTop: DESIGN_TOKENS.spacing[4],
+                      padding: DESIGN_TOKENS.spacing[3],
+                      backgroundColor: DESIGN_TOKENS.colors.primary[100],
+                      borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                      color: DESIGN_TOKENS.colors.primary[800]
+                    }}>
+                      💡 操作方法：
+                      <br />• 📍配置 → レイアウト画面に追加
+                      <br />• ⚙️ルール → ゲームロジック設定
+                      <br />• 🗑️削除 → レイアウトから除去
+                      <br />• ドラッグ&ドロップでも配置可能
+                    </div>
+                  </ModernCard>
+                </div>
+              )}
               
               {/* 🔧 追加: 複数ルールプレビュー表示 */}
               {selectedObjectId && getObjectRules(selectedObjectId).length > 1 && (

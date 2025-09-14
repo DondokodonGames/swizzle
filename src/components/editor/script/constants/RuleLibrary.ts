@@ -10,7 +10,7 @@ export const CONDITION_LIBRARY = [
   { type: 'time', label: '時間', icon: '⏰' },
   { type: 'collision', label: '衝突', icon: '💥' },
   { type: 'gameState', label: 'ゲーム状態', icon: '🎮' }, // Phase E追加
-  { type: 'animation', label: 'アニメ', icon: '🎬' },
+  { type: 'animation', label: 'アニメ', icon: '🎬', description: 'アニメーション状態で発動' }, // 追加
   { type: 'flag', label: 'フラグ', icon: '🚩' }
 ] as const;
 

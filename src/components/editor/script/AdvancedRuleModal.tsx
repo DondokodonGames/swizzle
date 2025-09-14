@@ -1,6 +1,6 @@
 // src/components/editor/script/AdvancedRuleModal.tsx
-// Phase E Step 0: GameState統合最終版
-// 既存機能完全保護 + GameState条件エディター追加
+// Phase E Step 2完了: AnimationConditionEditor完全統合版
+// 既存機能完全保護 + GameState条件エディター + Animation条件エディター追加
 
 import React, { useState, useEffect } from 'react';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
@@ -19,6 +19,7 @@ import { TimeConditionEditor } from './conditions/TimeConditionEditor';
 import { FlagConditionEditor } from './conditions/FlagConditionEditor';
 import { CollisionConditionEditor } from './conditions/CollisionConditionEditor';
 import { GameStateConditionEditor } from './conditions/GameStateConditionEditor'; // Phase E追加
+import { AnimationConditionEditor } from './conditions/AnimationConditionEditor'; // Phase E Step 2追加
 
 // 分割されたアクションエディターインポート（Phase C保護 + Phase D拡張）
 import { SoundActionEditor } from './actions/SoundActionEditor';
@@ -150,7 +151,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           checkType: 'is'
         };
         break;
-      case 'animation':
+      case 'animation': // Phase E Step 2追加
         newCondition = {
           type: 'animation',
           target: rule.targetObjectId,
@@ -336,7 +337,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     showNotification('success', 'ルールを保存しました');
   };
 
-  // 条件エディター分岐レンダリング（Phase E拡張）
+  // 条件エディター分岐レンダリング（Phase E Step 2拡張）
   const renderConditionEditor = (condition: TriggerCondition, index: number) => {
     switch (condition.type) {
       case 'touch':
@@ -368,6 +369,15 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           <GameStateConditionEditor
             condition={condition}
             index={index}
+            onUpdate={updateCondition}
+          />
+        );
+      case 'animation': // Phase E Step 2追加
+        return (
+          <AnimationConditionEditor
+            condition={condition}
+            index={index}
+            project={project}
             onUpdate={updateCondition}
           />
         );
@@ -517,7 +527,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           }}
         >
           
-          {/* ヘッダー（Phase A・B保護・Phase E最終更新） */}
+          {/* ヘッダー（Phase E Step 2最終更新） */}
           <ModernCard 
             variant="filled" 
             size="lg"
@@ -557,7 +567,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     marginBottom: DESIGN_TOKENS.spacing[2]
                   }}
                 >
-                  高度なルール設定 - Phase E Step 0完了
+                  高度なルール設定 - Phase E Step 2完了
                 </h3>
                 <p 
                   style={{
@@ -567,7 +577,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     margin: 0
                   }}
                 >
-                  GameState条件統合・ゲーム状態制御実現
+                  アニメーション条件統合・完全なルール制御実現
                 </p>
               </div>
             </div>
@@ -852,7 +862,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                         </ModernButton>
                       </div>
                       
-                      {/* 分割された条件エディター表示（Phase E拡張） */}
+                      {/* 分割された条件エディター表示（Phase E Step 2拡張） */}
                       {renderConditionEditor(condition, index)}
                     </div>
                   ))}
