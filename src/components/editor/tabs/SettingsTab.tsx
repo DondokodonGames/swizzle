@@ -1,45 +1,10 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
 import { GameSettings } from '../../../types/editor/GameProject';
-import { useGameTheme } from '../../ui/GameThemeProvider';
-import ArcadeButton from '../../ui/ArcadeButton';
+import ModernCard from '../../ui/ModernCard';
+import ModernButton from '../../ui/ModernButton';
 // 🔧 追加: EditorGameBridge統合
 import EditorGameBridge, { GameExecutionResult } from '../../../services/editor/EditorGameBridge';
-
-// ModernCard コンポーネント（テーマ対応）
-interface ModernCardProps {
-  children: React.ReactNode;
-  className?: string;
-  title?: string;
-  icon?: string;
-}
-
-const ModernCard: React.FC<ModernCardProps> = ({ children, className = '', title, icon }) => {
-  const { currentTheme } = useGameTheme();
-  
-  return (
-    <div 
-      className={`rounded-xl border shadow-sm transition-all hover:shadow-md ${className}`}
-      style={{
-        background: currentTheme.colors.surface,
-        borderColor: currentTheme.colors.border,
-        color: currentTheme.colors.text
-      }}
-    >
-      {title && (
-        <div className="p-4 border-b" style={{ borderColor: currentTheme.colors.border }}>
-          <h4 className="text-lg font-semibold flex items-center gap-2">
-            {icon && <span>{icon}</span>}
-            {title}
-          </h4>
-        </div>
-      )}
-      <div className="p-6">
-        {children}
-      </div>
-    </div>
-  );
-};
 
 // 🔧 Props型定義修正: onTestPlay と onSave を追加
 interface SettingsTabProps {
@@ -49,7 +14,7 @@ interface SettingsTabProps {
   onSave?: () => void;
 }
 
-// ゲーム時間のプリセット（テーマ対応版）
+// ゲーム時間のプリセット
 const DURATION_PRESETS = [
   { value: 5, label: '5秒', description: 'サクッと', emoji: '⚡' },
   { value: 10, label: '10秒', description: 'ちょうどいい', emoji: '⏰' },
@@ -58,7 +23,7 @@ const DURATION_PRESETS = [
   { value: null, label: '無制限', description: '自由に', emoji: '∞' },
 ] as const;
 
-// ゲームスピード設定（テーマ対応版）
+// ゲームスピード設定
 const GAME_SPEED_LEVELS = [
   { value: 0.7, label: 'スロー', description: 'ゆっくり楽しむ', emoji: '🐌' },
   { value: 1.0, label: '標準', description: 'ちょうどいい速さ', emoji: '🚶' },
@@ -72,9 +37,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   onTestPlay,
   onSave
 }) => {
-  // テーマシステム統合
-  const { currentTheme } = useGameTheme();
-  
   const [isTestPlaying, setIsTestPlaying] = useState(false);
   const [testPlayResult, setTestPlayResult] = useState<'success' | 'failure' | null>(null);
   const [testPlayDetails, setTestPlayDetails] = useState<GameExecutionResult | null>(null);
@@ -327,7 +289,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         throw new Error('Canvas context を取得できません');
       }
       
-      // 背景描画（テーマ対応）
+      // 背景描画（白基調グラデーション）
       if (project.assets.background?.frames?.[0]?.dataUrl) {
         const bgImg = new Image();
         await new Promise((resolve, reject) => {
@@ -337,28 +299,33 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         });
         ctx.drawImage(bgImg, 0, 0, 300, 400);
       } else {
-        // テーマカラーを使用したグラデーション
+        // 白基調グラデーション
         const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, currentTheme.colors.primary);
-        gradient.addColorStop(1, currentTheme.colors.secondary);
+        gradient.addColorStop(0, '#f8fafc');
+        gradient.addColorStop(1, '#e2e8f0');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, 300, 400);
       }
       
       // ゲーム名表示
-      ctx.fillStyle = 'white';
+      ctx.fillStyle = '#1e293b';
       ctx.font = 'bold 24px Arial';
       ctx.textAlign = 'center';
-      ctx.shadowColor = 'rgba(0,0,0,0.5)';
-      ctx.shadowBlur = 4;
+      ctx.shadowColor = 'rgba(0,0,0,0.1)';
+      ctx.shadowBlur = 2;
       ctx.fillText(project.settings.name || 'My Game', 150, 50);
       ctx.shadowBlur = 0;
       
-      // 統計情報（テーマ対応）
-      ctx.fillStyle = currentTheme.colors.surface + 'E6';
+      // 統計情報（白基調カード）
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
       ctx.fillRect(20, 300, 260, 80);
       
-      ctx.fillStyle = currentTheme.colors.text;
+      // 枠線
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(20, 300, 260, 80);
+      
+      ctx.fillStyle = '#475569';
       ctx.font = '16px Arial';
       ctx.fillText(`${project.assets.objects.length} Objects`, 150, 325);
       ctx.fillText(`${project.script.rules.length} Rules`, 150, 345);
@@ -383,7 +350,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     } finally {
       setGenerateThumbnail(false);
     }
-  }, [project, updateSettings, currentTheme]);
+  }, [project, updateSettings]);
 
   // プロジェクト公開
   const handlePublish = useCallback(async () => {
@@ -510,52 +477,84 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   }, [project]);
 
   return (
-    <div 
-      className="settings-tab h-full overflow-auto"
-      style={{ 
-        background: `linear-gradient(135deg, ${currentTheme.colors.background}, ${currentTheme.colors.surface})`,
-        minHeight: '100vh'
-      }}
-    >
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div style={{ 
+      background: '#f8fafc', 
+      minHeight: '100vh',
+      padding: '24px'
+    }}>
+      <div style={{ maxWidth: '1024px', margin: '0 auto' }}>
         
         {/* ゲーム基本情報 */}
-        <ModernCard title="ゲーム情報" icon="🎮">
-          <div className="space-y-4">
+        <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
+          <h2 style={{ 
+            fontSize: '24px', 
+            fontWeight: '600', 
+            color: '#1e293b',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            🎮 ゲーム情報
+          </h2>
+          
+          <div style={{ marginBottom: '24px' }}>
             {/* ゲーム名 */}
-            <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: currentTheme.colors.text }}>
-                ゲーム名 <span style={{ color: currentTheme.colors.error }}>*</span>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ 
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                ゲーム名 <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <input
                 type="text"
                 value={project.settings.name || ''}
                 onChange={(e) => handleGameNameChange(e.target.value)}
                 placeholder="素晴らしいゲーム名を入力してください"
-                className="w-full px-4 py-3 rounded-lg border transition-all focus:outline-none focus:ring-2"
                 style={{
-                  background: currentTheme.colors.background,
-                  color: currentTheme.colors.text,
-                  borderColor: currentTheme.colors.border
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  backgroundColor: '#ffffff',
+                  color: '#1f2937',
+                  outline: 'none',
+                  transition: 'all 0.2s'
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = currentTheme.colors.primary;
-                  e.target.style.boxShadow = `0 0 0 2px ${currentTheme.colors.primary}40`;
+                  e.target.style.borderColor = '#3b82f6';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = currentTheme.colors.border;
+                  e.target.style.borderColor = '#d1d5db';
                   e.target.style.boxShadow = 'none';
                 }}
                 maxLength={50}
               />
-              <div className="text-right text-sm mt-1" style={{ color: currentTheme.colors.textSecondary }}>
+              <div style={{ 
+                textAlign: 'right',
+                fontSize: '12px',
+                color: '#6b7280',
+                marginTop: '4px'
+              }}>
                 {(project.settings.name || '').length}/50
               </div>
             </div>
             
             {/* ゲーム説明 */}
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: currentTheme.colors.text }}>
+              <label style={{ 
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
                 ゲーム説明
               </label>
               <textarea
@@ -563,15 +562,26 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 onChange={(e) => handleDescriptionChange(e.target.value)}
                 placeholder="このゲームの楽しさを説明してください"
                 rows={3}
-                className="w-full px-4 py-3 rounded-lg border transition-all focus:outline-none focus:ring-2 resize-none"
                 style={{
-                  background: currentTheme.colors.background,
-                  color: currentTheme.colors.text,
-                  borderColor: currentTheme.colors.border
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  backgroundColor: '#ffffff',
+                  color: '#1f2937',
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                  resize: 'none'
                 }}
                 maxLength={200}
               />
-              <div className="text-right text-sm mt-1" style={{ color: currentTheme.colors.textSecondary }}>
+              <div style={{ 
+                textAlign: 'right',
+                fontSize: '12px',
+                color: '#6b7280',
+                marginTop: '4px'
+              }}>
                 {(project.settings.description || '').length}/200
               </div>
             </div>
@@ -579,14 +589,36 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         </ModernCard>
 
         {/* ゲーム設定 */}
-        <ModernCard title="ゲーム設定" icon="⚙️">
-          <div className="space-y-6">
+        <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
+          <h2 style={{ 
+            fontSize: '24px', 
+            fontWeight: '600', 
+            color: '#1e293b',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            ⚙️ ゲーム設定
+          </h2>
+          
+          <div>
             {/* ゲーム時間設定 */}
-            <div>
-              <label className="block text-sm font-medium mb-3" style={{ color: currentTheme.colors.text }}>
+            <div style={{ marginBottom: '32px' }}>
+              <label style={{ 
+                display: 'block',
+                fontSize: '16px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '16px'
+              }}>
                 ゲーム時間
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div style={{ 
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                gap: '12px'
+              }}>
                 {DURATION_PRESETS.map((preset) => {
                   const isSelected = (preset.value === null && project.settings.duration?.type === 'unlimited') ||
                                    (preset.value !== null && project.settings.duration?.seconds === preset.value);
@@ -595,17 +627,35 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     <button
                       key={preset.value || 'unlimited'}
                       onClick={() => handleDurationChange(preset.value)}
-                      className="p-4 border-2 rounded-xl text-center transition-all hover:scale-105 transform"
                       style={{
-                        background: isSelected ? `${currentTheme.colors.primary}20` : currentTheme.colors.background,
-                        borderColor: isSelected ? currentTheme.colors.primary : currentTheme.colors.border,
-                        color: currentTheme.colors.text,
-                        boxShadow: isSelected ? `0 4px 12px ${currentTheme.colors.primary}30` : 'none'
+                        padding: '16px',
+                        border: isSelected ? '2px solid #3b82f6' : '1px solid #d1d5db',
+                        borderRadius: '12px',
+                        backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
+                        color: '#1f2937',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        outline: 'none'
+                      }}
+                      onMouseOver={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                          e.currentTarget.style.borderColor = '#9ca3af';
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.backgroundColor = '#ffffff';
+                          e.currentTarget.style.borderColor = '#d1d5db';
+                        }
                       }}
                     >
-                      <div className="text-2xl mb-1">{preset.emoji}</div>
-                      <div className="font-semibold">{preset.label}</div>
-                      <div className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>{preset.emoji}</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
+                        {preset.label}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
                         {preset.description}
                       </div>
                     </button>
@@ -616,10 +666,20 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             
             {/* ゲームスピード設定 */}
             <div>
-              <label className="block text-sm font-medium mb-3" style={{ color: currentTheme.colors.text }}>
+              <label style={{ 
+                display: 'block',
+                fontSize: '16px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '16px'
+              }}>
                 ゲームスピード（挑戦レベル）
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div style={{ 
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                gap: '12px'
+              }}>
                 {GAME_SPEED_LEVELS.map((level) => {
                   const isSelected = (project.metadata?.gameSpeed || 1.0) === level.value;
                   
@@ -627,17 +687,35 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     <button
                       key={level.value}
                       onClick={() => handleGameSpeedChange(level.value)}
-                      className="p-4 border-2 rounded-xl text-center transition-all hover:scale-105 transform"
                       style={{
-                        background: isSelected ? `${currentTheme.colors.secondary}20` : currentTheme.colors.background,
-                        borderColor: isSelected ? currentTheme.colors.secondary : currentTheme.colors.border,
-                        color: currentTheme.colors.text,
-                        boxShadow: isSelected ? `0 4px 12px ${currentTheme.colors.secondary}30` : 'none'
+                        padding: '16px',
+                        border: isSelected ? '2px solid #10b981' : '1px solid #d1d5db',
+                        borderRadius: '12px',
+                        backgroundColor: isSelected ? '#ecfdf5' : '#ffffff',
+                        color: '#1f2937',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        outline: 'none'
+                      }}
+                      onMouseOver={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.backgroundColor = '#f9fafb';
+                          e.currentTarget.style.borderColor = '#9ca3af';
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.backgroundColor = '#ffffff';
+                          e.currentTarget.style.borderColor = '#d1d5db';
+                        }
                       }}
                     >
-                      <div className="text-2xl mb-1">{level.emoji}</div>
-                      <div className="font-semibold">{level.label}</div>
-                      <div className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>{level.emoji}</div>
+                      <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
+                        {level.label}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
                         {level.description}
                       </div>
                     </button>
@@ -649,148 +727,240 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         </ModernCard>
 
         {/* テストプレイセクション */}
-        <ModernCard title="テストプレイ" icon="🎯">
-          <div className="text-center">
+        <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
+          <h2 style={{ 
+            fontSize: '24px', 
+            fontWeight: '600', 
+            color: '#1e293b',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            🎯 テストプレイ
+          </h2>
+          
+          <div style={{ textAlign: 'center' }}>
             {!isTestPlaying && testPlayResult === null && (
-              <div className="space-y-4">
-                <div className="text-6xl">🕹️</div>
-                <h4 className="text-lg font-medium" style={{ color: currentTheme.colors.text }}>
+              <div>
+                <div style={{ fontSize: '96px', marginBottom: '16px' }}>🕹️</div>
+                <h3 style={{ 
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px'
+                }}>
                   ゲームをテストしてみましょう
-                </h4>
-                <p style={{ color: currentTheme.colors.textSecondary }}>
+                </h3>
+                <p style={{ 
+                  color: '#6b7280',
+                  marginBottom: '24px',
+                  fontSize: '16px'
+                }}>
                   作成したゲームが正しく動作するか確認できます
                 </p>
-                <div className="flex justify-center gap-4">
-                  <ArcadeButton
+                <div style={{ 
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '16px',
+                  flexWrap: 'wrap'
+                }}>
+                  <ModernButton
                     variant="secondary"
                     size="lg"
                     onClick={handleTestPlay}
                     disabled={!project.settings.name || isTestPlaying}
-                    effects={{ glow: true }}
                   >
                     🧪 クイックテスト (3秒)
-                  </ArcadeButton>
-                  <ArcadeButton
+                  </ModernButton>
+                  <ModernButton
                     variant="primary"
                     size="lg"
                     onClick={handleFullGamePlay}
                     disabled={!project.settings.name || isTestPlaying}
-                    effects={{ glow: true, pulse: true }}
                   >
                     ▶️ フルゲーム実行
-                  </ArcadeButton>
+                  </ModernButton>
                 </div>
               </div>
             )}
             
             {isTestPlaying && (
-              <div className="space-y-4">
-                <div className="text-6xl animate-bounce">🎮</div>
-                <h4 className="text-lg font-medium" style={{ color: currentTheme.colors.text }}>
+              <div>
+                <div style={{ 
+                  fontSize: '96px',
+                  marginBottom: '16px',
+                  animation: 'bounce 1s infinite'
+                }}>
+                  🎮
+                </div>
+                <h3 style={{ 
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px'
+                }}>
                   テストプレイ中...
-                </h4>
-                <p style={{ color: currentTheme.colors.textSecondary }}>
+                </h3>
+                <p style={{ 
+                  color: '#6b7280',
+                  marginBottom: '24px',
+                  fontSize: '16px'
+                }}>
                   ゲームの動作を確認しています
                 </p>
-                <div 
-                  className="w-full h-2 rounded-full"
-                  style={{ background: currentTheme.colors.border }}
-                >
-                  <div 
-                    className="h-2 rounded-full animate-pulse"
-                    style={{ 
-                      background: currentTheme.colors.primary,
-                      width: '70%'
-                    }}
-                  />
+                <div style={{
+                  width: '100%',
+                  maxWidth: '300px',
+                  height: '8px',
+                  backgroundColor: '#e5e7eb',
+                  borderRadius: '4px',
+                  margin: '0 auto',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    height: '100%',
+                    width: '70%',
+                    backgroundColor: '#3b82f6',
+                    borderRadius: '4px',
+                    animation: 'pulse 2s infinite'
+                  }} />
                 </div>
               </div>
             )}
             
             {testPlayResult === 'success' && testPlayDetails && (
-              <div className="space-y-4">
-                <div className="text-6xl">🎉</div>
-                <h4 className="text-lg font-medium" style={{ color: currentTheme.colors.success }}>
+              <div>
+                <div style={{ fontSize: '96px', marginBottom: '16px' }}>🎉</div>
+                <h3 style={{ 
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#10b981',
+                  marginBottom: '16px'
+                }}>
                   テスト成功！
-                </h4>
-                <div 
-                  className="max-w-md mx-auto p-4 rounded-lg border"
-                  style={{ 
-                    background: `${currentTheme.colors.success}20`,
-                    borderColor: currentTheme.colors.success 
-                  }}
-                >
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold" style={{ color: currentTheme.colors.success }}>
+                </h3>
+                <div style={{
+                  maxWidth: '500px',
+                  margin: '0 auto 24px',
+                  padding: '16px',
+                  backgroundColor: '#ecfdf5',
+                  border: '1px solid #d1fae5',
+                  borderRadius: '12px'
+                }}>
+                  <div style={{ 
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                    gap: '16px',
+                    fontSize: '14px'
+                  }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ 
+                        fontSize: '32px',
+                        fontWeight: '700',
+                        color: '#10b981'
+                      }}>
                         {testPlayDetails.score || 0}
                       </div>
-                      <div style={{ color: currentTheme.colors.text }}>スコア</div>
+                      <div style={{ color: '#374151' }}>スコア</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold" style={{ color: currentTheme.colors.success }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ 
+                        fontSize: '32px',
+                        fontWeight: '700',
+                        color: '#10b981'
+                      }}>
                         {testPlayDetails.timeElapsed.toFixed(1)}s
                       </div>
-                      <div style={{ color: currentTheme.colors.text }}>プレイ時間</div>
+                      <div style={{ color: '#374151' }}>プレイ時間</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold" style={{ color: currentTheme.colors.success }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ 
+                        fontSize: '32px',
+                        fontWeight: '700',
+                        color: '#10b981'
+                      }}>
                         {testPlayDetails.finalState?.objectsInteracted?.length || 0}
                       </div>
-                      <div style={{ color: currentTheme.colors.text }}>操作回数</div>
+                      <div style={{ color: '#374151' }}>操作回数</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold" style={{ color: currentTheme.colors.success }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ 
+                        fontSize: '32px',
+                        fontWeight: '700',
+                        color: '#10b981'
+                      }}>
                         {testPlayDetails.finalState?.rulesTriggered?.length || 0}
                       </div>
-                      <div style={{ color: currentTheme.colors.text }}>ルール実行</div>
+                      <div style={{ color: '#374151' }}>ルール実行</div>
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-center gap-3">
-                  <ArcadeButton
+                <div style={{ 
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '12px',
+                  flexWrap: 'wrap'
+                }}>
+                  <ModernButton
                     variant="secondary"
-                    size="sm"
+                    size="md"
                     onClick={() => setTestPlayResult(null)}
                   >
                     もう一度テスト
-                  </ArcadeButton>
-                  <ArcadeButton
+                  </ModernButton>
+                  <ModernButton
                     variant="primary"
-                    size="sm"
+                    size="md"
                     onClick={handleFullGamePlay}
-                    effects={{ glow: true }}
                   >
                     フルゲーム実行
-                  </ArcadeButton>
+                  </ModernButton>
                 </div>
               </div>
             )}
             
             {testPlayResult === 'failure' && testPlayDetails && (
-              <div className="space-y-4">
-                <div className="text-6xl">⚠️</div>
-                <h4 className="text-lg font-medium" style={{ color: currentTheme.colors.error }}>
+              <div>
+                <div style={{ fontSize: '96px', marginBottom: '16px' }}>⚠️</div>
+                <h3 style={{ 
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#ef4444',
+                  marginBottom: '16px'
+                }}>
                   テストで問題発見
-                </h4>
-                <div 
-                  className="max-w-md mx-auto p-4 rounded-lg border text-left"
-                  style={{ 
-                    background: `${currentTheme.colors.error}20`,
-                    borderColor: currentTheme.colors.error 
-                  }}
-                >
-                  <div className="text-sm" style={{ color: currentTheme.colors.text }}>
+                </h3>
+                <div style={{
+                  maxWidth: '500px',
+                  margin: '0 auto 24px',
+                  padding: '16px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '12px',
+                  textAlign: 'left'
+                }}>
+                  <div style={{ fontSize: '14px', color: '#374151' }}>
                     <strong>エラー:</strong>
-                    <ul className="list-disc list-inside mt-2">
+                    <ul style={{ 
+                      listStyle: 'disc',
+                      listStylePosition: 'inside',
+                      marginTop: '8px',
+                      marginBottom: '0'
+                    }}>
                       {testPlayDetails.errors.map((error, index) => (
                         <li key={index}>{error}</li>
                       ))}
                     </ul>
                     {testPlayDetails.warnings.length > 0 && (
                       <>
-                        <strong className="block mt-3">警告:</strong>
-                        <ul className="list-disc list-inside mt-2">
+                        <strong style={{ display: 'block', marginTop: '12px' }}>警告:</strong>
+                        <ul style={{ 
+                          listStyle: 'disc',
+                          listStylePosition: 'inside',
+                          marginTop: '8px',
+                          marginBottom: '0'
+                        }}>
                           {testPlayDetails.warnings.map((warning, index) => (
                             <li key={index}>{warning}</li>
                           ))}
@@ -799,13 +969,13 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     )}
                   </div>
                 </div>
-                <ArcadeButton
+                <ModernButton
                   variant="secondary"
-                  size="sm"
+                  size="md"
                   onClick={() => setTestPlayResult(null)}
                 >
                   もう一度テスト
-                </ArcadeButton>
+                </ModernButton>
               </div>
             )}
           </div>
@@ -813,31 +983,41 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
         {/* フルゲーム表示エリア */}
         {showFullGame && (
-          <ModernCard title="ゲーム実行中" icon="🎮">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-lg font-medium" style={{ color: currentTheme.colors.text }}>
+          <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ 
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '16px'
+              }}>
+                <h3 style={{ 
+                  fontSize: '20px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  margin: '0'
+                }}>
                   🎮 ゲーム実行中
-                </h4>
-                <ArcadeButton
-                  variant="secondary"
+                </h3>
+                <ModernButton
+                  variant="error"
                   size="sm"
                   onClick={() => setShowFullGame(false)}
-                  style={{
-                    background: currentTheme.colors.error,
-                    color: 'white'
-                  }}
                 >
                   ✕ 終了
-                </ArcadeButton>
+                </ModernButton>
               </div>
               <div
                 ref={fullGameRef}
-                className="w-full flex justify-center rounded-lg"
                 style={{ 
+                  width: '100%',
                   minHeight: '400px',
-                  background: currentTheme.colors.background,
-                  border: `2px solid ${currentTheme.colors.border}`
+                  backgroundColor: '#f8fafc',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
                 }}
               >
                 {/* ゲームキャンバスがここに挿入される */}
@@ -847,62 +1027,102 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         )}
 
         {/* サムネイル設定 */}
-        <ModernCard title="サムネイル" icon="📸">
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <div className="flex-shrink-0">
-              <div 
-                className="w-32 h-40 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden"
-                style={{ borderColor: currentTheme.colors.border }}
-              >
+        <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
+          <h2 style={{ 
+            fontSize: '24px', 
+            fontWeight: '600', 
+            color: '#1e293b',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            📸 サムネイル
+          </h2>
+          
+          <div style={{ 
+            display: 'flex',
+            flexDirection: window.innerWidth < 768 ? 'column' : 'row',
+            alignItems: 'center',
+            gap: '24px'
+          }}>
+            <div style={{ flexShrink: 0 }}>
+              <div style={{
+                width: '128px',
+                height: '160px',
+                border: '2px dashed #d1d5db',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                backgroundColor: '#ffffff'
+              }}>
                 {project.settings.preview?.thumbnailDataUrl ? (
                   <img
                     src={project.settings.preview.thumbnailDataUrl}
                     alt="Game Thumbnail"
-                    className="w-full h-full object-cover rounded-lg"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: '8px'
+                    }}
                   />
                 ) : (
-                  <div className="text-center" style={{ color: currentTheme.colors.textSecondary }}>
-                    <div className="text-2xl mb-1">📸</div>
-                    <div className="text-xs">No Thumbnail</div>
+                  <div style={{ textAlign: 'center', color: '#9ca3af' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>📸</div>
+                    <div style={{ fontSize: '12px' }}>No Thumbnail</div>
                   </div>
                 )}
               </div>
             </div>
             
-            <div className="flex-1 text-center md:text-left">
-              <h4 className="font-medium mb-2" style={{ color: currentTheme.colors.text }}>
+            <div style={{ flex: 1, textAlign: window.innerWidth < 768 ? 'center' : 'left' }}>
+              <h3 style={{ 
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#1f2937',
+                marginBottom: '8px'
+              }}>
                 ゲームサムネイル
-              </h4>
-              <p className="text-sm mb-4" style={{ color: currentTheme.colors.textSecondary }}>
+              </h3>
+              <p style={{ 
+                fontSize: '14px',
+                color: '#6b7280',
+                marginBottom: '16px'
+              }}>
                 ゲームの魅力を伝えるサムネイルを設定します
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
-                <ArcadeButton
+              <div style={{ 
+                display: 'flex',
+                flexDirection: window.innerWidth < 640 ? 'column' : 'row',
+                gap: '12px',
+                justifyContent: window.innerWidth < 768 ? 'center' : 'flex-start'
+              }}>
+                <ModernButton
                   variant="primary"
                   size="md"
                   onClick={handleGenerateThumbnail}
                   disabled={generateThumbnail}
-                  effects={{ glow: !generateThumbnail }}
+                  loading={generateThumbnail}
                 >
-                  {generateThumbnail ? '生成中...' : '🎨 自動生成'}
-                </ArcadeButton>
+                  🎨 自動生成
+                </ModernButton>
                 
                 <label>
-                  <button 
-                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all cursor-pointer"
-                    style={{
-                      background: `linear-gradient(135deg, ${currentTheme.colors.background}, ${currentTheme.colors.surface})`,
-                      color: currentTheme.colors.text,
-                      border: `2px solid ${currentTheme.colors.border}`
-                    }}
+                  <ModernButton
+                    variant="secondary"
+                    size="md"
+                    style={{ cursor: 'pointer' }}
                   >
                     📁 アップロード
-                  </button>
+                  </ModernButton>
                   <input
                     type="file"
                     accept="image/*"
-                    className="hidden"
+                    style={{ display: 'none' }}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -927,70 +1147,76 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         </ModernCard>
 
         {/* アクションボタン */}
-        <div className="flex flex-wrap gap-4 justify-center">
-          <ArcadeButton
+        <div style={{ 
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '16px',
+          justifyContent: 'center',
+          marginBottom: '24px'
+        }}>
+          <ModernButton
             variant="success"
             size="lg"
             onClick={handleSave}
             disabled={isSaving}
-            effects={{ glow: !isSaving }}
+            loading={isSaving}
           >
-            {isSaving ? '💾 保存中...' : '💾 保存'}
-          </ArcadeButton>
+            💾 保存
+          </ModernButton>
 
-          <ArcadeButton
-            variant="primary"
+          <ModernButton
+            variant="secondary"
             size="lg"
             onClick={handleTestPlay}
             disabled={!project.settings.name || isTestPlaying}
-            effects={{ glow: !isTestPlaying }}
           >
             🧪 クイックテスト
-          </ArcadeButton>
+          </ModernButton>
 
-          <ArcadeButton
-            variant="secondary"
+          <ModernButton
+            variant="outline"
             size="lg"
             onClick={handleFullGamePlay}
             disabled={!project.settings.name || isTestPlaying}
-            effects={{ pulse: true }}
           >
             🎮 フルプレイ
-          </ArcadeButton>
+          </ModernButton>
           
-          <ArcadeButton
-            variant="gradient"
+          <ModernButton
+            variant="primary"
             size="lg"
             onClick={handlePublish}
             disabled={!project.settings.name || isPublishing || (!project.assets.objects.length && !project.assets.background)}
-            effects={{ glow: true, pulse: !isPublishing }}
+            loading={isPublishing}
           >
-            {isPublishing ? '公開中...' : project.settings.publishing?.isPublished ? '🔄 更新' : '🚀 公開'}
-          </ArcadeButton>
+            {project.settings.publishing?.isPublished ? '🔄 更新' : '🚀 公開'}
+          </ModernButton>
           
-          <ArcadeButton
-            variant="secondary"
+          <ModernButton
+            variant="ghost"
             size="lg"
             onClick={handleExport}
           >
             📦 エクスポート
-          </ArcadeButton>
+          </ModernButton>
         </div>
         
         {/* 公開ステータス表示 */}
         {project.settings.publishing?.isPublished && (
-          <div className="text-center">
-            <div 
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border"
-              style={{
-                background: `${currentTheme.colors.success}20`,
-                borderColor: currentTheme.colors.success,
-                color: currentTheme.colors.success
-              }}
-            >
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              backgroundColor: '#ecfdf5',
+              border: '1px solid #d1fae5',
+              borderRadius: '8px',
+              color: '#10b981'
+            }}>
               <span>✅ 公開済み</span>
               {project.settings.publishing?.publishedAt && (
-                <span className="text-sm">
+                <span style={{ fontSize: '14px' }}>
                   {new Date(project.settings.publishing.publishedAt).toLocaleString('ja-JP')}
                 </span>
               )}
@@ -1000,102 +1226,184 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         
         {/* エラー表示 */}
         {publishError && (
-          <div 
-            className="p-4 rounded-lg border text-center"
-            style={{
-              background: `${currentTheme.colors.error}20`,
-              borderColor: currentTheme.colors.error,
-              color: currentTheme.colors.error
-            }}
-          >
+          <div style={{
+            padding: '16px',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '12px',
+            color: '#ef4444',
+            textAlign: 'center',
+            marginBottom: '24px'
+          }}>
             ❌ {publishError}
           </div>
         )}
         
         {/* ゲーム統計情報 */}
-        <ModernCard title="ゲーム統計" icon="📊">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold" style={{ color: currentTheme.colors.primary }}>
+        <ModernCard variant="default" size="lg">
+          <h2 style={{ 
+            fontSize: '24px', 
+            fontWeight: '600', 
+            color: '#1e293b',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            📊 ゲーム統計
+          </h2>
+          
+          <div style={{ 
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: '16px',
+            marginBottom: '32px'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                fontSize: '32px',
+                fontWeight: '700',
+                color: '#3b82f6'
+              }}>
                 {project.assets.objects.length}
               </div>
-              <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+              <div style={{ fontSize: '14px', color: '#6b7280' }}>
                 オブジェクト
               </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold" style={{ color: currentTheme.colors.secondary }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                fontSize: '32px',
+                fontWeight: '700',
+                color: '#10b981'
+              }}>
                 {project.script.rules.length}
               </div>
-              <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+              <div style={{ fontSize: '14px', color: '#6b7280' }}>
                 ルール
               </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold" style={{ color: currentTheme.colors.accent }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                fontSize: '32px',
+                fontWeight: '700',
+                color: '#f59e0b'
+              }}>
                 {project.assets.texts.length}
               </div>
-              <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+              <div style={{ fontSize: '14px', color: '#6b7280' }}>
                 テキスト
               </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold" style={{ color: currentTheme.colors.warning }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                fontSize: '32px',
+                fontWeight: '700',
+                color: '#8b5cf6'
+              }}>
                 {Math.round((project.totalSize || 0) / 1024 / 1024 * 10) / 10}MB
               </div>
-              <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+              <div style={{ fontSize: '14px', color: '#6b7280' }}>
                 総容量
               </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold" style={{ color: currentTheme.colors.success }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                fontSize: '32px',
+                fontWeight: '700',
+                color: '#ef4444'
+              }}>
                 {project.metadata?.statistics?.testPlayCount || 0}
               </div>
-              <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+              <div style={{ fontSize: '14px', color: '#6b7280' }}>
                 テスト回数
               </div>
             </div>
           </div>
           
           {/* プロジェクト健全性 */}
-          <div className="mt-4 pt-4 border-t" style={{ borderColor: currentTheme.colors.border }}>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className={`text-2xl font-bold`} style={{ 
-                  color: project.script.initialState ? currentTheme.colors.success : currentTheme.colors.warning
+          <div style={{
+            paddingTop: '24px',
+            borderTop: '1px solid #e5e7eb'
+          }}>
+            <div style={{ 
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+              gap: '16px'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  fontSize: '32px',
+                  fontWeight: '700',
+                  color: project.script.initialState ? '#10b981' : '#f59e0b'
                 }}>
                   {project.script.initialState ? '✓' : '⚠️'}
                 </div>
-                <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>初期条件</div>
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>初期条件</div>
               </div>
-              <div className="text-center">
-                <div className={`text-2xl font-bold`} style={{ 
-                  color: project.script.layout.objects.length > 0 ? currentTheme.colors.success : currentTheme.colors.warning
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  fontSize: '32px',
+                  fontWeight: '700',
+                  color: project.script.layout.objects.length > 0 ? '#10b981' : '#f59e0b'
                 }}>
                   {project.script.layout.objects.length}
                 </div>
-                <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>配置済み</div>
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>配置済み</div>
               </div>
-              <div className="text-center">
-                <div className={`text-2xl font-bold`} style={{ 
-                  color: project.script.successConditions.length > 0 ? currentTheme.colors.success : currentTheme.colors.warning
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  fontSize: '32px',
+                  fontWeight: '700',
+                  color: project.script.successConditions.length > 0 ? '#10b981' : '#f59e0b'
                 }}>
                   {project.script.successConditions.length}
                 </div>
-                <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>成功条件</div>
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>成功条件</div>
               </div>
-              <div className="text-center">
-                <div className={`text-2xl font-bold`} style={{ 
-                  color: project.script.statistics?.complexityScore || 0 > 0 ? currentTheme.colors.success : currentTheme.colors.textSecondary
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ 
+                  fontSize: '32px',
+                  fontWeight: '700',
+                  color: project.script.statistics?.complexityScore || 0 > 0 ? '#10b981' : '#6b7280'
                 }}>
                   {project.script.statistics?.complexityScore || 0}
                 </div>
-                <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>複雑度</div>
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>複雑度</div>
               </div>
             </div>
           </div>
         </ModernCard>
       </div>
+
+      {/* アニメーション用スタイル */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% {
+              transform: translate3d(0, 0, 0);
+            }
+            40%, 43% {
+              transform: translate3d(0, -30px, 0);
+            }
+            70% {
+              transform: translate3d(0, -15px, 0);
+            }
+            90% {
+              transform: translate3d(0, -4px, 0);
+            }
+          }
+          
+          @keyframes pulse {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: 0.5;
+            }
+          }
+        `
+      }} />
     </div>
   );
 };
