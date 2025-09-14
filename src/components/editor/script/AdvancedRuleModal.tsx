@@ -1,6 +1,6 @@
 // src/components/editor/script/AdvancedRuleModal.tsx
-// Phase E Step 2完了: AnimationConditionEditor完全統合版
-// 既存機能完全保護 + GameState条件エディター + Animation条件エディター追加
+// Phase E Step 3完了: AnimationActionEditor統合完了版
+// 既存機能完全保護 + GameState条件エディター + Animation条件・アクションエディター追加
 
 import React, { useState, useEffect } from 'react';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
@@ -21,12 +21,13 @@ import { CollisionConditionEditor } from './conditions/CollisionConditionEditor'
 import { GameStateConditionEditor } from './conditions/GameStateConditionEditor'; // Phase E追加
 import { AnimationConditionEditor } from './conditions/AnimationConditionEditor'; // Phase E Step 2追加
 
-// 分割されたアクションエディターインポート（Phase C保護 + Phase D拡張）
+// 分割されたアクションエディターインポート（Phase C保護 + Phase D拡張 + Phase E Step 3追加）
 import { SoundActionEditor } from './actions/SoundActionEditor';
 import { MoveActionEditor } from './actions/MoveActionEditor';
 import { EffectActionEditor } from './actions/EffectActionEditor';
 import { ShowHideActionEditor } from './actions/ShowHideActionEditor';
 import { FlagActionEditor } from './actions/FlagActionEditor';
+import { AnimationActionEditor } from './actions/AnimationActionEditor'; // Phase E Step 3追加
 
 interface AdvancedRuleModalProps {
   rule: GameRule;
@@ -187,7 +188,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     ));
   };
 
-  // アクション追加（Phase A・B保護・Phase D拡張）
+  // アクション追加（Phase A・B保護・Phase D・E拡張）
   const addAction = (type: string) => {
     let newAction: GameAction;
     
@@ -257,7 +258,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           flagId: projectFlags[0]?.id || ''
         };
         break;
-      case 'switchAnimation':
+      case 'switchAnimation': // Phase E Step 3追加
         newAction = {
           type: 'switchAnimation',
           targetId: rule.targetObjectId,
@@ -278,7 +279,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     showNotification('success', 'アクションを削除しました');
   };
 
-  // アクション更新（Phase A・B保護・拡張）
+  // アクション更新（Phase A・B保護・Phase E Step 3拡張）
   const updateAction = (index: number, updates: Partial<GameAction>) => {
     setActions(actions.map((action, i) => {
       if (i !== index) return action;
@@ -298,7 +299,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
         case 'setFlag':
         case 'toggleFlag':
           return { ...action, ...(updates as typeof action) };
-        case 'switchAnimation':
+        case 'switchAnimation': // Phase E Step 3追加
           return { ...action, ...(updates as typeof action) };
         default:
           return action;
@@ -337,7 +338,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     showNotification('success', 'ルールを保存しました');
   };
 
-  // 条件エディター分岐レンダリング（Phase E Step 2拡張）
+  // 条件エディター分岐レンダリング（Phase E Step 3拡張）
   const renderConditionEditor = (condition: TriggerCondition, index: number) => {
     switch (condition.type) {
       case 'touch':
@@ -395,7 +396,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     }
   };
 
-  // アクションエディター分岐レンダリング（Phase D保護）
+  // アクションエディター分岐レンダリング（Phase D保護 + Phase E Step 3拡張）
   const renderActionEditor = (action: GameAction, index: number) => {
     switch (action.type) {
       case 'playSound':
@@ -443,6 +444,16 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             action={action}
             index={index}
             projectFlags={projectFlags}
+            onUpdate={updateAction}
+            onShowNotification={showNotification}
+          />
+        );
+      case 'switchAnimation': // Phase E Step 3追加
+        return (
+          <AnimationActionEditor
+            action={action}
+            index={index}
+            project={project}
             onUpdate={updateAction}
             onShowNotification={showNotification}
           />
@@ -527,7 +538,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           }}
         >
           
-          {/* ヘッダー（Phase E Step 2最終更新） */}
+          {/* ヘッダー（Phase E Step 3最終更新） */}
           <ModernCard 
             variant="filled" 
             size="lg"
@@ -567,7 +578,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     marginBottom: DESIGN_TOKENS.spacing[2]
                   }}
                 >
-                  高度なルール設定 - Phase E Step 2完了
+                  高度なルール設定 - Phase E Step 3完了
                 </h3>
                 <p 
                   style={{
@@ -577,7 +588,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     margin: 0
                   }}
                 >
-                  アニメーション条件統合・完全なルール制御実現
+                  アニメーション制御システム完成・条件→アクション完全対応
                 </p>
               </div>
             </div>
@@ -649,7 +660,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 </div>
               </ModernCard>
 
-              {/* 右上: 実行アクション（簡易版・Phase A・B保護・Phase D拡張） */}
+              {/* 右上: 実行アクション（簡易版・Phase A・B保護・Phase D・E拡張） */}
               <ModernCard 
                 variant="outlined" 
                 size="lg"
@@ -672,7 +683,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   実行アクション ({actions.length}個)
                 </h4>
 
-                {/* アクション追加ボタン（コンパクト版・Phase A・B保護・Phase D拡張） */}
+                {/* アクション追加ボタン（コンパクト版・Phase A・B保護・Phase D・E拡張） */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
@@ -697,7 +708,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   ))}
                 </div>
 
-                {/* アクション一覧（簡易表示・Phase A・B保護・Phase D拡張） */}
+                {/* アクション一覧（簡易表示・Phase A・B保護・Phase D・E拡張） */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
                   {actions.slice(0, 3).map((action, index) => (
                     <div key={index}>
@@ -715,7 +726,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                         <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.icon}</span>
                         <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.label}</span>
                         {/* アクション詳細設定ボタン（Phase D・E拡張対応） */}
-                        {['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag'].includes(action.type) && (
+                        {['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag', 'switchAnimation'].includes(action.type) && (
                           <ModernButton
                             variant="outline"
                             size="xs"
@@ -736,14 +747,14 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                           size="xs"
                           onClick={() => removeAction(index)}
                           style={{ 
-                            marginLeft: ['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag'].includes(action.type) ? 0 : 'auto'
+                            marginLeft: ['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag', 'switchAnimation'].includes(action.type) ? 0 : 'auto'
                           }}
                         >
                           ✕
                         </ModernButton>
                       </div>
                       
-                      {/* 分割されたアクションエディター表示（Phase D保護） */}
+                      {/* 分割されたアクションエディター表示（Phase D・E拡張） */}
                       {renderActionEditor(action, index)}
                     </div>
                   ))}
@@ -862,7 +873,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                         </ModernButton>
                       </div>
                       
-                      {/* 分割された条件エディター表示（Phase E Step 2拡張） */}
+                      {/* 分割された条件エディター表示（Phase E Step 3拡張） */}
                       {renderConditionEditor(condition, index)}
                     </div>
                   ))}

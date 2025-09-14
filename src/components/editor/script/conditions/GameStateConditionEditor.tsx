@@ -1,5 +1,5 @@
 // src/components/editor/script/conditions/GameStateConditionEditor.tsx
-// Phase E Step 0: ゲーム状態条件詳細設定コンポーネント
+// Phase E Step 0修正版: TypeScriptエラー解決・DESIGN_TOKENS対応
 // TouchConditionEditor.tsx成功パターン完全踏襲
 
 import React from 'react';
@@ -195,7 +195,7 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
             padding: DESIGN_TOKENS.spacing[3],
             backgroundColor: DESIGN_TOKENS.colors.warning[50],
             borderRadius: DESIGN_TOKENS.borderRadius.lg,
-            border: `1px solid ${DESIGN_TOKENS.colors.warning[200]}`,
+            border: `1px solid ${DESIGN_TOKENS.colors.warning[100]}`, // 修正: warning[200] → warning[100]
             fontSize: DESIGN_TOKENS.typography.fontSize.xs,
             color: DESIGN_TOKENS.colors.warning[800],
             display: 'flex',

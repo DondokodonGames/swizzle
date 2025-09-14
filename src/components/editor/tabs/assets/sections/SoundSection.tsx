@@ -1,5 +1,5 @@
 // src/components/editor/tabs/assets/sections/SoundSection.tsx
-// 🔧 Phase E-1: サウンド管理セクション分離（BGM・SE統合管理）
+// 🔧 Phase E-1修正版: TypeScriptエラー解決・nullチェック追加
 import React, { useState } from 'react';
 import { GameProject } from '../../../../../types/editor/GameProject';
 import { AudioAsset } from '../../../../../types/editor/ProjectAssets';
@@ -68,7 +68,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
   // 音声削除処理
   const handleAudioDelete = (type: SoundType, id?: string) => {
     // 再生中の音声を削除する場合は停止
-    if ((type === 'bgm' && playbackState.playingId === project.assets.audio.bgm?.id) ||
+    if ((type === 'bgm' && project.assets.audio.bgm && playbackState.playingId === project.assets.audio.bgm.id) ||
         (type === 'se' && playbackState.playingId === id)) {
       stopAudio();
     }
@@ -228,7 +228,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                   >
                     {formatTime(project.assets.audio.bgm.duration)} • {formatFileSize(project.assets.audio.bgm.fileSize)} • {project.assets.audio.bgm.format.toUpperCase()}
                   </p>
-                  {isPlaying(project.assets.audio.bgm.id) && (
+                  {project.assets.audio.bgm && isPlaying(project.assets.audio.bgm.id) && (
                     <p 
                       style={{
                         fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -245,20 +245,25 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                 </div>
                 <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}>
                   <ModernButton
-                    variant={isPlaying(project.assets.audio.bgm.id) ? "secondary" : "primary"}
+                    variant={project.assets.audio.bgm && isPlaying(project.assets.audio.bgm.id) ? "secondary" : "primary"}
                     size="sm"
-                    icon={isPlaying(project.assets.audio.bgm.id) ? '⏹️' : '▶️'}
-                    onClick={() => isPlaying(project.assets.audio.bgm.id) ? stopAudio() : handleAudioPlay(project.assets.audio.bgm!)}
+                    icon={project.assets.audio.bgm && isPlaying(project.assets.audio.bgm.id) ? '⏹️' : '▶️'}
+                    onClick={() => {
+                      // 修正: nullチェック追加
+                      if (project.assets.audio.bgm) {
+                        isPlaying(project.assets.audio.bgm.id) ? stopAudio() : handleAudioPlay(project.assets.audio.bgm);
+                      }
+                    }}
                     disabled={playbackState.isLoading}
                   >
-                    {isPlaying(project.assets.audio.bgm.id) ? '停止' : '再生'}
+                    {project.assets.audio.bgm && isPlaying(project.assets.audio.bgm.id) ? '停止' : '再生'}
                   </ModernButton>
                   <ModernButton
                     variant="outline"
                     size="sm"
                     icon="⚙️"
                     onClick={() => setEditingAudioId(
-                      editingAudioId === project.assets.audio.bgm!.id ? null : project.assets.audio.bgm!.id
+                      project.assets.audio.bgm && editingAudioId === project.assets.audio.bgm.id ? null : project.assets.audio.bgm?.id || null
                     )}
                   >
                     設定
@@ -276,7 +281,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
               </div>
 
               {/* BGM設定パネル */}
-              {editingAudioId === project.assets.audio.bgm.id && (
+              {project.assets.audio.bgm && editingAudioId === project.assets.audio.bgm.id && (
                 <div 
                   style={{
                     borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,

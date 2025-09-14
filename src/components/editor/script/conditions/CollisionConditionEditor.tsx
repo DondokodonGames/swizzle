@@ -1,5 +1,5 @@
 // src/components/editor/script/conditions/CollisionConditionEditor.tsx
-// Phase D Step 1-2: 衝突条件詳細設定コンポーネント
+// Phase D Step 1-2修正版: TypeScriptエラー解決・GameScript.ts型定義準拠
 // TouchConditionEditor.tsx成功パターン完全踏襲
 
 import React from 'react';
@@ -194,8 +194,8 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
         </div>
       </div>
 
-      {/* 対象オブジェクト選択（object選択時のみ表示） */}
-      {collisionCondition.target === 'object' && (
+      {/* 対象オブジェクト選択（他オブジェクトを指定する場合の修正版） */}
+      {collisionCondition.target !== 'background' && collisionCondition.target !== 'stage' && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -207,7 +207,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
             対象オブジェクト
           </label>
           <select
-            value={typeof collisionCondition.target === 'string' && collisionCondition.target !== 'background' && collisionCondition.target !== 'stage' ? collisionCondition.target : ''}
+            value={typeof collisionCondition.target === 'string' ? collisionCondition.target : ''}
             onChange={(e) => onUpdate(index, { target: e.target.value || 'background' })}
             style={{
               width: '100%',
