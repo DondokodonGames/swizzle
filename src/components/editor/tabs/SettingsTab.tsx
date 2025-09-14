@@ -1,59 +1,97 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
 import { GameSettings } from '../../../types/editor/GameProject';
+import { useGameTheme } from '../../ui/GameThemeProvider';
+import ArcadeButton from '../../ui/ArcadeButton';
 // 🔧 追加: EditorGameBridge統合
 import EditorGameBridge, { GameExecutionResult } from '../../../services/editor/EditorGameBridge';
+
+// ModernCard コンポーネント（テーマ対応）
+interface ModernCardProps {
+  children: React.ReactNode;
+  className?: string;
+  title?: string;
+  icon?: string;
+}
+
+const ModernCard: React.FC<ModernCardProps> = ({ children, className = '', title, icon }) => {
+  const { currentTheme } = useGameTheme();
+  
+  return (
+    <div 
+      className={`rounded-xl border shadow-sm transition-all hover:shadow-md ${className}`}
+      style={{
+        background: currentTheme.colors.surface,
+        borderColor: currentTheme.colors.border,
+        color: currentTheme.colors.text
+      }}
+    >
+      {title && (
+        <div className="p-4 border-b" style={{ borderColor: currentTheme.colors.border }}>
+          <h4 className="text-lg font-semibold flex items-center gap-2">
+            {icon && <span>{icon}</span>}
+            {title}
+          </h4>
+        </div>
+      )}
+      <div className="p-6">
+        {children}
+      </div>
+    </div>
+  );
+};
 
 // 🔧 Props型定義修正: onTestPlay と onSave を追加
 interface SettingsTabProps {
   project: GameProject;
   onProjectUpdate: (project: GameProject) => void;
-  onTestPlay?: () => void;  // 🔧 追加: 外部テストプレイ処理
-  onSave?: () => void;      // 🔧 追加: 外部保存処理
+  onTestPlay?: () => void;
+  onSave?: () => void;
 }
 
-// ゲーム時間のプリセット（無制限追加）
+// ゲーム時間のプリセット（テーマ対応版）
 const DURATION_PRESETS = [
-  { value: 5, label: '5秒', description: 'サクッと', emoji: '⚡', color: 'bg-yellow-100 border-yellow-300' },
-  { value: 10, label: '10秒', description: 'ちょうどいい', emoji: '⏰', color: 'bg-blue-100 border-blue-300' },
-  { value: 15, label: '15秒', description: 'じっくり', emoji: '🎯', color: 'bg-green-100 border-green-300' },
-  { value: 30, label: '30秒', description: 'たっぷり', emoji: '🏃', color: 'bg-purple-100 border-purple-300' },
-  { value: null, label: '無制限', description: '自由に', emoji: '∞', color: 'bg-gray-100 border-gray-300' }, // 🔧 追加
+  { value: 5, label: '5秒', description: 'サクッと', emoji: '⚡' },
+  { value: 10, label: '10秒', description: 'ちょうどいい', emoji: '⏰' },
+  { value: 15, label: '15秒', description: 'じっくり', emoji: '🎯' },
+  { value: 30, label: '30秒', description: 'たっぷり', emoji: '🏃' },
+  { value: null, label: '無制限', description: '自由に', emoji: '∞' },
 ] as const;
 
-// ゲームスピード設定（難易度の代替）
+// ゲームスピード設定（テーマ対応版）
 const GAME_SPEED_LEVELS = [
-  { value: 0.7, label: 'スロー', description: 'ゆっくり楽しむ', emoji: '🐌', color: 'bg-green-100 border-green-300' },
-  { value: 1.0, label: '標準', description: 'ちょうどいい速さ', emoji: '🚶', color: 'bg-blue-100 border-blue-300' },
-  { value: 1.3, label: '高速', description: '挑戦的な速さ', emoji: '🏃', color: 'bg-yellow-100 border-yellow-300' },
-  { value: 1.6, label: '超高速', description: '上級者向け', emoji: '⚡', color: 'bg-red-100 border-red-300' },
+  { value: 0.7, label: 'スロー', description: 'ゆっくり楽しむ', emoji: '🐌' },
+  { value: 1.0, label: '標準', description: 'ちょうどいい速さ', emoji: '🚶' },
+  { value: 1.3, label: '高速', description: '挑戦的な速さ', emoji: '🏃' },
+  { value: 1.6, label: '超高速', description: '上級者向け', emoji: '⚡' },
 ] as const;
 
-// 🔧 Props受け取り修正
 export const SettingsTab: React.FC<SettingsTabProps> = ({ 
   project, 
   onProjectUpdate, 
-  onTestPlay,  // 🔧 追加
-  onSave       // 🔧 追加
+  onTestPlay,
+  onSave
 }) => {
+  // テーマシステム統合
+  const { currentTheme } = useGameTheme();
+  
   const [isTestPlaying, setIsTestPlaying] = useState(false);
   const [testPlayResult, setTestPlayResult] = useState<'success' | 'failure' | null>(null);
-  const [testPlayDetails, setTestPlayDetails] = useState<GameExecutionResult | null>(null); // 🔧 追加
+  const [testPlayDetails, setTestPlayDetails] = useState<GameExecutionResult | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [generateThumbnail, setGenerateThumbnail] = useState(false);
-  const [isSaving, setIsSaving] = useState(false); // 🔧 追加
-  const [showFullGame, setShowFullGame] = useState(false); // 🔧 追加: フルゲーム表示
+  const [isSaving, setIsSaving] = useState(false);
+  const [showFullGame, setShowFullGame] = useState(false);
   const gameTestRef = useRef<HTMLDivElement>(null);
-  const fullGameRef = useRef<HTMLDivElement>(null); // 🔧 追加
+  const fullGameRef = useRef<HTMLDivElement>(null);
 
-  // 🔧 EditorGameBridge インスタンス
+  // EditorGameBridge インスタンス
   const bridgeRef = useRef<EditorGameBridge | null>(null);
   
   useEffect(() => {
     bridgeRef.current = EditorGameBridge.getInstance();
     return () => {
-      // クリーンアップ
       bridgeRef.current?.reset();
     };
   }, []);
@@ -72,7 +110,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   // ゲーム名の更新
   const handleGameNameChange = useCallback((name: string) => {
     updateSettings({ name: name.slice(0, 50) });
-    updateProject({ name: name.slice(0, 50) }); // プロジェクト名も同期
+    updateProject({ name: name.slice(0, 50) });
   }, [updateSettings, updateProject]);
 
   // ゲーム説明の更新
@@ -80,7 +118,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     updateSettings({ description: description.slice(0, 200) });
   }, [updateSettings]);
 
-  // 🔧 ゲーム時間設定の更新（無制限対応）
+  // ゲーム時間設定の更新（無制限対応）
   const handleDurationChange = useCallback((seconds: number | null) => {
     updateSettings({
       duration: seconds === null ? {
@@ -95,7 +133,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     });
   }, [updateSettings]);
 
-  // 🔧 ゲームスピード設定の更新（難易度の代替）
+  // ゲームスピード設定の更新
   const handleGameSpeedChange = useCallback((speed: number) => {
     updateProject({ 
       metadata: {
@@ -105,7 +143,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     });
   }, [updateProject, project.metadata]);
 
-  // 🔧 強化されたテストプレイ機能（EditorGameBridge統合）
+  // テストプレイ機能（EditorGameBridge統合）
   const handleTestPlay = useCallback(async () => {
     console.log('🧪 テストプレイ開始:', project.name);
     setIsTestPlaying(true);
@@ -132,7 +170,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         throw new Error(validationErrors.join('\n'));
       }
 
-      // 🔧 EditorGameBridge を使用したテストプレイ実行
       const bridge = bridgeRef.current;
       if (!bridge) {
         throw new Error('ゲームエンジンが初期化されていません');
@@ -146,18 +183,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       
       if (result.success && result.completed) {
         setTestPlayResult('success');
-        console.log('✅ テストプレイ成功:', {
-          score: result.score,
-          timeElapsed: result.timeElapsed,
-          objectsInteracted: result.finalState?.objectsInteracted?.length || 0,
-          rulesTriggered: result.finalState?.rulesTriggered?.length || 0
-        });
       } else {
         setTestPlayResult('failure');
-        console.warn('⚠️ テストプレイ失敗:', {
-          errors: result.errors,
-          warnings: result.warnings
-        });
         if (result.errors.length > 0) {
           alert(`テストプレイで問題が発生しました:\n${result.errors.join('\n')}`);
         }
@@ -191,34 +218,30 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }
   }, [project, updateProject]);
 
-  // 🔧 修正: フルゲーム実行機能（DOM要素待機対応版）
+  // フルゲーム実行機能（DOM要素待機対応版）
   const handleFullGamePlay = useCallback(async () => {
     console.log('🎮 フルゲーム実行開始:', project.name);
     
-    // 🔧 修正: bridgeRef のみをチェック（fullGameRef は後で確認）
     if (!bridgeRef.current) {
       alert('ゲーム実行環境が準備されていません');
       return;
     }
     
     try {
-      // 🔧 修正: まず UI を表示状態にする
       setShowFullGame(true);
       
-      // 🔧 修正: DOM要素が作成されるまで待機
+      // DOM要素が作成されるまで待機
       await new Promise<void>((resolve) => {
         const checkElement = () => {
           if (fullGameRef.current) {
             resolve();
           } else {
-            // requestAnimationFrame で次のレンダリングサイクルを待つ
             requestAnimationFrame(checkElement);
           }
         };
         checkElement();
       });
       
-      // 🔧 修正: 再度確認（安全措置）
       if (!fullGameRef.current) {
         throw new Error('DOM要素の作成に失敗しました');
       }
@@ -247,7 +270,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }
   }, [project]);
 
-  // 🔧 強化された保存機能
+  // 保存機能
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     
@@ -288,7 +311,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }
   }, [project, onSave]);
 
-  // サムネイル自動生成（既存のまま）
+  // サムネイル自動生成
   const handleGenerateThumbnail = useCallback(async () => {
     setGenerateThumbnail(true);
     
@@ -304,7 +327,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         throw new Error('Canvas context を取得できません');
       }
       
-      // 背景描画
+      // 背景描画（テーマ対応）
       if (project.assets.background?.frames?.[0]?.dataUrl) {
         const bgImg = new Image();
         await new Promise((resolve, reject) => {
@@ -314,9 +337,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         });
         ctx.drawImage(bgImg, 0, 0, 300, 400);
       } else {
+        // テーマカラーを使用したグラデーション
         const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, '#3B82F6');
-        gradient.addColorStop(1, '#1D4ED8');
+        gradient.addColorStop(0, currentTheme.colors.primary);
+        gradient.addColorStop(1, currentTheme.colors.secondary);
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, 300, 400);
       }
@@ -330,11 +354,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       ctx.fillText(project.settings.name || 'My Game', 150, 50);
       ctx.shadowBlur = 0;
       
-      // 統計情報
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      // 統計情報（テーマ対応）
+      ctx.fillStyle = currentTheme.colors.surface + 'E6';
       ctx.fillRect(20, 300, 260, 80);
       
-      ctx.fillStyle = '#333333';
+      ctx.fillStyle = currentTheme.colors.text;
       ctx.font = '16px Arial';
       ctx.fillText(`${project.assets.objects.length} Objects`, 150, 325);
       ctx.fillText(`${project.script.rules.length} Rules`, 150, 345);
@@ -359,9 +383,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     } finally {
       setGenerateThumbnail(false);
     }
-  }, [project, updateSettings]);
+  }, [project, updateSettings, currentTheme]);
 
-  // プロジェクト公開（既存のまま）
+  // プロジェクト公開
   const handlePublish = useCallback(async () => {
     setIsPublishing(true);
     setPublishError(null);
@@ -447,7 +471,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }
   }, [project, updateSettings, updateProject]);
 
-  // エクスポート機能（既存のまま）
+  // エクスポート機能
   const handleExport = useCallback(async () => {
     try {
       console.log('エクスポート開始');
@@ -486,37 +510,52 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   }, [project]);
 
   return (
-    <div className="settings-tab h-full overflow-auto">
-      <div className="max-w-4xl mx-auto p-6">
+    <div 
+      className="settings-tab h-full overflow-auto"
+      style={{ 
+        background: `linear-gradient(135deg, ${currentTheme.colors.background}, ${currentTheme.colors.surface})`,
+        minHeight: '100vh'
+      }}
+    >
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
         
         {/* ゲーム基本情報 */}
-        <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            🎮 ゲーム情報
-          </h3>
-          
-          <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+        <ModernCard title="ゲーム情報" icon="🎮">
+          <div className="space-y-4">
             {/* ゲーム名 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                ゲーム名 <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium mb-2" style={{ color: currentTheme.colors.text }}>
+                ゲーム名 <span style={{ color: currentTheme.colors.error }}>*</span>
               </label>
               <input
                 type="text"
                 value={project.settings.name || ''}
                 onChange={(e) => handleGameNameChange(e.target.value)}
                 placeholder="素晴らしいゲーム名を入力してください"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 rounded-lg border transition-all focus:outline-none focus:ring-2"
+                style={{
+                  background: currentTheme.colors.background,
+                  color: currentTheme.colors.text,
+                  borderColor: currentTheme.colors.border
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = currentTheme.colors.primary;
+                  e.target.style.boxShadow = `0 0 0 2px ${currentTheme.colors.primary}40`;
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = currentTheme.colors.border;
+                  e.target.style.boxShadow = 'none';
+                }}
                 maxLength={50}
               />
-              <div className="text-right text-sm text-gray-500 mt-1">
+              <div className="text-right text-sm mt-1" style={{ color: currentTheme.colors.textSecondary }}>
                 {(project.settings.name || '').length}/50
               </div>
             </div>
             
             {/* ゲーム説明 */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium mb-2" style={{ color: currentTheme.colors.text }}>
                 ゲーム説明
               </label>
               <textarea
@@ -524,349 +563,434 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 onChange={(e) => handleDescriptionChange(e.target.value)}
                 placeholder="このゲームの楽しさを説明してください"
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                className="w-full px-4 py-3 rounded-lg border transition-all focus:outline-none focus:ring-2 resize-none"
+                style={{
+                  background: currentTheme.colors.background,
+                  color: currentTheme.colors.text,
+                  borderColor: currentTheme.colors.border
+                }}
                 maxLength={200}
               />
-              <div className="text-right text-sm text-gray-500 mt-1">
+              <div className="text-right text-sm mt-1" style={{ color: currentTheme.colors.textSecondary }}>
                 {(project.settings.description || '').length}/200
               </div>
             </div>
           </div>
-        </section>
+        </ModernCard>
 
         {/* ゲーム設定 */}
-        <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            ⚙️ ゲーム設定
-          </h3>
-          
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            {/* 🔧 ゲーム時間設定（無制限追加） */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+        <ModernCard title="ゲーム設定" icon="⚙️">
+          <div className="space-y-6">
+            {/* ゲーム時間設定 */}
+            <div>
+              <label className="block text-sm font-medium mb-3" style={{ color: currentTheme.colors.text }}>
                 ゲーム時間
               </label>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                {DURATION_PRESETS.map((preset) => (
-                  <button
-                    key={preset.value || 'unlimited'}
-                    onClick={() => handleDurationChange(preset.value)}
-                    className={`p-4 border-2 rounded-lg text-center transition-all hover:scale-105 ${
-                      (preset.value === null && project.settings.duration?.type === 'unlimited') ||
-                      (preset.value !== null && project.settings.duration?.seconds === preset.value)
-                        ? preset.color + ' border-current shadow-lg'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="text-2xl mb-1">{preset.emoji}</div>
-                    <div className="font-semibold">{preset.label}</div>
-                    <div className="text-xs text-gray-600">{preset.description}</div>
-                  </button>
-                ))}
+                {DURATION_PRESETS.map((preset) => {
+                  const isSelected = (preset.value === null && project.settings.duration?.type === 'unlimited') ||
+                                   (preset.value !== null && project.settings.duration?.seconds === preset.value);
+                  
+                  return (
+                    <button
+                      key={preset.value || 'unlimited'}
+                      onClick={() => handleDurationChange(preset.value)}
+                      className="p-4 border-2 rounded-xl text-center transition-all hover:scale-105 transform"
+                      style={{
+                        background: isSelected ? `${currentTheme.colors.primary}20` : currentTheme.colors.background,
+                        borderColor: isSelected ? currentTheme.colors.primary : currentTheme.colors.border,
+                        color: currentTheme.colors.text,
+                        boxShadow: isSelected ? `0 4px 12px ${currentTheme.colors.primary}30` : 'none'
+                      }}
+                    >
+                      <div className="text-2xl mb-1">{preset.emoji}</div>
+                      <div className="font-semibold">{preset.label}</div>
+                      <div className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+                        {preset.description}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
             
-            {/* 🔧 ゲームスピード設定（難易度の代替） */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+            {/* ゲームスピード設定 */}
+            <div>
+              <label className="block text-sm font-medium mb-3" style={{ color: currentTheme.colors.text }}>
                 ゲームスピード（挑戦レベル）
               </label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {GAME_SPEED_LEVELS.map((level) => (
-                  <button
-                    key={level.value}
-                    onClick={() => handleGameSpeedChange(level.value)}
-                    className={`p-4 border-2 rounded-lg text-center transition-all hover:scale-105 ${
-                      (project.metadata?.gameSpeed || 1.0) === level.value
-                        ? level.color + ' border-current shadow-lg'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="text-2xl mb-1">{level.emoji}</div>
-                    <div className="font-semibold">{level.label}</div>
-                    <div className="text-xs text-gray-600">{level.description}</div>
-                  </button>
-                ))}
+                {GAME_SPEED_LEVELS.map((level) => {
+                  const isSelected = (project.metadata?.gameSpeed || 1.0) === level.value;
+                  
+                  return (
+                    <button
+                      key={level.value}
+                      onClick={() => handleGameSpeedChange(level.value)}
+                      className="p-4 border-2 rounded-xl text-center transition-all hover:scale-105 transform"
+                      style={{
+                        background: isSelected ? `${currentTheme.colors.secondary}20` : currentTheme.colors.background,
+                        borderColor: isSelected ? currentTheme.colors.secondary : currentTheme.colors.border,
+                        color: currentTheme.colors.text,
+                        boxShadow: isSelected ? `0 4px 12px ${currentTheme.colors.secondary}30` : 'none'
+                      }}
+                    >
+                      <div className="text-2xl mb-1">{level.emoji}</div>
+                      <div className="font-semibold">{level.label}</div>
+                      <div className="text-xs" style={{ color: currentTheme.colors.textSecondary }}>
+                        {level.description}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
-        </section>
+        </ModernCard>
 
-        {/* 🔧 強化: テストプレイセクション */}
-        <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            🎯 テストプレイ
-          </h3>
-          
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex flex-col items-center text-center">
-              {!isTestPlaying && testPlayResult === null && (
-                <>
-                  <div className="text-6xl mb-4">🕹️</div>
-                  <h4 className="text-lg font-medium text-gray-800 mb-2">
-                    ゲームをテストしてみましょう
-                  </h4>
-                  <p className="text-gray-600 mb-6">
-                    作成したゲームが正しく動作するか確認できます
-                  </p>
-                  <div className="flex gap-4">
-                    <button
-                      onClick={handleTestPlay}
-                      disabled={!project.settings.name || isTestPlaying}
-                      className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-medium transition-colors"
-                    >
-                      🧪 クイックテスト (3秒)
-                    </button>
-                    <button
-                      onClick={handleFullGamePlay}
-                      disabled={!project.settings.name || isTestPlaying}
-                      className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-medium transition-colors"
-                    >
-                      ▶️ フルゲーム実行
-                    </button>
-                  </div>
-                </>
-              )}
-              
-              {isTestPlaying && (
-                <>
-                  <div className="text-6xl mb-4 animate-bounce">🎮</div>
-                  <h4 className="text-lg font-medium text-gray-800 mb-2">
-                    テストプレイ中...
-                  </h4>
-                  <p className="text-gray-600">ゲームの動作を確認しています</p>
-                  <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full animate-pulse" style={{ width: '70%' }}></div>
-                  </div>
-                </>
-              )}
-              
-              {testPlayResult === 'success' && testPlayDetails && (
-                <>
-                  <div className="text-6xl mb-4">🎉</div>
-                  <h4 className="text-lg font-medium text-green-600 mb-2">
-                    テスト成功！
-                  </h4>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 max-w-md">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">{testPlayDetails.score || 0}</div>
-                        <div className="text-green-700">スコア</div>
+        {/* テストプレイセクション */}
+        <ModernCard title="テストプレイ" icon="🎯">
+          <div className="text-center">
+            {!isTestPlaying && testPlayResult === null && (
+              <div className="space-y-4">
+                <div className="text-6xl">🕹️</div>
+                <h4 className="text-lg font-medium" style={{ color: currentTheme.colors.text }}>
+                  ゲームをテストしてみましょう
+                </h4>
+                <p style={{ color: currentTheme.colors.textSecondary }}>
+                  作成したゲームが正しく動作するか確認できます
+                </p>
+                <div className="flex justify-center gap-4">
+                  <ArcadeButton
+                    variant="secondary"
+                    size="lg"
+                    onClick={handleTestPlay}
+                    disabled={!project.settings.name || isTestPlaying}
+                    effects={{ glow: true }}
+                  >
+                    🧪 クイックテスト (3秒)
+                  </ArcadeButton>
+                  <ArcadeButton
+                    variant="primary"
+                    size="lg"
+                    onClick={handleFullGamePlay}
+                    disabled={!project.settings.name || isTestPlaying}
+                    effects={{ glow: true, pulse: true }}
+                  >
+                    ▶️ フルゲーム実行
+                  </ArcadeButton>
+                </div>
+              </div>
+            )}
+            
+            {isTestPlaying && (
+              <div className="space-y-4">
+                <div className="text-6xl animate-bounce">🎮</div>
+                <h4 className="text-lg font-medium" style={{ color: currentTheme.colors.text }}>
+                  テストプレイ中...
+                </h4>
+                <p style={{ color: currentTheme.colors.textSecondary }}>
+                  ゲームの動作を確認しています
+                </p>
+                <div 
+                  className="w-full h-2 rounded-full"
+                  style={{ background: currentTheme.colors.border }}
+                >
+                  <div 
+                    className="h-2 rounded-full animate-pulse"
+                    style={{ 
+                      background: currentTheme.colors.primary,
+                      width: '70%'
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            
+            {testPlayResult === 'success' && testPlayDetails && (
+              <div className="space-y-4">
+                <div className="text-6xl">🎉</div>
+                <h4 className="text-lg font-medium" style={{ color: currentTheme.colors.success }}>
+                  テスト成功！
+                </h4>
+                <div 
+                  className="max-w-md mx-auto p-4 rounded-lg border"
+                  style={{ 
+                    background: `${currentTheme.colors.success}20`,
+                    borderColor: currentTheme.colors.success 
+                  }}
+                >
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold" style={{ color: currentTheme.colors.success }}>
+                        {testPlayDetails.score || 0}
                       </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">{testPlayDetails.timeElapsed.toFixed(1)}s</div>
-                        <div className="text-green-700">プレイ時間</div>
+                      <div style={{ color: currentTheme.colors.text }}>スコア</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold" style={{ color: currentTheme.colors.success }}>
+                        {testPlayDetails.timeElapsed.toFixed(1)}s
                       </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">{testPlayDetails.finalState?.objectsInteracted?.length || 0}</div>
-                        <div className="text-green-700">操作回数</div>
+                      <div style={{ color: currentTheme.colors.text }}>プレイ時間</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold" style={{ color: currentTheme.colors.success }}>
+                        {testPlayDetails.finalState?.objectsInteracted?.length || 0}
                       </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600">{testPlayDetails.finalState?.rulesTriggered?.length || 0}</div>
-                        <div className="text-green-700">ルール実行</div>
+                      <div style={{ color: currentTheme.colors.text }}>操作回数</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold" style={{ color: currentTheme.colors.success }}>
+                        {testPlayDetails.finalState?.rulesTriggered?.length || 0}
                       </div>
+                      <div style={{ color: currentTheme.colors.text }}>ルール実行</div>
                     </div>
                   </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setTestPlayResult(null)}
-                      className="text-blue-500 hover:text-blue-700 font-medium"
-                    >
-                      もう一度テスト
-                    </button>
-                    <button
-                      onClick={handleFullGamePlay}
-                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium"
-                    >
-                      フルゲーム実行
-                    </button>
+                </div>
+                <div className="flex justify-center gap-3">
+                  <ArcadeButton
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setTestPlayResult(null)}
+                  >
+                    もう一度テスト
+                  </ArcadeButton>
+                  <ArcadeButton
+                    variant="primary"
+                    size="sm"
+                    onClick={handleFullGamePlay}
+                    effects={{ glow: true }}
+                  >
+                    フルゲーム実行
+                  </ArcadeButton>
+                </div>
+              </div>
+            )}
+            
+            {testPlayResult === 'failure' && testPlayDetails && (
+              <div className="space-y-4">
+                <div className="text-6xl">⚠️</div>
+                <h4 className="text-lg font-medium" style={{ color: currentTheme.colors.error }}>
+                  テストで問題発見
+                </h4>
+                <div 
+                  className="max-w-md mx-auto p-4 rounded-lg border text-left"
+                  style={{ 
+                    background: `${currentTheme.colors.error}20`,
+                    borderColor: currentTheme.colors.error 
+                  }}
+                >
+                  <div className="text-sm" style={{ color: currentTheme.colors.text }}>
+                    <strong>エラー:</strong>
+                    <ul className="list-disc list-inside mt-2">
+                      {testPlayDetails.errors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
+                    {testPlayDetails.warnings.length > 0 && (
+                      <>
+                        <strong className="block mt-3">警告:</strong>
+                        <ul className="list-disc list-inside mt-2">
+                          {testPlayDetails.warnings.map((warning, index) => (
+                            <li key={index}>{warning}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
                   </div>
-                </>
-              )}
-              
-              {testPlayResult === 'failure' && testPlayDetails && (
-                <>
-                  <div className="text-6xl mb-4">⚠️</div>
-                  <h4 className="text-lg font-medium text-red-600 mb-2">
-                    テストで問題発見
-                  </h4>
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 max-w-md">
-                    <div className="text-sm text-red-700">
-                      <strong>エラー:</strong>
-                      <ul className="list-disc list-inside mt-2">
-                        {testPlayDetails.errors.map((error, index) => (
-                          <li key={index}>{error}</li>
-                        ))}
-                      </ul>
-                      {testPlayDetails.warnings.length > 0 && (
-                        <>
-                          <strong className="block mt-3">警告:</strong>
-                          <ul className="list-disc list-inside mt-2">
-                            {testPlayDetails.warnings.map((warning, index) => (
-                              <li key={index}>{warning}</li>
-                            ))}
-                          </ul>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setTestPlayResult(null)}
-                      className="text-blue-500 hover:text-blue-700 font-medium"
-                    >
-                      もう一度テスト
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+                </div>
+                <ArcadeButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setTestPlayResult(null)}
+                >
+                  もう一度テスト
+                </ArcadeButton>
+              </div>
+            )}
           </div>
-        </section>
+        </ModernCard>
 
-        {/* 🔧 フルゲーム表示エリア */}
+        {/* フルゲーム表示エリア */}
         {showFullGame && (
-          <section className="mb-8">
-            <div className="bg-black rounded-lg border border-gray-400 p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-medium text-white">🎮 ゲーム実行中</h4>
-                <button
+          <ModernCard title="ゲーム実行中" icon="🎮">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-lg font-medium" style={{ color: currentTheme.colors.text }}>
+                  🎮 ゲーム実行中
+                </h4>
+                <ArcadeButton
+                  variant="secondary"
+                  size="sm"
                   onClick={() => setShowFullGame(false)}
-                  className="text-white hover:text-gray-300 px-3 py-1 rounded bg-red-600 hover:bg-red-700"
+                  style={{
+                    background: currentTheme.colors.error,
+                    color: 'white'
+                  }}
                 >
                   ✕ 終了
-                </button>
+                </ArcadeButton>
               </div>
               <div
                 ref={fullGameRef}
-                className="w-full flex justify-center"
-                style={{ minHeight: '400px' }}
+                className="w-full flex justify-center rounded-lg"
+                style={{ 
+                  minHeight: '400px',
+                  background: currentTheme.colors.background,
+                  border: `2px solid ${currentTheme.colors.border}`
+                }}
               >
                 {/* ゲームキャンバスがここに挿入される */}
               </div>
             </div>
-          </section>
+          </ModernCard>
         )}
 
         {/* サムネイル設定 */}
-        <section className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            📸 サムネイル
-          </h3>
-          
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-32 h-40 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
-                  {project.settings.preview?.thumbnailDataUrl ? (
-                    <img
-                      src={project.settings.preview.thumbnailDataUrl}
-                      alt="Game Thumbnail"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="text-center text-gray-500">
-                      <div className="text-2xl mb-1">📸</div>
-                      <div className="text-xs">No Thumbnail</div>
-                    </div>
-                  )}
-                </div>
+        <ModernCard title="サムネイル" icon="📸">
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="flex-shrink-0">
+              <div 
+                className="w-32 h-40 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden"
+                style={{ borderColor: currentTheme.colors.border }}
+              >
+                {project.settings.preview?.thumbnailDataUrl ? (
+                  <img
+                    src={project.settings.preview.thumbnailDataUrl}
+                    alt="Game Thumbnail"
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                ) : (
+                  <div className="text-center" style={{ color: currentTheme.colors.textSecondary }}>
+                    <div className="text-2xl mb-1">📸</div>
+                    <div className="text-xs">No Thumbnail</div>
+                  </div>
+                )}
               </div>
+            </div>
+            
+            <div className="flex-1 text-center md:text-left">
+              <h4 className="font-medium mb-2" style={{ color: currentTheme.colors.text }}>
+                ゲームサムネイル
+              </h4>
+              <p className="text-sm mb-4" style={{ color: currentTheme.colors.textSecondary }}>
+                ゲームの魅力を伝えるサムネイルを設定します
+              </p>
               
-              <div className="flex-1">
-                <h4 className="font-medium text-gray-800 mb-2">ゲームサムネイル</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  ゲームの魅力を伝えるサムネイルを設定します
-                </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
+                <ArcadeButton
+                  variant="primary"
+                  size="md"
+                  onClick={handleGenerateThumbnail}
+                  disabled={generateThumbnail}
+                  effects={{ glow: !generateThumbnail }}
+                >
+                  {generateThumbnail ? '生成中...' : '🎨 自動生成'}
+                </ArcadeButton>
                 
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleGenerateThumbnail}
-                    disabled={generateThumbnail}
-                    className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                <label>
+                  <button 
+                    className="inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all cursor-pointer"
+                    style={{
+                      background: `linear-gradient(135deg, ${currentTheme.colors.background}, ${currentTheme.colors.surface})`,
+                      color: currentTheme.colors.text,
+                      border: `2px solid ${currentTheme.colors.border}`
+                    }}
                   >
-                    {generateThumbnail ? '生成中...' : '🎨 自動生成'}
-                  </button>
-                  
-                  <label className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer">
                     📁 アップロード
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (e) => {
-                            const thumbnailDataUrl = e.target?.result as string;
-                            updateSettings({
-                              preview: {
-                                ...project.settings.preview,
-                                thumbnailDataUrl
-                              }
-                            });
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
+                  </button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                          const thumbnailDataUrl = e.target?.result as string;
+                          updateSettings({
+                            preview: {
+                              ...project.settings.preview,
+                              thumbnailDataUrl
+                            }
+                          });
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </label>
               </div>
             </div>
           </div>
-        </section>
+        </ModernCard>
 
         {/* アクションボタン */}
-        <section className="flex flex-wrap gap-4 justify-center">
-          <button
+        <div className="flex flex-wrap gap-4 justify-center">
+          <ArcadeButton
+            variant="success"
+            size="lg"
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            effects={{ glow: !isSaving }}
           >
             {isSaving ? '💾 保存中...' : '💾 保存'}
-          </button>
+          </ArcadeButton>
 
-          <button
+          <ArcadeButton
+            variant="primary"
+            size="lg"
             onClick={handleTestPlay}
             disabled={!project.settings.name || isTestPlaying}
-            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            effects={{ glow: !isTestPlaying }}
           >
             🧪 クイックテスト
-          </button>
+          </ArcadeButton>
 
-          <button
+          <ArcadeButton
+            variant="secondary"
+            size="lg"
             onClick={handleFullGamePlay}
             disabled={!project.settings.name || isTestPlaying}
-            className="flex items-center gap-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            effects={{ pulse: true }}
           >
             🎮 フルプレイ
-          </button>
+          </ArcadeButton>
           
-          <button
+          <ArcadeButton
+            variant="gradient"
+            size="lg"
             onClick={handlePublish}
             disabled={!project.settings.name || isPublishing || (!project.assets.objects.length && !project.assets.background)}
-            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-medium transition-colors"
+            effects={{ glow: true, pulse: !isPublishing }}
           >
             {isPublishing ? '公開中...' : project.settings.publishing?.isPublished ? '🔄 更新' : '🚀 公開'}
-          </button>
+          </ArcadeButton>
           
-          <button
+          <ArcadeButton
+            variant="secondary"
+            size="lg"
             onClick={handleExport}
-            className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
           >
             📦 エクスポート
-          </button>
-        </section>
+          </ArcadeButton>
+        </div>
         
         {/* 公開ステータス表示 */}
         {project.settings.publishing?.isPublished && (
-          <div className="mt-6 text-center">
-            <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 px-4 py-2 rounded-lg">
-              <span className="text-green-600">✅ 公開済み</span>
+          <div className="text-center">
+            <div 
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border"
+              style={{
+                background: `${currentTheme.colors.success}20`,
+                borderColor: currentTheme.colors.success,
+                color: currentTheme.colors.success
+              }}
+            >
+              <span>✅ 公開済み</span>
               {project.settings.publishing?.publishedAt && (
-                <span className="text-green-600 text-sm">
+                <span className="text-sm">
                   {new Date(project.settings.publishing.publishedAt).toLocaleString('ja-JP')}
                 </span>
               )}
@@ -874,72 +998,103 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </div>
         )}
         
-        {/* 🔧 強化: ゲーム統計情報 */}
-        <section className="mt-8 bg-gray-50 rounded-lg p-6">
-          <h4 className="text-lg font-medium text-gray-800 mb-4">📊 ゲーム統計</h4>
+        {/* エラー表示 */}
+        {publishError && (
+          <div 
+            className="p-4 rounded-lg border text-center"
+            style={{
+              background: `${currentTheme.colors.error}20`,
+              borderColor: currentTheme.colors.error,
+              color: currentTheme.colors.error
+            }}
+          >
+            ❌ {publishError}
+          </div>
+        )}
+        
+        {/* ゲーム統計情報 */}
+        <ModernCard title="ゲーム統計" icon="📊">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold" style={{ color: currentTheme.colors.primary }}>
                 {project.assets.objects.length}
               </div>
-              <div className="text-sm text-gray-600">オブジェクト</div>
+              <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+                オブジェクト
+              </div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold" style={{ color: currentTheme.colors.secondary }}>
                 {project.script.rules.length}
               </div>
-              <div className="text-sm text-gray-600">ルール</div>
+              <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+                ルール
+              </div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold" style={{ color: currentTheme.colors.accent }}>
                 {project.assets.texts.length}
               </div>
-              <div className="text-sm text-gray-600">テキスト</div>
+              <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+                テキスト
+              </div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
+              <div className="text-2xl font-bold" style={{ color: currentTheme.colors.warning }}>
                 {Math.round((project.totalSize || 0) / 1024 / 1024 * 10) / 10}MB
               </div>
-              <div className="text-sm text-gray-600">総容量</div>
+              <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+                総容量
+              </div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-indigo-600">
+              <div className="text-2xl font-bold" style={{ color: currentTheme.colors.success }}>
                 {project.metadata?.statistics?.testPlayCount || 0}
               </div>
-              <div className="text-sm text-gray-600">テスト回数</div>
+              <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>
+                テスト回数
+              </div>
             </div>
           </div>
           
-          {/* 🔧 追加: 初期条件・プロジェクト健全性 */}
-          <div className="mt-4 pt-4 border-t border-gray-200">
+          {/* プロジェクト健全性 */}
+          <div className="mt-4 pt-4 border-t" style={{ borderColor: currentTheme.colors.border }}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center">
-                <div className={`text-2xl font-bold ${project.script.initialState ? 'text-green-600' : 'text-orange-600'}`}>
+                <div className={`text-2xl font-bold`} style={{ 
+                  color: project.script.initialState ? currentTheme.colors.success : currentTheme.colors.warning
+                }}>
                   {project.script.initialState ? '✓' : '⚠️'}
                 </div>
-                <div className="text-sm text-gray-600">初期条件</div>
+                <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>初期条件</div>
               </div>
               <div className="text-center">
-                <div className={`text-2xl font-bold ${project.script.layout.objects.length > 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                <div className={`text-2xl font-bold`} style={{ 
+                  color: project.script.layout.objects.length > 0 ? currentTheme.colors.success : currentTheme.colors.warning
+                }}>
                   {project.script.layout.objects.length}
                 </div>
-                <div className="text-sm text-gray-600">配置済み</div>
+                <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>配置済み</div>
               </div>
               <div className="text-center">
-                <div className={`text-2xl font-bold ${project.script.successConditions.length > 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                <div className={`text-2xl font-bold`} style={{ 
+                  color: project.script.successConditions.length > 0 ? currentTheme.colors.success : currentTheme.colors.warning
+                }}>
                   {project.script.successConditions.length}
                 </div>
-                <div className="text-sm text-gray-600">成功条件</div>
+                <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>成功条件</div>
               </div>
               <div className="text-center">
-                <div className={`text-2xl font-bold ${project.script.statistics?.complexityScore || 0 > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                <div className={`text-2xl font-bold`} style={{ 
+                  color: project.script.statistics?.complexityScore || 0 > 0 ? currentTheme.colors.success : currentTheme.colors.textSecondary
+                }}>
                   {project.script.statistics?.complexityScore || 0}
                 </div>
-                <div className="text-sm text-gray-600">複雑度</div>
+                <div className="text-sm" style={{ color: currentTheme.colors.textSecondary }}>複雑度</div>
               </div>
             </div>
           </div>
-        </section>
+        </ModernCard>
       </div>
     </div>
   );
