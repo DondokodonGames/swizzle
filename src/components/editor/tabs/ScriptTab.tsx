@@ -1,5 +1,5 @@
 // src/components/editor/tabs/ScriptTab.tsx
-// 全blueカラー修正版: blue→primary置き換え・TypeScriptエラー0件
+// ゲーム時間設定追加版 - rulesモードに初期設定エリア追加
 
 import React, { useState } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
@@ -17,6 +17,15 @@ interface ScriptTabProps {
   project: GameProject;
   onProjectUpdate: (project: GameProject) => void;
 }
+
+// ゲーム時間のプリセット
+const DURATION_PRESETS = [
+  { value: 5, label: '5秒', description: 'サクッと', emoji: '⚡' },
+  { value: 10, label: '10秒', description: 'ちょうどいい', emoji: '⏰' },
+  { value: 15, label: '15秒', description: 'じっくり', emoji: '🎯' },
+  { value: 30, label: '30秒', description: 'たっぷり', emoji: '🏃' },
+  { value: null, label: '無制限', description: '自由に', emoji: '∞' },
+] as const;
 
 export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }) => {
   // 状態管理
@@ -55,6 +64,25 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     onProjectUpdate(updatedProject);
     setForceRender(prev => prev + 1);
     showNotification('success', 'プロジェクトを更新しました');
+  };
+
+  // 🔧 新規追加: ゲーム時間設定の更新
+  const handleDurationChange = (seconds: number | null) => {
+    const updatedSettings = {
+      ...project.settings,
+      duration: seconds === null ? {
+        type: 'unlimited' as const,
+        seconds: undefined,
+        maxSeconds: undefined
+      } : {
+        type: 'fixed' as const,
+        seconds: seconds as 5 | 10 | 15 | 20 | 30,
+        maxSeconds: undefined
+      }
+    };
+    
+    updateProject({ settings: updatedSettings });
+    showNotification('success', `ゲーム時間を${seconds === null ? '無制限' : seconds + '秒'}に設定しました`);
   };
 
   // 🔧 新規: オブジェクトを初期配置（ドラッグ&ドロップの代替）
@@ -797,14 +825,169 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
             </div>
           </div>
         ) : (
-          <RuleList
-            project={project}
-            selectedObjectId={selectedObjectId}
-            onProjectUpdate={updateProject}
-            onEditRule={handleEditRule}
-            onCreateRule={handleCreateRule}
-            onModeChange={setMode}
-          />
+          /* 🔧 ルールモード：初期設定エリア追加 */
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            
+            {/* 🆕 初期設定エリア（赤い範囲） */}
+            <div style={{
+              backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+              borderBottom: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+              padding: DESIGN_TOKENS.spacing[6]
+            }}>
+              <ModernCard 
+                variant="filled" 
+                size="lg"
+                style={{ backgroundColor: DESIGN_TOKENS.colors.purple[50] }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3], marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                  <div 
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      backgroundColor: DESIGN_TOKENS.colors.purple[500],
+                      borderRadius: DESIGN_TOKENS.borderRadius.xl,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: DESIGN_TOKENS.shadows.md
+                    }}
+                  >
+                    <span style={{ color: DESIGN_TOKENS.colors.neutral[0], fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>⚙️</span>
+                  </div>
+                  <div>
+                    <h3 
+                      style={{
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+                        fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                        color: DESIGN_TOKENS.colors.purple[800],
+                        margin: 0
+                      }}
+                    >
+                      ゲームルール設定
+                    </h3>
+                    <p 
+                      style={{
+                        fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                        color: DESIGN_TOKENS.colors.purple[600],
+                        margin: 0
+                      }}
+                    >
+                      オブジェクトを選択してルールを設定
+                    </p>
+                  </div>
+                </div>
+
+                {/* 🆕 ゲーム時間設定 */}
+                <div style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
+                  <h4 style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                    fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                    color: DESIGN_TOKENS.colors.neutral[800],
+                    marginBottom: DESIGN_TOKENS.spacing[4],
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: DESIGN_TOKENS.spacing[2]
+                  }}>
+                    ⏰ ゲーム時間設定
+                  </h4>
+                  
+                  <div style={{ 
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                    gap: DESIGN_TOKENS.spacing[3]
+                  }}>
+                    {DURATION_PRESETS.map((preset) => {
+                      const isSelected = (preset.value === null && project.settings.duration?.type === 'unlimited') ||
+                                       (preset.value !== null && project.settings.duration?.seconds === preset.value);
+                      
+                      return (
+                        <button
+                          key={preset.value || 'unlimited'}
+                          onClick={() => handleDurationChange(preset.value)}
+                          style={{
+                            padding: DESIGN_TOKENS.spacing[4],
+                            border: isSelected ? `2px solid ${DESIGN_TOKENS.colors.purple[500]}` : `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                            borderRadius: DESIGN_TOKENS.borderRadius.xl,
+                            backgroundColor: isSelected ? DESIGN_TOKENS.colors.purple[100] : DESIGN_TOKENS.colors.neutral[0],
+                            color: DESIGN_TOKENS.colors.neutral[800],
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            transition: `all ${DESIGN_TOKENS.animation.duration.normal} ${DESIGN_TOKENS.animation.easing.inOut}`,
+                            outline: 'none'
+                          }}
+                          onMouseOver={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.neutral[50];
+                              e.currentTarget.style.borderColor = DESIGN_TOKENS.colors.neutral[400];
+                            }
+                          }}
+                          onMouseOut={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.neutral[0];
+                              e.currentTarget.style.borderColor = DESIGN_TOKENS.colors.neutral[300];
+                            }
+                          }}
+                        >
+                          <div style={{ 
+                            fontSize: DESIGN_TOKENS.typography.fontSize['3xl'], 
+                            marginBottom: DESIGN_TOKENS.spacing[2] 
+                          }}>
+                            {preset.emoji}
+                          </div>
+                          <div style={{ 
+                            fontSize: DESIGN_TOKENS.typography.fontSize.sm, 
+                            fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                            marginBottom: DESIGN_TOKENS.spacing[1]
+                          }}>
+                            {preset.label}
+                          </div>
+                          <div style={{ 
+                            fontSize: DESIGN_TOKENS.typography.fontSize.xs, 
+                            color: DESIGN_TOKENS.colors.neutral[600]
+                          }}>
+                            {preset.description}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* 現在の設定表示 */}
+                  <div style={{
+                    marginTop: DESIGN_TOKENS.spacing[4],
+                    padding: DESIGN_TOKENS.spacing[3],
+                    backgroundColor: DESIGN_TOKENS.colors.purple[100],
+                    borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                    border: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`
+                  }}>
+                    <div style={{
+                      fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                      color: DESIGN_TOKENS.colors.purple[800],
+                      fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
+                    }}>
+                      💡 現在の設定: {
+                        project.settings.duration?.type === 'unlimited' 
+                          ? '無制限でプレイ可能'
+                          : `${project.settings.duration?.seconds || 10}秒でゲーム終了`
+                      }
+                    </div>
+                  </div>
+                </div>
+              </ModernCard>
+            </div>
+
+            {/* ルール一覧エリア */}
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <RuleList
+                project={project}
+                selectedObjectId={selectedObjectId}
+                onProjectUpdate={updateProject}
+                onEditRule={handleEditRule}
+                onCreateRule={handleCreateRule}
+                onModeChange={setMode}
+              />
+            </div>
+          </div>
         )}
       </div>
 

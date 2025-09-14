@@ -14,16 +14,7 @@ interface SettingsTabProps {
   onSave?: () => void;
 }
 
-// ゲーム時間のプリセット
-const DURATION_PRESETS = [
-  { value: 5, label: '5秒', description: 'サクッと', emoji: '⚡' },
-  { value: 10, label: '10秒', description: 'ちょうどいい', emoji: '⏰' },
-  { value: 15, label: '15秒', description: 'じっくり', emoji: '🎯' },
-  { value: 30, label: '30秒', description: 'たっぷり', emoji: '🏃' },
-  { value: null, label: '無制限', description: '自由に', emoji: '∞' },
-] as const;
-
-// ゲームスピード設定
+// 🆕 ゲームスピード設定（テストプレイ下に移動）
 const GAME_SPEED_LEVELS = [
   { value: 0.7, label: 'スロー', description: 'ゆっくり楽しむ', emoji: '🐌' },
   { value: 1.0, label: '標準', description: 'ちょうどいい速さ', emoji: '🚶' },
@@ -80,22 +71,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     updateSettings({ description: description.slice(0, 200) });
   }, [updateSettings]);
 
-  // ゲーム時間設定の更新（無制限対応）
-  const handleDurationChange = useCallback((seconds: number | null) => {
-    updateSettings({
-      duration: seconds === null ? {
-        type: 'unlimited',
-        seconds: undefined,
-        maxSeconds: undefined
-      } : {
-        type: 'fixed',
-        seconds: seconds as 5 | 10 | 15 | 20 | 30,
-        maxSeconds: undefined
-      }
-    });
-  }, [updateSettings]);
-
-  // ゲームスピード設定の更新
+  // 🆕 ゲームスピード設定の更新（テストプレイ下に移動）
   const handleGameSpeedChange = useCallback((speed: number) => {
     updateProject({ 
       metadata: {
@@ -484,7 +460,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }}>
       <div style={{ maxWidth: '1024px', margin: '0 auto' }}>
         
-        {/* ゲーム基本情報 */}
+        {/* ゲーム基本情報（ゲーム時間設定削除済み） */}
         <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
           <h2 style={{ 
             fontSize: '24px', 
@@ -583,144 +559,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 marginTop: '4px'
               }}>
                 {(project.settings.description || '').length}/200
-              </div>
-            </div>
-          </div>
-        </ModernCard>
-
-        {/* ゲーム設定 */}
-        <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
-          <h2 style={{ 
-            fontSize: '24px', 
-            fontWeight: '600', 
-            color: '#1e293b',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            ⚙️ ゲーム設定
-          </h2>
-          
-          <div>
-            {/* ゲーム時間設定 */}
-            <div style={{ marginBottom: '32px' }}>
-              <label style={{ 
-                display: 'block',
-                fontSize: '16px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '16px'
-              }}>
-                ゲーム時間
-              </label>
-              <div style={{ 
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                gap: '12px'
-              }}>
-                {DURATION_PRESETS.map((preset) => {
-                  const isSelected = (preset.value === null && project.settings.duration?.type === 'unlimited') ||
-                                   (preset.value !== null && project.settings.duration?.seconds === preset.value);
-                  
-                  return (
-                    <button
-                      key={preset.value || 'unlimited'}
-                      onClick={() => handleDurationChange(preset.value)}
-                      style={{
-                        padding: '16px',
-                        border: isSelected ? '2px solid #3b82f6' : '1px solid #d1d5db',
-                        borderRadius: '12px',
-                        backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
-                        color: '#1f2937',
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        outline: 'none'
-                      }}
-                      onMouseOver={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = '#f9fafb';
-                          e.currentTarget.style.borderColor = '#9ca3af';
-                        }
-                      }}
-                      onMouseOut={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = '#ffffff';
-                          e.currentTarget.style.borderColor = '#d1d5db';
-                        }
-                      }}
-                    >
-                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>{preset.emoji}</div>
-                      <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
-                        {preset.label}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                        {preset.description}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            
-            {/* ゲームスピード設定 */}
-            <div>
-              <label style={{ 
-                display: 'block',
-                fontSize: '16px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '16px'
-              }}>
-                ゲームスピード（挑戦レベル）
-              </label>
-              <div style={{ 
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                gap: '12px'
-              }}>
-                {GAME_SPEED_LEVELS.map((level) => {
-                  const isSelected = (project.metadata?.gameSpeed || 1.0) === level.value;
-                  
-                  return (
-                    <button
-                      key={level.value}
-                      onClick={() => handleGameSpeedChange(level.value)}
-                      style={{
-                        padding: '16px',
-                        border: isSelected ? '2px solid #10b981' : '1px solid #d1d5db',
-                        borderRadius: '12px',
-                        backgroundColor: isSelected ? '#ecfdf5' : '#ffffff',
-                        color: '#1f2937',
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        outline: 'none'
-                      }}
-                      onMouseOver={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = '#f9fafb';
-                          e.currentTarget.style.borderColor = '#9ca3af';
-                        }
-                      }}
-                      onMouseOut={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = '#ffffff';
-                          e.currentTarget.style.borderColor = '#d1d5db';
-                        }
-                      }}
-                    >
-                      <div style={{ fontSize: '32px', marginBottom: '8px' }}>{level.emoji}</div>
-                      <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
-                        {level.label}
-                      </div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                        {level.description}
-                      </div>
-                    </button>
-                  );
-                })}
               </div>
             </div>
           </div>
@@ -978,6 +816,88 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 </ModernButton>
               </div>
             )}
+          </div>
+
+          {/* 🆕 ゲームスピード設定（テストプレイボタンの下に移動） */}
+          <div style={{ 
+            marginTop: '40px',
+            paddingTop: '32px',
+            borderTop: '1px solid #e5e7eb'
+          }}>
+            <h4 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              justifyContent: 'center'
+            }}>
+              ⚡ ゲームスピード（挑戦レベル）
+            </h4>
+            
+            <div style={{ 
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: '12px',
+              maxWidth: '600px',
+              margin: '0 auto'
+            }}>
+              {GAME_SPEED_LEVELS.map((level) => {
+                const isSelected = (project.metadata?.gameSpeed || 1.0) === level.value;
+                
+                return (
+                  <button
+                    key={level.value}
+                    onClick={() => handleGameSpeedChange(level.value)}
+                    style={{
+                      padding: '16px',
+                      border: isSelected ? '2px solid #10b981' : '1px solid #d1d5db',
+                      borderRadius: '12px',
+                      backgroundColor: isSelected ? '#ecfdf5' : '#ffffff',
+                      color: '#1f2937',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      outline: 'none'
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                        e.currentTarget.style.borderColor = '#9ca3af';
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      if (!isSelected) {
+                        e.currentTarget.style.backgroundColor = '#ffffff';
+                        e.currentTarget.style.borderColor = '#d1d5db';
+                      }
+                    }}
+                  >
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>{level.emoji}</div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
+                      {level.label}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                      {level.description}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            
+            {/* 現在の設定表示 */}
+            <div style={{
+              marginTop: '16px',
+              textAlign: 'center',
+              fontSize: '14px',
+              color: '#6b7280'
+            }}>
+              現在の設定: {
+                GAME_SPEED_LEVELS.find(level => level.value === (project.metadata?.gameSpeed || 1.0))?.label || '標準'
+              } スピード
+            </div>
           </div>
         </ModernCard>
 
