@@ -460,7 +460,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }}>
       <div style={{ maxWidth: '1024px', margin: '0 auto' }}>
         
-        {/* ゲーム基本情報（ゲーム時間設定削除済み） */}
+        {/* 1️⃣ ゲーム基本情報 */}
         <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
           <h2 style={{ 
             fontSize: '24px', 
@@ -564,7 +564,127 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </div>
         </ModernCard>
 
-        {/* テストプレイセクション */}
+        {/* 2️⃣ サムネイル設定 */}
+        <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
+          <h2 style={{ 
+            fontSize: '24px', 
+            fontWeight: '600', 
+            color: '#1e293b',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            📸 サムネイル
+          </h2>
+          
+          <div style={{ 
+            display: 'flex',
+            flexDirection: window.innerWidth < 768 ? 'column' : 'row',
+            alignItems: 'center',
+            gap: '24px'
+          }}>
+            <div style={{ flexShrink: 0 }}>
+              <div style={{
+                width: '128px',
+                height: '160px',
+                border: '2px dashed #d1d5db',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                backgroundColor: '#ffffff'
+              }}>
+                {project.settings.preview?.thumbnailDataUrl ? (
+                  <img
+                    src={project.settings.preview.thumbnailDataUrl}
+                    alt="Game Thumbnail"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: '8px'
+                    }}
+                  />
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#9ca3af' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>📸</div>
+                    <div style={{ fontSize: '12px' }}>No Thumbnail</div>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div style={{ flex: 1, textAlign: window.innerWidth < 768 ? 'center' : 'left' }}>
+              <h3 style={{ 
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#1f2937',
+                marginBottom: '8px'
+              }}>
+                ゲームサムネイル
+              </h3>
+              <p style={{ 
+                fontSize: '14px',
+                color: '#6b7280',
+                marginBottom: '16px'
+              }}>
+                ゲームの魅力を伝えるサムネイルを設定します
+              </p>
+              
+              <div style={{ 
+                display: 'flex',
+                flexDirection: window.innerWidth < 640 ? 'column' : 'row',
+                gap: '12px',
+                justifyContent: window.innerWidth < 768 ? 'center' : 'flex-start'
+              }}>
+                <ModernButton
+                  variant="primary"
+                  size="md"
+                  onClick={handleGenerateThumbnail}
+                  disabled={generateThumbnail}
+                  loading={generateThumbnail}
+                >
+                  🎨 自動生成
+                </ModernButton>
+                
+                <label>
+                  <ModernButton
+                    variant="secondary"
+                    size="md"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    📁 アップロード
+                  </ModernButton>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                          const thumbnailDataUrl = e.target?.result as string;
+                          updateSettings({
+                            preview: {
+                              ...project.settings.preview,
+                              thumbnailDataUrl
+                            }
+                          });
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+        </ModernCard>
+
+        {/* 3️⃣ テストプレイセクション */}
         <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
           <h2 style={{ 
             fontSize: '24px', 
@@ -946,221 +1066,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </ModernCard>
         )}
 
-        {/* サムネイル設定 */}
+        {/* 4️⃣ ゲーム統計情報 */}
         <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
-          <h2 style={{ 
-            fontSize: '24px', 
-            fontWeight: '600', 
-            color: '#1e293b',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
-            📸 サムネイル
-          </h2>
-          
-          <div style={{ 
-            display: 'flex',
-            flexDirection: window.innerWidth < 768 ? 'column' : 'row',
-            alignItems: 'center',
-            gap: '24px'
-          }}>
-            <div style={{ flexShrink: 0 }}>
-              <div style={{
-                width: '128px',
-                height: '160px',
-                border: '2px dashed #d1d5db',
-                borderRadius: '12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                backgroundColor: '#ffffff'
-              }}>
-                {project.settings.preview?.thumbnailDataUrl ? (
-                  <img
-                    src={project.settings.preview.thumbnailDataUrl}
-                    alt="Game Thumbnail"
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      borderRadius: '8px'
-                    }}
-                  />
-                ) : (
-                  <div style={{ textAlign: 'center', color: '#9ca3af' }}>
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>📸</div>
-                    <div style={{ fontSize: '12px' }}>No Thumbnail</div>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div style={{ flex: 1, textAlign: window.innerWidth < 768 ? 'center' : 'left' }}>
-              <h3 style={{ 
-                fontSize: '18px',
-                fontWeight: '600',
-                color: '#1f2937',
-                marginBottom: '8px'
-              }}>
-                ゲームサムネイル
-              </h3>
-              <p style={{ 
-                fontSize: '14px',
-                color: '#6b7280',
-                marginBottom: '16px'
-              }}>
-                ゲームの魅力を伝えるサムネイルを設定します
-              </p>
-              
-              <div style={{ 
-                display: 'flex',
-                flexDirection: window.innerWidth < 640 ? 'column' : 'row',
-                gap: '12px',
-                justifyContent: window.innerWidth < 768 ? 'center' : 'flex-start'
-              }}>
-                <ModernButton
-                  variant="primary"
-                  size="md"
-                  onClick={handleGenerateThumbnail}
-                  disabled={generateThumbnail}
-                  loading={generateThumbnail}
-                >
-                  🎨 自動生成
-                </ModernButton>
-                
-                <label>
-                  <ModernButton
-                    variant="secondary"
-                    size="md"
-                    style={{ cursor: 'pointer' }}
-                  >
-                    📁 アップロード
-                  </ModernButton>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                          const thumbnailDataUrl = e.target?.result as string;
-                          updateSettings({
-                            preview: {
-                              ...project.settings.preview,
-                              thumbnailDataUrl
-                            }
-                          });
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                  />
-                </label>
-              </div>
-            </div>
-          </div>
-        </ModernCard>
-
-        {/* アクションボタン */}
-        <div style={{ 
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '16px',
-          justifyContent: 'center',
-          marginBottom: '24px'
-        }}>
-          <ModernButton
-            variant="success"
-            size="lg"
-            onClick={handleSave}
-            disabled={isSaving}
-            loading={isSaving}
-          >
-            💾 保存
-          </ModernButton>
-
-          <ModernButton
-            variant="secondary"
-            size="lg"
-            onClick={handleTestPlay}
-            disabled={!project.settings.name || isTestPlaying}
-          >
-            🧪 クイックテスト
-          </ModernButton>
-
-          <ModernButton
-            variant="outline"
-            size="lg"
-            onClick={handleFullGamePlay}
-            disabled={!project.settings.name || isTestPlaying}
-          >
-            🎮 フルプレイ
-          </ModernButton>
-          
-          <ModernButton
-            variant="primary"
-            size="lg"
-            onClick={handlePublish}
-            disabled={!project.settings.name || isPublishing || (!project.assets.objects.length && !project.assets.background)}
-            loading={isPublishing}
-          >
-            {project.settings.publishing?.isPublished ? '🔄 更新' : '🚀 公開'}
-          </ModernButton>
-          
-          <ModernButton
-            variant="ghost"
-            size="lg"
-            onClick={handleExport}
-          >
-            📦 エクスポート
-          </ModernButton>
-        </div>
-        
-        {/* 公開ステータス表示 */}
-        {project.settings.publishing?.isPublished && (
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              backgroundColor: '#ecfdf5',
-              border: '1px solid #d1fae5',
-              borderRadius: '8px',
-              color: '#10b981'
-            }}>
-              <span>✅ 公開済み</span>
-              {project.settings.publishing?.publishedAt && (
-                <span style={{ fontSize: '14px' }}>
-                  {new Date(project.settings.publishing.publishedAt).toLocaleString('ja-JP')}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-        
-        {/* エラー表示 */}
-        {publishError && (
-          <div style={{
-            padding: '16px',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: '12px',
-            color: '#ef4444',
-            textAlign: 'center',
-            marginBottom: '24px'
-          }}>
-            ❌ {publishError}
-          </div>
-        )}
-        
-        {/* ゲーム統計情報 */}
-        <ModernCard variant="default" size="lg">
           <h2 style={{ 
             fontSize: '24px', 
             fontWeight: '600', 
@@ -1294,6 +1201,99 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             </div>
           </div>
         </ModernCard>
+
+        {/* 5️⃣ 公開・アクションボタン */}
+        <div style={{ 
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '16px',
+          justifyContent: 'center',
+          marginBottom: '24px'
+        }}>
+          <ModernButton
+            variant="success"
+            size="lg"
+            onClick={handleSave}
+            disabled={isSaving}
+            loading={isSaving}
+          >
+            💾 保存
+          </ModernButton>
+
+          <ModernButton
+            variant="secondary"
+            size="lg"
+            onClick={handleTestPlay}
+            disabled={!project.settings.name || isTestPlaying}
+          >
+            🧪 クイックテスト
+          </ModernButton>
+
+          <ModernButton
+            variant="outline"
+            size="lg"
+            onClick={handleFullGamePlay}
+            disabled={!project.settings.name || isTestPlaying}
+          >
+            🎮 フルプレイ
+          </ModernButton>
+          
+          <ModernButton
+            variant="primary"
+            size="lg"
+            onClick={handlePublish}
+            disabled={!project.settings.name || isPublishing || (!project.assets.objects.length && !project.assets.background)}
+            loading={isPublishing}
+          >
+            {project.settings.publishing?.isPublished ? '🔄 更新' : '🚀 公開'}
+          </ModernButton>
+          
+          <ModernButton
+            variant="ghost"
+            size="lg"
+            onClick={handleExport}
+          >
+            📦 エクスポート
+          </ModernButton>
+        </div>
+        
+        {/* 公開ステータス表示 */}
+        {project.settings.publishing?.isPublished && (
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              backgroundColor: '#ecfdf5',
+              border: '1px solid #d1fae5',
+              borderRadius: '8px',
+              color: '#10b981'
+            }}>
+              <span>✅ 公開済み</span>
+              {project.settings.publishing?.publishedAt && (
+                <span style={{ fontSize: '14px' }}>
+                  {new Date(project.settings.publishing.publishedAt).toLocaleString('ja-JP')}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* エラー表示 */}
+        {publishError && (
+          <div style={{
+            padding: '16px',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '12px',
+            color: '#ef4444',
+            textAlign: 'center',
+            marginBottom: '24px'
+          }}>
+            ❌ {publishError}
+          </div>
+        )}
       </div>
 
       {/* アニメーション用スタイル */}

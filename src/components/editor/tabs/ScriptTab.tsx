@@ -1,5 +1,5 @@
 // src/components/editor/tabs/ScriptTab.tsx
-// ゲーム時間設定追加版 - rulesモードに初期設定エリア追加
+// ゲーム時間設定追加版 - rulesモードに初期設定エリア追加・重複削除済み
 
 import React, { useState } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
@@ -825,10 +825,10 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
             </div>
           </div>
         ) : (
-          /* 🔧 ルールモード：初期設定エリア追加 */
+          /* 🔧 ルールモード：初期設定エリア追加・重複削除 */
           <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             
-            {/* 🆕 初期設定エリア（赤い範囲） */}
+            {/* 🆕 初期設定エリア（ゲーム時間設定） */}
             <div style={{
               backgroundColor: DESIGN_TOKENS.colors.neutral[0],
               borderBottom: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
@@ -976,16 +976,112 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
               </ModernCard>
             </div>
 
-            {/* ルール一覧エリア */}
-            <div style={{ flex: 1, overflow: 'hidden' }}>
-              <RuleList
-                project={project}
-                selectedObjectId={selectedObjectId}
-                onProjectUpdate={updateProject}
-                onEditRule={handleEditRule}
-                onCreateRule={handleCreateRule}
-                onModeChange={setMode}
-              />
+            {/* オブジェクト配置とルール設定の統合エリア */}
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+              
+              {/* オブジェクト配置状況表示 */}
+              {project.script.layout.objects.length > 0 && (
+                <div style={{ padding: DESIGN_TOKENS.spacing[6] }}>
+                  <ModernCard variant="filled" size="md" style={{ backgroundColor: DESIGN_TOKENS.colors.success[50] }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3], marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        backgroundColor: DESIGN_TOKENS.colors.success[500],
+                        borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: DESIGN_TOKENS.shadows.sm
+                      }}>
+                        <span style={{ color: DESIGN_TOKENS.colors.neutral[0], fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>🎯</span>
+                      </div>
+                      <div>
+                        <h5 style={{
+                          fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                          fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                          color: DESIGN_TOKENS.colors.success[800],
+                          margin: 0
+                        }}>
+                          配置済みオブジェクト ({project.script.layout.objects.length}個)
+                        </h5>
+                        <p style={{
+                          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                          color: DESIGN_TOKENS.colors.success[600],
+                          margin: 0
+                        }}>
+                          レイアウトタブで配置されたオブジェクトにルールを設定できます
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: DESIGN_TOKENS.spacing[2] }}>
+                      {project.script.layout.objects.map((layoutObj) => {
+                        const asset = project.assets.objects.find(obj => obj.id === layoutObj.objectId);
+                        const ruleCount = getRuleCountForObject(layoutObj.objectId);
+                        
+                        return (
+                          <button
+                            key={layoutObj.objectId}
+                            onClick={() => handleObjectRuleEdit(layoutObj.objectId)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: DESIGN_TOKENS.spacing[2],
+                              padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+                              backgroundColor: selectedObjectId === layoutObj.objectId 
+                                ? DESIGN_TOKENS.colors.success[200] 
+                                : DESIGN_TOKENS.colors.neutral[0],
+                              border: `1px solid ${DESIGN_TOKENS.colors.success[100]}`,
+                              borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                              cursor: 'pointer',
+                              transition: `all ${DESIGN_TOKENS.animation.duration.fast} ${DESIGN_TOKENS.animation.easing.inOut}`,
+                              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                              color: DESIGN_TOKENS.colors.neutral[800]
+                            }}
+                            onMouseEnter={(e) => {
+                              if (selectedObjectId !== layoutObj.objectId) {
+                                e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.success[100];
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (selectedObjectId !== layoutObj.objectId) {
+                                e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.neutral[0];
+                              }
+                            }}
+                          >
+                            <span>{asset?.name || layoutObj.objectId}</span>
+                            {ruleCount > 0 && (
+                              <div style={{
+                                padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                                backgroundColor: DESIGN_TOKENS.colors.purple[500],
+                                color: DESIGN_TOKENS.colors.neutral[0],
+                                borderRadius: DESIGN_TOKENS.borderRadius.md,
+                                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                                fontWeight: DESIGN_TOKENS.typography.fontWeight.bold
+                              }}>
+                                {ruleCount}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </ModernCard>
+                </div>
+              )}
+
+              {/* ルール一覧 */}
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <RuleList
+                  project={project}
+                  selectedObjectId={selectedObjectId}
+                  onProjectUpdate={updateProject}
+                  onEditRule={handleEditRule}
+                  onCreateRule={handleCreateRule}
+                  onModeChange={setMode}
+                />
+              </div>
             </div>
           </div>
         )}
