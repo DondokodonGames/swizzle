@@ -1,5 +1,5 @@
 // src/components/editor/script/RuleList.tsx
-// 視認性改善版: 統計削除・色調整・シンプル化
+// 重複削除・整理版: ヘッダーエリア削除・純粋なルール一覧に集約
 
 import React, { useState } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
@@ -118,86 +118,8 @@ export const RuleList: React.FC<RuleListProps> = ({
           </ModernCard>
         </div>
       )}
-
-      {/* ヘッダーエリア - ModernCard + purple系統一 */}
-      <ModernCard 
-        variant="filled" 
-        size="lg"
-        style={{ 
-          backgroundColor: DESIGN_TOKENS.colors.purple[100],
-          border: `1px solid ${DESIGN_TOKENS.colors.purple[300]}`,
-          marginBottom: DESIGN_TOKENS.spacing[6]
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3], marginBottom: DESIGN_TOKENS.spacing[2] }}>
-              <div 
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  backgroundColor: DESIGN_TOKENS.colors.purple[600],
-                  borderRadius: DESIGN_TOKENS.borderRadius.xl,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: DESIGN_TOKENS.shadows.md
-                }}
-              >
-                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xl, color: DESIGN_TOKENS.colors.neutral[0] }}>⚙️</span>
-              </div>
-              <h3 
-                style={{
-                  fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
-                  fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                  color: DESIGN_TOKENS.colors.neutral[800],
-                  margin: 0
-                }}
-              >
-                ゲームルール設定
-              </h3>
-            </div>
-            <p 
-              style={{
-                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                color: DESIGN_TOKENS.colors.neutral[600],
-                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                margin: `0 0 0 53px`
-              }}
-            >
-              {selectedObjectId ? (
-                <>
-                  対象: <span style={{ 
-                    fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                    color: DESIGN_TOKENS.colors.purple[700]
-                  }}>
-                    {getObjectName(selectedObjectId)}
-                  </span>
-                </>
-              ) : (
-                'オブジェクトを選択してルールを設定'
-              )}
-            </p>
-          </div>
-          
-          {selectedObjectId && (
-            <ModernButton
-              variant="primary"
-              size="lg"
-              onClick={onCreateRule}
-              style={{ 
-                backgroundColor: DESIGN_TOKENS.colors.purple[600],
-                borderColor: DESIGN_TOKENS.colors.purple[600]
-              }}
-            >
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>➕</span>
-              ルール作成
-            </ModernButton>
-          )}
-        </div>
-      </ModernCard>
       
-      {/* ルール一覧またはパターン */}
+      {/* ルール一覧またはパターン（ヘッダー削除・純粋な一覧表示） */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[4] }}>
         {project.script.rules.length === 0 ? (
           /* 空状態表示 - 魅力的な表示 */

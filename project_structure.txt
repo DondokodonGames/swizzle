@@ -1,0 +1,158 @@
+src/
+├── App.tsx
+├── components
+│   ├── EnhancedGameCanvas.tsx
+│   ├── GameFeed.tsx
+│   ├── GameSelector.tsx
+│   ├── GameSequence.tsx
+│   ├── GameUISystem.tsx
+│   ├── auth
+│   │   ├── AuthModal.tsx
+│   │   ├── ProfileSetup.tsx
+│   │   └── ProtectedRoute.tsx
+│   ├── common
+│   │   ├── FileUploader.tsx
+│   │   ├── GameHeaderButtons.tsx
+│   │   ├── TimerBar.tsx
+│   │   ├── TouchEffects.tsx
+│   │   └── VolumeControl.tsx
+│   ├── editor
+│   │   ├── EditorApp.tsx
+│   │   ├── GameEditor.tsx
+│   │   ├── ProjectSelector.tsx
+│   │   ├── common
+│   │   │   ├── ProjectCard.tsx
+│   │   │   └── TabNavigation.tsx
+│   │   ├── modals
+│   │   │   └── VisualRuleEditor.tsx
+│   │   ├── script
+│   │   │   ├── AdvancedRuleModal.tsx
+│   │   │   ├── BackgroundControl.tsx
+│   │   │   ├── GamePreview.tsx
+│   │   │   ├── RuleList.tsx
+│   │   │   ├── RulePreview.tsx
+│   │   │   ├── SimpleRuleModal.tsx
+│   │   │   ├── TimeBarSelector.tsx
+│   │   │   ├── actions
+│   │   │   │   ├── AnimationActionEditor.tsx
+│   │   │   │   ├── EffectActionEditor.tsx
+│   │   │   │   ├── FlagActionEditor.tsx
+│   │   │   │   ├── MoveActionEditor.tsx
+│   │   │   │   ├── ShowHideActionEditor.tsx
+│   │   │   │   └── SoundActionEditor.tsx
+│   │   │   ├── conditions
+│   │   │   │   ├── AnimationConditionEditor.tsx
+│   │   │   │   ├── CollisionConditionEditor.tsx
+│   │   │   │   ├── FlagConditionEditor.tsx
+│   │   │   │   ├── GameStateConditionEditor.tsx
+│   │   │   │   ├── TimeConditionEditor.tsx
+│   │   │   │   └── TouchConditionEditor.tsx
+│   │   │   └── constants
+│   │   │       ├── AnimationConstants.ts
+│   │   │       ├── CollisionConstants.ts
+│   │   │       ├── EffectConstants.ts
+│   │   │       ├── FlagConstants.ts
+│   │   │       ├── GameStateConstants.ts
+│   │   │       ├── MovementConstants.ts
+│   │   │       ├── RuleLibrary.ts
+│   │   │       ├── ShowHideConstants.ts
+│   │   │       ├── TimeConstants.ts
+│   │   │       └── TouchConstants.ts
+│   │   ├── simple
+│   │   └── tabs
+│   │       ├── AssetsTab.tsx
+│   │       ├── AudioTab.tsx
+│   │       ├── ScriptTab.tsx
+│   │       ├── SettingsTab.tsx
+│   │       └── assets
+│   │           └── sections
+│   │               ├── BackgroundSection.tsx
+│   │               ├── ObjectSection.tsx
+│   │               └── SoundSection.tsx
+│   ├── navigation
+│   │   └── NavigationManager.tsx
+│   └── ui
+│       ├── ArcadeButton.tsx
+│       ├── DragDropZone.tsx
+│       ├── GameThemeProvider.tsx
+│       ├── ModernButton.tsx
+│       ├── ModernCard.tsx
+│       └── ThemeSelector.tsx
+├── constants
+│   ├── DesignSystem.ts
+│   ├── EditorLimits.ts
+│   └── gameConfig.ts
+├── game-engine
+│   ├── AnimalChaseGame.ts
+│   ├── BalanceGame.ts
+│   ├── CollectItemsGame.ts
+│   ├── CountStarGame.ts
+│   ├── CuteTapGame.ts
+│   ├── DreamyJumpGame.ts
+│   ├── FriendlyShootGame.ts
+│   ├── GameErrorManager.ts
+│   ├── GameTemplate.ts
+│   ├── GameTemplateFactory.ts
+│   ├── JumpAdventureGame.ts
+│   ├── LaneRunnerGame.ts
+│   ├── MagicalCollectGame.ts
+│   ├── MemoryMatchGame.ts
+│   ├── NumberHuntGame.ts
+│   ├── OppositeActionGame.ts
+│   ├── OrderMasterGame.ts
+│   ├── PuzzlePrincessGame.ts
+│   ├── QuickDodgeGame.ts
+│   ├── RainbowMatchGame.ts
+│   ├── ReactionSpeedGame.ts
+│   ├── ShapeSortGame.ts
+│   ├── SpeedFriendGame.ts
+│   ├── SpotDifferenceGame.ts
+│   ├── TimingPerfectGame.ts
+│   └── template
+│       └── EditableTemplate.ts
+├── hooks
+│   ├── editor
+│   │   ├── useAssetUpload.ts
+│   │   ├── useAudioPlayback.ts
+│   │   ├── useGameProject.ts
+│   │   └── useNotification.ts
+│   ├── useAuth.ts
+│   └── useTheme.ts
+├── index.css
+├── lib
+│   ├── database.types.ts
+│   └── supabase.ts
+├── main.tsx
+├── managers
+│   ├── RandomGameManager.ts
+│   └── ThemeManager.ts
+├── services
+│   ├── ProjectStorageManager.ts
+│   ├── editor
+│   │   ├── EditorGameBridge.ts
+│   │   ├── ErrorHandlingSystem.tsx
+│   │   └── ProjectStorage.ts
+│   └── rule-engine
+│       └── RuleEngine.ts
+├── styles
+│   ├── arcade-theme.css
+│   ├── cute-theme.css
+│   ├── dark-theme.css
+│   ├── minimal-theme.css
+│   ├── neon-theme.css
+│   └── retro-theme.css
+├── types
+│   ├── assetTypes.ts
+│   ├── editor
+│   │   ├── GameProject.ts
+│   │   ├── GameScript.ts
+│   │   ├── GameSettings.ts
+│   │   └── ProjectAssets.ts
+│   └── themeTypes.ts
+└── utils
+    ├── CSSIntegrationChecker.ts
+    ├── GameProjectConverter.ts
+    ├── testPlayDebugHelper.ts
+    └── viewportUtils.ts
+
+31 directories, 125 files
