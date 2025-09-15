@@ -1,9 +1,19 @@
 // src/services/rule-engine/RuleEngine.ts
-// IF-THENルールエンジン - アイコン中心・直感的ゲームロジック設定（修正版）
+// IF-THENルールエンジン - アイコン中心・直感的ゲームロジック設定（カウンター機能拡張版）
 
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../types/editor/GameScript';
 
-// ルール実行コンテキスト
+// 🔢 新規追加: カウンター型インポート
+import { 
+  GameCounter, 
+  CounterOperation, 
+  CounterComparison,
+  CounterChangeEvent,
+  clampCounterValue,
+  compareCounterValue
+} from '../../types/counterTypes';
+
+// ルール実行コンテキスト（カウンター対応）
 export interface RuleExecutionContext {
   // ゲーム状態
   gameState: {
@@ -11,6 +21,9 @@ export interface RuleExecutionContext {
     score: number;
     timeElapsed: number;
     flags: Map<string, boolean>;
+    
+    // 🔢 新規追加: カウンター状態
+    counters: Map<string, number>;
   };
   
   // オブジェクト状態  
@@ -47,28 +60,174 @@ export interface RuleEvaluationResult {
   debugInfo?: string;
 }
 
-// アクション実行結果
+// 🔧 拡張: ActionExecutionResult にカウンター変更情報を追加
 export interface ActionExecutionResult {
   success: boolean;
   effectsApplied: string[];
   newGameState: Partial<RuleExecutionContext['gameState']>;
   errors: string[];
+  
+  // 🔢 新規追加: カウンター変更イベント
+  counterChanges: CounterChangeEvent[];
 }
 
 /**
- * IF-THENルールエンジン
- * ビジュアル設定→実際のゲーム動作変換
+ * 🔧 拡張: RuleEngine クラスにカウンター管理機能を追加
  */
 export class RuleEngine {
   private rules: GameRule[] = [];
   private flags: Map<string, boolean> = new Map();
   private executionCounts: Map<string, number> = new Map();
   
+  // 🔢 新規追加: カウンター管理
+  private counters: Map<string, number> = new Map();
+  private counterDefinitions: Map<string, GameCounter> = new Map();
+  private counterHistory: CounterChangeEvent[] = [];
+  private counterPreviousValues: Map<string, number> = new Map();
+  
   constructor() {
-    console.log('🎮 RuleEngine初期化');
+    console.log('🎮 RuleEngine初期化（カウンター機能付き）');
   }
 
-  // ルール追加・管理
+  // 🔢 新規追加: カウンター管理メソッド
+
+  /**
+   * カウンター定義を追加
+   */
+  addCounterDefinition(counter: GameCounter): void {
+    this.counterDefinitions.set(counter.name, counter);
+    this.setCounter(counter.name, counter.initialValue);
+    console.log(`カウンター定義追加: ${counter.name} = ${counter.initialValue}`);
+  }
+
+  /**
+   * カウンター定義を削除
+   */
+  removeCounterDefinition(counterName: string): void {
+    this.counterDefinitions.delete(counterName);
+    this.counters.delete(counterName);
+    this.counterPreviousValues.delete(counterName);
+    console.log(`カウンター定義削除: ${counterName}`);
+  }
+
+  /**
+   * カウンター値を設定（フラグと同様のグローバル共有）
+   */
+  setCounter(counterName: string, value: number): void {
+    const oldValue = this.counters.get(counterName) || 0;
+    const counterDef = this.counterDefinitions.get(counterName);
+    
+    // 範囲制限適用
+    const clampedValue = counterDef ? clampCounterValue(value, counterDef) : value;
+    
+    // 前回値を記録
+    this.counterPreviousValues.set(counterName, oldValue);
+    
+    // 新しい値を設定
+    this.counters.set(counterName, clampedValue);
+    
+    // 変更イベントを記録
+    if (oldValue !== clampedValue) {
+      const changeEvent: CounterChangeEvent = {
+        counterName,
+        oldValue,
+        newValue: clampedValue,
+        operation: 'set',
+        timestamp: Date.now()
+      };
+      this.counterHistory.push(changeEvent);
+      
+      // 履歴サイズ制限（最新100件）
+      if (this.counterHistory.length > 100) {
+        this.counterHistory.shift();
+      }
+    }
+    
+    console.log(`カウンター設定: ${counterName} = ${clampedValue} (前回値: ${oldValue})`);
+  }
+
+  /**
+   * カウンター値を取得
+   */
+  getCounter(counterName: string): number {
+    return this.counters.get(counterName) || 0;
+  }
+
+  /**
+   * カウンター前回値を取得
+   */
+  getCounterPreviousValue(counterName: string): number {
+    return this.counterPreviousValues.get(counterName) || 0;
+  }
+
+  /**
+   * カウンター操作を実行
+   */
+  executeCounterOperation(
+    counterName: string, 
+    operation: CounterOperation, 
+    value?: number,
+    ruleId?: string
+  ): CounterChangeEvent | null {
+    const currentValue = this.getCounter(counterName);
+    let newValue = currentValue;
+    
+    switch (operation) {
+      case 'increment':
+      case 'add':
+        newValue = currentValue + (value || 1);
+        break;
+      case 'decrement':
+      case 'subtract':
+        newValue = currentValue - (value || 1);
+        break;
+      case 'set':
+        newValue = value || 0;
+        break;
+      case 'reset':
+        const counterDef = this.counterDefinitions.get(counterName);
+        newValue = counterDef ? counterDef.initialValue : 0;
+        break;
+      case 'multiply':
+        newValue = currentValue * (value || 1);
+        break;
+      case 'divide':
+        newValue = value && value !== 0 ? currentValue / value : currentValue;
+        break;
+      default:
+        console.warn(`未対応のカウンター操作: ${operation}`);
+        return null;
+    }
+    
+    // 値を設定
+    this.setCounter(counterName, newValue);
+    
+    // 変更イベントを作成
+    const changeEvent: CounterChangeEvent = {
+      counterName,
+      oldValue: currentValue,
+      newValue: this.getCounter(counterName), // 範囲制限適用後の値
+      operation,
+      timestamp: Date.now(),
+      triggeredBy: ruleId
+    };
+    
+    console.log(`カウンター操作実行: ${counterName} ${operation} ${value || ''} (${currentValue} → ${changeEvent.newValue})`);
+    
+    return changeEvent;
+  }
+
+  /**
+   * カウンター変更履歴を取得
+   */
+  getCounterHistory(counterName?: string): CounterChangeEvent[] {
+    if (counterName) {
+      return this.counterHistory.filter(event => event.counterName === counterName);
+    }
+    return [...this.counterHistory];
+  }
+
+  // ルール追加・管理（既存機能保護）
   addRule(rule: GameRule): void {
     console.log(`ルール追加: ${rule.name} (${rule.id})`);
     this.rules.push(rule);
@@ -89,7 +248,7 @@ export class RuleEngine {
     }
   }
 
-  // フラグ管理
+  // フラグ管理（既存機能保護）
   setFlag(flagId: string, value: boolean): void {
     this.flags.set(flagId, value);
     console.log(`フラグ設定: ${flagId} = ${value}`);
@@ -99,7 +258,7 @@ export class RuleEngine {
     return this.flags.get(flagId) || false;
   }
 
-  // メインルール評価・実行
+  // 🔧 拡張: メインルール評価・実行（カウンター対応）
   evaluateAndExecuteRules(context: RuleExecutionContext): ActionExecutionResult[] {
     const results: ActionExecutionResult[] = [];
     
@@ -125,7 +284,7 @@ export class RuleEngine {
         
         if (evaluation.shouldExecute) {
           // アクション実行
-          const result = this.executeActions(rule.actions, context);
+          const result = this.executeActions(rule.actions, context, rule.id);
           results.push(result);
           
           // 実行回数カウント
@@ -142,7 +301,7 @@ export class RuleEngine {
     return results;
   }
 
-  // 条件評価（IF部分）
+  // 🔧 拡張: 条件評価（カウンター条件追加）
   private evaluateRule(rule: GameRule, context: RuleExecutionContext): RuleEvaluationResult {
     const { triggers } = rule;
     const matchedConditions: string[] = [];
@@ -168,7 +327,7 @@ export class RuleEngine {
     };
   }
 
-  // 個別条件評価
+  // 🔧 拡張: 個別条件評価（カウンター条件追加）
   private evaluateCondition(
     condition: TriggerCondition, 
     context: RuleExecutionContext,
@@ -196,13 +355,48 @@ export class RuleEngine {
       case 'position':
         return this.evaluatePositionCondition(condition, context);
       
+      // 🔢 新規追加: カウンター条件評価
+      case 'counter':
+        return this.evaluateCounterCondition(condition, context);
+      
       default:
         console.warn(`未対応の条件タイプ: ${(condition as any).type}`);
         return false;
     }
   }
 
-  // 🖱️ タッチ条件評価
+  // 🔢 新規追加: カウンター条件評価
+  private evaluateCounterCondition(
+    condition: Extract<TriggerCondition, { type: 'counter' }>,
+    context: RuleExecutionContext
+  ): boolean {
+    try {
+      const currentValue = this.getCounter(condition.counterName);
+      const previousValue = this.getCounterPreviousValue(condition.counterName);
+      
+      // 変更検知の場合は前回値との比較
+      if (condition.comparison === 'changed') {
+        return currentValue !== previousValue;
+      }
+      
+      // その他の比較演算
+      const result = compareCounterValue(
+        currentValue,
+        condition.comparison,
+        condition.value,
+        condition.rangeMax
+      );
+      
+      console.log(`カウンター条件評価: ${condition.counterName}(${currentValue}) ${condition.comparison} ${condition.value} = ${result}`);
+      
+      return result;
+    } catch (error) {
+      console.error('カウンター条件評価エラー:', error);
+      return false;
+    }
+  }
+
+  // 🖱️ タッチ条件評価（既存機能保護）
   private evaluateTouchCondition(
     condition: Extract<TriggerCondition, { type: 'touch' }>,
     context: RuleExecutionContext,
@@ -236,7 +430,7 @@ export class RuleEngine {
            touchY >= objBounds.top && touchY <= objBounds.bottom;
   }
 
-  // ⏰ 時間条件評価
+  // ⏰ 時間条件評価（既存機能保護）
   private evaluateTimeCondition(
     condition: Extract<TriggerCondition, { type: 'time' }>,
     context: RuleExecutionContext
@@ -263,7 +457,7 @@ export class RuleEngine {
     }
   }
 
-  // 🚩 フラグ条件評価
+  // 🚩 フラグ条件評価（既存機能保護）
   private evaluateFlagCondition(
     condition: Extract<TriggerCondition, { type: 'flag' }>
   ): boolean {
@@ -450,14 +644,16 @@ export class RuleEngine {
     }
   }
 
-  // アクション実行（THEN部分）
+  // 🔧 拡張: アクション実行（カウンターアクション追加）
   private executeActions(
     actions: GameAction[], 
-    context: RuleExecutionContext
+    context: RuleExecutionContext,
+    ruleId?: string
   ): ActionExecutionResult {
     const effectsApplied: string[] = [];
     const errors: string[] = [];
     const newGameState: Partial<RuleExecutionContext['gameState']> = {};
+    const counterChanges: CounterChangeEvent[] = [];
 
     for (const action of actions) {
       try {
@@ -499,6 +695,28 @@ export class RuleEngine {
             effectsApplied.push(`メッセージ: ${action.text}`);
             break;
 
+          // 🔢 新規追加: カウンターアクション実行
+          case 'counter':
+            const changeEvent = this.executeCounterOperation(
+              action.counterName,
+              action.operation,
+              action.value,
+              ruleId
+            );
+            
+            if (changeEvent) {
+              counterChanges.push(changeEvent);
+              effectsApplied.push(`カウンター${action.counterName}: ${changeEvent.oldValue}→${changeEvent.newValue}`);
+              
+              // 通知設定がある場合
+              if (action.notification?.enabled) {
+                effectsApplied.push(`通知: ${action.notification.message || `${action.counterName}が変更されました`}`);
+              }
+            } else {
+              errors.push(`カウンター操作失敗: ${action.counterName} ${action.operation}`);
+            }
+            break;
+
           default:
             console.warn(`未対応のアクション: ${(action as any).type}`);
         }
@@ -511,11 +729,12 @@ export class RuleEngine {
       success: errors.length === 0,
       effectsApplied,
       newGameState,
-      errors
+      errors,
+      counterChanges
     };
   }
 
-  // ルール実行制限チェック
+  // ルール実行制限チェック（既存機能保護）
   private canExecuteRule(rule: GameRule): boolean {
     if (!rule.executionLimit) return true;
     
@@ -523,7 +742,7 @@ export class RuleEngine {
     return currentCount < rule.executionLimit.maxCount;
   }
 
-  // ルール有効期間チェック
+  // ルール有効期間チェック（既存機能保護）
   private isRuleTimeValid(rule: GameRule, currentTime: number): boolean {
     if (!rule.timeWindow) return true;
     
@@ -531,22 +750,71 @@ export class RuleEngine {
            currentTime <= rule.timeWindow.end;
   }
 
-  // デバッグ・統計情報
+  // 🔧 拡張: デバッグ・統計情報（カウンター情報追加）
   getDebugInfo(): any {
     return {
       rulesCount: this.rules.length,
       enabledRules: this.rules.filter(r => r.enabled).length,
       flagsCount: this.flags.size,
       executionCounts: Object.fromEntries(this.executionCounts),
-      flags: Object.fromEntries(this.flags)
+      flags: Object.fromEntries(this.flags),
+      
+      // 🔢 新規追加: カウンター情報
+      countersCount: this.counters.size,
+      counterDefinitionsCount: this.counterDefinitions.size,
+      counters: Object.fromEntries(this.counters),
+      counterHistorySize: this.counterHistory.length,
+      recentCounterChanges: this.counterHistory.slice(-10) // 最新10件
     };
   }
 
-  // リセット
+  // 🔧 拡張: リセット（カウンター情報追加）
   reset(): void {
     this.executionCounts.clear();
     this.flags.clear();
-    console.log('🔄 RuleEngine リセット完了');
+    
+    // 🔢 新規追加: カウンターリセット
+    this.counters.clear();
+    this.counterHistory = [];
+    this.counterPreviousValues.clear();
+    
+    // カウンター定義から初期値を復元
+    for (const [name, definition] of this.counterDefinitions) {
+      this.setCounter(name, definition.initialValue);
+    }
+    
+    console.log('🔄 RuleEngine リセット完了（カウンター情報含む）');
+  }
+
+  // 🔢 新規追加: カウンターのみリセット
+  resetCounters(): void {
+    for (const [name, definition] of this.counterDefinitions) {
+      this.setCounter(name, definition.initialValue);
+    }
+    this.counterHistory = [];
+    console.log('🔄 カウンターリセット完了');
+  }
+
+  // 🔢 新規追加: カウンター統計取得
+  getCounterStatistics(): Record<string, any> {
+    const stats: Record<string, any> = {};
+    
+    for (const [name] of this.counterDefinitions) {
+      const history = this.getCounterHistory(name);
+      const currentValue = this.getCounter(name);
+      
+      stats[name] = {
+        currentValue,
+        totalOperations: history.length,
+        incrementCount: history.filter(h => h.operation === 'increment' || h.operation === 'add').length,
+        decrementCount: history.filter(h => h.operation === 'decrement' || h.operation === 'subtract').length,
+        maxValue: Math.max(currentValue, ...history.map(h => h.newValue)),
+        minValue: Math.min(currentValue, ...history.map(h => h.newValue)),
+        lastOperationTime: history.length > 0 ? history[history.length - 1].timestamp : 0
+      };
+    }
+    
+    return stats;
   }
 }
 

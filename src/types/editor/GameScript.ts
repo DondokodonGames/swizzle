@@ -1,10 +1,18 @@
 /**
  * ゲームスクリプト・ロジック型定義
- * Phase 6: ゲームエディター実装用 + 初期条件システム追加
+ * Phase 6: ゲームエディター実装用 + 初期条件システム追加 + カウンターシステム追加
  */
 
 // TextStyleをインポート
 import { TextStyle } from './ProjectAssets';
+
+// 🔢 新規追加: カウンター型インポート
+import { 
+  GameCounter, 
+  CounterOperation, 
+  CounterComparison,
+  CounterChangeEvent
+} from '../counterTypes';
 
 // 位置座標（0-1の正規化座標）
 export interface Position {
@@ -68,6 +76,9 @@ export interface GameInitialState {
     targetScore?: number;               // 目標スコア
     lives?: number;                     // 残機数
     level?: number;                     // レベル・ステージ
+    
+    // 🔢 新規追加: カウンター初期値
+    counters: Record<string, number>;   // カスタムカウンターの初期値
   };
   
   // 開始時自動実行ルール
@@ -137,7 +148,7 @@ export interface GameFlag {
   createdAt: string;
 }
 
-// 発動条件の詳細定義
+// 発動条件の詳細定義（カウンター条件追加）
 export type TriggerCondition = 
   // タッチ条件
   | {
@@ -200,6 +211,16 @@ export type TriggerCondition =
         height?: number;                  // 矩形の場合
         radius?: number;                  // 円の場合
       };
+    }
+  
+  // 🔢 新規追加: カウンター条件
+  | {
+      type: 'counter';
+      counterName: string;                // カウンター名
+      comparison: CounterComparison;      // 比較演算子
+      value: number;                      // 比較値
+      rangeMax?: number;                  // between/notBetween用の最大値
+      tolerance?: number;                 // 浮動小数点比較用許容範囲
     };
 
 // 移動パターン
@@ -241,7 +262,7 @@ export interface EffectPattern {
   overlay?: boolean;                      // 他エフェクトと重複実行
 }
 
-// アクションの詳細定義
+// アクションの詳細定義（カウンターアクション追加）
 export type GameAction =
   // ゲーム制御
   | { type: 'success'; score?: number; message?: string }
@@ -272,9 +293,25 @@ export type GameAction =
   
   // スコア・UI
   | { type: 'addScore'; points: number }
-  | { type: 'showMessage'; text: string; duration: number; style?: TextStyle };
+  | { type: 'showMessage'; text: string; duration: number; style?: TextStyle }
+  
+  // 🔢 新規追加: カウンターアクション
+  | { type: 'counter'; operation: CounterOperation; counterName: string; value?: number; notification?: CounterNotification };
 
-// ゲームルール
+// 🔢 新規追加: カウンター通知設定
+export interface CounterNotification {
+  enabled: boolean;                       // 通知の有無
+  message?: string;                       // カスタムメッセージ
+  duration?: number;                      // 表示時間（秒）
+  style?: {
+    color?: string;                       // テキスト色
+    backgroundColor?: string;             // 背景色
+    fontSize?: number;                    // フォントサイズ
+    position?: 'top' | 'center' | 'bottom'; // 表示位置
+  };
+}
+
+// ゲームルール（カウンター対応）
 export interface GameRule {
   id: string;
   name: string;                           // ユーザー設定名
@@ -311,14 +348,14 @@ export interface GameRule {
   lastModified: string;
 }
 
-// 成功条件
+// 成功条件（カウンター対応）
 export interface SuccessCondition {
   id: string;
   name: string;                           // ユーザー設定名
   operator: 'AND' | 'OR';                // 条件組み合わせ
   
   conditions: Array<{
-    type: 'flag' | 'score' | 'time' | 'objectState';
+    type: 'flag' | 'score' | 'time' | 'objectState' | 'counter'; // 🔢 counter追加
     
     // flag条件用
     flagId?: string;
@@ -336,6 +373,12 @@ export interface SuccessCondition {
     objectId?: string;
     objectCondition?: 'visible' | 'hidden' | 'position' | 'animation';
     objectValue?: any;                    // 条件値
+    
+    // 🔢 新規追加: counter条件用
+    counterName?: string;                 // カウンター名
+    counterComparison?: CounterComparison; // 比較演算子
+    counterValue?: number;                // 比較値
+    counterRangeMax?: number;             // 範囲比較用最大値
   }>;
   
   // 成功時の設定
@@ -347,7 +390,7 @@ export interface SuccessCondition {
   };
 }
 
-// スクリプト統計
+// スクリプト統計（カウンター統計追加）
 export interface ScriptStatistics {
   totalRules: number;                     // ルール総数
   totalConditions: number;                // 条件総数
@@ -359,13 +402,18 @@ export interface ScriptStatistics {
   usedActionTypes: string[];              // 使用されているアクションタイプ
   flagCount: number;                      // フラグ数
   
+  // 🔢 新規追加: カウンター統計
+  counterCount: number;                   // カウンター数
+  usedCounterOperations: CounterOperation[]; // 使用されているカウンター操作
+  usedCounterComparisons: CounterComparison[]; // 使用されているカウンター比較
+  
   // パフォーマンス予測
   estimatedCPUUsage: 'low' | 'medium' | 'high';
   estimatedMemoryUsage: number;           // MB
   maxConcurrentEffects: number;           // 最大同時エフェクト数
 }
 
-// 🔧 修正: ゲームスクリプト全体（初期条件追加）
+// 🔧 修正: ゲームスクリプト全体（カウンター対応）
 export interface GameScript {
   // 🔧 追加: 初期条件設定
   initialState: GameInitialState;
@@ -375,6 +423,9 @@ export interface GameScript {
   
   // カスタム変数（フラグ）
   flags: GameFlag[];
+  
+  // 🔢 新規追加: カウンター定義
+  counters: GameCounter[];
   
   // 条件・アクション設定
   rules: GameRule[];
@@ -390,19 +441,19 @@ export interface GameScript {
   lastModified: string;                   // 最終更新日時
 }
 
-// スクリプト検証結果
+// スクリプト検証結果（カウンター検証追加）
 export interface ScriptValidationResult {
   isValid: boolean;
   
   errors: Array<{
-    type: 'syntax' | 'logic' | 'reference' | 'performance';
+    type: 'syntax' | 'logic' | 'reference' | 'performance' | 'counter'; // 🔢 counter追加
     ruleId?: string;
     message: string;
     severity: 'error' | 'warning';
   }>;
   
   warnings: Array<{
-    type: 'optimization' | 'usability' | 'compatibility';
+    type: 'optimization' | 'usability' | 'compatibility' | 'counter'; // 🔢 counter追加
     message: string;
     suggestion?: string;
   }>;
@@ -413,10 +464,14 @@ export interface ScriptValidationResult {
     memoryUsage: number;
     cpuIntensity: 'low' | 'medium' | 'high';
     bottlenecks: string[];
+    
+    // 🔢 新規追加: カウンター関連パフォーマンス
+    counterOperationsPerSecond: number;   // 秒間カウンター操作数
+    counterMemoryUsage: number;           // カウンター用メモリ使用量（KB）
   };
 }
 
-// 🔧 追加: デフォルト初期条件作成ヘルパー関数
+// 🔧 追加: デフォルト初期条件作成ヘルパー関数（カウンター対応）
 export const createDefaultInitialState = (): GameInitialState => {
   const now = new Date().toISOString();
   
@@ -442,7 +497,10 @@ export const createDefaultInitialState = (): GameInitialState => {
       timeLimit: undefined,  // 無制限
       targetScore: undefined,
       lives: undefined,
-      level: 1
+      level: 1,
+      
+      // 🔢 新規追加: カウンター初期値
+      counters: {}
     },
     autoRules: [],
     metadata: {
@@ -453,7 +511,7 @@ export const createDefaultInitialState = (): GameInitialState => {
   };
 };
 
-// 🔧 追加: 初期条件とレイアウトの同期ヘルパー関数
+// 🔧 追加: 初期条件とレイアウトの同期ヘルパー関数（カウンター対応）
 export const syncInitialStateWithLayout = (
   initialState: GameInitialState,
   layout: GameLayout
@@ -492,4 +550,83 @@ export const syncInitialStateWithLayout = (
       lastModified: new Date().toISOString()
     }
   };
+};
+
+// 🔢 新規追加: カウンター関連ヘルパー関数
+
+// カウンター条件作成ヘルパー
+export const createCounterCondition = (
+  counterName: string,
+  comparison: CounterComparison,
+  value: number,
+  rangeMax?: number
+): Extract<TriggerCondition, { type: 'counter' }> => {
+  return {
+    type: 'counter',
+    counterName,
+    comparison,
+    value,
+    rangeMax
+  };
+};
+
+// カウンターアクション作成ヘルパー
+export const createCounterAction = (
+  operation: CounterOperation,
+  counterName: string,
+  value?: number,
+  notification?: CounterNotification
+): Extract<GameAction, { type: 'counter' }> => {
+  return {
+    type: 'counter',
+    operation,
+    counterName,
+    value,
+    notification
+  };
+};
+
+// カウンター条件の表示名取得
+export const getCounterConditionDisplayName = (condition: Extract<TriggerCondition, { type: 'counter' }>): string => {
+  const comparisons: Record<CounterComparison, string> = {
+    equals: '等しい',
+    notEquals: '等しくない',
+    greater: 'より大きい',
+    greaterOrEqual: '以上',
+    less: 'より小さい',
+    lessOrEqual: '以下',
+    between: '範囲内',
+    notBetween: '範囲外',
+    changed: '変更された'
+  };
+  
+  const comparisonText = comparisons[condition.comparison] || condition.comparison;
+  
+  if (condition.comparison === 'between' || condition.comparison === 'notBetween') {
+    return `${condition.counterName} が ${condition.value}-${condition.rangeMax} ${comparisonText}`;
+  }
+  
+  return `${condition.counterName} が ${condition.value} ${comparisonText}`;
+};
+
+// カウンターアクションの表示名取得
+export const getCounterActionDisplayName = (action: Extract<GameAction, { type: 'counter' }>): string => {
+  const operations: Record<CounterOperation, string> = {
+    increment: '増加',
+    decrement: '減少',
+    set: '設定',
+    reset: 'リセット',
+    add: '加算',
+    subtract: '減算',
+    multiply: '乗算',
+    divide: '除算'
+  };
+  
+  const operationText = operations[action.operation] || action.operation;
+  
+  if (action.value !== undefined) {
+    return `${action.counterName} を ${action.value} ${operationText}`;
+  }
+  
+  return `${action.counterName} を ${operationText}`;
 };
