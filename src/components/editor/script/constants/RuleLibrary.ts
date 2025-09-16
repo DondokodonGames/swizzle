@@ -1,9 +1,9 @@
 // src/components/editor/script/constants/RuleLibrary.ts
-// Phase E Step 3完了版: switchAnimationアクション追加
+// Phase G完了版: カウンター条件・アクション追加
 // 条件・アクションライブラリ統合管理
 
 /**
- * Phase E Step 3: 発動条件ライブラリ（アニメーション条件追加完了）
+ * Phase G: 発動条件ライブラリ（カウンター条件追加）
  */
 export const CONDITION_LIBRARY = [
   // 基本条件（Phase A・B・C保護）
@@ -13,13 +13,16 @@ export const CONDITION_LIBRARY = [
   { type: 'position', label: '位置', icon: '📍', description: 'オブジェクトが特定位置に到達した時' },
   
   // Phase D・E拡張条件
-  { type: 'gameState', label: 'ゲーム状態', icon: '🎮', description: 'ゲームの状態（プレイ中・成功・失敗など）' }, // Phase E追加
-  { type: 'animation', label: 'アニメ', icon: '🎬', description: 'アニメーションの状態（開始・終了・特定フレームなど）' }, // Phase E Step 2追加
-  { type: 'flag', label: 'フラグ', icon: '🚩', description: 'カスタムフラグの状態' }
+  { type: 'gameState', label: 'ゲーム状態', icon: '🎮', description: 'ゲームの状態（プレイ中・成功・失敗など）' },
+  { type: 'animation', label: 'アニメ', icon: '🎬', description: 'アニメーションの状態（開始・終了・特定フレームなど）' },
+  { type: 'flag', label: 'フラグ', icon: '🚩', description: 'カスタムフラグの状態' },
+  
+  // Phase G追加: カウンター条件
+  { type: 'counter', label: 'カウンター', icon: '🔢', description: 'カウンター値の比較（スコア・ライフ・時間・アイテム数等）' }
 ] as const;
 
 /**
- * Phase E Step 3完了: 実行アクションライブラリ（switchAnimation追加）
+ * Phase G: 実行アクションライブラリ（カウンターアクション追加）
  */
 export const ACTION_LIBRARY = [
   // ゲーム制御アクション（Phase A・B・C保護）
@@ -32,7 +35,7 @@ export const ACTION_LIBRARY = [
   // オブジェクト制御アクション（Phase D・E拡張）
   { type: 'show', label: '表示', icon: '👁️', description: 'オブジェクトを表示' },
   { type: 'hide', label: '非表示', icon: '🚫', description: 'オブジェクトを非表示' },
-  { type: 'switchAnimation', label: 'アニメ切り替え', icon: '🎬', description: 'アニメーションを切り替え' }, // Phase E Step 3追加
+  { type: 'switchAnimation', label: 'アニメ切り替え', icon: '🎬', description: 'アニメーションを切り替え' },
   
   // 移動・エフェクトアクション（Phase D拡張）
   { type: 'move', label: '移動', icon: '🏃', description: 'オブジェクトを移動' },
@@ -40,7 +43,10 @@ export const ACTION_LIBRARY = [
   
   // フラグ制御アクション（Phase A・B・C保護）
   { type: 'setFlag', label: 'フラグ設定', icon: '🚩', description: 'フラグをON/OFFに設定' },
-  { type: 'toggleFlag', label: 'フラグ切替', icon: '🔄', description: 'フラグを切り替え' }
+  { type: 'toggleFlag', label: 'フラグ切替', icon: '🔄', description: 'フラグを切り替え' },
+  
+  // Phase G追加: カウンターアクション
+  { type: 'counter', label: 'カウンター操作', icon: '🔢', description: 'カウンター値の操作（増加・減少・設定等）' }
 ] as const;
 
 /**
@@ -54,61 +60,104 @@ export type ConditionType = typeof CONDITION_LIBRARY[number]['type'];
 export type ActionType = typeof ACTION_LIBRARY[number]['type'];
 
 /**
- * Phase E Step 3: アクション表示優先度（重要アクションを上位6個に配置）
+ * Phase G: アクション表示優先度（カウンターアクション追加）
  */
 export const PRIORITY_ACTIONS = [
   'success',          // 成功 - ゲーム制御最重要
   'failure',          // 失敗 - ゲーム制御最重要
+  'counter',          // カウンター操作 - Phase G新機能・よく使われる
   'playSound',        // 音再生 - よく使われる
-  'switchAnimation',  // アニメ切り替え - Phase E Step 3新機能
-  'show',             // 表示 - オブジェクト制御基本
-  'hide'              // 非表示 - オブジェクト制御基本
+  'switchAnimation',  // アニメ切り替え - Phase E機能
+  'show'              // 表示 - オブジェクト制御基本
 ] as const;
 
 /**
- * Phase E Step 3: 優先表示用アクションライブラリ（上位6個）
+ * Phase G: 優先表示用アクションライブラリ（上位6個）
  */
 export const PRIORITY_ACTION_LIBRARY = PRIORITY_ACTIONS.map(type => 
   ACTION_LIBRARY.find(action => action.type === type)
-).filter(Boolean);
+).filter((action): action is NonNullable<typeof action> => action !== undefined);
 
 /**
- * Phase E Step 3: ルールライブラリ統計情報
+ * Phase G: ルールライブラリ統計情報（カウンター追加）
  */
 export const RULE_LIBRARY_STATS = {
-  conditionCount: CONDITION_LIBRARY.length,    // 7個の条件タイプ
-  actionCount: ACTION_LIBRARY.length,          // 11個のアクションタイプ
+  conditionCount: CONDITION_LIBRARY.length,    // 8個の条件タイプ（+1: counter）
+  actionCount: ACTION_LIBRARY.length,          // 12個のアクションタイプ（+1: counter）
   priorityActionCount: PRIORITY_ACTIONS.length, // 6個の優先アクション
-  lastUpdate: '2025-09-14',                    // Phase E Step 3完了日
-  version: 'E-3.0.0'                           // バージョン
+  lastUpdate: '2025-09-16',                    // Phase G完了日
+  version: 'G-1.0.0'                           // バージョン（Phase G完了）
 } as const;
 
 /**
- * Phase E Step 3: アクション検索ヘルパー関数
+ * アクション検索ヘルパー関数
  */
 export const findActionByType = (type: ActionType) => {
   return ACTION_LIBRARY.find(action => action.type === type);
 };
 
 /**
- * Phase E Step 3: 条件検索ヘルパー関数
+ * 条件検索ヘルパー関数
  */
 export const findConditionByType = (type: ConditionType) => {
   return CONDITION_LIBRARY.find(condition => condition.type === type);
 };
 
 /**
- * Phase E Step 3: アクション使用統計（使用頻度順）
+ * Phase G: アクション使用統計（カウンター追加・使用頻度順）
  */
 export const ACTION_USAGE_STATS = [
   { type: 'success', usage: 'high', category: 'game-control' },
   { type: 'failure', usage: 'high', category: 'game-control' },
+  { type: 'counter', usage: 'high', category: 'game-logic' },     // Phase G新機能・高使用頻度予想
   { type: 'playSound', usage: 'high', category: 'audio' },
   { type: 'show', usage: 'medium', category: 'object-control' },
   { type: 'hide', usage: 'medium', category: 'object-control' },
-  { type: 'switchAnimation', usage: 'new', category: 'object-control' }, // Phase E Step 3新機能
+  { type: 'switchAnimation', usage: 'medium', category: 'object-control' },
   { type: 'move', usage: 'medium', category: 'movement' },
   { type: 'effect', usage: 'low', category: 'visual' },
   { type: 'setFlag', usage: 'low', category: 'state' },
   { type: 'toggleFlag', usage: 'low', category: 'state' }
 ] as const;
+
+/**
+ * Phase G: 条件使用統計（カウンター追加）
+ */
+export const CONDITION_USAGE_STATS = [
+  { type: 'touch', usage: 'high', category: 'user-input' },
+  { type: 'time', usage: 'high', category: 'timing' },
+  { type: 'counter', usage: 'high', category: 'game-logic' },      // Phase G新機能・高使用頻度予想
+  { type: 'collision', usage: 'medium', category: 'physics' },
+  { type: 'gameState', usage: 'medium', category: 'game-control' },
+  { type: 'flag', usage: 'medium', category: 'state' },
+  { type: 'animation', usage: 'low', category: 'visual' },
+  { type: 'position', usage: 'low', category: 'spatial' }
+] as const;
+
+/**
+ * Phase G: カテゴリ別ライブラリ取得ヘルパー
+ */
+export const getConditionsByCategory = (category: string) => {
+  return CONDITION_LIBRARY.filter(condition => {
+    const stat = CONDITION_USAGE_STATS.find(stat => stat.type === condition.type);
+    return stat?.category === category;
+  });
+};
+
+export const getActionsByCategory = (category: string) => {
+  return ACTION_LIBRARY.filter(action => {
+    const stat = ACTION_USAGE_STATS.find(stat => stat.type === action.type);
+    return stat?.category === category;
+  });
+};
+
+/**
+ * Phase G: 新機能フラグ（カウンター機能有効化）
+ */
+export const FEATURE_FLAGS = {
+  counterSystem: true,           // カウンターシステム有効
+  animationSystem: true,         // アニメーションシステム有効
+  gameStateSystem: true,         // ゲーム状態システム有効
+  advancedTiming: true,          // 高度タイミング機能有効
+  debugMode: false              // デバッグモード
+} as const;

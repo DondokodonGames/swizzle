@@ -1,33 +1,42 @@
 // src/components/editor/script/AdvancedRuleModal.tsx
-// Phase E Step 3完了: AnimationActionEditor統合完了版
-// 既存機能完全保護 + GameState条件エディター + Animation条件・アクションエディター追加
+// Phase G完了版: カウンターシステム統合完了（カウンター管理機能内蔵）
+// 既存機能完全保護 + カウンター条件・アクション統合 + カウンター管理機能
 
 import React, { useState, useEffect } from 'react';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
 import { GameProject } from '../../../types/editor/GameProject';
+import { GameCounter, PRESET_COUNTERS, createCounterFromPreset, createCounter } from '../../../types/counterTypes';
 import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
 import { ModernCard } from '../../ui/ModernCard';
 import { ModernButton } from '../../ui/ModernButton';
 import { RulePreview } from './RulePreview';
 
-// 分割されたライブラリインポート
-import { CONDITION_LIBRARY, ACTION_LIBRARY } from './constants/RuleLibrary';
+// 分割されたライブラリインポート（カウンター条件・アクション追加済み）
+import { CONDITION_LIBRARY, ACTION_LIBRARY, PRIORITY_ACTION_LIBRARY } from './constants/RuleLibrary';
 
-// 分割された条件エディターインポート（Phase C保護 + Phase D・E拡張）
+// 分割された条件エディターインポート（Phase C保護 + Phase D・E・G拡張）
 import { TouchConditionEditor } from './conditions/TouchConditionEditor';
 import { TimeConditionEditor } from './conditions/TimeConditionEditor';
 import { FlagConditionEditor } from './conditions/FlagConditionEditor';
 import { CollisionConditionEditor } from './conditions/CollisionConditionEditor';
-import { GameStateConditionEditor } from './conditions/GameStateConditionEditor'; // Phase E追加
-import { AnimationConditionEditor } from './conditions/AnimationConditionEditor'; // Phase E Step 2追加
+import { GameStateConditionEditor } from './conditions/GameStateConditionEditor';
+import { AnimationConditionEditor } from './conditions/AnimationConditionEditor';
 
-// 分割されたアクションエディターインポート（Phase C保護 + Phase D拡張 + Phase E Step 3追加）
+// 分割されたアクションエディターインポート（Phase C保護 + Phase D・E拡張）
 import { SoundActionEditor } from './actions/SoundActionEditor';
 import { MoveActionEditor } from './actions/MoveActionEditor';
 import { EffectActionEditor } from './actions/EffectActionEditor';
 import { ShowHideActionEditor } from './actions/ShowHideActionEditor';
 import { FlagActionEditor } from './actions/FlagActionEditor';
-import { AnimationActionEditor } from './actions/AnimationActionEditor'; // Phase E Step 3追加
+import { AnimationActionEditor } from './actions/AnimationActionEditor';
+
+// Phase G追加: カウンターシステム統合
+import { 
+  CounterConditionEditor, 
+  CounterActionEditor,
+  createDefaultCounterCondition,
+  createDefaultCounterAction
+} from './CounterRuleComponents';
 
 interface AdvancedRuleModalProps {
   rule: GameRule;
@@ -51,6 +60,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
   const [projectFlags, setProjectFlags] = useState<GameFlag[]>(project.script?.flags || []);
   const [newFlagName, setNewFlagName] = useState('');
   
+  // Phase G追加: カウンター管理状態
+  const [projectCounters, setProjectCounters] = useState<GameCounter[]>(project.script?.counters || []);
+  const [newCounterName, setNewCounterName] = useState('');
+  const [newCounterValue, setNewCounterValue] = useState<number>(0);
+  
   // 詳細パラメータ編集状態（Phase C保護）
   const [editingConditionIndex, setEditingConditionIndex] = useState<number | null>(null);
   const [editingActionIndex, setEditingActionIndex] = useState<number | null>(null);
@@ -73,6 +87,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     setProjectFlags(flags);
   };
 
+  // Phase G追加: プロジェクトカウンター更新
+  const updateProjectCounters = (counters: GameCounter[]) => {
+    setProjectCounters(counters);
+  };
+
   // フラグ追加（Phase A・B保護）
   const addFlag = () => {
     if (newFlagName.trim()) {
@@ -88,12 +107,48 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     }
   };
 
+  // Phase G追加: カウンター追加（カスタム）
+  const addCounter = () => {
+    if (newCounterName.trim()) {
+      const newCounter = createCounter(newCounterName.trim(), newCounterValue);
+      updateProjectCounters([...projectCounters, newCounter]);
+      setNewCounterName('');
+      setNewCounterValue(0);
+      showNotification('success', `カウンター「${newCounter.name}」を追加しました`);
+    }
+  };
+
+  // Phase G追加: プリセットカウンター追加
+  const addPresetCounter = (presetId: string) => {
+    const newCounter = createCounterFromPreset(presetId);
+    if (newCounter) {
+      // 既存カウンターと名前重複チェック
+      const existingNames = projectCounters.map(c => c.name);
+      if (existingNames.includes(newCounter.name)) {
+        showNotification('error', `カウンター「${newCounter.name}」は既に存在します`);
+        return;
+      }
+      
+      updateProjectCounters([...projectCounters, newCounter]);
+      showNotification('success', `カウンター「${newCounter.name}」を追加しました`);
+    }
+  };
+
   // フラグ削除（Phase A・B保護）
   const removeFlag = (flagId: string) => {
     const flag = projectFlags.find(f => f.id === flagId);
     if (confirm(`フラグ「${flag?.name}」を削除しますか？`)) {
       updateProjectFlags(projectFlags.filter(flag => flag.id !== flagId));
       showNotification('success', 'フラグを削除しました');
+    }
+  };
+
+  // Phase G追加: カウンター削除
+  const removeCounter = (counterId: string) => {
+    const counter = projectCounters.find(c => c.id === counterId);
+    if (confirm(`カウンター「${counter?.name}」を削除しますか？`)) {
+      updateProjectCounters(projectCounters.filter(counter => counter.id !== counterId));
+      showNotification('success', 'カウンターを削除しました');
     }
   };
 
@@ -104,7 +159,19 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     ));
   };
 
-  // 条件追加（Phase A・B保護・Phase D・E拡張対応）
+  // Phase G追加: カウンター初期値変更
+  const updateCounterInitialValue = (counterId: string, newValue: number) => {
+    updateProjectCounters(projectCounters.map(counter => 
+      counter.id === counterId ? { 
+        ...counter, 
+        initialValue: newValue,
+        currentValue: newValue,
+        lastModified: new Date().toISOString()
+      } : counter
+    ));
+  };
+
+  // 条件追加（Phase A・B保護・Phase D・E・G拡張対応）
   const addCondition = (type: string) => {
     let newCondition: TriggerCondition;
     
@@ -145,14 +212,14 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           checkMode: 'hitbox'
         };
         break;
-      case 'gameState': // Phase E追加
+      case 'gameState':
         newCondition = {
           type: 'gameState',
           state: 'playing',
           checkType: 'is'
         };
         break;
-      case 'animation': // Phase E Step 2追加
+      case 'animation':
         newCondition = {
           type: 'animation',
           target: rule.targetObjectId,
@@ -166,6 +233,9 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           flagId: projectFlags[0]?.id || '',
           condition: 'ON'
         };
+        break;
+      case 'counter': // Phase G追加: カウンター条件
+        newCondition = createDefaultCounterCondition(projectCounters[0]?.name || '');
         break;
       default:
         return;
@@ -188,7 +258,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     ));
   };
 
-  // アクション追加（Phase A・B保護・Phase D・E拡張）
+  // アクション追加（Phase A・B保護・Phase D・E・G拡張）
   const addAction = (type: string) => {
     let newAction: GameAction;
     
@@ -258,12 +328,15 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           flagId: projectFlags[0]?.id || ''
         };
         break;
-      case 'switchAnimation': // Phase E Step 3追加
+      case 'switchAnimation':
         newAction = {
           type: 'switchAnimation',
           targetId: rule.targetObjectId,
           animationIndex: 0
         };
+        break;
+      case 'counter': // Phase G追加: カウンターアクション
+        newAction = createDefaultCounterAction(projectCounters[0]?.name || '');
         break;
       default:
         return;
@@ -279,7 +352,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     showNotification('success', 'アクションを削除しました');
   };
 
-  // アクション更新（Phase A・B保護・Phase E Step 3拡張）
+  // アクション更新（Phase A・B保護・Phase E・G拡張）
   const updateAction = (index: number, updates: Partial<GameAction>) => {
     setActions(actions.map((action, i) => {
       if (i !== index) return action;
@@ -299,7 +372,9 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
         case 'setFlag':
         case 'toggleFlag':
           return { ...action, ...(updates as typeof action) };
-        case 'switchAnimation': // Phase E Step 3追加
+        case 'switchAnimation':
+          return { ...action, ...(updates as typeof action) };
+        case 'counter': // Phase G追加: カウンターアクション更新
           return { ...action, ...(updates as typeof action) };
         default:
           return action;
@@ -338,7 +413,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     showNotification('success', 'ルールを保存しました');
   };
 
-  // 条件エディター分岐レンダリング（Phase E Step 3拡張）
+  // 条件エディター分岐レンダリング（Phase G拡張）
   const renderConditionEditor = (condition: TriggerCondition, index: number) => {
     switch (condition.type) {
       case 'touch':
@@ -365,7 +440,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             onUpdate={updateCondition}
           />
         );
-      case 'gameState': // Phase E追加
+      case 'gameState':
         return (
           <GameStateConditionEditor
             condition={condition}
@@ -373,7 +448,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             onUpdate={updateCondition}
           />
         );
-      case 'animation': // Phase E Step 2追加
+      case 'animation':
         return (
           <AnimationConditionEditor
             condition={condition}
@@ -391,12 +466,21 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             onUpdate={updateCondition}
           />
         );
+      case 'counter': // Phase G追加: カウンター条件エディター
+        return (
+          <CounterConditionEditor
+            condition={condition as Extract<TriggerCondition, { type: 'counter' }>}
+            project={{ ...project, script: { ...project.script, counters: projectCounters } }}
+            onChange={(updatedCondition) => updateCondition(index, updatedCondition)}
+            onRemove={() => removeCondition(index)}
+          />
+        );
       default:
         return null;
     }
   };
 
-  // アクションエディター分岐レンダリング（Phase D保護 + Phase E Step 3拡張）
+  // アクションエディター分岐レンダリング（Phase D保護 + Phase E・G拡張）
   const renderActionEditor = (action: GameAction, index: number) => {
     switch (action.type) {
       case 'playSound':
@@ -448,7 +532,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             onShowNotification={showNotification}
           />
         );
-      case 'switchAnimation': // Phase E Step 3追加
+      case 'switchAnimation':
         return (
           <AnimationActionEditor
             action={action}
@@ -456,6 +540,15 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             project={project}
             onUpdate={updateAction}
             onShowNotification={showNotification}
+          />
+        );
+      case 'counter': // Phase G追加: カウンターアクションエディター
+        return (
+          <CounterActionEditor
+            action={action as Extract<GameAction, { type: 'counter' }>}
+            project={{ ...project, script: { ...project.script, counters: projectCounters } }}
+            onChange={(updatedAction) => updateAction(index, updatedAction)}
+            onRemove={() => removeAction(index)}
           />
         );
       default:
@@ -538,7 +631,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           }}
         >
           
-          {/* ヘッダー（Phase E Step 3最終更新） */}
+          {/* ヘッダー（Phase G更新） */}
           <ModernCard 
             variant="filled" 
             size="lg"
@@ -578,7 +671,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     marginBottom: DESIGN_TOKENS.spacing[2]
                   }}
                 >
-                  高度なルール設定 - Phase E Step 3完了
+                  高度なルール設定 - Phase G完了
                 </h3>
                 <p 
                   style={{
@@ -588,7 +681,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     margin: 0
                   }}
                 >
-                  アニメーション制御システム完成・条件→アクション完全対応
+                  カウンター管理統合・条件→アクション完全対応（8条件・12アクション）
                 </p>
               </div>
             </div>
@@ -647,7 +740,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       outline: 'none',
                       boxShadow: DESIGN_TOKENS.shadows.sm
                     }}
-                    placeholder="例: ゲーム開始時に音楽再生"
+                    placeholder="例: スコア100点で音楽再生"
                     onFocus={(e) => {
                       e.target.style.borderColor = DESIGN_TOKENS.colors.purple[500];
                       e.target.style.boxShadow = `0 0 0 3px ${DESIGN_TOKENS.colors.purple[500]}20`;
@@ -660,7 +753,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 </div>
               </ModernCard>
 
-              {/* 右上: 実行アクション（簡易版・Phase A・B保護・Phase D・E拡張） */}
+              {/* 右上: 実行アクション（簡易版・Phase A・B保護・Phase D・E・G拡張） */}
               <ModernCard 
                 variant="outlined" 
                 size="lg"
@@ -683,14 +776,14 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   実行アクション ({actions.length}個)
                 </h4>
 
-                {/* アクション追加ボタン（コンパクト版・Phase A・B保護・Phase D・E拡張） */}
+                {/* アクション追加ボタン（コンパクト版・Phase A・B保護・Phase D・E・G拡張） */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
                   gap: DESIGN_TOKENS.spacing[2],
                   marginBottom: DESIGN_TOKENS.spacing[4]
                 }}>
-                  {ACTION_LIBRARY.slice(0, 6).map((actionType) => (
+                  {PRIORITY_ACTION_LIBRARY.map((actionType) => (
                     <ModernButton
                       key={actionType.type}
                       variant="outline"
@@ -708,7 +801,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   ))}
                 </div>
 
-                {/* アクション一覧（簡易表示・Phase A・B保護・Phase D・E拡張） */}
+                {/* アクション一覧（簡易表示・Phase A・B保護・Phase D・E・G拡張） */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
                   {actions.slice(0, 3).map((action, index) => (
                     <div key={index}>
@@ -723,10 +816,10 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                           fontSize: DESIGN_TOKENS.typography.fontSize.xs
                         }}
                       >
-                        <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.icon}</span>
-                        <span>{ACTION_LIBRARY.find(a => a.type === action.type)?.label}</span>
-                        {/* アクション詳細設定ボタン（Phase D・E拡張対応） */}
-                        {['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag', 'switchAnimation'].includes(action.type) && (
+                        <span>{PRIORITY_ACTION_LIBRARY.find(a => a.type === action.type)?.icon || ACTION_LIBRARY.find(a => a.type === action.type)?.icon || '⚡'}</span>
+                        <span>{PRIORITY_ACTION_LIBRARY.find(a => a.type === action.type)?.label || ACTION_LIBRARY.find(a => a.type === action.type)?.label || action.type}</span>
+                        {/* アクション詳細設定ボタン（Phase D・E・G拡張対応） */}
+                        {['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag', 'switchAnimation', 'counter'].includes(action.type) && (
                           <ModernButton
                             variant="outline"
                             size="xs"
@@ -747,14 +840,14 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                           size="xs"
                           onClick={() => removeAction(index)}
                           style={{ 
-                            marginLeft: ['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag', 'switchAnimation'].includes(action.type) ? 0 : 'auto'
+                            marginLeft: ['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag', 'switchAnimation', 'counter'].includes(action.type) ? 0 : 'auto'
                           }}
                         >
                           ✕
                         </ModernButton>
                       </div>
                       
-                      {/* 分割されたアクションエディター表示（Phase D・E拡張） */}
+                      {/* 分割されたアクションエディター表示（Phase D・E・G拡張） */}
                       {renderActionEditor(action, index)}
                     </div>
                   ))}
@@ -770,7 +863,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 </div>
               </ModernCard>
 
-              {/* 左下: 発動条件（詳細版・Phase C Step 1-1・1-2・2拡張・Phase D・E拡張） */}
+              {/* 左下: 発動条件（詳細版・Phase C Step 1-1・1-2・2拡張・Phase D・E・G拡張） */}
               <ModernCard 
                 variant="outlined" 
                 size="lg"
@@ -808,7 +901,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   </select>
                 </div>
 
-                {/* 条件追加ボタン（Phase A・B保護・Phase D・E対応） */}
+                {/* 条件追加ボタン（Phase A・B保護・Phase D・E・G対応） */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
@@ -833,7 +926,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   ))}
                 </div>
 
-                {/* 条件一覧（詳細パラメータ編集対応・Phase D・E拡張） */}
+                {/* 条件一覧（詳細パラメータ編集対応・Phase D・E・G拡張） */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
                   {conditions.map((condition, index) => (
                     <div key={index}>
@@ -873,110 +966,264 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                         </ModernButton>
                       </div>
                       
-                      {/* 分割された条件エディター表示（Phase E Step 3拡張） */}
+                      {/* 分割された条件エディター表示（Phase E・G拡張） */}
                       {renderConditionEditor(condition, index)}
                     </div>
                   ))}
                 </div>
               </ModernCard>
 
-              {/* 右下: フラグ管理（Phase A・B保護） */}
-              <ModernCard 
-                variant="outlined" 
-                size="lg"
-                style={{ 
-                  backgroundColor: DESIGN_TOKENS.colors.warning[50],
-                  border: `2px solid ${DESIGN_TOKENS.colors.warning[100]}`
-                }}
-              >
-                <h4 style={{
-                  fontSize: DESIGN_TOKENS.typography.fontSize.lg,
-                  fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                  color: DESIGN_TOKENS.colors.warning[800],
-                  margin: 0,
-                  marginBottom: DESIGN_TOKENS.spacing[4],
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: DESIGN_TOKENS.spacing[2]
-                }}>
-                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xl }}>🚩</span>
-                  フラグ管理 ({projectFlags.length}個)
-                </h4>
+              {/* 右下: フラグ・カウンター管理（Phase A・B保護 + Phase G拡張） */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[4] }}>
+                
+                {/* フラグ管理（Phase A・B保護） */}
+                <ModernCard 
+                  variant="outlined" 
+                  size="md"
+                  style={{ 
+                    backgroundColor: DESIGN_TOKENS.colors.warning[50],
+                    border: `2px solid ${DESIGN_TOKENS.colors.warning[100]}`
+                  }}
+                >
+                  <h4 style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                    fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                    color: DESIGN_TOKENS.colors.warning[800],
+                    margin: 0,
+                    marginBottom: DESIGN_TOKENS.spacing[3],
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: DESIGN_TOKENS.spacing[2]
+                  }}>
+                    <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🚩</span>
+                    フラグ管理 ({projectFlags.length}個)
+                  </h4>
 
-                {/* 新規フラグ追加（Phase A・B保護） */}
-                <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2], marginBottom: DESIGN_TOKENS.spacing[4] }}>
-                  <input
-                    type="text"
-                    value={newFlagName}
-                    onChange={(e) => setNewFlagName(e.target.value)}
-                    placeholder="フラグ名"
-                    style={{
-                      flex: 1,
-                      padding: DESIGN_TOKENS.spacing[2],
-                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                      border: `1px solid ${DESIGN_TOKENS.colors.warning[100]}`,
-                      borderRadius: DESIGN_TOKENS.borderRadius.lg,
-                      backgroundColor: DESIGN_TOKENS.colors.neutral[0]
-                    }}
-                  />
-                  <ModernButton
-                    variant="primary"
-                    size="sm"
-                    onClick={addFlag}
-                    style={{
-                      backgroundColor: DESIGN_TOKENS.colors.warning[500],
-                      borderColor: DESIGN_TOKENS.colors.warning[500],
-                      fontSize: DESIGN_TOKENS.typography.fontSize.xs
-                    }}
-                  >
-                    ➕
-                  </ModernButton>
-                </div>
-
-                {/* フラグ一覧（Phase A・B保護） */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
-                  {projectFlags.slice(0, 4).map((flag) => (
-                    <div 
-                      key={flag.id}
+                  {/* 新規フラグ追加（Phase A・B保護） */}
+                  <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2], marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                    <input
+                      type="text"
+                      value={newFlagName}
+                      onChange={(e) => setNewFlagName(e.target.value)}
+                      placeholder="フラグ名"
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: DESIGN_TOKENS.spacing[2],
+                        flex: 1,
                         padding: DESIGN_TOKENS.spacing[2],
-                        backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                        border: `1px solid ${DESIGN_TOKENS.colors.warning[100]}`,
                         borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                        backgroundColor: DESIGN_TOKENS.colors.neutral[0]
+                      }}
+                    />
+                    <ModernButton
+                      variant="primary"
+                      size="sm"
+                      onClick={addFlag}
+                      style={{
+                        backgroundColor: DESIGN_TOKENS.colors.warning[500],
+                        borderColor: DESIGN_TOKENS.colors.warning[500],
                         fontSize: DESIGN_TOKENS.typography.fontSize.xs
                       }}
                     >
-                      <ModernButton
-                        variant={flag.initialValue ? "success" : "secondary"}
-                        size="xs"
-                        onClick={() => toggleFlagInitialValue(flag.id)}
-                        style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs }}
+                      ➕
+                    </ModernButton>
+                  </div>
+
+                  {/* フラグ一覧（Phase A・B保護） */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
+                    {projectFlags.slice(0, 3).map((flag) => (
+                      <div 
+                        key={flag.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: DESIGN_TOKENS.spacing[2],
+                          padding: DESIGN_TOKENS.spacing[2],
+                          backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                          fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                        }}
                       >
-                        {flag.initialValue ? 'ON' : 'OFF'}
-                      </ModernButton>
-                      <span style={{ flex: 1 }}>{flag.name}</span>
+                        <ModernButton
+                          variant={flag.initialValue ? "success" : "secondary"}
+                          size="xs"
+                          onClick={() => toggleFlagInitialValue(flag.id)}
+                          style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs }}
+                        >
+                          {flag.initialValue ? 'ON' : 'OFF'}
+                        </ModernButton>
+                        <span style={{ flex: 1 }}>{flag.name}</span>
+                        <ModernButton
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => removeFlag(flag.id)}
+                        >
+                          ✕
+                        </ModernButton>
+                      </div>
+                    ))}
+                    {projectFlags.length > 3 && (
+                      <div style={{
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                        color: DESIGN_TOKENS.colors.neutral[500],
+                        textAlign: 'center'
+                      }}>
+                        他 {projectFlags.length - 3}個のフラグ
+                      </div>
+                    )}
+                  </div>
+                </ModernCard>
+
+                {/* Phase G追加: カウンター管理 */}
+                <ModernCard 
+                  variant="outlined" 
+                  size="md"
+                  style={{ 
+                    backgroundColor: DESIGN_TOKENS.colors.primary[50],
+                    border: `2px solid ${DESIGN_TOKENS.colors.primary[200]}`
+                  }}
+                >
+                  <h4 style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                    fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                    color: DESIGN_TOKENS.colors.primary[800],
+                    margin: 0,
+                    marginBottom: DESIGN_TOKENS.spacing[3],
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: DESIGN_TOKENS.spacing[2]
+                  }}>
+                    <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🔢</span>
+                    カウンター管理 ({projectCounters.length}個)
+                  </h4>
+
+                  {/* プリセットカウンター追加 */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(60px, 1fr))',
+                    gap: DESIGN_TOKENS.spacing[1],
+                    marginBottom: DESIGN_TOKENS.spacing[3]
+                  }}>
+                    {PRESET_COUNTERS.slice(0, 5).map((preset) => (
                       <ModernButton
-                        variant="ghost"
+                        key={preset.id}
+                        variant="outline"
                         size="xs"
-                        onClick={() => removeFlag(flag.id)}
+                        onClick={() => addPresetCounter(preset.id)}
+                        style={{
+                          borderColor: DESIGN_TOKENS.colors.primary[200],
+                          color: DESIGN_TOKENS.colors.primary[700],
+                          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                          padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                          textAlign: 'center'
+                        }}
+                        title={preset.description}
                       >
-                        ✕
+                        <div>
+                          <div>{preset.icon}</div>
+                          <div style={{ fontSize: '8px' }}>{preset.name}</div>
+                        </div>
                       </ModernButton>
-                    </div>
-                  ))}
-                  {projectFlags.length > 4 && (
-                    <div style={{
-                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                      color: DESIGN_TOKENS.colors.neutral[500],
-                      textAlign: 'center'
-                    }}>
-                      他 {projectFlags.length - 4}個のフラグ
-                    </div>
-                  )}
-                </div>
-              </ModernCard>
+                    ))}
+                  </div>
+
+                  {/* カスタムカウンター追加 */}
+                  <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[1], marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                    <input
+                      type="text"
+                      value={newCounterName}
+                      onChange={(e) => setNewCounterName(e.target.value)}
+                      placeholder="カウンター名"
+                      style={{
+                        flex: 1,
+                        padding: DESIGN_TOKENS.spacing[1],
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                        border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`,
+                        borderRadius: DESIGN_TOKENS.borderRadius.md,
+                        backgroundColor: DESIGN_TOKENS.colors.neutral[0]
+                      }}
+                    />
+                    <input
+                      type="number"
+                      value={newCounterValue}
+                      onChange={(e) => setNewCounterValue(Number(e.target.value))}
+                      placeholder="初期値"
+                      style={{
+                        width: '60px',
+                        padding: DESIGN_TOKENS.spacing[1],
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                        border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`,
+                        borderRadius: DESIGN_TOKENS.borderRadius.md,
+                        backgroundColor: DESIGN_TOKENS.colors.neutral[0]
+                      }}
+                    />
+                    <ModernButton
+                      variant="primary"
+                      size="sm"
+                      onClick={addCounter}
+                      style={{
+                        backgroundColor: DESIGN_TOKENS.colors.primary[500],
+                        borderColor: DESIGN_TOKENS.colors.primary[500],
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                      }}
+                    >
+                      ➕
+                    </ModernButton>
+                  </div>
+
+                  {/* カウンター一覧 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
+                    {projectCounters.slice(0, 3).map((counter) => (
+                      <div 
+                        key={counter.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: DESIGN_TOKENS.spacing[2],
+                          padding: DESIGN_TOKENS.spacing[2],
+                          backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                          fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                        }}
+                      >
+                        <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>
+                          {PRESET_COUNTERS.find(p => p.name === counter.name)?.icon || '🔢'}
+                        </span>
+                        <span style={{ flex: 1 }}>{counter.name}</span>
+                        <input
+                          type="number"
+                          value={counter.initialValue}
+                          onChange={(e) => updateCounterInitialValue(counter.id, Number(e.target.value))}
+                          style={{
+                            width: '50px',
+                            padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                            border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                            borderRadius: DESIGN_TOKENS.borderRadius.md,
+                            textAlign: 'center'
+                          }}
+                        />
+                        <ModernButton
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => removeCounter(counter.id)}
+                        >
+                          ✕
+                        </ModernButton>
+                      </div>
+                    ))}
+                    {projectCounters.length > 3 && (
+                      <div style={{
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                        color: DESIGN_TOKENS.colors.neutral[500],
+                        textAlign: 'center'
+                      }}>
+                        他 {projectCounters.length - 3}個のカウンター
+                      </div>
+                    )}
+                  </div>
+                </ModernCard>
+              </div>
             </div>
 
             {/* ルールプレビュー（Phase A・B保護） */}
@@ -988,7 +1235,14 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   actions,
                   operator
                 }}
-                project={project}
+                project={{
+                  ...project,
+                  script: {
+                    ...project.script,
+                    flags: projectFlags,
+                    counters: projectCounters
+                  }
+                }}
                 projectFlags={projectFlags}
                 mode="single"
                 showTitle={true}
@@ -997,7 +1251,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             </div>
           </div>
 
-          {/* フッター（Phase A・B保護） */}
+          {/* フッター（Phase A・B保護・Phase G更新） */}
           <div 
             style={{
               borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
@@ -1041,6 +1295,15 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   borderRadius: DESIGN_TOKENS.borderRadius.full 
                 }}></span>
                 <span>フラグ {projectFlags.length}個</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                <span style={{ 
+                  width: '12px', 
+                  height: '12px', 
+                  backgroundColor: DESIGN_TOKENS.colors.primary[500], 
+                  borderRadius: DESIGN_TOKENS.borderRadius.full 
+                }}></span>
+                <span>カウンター {projectCounters.length}個</span>
               </div>
             </div>
             <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[4] }}>
