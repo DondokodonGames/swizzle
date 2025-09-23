@@ -163,7 +163,10 @@ export const UserActivityFeed: React.FC<UserActivityFeedProps> = ({
             title: `新作ゲーム ${Math.floor(Math.random() * 100)}`,
             description: '楽しいゲームです！',
             thumbnail: `https://picsum.photos/200/150?random=${Math.floor(Math.random() * 100)}`,
-            author: actor,
+            author: {
+              ...actor,
+              name: actor.displayName || actor.username || 'Unknown User'
+            },
             stats: {
               likes: Math.floor(Math.random() * 100),
               shares: Math.floor(Math.random() * 20),
@@ -184,7 +187,11 @@ export const UserActivityFeed: React.FC<UserActivityFeedProps> = ({
             title: `人気ゲーム ${Math.floor(Math.random() * 100)}`,
             description: 'いいねされたゲーム',
             thumbnail: `https://picsum.photos/200/150?random=${Math.floor(Math.random() * 100)}`,
-            author: { ...actor, id: `author_${Math.floor(Math.random() * 10)}` },
+            author: { 
+              ...actor, 
+              id: `author_${Math.floor(Math.random() * 10)}`,
+              name: actor.displayName || actor.username || 'Unknown User'
+            },
             stats: {
               likes: Math.floor(Math.random() * 500),
               shares: Math.floor(Math.random() * 50),

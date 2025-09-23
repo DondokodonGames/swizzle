@@ -1,4 +1,4 @@
-// src/social/components/LikeButton.tsx
+// src/social/components/LikeButton.tsx - implicit any型修正版
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { ModernButton } from '../../components/ui/ModernButton';
@@ -62,9 +62,9 @@ export const LikeButton: React.FC<LikeButtonProps> = ({
       setIsAnimating(true);
       const newLikedState = !state.isLiked;
       
-      // 楽観的更新
-      setState(prev => ({ ...prev, isLiked: newLikedState }));
-      setStats(prev => ({
+      // 🔧 修正: setState関数のprevパラメータに明示的型指定
+      setState((prev: SocialState) => ({ ...prev, isLiked: newLikedState }));
+      setStats((prev: SocialStats) => ({
         ...prev,
         likes: prev.likes + (newLikedState ? 1 : -1)
       }));
@@ -78,16 +78,16 @@ export const LikeButton: React.FC<LikeButtonProps> = ({
       const result = await socialService.toggleLike(gameId, 'current-user');
       
       // 実際の結果で更新
-      setState(prev => ({ ...prev, isLiked: result.isLiked }));
-      setStats(prev => ({ ...prev, likes: result.newCount }));
+      setState((prev: SocialState) => ({ ...prev, isLiked: result.isLiked }));
+      setStats((prev: SocialStats) => ({ ...prev, likes: result.newCount }));
 
       // コールバック実行
       onLike?.(gameId, result.isLiked);
 
     } catch (error) {
       // エラー時はロールバック
-      setState(prev => ({ ...prev, isLiked: !state.isLiked }));
-      setStats(prev => ({
+      setState((prev: SocialState) => ({ ...prev, isLiked: !state.isLiked }));
+      setStats((prev: SocialStats) => ({
         ...prev,
         likes: prev.likes + (state.isLiked ? 1 : -1)
       }));
@@ -102,9 +102,9 @@ export const LikeButton: React.FC<LikeButtonProps> = ({
     try {
       const newBookmarkedState = !state.isBookmarked;
       
-      // 楽観的更新
-      setState(prev => ({ ...prev, isBookmarked: newBookmarkedState }));
-      setStats(prev => ({
+      // 🔧 修正: setState関数のprevパラメータに明示的型指定
+      setState((prev: SocialState) => ({ ...prev, isBookmarked: newBookmarkedState }));
+      setStats((prev: SocialStats) => ({
         ...prev,
         bookmarks: prev.bookmarks + (newBookmarkedState ? 1 : -1)
       }));
@@ -113,15 +113,15 @@ export const LikeButton: React.FC<LikeButtonProps> = ({
       const result = await socialService.toggleBookmark(gameId, 'current-user');
       
       // 実際の結果で更新
-      setState(prev => ({ ...prev, isBookmarked: result.isBookmarked }));
-      setStats(prev => ({ ...prev, bookmarks: result.newCount }));
+      setState((prev: SocialState) => ({ ...prev, isBookmarked: result.isBookmarked }));
+      setStats((prev: SocialStats) => ({ ...prev, bookmarks: result.newCount }));
 
       onBookmark?.(gameId, result.isBookmarked);
 
     } catch (error) {
       // エラー時はロールバック
-      setState(prev => ({ ...prev, isBookmarked: !state.isBookmarked }));
-      setStats(prev => ({
+      setState((prev: SocialState) => ({ ...prev, isBookmarked: !state.isBookmarked }));
+      setStats((prev: SocialStats) => ({
         ...prev,
         bookmarks: prev.bookmarks + (state.isBookmarked ? 1 : -1)
       }));
@@ -166,8 +166,9 @@ export const LikeButton: React.FC<LikeButtonProps> = ({
       // シェア統計を更新
       if (platform) {
         const newShareCount = await socialService.recordShare(gameId, platform, 'current-user');
-        setStats(prev => ({ ...prev, shares: newShareCount }));
-        setState(prev => ({ ...prev, isShared: true }));
+        // 🔧 修正: setState関数のprevパラメータに明示的型指定
+        setStats((prev: SocialStats) => ({ ...prev, shares: newShareCount }));
+        setState((prev: SocialState) => ({ ...prev, isShared: true }));
         setShowShareMenu(false);
         onShare?.(gameId);
       }
@@ -196,7 +197,8 @@ export const LikeButton: React.FC<LikeButtonProps> = ({
     if (onView) {
       onView(gameId);
       socialService.incrementViews(gameId).then(newViewCount => {
-        setStats(prev => ({ ...prev, views: newViewCount }));
+        // 🔧 修正: setState関数のprevパラメータに明示的型指定
+        setStats((prev: SocialStats) => ({ ...prev, views: newViewCount }));
       });
     }
   }, [gameId, onView, socialService]);

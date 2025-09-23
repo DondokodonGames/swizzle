@@ -1,4 +1,4 @@
-// src/services/ProjectStorageManager.ts - 実際のファイルベース修正版
+// src/services/ProjectStorageManager.ts - ScriptStatistics完全実装版
 
 // 🔧 インポート修正: 個別ファイルから直接インポート + createDefaultInitialState追加
 import { GameProject } from '../types/editor/GameProject';
@@ -199,7 +199,9 @@ export class ProjectStorageManager {
           }
         },
         flags: [],
+        counters: [], // 🔧 追加: カウンター配列
         successConditions: [],
+        // 🔧 修正: ScriptStatistics完全実装
         statistics: {
           totalConditions: 0,
           totalActions: 0,
@@ -208,9 +210,19 @@ export class ProjectStorageManager {
           usedTriggerTypes: [],
           usedActionTypes: [],
           flagCount: 0,
+          // 🔧 追加: 不足していたプロパティ
+          counterCount: 0,
+          usedCounterOperations: [],
+          usedCounterComparisons: [],
+          randomConditionCount: 0,
+          randomActionCount: 0,
+          totalRandomChoices: 0,
+          averageRandomProbability: 0,
           estimatedCPUUsage: 'medium',
           estimatedMemoryUsage: 0,
-          maxConcurrentEffects: 0
+          maxConcurrentEffects: 0,
+          randomEventsPerSecond: 0,
+          randomMemoryUsage: 0
         },
         version: '1.0.0',
         lastModified: now

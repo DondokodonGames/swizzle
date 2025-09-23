@@ -182,7 +182,7 @@ export const SocialAnalytics: React.FC<SocialAnalyticsProps> = ({
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedRange, setSelectedRange] = useState(timeRange);
+  const [selectedRange, setSelectedRange] = useState<"all" | "month" | "week" | "day" | "year">(timeRange);
   const [activeSection, setActiveSection] = useState<string>('overview');
   const [refreshing, setRefreshing] = useState(false);
   const [exportFormat, setExportFormat] = useState<'csv' | 'pdf' | 'json'>('csv');
@@ -260,7 +260,7 @@ export const SocialAnalytics: React.FC<SocialAnalyticsProps> = ({
           { country: '日本', percentage: 45, count: 2250, flag: '🇯🇵' },
           { country: 'アメリカ', percentage: 20, count: 1000, flag: '🇺🇸' },
           { country: '韓国', percentage: 15, count: 750, flag: '🇰🇷' },
-          { country: 'その他', percentage: 20, count: 1000, flag: '🌍' }
+          { country: 'その他', percentage: 20, count: 1000, flag: '🌏' }
         ],
         audienceInterests: [
           { interest: 'ゲーム', percentage: 85, score: 95 },
@@ -364,8 +364,12 @@ export const SocialAnalytics: React.FC<SocialAnalyticsProps> = ({
 
   // 期間変更
   const handleRangeChange = useCallback((range: string) => {
-    setSelectedRange(range);
-    loadAnalytics(range);
+    // 安全な型変換
+    const validRanges = ["all", "month", "week", "day", "year"] as const;
+    if (validRanges.includes(range as any)) {
+      setSelectedRange(range as "all" | "month" | "week" | "day" | "year");
+      loadAnalytics(range);
+    }
   }, [loadAnalytics]);
 
   // リフレッシュ

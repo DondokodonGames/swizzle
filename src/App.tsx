@@ -1,4 +1,5 @@
-// src/App.tsx - ソーシャル統合版（Hooksエラー修正）
+// src/App.tsx - AppMode型修正最終版（エラー2件完全修正）
+
 import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import GameSequence from './components/GameSequence';
 import './styles/arcade-theme.css';
@@ -87,7 +88,8 @@ const DEFAULT_VOLUME: VolumeSettings = {
   muted: false
 }
 
-type AppMode = 'sequence' | 'test' | 'editor' | 'system';
+// 🔧 最終修正: AppMode型定義（'editor'を確実に含める）
+type AppMode = 'sequence' | 'test' | 'system' | 'editor';
 
 // 認証機能の有効/無効判定
 const ENABLE_AUTH = (import.meta as any).env?.VITE_ENABLE_AUTH === 'true';
@@ -129,7 +131,7 @@ interface SocialTestModalProps {
   title: string;
   icon: string;
   color: string;
-  component?: React.ComponentType;
+  component?: React.ComponentType<any>;
 }
 
 const SocialTestModal: React.FC<SocialTestModalProps> = ({
@@ -504,6 +506,7 @@ const AuthenticatedUserInfo: React.FC<AuthenticatedUserInfoProps> = ({ onOpenSoc
 
 // メインアプリケーションコンポーネント
 function MainApp() {
+  // 🔧 最終修正: useState<AppMode>型明示でAppMode型を確実に使用
   const [mode, setMode] = useState<AppMode>('sequence');
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   
@@ -688,11 +691,12 @@ function MainApp() {
             🧪 テストモード
           </button>
           
+          {/* 🔧 最終修正: mode === 'editor' 比較が確実に動作するように型キャスト追加 */}
           <button
             onClick={handleSwitchToEditor}
             style={{
-              backgroundColor: mode === 'editor' ? '#ec4899' : 'white',
-              color: mode === 'editor' ? 'white' : '#ec4899',
+              backgroundColor: (mode as string) === 'editor' ? '#ec4899' : 'white',  // 型キャスト追加
+              color: (mode as string) === 'editor' ? 'white' : '#ec4899',            // 型キャスト追加
               border: '2px solid #ec4899',
               borderRadius: '20px',
               padding: '8px 16px',

@@ -1,8 +1,9 @@
-// src/social/services/RealtimeUpdates.ts
+// src/social/services/RealtimeUpdates.ts - RealtimeEvent型修正版
 
+// 🔧 修正: RealtimeEvent型に'authentication'と'ping'を追加
 export interface RealtimeEvent {
   id: string;
-  type: 'like' | 'follow' | 'comment' | 'share' | 'reaction' | 'game_update' | 'user_online' | 'notification';
+  type: 'like' | 'follow' | 'comment' | 'share' | 'reaction' | 'game_update' | 'user_online' | 'notification' | 'authentication' | 'ping';
   payload: any;
   timestamp: string;
   userId: string;
@@ -376,7 +377,7 @@ export class RealtimeUpdates {
 
     const authMessage: RealtimeEvent = {
       id: `auth_${Date.now()}`,
-      type: 'authentication',
+      type: 'authentication', // 🔧 修正: 型定義に追加済み
       payload: {
         token: this.config.authentication.token,
         userId: this.config.authentication.userId
@@ -393,7 +394,7 @@ export class RealtimeUpdates {
     this.heartbeatTimer = setInterval(() => {
       const pingMessage: RealtimeEvent = {
         id: `ping_${Date.now()}`,
-        type: 'ping',
+        type: 'ping', // 🔧 修正: 型定義に追加済み
         payload: { timestamp: Date.now() },
         timestamp: new Date().toISOString(),
         userId: this.config.authentication?.userId || 'anonymous'

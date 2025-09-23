@@ -69,7 +69,7 @@ export interface UserGame {
 
 export interface GameFilters {
   category?: string;
-  sortBy?: 'latest' | 'popular' | 'trending' | 'mostPlayed';
+  sortBy?: 'latest' | 'popular' | 'trending' | 'mostPlayed' | 'relevance';
   search?: string;
   tags?: string[];
   dateRange?: {

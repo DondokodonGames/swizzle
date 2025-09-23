@@ -1,3 +1,5 @@
+// src/hooks/editor/useGameProject.ts - ScriptStatistics完全実装版
+
 import { useState, useCallback, useEffect } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { ProjectAssets } from '../../types/editor/ProjectAssets';
@@ -142,8 +144,10 @@ const createDefaultProject = (name: string): GameProject => {
         stage: { backgroundColor: '#ffffff' }
       },
       flags: [],
+      counters: [], // 🔧 追加: カウンター配列
       rules: [],
       successConditions: [],
+      // 🔧 修正: ScriptStatistics完全実装
       statistics: { 
         totalRules: 0, 
         totalConditions: 0, 
@@ -152,9 +156,19 @@ const createDefaultProject = (name: string): GameProject => {
         usedTriggerTypes: [],
         usedActionTypes: [],
         flagCount: 0,
+        // 🔧 追加: 不足していたプロパティ
+        counterCount: 0,
+        usedCounterOperations: [],
+        usedCounterComparisons: [],
+        randomConditionCount: 0,
+        randomActionCount: 0,
+        totalRandomChoices: 0,
+        averageRandomProbability: 0,
         estimatedCPUUsage: 'low' as const,
         estimatedMemoryUsage: 0,
-        maxConcurrentEffects: 0
+        maxConcurrentEffects: 0,
+        randomEventsPerSecond: 0,
+        randomMemoryUsage: 0
       },
       version: '1.0.0',
       lastModified: now
@@ -185,11 +199,10 @@ const createDefaultProject = (name: string): GameProject => {
       autoSaveEnabled: true,
       tabStates: {
         assets: {
-          selectedAssetType: null, // 🔧 音声タイプも含む（'bgm'・'se'追加）
+          selectedAssetType: null,
           selectedAssetId: null,
           showAnimationEditor: false
         },
-        // 🔧 削除: audioタブ（assetsに統合）
         script: {
           mode: 'layout',
           selectedObjectId: null,
@@ -757,7 +770,7 @@ const calculateAssetStatistics = (assets: ProjectAssets): ProjectAssets['statist
   };
 };
 
-// スクリプト統計計算
+// 🔧 修正: スクリプト統計計算（完全実装）
 const calculateScriptStatistics = (script: GameScript): GameScript['statistics'] => {
   let totalConditions = 0;
   let totalActions = 0;
@@ -775,6 +788,7 @@ const calculateScriptStatistics = (script: GameScript): GameScript['statistics']
     (script.successConditions.length * 5)
   ));
 
+  // 🔧 完全なScriptStatisticsオブジェクト作成
   return {
     totalRules: script.rules.length,
     totalConditions,
@@ -783,8 +797,18 @@ const calculateScriptStatistics = (script: GameScript): GameScript['statistics']
     usedTriggerTypes: [],
     usedActionTypes: [],
     flagCount: script.flags.length,
+    // 🔧 追加: 不足していたプロパティ
+    counterCount: script.counters?.length || 0,
+    usedCounterOperations: [],
+    usedCounterComparisons: [],
+    randomConditionCount: 0,
+    randomActionCount: 0,
+    totalRandomChoices: 0,
+    averageRandomProbability: 0,
     estimatedCPUUsage: complexityScore < 30 ? 'low' : complexityScore < 70 ? 'medium' : 'high',
     estimatedMemoryUsage: script.rules.length * 1024,
-    maxConcurrentEffects: Math.min(10, script.rules.length)
+    maxConcurrentEffects: Math.min(10, script.rules.length),
+    randomEventsPerSecond: 0,
+    randomMemoryUsage: 0
   };
 };

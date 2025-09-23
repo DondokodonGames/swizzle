@@ -1,4 +1,4 @@
-// src/social/services/NotificationService.ts
+// src/social/services/NotificationService.ts - Notification API修正版
 
 // 通知型定義
 export interface GameNotification {
@@ -377,10 +377,10 @@ export class NotificationService {
     try {
       const browserNotification = new Notification(notification.title, {
         body: notification.message,
-        icon: '/favicon.ico', // または適切なアイコンパス
+        icon: '/favicon.ico', // またはアプリのアイコンパス
         badge: '/badge-icon.png',
         tag: notification.id,
-        renotify: false,
+        // 🔧 修正: 'renotify'プロパティを削除（標準ではサポートされていない）
         requireInteraction: false,
         silent: !this.settings.soundEnabled
       });
@@ -411,7 +411,7 @@ export class NotificationService {
     if (!this.settings.soundEnabled) return;
 
     try {
-      // 通知音の選択
+      // 🔧 修正: 通知音の選択（'comment'を削除）
       const soundMap = {
         reaction: '/sounds/reaction.mp3',
         like: '/sounds/like.mp3',
@@ -420,14 +420,14 @@ export class NotificationService {
         milestone: '/sounds/milestone.mp3'
       };
 
-      const soundFile = soundMap[type] || '/sounds/notification.mp3';
+      const soundFile = soundMap[type as keyof typeof soundMap] || '/sounds/notification.mp3';
       const audio = new Audio(soundFile);
       audio.volume = 0.5;
       
       // エラーハンドリング
       audio.addEventListener('error', () => {
         console.log('Notification sound not available, using default');
-        // フォールバック：ベープ音
+        // フォールバック：ビープ音
         this.playBeepSound();
       });
 
@@ -442,7 +442,7 @@ export class NotificationService {
 
   private playBeepSound() {
     try {
-      // Web Audio APIを使用したシンプルなベープ音
+      // Web Audio APIを使用したシンプルなビープ音
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();

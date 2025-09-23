@@ -1,7 +1,7 @@
 /**
  * ゲームプロジェクト全体管理型定義
  * Phase 6: ゲームエディター実装用
- * 🔧 修正: 3タブ統合対応（audioタブ削除）
+ * 修正: 3タブ統合対応（audioタブ削除）
  */
 
 import { ProjectAssets } from './ProjectAssets';
@@ -52,20 +52,20 @@ export interface GameSettings {
   };
 }
 
-// 🔧 修正: エディター状態管理（3タブ統合）
+// 修正: エディター状態管理（3タブ統合）
 export interface EditorState {
   activeTab: EditorTab;                   // 現在のタブ
   lastSaved: string;                      // 最終保存日時（ISO文字列）
   autoSaveEnabled: boolean;               // 自動保存ON/OFF
   
-  // 🔧 修正: 各タブの状態（audioタブ削除、assetsに音声管理統合）
+  // 修正: 各タブの状態（audioタブ削除、assetsに音声管理統合）
   tabStates: {
     assets: {
-      selectedAssetType: 'background' | 'objects' | 'texts' | 'bgm' | 'se' | null; // 🔧 音声タイプ追加
+      selectedAssetType: 'background' | 'objects' | 'texts' | 'bgm' | 'se' | null; // 音声タイプ追加
       selectedAssetId: string | null;
       showAnimationEditor: boolean;
     };
-    // 🔧 削除: audio tabState（assetsに統合）
+    // 削除: audio tabState（assetsに統合）
     script: {
       mode: 'layout' | 'rules';
       selectedObjectId: string | null;
@@ -141,11 +141,11 @@ export interface GameProject {
   // 基本情報
   id: string;                             // UUID
   name: string;                           // プロジェクト名
-  description?: string;                   // プロジェクト説明 ← 追加
+  description?: string;                   // プロジェクト説明
   createdAt: string;                      // 作成日時（ISO文字列）
   lastModified: string;                   // 最終更新日時（ISO文字列）
   version: string;                        // プロジェクトバージョン
-  thumbnailDataUrl?: string;              // サムネイル画像 ← 追加
+  thumbnailDataUrl?: string;              // サムネイル画像
   
   // 作成者情報
   creator: {
@@ -300,8 +300,6 @@ export interface ProjectValidationResult {
   };
 }
 
-// ★★★ 以下、SettingsTab対応用のデフォルト値・ヘルパー関数を追加 ★★★
-
 /**
  * デフォルトゲーム設定
  */
@@ -328,7 +326,7 @@ export const DEFAULT_GAME_SETTINGS: GameSettings = {
 };
 
 /**
- * 🔧 修正: デフォルトエディター状態（3タブ統合）
+ * 修正: デフォルトエディター状態（3タブ統合）
  */
 export const DEFAULT_EDITOR_STATE: EditorState = {
   activeTab: 'assets',
@@ -336,11 +334,11 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   autoSaveEnabled: true,
   tabStates: {
     assets: {
-      selectedAssetType: null, // 🔧 音声タイプも含む
+      selectedAssetType: null, // 音声タイプも含む
       selectedAssetId: null,
       showAnimationEditor: false
     },
-    // 🔧 削除: audio tabState（assetsに統合）
+    // 削除: audio tabState（assetsに統合）
     script: {
       mode: 'layout',
       selectedObjectId: null,
@@ -434,7 +432,7 @@ export const createDefaultGameProject = (name: string, userId?: string): GamePro
     
     // スクリプト（空の初期状態）
     script: {
-      // 🔧 修正: initialState追加
+      // 修正: initialState追加
       initialState: createDefaultInitialState(),
       layout: {
         background: {
@@ -450,8 +448,10 @@ export const createDefaultGameProject = (name: string, userId?: string): GamePro
         }
       },
       flags: [],
+      counters: [],  // 修正: counters配列追加
       rules: [],
       successConditions: [],
+      // ✅ 修正: ScriptStatistics完全実装（timingComplexity削除）
       statistics: {
         totalRules: 0,
         totalConditions: 0,
@@ -462,7 +462,18 @@ export const createDefaultGameProject = (name: string, userId?: string): GamePro
         flagCount: 0,
         estimatedCPUUsage: 'low',
         estimatedMemoryUsage: 0,
-        maxConcurrentEffects: 0
+        maxConcurrentEffects: 0,
+        // 追加: 不足していたプロパティ
+        counterCount: 0,
+        usedCounterOperations: [],
+        usedCounterComparisons: [],
+        randomConditionCount: 0,
+        randomActionCount: 0,
+        totalRandomChoices: 0,
+        averageRandomProbability: 0,
+        randomEventsPerSecond: 0,
+        randomMemoryUsage: 0
+        // 削除: timingComplexity（GameScript.tsの型に存在しないため）
       },
       version: '1.0.0',
       lastModified: now
