@@ -1,6 +1,6 @@
 // src/components/editor/ProjectSelector.tsx
-// 修正版: フォントファミリー型修正
-import React, { useState, useEffect, useCallback } from 'react';
+// 修正版: フォントファミリー型修正 + インポート機能修正
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../../constants/EditorLimits';
 import { useGameProject } from '../../hooks/editor/useGameProject';
@@ -34,7 +34,10 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     message: string;
   } | null>(null);
 
-  // ✨ useGameProject統合
+  // インポート機能用のref
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ✨ useGameProject統合（修正版 - importProject追加）
   const {
     loading,
     error,
@@ -42,7 +45,8 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     deleteProject,
     duplicateProject,
     exportProject,
-    listProjects
+    listProjects,
+    importProject  // ← 追加 
   } = useGameProject();
 
   // 通知表示ヘルパー
@@ -159,21 +163,21 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     }
   }, [projects, exportProject, onExport, showNotification]);
 
-  // ファイルインポート処理
+  // ファイルインポート処理（修正版）
   const handleFileImport = useCallback(async (file: File) => {
     try {
-      const importedProject = await (async () => {
-        const text = await file.text();
-        const data = JSON.parse(text);
-        return data.project || data;
-      })();
-
-      setProjects(prev => [importedProject, ...prev]);
+      // ✅ useGameProjectのimportProjectメソッドを使用
+      const importedProject = await importProject(file);
+      
+      // ✅ プロジェクト一覧を再取得（永続化されているため）
+      const updatedProjects = await listProjects();
+      setProjects(updatedProjects);
+      
       showNotification('success', `「${importedProject.name}」をインポートしました`);
     } catch (error: any) {
       showNotification('error', `インポートに失敗しました: ${error.message}`);
     }
-  }, [showNotification]);
+  }, [importProject, listProjects, showNotification]);
 
   return (
     <div 
@@ -525,35 +529,37 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
             {/* アクションボタン */}
             <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[3] }}>
-              {/* インポートボタン */}
-              <label>
-                <ModernButton
-                  variant="outline"
-                  size="md"
-                  icon="📂"
-                  style={{ cursor: 'pointer' }}
-                >
-                  インポート
-                </ModernButton>
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleFileImport(file);
-                      e.target.value = '';
-                    }
-                  }}
-                  style={{ display: 'none' }}
-                />
-              </label>
+              {/* インポートボタン - 修正版 */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleFileImport(file);
+                    e.target.value = '';
+                  }
+                }}
+                style={{ display: 'none' }}
+              />
+              
+              <ModernButton
+                variant="outline"
+                size="md"
+                onClick={() => {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.click();
+                  }
+                }}
+              >
+                インポート
+              </ModernButton>
               
               {/* 新規作成ボタン */}
               <ModernButton
                 variant="primary"
                 size="md"
-                icon="✨"
                 onClick={() => setShowNewProjectModal(true)}
               >
                 新しいゲームを作る
@@ -628,7 +634,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
               <ModernButton
                 variant="primary"
                 size="lg"
-                icon="✨"
                 onClick={() => setShowNewProjectModal(true)}
               >
                 新しいゲームを作る

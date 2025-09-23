@@ -1,13 +1,11 @@
 // src/hooks/useAuth.ts
-// 認証状態管理Hook - 完全エラー修正版
-// 全TypeScriptエラー解決済み
+// トリガー対応版 - プロフィール作成自動化により大幅簡素化
 
 import React, { useState, useEffect, useCallback, useContext, createContext, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { auth, database, SupabaseError } from '../lib/supabase'
 import type { Profile } from '../lib/database.types'
 
-// 認証状態の型定義
 interface AuthState {
   user: User | null
   session: Session | null
@@ -17,7 +15,6 @@ interface AuthState {
   error: string | null
 }
 
-// サインアップオプション
 interface SignUpOptions {
   username: string
   displayName?: string
@@ -25,7 +22,6 @@ interface SignUpOptions {
   language?: string
 }
 
-// 認証アクションの型定義
 interface AuthActions {
   signUp: (email: string, password: string, options: SignUpOptions) => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
@@ -38,13 +34,10 @@ interface AuthActions {
   requiresParentalOversight: boolean
 }
 
-// Context型定義
 type AuthContextType = AuthState & AuthActions
 
-// Contextの作成
 const AuthContext = createContext<AuthContextType | null>(null)
 
-// エラーメッセージの日本語化
 const ERROR_MESSAGES: Record<string, string> = {
   'Invalid login credentials': 'メールアドレスまたはパスワードが正しくありません',
   'Email not confirmed': 'メールアドレスが確認されていません。確認メールをご確認ください',
@@ -69,7 +62,6 @@ const getErrorMessage = (error: string | SupabaseError | Error): string => {
   return ERROR_MESSAGES[error] || error
 }
 
-// AuthProviderの実装
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AuthState>({
     user: null,
@@ -80,15 +72,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     error: null
   })
 
-  // エラークリア
   const clearError = useCallback(() => {
     setState(prev => ({ ...prev, error: null }))
   }, [])
 
-  // プロフィール読み込み
   const loadProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     try {
-      const profile = await database.profiles.get(userId)
+      // トリガーによる自動作成を考慮し、少し待機してからプロフィール取得
+      let profile = await database.profiles.get(userId)
+      
+      // プロフィールが存在しない場合、少し待ってリトライ（トリガー処理時間考慮）
+      if (!profile) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        profile = await database.profiles.get(userId)
+      }
+      
       return profile
     } catch (error) {
       console.error('Load profile error:', error)
@@ -178,34 +176,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => subscription.unsubscribe()
   }, [loadProfile])
 
-  // サインアップ
+  // サインアップ - 大幅簡素化版（トリガーがプロフィール作成を自動処理）
   const signUp = useCallback(async (email: string, password: string, options: SignUpOptions) => {
     setState(prev => ({ ...prev, loading: true, error: null }))
     
     try {
+      // Step 1: ユーザー名可用性チェック（重複回避のため）
       const usernameAvailable = await database.profiles.checkUsernameAvailable(options.username)
       if (!usernameAvailable) {
         throw new Error('Username already taken')
       }
 
-      const result = await auth.signUp(email, password, options)
+      // Step 2: Supabase Auth でユーザー作成
+      // トリガーが自動的にプロフィールを作成するため、メタデータも含める
+      const result = await auth.signUp(email, password, {
+        username: options.username,
+        display_name: options.displayName || options.username,
+        age: options.age,
+        language: options.language || 'ja',
+        requires_parental_oversight: options.age < 13
+      })
       
-      if (result.user) {
-        const profileData = {
-          id: result.user.id,
-          username: options.username,
-          display_name: options.displayName || options.username,
-          avatar_url: null,
-          bio: null,
-          language: options.language || 'ja',
-          age: options.age,
-          requires_parental_oversight: options.age < 13,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-
-        await database.profiles.upsert(profileData)
-      }
+      // Step 3: トリガーによる自動プロフィール作成完了
+      // 複雑なリトライロジックは不要！
+      console.log('User created successfully:', result.user?.id)
 
       setState(prev => ({ ...prev, loading: false }))
     } catch (error) {
@@ -328,7 +322,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const isAuthenticated = !!state.user
   const requiresParentalOversight = state.profile?.requires_parental_oversight ?? false
 
-  // Context値
+  // Contextの値
   const contextValue: AuthContextType = {
     ...state,
     signUp,
@@ -349,7 +343,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   )
 }
 
-// useAuthフックの実装
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext)
   
@@ -360,7 +353,6 @@ export const useAuth = (): AuthContextType => {
   return context
 }
 
-// 便利なHook
 export const useRequireAuth = (): AuthContextType => {
   const authContext = useAuth()
   

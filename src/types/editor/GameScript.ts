@@ -1,6 +1,6 @@
 /**
  * ゲームスクリプト・ロジック型定義
- * Phase 6: ゲームエディター実装用 + 初期条件システム追加 + カウンターシステム追加
+ * Phase 6: ゲームエディター実装用 + 初期条件システム追加 + カウンターシステム追加 + ランダムシステム追加
  */
 
 // TextStyleをインポート
@@ -24,6 +24,23 @@ export interface Position {
 export interface Scale {
   x: number; // 0.1-3.0
   y: number; // 0.1-3.0
+}
+
+// 🎲 新規追加: ランダムアクション選択肢
+export interface RandomActionOption {
+  action: GameAction;                     // 実行するアクション
+  weight?: number;                        // 重み（デフォルト: 1）
+  condition?: TriggerCondition;           // このアクション実行の追加条件
+  probability?: number;                   // このアクションの個別確率（0.0-1.0）
+}
+
+// 🎲 新規追加: ランダム実行制限
+export interface RandomExecutionLimit {
+  maxExecutions?: number;                 // 最大実行回数
+  cooldown?: number;                      // クールダウン時間（ミリ秒）
+  resetOnGameRestart?: boolean;           // ゲーム再開時にリセット
+  currentExecutions?: number;             // 現在の実行回数（内部管理用）
+  lastExecutionTime?: number;             // 最後の実行時間（内部管理用）
 }
 
 // 🔧 追加: ゲーム初期条件システム
@@ -148,7 +165,7 @@ export interface GameFlag {
   createdAt: string;
 }
 
-// 発動条件の詳細定義（カウンター条件追加）
+// 発動条件の詳細定義（カウンター条件 + ランダム条件追加）
 export type TriggerCondition = 
   // タッチ条件
   | {
@@ -213,7 +230,7 @@ export type TriggerCondition =
       };
     }
   
-  // 🔢 新規追加: カウンター条件
+  // 🔢 カウンター条件（Phase G）
   | {
       type: 'counter';
       counterName: string;                // カウンター名
@@ -221,6 +238,19 @@ export type TriggerCondition =
       value: number;                      // 比較値
       rangeMax?: number;                  // between/notBetween用の最大値
       tolerance?: number;                 // 浮動小数点比較用許容範囲
+    }
+  
+  // 🎲 新規追加: ランダム条件（Phase G-3）
+  | {
+      type: 'random';
+      probability: number;                // 0.0-1.0の確率
+      interval?: number;                  // 判定間隔（ミリ秒、デフォルト: 1000）
+      seed?: string;                      // シード値（デバッグ・リプレイ用）
+      maxEventsPerSecond?: number;        // 秒間最大イベント数（パフォーマンス制御）
+      conditions?: {
+        onSuccess?: TriggerCondition[];   // 確率成立時の追加条件
+        onFailure?: TriggerCondition[];   // 確率不成立時の追加条件
+      };
     };
 
 // 移動パターン
@@ -262,7 +292,7 @@ export interface EffectPattern {
   overlay?: boolean;                      // 他エフェクトと重複実行
 }
 
-// アクションの詳細定義（カウンターアクション追加）
+// アクションの詳細定義（カウンターアクション + ランダムアクション追加）
 export type GameAction =
   // ゲーム制御
   | { type: 'success'; score?: number; message?: string }
@@ -295,10 +325,20 @@ export type GameAction =
   | { type: 'addScore'; points: number }
   | { type: 'showMessage'; text: string; duration: number; style?: TextStyle }
   
-  // 🔢 新規追加: カウンターアクション
-  | { type: 'counter'; operation: CounterOperation; counterName: string; value?: number; notification?: CounterNotification };
+  // 🔢 カウンターアクション（Phase G）
+  | { type: 'counter'; operation: CounterOperation; counterName: string; value?: number; notification?: CounterNotification }
+  
+  // 🎲 新規追加: ランダムアクション（Phase G-3）
+  | { 
+      type: 'randomAction';
+      actions: RandomActionOption[];       // 選択肢アクション配列
+      weights?: number[];                  // 重み配列（省略時は均等）
+      selectionMode?: 'weighted' | 'probability' | 'uniform'; // 選択方式
+      executionLimit?: RandomExecutionLimit; // 実行制限
+      debugMode?: boolean;                 // デバッグモード（選択結果をログ出力）
+    };
 
-// 🔢 新規追加: カウンター通知設定
+// 🔢 カウンター通知設定（Phase G）
 export interface CounterNotification {
   enabled: boolean;                       // 通知の有無
   message?: string;                       // カスタムメッセージ
@@ -311,7 +351,7 @@ export interface CounterNotification {
   };
 }
 
-// ゲームルール（カウンター対応）
+// ゲームルール（カウンター + ランダム対応）
 export interface GameRule {
   id: string;
   name: string;                           // ユーザー設定名
@@ -374,7 +414,7 @@ export interface SuccessCondition {
     objectCondition?: 'visible' | 'hidden' | 'position' | 'animation';
     objectValue?: any;                    // 条件値
     
-    // 🔢 新規追加: counter条件用
+    // 🔢 counter条件用（Phase G）
     counterName?: string;                 // カウンター名
     counterComparison?: CounterComparison; // 比較演算子
     counterValue?: number;                // 比較値
@@ -390,7 +430,7 @@ export interface SuccessCondition {
   };
 }
 
-// スクリプト統計（カウンター統計追加）
+// スクリプト統計（カウンター + ランダム統計追加）
 export interface ScriptStatistics {
   totalRules: number;                     // ルール総数
   totalConditions: number;                // 条件総数
@@ -402,18 +442,28 @@ export interface ScriptStatistics {
   usedActionTypes: string[];              // 使用されているアクションタイプ
   flagCount: number;                      // フラグ数
   
-  // 🔢 新規追加: カウンター統計
+  // 🔢 カウンター統計（Phase G）
   counterCount: number;                   // カウンター数
   usedCounterOperations: CounterOperation[]; // 使用されているカウンター操作
   usedCounterComparisons: CounterComparison[]; // 使用されているカウンター比較
+  
+  // 🎲 新規追加: ランダム統計（Phase G-3）
+  randomConditionCount: number;           // ランダム条件数
+  randomActionCount: number;              // ランダムアクション数
+  totalRandomChoices: number;             // ランダム選択肢総数
+  averageRandomProbability: number;       // 平均確率（0.0-1.0）
   
   // パフォーマンス予測
   estimatedCPUUsage: 'low' | 'medium' | 'high';
   estimatedMemoryUsage: number;           // MB
   maxConcurrentEffects: number;           // 最大同時エフェクト数
+  
+  // 🎲 ランダム系パフォーマンス予測
+  randomEventsPerSecond: number;          // 秒間ランダムイベント数
+  randomMemoryUsage: number;              // ランダム系メモリ使用量（KB）
 }
 
-// 🔧 修正: ゲームスクリプト全体（カウンター対応）
+// 🔧 修正: ゲームスクリプト全体（カウンター + ランダム対応）
 export interface GameScript {
   // 🔧 追加: 初期条件設定
   initialState: GameInitialState;
@@ -424,7 +474,7 @@ export interface GameScript {
   // カスタム変数（フラグ）
   flags: GameFlag[];
   
-  // 🔢 新規追加: カウンター定義
+  // 🔢 カウンター定義（Phase G）
   counters: GameCounter[];
   
   // 条件・アクション設定
@@ -441,19 +491,19 @@ export interface GameScript {
   lastModified: string;                   // 最終更新日時
 }
 
-// スクリプト検証結果（カウンター検証追加）
+// スクリプト検証結果（カウンター + ランダム検証追加）
 export interface ScriptValidationResult {
   isValid: boolean;
   
   errors: Array<{
-    type: 'syntax' | 'logic' | 'reference' | 'performance' | 'counter'; // 🔢 counter追加
+    type: 'syntax' | 'logic' | 'reference' | 'performance' | 'counter' | 'random'; // 🎲 random追加
     ruleId?: string;
     message: string;
     severity: 'error' | 'warning';
   }>;
   
   warnings: Array<{
-    type: 'optimization' | 'usability' | 'compatibility' | 'counter'; // 🔢 counter追加
+    type: 'optimization' | 'usability' | 'compatibility' | 'counter' | 'random'; // 🎲 random追加
     message: string;
     suggestion?: string;
   }>;
@@ -465,13 +515,18 @@ export interface ScriptValidationResult {
     cpuIntensity: 'low' | 'medium' | 'high';
     bottlenecks: string[];
     
-    // 🔢 新規追加: カウンター関連パフォーマンス
+    // 🔢 カウンター関連パフォーマンス（Phase G）
     counterOperationsPerSecond: number;   // 秒間カウンター操作数
     counterMemoryUsage: number;           // カウンター用メモリ使用量（KB）
+    
+    // 🎲 新規追加: ランダム関連パフォーマンス（Phase G-3）
+    randomOperationsPerSecond: number;    // 秒間ランダム操作数
+    randomMemoryUsage: number;            // ランダム系メモリ使用量（KB）
+    randomSeedCount: number;              // 使用中のランダムシード数
   };
 }
 
-// 🔧 追加: デフォルト初期条件作成ヘルパー関数（カウンター対応）
+// 🔧 デフォルト初期条件作成ヘルパー関数（カウンター対応）
 export const createDefaultInitialState = (): GameInitialState => {
   const now = new Date().toISOString();
   
@@ -499,7 +554,7 @@ export const createDefaultInitialState = (): GameInitialState => {
       lives: undefined,
       level: 1,
       
-      // 🔢 新規追加: カウンター初期値
+      // 🔢 カウンター初期値（Phase G）
       counters: {}
     },
     autoRules: [],
@@ -511,7 +566,7 @@ export const createDefaultInitialState = (): GameInitialState => {
   };
 };
 
-// 🔧 追加: 初期条件とレイアウトの同期ヘルパー関数（カウンター対応）
+// 🔧 初期条件とレイアウトの同期ヘルパー関数（カウンター対応）
 export const syncInitialStateWithLayout = (
   initialState: GameInitialState,
   layout: GameLayout
@@ -552,7 +607,7 @@ export const syncInitialStateWithLayout = (
   };
 };
 
-// 🔢 新規追加: カウンター関連ヘルパー関数
+// 🔢 カウンター関連ヘルパー関数（Phase G）
 
 // カウンター条件作成ヘルパー
 export const createCounterCondition = (
@@ -629,4 +684,113 @@ export const getCounterActionDisplayName = (action: Extract<GameAction, { type: 
   }
   
   return `${action.counterName} を ${operationText}`;
+};
+
+// 🎲 新規追加: ランダム関連ヘルパー関数（Phase G-3）
+
+// ランダム条件作成ヘルパー
+export const createRandomCondition = (
+  probability: number,
+  interval?: number,
+  seed?: string
+): Extract<TriggerCondition, { type: 'random' }> => {
+  return {
+    type: 'random',
+    probability: Math.max(0.0, Math.min(1.0, probability)), // 0.0-1.0に制限
+    interval: interval || 1000, // デフォルト1秒
+    seed,
+    maxEventsPerSecond: Math.floor(1000 / (interval || 1000)) // パフォーマンス制御
+  };
+};
+
+// ランダムアクション作成ヘルパー
+export const createRandomAction = (
+  actions: RandomActionOption[],
+  selectionMode: 'weighted' | 'probability' | 'uniform' = 'weighted'
+): Extract<GameAction, { type: 'randomAction' }> => {
+  // 重み配列を自動生成
+  const weights = actions.map(option => option.weight || 1);
+  
+  return {
+    type: 'randomAction',
+    actions,
+    weights,
+    selectionMode,
+    executionLimit: {
+      maxExecutions: undefined, // 無制限
+      cooldown: 0,
+      resetOnGameRestart: true
+    }
+  };
+};
+
+// ランダム条件の表示名取得
+export const getRandomConditionDisplayName = (condition: Extract<TriggerCondition, { type: 'random' }>): string => {
+  const percentage = Math.round(condition.probability * 100);
+  const intervalText = condition.interval ? `${condition.interval}ms間隔で` : '';
+  
+  return `${intervalText}${percentage}%の確率で条件成立`;
+};
+
+// ランダムアクションの表示名取得
+export const getRandomActionDisplayName = (action: Extract<GameAction, { type: 'randomAction' }>): string => {
+  const choiceCount = action.actions.length;
+  const totalWeight = action.weights?.reduce((sum, weight) => sum + weight, 0) || choiceCount;
+  
+  const probabilities = action.weights?.map(weight => 
+    Math.round((weight / totalWeight) * 100)
+  ) || Array(choiceCount).fill(Math.round(100 / choiceCount));
+  
+  return `${choiceCount}択からランダム選択 (${probabilities.join('%, ')}%)`;
+};
+
+// ランダムアクション選択肢の確率計算
+export const calculateRandomActionProbabilities = (action: Extract<GameAction, { type: 'randomAction' }>): number[] => {
+  if (action.selectionMode === 'uniform') {
+    // 均等選択
+    const probability = 1.0 / action.actions.length;
+    return Array(action.actions.length).fill(probability);
+  }
+  
+  if (action.selectionMode === 'probability') {
+    // 個別確率指定
+    return action.actions.map(option => option.probability || (1.0 / action.actions.length));
+  }
+  
+  // 重み付き選択（デフォルト）
+  const weights = action.weights || action.actions.map(option => option.weight || 1);
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  
+  return weights.map(weight => weight / totalWeight);
+};
+
+// ランダムシード生成
+export const generateRandomSeed = (prefix: string = 'seed'): string => {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 10000);
+  return `${prefix}_${timestamp}_${random}`;
+};
+
+// ランダム条件のパフォーマンス予測
+export const estimateRandomConditionPerformance = (condition: Extract<TriggerCondition, { type: 'random' }>): {
+  eventsPerSecond: number;
+  memoryUsage: number; // KB
+  cpuLoad: 'low' | 'medium' | 'high';
+} => {
+  const interval = condition.interval || 1000;
+  const eventsPerSecond = (1000 / interval) * condition.probability;
+  
+  // メモリ使用量の概算（シード、履歴など）
+  const memoryUsage = 0.1 + (condition.seed ? 0.05 : 0);
+  
+  // CPU負荷の判定
+  let cpuLoad: 'low' | 'medium' | 'high' = 'low';
+  if (eventsPerSecond > 10) cpuLoad = 'high';
+  else if (eventsPerSecond > 2) cpuLoad = 'medium';
+  
+  return {
+    eventsPerSecond,
+    memoryUsage,
+    cpuLoad
+  };
 };

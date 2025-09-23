@@ -1,17 +1,16 @@
 // src/components/editor/script/AdvancedRuleModal.tsx
-// Phase G完了版: カウンターシステム統合完了（カウンター管理機能内蔵）
-// 既存機能完全保護 + カウンター条件・アクション統合 + カウンター管理機能
+// Phase G-3完了版: ランダムシステム統合 + エラー修正
+// DESIGN_TOKENS問題修正 + RandomRuleComponents統合
 
 import React, { useState, useEffect } from 'react';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
 import { GameProject } from '../../../types/editor/GameProject';
 import { GameCounter, PRESET_COUNTERS, createCounterFromPreset, createCounter } from '../../../types/counterTypes';
-import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
 import { ModernCard } from '../../ui/ModernCard';
 import { ModernButton } from '../../ui/ModernButton';
 import { RulePreview } from './RulePreview';
 
-// 分割されたライブラリインポート（カウンター条件・アクション追加済み）
+// 分割されたライブラリインポート（Phase G-3: ランダム追加済み）
 import { CONDITION_LIBRARY, ACTION_LIBRARY, PRIORITY_ACTION_LIBRARY } from './constants/RuleLibrary';
 
 // 分割された条件エディターインポート（Phase C保護 + Phase D・E・G拡張）
@@ -37,6 +36,29 @@ import {
   createDefaultCounterCondition,
   createDefaultCounterAction
 } from './CounterRuleComponents';
+
+// Phase G-3追加: ランダムシステム統合
+import { 
+  RandomConditionEditor, 
+  RandomActionEditor,
+  createDefaultRandomCondition,
+  createDefaultRandomAction
+} from './RandomRuleComponents';
+
+// デザイン定数をローカル定義（DESIGN_TOKENS問題回避）
+const COLORS = {
+  purple: { 50: '#faf5ff', 100: '#f3e8ff', 200: '#e9d5ff', 500: '#8b5cf6', 600: '#7c3aed', 800: '#5b21b6' },
+  success: { 50: '#f0fdf4', 200: '#bbf7d0', 500: '#22c55e', 600: '#16a34a', 800: '#166534' },
+  warning: { 50: '#fffbeb', 100: '#fef3c7', 500: '#f59e0b', 800: '#92400e' },
+  primary: { 50: '#eff6ff', 200: '#bfdbfe', 500: '#3b82f6', 700: '#1d4ed8', 800: '#1e40af' },
+  neutral: { 0: '#ffffff', 50: '#f9fafb', 200: '#e5e7eb', 300: '#d1d5db', 500: '#6b7280', 600: '#4b5563', 700: '#374151' },
+  error: { 800: '#991b1b' }
+};
+
+const SPACING = { 1: '4px', 2: '8px', 3: '12px', 4: '16px', 6: '24px' };
+const BORDER_RADIUS = { md: '6px', lg: '8px', xl: '12px', '3xl': '24px', full: '50%' };
+const SHADOWS = { sm: '0 1px 2px 0 rgb(0 0 0 / 0.05)', lg: '0 10px 15px -3px rgb(0 0 0 / 0.1)', '2xl': '0 25px 50px -12px rgb(0 0 0 / 0.25)' };
+const Z_INDEX = { modal: 50, notification: 60 };
 
 interface AdvancedRuleModalProps {
   rule: GameRule;
@@ -171,7 +193,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     ));
   };
 
-  // 条件追加（Phase A・B保護・Phase D・E・G拡張対応）
+  // 条件追加（Phase A・B保護・Phase D・E・G・G-3拡張対応）
   const addCondition = (type: string) => {
     let newCondition: TriggerCondition;
     
@@ -237,6 +259,9 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
       case 'counter': // Phase G追加: カウンター条件
         newCondition = createDefaultCounterCondition(projectCounters[0]?.name || '');
         break;
+      case 'random': // Phase G-3追加: ランダム条件
+        newCondition = createDefaultRandomCondition();
+        break;
       default:
         return;
     }
@@ -258,7 +283,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     ));
   };
 
-  // アクション追加（Phase A・B保護・Phase D・E・G拡張）
+  // アクション追加（Phase A・B保護・Phase D・E・G・G-3拡張）
   const addAction = (type: string) => {
     let newAction: GameAction;
     
@@ -338,6 +363,9 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
       case 'counter': // Phase G追加: カウンターアクション
         newAction = createDefaultCounterAction(projectCounters[0]?.name || '');
         break;
+      case 'randomAction': // Phase G-3追加: ランダムアクション
+        newAction = createDefaultRandomAction();
+        break;
       default:
         return;
     }
@@ -352,7 +380,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     showNotification('success', 'アクションを削除しました');
   };
 
-  // アクション更新（Phase A・B保護・Phase E・G拡張）
+  // アクション更新（Phase A・B保護・Phase E・G・G-3拡張）
   const updateAction = (index: number, updates: Partial<GameAction>) => {
     setActions(actions.map((action, i) => {
       if (i !== index) return action;
@@ -375,6 +403,8 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
         case 'switchAnimation':
           return { ...action, ...(updates as typeof action) };
         case 'counter': // Phase G追加: カウンターアクション更新
+          return { ...action, ...(updates as typeof action) };
+        case 'randomAction': // Phase G-3追加: ランダムアクション更新
           return { ...action, ...(updates as typeof action) };
         default:
           return action;
@@ -413,7 +443,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     showNotification('success', 'ルールを保存しました');
   };
 
-  // 条件エディター分岐レンダリング（Phase G拡張）
+  // 条件エディター分岐レンダリング（Phase G・G-3拡張）
   const renderConditionEditor = (condition: TriggerCondition, index: number) => {
     switch (condition.type) {
       case 'touch':
@@ -475,12 +505,20 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             onRemove={() => removeCondition(index)}
           />
         );
+      case 'random': // Phase G-3追加: ランダム条件エディター
+        return (
+          <RandomConditionEditor
+            condition={condition as Extract<TriggerCondition, { type: 'random' }>}
+            onChange={(updatedCondition) => updateCondition(index, updatedCondition)}
+            onRemove={() => removeCondition(index)}
+          />
+        );
       default:
         return null;
     }
   };
 
-  // アクションエディター分岐レンダリング（Phase D保護 + Phase E・G拡張）
+  // アクションエディター分岐レンダリング（Phase D保護 + Phase E・G・G-3拡張）
   const renderActionEditor = (action: GameAction, index: number) => {
     switch (action.type) {
       case 'playSound':
@@ -551,6 +589,14 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             onRemove={() => removeAction(index)}
           />
         );
+      case 'randomAction': // Phase G-3追加: ランダムアクションエディター
+        return (
+          <RandomActionEditor
+            action={action as Extract<GameAction, { type: 'randomAction' }>}
+            onChange={(updatedAction) => updateAction(index, updatedAction)}
+            onRemove={() => removeAction(index)}
+          />
+        );
       default:
         return null;
     }
@@ -563,30 +609,30 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
         <div 
           style={{
             position: 'fixed',
-            top: DESIGN_TOKENS.spacing[4],
-            right: DESIGN_TOKENS.spacing[4],
-            zIndex: DESIGN_TOKENS.zIndex.notification,
+            top: SPACING[4],
+            right: SPACING[4],
+            zIndex: Z_INDEX.notification,
             maxWidth: '400px'
           }}
         >
           <ModernCard variant="elevated" size="sm">
             <div style={{ display: 'flex', alignItems: 'center' }}>
               <span style={{ 
-                fontSize: DESIGN_TOKENS.typography.fontSize.xl, 
-                marginRight: DESIGN_TOKENS.spacing[3] 
+                fontSize: '20px', 
+                marginRight: SPACING[3] 
               }}>
                 {notification.type === 'success' ? '✅' :
                  notification.type === 'error' ? '❌' : 'ℹ️'}
               </span>
               <p style={{ 
-                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                fontWeight: '500',
                 margin: 0,
                 flex: 1,
                 color: notification.type === 'success' 
-                  ? DESIGN_TOKENS.colors.success[800] 
+                  ? COLORS.success[800] 
                   : notification.type === 'error' 
-                    ? DESIGN_TOKENS.colors.error[800] 
-                    : DESIGN_TOKENS.colors.primary[800]
+                    ? COLORS.error[800] 
+                    : COLORS.primary[800]
               }}>
                 {notification.message}
               </p>
@@ -594,7 +640,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 variant="ghost"
                 size="xs"
                 onClick={() => setNotification(null)}
-                style={{ marginLeft: DESIGN_TOKENS.spacing[2] }}
+                style={{ marginLeft: SPACING[2] }}
               >
                 ✕
               </ModernButton>
@@ -612,51 +658,51 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: DESIGN_TOKENS.zIndex.modal,
-          padding: DESIGN_TOKENS.spacing[4]
+          zIndex: Z_INDEX.modal,
+          padding: SPACING[4]
         }}
       >
         <div 
           style={{
-            backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-            borderRadius: DESIGN_TOKENS.borderRadius['3xl'],
-            boxShadow: DESIGN_TOKENS.shadows['2xl'],
+            backgroundColor: COLORS.neutral[0],
+            borderRadius: BORDER_RADIUS['3xl'],
+            boxShadow: SHADOWS['2xl'],
             width: '100%',
             maxWidth: '1400px',
             maxHeight: '95vh',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            border: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`
+            border: `1px solid ${COLORS.neutral[200]}`
           }}
         >
           
-          {/* ヘッダー（Phase G更新） */}
+          {/* ヘッダー（Phase G-3更新） */}
           <ModernCard 
             variant="filled" 
             size="lg"
             style={{ 
-              backgroundColor: DESIGN_TOKENS.colors.purple[600],
-              borderRadius: `${DESIGN_TOKENS.borderRadius['3xl']} ${DESIGN_TOKENS.borderRadius['3xl']} 0 0`,
+              backgroundColor: COLORS.purple[600],
+              borderRadius: `${BORDER_RADIUS['3xl']} ${BORDER_RADIUS['3xl']} 0 0`,
               margin: 0
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: SPACING[4] }}>
               <div 
                 style={{
                   width: '48px',
                   height: '48px',
-                  backgroundColor: DESIGN_TOKENS.colors.purple[500],
-                  borderRadius: DESIGN_TOKENS.borderRadius.xl,
+                  backgroundColor: COLORS.purple[500],
+                  borderRadius: BORDER_RADIUS.xl,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: DESIGN_TOKENS.shadows.lg
+                  boxShadow: SHADOWS.lg
                 }}
               >
                 <span style={{ 
-                  fontSize: DESIGN_TOKENS.typography.fontSize['2xl'], 
-                  color: DESIGN_TOKENS.colors.neutral[0] 
+                  fontSize: '24px', 
+                  color: COLORS.neutral[0] 
                 }}>
                   🎯
                 </span>
@@ -664,24 +710,24 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
               <div style={{ flex: 1 }}>
                 <h3 
                   style={{
-                    fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
-                    fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                    color: DESIGN_TOKENS.colors.neutral[0],
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    color: COLORS.neutral[0],
                     margin: 0,
-                    marginBottom: DESIGN_TOKENS.spacing[2]
+                    marginBottom: SPACING[2]
                   }}
                 >
-                  高度なルール設定 - Phase G完了
+                  高度なルール設定 - Phase G-3完了
                 </h3>
                 <p 
                   style={{
-                    fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                    color: DESIGN_TOKENS.colors.purple[100],
-                    fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                    fontSize: '14px',
+                    color: COLORS.purple[100],
+                    fontWeight: '500',
                     margin: 0
                   }}
                 >
-                  カウンター管理統合・条件→アクション完全対応（8条件・12アクション）
+                  ランダムシステム統合・エンドレス系対応（9条件・13アクション）
                 </p>
               </div>
             </div>
@@ -692,15 +738,15 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             style={{
               flex: 1,
               overflowY: 'auto',
-              backgroundColor: DESIGN_TOKENS.colors.neutral[50]
+              backgroundColor: COLORS.neutral[50]
             }}
           >
             <div 
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
-                gap: DESIGN_TOKENS.spacing[6],
-                padding: DESIGN_TOKENS.spacing[6],
+                gap: SPACING[6],
+                padding: SPACING[6],
                 maxWidth: '1400px',
                 margin: '0 auto'
               }}
@@ -708,18 +754,18 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
               
               {/* 左上: ルール名（Phase A・B保護） */}
               <ModernCard variant="outlined" size="lg">
-                <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                <div style={{ marginBottom: SPACING[4] }}>
                   <div style={{ 
                     display: 'flex', 
                     alignItems: 'center', 
-                    gap: DESIGN_TOKENS.spacing[2],
-                    marginBottom: DESIGN_TOKENS.spacing[3]
+                    gap: SPACING[2],
+                    marginBottom: SPACING[3]
                   }}>
-                    <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xl }}>📝</span>
+                    <span style={{ fontSize: '20px' }}>📝</span>
                     <span style={{ 
-                      fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
-                      color: DESIGN_TOKENS.colors.neutral[700],
-                      fontSize: DESIGN_TOKENS.typography.fontSize.sm
+                      fontWeight: '600',
+                      color: COLORS.neutral[700],
+                      fontSize: '14px'
                     }}>
                       ルール名
                     </span>
@@ -730,58 +776,58 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     onChange={(e) => setRule({ ...rule, name: e.target.value })}
                     style={{
                       width: '100%',
-                      padding: `${DESIGN_TOKENS.spacing[3]} ${DESIGN_TOKENS.spacing[4]}`,
-                      border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
-                      borderRadius: DESIGN_TOKENS.borderRadius.xl,
-                      fontSize: DESIGN_TOKENS.typography.fontSize.base,
-                      fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', '),
-                      backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-                      transition: `all ${DESIGN_TOKENS.animation.duration.normal} ${DESIGN_TOKENS.animation.easing.inOut}`,
+                      padding: `${SPACING[3]} ${SPACING[4]}`,
+                      border: `1px solid ${COLORS.neutral[300]}`,
+                      borderRadius: BORDER_RADIUS.xl,
+                      fontSize: '16px',
+                      fontFamily: 'system-ui, sans-serif',
+                      backgroundColor: COLORS.neutral[0],
+                      transition: 'all 0.2s ease-in-out',
                       outline: 'none',
-                      boxShadow: DESIGN_TOKENS.shadows.sm
+                      boxShadow: SHADOWS.sm
                     }}
-                    placeholder="例: スコア100点で音楽再生"
+                    placeholder="例: 30%の確率で障害物生成"
                     onFocus={(e) => {
-                      e.target.style.borderColor = DESIGN_TOKENS.colors.purple[500];
-                      e.target.style.boxShadow = `0 0 0 3px ${DESIGN_TOKENS.colors.purple[500]}20`;
+                      e.target.style.borderColor = COLORS.purple[500];
+                      e.target.style.boxShadow = `0 0 0 3px ${COLORS.purple[500]}20`;
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = DESIGN_TOKENS.colors.neutral[300];
-                      e.target.style.boxShadow = DESIGN_TOKENS.shadows.sm;
+                      e.target.style.borderColor = COLORS.neutral[300];
+                      e.target.style.boxShadow = SHADOWS.sm;
                     }}
                   />
                 </div>
               </ModernCard>
 
-              {/* 右上: 実行アクション（簡易版・Phase A・B保護・Phase D・E・G拡張） */}
+              {/* 右上: 実行アクション（簡易版・Phase A・B保護・Phase D・E・G・G-3拡張） */}
               <ModernCard 
                 variant="outlined" 
                 size="lg"
                 style={{ 
-                  backgroundColor: DESIGN_TOKENS.colors.success[50],
-                  border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`
+                  backgroundColor: COLORS.success[50],
+                  border: `2px solid ${COLORS.success[200]}`
                 }}
               >
                 <h4 style={{
-                  fontSize: DESIGN_TOKENS.typography.fontSize.lg,
-                  fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                  color: DESIGN_TOKENS.colors.success[800],
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  color: COLORS.success[800],
                   margin: 0,
-                  marginBottom: DESIGN_TOKENS.spacing[4],
+                  marginBottom: SPACING[4],
                   display: 'flex',
                   alignItems: 'center',
-                  gap: DESIGN_TOKENS.spacing[2]
+                  gap: SPACING[2]
                 }}>
-                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xl }}>⚡</span>
+                  <span style={{ fontSize: '20px' }}>⚡</span>
                   実行アクション ({actions.length}個)
                 </h4>
 
-                {/* アクション追加ボタン（コンパクト版・Phase A・B保護・Phase D・E・G拡張） */}
+                {/* アクション追加ボタン（コンパクト版・Phase A・B保護・Phase D・E・G・G-3拡張） */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                  gap: DESIGN_TOKENS.spacing[2],
-                  marginBottom: DESIGN_TOKENS.spacing[4]
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
+                  gap: SPACING[2],
+                  marginBottom: SPACING[4]
                 }}>
                   {PRIORITY_ACTION_LIBRARY.map((actionType) => (
                     <ModernButton
@@ -790,46 +836,61 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       size="sm"
                       onClick={() => addAction(actionType.type)}
                       style={{
-                        borderColor: DESIGN_TOKENS.colors.success[200],
-                        color: DESIGN_TOKENS.colors.success[600],
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                        padding: DESIGN_TOKENS.spacing[2]
+                        borderColor: COLORS.success[200],
+                        color: COLORS.success[600],
+                        fontSize: '12px',
+                        padding: SPACING[2]
                       }}
                     >
                       <span>{actionType.icon}</span>
                     </ModernButton>
                   ))}
+                  {/* Phase G-3追加: ランダムアクションボタン */}
+                  <ModernButton
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addAction('randomAction')}
+                    style={{
+                      borderColor: COLORS.success[200],
+                      color: COLORS.success[600],
+                      fontSize: '12px',
+                      padding: SPACING[2]
+                    }}
+                    title="ランダムアクション（重み付き選択）"
+                  >
+                    <span>🎲</span>
+                  </ModernButton>
                 </div>
 
-                {/* アクション一覧（簡易表示・Phase A・B保護・Phase D・E・G拡張） */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
+                {/* アクション一覧（簡易表示・Phase A・B保護・Phase D・E・G・G-3拡張） */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: SPACING[2] }}>
                   {actions.slice(0, 3).map((action, index) => (
                     <div key={index}>
                       <div 
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: DESIGN_TOKENS.spacing[2],
-                          padding: DESIGN_TOKENS.spacing[2],
-                          backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-                          borderRadius: DESIGN_TOKENS.borderRadius.lg,
-                          fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                          gap: SPACING[2],
+                          padding: SPACING[2],
+                          backgroundColor: COLORS.neutral[0],
+                          borderRadius: BORDER_RADIUS.lg,
+                          fontSize: '12px'
                         }}
                       >
-                        <span>{PRIORITY_ACTION_LIBRARY.find(a => a.type === action.type)?.icon || ACTION_LIBRARY.find(a => a.type === action.type)?.icon || '⚡'}</span>
-                        <span>{PRIORITY_ACTION_LIBRARY.find(a => a.type === action.type)?.label || ACTION_LIBRARY.find(a => a.type === action.type)?.label || action.type}</span>
-                        {/* アクション詳細設定ボタン（Phase D・E・G拡張対応） */}
-                        {['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag', 'switchAnimation', 'counter'].includes(action.type) && (
+                        <span>{action.type === 'randomAction' ? '🎲' : (PRIORITY_ACTION_LIBRARY.find(a => a.type === action.type)?.icon || ACTION_LIBRARY.find(a => a.type === action.type)?.icon || '⚡')}</span>
+                        <span>{action.type === 'randomAction' ? 'ランダムアクション' : (PRIORITY_ACTION_LIBRARY.find(a => a.type === action.type)?.label || ACTION_LIBRARY.find(a => a.type === action.type)?.label || action.type)}</span>
+                        {/* アクション詳細設定ボタン（Phase D・E・G・G-3拡張対応） */}
+                        {['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag', 'switchAnimation', 'counter', 'randomAction'].includes(action.type) && (
                           <ModernButton
                             variant="outline"
                             size="xs"
                             onClick={() => {/* 詳細設定は常に表示済み */}}
                             style={{
-                              borderColor: DESIGN_TOKENS.colors.success[200],
-                              color: DESIGN_TOKENS.colors.success[600],
-                              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                              borderColor: COLORS.success[200],
+                              color: COLORS.success[600],
+                              fontSize: '12px',
                               marginLeft: 'auto',
-                              marginRight: DESIGN_TOKENS.spacing[1]
+                              marginRight: SPACING[1]
                             }}
                           >
                             ⚙️
@@ -840,21 +901,21 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                           size="xs"
                           onClick={() => removeAction(index)}
                           style={{ 
-                            marginLeft: ['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag', 'switchAnimation', 'counter'].includes(action.type) ? 0 : 'auto'
+                            marginLeft: ['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag', 'switchAnimation', 'counter', 'randomAction'].includes(action.type) ? 0 : 'auto'
                           }}
                         >
                           ✕
                         </ModernButton>
                       </div>
                       
-                      {/* 分割されたアクションエディター表示（Phase D・E・G拡張） */}
+                      {/* 分割されたアクションエディター表示（Phase D・E・G・G-3拡張） */}
                       {renderActionEditor(action, index)}
                     </div>
                   ))}
                   {actions.length > 3 && (
                     <div style={{
-                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                      color: DESIGN_TOKENS.colors.neutral[500],
+                      fontSize: '12px',
+                      color: COLORS.neutral[500],
                       textAlign: 'center'
                     }}>
                       他 {actions.length - 3}個のアクション
@@ -863,37 +924,37 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 </div>
               </ModernCard>
 
-              {/* 左下: 発動条件（詳細版・Phase C Step 1-1・1-2・2拡張・Phase D・E・G拡張） */}
+              {/* 左下: 発動条件（詳細版・Phase C Step 1-1・1-2・2拡張・Phase D・E・G・G-3拡張） */}
               <ModernCard 
                 variant="outlined" 
                 size="lg"
                 style={{ 
-                  backgroundColor: DESIGN_TOKENS.colors.purple[50],
-                  border: `2px solid ${DESIGN_TOKENS.colors.purple[200]}`
+                  backgroundColor: COLORS.purple[50],
+                  border: `2px solid ${COLORS.purple[200]}`
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACING[4] }}>
                   <h4 style={{
-                    fontSize: DESIGN_TOKENS.typography.fontSize.lg,
-                    fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                    color: DESIGN_TOKENS.colors.purple[800],
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    color: COLORS.purple[800],
                     margin: 0,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: DESIGN_TOKENS.spacing[2]
+                    gap: SPACING[2]
                   }}>
-                    <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xl }}>🔥</span>
+                    <span style={{ fontSize: '20px' }}>🔥</span>
                     発動条件 ({conditions.length}個)
                   </h4>
                   <select
                     value={operator}
                     onChange={(e) => setOperator(e.target.value as 'AND' | 'OR')}
                     style={{
-                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                      border: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`,
-                      borderRadius: DESIGN_TOKENS.borderRadius.lg,
-                      padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
-                      backgroundColor: DESIGN_TOKENS.colors.neutral[0]
+                      fontSize: '12px',
+                      border: `1px solid ${COLORS.purple[200]}`,
+                      borderRadius: BORDER_RADIUS.lg,
+                      padding: `${SPACING[1]} ${SPACING[2]}`,
+                      backgroundColor: COLORS.neutral[0]
                     }}
                   >
                     <option value="AND">すべて (AND)</option>
@@ -901,12 +962,12 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   </select>
                 </div>
 
-                {/* 条件追加ボタン（Phase A・B保護・Phase D・E・G対応） */}
+                {/* 条件追加ボタン（Phase A・B保護・Phase D・E・G・G-3対応） */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
-                  gap: DESIGN_TOKENS.spacing[2],
-                  marginBottom: DESIGN_TOKENS.spacing[4]
+                  gap: SPACING[2],
+                  marginBottom: SPACING[4]
                 }}>
                   {CONDITION_LIBRARY.map((conditionType) => (
                     <ModernButton
@@ -915,30 +976,31 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       size="xs"
                       onClick={() => addCondition(conditionType.type)}
                       style={{
-                        borderColor: DESIGN_TOKENS.colors.purple[200],
-                        color: DESIGN_TOKENS.colors.purple[800],
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                        padding: DESIGN_TOKENS.spacing[1]
+                        borderColor: COLORS.purple[200],
+                        color: COLORS.purple[800],
+                        fontSize: '12px',
+                        padding: SPACING[1]
                       }}
+                      title={conditionType.description}
                     >
                       <span>{conditionType.icon}</span>
                     </ModernButton>
                   ))}
                 </div>
 
-                {/* 条件一覧（詳細パラメータ編集対応・Phase D・E・G拡張） */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
+                {/* 条件一覧（詳細パラメータ編集対応・Phase D・E・G・G-3拡張） */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: SPACING[2] }}>
                   {conditions.map((condition, index) => (
                     <div key={index}>
                       <div 
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: DESIGN_TOKENS.spacing[2],
-                          padding: DESIGN_TOKENS.spacing[2],
-                          backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-                          borderRadius: DESIGN_TOKENS.borderRadius.lg,
-                          fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                          gap: SPACING[2],
+                          padding: SPACING[2],
+                          backgroundColor: COLORS.neutral[0],
+                          borderRadius: BORDER_RADIUS.lg,
+                          fontSize: '12px'
                         }}
                       >
                         <span>{CONDITION_LIBRARY.find(c => c.type === condition.type)?.icon}</span>
@@ -948,11 +1010,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                           size="xs"
                           onClick={() => {/* 詳細設定は常に表示済み */}}
                           style={{
-                            borderColor: DESIGN_TOKENS.colors.purple[200],
-                            color: DESIGN_TOKENS.colors.purple[800],
-                            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                            borderColor: COLORS.purple[200],
+                            color: COLORS.purple[800],
+                            fontSize: '12px',
                             marginLeft: 'auto',
-                            marginRight: DESIGN_TOKENS.spacing[1]
+                            marginRight: SPACING[1]
                           }}
                         >
                           ⚙️
@@ -966,7 +1028,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                         </ModernButton>
                       </div>
                       
-                      {/* 分割された条件エディター表示（Phase E・G拡張） */}
+                      {/* 分割された条件エディター表示（Phase E・G・G-3拡張） */}
                       {renderConditionEditor(condition, index)}
                     </div>
                   ))}
@@ -974,33 +1036,33 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
               </ModernCard>
 
               {/* 右下: フラグ・カウンター管理（Phase A・B保護 + Phase G拡張） */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[4] }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: SPACING[4] }}>
                 
                 {/* フラグ管理（Phase A・B保護） */}
                 <ModernCard 
                   variant="outlined" 
                   size="md"
                   style={{ 
-                    backgroundColor: DESIGN_TOKENS.colors.warning[50],
-                    border: `2px solid ${DESIGN_TOKENS.colors.warning[100]}`
+                    backgroundColor: COLORS.warning[50],
+                    border: `2px solid ${COLORS.warning[100]}`
                   }}
                 >
                   <h4 style={{
-                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
-                    fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                    color: DESIGN_TOKENS.colors.warning[800],
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    color: COLORS.warning[800],
                     margin: 0,
-                    marginBottom: DESIGN_TOKENS.spacing[3],
+                    marginBottom: SPACING[3],
                     display: 'flex',
                     alignItems: 'center',
-                    gap: DESIGN_TOKENS.spacing[2]
+                    gap: SPACING[2]
                   }}>
-                    <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🚩</span>
+                    <span style={{ fontSize: '18px' }}>🚩</span>
                     フラグ管理 ({projectFlags.length}個)
                   </h4>
 
                   {/* 新規フラグ追加（Phase A・B保護） */}
-                  <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2], marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                  <div style={{ display: 'flex', gap: SPACING[2], marginBottom: SPACING[3] }}>
                     <input
                       type="text"
                       value={newFlagName}
@@ -1008,11 +1070,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       placeholder="フラグ名"
                       style={{
                         flex: 1,
-                        padding: DESIGN_TOKENS.spacing[2],
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                        border: `1px solid ${DESIGN_TOKENS.colors.warning[100]}`,
-                        borderRadius: DESIGN_TOKENS.borderRadius.lg,
-                        backgroundColor: DESIGN_TOKENS.colors.neutral[0]
+                        padding: SPACING[2],
+                        fontSize: '12px',
+                        border: `1px solid ${COLORS.warning[100]}`,
+                        borderRadius: BORDER_RADIUS.lg,
+                        backgroundColor: COLORS.neutral[0]
                       }}
                     />
                     <ModernButton
@@ -1020,9 +1082,9 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       size="sm"
                       onClick={addFlag}
                       style={{
-                        backgroundColor: DESIGN_TOKENS.colors.warning[500],
-                        borderColor: DESIGN_TOKENS.colors.warning[500],
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                        backgroundColor: COLORS.warning[500],
+                        borderColor: COLORS.warning[500],
+                        fontSize: '12px'
                       }}
                     >
                       ➕
@@ -1030,25 +1092,25 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   </div>
 
                   {/* フラグ一覧（Phase A・B保護） */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: SPACING[2] }}>
                     {projectFlags.slice(0, 3).map((flag) => (
                       <div 
                         key={flag.id}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: DESIGN_TOKENS.spacing[2],
-                          padding: DESIGN_TOKENS.spacing[2],
-                          backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-                          borderRadius: DESIGN_TOKENS.borderRadius.lg,
-                          fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                          gap: SPACING[2],
+                          padding: SPACING[2],
+                          backgroundColor: COLORS.neutral[0],
+                          borderRadius: BORDER_RADIUS.lg,
+                          fontSize: '12px'
                         }}
                       >
                         <ModernButton
                           variant={flag.initialValue ? "success" : "secondary"}
                           size="xs"
                           onClick={() => toggleFlagInitialValue(flag.id)}
-                          style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs }}
+                          style={{ fontSize: '12px' }}
                         >
                           {flag.initialValue ? 'ON' : 'OFF'}
                         </ModernButton>
@@ -1064,8 +1126,8 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     ))}
                     {projectFlags.length > 3 && (
                       <div style={{
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                        color: DESIGN_TOKENS.colors.neutral[500],
+                        fontSize: '12px',
+                        color: COLORS.neutral[500],
                         textAlign: 'center'
                       }}>
                         他 {projectFlags.length - 3}個のフラグ
@@ -1079,21 +1141,21 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   variant="outlined" 
                   size="md"
                   style={{ 
-                    backgroundColor: DESIGN_TOKENS.colors.primary[50],
-                    border: `2px solid ${DESIGN_TOKENS.colors.primary[200]}`
+                    backgroundColor: COLORS.primary[50],
+                    border: `2px solid ${COLORS.primary[200]}`
                   }}
                 >
                   <h4 style={{
-                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
-                    fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                    color: DESIGN_TOKENS.colors.primary[800],
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    color: COLORS.primary[800],
                     margin: 0,
-                    marginBottom: DESIGN_TOKENS.spacing[3],
+                    marginBottom: SPACING[3],
                     display: 'flex',
                     alignItems: 'center',
-                    gap: DESIGN_TOKENS.spacing[2]
+                    gap: SPACING[2]
                   }}>
-                    <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🔢</span>
+                    <span style={{ fontSize: '18px' }}>🔢</span>
                     カウンター管理 ({projectCounters.length}個)
                   </h4>
 
@@ -1101,8 +1163,8 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fit, minmax(60px, 1fr))',
-                    gap: DESIGN_TOKENS.spacing[1],
-                    marginBottom: DESIGN_TOKENS.spacing[3]
+                    gap: SPACING[1],
+                    marginBottom: SPACING[3]
                   }}>
                     {PRESET_COUNTERS.slice(0, 5).map((preset) => (
                       <ModernButton
@@ -1111,10 +1173,10 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                         size="xs"
                         onClick={() => addPresetCounter(preset.id)}
                         style={{
-                          borderColor: DESIGN_TOKENS.colors.primary[200],
-                          color: DESIGN_TOKENS.colors.primary[700],
-                          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                          padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                          borderColor: COLORS.primary[200],
+                          color: COLORS.primary[700],
+                          fontSize: '12px',
+                          padding: `${SPACING[1]} ${SPACING[2]}`,
                           textAlign: 'center'
                         }}
                         title={preset.description}
@@ -1128,7 +1190,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   </div>
 
                   {/* カスタムカウンター追加 */}
-                  <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[1], marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                  <div style={{ display: 'flex', gap: SPACING[1], marginBottom: SPACING[3] }}>
                     <input
                       type="text"
                       value={newCounterName}
@@ -1136,11 +1198,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       placeholder="カウンター名"
                       style={{
                         flex: 1,
-                        padding: DESIGN_TOKENS.spacing[1],
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                        border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`,
-                        borderRadius: DESIGN_TOKENS.borderRadius.md,
-                        backgroundColor: DESIGN_TOKENS.colors.neutral[0]
+                        padding: SPACING[1],
+                        fontSize: '12px',
+                        border: `1px solid ${COLORS.primary[200]}`,
+                        borderRadius: BORDER_RADIUS.md,
+                        backgroundColor: COLORS.neutral[0]
                       }}
                     />
                     <input
@@ -1150,11 +1212,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       placeholder="初期値"
                       style={{
                         width: '60px',
-                        padding: DESIGN_TOKENS.spacing[1],
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                        border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`,
-                        borderRadius: DESIGN_TOKENS.borderRadius.md,
-                        backgroundColor: DESIGN_TOKENS.colors.neutral[0]
+                        padding: SPACING[1],
+                        fontSize: '12px',
+                        border: `1px solid ${COLORS.primary[200]}`,
+                        borderRadius: BORDER_RADIUS.md,
+                        backgroundColor: COLORS.neutral[0]
                       }}
                     />
                     <ModernButton
@@ -1162,9 +1224,9 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       size="sm"
                       onClick={addCounter}
                       style={{
-                        backgroundColor: DESIGN_TOKENS.colors.primary[500],
-                        borderColor: DESIGN_TOKENS.colors.primary[500],
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                        backgroundColor: COLORS.primary[500],
+                        borderColor: COLORS.primary[500],
+                        fontSize: '12px'
                       }}
                     >
                       ➕
@@ -1172,21 +1234,21 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   </div>
 
                   {/* カウンター一覧 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: SPACING[2] }}>
                     {projectCounters.slice(0, 3).map((counter) => (
                       <div 
                         key={counter.id}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: DESIGN_TOKENS.spacing[2],
-                          padding: DESIGN_TOKENS.spacing[2],
-                          backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-                          borderRadius: DESIGN_TOKENS.borderRadius.lg,
-                          fontSize: DESIGN_TOKENS.typography.fontSize.xs
+                          gap: SPACING[2],
+                          padding: SPACING[2],
+                          backgroundColor: COLORS.neutral[0],
+                          borderRadius: BORDER_RADIUS.lg,
+                          fontSize: '12px'
                         }}
                       >
-                        <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>
+                        <span style={{ fontSize: '14px' }}>
                           {PRESET_COUNTERS.find(p => p.name === counter.name)?.icon || '🔢'}
                         </span>
                         <span style={{ flex: 1 }}>{counter.name}</span>
@@ -1196,10 +1258,10 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                           onChange={(e) => updateCounterInitialValue(counter.id, Number(e.target.value))}
                           style={{
                             width: '50px',
-                            padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
-                            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                            border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
-                            borderRadius: DESIGN_TOKENS.borderRadius.md,
+                            padding: `${SPACING[1]} ${SPACING[2]}`,
+                            fontSize: '12px',
+                            border: `1px solid ${COLORS.neutral[300]}`,
+                            borderRadius: BORDER_RADIUS.md,
                             textAlign: 'center'
                           }}
                         />
@@ -1214,8 +1276,8 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     ))}
                     {projectCounters.length > 3 && (
                       <div style={{
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                        color: DESIGN_TOKENS.colors.neutral[500],
+                        fontSize: '12px',
+                        color: COLORS.neutral[500],
                         textAlign: 'center'
                       }}>
                         他 {projectCounters.length - 3}個のカウンター
@@ -1227,7 +1289,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             </div>
 
             {/* ルールプレビュー（Phase A・B保護） */}
-            <div style={{ padding: `0 ${DESIGN_TOKENS.spacing[6]} ${DESIGN_TOKENS.spacing[6]}` }}>
+            <div style={{ padding: `0 ${SPACING[6]} ${SPACING[6]}` }}>
               <RulePreview
                 currentRule={{
                   rule,
@@ -1251,62 +1313,62 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
             </div>
           </div>
 
-          {/* フッター（Phase A・B保護・Phase G更新） */}
+          {/* フッター（Phase A・B保護・Phase G-3更新） */}
           <div 
             style={{
-              borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
-              backgroundColor: DESIGN_TOKENS.colors.neutral[50],
-              padding: DESIGN_TOKENS.spacing[6],
+              borderTop: `1px solid ${COLORS.neutral[200]}`,
+              backgroundColor: COLORS.neutral[50],
+              padding: SPACING[6],
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'
             }}
           >
             <div style={{ 
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              color: DESIGN_TOKENS.colors.neutral[600],
+              fontSize: '14px',
+              color: COLORS.neutral[600],
               display: 'flex',
               alignItems: 'center',
-              gap: DESIGN_TOKENS.spacing[6]
+              gap: SPACING[6]
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: SPACING[2] }}>
                 <span style={{ 
                   width: '12px', 
                   height: '12px', 
-                  backgroundColor: DESIGN_TOKENS.colors.purple[500], 
-                  borderRadius: DESIGN_TOKENS.borderRadius.full 
+                  backgroundColor: COLORS.purple[500], 
+                  borderRadius: BORDER_RADIUS.full 
                 }}></span>
                 <span>条件 {conditions.length}個</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: SPACING[2] }}>
                 <span style={{ 
                   width: '12px', 
                   height: '12px', 
-                  backgroundColor: DESIGN_TOKENS.colors.success[500], 
-                  borderRadius: DESIGN_TOKENS.borderRadius.full 
+                  backgroundColor: COLORS.success[500], 
+                  borderRadius: BORDER_RADIUS.full 
                 }}></span>
                 <span>アクション {actions.length}個</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: SPACING[2] }}>
                 <span style={{ 
                   width: '12px', 
                   height: '12px', 
-                  backgroundColor: DESIGN_TOKENS.colors.warning[500], 
-                  borderRadius: DESIGN_TOKENS.borderRadius.full 
+                  backgroundColor: COLORS.warning[500], 
+                  borderRadius: BORDER_RADIUS.full 
                 }}></span>
                 <span>フラグ {projectFlags.length}個</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: SPACING[2] }}>
                 <span style={{ 
                   width: '12px', 
                   height: '12px', 
-                  backgroundColor: DESIGN_TOKENS.colors.primary[500], 
-                  borderRadius: DESIGN_TOKENS.borderRadius.full 
+                  backgroundColor: COLORS.primary[500], 
+                  borderRadius: BORDER_RADIUS.full 
                 }}></span>
                 <span>カウンター {projectCounters.length}個</span>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[4] }}>
+            <div style={{ display: 'flex', gap: SPACING[4] }}>
               <ModernButton
                 variant="secondary"
                 size="lg"
@@ -1320,11 +1382,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 onClick={handleSave}
                 disabled={conditions.length === 0 || actions.length === 0}
                 style={{
-                  backgroundColor: DESIGN_TOKENS.colors.purple[600],
-                  borderColor: DESIGN_TOKENS.colors.purple[600]
+                  backgroundColor: COLORS.purple[600],
+                  borderColor: COLORS.purple[600]
                 }}
               >
-                <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>💾</span>
+                <span style={{ fontSize: '18px' }}>💾</span>
                 保存
               </ModernButton>
             </div>
