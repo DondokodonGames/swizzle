@@ -1,15 +1,17 @@
 // src/components/editor/EditorApp.tsx
-// Phase 1-C版: EditorGameBridge統合・実際のテストプレイ機能実装
+// Phase I-C エディター完全版: Supabase連携・実DB保存対応
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { GameEditor } from './GameEditor';
 import { ProjectSelector } from './ProjectSelector';
 import { useGameProject } from '../../hooks/editor/useGameProject';
+import { useAuth } from '../../hooks/useAuth'; // 🔧 追加: 認証フック
 import { DEFAULT_EDITOR_TABS, getProgressTabConfig } from './common/TabNavigation';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 import { ModernButton } from '../ui/ModernButton';
 import { ModernCard } from '../ui/ModernCard';
 import { EditorGameBridge, GameExecutionResult } from '../../services/editor/EditorGameBridge';
+import { ProjectStorageManager } from '../../services/ProjectStorageManager'; // 🔧 追加: ストレージマネージャー
 
 type AppMode = 'selector' | 'editor' | 'testplay';
 
@@ -31,11 +33,14 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     id: string;
   } | null>(null);
   
-  // 🔧 テストプレイ関連状態追加
+  // テストプレイ関連状態追加
   const [isTestPlaying, setIsTestPlaying] = useState(false);
   const [testPlayResult, setTestPlayResult] = useState<GameExecutionResult | null>(null);
   const testPlayContainerRef = useRef<HTMLDivElement>(null);
   const gameBridge = useRef(EditorGameBridge.getInstance());
+
+  // 🔧 修正: 正確な型定義を使用
+  const { user, loading: authLoading } = useAuth();
 
   const {
     currentProject,
@@ -58,6 +63,19 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       handleProjectSelect({ id: initialProjectId } as GameProject);
     }
   }, [initialProjectId]);
+
+  // 🔧 修正: user を使用
+  useEffect(() => {
+    if (authLoading) {
+      // 認証読み込み中は何もしない
+      return;
+    }
+    
+    if (!user && mode === 'editor') {
+      // 未ログイン状態でエディターにいる場合は警告
+      showNotification('info', '一部機能を利用するにはログインが必要です');
+    }
+  }, [user, authLoading, mode]);
 
   // 通知表示
   const showNotification = useCallback((type: 'success' | 'error' | 'info', message: string) => {
@@ -90,7 +108,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
   }, [createProject, showNotification]);
 
-  // 🔧 強化されたプロジェクト保存
+  // 🔧 修正: プロジェクト保存処理（通常保存はローカルのみ）
   const handleSave = useCallback(async () => {
     if (!currentProject) return;
 
@@ -102,6 +120,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       }
 
       await saveProject();
+      
       showNotification('success', 'プロジェクトを保存しました');
       
       // 保存後にメタデータ更新
@@ -114,12 +133,14 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           }
         }
       });
+      
     } catch (error: any) {
+      console.error('Save failed:', error);
       showNotification('error', `保存に失敗しました: ${error.message}`);
     }
   }, [currentProject, saveProject, getValidationErrors, updateProject, showNotification]);
 
-  // 🔧 修正: 実際のテストプレイ機能実装（DOM要素待機対応版）
+  // テストプレイ処理（既存のまま）
   const handleTestPlay = useCallback(async () => {
     if (!currentProject) return;
 
@@ -144,10 +165,10 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     showNotification('info', 'テストプレイを開始します...');
 
     try {
-      // 🔧 修正: まずモード切り替え
+      // まずモード切り替え
       setMode('testplay');
       
-      // 🔧 修正: DOM要素が作成されるまで待機
+      // DOM要素が作成されるまで待機
       await new Promise<void>((resolve) => {
         const checkElement = () => {
           if (testPlayContainerRef.current) {
@@ -160,14 +181,14 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         checkElement();
       });
 
-      // 🔧 修正: 再度確認（安全措置）
+      // 再度確認（安全措置）
       if (!testPlayContainerRef.current) {
         throw new Error('テストプレイ画面の準備に失敗しました');
       }
 
       console.log('✅ テストプレイ画面準備完了、ゲーム実行開始');
 
-      // 🔧 EditorGameBridge経由でテストプレイ実行
+      // EditorGameBridge経由でテストプレイ実行
       await gameBridge.current.launchFullGame(
         currentProject,
         testPlayContainerRef.current,
@@ -207,7 +228,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
   }, [currentProject, getValidationErrors, updateProject, showNotification]);
 
-  // 🔧 テストプレイ終了
+  // テストプレイ終了
   const handleTestPlayEnd = useCallback(() => {
     setMode('editor');
     setTestPlayResult(null);
@@ -215,48 +236,105 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     showNotification('info', 'エディターに戻りました');
   }, [showNotification]);
 
-  // プロジェクト公開
-  const handlePublish = useCallback(async () => {
-    if (!currentProject) return;
+  // 🔧 完全修正: プロジェクト公開処理にSupabase連携追加
+const handlePublish = useCallback(async () => {
+  if (!currentProject) return;
 
-    const errors = getValidationErrors();
-    if (errors.length > 0) {
-      showNotification('error', `公開できません: ${errors[0]}`);
-      return;
-    }
+  if (!user) {
+    showNotification('error', 'ログインが必要です。公開するにはまずログインしてください。');
+    return;
+  }
 
-    try {
-      // 公開前に自動保存
-      await saveProject();
+  const errors = getValidationErrors();
+  if (errors.length > 0) {
+    showNotification('error', `公開できません: ${errors[0]}`);
+    return;
+  }
 
-      // 公開状態に更新
-      updateProject({
-        status: 'published',
-        settings: {
-          ...currentProject.settings,
-          publishing: {
-            ...currentProject.settings.publishing,
-            isPublished: true,
-            publishedAt: new Date().toISOString()
-          }
-        },
-        metadata: {
-          ...currentProject.metadata,
-          statistics: {
-            ...currentProject.metadata.statistics,
-            publishCount: (currentProject.metadata.statistics.publishCount || 0) + 1
-          }
+  try {
+    showNotification('info', '公開処理を開始しています...');
+
+    // 1. 公開前に自動保存（ローカル）
+    await saveProject();
+
+    // 2. 🔧 修正: 公開状態に更新されたプロジェクトデータを明示的に作成
+    const publishedProject: GameProject = {
+      ...currentProject,
+      status: 'published',
+      settings: {
+        ...currentProject.settings,
+        publishing: {
+          ...currentProject.settings.publishing,
+          isPublished: true,
+          publishedAt: new Date().toISOString()
         }
-      });
+      },
+      metadata: {
+        ...currentProject.metadata,
+        statistics: {
+          ...currentProject.metadata.statistics,
+          publishCount: (currentProject.metadata.statistics.publishCount || 0) + 1
+        },
+        lastSyncedAt: new Date().toISOString()
+      }
+    };
 
-      // 再保存
-      await saveProject();
+    // 3. 🔧 修正: 更新されたプロジェクトデータをReact状態に反映
+    updateProject({
+      status: 'published',
+      settings: publishedProject.settings,
+      metadata: publishedProject.metadata
+    });
 
-      showNotification('success', 'ゲームを公開しました！');
-    } catch (error: any) {
-      showNotification('error', `公開に失敗しました: ${error.message}`);
+    // 4. 🔧 修正: 明示的に更新されたプロジェクトデータをSupabaseに保存
+    const storageManager = ProjectStorageManager.getInstance();
+    await storageManager.saveProject(publishedProject, {
+      saveToDatabase: true,
+      userId: user.id
+    });
+
+    // 5. ローカル保存も再実行（データベースIDなど更新された情報を保存）
+    await saveProject();
+
+    showNotification('success', '🚀 ゲームを公開しました！ソーシャルフィードに表示されます');
+    
+    console.log('✅ Game published successfully:', {
+      projectId: publishedProject.id,
+      projectName: publishedProject.settings?.name || publishedProject.name,
+      userId: user.id,
+      publishedAt: publishedProject.settings.publishing.publishedAt,
+      isPublished: publishedProject.status === 'published'
+    });
+
+  } catch (error: any) {
+    console.error('Publish failed:', error);
+    
+    // エラーの種類に応じた詳細メッセージ
+    let errorMessage = '公開に失敗しました';
+    
+    if (error.message?.includes('データベース保存に失敗')) {
+      errorMessage = 'ゲームの公開に失敗しました。ネットワーク接続を確認して再試行してください。';
+    } else if (error.message?.includes('認証')) {
+      errorMessage = '認証エラーが発生しました。再ログインしてから再試行してください。';
+    } else if (error.message) {
+      errorMessage = `公開に失敗しました: ${error.message}`;
     }
-  }, [currentProject, getValidationErrors, saveProject, updateProject, showNotification]);
+    
+    showNotification('error', errorMessage);
+    
+    // 公開状態をロールバック
+    updateProject({
+      status: 'draft',
+      settings: {
+        ...currentProject.settings,
+        publishing: {
+          ...currentProject.settings.publishing,
+          isPublished: false
+        }
+      }
+    });
+  }
+}, [currentProject, user, getValidationErrors, saveProject, updateProject, showNotification]);
 
   // エディターから戻る処理
   const handleBackToSelector = useCallback(async () => {
@@ -335,7 +413,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   const handleExport = useCallback(async (projectId: string) => {
     try {
       if (currentProject) {
-        // 🔧 実際のエクスポート処理
+        // 実際のエクスポート処理
         const exportData = {
           ...currentProject,
           exportedAt: new Date().toISOString(),
@@ -394,7 +472,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         handleExitToMain();
       }
 
-      // 🔧 Ctrl+T でテストプレイ（エディター時のみ）
+      // Ctrl+T でテストプレイ（エディター時のみ）
       if ((event.ctrlKey || event.metaKey) && event.key === 't') {
         event.preventDefault();
         if (mode === 'editor' && currentProject && !isTestPlaying) {
@@ -430,7 +508,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       }}
     >
       {/* ローディング表示 */}
-      {loading && (
+      {(loading || authLoading) && (
         <div 
           style={{
             position: 'fixed',
@@ -464,7 +542,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
                   margin: 0
                 }}
               >
-                読み込み中...
+                {authLoading ? '認証確認中...' : '読み込み中...'}
               </p>
             </div>
           </ModernCard>
@@ -566,7 +644,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           onExport={handleExport}
         />
       ) : mode === 'testplay' ? (
-        // 🔧 テストプレイ画面
+        // テストプレイ画面
         <div style={{ minHeight: '100vh', backgroundColor: DESIGN_TOKENS.colors.neutral[900] }}>
           {/* テストプレイヘッダー */}
           <header 
@@ -911,6 +989,33 @@ export const EditorApp: React.FC<EditorAppProps> = ({
 
                   {/* ステータス表示 */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                    {/* 🔧 修正: user を使用 */}
+                    {!user && (
+                      <div 
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: DESIGN_TOKENS.spacing[1],
+                          padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                          backgroundColor: DESIGN_TOKENS.colors.warning[100],
+                          color: DESIGN_TOKENS.colors.warning[800],
+                          borderRadius: DESIGN_TOKENS.borderRadius.md,
+                          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                          fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
+                        }}
+                      >
+                        <span 
+                          style={{
+                            width: '6px',
+                            height: '6px',
+                            backgroundColor: DESIGN_TOKENS.colors.warning[500],
+                            borderRadius: '50%'
+                          }}
+                        />
+                        未ログイン
+                      </div>
+                    )}
+
                     {hasUnsavedChanges && (
                       <div 
                         style={{
@@ -1004,6 +1109,8 @@ export const EditorApp: React.FC<EditorAppProps> = ({
                     size="sm"
                     icon="🚀"
                     onClick={handlePublish}
+                    disabled={!user} // 🔧 修正: user を使用
+                    title={!user ? 'ログインが必要です' : ''}
                   >
                     公開
                   </ModernButton>
@@ -1056,7 +1163,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
                 <ModernButton
                   variant="primary"
                   size="lg"
-                  icon="📁"
+                  icon="📋"
                   onClick={handleBackToSelector}
                 >
                   プロジェクト一覧に戻る
@@ -1086,7 +1193,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           zIndex: DESIGN_TOKENS.zIndex[10]
         }}
       >
-        <div>Game Editor v1.0.0 - Phase 1-C テストプレイ対応版</div>
+        <div>Game Editor v1.0.0 - Supabase連携対応版</div>
         <div>💡 Ctrl+S: 保存 | Ctrl+T: テストプレイ | Esc: 戻る | Ctrl+Q: メイン画面</div>
       </div>
     </div>
