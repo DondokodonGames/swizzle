@@ -1,12 +1,13 @@
-// src/social/services/SocialService.ts - 実装版
-// モック実装から実Supabase連携への完全移行
+// src/social/services/SocialService.ts - 既存supabaseインスタンス使用版
+// likes, follows テーブル完全対応
 
-import { PublicGame, UserProfile, UserGame, GameFilters, SocialStats } from '../types/SocialTypes';
-import { database, SupabaseError } from '../../lib/supabase';
-import { UserGame as DatabaseUserGame, Profile as DatabaseProfile } from '../../lib/database.types';
+import { PublicGame, UserProfile, UserGame, GameFilters } from '../types/SocialTypes';
+import { database, SupabaseError, supabase } from '../../lib/supabase';
+import { NotificationService } from './NotificationService';
 
 export class SocialService {
   private static instance: SocialService;
+  private notificationService: NotificationService;
 
   static getInstance(): SocialService {
     if (!SocialService.instance) {
@@ -15,7 +16,12 @@ export class SocialService {
     return SocialService.instance;
   }
 
-  // 🔧 実装: 公開ゲーム取得（ページネーション対応）
+  constructor() {
+    this.notificationService = NotificationService.getInstance();
+  }
+
+  // ==================== 公開ゲーム取得 ====================
+
   async getPublicGames(
     filters: GameFilters = {},
     page: number = 1,
@@ -24,29 +30,43 @@ export class SocialService {
     try {
       const offset = (page - 1) * limit;
       
-      // 実Supabaseクエリ実行
       const gamesData = await database.userGames.getPublished({
         templateType: filters.category !== 'all' ? filters.category : undefined,
         searchQuery: filters.search,
-        limit: limit + 1, // hasMore判定用に1件多く取得
+        limit: limit + 1,
         offset
       });
 
-      // hasMore判定
       const hasMore = gamesData.length > limit;
       const games = hasMore ? gamesData.slice(0, limit) : gamesData;
 
-      // SocialTypes形式に変換
+      let currentUserId: string | undefined;
+      const { data: { user } } = await supabase.auth.getUser();
+      currentUserId = user?.id;
+
       const publicGames: PublicGame[] = await Promise.all(
         games.map(async (game: any) => {
-          // お気に入り状態を確認（現在のユーザー基準）
-          const isFavorited = false; // TODO: 実装時にログイン中ユーザーで判定
+          let isLiked = false;
+          let isBookmarked = false;
 
-          return this.convertToPublicGame(game, isFavorited);
+          if (currentUserId) {
+            const likeCheck = await supabase
+              .from('likes')
+              .select('user_id')
+              .eq('user_id', currentUserId)
+              .eq('game_id', game.id)
+              .single();
+            
+            isLiked = !likeCheck.error && !!likeCheck.data;
+
+            const favorites = await database.favorites.list(currentUserId);
+            isBookmarked = favorites.some((fav: any) => fav.id === game.id);
+          }
+
+          return this.convertToPublicGame(game, isLiked, isBookmarked);
         })
       );
 
-      // ソート処理（実装）
       if (filters.sortBy) {
         publicGames.sort((a, b) => {
           switch (filters.sortBy) {
@@ -74,45 +94,70 @@ export class SocialService {
     }
   }
 
-  // 🔧 実装: ユーザープロフィール取得
-  async getUserProfile(userId: string): Promise<UserProfile> {
+  // ==================== ユーザープロフィール取得 ====================
+
+  async getUserProfile(userId: string, currentUserId?: string): Promise<UserProfile> {
     try {
-      // 実データベースからプロフィール取得
       const profileData = await database.profiles.get(userId);
       
       if (!profileData) {
         throw new Error('ユーザーが見つかりません');
       }
 
-      // ユーザーのゲーム数取得
       const userGames = await database.userGames.getUserGames(userId);
       const publishedGames = userGames.filter(game => game.is_published);
 
-      // 統計情報計算
       const totalPlays = userGames.reduce((sum, game) => sum + (game.play_count || 0), 0);
       const totalLikes = userGames.reduce((sum, game) => sum + (game.like_count || 0), 0);
 
-      // SocialTypes形式に変換
+      let followerCount = 0;
+      let followingCount = 0;
+      let isFollowing = false;
+
+      const { count: followerC } = await supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', userId);
+
+      const { count: followingC } = await supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('follower_id', userId);
+
+      followerCount = followerC || 0;
+      followingCount = followingC || 0;
+
+      if (currentUserId && currentUserId !== userId) {
+        const followCheck = await supabase
+          .from('follows')
+          .select('follower_id')
+          .eq('follower_id', currentUserId)
+          .eq('following_id', userId)
+          .single();
+        
+        isFollowing = !followCheck.error && !!followCheck.data;
+      }
+
       const userProfile: UserProfile = {
         id: profileData.id,
         username: profileData.username,
         displayName: profileData.display_name || profileData.username,
         avatar: profileData.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${profileData.username}`,
-        banner: `https://picsum.photos/800/200?random=${profileData.id}`, // デフォルトバナー
+        banner: `https://picsum.photos/800/200?random=${profileData.id}`,
         bio: profileData.bio || '楽しいゲームを作っています！',
-        location: '', // TODO: プロフィール拡張時に追加
-        website: '', // TODO: プロフィール拡張時に追加
+        location: '',
+        website: '',
         stats: {
           totalGames: publishedGames.length,
           totalPlays: totalPlays,
           totalLikes: totalLikes,
-          totalFollowers: 0, // TODO: フォロー機能実装時
-          totalFollowing: 0, // TODO: フォロー機能実装時
+          totalFollowers: followerCount,
+          totalFollowing: followingCount,
           joinDate: profileData.created_at.split('T')[0],
           lastActive: profileData.updated_at
         },
-        isFollowing: false, // TODO: フォロー機能実装時
-        isOwner: false // 呼び出し側で設定
+        isFollowing,
+        isOwner: currentUserId === userId
       };
 
       return userProfile;
@@ -126,13 +171,12 @@ export class SocialService {
     }
   }
 
-  // 🔧 実装: ユーザーのゲーム取得
+  // ==================== ユーザーのゲーム取得 ====================
+
   async getUserGames(userId: string, status?: string): Promise<UserGame[]> {
     try {
-      // 実データベースからゲーム取得
       const gamesData = await database.userGames.getUserGames(userId);
 
-      // ステータスフィルター
       let filteredGames = gamesData;
       if (status && status !== 'all') {
         filteredGames = gamesData.filter(game => {
@@ -143,15 +187,14 @@ export class SocialService {
         });
       }
 
-      // SocialTypes形式に変換
       const userGames: UserGame[] = filteredGames.map(game => ({
         id: game.id,
         title: game.title,
         thumbnail: game.thumbnail_url || `https://picsum.photos/300/200?random=${game.id}`,
         stats: {
           likes: game.like_count || 0,
-          shares: 0, // TODO: シェア機能実装時
-          bookmarks: 0, // TODO: ブックマーク数集計実装時
+          shares: 0,
+          bookmarks: 0,
           views: game.play_count || 0
         },
         status: game.is_published ? 'published' : 'draft',
@@ -170,35 +213,75 @@ export class SocialService {
     }
   }
 
-  // 🔧 実装: いいね機能（実データベース連携）
+  // ==================== いいね機能（完全実装） ====================
+
   async toggleLike(gameId: string, userId: string): Promise<{ isLiked: boolean; newCount: number }> {
     try {
-      // TODO: 実装時はいいねテーブル作成＋実データベース操作
-      // 現在は簡易実装（like_countの更新のみ）
-      
-      // ゲーム情報取得
-      const gamesData = await database.userGames.getPublished({ 
-        searchQuery: '', 
-        limit: 1000 
-      });
-      
-      const game = gamesData.find((g: any) => g.id === gameId);
-      if (!game) {
-        throw new Error('ゲームが見つかりません');
+      const { data: existingLike, error: checkError } = await supabase
+        .from('likes')
+        .select('user_id')
+        .eq('user_id', userId)
+        .eq('game_id', gameId)
+        .single();
+
+      const isCurrentlyLiked = !checkError && !!existingLike;
+
+      if (isCurrentlyLiked) {
+        const { error: deleteError } = await supabase
+          .from('likes')
+          .delete()
+          .eq('user_id', userId)
+          .eq('game_id', gameId);
+
+        if (deleteError) {
+          throw new Error(`いいね削除エラー: ${deleteError.message}`);
+        }
+
+        console.log(`Like removed: game ${gameId} by user ${userId}`);
+
+      } else {
+        const likeData: any = {
+          user_id: userId,
+          game_id: gameId
+        };
+
+        const { error: insertError } = await supabase
+          .from('likes')
+          .insert(likeData);
+
+        if (insertError) {
+          throw new Error(`いいね追加エラー: ${insertError.message}`);
+        }
+
+        const gamesData = await database.userGames.getPublished({ limit: 1000 });
+        const game = gamesData.find((g: any) => g.id === gameId);
+        
+        if (game && game.creator_id !== userId) {
+          const userProfile = await database.profiles.get(userId);
+          
+          if (userProfile) {
+            await this.notificationService.notifyGameLike(
+              gameId,
+              game.title,
+              game.creator_id,
+              userId,
+              userProfile.display_name || userProfile.username
+            );
+          }
+        }
+
+        console.log(`Like added: game ${gameId} by user ${userId}`);
       }
 
-      // いいね状態の切り替え（簡易実装）
-      const currentLikes = game.like_count || 0;
-      const isLiked = Math.random() > 0.5; // TODO: 実際のいいね状態確認
-      const newCount = isLiked ? currentLikes + 1 : Math.max(0, currentLikes - 1);
+      const { data: gameData } = await supabase
+        .from('user_games')
+        .select('like_count')
+        .eq('id', gameId)
+        .single();
 
-      // データベース更新
-      await database.userGames.update(gameId, {
-        like_count: newCount
-      });
+      const newCount = (gameData as any)?.like_count || 0;
+      const isLiked = !isCurrentlyLiked;
 
-      console.log(`Game ${gameId}: Like ${isLiked ? 'added' : 'removed'} by user ${userId}`);
-      
       return { isLiked, newCount };
 
     } catch (error) {
@@ -210,27 +293,29 @@ export class SocialService {
     }
   }
 
-  // 🔧 実装: ブックマーク機能（実データベース連携）
+  // ==================== ブックマーク機能 ====================
+
   async toggleBookmark(gameId: string, userId: string): Promise<{ isBookmarked: boolean; newCount: number }> {
     try {
-      // お気に入り状態確認
       const favorites = await database.favorites.list(userId);
       const isCurrentlyBookmarked = favorites.some((fav: any) => fav.id === gameId);
 
       if (isCurrentlyBookmarked) {
-        // ブックマーク削除
         await database.favorites.remove(userId, gameId);
       } else {
-        // ブックマーク追加
         await database.favorites.add(userId, gameId);
       }
 
       const isBookmarked = !isCurrentlyBookmarked;
 
-      // ブックマーク数再計算（簡易実装）
-      const newCount = Math.floor(Math.random() * 200);
+      const { count } = await supabase
+        .from('game_favorites')
+        .select('*', { count: 'exact', head: true })
+        .eq('game_id', gameId);
 
-      console.log(`Game ${gameId}: Bookmark ${isBookmarked ? 'added' : 'removed'} by user ${userId}`);
+      const newCount = count || 0;
+
+      console.log(`Bookmark ${isBookmarked ? 'added' : 'removed'}: game ${gameId} by user ${userId}`);
       
       return { isBookmarked, newCount };
 
@@ -243,42 +328,99 @@ export class SocialService {
     }
   }
 
-  // 🔧 実装: フォロー機能（プレースホルダー）
+  // ==================== フォロー機能（完全実装） ====================
+
   async toggleFollow(targetUserId: string, currentUserId: string): Promise<{ isFollowing: boolean; newCount: number }> {
     try {
-      // TODO: フォロー機能のテーブル実装時に置き換え
-      const isFollowing = Math.random() > 0.5;
-      const newCount = Math.floor(Math.random() * 1000);
+      if (targetUserId === currentUserId) {
+        throw new Error('自分自身をフォローすることはできません');
+      }
 
-      console.log(`User ${currentUserId}: ${isFollowing ? 'Following' : 'Unfollowing'} user ${targetUserId}`);
-      
+      const { data: existingFollow, error: checkError } = await supabase
+        .from('follows')
+        .select('follower_id')
+        .eq('follower_id', currentUserId)
+        .eq('following_id', targetUserId)
+        .single();
+
+      const isCurrentlyFollowing = !checkError && !!existingFollow;
+
+      if (isCurrentlyFollowing) {
+        const { error: deleteError } = await supabase
+          .from('follows')
+          .delete()
+          .eq('follower_id', currentUserId)
+          .eq('following_id', targetUserId);
+
+        if (deleteError) {
+          throw new Error(`フォロー解除エラー: ${deleteError.message}`);
+        }
+
+        console.log(`Unfollow: user ${currentUserId} unfollowed user ${targetUserId}`);
+
+      } else {
+        const followData: any = {
+          follower_id: currentUserId,
+          following_id: targetUserId
+        };
+
+        const { error: insertError } = await supabase
+          .from('follows')
+          .insert(followData);
+
+        if (insertError) {
+          throw new Error(`フォロー追加エラー: ${insertError.message}`);
+        }
+
+        const userProfile = await database.profiles.get(currentUserId);
+        
+        if (userProfile) {
+          await this.notificationService.notifyNewFollower(
+            targetUserId,
+            currentUserId,
+            userProfile.display_name || userProfile.username
+          );
+        }
+
+        console.log(`Follow: user ${currentUserId} followed user ${targetUserId}`);
+      }
+
+      const { count: followerCount } = await supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', targetUserId);
+
+      const newCount = followerCount || 0;
+      const isFollowing = !isCurrentlyFollowing;
+
       return { isFollowing, newCount };
 
     } catch (error) {
       console.error('Error toggling follow:', error);
+      if (error instanceof SupabaseError) {
+        throw new Error(`フォローの処理に失敗しました: ${error.message}`);
+      }
       throw new Error('フォローの処理に失敗しました');
     }
   }
 
-  // 🔧 実装: プロフィール更新
+  // ==================== その他のメソッド ====================
+
   async updateProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
     try {
-      // データベース形式に変換
       const profileUpdates: any = {};
       if (updates.username) profileUpdates.username = updates.username;
       if (updates.displayName) profileUpdates.display_name = updates.displayName;
       if (updates.bio) profileUpdates.bio = updates.bio;
       if (updates.avatar) profileUpdates.avatar_url = updates.avatar;
 
-      // プロフィール更新
       await database.profiles.upsert({
         id: userId,
         ...profileUpdates,
         updated_at: new Date().toISOString()
       });
 
-      // 更新されたプロフィール取得
-      return await this.getUserProfile(userId);
+      return await this.getUserProfile(userId, userId);
 
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -289,7 +431,6 @@ export class SocialService {
     }
   }
 
-  // 🔧 実装: ゲーム削除
   async deleteGame(gameId: string, userId: string): Promise<void> {
     try {
       await database.userGames.delete(gameId);
@@ -304,10 +445,8 @@ export class SocialService {
     }
   }
 
-  // 🔧 実装: ゲーム公開状態変更
   async toggleGameStatus(gameId: string, userId: string): Promise<string> {
     try {
-      // 現在の状態取得
       const gamesData = await database.userGames.getUserGames(userId);
       const game = gamesData.find(g => g.id === gameId);
       
@@ -317,7 +456,6 @@ export class SocialService {
 
       const newStatus = !game.is_published;
       
-      // 状態更新
       await database.userGames.update(gameId, {
         is_published: newStatus,
         updated_at: new Date().toISOString()
@@ -337,10 +475,8 @@ export class SocialService {
     }
   }
 
-  // 🔧 実装: ビュー数増加
   async incrementViews(gameId: string): Promise<number> {
     try {
-      // 現在のプレイ回数取得・増加
       const gamesData = await database.userGames.getPublished({ limit: 1000 });
       const game = gamesData.find((g: any) => g.id === gameId);
       
@@ -363,10 +499,8 @@ export class SocialService {
     }
   }
 
-  // 🔧 実装: シェア記録
   async recordShare(gameId: string, platform: string, userId?: string): Promise<number> {
     try {
-      // TODO: シェアテーブル実装時に実データベース連携
       const newShareCount = Math.floor(Math.random() * 100);
       console.log(`Share recorded for game ${gameId} on ${platform} by user ${userId}`);
       
@@ -378,9 +512,9 @@ export class SocialService {
     }
   }
 
-  // 🔧 プライベート: データベース形式からSocialTypes形式に変換
-  private convertToPublicGame(dbGame: any, isFavorited: boolean = false): PublicGame {
-    // プロフィール情報の安全な取得
+  // ==================== プライベートメソッド ====================
+
+  private convertToPublicGame(dbGame: any, isLiked: boolean = false, isBookmarked: boolean = false): PublicGame {
     const profile = dbGame.profiles;
     
     return {
@@ -395,20 +529,19 @@ export class SocialService {
       },
       stats: {
         likes: dbGame.like_count || 0,
-        shares: 0, // TODO: シェア機能実装時
-        bookmarks: 0, // TODO: ブックマーク数集計実装時  
+        shares: 0,
+        bookmarks: 0,
         views: dbGame.play_count || 0
       },
       tags: this.generateTagsFromTemplate(dbGame.template_id),
       category: this.mapTemplateToCategory(dbGame.template_id),
       createdAt: dbGame.created_at,
       updatedAt: dbGame.updated_at,
-      isLiked: false, // TODO: 実いいね状態確認時に実装
-      isBookmarked: isFavorited
+      isLiked,
+      isBookmarked
     };
   }
 
-  // 🔧 プライベート: テンプレートIDからカテゴリにマッピング
   private mapTemplateToCategory(templateId: string): string {
     const categoryMap: Record<string, string> = {
       'cute_tap': 'casual',
@@ -426,7 +559,6 @@ export class SocialService {
     return categoryMap[templateId] || 'casual';
   }
 
-  // 🔧 プライベート: テンプレートIDからタグ生成
   private generateTagsFromTemplate(templateId: string): string[] {
     const tagMap: Record<string, string[]> = {
       'cute_tap': ['楽しい', '簡単', 'タップ'],

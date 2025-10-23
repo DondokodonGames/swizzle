@@ -1,5 +1,5 @@
 // src/lib/database.types.ts
-// Supabase データベース型定義
+// Supabase データベース型定義（ソーシャル機能追加版）
 // 技術設計書のスキーマに基づく型安全性確保
 
 // JSON型の基底定義
@@ -123,6 +123,90 @@ export interface Database {
         }
       }
 
+      // 🆕 いいねテーブル
+      likes: {
+        Row: {
+          user_id: string                     // ユーザーID（auth.users参照）
+          game_id: string                     // ゲームID（user_games.id参照）
+          created_at: string                  // いいね日時
+        }
+        Insert: {
+          user_id: string
+          game_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          game_id?: string
+          created_at?: string
+        }
+      }
+
+      // 🆕 フォローテーブル
+      follows: {
+        Row: {
+          follower_id: string                 // フォローするユーザーID（auth.users参照）
+          following_id: string                // フォローされるユーザーID（auth.users参照）
+          created_at: string                  // フォロー日時
+        }
+        Insert: {
+          follower_id: string
+          following_id: string
+          created_at?: string
+        }
+        Update: {
+          follower_id?: string
+          following_id?: string
+          created_at?: string
+        }
+      }
+
+      // 🆕 通知テーブル
+      notifications: {
+        Row: {
+          id: string                          // UUID主キー
+          user_id: string                     // 通知を受け取るユーザーID
+          type: 'reaction' | 'like' | 'follow' | 'trending' | 'milestone' // 通知タイプ
+          title: string                       // 通知タイトル
+          message: string                     // 通知メッセージ
+          icon: string | null                 // 通知アイコン（絵文字）
+          game_id: string | null              // 関連するゲームID
+          from_user_id: string | null         // 通知の送信元ユーザーID
+          metadata: Json | null               // 追加メタデータ
+          is_read: boolean                    // 既読フラグ
+          created_at: string                  // 通知作成日時
+          expires_at: string | null           // 通知の有効期限
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: 'reaction' | 'like' | 'follow' | 'trending' | 'milestone'
+          title: string
+          message: string
+          icon?: string | null
+          game_id?: string | null
+          from_user_id?: string | null
+          metadata?: Json | null
+          is_read?: boolean
+          created_at?: string
+          expires_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: 'reaction' | 'like' | 'follow' | 'trending' | 'milestone'
+          title?: string
+          message?: string
+          icon?: string | null
+          game_id?: string | null
+          from_user_id?: string | null
+          metadata?: Json | null
+          is_read?: boolean
+          created_at?: string
+          expires_at?: string | null
+        }
+      }
+
       // プレイリストテーブル
       playlists: {
         Row: {
@@ -211,7 +295,35 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      // 🆕 便利関数の型定義
+      get_like_count: {
+        Args: { p_game_id: string }
+        Returns: number
+      }
+      get_follower_count: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
+      get_following_count: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
+      is_liked: {
+        Args: { p_user_id: string; p_game_id: string }
+        Returns: boolean
+      }
+      is_following: {
+        Args: { p_follower_id: string; p_following_id: string }
+        Returns: boolean
+      }
+      get_unread_notification_count: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
+      cleanup_expired_notifications: {
+        Args: Record<string, never>
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
@@ -231,6 +343,17 @@ export type UserGameUpdate = Database['public']['Tables']['user_games']['Update'
 export type GameFavorite = Database['public']['Tables']['game_favorites']['Row']
 export type GameFavoriteInsert = Database['public']['Tables']['game_favorites']['Insert']
 
+// 🆕 ソーシャル機能の型エイリアス
+export type Like = Database['public']['Tables']['likes']['Row']
+export type LikeInsert = Database['public']['Tables']['likes']['Insert']
+
+export type Follow = Database['public']['Tables']['follows']['Row']
+export type FollowInsert = Database['public']['Tables']['follows']['Insert']
+
+export type Notification = Database['public']['Tables']['notifications']['Row']
+export type NotificationInsert = Database['public']['Tables']['notifications']['Insert']
+export type NotificationUpdate = Database['public']['Tables']['notifications']['Update']
+
 export type Playlist = Database['public']['Tables']['playlists']['Row']
 export type PlaylistInsert = Database['public']['Tables']['playlists']['Insert']
 export type PlaylistUpdate = Database['public']['Tables']['playlists']['Update']
@@ -240,6 +363,9 @@ export type PlaylistGameInsert = Database['public']['Tables']['playlist_games'][
 
 export type GameScore = Database['public']['Tables']['game_scores']['Row']
 export type GameScoreInsert = Database['public']['Tables']['game_scores']['Insert']
+
+// 🆕 通知タイプ
+export type NotificationType = Database['public']['Tables']['notifications']['Row']['type']
 
 // ゲームテンプレート型定義（既存システムとの互換性）
 export type GameTemplateType = 
@@ -339,6 +465,27 @@ export interface PlaylistWithGames extends Playlist {
   })[]
 }
 
+// 🆕 ソーシャル機能拡張型
+export interface UserGameWithSocialData extends UserGame {
+  profiles: Pick<Profile, 'username' | 'display_name' | 'avatar_url'>
+  is_liked?: boolean
+  is_bookmarked?: boolean
+  likes_count?: number
+}
+
+export interface ProfileWithStats extends Profile {
+  follower_count?: number
+  following_count?: number
+  games_count?: number
+  total_likes?: number
+  total_plays?: number
+}
+
+export interface NotificationWithUser extends Notification {
+  from_user?: Pick<Profile, 'username' | 'display_name' | 'avatar_url'>
+  game?: Pick<UserGame, 'title' | 'thumbnail_url'>
+}
+
 // 統計情報の型
 export interface UserStats {
   gamesCreated: number
@@ -346,6 +493,8 @@ export interface UserStats {
   totalLikes: number
   playlistsCreated: number
   favoriteGames: number
+  followerCount?: number      // 🆕
+  followingCount?: number     // 🆕
 }
 
 export interface GameStats {

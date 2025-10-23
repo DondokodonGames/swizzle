@@ -206,9 +206,9 @@ export const NotificationUI: React.FC<NotificationUIProps> = ({
   const notificationService = useMemo(() => NotificationService.getInstance(), []);
 
   // データ読み込み
-  const loadData = useCallback(() => {
-    const allNotifications = notificationService.getNotifications(maxDisplayCount);
-    const currentStats = notificationService.getStats();
+  const loadData = useCallback(async () => {
+    const allNotifications = await notificationService.getNotifications(maxDisplayCount);
+    const currentStats = await notificationService.getStats();
     const currentSettings = notificationService.getSettings();
     
     setNotifications(allNotifications);
@@ -440,8 +440,8 @@ export const NotificationBadge: React.FC<{
   const notificationService = useMemo(() => NotificationService.getInstance(), []);
 
   useEffect(() => {
-    const updateCount = () => {
-      const stats = notificationService.getStats();
+    const updateCount = async () => {
+      const stats = await notificationService.getStats();
       setUnreadCount(stats.unreadCount);
     };
 

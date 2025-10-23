@@ -3,6 +3,7 @@
 // 複雑な型定義を排除し、確実に動作することを最優先
 
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js'
+import type { Database } from './database.types' // ← この行を追加
 
 // 環境変数を直接ハードコード（型エラー完全回避）
 const supabaseUrl = 'https://rqzehjsygvkkvntswqbs.supabase.co'

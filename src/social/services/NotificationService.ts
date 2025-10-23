@@ -1,14 +1,20 @@
-// src/social/services/NotificationService.ts - Notification API修正版
+// src/social/services/NotificationService.ts - 既存supabaseインスタンス使用版
+// localStorage + Supabase ハイブリッド実装
+
+import { supabase } from '../../lib/supabase';
 
 // 通知型定義
+export type NotificationType = 'reaction' | 'like' | 'follow' | 'trending' | 'milestone';
+
 export interface GameNotification {
   id: string;
-  type: 'reaction' | 'like' | 'follow' | 'trending' | 'comment' | 'milestone';
+  type: NotificationType;
   title: string;
   message: string;
   icon: string;
   gameId?: string;
   userId?: string;
+  fromUserId?: string;
   metadata?: {
     gameName?: string;
     userName?: string;
@@ -41,7 +47,7 @@ export interface NotificationStats {
 
 export class NotificationService {
   private static instance: NotificationService;
-  private notifications: GameNotification[] = [];
+  private localNotifications: GameNotification[] = [];
   private settings: NotificationSettings = {
     reactions: true,
     likes: true,
@@ -53,6 +59,8 @@ export class NotificationService {
     soundEnabled: true
   };
   private eventListeners: { [key: string]: Function[] } = {};
+  private realtimeSubscription: any = null;
+  private currentUserId: string | null = null;
 
   static getInstance(): NotificationService {
     if (!NotificationService.instance) {
@@ -63,11 +71,28 @@ export class NotificationService {
 
   constructor() {
     this.loadSettings();
-    this.loadNotifications();
+    this.loadLocalNotifications();
     this.setupBrowserNotifications();
   }
 
-  // イベントリスナー管理
+  // ==================== 初期化・認証 ====================
+
+  async initialize(userId: string) {
+    this.currentUserId = userId;
+    await this.loadSupabaseNotifications();
+    this.subscribeToRealtimeNotifications();
+  }
+
+  cleanup() {
+    if (this.realtimeSubscription) {
+      this.realtimeSubscription.unsubscribe();
+      this.realtimeSubscription = null;
+    }
+    this.currentUserId = null;
+  }
+
+  // ==================== イベントリスナー管理 ====================
+
   on(event: string, callback: Function) {
     if (!this.eventListeners[event]) {
       this.eventListeners[event] = [];
@@ -87,7 +112,8 @@ export class NotificationService {
     }
   }
 
-  // 設定管理
+  // ==================== 設定管理 ====================
+
   getSettings(): NotificationSettings {
     return { ...this.settings };
   }
@@ -97,13 +123,14 @@ export class NotificationService {
     this.saveSettings();
     this.emit('settingsUpdated', this.settings);
     
-    // ブラウザ通知権限の管理
-    if (newSettings.browserNotifications && Notification.permission === 'default') {
+    if (newSettings.browserNotifications && typeof window !== 'undefined' && 'Notification' in window && window.Notification.permission === 'default') {
       this.requestBrowserPermission();
     }
   }
 
   private loadSettings() {
+    if (typeof window === 'undefined') return;
+    
     try {
       const saved = localStorage.getItem('notification_settings');
       if (saved) {
@@ -115,6 +142,8 @@ export class NotificationService {
   }
 
   private saveSettings() {
+    if (typeof window === 'undefined') return;
+    
     try {
       localStorage.setItem('notification_settings', JSON.stringify(this.settings));
     } catch (error) {
@@ -122,143 +151,392 @@ export class NotificationService {
     }
   }
 
-  // 通知作成
-  async createNotification(
-    type: GameNotification['type'], 
-    gameId: string, 
-    userId: string, 
+  // ==================== ローカル通知作成 ====================
+
+  async createLocalNotification(
+    type: NotificationType,
+    gameId: string,
     metadata: any = {}
-  ): Promise<GameNotification> {
-    // 設定チェック
+  ): Promise<GameNotification | null> {
     if (!this.isNotificationEnabled(type)) {
       console.log(`Notification type ${type} is disabled`);
-      return null as any;
+      return null;
     }
 
     const notification: GameNotification = {
-      id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type,
       title: this.getNotificationTitle(type, metadata),
       message: this.getNotificationMessage(type, metadata),
       icon: this.getNotificationIcon(type),
       gameId,
-      userId,
       metadata,
       isRead: false,
       createdAt: new Date().toISOString(),
       expiresAt: this.getExpirationDate(type)
     };
 
-    // 通知を追加
-    this.notifications.unshift(notification);
+    this.localNotifications.unshift(notification);
+    this.localNotifications = this.localNotifications.slice(0, 100);
     
-    // 最大100件に制限
-    this.notifications = this.notifications.slice(0, 100);
-    
-    this.saveNotifications();
+    this.saveLocalNotifications();
     this.emit('notificationAdded', notification);
 
-    // ブラウザ通知表示
     if (this.settings.browserNotifications) {
       this.showBrowserNotification(notification);
     }
 
-    // サウンド再生
     if (this.settings.soundEnabled) {
       this.playNotificationSound(type);
     }
 
-    console.log(`Notification created: ${type} for game ${gameId}`);
+    console.log(`Local notification created: ${type} for game ${gameId}`);
     return notification;
   }
 
-  // 通知読み取り
-  markAsRead(notificationId: string): boolean {
-    const notification = this.notifications.find(n => n.id === notificationId);
-    if (notification && !notification.isRead) {
-      notification.isRead = true;
-      this.saveNotifications();
-      this.emit('notificationRead', notification);
+  // ==================== Supabase通知作成 ====================
+
+  async createSupabaseNotification(
+    toUserId: string,
+    type: NotificationType,
+    title: string,
+    message: string,
+    options: {
+      gameId?: string;
+      fromUserId?: string;
+      metadata?: any;
+      icon?: string;
+      expiresAt?: string;
+    } = {}
+  ): Promise<any | null> {
+    try {
+      const notificationData: any = {
+        user_id: toUserId,
+        type,
+        title,
+        message,
+        icon: options.icon || this.getNotificationIcon(type),
+        game_id: options.gameId,
+        from_user_id: options.fromUserId,
+        metadata: options.metadata,
+        is_read: false,
+        expires_at: options.expiresAt || this.getExpirationDate(type)
+      };
+
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert(notificationData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating Supabase notification:', error);
+        return null;
+      }
+
+      console.log(`Supabase notification created for user ${toUserId}`);
+      return data;
+
+    } catch (error) {
+      console.error('Error creating Supabase notification:', error);
+      return null;
+    }
+  }
+
+  // ==================== 通知取得 ====================
+
+  async getNotifications(limit: number = 50): Promise<GameNotification[]> {
+    this.cleanupExpiredLocalNotifications();
+
+    if (!this.currentUserId) {
+      return this.localNotifications.slice(0, limit);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', this.currentUserId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching Supabase notifications:', error);
+        return this.localNotifications.slice(0, limit);
+      }
+
+      const supabaseNotifications: GameNotification[] = (data || []).map((n: any) => ({
+        id: n.id,
+        type: n.type,
+        title: n.title,
+        message: n.message,
+        icon: n.icon || this.getNotificationIcon(n.type),
+        gameId: n.game_id || undefined,
+        userId: n.user_id,
+        fromUserId: n.from_user_id || undefined,
+        metadata: n.metadata as any,
+        isRead: n.is_read,
+        createdAt: n.created_at,
+        expiresAt: n.expires_at || undefined
+      }));
+
+      const allNotifications = [...supabaseNotifications, ...this.localNotifications]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, limit);
+
+      return allNotifications;
+
+    } catch (error) {
+      console.error('Error getting notifications:', error);
+      return this.localNotifications.slice(0, limit);
+    }
+  }
+
+  async getUnreadNotifications(): Promise<GameNotification[]> {
+    const allNotifications = await this.getNotifications(100);
+    return allNotifications.filter(n => !n.isRead);
+  }
+
+  // ==================== 通知操作 ====================
+
+  async markAsRead(notificationId: string): Promise<boolean> {
+    const localNotif = this.localNotifications.find(n => n.id === notificationId);
+    if (localNotif) {
+      if (!localNotif.isRead) {
+        localNotif.isRead = true;
+        this.saveLocalNotifications();
+        this.emit('notificationRead', localNotif);
+        return true;
+      }
+      return false;
+    }
+
+    if (!this.currentUserId) {
+      return false;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true } as any)
+        .eq('id', notificationId)
+        .eq('user_id', this.currentUserId);
+
+      if (error) {
+        console.error('Error marking notification as read:', error);
+        return false;
+      }
+
+      this.emit('notificationRead', { id: notificationId });
       return true;
+
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      return false;
     }
-    return false;
   }
 
-  // 全て既読
-  markAllAsRead(): number {
-    const unreadNotifications = this.notifications.filter(n => !n.isRead);
-    unreadNotifications.forEach(notification => {
-      notification.isRead = true;
-    });
+  async markAllAsRead(): Promise<number> {
+    let count = 0;
+
+    const unreadLocal = this.localNotifications.filter(n => !n.isRead);
+    unreadLocal.forEach(n => n.isRead = true);
+    count += unreadLocal.length;
     
-    if (unreadNotifications.length > 0) {
-      this.saveNotifications();
-      this.emit('allNotificationsRead', unreadNotifications.length);
+    if (unreadLocal.length > 0) {
+      this.saveLocalNotifications();
     }
-    
-    return unreadNotifications.length;
+
+    if (this.currentUserId) {
+      try {
+        const { error } = await supabase
+          .from('notifications')
+          .update({ is_read: true } as any)
+          .eq('user_id', this.currentUserId)
+          .eq('is_read', false);
+
+        if (!error) {
+          const { count: unreadCount } = await supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', this.currentUserId)
+            .eq('is_read', false);
+
+          count += unreadCount || 0;
+        }
+
+      } catch (error) {
+        console.error('Error marking all notifications as read:', error);
+      }
+    }
+
+    if (count > 0) {
+      this.emit('allNotificationsRead', count);
+    }
+
+    return count;
   }
 
-  // 通知削除
-  deleteNotification(notificationId: string): boolean {
-    const index = this.notifications.findIndex(n => n.id === notificationId);
-    if (index !== -1) {
-      const deleted = this.notifications.splice(index, 1)[0];
-      this.saveNotifications();
+  async deleteNotification(notificationId: string): Promise<boolean> {
+    const localIndex = this.localNotifications.findIndex(n => n.id === notificationId);
+    if (localIndex !== -1) {
+      const deleted = this.localNotifications.splice(localIndex, 1)[0];
+      this.saveLocalNotifications();
       this.emit('notificationDeleted', deleted);
       return true;
     }
-    return false;
-  }
 
-  // 期限切れ通知のクリーンアップ
-  cleanupExpiredNotifications(): number {
-    const now = new Date().toISOString();
-    const beforeCount = this.notifications.length;
-    
-    this.notifications = this.notifications.filter(notification => 
-      !notification.expiresAt || notification.expiresAt > now
-    );
-    
-    const cleanedCount = beforeCount - this.notifications.length;
-    if (cleanedCount > 0) {
-      this.saveNotifications();
-      this.emit('notificationsCleanedUp', cleanedCount);
+    if (!this.currentUserId) {
+      return false;
     }
-    
-    return cleanedCount;
+
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
+        .eq('user_id', this.currentUserId);
+
+      if (error) {
+        console.error('Error deleting notification:', error);
+        return false;
+      }
+
+      this.emit('notificationDeleted', { id: notificationId });
+      return true;
+
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      return false;
+    }
   }
 
-  // 通知取得
-  getNotifications(limit: number = 50): GameNotification[] {
-    this.cleanupExpiredNotifications();
-    return this.notifications.slice(0, limit);
-  }
+  // ==================== 統計取得 ====================
 
-  getUnreadNotifications(): GameNotification[] {
-    return this.notifications.filter(n => !n.isRead);
-  }
-
-  // 統計取得
-  getStats(): NotificationStats {
+  async getStats(): Promise<NotificationStats> {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
+    const allNotifications = await this.getNotifications(1000);
+
     return {
-      unreadCount: this.notifications.filter(n => !n.isRead).length,
-      totalCount: this.notifications.length,
-      todayCount: this.notifications.filter(n => 
+      unreadCount: allNotifications.filter(n => !n.isRead).length,
+      totalCount: allNotifications.length,
+      todayCount: allNotifications.filter(n => 
         new Date(n.createdAt) >= today
       ).length,
-      weekCount: this.notifications.filter(n => 
+      weekCount: allNotifications.filter(n => 
         new Date(n.createdAt) >= weekAgo
       ).length
     };
   }
 
-  // 通知タイプ別の有効性チェック
-  private isNotificationEnabled(type: GameNotification['type']): boolean {
+  // ==================== Supabaseリアルタイム購読 ====================
+
+  private subscribeToRealtimeNotifications() {
+    if (!this.currentUserId) return;
+
+    this.realtimeSubscription = supabase
+      .channel('notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${this.currentUserId}`
+        },
+        (payload: any) => {
+          console.log('New notification received:', payload);
+          const newNotif = payload.new;
+          
+          const gameNotif: GameNotification = {
+            id: newNotif.id,
+            type: newNotif.type,
+            title: newNotif.title,
+            message: newNotif.message,
+            icon: newNotif.icon || this.getNotificationIcon(newNotif.type),
+            gameId: newNotif.game_id || undefined,
+            userId: newNotif.user_id,
+            fromUserId: newNotif.from_user_id || undefined,
+            metadata: newNotif.metadata as any,
+            isRead: newNotif.is_read,
+            createdAt: newNotif.created_at,
+            expiresAt: newNotif.expires_at || undefined
+          };
+
+          this.emit('notificationAdded', gameNotif);
+
+          if (this.settings.browserNotifications) {
+            this.showBrowserNotification(gameNotif);
+          }
+
+          if (this.settings.soundEnabled) {
+            this.playNotificationSound(newNotif.type);
+          }
+        }
+      )
+      .subscribe();
+
+    console.log('Subscribed to realtime notifications');
+  }
+
+  private async loadSupabaseNotifications() {
+    // 初回ロード（getNotifications内で実行されるため省略可能）
+  }
+
+  // ==================== 便利メソッド ====================
+
+  async notifyGameLike(gameId: string, gameName: string, toUserId: string, fromUserId: string, fromUserName: string) {
+    if (!this.isNotificationEnabled('like')) return;
+
+    await this.createSupabaseNotification(
+      toUserId,
+      'like',
+      'いいねされました！',
+      `${fromUserName}さんが「${gameName}」にいいねしました`,
+      {
+        gameId,
+        fromUserId,
+        metadata: { gameName, userName: fromUserName }
+      }
+    );
+  }
+
+  async notifyNewFollower(toUserId: string, fromUserId: string, fromUserName: string) {
+    if (!this.isNotificationEnabled('follow')) return;
+
+    await this.createSupabaseNotification(
+      toUserId,
+      'follow',
+      '新しいフォロワー',
+      `${fromUserName}さんがあなたをフォローしました`,
+      {
+        fromUserId,
+        metadata: { userName: fromUserName }
+      }
+    );
+  }
+
+  async notifyTrendingRank(gameId: string, gameName: string, rank: number) {
+    return this.createLocalNotification('trending', gameId, {
+      gameName,
+      rank
+    });
+  }
+
+  async notifyMilestone(gameId: string, gameName: string, count: number, type: string) {
+    return this.createLocalNotification('milestone', gameId, {
+      gameName,
+      count,
+      type
+    });
+  }
+
+  // ==================== プライベートメソッド ====================
+
+  private isNotificationEnabled(type: NotificationType): boolean {
     switch (type) {
       case 'reaction':
         return this.settings.reactions;
@@ -275,8 +553,7 @@ export class NotificationService {
     }
   }
 
-  // 通知コンテンツ生成
-  private getNotificationTitle(type: GameNotification['type'], metadata: any): string {
+  private getNotificationTitle(type: NotificationType, metadata: any): string {
     switch (type) {
       case 'reaction':
         return 'リアクションが届きました！';
@@ -293,7 +570,7 @@ export class NotificationService {
     }
   }
 
-  private getNotificationMessage(type: GameNotification['type'], metadata: any): string {
+  private getNotificationMessage(type: NotificationType, metadata: any): string {
     switch (type) {
       case 'reaction':
         return `${metadata.userName}さんが「${metadata.gameName}」に${metadata.reactionType}リアクションしました`;
@@ -310,7 +587,7 @@ export class NotificationService {
     }
   }
 
-  private getNotificationIcon(type: GameNotification['type']): string {
+  private getNotificationIcon(type: NotificationType): string {
     switch (type) {
       case 'reaction':
         return '😄';
@@ -327,41 +604,59 @@ export class NotificationService {
     }
   }
 
-  private getExpirationDate(type: GameNotification['type']): string {
+  private getExpirationDate(type: NotificationType): string {
     const now = new Date();
     const expiration = new Date(now);
     
     switch (type) {
       case 'trending':
-        expiration.setDate(now.getDate() + 3); // 3日
+        expiration.setDate(now.getDate() + 3);
         break;
       case 'milestone':
-        expiration.setDate(now.getDate() + 7); // 1週間
+        expiration.setDate(now.getDate() + 7);
         break;
       default:
-        expiration.setDate(now.getDate() + 30); // 30日
+        expiration.setDate(now.getDate() + 30);
     }
     
     return expiration.toISOString();
   }
 
-  // ブラウザ通知
+  private cleanupExpiredLocalNotifications(): number {
+    const now = new Date().toISOString();
+    const beforeCount = this.localNotifications.length;
+    
+    this.localNotifications = this.localNotifications.filter(notification => 
+      !notification.expiresAt || notification.expiresAt > now
+    );
+    
+    const cleanedCount = beforeCount - this.localNotifications.length;
+    if (cleanedCount > 0) {
+      this.saveLocalNotifications();
+      this.emit('notificationsCleanedUp', cleanedCount);
+    }
+    
+    return cleanedCount;
+  }
+
+  // ==================== ブラウザ通知 ====================
+
   private async setupBrowserNotifications() {
-    if ('Notification' in window && this.settings.browserNotifications) {
-      if (Notification.permission === 'default') {
+    if (typeof window !== 'undefined' && 'Notification' in window && this.settings.browserNotifications) {
+      if (window.Notification.permission === 'default') {
         await this.requestBrowserPermission();
       }
     }
   }
 
   private async requestBrowserPermission(): Promise<boolean> {
-    if (!('Notification' in window)) {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
       console.log('This browser does not support notifications');
       return false;
     }
 
     try {
-      const permission = await Notification.requestPermission();
+      const permission = await window.Notification.requestPermission();
       return permission === 'granted';
     } catch (error) {
       console.error('Error requesting notification permission:', error);
@@ -370,33 +665,29 @@ export class NotificationService {
   }
 
   private showBrowserNotification(notification: GameNotification) {
-    if (Notification.permission !== 'granted') {
+    if (typeof window === 'undefined' || !('Notification' in window) || window.Notification.permission !== 'granted') {
       return;
     }
 
     try {
-      const browserNotification = new Notification(notification.title, {
+      const browserNotification = new window.Notification(notification.title, {
         body: notification.message,
-        icon: '/favicon.ico', // またはアプリのアイコンパス
+        icon: '/favicon.ico',
         badge: '/badge-icon.png',
         tag: notification.id,
-        // 🔧 修正: 'renotify'プロパティを削除（標準ではサポートされていない）
         requireInteraction: false,
         silent: !this.settings.soundEnabled
       });
 
-      // クリック時の動作
       browserNotification.onclick = () => {
         window.focus();
         if (notification.gameId) {
-          // 実装時はルーターを使用してゲームページに移動
           console.log(`Navigate to game: ${notification.gameId}`);
         }
         browserNotification.close();
         this.markAsRead(notification.id);
       };
 
-      // 自動で閉じる
       setTimeout(() => {
         browserNotification.close();
       }, 5000);
@@ -406,13 +697,13 @@ export class NotificationService {
     }
   }
 
-  // サウンド再生
-  private playNotificationSound(type: GameNotification['type']) {
-    if (!this.settings.soundEnabled) return;
+  // ==================== サウンド ====================
+
+  private playNotificationSound(type: NotificationType) {
+    if (!this.settings.soundEnabled || typeof window === 'undefined') return;
 
     try {
-      // 🔧 修正: 通知音の選択（'comment'を削除）
-      const soundMap = {
+      const soundMap: Record<NotificationType, string> = {
         reaction: '/sounds/reaction.mp3',
         like: '/sounds/like.mp3',
         follow: '/sounds/follow.mp3',
@@ -420,19 +711,15 @@ export class NotificationService {
         milestone: '/sounds/milestone.mp3'
       };
 
-      const soundFile = soundMap[type as keyof typeof soundMap] || '/sounds/notification.mp3';
+      const soundFile = soundMap[type] || '/sounds/notification.mp3';
       const audio = new Audio(soundFile);
       audio.volume = 0.5;
       
-      // エラーハンドリング
       audio.addEventListener('error', () => {
-        console.log('Notification sound not available, using default');
-        // フォールバック：ビープ音
         this.playBeepSound();
       });
 
       audio.play().catch(() => {
-        // 音声再生に失敗した場合のフォールバック
         this.playBeepSound();
       });
     } catch (error) {
@@ -441,9 +728,11 @@ export class NotificationService {
   }
 
   private playBeepSound() {
+    if (typeof window === 'undefined') return;
+    
     try {
-      // Web Audio APIを使用したシンプルなビープ音
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContext();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
@@ -461,69 +750,38 @@ export class NotificationService {
     }
   }
 
-  // データ永続化
-  private loadNotifications() {
+  // ==================== データ永続化 ====================
+
+  private loadLocalNotifications() {
+    if (typeof window === 'undefined') return;
+    
     try {
       const saved = localStorage.getItem('game_notifications');
       if (saved) {
-        this.notifications = JSON.parse(saved);
-        this.cleanupExpiredNotifications();
+        this.localNotifications = JSON.parse(saved);
+        this.cleanupExpiredLocalNotifications();
       }
     } catch (error) {
-      console.error('Error loading notifications:', error);
-      this.notifications = [];
+      console.error('Error loading local notifications:', error);
+      this.localNotifications = [];
     }
   }
 
-  private saveNotifications() {
+  private saveLocalNotifications() {
+    if (typeof window === 'undefined') return;
+    
     try {
-      localStorage.setItem('game_notifications', JSON.stringify(this.notifications));
+      localStorage.setItem('game_notifications', JSON.stringify(this.localNotifications));
     } catch (error) {
-      console.error('Error saving notifications:', error);
+      console.error('Error saving local notifications:', error);
     }
   }
 
-  // 特定の通知タイプのクリエイター向けヘルパー
-  async notifyGameReaction(gameId: string, gameName: string, userId: string, userName: string, reactionType: string) {
-    return this.createNotification('reaction', gameId, userId, {
-      gameName,
-      userName,
-      reactionType
-    });
-  }
+  // ==================== 定期クリーンアップ ====================
 
-  async notifyGameLike(gameId: string, gameName: string, userId: string, userName: string) {
-    return this.createNotification('like', gameId, userId, {
-      gameName,
-      userName
-    });
-  }
-
-  async notifyNewFollower(userId: string, userName: string) {
-    return this.createNotification('follow', '', userId, {
-      userName
-    });
-  }
-
-  async notifyTrendingRank(gameId: string, gameName: string, rank: number) {
-    return this.createNotification('trending', gameId, '', {
-      gameName,
-      rank
-    });
-  }
-
-  async notifyMilestone(gameId: string, gameName: string, count: number, type: string) {
-    return this.createNotification('milestone', gameId, '', {
-      gameName,
-      count,
-      type
-    });
-  }
-
-  // 定期クリーンアップの設定
-  startPeriodicCleanup(intervalMs: number = 24 * 60 * 60 * 1000) { // デフォルト24時間
+  startPeriodicCleanup(intervalMs: number = 24 * 60 * 60 * 1000) {
     setInterval(() => {
-      this.cleanupExpiredNotifications();
+      this.cleanupExpiredLocalNotifications();
     }, intervalMs);
   }
 }
