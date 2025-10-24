@@ -1,0 +1,175 @@
+/* src/styles/retro-theme.css */
+/* レトロゲーム風テーマ - グリーン文字・ピクセルフォント・スキャンライン効果 */
+
+:root[data-theme="retro"] {
+  /* カラーパレット */
+  --color-primary: #10b981;        /* レトログリーン */
+  --color-secondary: #fbbf24;      /* レトロイエロー */
+  --color-success: #059669;        /* 成功グリーン */
+  --color-warning: #d97706;        /* 警告オレンジ */
+  --color-error: #dc2626;          /* エラーレッド */
+  
+  /* 背景・テキスト */
+  --color-background: #000000;     /* 真っ黒背景 */
+  --color-surface: #1f2937;        /* ダークグレー */
+  --color-text: #00ff41;           /* グリーンテキスト */
+  --color-text-secondary: #10b981; /* セカンダリテキスト */
+  
+  /* レトロ効果 */
+  --font-family: 'Courier New', 'SF Mono', Monaco, 'Inconsolata', 'Roboto Mono', monospace;
+  --pixel-border: 2px solid #00ff41;
+  --scanlines: repeating-linear-gradient(
+    0deg, 
+    transparent, 
+    transparent 2px, 
+    rgba(0, 255, 65, 0.1) 2px, 
+    rgba(0, 255, 65, 0.1) 4px
+  );
+  --retro-shadow: 2px 2px 0px #00ff41;
+  --crt-flicker: crt-flicker 0.15s infinite linear;
+  --glow-effect: 0 0 10px #00ff41, 0 0 20px #00ff41, 0 0 40px #00ff41;
+  
+  /* ボーダー・角丸 */
+  --border-radius: 0px;            /* ピクセル感重視 */
+  --border-width: 2px;
+}
+
+/* CRTフリッカー効果 */
+@keyframes crt-flicker {
+  0% { opacity: 1; }
+  98% { opacity: 1; }
+  99% { opacity: 0.98; }
+  100% { opacity: 1; }
+}
+
+/* スキャンライン効果 */
+@keyframes scanlines {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+/* レトロボタンスタイル */
+[data-theme="retro"] .arcade-button {
+  background: var(--color-background);
+  border: var(--pixel-border);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  text-shadow: var(--retro-shadow);
+  position: relative;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-radius: var(--border-radius);
+  font-weight: bold;
+  animation: var(--crt-flicker);
+}
+
+[data-theme="retro"] .arcade-button:hover {
+  background: rgba(16, 185, 129, 0.1);
+  box-shadow: var(--glow-effect);
+  transform: scale(1.05);
+  transition: all 0.2s ease;
+}
+
+[data-theme="retro"] .arcade-button:active {
+  transform: scale(0.95);
+  box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.3);
+}
+
+/* ゲームエディター */
+[data-theme="retro"] .game-editor {
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  position: relative;
+}
+
+/* スキャンライン効果をオーバーレイとして追加 */
+[data-theme="retro"] .game-editor::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--scanlines);
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.3;
+}
+
+/* ピクセルボーダー効果 */
+[data-theme="retro"] .card,
+[data-theme="retro"] .panel {
+  border: var(--pixel-border);
+  border-radius: var(--border-radius);
+  background: var(--color-surface);
+  box-shadow: 4px 4px 0px #00ff41;
+}
+
+/* レトロテキスト */
+[data-theme="retro"] h1,
+[data-theme="retro"] h2,
+[data-theme="retro"] h3,
+[data-theme="retro"] h4 {
+  color: var(--color-text);
+  text-shadow: var(--retro-shadow);
+  font-family: var(--font-family);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* 入力フィールド */
+[data-theme="retro"] input,
+[data-theme="retro"] textarea,
+[data-theme="retro"] select {
+  background: var(--color-background);
+  border: var(--pixel-border);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  border-radius: var(--border-radius);
+}
+
+[data-theme="retro"] input:focus,
+[data-theme="retro"] textarea:focus {
+  box-shadow: var(--glow-effect);
+  outline: none;
+}
+
+/* ローディング・プログレス */
+[data-theme="retro"] .progress-bar {
+  background: var(--color-background);
+  border: var(--pixel-border);
+  height: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="retro"] .progress-fill {
+  background: linear-gradient(90deg, #00ff41, #10b981);
+  height: 100%;
+  box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
+  animation: progress-glow 1s ease-in-out infinite alternate;
+}
+
+@keyframes progress-glow {
+  0% { box-shadow: inset 0 0 10px rgba(0, 255, 65, 0.5); }
+  100% { box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.8); }
+}
+
+/* レトロ通知・アラート */
+[data-theme="retro"] .notification,
+[data-theme="retro"] .alert {
+  border: var(--pixel-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 4px 4px 0px #00ff41;
+}
+
+/* CRTモニター効果 */
+[data-theme="retro"] body {
+  background: radial-gradient(ellipse at center, #111111 0%, #000000 100%);
+  animation: var(--crt-flicker);
+}

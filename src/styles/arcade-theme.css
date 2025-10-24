@@ -1,0 +1,267 @@
+/* アーケードテーマ - ゲームセンター風UI */
+:root[data-theme="arcade"] {
+  /* メインカラー */
+  --color-primary: #d946ef;
+  --color-secondary: #14b8a6;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  
+  /* 背景・サーフェス */
+  --color-background: #0f0f23;
+  --color-surface: #1e1b4b;
+  --color-text: #f1f5f9;
+  
+  /* エフェクト */
+  --shadow-neon: 0 0 20px rgba(217, 70, 239, 0.5);
+  --gradient-arcade: linear-gradient(45deg, #d946ef, #14b8a6);
+  --glow-intense: 0 0 30px rgba(217, 70, 239, 0.8);
+  
+  /* アニメーション */
+  --transition-fast: 0.2s ease;
+  --transition-medium: 0.4s ease;
+}
+
+/* グローバルスタイル */
+[data-theme="arcade"] body {
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: 'Arial', sans-serif;
+}
+
+/* アーケードボタン */
+.arcade-button {
+  background: var(--gradient-arcade);
+  color: var(--color-text);
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  position: relative;
+  box-shadow: var(--shadow-neon);
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.arcade-button:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--glow-intense);
+  border-color: var(--color-primary);
+}
+
+.arcade-button:active {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-neon);
+}
+
+.arcade-button:before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: var(--gradient-arcade);
+  border-radius: 14px;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.arcade-button:hover:before {
+  opacity: 1;
+}
+
+/* アーケードカード */
+.arcade-card {
+  background: var(--color-surface);
+  border: 1px solid rgba(217, 70, 239, 0.3);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow-neon);
+  transition: all var(--transition-medium);
+  position: relative;
+  overflow: hidden;
+}
+
+.arcade-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--glow-intense);
+  border-color: var(--color-primary);
+}
+
+.arcade-card:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(217, 70, 239, 0.1), transparent);
+  transition: left 0.6s ease;
+}
+
+.arcade-card:hover:before {
+  left: 100%;
+}
+
+/* ネオンテキスト */
+.neon-text {
+  color: var(--color-primary);
+  text-shadow: 
+    0 0 5px currentColor,
+    0 0 10px currentColor,
+    0 0 20px currentColor;
+  animation: neon-flicker 2s ease-in-out infinite alternate;
+}
+
+@keyframes neon-flicker {
+  0%, 18%, 22%, 25%, 53%, 57%, 100% {
+    text-shadow: 
+      0 0 5px currentColor,
+      0 0 10px currentColor,
+      0 0 20px currentColor;
+  }
+  20%, 24%, 55% {
+    text-shadow: none;
+  }
+}
+
+/* パルス効果 */
+.arcade-pulse {
+  animation: arcade-pulse 2s ease-in-out infinite;
+}
+
+@keyframes arcade-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(217, 70, 239, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(217, 70, 239, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(217, 70, 239, 0);
+  }
+}
+
+/* グロー効果 */
+.arcade-glow {
+  animation: arcade-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes arcade-glow {
+  from {
+    box-shadow: 0 0 10px rgba(217, 70, 239, 0.3);
+  }
+  to {
+    box-shadow: 0 0 25px rgba(217, 70, 239, 0.8);
+  }
+}
+
+/* ゲームボード */
+.arcade-game-board {
+  background: var(--color-surface);
+  border: 3px solid var(--color-primary);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 
+    var(--glow-intense),
+    inset 0 0 50px rgba(217, 70, 239, 0.1);
+  position: relative;
+}
+
+.arcade-game-board:before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  border: 1px solid rgba(217, 70, 239, 0.3);
+  border-radius: 15px;
+  pointer-events: none;
+}
+
+/* 入力フィールド */
+.arcade-input {
+  background: rgba(30, 27, 75, 0.8);
+  border: 2px solid rgba(217, 70, 239, 0.3);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: var(--color-text);
+  font-size: 16px;
+  transition: all var(--transition-fast);
+}
+
+.arcade-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(217, 70, 239, 0.2);
+}
+
+/* タブナビゲーション */
+.arcade-tabs {
+  display: flex;
+  background: var(--color-surface);
+  border-radius: 12px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.arcade-tab {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: rgba(241, 245, 249, 0.6);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-weight: 600;
+}
+
+.arcade-tab.active {
+  background: var(--gradient-arcade);
+  color: var(--color-text);
+  box-shadow: var(--shadow-neon);
+}
+
+.arcade-tab:hover:not(.active) {
+  background: rgba(217, 70, 239, 0.1);
+  color: var(--color-text);
+}
+
+/* モーダル */
+.arcade-modal {
+  background: var(--color-surface);
+  border: 2px solid var(--color-primary);
+  border-radius: 20px;
+  box-shadow: 
+    var(--glow-intense),
+    0 0 100px rgba(0, 0, 0, 0.8);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+/* スクロールバー */
+.arcade-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.arcade-scrollbar::-webkit-scrollbar-track {
+  background: rgba(30, 27, 75, 0.5);
+  border-radius: 4px;
+}
+
+.arcade-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--gradient-arcade);
+  border-radius: 4px;
+}
+
+.arcade-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
