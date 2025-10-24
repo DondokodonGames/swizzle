@@ -1,0 +1,424 @@
+/* src/styles/dark-theme.css */
+/* ダークモード・アクセシビリティ配慮テーマ - 目に優しい・高コントラスト */
+
+:root[data-theme="dark"] {
+  /* ダークカラーパレット */
+  --color-primary: #60a5fa;        /* ソフトブルー */
+  --color-secondary: #34d399;      /* ソフトグリーン */
+  --color-success: #10b981;        /* エメラルド */
+  --color-warning: #fbbf24;        /* アンバー */
+  --color-error: #f87171;          /* ソフトレッド */
+  
+  /* ダーク背景・テキスト */
+  --color-background: #111827;     /* ダークグレー背景 */
+  --color-surface: #1f2937;        /* カード背景 */
+  --color-text: #f9fafb;           /* ライトテキスト */
+  --color-text-secondary: #d1d5db; /* セカンダリテキスト */
+  
+  /* アクセシブル効果 */
+  --font-family: 'Inter', 'SF Pro Text', 'Segoe UI', 'Roboto', system-ui, sans-serif;
+  --dark-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --subtle-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --accessible-contrast: 4.5; /* WCAG AA準拠 */
+  --dark-transition: all 0.3s ease;
+  --glow-effect: 0 0 15px rgba(96, 165, 250, 0.3);
+  --focus-ring-dark: 0 0 0 3px rgba(96, 165, 250, 0.4);
+  
+  /* ボーダー・角丸 */
+  --border-radius: 8px;
+  --border-width: 1px;
+  --dark-border: 1px solid #374151;
+}
+
+/* スムーズダークアニメーション */
+@keyframes dark-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gentle-pulse {
+  0%, 100% {
+    box-shadow: var(--dark-shadow);
+  }
+  50% {
+    box-shadow: var(--glow-effect);
+  }
+}
+
+@keyframes dark-slide {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* ダークボタンスタイル */
+[data-theme="dark"] .arcade-button {
+  background: var(--color-surface);
+  border: var(--dark-border);
+  border-radius: var(--border-radius);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  box-shadow: var(--dark-shadow);
+  transition: var(--dark-transition);
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .arcade-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(52, 211, 153, 0.1) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+[data-theme="dark"] .arcade-button:hover {
+  background: #374151;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: var(--glow-effect);
+  transform: translateY(-2px);
+}
+
+[data-theme="dark"] .arcade-button:hover::before {
+  opacity: 1;
+}
+
+[data-theme="dark"] .arcade-button:focus {
+  outline: none;
+  box-shadow: var(--focus-ring-dark);
+}
+
+[data-theme="dark"] .arcade-button:active {
+  transform: translateY(0);
+  box-shadow: inset var(--dark-shadow);
+}
+
+/* ゲームエディター */
+[data-theme="dark"] .game-editor {
+  background: var(--color-background);
+  background-image: 
+    radial-gradient(circle at 25% 25%, rgba(96, 165, 250, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(52, 211, 153, 0.05) 0%, transparent 50%);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  line-height: 1.6;
+}
+
+/* 目に優しいグリッド */
+[data-theme="dark"] .game-editor::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(96, 165, 250, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(96, 165, 250, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.3;
+}
+
+/* ダークカード */
+[data-theme="dark"] .card,
+[data-theme="dark"] .panel {
+  background: var(--color-surface);
+  border: var(--dark-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--dark-shadow);
+  transition: var(--dark-transition);
+  position: relative;
+}
+
+[data-theme="dark"] .card:hover,
+[data-theme="dark"] .panel:hover {
+  background: #2d3748;
+  box-shadow: var(--glow-effect);
+  transform: translateY(-1px);
+}
+
+/* アクセシブルタイポグラフィ */
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4 {
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+[data-theme="dark"] h1 {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+[data-theme="dark"] h2 {
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #f9fafb;
+}
+
+[data-theme="dark"] p {
+  color: var(--color-text-secondary);
+  line-height: 1.75;
+}
+
+/* 高コントラスト入力フィールド */
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background: #0f172a;
+  border: var(--dark-border);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  border-radius: var(--border-radius);
+  padding: 10px 14px;
+  transition: var(--dark-transition);
+  font-size: 14px;
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] select:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring-dark);
+  outline: none;
+  background: #1e293b;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #6b7280;
+}
+
+/* アクセシブルプログレスバー */
+[data-theme="dark"] .progress-bar {
+  background: #374151;
+  border: var(--dark-border);
+  border-radius: var(--border-radius);
+  height: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+[data-theme="dark"] .progress-fill {
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  height: 100%;
+  border-radius: calc(var(--border-radius) - 1px);
+  position: relative;
+  transition: width 0.5s ease-out;
+}
+
+[data-theme="dark"] .progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 100%
+  );
+  animation: progress-shine 2s linear infinite;
+}
+
+@keyframes progress-shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* 高コントラスト通知 */
+[data-theme="dark"] .notification,
+[data-theme="dark"] .alert {
+  background: var(--color-surface);
+  border: var(--dark-border);
+  border-radius: var(--border-radius);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  box-shadow: var(--dark-shadow);
+  border-left: 4px solid var(--color-primary);
+  animation: dark-fade-in 0.3s ease-out;
+}
+
+[data-theme="dark"] .notification.success {
+  border-left-color: var(--color-success);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+[data-theme="dark"] .notification.warning {
+  border-left-color: var(--color-warning);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+[data-theme="dark"] .notification.error {
+  border-left-color: var(--color-error);
+  background: rgba(248, 113, 113, 0.1);
+}
+
+/* アクセシブルスクロールバー */
+[data-theme="dark"] ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #374151;
+  border-radius: 6px;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 6px;
+  border: 2px solid #374151;
+  transition: var(--dark-transition);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* 高コントラストトグル */
+[data-theme="dark"] .toggle-switch {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  background: #374151;
+  border-radius: 14px;
+  border: var(--dark-border);
+  transition: var(--dark-transition);
+  cursor: pointer;
+}
+
+[data-theme="dark"] .toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  background: var(--color-text);
+  border-radius: 50%;
+  transition: var(--dark-transition);
+  box-shadow: var(--subtle-shadow);
+}
+
+[data-theme="dark"] .toggle-switch.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+[data-theme="dark"] .toggle-switch.active::after {
+  transform: translateX(20px);
+  background: #ffffff;
+}
+
+/* アクセシブルテーブル */
+[data-theme="dark"] table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  background: var(--color-surface);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: var(--dark-shadow);
+  border: var(--dark-border);
+}
+
+[data-theme="dark"] th,
+[data-theme="dark"] td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid #374151;
+}
+
+[data-theme="dark"] th {
+  background: #374151;
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+[data-theme="dark"] tr:hover {
+  background: rgba(96, 165, 250, 0.05);
+}
+
+/* 高コントラストバッジ */
+[data-theme="dark"] .badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .badge.success {
+  background: var(--color-success);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+[data-theme="dark"] .badge.warning {
+  background: var(--color-warning);
+  color: #000000;
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+[data-theme="dark"] .badge.error {
+  background: var(--color-error);
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+/* 目に優しいフォーカス */
+[data-theme="dark"] *:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* 高コントラストリンク */
+[data-theme="dark"] a {
+  color: #93c5fd;
+  text-decoration: underline;
+  transition: var(--dark-transition);
+}
+
+[data-theme="dark"] a:hover {
+  color: #dbeafe;
+  text-decoration: none;
+}
+
+/* 減光効果（目の疲れ軽減） */
+[data-theme="dark"] body {
+  filter: brightness(0.95) contrast(1.05);
+}

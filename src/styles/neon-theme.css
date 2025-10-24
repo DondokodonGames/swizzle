@@ -1,0 +1,311 @@
+/* src/styles/neon-theme.css */
+/* ネオン・サイバーパンク風テーマ - グロー効果・発光・サイバーパンクグリッド */
+
+:root[data-theme="neon"] {
+  /* サイバーパンクカラー */
+  --color-primary: #8b5cf6;        /* ネオンパープル */
+  --color-secondary: #06b6d4;      /* ネオンシアン */
+  --color-success: #10b981;        /* ネオングリーン */
+  --color-warning: #f59e0b;        /* ネオンアンバー */
+  --color-error: #ef4444;          /* ネオンレッド */
+  
+  /* 背景・テキスト */
+  --color-background: #0a0a0f;     /* ダークサイバー背景 */
+  --color-surface: #1a1a2e;        /* サーフェス */
+  --color-text: #e2e8f0;           /* ライトテキスト */
+  --color-text-secondary: #94a3b8; /* セカンダリテキスト */
+  
+  /* ネオン効果 */
+  --font-family: 'Space Mono', 'SF Mono', Monaco, 'Inconsolata', monospace;
+  --neon-glow-primary: 0 0 5px #8b5cf6, 0 0 10px #8b5cf6, 0 0 20px #8b5cf6, 0 0 40px #8b5cf6;
+  --neon-glow-cyan: 0 0 5px #06b6d4, 0 0 10px #06b6d4, 0 0 20px #06b6d4, 0 0 40px #06b6d4;
+  --neon-glow-green: 0 0 5px #10b981, 0 0 10px #10b981, 0 0 20px #10b981, 0 0 40px #10b981;
+  --cyber-grid: linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px);
+  
+  /* ボーダー・角丸 */
+  --border-radius: 8px;
+  --border-width: 1px;
+  --neon-border: 1px solid #8b5cf6;
+}
+
+/* ネオン点滅アニメーション */
+@keyframes neon-flicker {
+  0%, 18%, 22%, 25%, 53%, 57%, 100% {
+    text-shadow: var(--neon-glow-primary);
+    box-shadow: var(--neon-glow-primary);
+  }
+  20%, 24%, 55% {
+    text-shadow: none;
+    box-shadow: none;
+  }
+}
+
+@keyframes cyber-pulse {
+  0% {
+    box-shadow: var(--neon-glow-primary);
+    border-color: #8b5cf6;
+  }
+  50% {
+    box-shadow: var(--neon-glow-cyan);
+    border-color: #06b6d4;
+  }
+  100% {
+    box-shadow: var(--neon-glow-primary);
+    border-color: #8b5cf6;
+  }
+}
+
+@keyframes data-stream {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+/* ネオンボタンスタイル */
+[data-theme="neon"] .arcade-button {
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.1), rgba(6, 182, 212, 0.1));
+  border: var(--neon-border);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  text-shadow: var(--neon-glow-primary);
+  border-radius: var(--border-radius);
+  position: relative;
+  overflow: hidden;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+[data-theme="neon"] .arcade-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+[data-theme="neon"] .arcade-button:hover {
+  box-shadow: var(--neon-glow-primary);
+  animation: cyber-pulse 2s infinite;
+  transform: translateY(-2px);
+}
+
+[data-theme="neon"] .arcade-button:hover::before {
+  left: 100%;
+}
+
+[data-theme="neon"] .arcade-button:active {
+  transform: translateY(0);
+  box-shadow: inset var(--neon-glow-primary);
+}
+
+/* ゲームエディター */
+[data-theme="neon"] .game-editor {
+  background: var(--color-background);
+  background-image: var(--cyber-grid);
+  background-size: 40px 40px;
+  color: var(--color-text);
+  font-family: var(--font-family);
+  position: relative;
+}
+
+/* サイバーグリッド効果 */
+[data-theme="neon"] .game-editor::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: var(--cyber-grid);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.1;
+  animation: data-stream 10s linear infinite;
+}
+
+/* データストリーム効果 */
+[data-theme="neon"] .game-editor::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(139, 92, 246, 0.03) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+  animation: data-stream 8s linear infinite reverse;
+}
+
+/* ネオンカード */
+[data-theme="neon"] .card,
+[data-theme="neon"] .panel {
+  background: rgba(26, 26, 46, 0.8);
+  border: var(--neon-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--neon-glow-primary);
+  backdrop-filter: blur(10px);
+  position: relative;
+}
+
+[data-theme="neon"] .card::before,
+[data-theme="neon"] .panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    45deg,
+    rgba(139, 92, 246, 0.1) 0%,
+    rgba(6, 182, 212, 0.1) 100%
+  );
+  border-radius: var(--border-radius);
+  pointer-events: none;
+}
+
+/* ネオンテキスト */
+[data-theme="neon"] h1,
+[data-theme="neon"] h2,
+[data-theme="neon"] h3,
+[data-theme="neon"] h4 {
+  color: var(--color-text);
+  text-shadow: var(--neon-glow-primary);
+  font-family: var(--font-family);
+  font-weight: 700;
+  letter-spacing: 2px;
+  animation: neon-flicker 4s infinite;
+}
+
+/* 入力フィールド */
+[data-theme="neon"] input,
+[data-theme="neon"] textarea,
+[data-theme="neon"] select {
+  background: rgba(26, 26, 46, 0.6);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  border-radius: var(--border-radius);
+  backdrop-filter: blur(5px);
+}
+
+[data-theme="neon"] input:focus,
+[data-theme="neon"] textarea:focus {
+  border-color: #8b5cf6;
+  box-shadow: var(--neon-glow-primary);
+  outline: none;
+  background: rgba(26, 26, 46, 0.8);
+}
+
+/* プログレスバー */
+[data-theme="neon"] .progress-bar {
+  background: rgba(26, 26, 46, 0.6);
+  border: var(--neon-border);
+  border-radius: var(--border-radius);
+  height: 24px;
+  overflow: hidden;
+  position: relative;
+}
+
+[data-theme="neon"] .progress-fill {
+  background: linear-gradient(90deg, #8b5cf6, #06b6d4, #10b981);
+  height: 100%;
+  box-shadow: var(--neon-glow-cyan);
+  position: relative;
+  animation: progress-flow 2s ease-in-out infinite;
+}
+
+[data-theme="neon"] .progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  animation: progress-shine 1.5s linear infinite;
+}
+
+@keyframes progress-flow {
+  0%, 100% { filter: hue-rotate(0deg); }
+  50% { filter: hue-rotate(180deg); }
+}
+
+@keyframes progress-shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ネオン通知 */
+[data-theme="neon"] .notification,
+[data-theme="neon"] .alert {
+  background: rgba(26, 26, 46, 0.9);
+  border: var(--neon-border);
+  border-radius: var(--border-radius);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  box-shadow: var(--neon-glow-primary);
+  backdrop-filter: blur(10px);
+  animation: neon-flicker 3s infinite;
+}
+
+/* ホログラム効果 */
+[data-theme="neon"] .hologram {
+  background: linear-gradient(
+    45deg,
+    rgba(139, 92, 246, 0.1),
+    rgba(6, 182, 212, 0.1)
+  );
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="neon"] .hologram::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 0deg,
+    transparent,
+    rgba(139, 92, 246, 0.1),
+    transparent
+  );
+  animation: hologram-rotate 4s linear infinite;
+}
+
+@keyframes hologram-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

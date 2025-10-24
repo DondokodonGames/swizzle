@@ -1,0 +1,389 @@
+/* src/styles/minimal-theme.css */
+/* ミニマル・モダン風テーマ - クリーン・シンプル・高機能美 */
+
+:root[data-theme="minimal"] {
+  /* ミニマルカラーパレット */
+  --color-primary: #3b82f6;        /* クリアブルー */
+  --color-secondary: #6b7280;      /* ニュートラルグレー */
+  --color-success: #10b981;        /* クリーングリーン */
+  --color-warning: #f59e0b;        /* アンバー */
+  --color-error: #ef4444;          /* クリアレッド */
+  
+  /* 背景・テキスト */
+  --color-background: #ffffff;     /* ピュアホワイト */
+  --color-surface: #f9fafb;        /* ソフトサーフェス */
+  --color-text: #111827;           /* ダークテキスト */
+  --color-text-secondary: #6b7280; /* グレーテキスト */
+  
+  /* ミニマル効果 */
+  --font-family: 'Inter', 'SF Pro Text', 'Segoe UI', 'Roboto', system-ui, sans-serif;
+  --clean-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --subtle-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.03);
+  --focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  --subtle-transition: all 0.15s ease-out;
+  
+  /* ボーダー・角丸 */
+  --border-radius: 6px;
+  --border-width: 1px;
+  --minimal-border: 1px solid #e5e7eb;
+}
+
+/* スムーズアニメーション */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes subtle-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes clean-slide {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* ミニマルボタンスタイル */
+[data-theme="minimal"] .arcade-button {
+  background: var(--color-surface);
+  border: var(--minimal-border);
+  border-radius: var(--border-radius);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  box-shadow: var(--clean-shadow);
+  transition: var(--subtle-transition);
+  font-weight: 500;
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="minimal"] .arcade-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, transparent 0%, rgba(59, 130, 246, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+[data-theme="minimal"] .arcade-button:hover {
+  background: #f3f4f6;
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="minimal"] .arcade-button:hover::before {
+  opacity: 1;
+}
+
+[data-theme="minimal"] .arcade-button:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+[data-theme="minimal"] .arcade-button:active {
+  transform: translateY(0);
+  box-shadow: var(--clean-shadow);
+}
+
+/* ゲームエディター */
+[data-theme="minimal"] .game-editor {
+  background: var(--color-background);
+  background-image: 
+    linear-gradient(#f3f4f6 1px, transparent 1px),
+    linear-gradient(90deg, #f3f4f6 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: var(--color-text);
+  font-family: var(--font-family);
+  line-height: 1.6;
+}
+
+/* ミニマルグリッド */
+[data-theme="minimal"] .game-editor::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.5;
+}
+
+/* クリーンカード */
+[data-theme="minimal"] .card,
+[data-theme="minimal"] .panel {
+  background: var(--color-surface);
+  border: var(--minimal-border);
+  border-radius: var(--border-radius);
+  box-shadow: var(--clean-shadow);
+  transition: var(--subtle-transition);
+  position: relative;
+}
+
+[data-theme="minimal"] .card:hover,
+[data-theme="minimal"] .panel:hover {
+  box-shadow: var(--subtle-shadow);
+  transform: translateY(-1px);
+}
+
+/* タイポグラフィ */
+[data-theme="minimal"] h1,
+[data-theme="minimal"] h2,
+[data-theme="minimal"] h3,
+[data-theme="minimal"] h4 {
+  color: var(--color-text);
+  font-family: var(--font-family);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+
+[data-theme="minimal"] h1 {
+  font-size: 2.25rem;
+  font-weight: 700;
+}
+
+[data-theme="minimal"] h2 {
+  font-size: 1.875rem;
+  font-weight: 600;
+}
+
+[data-theme="minimal"] h3 {
+  font-size: 1.5rem;
+}
+
+[data-theme="minimal"] h4 {
+  font-size: 1.25rem;
+}
+
+[data-theme="minimal"] p {
+  color: var(--color-text-secondary);
+  line-height: 1.75;
+}
+
+/* 入力フィールド */
+[data-theme="minimal"] input,
+[data-theme="minimal"] textarea,
+[data-theme="minimal"] select {
+  background: var(--color-background);
+  border: var(--minimal-border);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  border-radius: var(--border-radius);
+  padding: 8px 12px;
+  transition: var(--subtle-transition);
+  font-size: 14px;
+}
+
+[data-theme="minimal"] input:focus,
+[data-theme="minimal"] textarea:focus,
+[data-theme="minimal"] select:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+[data-theme="minimal"] input::placeholder,
+[data-theme="minimal"] textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* プログレスバー */
+[data-theme="minimal"] .progress-bar {
+  background: #e5e7eb;
+  border-radius: var(--border-radius);
+  height: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+[data-theme="minimal"] .progress-fill {
+  background: linear-gradient(90deg, var(--color-primary), #1d4ed8);
+  height: 100%;
+  border-radius: var(--border-radius);
+  transition: width 0.5s ease-out;
+  position: relative;
+}
+
+[data-theme="minimal"] .progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  animation: progress-shine 2s linear infinite;
+}
+
+@keyframes progress-shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* 通知・アラート */
+[data-theme="minimal"] .notification,
+[data-theme="minimal"] .alert {
+  background: var(--color-surface);
+  border: var(--minimal-border);
+  border-radius: var(--border-radius);
+  color: var(--color-text);
+  font-family: var(--font-family);
+  box-shadow: var(--clean-shadow);
+  border-left: 4px solid var(--color-primary);
+  animation: fade-in 0.3s ease-out;
+}
+
+[data-theme="minimal"] .notification.success {
+  border-left-color: var(--color-success);
+}
+
+[data-theme="minimal"] .notification.warning {
+  border-left-color: var(--color-warning);
+}
+
+[data-theme="minimal"] .notification.error {
+  border-left-color: var(--color-error);
+}
+
+/* スクロールバー */
+[data-theme="minimal"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+[data-theme="minimal"] ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+[data-theme="minimal"] ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  transition: var(--subtle-transition);
+}
+
+[data-theme="minimal"] ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* トグル・スイッチ */
+[data-theme="minimal"] .toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: #e5e7eb;
+  border-radius: 12px;
+  transition: var(--subtle-transition);
+  cursor: pointer;
+}
+
+[data-theme="minimal"] .toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: var(--color-background);
+  border-radius: 50%;
+  transition: var(--subtle-transition);
+  box-shadow: var(--clean-shadow);
+}
+
+[data-theme="minimal"] .toggle-switch.active {
+  background: var(--color-primary);
+}
+
+[data-theme="minimal"] .toggle-switch.active::after {
+  transform: translateX(20px);
+}
+
+/* テーブル */
+[data-theme="minimal"] table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  background: var(--color-surface);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: var(--clean-shadow);
+}
+
+[data-theme="minimal"] th,
+[data-theme="minimal"] td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+[data-theme="minimal"] th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+[data-theme="minimal"] tr:hover {
+  background: #f9fafb;
+}
+
+/* バッジ */
+[data-theme="minimal"] .badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  background: var(--color-primary);
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+[data-theme="minimal"] .badge.success {
+  background: var(--color-success);
+}
+
+[data-theme="minimal"] .badge.warning {
+  background: var(--color-warning);
+}
+
+[data-theme="minimal"] .badge.error {
+  background: var(--color-error);
+}

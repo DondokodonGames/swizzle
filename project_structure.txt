@@ -1,0 +1,186 @@
+.
+├── CURRENT_HANDOVER.md
+├── README.md
+├── docs
+│   └── editor
+│       ├── editor-specification.md
+│       └── implementation-progress.json
+├── implementation-status.json
+├── index.html
+├── package-lock.json
+├── package.json
+├── project_check.sh
+├── project_status_report.md
+├── project_structure.txt
+├── public
+│   └── templates-config.json
+├── quick-status.sh
+├── src
+│   ├── App.tsx
+│   ├── components
+│   │   ├── EnhancedGameCanvas.tsx
+│   │   ├── GameFeed.tsx
+│   │   ├── GameSelector.tsx
+│   │   ├── GameSequence.tsx
+│   │   ├── GameUISystem.tsx
+│   │   ├── auth
+│   │   │   ├── AuthModal.tsx
+│   │   │   ├── ProfileSetup.tsx
+│   │   │   └── ProtectedRoute.tsx
+│   │   ├── common
+│   │   │   ├── FileUploader.tsx
+│   │   │   ├── GameHeaderButtons.tsx
+│   │   │   ├── TimerBar.tsx
+│   │   │   ├── TouchEffects.tsx
+│   │   │   └── VolumeControl.tsx
+│   │   ├── debug
+│   │   │   └── SupabaseConnectionTest.tsx
+│   │   ├── editor
+│   │   │   ├── EditorApp.tsx
+│   │   │   ├── GameEditor.tsx
+│   │   │   ├── ProjectSelector.tsx
+│   │   │   ├── common
+│   │   │   │   ├── ProjectCard.tsx
+│   │   │   │   └── TabNavigation.tsx
+│   │   │   ├── counter
+│   │   │   │   └── CounterManager.tsx
+│   │   │   ├── modals
+│   │   │   │   └── VisualRuleEditor.tsx
+│   │   │   ├── script
+│   │   │   │   ├── AdvancedRuleModal.tsx
+│   │   │   │   ├── BackgroundControl.tsx
+│   │   │   │   ├── CounterRuleComponents.tsx
+│   │   │   │   ├── GamePreview.tsx
+│   │   │   │   ├── RandomRuleComponents.tsx
+│   │   │   │   ├── RuleList.tsx
+│   │   │   │   ├── RulePreview.tsx
+│   │   │   │   ├── SimpleRuleModal.tsx
+│   │   │   │   ├── TimeBarSelector.tsx
+│   │   │   │   ├── actions
+│   │   │   │   ├── conditions
+│   │   │   │   └── constants
+│   │   │   ├── simple
+│   │   │   └── tabs
+│   │   │       ├── AssetsTab.tsx
+│   │   │       ├── AudioTab.tsx
+│   │   │       ├── ScriptTab.tsx
+│   │   │       ├── SettingsTab.tsx
+│   │   │       └── assets
+│   │   ├── navigation
+│   │   │   └── NavigationManager.tsx
+│   │   └── ui
+│   │       ├── ArcadeButton.tsx
+│   │       ├── DragDropZone.tsx
+│   │       ├── GameThemeProvider.tsx
+│   │       ├── ModernButton.tsx
+│   │       ├── ModernCard.tsx
+│   │       └── ThemeSelector.tsx
+│   ├── constants
+│   │   ├── DesignSystem.ts
+│   │   ├── EditorLimits.ts
+│   │   └── gameConfig.ts
+│   ├── game-engine
+│   │   ├── AnimalChaseGame.ts
+│   │   ├── BalanceGame.ts
+│   │   ├── CollectItemsGame.ts
+│   │   ├── CountStarGame.ts
+│   │   ├── CuteTapGame.ts
+│   │   ├── DreamyJumpGame.ts
+│   │   ├── FriendlyShootGame.ts
+│   │   ├── GameErrorManager.ts
+│   │   ├── GameTemplate.ts
+│   │   ├── GameTemplateFactory.ts
+│   │   ├── JumpAdventureGame.ts
+│   │   ├── LaneRunnerGame.ts
+│   │   ├── MagicalCollectGame.ts
+│   │   ├── MemoryMatchGame.ts
+│   │   ├── NumberHuntGame.ts
+│   │   ├── OppositeActionGame.ts
+│   │   ├── OrderMasterGame.ts
+│   │   ├── PuzzlePrincessGame.ts
+│   │   ├── QuickDodgeGame.ts
+│   │   ├── RainbowMatchGame.ts
+│   │   ├── ReactionSpeedGame.ts
+│   │   ├── ShapeSortGame.ts
+│   │   ├── SpeedFriendGame.ts
+│   │   ├── SpotDifferenceGame.ts
+│   │   ├── TimingPerfectGame.ts
+│   │   └── template
+│   │       └── EditableTemplate.ts
+│   ├── hooks
+│   │   ├── editor
+│   │   │   ├── useAssetUpload.ts
+│   │   │   ├── useAudioPlayback.ts
+│   │   │   ├── useGameProject.ts
+│   │   │   └── useNotification.ts
+│   │   ├── useAuth.ts
+│   │   └── useTheme.ts
+│   ├── index.css
+│   ├── lib
+│   │   ├── database.types.ts
+│   │   └── supabase.ts
+│   ├── main.tsx
+│   ├── managers
+│   │   ├── RandomGameManager.ts
+│   │   └── ThemeManager.ts
+│   ├── services
+│   │   ├── ProjectStorageManager.ts
+│   │   ├── editor
+│   │   │   ├── EditorGameBridge.ts
+│   │   │   ├── ErrorHandlingSystem.tsx
+│   │   │   └── ProjectStorage.ts
+│   │   └── rule-engine
+│   │       └── RuleEngine.ts
+│   ├── social
+│   │   ├── components
+│   │   │   ├── AdvancedModeration.tsx
+│   │   │   ├── AdvancedSearchSystem.tsx
+│   │   │   ├── CommunityFeatures.tsx
+│   │   │   ├── ContentDiscovery.tsx
+│   │   │   ├── FollowSystem.tsx
+│   │   │   ├── IntegratedGamePlayer.tsx
+│   │   │   ├── LikeButton.tsx
+│   │   │   ├── NotificationUI.tsx
+│   │   │   ├── SimpleReactionSystem.tsx
+│   │   │   ├── SocialAnalytics.tsx
+│   │   │   ├── SocialFeed.tsx
+│   │   │   ├── SocialIntegration.tsx
+│   │   │   ├── TrendingGames.tsx
+│   │   │   ├── UserActivityFeed.tsx
+│   │   │   └── UserProfile.tsx
+│   │   ├── hooks
+│   │   │   └── useSocialData.ts
+│   │   ├── services
+│   │   │   ├── NotificationService.ts
+│   │   │   ├── RealtimeUpdates.ts
+│   │   │   └── SocialService.ts
+│   │   └── types
+│   │       └── SocialTypes.ts
+│   ├── styles
+│   │   ├── arcade-theme.css
+│   │   ├── cute-theme.css
+│   │   ├── dark-theme.css
+│   │   ├── minimal-theme.css
+│   │   ├── neon-theme.css
+│   │   └── retro-theme.css
+│   ├── types
+│   │   ├── assetTypes.ts
+│   │   ├── counterTypes.ts
+│   │   ├── editor
+│   │   │   ├── GameProject.ts
+│   │   │   ├── GameScript.ts
+│   │   │   ├── GameSettings.ts
+│   │   │   └── ProjectAssets.ts
+│   │   └── themeTypes.ts
+│   └── utils
+│       ├── CSSIntegrationChecker.ts
+│       ├── GameProjectConverter.ts
+│       ├── testPlayDebugHelper.ts
+│       └── viewportUtils.ts
+├── tsconfig.json
+├── typescript_errors.log
+├── update-handover.sh
+├── vite-env.d.ts
+└── vite.config.ts
+
+41 directories, 143 files
