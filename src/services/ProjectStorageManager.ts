@@ -186,7 +186,8 @@ export class ProjectStorageManager {
         title: project.settings?.name || project.name || 'Untitled Game',
         description: project.settings?.description || '',
         template_id: 'editor_created',
-        game_data: project,
+        game_data: {},  // 🔧 修正: 旧カラム（互換性のため空オブジェクト）
+        project_data: project,  // 🔧 追加: 完全なGameProjectデータ
         is_published: project.status === 'published',
         thumbnail_url: project.metadata?.thumbnailUrl || null,
         // オプショナルフィールド
