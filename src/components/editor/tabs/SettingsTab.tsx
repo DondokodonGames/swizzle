@@ -5,6 +5,9 @@ import ModernCard from '../../ui/ModernCard';
 import ModernButton from '../../ui/ModernButton';
 // 🔧 追加: EditorGameBridge統合
 import EditorGameBridge, { GameExecutionResult } from '../../../services/editor/EditorGameBridge';
+// 🔧 Phase H-2追加: Supabase保存機能
+import { ProjectStorageManager } from '../../../services/ProjectStorageManager';
+import { auth } from '../../../lib/supabase';
 
 // 🔧 Props型定義修正: onTestPlay と onSave を追加
 interface SettingsTabProps {
@@ -328,14 +331,15 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }
   }, [project, updateSettings]);
 
-  // プロジェクト公開
+  // 🔧 Phase H-2修正: プロジェクト公開（Supabase保存追加）
   const handlePublish = useCallback(async () => {
     setIsPublishing(true);
     setPublishError(null);
     
     try {
-      console.log('公開処理開始');
+      console.log('📤 公開処理開始:', project.name);
       
+      // バリデーション
       const errors: string[] = [];
       
       if (!project.settings.name?.trim()) {
@@ -350,12 +354,41 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         throw new Error(errors.join('\n'));
       }
       
-      const projectData = {
+      // 🔧 Phase H-2: ユーザーIDを取得
+      console.log('🔐 ユーザー認証確認...');
+      const user = await auth.getCurrentUser();
+      
+      if (!user) {
+        throw new Error('ログインが必要です。先にログインしてください。');
+      }
+      
+      console.log('✅ ユーザー確認完了:', user.id);
+      
+      // プロジェクトデータを更新
+      const projectData: GameProject = {
         ...project,
-        publishedAt: new Date().toISOString(),
-        version: project.version ? `${project.version}.1` : '1.0.0'
+        //publishedAt: new Date().toISOString(),
+        version: project.version ? `${project.version}.1` : '1.0.0',
+        status: 'published' as const,
+        settings: {
+          ...project.settings,
+          publishing: {
+            ...project.settings.publishing,
+            isPublished: true,
+            publishedAt: new Date().toISOString(),
+            visibility: project.settings.publishing?.visibility || 'public'
+          }
+        }
       };
       
+      // 🔧 Phase H-2: Supabaseに保存
+      console.log('💾 Supabaseに保存中...');
+      const storageManager = ProjectStorageManager.getInstance();
+      await storageManager.saveToDatabase(projectData, user.id);
+      
+      console.log('✅ Supabase保存完了！');
+      
+      // ローカルストレージにも保存（従来通り）
       const projectId = project.id || `project_${Date.now()}`;
       const savedProjects = JSON.parse(localStorage.getItem('savedProjects') || '[]');
       
@@ -374,7 +407,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         name: project.settings.name,
         description: project.settings.description || '',
         thumbnailUrl: project.settings.preview?.thumbnailDataUrl || '',
-        author: 'Current User',
+        author: user.email || 'Current User',
         publishedAt: new Date().toISOString(),
         stats: { plays: 0, likes: 0, shares: 0 }
       };
@@ -388,31 +421,24 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       
       localStorage.setItem('publishedGames', JSON.stringify(publishedGames));
       
-      updateSettings({
-        publishing: {
-          ...project.settings.publishing,
-          isPublished: true,
-          publishedAt: new Date().toISOString(),
-          visibility: project.settings.publishing?.visibility || 'public'
-        }
-      });
-      
+      // プロジェクト状態を更新
       updateProject({ 
-        status: 'published' as const,
-        id: projectId,
-        version: projectData.version
+        ...projectData,
+        id: projectId
       });
       
-      console.log('公開完了:', { projectId, name: project.settings.name });
-      alert(`ゲーム "${project.settings.name}" を公開しました！`);
+      console.log('🎉 公開完了:', { projectId, name: project.settings.name });
+      alert(`✅ ゲーム "${project.settings.name}" を公開しました！\n\nSupabaseに保存されたので、ソーシャルフィードに表示されます。`);
       
     } catch (error) {
-      console.error('公開エラー:', error);
-      setPublishError(error instanceof Error ? error.message : '公開に失敗しました');
+      console.error('❌ 公開エラー:', error);
+      const errorMessage = error instanceof Error ? error.message : '公開に失敗しました';
+      setPublishError(errorMessage);
+      alert(`❌ 公開エラー:\n${errorMessage}`);
     } finally {
       setIsPublishing(false);
     }
-  }, [project, updateSettings, updateProject]);
+  }, [project, updateProject]);
 
   // エクスポート機能
   const handleExport = useCallback(async () => {
