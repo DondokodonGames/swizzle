@@ -1,5 +1,6 @@
 // src/components/editor/script/RuleList.tsx
 // 重複削除・整理版: ヘッダーエリア削除・純粋なルール一覧に集約
+// 🔧 修正: getObjectName関数のobj.name undefined問題を解決
 
 import React, { useState } from 'react';
 import { GameProject } from '../../../types/editor/GameProject';
@@ -55,11 +56,22 @@ export const RuleList: React.FC<RuleListProps> = ({
     }
   };
 
-  // 対象オブジェクト名取得
+  // 🔧 修正: 対象オブジェクト名取得
   const getObjectName = (objectId: string) => {
     if (objectId === 'stage') return '🌟 ゲーム全体';
+    
     const obj = project.assets.objects.find(obj => obj.id === objectId);
-    return obj ? `📦 ${obj.name}` : objectId;
+    
+    // オブジェクトが見つからない場合
+    if (!obj) {
+      console.warn(`[RuleList] オブジェクトが見つかりません: ${objectId}`);
+      return `⚠️ ${objectId}`;
+    }
+    
+    // 🔧 修正: nameプロパティがない場合はidを使用
+    // @ts-ignore - nameプロパティの型定義が不完全な場合のため
+    const displayName = obj.name || obj.id;
+    return `📦 ${displayName}`;
   };
 
   return (

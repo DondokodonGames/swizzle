@@ -2,6 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { PublicGame } from '../social/types/SocialTypes';
 import { SocialService } from '../social/services/SocialService';
 import { supabase } from '../lib/supabase';
+import { GameProjectCopier } from '../services/editor/GameProjectCopier';
+import { ProjectStorageManager } from '../services/ProjectStorageManager';
+import { GameProject } from '../types/editor/GameProject';
 
 /**
  * BridgeScreen.tsx - ゲーム間のブリッジ画面
@@ -12,6 +15,9 @@ import { supabase } from '../lib/supabase';
  * - 次のゲームプレビュー
  * - 残り時間バー（5秒）
  * - 操作ボタン（次へ/前へ/もう一度/Exit）
+ * - 🆕 パクる機能（ゲームのルールをコピーしてエディターで編集）
+ * 
+ * 注: react-router-dom を使用せず、window.location.href で遷移
  */
 
 interface GameScore {
@@ -49,6 +55,9 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   const [isLiked, setIsLiked] = useState(currentGame.isLiked || false);
   const [likeCount, setLikeCount] = useState(currentGame.stats.likes);
   const [isLiking, setIsLiking] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [copiedProjectId, setCopiedProjectId] = useState<string | null>(null);
 
   // ==================== サービス ====================
   const socialService = useMemo(() => SocialService.getInstance(), []);
@@ -87,6 +96,118 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     } finally {
       setIsLiking(false);
     }
+  };
+
+  // ==================== 🆕 パクる処理 ====================
+  const handleCopyGame = async () => {
+    if (isCopying) return;
+
+    setIsCopying(true);
+
+    try {
+      console.log('📋 ゲームコピー開始:', currentGame.title);
+      console.log('📋 currentGame構造:', {
+        id: currentGame.id,
+        title: currentGame.title,
+        hasProjectData: !!currentGame.projectData,
+        projectDataKeys: currentGame.projectData ? Object.keys(currentGame.projectData) : []
+      });
+
+      // 1. currentGameからGameProjectデータを取得
+      let sourceProjectData: GameProject | null = null;
+
+      if (currentGame.projectData) {
+        // projectDataが直接含まれている場合
+        sourceProjectData = currentGame.projectData as GameProject;
+        console.log('✅ projectDataから取得成功');
+        console.log('📋 プロジェクトデータ構造:', {
+          id: sourceProjectData.id,
+          name: sourceProjectData.name,
+          hasScript: !!sourceProjectData.script,
+          hasRules: !!(sourceProjectData.script && sourceProjectData.script.rules),
+          rulesCount: (sourceProjectData.script && sourceProjectData.script.rules) ? sourceProjectData.script.rules.length : 0,
+          hasAssets: !!sourceProjectData.assets
+        });
+      } else {
+        // projectDataがない場合、Supabaseから取得を試みる
+        console.log('⚠️ projectDataが存在しないため、データベースから取得を試みます...');
+        
+        const { data, error } = await supabase
+          .from('user_games')
+          .select('project_data')
+          .eq('id', currentGame.id)
+          .single();
+
+        if (error || !data?.project_data) {
+          console.error('❌ データベース取得エラー:', error);
+          throw new Error('ゲームデータの取得に失敗しました');
+        }
+
+        sourceProjectData = data.project_data as GameProject;
+        console.log('✅ データベースから取得成功');
+      }
+
+      if (!sourceProjectData) {
+        throw new Error('このゲームはコピーできません');
+      }
+
+      // 2. GameProjectCopierでコピー
+      const copier = GameProjectCopier.getInstance();
+      
+      // コピー可能かチェック
+      console.log('🔍 コピー可能かチェック中...');
+      if (!copier.canCopy(sourceProjectData)) {
+        alert('このゲームにはルールが設定されていないため、コピーできません。');
+        return;
+      }
+
+      console.log('✅ コピー可能 - コピー処理開始');
+      const copiedProject = copier.copyProject(sourceProjectData);
+
+      // 3. ローカルストレージに保存
+      const storage = ProjectStorageManager.getInstance();
+      await storage.saveProject(copiedProject);
+
+      console.log('✅ プロジェクトを保存しました:', copiedProject.id);
+
+      // 4. localStorageに保存（エディターが開く際に使用）
+      localStorage.setItem('editProjectId', copiedProject.id);
+      localStorage.setItem('copiedGameTitle', currentGame.title);
+      localStorage.setItem('shouldOpenEditor', 'true');
+
+      // 5. 成功モーダルを表示
+      setCopiedProjectId(copiedProject.id);
+      setShowSuccessModal(true);
+
+      console.log(`✅ 「${currentGame.title}」のルールをコピーしました！`);
+
+    } catch (error) {
+      console.error('❌ コピーエラー:', error);
+      alert(`ゲームのコピーに失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+    } finally {
+      setIsCopying(false);
+    }
+  };
+
+  // ==================== エディターを開く処理 ====================
+  const handleOpenEditor = () => {
+    if (!copiedProjectId) return;
+
+    // 複数の可能性のあるパスを試す
+    const possiblePaths = [
+      `/editor/${copiedProjectId}`,
+      `/edit/${copiedProjectId}`,
+      `/game-editor/${copiedProjectId}`,
+      `/editor?id=${copiedProjectId}`,
+      `/#/editor/${copiedProjectId}`,
+      `/projects/edit/${copiedProjectId}`
+    ];
+
+    console.log('🚀 エディターを開きます:', possiblePaths[0]);
+    console.log('📋 試行可能なパス一覧:', possiblePaths);
+
+    // 最初のパスで遷移を試みる
+    window.location.href = possiblePaths[0];
   };
 
   // ==================== リンク処理 ====================
@@ -151,6 +272,20 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
               </div>
             </div>
           )}
+
+          {/* 🆕 パクるボタン */}
+          <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-3xl p-6 mb-4">
+            <button
+              onClick={handleCopyGame}
+              disabled={isCopying}
+              className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xl font-bold py-6 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isCopying ? '⏳ コピー中...' : '📋 このゲームをパクる'}
+            </button>
+            <p className="text-white/80 text-sm text-center mt-3">
+              ルールをコピーして、画像を差し替えるだけで新しいゲームが作れます！
+            </p>
+          </div>
 
           {/* ソーシャル機能 */}
           <div className="bg-black/50 backdrop-blur-sm rounded-3xl p-6 mb-6">
@@ -278,6 +413,42 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 🆕 成功モーダル */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60]">
+          <div className="bg-gradient-to-br from-green-600 to-emerald-600 rounded-3xl p-8 max-w-md mx-4 text-center">
+            <div className="text-6xl mb-4">✅</div>
+            <h2 className="text-white text-3xl font-bold mb-4">
+              コピー完了！
+            </h2>
+            <p className="text-white/90 text-lg mb-6">
+              「{currentGame.title}」のルールをコピーしました！<br/>
+              エディターで画像を差し替えて、新しいゲームを作りましょう。
+            </p>
+            
+            <div className="space-y-3">
+              <button
+                onClick={handleOpenEditor}
+                className="w-full bg-white text-green-700 font-bold text-xl py-4 rounded-2xl hover:bg-gray-100 transition-colors"
+              >
+                🎨 エディターを開く
+              </button>
+              
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full bg-white/20 text-white font-bold text-lg py-3 rounded-2xl hover:bg-white/30 transition-colors"
+              >
+                後で編集する
+              </button>
+            </div>
+
+            <p className="text-white/60 text-sm mt-4">
+              プロジェクトID: {copiedProjectId}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

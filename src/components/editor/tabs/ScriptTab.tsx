@@ -296,11 +296,19 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
   };
 
   // 🔧 新規: オブジェクト名取得ヘルパー
-  const getObjectName = (objectId: string) => {
-    if (objectId === 'stage') return '🌟 ゲーム全体';
-    const obj = project.assets.objects.find(obj => obj.id === objectId);
-    return obj ? obj.name : objectId;
-  };
+const getObjectName = (objectId: string) => {
+  if (objectId === 'stage') return '🌟 ゲーム全体';
+  
+  const obj = project.assets.objects.find(obj => obj.id === objectId);
+  
+  if (!obj) {
+    console.warn(`[ScriptTab] オブジェクトが見つかりません: ${objectId}`);
+    return objectId;
+  }
+  
+  // @ts-ignore - nameプロパティの型定義が不完全な場合のため
+  return obj.name || obj.id;
+};
 
   // 🔧 新規: レイアウト配置済みオブジェクト判定
   const isObjectInLayout = (objectId: string): boolean => {

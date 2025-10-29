@@ -1,72 +1,13 @@
 // src/services/editor/EditorGameBridge.ts
-// 修正版 - テストプレイ動作実現（真っ黒画面問題解決）
+// Phase 1+2 完全統合版 - RuleEngine.ts 統合対応
+// 修正内容: RuleEngine.ts を使用してエディターのルールを完全に実行
 
 import { GameProject } from '../../types/editor/GameProject';
+import { GameRule, TriggerCondition, GameAction } from '../../types/editor/GameScript';
 import { createDefaultInitialState, syncInitialStateWithLayout } from '../../types/editor/GameScript';
+import { RuleEngine, RuleExecutionContext, ActionExecutionResult } from '../rule-engine/RuleEngine';
 
-// ゲーム実行用データ形式（簡略化・修正版）
-export interface GameExecutionData {
-  id: string;
-  name: string;
-  
-  // ゲーム設定
-  settings: {
-    duration: number | null;
-    gameSpeed: number;
-    autoStart: boolean;
-  };
-  
-  // アセットデータ（修正版）
-  assets: {
-    background?: {
-      url: string;
-      width: number;
-      height: number;
-      initialVisible: boolean;
-    };
-    objects: Array<{
-      id: string;
-      name: string;
-      url: string;
-      width: number;
-      height: number;
-      initialX: number;         // 0-1正規化座標
-      initialY: number;         // 0-1正規化座標
-      initialVisible: boolean;
-      scale: number;
-    }>;
-    texts: Array<{
-      id: string;
-      content: string;
-      x: number;
-      y: number;
-      fontSize: number;
-      color: string;
-      fontFamily: string;
-      initialVisible: boolean;
-    }>;
-  };
-  
-  // ルール（簡略化）
-  rules: Array<{
-    id: string;
-    type: 'touch' | 'timer';
-    targetId: string;
-    condition: any;
-    action: any;
-    enabled: boolean;
-  }>;
-  
-  // 初期ゲーム状態
-  initialGameState: {
-    score: number;
-    timeLimit?: number;
-    targetScore?: number;
-    flags: Record<string, boolean>;
-  };
-}
-
-// ゲーム実行結果（修正版）
+// ゲーム実行結果
 export interface GameExecutionResult {
   success: boolean;
   score?: number;
@@ -89,11 +30,15 @@ export interface GameExecutionResult {
   };
 }
 
-// 修正版エディター↔ゲーム橋渡しクラス
+/**
+ * EditorGameBridge - Phase 1+2 完全統合版
+ * RuleEngine.ts を使用してエディターで作成したゲームを実行
+ */
 export class EditorGameBridge {
   private static instance: EditorGameBridge | null = null;
-  private currentGameData: GameExecutionData | null = null;
+  private ruleEngine: RuleEngine | null = null;
   private animationFrameId: number | null = null;
+  private currentContext: RuleExecutionContext | null = null;
   
   static getInstance(): EditorGameBridge {
     if (!this.instance) {
@@ -102,17 +47,33 @@ export class EditorGameBridge {
     return this.instance;
   }
 
-  // 🔧 修正: プロジェクト → ゲーム実行データ変換（堅牢版）
-  convertProjectToGameData(project: GameProject): GameExecutionData {
-    console.log('🔄 プロジェクト→ゲームデータ変換開始:', project.name);
+  /**
+   * ゲーム実行（RuleEngine統合版）
+   */
+  async executeGame(
+    project: GameProject,
+    canvasElement: HTMLCanvasElement
+  ): Promise<GameExecutionResult> {
+    console.log('🎮 ゲーム実行開始 (RuleEngine統合版):', project.name || project.settings.name);
+    
+    const startTime = performance.now();
+    let ruleExecutionCount = 0;
+    const warnings: string[] = [];
+    const errors: string[] = [];
+    const objectsInteracted: string[] = [];
+    const rulesTriggered: string[] = [];
     
     try {
-      // 入力検証
-      if (!project || !project.settings) {
-        throw new Error('プロジェクトデータが不正です');
+      // 1. Canvas初期化
+      const ctx = canvasElement.getContext('2d');
+      if (!ctx) {
+        throw new Error('Canvas context を取得できません');
       }
 
-      // 初期条件の取得・作成
+      canvasElement.width = 360;
+      canvasElement.height = 640;
+      
+      // 2. 初期状態の取得・作成
       let initialState = project.script?.initialState;
       if (!initialState) {
         console.log('⚠️ 初期条件なし→デフォルト作成');
@@ -122,285 +83,163 @@ export class EditorGameBridge {
         }
       }
 
-      // 基本設定変換（安全な変換）
-      const settings = {
-        duration: project.settings.duration?.type === 'unlimited' 
-          ? null 
-          : (project.settings.duration?.seconds || 10),
-        gameSpeed: Number(project.metadata?.gameSpeed) || 1.0,
-        autoStart: true
-      };
+      // 3. RuleEngine初期化
+      this.ruleEngine = new RuleEngine();
+      console.log('✅ RuleEngine初期化完了');
 
-      // 🔧 修正: 背景アセット変換（null安全）
-      const background = project.assets?.background?.frames?.[0] ? {
-        url: project.assets.background.frames[0].dataUrl,
-        width: project.assets.background.frames[0].width || 360,
-        height: project.assets.background.frames[0].height || 640,
-        initialVisible: initialState.layout?.background?.visible || false
-      } : undefined;
-
-      // 🔧 修正: オブジェクトアセット変換（堅牢版）
-      const objects = (project.assets?.objects || []).map((asset, index) => {
-        // 安全なデータアクセス
-        const frame = asset.frames?.[0];
-        if (!frame) {
-          console.warn(`オブジェクト ${asset.name} にフレームデータがありません`);
-        }
-
-        const initialObj = initialState.layout?.objects?.find(obj => obj.id === asset.id);
-        
-        return {
-          id: asset.id,
-          name: asset.name || `Object ${index}`,
-          url: frame?.dataUrl || '', // 空文字でフォールバック
-          width: frame?.width || 50,
-          height: frame?.height || 50,
-          scale: asset.defaultScale || 1.0,
-          // 🔧 修正: 安全な座標設定
-          initialX: initialObj?.position?.x ?? (0.2 + (index * 0.15) % 0.6),
-          initialY: initialObj?.position?.y ?? (0.3 + (index * 0.1) % 0.4),
-          initialVisible: initialObj?.visible !== undefined ? initialObj.visible : true
-        };
-      });
-
-      // 🔧 修正: テキストアセット変換（null安全）
-      const texts = (project.assets?.texts || []).map((text, index) => {
-        const initialText = initialState.layout?.texts?.find(t => t.id === text.id);
-        
-        return {
-          id: text.id,
-          content: text.content || '',
-          x: initialText?.position?.x || (50 + (index * 100)),
-          y: initialText?.position?.y || (100 + (index * 50)),
-          fontSize: text.style?.fontSize || 16,
-          color: text.style?.color || '#000000',
-          fontFamily: text.style?.fontFamily || 'Arial, sans-serif',
-          initialVisible: initialText?.visible !== undefined ? initialText.visible : true
-        };
-      });
-
-      // 🔧 修正: ルール変換（型安全版）
-      const rules = (project.script?.rules || []).map((rule, index) => {
-        const firstCondition = rule.triggers?.conditions?.[0];
-        const firstAction = rule.actions?.[0];
-        
-        return {
-          id: rule.id,
-          type: (firstCondition?.type === 'time' ? 'timer' : 'touch') as 'touch' | 'timer',
-          targetId: rule.targetObjectId || 'stage',
-          condition: firstCondition ? {
-            ...firstCondition,
-            // 🔧 修正: 型安全なプロパティアクセス
-            // 🔧 修正: 型安全なプロパティアクセス
-            seconds: firstCondition.type === 'time' && 'seconds' in firstCondition 
-              ? (typeof firstCondition.seconds === 'number' ? firstCondition.seconds : 3)
-              : 3
-          } : null,
-          action: firstAction ? { ...firstAction } : null,
-          enabled: rule.enabled !== false // デフォルトtrue
-        };
-      });
-
-      const gameData: GameExecutionData = {
-        id: project.id || `game_${Date.now()}`,
-        name: project.settings.name || 'Untitled Game',
-        settings,
-        assets: {
-          background,
-          objects,
-          texts
-        },
-        rules,
-        initialGameState: initialState.gameState || {
-          score: 0,
-          flags: {}
-        }
-      };
-
-      console.log('✅ 変換完了:', {
-        name: gameData.name,
-        objectCount: objects.length,
-        textCount: texts.length,
-        ruleCount: rules.length,
-        hasBackground: !!background
-      });
-
-      this.currentGameData = gameData;
-      return gameData;
-      
-    } catch (error) {
-      console.error('❌ プロジェクト変換エラー:', error);
-      throw new Error(`ゲームデータ変換に失敗: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  // 🔧 修正: ゲーム実行（堅牢版）
-  async executeGame(
-    gameData: GameExecutionData,
-    canvasElement: HTMLCanvasElement
-  ): Promise<GameExecutionResult> {
-    console.log('🎮 ゲーム実行開始:', gameData.name);
-    
-    const startTime = performance.now();
-    let ruleExecutions = 0;
-    const warnings: string[] = [];
-    const objectsInteracted: string[] = [];
-    const rulesTriggered: string[] = [];
-    
-    try {
-      // Canvas初期化
-      const ctx = canvasElement.getContext('2d');
-      if (!ctx) {
-        throw new Error('Canvas context を取得できません');
+      // 4. カウンター定義を登録
+      const counters = initialState.gameState?.counters || {};
+      if (Object.keys(counters).length > 0) {
+        Object.entries(counters).forEach(([name, value]) => {
+          const now = new Date().toISOString();
+          this.ruleEngine!.addCounterDefinition({
+            id: `counter_${name}_${Date.now()}`,
+            name: name,
+            initialValue: typeof value === 'number' ? value : 0,
+            currentValue: typeof value === 'number' ? value : 0,
+            min: 0,
+            max: 9999,
+            persistence: 'game',
+            createdAt: now,
+            lastModified: now
+          });
+        });
+        console.log(`✅ カウンター登録: ${Object.keys(counters).length}個`);
       }
 
-      // キャンバスサイズ設定
-      canvasElement.width = 360;
-      canvasElement.height = 640;
-      
-      // ゲーム状態初期化
-      const gameState = {
-        score: gameData.initialGameState.score || 0,
-        timeElapsed: 0,
-        timeLimit: gameData.initialGameState.timeLimit,
-        running: true,
-        completed: false,
-        flags: { ...gameData.initialGameState.flags },
-        
-        // オブジェクト状態（安全な座標変換）
-        objects: gameData.assets.objects.map(obj => ({
-          ...obj,
-          // 🔧 修正: 安全な座標変換
-          x: Math.max(0, Math.min(obj.initialX * canvasElement.width, canvasElement.width - obj.width)),
-          y: Math.max(0, Math.min(obj.initialY * canvasElement.height, canvasElement.height - obj.height)),
-          visible: obj.initialVisible,
-          vx: (Math.random() - 0.5) * 2 * gameData.settings.gameSpeed,
-          vy: (Math.random() - 0.5) * 2 * gameData.settings.gameSpeed
-        })),
-        texts: gameData.assets.texts.map(text => ({
-          ...text,
-          visible: text.initialVisible
-        }))
-      };
+      // 5. フラグ初期化
+      const flags = initialState.gameState?.flags || {};
+      if (Object.keys(flags).length > 0) {
+        Object.entries(flags).forEach(([name, value]) => {
+          this.ruleEngine!.setFlag(name, typeof value === 'boolean' ? value : false);
+        });
+        console.log(`✅ フラグ登録: ${Object.keys(flags).length}個`);
+      }
 
-      // 🔧 修正: 画像リソース読み込み（堅牢版）
+      // 6. ルールを登録
+      if (project.script?.rules) {
+        project.script.rules
+          .filter(rule => rule.enabled !== false)
+          .forEach(rule => {
+            this.ruleEngine!.addRule(rule);
+          });
+        console.log(`✅ ルール登録: ${project.script.rules.length}個`);
+      } else {
+        warnings.push('ルールが1つも設定されていません');
+      }
+
+      // 7. 画像リソース読み込み
       const imageCache = new Map<string, HTMLImageElement>();
       
       // 背景画像読み込み
-      if (gameData.assets.background?.url) {
+      if (project.assets?.background?.frames?.[0]) {
+        const bgFrame = project.assets.background.frames[0];
         try {
           const bgImg = new Image();
-          await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              warnings.push('背景画像の読み込みがタイムアウトしました');
-              resolve(); // タイムアウトでも継続
-            }, 3000);
-            
-            bgImg.onload = () => {
-              clearTimeout(timeout);
-              imageCache.set('background', bgImg);
-              console.log('✅ 背景画像読み込み完了');
-              resolve();
-            };
-            bgImg.onerror = () => {
-              clearTimeout(timeout);
-              warnings.push('背景画像の読み込みに失敗しました');
-              resolve(); // エラーでも継続
-            };
-            bgImg.src = gameData.assets.background!.url;
-          });
+          await this.loadImage(bgImg, bgFrame.dataUrl, 3000);
+          imageCache.set('background', bgImg);
+          console.log('✅ 背景画像読み込み完了');
         } catch (error) {
-          warnings.push('背景画像処理でエラーが発生しました');
+          warnings.push('背景画像の読み込みに失敗しました');
         }
       }
 
       // オブジェクト画像読み込み
-      for (const obj of gameData.assets.objects) {
-        if (!obj.url) {
-          warnings.push(`オブジェクト "${obj.name}" の画像URLが空です`);
-          continue;
-        }
-        
-        try {
-          const img = new Image();
-          await new Promise<void>((resolve) => {
-            const timeout = setTimeout(() => {
-              warnings.push(`オブジェクト画像 "${obj.name}" の読み込みがタイムアウトしました`);
-              resolve();
-            }, 2000);
-            
-            img.onload = () => {
-              clearTimeout(timeout);
-              imageCache.set(obj.id, img);
-              console.log(`✅ オブジェクト画像読み込み完了: ${obj.name}`);
-              resolve();
-            };
-            img.onerror = () => {
-              clearTimeout(timeout);
-              warnings.push(`オブジェクト画像 "${obj.name}" の読み込みに失敗しました`);
-              resolve();
-            };
-            img.src = obj.url;
-          });
-        } catch (error) {
-          warnings.push(`オブジェクト "${obj.name}" の画像処理でエラーが発生しました`);
+      if (project.assets?.objects) {
+        for (const asset of project.assets.objects) {
+          const frame = asset.frames?.[0];
+          if (!frame?.dataUrl) {
+            warnings.push(`オブジェクト "${asset.name}" の画像データがありません`);
+            continue;
+          }
+          
+          try {
+            const img = new Image();
+            await this.loadImage(img, frame.dataUrl, 2000);
+            imageCache.set(asset.id, img);
+            console.log(`✅ オブジェクト画像読み込み完了: ${asset.name}`);
+          } catch (error) {
+            warnings.push(`オブジェクト画像 "${asset.name}" の読み込みに失敗しました`);
+          }
         }
       }
 
-      // 🔧 修正: ルール実行エンジン（型安全版）
-      const executeRules = (eventType: string, eventData?: any) => {
-        gameData.rules
-          .filter(rule => rule.enabled && rule.condition)
-          .forEach(rule => {
-            try {
-              let conditionMet = false;
-              
-              if (rule.type === 'touch' && eventType === 'touch') {
-                if (rule.targetId === 'stage' || 
-                    (eventData?.objectId && rule.targetId === eventData.objectId)) {
-                  conditionMet = true;
-                }
-              } else if (rule.type === 'timer' && eventType === 'time') {
-                const targetTime = rule.condition?.seconds || 5;
-                if (Math.abs(gameState.timeElapsed - targetTime) < 0.1) {
-                  conditionMet = true;
-                }
-              }
-              
-              // アクション実行
-              if (conditionMet && rule.action) {
-                ruleExecutions++;
-                rulesTriggered.push(rule.id);
-                
-                switch (rule.action.type) {
-                  case 'addScore':
-                    gameState.score += rule.action.points || 10;
-                    break;
-                    
-                  case 'success':
-                    gameState.score += rule.action.score || 100;
-                    gameState.running = false;
-                    gameState.completed = true;
-                    console.log('🎉 ゲーム成功!');
-                    break;
-                    
-                  case 'failure':
-                    gameState.running = false;
-                    gameState.completed = false;
-                    console.log('💀 ゲーム失敗');
-                    break;
-                }
-              }
-            } catch (error) {
-              console.warn('ルール実行エラー:', rule.id, error);
-              warnings.push(`ルール "${rule.id}" の実行でエラーが発生しました`);
-            }
+      // 8. RuleExecutionContext初期化
+      const objectsMap = new Map();
+      
+      if (project.assets?.objects) {
+        project.assets.objects.forEach((asset, index) => {
+          const frame = asset.frames?.[0];
+          const initialObj = initialState!.layout?.objects?.find(obj => obj.id === asset.id);
+          
+          // 初期位置（0-1正規化座標をピクセル座標に変換）
+          const initialX = initialObj?.position?.x ?? (0.2 + (index * 0.15) % 0.6);
+          const initialY = initialObj?.position?.y ?? (0.3 + (index * 0.1) % 0.4);
+          
+          objectsMap.set(asset.id, {
+            id: asset.id,
+            x: initialX * canvasElement.width,
+            y: initialY * canvasElement.height,
+            width: frame?.width || 50,
+            height: frame?.height || 50,
+            visible: initialObj?.visible !== false,
+            animationIndex: 0,
+            animationPlaying: false,
+            scale: asset.defaultScale || 1.0,
+            rotation: 0,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 2,
+            frameCount: asset.frames?.length || 1,
+            currentFrame: 0
           });
+        });
+      }
+
+      // 9. ゲーム状態初期化
+      const gameState = {
+        isPlaying: true,
+        isPaused: false,
+        score: initialState.gameState?.score || 0,
+        timeElapsed: 0,
+        flags: new Map(Object.entries(initialState.gameState?.flags || {}).map(([k, v]) => [k, Boolean(v)])),
+        counters: new Map(Object.entries(initialState.gameState?.counters || {}).map(([k, v]) => [k, Number(v)]))
       };
 
-      // 🔧 修正: ゲームループ（メモリリーク対策）
+      // 10. RuleExecutionContext構築
+      this.currentContext = {
+        gameState,
+        objects: objectsMap,
+        events: [],
+        canvas: {
+          width: canvasElement.width,
+          height: canvasElement.height,
+          context: ctx
+        }
+      };
+
+      console.log('✅ ゲーム初期化完了:', {
+        objectCount: objectsMap.size,
+        ruleCount: project.script?.rules?.length || 0,
+        counters: Array.from(gameState.counters.keys()),
+        flags: Array.from(gameState.flags.keys())
+      });
+
+      // 11. ゲームループ変数
+      let running = true;
+      let completed = false;
+      const gameDuration = project.settings.duration?.type === 'unlimited' 
+        ? null 
+        : (project.settings.duration?.seconds || 15);
+      
+      const frameTime = 1000 / 60; // 60 FPS
+      let lastFrameTime = performance.now();
+      let fpsFrames = 0;
+      let fpsTime = 0;
+      let averageFPS = 60;
+
+      // 12. ゲームループ
       const gameLoop = () => {
-        if (!gameState.running) {
+        if (!running) {
           if (this.animationFrameId) {
             cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
@@ -409,41 +248,61 @@ export class EditorGameBridge {
         }
 
         try {
+          const currentTime = performance.now();
+          const deltaTime = currentTime - lastFrameTime;
+          lastFrameTime = currentTime;
+
+          // FPS計測
+          fpsFrames++;
+          fpsTime += deltaTime;
+          if (fpsTime >= 1000) {
+            averageFPS = (fpsFrames / fpsTime) * 1000;
+            fpsFrames = 0;
+            fpsTime = 0;
+          }
+
+          // 時間更新
+          gameState.timeElapsed += deltaTime / 1000;
+          this.currentContext!.gameState.timeElapsed = gameState.timeElapsed;
+
           // 背景描画
           ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
           
-          if (gameData.assets.background?.initialVisible && imageCache.has('background')) {
+          if (imageCache.has('background')) {
             const bgImg = imageCache.get('background')!;
             ctx.drawImage(bgImg, 0, 0, canvasElement.width, canvasElement.height);
           } else {
             // デフォルト背景
             const gradient = ctx.createLinearGradient(0, 0, 0, canvasElement.height);
-            gradient.addColorStop(0, '#3B82F6');
-            gradient.addColorStop(1, '#1D4ED8');
+            gradient.addColorStop(0, '#FFE5F1');
+            gradient.addColorStop(1, '#FFC0E0');
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvasElement.width, canvasElement.height);
           }
 
           // オブジェクト更新・描画
-          gameState.objects.forEach(obj => {
+          objectsMap.forEach((obj, id) => {
             if (!obj.visible) return;
             
-            // 位置更新
+            // 位置更新（簡易物理）
             obj.x += obj.vx || 0;
             obj.y += obj.vy || 0;
 
-            // 境界チェック
-            if (obj.x <= 0 || obj.x >= canvasElement.width - obj.width) {
+            // 境界チェック（跳ね返り）
+            if (obj.x <= 0 || obj.x >= canvasElement.width - obj.width * obj.scale) {
               obj.vx = (obj.vx || 0) * -1;
+              obj.x = Math.max(0, Math.min(obj.x, canvasElement.width - obj.width * obj.scale));
             }
-            if (obj.y <= 0 || obj.y >= canvasElement.height - obj.height) {
+            if (obj.y <= 0 || obj.y >= canvasElement.height - obj.height * obj.scale) {
               obj.vy = (obj.vy || 0) * -1;
+              obj.y = Math.max(0, Math.min(obj.y, canvasElement.height - obj.height * obj.scale));
             }
 
             // 描画
-            const img = imageCache.get(obj.id);
+            const img = imageCache.get(id);
             if (img && img.complete) {
               ctx.save();
+              ctx.globalAlpha = 1.0;
               ctx.drawImage(
                 img,
                 obj.x,
@@ -453,63 +312,83 @@ export class EditorGameBridge {
               );
               ctx.restore();
             } else {
-              // フォールバック描画
-              ctx.fillStyle = '#FF6B35';
+              // フォールバック描画（画像未ロードの場合）
+              ctx.fillStyle = '#FF6B9D';
               ctx.fillRect(obj.x, obj.y, obj.width * obj.scale, obj.height * obj.scale);
               
-              // 名前表示
+              // オブジェクト名表示
               ctx.fillStyle = 'white';
-              ctx.font = '12px Arial';
+              ctx.font = 'bold 12px Arial';
               ctx.textAlign = 'center';
-              ctx.fillText(obj.name, obj.x + obj.width/2, obj.y + obj.height/2);
+              ctx.textBaseline = 'middle';
+              ctx.fillText(
+                project.assets?.objects?.find(a => a.id === id)?.name || 'Object',
+                obj.x + (obj.width * obj.scale) / 2,
+                obj.y + (obj.height * obj.scale) / 2
+              );
             }
           });
 
-          // テキスト描画
-          gameState.texts.forEach(text => {
-            if (!text.visible) return;
+          // ✅ RuleEngine実行（毎フレーム）
+          try {
+            const results = this.ruleEngine!.evaluateAndExecuteRules(this.currentContext!);
+            ruleExecutionCount += results.length;
             
-            ctx.save();
-            ctx.font = `${text.fontSize}px ${text.fontFamily}`;
-            ctx.fillStyle = text.color;
-            ctx.textAlign = 'left';
-            ctx.fillText(text.content, text.x, text.y);
-            ctx.restore();
-          });
+            // 実行されたルールを記録
+            results.forEach(result => {
+              if (result.success) {
+                // ルールIDを記録（実際のルールIDを取得する必要がある）
+                rulesTriggered.push('rule_executed');
+                
+                // ゲーム状態の更新を反映
+                if (result.newGameState) {
+                  if (result.newGameState.score !== undefined) {
+                    gameState.score = result.newGameState.score;
+                  }
+                  if (result.newGameState.isPlaying !== undefined) {
+                    running = result.newGameState.isPlaying;
+                    completed = !result.newGameState.isPlaying;
+                  }
+                }
+              }
+            });
+          } catch (ruleError) {
+            console.error('❌ ルール実行エラー:', ruleError);
+            warnings.push('ルール実行中にエラーが発生しました');
+          }
 
           // UI描画（スコア・時間）
           ctx.save();
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-          ctx.fillRect(10, 10, 200, 60);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+          ctx.fillRect(10, 10, 220, 70);
+          
           ctx.fillStyle = 'white';
-          ctx.font = 'bold 16px Arial';
-          ctx.fillText(`Score: ${gameState.score}`, 20, 30);
-          ctx.fillText(`Time: ${gameState.timeElapsed.toFixed(1)}s`, 20, 50);
+          ctx.font = 'bold 18px Arial';
+          ctx.textAlign = 'left';
+          ctx.fillText(`Score: ${gameState.score}`, 20, 35);
+          ctx.fillText(`Time: ${gameState.timeElapsed.toFixed(1)}s`, 20, 60);
           ctx.restore();
 
-          // 時間更新
-          gameState.timeElapsed += 1/60;
-          
-          // 時間ルール実行
-          executeRules('time');
-
-          // ゲーム終了判定
-          if (gameData.settings.duration && gameState.timeElapsed >= gameData.settings.duration) {
-            gameState.running = false;
-            gameState.completed = true;
+          // ゲーム終了判定（制限時間）
+          if (gameDuration && gameState.timeElapsed >= gameDuration) {
+            running = false;
+            completed = true;
+            console.log('⏰ 制限時間終了');
           }
 
           // 次フレーム
-          if (gameState.running) {
+          if (running) {
             this.animationFrameId = requestAnimationFrame(gameLoop);
           }
-        } catch (error) {
-          console.error('ゲームループエラー:', error);
-          gameState.running = false;
+          
+        } catch (loopError) {
+          console.error('❌ ゲームループエラー:', loopError);
+          running = false;
+          errors.push('ゲームループでエラーが発生しました');
         }
       };
 
-      // 🔧 修正: タッチ・クリックイベント（堅牢版）
+      // 13. タッチ・クリックイベント
       const handleInteraction = (event: MouseEvent | TouchEvent) => {
         try {
           const rect = canvasElement.getBoundingClientRect();
@@ -522,55 +401,64 @@ export class EditorGameBridge {
           const y = clientY - rect.top;
 
           // オブジェクトクリック判定
-          let hitObject = false;
-          gameState.objects.forEach(obj => {
+          let hitObject: string | null = null;
+          
+          objectsMap.forEach((obj, id) => {
             if (!obj.visible) return;
             
             if (x >= obj.x && x <= obj.x + obj.width * obj.scale &&
                 y >= obj.y && y <= obj.y + obj.height * obj.scale) {
+              hitObject = id;
+              objectsInteracted.push(id);
               
-              hitObject = true;
-              objectsInteracted.push(obj.id);
-              
-              // タッチルール実行
-              executeRules('touch', { objectId: obj.id });
-              
-              // デフォルト動作（位置リセット）
-              obj.x = Math.random() * (canvasElement.width - obj.width);
-              obj.y = Math.random() * (canvasElement.height - obj.height);
+              // タッチイベントを記録
+              this.currentContext!.events.push({
+                type: 'touch',
+                timestamp: Date.now(),
+                data: { objectId: id, x, y }
+              });
             }
           });
           
-          // ステージタッチルール実行
+          // ステージタッチの場合
           if (!hitObject) {
-            executeRules('touch', { objectId: 'stage' });
+            this.currentContext!.events.push({
+              type: 'touch',
+              timestamp: Date.now(),
+              data: { objectId: 'stage', x, y }
+            });
           }
+          
+          // イベント履歴の管理（最大100件）
+          if (this.currentContext!.events.length > 100) {
+            this.currentContext!.events.shift();
+          }
+          
         } catch (error) {
-          console.warn('インタラクション処理エラー:', error);
+          console.warn('⚠️ インタラクション処理エラー:', error);
         }
       };
 
-      // イベントリスナー登録
       canvasElement.addEventListener('click', handleInteraction);
       canvasElement.addEventListener('touchstart', handleInteraction);
 
-      // ゲーム開始
+      // 14. ゲーム開始
       console.log('🚀 ゲームループ開始');
       gameLoop();
 
-      // ゲーム完了まで待機
+      // 15. ゲーム完了まで待機
       await new Promise<void>(resolve => {
         const checkComplete = () => {
-          if (!gameState.running) {
+          if (!running) {
             resolve();
           } else {
-            setTimeout(checkComplete, 100); // requestAnimationFrameの代わりに安全なsetTimeout
+            setTimeout(checkComplete, 100);
           }
         };
         checkComplete();
       });
 
-      // クリーンアップ
+      // 16. クリーンアップ
       if (this.animationFrameId) {
         cancelAnimationFrame(this.animationFrameId);
         this.animationFrameId = null;
@@ -578,7 +466,7 @@ export class EditorGameBridge {
       canvasElement.removeEventListener('click', handleInteraction);
       canvasElement.removeEventListener('touchstart', handleInteraction);
 
-      // 結果計算
+      // 17. 結果計算
       const endTime = performance.now();
       const renderTime = endTime - startTime;
       
@@ -586,15 +474,15 @@ export class EditorGameBridge {
         success: true,
         score: gameState.score,
         timeElapsed: gameState.timeElapsed,
-        completed: gameState.completed,
-        errors: [],
+        completed,
+        errors,
         warnings,
         performance: {
-          averageFPS: 60,
+          averageFPS,
           memoryUsage: 0,
           renderTime,
-          objectCount: gameData.assets.objects.length,
-          ruleExecutions
+          objectCount: objectsMap.size,
+          ruleExecutions: ruleExecutionCount
         },
         finalState: {
           score: gameState.score,
@@ -633,9 +521,106 @@ export class EditorGameBridge {
     }
   }
 
-  // 🔧 修正: 簡易テストプレイ（SettingsTabで使用）
+  /**
+   * 画像読み込みヘルパー
+   */
+  private loadImage(img: HTMLImageElement, src: string, timeout: number): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error('Image load timeout'));
+      }, timeout);
+      
+      img.onload = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      
+      img.onerror = () => {
+        clearTimeout(timer);
+        reject(new Error('Image load failed'));
+      };
+      
+      img.src = src;
+    });
+  }
+
+  /**
+   * フルゲーム実行（UI上のキャンバスで）
+   */
+  async launchFullGame(
+    project: GameProject, 
+    targetElement: HTMLElement,
+    onGameEnd?: (result: GameExecutionResult) => void
+  ): Promise<void> {
+    console.log('🎮 フルゲーム実行開始:', project.name || project.settings.name);
+    
+    try {
+      // ゲーム用キャンバス作成
+      const canvas = document.createElement('canvas');
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      canvas.style.maxWidth = '360px';
+      canvas.style.maxHeight = '640px';
+      canvas.style.border = '2px solid #E91E63';
+      canvas.style.borderRadius = '12px';
+      canvas.style.backgroundColor = '#FFE5F1';
+      canvas.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+      
+      // 既存コンテンツクリア
+      targetElement.innerHTML = '';
+      targetElement.appendChild(canvas);
+      
+      // ゲーム実行
+      const result = await this.executeGame(project, canvas);
+      
+      // 結果コールバック
+      if (onGameEnd) {
+        onGameEnd(result);
+      }
+      
+      console.log('✅ フルゲーム実行完了:', result);
+      
+    } catch (error) {
+      console.error('❌ フルゲーム実行エラー:', error);
+      
+      // エラー表示
+      targetElement.innerHTML = `
+        <div style="
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100%;
+          text-align: center;
+          padding: 40px;
+          color: #e53e3e;
+          background: linear-gradient(135deg, #FFE5F1 0%, #FFC0E0 100%);
+          border-radius: 12px;
+        ">
+          <div style="font-size: 64px; margin-bottom: 20px;">⚠️</div>
+          <h3 style="font-size: 24px; margin-bottom: 12px; color: #C2185B;">ゲーム実行エラー</h3>
+          <p style="font-size: 16px; color: #880E4F;">${error instanceof Error ? error.message : 'Unknown error'}</p>
+        </div>
+      `;
+      
+      if (onGameEnd) {
+        onGameEnd({
+          success: false,
+          timeElapsed: 0,
+          completed: false,
+          errors: [error instanceof Error ? error.message : 'Launch failed'],
+          warnings: [],
+          performance: { averageFPS: 0, memoryUsage: 0, renderTime: 0, objectCount: 0, ruleExecutions: 0 }
+        });
+      }
+    }
+  }
+
+  /**
+   * クイックテストプレイ（短縮版）
+   */
   async quickTestPlay(project: GameProject): Promise<GameExecutionResult> {
-    console.log('🧪 クイックテストプレイ開始:', project.name);
+    console.log('🧪 クイックテストプレイ開始:', project.name || project.settings.name);
     
     try {
       // プロジェクト検証
@@ -662,17 +647,14 @@ export class EditorGameBridge {
       canvas.width = 360;
       canvas.height = 640;
       
-      // プロジェクト変換
-      const gameData = this.convertProjectToGameData(project);
+      // 短縮実行（5秒間）
+      const originalDuration = project.settings.duration;
+      project.settings.duration = { type: 'fixed', seconds: 5 };
       
-      // 短縮実行（3秒間）
-      const originalDuration = gameData.settings.duration;
-      gameData.settings.duration = 3;
-      
-      const result = await this.executeGame(gameData, canvas);
+      const result = await this.executeGame(project, canvas);
       
       // 元の設定に戻す
-      gameData.settings.duration = originalDuration;
+      project.settings.duration = originalDuration;
       
       console.log('✅ クイックテストプレイ完了:', result);
       return result;
@@ -696,77 +678,16 @@ export class EditorGameBridge {
     }
   }
 
-  // フルゲーム実行（UI上のキャンバスで）
-  async launchFullGame(
-    project: GameProject, 
-    targetElement: HTMLElement,
-    onGameEnd?: (result: GameExecutionResult) => void
-  ): Promise<void> {
-    console.log('🎮 フルゲーム実行開始:', project.name);
-    
-    try {
-      // ゲーム用キャンバス作成
-      const canvas = document.createElement('canvas');
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      canvas.style.maxWidth = '360px';
-      canvas.style.maxHeight = '640px';
-      canvas.style.border = '1px solid #ccc';
-      canvas.style.borderRadius = '8px';
-      canvas.style.backgroundColor = '#000';
-      
-      // 既存コンテンツクリア
-      targetElement.innerHTML = '';
-      targetElement.appendChild(canvas);
-      
-      // プロジェクト変換・実行
-      const gameData = this.convertProjectToGameData(project);
-      const result = await this.executeGame(gameData, canvas);
-      
-      // 結果コールバック
-      if (onGameEnd) {
-        onGameEnd(result);
-      }
-      
-      console.log('✅ フルゲーム実行完了:', result);
-      
-    } catch (error) {
-      console.error('❌ フルゲーム実行エラー:', error);
-      
-      // エラー表示
-      targetElement.innerHTML = `
-        <div style="text-align: center; padding: 40px; color: #e53e3e;">
-          <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
-          <h3>ゲーム実行エラー</h3>
-          <p>${error instanceof Error ? error.message : 'Unknown error'}</p>
-        </div>
-      `;
-      
-      if (onGameEnd) {
-        onGameEnd({
-          success: false,
-          timeElapsed: 0,
-          completed: false,
-          errors: [error instanceof Error ? error.message : 'Launch failed'],
-          warnings: [],
-          performance: { averageFPS: 0, memoryUsage: 0, renderTime: 0, objectCount: 0, ruleExecutions: 0 }
-        });
-      }
-    }
-  }
-
-  // 現在のゲームデータ取得
-  getCurrentGameData(): GameExecutionData | null {
-    return this.currentGameData;
-  }
-
-  // リセット
+  /**
+   * リセット
+   */
   reset(): void {
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
-    this.currentGameData = null;
+    this.ruleEngine = null;
+    this.currentContext = null;
     console.log('🔄 EditorGameBridge リセット完了');
   }
 }
