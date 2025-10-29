@@ -1,6 +1,6 @@
 // src/services/rule-engine/RuleEngine.ts
-// IF-THENルールエンジン - 完全実装版（型エラー修正済み）
-// 修正内容: 既存の型定義に合わせた実装
+// IF-THENルールエンジン - Phase 1+2 修正完全適用版
+// 修正内容: Show/Hide フェード + Collision/Animation/GameState 完全実装
 
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../types/editor/GameScript';
 
@@ -102,7 +102,7 @@ export interface ActionExecutionResult {
 }
 
 /**
- * RuleEngine クラス - 完全実装版（型エラー修正済み）
+ * RuleEngine クラス - Phase 1+2 完全実装版
  */
 export class RuleEngine {
   private rules: GameRule[] = [];
@@ -136,8 +136,15 @@ export class RuleEngine {
     loopCount: number;
   }> = new Map();
   
+  // GameState条件用の前回状態管理（Phase 2 追加）
+  private previousGameState?: { 
+    isPlaying: boolean; 
+    isPaused: boolean; 
+    score: number 
+  };
+  
   constructor() {
-    console.log('🎮 RuleEngine初期化（完全実装版 - 型修正済み）');
+    console.log('🎮 RuleEngine初期化（Phase 1+2 完全実装版）');
   }
 
   // ==================== カウンター管理メソッド ====================
@@ -389,48 +396,110 @@ export class RuleEngine {
     }
   }
 
-  // ✅ Collision条件評価（既存型定義に合わせて修正）
+  // ✅ Phase 2 修正: Collision条件評価（完全実装版）
   private evaluateCollisionCondition(
     condition: Extract<TriggerCondition, { type: 'collision' }>,
     context: RuleExecutionContext,
     targetObjectId: string
   ): boolean {
     try {
-      const targetId = condition.target === 'self' ? targetObjectId : condition.target;
-      const targetObj = context.objects.get(targetId);
+      // ターゲットIDの解決
+      const sourceId = targetObjectId;
+      const targetId = condition.target === 'self' ? targetObjectId : 
+                       condition.target === 'background' ? 'background' :
+                       condition.target === 'stage' ? null : // ステージとの衝突は画面端判定
+                       condition.target;
+      
+      const sourceObj = context.objects.get(sourceId);
+      
+      if (!sourceObj || !sourceObj.visible) {
+        return false;
+      }
+      
+      // ステージとの衝突（画面端判定）
+      if (condition.target === 'stage') {
+        const margin = 5; // 5pxのマージン
+        const hitLeft = sourceObj.x <= margin;
+        const hitRight = sourceObj.x + sourceObj.width >= context.canvas.width - margin;
+        const hitTop = sourceObj.y <= margin;
+        const hitBottom = sourceObj.y + sourceObj.height >= context.canvas.height - margin;
+        
+        const isColliding = hitLeft || hitRight || hitTop || hitBottom;
+        
+        // 前回の衝突状態を取得
+        const wasColliding = this.previousCollisions.get(sourceId)?.has('stage') || false;
+        
+        // collisionTypeに応じて判定
+        switch (condition.collisionType) {
+          case 'enter':
+            const enterResult = isColliding && !wasColliding;
+            if (enterResult) {
+              console.log(`🎯 画面端衝突開始: ${sourceId}`);
+            }
+            return enterResult;
+          case 'stay':
+            return isColliding;
+          case 'exit':
+            const exitResult = !isColliding && wasColliding;
+            if (exitResult) {
+              console.log(`👋 画面端衝突終了: ${sourceId}`);
+            }
+            return exitResult;
+          default:
+            return false;
+        }
+      }
+      
+      // オブジェクト間の衝突判定
+      if (!targetId) {
+        return false;
+      }
+      
+      const targetObj = targetId === 'background' 
+        ? null // 背景との衝突は未実装（必要に応じて実装）
+        : context.objects.get(targetId);
       
       if (!targetObj || !targetObj.visible) {
         return false;
       }
       
-      const currentColliding = this.collisionCache.get(targetId);
-      const previousColliding = this.previousCollisions.get(targetId) || new Set();
+      // 衝突判定実行
+      let isColliding = false;
       
-      // collisionType: 'enter' | 'stay' | 'exit'
+      if (condition.checkMode === 'pixel') {
+        // ピクセル単位の詳細判定（未実装 - hitboxにフォールバック）
+        console.warn('pixel collision は未実装です。hitbox判定を使用します。');
+        isColliding = this.checkAABBCollision(sourceObj, targetObj);
+      } else {
+        // hitbox判定（AABB）
+        isColliding = this.checkAABBCollision(sourceObj, targetObj);
+      }
+      
+      // 衝突状態の履歴管理
+      const previousColliding = this.previousCollisions.get(sourceId) || new Set();
+      const wasCollidingWithTarget = previousColliding.has(targetId);
+      
+      // collisionTypeに応じて判定
       switch (condition.collisionType) {
         case 'enter':
           // 新しく衝突を開始した
-          if (currentColliding) {
-            for (const collidingId of currentColliding) {
-              if (!previousColliding.has(collidingId)) {
-                return true;
-              }
-            }
+          const enterResult = isColliding && !wasCollidingWithTarget;
+          if (enterResult) {
+            console.log(`🎯 衝突開始: ${sourceId} → ${targetId}`);
           }
-          return false;
+          return enterResult;
         
         case 'stay':
           // 衝突が継続している
-          return currentColliding ? currentColliding.size > 0 : false;
+          return isColliding;
         
         case 'exit':
           // 衝突が終了した
-          for (const previousId of previousColliding) {
-            if (!currentColliding || !currentColliding.has(previousId)) {
-              return true;
-            }
+          const exitResult = !isColliding && wasCollidingWithTarget;
+          if (exitResult) {
+            console.log(`👋 衝突終了: ${sourceId} ← ${targetId}`);
           }
-          return false;
+          return exitResult;
         
         default:
           console.warn(`未対応の衝突タイプ: ${condition.collisionType}`);
@@ -483,7 +552,7 @@ export class RuleEngine {
            objA.y + objA.height > objB.y;
   }
 
-  // ✅ Animation条件評価（既存型定義に合わせて修正）
+  // ✅ Phase 2 修正: Animation条件評価（完全実装版）
   private evaluateAnimationCondition(
     condition: Extract<TriggerCondition, { type: 'animation' }>,
     context: RuleExecutionContext
@@ -492,42 +561,77 @@ export class RuleEngine {
       const targetObj = context.objects.get(condition.target);
       
       if (!targetObj) {
+        console.warn(`Animation: オブジェクトが見つかりません: ${condition.target}`);
         return false;
       }
       
-      const animState = this.animationStates.get(condition.target);
+      // アニメーション状態の取得・初期化
+      let animState = this.animationStates.get(condition.target);
+      if (!animState) {
+        animState = {
+          lastFrame: targetObj.animationIndex || 0,
+          frameChangeTime: Date.now(),
+          loopCount: 0
+        };
+        this.animationStates.set(condition.target, animState);
+      }
+      
+      const currentFrame = targetObj.currentFrame || targetObj.animationIndex || 0;
+      const frameCount = targetObj.frameCount || 1;
+      
+      // フレーム変化の検出
+      if (currentFrame !== animState.lastFrame) {
+        animState.frameChangeTime = Date.now();
+        
+        // ループ検出（最後のフレームから最初のフレームへ）
+        if (animState.lastFrame === frameCount - 1 && currentFrame === 0) {
+          animState.loopCount++;
+          console.log(`🔄 アニメーションループ: ${condition.target} (${animState.loopCount}回目)`);
+        }
+        
+        animState.lastFrame = currentFrame;
+      }
       
       // condition: 'start' | 'end' | 'frame' | 'loop'
       switch (condition.condition) {
         case 'frame':
           // 特定フレーム到達
           if (condition.frameNumber !== undefined) {
-            return targetObj.animationIndex === condition.frameNumber;
+            const result = currentFrame === condition.frameNumber;
+            if (result) {
+              console.log(`🎞️ フレーム到達: ${condition.target} frame=${currentFrame}`);
+            }
+            return result;
           }
           // animationIndexを使用する場合
           if (condition.animationIndex !== undefined) {
-            return targetObj.animationIndex === condition.animationIndex;
+            return currentFrame === condition.animationIndex;
           }
           return false;
         
         case 'start':
-          // アニメーション開始
-          return targetObj.animationPlaying && 
-                 targetObj.animationIndex === 0;
+          // アニメーション開始（フレーム0 かつ 再生中）
+          const isStarting = targetObj.animationPlaying && currentFrame === 0;
+          if (isStarting && animState.lastFrame !== 0) {
+            console.log(`▶️ アニメーション開始: ${condition.target}`);
+          }
+          return isStarting;
         
         case 'end':
-          // アニメーション終了
-          if (targetObj.frameCount) {
-            return targetObj.animationIndex === targetObj.frameCount - 1;
+          // アニメーション終了（最終フレーム到達）
+          const isEnding = currentFrame === frameCount - 1;
+          if (isEnding && animState.lastFrame !== frameCount - 1) {
+            console.log(`⏹️ アニメーション終了: ${condition.target} (frame ${currentFrame}/${frameCount})`);
           }
-          return false;
+          return isEnding;
         
         case 'loop':
-          // ループ完了
-          if (animState) {
-            return animState.loopCount > 0;
+          // ループ完了（1回以上のループ）
+          const hasLooped = animState.loopCount > 0;
+          if (hasLooped && animState.loopCount === 1) {
+            console.log(`🔁 アニメーションループ完了: ${condition.target}`);
           }
-          return false;
+          return hasLooped;
         
         default:
           console.warn(`未対応のアニメーション条件: ${condition.condition}`);
@@ -559,7 +663,7 @@ export class RuleEngine {
     this.animationStates.set(objectId, state);
   }
 
-  // ✅ GameState条件評価（既存型定義に合わせて修正）
+  // ✅ Phase 2 修正: GameState条件評価（完全実装版）
   private evaluateGameStateCondition(
     condition: Extract<TriggerCondition, { type: 'gameState' }>,
     context: RuleExecutionContext
@@ -567,25 +671,97 @@ export class RuleEngine {
     try {
       const { gameState } = context;
       
-      // state: 'playing' | 'paused' | 'success' | 'failure'
-      switch (condition.state) {
-        case 'playing':
-          return gameState.isPlaying;
+      // 前回のゲーム状態を記録（became判定用）
+      let previousState = this.previousGameState || {
+        isPlaying: false,
+        isPaused: false,
+        score: 0
+      };
+      
+      // 現在の状態を保存
+      this.previousGameState = {
+        isPlaying: gameState.isPlaying,
+        isPaused: gameState.isPaused,
+        score: gameState.score
+      };
+      
+      // 状態判定のヘルパー関数
+      const isState = (stateName: string): boolean => {
+        switch (stateName) {
+          case 'playing':
+            return gameState.isPlaying && !gameState.isPaused;
+          
+          case 'paused':
+            return gameState.isPaused;
+          
+          case 'success':
+            // 成功状態の定義:
+            // - ゲーム終了（isPlaying = false）
+            // - スコアが存在する（score > 0）
+            // - ゲーム時間が経過している（timeElapsed > 0）
+            return !gameState.isPlaying && 
+                   gameState.score > 0 && 
+                   gameState.timeElapsed > 0;
+          
+          case 'failure':
+            // 失敗状態の定義:
+            // - ゲーム終了（isPlaying = false）
+            // - スコアが0またはマイナス
+            // - ゲーム時間が経過している（timeElapsed > 0）
+            return !gameState.isPlaying && 
+                   gameState.score <= 0 && 
+                   gameState.timeElapsed > 0;
+          
+          default:
+            console.warn(`未知のゲーム状態: ${stateName}`);
+            return false;
+        }
+      };
+      
+      const wasState = (stateName: string): boolean => {
+        switch (stateName) {
+          case 'playing':
+            return previousState.isPlaying;
+          case 'paused':
+            return previousState.isPaused;
+          case 'success':
+            return false; // 前回成功は一時的な状態なので常にfalse
+          case 'failure':
+            return false; // 前回失敗は一時的な状態なので常にfalse
+          default:
+            return false;
+        }
+      };
+      
+      // checkType: 'is' | 'not' | 'became'
+      const checkType = (condition as any).checkType || 'is'; // デフォルトは'is'
+      
+      switch (checkType) {
+        case 'is':
+          // 現在の状態が指定状態
+          const isResult = isState(condition.state);
+          if (isResult && condition.state === 'success') {
+            console.log('🎉 ゲーム成功状態');
+          } else if (isResult && condition.state === 'failure') {
+            console.log('😢 ゲーム失敗状態');
+          }
+          return isResult;
         
-        case 'paused':
-          return gameState.isPaused;
+        case 'not':
+          // 現在の状態が指定状態でない
+          return !isState(condition.state);
         
-        case 'success':
-          // 成功状態（ゲーム終了 + 高スコア等）
-          return !gameState.isPlaying && gameState.score > 0;
-        
-        case 'failure':
-          // 失敗状態（ゲーム終了 + 低スコア等）
-          return !gameState.isPlaying && gameState.score <= 0;
+        case 'became':
+          // 状態が変化した（前回は違う状態で、今回は指定状態）
+          const becameResult = !wasState(condition.state) && isState(condition.state);
+          if (becameResult) {
+            console.log(`🔄 状態変化: → ${condition.state}`);
+          }
+          return becameResult;
         
         default:
-          console.warn(`未対応のゲーム状態: ${condition.state}`);
-          return false;
+          console.warn(`未対応のチェックタイプ: ${checkType}`);
+          return isState(condition.state);
       }
     } catch (error) {
       console.error('ゲーム状態条件評価エラー:', error);
@@ -868,7 +1044,6 @@ export class RuleEngine {
             effectsApplied.push(`フラグ${action.flagId}切り替え`);
             break;
 
-          // ✅ PlaySound（既存型に合わせて修正）
           case 'playSound':
             this.executePlaySoundAction(action, context);
             effectsApplied.push(`音声再生: ${action.soundId}`);
@@ -913,13 +1088,11 @@ export class RuleEngine {
             effectsApplied.push(`移動: ${action.targetId} (${action.movement.type})`);
             break;
 
-          // ✅ SwitchAnimation（既存型に合わせて修正）
           case 'switchAnimation':
             this.executeSwitchAnimationAction(action, context);
             effectsApplied.push(`アニメーション切り替え: ${action.targetId} → ${action.animationIndex}`);
             break;
 
-          // ✅ Effect（既存型に合わせて修正）
           case 'effect':
             this.executeEffectAction(action, context);
             effectsApplied.push(`エフェクト: ${action.effect}`);
@@ -949,7 +1122,7 @@ export class RuleEngine {
     };
   }
 
-  // ✅ PlaySound（既存型: loopプロパティなし）
+  // PlaySound
   private executePlaySoundAction(
     action: Extract<GameAction, { type: 'playSound' }>,
     context: RuleExecutionContext
@@ -969,7 +1142,7 @@ export class RuleEngine {
     }
   }
 
-  // ✅ SwitchAnimation（既存型に合わせて修正）
+  // SwitchAnimation
   private executeSwitchAnimationAction(
     action: Extract<GameAction, { type: 'switchAnimation' }>,
     context: RuleExecutionContext
@@ -980,30 +1153,25 @@ export class RuleEngine {
       return;
     }
 
-    // 既存型: animationIndex, speed のみ
     targetObj.animationIndex = action.animationIndex;
     targetObj.animationPlaying = true;
     
     if (action.speed !== undefined) {
-      // TODO: オブジェクトにspeedプロパティを追加
       console.log(`再生速度: ${action.speed}`);
     }
     
     console.log(`アニメーション切り替え: ${action.targetId} → フレーム${action.animationIndex}`);
   }
 
-  // ✅ Effect（既存型に合わせて修正）
+  // Effect
   private executeEffectAction(
     action: Extract<GameAction, { type: 'effect' }>,
     context: RuleExecutionContext
   ): void {
-    // 既存型: { type: 'effect'; targetId: string; effect: EffectPattern }
-    // EffectPatternの詳細が不明なので、簡易実装
-    
     if (context.effectSystem) {
       const effectConfig: EffectConfig = {
         id: `effect_${Date.now()}_${Math.random()}`,
-        type: 'particle', // デフォルト
+        type: 'particle',
         targetId: action.targetId,
         duration: 1000
       };
@@ -1015,31 +1183,105 @@ export class RuleEngine {
     }
   }
 
-  // Show アクション実装
+  // ✅ Phase 1 修正: Show アクション（フェードイン対応）
   private executeShowAction(
     action: Extract<GameAction, { type: 'show' }>,
     context: RuleExecutionContext
   ): void {
     const targetObj = context.objects.get(action.targetId);
-    if (targetObj) {
-      targetObj.visible = true;
-      console.log(`オブジェクト表示: ${action.targetId}`);
-    } else {
+    if (!targetObj) {
       console.warn(`Show: オブジェクトが見つかりません: ${action.targetId}`);
+      return;
+    }
+
+    targetObj.visible = true;
+    
+    // fadeIn アニメーション対応
+    const fadeIn = (action as any).fadeIn;
+    const duration = (action as any).duration || 300; // デフォルト300ms
+    
+    if (fadeIn && duration > 0) {
+      // フェードイン処理
+      const startTime = Date.now();
+      const startScale = targetObj.scale || 0;
+      const targetScale = 1;
+      
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // イージング関数（ease-out）
+        const eased = 1 - Math.pow(1 - progress, 3);
+        
+        // スケールで透明度を表現
+        targetObj.scale = startScale + eased * (targetScale - startScale);
+        
+        if (progress >= 1) {
+          targetObj.scale = targetScale;
+          console.log(`✨ フェードイン完了: ${action.targetId} (${duration}ms)`);
+        } else {
+          // 次のフレームで継続
+          setTimeout(animate, 16); // 60fps
+        }
+      };
+      
+      animate();
+      console.log(`🎬 フェードイン開始: ${action.targetId} (${duration}ms)`);
+    } else {
+      // 即座に表示
+      targetObj.scale = 1;
+      console.log(`👁️ オブジェクト表示: ${action.targetId}`);
     }
   }
 
-  // Hide アクション実装
+  // ✅ Phase 1 修正: Hide アクション（フェードアウト対応）
   private executeHideAction(
     action: Extract<GameAction, { type: 'hide' }>,
     context: RuleExecutionContext
   ): void {
     const targetObj = context.objects.get(action.targetId);
-    if (targetObj) {
-      targetObj.visible = false;
-      console.log(`オブジェクト非表示: ${action.targetId}`);
-    } else {
+    if (!targetObj) {
       console.warn(`Hide: オブジェクトが見つかりません: ${action.targetId}`);
+      return;
+    }
+
+    // fadeOut アニメーション対応
+    const fadeOut = (action as any).fadeOut;
+    const duration = (action as any).duration || 300; // デフォルト300ms
+    
+    if (fadeOut && duration > 0) {
+      // フェードアウト処理
+      const startTime = Date.now();
+      const startScale = targetObj.scale || 1;
+      const targetScale = 0;
+      
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // イージング関数（ease-in）
+        const eased = Math.pow(progress, 3);
+        
+        // スケールで透明度を表現
+        targetObj.scale = startScale - eased * (startScale - targetScale);
+        
+        if (progress >= 1) {
+          targetObj.visible = false;
+          targetObj.scale = 0;
+          console.log(`💨 フェードアウト完了: ${action.targetId} (${duration}ms)`);
+        } else {
+          // 次のフレームで継続
+          setTimeout(animate, 16); // 60fps
+        }
+      };
+      
+      animate();
+      console.log(`🎬 フェードアウト開始: ${action.targetId} (${duration}ms)`);
+    } else {
+      // 即座に非表示
+      targetObj.visible = false;
+      targetObj.scale = 0;
+      console.log(`🙈 オブジェクト非表示: ${action.targetId}`);
     }
   }
 
@@ -1333,12 +1575,13 @@ export class RuleEngine {
     this.collisionCache.clear();
     this.previousCollisions.clear();
     this.animationStates.clear();
+    this.previousGameState = undefined;
     
     for (const [name, definition] of this.counterDefinitions) {
       this.setCounter(name, definition.initialValue);
     }
     
-    console.log('🔄 RuleEngine リセット完了（型修正版）');
+    console.log('🔄 RuleEngine リセット完了（Phase 1+2 完全実装版）');
   }
 
   // カウンターのみリセット

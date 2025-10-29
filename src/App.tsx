@@ -1,4 +1,4 @@
-// src/App.tsx - AppMode型修正最終版（エラー2件完全修正）
+// src/App.tsx - AppMode型修正最終版（エラー2件完全修正）+ エディター自動起動機能追加
 
 import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import GameSequence from './components/GameSequence';
@@ -510,11 +510,35 @@ function MainApp() {
   const [mode, setMode] = useState<AppMode>('sequence');
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   
+  // 🆕 エディターで開くプロジェクトIDを管理
+  const [editorProjectId, setEditorProjectId] = useState<string | undefined>(undefined);
+  
   // ソーシャル機能テスト用状態管理
   const [activeModal, setActiveModal] = useState<string | null>(null);
   
   // 音量設定状態
   const [volumeSettings, setVolumeSettings] = useState<VolumeSettings>(DEFAULT_VOLUME);
+
+  // 🆕 コピー完了時のエディター自動起動チェック
+  useEffect(() => {
+    const shouldOpenEditor = localStorage.getItem('shouldOpenEditor');
+    const editProjectId = localStorage.getItem('editProjectId');
+    const copiedGameTitle = localStorage.getItem('copiedGameTitle');
+    
+    if (shouldOpenEditor === 'true' && editProjectId) {
+      // フラグをクリア
+      localStorage.removeItem('shouldOpenEditor');
+      
+      // エディターモードに切り替え
+      setEditorProjectId(editProjectId);
+      setMode('editor');
+      
+      console.log('✅ コピーされたプロジェクトをエディターで開きます:', editProjectId);
+      if (copiedGameTitle) {
+        console.log('📋 元のゲーム名:', copiedGameTitle);
+      }
+    }
+  }, []);
 
   // 音量設定の読み込み
   useEffect(() => {
@@ -557,10 +581,12 @@ function MainApp() {
 
   const handleSwitchToEditor = () => {
     setMode('editor');
+    setEditorProjectId(undefined); // 新規プロジェクト
   };
 
   const handleExitEditor = () => {
     setMode('sequence');
+    setEditorProjectId(undefined);
     console.log('エディターから戻りました');
   };
 
@@ -592,6 +618,11 @@ function MainApp() {
             <div style={{ color: '#9ca3af', fontSize: '14px', marginTop: '8px' }}>
               Phase 6.2 ゲームエディター機能
             </div>
+            {editorProjectId && (
+              <div style={{ color: '#10b981', fontSize: '12px', marginTop: '8px' }}>
+                📋 プロジェクトID: {editorProjectId}
+              </div>
+            )}
             <style>{`
               @keyframes pulse {
                 0%, 100% { opacity: 1; }
@@ -601,7 +632,10 @@ function MainApp() {
           </div>
         </div>
       }>
-        <EditorApp onClose={handleExitEditor} />
+        <EditorApp 
+          onClose={handleExitEditor} 
+          initialProjectId={editorProjectId}
+        />
       </Suspense>
     );
   }
@@ -952,6 +986,7 @@ function MainApp() {
               <div style={{ color: '#22c55e', fontSize: '14px' }}>✅ TypeScriptエラー0件達成</div>
               <div style={{ color: '#22c55e', fontSize: '14px' }}>✅ モダンUI完全適用</div>
               <div style={{ color: '#22c55e', fontSize: '14px' }}>✅ ドラッグ&ドロップ実装</div>
+              <div style={{ color: '#22c55e', fontSize: '14px' }}>✅ エディター自動起動機能追加</div>
               <div style={{ color: '#f59e0b', fontSize: '14px' }}>🔧 ソーシャル機能動作確認中</div>
               {ENABLE_SOCIAL && (
                 <div style={{ color: '#0891b2', fontSize: '14px' }}>🔗 ソーシャル統合準備完了</div>
