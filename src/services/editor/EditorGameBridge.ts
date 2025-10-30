@@ -1,6 +1,6 @@
 // src/services/editor/EditorGameBridge.ts
 // Phase 1+2 完全統合版 - RuleEngine.ts 統合対応
-// 修正内容: RuleEngine.ts を使用してエディターのルールを完全に実行
+// 🔧 修正: オブジェクト自動移動削除 + タッチイベント修正
 
 import { GameProject } from '../../types/editor/GameProject';
 import { GameRule, TriggerCondition, GameAction } from '../../types/editor/GameScript';
@@ -176,6 +176,7 @@ export class EditorGameBridge {
           const initialX = initialObj?.position?.x ?? (0.2 + (index * 0.15) % 0.6);
           const initialY = initialObj?.position?.y ?? (0.3 + (index * 0.1) % 0.4);
           
+          // 🔧 修正: vx, vy を 0 に初期化（勝手に動かない）
           objectsMap.set(asset.id, {
             id: asset.id,
             x: initialX * canvasElement.width,
@@ -187,8 +188,8 @@ export class EditorGameBridge {
             animationPlaying: false,
             scale: asset.defaultScale || 1.0,
             rotation: 0,
-            vx: (Math.random() - 0.5) * 2,
-            vy: (Math.random() - 0.5) * 2,
+            vx: 0,  // ✅ 0に初期化（ルールで制御）
+            vy: 0,  // ✅ 0に初期化（ルールで制御）
             frameCount: asset.frames?.length || 1,
             currentFrame: 0
           });
@@ -265,6 +266,36 @@ export class EditorGameBridge {
           gameState.timeElapsed += deltaTime / 1000;
           this.currentContext!.gameState.timeElapsed = gameState.timeElapsed;
 
+          // ✅ RuleEngine実行（毎フレーム）- イベントクリア前に実行
+          try {
+            const results = this.ruleEngine!.evaluateAndExecuteRules(this.currentContext!);
+            ruleExecutionCount += results.length;
+            
+            // 実行されたルールを記録
+            results.forEach(result => {
+              if (result.success) {
+                rulesTriggered.push('rule_executed');
+                
+                // ゲーム状態の更新を反映
+                if (result.newGameState) {
+                  if (result.newGameState.score !== undefined) {
+                    gameState.score = result.newGameState.score;
+                  }
+                  if (result.newGameState.isPlaying !== undefined) {
+                    running = result.newGameState.isPlaying;
+                    completed = !result.newGameState.isPlaying;
+                  }
+                }
+              }
+            });
+          } catch (ruleError) {
+            console.error('❌ ルール実行エラー:', ruleError);
+            warnings.push('ルール実行中にエラーが発生しました');
+          }
+
+          // 🔧 修正: イベント履歴をフレーム終了時にクリア
+          this.currentContext!.events = [];
+
           // 背景描画
           ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
           
@@ -284,19 +315,12 @@ export class EditorGameBridge {
           objectsMap.forEach((obj, id) => {
             if (!obj.visible) return;
             
-            // 位置更新（簡易物理）
-            obj.x += obj.vx || 0;
-            obj.y += obj.vy || 0;
+            // 🔧 修正: RuleEngineによる移動のみ適用（自動移動を削除）
+            // obj.x += obj.vx || 0;  // ❌ 削除
+            // obj.y += obj.vy || 0;  // ❌ 削除
 
-            // 境界チェック（跳ね返り）
-            if (obj.x <= 0 || obj.x >= canvasElement.width - obj.width * obj.scale) {
-              obj.vx = (obj.vx || 0) * -1;
-              obj.x = Math.max(0, Math.min(obj.x, canvasElement.width - obj.width * obj.scale));
-            }
-            if (obj.y <= 0 || obj.y >= canvasElement.height - obj.height * obj.scale) {
-              obj.vy = (obj.vy || 0) * -1;
-              obj.y = Math.max(0, Math.min(obj.y, canvasElement.height - obj.height * obj.scale));
-            }
+            // 🔧 修正: 境界チェックも削除（RuleEngineのMoveアクションで制御）
+            // if (obj.x <= 0 || ...) { ... }  // ❌ 削除
 
             // 描画
             const img = imageCache.get(id);
@@ -328,34 +352,6 @@ export class EditorGameBridge {
               );
             }
           });
-
-          // ✅ RuleEngine実行（毎フレーム）
-          try {
-            const results = this.ruleEngine!.evaluateAndExecuteRules(this.currentContext!);
-            ruleExecutionCount += results.length;
-            
-            // 実行されたルールを記録
-            results.forEach(result => {
-              if (result.success) {
-                // ルールIDを記録（実際のルールIDを取得する必要がある）
-                rulesTriggered.push('rule_executed');
-                
-                // ゲーム状態の更新を反映
-                if (result.newGameState) {
-                  if (result.newGameState.score !== undefined) {
-                    gameState.score = result.newGameState.score;
-                  }
-                  if (result.newGameState.isPlaying !== undefined) {
-                    running = result.newGameState.isPlaying;
-                    completed = !result.newGameState.isPlaying;
-                  }
-                }
-              }
-            });
-          } catch (ruleError) {
-            console.error('❌ ルール実行エラー:', ruleError);
-            warnings.push('ルール実行中にエラーが発生しました');
-          }
 
           // UI描画（スコア・時間）
           ctx.save();
@@ -411,27 +407,35 @@ export class EditorGameBridge {
               hitObject = id;
               objectsInteracted.push(id);
               
-              // タッチイベントを記録
+              // 🔧 修正: RuleEngineが期待する形式でイベント記録
               this.currentContext!.events.push({
                 type: 'touch',
                 timestamp: Date.now(),
-                data: { objectId: id, x, y }
+                data: { 
+                  target: id,  // ✅ 'target' キーを使用
+                  x, 
+                  y 
+                }
               });
+              
+              console.log(`👆 オブジェクトタッチ: ${id} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
             }
           });
           
           // ステージタッチの場合
           if (!hitObject) {
+            // 🔧 修正: RuleEngineが期待する形式でイベント記録
             this.currentContext!.events.push({
               type: 'touch',
               timestamp: Date.now(),
-              data: { objectId: 'stage', x, y }
+              data: { 
+                target: 'stage',  // ✅ 'target' キーを使用
+                x, 
+                y 
+              }
             });
-          }
-          
-          // イベント履歴の管理（最大100件）
-          if (this.currentContext!.events.length > 100) {
-            this.currentContext!.events.shift();
+            
+            console.log(`👆 ステージタッチ: at (${x.toFixed(0)}, ${y.toFixed(0)})`);
           }
           
         } catch (error) {

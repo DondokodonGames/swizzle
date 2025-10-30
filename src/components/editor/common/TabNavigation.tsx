@@ -40,11 +40,11 @@ export const DEFAULT_EDITOR_TABS: TabConfig[] = [
   }
 ];
 
-// 🔧 修正: プロジェクトの進捗を反映したタブ設定生成（3タブ統合）
+// 🔧 修正: プロジェクトの進捗を反映したタブ設定生成（3タブ統合 + audio安全アクセス対応）
 export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
   if (!project) return DEFAULT_EDITOR_TABS;
 
-  // 🔧 修正: アセット進捗計算（音声を含む統合版）
+  // 🔧 修正: アセット進捗計算（音声を含む統合版 + 安全アクセス）
   const calculateAssetsProgress = () => {
     let progress = 0;
     const totalSteps = 4; // 背景、オブジェクト、テキスト、音声の4要素
@@ -58,8 +58,8 @@ export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
     // テキストがあれば25%
     if (project.assets.texts.length > 0) progress += 25;
     
-    // 音声（BGMまたはSE）があれば25%
-    if (project.assets.audio.bgm || project.assets.audio.se.length > 0) progress += 25;
+    // 🔧 修正: 音声（BGMまたはSE）があれば25%（オプショナルチェーン使用）
+    if (project.assets.audio?.bgm || (project.assets.audio?.se?.length || 0) > 0) progress += 25;
     
     return Math.min(progress, 100);
   };
@@ -89,7 +89,7 @@ export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
     if (project.settings.duration.type === 'fixed' && project.settings.duration.seconds) progress += 25;
     
     // 公開設定が完了していれば25%
-    if (project.settings.publishing.isPublished) progress += 25;
+    if (project.settings.publishing?.isPublished) progress += 25;
     
     return Math.min(progress, 100);
   };
@@ -100,12 +100,13 @@ export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
       label: 'アセット',
       icon: '🎨',
       description: '画像・音声・テキスト管理',
+      // 🔧 修正: badge計算（オプショナルチェーン使用）
       badge: (
         project.assets.objects.length + 
         (project.assets.background ? 1 : 0) + 
         project.assets.texts.length +
-        (project.assets.audio.bgm ? 1 : 0) + 
-        project.assets.audio.se.length
+        (project.assets.audio?.bgm ? 1 : 0) + 
+        (project.assets.audio?.se?.length || 0)
       ) || undefined,
       progress: calculateAssetsProgress()
     },
@@ -128,7 +129,7 @@ export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
   ];
 };
 
-// 🔧 修正: タブナビゲーション判定ヘルパー（3タブ対応）
+// 🔧 修正: タブナビゲーション判定ヘルパー（3タブ対応 + audio安全アクセス対応）
 export const getTabValidationStatus = (project: GameProject, tabId: EditorTab): {
   canNavigate: boolean;
   warnings: string[];
@@ -142,7 +143,8 @@ export const getTabValidationStatus = (project: GameProject, tabId: EditorTab): 
       if (!project.assets.background && project.assets.objects.length === 0) {
         warnings.push('背景またはオブジェクトを追加することをおすすめします');
       }
-      if (!project.assets.audio.bgm && project.assets.audio.se.length === 0) {
+      // 🔧 修正: audio チェック（オプショナルチェーン使用）
+      if (!project.assets.audio?.bgm && (project.assets.audio?.se?.length || 0) === 0) {
         warnings.push('音声を追加するとゲームがより楽しくなります');
       }
       break;

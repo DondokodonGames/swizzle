@@ -1,4 +1,4 @@
-// src/hooks/editor/useGameProject.ts - ScriptStatistics完全実装版
+// src/hooks/editor/useGameProject.ts - ScriptStatistics完全実装版 + audio安全アクセス修正
 
 import { useState, useCallback, useEffect } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
@@ -704,7 +704,7 @@ export const useGameProject = (): UseGameProjectReturn => {
 
 // ヘルパー関数
 
-// 総容量計算
+// 🔧 修正: 総容量計算（audio安全アクセス対応）
 const calculateTotalSize = (project: GameProject): number => {
   let total = 0;
 
@@ -718,18 +718,18 @@ const calculateTotalSize = (project: GameProject): number => {
     total += obj.totalSize;
   });
 
-  // 音声サイズ
-  if (project.assets.audio.bgm) {
+  // 🔧 修正: 音声サイズ（オプショナルチェーン使用）
+  if (project.assets.audio?.bgm) {
     total += project.assets.audio.bgm.fileSize;
   }
-  project.assets.audio.se.forEach(se => {
+  project.assets.audio?.se?.forEach(se => {
     total += se.fileSize;
   });
 
   return total;
 };
 
-// アセット統計計算
+// 🔧 修正: アセット統計計算（audio安全アクセス対応）
 const calculateAssetStatistics = (assets: ProjectAssets): ProjectAssets['statistics'] => {
   let totalImageSize = 0;
   let totalAudioSize = 0;
@@ -742,11 +742,11 @@ const calculateAssetStatistics = (assets: ProjectAssets): ProjectAssets['statist
     totalImageSize += obj.totalSize;
   });
 
-  // 音声サイズ計算
-  if (assets.audio.bgm) {
+  // 🔧 修正: 音声サイズ計算（オプショナルチェーン使用）
+  if (assets.audio?.bgm) {
     totalAudioSize += assets.audio.bgm.fileSize;
   }
-  assets.audio.se.forEach(se => {
+  assets.audio?.se?.forEach(se => {
     totalAudioSize += se.fileSize;
   });
 
@@ -758,8 +758,8 @@ const calculateAssetStatistics = (assets: ProjectAssets): ProjectAssets['statist
       background: assets.background ? 1 : 0,
       objects: assets.objects.length,
       texts: assets.texts.length,
-      bgm: assets.audio.bgm ? 1 : 0,
-      se: assets.audio.se.length
+      bgm: assets.audio?.bgm ? 1 : 0,
+      se: assets.audio?.se?.length || 0
     },
     limitations: {
       isNearImageLimit: totalImageSize > EDITOR_LIMITS.IMAGE.BACKGROUND_TOTAL_MAX_SIZE * 0.8,

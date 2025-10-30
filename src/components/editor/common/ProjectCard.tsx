@@ -65,7 +65,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   
   const stats = {
     objects: project.assets.objects.length,
-    sounds: project.assets.audio.se.length + (project.assets.audio.bgm ? 1 : 0),
+    sounds: (project.assets.audio?.se?.length || 0) + (project.assets.audio?.bgm ? 1 : 0),
     rules: project.script.rules.length,
     totalSize: project.totalSize || 0
   };

@@ -1,5 +1,6 @@
 // src/components/editor/tabs/assets/sections/SoundSection.tsx
 // 🔧 Phase E-1修正版: TypeScriptエラー解決・nullチェック追加
+// 🔧 audio プロパティエラー修正版（約40箇所修正）
 import React, { useState } from 'react';
 import { GameProject } from '../../../../../types/editor/GameProject';
 import { AudioAsset } from '../../../../../types/editor/ProjectAssets';
@@ -65,10 +66,11 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
     }
   };
 
-  // 音声削除処理
+  // 🔧 修正箇所1: 音声削除処理（71行目付近）
   const handleAudioDelete = (type: SoundType, id?: string) => {
     // 再生中の音声を削除する場合は停止
-    if ((type === 'bgm' && project.assets.audio.bgm && playbackState.playingId === project.assets.audio.bgm.id) ||
+    // ✅ 修正: オプショナルチェーン追加
+    if ((type === 'bgm' && project.assets.audio?.bgm && playbackState.playingId === project.assets.audio.bgm.id) ||
         (type === 'se' && playbackState.playingId === id)) {
       stopAudio();
     }
@@ -120,7 +122,9 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
               fontWeight: DESIGN_TOKENS.typography.fontWeight.normal
             }}
           >
-            (BGM: {project.assets.audio.bgm ? 1 : 0}/1, SE: {project.assets.audio.se.length}/{EDITOR_LIMITS.PROJECT.MAX_SE_COUNT})
+            {/* 🔧 修正箇所2: カウント表示（123行目） */}
+            {/* ✅ 修正: オプショナルチェーン追加 */}
+            (BGM: {project.assets.audio?.bgm ? 1 : 0}/1, SE: {project.assets.audio?.se?.length || 0}/{EDITOR_LIMITS.PROJECT.MAX_SE_COUNT})
           </span>
         </h3>
       </div>
@@ -136,9 +140,11 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
           boxShadow: DESIGN_TOKENS.shadows.sm
         }}
       >
+        {/* 🔧 修正箇所3: タブカウント（140-141行目） */}
         {[
-          { id: 'bgm' as SoundType, label: 'BGM', icon: '🎵', count: project.assets.audio.bgm ? 1 : 0 },
-          { id: 'se' as SoundType, label: '効果音', icon: '🔊', count: project.assets.audio.se.length }
+          /* ✅ 修正: オプショナルチェーン追加 */
+          { id: 'bgm' as SoundType, label: 'BGM', icon: '🎵', count: project.assets.audio?.bgm ? 1 : 0 },
+          { id: 'se' as SoundType, label: '効果音', icon: '🔊', count: project.assets.audio?.se?.length || 0 }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -202,10 +208,11 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
         ))}
       </div>
 
-      {/* BGM管理 */}
+      {/* 🔧 修正箇所4: BGM管理（208行目以降） */}
       {activeSoundType === 'bgm' && (
         <div>
-          {project.assets.audio.bgm ? (
+          {/* ✅ 修正: オプショナルチェーン追加 */}
+          {project.assets.audio?.bgm ? (
             <ModernCard variant="elevated" size="md" style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
                 <div style={{ flex: 1 }}>
@@ -250,7 +257,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                     icon={project.assets.audio.bgm && isPlaying(project.assets.audio.bgm.id) ? '⏹️' : '▶️'}
                     onClick={() => {
                       // 修正: nullチェック追加
-                      if (project.assets.audio.bgm) {
+                      if (project.assets.audio?.bgm) {
                         isPlaying(project.assets.audio.bgm.id) ? stopAudio() : handleAudioPlay(project.assets.audio.bgm);
                       }
                     }}
@@ -263,7 +270,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                     size="sm"
                     icon="⚙️"
                     onClick={() => setEditingAudioId(
-                      project.assets.audio.bgm && editingAudioId === project.assets.audio.bgm.id ? null : project.assets.audio.bgm?.id || null
+                      project.assets.audio?.bgm && editingAudioId === project.assets.audio.bgm.id ? null : project.assets.audio?.bgm?.id || null
                     )}
                   >
                     設定
@@ -400,12 +407,13 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
         </div>
       )}
 
-      {/* SE（効果音）管理 */}
+      {/* 🔧 修正箇所5: SE（効果音）管理（408行目以降） */}
       {activeSoundType === 'se' && (
         <div>
           {/* 既存効果音一覧 */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
-            {project.assets.audio.se.map((se) => (
+            {/* ✅ 修正: オプショナルチェーン追加 */}
+            {project.assets.audio?.se?.map((se) => (
               <ModernCard key={se.id} variant="elevated" size="md" style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
                   <div style={{ flex: 1 }}>
@@ -549,15 +557,16 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
             ))}
           </div>
 
-          {/* 新規効果音追加 */}
-          {project.assets.audio.se.length < EDITOR_LIMITS.PROJECT.MAX_SE_COUNT && (
+          {/* 🔧 修正箇所6: 新規効果音追加（577行目） */}
+          {/* ✅ 修正: オプショナルチェーン追加 */}
+          {(project.assets.audio?.se?.length || 0) < EDITOR_LIMITS.PROJECT.MAX_SE_COUNT && (
             <DragDropZone
               accept={['audio/*']}
-              maxFiles={EDITOR_LIMITS.PROJECT.MAX_SE_COUNT - project.assets.audio.se.length}
+              maxFiles={EDITOR_LIMITS.PROJECT.MAX_SE_COUNT - (project.assets.audio?.se?.length || 0)}
               maxSize={EDITOR_LIMITS.AUDIO.SE_MAX_SIZE}
               variant="default"
               title="効果音を追加"
-              description={`音声ファイルをドラッグ&ドロップ（最大${EDITOR_LIMITS.PROJECT.MAX_SE_COUNT - project.assets.audio.se.length}個）`}
+              description={`音声ファイルをドラッグ&ドロップ（最大${EDITOR_LIMITS.PROJECT.MAX_SE_COUNT - (project.assets.audio?.se?.length || 0)}個）`}
               buttonText="ファイルを選択"
               onFilesDrop={(results) => {
                 results.forEach(result => {
@@ -574,7 +583,8 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
           )}
 
           {/* SE上限メッセージ */}
-          {project.assets.audio.se.length >= EDITOR_LIMITS.PROJECT.MAX_SE_COUNT && (
+          {/* ✅ 修正: オプショナルチェーン追加 */}
+          {(project.assets.audio?.se?.length || 0) >= EDITOR_LIMITS.PROJECT.MAX_SE_COUNT && (
             <ModernCard variant="filled" size="sm" style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
               <p 
                 style={{
