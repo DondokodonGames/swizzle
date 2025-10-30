@@ -1,5 +1,6 @@
 // GameEditor.tsx - シンプル白基調デザイン版
 // ✅ テーマシステム削除・ModernCard/ModernButton使用・清潔なデザイン
+// 🔧 audio プロパティエラー修正版（3箇所修正）
 
 import React, { useState, useEffect } from 'react';
 import ModernButton from '../ui/ModernButton';
@@ -91,7 +92,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     setHasUnsavedChanges(false);
   }, [project.id]);
 
-  // 容量計算
+  // 🔧 修正箇所1: 容量計算（107-112行目）
   const calculateTotalSize = (): number => {
     const assets = project.assets;
     let total = 0;
@@ -104,10 +105,11 @@ export const GameEditor: React.FC<GameEditorProps> = ({
       total += obj.totalSize;
     });
 
-    if (assets.audio.bgm) {
+    // ✅ 修正: オプショナルチェーン追加
+    if (assets.audio?.bgm) {
       total += assets.audio.bgm.fileSize;
     }
-    assets.audio.se.forEach(se => {
+    assets.audio?.se?.forEach(se => {
       total += se.fileSize;
     });
 
@@ -117,19 +119,20 @@ export const GameEditor: React.FC<GameEditorProps> = ({
   const totalSize = calculateTotalSize();
   const sizePercentage = (totalSize / EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE) * 100;
 
-  // タブの設定（3タブ統合版）
+  // 🔧 修正箇所2: タブの設定（131-135行目）
   const tabs = customTabs || [
     { 
       id: 'assets' as EditorTab, 
       label: 'アセット', 
       icon: '🎨', 
       description: '画像・音声・テキスト管理',
+      // ✅ 修正: オプショナルチェーン追加
       badge: (
         project.assets.objects.length + 
         (project.assets.background ? 1 : 0) + 
         project.assets.texts.length +
-        (project.assets.audio.bgm ? 1 : 0) + 
-        project.assets.audio.se.length
+        (project.assets.audio?.bgm ? 1 : 0) + 
+        (project.assets.audio?.se?.length || 0)
       ) || undefined
     },
     { 
@@ -562,8 +565,10 @@ export const GameEditor: React.FC<GameEditorProps> = ({
           <div style={{ marginBottom: '4px' }}>
             🎨 デザイン: シンプル白基調
           </div>
+          {/* 🔧 修正箇所3: 開発時デバッグ表示（566行目） */}
           <div style={{ marginBottom: '4px' }}>
-            📊 Assets: {(project.assets.objects.length + (project.assets.background ? 1 : 0) + project.assets.texts.length + (project.assets.audio.bgm ? 1 : 0) + project.assets.audio.se.length)}, Rules: {project.script.rules.length}
+            {/* ✅ 修正: オプショナルチェーン追加 */}
+            📊 Assets: {(project.assets.objects.length + (project.assets.background ? 1 : 0) + project.assets.texts.length + (project.assets.audio?.bgm ? 1 : 0) + (project.assets.audio?.se?.length || 0))}, Rules: {project.script.rules.length}
           </div>
           <div style={{ marginBottom: '4px' }}>
             💾 Size: {(totalSize / 1024 / 1024).toFixed(1)}MB

@@ -33,7 +33,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
   const { notifications, hideNotification } = useNotification();
 
   // 容量計算（画像+音声）
-  const totalSize = project.assets.statistics.totalSize;
+  const totalSize = project.assets.statistics?.totalSize || 0;
   const sizePercentage = (totalSize / EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE) * 100;
 
   return (
@@ -197,7 +197,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
             id: 'sound' as AssetType, 
             label: 'サウンド', 
             icon: '🎵', 
-            count: (project.assets.audio.bgm ? 1 : 0) + project.assets.audio.se.length,
+            count: (project.assets.audio?.bgm ? 1 : 0) + (project.assets.audio?.se?.length || 0),
             status: '✅ 完成'
           }
         ].map((tab) => (

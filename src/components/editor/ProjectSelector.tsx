@@ -1,5 +1,5 @@
 // src/components/editor/ProjectSelector.tsx
-// 修正版: フォントファミリー型修正 + インポート機能修正
+// 修正版: フォントファミリー型修正 + インポート機能修正 + audio プロパティ安全アクセス対応
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../../constants/EditorLimits';
@@ -660,7 +660,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 lastModified={project.lastModified}
                 stats={{
                   objects: project.assets.objects.length,
-                  sounds: (project.assets.audio.bgm ? 1 : 0) + project.assets.audio.se.length,
+                  sounds: ((project.assets.audio?.bgm ? 1 : 0) + (project.assets.audio?.se?.length || 0)),
                   rules: project.script.rules.length
                 }}
                 onCardClick={() => onProjectSelect(project)}

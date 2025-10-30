@@ -170,11 +170,12 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // 音声容量計算
+  // 🔧 修正箇所1: 音声容量計算（176-177行目）
   const getAudioSize = useCallback(() => {
     let total = 0;
-    if (project.assets.audio.bgm) total += project.assets.audio.bgm.fileSize;
-    project.assets.audio.se.forEach(se => total += se.fileSize);
+    // ✅ 修正: オプショナルチェーン追加
+    if (project.assets.audio?.bgm) total += project.assets.audio.bgm.fileSize;
+    project.assets.audio?.se?.forEach(se => total += se.fileSize);
     return total;
   }, [project.assets.audio]);
 
@@ -206,8 +207,9 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
         return;
       }
 
-      // 容量制限チェック
-      if (type === 'se' && project.assets.audio.se.length >= EDITOR_LIMITS.PROJECT.MAX_SE_COUNT) {
+      // 🔧 修正箇所2: 容量制限チェック（210行目）
+      // ✅ 修正: オプショナルチェーン追加
+      if (type === 'se' && (project.assets.audio?.se?.length || 0) >= EDITOR_LIMITS.PROJECT.MAX_SE_COUNT) {
         alert(`効果音は最大${EDITOR_LIMITS.PROJECT.MAX_SE_COUNT}個まで追加できます`);
         return;
       }
@@ -240,11 +242,12 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
           updatedAssets.audio.se.push(newAudioAsset);
         }
 
-        // 統計更新（修正版 - sounds → bgm + se分離）
+        // 🔧 修正箇所3: 統計更新（265-266行目、273-274行目）
         const imageSize = updatedAssets.objects.reduce((sum, obj) => sum + obj.totalSize, 0) + 
                          (updatedAssets.background?.totalSize || 0);
-        const audioSize = (updatedAssets.audio.bgm?.fileSize || 0) + 
-                         updatedAssets.audio.se.reduce((sum, se) => sum + se.fileSize, 0);
+        // ✅ 修正: オプショナルチェーン追加
+        const audioSize = (updatedAssets.audio?.bgm?.fileSize || 0) + 
+                         (updatedAssets.audio?.se?.reduce((sum, se) => sum + se.fileSize, 0) || 0);
 
         updatedAssets.statistics = {
           totalImageSize: imageSize,
@@ -254,8 +257,9 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
             background: updatedAssets.background ? 1 : 0,
             objects: updatedAssets.objects.length,
             texts: updatedAssets.texts.length,
-            bgm: updatedAssets.audio.bgm ? 1 : 0,
-            se: updatedAssets.audio.se.length
+            // ✅ 修正: オプショナルチェーン追加
+            bgm: updatedAssets.audio?.bgm ? 1 : 0,
+            se: updatedAssets.audio?.se?.length || 0
           },
           limitations: {
             isNearImageLimit: false,
@@ -317,34 +321,38 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
     setCurrentTime(0);
   }, []);
 
-  // 音声削除
+  // 🔧 修正箇所4: 音声削除（358行目）
   const deleteAudio = useCallback((type: AudioType, id?: string) => {
     const updatedAssets = { ...project.assets };
     let removedSize = 0;
     const now = new Date().toISOString();
 
-    if (type === 'bgm' && updatedAssets.audio.bgm) {
+    // ✅ 修正: オプショナルチェーン追加
+    if (type === 'bgm' && updatedAssets.audio?.bgm) {
       removedSize = updatedAssets.audio.bgm.fileSize;
       updatedAssets.audio.bgm = null;
     } else if (type === 'se' && id) {
-      const index = updatedAssets.audio.se.findIndex(se => se.id === id);
-      if (index >= 0) {
+      // ✅ 修正: オプショナルチェーン追加
+      const index = updatedAssets.audio?.se?.findIndex(se => se.id === id) ?? -1;
+      if (index >= 0 && updatedAssets.audio?.se) {
         removedSize = updatedAssets.audio.se[index].fileSize;
         updatedAssets.audio.se.splice(index, 1);
       }
     }
 
     // 再生中の音声を削除した場合は停止
-    if ((type === 'bgm' && playingId === project.assets.audio.bgm?.id) ||
+    // ✅ 修正: オプショナルチェーン追加
+    if ((type === 'bgm' && playingId === project.assets.audio?.bgm?.id) ||
         (type === 'se' && playingId === id)) {
       stopAudio();
     }
 
-    // 統計更新（修正版 - sounds → bgm + se分離）
+    // 🔧 修正箇所5: 統計更新（370-371行目、377-378行目）
     const imageSize = updatedAssets.objects.reduce((sum, obj) => sum + obj.totalSize, 0) + 
                      (updatedAssets.background?.totalSize || 0);
-    const audioSize = (updatedAssets.audio.bgm?.fileSize || 0) + 
-                     updatedAssets.audio.se.reduce((sum, se) => sum + se.fileSize, 0);
+    // ✅ 修正: オプショナルチェーン追加
+    const audioSize = (updatedAssets.audio?.bgm?.fileSize || 0) + 
+                     (updatedAssets.audio?.se?.reduce((sum, se) => sum + se.fileSize, 0) || 0);
 
     updatedAssets.statistics = {
       totalImageSize: imageSize,
@@ -354,8 +362,9 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
         background: updatedAssets.background ? 1 : 0,
         objects: updatedAssets.objects.length,
         texts: updatedAssets.texts.length,
-        bgm: updatedAssets.audio.bgm ? 1 : 0,
-        se: updatedAssets.audio.se.length
+        // ✅ 修正: オプショナルチェーン追加
+        bgm: updatedAssets.audio?.bgm ? 1 : 0,
+        se: updatedAssets.audio?.se?.length || 0
       },
       limitations: {
         isNearImageLimit: false,
@@ -380,12 +389,13 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
     const updatedAssets = { ...project.assets };
     const now = new Date().toISOString();
     
-    if (type === 'bgm' && updatedAssets.audio.bgm?.id === id) {
+    // ✅ 修正: オプショナルチェーン追加
+    if (type === 'bgm' && updatedAssets.audio?.bgm?.id === id) {
       updatedAssets.audio.bgm = {
         ...updatedAssets.audio.bgm,
         [property]: value
       };
-    } else if (type === 'se') {
+    } else if (type === 'se' && updatedAssets.audio?.se) {
       const index = updatedAssets.audio.se.findIndex(se => se.id === id);
       if (index >= 0) {
         updatedAssets.audio.se[index] = {
@@ -483,7 +493,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
         />
       </div>
 
-      {/* BGM管理 */}
+      {/* 🔧 修正箇所6: BGM管理（494行目以降） */}
       {activeAudioType === 'bgm' && (
         <div>
           <h3 className="text-lg font-semibold mb-4 flex items-center">
@@ -491,7 +501,8 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
             <span className="ml-2 text-sm text-gray-500">(1曲まで)</span>
           </h3>
 
-          {project.assets.audio.bgm ? (
+          {/* ✅ 修正: オプショナルチェーン追加 */}
+          {project.assets.audio?.bgm ? (
             <div className="bg-white rounded-xl border-2 border-gray-200 p-4">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex-1">
@@ -599,19 +610,21 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
         </div>
       )}
 
-      {/* 効果音管理 */}
+      {/* 🔧 修正箇所7: 効果音管理（608行目以降） */}
       {activeAudioType === 'se' && (
         <div>
           <h3 className="text-lg font-semibold mb-4 flex items-center">
             🔊 効果音
             <span className="ml-2 text-sm text-gray-500">
-              ({project.assets.audio.se.length}/{EDITOR_LIMITS.PROJECT.MAX_SE_COUNT})
+              {/* ✅ 修正: オプショナルチェーン追加 */}
+              ({project.assets.audio?.se?.length || 0}/{EDITOR_LIMITS.PROJECT.MAX_SE_COUNT})
             </span>
           </h3>
 
           {/* 既存効果音一覧 */}
           <div className="space-y-3 mb-6">
-            {project.assets.audio.se.map((se) => (
+            {/* ✅ 修正: オプショナルチェーン追加 */}
+            {project.assets.audio?.se?.map((se) => (
               <div key={se.id} className="bg-white rounded-xl border-2 border-gray-200 p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
@@ -680,8 +693,9 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
             ))}
           </div>
 
-          {/* 新規効果音追加 */}
-          {project.assets.audio.se.length < EDITOR_LIMITS.PROJECT.MAX_SE_COUNT && (
+          {/* 🔧 修正箇所8: 新規効果音追加（684行目） */}
+          {/* ✅ 修正: オプショナルチェーン追加 */}
+          {(project.assets.audio?.se?.length || 0) < EDITOR_LIMITS.PROJECT.MAX_SE_COUNT && (
             <FileUploader
               accept="audio/*"
               maxSize={EDITOR_LIMITS.AUDIO.SE_MAX_SIZE}

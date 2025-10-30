@@ -1,5 +1,6 @@
 /**
  * GameProjectCopier.ts - ゲームプロジェクトコピーサービス
+ * 🔧 audio プロパティエラー修正版（2箇所修正）
  * 
  * 機能:
  * - ゲームプロジェクト全体のディープコピー
@@ -180,13 +181,15 @@ export class GameProjectCopier {
       return 0;
     }
 
-    // BGMのサイズ
-    if (project.assets.audio.bgm && project.assets.audio.bgm.dataUrl) {
+    // 🔧 修正箇所1: BGMのサイズ（184-186行目）
+    // ✅ 修正: オプショナルチェーン追加
+    if (project.assets.audio?.bgm?.dataUrl) {
       totalAudioSize += this.estimateBase64Size(project.assets.audio.bgm.dataUrl);
     }
 
-    // SEのサイズ
-    if (project.assets.audio.se && Array.isArray(project.assets.audio.se)) {
+    // 🔧 修正箇所2: SEのサイズ（189行目）
+    // ✅ 修正: オプショナルチェーン追加
+    if (project.assets.audio?.se && Array.isArray(project.assets.audio.se)) {
       for (const se of project.assets.audio.se) {
         if (se && se.dataUrl) {
           totalAudioSize += this.estimateBase64Size(se.dataUrl);

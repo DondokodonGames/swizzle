@@ -1297,11 +1297,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               color: '#10b981'
             }}>
               <span>✅ 公開済み</span>
-              {project.settings.publishing?.publishedAt && (
-                <span style={{ fontSize: '14px' }}>
-                  {new Date(project.settings.publishing.publishedAt).toLocaleString('ja-JP')}
-                </span>
-              )}
+            {project.settings.publishing?.publishedAt && (
+              <span style={{ fontSize: '14px' }}>
+              {new Date(project.settings.publishing.publishedAt).toLocaleString('ja-JP')}
+              </span>
+          )}
             </div>
           </div>
         )}

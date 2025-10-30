@@ -337,7 +337,7 @@ export const useAssetUpload = (
       }
 
       // 容量制限チェック
-      if (type === 'se' && project.assets.audio.se.length >= EDITOR_LIMITS.PROJECT.MAX_SE_COUNT) {
+      if (type === 'se' && (project.assets.audio?.se?.length || 0) >= EDITOR_LIMITS.PROJECT.MAX_SE_COUNT) {
         return { 
           success: false, 
           message: `効果音は最大${EDITOR_LIMITS.PROJECT.MAX_SE_COUNT}個まで追加できます`, 
