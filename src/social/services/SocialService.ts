@@ -501,10 +501,46 @@ export class SocialService {
 
   async recordShare(gameId: string, platform: string, userId?: string): Promise<number> {
     try {
-      const newShareCount = Math.floor(Math.random() * 100);
-      console.log(`Share recorded for game ${gameId} on ${platform} by user ${userId}`);
+      // ユーザーIDが指定されていない場合は現在のユーザーを取得
+      let currentUserId = userId;
+      if (!currentUserId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.warn('User not authenticated, share not recorded');
+          return 0;
+        }
+        currentUserId = user.id;
+      }
+
+      // シェア履歴を保存
+      const { error: insertError } = await supabase
+        .from('game_shares')
+        .insert({
+          game_id: gameId,
+          user_id: currentUserId,
+          platform: platform,
+          shared_at: new Date().toISOString()
+        });
+
+      if (insertError) {
+        console.error('Error recording share:', insertError);
+        // エラーでも既存のシェア数を返す
+      }
+
+      // ゲームのシェア数をカウント
+      const { count, error: countError } = await supabase
+        .from('game_shares')
+        .select('*', { count: 'exact', head: true })
+        .eq('game_id', gameId);
+
+      if (countError) {
+        console.error('Error counting shares:', countError);
+        return 0;
+      }
+
+      console.log(`Share recorded for game ${gameId} on ${platform} by user ${currentUserId}. Total shares: ${count}`);
       
-      return newShareCount;
+      return count || 0;
 
     } catch (error) {
       console.error('Error recording share:', error);

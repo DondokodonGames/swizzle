@@ -1,4 +1,5 @@
 // src/social/hooks/useSocialData.ts
+// 🔧 修正版: ユーザーID取得を実装（'current-user'ハードコード削除）
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { SocialService } from '../services/SocialService';
@@ -144,6 +145,7 @@ export const useUserProfile = (userId: string) => {
 };
 
 // ソーシャル統計用フック
+// 🔧 修正: ユーザーID取得を実装
 export const useSocialStats = (gameId: string, initialStats: any) => {
   const [stats, setStats] = useState(initialStats);
   const [state, setState] = useState({
@@ -156,7 +158,14 @@ export const useSocialStats = (gameId: string, initialStats: any) => {
 
   const toggleLike = useCallback(async () => {
     try {
-      const result = await socialService.toggleLike(gameId, 'current-user');
+      // ✅ Supabaseから現在のユーザーを取得
+      const { supabase } = await import('../../lib/supabase');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('ユーザーが認証されていません');
+      }
+
+      const result = await socialService.toggleLike(gameId, user.id);
       setState(prev => ({ ...prev, isLiked: result.isLiked }));
       setStats((prev: any) => ({ ...prev, likes: result.newCount }));
       return result;
@@ -168,7 +177,14 @@ export const useSocialStats = (gameId: string, initialStats: any) => {
 
   const toggleBookmark = useCallback(async () => {
     try {
-      const result = await socialService.toggleBookmark(gameId, 'current-user');
+      // ✅ Supabaseから現在のユーザーを取得
+      const { supabase } = await import('../../lib/supabase');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('ユーザーが認証されていません');
+      }
+
+      const result = await socialService.toggleBookmark(gameId, user.id);
       setState(prev => ({ ...prev, isBookmarked: result.isBookmarked }));
       setStats((prev: any) => ({ ...prev, bookmarks: result.newCount }));
       return result;
@@ -180,7 +196,14 @@ export const useSocialStats = (gameId: string, initialStats: any) => {
 
   const recordShare = useCallback(async (platform: string) => {
     try {
-      const newShareCount = await socialService.recordShare(gameId, platform, 'current-user');
+      // ✅ Supabaseから現在のユーザーを取得
+      const { supabase } = await import('../../lib/supabase');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('ユーザーが認証されていません');
+      }
+
+      const newShareCount = await socialService.recordShare(gameId, platform, user.id);
       setState(prev => ({ ...prev, isShared: true }));
       setStats((prev: any) => ({ ...prev, shares: newShareCount }));
       return newShareCount;
@@ -212,6 +235,7 @@ export const useSocialStats = (gameId: string, initialStats: any) => {
 };
 
 // フォロー機能用フック
+// 🔧 修正: ユーザーID取得を実装
 export const useFollow = (targetUserId: string, initialIsFollowing: boolean = false) => {
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
   const [loading, setLoading] = useState(false);
@@ -224,7 +248,15 @@ export const useFollow = (targetUserId: string, initialIsFollowing: boolean = fa
 
     try {
       setLoading(true);
-      const result = await socialService.toggleFollow(targetUserId, 'current-user');
+      
+      // ✅ Supabaseから現在のユーザーを取得
+      const { supabase } = await import('../../lib/supabase');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('ユーザーが認証されていません');
+      }
+
+      const result = await socialService.toggleFollow(targetUserId, user.id);
       setIsFollowing(result.isFollowing);
       setFollowerCount(result.newCount);
       return result;
