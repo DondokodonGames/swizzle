@@ -1,4 +1,5 @@
 // src/social/components/UserActivityFeed.tsx
+// 🔧 完全実装版 - Supabase完全連携（モック削除）
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ModernCard } from '../../components/ui/ModernCard';
@@ -121,21 +122,50 @@ export const UserActivityFeed: React.FC<UserActivityFeedProps> = ({
   // サービス
   const socialService = useMemo(() => SocialService.getInstance(), []);
 
-  // 活動データ生成（モック）
-  const generateMockActivities = useCallback((count: number, pageNum: number = 1): ActivityItem[] => {
-    const activities: ActivityItem[] = [];
-    const now = Date.now();
+  // 🔧 データ変換関数
+  const convertToActivityItem = useCallback((dbActivity: any): ActivityItem => {
+    const actor: UserProfile = {
+      id: dbActivity.profiles.id,
+      username: dbActivity.profiles.username,
+      displayName: dbActivity.profiles.display_name || dbActivity.profiles.username,
+      avatar: dbActivity.profiles.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${dbActivity.profiles.username}`,
+      banner: '',
+      bio: '',
+      location: '',
+      website: '',
+      stats: {
+        totalGames: 0,
+        totalPlays: 0,
+        totalLikes: 0,
+        totalFollowers: 0,
+        totalFollowing: 0,
+        joinDate: '',
+        lastActive: ''
+      },
+      isFollowing: false
+    };
 
-    for (let i = 0; i < count; i++) {
-      const id = `activity_${pageNum}_${i}`;
-      const type = ACTIVITY_TYPES[Math.floor(Math.random() * ACTIVITY_TYPES.length)].id as ActivityItem['type'];
-      const timestamp = new Date(now - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString();
-      
-      const actor: UserProfile = {
-        id: `user_${Math.floor(Math.random() * 20)}`,
-        username: `user${Math.floor(Math.random() * 20)}`,
-        displayName: `ユーザー${Math.floor(Math.random() * 20) + 1}`,
-        avatar: `https://picsum.photos/40/40?random=${Math.floor(Math.random() * 100)}`,
+    let target: PublicGame | UserProfile | undefined;
+
+    if (dbActivity.target_game) {
+      target = {
+        id: dbActivity.target_game.id,
+        title: dbActivity.target_game.title,
+        description: '',
+        thumbnail: dbActivity.target_game.thumbnail_url || `https://picsum.photos/200/150?random=${dbActivity.target_game.id}`,
+        author: { ...actor, name: actor.displayName || actor.username || 'Unknown User' },
+        stats: { likes: 0, shares: 0, bookmarks: 0, views: 0 },
+        tags: [],
+        category: 'casual',
+        createdAt: dbActivity.created_at,
+        updatedAt: dbActivity.created_at
+      } as PublicGame;
+    } else if (dbActivity.target_user) {
+      target = {
+        id: dbActivity.target_user.id,
+        username: dbActivity.target_user.username,
+        displayName: dbActivity.target_user.display_name || dbActivity.target_user.username,
+        avatar: dbActivity.target_user.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${dbActivity.target_user.username}`,
         banner: '',
         bio: '',
         location: '',
@@ -149,123 +179,33 @@ export const UserActivityFeed: React.FC<UserActivityFeedProps> = ({
           joinDate: '',
           lastActive: ''
         },
-        isFollowing: Math.random() > 0.5
-      };
-
-      let target: PublicGame | UserProfile | undefined;
-      let content = '';
-      let metadata: ActivityItem['metadata'] = {};
-
-      switch (type) {
-        case 'game_created':
-          target = {
-            id: `game_${Math.floor(Math.random() * 1000)}`,
-            title: `新作ゲーム ${Math.floor(Math.random() * 100)}`,
-            description: '楽しいゲームです！',
-            thumbnail: `https://picsum.photos/200/150?random=${Math.floor(Math.random() * 100)}`,
-            author: {
-              ...actor,
-              name: actor.displayName || actor.username || 'Unknown User'
-            },
-            stats: {
-              likes: Math.floor(Math.random() * 100),
-              shares: Math.floor(Math.random() * 20),
-              bookmarks: Math.floor(Math.random() * 50),
-              views: Math.floor(Math.random() * 1000)
-            },
-            tags: ['楽しい', '新作'],
-            category: 'casual',
-            createdAt: timestamp,
-            updatedAt: timestamp
-          };
-          content = '新しいゲームを公開しました！';
-          break;
-
-        case 'game_liked':
-          target = {
-            id: `game_${Math.floor(Math.random() * 1000)}`,
-            title: `人気ゲーム ${Math.floor(Math.random() * 100)}`,
-            description: 'いいねされたゲーム',
-            thumbnail: `https://picsum.photos/200/150?random=${Math.floor(Math.random() * 100)}`,
-            author: { 
-              ...actor, 
-              id: `author_${Math.floor(Math.random() * 10)}`,
-              name: actor.displayName || actor.username || 'Unknown User'
-            },
-            stats: {
-              likes: Math.floor(Math.random() * 500),
-              shares: Math.floor(Math.random() * 50),
-              bookmarks: Math.floor(Math.random() * 100),
-              views: Math.floor(Math.random() * 2000)
-            },
-            tags: ['人気', 'おすすめ'],
-            category: 'action',
-            createdAt: timestamp,
-            updatedAt: timestamp
-          };
-          content = 'このゲームに「いいね」しました';
-          break;
-
-        case 'user_followed':
-          target = {
-            ...actor,
-            id: `target_user_${Math.floor(Math.random() * 50)}`,
-            displayName: `フォロー先ユーザー${Math.floor(Math.random() * 50) + 1}`
-          };
-          content = 'をフォローしました';
-          break;
-
-        case 'achievement':
-          content = `実績「${['ゲーム王', '100いいね達成', 'プレイマスター', 'ソーシャル達人'][Math.floor(Math.random() * 4)]}」を解除しました！`;
-          metadata = { type: 'achievement', count: Math.floor(Math.random() * 100) + 1 };
-          break;
-
-        case 'milestone':
-          const milestones = ['10作品公開', '1000いいね達成', '100フォロワー達成', '10万再生達成'];
-          content = milestones[Math.floor(Math.random() * milestones.length)];
-          metadata = { count: Math.floor(Math.random() * 1000) + 100 };
-          break;
-
-        case 'collaboration':
-          const collaborators = Array.from({ length: Math.floor(Math.random() * 3) + 1 }, (_, i) => ({
-            ...actor,
-            id: `collab_${i}`,
-            displayName: `コラボ相手${i + 1}`
-          }));
-          content = 'コラボレーション作品を開始しました';
-          metadata = { collaborators };
-          break;
-
-        default:
-          content = 'アクティビティが発生しました';
-      }
-
-      activities.push({
-        id,
-        type,
-        timestamp,
-        actor,
-        target,
-        content,
-        metadata,
-        isPublic: Math.random() > 0.1, // 90%がパブリック
-        reactions: {
-          completed: { count: Math.floor(Math.random() * 10), userReacted: false },
-          fun: { count: Math.floor(Math.random() * 15), userReacted: false },
-          amazing: { count: Math.floor(Math.random() * 8), userReacted: false }
-        },
-        engagement: {
-          likes: Math.floor(Math.random() * 20),
-          comments: Math.floor(Math.random() * 5),
-          shares: Math.floor(Math.random() * 3)
-        }
-      });
+        isFollowing: false
+      } as UserProfile;
     }
 
-    return activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return {
+      id: dbActivity.id,
+      type: dbActivity.activity_type,
+      timestamp: dbActivity.created_at,
+      actor,
+      target,
+      content: dbActivity.content || '',
+      metadata: dbActivity.metadata || {},
+      isPublic: dbActivity.is_public,
+      reactions: {
+        completed: { count: 0, userReacted: false },
+        fun: { count: 0, userReacted: false },
+        amazing: { count: 0, userReacted: false }
+      },
+      engagement: {
+        likes: 0,
+        comments: 0,
+        shares: 0
+      }
+    };
   }, []);
 
-  // 活動取得
+  // 🔧 活動取得（実装版）
   const fetchActivities = useCallback(async (pageNum: number = 1, append: boolean = false) => {
     try {
       if (pageNum === 1) setLoading(true);
@@ -273,69 +213,54 @@ export const UserActivityFeed: React.FC<UserActivityFeedProps> = ({
       
       setError(null);
 
-      // 実装時はSupabase APIで置き換え
-      const mockActivities = generateMockActivities(maxItems, pageNum);
-      
-      // フィルター適用
-      let filteredActivities = mockActivities;
-      
-      if (filters.types.length > 0) {
-        filteredActivities = filteredActivities.filter(activity => 
-          filters.types.includes(activity.type)
-        );
-      }
-      
-      if (filters.onlyFollowing) {
-        filteredActivities = filteredActivities.filter(activity => 
-          activity.actor.isFollowing
-        );
-      }
-      
-      if (!filters.showPrivate) {
-        filteredActivities = filteredActivities.filter(activity => 
-          activity.isPublic
-        );
-      }
+      // 実装版: SocialServiceを使用
+      const { activities: fetchedActivities, hasMore: hasMoreResults } = await socialService.getActivities(
+        targetUserId || userId,
+        {
+          types: filters.types,
+          dateRange: filters.dateRange,
+          onlyFollowing: filters.onlyFollowing,
+          showPrivate: filters.showPrivate
+        },
+        pageNum,
+        maxItems
+      );
 
-      // 時間フィルター
+      // 時間フィルター適用
+      let filteredActivities = fetchedActivities;
       const timeFilter = TIME_FILTERS.find(f => f.id === selectedTimeFilter);
       if (timeFilter && timeFilter.hours > 0) {
         const cutoffTime = Date.now() - timeFilter.hours * 60 * 60 * 1000;
         filteredActivities = filteredActivities.filter(activity => 
-          new Date(activity.timestamp).getTime() > cutoffTime
+          new Date(activity.created_at).getTime() > cutoffTime
         );
       }
 
+      // データ変換
+      const convertedActivities = filteredActivities.map(convertToActivityItem);
+
       if (append) {
-        setActivities(prev => [...prev, ...filteredActivities]);
+        setActivities(prev => [...prev, ...convertedActivities]);
       } else {
-        setActivities(filteredActivities);
+        setActivities(convertedActivities);
       }
       
-      setHasMore(pageNum < 5); // モック制限
+      setHasMore(hasMoreResults);
 
-      // 統計計算
-      const now = Date.now();
-      const today = new Date().setHours(0, 0, 0, 0);
-      const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+      // 統計取得
+      if (targetUserId || userId !== 'current-user') {
+        const activityStats = await socialService.getActivityStats(targetUserId || userId);
+        setStats(activityStats);
+      }
 
-      setStats({
-        todayCount: filteredActivities.filter(a => new Date(a.timestamp).getTime() > today).length,
-        weekCount: filteredActivities.filter(a => new Date(a.timestamp).getTime() > weekAgo).length,
-        totalActivities: filteredActivities.length,
-        averageDaily: filteredActivities.length / 7,
-        streakDays: Math.floor(Math.random() * 30) + 1,
-        mostActiveHour: ['9:00', '12:00', '15:00', '18:00', '21:00'][Math.floor(Math.random() * 5)]
-      });
-
-    } catch (error) {
+    } catch (error: any) {
       setError('アクティビティの読み込みに失敗しました');
       console.error('Error fetching activities:', error);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [generateMockActivities, maxItems, filters, selectedTimeFilter]);
+  }, [socialService, targetUserId, userId, filters, selectedTimeFilter, maxItems, convertToActivityItem]);
 
   // 活動グループ化
   const groupActivitiesByDate = useCallback((activities: ActivityItem[]): ActivityGroup[] => {
