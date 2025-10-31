@@ -1,6 +1,8 @@
 // src/social/components/NotificationUI.tsx
+// 🔧 修正版: React Routerでゲームページ遷移を実装
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom'; // ✅ 追加
 import { ModernCard } from '../../components/ui/ModernCard';
 import { ModernButton } from '../../components/ui/ModernButton';
 import { NotificationService, GameNotification, NotificationSettings, NotificationStats } from '../services/NotificationService';
@@ -181,6 +183,9 @@ export const NotificationUI: React.FC<NotificationUIProps> = ({
   className = '',
   maxDisplayCount = 50
 }) => {
+  // ✅ React Router のナビゲーション追加
+  const navigate = useNavigate();
+
   // 状態管理
   const [notifications, setNotifications] = useState<GameNotification[]>([]);
   const [stats, setStats] = useState<NotificationStats>({
@@ -278,10 +283,10 @@ export const NotificationUI: React.FC<NotificationUIProps> = ({
     notificationService.updateSettings(newSettings);
   }, [notificationService]);
 
+  // ✅ ゲームページへの遷移を実装
   const handleGameClick = useCallback((gameId: string) => {
-    // 実装時はルーターでゲームページに移動
-    console.log(`Navigate to game: ${gameId}`);
-  }, []);
+    navigate(`/games/${gameId}`);
+  }, [navigate]);
 
   // 定期クリーンアップ開始
   useEffect(() => {
