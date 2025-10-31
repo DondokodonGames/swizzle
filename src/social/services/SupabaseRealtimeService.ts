@@ -1,5 +1,6 @@
 // src/social/services/SupabaseRealtimeService.ts
 // 🆕 新規: Supabase Realtimeを使用したリアルタイム更新サービス
+// 🔧 TypeScriptエラー修正版
 
 import { supabase } from '../../lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -125,10 +126,10 @@ export class SupabaseRealtimeService {
 
           console.log('Like update received:', payload);
 
-          // ペイロードをLikeUpdate型に変換
+          // 🔧 型アサーション追加: ペイロードをLikeUpdate型に変換
           const likeUpdate: LikeUpdate = {
-            gameId: payload.new?.game_id || payload.old?.game_id,
-            userId: payload.new?.user_id || payload.old?.user_id,
+            gameId: (payload.new as any)?.game_id || (payload.old as any)?.game_id,
+            userId: (payload.new as any)?.user_id || (payload.old as any)?.user_id,
             isLiked: payload.eventType === 'INSERT',
             newCount: 0, // カウントは別途取得が必要
             timestamp: new Date().toISOString()
@@ -187,9 +188,10 @@ export class SupabaseRealtimeService {
 
           console.log('Follow update received:', payload);
 
+          // 🔧 型アサーション追加
           const followUpdate: FollowUpdate = {
-            followerId: payload.new?.follower_id || payload.old?.follower_id,
-            followingId: payload.new?.following_id || payload.old?.following_id,
+            followerId: (payload.new as any)?.follower_id || (payload.old as any)?.follower_id,
+            followingId: (payload.new as any)?.following_id || (payload.old as any)?.following_id,
             isFollowing: payload.eventType === 'INSERT',
             newCount: 0, // カウントは別途取得が必要
             timestamp: new Date().toISOString()
@@ -245,14 +247,15 @@ export class SupabaseRealtimeService {
 
           console.log('Notification received:', payload);
 
+          // 🔧 型アサーション追加
           const notificationUpdate: NotificationUpdate = {
-            id: payload.new.id,
-            userId: payload.new.user_id,
-            type: payload.new.type,
-            title: payload.new.title,
-            message: payload.new.message,
-            gameId: payload.new.game_id,
-            timestamp: payload.new.created_at
+            id: (payload.new as any).id,
+            userId: (payload.new as any).user_id,
+            type: (payload.new as any).type,
+            title: (payload.new as any).title,
+            message: (payload.new as any).message,
+            gameId: (payload.new as any).game_id,
+            timestamp: (payload.new as any).created_at
           };
 
           callback(notificationUpdate);
@@ -305,9 +308,9 @@ export class SupabaseRealtimeService {
 
           console.log('Game update received:', payload);
 
-          // 変更されたフィールドを検出
-          const oldData = payload.old || {};
-          const newData = payload.new || {};
+          // 🔧 型アサーション追加: 変更されたフィールドを検出
+          const oldData = (payload.old || {}) as any;
+          const newData = (payload.new || {}) as any;
           
           Object.keys(newData).forEach(field => {
             if (newData[field] !== oldData[field]) {

@@ -1,5 +1,6 @@
 // src/social/services/SocialService.ts - 既存supabaseインスタンス使用版
-// likes, follows テーブル完全対応
+// likes, follows, activities テーブル完全対応
+// 🔧 UserActivityFeed完全実装用メソッド追加
 
 import { PublicGame, UserProfile, UserGame, GameFilters } from '../types/SocialTypes';
 import { database, SupabaseError, supabase } from '../../lib/supabase';
@@ -213,7 +214,233 @@ export class SocialService {
     }
   }
 
-  // ==================== いいね機能（完全実装） ====================
+  // ==================== アクティビティフィード機能 ====================
+
+  async getActivities(
+    userId?: string,
+    filters: {
+      types?: string[];
+      users?: string[];
+      dateRange?: { start?: string; end?: string };
+      onlyFollowing?: boolean;
+      showPrivate?: boolean;
+    } = {},
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{ activities: any[]; hasMore: boolean }> {
+    try {
+      const offset = (page - 1) * limit;
+      
+      // 基本クエリ
+      let query = supabase
+        .from('activities')
+        .select(`
+          *,
+          profiles:user_id (
+            id,
+            username,
+            display_name,
+            avatar_url
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      // ユーザーフィルター
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      // アクティビティタイプフィルター
+      if (filters.types && filters.types.length > 0) {
+        query = query.in('activity_type', filters.types);
+      }
+
+      // 日付範囲フィルター
+      if (filters.dateRange?.start) {
+        query = query.gte('created_at', filters.dateRange.start);
+      }
+      if (filters.dateRange?.end) {
+        query = query.lte('created_at', filters.dateRange.end);
+      }
+
+      // 公開/非公開フィルター
+      if (!filters.showPrivate) {
+        query = query.eq('is_public', true);
+      }
+
+      // フォロー中フィルター
+      if (filters.onlyFollowing && userId) {
+        // フォロー中のユーザーIDを取得
+        const { data: followingData } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', userId);
+
+        if (followingData && followingData.length > 0) {
+          const followingIds = followingData.map(f => f.following_id);
+          query = query.in('user_id', followingIds);
+        } else {
+          // フォロー中のユーザーがいない場合は空配列を返す
+          return { activities: [], hasMore: false };
+        }
+      }
+
+      // ページネーション
+      query = query.range(offset, offset + limit);
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw new Error(`アクティビティ取得エラー: ${error.message}`);
+      }
+
+      // ターゲット情報を取得
+      const activitiesWithTargets = await Promise.all(
+        (data || []).map(async (activity: any) => {
+          let target_game = null;
+          let target_user = null;
+
+          if (activity.target_type === 'game' && activity.target_id) {
+            const { data: gameData } = await supabase
+              .from('user_games')
+              .select('id, title, thumbnail_url')
+              .eq('id', activity.target_id)
+              .single();
+            target_game = gameData;
+          } else if (activity.target_type === 'user' && activity.target_id) {
+            const { data: userData } = await supabase
+              .from('profiles')
+              .select('id, username, display_name, avatar_url')
+              .eq('id', activity.target_id)
+              .single();
+            target_user = userData;
+          }
+
+          return {
+            ...activity,
+            target_game,
+            target_user
+          };
+        })
+      );
+
+      const hasMore = activitiesWithTargets && activitiesWithTargets.length === limit + 1;
+      const activities = hasMore ? activitiesWithTargets.slice(0, limit) : activitiesWithTargets || [];
+
+      return { activities, hasMore };
+
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+      if (error instanceof SupabaseError) {
+        throw new Error(`アクティビティの取得に失敗しました: ${error.message}`);
+      }
+      throw new Error('アクティビティの取得に失敗しました');
+    }
+  }
+
+  async createActivity(
+    userId: string,
+    activityType: 'game_created' | 'game_liked' | 'game_shared' | 
+                  'user_followed' | 'achievement' | 'comment' | 
+                  'reaction' | 'milestone' | 'collaboration',
+    targetType: 'game' | 'user' | null = null,
+    targetId: string | null = null,
+    content?: string,
+    metadata: any = {},
+    isPublic: boolean = true
+  ): Promise<any> {
+    try {
+      const activityData: any = {
+        user_id: userId,
+        activity_type: activityType,
+        target_type: targetType,
+        target_id: targetId,
+        content: content || '',
+        metadata: metadata,
+        is_public: isPublic,
+        created_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('activities')
+        .insert(activityData)
+        .select()
+        .single();
+
+      if (error) {
+        throw new Error(`アクティビティ作成エラー: ${error.message}`);
+      }
+
+      console.log(`Activity created: ${activityType} by user ${userId}`);
+      return data;
+
+    } catch (error) {
+      console.error('Error creating activity:', error);
+      if (error instanceof SupabaseError) {
+        throw new Error(`アクティビティの作成に失敗しました: ${error.message}`);
+      }
+      throw new Error('アクティビティの作成に失敗しました');
+    }
+  }
+
+  async getActivityStats(userId: string): Promise<any> {
+    try {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      // 今日のアクティビティ数
+      const { count: todayCount } = await supabase
+        .from('activities')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('created_at', today.toISOString());
+
+      // 今週のアクティビティ数
+      const { count: weekCount } = await supabase
+        .from('activities')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('created_at', weekAgo.toISOString());
+
+      // 総アクティビティ数
+      const { count: totalActivities } = await supabase
+        .from('activities')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      // 平均日次アクティビティ
+      const averageDaily = weekCount ? Math.round(weekCount / 7) : 0;
+
+      // 連続日数計算（簡易版）
+      const streakDays = todayCount ? 1 : 0;
+
+      // 最もアクティブな時間帯（簡易版）
+      const mostActiveHour = '20:00';
+
+      return {
+        todayCount: todayCount || 0,
+        weekCount: weekCount || 0,
+        totalActivities: totalActivities || 0,
+        averageDaily,
+        streakDays,
+        mostActiveHour
+      };
+
+    } catch (error) {
+      console.error('Error fetching activity stats:', error);
+      return {
+        todayCount: 0,
+        weekCount: 0,
+        totalActivities: 0,
+        averageDaily: 0,
+        streakDays: 0,
+        mostActiveHour: '20:00'
+      };
+    }
+  }
+
+  // ==================== いいね機能（完全実装 + アクティビティ記録） ====================
 
   async toggleLike(gameId: string, userId: string): Promise<{ isLiked: boolean; newCount: number }> {
     try {
@@ -256,17 +483,30 @@ export class SocialService {
         const gamesData = await database.userGames.getPublished({ limit: 1000 });
         const game = gamesData.find((g: any) => g.id === gameId);
         
-        if (game && game.creator_id !== userId) {
-          const userProfile = await database.profiles.get(userId);
-          
-          if (userProfile) {
-            await this.notificationService.notifyGameLike(
-              gameId,
-              game.title,
-              game.creator_id,
-              userId,
-              userProfile.display_name || userProfile.username
-            );
+        if (game) {
+          // 🔧 アクティビティ記録追加
+          await this.createActivity(
+            userId,
+            'game_liked',
+            'game',
+            gameId,
+            `ゲームにいいねしました`,
+            { game_title: game.title },
+            true
+          );
+
+          if (game.creator_id !== userId) {
+            const userProfile = await database.profiles.get(userId);
+            
+            if (userProfile) {
+              await this.notificationService.notifyGameLike(
+                gameId,
+                game.title,
+                game.creator_id,
+                userId,
+                userProfile.display_name || userProfile.username
+              );
+            }
           }
         }
 
@@ -328,7 +568,7 @@ export class SocialService {
     }
   }
 
-  // ==================== フォロー機能（完全実装） ====================
+  // ==================== フォロー機能（完全実装 + アクティビティ記録） ====================
 
   async toggleFollow(targetUserId: string, currentUserId: string): Promise<{ isFollowing: boolean; newCount: number }> {
     try {
@@ -371,6 +611,17 @@ export class SocialService {
         if (insertError) {
           throw new Error(`フォロー追加エラー: ${insertError.message}`);
         }
+
+        // 🔧 アクティビティ記録追加
+        await this.createActivity(
+          currentUserId,
+          'user_followed',
+          'user',
+          targetUserId,
+          `ユーザーをフォローしました`,
+          {},
+          true
+        );
 
         const userProfile = await database.profiles.get(currentUserId);
         
@@ -527,6 +778,22 @@ export class SocialService {
         // エラーでも既存のシェア数を返す
       }
 
+      // 🔧 アクティビティ記録追加
+      const gamesData = await database.userGames.getPublished({ limit: 1000 });
+      const game = gamesData.find((g: any) => g.id === gameId);
+      
+      if (game) {
+        await this.createActivity(
+          currentUserId,
+          'game_shared',
+          'game',
+          gameId,
+          `ゲームを${platform}でシェアしました`,
+          { platform },
+          true
+        );
+      }
+
       // ゲームのシェア数をカウント
       const { count, error: countError } = await supabase
         .from('game_shares')
@@ -575,7 +842,7 @@ export class SocialService {
       updatedAt: dbGame.updated_at,
       isLiked,
       isBookmarked,
-      projectData: dbGame.project_data || null  // 🔧 追加: project_dataを含める
+      projectData: dbGame.project_data || null
     };
   }
 

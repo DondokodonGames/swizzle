@@ -1,6 +1,7 @@
 // src/lib/database.types.ts
 // Supabase データベース型定義（ソーシャル機能追加版）
 // 技術設計書のスキーマに基づく型安全性確保
+// 🔧 activitiesテーブル追加（UserActivityFeed完全実装）
 
 // JSON型の基底定義
 export type Json =
@@ -292,6 +293,49 @@ export interface Database {
           created_at?: string
         }
       }
+
+      // 🆕 アクティビティテーブル（UserActivityFeed用）
+      activities: {
+        Row: {
+          id: string                                    // UUID主キー
+          user_id: string                               // ユーザーID
+          activity_type: 'game_created' | 'game_liked' | 'game_shared' | 
+                         'user_followed' | 'achievement' | 'comment' | 
+                         'reaction' | 'milestone' | 'collaboration'
+          target_type: 'game' | 'user' | null           // ターゲットタイプ
+          target_id: string | null                      // ターゲットID
+          content: string | null                        // アクティビティ内容
+          metadata: Json                                // 追加メタデータ
+          is_public: boolean                            // 公開状態
+          created_at: string                            // 作成日時
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          activity_type: 'game_created' | 'game_liked' | 'game_shared' | 
+                         'user_followed' | 'achievement' | 'comment' | 
+                         'reaction' | 'milestone' | 'collaboration'
+          target_type?: 'game' | 'user' | null
+          target_id?: string | null
+          content?: string | null
+          metadata?: Json
+          is_public?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          activity_type?: 'game_created' | 'game_liked' | 'game_shared' | 
+                          'user_followed' | 'achievement' | 'comment' | 
+                          'reaction' | 'milestone' | 'collaboration'
+          target_type?: 'game' | 'user' | null
+          target_id?: string | null
+          content?: string | null
+          metadata?: Json
+          is_public?: boolean
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -365,6 +409,13 @@ export type PlaylistGameInsert = Database['public']['Tables']['playlist_games'][
 
 export type GameScore = Database['public']['Tables']['game_scores']['Row']
 export type GameScoreInsert = Database['public']['Tables']['game_scores']['Insert']
+
+// 🆕 アクティビティの型エイリアス
+export type Activity = Database['public']['Tables']['activities']['Row']
+export type ActivityInsert = Database['public']['Tables']['activities']['Insert']
+export type ActivityUpdate = Database['public']['Tables']['activities']['Update']
+
+export type ActivityType = Database['public']['Tables']['activities']['Row']['activity_type']
 
 // 🆕 通知タイプ
 export type NotificationType = Database['public']['Tables']['notifications']['Row']['type']
