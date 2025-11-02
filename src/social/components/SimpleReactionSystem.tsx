@@ -1,4 +1,5 @@
 // src/social/components/SimpleReactionSystem.tsx
+// Phase 3完全版: Supabase reactions API連携
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { ModernButton } from '../../components/ui/ModernButton';
@@ -25,6 +26,7 @@ export interface ReactionStats {
 
 interface SimpleReactionSystemProps {
   gameId: string;
+  userId?: string; // ユーザーIDを追加
   initialStats?: ReactionStats;
   className?: string;
   compact?: boolean;
@@ -81,6 +83,7 @@ const DEFAULT_REACTIONS: Omit<GameReaction, 'count' | 'isSelected'>[] = [
 
 export const SimpleReactionSystem: React.FC<SimpleReactionSystemProps> = ({
   gameId,
+  userId,
   initialStats = {},
   className = '',
   compact = false,
@@ -92,6 +95,7 @@ export const SimpleReactionSystem: React.FC<SimpleReactionSystemProps> = ({
   const [reactionStats, setReactionStats] = useState<ReactionStats>(initialStats);
   const [loading, setLoading] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   // サービスインスタンス
   const socialService = useMemo(() => SocialService.getInstance(), []);
@@ -120,9 +124,23 @@ export const SimpleReactionSystem: React.FC<SimpleReactionSystemProps> = ({
     return Object.values(reactionStats).reduce((sum, stat) => sum + stat.count, 0);
   }, [reactionStats]);
 
+  // リアクション統計取得
+  const fetchReactionStats = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      const stats = await socialService.getReactionStats(gameId, userId);
+      setReactionStats(stats);
+      setInitialLoadDone(true);
+    } catch (error) {
+      console.error('Error fetching reaction stats:', error);
+      setInitialLoadDone(true);
+    }
+  }, [gameId, userId, socialService]);
+
   // リアクション処理
   const handleReaction = useCallback(async (reactionId: string) => {
-    if (loading) return;
+    if (loading || !userId) return;
 
     try {
       setLoading(reactionId);
@@ -142,15 +160,14 @@ export const SimpleReactionSystem: React.FC<SimpleReactionSystemProps> = ({
       
       setReactionStats(newStats);
 
-      // 実装時はSupabase APIコール
-      // const result = await socialService.toggleReaction(gameId, reactionId, 'current-user');
+      // Supabase API呼び出し
+      const updatedStats = await socialService.toggleReaction(gameId, reactionId, userId);
       
-      // モック結果（実装時は削除）
-      await new Promise(resolve => setTimeout(resolve, 200));
-      console.log(`${gameId}: Reaction ${reactionId} ${isCurrentlySelected ? 'removed' : 'added'}`);
+      // 最新の統計で更新
+      setReactionStats(updatedStats);
 
       // コールバック実行
-      onReactionChange?.(gameId, newStats);
+      onReactionChange?.(gameId, updatedStats);
 
     } catch (error) {
       // エラー時はロールバック
@@ -159,7 +176,7 @@ export const SimpleReactionSystem: React.FC<SimpleReactionSystemProps> = ({
     } finally {
       setLoading(null);
     }
-  }, [gameId, reactionStats, loading, onReactionChange, socialService]);
+  }, [gameId, userId, reactionStats, loading, onReactionChange, socialService]);
 
   // 数値フォーマット
   const formatCount = useCallback((count: number): string => {
@@ -170,11 +187,19 @@ export const SimpleReactionSystem: React.FC<SimpleReactionSystemProps> = ({
 
   // 初期データ読み込み
   useEffect(() => {
-    if (Object.keys(initialStats).length === 0) {
-      // 実装時はSupabase APIから取得
-      // fetchReactionStats();
+    if (!initialLoadDone && userId) {
+      fetchReactionStats();
     }
-  }, [initialStats]);
+  }, [initialLoadDone, userId, fetchReactionStats]);
+
+  // userIdなしの場合の警告
+  if (!userId) {
+    return (
+      <div className={`simple-reaction-system ${className} bg-gray-100 p-2 rounded`}>
+        <p className="text-xs text-gray-500">リアクションを使用するにはログインしてください</p>
+      </div>
+    );
+  }
 
   return (
     <div className={`simple-reaction-system ${className}`}>
@@ -356,6 +381,7 @@ export const ReactionSystemExample: React.FC = () => {
         <h3 className="text-lg font-semibold mb-2">標準サイズ</h3>
         <SimpleReactionSystem
           gameId="example-game-1"
+          userId="example-user-1"
           initialStats={stats}
           onReactionChange={(gameId, reactions) => {
             console.log(`${gameId}: Reactions updated`, reactions);
@@ -369,6 +395,7 @@ export const ReactionSystemExample: React.FC = () => {
         <h3 className="text-lg font-semibold mb-2">コンパクトサイズ</h3>
         <SimpleReactionSystem
           gameId="example-game-2"
+          userId="example-user-1"
           initialStats={stats}
           compact={true}
           onReactionChange={(gameId, reactions) => {

@@ -1,4 +1,5 @@
 // src/social/components/TrendingGames.tsx
+// Phase 3完全版: Supabase trending API連携
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ModernCard } from '../../components/ui/ModernCard';
@@ -24,6 +25,7 @@ interface TrendingStats {
 }
 
 interface TrendingGamesProps {
+  userId?: string; // ユーザーIDを追加
   className?: string;
   maxItems?: number;
   showStats?: boolean;
@@ -48,6 +50,7 @@ const RANKING_TYPES = [
 ];
 
 export const TrendingGames: React.FC<TrendingGamesProps> = ({
+  userId,
   className = '',
   maxItems = 10,
   showStats = true,
@@ -71,83 +74,18 @@ export const TrendingGames: React.FC<TrendingGamesProps> = ({
   // サービスインスタンス
   const socialService = useMemo(() => SocialService.getInstance(), []);
 
-  // トレンドスコア計算
-  const calculateTrendScore = useCallback((game: PublicGame): number => {
-    const now = Date.now();
-    const gameAge = now - new Date(game.createdAt).getTime();
-    const hoursSinceCreated = gameAge / (1000 * 60 * 60);
-    
-    // 新しさボーナス（24時間以内は大幅ボーナス）
-    const freshnessBonus = hoursSinceCreated <= 24 ? 2.0 : hoursSinceCreated <= 168 ? 1.5 : 1.0;
-    
-    // エンゲージメントスコア
-    const engagementScore = (
-      (game.stats.likes * 3) +
-      (game.stats.shares * 5) +
-      (game.stats.bookmarks * 2) +
-      ((game.stats.views || 0) * 0.1)
-    );
-    
-    // 時間調整済みスコア
-    const timeAdjustedScore = engagementScore / Math.max(hoursSinceCreated / 24, 0.1);
-    
-    return timeAdjustedScore * freshnessBonus;
-  }, []);
-
   // トレンドゲーム取得
   const fetchTrendingGames = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // 実装時はSupabase APIに置き換え
-      // const result = await socialService.getTrendingGames(selectedPeriod, selectedRanking, maxItems);
-      
-      // モックデータ生成
-      const mockGames: PublicGame[] = Array.from({ length: maxItems * 2 }, (_, i) => ({
-        id: `trending-game-${i}`,
-        title: `トレンドゲーム ${i + 1}`,
-        description: `話題沸騰中のゲーム！みんなが熱中している最新作品です。`,
-        thumbnail: `https://picsum.photos/300/200?random=${i + 300}`,
-        author: {
-          id: `user-${i % 10}`,
-          name: `クリエイター${i % 10 + 1}`,
-          avatar: `https://picsum.photos/40/40?random=${i % 10 + 150}`
-        },
-        stats: {
-          likes: Math.floor(Math.random() * 2000) + 100,
-          shares: Math.floor(Math.random() * 300) + 10,
-          bookmarks: Math.floor(Math.random() * 500) + 20,
-          views: Math.floor(Math.random() * 20000) + 500
-        },
-        tags: ['トレンド', '人気', '新作'],
-        category: ['action', 'puzzle', 'casual', 'arcade'][Math.floor(Math.random() * 4)],
-        createdAt: new Date(Date.now() - Math.random() * (selectedPeriod === 'today' ? 24 : selectedPeriod === 'week' ? 168 : 720) * 60 * 60 * 1000).toISOString(),
-        updatedAt: new Date().toISOString(),
-        isLiked: Math.random() > 0.6,
-        isBookmarked: Math.random() > 0.8
-      }));
-
-      // トレンドスコア計算とソート
-      const trendingData: TrendingGame[] = mockGames.map((game, index) => ({
-        ...game,
-        trendScore: calculateTrendScore(game),
-        rankChange: Math.floor(Math.random() * 10) - 5, // -5 to +5
-        growthRate: Math.random() * 200 - 50, // -50% to +150%
-        peakTime: ['朝', '昼', '夕方', '夜'][Math.floor(Math.random() * 4)]
-      })).sort((a, b) => {
-        switch (selectedRanking) {
-          case 'popular':
-            return b.stats.likes - a.stats.likes;
-          case 'newest':
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          case 'played':
-            return (b.stats.views || 0) - (a.stats.views || 0);
-          case 'trending':
-          default:
-            return b.trendScore - a.trendScore;
-        }
-      }).slice(0, maxItems);
+      // Supabase API呼び出し
+      const trendingData = await socialService.getTrendingGames(
+        selectedPeriod, 
+        selectedRanking, 
+        maxItems
+      );
 
       setTrendingGames(trendingData);
 
@@ -170,7 +108,7 @@ export const TrendingGames: React.FC<TrendingGamesProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [socialService, selectedPeriod, selectedRanking, maxItems, calculateTrendScore]);
+  }, [socialService, selectedPeriod, selectedRanking, maxItems]);
 
   // 初期ロード
   useEffect(() => {
@@ -427,11 +365,13 @@ export const TrendingGames: React.FC<TrendingGamesProps> = ({
 
 // カテゴリ別トレンド表示コンポーネント
 interface CategoryTrendingProps {
+  userId?: string;
   categories: string[];
   className?: string;
 }
 
 export const CategoryTrending: React.FC<CategoryTrendingProps> = ({
+  userId,
   categories = ['action', 'puzzle', 'casual', 'arcade'],
   className = ''
 }) => {
@@ -442,6 +382,7 @@ export const CategoryTrending: React.FC<CategoryTrendingProps> = ({
         {categories.map(category => (
           <TrendingGames
             key={category}
+            userId={userId}
             maxItems={3}
             showStats={false}
             autoRefresh={false}

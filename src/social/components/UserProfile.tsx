@@ -1,10 +1,13 @@
 // src/social/components/UserProfile.tsx
+// 🔧 修正版: 認証ユーザーID取得対応
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ModernCard } from '../../components/ui/ModernCard';
 import { ModernButton } from '../../components/ui/ModernButton';
 import { SocialService } from '../services/SocialService';
 import { UserProfile as UserProfileType, UserGame } from '../types/SocialTypes';
+import { UserActivityFeed } from './UserActivityFeed';
+import { supabase } from '../../lib/supabase'; // 🔧 追加
 
 interface UserProfileProps {
   userId?: string;
@@ -28,10 +31,11 @@ const GAME_FILTERS = [
 ];
 
 export const UserProfile: React.FC<UserProfileProps> = ({ 
-  userId = 'current-user', 
+  userId: propUserId,
   className = '' 
 }) => {
-  // 状態管理
+  // 🔧 修正: 実際の認証ユーザーIDを取得
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfileType | null>(null);
   const [games, setGames] = useState<UserGame[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,19 +50,60 @@ export const UserProfile: React.FC<UserProfileProps> = ({
     website: ''
   });
 
-  // サービスインスタンス
   const socialService = useMemo(() => SocialService.getInstance(), []);
+
+  // 🔧 追加: 認証ユーザーID取得
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setCurrentUserId(user.id);
+          console.log('✅ 認証ユーザーID取得成功:', user.id);
+        } else {
+          console.warn('⚠️ 認証されていません');
+          setError('ログインが必要です');
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('❌ 認証ユーザーID取得エラー:', err);
+        setError('認証情報の取得に失敗しました');
+        setLoading(false);
+      }
+    };
+
+    fetchCurrentUser();
+  }, []);
+
+  // 🔧 修正: userIdの決定（propUserId または currentUserId）
+  const userId = useMemo(() => {
+    if (propUserId && propUserId !== 'current-user') {
+      return propUserId;
+    }
+    return currentUserId;
+  }, [propUserId, currentUserId]);
 
   // プロフィール取得
   const fetchProfile = useCallback(async () => {
+    // 🔧 追加: userIdがない場合は処理しない
+    if (!userId) {
+      console.log('⏳ userIdがまだ取得されていません');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('📥 プロフィール取得開始:', userId);
       
       const [profileData, gamesData] = await Promise.all([
         socialService.getUserProfile(userId),
         socialService.getUserGames(userId)
       ]);
+
+      console.log('✅ プロフィール取得成功:', profileData);
+      console.log('✅ ゲーム取得成功:', gamesData.length, '件');
 
       setProfile(profileData);
       setGames(gamesData);
@@ -69,25 +114,27 @@ export const UserProfile: React.FC<UserProfileProps> = ({
         location: profileData.location,
         website: profileData.website
       });
-    } catch (err) {
-      setError('プロフィールの読み込みに失敗しました');
-      console.error('Error fetching profile:', err);
+    } catch (err: any) {
+      console.error('❌ プロフィール取得エラー:', err);
+      setError(err.message || 'プロフィールの読み込みに失敗しました');
     } finally {
       setLoading(false);
     }
   }, [socialService, userId]);
 
-  // 初期ロード
+  // 🔧 修正: userIdが設定されたらプロフィール取得
   useEffect(() => {
-    fetchProfile();
-  }, [fetchProfile]);
+    if (userId) {
+      fetchProfile();
+    }
+  }, [userId, fetchProfile]);
 
   // フォロー処理
   const handleFollow = useCallback(async () => {
-    if (!profile) return;
+    if (!profile || !currentUserId) return;
     
     try {
-      const result = await socialService.toggleFollow(profile.id, 'current-user');
+      const result = await socialService.toggleFollow(profile.id, currentUserId);
       
       setProfile(prev => prev ? {
         ...prev,
@@ -100,7 +147,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({
     } catch (err) {
       console.error('Follow error:', err);
     }
-  }, [socialService, profile]);
+  }, [socialService, profile, currentUserId]);
 
   // プロフィール編集保存
   const handleSaveProfile = useCallback(async () => {
@@ -117,7 +164,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({
 
   // ゲーム削除
   const handleDeleteGame = useCallback(async (gameId: string) => {
-    if (!confirm('このゲームを削除しますか？')) return;
+    if (!confirm('このゲームを削除しますか？') || !userId) return;
     
     try {
       await socialService.deleteGame(gameId, userId);
@@ -129,6 +176,8 @@ export const UserProfile: React.FC<UserProfileProps> = ({
 
   // ゲーム公開状態変更
   const handleToggleGameStatus = useCallback(async (gameId: string) => {
+    if (!userId) return;
+    
     try {
       const newStatus = await socialService.toggleGameStatus(gameId, userId);
       
@@ -174,8 +223,24 @@ export const UserProfile: React.FC<UserProfileProps> = ({
     return (
       <div className="text-center py-12">
         <div className="text-6xl mb-4">😵</div>
-        <h3 className="text-xl font-semibold text-gray-600 mb-2">プロフィールが見つかりません</h3>
+        <h3 className="text-xl font-semibold text-gray-600 mb-2">
+          {error === 'ログインが必要です' ? 'ログインが必要です' : 'プロフィールが見つかりません'}
+        </h3>
         <p className="text-gray-500">{error || 'ユーザーが存在しないか、アクセスできません'}</p>
+        {error === 'ログインが必要です' && (
+          <div className="mt-4">
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('openAuthModal', { 
+                  detail: { mode: 'signin' } 
+                }));
+              }}
+              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              ログイン
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -463,8 +528,19 @@ export const UserProfile: React.FC<UserProfileProps> = ({
         </div>
       )}
 
-      {/* 他のタブは簡易実装 */}
-      {activeTab !== 'games' && (
+      {/* activityタブ - UserActivityFeed統合 */}
+      {activeTab === 'activity' && userId && (
+        <UserActivityFeed 
+          userId={userId}
+          targetUserId={userId}
+          maxItems={20}
+          autoRefresh={true}
+          showFilters={true}
+        />
+      )}
+
+      {/* 他のタブは開発中 */}
+      {(activeTab === 'liked' || activeTab === 'followers' || activeTab === 'following') && (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">🚧</div>
           <h3 className="text-xl font-semibold text-gray-600 mb-2">開発中</h3>
