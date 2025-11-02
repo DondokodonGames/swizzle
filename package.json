@@ -7,18 +7,25 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "ai:generate": "tsx src/ai/index.ts",
+    "ai:generate:dry": "VITE_AI_DRY_RUN=true tsx src/ai/index.ts",
+    "ai:generate:test": "TARGET_GAMES_COUNT=10 VITE_AI_DRY_RUN=true tsx src/ai/index.ts"
+
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
     "@supabase/supabase-js": "^2.56.0",
     "@tabler/icons-react": "^3.34.1",
     "lucide-react": "^0.544.0",
+    "openai": "^6.7.0",
     "pixi.js": "^7.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.9.4"
   },
   "devDependencies": {
+    "@types/node": "^22.10.2",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
@@ -27,6 +34,7 @@
     "eslint": "^8.45.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.3",
+    "tsx": "^4.20.6",
     "typescript": "^5.0.2",
     "vite": "^4.4.5"
   }
