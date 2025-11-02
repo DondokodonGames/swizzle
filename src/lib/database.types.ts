@@ -1,7 +1,8 @@
 // src/lib/database.types.ts
 // Supabase データベース型定義（ソーシャル機能追加版）
 // 技術設計書のスキーマに基づく型安全性確保
-// 🔧 activitiesテーブル追加（UserActivityFeed完全実装）
+// 🔧 Phase 2: activitiesテーブル追加（UserActivityFeed完全実装）
+// 🆕 Phase 3: reactions, user_preferencesテーブル追加
 
 // JSON型の基底定義
 export type Json =
@@ -107,6 +108,7 @@ export interface Database {
           updated_at?: string
         }
       }
+
       // お気に入りゲームテーブル
       game_favorites: {
         Row: {
@@ -126,7 +128,7 @@ export interface Database {
         }
       }
 
-      // 🆕 いいねテーブル
+      // いいねテーブル
       likes: {
         Row: {
           user_id: string                     // ユーザーID（auth.users参照）
@@ -145,7 +147,7 @@ export interface Database {
         }
       }
 
-      // 🆕 フォローテーブル
+      // フォローテーブル
       follows: {
         Row: {
           follower_id: string                 // フォローするユーザーID（auth.users参照）
@@ -164,7 +166,7 @@ export interface Database {
         }
       }
 
-      // 🆕 通知テーブル
+      // 通知テーブル
       notifications: {
         Row: {
           id: string                          // UUID主キー
@@ -294,7 +296,32 @@ export interface Database {
         }
       }
 
-      // 🆕 アクティビティテーブル（UserActivityFeed用）
+      // ゲームシェアテーブル
+      game_shares: {
+        Row: {
+          id: string                          // UUID主キー
+          user_id: string                     // ユーザーID
+          game_id: string                     // ゲームID
+          platform: string                    // シェアプラットフォーム
+          shared_at: string                   // シェア日時
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          game_id: string
+          platform: string
+          shared_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          game_id?: string
+          platform?: string
+          shared_at?: string
+        }
+      }
+
+      // アクティビティテーブル（UserActivityFeed用）
       activities: {
         Row: {
           id: string                                    // UUID主キー
@@ -336,12 +363,71 @@ export interface Database {
           created_at?: string
         }
       }
+
+      // 🆕 Phase 3: リアクションテーブル（SimpleReactionSystem用）
+      reactions: {
+        Row: {
+          id: string                                    // UUID主キー
+          user_id: string                               // ユーザーID
+          game_id: string                               // ゲームID
+          reaction_type: 'completed' | 'fun' | 'amazing' | 'difficult' | 'addictive' | 'creative'
+          created_at: string                            // 作成日時
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          game_id: string
+          reaction_type: 'completed' | 'fun' | 'amazing' | 'difficult' | 'addictive' | 'creative'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          game_id?: string
+          reaction_type?: 'completed' | 'fun' | 'amazing' | 'difficult' | 'addictive' | 'creative'
+          created_at?: string
+        }
+      }
+
+      // 🆕 Phase 3: ユーザー設定テーブル（ContentDiscovery用）
+      user_preferences: {
+        Row: {
+          user_id: string                               // ユーザーID（主キー）
+          favorite_categories: string[]                 // お気に入りカテゴリ
+          play_time: 'short' | 'medium' | 'long'       // プレイ時間設定
+          difficulty: 'easy' | 'medium' | 'hard'       // 難易度設定
+          gameplay_style: string[]                      // ゲームプレイスタイル
+          interaction_history: Json                     // 行動履歴（JSONB）
+          created_at: string                            // 作成日時
+          updated_at: string                            // 更新日時
+        }
+        Insert: {
+          user_id: string
+          favorite_categories?: string[]
+          play_time?: 'short' | 'medium' | 'long'
+          difficulty?: 'easy' | 'medium' | 'hard'
+          gameplay_style?: string[]
+          interaction_history?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          favorite_categories?: string[]
+          play_time?: 'short' | 'medium' | 'long'
+          difficulty?: 'easy' | 'medium' | 'hard'
+          gameplay_style?: string[]
+          interaction_history?: Json
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      // 🆕 便利関数の型定義
+      // 便利関数の型定義
       get_like_count: {
         Args: { p_game_id: string }
         Returns: number
@@ -370,6 +456,16 @@ export interface Database {
         Args: Record<string, never>
         Returns: number
       }
+      // 🆕 Phase 3: リアクション統計関数
+      get_reaction_stats: {
+        Args: { p_game_id: string; p_user_id?: string }
+        Returns: Json
+      }
+      // 🆕 Phase 3: 行動履歴更新関数
+      update_interaction_history: {
+        Args: { p_user_id: string; p_action: string; p_target_id: string }
+        Returns: void
+      }
     }
     Enums: {
       [_ in never]: never
@@ -389,7 +485,7 @@ export type UserGameUpdate = Database['public']['Tables']['user_games']['Update'
 export type GameFavorite = Database['public']['Tables']['game_favorites']['Row']
 export type GameFavoriteInsert = Database['public']['Tables']['game_favorites']['Insert']
 
-// 🆕 ソーシャル機能の型エイリアス
+// ソーシャル機能の型エイリアス
 export type Like = Database['public']['Tables']['likes']['Row']
 export type LikeInsert = Database['public']['Tables']['likes']['Insert']
 
@@ -410,15 +506,46 @@ export type PlaylistGameInsert = Database['public']['Tables']['playlist_games'][
 export type GameScore = Database['public']['Tables']['game_scores']['Row']
 export type GameScoreInsert = Database['public']['Tables']['game_scores']['Insert']
 
-// 🆕 アクティビティの型エイリアス
+export type GameShare = Database['public']['Tables']['game_shares']['Row']
+export type GameShareInsert = Database['public']['Tables']['game_shares']['Insert']
+
+// アクティビティの型エイリアス
 export type Activity = Database['public']['Tables']['activities']['Row']
 export type ActivityInsert = Database['public']['Tables']['activities']['Insert']
 export type ActivityUpdate = Database['public']['Tables']['activities']['Update']
 
 export type ActivityType = Database['public']['Tables']['activities']['Row']['activity_type']
 
-// 🆕 通知タイプ
+// 🆕 Phase 3: リアクションの型エイリアス
+export type Reaction = Database['public']['Tables']['reactions']['Row']
+export type ReactionInsert = Database['public']['Tables']['reactions']['Insert']
+export type ReactionUpdate = Database['public']['Tables']['reactions']['Update']
+
+export type ReactionType = Database['public']['Tables']['reactions']['Row']['reaction_type']
+
+// 🆕 Phase 3: ユーザー設定の型エイリアス
+export type UserPreferences = Database['public']['Tables']['user_preferences']['Row']
+export type UserPreferencesInsert = Database['public']['Tables']['user_preferences']['Insert']
+export type UserPreferencesUpdate = Database['public']['Tables']['user_preferences']['Update']
+
+// 通知タイプ
 export type NotificationType = Database['public']['Tables']['notifications']['Row']['type']
+
+// 🆕 Phase 3: インタラクション履歴の型
+export interface InteractionHistory {
+  likedGames: string[]
+  playedGames: string[]
+  sharedGames: string[]
+  searchTerms: string[]
+}
+
+// 🆕 Phase 3: リアクション統計の型
+export interface ReactionStats {
+  [key: string]: {
+    count: number
+    userReacted: boolean
+  }
+}
 
 // ゲームテンプレート型定義（既存システムとの互換性）
 export type GameTemplateType = 
@@ -518,7 +645,7 @@ export interface PlaylistWithGames extends Playlist {
   })[]
 }
 
-// 🆕 ソーシャル機能拡張型
+// ソーシャル機能拡張型
 export interface UserGameWithSocialData extends UserGame {
   profiles: Pick<Profile, 'username' | 'display_name' | 'avatar_url'>
   is_liked?: boolean
@@ -546,8 +673,8 @@ export interface UserStats {
   totalLikes: number
   playlistsCreated: number
   favoriteGames: number
-  followerCount?: number      // 🆕
-  followingCount?: number     // 🆕
+  followerCount?: number
+  followingCount?: number
 }
 
 export interface GameStats {

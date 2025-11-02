@@ -1,10 +1,29 @@
 // src/social/services/SocialService.ts - 既存supabaseインスタンス使用版
 // likes, follows, activities テーブル完全対応
-// 🔧 UserActivityFeed完全実装用メソッド追加
+// 🔧 Phase 2: UserActivityFeed完全実装用メソッド追加
+// 🆕 Phase 3: reactions, user_preferences, trending メソッド追加
 
 import { PublicGame, UserProfile, UserGame, GameFilters } from '../types/SocialTypes';
 import { database, SupabaseError, supabase } from '../../lib/supabase';
 import { NotificationService } from './NotificationService';
+import type { ReactionStats, InteractionHistory } from '../../lib/database.types';
+
+// 🆕 Phase 3: トレンドゲーム型定義
+interface TrendingGame extends PublicGame {
+  trendScore: number;
+  rankChange: number;
+  growthRate: number;
+  peakTime: string;
+}
+
+// 🆕 Phase 3: ユーザー設定型（簡易版）
+interface UserPreferencesData {
+  favoriteCategories: string[];
+  playTime: 'short' | 'medium' | 'long';
+  difficulty: 'easy' | 'medium' | 'hard';
+  gameplayStyle: string[];
+  interactionHistory: InteractionHistory;
+}
 
 export class SocialService {
   private static instance: SocialService;
@@ -214,7 +233,7 @@ export class SocialService {
     }
   }
 
-  // ==================== アクティビティフィード機能 ====================
+  // ==================== Phase 2: アクティビティフィード機能 ====================
 
   async getActivities(
     userId?: string,
@@ -484,7 +503,7 @@ export class SocialService {
         const game = gamesData.find((g: any) => g.id === gameId);
         
         if (game) {
-          // 🔧 アクティビティ記録追加
+          // アクティビティ記録追加
           await this.createActivity(
             userId,
             'game_liked',
@@ -612,7 +631,7 @@ export class SocialService {
           throw new Error(`フォロー追加エラー: ${insertError.message}`);
         }
 
-        // 🔧 アクティビティ記録追加
+        // アクティビティ記録追加
         await this.createActivity(
           currentUserId,
           'user_followed',
@@ -652,6 +671,392 @@ export class SocialService {
         throw new Error(`フォローの処理に失敗しました: ${error.message}`);
       }
       throw new Error('フォローの処理に失敗しました');
+    }
+  }
+
+  // ==================== 🆕 Phase 3: リアクション機能 ====================
+
+  /**
+   * リアクション切り替え
+   * @param gameId ゲームID
+   * @param reactionType リアクションタイプ
+   * @param userId ユーザーID
+   * @returns 更新後のリアクション統計
+   */
+  async toggleReaction(
+    gameId: string,
+    reactionType: string,
+    userId: string
+  ): Promise<ReactionStats> {
+    try {
+      // 既存リアクション確認
+      const { data: existingReaction, error: checkError } = await supabase
+        .from('reactions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('game_id', gameId)
+        .eq('reaction_type', reactionType)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existingReaction) {
+        // リアクション削除
+        const { error: deleteError } = await supabase
+          .from('reactions')
+          .delete()
+          .eq('user_id', userId)
+          .eq('game_id', gameId)
+          .eq('reaction_type', reactionType);
+
+        if (deleteError) {
+          throw new Error(`リアクション削除エラー: ${deleteError.message}`);
+        }
+
+        console.log(`Reaction removed: ${reactionType} from game ${gameId} by user ${userId}`);
+      } else {
+        // リアクション追加
+        const reactionData: any = {
+          user_id: userId,
+          game_id: gameId,
+          reaction_type: reactionType
+        };
+
+        const { error: insertError } = await supabase
+          .from('reactions')
+          .insert(reactionData);
+
+        if (insertError) {
+          throw new Error(`リアクション追加エラー: ${insertError.message}`);
+        }
+
+        // アクティビティ記録
+        await this.createActivity(
+          userId,
+          'reaction',
+          'game',
+          gameId,
+          `ゲームに${reactionType}リアクションしました`,
+          { reaction_type: reactionType },
+          true
+        );
+
+        console.log(`Reaction added: ${reactionType} to game ${gameId} by user ${userId}`);
+      }
+
+      // 更新後の統計取得
+      return await this.getReactionStats(gameId, userId);
+
+    } catch (error) {
+      console.error('Error toggling reaction:', error);
+      if (error instanceof SupabaseError) {
+        throw new Error(`リアクションの処理に失敗しました: ${error.message}`);
+      }
+      throw new Error('リアクションの処理に失敗しました');
+    }
+  }
+
+  /**
+   * リアクション統計取得
+   * @param gameId ゲームID
+   * @param userId ユーザーID（オプション）
+   * @returns リアクション統計
+   */
+  async getReactionStats(gameId: string, userId?: string): Promise<ReactionStats> {
+    try {
+      // 全リアクション取得
+      const { data: reactions, error } = await supabase
+        .from('reactions')
+        .select('reaction_type, user_id')
+        .eq('game_id', gameId);
+
+      if (error) {
+        throw new Error(`リアクション統計取得エラー: ${error.message}`);
+      }
+
+      const stats: ReactionStats = {};
+
+      // リアクションタイプごとに集計
+      (reactions || []).forEach(reaction => {
+        if (!stats[reaction.reaction_type]) {
+          stats[reaction.reaction_type] = { count: 0, userReacted: false };
+        }
+        stats[reaction.reaction_type].count++;
+        
+        // ユーザーのリアクション状態を記録
+        if (userId && reaction.user_id === userId) {
+          stats[reaction.reaction_type].userReacted = true;
+        }
+      });
+
+      return stats;
+
+    } catch (error) {
+      console.error('Error fetching reaction stats:', error);
+      return {};
+    }
+  }
+
+  // ==================== 🆕 Phase 3: トレンド機能 ====================
+
+  /**
+   * トレンドゲーム取得
+   * @param period 期間（today/week/month/all）
+   * @param rankingType ランキングタイプ（trending/popular/newest/played）
+   * @param limit 取得件数
+   * @returns トレンドゲーム一覧
+   */
+  async getTrendingGames(
+    period: string = 'today',
+    rankingType: string = 'trending',
+    limit: number = 10
+  ): Promise<TrendingGame[]> {
+    try {
+      // 期間フィルター計算
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (period) {
+        case 'today':
+          startDate = new Date(now.setHours(0, 0, 0, 0));
+          break;
+        case 'week':
+          startDate = new Date(now.setDate(now.getDate() - 7));
+          break;
+        case 'month':
+          startDate = new Date(now.setMonth(now.getMonth() - 1));
+          break;
+        case 'all':
+        default:
+          startDate = new Date(0);
+      }
+
+      // ゲーム取得
+      const gamesData = await database.userGames.getPublished({ limit: limit * 3 });
+      
+      // 期間フィルター適用
+      const filteredGames = gamesData.filter((game: any) => 
+        new Date(game.created_at) >= startDate
+      );
+
+      // 各ゲームのいいね・ブックマーク数を取得
+      const gamesWithStats = await Promise.all(
+        filteredGames.map(async (game: any) => {
+          const publicGame = this.convertToPublicGame(game);
+          const trendScore = this.calculateTrendScore(publicGame);
+          
+          return {
+            ...publicGame,
+            trendScore,
+            rankChange: Math.floor(Math.random() * 10) - 5, // モック（実装時は前回ランクと比較）
+            growthRate: Math.random() * 200 - 50, // モック（実装時は成長率計算）
+            peakTime: this.calculatePeakTime(game.created_at)
+          };
+        })
+      );
+
+      // ランキングタイプ別ソート
+      let sortedGames: TrendingGame[] = [];
+      switch (rankingType) {
+        case 'popular':
+          sortedGames = gamesWithStats.sort((a, b) => b.stats.likes - a.stats.likes);
+          break;
+        case 'newest':
+          sortedGames = gamesWithStats.sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          break;
+        case 'played':
+          sortedGames = gamesWithStats.sort((a, b) => 
+            (b.stats.views || 0) - (a.stats.views || 0)
+          );
+          break;
+        case 'trending':
+        default:
+          sortedGames = gamesWithStats.sort((a, b) => b.trendScore - a.trendScore);
+      }
+
+      return sortedGames.slice(0, limit);
+
+    } catch (error) {
+      console.error('Error fetching trending games:', error);
+      if (error instanceof SupabaseError) {
+        throw new Error(`トレンドゲームの取得に失敗しました: ${error.message}`);
+      }
+      throw new Error('トレンドゲームの取得に失敗しました');
+    }
+  }
+
+  /**
+   * トレンドスコア計算
+   */
+  private calculateTrendScore(game: PublicGame): number {
+    const now = Date.now();
+    const gameAge = now - new Date(game.createdAt).getTime();
+    const hoursSinceCreated = gameAge / (1000 * 60 * 60);
+    
+    // 新しさボーナス
+    const freshnessBonus = hoursSinceCreated <= 24 ? 2.0 : hoursSinceCreated <= 168 ? 1.5 : 1.0;
+    
+    // エンゲージメントスコア
+    const engagementScore = (
+      (game.stats.likes * 3) +
+      (game.stats.shares * 5) +
+      (game.stats.bookmarks * 2) +
+      ((game.stats.views || 0) * 0.1)
+    );
+    
+    // 時間調整済みスコア
+    const timeAdjustedScore = engagementScore / Math.max(hoursSinceCreated / 24, 0.1);
+    
+    return timeAdjustedScore * freshnessBonus;
+  }
+
+  /**
+   * ピーク時間帯計算
+   */
+  private calculatePeakTime(createdAt: string): string {
+    const hour = new Date(createdAt).getHours();
+    if (hour >= 6 && hour < 12) return '朝';
+    if (hour >= 12 && hour < 17) return '昼';
+    if (hour >= 17 && hour < 21) return '夕方';
+    return '夜';
+  }
+
+  // ==================== 🆕 Phase 3: ユーザー設定機能 ====================
+
+  /**
+   * ユーザー設定取得
+   * @param userId ユーザーID
+   * @returns ユーザー設定（なければnull）
+   */
+  async getUserPreferences(userId: string): Promise<UserPreferencesData | null> {
+    try {
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      if (!data) return null;
+
+      return {
+        favoriteCategories: data.favorite_categories || [],
+        playTime: data.play_time || 'medium',
+        difficulty: data.difficulty || 'medium',
+        gameplayStyle: data.gameplay_style || [],
+        interactionHistory: (data.interaction_history as InteractionHistory) || {
+          likedGames: [],
+          playedGames: [],
+          sharedGames: [],
+          searchTerms: []
+        }
+      };
+
+    } catch (error) {
+      console.error('Error fetching user preferences:', error);
+      return null;
+    }
+  }
+
+  /**
+   * ユーザー設定保存
+   * @param userId ユーザーID
+   * @param preferences ユーザー設定
+   */
+  async saveUserPreferences(
+    userId: string,
+    preferences: Partial<UserPreferencesData>
+  ): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('user_preferences')
+        .upsert({
+          user_id: userId,
+          favorite_categories: preferences.favoriteCategories,
+          play_time: preferences.playTime,
+          difficulty: preferences.difficulty,
+          gameplay_style: preferences.gameplayStyle,
+          interaction_history: preferences.interactionHistory,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) {
+        throw new Error(`ユーザー設定保存エラー: ${error.message}`);
+      }
+
+      console.log(`User preferences saved for user ${userId}`);
+
+    } catch (error) {
+      console.error('Error saving user preferences:', error);
+      if (error instanceof SupabaseError) {
+        throw new Error(`ユーザー設定の保存に失敗しました: ${error.message}`);
+      }
+      throw new Error('ユーザー設定の保存に失敗しました');
+    }
+  }
+
+  /**
+   * 行動履歴更新（いいね/プレイ/シェア/検索）
+   * @param userId ユーザーID
+   * @param action アクション種別
+   * @param targetId 対象ID
+   */
+  async updateInteractionHistory(
+    userId: string,
+    action: 'liked' | 'played' | 'shared' | 'search',
+    targetId: string
+  ): Promise<void> {
+    try {
+      // 現在の設定を取得
+      const currentPrefs = await this.getUserPreferences(userId);
+      
+      if (!currentPrefs) {
+        // 設定がない場合はデフォルトで作成
+        await this.saveUserPreferences(userId, {
+          favoriteCategories: [],
+          playTime: 'medium',
+          difficulty: 'medium',
+          gameplayStyle: [],
+          interactionHistory: {
+            likedGames: action === 'liked' ? [targetId] : [],
+            playedGames: action === 'played' ? [targetId] : [],
+            sharedGames: action === 'shared' ? [targetId] : [],
+            searchTerms: action === 'search' ? [targetId] : []
+          }
+        });
+        return;
+      }
+
+      // 履歴更新
+      const history = currentPrefs.interactionHistory;
+      const historyKey = action === 'liked' ? 'likedGames' :
+                        action === 'played' ? 'playedGames' :
+                        action === 'shared' ? 'sharedGames' : 'searchTerms';
+      
+      // 重複を避けて追加（最新100件まで）
+      const currentList = history[historyKey] || [];
+      const updatedList = [targetId, ...currentList.filter(id => id !== targetId)].slice(0, 100);
+      
+      history[historyKey] = updatedList;
+
+      // 更新を保存
+      await this.saveUserPreferences(userId, {
+        ...currentPrefs,
+        interactionHistory: history
+      });
+
+      console.log(`Interaction history updated: ${action} for user ${userId}`);
+
+    } catch (error) {
+      console.error('Error updating interaction history:', error);
+      // 履歴更新エラーは無視（重要度低）
     }
   }
 
@@ -778,7 +1183,7 @@ export class SocialService {
         // エラーでも既存のシェア数を返す
       }
 
-      // 🔧 アクティビティ記録追加
+      // アクティビティ記録追加
       const gamesData = await database.userGames.getPublished({ limit: 1000 });
       const game = gamesData.find((g: any) => g.id === gameId);
       

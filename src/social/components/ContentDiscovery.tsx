@@ -1,4 +1,5 @@
 // src/social/components/ContentDiscovery.tsx
+// Phase 3完全版: Supabase user_preferences API連携
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ModernCard } from '../../components/ui/ModernCard';
@@ -6,6 +7,7 @@ import { ModernButton } from '../../components/ui/ModernButton';
 import { SocialService } from '../services/SocialService';
 import { PublicGame, UserProfile } from '../types/SocialTypes';
 import { LikeButton } from './LikeButton';
+import { supabase } from '../../lib/supabase';
 
 interface ContentDiscoveryProps {
   userId: string;
@@ -159,31 +161,94 @@ export const ContentDiscovery: React.FC<ContentDiscoveryProps> = ({
   // サービス
   const socialService = useMemo(() => SocialService.getInstance(), []);
 
-  // ユーザー設定読み込み
+  // フォロー中のクリエイターID取得
+  const getFollowedCreators = useCallback(async (userId: string): Promise<string[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', userId);
+
+      if (error) {
+        console.error('Error fetching followed creators:', error);
+        return [];
+      }
+
+      return (data || []).map(follow => follow.following_id);
+    } catch (error) {
+      console.error('Error fetching followed creators:', error);
+      return [];
+    }
+  }, []);
+
+  // ユーザー設定読み込み（Supabase連携）
   const loadUserPreferences = useCallback(async () => {
     try {
-      // 実装時はSupabase APIで置き換え
-      const mockPreferences: UserPreferences = {
-        favoriteCategories: ['puzzle', 'casual', 'action'],
-        playTime: 'medium',
-        difficulty: 'medium',
-        gameplayStyle: ['relaxing', 'challenging', 'creative'],
-        followedCreators: ['creator1', 'creator2', 'creator3'],
-        interactionHistory: {
-          likedGames: Array.from({ length: 20 }, (_, i) => `game_${i}`),
-          playedGames: Array.from({ length: 50 }, (_, i) => `game_${i + 100}`),
-          sharedGames: Array.from({ length: 5 }, (_, i) => `game_${i + 200}`),
-          searchTerms: ['パズル', 'アクション', '楽しい', 'かわいい']
-        }
+      // Supabase APIからユーザー設定取得
+      let preferencesData = await socialService.getUserPreferences(userId);
+
+      // フォロー中のクリエイターを取得
+      const followedCreators = await getFollowedCreators(userId);
+
+      // 設定が存在しない場合はデフォルト値で作成
+      if (!preferencesData) {
+        const defaultPreferences: UserPreferences = {
+          favoriteCategories: ['puzzle', 'casual', 'action'],
+          playTime: 'medium',
+          difficulty: 'medium',
+          gameplayStyle: ['relaxing', 'challenging', 'creative'],
+          followedCreators, // 実際のフォロー中クリエイター
+          interactionHistory: {
+            likedGames: [],
+            playedGames: [],
+            sharedGames: [],
+            searchTerms: []
+          }
+        };
+
+        // デフォルト設定を保存（followedCreatorsは除外）
+        await socialService.saveUserPreferences(userId, {
+          favoriteCategories: defaultPreferences.favoriteCategories,
+          playTime: defaultPreferences.playTime,
+          difficulty: defaultPreferences.difficulty,
+          gameplayStyle: defaultPreferences.gameplayStyle,
+          interactionHistory: defaultPreferences.interactionHistory
+        });
+
+        setUserPreferences(defaultPreferences);
+        return defaultPreferences;
+      }
+
+      // preferencesDataにfollowedCreatorsを追加
+      const preferences: UserPreferences = {
+        ...preferencesData,
+        followedCreators
       };
 
-      setUserPreferences(mockPreferences);
-      return mockPreferences;
+      setUserPreferences(preferences);
+      return preferences;
     } catch (error) {
       console.error('Error loading user preferences:', error);
-      return null;
+      
+      // エラー時もデフォルト設定を返す
+      const fallbackPreferences: UserPreferences = {
+        favoriteCategories: ['casual'],
+        playTime: 'medium',
+        difficulty: 'medium',
+        gameplayStyle: ['relaxing'],
+        followedCreators: [],
+        interactionHistory: {
+          likedGames: [],
+          playedGames: [],
+          sharedGames: [],
+          searchTerms: []
+        }
+      };
+      
+      setUserPreferences(fallbackPreferences);
+      return fallbackPreferences;
     }
-  }, [userId]);
+  }, [userId, socialService, getFollowedCreators]);
 
   // A/Bテストグループ決定
   const determineABTestGroup = useCallback(() => {
@@ -448,9 +513,12 @@ export const ContentDiscovery: React.FC<ContentDiscoveryProps> = ({
       ctr: (prev.clicks + 1) / Math.max(prev.impressions, 1)
     }));
 
+    // 行動履歴更新
+    socialService.updateInteractionHistory(userId, 'played', game.id);
+
     // 実装時はゲームページに遷移
     console.log(`Clicked game ${game.id} from section ${sectionId} (score: ${game.recommendationScore})`);
-  }, []);
+  }, [userId, socialService]);
 
   // いいね処理
   const handleLike = useCallback((gameId: string) => {
@@ -459,7 +527,10 @@ export const ContentDiscovery: React.FC<ContentDiscoveryProps> = ({
       likes: prev.likes + 1,
       engagement: (prev.likes + prev.shares + prev.plays) / Math.max(prev.impressions, 1)
     }));
-  }, []);
+
+    // 行動履歴更新
+    socialService.updateInteractionHistory(userId, 'liked', gameId);
+  }, [userId, socialService]);
 
   // 現在選択されたセクション
   const currentSection = useMemo(() => {
