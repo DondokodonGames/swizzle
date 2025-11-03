@@ -242,7 +242,7 @@ export class DynamicQualityChecker {
     
     // 勝利条件チェック
     const hasWinCondition = script.rules.some((rule: any) => 
-      rule.actions[0]?.type === 'win'
+      rule.actions.some((action: any) => action.type === 'success')
     );
     
     if (!hasWinCondition) {
@@ -251,7 +251,7 @@ export class DynamicQualityChecker {
     
     // ゲームオーバー条件チェック（必須ではないが推奨）
     const hasGameOver = script.rules.some((rule: any) =>
-      rule.actions[0]?.type === 'gameOver'
+      rule.actions.some((action: any) => action.type === 'failure')
     );
     
     if (!hasGameOver && script.rules.length > 2) {
@@ -261,7 +261,7 @@ export class DynamicQualityChecker {
     
     // アクション対象の整合性チェック
     script.rules.forEach((rule: any, index: number) => {
-      if (rule.action.target && rule.action.target.objectId) {
+      if (rule.action && rule.action.target && rule.action.target.objectId) {
         // オブジェクトIDが正しいか簡易チェック
         if (rule.action.target.objectId === '') {
           issues.push(`Rule ${index}: Empty object ID`);
@@ -288,7 +288,7 @@ export class DynamicQualityChecker {
     
     // 勝利条件の存在確認
     const hasWinCondition = game.project.script.rules.some(rule =>
-      rule.actions[0]?.type === 'win'
+      rule.actions.some(action => action.type === 'success')
     );
     
     if (!hasWinCondition) {
@@ -297,22 +297,22 @@ export class DynamicQualityChecker {
     } else {
       // 勝利条件の達成可能性を簡易評価
       const winRules = game.project.script.rules.filter(rule =>
-        rule.actions[0]?.type === 'win'
+        rule.actions.some(action => action.type === 'success')
       );
       
-      // スコア条件の場合、スコア変更アクションが必要
-      const hasScoreCondition = winRules.some(rule =>
-        rule.conditions[0]?.type === 'score'
+      // カウンター条件の場合、カウンター変更アクションが必要
+      const hasCounterCondition = winRules.some(rule =>
+        rule.triggers.conditions.some(c => c.type === 'counter')
       );
       
-      if (hasScoreCondition) {
-        const hasScoreAction = game.project.script.rules.some(rule =>
-          rule.actions[0]?.type === 'changeScore'
+      if (hasCounterCondition) {
+        const hasCounterAction = game.project.script.rules.some(rule =>
+          rule.actions.some(action => action.type === 'counter')
         );
         
-        if (!hasScoreAction) {
+        if (!hasCounterAction) {
           clearableScore -= 3;
-          issues.push('Score win condition but no score change action');
+          issues.push('Counter win condition but no counter change action');
         }
       }
     }
@@ -333,7 +333,7 @@ export class DynamicQualityChecker {
     
     // タイマー条件のチェック（時間制限が厳しすぎないか）
     const timerRules = game.project.script.rules.filter(rule =>
-      rule.conditions[0]?.type === 'timer'
+      rule.triggers.conditions.some(c => c.type === 'time')
     );
     
     if (timerRules.length > 5) {
@@ -345,8 +345,13 @@ export class DynamicQualityChecker {
     let balanceScore = 3;
     
     // 条件とアクションのバランスチェック
-    const conditionTypes = new Set(game.project.script.rules.map(r => r.conditions[0]?.type));
-    const actionTypes = new Set(game.project.script.rules.map(r => r.actions[0]?.type));
+    const conditionTypes = new Set<string>();
+    const actionTypes = new Set<string>();
+    
+    game.project.script.rules.forEach(rule => {
+      rule.triggers.conditions.forEach(c => conditionTypes.add(c.type));
+      rule.actions.forEach(action => actionTypes.add(action.type));
+    });
     
     // 条件とアクションの多様性が低い場合は減点
     if (conditionTypes.size === 1) {
@@ -437,7 +442,9 @@ export class DynamicQualityChecker {
     }
     
     // タイミング要素（面白さを高める）
-    const hasTimer = script.rules.some(r => r.conditions[0]?.type === 'timer');
+    const hasTimer = script.rules.some(r => 
+      r.triggers.conditions.some(c => c.type === 'time')
+    );
     if (hasTimer) {
       score += 1;
     }
@@ -454,14 +461,18 @@ export class DynamicQualityChecker {
     const script = game.project.script;
     
     // インタラクションの多様性
-    const conditionTypes = new Set(script.rules.map(r => r.conditions[0]?.type));
+    const conditionTypes = new Set<string>();
+    script.rules.forEach(rule => {
+      rule.triggers.conditions.forEach(c => conditionTypes.add(c.type));
+    });
+    
     if (conditionTypes.size >= 2) {
       score += 0.5;
     }
     
     // フィードバックの存在
     const hasFeedback = script.rules.some(r =>
-      r.actions[0]?.type === 'changeScore' || r.actions[0]?.type === 'effect'
+      r.actions.some(action => action.type === 'counter' || action.type === 'effect')
     );
     if (hasFeedback) {
       score += 0.5;
@@ -485,19 +496,20 @@ export class DynamicQualityChecker {
     
     // ランダム性の存在
     const hasRandom = script.rules.some(r =>
-      r.actions[0]?.type === 'randomize'
+      r.actions.some(action => action.type === 'randomAction')
     );
     
     if (hasRandom) {
       score += 0.5;
     }
     
-    // スコアシステムの存在（競争要素）
-    const hasScore = script.rules.some(r =>
-      r.actions[0]?.type === 'changeScore' || r.conditions[0]?.type === 'score'
+    // カウンターシステムの存在（競争要素）
+    const hasCounter = script.rules.some(r =>
+      r.actions.some(action => action.type === 'counter') || 
+      r.triggers.conditions.some(c => c.type === 'counter')
     );
     
-    if (hasScore) {
+    if (hasCounter) {
       score += 0.5;
     }
     

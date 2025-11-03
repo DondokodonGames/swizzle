@@ -11,7 +11,7 @@
  */
 
 import { GameProject } from '../../types/editor/GameProject';
-import { GameScript, GameRule } from '../../types/editor/GameScript';
+import { GameScript, GameRule, TriggerCondition, GameAction } from '../../types/editor/GameScript';
 
 /**
  * シミュレーション結果
@@ -33,7 +33,7 @@ interface SimulationResult {
 interface GameState {
   score: number;
   timer: number;
-  variables: Record<string, number>;
+  counters: Record<string, number>;
   objectStates: Record<string, any>;
   gameOver: boolean;
   won: boolean;
@@ -105,7 +105,7 @@ export class PlayabilitySimulator {
     const state: GameState = {
       score: 0,
       timer: 0,
-      variables: {},
+      counters: {},
       objectStates: {},
       gameOver: false,
       won: false,
@@ -161,7 +161,12 @@ export class PlayabilitySimulator {
     const triggered: GameRule[] = [];
     
     for (const rule of script.rules) {
-      if (this.checkCondition(rule.conditions[0], state)) {
+      // triggers.operator に基づいて条件を評価
+      const conditionsMet = rule.triggers.operator === 'AND'
+        ? rule.triggers.conditions.every(c => this.checkCondition(c, state))
+        : rule.triggers.conditions.some(c => this.checkCondition(c, state));
+      
+      if (conditionsMet) {
         triggered.push(rule);
       }
     }
@@ -172,28 +177,55 @@ export class PlayabilitySimulator {
   /**
    * 条件のチェック
    */
-  private checkCondition(condition: any, state: GameState): boolean {
+  private checkCondition(condition: TriggerCondition, state: GameState): boolean {
     switch (condition.type) {
-      case 'gameStart':
-        return state.step === 1;
+      case 'gameState':
+        // ゲーム状態条件
+        if (condition.state === 'playing') {
+          return !state.gameOver && !state.won;
+        } else if (condition.state === 'success') {
+          return state.won;
+        } else if (condition.state === 'failure') {
+          return state.gameOver;
+        }
+        return false;
       
-      case 'timer':
-        // タイマー条件（例: 10秒経過）
-        const targetTime = condition.value || 10;
-        return state.timer >= targetTime;
+      case 'time':
+        // タイマー条件
+        if (condition.timeType === 'exact' && condition.seconds !== undefined) {
+          return state.timer >= condition.seconds;
+        } else if (condition.timeType === 'range' && condition.range) {
+          return state.timer >= condition.range.min && state.timer <= condition.range.max;
+        } else if (condition.timeType === 'interval' && condition.interval) {
+          return state.timer % condition.interval === 0;
+        }
+        return false;
       
-      case 'score':
-        // スコア条件
-        const targetScore = condition.value || 100;
-        const operator = condition.operator || '>=';
+      case 'counter':
+        // カウンター条件
+        const counterValue = state.counters[condition.counterName] || 0;
+        const targetValue = condition.value;
         
-        switch (operator) {
-          case '>=':
-            return state.score >= targetScore;
-          case '<=':
-            return state.score <= targetScore;
-          case '==':
-            return state.score === targetScore;
+        switch (condition.comparison) {
+          case 'equals':
+            return counterValue === targetValue;
+          case 'notEquals':
+            return counterValue !== targetValue;
+          case 'greater':
+            return counterValue > targetValue;
+          case 'greaterOrEqual':
+            return counterValue >= targetValue;
+          case 'less':
+            return counterValue < targetValue;
+          case 'lessOrEqual':
+            return counterValue <= targetValue;
+          case 'between':
+            return condition.rangeMax !== undefined && 
+                   counterValue >= targetValue && 
+                   counterValue <= condition.rangeMax;
+          case 'notBetween':
+            return condition.rangeMax !== undefined && 
+                   (counterValue < targetValue || counterValue > condition.rangeMax);
           default:
             return false;
         }
@@ -206,32 +238,32 @@ export class PlayabilitySimulator {
         // 衝突条件（簡易実装）
         return Math.random() < 0.1; // 10%の確率
       
-      case 'objectState':
-        // オブジェクト状態条件
-        const objectId = condition.target?.objectId || '';
-        const property = condition.property || 'visible';
-        const expectedValue = condition.value;
+      case 'position':
+        // 位置条件（簡易実装）
+        const objectId = condition.target;
+        const objState = state.objectStates[objectId];
+        if (!objState) return false;
         
-        const actualValue = state.objectStates[objectId]?.[property];
-        return actualValue === expectedValue;
-      
-      case 'variable':
-        // 変数条件
-        const varName = condition.variableName || '';
-        const varValue = state.variables[varName] || 0;
-        const varTarget = condition.value || 0;
-        const varOperator = condition.operator || '>=';
-        
-        switch (varOperator) {
-          case '>=':
-            return varValue >= varTarget;
-          case '<=':
-            return varValue <= varTarget;
-          case '==':
-            return varValue === varTarget;
-          default:
-            return false;
+        if (condition.region.shape === 'rect') {
+          const inRect = objState.x >= condition.region.x && 
+                        objState.x <= (condition.region.x + (condition.region.width || 0)) &&
+                        objState.y >= condition.region.y && 
+                        objState.y <= (condition.region.y + (condition.region.height || 0));
+          return condition.area === 'inside' ? inRect : !inRect;
         }
+        return false;
+      
+      case 'flag':
+        // フラグ条件（簡易実装）
+        return Math.random() < 0.5;
+      
+      case 'animation':
+        // アニメーション条件（簡易実装）
+        return Math.random() < 0.3;
+      
+      case 'random':
+        // ランダム条件
+        return Math.random() < condition.probability;
       
       default:
         return false;
@@ -248,71 +280,134 @@ export class PlayabilitySimulator {
     bugs: string[]
   ): void {
     
-    const action = rule.actions[0];
-    
-    try {
-      switch (action.type) {
-        case 'win':
-          state.won = true;
-          break;
+    for (const action of rule.actions) {
+      try {
+        this.executeAction(action, state, issues, bugs);
         
-        case 'gameOver':
-          state.gameOver = true;
+        // 勝利またはゲームオーバーチェック
+        if (state.won || state.gameOver) {
           break;
-        
-        case 'changeScore':
-          const scoreChange = action.value || 0;
-          state.score += scoreChange;
-          break;
-        
-        case 'setVariable':
-          const varName = action.variableName || '';
-          const varValue = action.value || 0;
-          state.variables[varName] = varValue;
-          break;
-        
-        case 'incrementVariable':
-          const incVarName = action.variableName || '';
-          const increment = action.value || 1;
-          state.variables[incVarName] = (state.variables[incVarName] || 0) + increment;
-          break;
-        
-        case 'setObjectProperty':
-          const objectId = action.target?.objectId || '';
-          const property = action.property || '';
-          const value = action.value;
-          
-          if (!state.objectStates[objectId]) {
-            state.objectStates[objectId] = {};
-          }
-          state.objectStates[objectId][property] = value;
-          break;
-        
-        case 'move':
-          // 移動アクション（状態更新）
-          const moveObjectId = action.target?.objectId || '';
-          if (!state.objectStates[moveObjectId]) {
-            state.objectStates[moveObjectId] = { x: 0, y: 0 };
-          }
-          // 簡易的な位置更新
-          state.objectStates[moveObjectId].x += action.value?.x || 0;
-          state.objectStates[moveObjectId].y += action.value?.y || 0;
-          break;
-        
-        case 'randomize':
-          // ランダム化アクション
-          const randVarName = action.variableName || 'random';
-          const min = action.value?.min || 0;
-          const max = action.value?.max || 100;
-          state.variables[randVarName] = Math.floor(Math.random() * (max - min + 1)) + min;
-          break;
-        
-        default:
-          // その他のアクション（エフェクトなど）は無視
-          break;
+        }
+      } catch (error) {
+        bugs.push(`Error executing action ${action.type}: ${error}`);
       }
-    } catch (error) {
-      bugs.push(`Error executing action ${action.type}: ${error}`);
+    }
+  }
+  
+  /**
+   * アクションの実行
+   */
+  private executeAction(
+    action: GameAction,
+    state: GameState,
+    issues: string[],
+    bugs: string[]
+  ): void {
+    
+    switch (action.type) {
+      case 'success':
+        state.won = true;
+        if (action.score !== undefined) {
+          state.score += action.score;
+        }
+        break;
+      
+      case 'failure':
+        state.gameOver = true;
+        break;
+      
+      case 'counter':
+        // カウンター操作
+        const counterName = action.counterName;
+        const currentValue = state.counters[counterName] || 0;
+        
+        switch (action.operation) {
+          case 'increment':
+            state.counters[counterName] = currentValue + 1;
+            break;
+          case 'decrement':
+            state.counters[counterName] = currentValue - 1;
+            break;
+          case 'set':
+            state.counters[counterName] = action.value || 0;
+            break;
+          case 'reset':
+            state.counters[counterName] = 0;
+            break;
+          case 'add':
+            state.counters[counterName] = currentValue + (action.value || 0);
+            break;
+          case 'subtract':
+            state.counters[counterName] = currentValue - (action.value || 0);
+            break;
+          case 'multiply':
+            state.counters[counterName] = currentValue * (action.value || 1);
+            break;
+          case 'divide':
+            state.counters[counterName] = currentValue / (action.value || 1);
+            break;
+        }
+        break;
+      
+      case 'setFlag':
+        // フラグ設定（簡易実装）
+        break;
+      
+      case 'toggleFlag':
+        // フラグトグル（簡易実装）
+        break;
+      
+      case 'move':
+        // 移動アクション（状態更新）
+        const moveObjectId = action.targetId;
+        if (!state.objectStates[moveObjectId]) {
+          state.objectStates[moveObjectId] = { x: 0, y: 0 };
+        }
+        
+        // 移動パターンに基づいて位置更新（簡易実装）
+        if (action.movement.type === 'straight' && action.movement.target) {
+          if (typeof action.movement.target !== 'string') {
+            state.objectStates[moveObjectId].x = action.movement.target.x;
+            state.objectStates[moveObjectId].y = action.movement.target.y;
+          }
+        }
+        break;
+      
+      case 'randomAction':
+        // ランダムアクション（選択肢からランダム実行）
+        if (action.actions.length > 0) {
+          const weights = action.weights || action.actions.map(() => 1);
+          const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+          let random = Math.random() * totalWeight;
+          
+          for (let i = 0; i < action.actions.length; i++) {
+            random -= weights[i];
+            if (random <= 0) {
+              this.executeAction(action.actions[i].action, state, issues, bugs);
+              break;
+            }
+          }
+        }
+        break;
+      
+      case 'show':
+      case 'hide':
+      case 'switchAnimation':
+      case 'effect':
+      case 'playSound':
+      case 'stopSound':
+      case 'playBGM':
+      case 'stopBGM':
+      case 'pause':
+      case 'restart':
+      case 'addScore':
+      case 'showMessage':
+        // その他のアクション（シミュレーションでは無視）
+        break;
+      
+      default:
+        bugs.push(`Unknown action type: ${(action as any).type}`);
+        break;
     }
   }
   
@@ -322,7 +417,7 @@ export class PlayabilitySimulator {
   private simulateRandomAction(script: GameScript, state: GameState): void {
     // タッチベースのルールをランダムにトリガー
     const touchRules = script.rules.filter(rule => 
-      rule.conditions[0].type === 'touch'
+      rule.triggers.conditions.some(c => c.type === 'touch')
     );
     
     if (touchRules.length > 0) {
@@ -402,7 +497,7 @@ export class PlayabilitySimulator {
     
     // 勝利条件の存在確認
     const winRules = project.script.rules.filter(rule => 
-      rule.actions[0].type === 'win'
+      rule.actions.some(action => action.type === 'success')
     );
     
     const hasWinCondition = winRules.length > 0;
@@ -422,31 +517,16 @@ export class PlayabilitySimulator {
     let hasRequiredActions = true;
     
     winRules.forEach((winRule, index) => {
-      const condition = winRule.conditions[0];
+      // カウンター条件の場合
+      const hasCounterCondition = winRule.triggers.conditions.some(c => c.type === 'counter');
       
-      // スコア条件の場合
-      if (condition.type === 'score') {
-        const hasScoreAction = project.script.rules.some(rule =>
-          rule.actions[0].type === 'changeScore'
+      if (hasCounterCondition) {
+        const hasCounterAction = project.script.rules.some(rule =>
+          rule.actions.some(action => action.type === 'counter')
         );
         
-        if (!hasScoreAction) {
-          issues.push(`Win condition ${index + 1}: No way to change score`);
-          winConditionReachable = false;
-          hasRequiredActions = false;
-        }
-      }
-      
-      // 変数条件の場合
-      if (condition.type === 'variable') {
-        const varName = condition.variableName;
-        const hasVarAction = project.script.rules.some(rule =>
-          rule.actions[0].type === 'setVariable' && rule.actions[0].variableName === varName ||
-          rule.actions[0].type === 'incrementVariable' && rule.actions[0].variableName === varName
-        );
-        
-        if (!hasVarAction) {
-          issues.push(`Win condition ${index + 1}: Variable "${varName}" never changed`);
+        if (!hasCounterAction) {
+          issues.push(`Win condition ${index + 1}: No way to change counter`);
           winConditionReachable = false;
           hasRequiredActions = false;
         }
@@ -476,8 +556,8 @@ export class PlayabilitySimulator {
     const ruleSignatures = new Set<string>();
     project.script.rules.forEach((rule, index) => {
       const signature = JSON.stringify({
-        condition: rule.conditions[0].type,
-        action: rule.actions[0].type
+        conditions: rule.triggers.conditions.map(c => c.type),
+        actions: rule.actions.map(a => a.type)
       });
       
       if (ruleSignatures.has(signature)) {
@@ -521,15 +601,21 @@ export class PlayabilitySimulator {
    */
   private checkInfiniteLoopRisk(script: GameScript): boolean {
     // 勝利条件もゲームオーバー条件もない場合
-    const hasWinCondition = script.rules.some(rule => rule.actions[0].type === 'win');
-    const hasGameOver = script.rules.some(rule => rule.actions[0].type === 'gameOver');
+    const hasWinCondition = script.rules.some(rule => 
+      rule.actions.some(action => action.type === 'success')
+    );
+    const hasGameOver = script.rules.some(rule => 
+      rule.actions.some(action => action.type === 'failure')
+    );
     
     if (!hasWinCondition && !hasGameOver) {
       return true;
     }
     
     // タイマー条件があるのにタイマーが進まない場合
-    const hasTimerCondition = script.rules.some(rule => rule.conditions[0].type === 'timer');
+    const hasTimerCondition = script.rules.some(rule => 
+      rule.triggers.conditions.some(c => c.type === 'time')
+    );
     if (hasTimerCondition) {
       // タイマーは自動的に進むため、問題なし
       return false;

@@ -370,7 +370,7 @@ export class GamePortfolioAnalyzer {
   private calculateInteractionFrequency(script: GameScript): number {
     // タッチ条件の数から推定
     const touchConditions = script.rules.filter(rule =>
-      rule.conditions[0]?.type === 'touch'
+      rule.triggers.conditions.some(c => c.type === 'touch')
     ).length;
     
     return Math.min(touchConditions / 5, 1.0);
@@ -411,7 +411,7 @@ export class GamePortfolioAnalyzer {
   private estimateReplayability(script: GameScript): number {
     // ランダム性やバリエーションから推定
     const hasRandom = script.rules.some(rule =>
-      rule.actions[0]?.type === 'randomize'
+      rule.actions.some(action => action.type === 'randomAction')
     );
     
     return hasRandom ? 0.7 : 0.4;
@@ -437,12 +437,12 @@ export class GamePortfolioAnalyzer {
    * ペースの計算
    */
   private calculatePace(script: GameScript): number {
-    // timer条件の数から推定
-    const timerConditions = script.rules.filter(rule =>
-      rule.conditions[0]?.type === 'timer'
+    // time条件の数から推定
+    const timeConditions = script.rules.filter(rule =>
+      rule.triggers.conditions.some(c => c.type === 'time')
     ).length;
     
-    return Math.min(timerConditions / 3, 1.0);
+    return Math.min(timeConditions / 3, 1.0);
   }
   
   /**
@@ -451,7 +451,7 @@ export class GamePortfolioAnalyzer {
   private calculateTension(script: GameScript): number {
     // 失敗条件の数から推定
     const failConditions = script.rules.filter(rule =>
-      rule.actions[0]?.type === 'gameOver'
+      rule.actions.some(action => action.type === 'failure')
     ).length;
     
     return Math.min(failConditions / 3, 1.0);
@@ -525,7 +525,7 @@ export class GamePortfolioAnalyzer {
   private calculateEffectIntensity(script: GameScript): number {
     // effect系のアクションから推定
     const effectActions = script.rules.filter(rule =>
-      rule.actions[0]?.type === 'effect'
+      rule.actions.some(action => action.type === 'effect')
     ).length;
     
     return Math.min(effectActions / 5, 1.0);
@@ -551,7 +551,10 @@ export class GamePortfolioAnalyzer {
    * 条件多様性の計算
    */
   private calculateConditionDiversity(script: GameScript): number {
-    const conditionTypes = new Set(script.rules.map(rule => rule.conditions[0]?.type));
+    const conditionTypes = new Set<string>();
+    script.rules.forEach(rule => {
+      rule.triggers.conditions.forEach(c => conditionTypes.add(c.type));
+    });
     return Math.min(conditionTypes.size / 9, 1.0); // 9種類の条件タイプ
   }
   
@@ -559,7 +562,10 @@ export class GamePortfolioAnalyzer {
    * アクション多様性の計算
    */
   private calculateActionDiversity(script: GameScript): number {
-    const actionTypes = new Set(script.rules.map(rule => rule.actions[0]?.type));
+    const actionTypes = new Set<string>();
+    script.rules.forEach(rule => {
+      rule.actions.forEach(action => actionTypes.add(action.type));
+    });
     return Math.min(actionTypes.size / 13, 1.0); // 13種類のアクションタイプ
   }
   
@@ -593,7 +599,7 @@ export class GamePortfolioAnalyzer {
    */
   private calculateRandomness(script: GameScript): number {
     const hasRandom = script.rules.some(rule =>
-      rule.actions[0]?.type === 'randomize'
+      rule.actions.some(action => action.type === 'randomAction')
     );
     
     return hasRandom ? 0.7 : 0.1;
@@ -612,7 +618,7 @@ export class GamePortfolioAnalyzer {
   private detectFeedbackLoop(script: GameScript): number {
     // スコア変更が連鎖するルールを検出
     const scoreActions = script.rules.filter(rule =>
-      rule.actions[0]?.type === 'changeScore'
+      rule.actions.some(action => action.type === 'counter')
     ).length;
     
     return Math.min(scoreActions / 5, 1.0);
@@ -633,11 +639,15 @@ export class GamePortfolioAnalyzer {
    * インタラクションタイプ判定
    */
   private isTouchBased(script: GameScript): boolean {
-    return script.rules.some(rule => rule.conditions[0]?.type === 'touch');
+    return script.rules.some(rule => 
+      rule.triggers.conditions.some(c => c.type === 'touch')
+    );
   }
   
   private isTimingBased(script: GameScript): boolean {
-    return script.rules.some(rule => rule.conditions[0]?.type === 'timer');
+    return script.rules.some(rule => 
+      rule.triggers.conditions.some(c => c.type === 'time')
+    );
   }
   
   private isMemoryBased(script: GameScript): boolean {
@@ -647,8 +657,12 @@ export class GamePortfolioAnalyzer {
   
   private isReflexBased(script: GameScript): boolean {
     // タイマーとタッチの組み合わせで判定
-    const hasTimer = script.rules.some(rule => rule.conditions[0]?.type === 'timer');
-    const hasTouch = script.rules.some(rule => rule.conditions[0]?.type === 'touch');
+    const hasTimer = script.rules.some(rule => 
+      rule.triggers.conditions.some(c => c.type === 'time')
+    );
+    const hasTouch = script.rules.some(rule => 
+      rule.triggers.conditions.some(c => c.type === 'touch')
+    );
     return hasTimer && hasTouch;
   }
   
@@ -660,7 +674,7 @@ export class GamePortfolioAnalyzer {
   private isPrecisionBased(script: GameScript): boolean {
     // タッチ条件の多さから判定
     const touchCount = script.rules.filter(rule => 
-      rule.conditions[0]?.type === 'touch'
+      rule.triggers.conditions.some(c => c.type === 'touch')
     ).length;
     return touchCount > 3;
   }
@@ -673,7 +687,7 @@ export class GamePortfolioAnalyzer {
   private isSpatialBased(script: GameScript): boolean {
     // 位置条件の存在から判定
     return script.rules.some(rule => 
-      rule.conditions[0]?.type === 'objectState' || rule.conditions[0]?.type === 'collision'
+      rule.triggers.conditions.some(c => c.type === 'position' || c.type === 'collision')
     );
   }
   
