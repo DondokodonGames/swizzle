@@ -3,6 +3,13 @@
  * テスト起動用エントリーポイント
  */
 
+// 🔧 環境変数読み込み（最優先）
+import dotenv from 'dotenv';
+import { resolve } from 'path';
+
+// .env.local ファイルを読み込み
+dotenv.config({ path: resolve(process.cwd(), '.env.local') });
+
 import { MasterOrchestrator } from './MasterOrchestrator';
 import { AIGenerationConfig } from './types/GenerationTypes';
 

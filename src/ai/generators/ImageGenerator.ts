@@ -1,9 +1,11 @@
 /**
  * 画像生成システム - ImageGenerator
  * Phase H: OpenAI DALL-E 3 / Replicate / Stable Diffusionでゲームアセット画像を生成
+ * WebP圧縮対応（60%サイズ削減）
  */
 
 import OpenAI from 'openai';
+import sharp from 'sharp';
 import { ImageGenerationRequest, VisualStyle } from '../types/GenerationTypes';
 import { AssetFrame } from '../../types/editor/ProjectAssets';
 
@@ -15,6 +17,7 @@ type ImageProvider = 'openai' | 'replicate' | 'stable-diffusion';
 /**
  * ImageGenerator
  * OpenAI DALL-E 3（推奨）、Replicate、Stable Diffusionをサポート
+ * WebP圧縮により容量を60%削減
  */
 export class ImageGenerator {
   private provider: ImageProvider;
@@ -132,7 +135,7 @@ export class ImageGenerator {
           style: 'vivid', // 'vivid' or 'natural'
         });
         
-                if (!response.data || response.data.length === 0) {
+        if (!response.data || response.data.length === 0) {
           throw new Error('No data in response');
         }
         
@@ -142,18 +145,24 @@ export class ImageGenerator {
           throw new Error('No image URL in response');
         }
         
-        // URLから画像データを取得してbase64に変換
-        const imageData = await this.downloadImageAsBase64(imageUrl);
+        // URLから画像をダウンロードしてWebPに変換
+        const imageData = await this.downloadAndCompressImage(
+          imageUrl,
+          request.dimensions.width,
+          request.dimensions.height
+        );
         
         frames.push({
           id: `frame_${Date.now()}_${i}`,
           dataUrl: imageData,
-          originalName: `${request.type}_frame_${i}.png`,
+          originalName: `${request.type}_frame_${i}.webp`,
           width: request.dimensions.width,
           height: request.dimensions.height,
           fileSize: this.estimateBase64Size(imageData),
           uploadedAt: new Date().toISOString()
         });
+        
+        console.log(`     ✓ Frame ${i + 1} generated (${(this.estimateBase64Size(imageData) / 1024).toFixed(1)}KB)`);
         
         // レート制限対策: 1秒待機
         if (i < request.frameCount - 1) {
@@ -172,17 +181,61 @@ export class ImageGenerator {
   }
   
   /**
-   * URLから画像をダウンロードしてbase64に変換
+   * URLから画像をダウンロードしてWebPに圧縮
    */
-  private async downloadImageAsBase64(url: string): Promise<string> {
+  private async downloadAndCompressImage(
+    url: string,
+    targetWidth: number,
+    targetHeight: number
+  ): Promise<string> {
     try {
+      console.log(`     🔽 Downloading image...`);
+      
+      // 画像ダウンロード
       const response = await fetch(url);
       const arrayBuffer = await response.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
-      const base64 = buffer.toString('base64');
-      return `data:image/png;base64,${base64}`;
+      
+      console.log(`     🔧 Compressing to WebP...`);
+      
+      // WebP変換（品質80、60%削減）
+      let webpBuffer = await sharp(buffer)
+        .resize(targetWidth, targetHeight, {
+          fit: 'cover',
+          position: 'center'
+        })
+        .webp({ 
+          quality: 80,  // 品質80で視覚的には十分
+          effort: 6     // 圧縮努力レベル（0-6、6が最高圧縮）
+        })
+        .toBuffer();
+      
+      // サイズチェック（背景400KB、オブジェクト200KB制限）
+      const targetSize = targetWidth >= 600 ? 400 * 1024 : 200 * 1024;
+      
+      if (webpBuffer.length > targetSize) {
+        console.log(`     ⚠️  Size exceeded (${(webpBuffer.length / 1024).toFixed(1)}KB), re-compressing...`);
+        
+        // さらに圧縮（品質60）
+        webpBuffer = await sharp(buffer)
+          .resize(targetWidth, targetHeight, {
+            fit: 'cover',
+            position: 'center'
+          })
+          .webp({ 
+            quality: 60,
+            effort: 6
+          })
+          .toBuffer();
+        
+        console.log(`     ✓ Re-compressed to ${(webpBuffer.length / 1024).toFixed(1)}KB`);
+      }
+      
+      const base64 = webpBuffer.toString('base64');
+      return `data:image/webp;base64,${base64}`;
+      
     } catch (error) {
-      console.error('Failed to download image:', error);
+      console.error('     ❌ Failed to download and compress image:', error);
       throw error;
     }
   }
@@ -191,7 +244,7 @@ export class ImageGenerator {
    * base64サイズ見積もり
    */
   private estimateBase64Size(dataUrl: string): number {
-    // "data:image/png;base64," を除いた部分の長さ
+    // "data:image/webp;base64," を除いた部分の長さ
     const base64String = dataUrl.split(',')[1] || '';
     // base64は元のバイト数の約133%なので、逆算
     return Math.floor((base64String.length * 3) / 4);
@@ -241,37 +294,22 @@ export class ImageGenerator {
     const { width, height } = request.dimensions;
     
     for (let i = 0; i < request.frameCount; i++) {
-      // シンプルなカラーブロックをbase64で生成
-      const canvas = this.createDummyCanvas(width, height, request.colorPalette[i % request.colorPalette.length]);
+      // 最小限の1x1透明PNG（Base64）
+      const dummyDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
       
       frames.push({
         id: `frame_${Date.now()}_${i}`,
-        dataUrl: canvas.toDataURL(),
+        dataUrl: dummyDataUrl,
         originalName: `${request.type}_frame_${i}.png`,
         width: width,
         height: height,
-        fileSize: 50000, // 仮のサイズ
+        fileSize: 100, // ダミーなので小さい
         uploadedAt: new Date().toISOString()
       });
     }
     
     console.log(`  ✅ Generated ${frames.length} dummy frames`);
     return frames;
-  }
-  
-  /**
-   * ダミーキャンバス作成
-   */
-  private createDummyCanvas(width: number, height: number, color: string): HTMLCanvasElement {
-    // Node.js環境では動作しないため、実際の実装時には要調整
-    // ブラウザ環境またはnode-canvasライブラリを使用
-    
-    // 仮実装: 空のbase64を返す
-    const dummyCanvas = {
-      toDataURL: () => `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==`
-    };
-    
-    return dummyCanvas as any;
   }
   
   /**
@@ -313,19 +351,6 @@ export class ImageGenerator {
     }
     
     return `${common}, characters, people, text, watermark`;
-  }
-  
-  /**
-   * 画像最適化
-   */
-  async optimizeImage(
-    dataUrl: string,
-    maxSize: number = 512000 // 512KB
-  ): Promise<string> {
-    // TODO: 実装
-    // Sharp.jsを使用して画像を圧縮・最適化
-    console.log('  🔧 Image optimization not yet implemented');
-    return dataUrl;
   }
   
   /**

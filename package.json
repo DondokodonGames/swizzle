@@ -10,8 +10,7 @@
     "preview": "vite preview",
     "ai:generate": "tsx src/ai/index.ts",
     "ai:generate:dry": "VITE_AI_DRY_RUN=true tsx src/ai/index.ts",
-    "ai:generate:test": "TARGET_GAMES_COUNT=10 VITE_AI_DRY_RUN=true tsx src/ai/index.ts"
-
+    "ai:generate:test": "TARGET_GAMES_COUNT=1 VITE_AI_DRY_RUN=true tsx src/ai/index.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
@@ -28,9 +27,11 @@
     "@types/node": "^22.10.2",
     "@types/react": "^18.2.15",
     "@types/react-dom": "^18.2.7",
+    "@types/sharp": "^0.32.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "@vitejs/plugin-react": "^4.0.3",
+    "dotenv": "^17.2.3",
     "eslint": "^8.45.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.3",
