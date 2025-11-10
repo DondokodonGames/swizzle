@@ -104,8 +104,8 @@ export class MasterOrchestrator {
     
     // Phase H Day 2-3: 動的品質管理システム初期化
     this.portfolioAnalyzer = new GamePortfolioAnalyzer();
-    this.qualityChecker = new DynamicQualityChecker();
-    this.adaptiveStandards = new AdaptiveStandards();
+    this.qualityChecker = new DynamicQualityChecker(this.config.generation.qualityThreshold);
+    this.adaptiveStandards = new AdaptiveStandards(this.config.generation.qualityThreshold);
     this.playabilitySimulator = new PlayabilitySimulator();
     
     // Phase H Day 4-5: 自動公開システム初期化

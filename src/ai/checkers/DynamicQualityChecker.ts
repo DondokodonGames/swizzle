@@ -55,9 +55,11 @@ interface SatisfactionResult {
  */
 export class DynamicQualityChecker {
   private analyzer: GamePortfolioAnalyzer;
+  private qualityThreshold: number; // ← この行を追加
   
-  constructor() {
+  constructor(qualityThreshold: number = 65) { // ← パラメータを追加
     this.analyzer = new GamePortfolioAnalyzer();
+    this.qualityThreshold = qualityThreshold; // ← この行を追加
   }
   
   /**
@@ -81,7 +83,8 @@ export class DynamicQualityChecker {
     
     // 総合スコア
     const totalScore = relativeScore.subtotal + absoluteScore.subtotal;
-    const passed = totalScore >= 95.0; // 95点以上で合格
+    const passed = totalScore >= this.qualityThreshold; // 設定された閾値で合格判定
+
     
     // 詳細情報の収集
     const details = {

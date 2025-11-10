@@ -94,6 +94,7 @@ interface AdjustmentHistory {
  * 適応的品質基準の管理
  */
 export class AdaptiveStandards {
+  private initialQualityThreshold: number;
   private standards: QualityStandards;
   private adjustmentHistory: AdjustmentHistory[] = [];
   
@@ -104,10 +105,11 @@ export class AdaptiveStandards {
   private readonly MIN_THRESHOLD = 80;            // 最小閾値
   private readonly MAX_THRESHOLD = 98;            // 最大閾値
   
-  constructor() {
+  constructor(qualityThreshold: number = 65) {
     // 初期基準（緩め）
+    this.initialQualityThreshold = qualityThreshold;
     this.standards = {
-      qualityThreshold: 95.0,
+      qualityThreshold: this.initialQualityThreshold,
       
       relative: {
         minDiversityScore: 10,
@@ -478,8 +480,9 @@ export class AdaptiveStandards {
   reset(): void {
     console.log('🔄 Resetting standards to initial values...');
     
+    this.initialQualityThreshold = this.initialQualityThreshold || 65;
     this.standards = {
-      qualityThreshold: 95.0,
+      qualityThreshold: this.initialQualityThreshold,
       
       relative: {
         minDiversityScore: 10,

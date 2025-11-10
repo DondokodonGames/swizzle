@@ -2,10 +2,12 @@
  * Phase H - AI自動ゲーム生成システム テスト実行
  * テスト起動用エントリーポイント
  */
+// ⚠️ 重要: 環境変数を最初に読み込む
+import dotenv from 'dotenv';
+import path from 'path';
 
-// 🔧 FIX: .env.localファイルを読み込む
-import { config as dotenvConfig } from 'dotenv';
-dotenvConfig({ path: '.env.local' });
+// .env.localを明示的に読み込み
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 import { MasterOrchestrator } from './MasterOrchestrator';
 import { AIGenerationConfig } from './types/GenerationTypes';
