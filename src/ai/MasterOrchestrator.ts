@@ -1,6 +1,6 @@
 /**
  * Master Orchestrator - AI自動ゲーム生成システム統括
- * Phase H Day 2-3統合版: 動的品質管理システム完全実装
+ * Phase H 完全統合版: 実ファイルに基づく正確な実装
  */
 
 import { LogicGenerator } from './generators/LogicGenerator';
@@ -10,6 +10,8 @@ import { GamePortfolioAnalyzer } from './analyzers/GamePortfolioAnalyzer';
 import { DynamicQualityChecker } from './checkers/DynamicQualityChecker';
 import { AdaptiveStandards } from './standards/AdaptiveStandards';
 import { PlayabilitySimulator } from './simulators/PlayabilitySimulator';
+import { AutoPublisher, PublicationConfig } from './publishers/AutoPublisher';
+import { ExplorationExploitationBalancer, BalanceParameters } from './publishers/ExplorationExploitationBalancer';
 import {
   GameSpec,
   GeneratedGame,
@@ -26,7 +28,7 @@ import { GameProject } from '../types/editor/GameProject';
 
 /**
  * MasterOrchestrator
- * 24時間自動稼働システムの中核（Phase H Day 2-3統合版）
+ * 24時間自動稼働システムの中核（Phase H 完全統合版）
  */
 export class MasterOrchestrator {
   private logicGenerator: LogicGenerator;
@@ -38,6 +40,10 @@ export class MasterOrchestrator {
   private qualityChecker: DynamicQualityChecker;
   private adaptiveStandards: AdaptiveStandards;
   private playabilitySimulator: PlayabilitySimulator;
+  
+  // Phase H Day 4-5: 自動公開システム
+  private autoPublisher: AutoPublisher;
+  private explorationBalancer: ExplorationExploitationBalancer;
   
   private config: AIGenerationConfig;
   
@@ -89,7 +95,7 @@ export class MasterOrchestrator {
     // ジェネレーター初期化
     this.logicGenerator = new LogicGenerator(config.api.anthropicApiKey);
     this.imageGenerator = new ImageGenerator({
-      provider: config.api.imageProvider,
+      provider: config.api.imageProvider || 'openai',
       openaiApiKey: config.api.openaiApiKey,
       sdApiUrl: config.api.stableDiffusionUrl,
       replicateApiKey: config.api.replicateApiKey
@@ -102,8 +108,27 @@ export class MasterOrchestrator {
     this.adaptiveStandards = new AdaptiveStandards();
     this.playabilitySimulator = new PlayabilitySimulator();
     
-    console.log('🚀 MasterOrchestrator initialized (Phase H Day 2-3)');
+    // Phase H Day 4-5: 自動公開システム初期化
+    // PublicationConfigを正確に構築
+    const publicationConfig: PublicationConfig = {
+      publishToSupabase: !config.debug.dryRun,
+      registerFreeAssets: !config.debug.dryRun,
+      postToSocialMedia: !config.debug.dryRun && !!config.twitter,
+      socialMediaLanguages: ['en', 'ja', 'es', 'fr', 'de', 'zh', 'ko'],
+      autoPublish: !config.debug.dryRun
+    };
+    
+    this.autoPublisher = new AutoPublisher(publicationConfig);
+    
+    // explorationRateを使用（initialExplorationRateではない）
+    this.explorationBalancer = new ExplorationExploitationBalancer(
+      config.generation.explorationRate
+    );
+    
+    console.log('🚀 MasterOrchestrator initialized (Phase H Complete)');
     console.log('   ✓ Dynamic Quality Management System enabled');
+    console.log('   ✓ Auto Publisher System enabled');
+    console.log('   ✓ Exploration-Exploitation Balancer enabled');
   }
   
   /**
@@ -135,7 +160,7 @@ export class MasterOrchestrator {
         // 1. ポートフォリオ統計更新
         this.portfolioAnalyzer.updatePortfolioStatistics(this.portfolio);
         
-        // 2. 生成モード決定（探索 or 活用）
+        // 2. 生成モード決定（ExplorationExploitationBalancer使用）
         const mode = this.decideGenerationMode();
         console.log(`  🎯 Mode: ${mode.type}`);
         console.log(`  📝 Reason: ${mode.reason}`);
@@ -177,16 +202,15 @@ export class MasterOrchestrator {
             console.log(`  ✅ Game passed! "${newGame.project.settings.name}"`);
             console.log(`  📈 Portfolio: ${this.portfolio.statistics.totalGames} games`);
             
-            // 6. 公開（ドライランでない場合）
-            if (!this.config.debug.dryRun) {
-              // await this.publishGame(newGame);
-              console.log(`  📤 Published to Supabase`);
-            } else {
-              console.log(`  🔷 Dry run: skipping publish`);
-            }
+            // 6. 自動公開（Phase H Day 4-5統合）
+            await this.publishGame(newGame);
             
             // 統計更新
             this.updateStatistics(quality);
+            
+            // 探索・活用バランサーへフィードバック
+            // adjustExplorationRateを呼び出す（recordSuccessメソッドは存在しない）
+            this.adjustBalancerAfterSuccess(mode.type === 'exploration', quality.totalScore);
             
           } else {
             // 不合格
@@ -206,6 +230,9 @@ export class MasterOrchestrator {
                 console.log(`     - ${rec}`);
               });
             }
+            
+            // 探索・活用バランサーへフィードバック
+            this.adjustBalancerAfterFailure(mode.type === 'exploration');
           }
         } else {
           this.statistics.failed++;
@@ -357,7 +384,7 @@ export class MasterOrchestrator {
           passed: false,
           details: { playabilityIssues: [], diversityAnalysis: '', recommendations: [] }
         },
-        vector: gameVector // Phase H Day 2-3: 完全なベクトル
+        vector: gameVector
       };
       
       console.log(`  ✅ Game generated successfully in ${totalTime}ms`);
@@ -371,41 +398,113 @@ export class MasterOrchestrator {
   }
   
   /**
-   * 生成モード決定（ε-greedy戦略）
+   * ゲーム公開（Phase H Day 4-5統合）
+   */
+  private async publishGame(game: GeneratedGame): Promise<void> {
+    if (this.config.debug.dryRun) {
+      console.log(`  🔷 Dry run: skipping publish`);
+      return;
+    }
+    
+    try {
+      console.log(`  📤 Publishing game...`);
+      
+      // AutoPublisherでゲーム公開（GeneratedGameを渡す）
+      const result = await this.autoPublisher.publishGame(game, true);
+      
+      if (result.success) {
+        console.log(`  ✅ Published successfully!`);
+        console.log(`     Game ID: ${result.gameId}`);
+        
+        if (result.freeAssetsRegistered) {
+          console.log(`     Free Assets: registered`);
+        }
+        
+        if (result.socialMediaPosts && result.socialMediaPosts.length > 0) {
+          const successfulPosts = result.socialMediaPosts.filter(p => p.success).length;
+          console.log(`     Social Posts: ${successfulPosts}/${result.socialMediaPosts.length} posted`);
+        }
+        
+      } else {
+        console.error(`  ❌ Publication failed:`, result.error);
+      }
+      
+    } catch (error) {
+      console.error(`  ❌ Error publishing game:`, error);
+    }
+  }
+  
+  /**
+   * 生成モード決定（ExplorationExploitationBalancer使用）
    */
   private decideGenerationMode(): GenerationMode {
-    const epsilon = this.statistics.currentEpsilon;
-    const random = Math.random();
+    // decideGenerationMode()メソッドを使用
+    const modeType = this.explorationBalancer.decideGenerationMode();
     
-    if (random < epsilon) {
-      // 探索モード
+    // 統計更新
+    const stats = this.explorationBalancer.getStatistics();
+    this.statistics.currentEpsilon = stats.currentExplorationRate;
+    
+    if (modeType === 'exploration') {
       this.statistics.explorationCount++;
+      
       return {
         type: 'exploration',
-        epsilon: epsilon,
+        epsilon: this.statistics.currentEpsilon,
         target: this.findExplorationTarget(),
         reason: 'Exploring new game space for diversity'
       };
+      
     } else {
-      // 活用モード
       this.statistics.exploitationCount++;
+      
       return {
         type: 'exploitation',
-        epsilon: epsilon,
+        epsilon: this.statistics.currentEpsilon,
         reason: 'Exploiting known successful patterns'
       };
     }
   }
   
   /**
-   * 探索ターゲット発見（Phase H Day 2-3統合）
+   * 成功後のバランサー調整
+   */
+  private adjustBalancerAfterSuccess(wasExploration: boolean, qualityScore: number): void {
+    // adjustExplorationRateを使用してフィードバック
+    const params: BalanceParameters = {
+      diversityScore: this.portfolio.statistics.diversityScore,
+      userSatisfaction: qualityScore / 95, // 0-1に正規化
+      recentPerformance: this.statistics.passRate,
+      portfolioSize: this.portfolio.statistics.totalGames
+    };
+    
+    this.explorationBalancer.adjustExplorationRate(params);
+  }
+  
+  /**
+   * 失敗後のバランサー調整
+   */
+  private adjustBalancerAfterFailure(wasExploration: boolean): void {
+    // 失敗時も調整を実行（パフォーマンスが下がる）
+    const params: BalanceParameters = {
+      diversityScore: this.portfolio.statistics.diversityScore,
+      userSatisfaction: 0.5, // 中立
+      recentPerformance: this.statistics.passRate,
+      portfolioSize: this.portfolio.statistics.totalGames
+    };
+    
+    this.explorationBalancer.adjustExplorationRate(params);
+  }
+  
+  /**
+   * 探索ターゲット発見
    */
   private findExplorationTarget(): string {
     // ポートフォリオ健全性から探索方向を決定
     const needs = this.portfolio.health.needsExploration;
     
     if (needs.length > 0) {
-      return needs[0]; // 最優先の探索方向
+      return needs[0];
     }
     
     // ギャップ領域を検出
@@ -413,6 +512,13 @@ export class MasterOrchestrator {
     
     if (gapAreas.length > 0) {
       return gapAreas[0].description;
+    }
+    
+    // 探索戦略を生成
+    const strategy = this.explorationBalancer.generateExplorationStrategy(this.portfolio.games);
+    
+    if (strategy.targetGenre) {
+      return `Genre: ${strategy.targetGenre}`;
     }
     
     // デフォルト: ランダム探索
@@ -515,10 +621,13 @@ export class MasterOrchestrator {
     
     // 適応的基準レポート
     console.log(this.adaptiveStandards.generateReport());
+    
+    // 探索・活用バランサーレポート
+    console.log(this.explorationBalancer.generateReport());
   }
   
   /**
-   * 適応的学習（Phase H Day 2-3）
+   * 適応的学習
    */
   private async adaptiveLearning(): Promise<void> {
     console.log('\n🧠 Adaptive learning and adjustment...');
@@ -526,10 +635,18 @@ export class MasterOrchestrator {
     // 統計に基づいて基準を自動調整
     this.adaptiveStandards.autoAdjust(this.statistics);
     
-    // ε値を動的調整
-    const targetEpsilon = 0.1;
-    const decay = 0.95;
-    this.statistics.currentEpsilon = Math.max(targetEpsilon, this.statistics.currentEpsilon * decay);
+    // ExplorationExploitationBalancerの調整
+    const params: BalanceParameters = {
+      diversityScore: this.portfolio.statistics.diversityScore,
+      userSatisfaction: this.statistics.averageQuality / 95,
+      recentPerformance: this.statistics.passRate,
+      portfolioSize: this.portfolio.statistics.totalGames
+    };
+    
+    this.explorationBalancer.adjustExplorationRate(params);
+    
+    const stats = this.explorationBalancer.getStatistics();
+    this.statistics.currentEpsilon = stats.currentExplorationRate;
     
     console.log(`   ✓ Epsilon adjusted to ${this.statistics.currentEpsilon.toFixed(2)}`);
     console.log(`   ✓ Quality threshold: ${this.adaptiveStandards.getQualityThreshold()}`);

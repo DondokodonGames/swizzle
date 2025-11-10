@@ -3,6 +3,10 @@
  * テスト起動用エントリーポイント
  */
 
+// 🔧 FIX: .env.localファイルを読み込む
+import { config as dotenvConfig } from 'dotenv';
+dotenvConfig({ path: '.env.local' });
+
 import { MasterOrchestrator } from './MasterOrchestrator';
 import { AIGenerationConfig } from './types/GenerationTypes';
 
@@ -115,11 +119,13 @@ async function main() {
     // 1. 設定読み込み
     console.log('📋 Loading configuration...');
     const config = loadConfig();
+    console.log('✅ Configuration loaded successfully\n');
     printConfig(config);
     
     // 2. MasterOrchestrator初期化
     console.log('🚀 Initializing MasterOrchestrator...');
     const orchestrator = new MasterOrchestrator(config);
+    console.log('✅ MasterOrchestrator initialized\n');
     
     // 3. 24時間ループ開始
     console.log('▶️  Starting generation loop...\n');
