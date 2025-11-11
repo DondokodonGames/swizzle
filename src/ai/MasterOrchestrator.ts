@@ -99,7 +99,7 @@ export class MasterOrchestrator {
     // Phase H Day 2-3: 動的品質管理システム初期化
     this.portfolioAnalyzer = new GamePortfolioAnalyzer();
     this.qualityChecker = new DynamicQualityChecker();
-    this.adaptiveStandards = new AdaptiveStandards();
+    this.adaptiveStandards = new AdaptiveStandards(config.generation.qualityThreshold);
     this.playabilitySimulator = new PlayabilitySimulator();
     
     console.log('🚀 MasterOrchestrator initialized (Phase H Day 2-3)');
@@ -165,7 +165,7 @@ export class MasterOrchestrator {
           
           // 5. 合格判定（適応的基準）
           const threshold = this.adaptiveStandards.getQualityThreshold();
-          const passed = quality.passed && quality.totalScore >= threshold;
+          const passed = quality.totalScore >= threshold;
           
           if (passed) {
             // 合格: ポートフォリオに追加

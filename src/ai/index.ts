@@ -3,8 +3,15 @@
  * テスト起動用エントリーポイント
  */
 
+// 環境変数読み込み（最初に実行）
+import { config as dotenvConfig } from 'dotenv';
+import { resolve } from 'path';
+
+// .env.localを明示的に読み込む
+dotenvConfig({ path: resolve(process.cwd(), '.env.local') });
+
 import { MasterOrchestrator } from './MasterOrchestrator';
-import { AIGenerationConfig } from './types/GenerationTypes';
+import type { AIGenerationConfig } from './types/GenerationTypes';
 
 /**
  * 環境変数から設定を読み込み
@@ -22,6 +29,7 @@ function loadConfig(): AIGenerationConfig {
   if (missing.length > 0) {
     console.error('❌ Missing required environment variables:');
     missing.forEach(varName => console.error(`   - ${varName}`));
+    console.error('\n💡 Tip: Make sure .env.local exists in the project root');
     process.exit(1);
   }
   

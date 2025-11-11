@@ -104,10 +104,10 @@ export class AdaptiveStandards {
   private readonly MIN_THRESHOLD = 80;            // 最小閾値
   private readonly MAX_THRESHOLD = 98;            // 最大閾値
   
-  constructor() {
-    // 初期基準（緩め）
+  constructor(initialThreshold: number = 95) {
+   // 初期基準（緩め）
     this.standards = {
-      qualityThreshold: 95.0,
+     qualityThreshold: initialThreshold,
       
       relative: {
         minDiversityScore: 10,

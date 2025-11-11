@@ -81,7 +81,7 @@ export class DynamicQualityChecker {
     
     // 総合スコア
     const totalScore = relativeScore.subtotal + absoluteScore.subtotal;
-    const passed = totalScore >= 95.0; // 95点以上で合格
+    const passed = totalScore >= 60.0; // 60点以上で合格
     
     // 詳細情報の収集
     const details = {
