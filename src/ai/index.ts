@@ -144,6 +144,24 @@ async function main() {
     
     await orchestrator.run24HourLoop();
     
+    // ✨ DEBUG: 生成されたゲームをJSONファイルに保存
+    if ((orchestrator as any).portfolio?.games?.length > 0) {
+      const fs = require('fs');
+      const game = (orchestrator as any).portfolio.games[0];
+      const outputPath = '/tmp/generated_game.json';
+      
+      try {
+        fs.writeFileSync(outputPath, JSON.stringify(game.project, null, 2));
+        console.log(`\n📁 Generated game saved to: ${outputPath}`);
+        console.log(`   Game ID: ${game.project.id}`);
+        console.log(`   Game Name: ${game.project.settings.name}`);
+        console.log(`   Scenes: ${game.project.scenes?.length || 0}`);
+        console.log(`   Quality Score: ${game.quality.totalScore.toFixed(1)}/95`);
+      } catch (err) {
+        console.error('⚠️  Failed to save game JSON:', err);
+      }
+    }
+    
     console.log('\n✅ Generation completed successfully!');
     process.exit(0);
     
