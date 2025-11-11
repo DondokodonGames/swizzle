@@ -77,9 +77,9 @@ function loadConfig(): AIGenerationConfig {
     
     // デバッグ設定
     debug: {
-      dryRun: process.env.VITE_AI_DRY_RUN === 'false',
-      verbose: process.env.VITE_AI_DEBUG_MODE === 'false',
-      saveFailures: process.env.SAVE_FAILURES !== 'false'
+      dryRun: process.env.VITE_AI_DRY_RUN === 'true',
+      verbose: process.env.VITE_AI_DEBUG_MODE === 'true',
+      saveFailures: process.env.SAVE_FAILURES !== 'true'
     }
   };
   

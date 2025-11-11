@@ -472,10 +472,5 @@ export interface AIGenerationConfig {
     cacheEnabled: boolean;                  // キャッシュ有効
   };
   
-  // デバッグ設定
-  debug: {
-    dryRun: boolean;                        // ドライラン（実際の生成をスキップ）
-    verbose: boolean;                       // 詳細ログ
-    saveFailures: boolean;                  // 失敗を保存
-  };
+
 }

@@ -10,7 +10,6 @@ import { GamePortfolioAnalyzer } from './analyzers/GamePortfolioAnalyzer';
 import { DynamicQualityChecker } from './checkers/DynamicQualityChecker';
 import { AdaptiveStandards } from './standards/AdaptiveStandards';
 import { PlayabilitySimulator } from './simulators/PlayabilitySimulator';
-// ✨ NEW: AutoPublisher統合
 import { AutoPublisher, PublicationConfig } from './publishers/AutoPublisher';
 import {
   GameSpec,
@@ -41,7 +40,7 @@ export class MasterOrchestrator {
   private adaptiveStandards: AdaptiveStandards;
   private playabilitySimulator: PlayabilitySimulator;
   
-  // ✨ NEW: Phase H Day 5: 自動公開システム
+  // Phase H Day 5: 自動公開システム
   private autoPublisher: AutoPublisher;
   
   private config: AIGenerationConfig;
@@ -103,23 +102,23 @@ export class MasterOrchestrator {
     
     // Phase H Day 2-3: 動的品質管理システム初期化
     this.portfolioAnalyzer = new GamePortfolioAnalyzer();
-    this.qualityChecker = new DynamicQualityChecker(config.generation.qualityThreshold);
-    this.adaptiveStandards = new AdaptiveStandards(config.generation.qualityThreshold);
+    this.qualityChecker = new DynamicQualityChecker();
+    this.adaptiveStandards = new AdaptiveStandards();
     this.playabilitySimulator = new PlayabilitySimulator();
     
-    // ✨ NEW: Phase H Day 5: AutoPublisher初期化
+    // Phase H Day 5: 自動公開システム初期化
     const publishConfig: PublicationConfig = {
-      publishToSupabase: !config.debug.dryRun, // ドライランではSupabase公開しない
-      registerFreeAssets: false, // 現時点では無効（後で実装）
-      postToSocialMedia: false, // 現時点では無効（後で実装）
+      publishToSupabase: !config.debug.dryRun,
+      registerFreeAssets: false, // Phase H Day 6で有効化
+      postToSocialMedia: false,  // Phase H Day 6で有効化
       socialMediaLanguages: ['en', 'ja'],
       autoPublish: true
     };
     this.autoPublisher = new AutoPublisher(publishConfig);
     
-    console.log('🚀 MasterOrchestrator initialized (Phase H Complete)');
+    console.log('🚀 MasterOrchestrator initialized (Phase H Day 5)');
     console.log('   ✓ Dynamic Quality Management System enabled');
-    console.log('   ✓ Auto Publisher System enabled');
+    console.log('   ✓ Auto Publisher enabled');
   }
   
   /**
@@ -153,7 +152,6 @@ export class MasterOrchestrator {
         
         // 2. 生成モード決定（探索 or 活用）
         const mode = this.decideGenerationMode();
-        console.log(`  🔍 Generation Mode: ${mode.type.toUpperCase()} (${(this.statistics.currentEpsilon * 100).toFixed(0)}%)`);
         console.log(`  🎯 Mode: ${mode.type}`);
         console.log(`  📝 Reason: ${mode.reason}`);
         
@@ -164,14 +162,11 @@ export class MasterOrchestrator {
           this.statistics.generated++;
           
           // 4. 動的品質チェック（Phase H Day 2-3）
-          console.log(`  🔍 Dynamic Quality Check...`);
           const quality = await this.qualityChecker.evaluateQuality(
             newGame,
             this.portfolio.games
           );
           
-          console.log(`     ├─ Relative: ${quality.relativeScore.subtotal.toFixed(1)}/50`);
-          console.log(`     └─ Absolute: ${quality.absoluteScore.subtotal.toFixed(1)}/45`);
           console.log(`  📊 Quality Score: ${quality.totalScore.toFixed(1)}/95`);
           console.log(`  ├─ Relative: ${quality.relativeScore.subtotal.toFixed(1)}/50`);
           console.log(`  │  ├─ Diversity: ${quality.relativeScore.diversity.toFixed(1)}/20`);
@@ -197,7 +192,6 @@ export class MasterOrchestrator {
             console.log(`  ✅ Game passed! "${newGame.project.settings.name}"`);
             console.log(`  📈 Portfolio: ${this.portfolio.statistics.totalGames} games`);
             
-            // ✨ MODIFIED: Phase H Day 5: AutoPublisher統合
             // 6. 公開（ドライランでない場合）
             if (!this.config.debug.dryRun) {
               await this.publishGame(newGame);
@@ -207,9 +201,6 @@ export class MasterOrchestrator {
             
             // 統計更新
             this.updateStatistics(quality);
-            
-            // ✨ NEW: 探索率調整（合格時）
-            this.adjustExplorationRate(true);
             
           } else {
             // 不合格
@@ -229,9 +220,6 @@ export class MasterOrchestrator {
                 console.log(`     - ${rec}`);
               });
             }
-            
-            // ✨ NEW: 探索率調整（不合格時）
-            this.adjustExplorationRate(false);
           }
         } else {
           this.statistics.failed++;
@@ -261,56 +249,6 @@ export class MasterOrchestrator {
     this.isRunning = false;
     console.log('\n🎉 Generation loop completed!');
     this.printFinalReport();
-  }
-  
-  /**
-   * ✨ NEW: Phase H Day 5: ゲーム公開
-   */
-  private async publishGame(game: GeneratedGame): Promise<void> {
-    try {
-      const result = await this.autoPublisher.publishGame(game, true);
-      
-      if (result.success) {
-        console.log(`  📤 Published to Supabase: ${result.gameId}`);
-        if (result.supabaseUrl) {
-          console.log(`  🔗 URL: ${result.supabaseUrl}`);
-        }
-      } else {
-        console.error(`  ❌ Publication failed: ${result.error}`);
-      }
-    } catch (error) {
-      console.error(`  ❌ Publication error:`, error);
-    }
-  }
-  
-  /**
-   * ✨ NEW: 探索率の動的調整
-   */
-  private adjustExplorationRate(success: boolean): void {
-    const currentRate = this.statistics.currentEpsilon;
-    const passRate = this.statistics.passRate;
-    
-    // 合格率に基づいて探索率を調整
-    if (passRate < 0.3) {
-      // 合格率30%未満: 探索率を上げる（最大50%）
-      this.statistics.currentEpsilon = Math.min(0.5, currentRate + 0.02);
-    } else if (passRate > 0.7) {
-      // 合格率70%以上: 探索率を下げる（最小10%）
-      this.statistics.currentEpsilon = Math.max(0.1, currentRate - 0.01);
-    }
-    
-    // 合格時は若干探索率を下げ、不合格時は上げる
-    if (success) {
-      this.statistics.currentEpsilon = Math.max(0.1, currentRate * 0.99);
-    } else {
-      this.statistics.currentEpsilon = Math.min(0.5, currentRate * 1.01);
-    }
-    
-    // ログは5%以上変化した時のみ
-    const change = Math.abs(this.statistics.currentEpsilon - currentRate);
-    if (change >= 0.05) {
-      console.log(`  📊 Exploration rate adjusted: ${(currentRate * 100).toFixed(0)}% → ${(this.statistics.currentEpsilon * 100).toFixed(0)}%`);
-    }
   }
   
   /**
@@ -544,6 +482,26 @@ export class MasterOrchestrator {
   }
   
   /**
+   * ゲーム公開
+   */
+  private async publishGame(game: GeneratedGame): Promise<void> {
+    try {
+      const result = await this.autoPublisher.publishGame(game, true);
+      
+      if (result.success && result.gameId) {
+        console.log(`  📤 Published to Supabase: ${result.gameId}`);
+        if (result.supabaseUrl) {
+          console.log(`  🔗 URL: ${result.supabaseUrl}`);
+        }
+      } else {
+        console.error(`  ❌ Publication failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error(`  ❌ Publication error:`, error);
+    }
+  }
+  
+  /**
    * 統計更新
    */
   private updateStatistics(quality: QualityEvaluation): void {
@@ -591,46 +549,6 @@ export class MasterOrchestrator {
     
     // 適応的基準レポート
     console.log(this.adaptiveStandards.generateReport());
-    
-    // ✨ NEW: 探索-活用バランスレポート
-    this.printExplorationReport();
-  }
-  
-  /**
-   * ✨ NEW: 探索-活用バランスレポート
-   */
-  private printExplorationReport(): void {
-    const totalDecisions = this.statistics.explorationCount + this.statistics.exploitationCount;
-    const explorationRate = totalDecisions > 0 
-      ? (this.statistics.explorationCount / totalDecisions * 100).toFixed(1)
-      : '0.0';
-    const exploitationRate = totalDecisions > 0
-      ? (this.statistics.exploitationCount / totalDecisions * 100).toFixed(1)
-      : '0.0';
-    
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📊 Exploration-Exploitation Balance Report');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`Total Decisions: ${totalDecisions}`);
-    console.log(`  ├─ Exploration: ${this.statistics.explorationCount} (${explorationRate}%)`);
-    console.log(`  └─ Exploitation: ${this.statistics.exploitationCount} (${exploitationRate}%)`);
-    console.log('');
-    console.log(`Current Exploration Rate: ${(this.statistics.currentEpsilon * 100).toFixed(0)}%`);
-    console.log('');
-    console.log('Recent Performance:');
-    console.log(`  ├─ Avg Diversity: ${(this.statistics.diversityScore * 100).toFixed(1)}%`);
-    console.log(`  └─ Avg Success: ${(this.statistics.passRate * 100).toFixed(1)}%`);
-    console.log('');
-    
-    // 状態評価
-    if (this.statistics.diversityScore < 0.3) {
-      console.log('Status: ⚠️ Warning - Low diversity, increase exploration');
-    } else if (this.statistics.diversityScore > 0.7) {
-      console.log('Status: ✅ Excellent - High diversity maintained');
-    } else {
-      console.log('Status: 👍 Good - Balanced diversity');
-    }
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   }
   
   /**
@@ -642,9 +560,9 @@ export class MasterOrchestrator {
     // 統計に基づいて基準を自動調整
     this.adaptiveStandards.autoAdjust(this.statistics);
     
-    // ε値の最適化（より緩やかな減衰）
-    const targetEpsilon = 0.15; // 最小探索率を15%に設定
-    const decay = 0.98; // より緩やかな減衰
+    // ε値を動的調整
+    const targetEpsilon = 0.1;
+    const decay = 0.95;
     this.statistics.currentEpsilon = Math.max(targetEpsilon, this.statistics.currentEpsilon * decay);
     
     console.log(`   ✓ Epsilon adjusted to ${this.statistics.currentEpsilon.toFixed(2)}`);
