@@ -1,6 +1,6 @@
 /**
  * AdaptiveStandards
- * 適応的品質基準システム
+ * 適応的品質基準システム（環境変数対応版）
  * 
  * 機能:
  * - 品質基準の動的調整
@@ -8,6 +8,7 @@
  * - ε値の動的調整（探索率）
  * - ユーザーフィードバックからの学習
  * - パフォーマンスベースの基準更新
+ * - 環境変数QUALITY_THRESHOLDからの初期値読み込み ✅ 追加
  */
 
 import {
@@ -101,13 +102,18 @@ export class AdaptiveStandards {
   private readonly TARGET_PASS_RATE = 0.35;       // 目標合格率35%
   private readonly PASS_RATE_TOLERANCE = 0.05;    // 許容誤差±5%
   private readonly ADJUSTMENT_RATE = 0.1;         // 調整速度（10%）
-  private readonly MIN_THRESHOLD = 80;            // 最小閾値
+  private readonly MIN_THRESHOLD = 60;            // 最小閾値 ✅ 80→60に変更
   private readonly MAX_THRESHOLD = 98;            // 最大閾値
   
-  constructor(initialThreshold: number = 95) {
-   // 初期基準（緩め）
+  constructor() {
+    // ✅ 環境変数から初期閾値を読み込み
+    const envThreshold = process.env.QUALITY_THRESHOLD 
+      ? parseFloat(process.env.QUALITY_THRESHOLD)
+      : 95;
+    
+    // 初期基準
     this.standards = {
-     qualityThreshold: initialThreshold,
+      qualityThreshold: envThreshold, // ✅ 環境変数対応
       
       relative: {
         minDiversityScore: 10,
@@ -133,6 +139,9 @@ export class AdaptiveStandards {
         idealRules: 5
       }
     };
+    
+    // ✅ 初期化ログ
+    console.log(`📊 AdaptiveStandards initialized with threshold: ${this.standards.qualityThreshold}`);
   }
   
   /**
@@ -478,8 +487,13 @@ export class AdaptiveStandards {
   reset(): void {
     console.log('🔄 Resetting standards to initial values...');
     
+    // ✅ 環境変数から再読み込み
+    const envThreshold = process.env.QUALITY_THRESHOLD 
+      ? parseFloat(process.env.QUALITY_THRESHOLD)
+      : 95;
+    
     this.standards = {
-      qualityThreshold: 95.0,
+      qualityThreshold: envThreshold,
       
       relative: {
         minDiversityScore: 10,

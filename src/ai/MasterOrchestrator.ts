@@ -1,6 +1,6 @@
 /**
  * Master Orchestrator - AI自動ゲーム生成システム統括
- * Phase H Day 2-3統合版: 動的品質管理システム完全実装
+ * Phase H Day 5完了版: AutoPublisher統合完了
  */
 
 import { LogicGenerator } from './generators/LogicGenerator';
@@ -10,6 +10,7 @@ import { GamePortfolioAnalyzer } from './analyzers/GamePortfolioAnalyzer';
 import { DynamicQualityChecker } from './checkers/DynamicQualityChecker';
 import { AdaptiveStandards } from './standards/AdaptiveStandards';
 import { PlayabilitySimulator } from './simulators/PlayabilitySimulator';
+import { AutoPublisher } from './publishers/AutoPublisher'; // ✅ 追加
 import {
   GameSpec,
   GeneratedGame,
@@ -26,7 +27,7 @@ import { GameProject } from '../types/editor/GameProject';
 
 /**
  * MasterOrchestrator
- * 24時間自動稼働システムの中核（Phase H Day 2-3統合版）
+ * 24時間自動稼働システムの中核（Phase H Day 5完了版）
  */
 export class MasterOrchestrator {
   private logicGenerator: LogicGenerator;
@@ -38,6 +39,9 @@ export class MasterOrchestrator {
   private qualityChecker: DynamicQualityChecker;
   private adaptiveStandards: AdaptiveStandards;
   private playabilitySimulator: PlayabilitySimulator;
+  
+  // Phase H Day 5: 自動公開システム ✅ 追加
+  private autoPublisher: AutoPublisher;
   
   private config: AIGenerationConfig;
   
@@ -99,11 +103,15 @@ export class MasterOrchestrator {
     // Phase H Day 2-3: 動的品質管理システム初期化
     this.portfolioAnalyzer = new GamePortfolioAnalyzer();
     this.qualityChecker = new DynamicQualityChecker();
-    this.adaptiveStandards = new AdaptiveStandards(config.generation.qualityThreshold);
+    this.adaptiveStandards = new AdaptiveStandards();
     this.playabilitySimulator = new PlayabilitySimulator();
     
-    console.log('🚀 MasterOrchestrator initialized (Phase H Day 2-3)');
+    // Phase H Day 5: 自動公開システム初期化 ✅ 追加
+    this.autoPublisher = new AutoPublisher(AutoPublisher.getDefaultConfig());
+    
+    console.log('🚀 MasterOrchestrator initialized (Phase H Day 5)');
     console.log('   ✓ Dynamic Quality Management System enabled');
+    console.log('   ✓ AutoPublisher enabled'); // ✅ 追加
   }
   
   /**
@@ -165,7 +173,7 @@ export class MasterOrchestrator {
           
           // 5. 合格判定（適応的基準）
           const threshold = this.adaptiveStandards.getQualityThreshold();
-          const passed = quality.totalScore >= threshold;
+          const passed = quality.passed && quality.totalScore >= threshold;
           
           if (passed) {
             // 合格: ポートフォリオに追加
@@ -177,10 +185,9 @@ export class MasterOrchestrator {
             console.log(`  ✅ Game passed! "${newGame.project.settings.name}"`);
             console.log(`  📈 Portfolio: ${this.portfolio.statistics.totalGames} games`);
             
-            // 6. 公開（ドライランでない場合）
+            // 6. 公開（ドライランでない場合） ✅ 修正
             if (!this.config.debug.dryRun) {
-              // await this.publishGame(newGame);
-              console.log(`  📤 Published to Supabase`);
+              await this.publishGame(newGame);
             } else {
               console.log(`  🔷 Dry run: skipping publish`);
             }
@@ -235,6 +242,35 @@ export class MasterOrchestrator {
     this.isRunning = false;
     console.log('\n🎉 Generation loop completed!');
     this.printFinalReport();
+  }
+  
+  /**
+   * ゲームを公開（Phase H Day 5） ✅ 新規追加
+   */
+  private async publishGame(game: GeneratedGame): Promise<void> {
+    try {
+      console.log(`  📤 Publishing game...`);
+      
+      const result = await this.autoPublisher.publishGame(game, true);
+      
+      if (result.success && result.gameId) {
+        console.log(`  ✓ Published to Supabase: ${result.gameId}`);
+        
+        if (result.freeAssetsRegistered) {
+          console.log(`  ✓ Free assets registered`);
+        }
+        
+        const successfulPosts = result.socialMediaPosts.filter(p => p.success);
+        if (successfulPosts.length > 0) {
+          console.log(`  ✓ Posted to social media (${successfulPosts.length} languages)`);
+        }
+      } else {
+        console.error(`  ✗ Publication failed: ${result.error}`);
+      }
+      
+    } catch (error) {
+      console.error(`  ✗ Publication error:`, error);
+    }
   }
   
   /**

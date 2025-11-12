@@ -1,12 +1,11 @@
 /**
  * SupabaseUploader
- * Supabase自動アップロード処理
+ * Supabase自動アップロード処理（スキーマ完全対応版）
  * 
- * Phase H Day 4-5: 自動公開システム
- * - マスターアカウントでログイン
- * - user_gamesテーブルにゲーム保存
- * - 公開ステータス管理
- * - 統計情報の取得
+ * Phase H Day 5完了版: 実際のuser_gamesテーブルスキーマに対応
+ * - creator_id (user_idではない)
+ * - is_published (is_publicではない)
+ * - template_id (必須カラム)
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -72,19 +71,21 @@ export class SupabaseUploader {
   ): Promise<UploadResult> {
     
     try {
-      // 1. ゲームデータを準備
+      // 1. ゲームデータを準備（実際のスキーマに合わせる）
       const gameData = {
-        user_id: this.masterUserId,
+        creator_id: this.masterUserId,           // ✅ user_id → creator_id
         title: project.settings.name,
         description: project.settings.description || 'AI-generated game',
-        game_data: project, // GameProject全体をJSONBで保存
-        is_public: autoPublish,
-        difficulty: project.settings.difficulty || 'normal',
+        template_id: 'ai_generated',             // ✅ 必須カラム追加
+        game_data: project,                      // GameProject全体をJSONBで保存
+        project_data: project,                   // ✅ project_dataにも保存
+        thumbnail_url: null,                     // ✅ 追加
+        is_published: autoPublish,               // ✅ is_public → is_published
+        is_featured: false,                      // ✅ 追加
         play_count: 0,
         like_count: 0,
         ai_generated: true,
         ai_quality_score: qualityScore,
-        published_at: autoPublish ? new Date().toISOString() : null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -137,14 +138,11 @@ export class SupabaseUploader {
       };
       
       if (status === 'published') {
-        updateData.is_public = true;
-        updateData.published_at = new Date().toISOString();
+        updateData.is_published = true;
       } else if (status === 'unpublished') {
-        updateData.is_public = false;
-        updateData.unpublished_at = new Date().toISOString();
+        updateData.is_published = false;
       } else if (status === 'pending') {
-        updateData.is_public = false;
-        updateData.published_at = null;
+        updateData.is_published = false;
       }
       
       const { error } = await this.supabase
@@ -170,12 +168,11 @@ export class SupabaseUploader {
   async deleteGame(gameId: string): Promise<boolean> {
     
     try {
-      // 論理削除: is_publicをfalseに設定
+      // 論理削除: is_publishedをfalseに設定
       const { error } = await this.supabase
         .from('user_games')
         .update({
-          is_public: false,
-          deleted_at: new Date().toISOString(),
+          is_published: false,
           updated_at: new Date().toISOString()
         })
         .eq('id', gameId);
@@ -255,7 +252,7 @@ export class SupabaseUploader {
       const { count: totalGames } = await this.supabase
         .from('user_games')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', this.masterUserId);
+        .eq('creator_id', this.masterUserId);
       
       // 今日のゲーム数
       const today = new Date();
@@ -263,7 +260,7 @@ export class SupabaseUploader {
       const { count: gamesToday } = await this.supabase
         .from('user_games')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', this.masterUserId)
+        .eq('creator_id', this.masterUserId)
         .gte('created_at', today.toISOString());
       
       // 今週のゲーム数
@@ -272,7 +269,7 @@ export class SupabaseUploader {
       const { count: gamesThisWeek } = await this.supabase
         .from('user_games')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', this.masterUserId)
+        .eq('creator_id', this.masterUserId)
         .gte('created_at', weekAgo.toISOString());
       
       // 今月のゲーム数
@@ -281,14 +278,14 @@ export class SupabaseUploader {
       const { count: gamesThisMonth } = await this.supabase
         .from('user_games')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', this.masterUserId)
+        .eq('creator_id', this.masterUserId)
         .gte('created_at', monthAgo.toISOString());
       
       // 平均品質スコア
       const { data: qualityData } = await this.supabase
         .from('user_games')
         .select('ai_quality_score')
-        .eq('user_id', this.masterUserId)
+        .eq('creator_id', this.masterUserId)
         .not('ai_quality_score', 'is', null);
       
       const averageQuality = qualityData && qualityData.length > 0
@@ -299,14 +296,14 @@ export class SupabaseUploader {
       const { count: publishedGames } = await this.supabase
         .from('user_games')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', this.masterUserId)
-        .eq('is_public', true);
+        .eq('creator_id', this.masterUserId)
+        .eq('is_published', true);
       
       const { count: unpublishedGames } = await this.supabase
         .from('user_games')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', this.masterUserId)
-        .eq('is_public', false);
+        .eq('creator_id', this.masterUserId)
+        .eq('is_published', false);
       
       return {
         totalGames: totalGames || 0,
@@ -345,7 +342,7 @@ export class SupabaseUploader {
       const { data, error } = await this.supabase
         .from('user_games')
         .select('*')
-        .eq('user_id', this.masterUserId)
+        .eq('creator_id', this.masterUserId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
       
