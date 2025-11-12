@@ -11,18 +11,20 @@
     "ai:generate": "tsx src/ai/index.ts",
     "ai:generate:dry": "VITE_AI_DRY_RUN=true tsx src/ai/index.ts",
     "ai:generate:test": "TARGET_GAMES_COUNT=10 VITE_AI_DRY_RUN=true tsx src/ai/index.ts"
-
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
+    "@stripe/stripe-js": "^8.4.0",
     "@supabase/supabase-js": "^2.56.0",
     "@tabler/icons-react": "^3.34.1",
+    "dotenv": "^17.2.3",
     "lucide-react": "^0.544.0",
     "openai": "^6.7.0",
     "pixi.js": "^7.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^7.9.4"
+    "react-router-dom": "^7.9.4",
+    "stripe": "^19.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
