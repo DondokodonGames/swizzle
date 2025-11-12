@@ -255,8 +255,8 @@ export const MVP_PLAN_CONFIGS: Record<MVPSubscriptionPlan, MVPPlanDetails> = {
     description: 'Unlimited creativity without ads',
     price: 4.99,
     yearlyPrice: 49.99,
-    stripePriceId: import.meta.env.VITE_STRIPE_PREMIUM_MONTHLY_PRICE_ID || '',
-    stripeYearlyPriceId: import.meta.env.VITE_STRIPE_PREMIUM_YEARLY_PRICE_ID || '',
+    stripePriceId: '', // 実行時に取得
+    stripeYearlyPriceId: '', // 実行時に取得
     limits: {
       gamesPerMonth: -1, // 無制限
       hasAds: false,
@@ -658,6 +658,7 @@ export function getAdSlotId(placement: AdPlacement): string {
     [AdPlacement.EDITOR_SIDEBAR]: 'VITE_ADSENSE_SLOT_EDITOR',
   }[placement];
 
+  // @ts-ignore
   return import.meta.env[envKey] || '';
 }
 
@@ -665,6 +666,7 @@ export function getAdSlotId(placement: AdPlacement): string {
  * 広告クライアントID取得
  */
 export function getAdClientId(): string {
+    // @ts-ignore
   return import.meta.env.VITE_ADSENSE_CLIENT_ID || '';
 }
 
