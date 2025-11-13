@@ -27,9 +27,10 @@ interface GameScore {
 
 interface GameSequenceProps {
   onExit?: () => void;
+  onOpenFeed?: () => void;
 }
 
-const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
+const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // ==================== 状態管理 ====================
   const [publicGames, setPublicGames] = useState<PublicGame[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -391,8 +392,9 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
                   {/* ソーシャルフィードボタン */}
                   <button
                     onClick={() => {
-                      // TODO: ソーシャルフィード画面への遷移
-                      console.log('ソーシャルフィードを開く');
+                      if (onOpenFeed) {
+                        onOpenFeed();
+                      }
                     }}
                     className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
                     title="ソーシャルフィード"

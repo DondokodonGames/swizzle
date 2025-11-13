@@ -1,7 +1,8 @@
-// src/App.tsx - AppMode型修正最終版（エラー2件完全修正）+ エディター自動起動機能追加
+// src/App.tsx - AppMode型修正最終版（エラー2件完全修正）+ エディター自動起動機能追加 + フィード画面追加
 
 import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import GameSequence from './components/GameSequence';
+import GameFeed from './components/GameFeed';
 import './styles/arcade-theme.css';
 
 // エディターアプリのプロパティ型を定義
@@ -88,8 +89,8 @@ const DEFAULT_VOLUME: VolumeSettings = {
   muted: false
 }
 
-// 🔧 最終修正: AppMode型定義（'editor'を確実に含める）
-type AppMode = 'sequence' | 'test' | 'system' | 'editor';
+// 🔧 最終修正: AppMode型定義（'editor'を確実に含める）+ 'feed'追加
+type AppMode = 'sequence' | 'test' | 'system' | 'editor' | 'feed';
 
 // 認証機能の有効/無効判定
 const ENABLE_AUTH = (import.meta as any).env?.VITE_ENABLE_AUTH === 'true';
@@ -395,6 +396,9 @@ function MainApp() {
   // エディターで開くプロジェクトIDを管理
   const [editorProjectId, setEditorProjectId] = useState<string | undefined>(undefined);
 
+  // フィードから選択されたゲーム
+  const [selectedFeedGame, setSelectedFeedGame] = useState<any>(null);
+
   // 音量設定状態
   const [volumeSettings, setVolumeSettings] = useState<VolumeSettings>(DEFAULT_VOLUME);
 
@@ -454,6 +458,10 @@ function MainApp() {
     setMode('sequence');
   };
 
+  const handleSwitchToFeed = () => {
+    setMode('feed');
+  };
+
   const handleSwitchToEditor = () => {
     setMode('editor');
     setEditorProjectId(undefined); // 新規プロジェクト
@@ -463,6 +471,15 @@ function MainApp() {
     setMode('sequence');
     setEditorProjectId(undefined);
     console.log('エディターから戻りました');
+  };
+
+  const handleFeedGameSelect = (game: any) => {
+    setSelectedFeedGame(game);
+    setMode('sequence'); // ゲームプレイモードに戻る
+  };
+
+  const handleExitFeed = () => {
+    setMode('sequence');
   };
 
   // エディターモード時のフルスクリーン表示
@@ -503,6 +520,16 @@ function MainApp() {
           initialProjectId={editorProjectId}
         />
       </Suspense>
+    );
+  }
+
+  // フィードモード時のフルスクリーン表示
+  if (mode === 'feed') {
+    return (
+      <GameFeed
+        onGameSelect={handleFeedGameSelect}
+        onBack={handleExitFeed}
+      />
     );
   }
 
@@ -587,8 +614,9 @@ function MainApp() {
         position: 'relative'
       }}>
         {mode === 'sequence' && (
-          <GameSequence 
+          <GameSequence
             onExit={handleExitSequence}
+            onOpenFeed={handleSwitchToFeed}
           />
         )}
         {mode === 'test' && (
