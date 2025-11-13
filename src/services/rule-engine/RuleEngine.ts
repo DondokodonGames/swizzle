@@ -1096,11 +1096,15 @@ export class RuleEngine {
 
           case 'success':
             newGameState.score = (context.gameState.score || 0) + (action.score || 0);
+            newGameState.isPlaying = false; // ✅ ゲーム終了
             effectsApplied.push('ゲーム成功');
+            console.log('🎉 ゲームクリア！');
             break;
 
           case 'failure':
+            newGameState.isPlaying = false; // ✅ ゲーム終了
             effectsApplied.push('ゲーム失敗');
+            console.log('💀 ゲームオーバー');
             break;
 
           case 'setFlag':
@@ -1373,7 +1377,7 @@ export class RuleEngine {
       case 'straight':
         if (movement.target) {
           let targetX: number, targetY: number;
-          
+
           if (typeof movement.target === 'string') {
             const targetObject = context.objects.get(movement.target);
             if (targetObject) {
@@ -1384,8 +1388,9 @@ export class RuleEngine {
               return;
             }
           } else {
-            targetX = movement.target.x;
-            targetY = movement.target.y;
+            // ✅ 正規化座標（0-1）→ピクセル座標に変換
+            targetX = movement.target.x * context.canvas.width;
+            targetY = movement.target.y * context.canvas.height;
           }
           
           const dx = targetX - targetObj.x;
@@ -1410,13 +1415,14 @@ export class RuleEngine {
               targetObj.y = targetObject.y;
             }
           } else {
-            targetObj.x = movement.target.x;
-            targetObj.y = movement.target.y;
+            // ✅ 正規化座標（0-1）→ピクセル座標に変換
+            targetObj.x = movement.target.x * context.canvas.width;
+            targetObj.y = movement.target.y * context.canvas.height;
           }
-          
+
           targetObj.vx = 0;
           targetObj.vy = 0;
-          
+
           console.log(`瞬間移動: ${action.targetId} → (${targetObj.x}, ${targetObj.y})`);
         }
         break;

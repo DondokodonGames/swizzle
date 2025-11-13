@@ -314,13 +314,32 @@ export class EditorGameBridge {
           // オブジェクト更新・描画
           objectsMap.forEach((obj, id) => {
             if (!obj.visible) return;
-            
-            // 🔧 修正: RuleEngineによる移動のみ適用（自動移動を削除）
-            // obj.x += obj.vx || 0;  // ❌ 削除
-            // obj.y += obj.vy || 0;  // ❌ 削除
 
-            // 🔧 修正: 境界チェックも削除（RuleEngineのMoveアクションで制御）
-            // if (obj.x <= 0 || ...) { ... }  // ❌ 削除
+            // ✅ RuleEngineによる移動を適用（vx/vyが0でない場合のみ）
+            if (obj.vx !== undefined && obj.vx !== 0) {
+              obj.x += obj.vx;
+            }
+            if (obj.vy !== undefined && obj.vy !== 0) {
+              obj.y += obj.vy;
+            }
+
+            // 画面外チェック（オブジェクトが画面外に出た場合、画面端で停止）
+            if (obj.x < 0) {
+              obj.x = 0;
+              obj.vx = 0;
+            }
+            if (obj.x + obj.width * obj.scale > canvasElement.width) {
+              obj.x = canvasElement.width - obj.width * obj.scale;
+              obj.vx = 0;
+            }
+            if (obj.y < 0) {
+              obj.y = 0;
+              obj.vy = 0;
+            }
+            if (obj.y + obj.height * obj.scale > canvasElement.height) {
+              obj.y = canvasElement.height - obj.height * obj.scale;
+              obj.vy = 0;
+            }
 
             // 描画
             const img = imageCache.get(id);
