@@ -416,25 +416,66 @@ export class RuleEngine {
         return false;
       }
       
-      // ステージとの衝突（画面端判定）
+      // ステージとの衝突判定
       if (condition.target === 'stage') {
-        const margin = 5; // 5pxのマージン
-        const hitLeft = sourceObj.x <= margin;
-        const hitRight = sourceObj.x + sourceObj.width >= context.canvas.width - margin;
-        const hitTop = sourceObj.y <= margin;
-        const hitBottom = sourceObj.y + sourceObj.height >= context.canvas.height - margin;
-        
-        const isColliding = hitLeft || hitRight || hitTop || hitBottom;
-        
+        let isColliding = false;
+
+        // regionが指定されている場合は範囲との衝突判定
+        if (condition.region) {
+          const region = condition.region;
+
+          if (region.shape === 'rect') {
+            // 矩形範囲との衝突判定（正規化座標→ピクセル座標変換）
+            const rectX = region.x * context.canvas.width;
+            const rectY = region.y * context.canvas.height;
+            const rectWidth = (region.width || 0.4) * context.canvas.width;
+            const rectHeight = (region.height || 0.4) * context.canvas.height;
+
+            // オブジェクトと矩形範囲の衝突判定（AABB）
+            isColliding = sourceObj.x < rectX + rectWidth &&
+                         sourceObj.x + sourceObj.width > rectX &&
+                         sourceObj.y < rectY + rectHeight &&
+                         sourceObj.y + sourceObj.height > rectY;
+          } else if (region.shape === 'circle') {
+            // 円形範囲との衝突判定（正規化座標→ピクセル座標変換）
+            const centerX = region.x * context.canvas.width;
+            const centerY = region.y * context.canvas.height;
+            const radius = (region.radius || 0.2) * context.canvas.width;
+
+            // オブジェクトの中心座標
+            const objCenterX = sourceObj.x + sourceObj.width / 2;
+            const objCenterY = sourceObj.y + sourceObj.height / 2;
+
+            // 中心間の距離
+            const distance = Math.sqrt(
+              Math.pow(objCenterX - centerX, 2) + Math.pow(objCenterY - centerY, 2)
+            );
+
+            // オブジェクトの半径（幅と高さの平均を半径とする）
+            const objRadius = (sourceObj.width + sourceObj.height) / 4;
+
+            isColliding = distance < radius + objRadius;
+          }
+        } else {
+          // regionなしの場合は画面端判定
+          const margin = 5; // 5pxのマージン
+          const hitLeft = sourceObj.x <= margin;
+          const hitRight = sourceObj.x + sourceObj.width >= context.canvas.width - margin;
+          const hitTop = sourceObj.y <= margin;
+          const hitBottom = sourceObj.y + sourceObj.height >= context.canvas.height - margin;
+
+          isColliding = hitLeft || hitRight || hitTop || hitBottom;
+        }
+
         // 前回の衝突状態を取得
         const wasColliding = this.previousCollisions.get(sourceId)?.has('stage') || false;
-        
+
         // collisionTypeに応じて判定
         switch (condition.collisionType) {
           case 'enter':
             const enterResult = isColliding && !wasColliding;
             if (enterResult) {
-              console.log(`🎯 画面端衝突開始: ${sourceId}`);
+              console.log(`🎯 ${condition.region ? 'ステージ範囲' : '画面端'}衝突開始: ${sourceId}`);
             }
             return enterResult;
           case 'stay':
@@ -442,7 +483,7 @@ export class RuleEngine {
           case 'exit':
             const exitResult = !isColliding && wasColliding;
             if (exitResult) {
-              console.log(`👋 画面端衝突終了: ${sourceId}`);
+              console.log(`👋 ${condition.region ? 'ステージ範囲' : '画面端'}衝突終了: ${sourceId}`);
             }
             return exitResult;
           default:
@@ -879,19 +920,48 @@ export class RuleEngine {
     targetObjectId: string
   ): boolean {
     const touchEvents = context.events.filter(e => e.type === 'touch');
-    
+
     if (!touchEvents.length) return false;
-    
+
     const latestTouch = touchEvents[touchEvents.length - 1];
     const touchTarget = condition.target === 'self' ? targetObjectId : condition.target;
-    
+
     if (touchTarget === 'stage') {
+      // ステージタッチかつregionが指定されている場合、範囲内チェック
+      if (latestTouch.data.target === 'stage' && condition.region) {
+        const { x: touchX, y: touchY } = latestTouch.data;
+        const region = condition.region;
+
+        if (region.shape === 'rect') {
+          // 矩形範囲チェック（正規化座標→ピクセル座標変換）
+          const rectX = region.x * context.canvas.width;
+          const rectY = region.y * context.canvas.height;
+          const rectWidth = (region.width || 0.4) * context.canvas.width;
+          const rectHeight = (region.height || 0.4) * context.canvas.height;
+
+          return touchX >= rectX && touchX <= rectX + rectWidth &&
+                 touchY >= rectY && touchY <= rectY + rectHeight;
+        } else if (region.shape === 'circle') {
+          // 円形範囲チェック（正規化座標→ピクセル座標変換）
+          const centerX = region.x * context.canvas.width;
+          const centerY = region.y * context.canvas.height;
+          const radius = (region.radius || 0.2) * context.canvas.width;
+
+          const distance = Math.sqrt(
+            Math.pow(touchX - centerX, 2) + Math.pow(touchY - centerY, 2)
+          );
+
+          return distance <= radius;
+        }
+      }
+
+      // regionなしの場合はステージ全体へのタッチ
       return latestTouch.data.target === 'stage';
     }
-    
+
     const targetObj = context.objects.get(touchTarget);
     if (!targetObj) return false;
-    
+
     const { x: touchX, y: touchY } = latestTouch.data;
     const objBounds = {
       left: targetObj.x,
@@ -899,7 +969,7 @@ export class RuleEngine {
       top: targetObj.y,
       bottom: targetObj.y + (targetObj.height || 100)
     };
-    
+
     return touchX >= objBounds.left && touchX <= objBounds.right &&
            touchY >= objBounds.top && touchY <= objBounds.bottom;
   }
