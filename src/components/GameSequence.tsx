@@ -384,15 +384,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
           </div>
         </div>
 
-        {/* デバッグ情報 */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="absolute top-32 left-6 bg-black/80 text-white text-xs p-3 rounded-lg pointer-events-none max-w-xs">
-            <p>🎮 ゲーム: {currentGame.id}</p>
-            <p>📊 総数: {publicGames.length}</p>
-            <p>🔢 Index: {currentIndex}</p>
-            <p>📦 projectData: {currentGame.projectData ? 'あり' : 'なし'}</p>
-          </div>
-        )}
       </div>
     </div>
   );
