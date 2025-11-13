@@ -253,20 +253,26 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
   // ルール保存（フラグ情報も同時更新）
   const handleSaveRule = (rule: GameRule) => {
     console.log('[ScriptTab] ルール保存:', rule.name);
-    
-    const updatedScript = { ...project.script };
-    const existingIndex = updatedScript.rules.findIndex(r => r.id === rule.id);
-    
+    console.log('[ScriptTab] ルール内容:', JSON.stringify(rule, null, 2));
+
+    // ✅ 深いコピーを作成して変更を確実に反映
+    const updatedScript = JSON.parse(JSON.stringify(project.script));
+    const existingIndex = updatedScript.rules.findIndex((r: GameRule) => r.id === rule.id);
+
     if (existingIndex >= 0) {
       // 既存ルール更新
       updatedScript.rules[existingIndex] = rule;
+      console.log('[ScriptTab] 既存ルール更新:', { index: existingIndex, ruleId: rule.id });
       showNotification('success', 'ルールを更新しました');
     } else {
       // 新規ルール追加
       updatedScript.rules.push(rule);
+      console.log('[ScriptTab] 新規ルール追加:', { ruleId: rule.id, totalRules: updatedScript.rules.length });
       showNotification('success', 'ルールを追加しました');
     }
-    
+
+    console.log('[ScriptTab] 保存後のルール一覧:', updatedScript.rules.map((r: GameRule) => ({ id: r.id, name: r.name, enabled: r.enabled })));
+
     updateProject({ script: updatedScript });
     setShowRuleModal(false);
     setEditingRule(null);
