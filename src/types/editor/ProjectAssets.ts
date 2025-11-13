@@ -32,6 +32,9 @@ export interface BackgroundAsset {
   totalSize: number;      // 全フレーム合計サイズ
   createdAt: string;
   lastModified: string;
+
+  // 表示設定
+  defaultScale?: number;   // デフォルトスケール（0.1-3.0）オプショナル（後方互換性）
 }
 
 // オブジェクトアセット（最大15個、各8フレーム）
@@ -98,10 +101,11 @@ export interface AudioAsset {
   fileSize: number;       // バイト数
   format: string;         // 'mp3', 'wav', 'ogg'
   uploadedAt: string;
-  
+
   // 音声固有設定
   volume: number;         // 0.0-1.0
   loop: boolean;          // SEの場合のループ設定
+  autoPlay?: boolean;     // BGMの自動再生設定（ゲーム開始時）オプショナル（後方互換性）
 }
 
 // アセット統計情報

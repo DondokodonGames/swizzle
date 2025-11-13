@@ -129,12 +129,56 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
               </p>
               <div className="mt-2 flex items-center gap-2">
                 <span className={`text-xs px-2 py-1 rounded ${
-                  project.script.layout.background.visible 
-                    ? 'bg-green-100 text-green-700' 
+                  project.script.layout.background.visible
+                    ? 'bg-green-100 text-green-700'
                     : 'bg-red-100 text-red-700'
                 }`}>
                   {project.script.layout.background.visible ? '✅ 表示中' : '❌ 非表示'}
                 </span>
+              </div>
+
+              {/* サイズ調整スライダー */}
+              <div style={{ marginTop: DESIGN_TOKENS.spacing[3] }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                    fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                    color: DESIGN_TOKENS.colors.neutral[700],
+                    marginBottom: DESIGN_TOKENS.spacing[1]
+                  }}
+                >
+                  サイズ: {((project.assets.background.defaultScale || 1.0) * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="10"
+                  max="300"
+                  step="10"
+                  value={(project.assets.background.defaultScale || 1.0) * 100}
+                  onChange={(e) => {
+                    const scale = parseInt(e.target.value) / 100;
+                    const updatedAssets = {
+                      ...project.assets,
+                      background: {
+                        ...project.assets.background!,
+                        defaultScale: scale
+                      }
+                    };
+                    onProjectUpdate({
+                      ...project,
+                      assets: updatedAssets
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    height: '4px',
+                    borderRadius: DESIGN_TOKENS.borderRadius.full,
+                    background: DESIGN_TOKENS.colors.neutral[200],
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                />
               </div>
             </div>
             <ModernButton

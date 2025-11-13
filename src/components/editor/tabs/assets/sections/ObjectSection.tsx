@@ -567,9 +567,9 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                     </div>
                   )}
 
-                  {/* アニメーション速度設定 */}
+                  {/* サイズ調整 */}
                   <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
-                    <label 
+                    <label
                       style={{
                         display: 'block',
                         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
@@ -578,11 +578,56 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                         marginBottom: DESIGN_TOKENS.spacing[1]
                       }}
                     >
-                      速度: {obj.animationSettings.speed}fps
+                      サイズ: {((obj.defaultScale || 1.0) * 100).toFixed(0)}%
                     </label>
                     <input
                       type="range"
-                      min="1"
+                      min="10"
+                      max="300"
+                      step="10"
+                      value={(obj.defaultScale || 1.0) * 100}
+                      onChange={(e) => {
+                        const scale = parseInt(e.target.value) / 100;
+                        const updatedAssets = { ...project.assets };
+                        const objectIndex = updatedAssets.objects.findIndex(o => o.id === obj.id);
+                        if (objectIndex !== -1) {
+                          updatedAssets.objects[objectIndex] = {
+                            ...updatedAssets.objects[objectIndex],
+                            defaultScale: scale
+                          };
+                          onProjectUpdate({
+                            ...project,
+                            assets: updatedAssets
+                          });
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        height: '4px',
+                        borderRadius: DESIGN_TOKENS.borderRadius.full,
+                        background: DESIGN_TOKENS.colors.neutral[200],
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  </div>
+
+                  {/* アニメーション速度設定 */}
+                  <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                        fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                        color: DESIGN_TOKENS.colors.neutral[700],
+                        marginBottom: DESIGN_TOKENS.spacing[1]
+                      }}
+                    >
+                      速度: {obj.animationSettings.speed}fps {obj.animationSettings.speed === 0 && '(ルール制御のみ)'}
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
                       max="30"
                       value={obj.animationSettings.speed}
                       onChange={(e) => updateAnimationSettings(obj.id, { speed: parseInt(e.target.value) })}

@@ -337,20 +337,36 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                     />
                   </div>
                   
-                  <div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
                       <input
                         type="checkbox"
                         checked={project.assets.audio.bgm.loop}
                         onChange={(e) => handlePropertyUpdate('bgm', project.assets.audio.bgm!.id, 'loop', e.target.checked)}
                       />
-                      <span 
+                      <span
                         style={{
                           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                           color: DESIGN_TOKENS.colors.neutral[700]
                         }}
                       >
                         🔄 ループ再生
+                      </span>
+                    </label>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                      <input
+                        type="checkbox"
+                        checked={project.assets.audio.bgm.autoPlay || false}
+                        onChange={(e) => handlePropertyUpdate('bgm', project.assets.audio.bgm!.id, 'autoPlay', e.target.checked)}
+                      />
+                      <span
+                        style={{
+                          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                          color: DESIGN_TOKENS.colors.neutral[700]
+                        }}
+                      >
+                        ▶️ ゲーム開始時に自動再生
                       </span>
                     </label>
                   </div>
