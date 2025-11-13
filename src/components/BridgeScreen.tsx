@@ -58,6 +58,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   const [isCopying, setIsCopying] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [copiedProjectId, setCopiedProjectId] = useState<string | null>(null);
+  const [selectedReaction, setSelectedReaction] = useState<string | null>(null);
 
   // ==================== サービス ====================
   const socialService = useMemo(() => SocialService.getInstance(), []);
@@ -319,6 +320,34 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
               </button>
             </div>
 
+            {/* 感情リアクションボタン */}
+            <div className="mb-4">
+              <p className="text-white/80 text-sm mb-2">このゲームはどうでしたか？</p>
+              <div className="grid grid-cols-5 gap-2">
+                {[
+                  { emoji: '😆', label: '楽しい' },
+                  { emoji: '😮', label: '驚き' },
+                  { emoji: '🤔', label: '考えさせられる' },
+                  { emoji: '😭', label: '感動' },
+                  { emoji: '😎', label: 'カッコイイ' }
+                ].map((reaction) => (
+                  <button
+                    key={reaction.emoji}
+                    onClick={() => setSelectedReaction(reaction.emoji)}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all ${
+                      selectedReaction === reaction.emoji
+                        ? 'bg-white/30 scale-110'
+                        : 'bg-white/10 hover:bg-white/20'
+                    }`}
+                    title={reaction.label}
+                  >
+                    <span className="text-3xl mb-1">{reaction.emoji}</span>
+                    <span className="text-white text-xs">{reaction.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* フィードへのリンク */}
             <button
               onClick={handleGoToFeed}
@@ -326,6 +355,17 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
             >
               📱 フィードで他のゲームを見る
             </button>
+          </div>
+
+          {/* 広告表示スペース */}
+          <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-sm rounded-3xl p-6 mb-6 border-2 border-yellow-500/50">
+            <div className="text-center">
+              <p className="text-yellow-200 text-sm font-medium mb-2">スポンサー広告</p>
+              <div className="bg-white/10 rounded-2xl p-8 flex items-center justify-center min-h-[120px]">
+                <p className="text-white/60 text-lg">広告スペース</p>
+              </div>
+              <p className="text-white/40 text-xs mt-2">広告を見て開発者を応援しよう！</p>
+            </div>
           </div>
 
           {/* 次のゲームプレビュー */}

@@ -3,6 +3,7 @@ import { SocialService } from '../social/services/SocialService';
 import EditorGameBridge from '../services/editor/EditorGameBridge';
 import { PublicGame } from '../social/types/SocialTypes';
 import { BridgeScreen } from './BridgeScreen';
+import { supabase } from '../lib/supabase';
 
 /**
  * GameSequence.tsx - Phase H-3&H-4統合版
@@ -36,10 +37,37 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
   const [error, setError] = useState<string | null>(null);
   const [currentScore, setCurrentScore] = useState<GameScore | null>(null);
   const [bridgeTimeLeft, setBridgeTimeLeft] = useState(5);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   // ==================== サービス ====================
   const socialService = useMemo(() => SocialService.getInstance(), []);
   const bridge = useMemo(() => EditorGameBridge.getInstance(), []);
+
+  // ==================== ユーザー情報取得 ====================
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setCurrentUser(user);
+
+        if (user) {
+          // プロフィール情報を取得
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+          setUserProfile(profile);
+        }
+      } catch (err) {
+        console.warn('ユーザー情報の取得に失敗:', err);
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   // ==================== Ref ====================
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -351,8 +379,60 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit }) => {
           {/* トップバー */}
           <div className="absolute top-0 left-0 right-0 p-6 pointer-events-auto">
             <div className="bg-black/70 backdrop-blur-sm rounded-2xl px-6 py-4">
-              <h3 className="text-white font-bold text-2xl mb-1">{currentGame.title}</h3>
-              <p className="text-gray-300 text-lg">by {currentGame.author.name}</p>
+              <div className="flex items-start justify-between">
+                {/* ゲーム情報 */}
+                <div className="flex-1">
+                  <h3 className="text-white font-bold text-2xl mb-1">{currentGame.title}</h3>
+                  <p className="text-gray-300 text-lg">by {currentGame.author.name}</p>
+                </div>
+
+                {/* ソーシャル機能アイコン */}
+                <div className="flex items-center gap-3 ml-4">
+                  {/* ソーシャルフィードボタン */}
+                  <button
+                    onClick={() => {
+                      // TODO: ソーシャルフィード画面への遷移
+                      console.log('ソーシャルフィードを開く');
+                    }}
+                    className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+                    title="ソーシャルフィード"
+                  >
+                    <span className="text-2xl">📱</span>
+                  </button>
+
+                  {/* ユーザーアイコン / ログインボタン */}
+                  {currentUser && userProfile ? (
+                    <button
+                      onClick={() => {
+                        // TODO: ユーザープロフィール画面への遷移
+                        console.log('プロフィールを開く:', currentUser.id);
+                      }}
+                      className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-xl hover:scale-110 transition-transform relative"
+                      title="マイプロフィール"
+                    >
+                      {userProfile.display_name?.charAt(0).toUpperCase() ||
+                       userProfile.username?.charAt(0).toUpperCase() || '?'}
+
+                      {/* 通知バルーン（仮） */}
+                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                        3
+                      </div>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        // TODO: ログインモーダルを開く
+                        window.dispatchEvent(new CustomEvent('openAuthModal', {
+                          detail: { mode: 'signin' }
+                        }));
+                      }}
+                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl transition-colors"
+                    >
+                      ログイン
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
