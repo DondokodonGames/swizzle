@@ -10,16 +10,16 @@ export const CONDITION_LIBRARY = [
   { type: 'touch', label: 'タッチ', icon: '👆', description: 'オブジェクトがタッチされた時' },
   { type: 'time', label: '時間', icon: '⏰', description: '指定時間が経過した時' },
   { type: 'collision', label: '衝突', icon: '💥', description: 'オブジェクト同士が衝突した時' },
-  { type: 'position', label: '位置', icon: '📍', description: 'オブジェクトが特定位置に到達した時' },
-  
+  // 位置条件削除: 衝突条件で代用可能
+
   // Phase D・E拡張条件
   { type: 'gameState', label: 'ゲーム状態', icon: '🎮', description: 'ゲームの状態（プレイ中・成功・失敗など）' },
   { type: 'animation', label: 'アニメ', icon: '🎬', description: 'アニメーションの状態（開始・終了・特定フレームなど）' },
   { type: 'flag', label: 'フラグ', icon: '🚩', description: 'カスタムフラグの状態' },
-  
+
   // Phase G追加: カウンター条件
   { type: 'counter', label: 'カウンター', icon: '🔢', description: 'カウンター値の比較（スコア・ライフ・時間・アイテム数等）' },
-  
+
   // Phase G-3追加: ランダム条件
   { type: 'random', label: 'ランダム', icon: '🎲', description: '確率的な条件発動（エンドレス系ゲーム・自動生成に最適）' }
 ] as const;
@@ -85,14 +85,14 @@ export const PRIORITY_ACTION_LIBRARY = PRIORITY_ACTIONS.map(type =>
 ).filter((action): action is NonNullable<typeof action> => action !== undefined);
 
 /**
- * Phase G-3: ルールライブラリ統計情報（ランダム追加）
+ * Phase G-3: ルールライブラリ統計情報（ランダム追加・位置条件削除）
  */
 export const RULE_LIBRARY_STATS = {
-  conditionCount: CONDITION_LIBRARY.length,    // 9個の条件タイプ（+1: random）
+  conditionCount: CONDITION_LIBRARY.length,    // 8個の条件タイプ（位置条件削除）
   actionCount: ACTION_LIBRARY.length,          // 13個のアクションタイプ（+1: randomAction）
   priorityActionCount: PRIORITY_ACTIONS.length, // 6個の優先アクション
-  lastUpdate: '2025-09-16',                    // Phase G-3完了日
-  version: 'G-3.0.0'                           // バージョン（Phase G-3完了）
+  lastUpdate: '2025-11-13',                    // 位置条件削除日
+  version: 'G-3.1.0'                           // バージョン（位置条件削除）
 } as const;
 
 /**
@@ -138,8 +138,8 @@ export const CONDITION_USAGE_STATS = [
   { type: 'collision', usage: 'medium', category: 'physics' },
   { type: 'gameState', usage: 'medium', category: 'game-control' },
   { type: 'flag', usage: 'medium', category: 'state' },
-  { type: 'animation', usage: 'low', category: 'visual' },
-  { type: 'position', usage: 'low', category: 'spatial' }
+  { type: 'animation', usage: 'low', category: 'visual' }
+  // 位置条件削除: 衝突条件で代用可能
 ] as const;
 
 /**

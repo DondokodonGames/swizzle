@@ -838,11 +838,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       style={{
                         borderColor: COLORS.success[200],
                         color: COLORS.success[600],
-                        fontSize: '12px',
+                        fontSize: '18px',
                         padding: SPACING[2]
                       }}
                     >
-                      <span>{actionType.icon}</span>
+                      <span style={{ fontSize: '24px' }}>{actionType.icon}</span>
                     </ModernButton>
                   ))}
                   {/* Phase G-3追加: ランダムアクションボタン */}
@@ -853,12 +853,12 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     style={{
                       borderColor: COLORS.success[200],
                       color: COLORS.success[600],
-                      fontSize: '12px',
+                      fontSize: '18px',
                       padding: SPACING[2]
                     }}
                     title="ランダムアクション（重み付き選択）"
                   >
-                    <span>🎲</span>
+                    <span style={{ fontSize: '24px' }}>🎲</span>
                   </ModernButton>
                 </div>
 
@@ -874,11 +874,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                           padding: SPACING[2],
                           backgroundColor: COLORS.neutral[0],
                           borderRadius: BORDER_RADIUS.lg,
-                          fontSize: '12px'
+                          fontSize: '14px'
                         }}
                       >
-                        <span>{action.type === 'randomAction' ? '🎲' : (PRIORITY_ACTION_LIBRARY.find(a => a.type === action.type)?.icon || ACTION_LIBRARY.find(a => a.type === action.type)?.icon || '⚡')}</span>
-                        <span>{action.type === 'randomAction' ? 'ランダムアクション' : (PRIORITY_ACTION_LIBRARY.find(a => a.type === action.type)?.label || ACTION_LIBRARY.find(a => a.type === action.type)?.label || action.type)}</span>
+                        <span style={{ fontSize: '20px' }}>{action.type === 'randomAction' ? '🎲' : (PRIORITY_ACTION_LIBRARY.find(a => a.type === action.type)?.icon || ACTION_LIBRARY.find(a => a.type === action.type)?.icon || '⚡')}</span>
+                        <span style={{ fontWeight: '600' }}>{action.type === 'randomAction' ? 'ランダムアクション' : (PRIORITY_ACTION_LIBRARY.find(a => a.type === action.type)?.label || ACTION_LIBRARY.find(a => a.type === action.type)?.label || action.type)}</span>
                         {/* アクション詳細設定ボタン（Phase D・E・G・G-3拡張対応） */}
                         {['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag', 'switchAnimation', 'counter', 'randomAction'].includes(action.type) && (
                           <ModernButton
@@ -978,12 +978,12 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       style={{
                         borderColor: COLORS.purple[200],
                         color: COLORS.purple[800],
-                        fontSize: '12px',
-                        padding: SPACING[1]
+                        fontSize: '18px',
+                        padding: SPACING[2]
                       }}
                       title={conditionType.description}
                     >
-                      <span>{conditionType.icon}</span>
+                      <span style={{ fontSize: '24px' }}>{conditionType.icon}</span>
                     </ModernButton>
                   ))}
                 </div>
@@ -1000,11 +1000,11 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                           padding: SPACING[2],
                           backgroundColor: COLORS.neutral[0],
                           borderRadius: BORDER_RADIUS.lg,
-                          fontSize: '12px'
+                          fontSize: '14px'
                         }}
                       >
-                        <span>{CONDITION_LIBRARY.find(c => c.type === condition.type)?.icon}</span>
-                        <span>{CONDITION_LIBRARY.find(c => c.type === condition.type)?.label}</span>
+                        <span style={{ fontSize: '20px' }}>{CONDITION_LIBRARY.find(c => c.type === condition.type)?.icon}</span>
+                        <span style={{ fontWeight: '600' }}>{CONDITION_LIBRARY.find(c => c.type === condition.type)?.label}</span>
                         <ModernButton
                           variant="outline"
                           size="xs"

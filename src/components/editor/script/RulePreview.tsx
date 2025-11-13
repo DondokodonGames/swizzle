@@ -31,11 +31,11 @@ interface RulePreviewProps {
   compact?: boolean;
 }
 
-// 条件ライブラリ（AdvancedRuleModalから移植）
+// 条件ライブラリ（AdvancedRuleModalから移植・位置条件削除）
 const CONDITION_LIBRARY = [
   { type: 'touch', label: 'タッチ', icon: '👆' },
   { type: 'time', label: '時間', icon: '⏰' },
-  { type: 'position', label: '位置', icon: '📍' },
+  // 位置条件削除: 衝突条件で代用可能
   { type: 'collision', label: '衝突', icon: '💥' },
   { type: 'animation', label: 'アニメ', icon: '🎬' },
   { type: 'flag', label: 'フラグ', icon: '🚩' }
@@ -76,9 +76,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
       case 'time':
         details = condition.timeType === 'exact' ? `${condition.seconds}秒後` : '時間範囲';
         break;
-      case 'position':
-        details = condition.area === 'inside' ? 'エリア内' : 'エリア外';
-        break;
+      // 位置条件削除: 衝突条件で代用可能
       case 'collision':
         details = `${condition.target}と${condition.collisionType}`;
         break;
