@@ -290,44 +290,56 @@ export class RuleEngine {
 
   evaluateAndExecuteRules(context: RuleExecutionContext): ActionExecutionResult[] {
     const results: ActionExecutionResult[] = [];
-    
+
+    console.log(`[RuleEngine] ルール評価開始: ルール数=${this.rules.length}, イベント数=${context.events.length}`);
+
     // 衝突判定キャッシュを更新（フレームごとに1回）
     const currentTime = Date.now();
     if (currentTime - this.lastCollisionCheckTime > 16) {
       this.updateCollisionCache(context);
       this.lastCollisionCheckTime = currentTime;
     }
-    
+
     const sortedRules = [...this.rules]
       .filter(rule => rule.enabled)
       .sort((a, b) => b.priority - a.priority);
 
+    console.log(`[RuleEngine] 有効なルール数: ${sortedRules.length}`);
+
     for (const rule of sortedRules) {
       try {
+        console.log(`[RuleEngine] ルール評価中: "${rule.name}" (id=${rule.id}, targetObjectId=${rule.targetObjectId})`);
+        console.log(`[RuleEngine] ルール条件数: ${rule.triggers.conditions.length}, アクション数: ${rule.actions.length}`);
+
         if (!this.canExecuteRule(rule)) {
+          console.log(`[RuleEngine] ルール実行回数制限により skip: ${rule.name}`);
           continue;
         }
 
         if (!this.isRuleTimeValid(rule, context.gameState.timeElapsed)) {
+          console.log(`[RuleEngine] ルール時間ウィンドウ外により skip: ${rule.name}`);
           continue;
         }
 
         const evaluation = this.evaluateRule(rule, context);
-        
+
+        console.log(`[RuleEngine] ルール評価結果: "${rule.name}" shouldExecute=${evaluation.shouldExecute}, matchedConditions=[${evaluation.matchedConditions.join(', ')}]`);
+
         if (evaluation.shouldExecute) {
           const result = this.executeActions(rule.actions, context, rule.id);
           results.push(result);
-          
+
           const currentCount = this.executionCounts.get(rule.id) || 0;
           this.executionCounts.set(rule.id, currentCount + 1);
-          
-          console.log(`ルール実行: ${rule.name} (${currentCount + 1}回目)`);
+
+          console.log(`✅ ルール実行成功: ${rule.name} (${currentCount + 1}回目), effectsApplied=[${result.effectsApplied.join(', ')}]`);
         }
       } catch (error) {
-        console.error(`ルール実行エラー [${rule.name}]:`, error);
+        console.error(`❌ ルール実行エラー [${rule.name}]:`, error);
       }
     }
-    
+
+    console.log(`[RuleEngine] ルール評価終了: 実行されたルール数=${results.length}`);
     return results;
   }
 
@@ -358,42 +370,58 @@ export class RuleEngine {
   }
 
   private evaluateCondition(
-    condition: TriggerCondition, 
+    condition: TriggerCondition,
     context: RuleExecutionContext,
     targetObjectId: string
   ): boolean {
+    console.log(`[RuleEngine] 条件評価開始: type=${condition.type}, targetObjectId=${targetObjectId}`);
+
+    let result = false;
+
     switch (condition.type) {
       case 'touch':
-        return this.evaluateTouchCondition(condition, context, targetObjectId);
-      
+        result = this.evaluateTouchCondition(condition, context, targetObjectId);
+        break;
+
       case 'collision':
-        return this.evaluateCollisionCondition(condition, context, targetObjectId);
-      
+        result = this.evaluateCollisionCondition(condition, context, targetObjectId);
+        break;
+
       case 'animation':
-        return this.evaluateAnimationCondition(condition, context);
-      
+        result = this.evaluateAnimationCondition(condition, context);
+        break;
+
       case 'time':
-        return this.evaluateTimeCondition(condition, context);
-      
+        result = this.evaluateTimeCondition(condition, context);
+        break;
+
       case 'flag':
-        return this.evaluateFlagCondition(condition);
-      
+        result = this.evaluateFlagCondition(condition);
+        break;
+
       case 'gameState':
-        return this.evaluateGameStateCondition(condition, context);
-      
+        result = this.evaluateGameStateCondition(condition, context);
+        break;
+
       case 'position':
-        return this.evaluatePositionCondition(condition, context);
-      
+        result = this.evaluatePositionCondition(condition, context);
+        break;
+
       case 'counter':
-        return this.evaluateCounterCondition(condition, context);
-      
+        result = this.evaluateCounterCondition(condition, context);
+        break;
+
       case 'random':
-        return this.evaluateRandomCondition(condition, context);
-      
+        result = this.evaluateRandomCondition(condition, context);
+        break;
+
       default:
         console.warn(`未対応の条件タイプ: ${(condition as any).type}`);
-        return false;
+        result = false;
     }
+
+    console.log(`[RuleEngine] 条件評価結果: type=${condition.type}, result=${result}`);
+    return result;
   }
 
   // ✅ Phase 2 修正: Collision条件評価（完全実装版）
@@ -921,14 +949,28 @@ export class RuleEngine {
   ): boolean {
     const touchEvents = context.events.filter(e => e.type === 'touch');
 
+    console.log(`[RuleEngine] タッチ条件評価: targetObjectId=${targetObjectId}, condition.target=${condition.target}, touchEvents=${touchEvents.length}`);
+    if (touchEvents.length > 0) {
+      console.log(`[RuleEngine] タッチイベント詳細:`, touchEvents.map(e => ({ target: e.data.target, x: e.data.x, y: e.data.y })));
+    }
+
     if (!touchEvents.length) return false;
 
     const latestTouch = touchEvents[touchEvents.length - 1];
     const touchTarget = condition.target === 'self' ? targetObjectId : condition.target;
 
+    console.log(`[RuleEngine] タッチターゲット判定: touchTarget=${touchTarget}, latestTouch.data.target=${latestTouch.data.target}`);
+
+    // ✅ 修正: イベントのターゲットが条件のターゲットと一致するかチェック
     if (touchTarget === 'stage') {
+      // ステージタッチの場合
+      if (latestTouch.data.target !== 'stage') {
+        console.log(`[RuleEngine] タッチターゲット不一致: ステージではなく ${latestTouch.data.target} がタッチされた`);
+        return false;
+      }
+
       // ステージタッチかつregionが指定されている場合、範囲内チェック
-      if (latestTouch.data.target === 'stage' && condition.region) {
+      if (condition.region) {
         const { x: touchX, y: touchY } = latestTouch.data;
         const region = condition.region;
 
@@ -939,8 +981,10 @@ export class RuleEngine {
           const rectWidth = (region.width || 0.4) * context.canvas.width;
           const rectHeight = (region.height || 0.4) * context.canvas.height;
 
-          return touchX >= rectX && touchX <= rectX + rectWidth &&
-                 touchY >= rectY && touchY <= rectY + rectHeight;
+          const inRange = touchX >= rectX && touchX <= rectX + rectWidth &&
+                          touchY >= rectY && touchY <= rectY + rectHeight;
+          console.log(`[RuleEngine] ステージ範囲判定（矩形）: inRange=${inRange}`);
+          return inRange;
         } else if (region.shape === 'circle') {
           // 円形範囲チェック（正規化座標→ピクセル座標変換）
           const centerX = region.x * context.canvas.width;
@@ -951,27 +995,21 @@ export class RuleEngine {
             Math.pow(touchX - centerX, 2) + Math.pow(touchY - centerY, 2)
           );
 
-          return distance <= radius;
+          const inRange = distance <= radius;
+          console.log(`[RuleEngine] ステージ範囲判定（円形）: inRange=${inRange}`);
+          return inRange;
         }
       }
 
       // regionなしの場合はステージ全体へのタッチ
-      return latestTouch.data.target === 'stage';
+      console.log(`[RuleEngine] ステージタッチ成功（範囲指定なし）`);
+      return true;
     }
 
-    const targetObj = context.objects.get(touchTarget);
-    if (!targetObj) return false;
-
-    const { x: touchX, y: touchY } = latestTouch.data;
-    const objBounds = {
-      left: targetObj.x,
-      right: targetObj.x + (targetObj.width || 100),
-      top: targetObj.y,
-      bottom: targetObj.y + (targetObj.height || 100)
-    };
-
-    return touchX >= objBounds.left && touchX <= objBounds.right &&
-           touchY >= objBounds.top && touchY <= objBounds.bottom;
+    // ✅ 修正: オブジェクトタッチの場合、ターゲット IDが一致するかチェック
+    const isTargetMatch = latestTouch.data.target === touchTarget;
+    console.log(`[RuleEngine] オブジェクトタッチ判定: isTargetMatch=${isTargetMatch} (${latestTouch.data.target} === ${touchTarget})`);
+    return isTargetMatch;
   }
 
   // 時間条件評価
@@ -1077,7 +1115,7 @@ export class RuleEngine {
   // ==================== アクション実行 ====================
 
   private executeActions(
-    actions: GameAction[], 
+    actions: GameAction[],
     context: RuleExecutionContext,
     ruleId?: string
   ): ActionExecutionResult {
@@ -1086,8 +1124,12 @@ export class RuleEngine {
     const newGameState: Partial<RuleExecutionContext['gameState']> = {};
     const counterChanges: CounterChangeEvent[] = [];
 
+    console.log(`[RuleEngine] アクション実行開始: アクション数=${actions.length}`);
+
     for (const action of actions) {
       try {
+        console.log(`[RuleEngine] アクション実行: type=${action.type}`);
+
         switch (action.type) {
           case 'addScore':
             newGameState.score = (context.gameState.score || 0) + action.points;
