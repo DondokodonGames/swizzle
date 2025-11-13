@@ -74,6 +74,48 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     updateSettings({ description: description.slice(0, 200) });
   }, [updateSettings]);
 
+  // ジャンル（カテゴリ）の更新
+  const handleCategoryChange = useCallback((category: string) => {
+    updateSettings({
+      publishing: {
+        ...project.settings.publishing,
+        isPublished: project.settings.publishing?.isPublished || false,
+        visibility: project.settings.publishing?.visibility || 'public',
+        allowComments: project.settings.publishing?.allowComments ?? true,
+        allowRemix: project.settings.publishing?.allowRemix ?? true,
+        category
+      }
+    });
+  }, [updateSettings, project.settings.publishing]);
+
+  // タグの更新
+  const handleTagsChange = useCallback((tagsString: string) => {
+    const tags = tagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    updateSettings({
+      publishing: {
+        ...project.settings.publishing,
+        isPublished: project.settings.publishing?.isPublished || false,
+        visibility: project.settings.publishing?.visibility || 'public',
+        allowComments: project.settings.publishing?.allowComments ?? true,
+        allowRemix: project.settings.publishing?.allowRemix ?? true,
+        tags
+      }
+    });
+  }, [updateSettings, project.settings.publishing]);
+
+  // パクり禁止（allowRemix）の更新
+  const handleAllowRemixChange = useCallback((allowRemix: boolean) => {
+    updateSettings({
+      publishing: {
+        ...project.settings.publishing,
+        isPublished: project.settings.publishing?.isPublished || false,
+        visibility: project.settings.publishing?.visibility || 'public',
+        allowComments: project.settings.publishing?.allowComments ?? true,
+        allowRemix
+      }
+    });
+  }, [updateSettings, project.settings.publishing]);
+
   // 🆕 ゲームスピード設定の更新（テストプレイ下に移動）
   const handleGameSpeedChange = useCallback((speed: number) => {
     updateProject({ 
@@ -549,8 +591,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             </div>
             
             {/* ゲーム説明 */}
-            <div>
-              <label style={{ 
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
                 display: 'block',
                 fontSize: '14px',
                 fontWeight: '500',
@@ -578,13 +620,101 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 }}
                 maxLength={200}
               />
-              <div style={{ 
+              <div style={{
                 textAlign: 'right',
                 fontSize: '12px',
                 color: '#6b7280',
                 marginTop: '4px'
               }}>
                 {(project.settings.description || '').length}/200
+              </div>
+            </div>
+
+            {/* ジャンル（カテゴリ）選択 */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                ジャンル
+              </label>
+              <select
+                value={project.settings.publishing?.category || ''}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  backgroundColor: '#ffffff',
+                  color: '#1f2937',
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="">ジャンルを選択</option>
+                <option value="action">🎯 アクション</option>
+                <option value="puzzle">🧩 パズル</option>
+                <option value="adventure">🗺️ アドベンチャー</option>
+                <option value="rpg">⚔️ RPG</option>
+                <option value="shooting">🔫 シューティング</option>
+                <option value="racing">🏎️ レーシング</option>
+                <option value="sports">⚽ スポーツ</option>
+                <option value="simulation">🎮 シミュレーション</option>
+                <option value="casual">🌟 カジュアル</option>
+                <option value="educational">📚 教育</option>
+                <option value="music">🎵 音楽</option>
+                <option value="other">✨ その他</option>
+              </select>
+            </div>
+
+            {/* ゲームタグ */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                タグ
+              </label>
+              <input
+                type="text"
+                value={project.settings.publishing?.tags?.join(', ') || ''}
+                onChange={(e) => handleTagsChange(e.target.value)}
+                placeholder="例: 横スクロール, 2D, シンプル (カンマ区切り)"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  backgroundColor: '#ffffff',
+                  color: '#1f2937',
+                  outline: 'none',
+                  transition: 'all 0.2s'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#3b82f6';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#d1d5db';
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
+              <div style={{
+                fontSize: '12px',
+                color: '#6b7280',
+                marginTop: '4px'
+              }}>
+                💡 タグはカンマ（,）で区切って入力してください
               </div>
             </div>
           </div>
@@ -710,6 +840,76 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </div>
         </ModernCard>
 
+        {/* 2️⃣.5 公開設定 */}
+        <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: '600',
+            color: '#1e293b',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            🔒 公開設定
+          </h2>
+
+          <div style={{ marginBottom: '24px' }}>
+            {/* パクり禁止設定 (allowRemix) */}
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#fef3c7',
+              border: '2px solid #fbbf24',
+              borderRadius: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <input
+                  type="checkbox"
+                  id="allowRemix"
+                  checked={!(project.settings.publishing?.allowRemix ?? true)}
+                  onChange={(e) => handleAllowRemixChange(!e.target.checked)}
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    marginTop: '2px',
+                    cursor: 'pointer',
+                    accentColor: '#ef4444'
+                  }}
+                />
+                <label htmlFor="allowRemix" style={{ flex: 1, cursor: 'pointer' }}>
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#92400e',
+                    marginBottom: '4px'
+                  }}>
+                    🚫 パクり禁止（リミックス禁止）
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#78350f',
+                    lineHeight: '1.6'
+                  }}>
+                    他のユーザーによるこのゲームの複製・改変を禁止します。
+                    チェックすると、誰もこのゲームをコピーして改変できなくなります。
+                  </div>
+                </label>
+              </div>
+
+              <div style={{
+                marginTop: '12px',
+                padding: '12px',
+                backgroundColor: '#fef9f3',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#78350f'
+              }}>
+                💡 <strong>ヒント:</strong> チェックを外すと、他のユーザーがあなたのゲームを元に新しいゲームを作れます（クリエイティブ・コモンズのような仕組み）
+              </div>
+            </div>
+          </div>
+        </ModernCard>
+
         {/* 3️⃣ テストプレイセクション */}
         <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
           <h2 style={{ 
@@ -728,7 +928,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             {!isTestPlaying && testPlayResult === null && (
               <div>
                 <div style={{ fontSize: '96px', marginBottom: '16px' }}>🕹️</div>
-                <h3 style={{ 
+                <h3 style={{
                   fontSize: '20px',
                   fontWeight: '600',
                   color: '#1f2937',
@@ -736,36 +936,21 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 }}>
                   ゲームをテストしてみましょう
                 </h3>
-                <p style={{ 
+                <p style={{
                   color: '#6b7280',
                   marginBottom: '24px',
                   fontSize: '16px'
                 }}>
                   作成したゲームが正しく動作するか確認できます
                 </p>
-                <div style={{ 
-                  display: 'flex',
-                  justifyContent: 'center',
-                  gap: '16px',
-                  flexWrap: 'wrap'
-                }}>
-                  <ModernButton
-                    variant="secondary"
-                    size="lg"
-                    onClick={handleTestPlay}
-                    disabled={!project.settings.name || isTestPlaying}
-                  >
-                    🧪 クイックテスト (3秒)
-                  </ModernButton>
-                  <ModernButton
-                    variant="primary"
-                    size="lg"
-                    onClick={handleFullGamePlay}
-                    disabled={!project.settings.name || isTestPlaying}
-                  >
-                    ▶️ フルゲーム実行
-                  </ModernButton>
-                </div>
+                <ModernButton
+                  variant="primary"
+                  size="lg"
+                  onClick={handleFullGamePlay}
+                  disabled={!project.settings.name || isTestPlaying}
+                >
+                  ▶️ テスト
+                </ModernButton>
               </div>
             )}
             
@@ -880,27 +1065,13 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     </div>
                   </div>
                 </div>
-                <div style={{ 
-                  display: 'flex',
-                  justifyContent: 'center',
-                  gap: '12px',
-                  flexWrap: 'wrap'
-                }}>
-                  <ModernButton
-                    variant="secondary"
-                    size="md"
-                    onClick={() => setTestPlayResult(null)}
-                  >
-                    もう一度テスト
-                  </ModernButton>
-                  <ModernButton
-                    variant="primary"
-                    size="md"
-                    onClick={handleFullGamePlay}
-                  >
-                    フルゲーム実行
-                  </ModernButton>
-                </div>
+                <ModernButton
+                  variant="primary"
+                  size="md"
+                  onClick={() => setTestPlayResult(null)}
+                >
+                  もう一度テスト
+                </ModernButton>
               </div>
             )}
             
@@ -1229,7 +1400,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         </ModernCard>
 
         {/* 5️⃣ 公開・アクションボタン */}
-        <div style={{ 
+        <div style={{
           display: 'flex',
           flexWrap: 'wrap',
           gap: '16px',
@@ -1249,21 +1420,12 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           <ModernButton
             variant="secondary"
             size="lg"
-            onClick={handleTestPlay}
-            disabled={!project.settings.name || isTestPlaying}
-          >
-            🧪 クイックテスト
-          </ModernButton>
-
-          <ModernButton
-            variant="outline"
-            size="lg"
             onClick={handleFullGamePlay}
             disabled={!project.settings.name || isTestPlaying}
           >
-            🎮 フルプレイ
+            ▶️ テスト
           </ModernButton>
-          
+
           <ModernButton
             variant="primary"
             size="lg"
@@ -1273,13 +1435,13 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           >
             {project.settings.publishing?.isPublished ? '🔄 更新' : '🚀 公開'}
           </ModernButton>
-          
+
           <ModernButton
             variant="ghost"
             size="lg"
             onClick={handleExport}
           >
-            📦 エクスポート
+            📦 エクスポート (JSON)
           </ModernButton>
         </div>
         
