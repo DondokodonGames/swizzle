@@ -4,6 +4,7 @@ import EditorGameBridge from '../services/editor/EditorGameBridge';
 import { PublicGame } from '../social/types/SocialTypes';
 import { BridgeScreen } from './BridgeScreen';
 import { supabase } from '../lib/supabase';
+import ProfileModal from './ProfileModal';
 
 /**
  * GameSequence.tsx - Phase H-3&H-4統合版
@@ -40,6 +41,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   const [bridgeTimeLeft, setBridgeTimeLeft] = useState(5);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
 
   // ==================== サービス ====================
   const socialService = useMemo(() => SocialService.getInstance(), []);
@@ -406,8 +409,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                   {currentUser && userProfile ? (
                     <button
                       onClick={() => {
-                        // TODO: ユーザープロフィール画面への遷移
-                        console.log('プロフィールを開く:', currentUser.id);
+                        setProfileUserId(currentUser.id);
+                        setShowProfileModal(true);
                       }}
                       className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-xl hover:scale-110 transition-transform relative"
                       title="マイプロフィール"
@@ -467,6 +470,17 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         </div>
 
       </div>
+
+      {/* プロフィールモーダル */}
+      {showProfileModal && profileUserId && (
+        <ProfileModal
+          userId={profileUserId}
+          onClose={() => {
+            setShowProfileModal(false);
+            setProfileUserId(null);
+          }}
+        />
+      )}
     </div>
   );
 };
