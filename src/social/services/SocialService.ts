@@ -1220,6 +1220,57 @@ export class SocialService {
     }
   }
 
+  /**
+   * ランダムゲーム取得
+   * @param limit 取得数
+   * @returns ランダムなゲームリスト
+   */
+  async getRandomGames(limit: number = 10): Promise<PublicGame[]> {
+    try {
+      // 公開済みゲームを全て取得
+      const gamesData = await database.userGames.getPublished({ limit: 1000 });
+
+      // ランダムにシャッフル
+      const shuffled = [...gamesData].sort(() => Math.random() - 0.5);
+
+      // 指定数だけ取得
+      const randomGames = shuffled.slice(0, limit);
+
+      let currentUserId: string | undefined;
+      const { data: { user } } = await supabase.auth.getUser();
+      currentUserId = user?.id;
+
+      const publicGames: PublicGame[] = await Promise.all(
+        randomGames.map(async (game: any) => {
+          let isLiked = false;
+          let isBookmarked = false;
+
+          if (currentUserId) {
+            const likeCheck = await supabase
+              .from('likes')
+              .select('user_id')
+              .eq('user_id', currentUserId)
+              .eq('game_id', game.id)
+              .single();
+
+            isLiked = !likeCheck.error && !!likeCheck.data;
+
+            const favorites = await database.favorites.list(currentUserId);
+            isBookmarked = favorites.some((fav: any) => fav.id === game.id);
+          }
+
+          return this.convertToPublicGame(game, isLiked, isBookmarked);
+        })
+      );
+
+      return publicGames;
+
+    } catch (error) {
+      console.error('Error fetching random games:', error);
+      return [];
+    }
+  }
+
   // ==================== プライベートメソッド ====================
 
   private convertToPublicGame(dbGame: any, isLiked: boolean = false, isBookmarked: boolean = false): PublicGame {
