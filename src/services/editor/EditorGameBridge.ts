@@ -118,13 +118,35 @@ export class EditorGameBridge {
 
       // 6. ルールを登録
       if (project.script?.rules) {
-        project.script.rules
-          .filter(rule => rule.enabled !== false)
-          .forEach(rule => {
-            this.ruleEngine!.addRule(rule);
-          });
-        console.log(`✅ ルール登録: ${project.script.rules.length}個`);
+        console.log(`📋 ルール読み込み開始: ${project.script.rules.length}個のルールを検出`);
+        console.log(`📋 ルール詳細:`, project.script.rules.map(r => ({
+          id: r.id,
+          name: r.name,
+          enabled: r.enabled,
+          targetObjectId: r.targetObjectId,
+          conditionCount: r.triggers.conditions.length,
+          actionCount: r.actions.length,
+          conditions: r.triggers.conditions.map(c => c.type),
+          actions: r.actions.map(a => a.type)
+        })));
+
+        const enabledRules = project.script.rules.filter(rule => rule.enabled !== false);
+        console.log(`✅ 有効なルール: ${enabledRules.length}個`);
+
+        enabledRules.forEach((rule, index) => {
+          console.log(`📝 ルール登録 #${index + 1}: "${rule.name}" (id=${rule.id})`);
+          console.log(`   - 対象: ${rule.targetObjectId}`);
+          console.log(`   - 条件: ${rule.triggers.conditions.map(c => c.type).join(', ')}`);
+          console.log(`   - アクション: ${rule.actions.map(a => a.type).join(', ')}`);
+          this.ruleEngine!.addRule(rule);
+        });
+        console.log(`✅ ルール登録完了: ${enabledRules.length}個`);
+
+        if (enabledRules.length === 0) {
+          warnings.push('有効なルールが1つもありません。ルールを有効化してください。');
+        }
       } else {
+        console.warn('⚠️ project.script.rules が undefined または null です');
         warnings.push('ルールが1つも設定されていません');
       }
 
