@@ -64,18 +64,8 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
   }, [initialProjectId]);
 
-  // 🔧 修正: user を使用
-  useEffect(() => {
-    if (authLoading) {
-      // 認証読み込み中は何もしない
-      return;
-    }
-    
-    if (!user && mode === 'editor') {
-      // 未ログイン状態でエディターにいる場合は警告
-      showNotification('info', '一部機能を利用するにはログインが必要です');
-    }
-  }, [user, authLoading, mode]);
+  // 🔧 認証確認の簡素化: 鬱陶しい通知を削除
+  // ユーザーは未ログインバッジと公開ボタンの無効化で状態を確認できる
 
   // 通知表示
   const showNotification = useCallback((type: 'success' | 'error' | 'info', message: string) => {
