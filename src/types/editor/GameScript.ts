@@ -173,6 +173,14 @@ export type TriggerCondition =
       target: 'self' | 'stage' | string; // オブジェクトID
       touchType: 'down' | 'up' | 'hold'; // タッチの種類
       holdDuration?: number;              // ホールド時間（秒）
+      region?: {                          // ステージ範囲指定（targetが'stage'の場合）
+        shape: 'rect' | 'circle';
+        x: number;
+        y: number;
+        width?: number;                   // 矩形の場合
+        height?: number;                  // 矩形の場合
+        radius?: number;                  // 円の場合
+      };
     }
   
   // 衝突条件
@@ -181,6 +189,14 @@ export type TriggerCondition =
       target: 'background' | 'stage' | string; // オブジェクトID
       collisionType: 'enter' | 'stay' | 'exit'; // 衝突の種類
       checkMode: 'hitbox' | 'pixel';           // 判定方式
+      region?: {                                // ステージ範囲指定（targetが'stage'の場合）
+        shape: 'rect' | 'circle';
+        x: number;
+        y: number;
+        width?: number;                         // 矩形の場合
+        height?: number;                        // 矩形の場合
+        radius?: number;                        // 円の場合
+      };
     }
   
   // アニメーション条件

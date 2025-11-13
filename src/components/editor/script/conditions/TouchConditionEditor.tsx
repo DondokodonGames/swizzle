@@ -183,6 +183,160 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
         </div>
       </div>
 
+      {/* ステージ範囲指定（targetが'stage'の場合のみ表示） */}
+      {touchCondition.target === 'stage' && (
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.purple[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            タッチ範囲指定
+          </label>
+
+          {/* 範囲形状選択 */}
+          <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2], marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <ModernButton
+              variant={touchCondition.region?.shape === 'rect' || !touchCondition.region ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => onUpdate(index, {
+                region: {
+                  shape: 'rect',
+                  x: 0.3,
+                  y: 0.3,
+                  width: 0.4,
+                  height: 0.4
+                }
+              })}
+              style={{
+                borderColor: DESIGN_TOKENS.colors.purple[200],
+                flex: 1
+              }}
+            >
+              🔲 矩形
+            </ModernButton>
+            <ModernButton
+              variant={touchCondition.region?.shape === 'circle' ? 'primary' : 'outline'}
+              size="sm"
+              onClick={() => onUpdate(index, {
+                region: {
+                  shape: 'circle',
+                  x: 0.5,
+                  y: 0.5,
+                  radius: 0.2
+                }
+              })}
+              style={{
+                borderColor: DESIGN_TOKENS.colors.purple[200],
+                flex: 1
+              }}
+            >
+              ⭕ 円形
+            </ModernButton>
+          </div>
+
+          {/* 範囲パラメータ設定 */}
+          {touchCondition.region && (
+            <div style={{
+              backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+              padding: DESIGN_TOKENS.spacing[3],
+              borderRadius: DESIGN_TOKENS.borderRadius.md,
+              display: 'grid',
+              gap: DESIGN_TOKENS.spacing[2]
+            }}>
+              <div>
+                <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
+                  中心X: {(touchCondition.region.x * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={touchCondition.region.x}
+                  onChange={(e) => onUpdate(index, {
+                    region: { ...touchCondition.region!, x: parseFloat(e.target.value) }
+                  })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
+                  中心Y: {(touchCondition.region.y * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={touchCondition.region.y}
+                  onChange={(e) => onUpdate(index, {
+                    region: { ...touchCondition.region!, y: parseFloat(e.target.value) }
+                  })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              {touchCondition.region.shape === 'rect' ? (
+                <>
+                  <div>
+                    <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
+                      幅: {((touchCondition.region.width || 0.4) * 100).toFixed(0)}%
+                    </label>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="1"
+                      step="0.05"
+                      value={touchCondition.region.width || 0.4}
+                      onChange={(e) => onUpdate(index, {
+                        region: { ...touchCondition.region!, width: parseFloat(e.target.value) }
+                      })}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
+                      高さ: {((touchCondition.region.height || 0.4) * 100).toFixed(0)}%
+                    </label>
+                    <input
+                      type="range"
+                      min="0.1"
+                      max="1"
+                      step="0.05"
+                      value={touchCondition.region.height || 0.4}
+                      onChange={(e) => onUpdate(index, {
+                        region: { ...touchCondition.region!, height: parseFloat(e.target.value) }
+                      })}
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
+                    半径: {((touchCondition.region.radius || 0.2) * 100).toFixed(0)}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0.05"
+                    max="0.5"
+                    step="0.05"
+                    value={touchCondition.region.radius || 0.2}
+                    onChange={(e) => onUpdate(index, {
+                      region: { ...touchCondition.region!, radius: parseFloat(e.target.value) }
+                    })}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{
         padding: DESIGN_TOKENS.spacing[3],
         backgroundColor: DESIGN_TOKENS.colors.purple[100],
@@ -193,7 +347,10 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
         💡 設定内容: {TOUCH_TYPE_OPTIONS.find(t => t.value === touchCondition.touchType)?.description}
         {touchCondition.touchType === 'hold' && `（${touchCondition.holdDuration || 1}秒間）`}
         {touchCondition.target === 'self' ? ' - このオブジェクトへのタッチ' :
-         touchCondition.target === 'stage' ? ' - ステージ全体へのタッチ' :
+         touchCondition.target === 'stage' ?
+           (touchCondition.region ?
+             ` - ステージ指定範囲へのタッチ（${touchCondition.region.shape === 'rect' ? '矩形' : '円形'}）` :
+             ' - ステージ全体へのタッチ') :
          ' - 指定オブジェクトへのタッチ'}
       </div>
     </ModernCard>
