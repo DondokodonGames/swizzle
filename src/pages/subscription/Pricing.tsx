@@ -10,9 +10,9 @@
 
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PricingTable } from '../components/monetization/PricingTable';
-import { useSubscription } from '../hooks/monetization/useSubscription';
-import { MVPSubscriptionPlan } from '../types/MonetizationTypes';
+import { PricingTable } from '../../components/monetization/PricingTable';
+import { useSubscription } from '../../hooks/monetization/useSubscription';
+import { MVPSubscriptionPlan } from '../../types/MonetizationTypes';
 
 export function Pricing() {
   const navigate = useNavigate();

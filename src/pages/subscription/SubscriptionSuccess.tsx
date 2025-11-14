@@ -183,7 +183,7 @@ export function SubscriptionSuccess() {
             {/* Action Buttons */}
             <div className="space-y-3">
               <button
-                onClick={() => navigate('/editor')}
+                onClick={() => navigate('/')}
                 className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-purple-500 text-white font-bold rounded-xl hover:from-purple-700 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl"
               >
                 ゲームを作成する

@@ -184,7 +184,7 @@ export function SubscriptionCancel() {
                 ホームに戻る
               </button>
               <button
-                onClick={() => navigate('/editor')}
+                onClick={() => navigate('/')}
                 className="w-full py-3 px-6 text-gray-600 hover:text-gray-900 font-medium transition-colors"
               >
                 無料プランで続ける →

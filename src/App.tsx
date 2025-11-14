@@ -1,9 +1,57 @@
-// src/App.tsx - AppMode型修正最終版（エラー2件完全修正）+ エディター自動起動機能追加 + フィード画面追加
+// src/App.tsx - React Router ハイブリッド構造版（Phase M 統合完了）
 
 import React, { useState, useEffect, Suspense, useCallback } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import GameSequence from './components/GameSequence';
 import GameFeed from './components/GameFeed';
 import './styles/arcade-theme.css';
+
+// マネタイズページの遅延読み込み
+const Pricing = React.lazy(() => 
+  import('./pages/subscription/Pricing').then(module => ({
+    default: module.Pricing
+  })).catch(error => {
+    console.warn('Pricing読み込み失敗:', error);
+    return {
+      default: () => (
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <h2>料金プランページを読み込めませんでした</h2>
+          <p>Phase M のファイルが正しく配置されていることを確認してください。</p>
+        </div>
+      )
+    };
+  })
+);
+
+const SubscriptionSuccess = React.lazy(() => 
+  import('./pages/subscription/SubscriptionSuccess').then(module => ({
+    default: module.SubscriptionSuccess
+  })).catch(error => {
+    console.warn('SubscriptionSuccess読み込み失敗:', error);
+    return {
+      default: () => (
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <h2>決済完了ページを読み込めませんでした</h2>
+        </div>
+      )
+    };
+  })
+);
+
+const SubscriptionCancel = React.lazy(() => 
+  import('./pages/subscription/SubscriptionCancel').then(module => ({
+    default: module.SubscriptionCancel
+  })).catch(error => {
+    console.warn('SubscriptionCancel読み込み失敗:', error);
+    return {
+      default: () => (
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <h2>決済キャンセルページを読み込めませんでした</h2>
+        </div>
+      )
+    };
+  })
+);
 
 // エディターアプリのプロパティ型を定義
 interface EditorAppProps {
@@ -89,7 +137,7 @@ const DEFAULT_VOLUME: VolumeSettings = {
   muted: false
 }
 
-// 🔧 最終修正: AppMode型定義（'editor'を確実に含める）+ 'feed'追加
+// 🔧 修正: AppMode型定義（'editor' と 'feed' を確実に含める）
 type AppMode = 'sequence' | 'test' | 'system' | 'editor' | 'feed';
 
 // 認証機能の有効/無効判定
@@ -124,7 +172,6 @@ const ProfileSetup = ENABLE_AUTH ? React.lazy(async () => {
     return { default: () => null };
   }
 }) : null;
-
 
 // 認証機能（修正版）
 const AuthenticatedUserInfo: React.FC = () => {
@@ -391,28 +438,20 @@ const AuthenticatedUserInfo: React.FC = () => {
 
 // メインアプリケーションコンポーネント
 function MainApp() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<AppMode>('sequence');
-
-  // エディターで開くプロジェクトIDを管理
   const [editorProjectId, setEditorProjectId] = useState<string | undefined>(undefined);
-
-  // フィードから選択されたゲーム
   const [selectedFeedGame, setSelectedFeedGame] = useState<any>(null);
-
-  // 音量設定状態
   const [volumeSettings, setVolumeSettings] = useState<VolumeSettings>(DEFAULT_VOLUME);
 
-  // 🆕 コピー完了時のエディター自動起動チェック
+  // コピー完了時のエディター自動起動チェック
   useEffect(() => {
     const shouldOpenEditor = localStorage.getItem('shouldOpenEditor');
     const editProjectId = localStorage.getItem('editProjectId');
     const copiedGameTitle = localStorage.getItem('copiedGameTitle');
     
     if (shouldOpenEditor === 'true' && editProjectId) {
-      // フラグをクリア
       localStorage.removeItem('shouldOpenEditor');
-      
-      // エディターモードに切り替え
       setEditorProjectId(editProjectId);
       setMode('editor');
       
@@ -436,7 +475,6 @@ function MainApp() {
     }
   }, [])
 
-  // 音量設定の保存
   const saveVolumeSettings = useCallback((newSettings: VolumeSettings) => {
     try {
       localStorage.setItem('gameVolumeSettings', JSON.stringify(newSettings))
@@ -464,22 +502,26 @@ function MainApp() {
 
   const handleSwitchToEditor = () => {
     setMode('editor');
-    setEditorProjectId(undefined); // 新規プロジェクト
+    setEditorProjectId(undefined);
   };
 
   const handleExitEditor = () => {
     setMode('sequence');
     setEditorProjectId(undefined);
-    console.log('エディターから戻りました');
   };
 
   const handleFeedGameSelect = (game: any) => {
     setSelectedFeedGame(game);
-    setMode('sequence'); // ゲームプレイモードに戻る
+    setMode('sequence');
   };
 
   const handleExitFeed = () => {
     setMode('sequence');
+  };
+
+  // 料金プランページへ遷移
+  const handleGoToPricing = () => {
+    navigate('/pricing');
   };
 
   // エディターモード時のフルスクリーン表示
@@ -498,14 +540,6 @@ function MainApp() {
             <div style={{ color: '#6b7280', fontSize: '18px', fontWeight: '600' }}>
               エディターを読み込み中...
             </div>
-            <div style={{ color: '#9ca3af', fontSize: '14px', marginTop: '8px' }}>
-              Phase 6.2 ゲームエディター機能
-            </div>
-            {editorProjectId && (
-              <div style={{ color: '#10b981', fontSize: '12px', marginTop: '8px' }}>
-                📋 プロジェクトID: {editorProjectId}
-              </div>
-            )}
             <style>{`
               @keyframes pulse {
                 0%, 100% { opacity: 1; }
@@ -543,7 +577,6 @@ function MainApp() {
       alignItems: 'center',
       fontFamily: 'Inter, sans-serif'
     }}>
-      {/* ヘッダー */}
       <header style={{ marginBottom: '20px', textAlign: 'center' }}>
         <h1 style={{
           color: '#a21caf',
@@ -562,7 +595,6 @@ function MainApp() {
           メイドイン俺風・ショートゲームプラットフォーム
         </p>
 
-        {/* モード切り替えボタン */}
         <div style={{ marginTop: '15px', display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button
             onClick={handleSwitchToSequence}
@@ -597,13 +629,28 @@ function MainApp() {
           >
             🎨 ゲームを作る
           </button>
+
+          <button
+            onClick={handleGoToPricing}
+            style={{
+              backgroundColor: 'white',
+              color: '#8b5cf6',
+              border: '2px solid #8b5cf6',
+              borderRadius: '20px',
+              padding: '8px 16px',
+              fontSize: '12px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            💎 プレミアム
+          </button>
         </div>
       </header>
 
-      {/* ユーザー情報 */}
       {ENABLE_AUTH && <AuthenticatedUserInfo />}
 
-      {/* メインコンテンツ */}
       <main style={{ 
         backgroundColor: 'white',
         borderRadius: '20px',
@@ -623,9 +670,6 @@ function MainApp() {
           <div style={{ textAlign: 'center', padding: '40px' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
             <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>テストモード未実装</h2>
-            <p style={{ color: '#6b7280', marginBottom: '24px' }}>
-              TemplateTestModeコンポーネントが見つかりません。
-            </p>
             <button
               onClick={handleSwitchToSequence}
               style={{
@@ -644,14 +688,13 @@ function MainApp() {
         )}
       </main>
 
-      {/* フッター */}
       <footer style={{
         marginTop: '20px',
         color: '#9ca3af',
         fontSize: '12px',
         textAlign: 'center'
       }}>
-        © 2024 Swizzle - ショートゲームプラットフォーム
+        © 2024 Swizzle - Phase M: マネタイズ機能統合完了 💰
       </footer>
     </div>
   );
@@ -661,7 +704,6 @@ function MainApp() {
 const SocialIntegratedApp: React.FC = () => {
   const [useAuth, setUseAuth] = useState<any>(null);
 
-  // useAuthフック取得
   useEffect(() => {
     if (ENABLE_AUTH) {
       import('./hooks/useAuth').then(module => {
@@ -672,7 +714,6 @@ const SocialIntegratedApp: React.FC = () => {
     }
   }, []);
 
-  // ソーシャル機能が有効な場合のみプロバイダーでラップ
   if (ENABLE_SOCIAL) {
     const auth = useAuth ? useAuth() : null;
     
@@ -704,7 +745,7 @@ const SocialIntegratedApp: React.FC = () => {
   return <MainApp />;
 };
 
-// ルートAppコンポーネント
+// ルートAppコンポーネント（React Router統合）
 function App() {
   const AppContent = () => {
     if (ENABLE_AUTH && AuthProvider) {
@@ -733,7 +774,31 @@ function App() {
     return <SocialIntegratedApp />;
   };
 
-  return <AppContent />;
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* マネタイズページ: React Router */}
+        <Route path="/pricing" element={
+          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+            <Pricing />
+          </Suspense>
+        } />
+        <Route path="/subscription/success" element={
+          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+            <SubscriptionSuccess />
+          </Suspense>
+        } />
+        <Route path="/subscription/cancel" element={
+          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+            <SubscriptionCancel />
+          </Suspense>
+        } />
+        
+        {/* メインアプリ: 既存のmode-based */}
+        <Route path="/*" element={<AppContent />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App;
