@@ -1,0 +1,45 @@
+{
+  "project": {
+    "id": "sample_reflex_0156",
+    "name": "扉開放",
+    "description": "扉が突然開いた時の反応。",
+    "createdAt": "2025-11-14T00:00:00.000Z",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": {"userId": "sample_creator", "username": "Sample Games", "isAnonymous": false},
+    "assets": {
+      "background": {
+        "id": "bg_156",
+        "name": "背景",
+        "type": "background",
+        "frames": [{"id": "fbg", "frameNumber": 0, "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='640'%3E%3Crect width='360' height='640' fill='%23FF5252'/%3E%3C/svg%3E", "width": 360, "height": 640, "fileSize": 300}],
+        "defaultScale": 1,
+        "totalSize": 300,
+        "createdAt": "2025-11-14T00:00:00.000Z"
+      },
+      "objects": [
+        {"id": "target1", "name": "ターゲット1", "type": "object", "frames": [{"id": "t1", "frameNumber": 0, "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ccircle cx='40' cy='40' r='35' fill='%23FFD700' stroke='%23FF6B00' stroke-width='3'/%3E%3C/svg%3E", "width": 80, "height": 80, "fileSize": 350}], "defaultScale": 1, "totalSize": 350, "createdAt": "2025-11-14T00:00:00.000Z"},
+        {"id": "target2", "name": "ターゲット2", "type": "object", "frames": [{"id": "t2", "frameNumber": 0, "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Ccircle cx='40' cy='40' r='35' fill='%234CAF50' stroke='%23388E3C' stroke-width='3'/%3E%3C/svg%3E", "width": 80, "height": 80, "fileSize": 350}], "defaultScale": 1, "totalSize": 350, "createdAt": "2025-11-14T00:00:00.000Z"}
+      ]
+    },
+    "layout": {
+      "background": {"assetId": "bg_156", "position": {"x": 0, "y": 0}, "scale": 1, "rotation": 0, "zIndex": 0},
+      "objects": [
+        {"assetId": "target1", "position": {"x": 90, "y": 280}, "scale": 1, "rotation": 0, "zIndex": 1},
+        {"assetId": "target2", "position": {"x": 190, "y": 280}, "scale": 1, "rotation": 0, "zIndex": 1}
+      ]
+    },
+    "script": {
+      "rules": [
+        {"id": "rule_t1", "name": "ターゲット1", "enabled": true, "targetObjectId": "target1", "triggers": {"conditions": [{"type": "touch", "target": "self"}]}, "actions": [{"type": "hide", "target": "self"}, {"type": "addScore", "value": 200}]},
+        {"id": "rule_t2", "name": "ターゲット2", "enabled": true, "targetObjectId": "target2", "triggers": {"conditions": [{"type": "touch", "target": "self"}]}, "actions": [{"type": "hide", "target": "self"}, {"type": "success", "score": 1000}]}
+      ],
+      "variables": [],
+      "initialVariables": {}
+    },
+    "settings": {"gameDuration": 5, "difficulty": "normal", "genre": "action", "tags": ["反射神経", "扉", "驚き"], "allowCopying": true, "isPublic": true}
+  },
+  "metadata": {"id": "sample_reflex_0156", "name": "扉開放", "lastModified": "2025-11-14T00:00:00.000Z", "status": "published", "size": 1600, "version": "1.0.0"},
+  "exportedAt": "2025-11-14T00:00:00.000Z",
+  "version": "1.0.0"
+}

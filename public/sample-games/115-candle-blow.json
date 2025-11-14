@@ -1,0 +1,219 @@
+{
+  "project": {
+    "id": "sample_candle_blow_015",
+    "name": "ロウソク消し",
+    "description": "ロウソクの火をタップで消す。複数のロウソクがある場合は全て消す。",
+    "createdAt": "2025-11-14T00:00:00.000Z",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": {
+      "userId": "sample_creator",
+      "username": "Sample Games",
+      "isAnonymous": false
+    },
+    "assets": {
+      "background": {
+        "id": "bg_115",
+        "name": "背景",
+        "type": "background",
+        "frames": [
+          {
+            "id": "fbg",
+            "frameNumber": 0,
+            "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='640'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23424242;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23212121;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='360' height='640' fill='url(%23g)'/%3E%3C/svg%3E",
+            "width": 360,
+            "height": 640,
+            "fileSize": 450
+          }
+        ],
+        "defaultScale": 1,
+        "totalSize": 450,
+        "createdAt": "2025-11-14T00:00:00.000Z"
+      },
+      "objects": [
+        {
+          "id": "candle1",
+          "name": "ロウソク1",
+          "type": "object",
+          "frames": [
+            {
+              "id": "c1",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='100'%3E%3Crect x='12' y='40' width='16' height='60' fill='%23FFEAA7' stroke='%23DFE6E9' stroke-width='1'/%3E%3Cellipse cx='20' cy='30' rx='15' ry='20' fill='%23FFD700' opacity='0.8'/%3E%3Cellipse cx='20' cy='25' rx='10' ry='15' fill='%23FF6B00' opacity='0.7'/%3E%3Cellipse cx='20' cy='20' rx='5' ry='8' fill='%23FFEB3B'/%3E%3C/svg%3E",
+              "width": 40,
+              "height": 100,
+              "fileSize": 500
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 500,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        },
+        {
+          "id": "candle2",
+          "name": "ロウソク2",
+          "type": "object",
+          "frames": [
+            {
+              "id": "c2",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='100'%3E%3Crect x='12' y='40' width='16' height='60' fill='%23FFEAA7' stroke='%23DFE6E9' stroke-width='1'/%3E%3Cellipse cx='20' cy='30' rx='15' ry='20' fill='%23FFD700' opacity='0.8'/%3E%3Cellipse cx='20' cy='25' rx='10' ry='15' fill='%23FF6B00' opacity='0.7'/%3E%3Cellipse cx='20' cy='20' rx='5' ry='8' fill='%23FFEB3B'/%3E%3C/svg%3E",
+              "width": 40,
+              "height": 100,
+              "fileSize": 500
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 500,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        },
+        {
+          "id": "candle3",
+          "name": "ロウソク3",
+          "type": "object",
+          "frames": [
+            {
+              "id": "c3",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='100'%3E%3Crect x='12' y='40' width='16' height='60' fill='%23FFEAA7' stroke='%23DFE6E9' stroke-width='1'/%3E%3Cellipse cx='20' cy='30' rx='15' ry='20' fill='%23FFD700' opacity='0.8'/%3E%3Cellipse cx='20' cy='25' rx='10' ry='15' fill='%23FF6B00' opacity='0.7'/%3E%3Cellipse cx='20' cy='20' rx='5' ry='8' fill='%23FFEB3B'/%3E%3C/svg%3E",
+              "width": 40,
+              "height": 100,
+              "fileSize": 500
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 500,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        }
+      ]
+    },
+    "layout": {
+      "background": {
+        "assetId": "bg_115",
+        "position": { "x": 0, "y": 0 },
+        "scale": 1,
+        "rotation": 0,
+        "zIndex": 0
+      },
+      "objects": [
+        {
+          "assetId": "candle1",
+          "position": { "x": 80, "y": 300 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        },
+        {
+          "assetId": "candle2",
+          "position": { "x": 160, "y": 300 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        },
+        {
+          "assetId": "candle3",
+          "position": { "x": 240, "y": 300 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        }
+      ]
+    },
+    "script": {
+      "rules": [
+        {
+          "id": "rule_c1",
+          "name": "ロウソク1を消す",
+          "enabled": true,
+          "targetObjectId": "candle1",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "addScore",
+              "value": 100
+            }
+          ]
+        },
+        {
+          "id": "rule_c2",
+          "name": "ロウソク2を消す",
+          "enabled": true,
+          "targetObjectId": "candle2",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "addScore",
+              "value": 100
+            }
+          ]
+        },
+        {
+          "id": "rule_c3",
+          "name": "ロウソク3を消す",
+          "enabled": true,
+          "targetObjectId": "candle3",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "success",
+              "score": 1000
+            }
+          ]
+        }
+      ],
+      "variables": [],
+      "initialVariables": {}
+    },
+    "settings": {
+      "gameDuration": 8,
+      "difficulty": "easy",
+      "genre": "action",
+      "tags": ["タップ", "火", "誕生日"],
+      "allowCopying": true,
+      "isPublic": true
+    }
+  },
+  "metadata": {
+    "id": "sample_candle_blow_015",
+    "name": "ロウソク消し",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "status": "published",
+    "size": 1950,
+    "version": "1.0.0"
+  },
+  "exportedAt": "2025-11-14T00:00:00.000Z",
+  "version": "1.0.0"
+}

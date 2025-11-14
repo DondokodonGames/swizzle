@@ -1,0 +1,142 @@
+{
+  "project": {
+    "id": "sample_eye_drops_011",
+    "name": "目薬",
+    "description": "瞬きする目に目薬を正確に差す。目が開いている瞬間にタップ。",
+    "createdAt": "2025-11-14T00:00:00.000Z",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": {
+      "userId": "sample_creator",
+      "username": "Sample Games",
+      "isAnonymous": false
+    },
+    "assets": {
+      "background": {
+        "id": "bg_111",
+        "name": "背景",
+        "type": "background",
+        "frames": [
+          {
+            "id": "fbg",
+            "frameNumber": 0,
+            "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='640'%3E%3Crect width='360' height='640' fill='%23FFE8D6'/%3E%3C/svg%3E",
+            "width": 360,
+            "height": 640,
+            "fileSize": 300
+          }
+        ],
+        "defaultScale": 1,
+        "totalSize": 300,
+        "createdAt": "2025-11-14T00:00:00.000Z"
+      },
+      "objects": [
+        {
+          "id": "eye",
+          "name": "目",
+          "type": "object",
+          "frames": [
+            {
+              "id": "eye1",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='60'%3E%3Cellipse cx='60' cy='30' rx='50' ry='25' fill='%23FFF' stroke='%23333' stroke-width='2'/%3E%3Ccircle cx='60' cy='30' r='18' fill='%234A90E2'/%3E%3Ccircle cx='60' cy='30' r='10' fill='%23000'/%3E%3Ccircle cx='65' cy='25' r='4' fill='%23FFF'/%3E%3C/svg%3E",
+              "width": 120,
+              "height": 60,
+              "fileSize": 450
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 450,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        },
+        {
+          "id": "dropper",
+          "name": "目薬",
+          "type": "object",
+          "frames": [
+            {
+              "id": "drop1",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='80'%3E%3Crect x='14' y='20' width='12' height='50' fill='%23E8F5E9' stroke='%23333' stroke-width='2'/%3E%3Cpath d='M 20 70 L 20 75 L 15 75 L 20 80 L 25 75 L 20 75 Z' fill='%23333'/%3E%3Crect x='12' y='10' width='16' height='15' fill='%234CAF50' stroke='%23333' stroke-width='2'/%3E%3C/svg%3E",
+              "width": 40,
+              "height": 80,
+              "fileSize": 500
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 500,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        }
+      ]
+    },
+    "layout": {
+      "background": {
+        "assetId": "bg_111",
+        "position": { "x": 0, "y": 0 },
+        "scale": 1,
+        "rotation": 0,
+        "zIndex": 0
+      },
+      "objects": [
+        {
+          "assetId": "eye",
+          "position": { "x": 120, "y": 320 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        },
+        {
+          "assetId": "dropper",
+          "position": { "x": 160, "y": 200 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 2
+        }
+      ]
+    },
+    "script": {
+      "rules": [
+        {
+          "id": "rule_eye",
+          "name": "目薬を差す",
+          "enabled": true,
+          "targetObjectId": "eye",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "success",
+              "score": 1000
+            }
+          ]
+        }
+      ],
+      "variables": [],
+      "initialVariables": {}
+    },
+    "settings": {
+      "gameDuration": 8,
+      "difficulty": "normal",
+      "genre": "action",
+      "tags": ["タップ", "タイミング", "医療"],
+      "allowCopying": true,
+      "isPublic": true
+    }
+  },
+  "metadata": {
+    "id": "sample_eye_drops_011",
+    "name": "目薬",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "status": "published",
+    "size": 1550,
+    "version": "1.0.0"
+  },
+  "exportedAt": "2025-11-14T00:00:00.000Z",
+  "version": "1.0.0"
+}
