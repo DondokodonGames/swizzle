@@ -1,0 +1,219 @@
+{
+  "project": {
+    "id": "sample_finger_spin_029",
+    "name": "指クルクル",
+    "description": "人差し指でクルクル回す動作。回転の速度と円の正確さが評価される。",
+    "createdAt": "2025-11-14T00:00:00.000Z",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": {
+      "userId": "sample_creator",
+      "username": "Sample Games",
+      "isAnonymous": false
+    },
+    "assets": {
+      "background": {
+        "id": "bg_129",
+        "name": "背景",
+        "type": "background",
+        "frames": [
+          {
+            "id": "fbg",
+            "frameNumber": 0,
+            "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='640'%3E%3Crect width='360' height='640' fill='%23FFF9C4'/%3E%3C/svg%3E",
+            "width": 360,
+            "height": 640,
+            "fileSize": 300
+          }
+        ],
+        "defaultScale": 1,
+        "totalSize": 300,
+        "createdAt": "2025-11-14T00:00:00.000Z"
+      },
+      "objects": [
+        {
+          "id": "circle1",
+          "name": "円1",
+          "type": "object",
+          "frames": [
+            {
+              "id": "c1",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ccircle cx='50' cy='50' r='40' fill='none' stroke='%23FF9800' stroke-width='4' stroke-dasharray='10,5'/%3E%3C/svg%3E",
+              "width": 100,
+              "height": 100,
+              "fileSize": 350
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 350,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        },
+        {
+          "id": "circle2",
+          "name": "円2",
+          "type": "object",
+          "frames": [
+            {
+              "id": "c2",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ccircle cx='50' cy='50' r='40' fill='none' stroke='%23FF9800' stroke-width='4' stroke-dasharray='10,5'/%3E%3C/svg%3E",
+              "width": 100,
+              "height": 100,
+              "fileSize": 350
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 350,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        },
+        {
+          "id": "circle3",
+          "name": "円3",
+          "type": "object",
+          "frames": [
+            {
+              "id": "c3",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Ccircle cx='50' cy='50' r='40' fill='none' stroke='%23FF9800' stroke-width='4' stroke-dasharray='10,5'/%3E%3C/svg%3E",
+              "width": 100,
+              "height": 100,
+              "fileSize": 350
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 350,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        }
+      ]
+    },
+    "layout": {
+      "background": {
+        "assetId": "bg_129",
+        "position": { "x": 0, "y": 0 },
+        "scale": 1,
+        "rotation": 0,
+        "zIndex": 0
+      },
+      "objects": [
+        {
+          "assetId": "circle1",
+          "position": { "x": 50, "y": 270 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        },
+        {
+          "assetId": "circle2",
+          "position": { "x": 130, "y": 270 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        },
+        {
+          "assetId": "circle3",
+          "position": { "x": 210, "y": 270 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        }
+      ]
+    },
+    "script": {
+      "rules": [
+        {
+          "id": "rule_c1",
+          "name": "円1タップ",
+          "enabled": true,
+          "targetObjectId": "circle1",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "addScore",
+              "value": 100
+            }
+          ]
+        },
+        {
+          "id": "rule_c2",
+          "name": "円2タップ",
+          "enabled": true,
+          "targetObjectId": "circle2",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "addScore",
+              "value": 100
+            }
+          ]
+        },
+        {
+          "id": "rule_c3",
+          "name": "円3タップ",
+          "enabled": true,
+          "targetObjectId": "circle3",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "success",
+              "score": 1000
+            }
+          ]
+        }
+      ],
+      "variables": [],
+      "initialVariables": {}
+    },
+    "settings": {
+      "gameDuration": 8,
+      "difficulty": "normal",
+      "genre": "action",
+      "tags": ["ジェスチャー", "回転", "指"],
+      "allowCopying": true,
+      "isPublic": true
+    }
+  },
+  "metadata": {
+    "id": "sample_finger_spin_029",
+    "name": "指クルクル",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "status": "published",
+    "size": 1550,
+    "version": "1.0.0"
+  },
+  "exportedAt": "2025-11-14T00:00:00.000Z",
+  "version": "1.0.0"
+}

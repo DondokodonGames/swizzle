@@ -1,0 +1,146 @@
+{
+  "project": {
+    "id": "sample_bottle_opener_020",
+    "name": "栓抜き",
+    "description": "ビール瓶の栓を栓抜きで開ける。勢いよく栓が飛んで行く。",
+    "createdAt": "2025-11-14T00:00:00.000Z",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": {
+      "userId": "sample_creator",
+      "username": "Sample Games",
+      "isAnonymous": false
+    },
+    "assets": {
+      "background": {
+        "id": "bg_120",
+        "name": "背景",
+        "type": "background",
+        "frames": [
+          {
+            "id": "fbg",
+            "frameNumber": 0,
+            "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='640'%3E%3Crect width='360' height='640' fill='%23FFF3E0'/%3E%3C/svg%3E",
+            "width": 360,
+            "height": 640,
+            "fileSize": 300
+          }
+        ],
+        "defaultScale": 1,
+        "totalSize": 300,
+        "createdAt": "2025-11-14T00:00:00.000Z"
+      },
+      "objects": [
+        {
+          "id": "bottle",
+          "name": "ビール瓶",
+          "type": "object",
+          "frames": [
+            {
+              "id": "bot1",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='200'%3E%3Crect x='25' y='40' width='30' height='160' rx='3' fill='%235D4037' opacity='0.8'/%3E%3Crect x='20' y='30' width='40' height='20' fill='%235D4037'/%3E%3Ccircle cx='40' cy='25' r='12' fill='%23FFD700' stroke='%23B8860B' stroke-width='2'/%3E%3C/svg%3E",
+              "width": 80,
+              "height": 200,
+              "fileSize": 450
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 450,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        },
+        {
+          "id": "cap",
+          "name": "栓",
+          "type": "object",
+          "frames": [
+            {
+              "id": "cap1",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='20'%3E%3Ccircle cx='20' cy='10' r='15' fill='%23FFD700' stroke='%23B8860B' stroke-width='2'/%3E%3C/svg%3E",
+              "width": 40,
+              "height": 20,
+              "fileSize": 300
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 300,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        }
+      ]
+    },
+    "layout": {
+      "background": {
+        "assetId": "bg_120",
+        "position": { "x": 0, "y": 0 },
+        "scale": 1,
+        "rotation": 0,
+        "zIndex": 0
+      },
+      "objects": [
+        {
+          "assetId": "bottle",
+          "position": { "x": 140, "y": 250 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        },
+        {
+          "assetId": "cap",
+          "position": { "x": 160, "y": 260 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 2
+        }
+      ]
+    },
+    "script": {
+      "rules": [
+        {
+          "id": "rule_cap",
+          "name": "栓を抜く",
+          "enabled": true,
+          "targetObjectId": "cap",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "success",
+              "score": 1000
+            }
+          ]
+        }
+      ],
+      "variables": [],
+      "initialVariables": {}
+    },
+    "settings": {
+      "gameDuration": 7,
+      "difficulty": "easy",
+      "genre": "action",
+      "tags": ["タップ", "ビール", "パーティー"],
+      "allowCopying": true,
+      "isPublic": true
+    }
+  },
+  "metadata": {
+    "id": "sample_bottle_opener_020",
+    "name": "栓抜き",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "status": "published",
+    "size": 1350,
+    "version": "1.0.0"
+  },
+  "exportedAt": "2025-11-14T00:00:00.000Z",
+  "version": "1.0.0"
+}

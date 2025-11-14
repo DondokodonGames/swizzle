@@ -1,0 +1,34 @@
+{
+  "project": {
+    "id": "sample_tower_247",
+    "name": "農場防衛",
+    "description": "敵の侵攻を防御する。戦略的な配置が重要。",
+    "createdAt": "2025-11-14T00:00:00.000Z",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": {"userId": "sample_creator", "username": "Sample Games", "isAnonymous": false},
+    "assets": {
+      "background": {"id": "bg_247", "name": "背景", "type": "background", "frames": [{"id": "fbg", "frameNumber": 0, "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='640'%3E%3Crect width='360' height='640' fill='%23795548'/%3E%3C/svg%3E", "width": 360, "height": 640, "fileSize": 300}], "defaultScale": 1, "totalSize": 300, "createdAt": "2025-11-14T00:00:00.000Z"},
+      "objects": [
+        {"id": "tower", "name": "塔", "type": "object", "frames": [{"id": "tw1", "frameNumber": 0, "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='80'%3E%3Crect x='15' y='20' width='30' height='60' fill='%23616161'/%3E%3Cpolygon points='30,0 10,20 50,20' fill='%23424242'/%3E%3C/svg%3E", "width": 60, "height": 80, "fileSize": 400}], "defaultScale": 1, "totalSize": 400, "createdAt": "2025-11-14T00:00:00.000Z"},
+        {"id": "enemy", "name": "敵", "type": "object", "frames": [{"id": "e1", "frameNumber": 0, "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Ccircle cx='25' cy='25' r='20' fill='%23F44336'/%3E%3C/svg%3E", "width": 50, "height": 50, "fileSize": 300}], "defaultScale": 1, "totalSize": 300, "createdAt": "2025-11-14T00:00:00.000Z"}
+      ]
+    },
+    "layout": {
+      "background": {"assetId": "bg_247", "position": {"x": 0, "y": 0}, "scale": 1, "rotation": 0, "zIndex": 0},
+      "objects": [
+        {"assetId": "tower", "position": {"x": 60, "y": 280}, "scale": 1, "rotation": 0, "zIndex": 1},
+        {"assetId": "enemy", "position": {"x": 260, "y": 300}, "scale": 1, "rotation": 0, "zIndex": 2}
+      ]
+    },
+    "script": {
+      "rules": [{"id": "rule_enemy", "name": "敵撃退", "enabled": true, "targetObjectId": "enemy", "triggers": {"conditions": [{"type": "touch", "target": "self"}]}, "actions": [{"type": "hide", "target": "self"}, {"type": "success", "score": 1000}]}],
+      "variables": [],
+      "initialVariables": {}
+    },
+    "settings": {"gameDuration": 30, "difficulty": "normal", "genre": "strategy", "tags": ["防衛", "タワーディフェンス", "YouTube"], "allowCopying": true, "isPublic": true}
+  },
+  "metadata": {"id": "sample_tower_247", "name": "農場防衛", "lastModified": "2025-11-14T00:00:00.000Z", "status": "published", "size": 1650, "version": "1.0.0"},
+  "exportedAt": "2025-11-14T00:00:00.000Z",
+  "version": "1.0.0"
+}

@@ -1,0 +1,268 @@
+{
+  "project": {
+    "id": "sample_toothbrush_007",
+    "name": "歯磨き",
+    "description": "歯ブラシで歯をゴシゴシと擦る動作。汚れが落ちて歯が白くなる。",
+    "createdAt": "2025-11-14T00:00:00.000Z",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": {
+      "userId": "sample_creator",
+      "username": "Sample Games",
+      "isAnonymous": false
+    },
+    "assets": {
+      "background": {
+        "id": "bg_107",
+        "name": "背景",
+        "type": "background",
+        "frames": [
+          {
+            "id": "fbg",
+            "frameNumber": 0,
+            "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='640'%3E%3Crect width='360' height='640' fill='%23E8F5E9'/%3E%3Cpath d='M 80 250 Q 180 230 280 250 Q 280 350 180 370 Q 80 350 80 250 Z' fill='%23FFE0E0' stroke='%23FF9999' stroke-width='3'/%3E%3C/svg%3E",
+            "width": 360,
+            "height": 640,
+            "fileSize": 400
+          }
+        ],
+        "defaultScale": 1,
+        "totalSize": 400,
+        "createdAt": "2025-11-14T00:00:00.000Z"
+      },
+      "objects": [
+        {
+          "id": "tooth1",
+          "name": "歯1",
+          "type": "object",
+          "frames": [
+            {
+              "id": "t1",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='35' height='50'%3E%3Crect x='5' y='10' width='25' height='35' rx='5' fill='%23FFFFCC' stroke='%23DDD' stroke-width='2'/%3E%3C/svg%3E",
+              "width": 35,
+              "height": 50,
+              "fileSize": 300
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 300,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        },
+        {
+          "id": "tooth2",
+          "name": "歯2",
+          "type": "object",
+          "frames": [
+            {
+              "id": "t2",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='35' height='50'%3E%3Crect x='5' y='10' width='25' height='35' rx='5' fill='%23FFFFCC' stroke='%23DDD' stroke-width='2'/%3E%3C/svg%3E",
+              "width": 35,
+              "height": 50,
+              "fileSize": 300
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 300,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        },
+        {
+          "id": "tooth3",
+          "name": "歯3",
+          "type": "object",
+          "frames": [
+            {
+              "id": "t3",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='35' height='50'%3E%3Crect x='5' y='10' width='25' height='35' rx='5' fill='%23FFFFCC' stroke='%23DDD' stroke-width='2'/%3E%3C/svg%3E",
+              "width": 35,
+              "height": 50,
+              "fileSize": 300
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 300,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        },
+        {
+          "id": "tooth4",
+          "name": "歯4",
+          "type": "object",
+          "frames": [
+            {
+              "id": "t4",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='35' height='50'%3E%3Crect x='5' y='10' width='25' height='35' rx='5' fill='%23FFFFCC' stroke='%23DDD' stroke-width='2'/%3E%3C/svg%3E",
+              "width": 35,
+              "height": 50,
+              "fileSize": 300
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 300,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        }
+      ]
+    },
+    "layout": {
+      "background": {
+        "assetId": "bg_107",
+        "position": { "x": 0, "y": 0 },
+        "scale": 1,
+        "rotation": 0,
+        "zIndex": 0
+      },
+      "objects": [
+        {
+          "assetId": "tooth1",
+          "position": { "x": 110, "y": 280 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        },
+        {
+          "assetId": "tooth2",
+          "position": { "x": 150, "y": 280 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        },
+        {
+          "assetId": "tooth3",
+          "position": { "x": 190, "y": 280 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        },
+        {
+          "assetId": "tooth4",
+          "position": { "x": 230, "y": 280 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        }
+      ]
+    },
+    "script": {
+      "rules": [
+        {
+          "id": "rule_t1",
+          "name": "歯1を磨く",
+          "enabled": true,
+          "targetObjectId": "tooth1",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "addScore",
+              "value": 50
+            }
+          ]
+        },
+        {
+          "id": "rule_t2",
+          "name": "歯2を磨く",
+          "enabled": true,
+          "targetObjectId": "tooth2",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "addScore",
+              "value": 50
+            }
+          ]
+        },
+        {
+          "id": "rule_t3",
+          "name": "歯3を磨く",
+          "enabled": true,
+          "targetObjectId": "tooth3",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "addScore",
+              "value": 50
+            }
+          ]
+        },
+        {
+          "id": "rule_t4",
+          "name": "歯4を磨く",
+          "enabled": true,
+          "targetObjectId": "tooth4",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "success",
+              "score": 1000
+            }
+          ]
+        }
+      ],
+      "variables": [],
+      "initialVariables": {}
+    },
+    "settings": {
+      "gameDuration": 8,
+      "difficulty": "easy",
+      "genre": "action",
+      "tags": ["タップ", "衛生", "日常"],
+      "allowCopying": true,
+      "isPublic": true
+    }
+  },
+  "metadata": {
+    "id": "sample_toothbrush_007",
+    "name": "歯磨き",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "status": "published",
+    "size": 1600,
+    "version": "1.0.0"
+  },
+  "exportedAt": "2025-11-14T00:00:00.000Z",
+  "version": "1.0.0"
+}

@@ -1,0 +1,146 @@
+{
+  "project": {
+    "id": "sample_key_unlock_013",
+    "name": "鍵開け",
+    "description": "鍵穴に鍵を差し込んで回転させてドアを開ける。",
+    "createdAt": "2025-11-14T00:00:00.000Z",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": {
+      "userId": "sample_creator",
+      "username": "Sample Games",
+      "isAnonymous": false
+    },
+    "assets": {
+      "background": {
+        "id": "bg_113",
+        "name": "背景",
+        "type": "background",
+        "frames": [
+          {
+            "id": "fbg",
+            "frameNumber": 0,
+            "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='640'%3E%3Crect width='360' height='640' fill='%238D6E63'/%3E%3Crect x='60' y='100' width='240' height='440' fill='%23A1887F' stroke='%23333' stroke-width='3'/%3E%3Cline x1='180' y1='100' x2='180' y2='540' stroke='%23333' stroke-width='2'/%3E%3C/svg%3E",
+            "width": 360,
+            "height": 640,
+            "fileSize": 450
+          }
+        ],
+        "defaultScale": 1,
+        "totalSize": 450,
+        "createdAt": "2025-11-14T00:00:00.000Z"
+      },
+      "objects": [
+        {
+          "id": "keyhole",
+          "name": "鍵穴",
+          "type": "object",
+          "frames": [
+            {
+              "id": "kh1",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='50'%3E%3Ccircle cx='15' cy='15' r='8' fill='%23333'/%3E%3Crect x='12' y='20' width='6' height='20' fill='%23333'/%3E%3C/svg%3E",
+              "width": 30,
+              "height": 50,
+              "fileSize": 300
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 300,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        },
+        {
+          "id": "key",
+          "name": "鍵",
+          "type": "object",
+          "frames": [
+            {
+              "id": "key1",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='30'%3E%3Ccircle cx='15' cy='15' r='12' fill='%23FFD700' stroke='%23B8860B' stroke-width='2'/%3E%3Ccircle cx='15' cy='15' r='6' fill='none' stroke='%23B8860B' stroke-width='2'/%3E%3Crect x='25' y='12' width='50' height='6' fill='%23FFD700' stroke='%23B8860B' stroke-width='1'/%3E%3Crect x='65' y='8' width='5' height='8' fill='%23FFD700'/%3E%3Crect x='72' y='8' width='5' height='8' fill='%23FFD700'/%3E%3C/svg%3E",
+              "width": 80,
+              "height": 30,
+              "fileSize": 500
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 500,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        }
+      ]
+    },
+    "layout": {
+      "background": {
+        "assetId": "bg_113",
+        "position": { "x": 0, "y": 0 },
+        "scale": 1,
+        "rotation": 0,
+        "zIndex": 0
+      },
+      "objects": [
+        {
+          "assetId": "keyhole",
+          "position": { "x": 165, "y": 320 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        },
+        {
+          "assetId": "key",
+          "position": { "x": 140, "y": 450 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 2
+        }
+      ]
+    },
+    "script": {
+      "rules": [
+        {
+          "id": "rule_key",
+          "name": "鍵をタップして開ける",
+          "enabled": true,
+          "targetObjectId": "key",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "success",
+              "score": 1000
+            }
+          ]
+        }
+      ],
+      "variables": [],
+      "initialVariables": {}
+    },
+    "settings": {
+      "gameDuration": 7,
+      "difficulty": "easy",
+      "genre": "puzzle",
+      "tags": ["タップ", "鍵", "ドア"],
+      "allowCopying": true,
+      "isPublic": true
+    }
+  },
+  "metadata": {
+    "id": "sample_key_unlock_013",
+    "name": "鍵開け",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "status": "published",
+    "size": 1550,
+    "version": "1.0.0"
+  },
+  "exportedAt": "2025-11-14T00:00:00.000Z",
+  "version": "1.0.0"
+}

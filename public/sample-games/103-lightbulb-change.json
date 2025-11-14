@@ -1,0 +1,219 @@
+{
+  "project": {
+    "id": "sample_lightbulb_003",
+    "name": "電球交換",
+    "description": "切れた電球をタップして新しい電球に交換。",
+    "createdAt": "2025-11-14T00:00:00.000Z",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": {
+      "userId": "sample_creator",
+      "username": "Sample Games",
+      "isAnonymous": false
+    },
+    "assets": {
+      "background": {
+        "id": "bg_103",
+        "name": "背景",
+        "type": "background",
+        "frames": [
+          {
+            "id": "fbg",
+            "frameNumber": 0,
+            "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='640'%3E%3Crect width='360' height='640' fill='%23333'/%3E%3C/svg%3E",
+            "width": 360,
+            "height": 640,
+            "fileSize": 300
+          }
+        ],
+        "defaultScale": 1,
+        "totalSize": 300,
+        "createdAt": "2025-11-14T00:00:00.000Z"
+      },
+      "objects": [
+        {
+          "id": "bulb1",
+          "name": "電球1",
+          "type": "object",
+          "frames": [
+            {
+              "id": "f1",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='80'%3E%3Ccircle cx='30' cy='35' r='25' fill='%23666' stroke='%23444' stroke-width='2'/%3E%3Crect x='20' y='55' width='20' height='15' fill='%23888'/%3E%3C/svg%3E",
+              "width": 60,
+              "height": 80,
+              "fileSize": 300
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 300,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        },
+        {
+          "id": "bulb2",
+          "name": "電球2",
+          "type": "object",
+          "frames": [
+            {
+              "id": "f2",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='80'%3E%3Ccircle cx='30' cy='35' r='25' fill='%23666' stroke='%23444' stroke-width='2'/%3E%3Crect x='20' y='55' width='20' height='15' fill='%23888'/%3E%3C/svg%3E",
+              "width": 60,
+              "height": 80,
+              "fileSize": 300
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 300,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        },
+        {
+          "id": "bulb3",
+          "name": "電球3",
+          "type": "object",
+          "frames": [
+            {
+              "id": "f3",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='80'%3E%3Ccircle cx='30' cy='35' r='25' fill='%23666' stroke='%23444' stroke-width='2'/%3E%3Crect x='20' y='55' width='20' height='15' fill='%23888'/%3E%3C/svg%3E",
+              "width": 60,
+              "height": 80,
+              "fileSize": 300
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 300,
+          "createdAt": "2025-11-14T00:00:00.000Z"
+        }
+      ]
+    },
+    "layout": {
+      "background": {
+        "assetId": "bg_103",
+        "position": { "x": 0, "y": 0 },
+        "scale": 1,
+        "rotation": 0,
+        "zIndex": 0
+      },
+      "objects": [
+        {
+          "assetId": "bulb1",
+          "position": { "x": 60, "y": 100 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        },
+        {
+          "assetId": "bulb2",
+          "position": { "x": 150, "y": 100 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        },
+        {
+          "assetId": "bulb3",
+          "position": { "x": 240, "y": 100 },
+          "scale": 1,
+          "rotation": 0,
+          "zIndex": 1
+        }
+      ]
+    },
+    "script": {
+      "rules": [
+        {
+          "id": "rule_b1",
+          "name": "電球1交換",
+          "enabled": true,
+          "targetObjectId": "bulb1",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "addScore",
+              "value": 100
+            }
+          ]
+        },
+        {
+          "id": "rule_b2",
+          "name": "電球2交換",
+          "enabled": true,
+          "targetObjectId": "bulb2",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "addScore",
+              "value": 100
+            }
+          ]
+        },
+        {
+          "id": "rule_b3",
+          "name": "電球3交換",
+          "enabled": true,
+          "targetObjectId": "bulb3",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "success",
+              "score": 1000
+            }
+          ]
+        }
+      ],
+      "variables": [],
+      "initialVariables": {}
+    },
+    "settings": {
+      "gameDuration": 6,
+      "difficulty": "easy",
+      "genre": "puzzle",
+      "tags": ["タップ", "修理", "日常"],
+      "allowCopying": true,
+      "isPublic": true
+    }
+  },
+  "metadata": {
+    "id": "sample_lightbulb_003",
+    "name": "電球交換",
+    "lastModified": "2025-11-14T00:00:00.000Z",
+    "status": "published",
+    "size": 1200,
+    "version": "1.0.0"
+  },
+  "exportedAt": "2025-11-14T00:00:00.000Z",
+  "version": "1.0.0"
+}
