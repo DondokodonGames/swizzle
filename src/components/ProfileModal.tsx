@@ -1,9 +1,10 @@
 // src/components/ProfileModal.tsx
-// ゲーム画面からポップアップで表示するユーザープロフィール
+// ゲーム画面からポップアップで表示するユーザープロフィール（Phase M: SubscriptionManager統合版）
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { SocialService } from '../social/services/SocialService';
 import { supabase } from '../lib/supabase';
+import { SubscriptionManager } from './monetization/SubscriptionManager';
 
 interface ProfileModalProps {
   userId: string;
@@ -338,6 +339,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
 
           {activeTab === 'settings' && profile.isOwner && (
             <div className="space-y-6">
+              {/* Phase M: サブスクリプション管理セクション */}
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border-2 border-purple-200">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <span className="text-2xl">💎</span>
+                  <span>サブスクリプション管理</span>
+                </h3>
+                <SubscriptionManager />
+              </div>
+
               {/* 設定言語 */}
               <div className="bg-gray-50 rounded-2xl p-4">
                 <h3 className="font-bold text-gray-800 mb-3">🌐 設定言語</h3>

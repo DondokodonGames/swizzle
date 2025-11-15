@@ -4,6 +4,7 @@
  */
 
 import { loadStripe, Stripe } from '@stripe/stripe-js';
+import { supabase } from '../../lib/supabase';
 import type {
   CreateCheckoutSessionRequest,
   CreateCheckoutSessionResponse,
@@ -37,6 +38,13 @@ export async function createCheckoutSession(
   params: CreateCheckoutSessionRequest
 ): Promise<CreateCheckoutSessionResponse | null> {
   try {
+    // 現在のセッションからアクセストークンを取得
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session?.access_token) {
+      throw new Error('Not authenticated. Please sign in.');
+    }
+
     // Supabase Edge Functionを呼び出してCheckout Session作成
     const response = await fetch(
       // @ts-ignore
@@ -45,8 +53,8 @@ export async function createCheckoutSession(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // @ts-ignore
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          // ユーザーのアクセストークンを使用（修正）
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(params),
       }
@@ -54,7 +62,8 @@ export async function createCheckoutSession(
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Failed to create checkout session');
+      console.error('Checkout session creation failed:', error);
+      throw new Error(error.error || error.message || 'Failed to create checkout session');
     }
 
     const data: CreateCheckoutSessionResponse = await response.json();
@@ -111,6 +120,13 @@ export async function redirectToCheckout(
  */
 export async function redirectToCustomerPortal(): Promise<void> {
   try {
+    // 現在のセッションからアクセストークンを取得
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session?.access_token) {
+      throw new Error('Not authenticated. Please sign in.');
+    }
+
     // Supabase Edge Functionを呼び出してCustomer Portal Session作成
     const response = await fetch(
       // @ts-ignore
@@ -119,8 +135,8 @@ export async function redirectToCustomerPortal(): Promise<void> {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // @ts-ignore
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          // ユーザーのアクセストークンを使用（修正）
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           returnUrl: `${window.location.origin}/profile`,
@@ -130,7 +146,8 @@ export async function redirectToCustomerPortal(): Promise<void> {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.message || 'Failed to create portal session');
+      console.error('Portal session creation failed:', error);
+      throw new Error(error.error || error.message || 'Failed to create portal session');
     }
 
     const data: CreatePortalSessionResponse = await response.json();

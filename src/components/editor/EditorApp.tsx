@@ -12,6 +12,10 @@ import { ModernButton } from '../ui/ModernButton';
 import { ModernCard } from '../ui/ModernCard';
 import { EditorGameBridge, GameExecutionResult } from '../../services/editor/EditorGameBridge';
 import { ProjectStorageManager } from '../../services/ProjectStorageManager'; // 🔧 追加: ストレージマネージャー
+// Phase M: マネタイズ機能統合
+import { useCredits } from '../../hooks/monetization/useCredits';
+import { usePaywall } from '../../hooks/monetization/usePaywall';
+import { PaywallModal } from '../monetization/PaywallModal';
 
 type AppMode = 'selector' | 'editor' | 'testplay';
 
@@ -41,7 +45,10 @@ export const EditorApp: React.FC<EditorAppProps> = ({
 
   // 🔧 修正: 正確な型定義を使用
   const { user, loading: authLoading } = useAuth();
-
+  // Phase M: マネタイズフック追加
+  const { canCreateGame, usage } = useCredits();
+  const { shouldShowPaywall, openPaywall, closePaywall } = usePaywall();
+  
   const {
     currentProject,
     loading,
@@ -89,6 +96,12 @@ export const EditorApp: React.FC<EditorAppProps> = ({
 
   // 新規プロジェクト作成
   const handleCreateNew = useCallback(async (name: string) => {
+    // Phase M: クレジット制限チェック
+    if (!canCreateGame) {
+      openPaywall();
+      return;
+    }
+
     try {
       const newProject = await createProject(name);
       setMode('editor');
@@ -229,6 +242,12 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   // 🔧 完全修正: プロジェクト公開処理にSupabase連携追加
 const handlePublish = useCallback(async () => {
   if (!currentProject) return;
+
+  // Phase M: クレジット制限チェック
+  if (!canCreateGame) {
+    openPaywall();
+    return;
+  }
 
   if (!user) {
     showNotification('error', 'ログインが必要です。公開するにはまずログインしてください。');
@@ -497,6 +516,13 @@ const handlePublish = useCallback(async () => {
         fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')
       }}
     >
+            {/* Phase M: Paywall Modal 追加 */}
+      <PaywallModal 
+        isOpen={shouldShowPaywall}
+        onClose={closePaywall}
+        currentUsage={usage || undefined}
+      />
+
       {/* ローディング表示 */}
       {(loading || authLoading) && (
         <div 

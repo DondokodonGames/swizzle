@@ -1,10 +1,14 @@
-// src/App.tsx - React Router ハイブリッド構造版（Phase M 統合完了）
+// src/App.tsx - React Router ハイブリッド構造版（Phase M 統合完了 + Premium Badge）
 
 import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import GameSequence from './components/GameSequence';
 import GameFeed from './components/GameFeed';
 import './styles/arcade-theme.css';
+
+// Phase M: マネタイズ統合インポート
+import { useSubscription } from './hooks/monetization/useSubscription';
+import { PremiumBadge } from './components/monetization/PremiumBadge';
 
 // マネタイズページの遅延読み込み
 const Pricing = React.lazy(() => 
@@ -173,12 +177,15 @@ const ProfileSetup = ENABLE_AUTH ? React.lazy(async () => {
   }
 }) : null;
 
-// 認証機能（修正版）
+// 認証機能（Premium Badge統合版）
 const AuthenticatedUserInfo: React.FC = () => {
   const [useAuth, setUseAuth] = useState<any>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [profileSetupOpen, setProfileSetupOpen] = useState(false);
+
+  // Phase M: サブスクリプション状態取得
+  const { subscription, isPremium } = useSubscription();
 
   // useAuthフックの読み込み
   useEffect(() => {
@@ -269,8 +276,21 @@ const AuthenticatedUserInfo: React.FC = () => {
           <div>
             {auth.profile ? (
               <>
-                <div style={{ fontWeight: '600', color: '#111827' }}>
+                <div style={{ 
+                  fontWeight: '600', 
+                  color: '#111827',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
                   {auth.profile.display_name || auth.profile.username}
+                  {/* Phase M: Premium Badge 統合 */}
+                  {isPremium && (
+                    <PremiumBadge 
+                      size="small" 
+                      showLabel={false}
+                    />
+                  )}
                 </div>
                 <div style={{ fontSize: '12px', color: '#6b7280' }}>
                   @{auth.profile.username}
