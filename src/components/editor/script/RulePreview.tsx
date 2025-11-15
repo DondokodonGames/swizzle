@@ -1,5 +1,6 @@
 // src/components/editor/script/RulePreview.tsx
 // 複数ルール対応・位置調整版: フラグ管理の邪魔解消・理想の表示形式実現
+// 🔧 TypeScriptエラー修正版（5件のエラーを修正）
 
 import React from 'react';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
@@ -123,7 +124,8 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
         if (condition.timeType === 'exact') {
           details.push(`${condition.seconds}秒経過後`);
         } else {
-          details.push(`${condition.range?.start || 0}秒〜${condition.range?.end || 10}秒の間`);
+          // 🔧 修正1-2: range.start/end → range.min/max
+          details.push(`${condition.range?.min || 0}秒〜${condition.range?.max || 10}秒の間`);
         }
         break;
       case 'collision':
@@ -220,9 +222,15 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
         details.push(`音量: ${((action.volume || 0.8) * 100).toFixed(0)}%`);
         break;
       case 'move':
+        // 🔧 修正3-4: 型安全な方法で movement.type を処理
         const moveTypeLabel = action.movement.type === 'straight' ? '直線移動' :
-                             action.movement.type === 'arc' ? '放物線移動' :
-                             action.movement.type === 'bezier' ? 'ベジェ曲線移動' : '不明';
+                             action.movement.type === 'bounce' ? 'バウンド移動' :
+                             action.movement.type === 'teleport' ? 'テレポート' :
+                             action.movement.type === 'wander' ? 'ランダム移動' :
+                             action.movement.type === 'stop' ? '停止' :
+                             action.movement.type === 'swap' ? '位置交換' :
+                             action.movement.type === 'approach' ? '接近' :
+                             action.movement.type === 'orbit' ? '周回' : '不明';
         details.push(`種類: ${moveTypeLabel}`);
         details.push(`速度: ${action.movement.speed}px/秒`);
         details.push(`時間: ${action.movement.duration}秒`);
@@ -650,6 +658,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
                       }}>
                         <span style={{
                           fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+                          // 🔧 修正5: success[700] → success[600] に変更
                           backgroundColor: DESIGN_TOKENS.colors.success[600],
                           color: DESIGN_TOKENS.colors.neutral[0],
                           width: '32px',
@@ -680,7 +689,8 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
                             key={detailIndex}
                             style={{
                               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                              color: DESIGN_TOKENS.colors.success[700]
+                              // 🔧 修正5追加: ここも success[700] → success[600] に変更
+                              color: DESIGN_TOKENS.colors.success[600]
                             }}
                           >
                             • {detail}
