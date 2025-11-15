@@ -1,6 +1,7 @@
 /**
  * StripeService.ts
  * Stripe API呼び出しを管理するサービス
+ * Stripe.js v2025対応（redirectToCheckout廃止対応）
  */
 
 import { loadStripe, Stripe } from '@stripe/stripe-js';
@@ -53,7 +54,7 @@ export async function createCheckoutSession(
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // ユーザーのアクセストークンを使用（修正）
+          // ユーザーのアクセストークンを使用
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(params),
@@ -76,17 +77,16 @@ export async function createCheckoutSession(
 
 /**
  * Stripe Checkoutページにリダイレクト
+ * 
+ * 修正: Stripe.js v2025対応
+ * - redirectToCheckout() は廃止
+ * - Checkout Session の URL に直接リダイレクト
  */
 export async function redirectToCheckout(
   plan: MVPSubscriptionPlan,
   billingCycle: 'monthly' | 'yearly'
 ): Promise<void> {
   try {
-    const stripe = await getStripe();
-    if (!stripe) {
-      throw new Error('Stripe is not initialized');
-    }
-
     // Checkout Session作成
     const session = await createCheckoutSession({
       plan,
@@ -99,14 +99,12 @@ export async function redirectToCheckout(
       throw new Error('Failed to create checkout session');
     }
 
-    // Stripe Checkoutページにリダイレクト
-    // @ts-ignore - Stripe v3 の型定義問題を回避
-    const result = await stripe.redirectToCheckout({
-      sessionId: session.sessionId,
-    });
-
-    if (result && result.error) {
-      throw result.error;
+    // Stripe.js v2025: URLに直接リダイレクト（修正）
+    if (session.url) {
+      console.log('✅ Redirecting to Stripe Checkout:', session.url);
+      window.location.href = session.url;
+    } else {
+      throw new Error('No checkout URL returned from session');
     }
   } catch (error) {
     console.error('Error redirecting to checkout:', error);
@@ -135,7 +133,7 @@ export async function redirectToCustomerPortal(): Promise<void> {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // ユーザーのアクセストークンを使用（修正）
+          // ユーザーのアクセストークンを使用
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
@@ -153,6 +151,7 @@ export async function redirectToCustomerPortal(): Promise<void> {
     const data: CreatePortalSessionResponse = await response.json();
 
     // Customer Portalにリダイレクト
+    console.log('✅ Redirecting to Stripe Customer Portal:', data.url);
     window.location.href = data.url;
   } catch (error) {
     console.error('Error redirecting to customer portal:', error);

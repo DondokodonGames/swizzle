@@ -24,7 +24,16 @@ export function SubscriptionManager() {
   const { subscription, loading, isPremium, isFree, period } = useSubscription();
   const { usage } = useCredits();
   const [isLoading, setIsLoading] = useState(false);
-
+  // ===== デバッグ用ログ（一時的に追加）=====
+  console.log('🔍 SubscriptionManager Debug:', {
+    subscription,
+    isPremium,
+    isFree,
+    loading,
+    plan_type: subscription?.plan_type,
+    status: subscription?.status
+  });
+  // ========================================
   /**
    * Customer Portalを開く
    */

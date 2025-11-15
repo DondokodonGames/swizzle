@@ -1,5 +1,6 @@
 // src/components/ProfileModal.tsx
 // ゲーム画面からポップアップで表示するユーザープロフィール（Phase M: SubscriptionManager統合版）
+// 修正: user_profiles → profiles
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { SocialService } from '../social/services/SocialService';
@@ -59,9 +60,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
         const { data: { user } } = await supabase.auth.getUser();
         const currentUserId = user?.id;
 
-        // プロフィール情報を取得
+        // プロフィール情報を取得（修正: user_profiles → profiles）
         const { data: profileData, error: profileError } = await supabase
-          .from('user_profiles')
+          .from('profiles')
           .select('*')
           .eq('id', userId)
           .single();
