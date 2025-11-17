@@ -388,9 +388,9 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   return (
     <div className="fixed inset-0 bg-black z-50 overflow-hidden flex items-center justify-center">
       {/* メインコンテナ（1080x1920） */}
-      <div 
+      <div
         className="relative bg-black"
-        style={{ 
+        style={{
           width: '1080px',
           height: '1920px',
           maxWidth: '100vw',
@@ -433,104 +433,101 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           }}>
             {/* 左側: ユーザーアイコン & ユーザー名 または ログイン/新規登録 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {currentUser && userProfile ? (
-                    <>
-                      <button
-                        onClick={() => {
-                          setProfileUserId(currentUser.id);
-                          setShowProfileModal(true);
-                        }}
-                        className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-xl hover:scale-110 transition-transform relative"
-                        title="マイプロフィール"
-                      >
-                        {userProfile.display_name?.charAt(0).toUpperCase() ||
-                         userProfile.username?.charAt(0).toUpperCase() || '?'}
-                        {/* 通知バルーン */}
-                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                          3
-                        </div>
-                      </button>
-                      <span className="text-white font-medium text-lg">
-                        {userProfile.display_name || userProfile.username || 'ユーザー'}
-                      </span>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        window.dispatchEvent(new CustomEvent('openAuthModal', {
-                          detail: { mode: 'signin' }
-                        }));
-                      }}
-                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl transition-colors text-lg"
-                    >
-                      ログイン / 新規登録
-                    </button>
-                  )}
-                </div>
-
-                {/* 右側: アイコンボタン群 */}
-                <div className="flex items-center gap-3">
-                  {/* ゲームプレイ（ホームに戻る） */}
+              {currentUser && userProfile ? (
+                <>
                   <button
                     onClick={() => {
-                      if (onExit) {
-                        onExit();
-                      }
+                      setProfileUserId(currentUser.id);
+                      setShowProfileModal(true);
                     }}
-                    className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
-                    title="ホームに戻る"
+                    className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-xl hover:scale-110 transition-transform relative"
+                    title="マイプロフィール"
                   >
-                    <span className="text-2xl">🏠</span>
+                    {userProfile.display_name?.charAt(0).toUpperCase() ||
+                     userProfile.username?.charAt(0).toUpperCase() || '?'}
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                      3
+                    </div>
                   </button>
+                  <span className="text-white font-medium text-lg">
+                    {userProfile.display_name || userProfile.username || 'ユーザー'}
+                  </span>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('openAuthModal', {
+                      detail: { mode: 'signin' }
+                    }));
+                  }}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl transition-colors text-lg"
+                >
+                  ログイン / 新規登録
+                </button>
+              )}
+            </div>
 
-                  {/* フィード */}
-                  <button
-                    onClick={() => {
-                      if (onOpenFeed) {
-                        onOpenFeed();
-                      }
-                    }}
-                    className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
-                    title="フィード"
-                  >
-                    <span className="text-2xl">📱</span>
-                  </button>
+            {/* 右側: アイコンボタン群 */}
+            <div className="flex items-center gap-3">
+              {/* ホーム */}
+              <button
+                onClick={() => {
+                  if (onExit) {
+                    onExit();
+                  }
+                }}
+                className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+                title="ホーム"
+              >
+                <span className="text-2xl">🏠</span>
+              </button>
 
-                  {/* ゲームを作る */}
-                  <button
-                    onClick={() => {
-                      window.location.href = '/editor';
-                    }}
-                    className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
-                    title="ゲームを作る"
-                  >
-                    <span className="text-2xl">🎨</span>
-                  </button>
+              {/* フィード */}
+              <button
+                onClick={() => {
+                  if (onOpenFeed) {
+                    onOpenFeed();
+                  }
+                }}
+                className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+                title="フィード"
+              >
+                <span className="text-2xl">📱</span>
+              </button>
 
-                  {/* スキップ */}
-                  <button
-                    onClick={handleSkipToBridge}
-                    className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
-                    title="スキップ"
-                  >
-                    <span className="text-2xl">⏭️</span>
-                  </button>
-                </div>
+              {/* ゲームを作る */}
+              <button
+                onClick={() => {
+                  window.location.href = '/editor';
+                }}
+                className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+                title="ゲームを作る"
+              >
+                <span className="text-2xl">🎨</span>
+              </button>
+
+              {/* スキップ */}
+              <button
+                onClick={handleSkipToBridge}
+                className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+                title="スキップ"
+              >
+                <span className="text-2xl">⏭️</span>
+              </button>
             </div>
           </div>
-
-          {/* ボトムバー - 残り時間バー（問題14対応：TimerBarコンポーネント使用） */}
-          {gameDuration && gameState === 'playing' && (
-            <div style={{ position: 'relative' }}>
-              <GameTimerBar
-                currentTime={Math.max(0, gameDuration - gameTimeElapsed)}
-                totalTime={gameDuration}
-                showNumbers={false}
-              />
-            </div>
-          )}
         </div>
 
+        {/* ボトムバー - 残り時間バー（問題14対応） */}
+        {gameDuration && gameState === 'playing' && (
+          <div style={{ position: 'relative' }}>
+            <GameTimerBar
+              currentTime={Math.max(0, gameDuration - gameTimeElapsed)}
+              totalTime={gameDuration}
+              showNumbers={false}
+            />
+          </div>
+        )}
       </div>
 
       {/* プロフィールモーダル */}
