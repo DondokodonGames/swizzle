@@ -365,25 +365,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   const currentGame = publicGames[currentIndex];
   const nextGame = publicGames[(currentIndex + 1) % publicGames.length];
 
-  // ==================== ブリッジ画面 ====================
-  if (gameState === 'bridge') {
-    return (
-      <BridgeScreen
-        currentGame={currentGame}
-        nextGame={nextGame}
-        score={currentScore}
-        timeLeft={bridgeTimeLeft}
-        totalGames={publicGames.length}
-        currentIndex={currentIndex}
-        onNextGame={handleNextGame}
-        onPreviousGame={handlePreviousGame}
-        onReplayGame={handleReplayGame}
-        onExit={onExit}
-      />
-    );
-  }
-
-  // ==================== ゲーム画面 ====================
+  // ==================== ゲーム画面 + ブリッジ画面統合 ====================
   return (
     <div className="fixed inset-0 bg-black z-50 overflow-hidden flex items-center justify-center">
       {/* メインコンテナ（1080x1920） */}
@@ -618,6 +600,23 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
             }} />
           </div>
+        )}
+
+        {/* ブリッジ画面（リザルト画面）オーバーレイ */}
+        {gameState === 'bridge' && (
+          <BridgeScreen
+            currentGame={currentGame}
+            nextGame={nextGame}
+            score={currentScore}
+            timeLeft={bridgeTimeLeft}
+            totalGames={publicGames.length}
+            currentIndex={currentIndex}
+            onNextGame={handleNextGame}
+            onPreviousGame={handlePreviousGame}
+            onReplayGame={handleReplayGame}
+            onExit={onExit}
+            inline={true}
+          />
         )}
       </div>
 

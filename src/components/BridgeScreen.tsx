@@ -35,6 +35,7 @@ interface BridgeScreenProps {
   onPreviousGame: () => void;
   onReplayGame: () => void;
   onExit?: () => void;
+  inline?: boolean; // ゲームコンテナ内に表示する場合は true
 }
 
 export const BridgeScreen: React.FC<BridgeScreenProps> = ({
@@ -48,6 +49,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   onPreviousGame,
   onReplayGame,
   onExit,
+  inline = false,
 }) => {
   // ==================== 状態管理 ====================
   const [isLiked, setIsLiked] = useState(currentGame.isLiked || false);
@@ -192,7 +194,22 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   const progressPercentage = ((5 - timeLeft) / 5) * 100;
 
   // ==================== スタイル定義 ====================
-  const containerStyle: React.CSSProperties = {
+  const containerStyle: React.CSSProperties = inline ? {
+    // インラインモード（ゲームコンテナ内表示）
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    background: 'linear-gradient(180deg, #581c87 0%, #000000 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 50,
+  } : {
+    // フルスクリーンモード
     position: 'fixed',
     top: 0,
     left: 0,
@@ -205,7 +222,16 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     zIndex: 50,
   };
 
-  const mainBoxStyle: React.CSSProperties = {
+  const mainBoxStyle: React.CSSProperties = inline ? {
+    // インラインモード
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    padding: '32px',
+    overflowY: 'auto',
+  } : {
+    // フルスクリーンモード
     width: '1080px',
     height: '1920px',
     maxWidth: '100vw',
