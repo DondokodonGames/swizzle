@@ -26,7 +26,7 @@ export interface RuleExecutionContext {
     counters: Map<string, number>;
   };
   
-  // オブジェクト状態  
+  // オブジェクト状態
   objects: Map<string, {
     id: string;
     x: number;
@@ -42,6 +42,12 @@ export interface RuleExecutionContext {
     vy?: number;
     frameCount?: number;
     currentFrame?: number;
+    // エフェクト管理
+    baseScale?: number;
+    effectScale?: number;
+    effectStartTime?: number;
+    effectDuration?: number;
+    effectType?: string;
   }>;
   
   // イベント履歴
@@ -1284,18 +1290,41 @@ export class RuleEngine {
     action: Extract<GameAction, { type: 'effect' }>,
     context: RuleExecutionContext
   ): void {
-    if (context.effectSystem) {
-      const effectConfig: EffectConfig = {
-        id: `effect_${Date.now()}_${Math.random()}`,
-        type: 'particle',
-        targetId: action.targetId,
-        duration: 1000
-      };
-      
-      context.effectSystem.playEffect(effectConfig);
-      console.log(`エフェクト再生: ${action.effect} (target: ${action.targetId})`);
-    } else {
-      console.log(`[簡易エフェクト] ${action.effect}を${action.targetId}に適用`);
+    const targetObj = context.objects.get(action.targetId);
+    if (!targetObj) {
+      console.warn(`エフェクト: オブジェクトが見つかりません: ${action.targetId}`);
+      return;
+    }
+
+    const effect = action.effect;
+    const durationMs = (effect.duration || 0.2) * 1000;
+
+    switch (effect.type) {
+      case 'scale':
+        // 元のスケールを保存（初回のみ）
+        if (targetObj.baseScale === undefined) {
+          targetObj.baseScale = targetObj.scale;
+        }
+
+        // スケールエフェクトを適用
+        const scaleAmount = effect.scaleAmount || 0.5;
+        targetObj.effectScale = scaleAmount;
+        targetObj.effectStartTime = performance.now();
+        targetObj.effectDuration = durationMs;
+        targetObj.effectType = 'scale';
+
+        console.log(`スケールエフェクト適用: ${action.targetId} (${scaleAmount}x, ${durationMs}ms)`);
+        break;
+
+      case 'flash':
+      case 'shake':
+      case 'rotate':
+      case 'particles':
+        console.log(`[未実装エフェクト] ${effect.type}を${action.targetId}に適用`);
+        break;
+
+      default:
+        console.warn(`未知のエフェクトタイプ: ${(effect as any).type}`);
     }
   }
 

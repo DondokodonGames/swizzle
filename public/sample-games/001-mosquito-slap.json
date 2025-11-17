@@ -241,16 +241,10 @@
               "targetId": "mosquito",
               "effect": {
                 "type": "scale",
-                "duration": 0.2,
+                "duration": 0.3,
                 "intensity": 1,
-                "scaleAmount": 0.3
+                "scaleAmount": 0.1
               }
-            },
-            {
-              "type": "hide",
-              "targetId": "mosquito",
-              "fadeOut": false,
-              "duration": 0
             },
             {
               "type": "success",

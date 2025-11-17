@@ -356,6 +356,34 @@ export class EditorGameBridge {
               }
             }
 
+            // ✅ エフェクト更新
+            if (obj.effectStartTime !== undefined && obj.effectDuration !== undefined) {
+              const elapsed = currentTime - obj.effectStartTime;
+
+              if (elapsed < obj.effectDuration) {
+                // エフェクト実行中
+                if (obj.effectType === 'scale') {
+                  const progress = elapsed / obj.effectDuration;
+                  // 潰れるアニメーション: 1.0 → scaleAmount → 1.0
+                  const t = progress * 2; // 0-2の範囲
+                  if (t < 1) {
+                    // 前半: 1.0 → scaleAmount
+                    obj.scale = (obj.baseScale || 1.5) * (1.0 - (1.0 - (obj.effectScale || 0.3)) * t);
+                  } else {
+                    // 後半: scaleAmount → 1.0
+                    obj.scale = (obj.baseScale || 1.5) * ((obj.effectScale || 0.3) + (1.0 - (obj.effectScale || 0.3)) * (t - 1));
+                  }
+                }
+              } else {
+                // エフェクト終了
+                obj.scale = obj.baseScale || 1.5;
+                obj.effectStartTime = undefined;
+                obj.effectDuration = undefined;
+                obj.effectType = undefined;
+                obj.effectScale = undefined;
+              }
+            }
+
             // ✅ RuleEngineによる移動を適用（vx/vyが0でない場合のみ）
             if (obj.vx !== undefined && obj.vx !== 0) {
               obj.x += obj.vx;
@@ -364,22 +392,25 @@ export class EditorGameBridge {
               obj.y += obj.vy;
             }
 
-            // 画面外チェック（オブジェクトが画面外に出た場合、画面端で停止）
+            // 画面外チェック（オブジェクトが画面外に出た場合、跳ね返る）
+            const objWidth = obj.width * obj.scale;
+            const objHeight = obj.height * obj.scale;
+
             if (obj.x < 0) {
               obj.x = 0;
-              obj.vx = 0;
+              if (obj.vx !== undefined) obj.vx = Math.abs(obj.vx);
             }
-            if (obj.x + obj.width * obj.scale > canvasElement.width) {
-              obj.x = canvasElement.width - obj.width * obj.scale;
-              obj.vx = 0;
+            if (obj.x + objWidth > canvasElement.width) {
+              obj.x = canvasElement.width - objWidth;
+              if (obj.vx !== undefined) obj.vx = -Math.abs(obj.vx);
             }
             if (obj.y < 0) {
               obj.y = 0;
-              obj.vy = 0;
+              if (obj.vy !== undefined) obj.vy = Math.abs(obj.vy);
             }
-            if (obj.y + obj.height * obj.scale > canvasElement.height) {
-              obj.y = canvasElement.height - obj.height * obj.scale;
-              obj.vy = 0;
+            if (obj.y + objHeight > canvasElement.height) {
+              obj.y = canvasElement.height - objHeight;
+              if (obj.vy !== undefined) obj.vy = -Math.abs(obj.vy);
             }
 
             // 描画（現在のフレームを使用）
