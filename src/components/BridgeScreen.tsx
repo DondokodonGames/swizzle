@@ -7,17 +7,15 @@ import { ProjectStorageManager } from '../services/ProjectStorageManager';
 import { GameProject } from '../types/editor/GameProject';
 
 /**
- * BridgeScreen.tsx - ゲーム間のブリッジ画面
- * 
+ * BridgeScreen.tsx - ゲーム間のブリッジ画面（問題12対応：完全インラインスタイル版）
+ *
  * 機能:
- * - ゲームスコア表示
+ * - ゲームスコア表示（グラフィカルなデザイン）
  * - ソーシャル機能（いいね、フィード、プロフィール）
  * - 次のゲームプレビュー
  * - 残り時間バー（5秒）
  * - 操作ボタン（次へ/前へ/もう一度/Exit）
- * - 🆕 パクる機能（ゲームのルールをコピーしてエディターで編集）
- * 
- * 注: react-router-dom を使用せず、window.location.href で遷移
+ * - パクる機能（ゲームのルールをコピーしてエディターで編集）
  */
 
 interface GameScore {
@@ -59,6 +57,17 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [copiedProjectId, setCopiedProjectId] = useState<string | null>(null);
   const [selectedReaction, setSelectedReaction] = useState<string | null>(null);
+  const [animationStage, setAnimationStage] = useState(0);
+
+  // アニメーション制御
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setAnimationStage(1), 100),
+      setTimeout(() => setAnimationStage(2), 300),
+      setTimeout(() => setAnimationStage(3), 500),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
 
   // ==================== サービス ====================
   const socialService = useMemo(() => SocialService.getInstance(), []);
@@ -69,18 +78,14 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
     setIsLiking(true);
     const newLikeState = !isLiked;
-
-    // 楽観的UI更新
     setIsLiked(newLikeState);
     setLikeCount(prev => newLikeState ? prev + 1 : prev - 1);
 
     try {
-      // 現在のユーザーIDを取得
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (!user) {
         console.warn('⚠️ ユーザーがログインしていません');
-        // ログインしていない場合はロールバック
         setIsLiked(!newLikeState);
         setLikeCount(prev => newLikeState ? prev - 1 : prev + 1);
         setIsLiking(false);
@@ -91,7 +96,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
       console.log('✅ いいね更新成功');
     } catch (error) {
       console.error('❌ いいね更新エラー:', error);
-      // エラー時はロールバック
       setIsLiked(!newLikeState);
       setLikeCount(prev => newLikeState ? prev - 1 : prev + 1);
     } finally {
@@ -99,40 +103,22 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     }
   };
 
-  // ==================== 🆕 パクる処理 ====================
+  // ==================== パクる処理 ====================
   const handleCopyGame = async () => {
     if (isCopying) return;
-
     setIsCopying(true);
 
     try {
       console.log('📋 ゲームコピー開始:', currentGame.title);
-      console.log('📋 currentGame構造:', {
-        id: currentGame.id,
-        title: currentGame.title,
-        hasProjectData: !!currentGame.projectData,
-        projectDataKeys: currentGame.projectData ? Object.keys(currentGame.projectData) : []
-      });
 
-      // 1. currentGameからGameProjectデータを取得
       let sourceProjectData: GameProject | null = null;
 
       if (currentGame.projectData) {
-        // projectDataが直接含まれている場合
         sourceProjectData = currentGame.projectData as GameProject;
         console.log('✅ projectDataから取得成功');
-        console.log('📋 プロジェクトデータ構造:', {
-          id: sourceProjectData.id,
-          name: sourceProjectData.name,
-          hasScript: !!sourceProjectData.script,
-          hasRules: !!(sourceProjectData.script && sourceProjectData.script.rules),
-          rulesCount: (sourceProjectData.script && sourceProjectData.script.rules) ? sourceProjectData.script.rules.length : 0,
-          hasAssets: !!sourceProjectData.assets
-        });
       } else {
-        // projectDataがない場合、Supabaseから取得を試みる
         console.log('⚠️ projectDataが存在しないため、データベースから取得を試みます...');
-        
+
         const { data, error } = await supabase
           .from('user_games')
           .select('project_data')
@@ -152,10 +138,8 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         throw new Error('このゲームはコピーできません');
       }
 
-      // 2. GameProjectCopierでコピー
       const copier = GameProjectCopier.getInstance();
-      
-      // コピー可能かチェック
+
       console.log('🔍 コピー可能かチェック中...');
       if (!copier.canCopy(sourceProjectData)) {
         alert('このゲームにはルールが設定されていないため、コピーできません。');
@@ -165,18 +149,15 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
       console.log('✅ コピー可能 - コピー処理開始');
       const copiedProject = copier.copyProject(sourceProjectData);
 
-      // 3. ローカルストレージに保存
       const storage = ProjectStorageManager.getInstance();
       await storage.saveProject(copiedProject);
 
       console.log('✅ プロジェクトを保存しました:', copiedProject.id);
 
-      // 4. localStorageに保存（エディターが開く際に使用）
       localStorage.setItem('editProjectId', copiedProject.id);
       localStorage.setItem('copiedGameTitle', currentGame.title);
       localStorage.setItem('shouldOpenEditor', 'true');
 
-      // 5. 成功モーダルを表示
       setCopiedProjectId(copiedProject.id);
       setShowSuccessModal(true);
 
@@ -193,330 +174,681 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   // ==================== エディターを開く処理 ====================
   const handleOpenEditor = () => {
     if (!copiedProjectId) return;
-
-    // 複数の可能性のあるパスを試す
-    const possiblePaths = [
-      `/editor/${copiedProjectId}`,
-      `/edit/${copiedProjectId}`,
-      `/game-editor/${copiedProjectId}`,
-      `/editor?id=${copiedProjectId}`,
-      `/#/editor/${copiedProjectId}`,
-      `/projects/edit/${copiedProjectId}`
-    ];
-
-    console.log('🚀 エディターを開きます:', possiblePaths[0]);
-    console.log('📋 試行可能なパス一覧:', possiblePaths);
-
-    // 最初のパスで遷移を試みる
-    window.location.href = possiblePaths[0];
+    window.location.href = `/editor/${copiedProjectId}`;
   };
 
   // ==================== リンク処理 ====================
   const handleGoToFeed = () => {
     console.log('📱 フィードへ遷移');
-    // TODO: ルーティング実装
     window.location.href = '/feed';
   };
 
   const handleGoToProfile = () => {
     console.log('👤 プロフィールへ遷移');
-    // TODO: ルーティング実装
     window.location.href = `/profile/${currentGame.author.id}`;
   };
 
   // ==================== 進捗バー ====================
   const progressPercentage = ((5 - timeLeft) / 5) * 100;
 
+  // ==================== スタイル定義 ====================
+  const containerStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'linear-gradient(180deg, #581c87 0%, #000000 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 50,
+  };
+
+  const mainBoxStyle: React.CSSProperties = {
+    width: '1080px',
+    height: '1920px',
+    maxWidth: '100vw',
+    maxHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    padding: '32px',
+    overflowY: 'auto',
+  };
+
+  const titleIconStyle: React.CSSProperties = {
+    fontSize: '96px',
+    marginBottom: '16px',
+    transform: animationStage >= 1 ? 'scale(1)' : 'scale(0)',
+    transition: 'transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+  };
+
+  const titleTextStyle: React.CSSProperties = {
+    color: 'white',
+    fontSize: '60px',
+    fontWeight: 'bold',
+    marginBottom: '16px',
+    textAlign: 'center',
+    transform: animationStage >= 2 ? 'translateY(0)' : 'translateY(30px)',
+    opacity: animationStage >= 2 ? 1 : 0,
+    transition: 'all 0.5s ease-out',
+  };
+
+  const scoreCardStyle: React.CSSProperties = {
+    background: 'linear-gradient(135deg, rgba(88, 28, 135, 0.5) 0%, rgba(157, 23, 77, 0.5) 100%)',
+    backdropFilter: 'blur(10px)',
+    borderRadius: '32px',
+    padding: '32px',
+    marginBottom: '24px',
+    border: '2px solid rgba(168, 85, 247, 0.3)',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+    transform: animationStage >= 3 ? 'translateY(0)' : 'translateY(30px)',
+    opacity: animationStage >= 3 ? 1 : 0,
+    transition: 'all 0.5s ease-out',
+  };
+
+  const scoreItemStyle: React.CSSProperties = {
+    textAlign: 'center',
+    transition: 'transform 0.3s ease',
+  };
+
+  const scoreLabelStyle: React.CSSProperties = {
+    color: '#d8b4fe',
+    fontSize: '20px',
+    marginBottom: '12px',
+    fontWeight: '600',
+  };
+
+  const scoreValueBoxStyle = (gradient: string): React.CSSProperties => ({
+    background: gradient,
+    borderRadius: '20px',
+    padding: '20px',
+    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+  });
+
+  const scoreValueTextStyle: React.CSSProperties = {
+    color: 'white',
+    fontSize: '48px',
+    fontWeight: '900',
+    textShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+  };
+
+  const buttonStyle = (bgColor: string, hoverColor?: string): React.CSSProperties => ({
+    background: bgColor,
+    color: 'white',
+    fontSize: '24px',
+    fontWeight: 'bold',
+    padding: '24px',
+    borderRadius: '20px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+    width: '100%',
+  });
+
   // ==================== レンダリング ====================
   return (
-    <div className="fixed inset-0 bg-gradient-to-b from-purple-900 to-black z-50 flex items-center justify-center">
-      {/* メインコンテナ（1080x1920） */}
-      <div 
-        className="relative"
-        style={{ 
-          width: '1080px',
-          height: '1920px',
-          maxWidth: '100vw',
-          maxHeight: '100vh'
-        }}
-      >
-        <div className="w-full h-full flex flex-col p-8">
-          {/* トップ - ゲーム完了（問題12対応：アニメーション追加） */}
-          <div className="text-center mb-6 animate-fade-in">
-            <div className="text-8xl mb-4 animate-bounce-in">
-              {score?.success ? '🎉' : '💫'}
-            </div>
-            <h2 className="text-white text-5xl font-bold mb-2 animate-slide-up">
-              {score?.success ? 'クリア！' : 'プレイ完了'}
-            </h2>
-            <p className="text-gray-300 text-2xl animate-slide-up" style={{ animationDelay: '0.1s' }}>
-              {currentGame.title}
-            </p>
+    <div style={containerStyle}>
+      <div style={mainBoxStyle}>
+        {/* トップ - ゲーム完了 */}
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={titleIconStyle}>
+            {score?.success ? '🎉' : '💫'}
           </div>
+          <h2 style={titleTextStyle}>
+            {score?.success ? 'クリア！' : 'プレイ完了'}
+          </h2>
+          <p style={{
+            color: '#d1d5db',
+            fontSize: '28px',
+            textAlign: 'center',
+            transform: animationStage >= 2 ? 'translateY(0)' : 'translateY(30px)',
+            opacity: animationStage >= 2 ? 1 : 0,
+            transition: 'all 0.5s ease-out 0.1s',
+          }}>
+            {currentGame.title}
+          </p>
+        </div>
 
-          {/* スコア表示（問題12対応：グラフィカルなデザイン） */}
-          {score && (
-            <div className="bg-gradient-to-br from-purple-900/50 to-pink-900/50 backdrop-blur-sm rounded-3xl p-8 mb-6 border-2 border-purple-500/30 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              <div className="grid grid-cols-3 gap-6">
-                <div className="text-center transform hover:scale-110 transition-transform">
-                  <p className="text-purple-300 text-base mb-2 font-semibold">スコア</p>
-                  <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-4 shadow-lg">
-                    <p className="text-white text-4xl font-black drop-shadow-lg">{score.points}</p>
-                  </div>
+        {/* スコア表示（問題12対応：完全グラフィカル） */}
+        {score && (
+          <div style={scoreCardStyle}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '24px',
+            }}>
+              {/* スコア */}
+              <div
+                style={scoreItemStyle}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <p style={scoreLabelStyle}>スコア</p>
+                <div style={scoreValueBoxStyle('linear-gradient(135deg, #fbbf24 0%, #f97316 100%)')}>
+                  <p style={scoreValueTextStyle}>{score.points}</p>
                 </div>
-                <div className="text-center transform hover:scale-110 transition-transform">
-                  <p className="text-purple-300 text-base mb-2 font-semibold">時間</p>
-                  <div className="bg-gradient-to-br from-blue-400 to-cyan-500 rounded-2xl p-4 shadow-lg">
-                    <p className="text-white text-4xl font-black drop-shadow-lg">{score.time.toFixed(1)}s</p>
-                  </div>
+              </div>
+
+              {/* 時間 */}
+              <div
+                style={scoreItemStyle}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <p style={scoreLabelStyle}>時間</p>
+                <div style={scoreValueBoxStyle('linear-gradient(135deg, #60a5fa 0%, #06b6d4 100%)')}>
+                  <p style={scoreValueTextStyle}>{score.time.toFixed(1)}s</p>
                 </div>
-                <div className="text-center transform hover:scale-110 transition-transform">
-                  <p className="text-purple-300 text-base mb-2 font-semibold">結果</p>
-                  <div className={`${score.success ? 'bg-gradient-to-br from-green-400 to-emerald-500' : 'bg-gradient-to-br from-gray-400 to-gray-500'} rounded-2xl p-4 shadow-lg`}>
-                    <p className="text-4xl">{score.success ? '✅' : '❌'}</p>
-                  </div>
+              </div>
+
+              {/* 結果 */}
+              <div
+                style={scoreItemStyle}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <p style={scoreLabelStyle}>結果</p>
+                <div style={scoreValueBoxStyle(
+                  score.success
+                    ? 'linear-gradient(135deg, #4ade80 0%, #10b981 100%)'
+                    : 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)'
+                )}>
+                  <p style={{ fontSize: '48px' }}>{score.success ? '✅' : '❌'}</p>
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* パクるボタン */}
+        <div style={{
+          background: 'linear-gradient(90deg, #059669 0%, #10b981 100%)',
+          borderRadius: '32px',
+          padding: '24px',
+          marginBottom: '16px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+        }}>
+          <button
+            onClick={handleCopyGame}
+            disabled={isCopying}
+            style={{
+              ...buttonStyle('rgba(255, 255, 255, 0.2)'),
+              opacity: isCopying ? 0.5 : 1,
+              cursor: isCopying ? 'not-allowed' : 'pointer',
+            }}
+            onMouseEnter={(e) => !isCopying && (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)')}
+            onMouseLeave={(e) => !isCopying && (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
+          >
+            {isCopying ? '⏳ コピー中...' : '📋 このゲームをパクる'}
+          </button>
+          <p style={{
+            color: 'rgba(255, 255, 255, 0.8)',
+            fontSize: '16px',
+            textAlign: 'center',
+            marginTop: '12px',
+          }}>
+            ルールをコピーして、画像を差し替えるだけで新しいゲームが作れます！
+          </p>
+        </div>
+
+        {/* ソーシャル機能 */}
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.5)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '32px',
+          padding: '24px',
+          marginBottom: '24px',
+        }}>
+          {/* 作者情報といいね */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '16px',
+          }}>
+            {/* 作者情報 */}
+            <button
+              onClick={handleGoToProfile}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '12px',
+                borderRadius: '20px',
+                transition: 'background 0.3s ease',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+            >
+              <div style={{
+                width: '48px',
+                height: '48px',
+                background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontSize: '24px',
+                fontWeight: 'bold',
+              }}>
+                {currentGame.author.name.charAt(0).toUpperCase()}
+              </div>
+              <div style={{ textAlign: 'left' }}>
+                <p style={{ color: 'white', fontWeight: 'bold', fontSize: '20px', margin: 0 }}>
+                  {currentGame.author.name}
+                </p>
+                <p style={{ color: '#9ca3af', fontSize: '16px', margin: 0 }}>
+                  作成者プロフィールへ →
+                </p>
+              </div>
+            </button>
+
+            {/* いいねボタン */}
+            <button
+              onClick={handleLike}
+              disabled={isLiking}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 24px',
+                borderRadius: '20px',
+                fontWeight: 'bold',
+                fontSize: '20px',
+                border: 'none',
+                cursor: isLiking ? 'not-allowed' : 'pointer',
+                background: isLiked ? '#ef4444' : 'rgba(255, 255, 255, 0.1)',
+                color: 'white',
+                opacity: isLiking ? 0.5 : 1,
+                transition: 'all 0.3s ease',
+              }}
+              onMouseEnter={(e) => !isLiking && (e.currentTarget.style.background = isLiked ? '#dc2626' : 'rgba(255, 255, 255, 0.2)')}
+              onMouseLeave={(e) => !isLiking && (e.currentTarget.style.background = isLiked ? '#ef4444' : 'rgba(255, 255, 255, 0.1)')}
+            >
+              <span style={{ fontSize: '28px' }}>{isLiked ? '❤️' : '🤍'}</span>
+              <span>{likeCount}</span>
+            </button>
+          </div>
+
+          {/* 感情リアクションボタン */}
+          <div style={{ marginBottom: '16px' }}>
+            <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '16px', marginBottom: '8px' }}>
+              このゲームはどうでしたか？
+            </p>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(5, 1fr)',
+              gap: '8px',
+            }}>
+              {[
+                { emoji: '😆', label: '楽しい' },
+                { emoji: '😮', label: '驚き' },
+                { emoji: '🤔', label: '考えさせられる' },
+                { emoji: '😭', label: '感動' },
+                { emoji: '😎', label: 'カッコイイ' }
+              ].map((reaction) => (
+                <button
+                  key={reaction.emoji}
+                  onClick={() => setSelectedReaction(reaction.emoji)}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '12px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: selectedReaction === reaction.emoji ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)',
+                    transform: selectedReaction === reaction.emoji ? 'scale(1.1)' : 'scale(1)',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => selectedReaction !== reaction.emoji && (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
+                  onMouseLeave={(e) => selectedReaction !== reaction.emoji && (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
+                  title={reaction.label}
+                >
+                  <span style={{ fontSize: '36px', marginBottom: '4px' }}>{reaction.emoji}</span>
+                  <span style={{ color: 'white', fontSize: '14px' }}>{reaction.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* フィードへのリンク */}
+          <button
+            onClick={handleGoToFeed}
+            style={{
+              ...buttonStyle('linear-gradient(90deg, #9333ea 0%, #ec4899 100%)'),
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            📱 フィードで他のゲームを見る
+          </button>
+        </div>
+
+        {/* 広告表示スペース */}
+        <div style={{
+          background: 'linear-gradient(90deg, rgba(234, 179, 8, 0.2) 0%, rgba(249, 115, 22, 0.2) 100%)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '32px',
+          padding: '24px',
+          marginBottom: '24px',
+          border: '2px solid rgba(234, 179, 8, 0.5)',
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ color: '#fef08a', fontSize: '16px', fontWeight: '500', marginBottom: '8px' }}>
+              スポンサー広告
+            </p>
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: '20px',
+              padding: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: '120px',
+            }}>
+              <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '20px' }}>広告スペース</p>
+            </div>
+            <p style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '14px', marginTop: '8px' }}>
+              広告を見て開発者を応援しよう！
+            </p>
+          </div>
+        </div>
+
+        {/* 次のゲームプレビュー */}
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.5)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '32px',
+          padding: '24px',
+          marginBottom: '24px',
+          flex: 1,
+        }}>
+          <h3 style={{ color: 'white', fontSize: '28px', fontWeight: 'bold', marginBottom: '16px' }}>
+            次のゲーム
+          </h3>
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%)',
+            borderRadius: '20px',
+            padding: '16px',
+          }}>
+            <div style={{
+              aspectRatio: '16/9',
+              background: '#1f2937',
+              borderRadius: '12px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+            }}>
+              {nextGame.thumbnail ? (
+                <img
+                  src={nextGame.thumbnail}
+                  alt={nextGame.title}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: '12px',
+                  }}
+                />
+              ) : (
+                <span style={{ fontSize: '72px' }}>🎮</span>
+              )}
+            </div>
+            <h4 style={{ color: 'white', fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
+              {nextGame.title}
+            </h4>
+            <p style={{ color: '#d1d5db', fontSize: '16px', marginBottom: '12px' }}>
+              {nextGame.description}
+            </p>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              color: '#9ca3af',
+              fontSize: '16px',
+            }}>
+              <span>by {nextGame.author.name}</span>
+              <span>❤️ {nextGame.stats.likes}</span>
+              <span>👁️ {nextGame.stats.views}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 残り時間バー */}
+        <div style={{
+          background: 'rgba(0, 0, 0, 0.5)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '32px',
+          padding: '16px 24px',
+          marginBottom: '24px',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '8px',
+          }}>
+            <span style={{ color: 'white', fontSize: '20px', fontWeight: '500' }}>
+              {timeLeft}秒後に次のゲームへ
+            </span>
+            <span style={{ color: '#d1d5db', fontSize: '16px' }}>
+              {currentIndex + 1} / {totalGames}
+            </span>
+          </div>
+          <div style={{
+            width: '100%',
+            height: '12px',
+            background: '#374151',
+            borderRadius: '999px',
+            overflow: 'hidden',
+          }}>
+            <div
+              style={{
+                height: '100%',
+                background: 'linear-gradient(90deg, #10b981 0%, #3b82f6 100%)',
+                transition: 'width 1s linear',
+                width: `${progressPercentage}%`,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* 操作ボタン */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '16px',
+          marginBottom: '16px',
+        }}>
+          <button
+            onClick={onReplayGame}
+            style={buttonStyle('rgba(37, 99, 235, 0.8)')}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#1d4ed8';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(37, 99, 235, 0.8)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            🔄 もう一度
+          </button>
+          <button
+            onClick={onNextGame}
+            style={buttonStyle('rgba(22, 163, 74, 0.8)')}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#15803d';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(22, 163, 74, 0.8)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            次へ ⏭️
+          </button>
+        </div>
+
+        {/* 下部ボタン */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '16px',
+        }}>
+          <button
+            onClick={onPreviousGame}
+            disabled={totalGames <= 1}
+            style={{
+              ...buttonStyle(totalGames <= 1 ? 'rgba(31, 41, 55, 0.5)' : 'rgba(55, 65, 81, 0.8)'),
+              cursor: totalGames <= 1 ? 'not-allowed' : 'pointer',
+              fontSize: '20px',
+              padding: '16px',
+            }}
+            onMouseEnter={(e) => totalGames > 1 && (e.currentTarget.style.background = '#374151')}
+            onMouseLeave={(e) => totalGames > 1 && (e.currentTarget.style.background = 'rgba(55, 65, 81, 0.8)')}
+          >
+            ⏮️ 前へ
+          </button>
+          <button
+            onClick={onNextGame}
+            style={{
+              ...buttonStyle('rgba(147, 51, 234, 0.8)'),
+              fontSize: '20px',
+              padding: '16px',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#7c3aed';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(147, 51, 234, 0.8)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            ⏭️ スキップ
+          </button>
+          {onExit && (
+            <button
+              onClick={onExit}
+              style={{
+                ...buttonStyle('rgba(239, 68, 68, 0.8)'),
+                fontSize: '20px',
+                padding: '16px',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#dc2626';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.8)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              Exit
+            </button>
           )}
-
-          {/* CSSアニメーション */}
-          <style>{`
-            @keyframes fade-in {
-              from { opacity: 0; }
-              to { opacity: 1; }
-            }
-            @keyframes bounce-in {
-              0% { transform: scale(0); opacity: 0; }
-              50% { transform: scale(1.2); }
-              100% { transform: scale(1); opacity: 1; }
-            }
-            @keyframes slide-up {
-              from { transform: translateY(30px); opacity: 0; }
-              to { transform: translateY(0); opacity: 1; }
-            }
-            .animate-fade-in {
-              animation: fade-in 0.5s ease-out;
-            }
-            .animate-bounce-in {
-              animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            }
-            .animate-slide-up {
-              animation: slide-up 0.5s ease-out forwards;
-              opacity: 0;
-            }
-          `}</style>
-
-          {/* 🆕 パクるボタン */}
-          <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-3xl p-6 mb-4">
-            <button
-              onClick={handleCopyGame}
-              disabled={isCopying}
-              className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xl font-bold py-6 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isCopying ? '⏳ コピー中...' : '📋 このゲームをパクる'}
-            </button>
-            <p className="text-white/80 text-sm text-center mt-3">
-              ルールをコピーして、画像を差し替えるだけで新しいゲームが作れます！
-            </p>
-          </div>
-
-          {/* ソーシャル機能 */}
-          <div className="bg-black/50 backdrop-blur-sm rounded-3xl p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              {/* 作者情報 */}
-              <button
-                onClick={handleGoToProfile}
-                className="flex items-center gap-3 hover:bg-white/10 rounded-2xl p-3 transition-colors"
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-xl font-bold">
-                  {currentGame.author.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="text-left">
-                  <p className="text-white font-bold text-lg">{currentGame.author.name}</p>
-                  <p className="text-gray-400 text-sm">作成者プロフィールへ →</p>
-                </div>
-              </button>
-
-              {/* いいねボタン */}
-              <button
-                onClick={handleLike}
-                disabled={isLiking}
-                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-lg transition-all ${
-                  isLiked
-                    ? 'bg-red-500 hover:bg-red-600 text-white'
-                    : 'bg-white/10 hover:bg-white/20 text-white'
-                } disabled:opacity-50`}
-              >
-                <span className="text-2xl">{isLiked ? '❤️' : '🤍'}</span>
-                <span>{likeCount}</span>
-              </button>
-            </div>
-
-            {/* 感情リアクションボタン */}
-            <div className="mb-4">
-              <p className="text-white/80 text-sm mb-2">このゲームはどうでしたか？</p>
-              <div className="grid grid-cols-5 gap-2">
-                {[
-                  { emoji: '😆', label: '楽しい' },
-                  { emoji: '😮', label: '驚き' },
-                  { emoji: '🤔', label: '考えさせられる' },
-                  { emoji: '😭', label: '感動' },
-                  { emoji: '😎', label: 'カッコイイ' }
-                ].map((reaction) => (
-                  <button
-                    key={reaction.emoji}
-                    onClick={() => setSelectedReaction(reaction.emoji)}
-                    className={`flex flex-col items-center justify-center p-3 rounded-xl transition-all ${
-                      selectedReaction === reaction.emoji
-                        ? 'bg-white/30 scale-110'
-                        : 'bg-white/10 hover:bg-white/20'
-                    }`}
-                    title={reaction.label}
-                  >
-                    <span className="text-3xl mb-1">{reaction.emoji}</span>
-                    <span className="text-white text-xs">{reaction.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* フィードへのリンク */}
-            <button
-              onClick={handleGoToFeed}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold text-lg py-4 rounded-2xl transition-colors"
-            >
-              📱 フィードで他のゲームを見る
-            </button>
-          </div>
-
-          {/* 広告表示スペース */}
-          <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-sm rounded-3xl p-6 mb-6 border-2 border-yellow-500/50">
-            <div className="text-center">
-              <p className="text-yellow-200 text-sm font-medium mb-2">スポンサー広告</p>
-              <div className="bg-white/10 rounded-2xl p-8 flex items-center justify-center min-h-[120px]">
-                <p className="text-white/60 text-lg">広告スペース</p>
-              </div>
-              <p className="text-white/40 text-xs mt-2">広告を見て開発者を応援しよう！</p>
-            </div>
-          </div>
-
-          {/* 次のゲームプレビュー */}
-          <div className="bg-black/50 backdrop-blur-sm rounded-3xl p-6 mb-6 flex-1">
-            <h3 className="text-white text-2xl font-bold mb-4">次のゲーム</h3>
-            <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl p-4">
-              <div className="aspect-video bg-gray-800 rounded-xl mb-4 flex items-center justify-center">
-                {nextGame.thumbnail ? (
-                  <img 
-                    src={nextGame.thumbnail} 
-                    alt={nextGame.title}
-                    className="w-full h-full object-cover rounded-xl"
-                  />
-                ) : (
-                  <span className="text-6xl">🎮</span>
-                )}
-              </div>
-              <h4 className="text-white text-xl font-bold mb-2">{nextGame.title}</h4>
-              <p className="text-gray-300 text-sm mb-3">{nextGame.description}</p>
-              <div className="flex items-center gap-4 text-gray-400 text-sm">
-                <span>by {nextGame.author.name}</span>
-                <span>❤️ {nextGame.stats.likes}</span>
-                <span>👁️ {nextGame.stats.views}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 残り時間バー */}
-          <div className="bg-black/50 backdrop-blur-sm rounded-3xl px-6 py-4 mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white text-lg font-medium">
-                {timeLeft}秒後に次のゲームへ
-              </span>
-              <span className="text-gray-300 text-sm">
-                {currentIndex + 1} / {totalGames}
-              </span>
-            </div>
-            <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-1000"
-                style={{ width: `${progressPercentage}%` }}
-              />
-            </div>
-          </div>
-
-          {/* 操作ボタン */}
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <button
-              onClick={onReplayGame}
-              className="bg-blue-600/80 hover:bg-blue-700 text-white text-xl font-bold py-6 rounded-2xl backdrop-blur-sm transition-colors"
-            >
-              🔄 もう一度
-            </button>
-            <button
-              onClick={onNextGame}
-              className="bg-green-600/80 hover:bg-green-700 text-white text-xl font-bold py-6 rounded-2xl backdrop-blur-sm transition-colors"
-            >
-              次へ ⏭️
-            </button>
-          </div>
-
-          {/* 下部ボタン */}
-          <div className="grid grid-cols-3 gap-4">
-            <button
-              onClick={onPreviousGame}
-              disabled={totalGames <= 1}
-              className="bg-gray-700/80 hover:bg-gray-600 disabled:bg-gray-800/50 disabled:cursor-not-allowed text-white text-lg font-bold py-4 rounded-2xl backdrop-blur-sm transition-colors"
-            >
-              ⏮️ 前へ
-            </button>
-            <button
-              onClick={onNextGame}
-              className="bg-purple-600/80 hover:bg-purple-700 text-white text-lg font-bold py-4 rounded-2xl backdrop-blur-sm transition-colors"
-            >
-              ⏭️ スキップ
-            </button>
-            {onExit && (
-              <button
-                onClick={onExit}
-                className="bg-red-500/80 hover:bg-red-600 text-white text-lg font-bold py-4 rounded-2xl backdrop-blur-sm transition-colors"
-              >
-                Exit
-              </button>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* 🆕 成功モーダル */}
+      {/* 成功モーダル */}
       {showSuccessModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60]">
-          <div className="bg-gradient-to-br from-green-600 to-emerald-600 rounded-3xl p-8 max-w-md mx-4 text-center">
-            <div className="text-6xl mb-4">✅</div>
-            <h2 className="text-white text-3xl font-bold mb-4">
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 60,
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+            borderRadius: '32px',
+            padding: '32px',
+            maxWidth: '500px',
+            margin: '16px',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '72px', marginBottom: '16px' }}>✅</div>
+            <h2 style={{
+              color: 'white',
+              fontSize: '36px',
+              fontWeight: 'bold',
+              marginBottom: '16px',
+            }}>
               コピー完了！
             </h2>
-            <p className="text-white/90 text-lg mb-6">
+            <p style={{
+              color: 'rgba(255, 255, 255, 0.9)',
+              fontSize: '20px',
+              marginBottom: '24px',
+            }}>
               「{currentGame.title}」のルールをコピーしました！<br/>
               エディターで画像を差し替えて、新しいゲームを作りましょう。
             </p>
-            
-            <div className="space-y-3">
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <button
                 onClick={handleOpenEditor}
-                className="w-full bg-white text-green-700 font-bold text-xl py-4 rounded-2xl hover:bg-gray-100 transition-colors"
+                style={{
+                  width: '100%',
+                  background: 'white',
+                  color: '#059669',
+                  fontWeight: 'bold',
+                  fontSize: '24px',
+                  padding: '16px',
+                  borderRadius: '20px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background 0.3s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
               >
                 🎨 エディターを開く
               </button>
-              
+
               <button
                 onClick={() => setShowSuccessModal(false)}
-                className="w-full bg-white/20 text-white font-bold text-lg py-3 rounded-2xl hover:bg-white/30 transition-colors"
+                style={{
+                  width: '100%',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: '20px',
+                  padding: '12px',
+                  borderRadius: '20px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background 0.3s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
               >
                 後で編集する
               </button>
             </div>
 
-            <p className="text-white/60 text-sm mt-4">
+            <p style={{
+              color: 'rgba(255, 255, 255, 0.6)',
+              fontSize: '14px',
+              marginTop: '16px',
+            }}>
               プロジェクトID: {copiedProjectId}
             </p>
           </div>

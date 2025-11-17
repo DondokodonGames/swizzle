@@ -394,17 +394,45 @@ export class EditorGameBridge {
             }
           });
 
-          // UI描画（スコア・時間）
-          ctx.save();
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-          ctx.fillRect(10, 10, 220, 70);
-          
-          ctx.fillStyle = 'white';
-          ctx.font = 'bold 18px Arial';
-          ctx.textAlign = 'left';
-          ctx.fillText(`Score: ${gameState.score}`, 20, 35);
-          ctx.fillText(`Time: ${gameState.timeElapsed.toFixed(1)}s`, 20, 60);
-          ctx.restore();
+          // UI描画（残り時間プログレスバー）- 問題14対応
+          if (gameDuration) {
+            ctx.save();
+
+            const barHeight = 12;
+            const barY = 20;
+            const barPadding = 20;
+            const barWidth = canvasElement.width - (barPadding * 2);
+
+            // 残り時間の割合を計算
+            const remainingTime = Math.max(0, gameDuration - gameState.timeElapsed);
+            const progress = remainingTime / gameDuration;
+
+            // プログレスバーの背景（暗い背景）
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(barPadding, barY, barWidth, barHeight);
+
+            // プログレスバーの色を残り時間に応じて変更
+            let barColor;
+            if (progress > 0.5) {
+              barColor = '#10b981'; // 緑 (十分時間がある)
+            } else if (progress > 0.25) {
+              barColor = '#f59e0b'; // 黄色 (半分以下)
+            } else {
+              barColor = '#ef4444'; // 赤 (残りわずか)
+            }
+
+            // プログレスバー本体
+            const currentBarWidth = barWidth * progress;
+            ctx.fillStyle = barColor;
+            ctx.fillRect(barPadding, barY, currentBarWidth, barHeight);
+
+            // プログレスバーの枠線
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(barPadding, barY, barWidth, barHeight);
+
+            ctx.restore();
+          }
 
           // ゲーム終了判定（制限時間）
           if (gameDuration && gameState.timeElapsed >= gameDuration) {
