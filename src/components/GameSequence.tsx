@@ -408,19 +408,63 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
         {/* UI オーバーレイ */}
         <div className="absolute inset-0 pointer-events-none">
-          {/* トップバー */}
+          {/* トップバー - 5つのアイコン（問題12対応） */}
           <div className="absolute top-0 left-0 right-0 p-6 pointer-events-auto">
             <div className="bg-black/70 backdrop-blur-sm rounded-2xl px-6 py-4">
-              <div className="flex items-start justify-between">
-                {/* ゲーム情報 */}
-                <div className="flex-1">
-                  <h3 className="text-white font-bold text-2xl mb-1">{currentGame.title}</h3>
-                  <p className="text-gray-300 text-lg">by {currentGame.author.name}</p>
+              <div className="flex items-center justify-between gap-4">
+                {/* 左側: ユーザーアイコン & ユーザー名 または ログイン/新規登録 */}
+                <div className="flex items-center gap-3">
+                  {currentUser && userProfile ? (
+                    <>
+                      <button
+                        onClick={() => {
+                          setProfileUserId(currentUser.id);
+                          setShowProfileModal(true);
+                        }}
+                        className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-xl hover:scale-110 transition-transform relative"
+                        title="マイプロフィール"
+                      >
+                        {userProfile.display_name?.charAt(0).toUpperCase() ||
+                         userProfile.username?.charAt(0).toUpperCase() || '?'}
+                        {/* 通知バルーン */}
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                          3
+                        </div>
+                      </button>
+                      <span className="text-white font-medium text-lg">
+                        {userProfile.display_name || userProfile.username || 'ユーザー'}
+                      </span>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('openAuthModal', {
+                          detail: { mode: 'signin' }
+                        }));
+                      }}
+                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl transition-colors text-lg"
+                    >
+                      ログイン / 新規登録
+                    </button>
+                  )}
                 </div>
 
-                {/* ソーシャル機能アイコン */}
-                <div className="flex items-center gap-3 ml-4">
-                  {/* ソーシャルフィードボタン */}
+                {/* 右側: アイコンボタン群 */}
+                <div className="flex items-center gap-3">
+                  {/* ゲームプレイ（ホームに戻る） */}
+                  <button
+                    onClick={() => {
+                      if (onExit) {
+                        onExit();
+                      }
+                    }}
+                    className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+                    title="ホームに戻る"
+                  >
+                    <span className="text-2xl">🏠</span>
+                  </button>
+
+                  {/* フィード */}
                   <button
                     onClick={() => {
                       if (onOpenFeed) {
@@ -428,86 +472,56 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                       }
                     }}
                     className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
-                    title="ソーシャルフィード"
+                    title="フィード"
                   >
                     <span className="text-2xl">📱</span>
                   </button>
 
-                  {/* ユーザーアイコン / ログインボタン */}
-                  {currentUser && userProfile ? (
-                    <button
-                      onClick={() => {
-                        setProfileUserId(currentUser.id);
-                        setShowProfileModal(true);
-                      }}
-                      className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-xl hover:scale-110 transition-transform relative"
-                      title="マイプロフィール"
-                    >
-                      {userProfile.display_name?.charAt(0).toUpperCase() ||
-                       userProfile.username?.charAt(0).toUpperCase() || '?'}
+                  {/* ゲームを作る */}
+                  <button
+                    onClick={() => {
+                      window.location.href = '/editor';
+                    }}
+                    className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+                    title="ゲームを作る"
+                  >
+                    <span className="text-2xl">🎨</span>
+                  </button>
 
-                      {/* 通知バルーン（仮） */}
-                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                        3
-                      </div>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        // TODO: ログインモーダルを開く
-                        window.dispatchEvent(new CustomEvent('openAuthModal', {
-                          detail: { mode: 'signin' }
-                        }));
-                      }}
-                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl transition-colors"
-                    >
-                      ログイン
-                    </button>
-                  )}
+                  {/* スキップ */}
+                  <button
+                    onClick={handleSkipToBridge}
+                    className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+                    title="スキップ"
+                  >
+                    <span className="text-2xl">⏭️</span>
+                  </button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* ボトムバー - 残り時間バー + スキップボタン（問題14対応） */}
+          {/* ボトムバー - 残り時間バーのみ（問題14対応） */}
           <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-auto">
-            {/* 残り時間バー */}
+            {/* 残り時間バー - 数字なしでバーのみ表示 */}
             {gameDuration && (
-              <div className="bg-black/70 backdrop-blur-sm rounded-2xl px-6 py-4 mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white text-sm font-medium">残り時間</span>
-                  <span className="text-gray-300 text-sm">
-                    {gameDuration ? `${Math.max(0, gameDuration - gameTimeElapsed).toFixed(1)}秒` : '無制限'}
-                  </span>
-                </div>
-                <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-100 ${
-                      gameDuration && (gameDuration - gameTimeElapsed) / gameDuration > 0.5
-                        ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                        : gameDuration && (gameDuration - gameTimeElapsed) / gameDuration > 0.25
-                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500'
-                        : 'bg-gradient-to-r from-red-500 to-pink-500'
-                    }`}
-                    style={{
-                      width: gameDuration
-                        ? `${Math.max(0, Math.min(100, ((gameDuration - gameTimeElapsed) / gameDuration) * 100))}%`
-                        : '100%'
-                    }}
-                  />
-                </div>
+              <div className="w-full h-4 bg-black/70 backdrop-blur-sm rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-100 ${
+                    gameDuration && (gameDuration - gameTimeElapsed) / gameDuration > 0.5
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                      : gameDuration && (gameDuration - gameTimeElapsed) / gameDuration > 0.25
+                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500'
+                      : 'bg-gradient-to-r from-red-500 to-pink-500'
+                  }`}
+                  style={{
+                    width: gameDuration
+                      ? `${Math.max(0, Math.min(100, ((gameDuration - gameTimeElapsed) / gameDuration) * 100))}%`
+                      : '100%'
+                  }}
+                />
               </div>
             )}
-
-            {/* 操作ボタン */}
-            <div className="flex gap-3">
-              <button
-                onClick={handleSkipToBridge}
-                className="flex-1 bg-yellow-600/80 hover:bg-yellow-700 text-white text-lg font-bold py-4 rounded-xl backdrop-blur-sm transition-colors"
-              >
-                ⏭️ スキップ
-              </button>
-            </div>
           </div>
         </div>
 
