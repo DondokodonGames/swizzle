@@ -410,7 +410,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           }}
         />
 
-        {/* トップバー - 5つのアイコン（問題12-b対応） */}
+        {/* トップバー - 6つのアイコン（問題12-b対応） */}
         <div style={{
           position: 'absolute',
           top: 0,
@@ -420,10 +420,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           zIndex: 1000,
           pointerEvents: 'none',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '8px',
-          padding: '0 8px'
+          alignItems: 'stretch'
         }}>
           {/* ログイン/新規登録またはユーザー情報 */}
           <button
@@ -439,26 +436,23 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             }}
             style={{
               pointerEvents: 'auto',
-              width: '50px',
-              height: '50px',
-              borderRadius: '12px',
+              flex: 1,
               border: 'none',
               background: currentUser
                 ? 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)'
                 : 'rgba(59, 130, 246, 0.9)',
               backdropFilter: 'blur(10px)',
               color: 'white',
-              fontSize: '24px',
+              fontSize: '28px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 'bold',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-              transition: 'transform 0.2s',
+              transition: 'opacity 0.2s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             title={currentUser ? 'プロフィール' : 'ログイン'}
           >
             {currentUser && userProfile
@@ -476,23 +470,20 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             }}
             style={{
               pointerEvents: 'auto',
-              width: '50px',
-              height: '50px',
-              borderRadius: '12px',
+              flex: 1,
               border: 'none',
               background: 'rgba(16, 185, 129, 0.9)',
               backdropFilter: 'blur(10px)',
               color: 'white',
-              fontSize: '24px',
+              fontSize: '28px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-              transition: 'transform 0.2s',
+              transition: 'opacity 0.2s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             title="ホーム"
           >
             🎮
@@ -507,23 +498,20 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             }}
             style={{
               pointerEvents: 'auto',
-              width: '50px',
-              height: '50px',
-              borderRadius: '12px',
+              flex: 1,
               border: 'none',
               background: 'rgba(59, 130, 246, 0.9)',
               backdropFilter: 'blur(10px)',
               color: 'white',
-              fontSize: '24px',
+              fontSize: '28px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-              transition: 'transform 0.2s',
+              transition: 'opacity 0.2s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             title="フィード"
           >
             📱
@@ -532,27 +520,24 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           {/* ゲームを作る */}
           <button
             onClick={() => {
-              window.location.href = '/editor';
+              window.dispatchEvent(new CustomEvent('switchToEditor'));
             }}
             style={{
               pointerEvents: 'auto',
-              width: '50px',
-              height: '50px',
-              borderRadius: '12px',
+              flex: 1,
               border: 'none',
               background: 'rgba(236, 72, 153, 0.9)',
               backdropFilter: 'blur(10px)',
               color: 'white',
-              fontSize: '24px',
+              fontSize: '28px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-              transition: 'transform 0.2s',
+              transition: 'opacity 0.2s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             title="ゲームを作る"
           >
             🎨
@@ -565,26 +550,47 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             }}
             style={{
               pointerEvents: 'auto',
-              width: '50px',
-              height: '50px',
-              borderRadius: '12px',
+              flex: 1,
               border: 'none',
               background: 'rgba(139, 92, 246, 0.9)',
               backdropFilter: 'blur(10px)',
               color: 'white',
-              fontSize: '24px',
+              fontSize: '28px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-              transition: 'transform 0.2s',
+              transition: 'opacity 0.2s',
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             title="プレミアム"
           >
             💎
+          </button>
+
+          {/* スキップ */}
+          <button
+            onClick={handleSkipToBridge}
+            style={{
+              pointerEvents: 'auto',
+              flex: 1,
+              border: 'none',
+              background: 'rgba(239, 68, 68, 0.9)',
+              backdropFilter: 'blur(10px)',
+              color: 'white',
+              fontSize: '28px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            title="スキップ"
+          >
+            ⏭️
           </button>
         </div>
 
@@ -592,15 +598,13 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         {gameState === 'playing' && gameDuration !== null && (
           <div style={{
             position: 'absolute',
-            left: '20px',
-            right: '20px',
-            bottom: '20px',
+            left: 0,
+            right: 0,
+            bottom: 0,
             height: '8px',
             backgroundColor: 'rgba(0, 0, 0, 0.3)',
-            borderRadius: '4px',
             overflow: 'hidden',
-            zIndex: 1000,
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+            zIndex: 1000
           }}>
             <div style={{
               height: '100%',
@@ -611,7 +615,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                 if (percent > 20) return '#f59e0b'; // 黄色
                 return '#ef4444'; // 赤
               })(),
-              borderRadius: '4px',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
             }} />
           </div>

@@ -544,6 +544,19 @@ function MainApp() {
     navigate('/pricing');
   };
 
+  // グローバルイベントリスナー
+  useEffect(() => {
+    const handleSwitchToEditorEvent = () => {
+      handleSwitchToEditor();
+    };
+
+    window.addEventListener('switchToEditor', handleSwitchToEditorEvent);
+
+    return () => {
+      window.removeEventListener('switchToEditor', handleSwitchToEditorEvent);
+    };
+  }, []);
+
   // エディターモード時のフルスクリーン表示
   if (mode === 'editor') {
     return (
