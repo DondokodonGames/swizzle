@@ -398,23 +398,41 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         }}
       >
         {/* ゲームキャンバス */}
-        <div 
+        <div
           ref={canvasRef}
           className="w-full h-full"
-          style={{ 
-            position: 'relative',
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
             touchAction: 'none'
           }}
         />
 
-        {/* UI オーバーレイ */}
-        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
-          {/* トップバー - 5つのアイコン（問題12-b対応） */}
-          <div className="absolute top-0 left-0 right-0 p-6 pointer-events-auto" style={{ zIndex: 20 }}>
-            <div className="bg-black/80 backdrop-blur-sm rounded-2xl px-6 py-4">
-              <div className="flex items-center justify-between gap-4">
-                {/* 左側: ユーザーアイコン & ユーザー名 または ログイン/新規登録 */}
-                <div className="flex items-center gap-3">
+        {/* トップバー - 5つのアイコン（問題12-b対応） */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          padding: '24px',
+          zIndex: 1000,
+          pointerEvents: 'auto'
+        }}>
+          <div style={{
+            background: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '24px',
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px'
+          }}>
+            {/* 左側: ユーザーアイコン & ユーザー名 または ログイン/新規登録 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {currentUser && userProfile ? (
                     <>
                       <button
@@ -498,7 +516,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                     <span className="text-2xl">⏭️</span>
                   </button>
                 </div>
-              </div>
             </div>
           </div>
 
