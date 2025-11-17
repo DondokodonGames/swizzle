@@ -408,10 +408,10 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         />
 
         {/* UI オーバーレイ */}
-        <div className="absolute inset-0 pointer-events-none">
-          {/* トップバー - 5つのアイコン（問題12対応） */}
-          <div className="absolute top-0 left-0 right-0 p-6 pointer-events-auto">
-            <div className="bg-black/70 backdrop-blur-sm rounded-2xl px-6 py-4">
+        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
+          {/* トップバー - 5つのアイコン（問題12-b対応） */}
+          <div className="absolute top-0 left-0 right-0 p-6 pointer-events-auto" style={{ zIndex: 20, backgroundColor: 'rgba(255,0,0,0.5)' }}>
+            <div className="bg-black/90 backdrop-blur-sm rounded-2xl px-6 py-4" style={{ border: '2px solid yellow' }}>
               <div className="flex items-center justify-between gap-4">
                 {/* 左側: ユーザーアイコン & ユーザー名 または ログイン/新規登録 */}
                 <div className="flex items-center gap-3">
