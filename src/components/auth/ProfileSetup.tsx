@@ -2,9 +2,10 @@
 // プロフィール設定・編集画面（Phase M: SubscriptionManager統合版）
 // タブ構造: プロフィール / 設定
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { SubscriptionManager } from '../monetization/SubscriptionManager'
+import { storage } from '../../lib/supabase'
 import type { Profile } from '../../lib/database.types'
 
 interface ProfileSetupProps {
@@ -36,6 +37,11 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
   const [usernameChecking, setUsernameChecking] = useState(false)
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
   const [hasChanges, setHasChanges] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 既存プロフィールデータの読み込み
   useEffect(() => {
@@ -56,9 +62,11 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
     if (isOpen) {
       setValidationErrors({})
       clearError()
+      setSuccessMessage(null)
       setActiveTab('profile') // モーダルを開くたびにprofileタブに戻す
     } else {
       setHasChanges(false)
+      setSuccessMessage(null)
     }
   }, [isOpen, clearError])
 
@@ -143,22 +151,48 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
   // フォーム送信処理
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
-    
+
     try {
+      setAvatarUploading(true)
+
       const updates: Partial<Profile> = {
         username: formData.username.trim(),
         display_name: formData.displayName.trim() || formData.username.trim(),
         bio: formData.bio.trim() || null,
         language: formData.language
       }
-      
+
+      // アバター画像をアップロード
+      if (avatarFile && profile?.id) {
+        const avatarUrl = await storage.uploadAvatar(profile.id, avatarFile)
+        updates.avatar_url = avatarUrl
+      } else if (avatarPreview === null && profile?.avatar_url) {
+        // アバターが削除された場合
+        updates.avatar_url = null
+      }
+
       await updateProfile(updates)
       setHasChanges(false)
-      onClose()
+      setAvatarFile(null)
+      setSuccessMessage('プロフィールを保存しました！')
+
+      // 3秒後に成功メッセージを消す
+      setTimeout(() => {
+        setSuccessMessage(null)
+      }, 3000)
+
+      // setup モードの場合は自動的に閉じる
+      if (mode === 'setup') {
+        setTimeout(() => {
+          onClose()
+        }, 1500)
+      }
     } catch (error) {
       console.error('Profile update error:', error)
+    } finally {
+      setAvatarUploading(false)
     }
   }
 
@@ -167,10 +201,53 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
     setHasChanges(true)
-    
+
     // バリデーションエラーをクリア
     if (validationErrors[name]) {
       setValidationErrors(prev => ({ ...prev, [name]: '' }))
+    }
+  }
+
+  // アバター画像選択処理
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // ファイルサイズチェック（5MB以下）
+    if (file.size > 5 * 1024 * 1024) {
+      setValidationErrors(prev => ({ ...prev, avatar: '画像サイズは5MB以下にしてください' }))
+      return
+    }
+
+    // ファイルタイプチェック
+    if (!file.type.startsWith('image/')) {
+      setValidationErrors(prev => ({ ...prev, avatar: '画像ファイルを選択してください' }))
+      return
+    }
+
+    setAvatarFile(file)
+    setHasChanges(true)
+
+    // プレビュー画像を作成
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+
+    // エラーをクリア
+    if (validationErrors.avatar) {
+      setValidationErrors(prev => ({ ...prev, avatar: '' }))
+    }
+  }
+
+  // アバター削除処理
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null)
+    setAvatarPreview(null)
+    setHasChanges(true)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
@@ -274,8 +351,16 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
             </div>
           )}
 
+          {/* 成功メッセージ */}
+          {successMessage && activeTab === 'profile' && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm flex items-center gap-2">
+              <span className="text-lg">✓</span>
+              <span>{successMessage}</span>
+            </div>
+          )}
+
           {/* 変更警告 */}
-          {hasChanges && activeTab === 'profile' && (
+          {hasChanges && activeTab === 'profile' && !successMessage && (
             <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm">
               💡 変更が未保存です。「保存」ボタンを押してください。
             </div>
@@ -286,6 +371,66 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
             <>
               {/* フォーム */}
               <form onSubmit={handleSubmit} className="space-y-5">
+                {/* アバター画像アップロード */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    アバター画像
+                  </label>
+                  <div className="flex items-center gap-4">
+                    {/* アバタープレビュー */}
+                    <div className="relative">
+                      <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center">
+                        {avatarPreview || profile?.avatar_url ? (
+                          <img
+                            src={avatarPreview || profile?.avatar_url || ''}
+                            alt="Avatar"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-white text-3xl font-bold">
+                            {(formData.displayName || formData.username || '?').charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      {(avatarPreview || profile?.avatar_url) && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveAvatar}
+                          className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                          title="削除"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+
+                    {/* アップロードボタン */}
+                    <div className="flex-1">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        className="hidden"
+                        id="avatar-upload"
+                        disabled={loading || avatarUploading}
+                      />
+                      <label
+                        htmlFor="avatar-upload"
+                        className="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg cursor-pointer hover:bg-blue-600 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {avatarUploading ? '⏳ アップロード中...' : '📷 画像を選択'}
+                      </label>
+                      <p className="text-xs text-gray-500 mt-2">
+                        PNG、JPG、GIF（最大5MB）
+                      </p>
+                      {validationErrors.avatar && (
+                        <p className="mt-1 text-sm text-red-600">{validationErrors.avatar}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* ユーザー名 */}
                 <div>
                   <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
@@ -460,10 +605,18 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
                 <div className="mt-6 p-4 bg-gray-50 rounded-xl">
                   <h3 className="text-sm font-medium text-gray-700 mb-2">プレビュー</h3>
                   <div className="flex items-start space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center">
-                      <span className="text-white font-semibold">
-                        {(formData.displayName || formData.username).charAt(0).toUpperCase()}
-                      </span>
+                    <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
+                      {avatarPreview || profile?.avatar_url ? (
+                        <img
+                          src={avatarPreview || profile?.avatar_url || ''}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white font-semibold">
+                          {(formData.displayName || formData.username).charAt(0).toUpperCase()}
+                        </span>
+                      )}
                     </div>
                     <div className="flex-1">
                       <h4 className="font-semibold text-gray-900">

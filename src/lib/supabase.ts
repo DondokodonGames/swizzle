@@ -266,6 +266,59 @@ export const database = {
   }
 }
 
+// ストレージ操作（アバター画像アップロード用）
+export const storage = {
+  uploadAvatar: async (userId: string, file: File): Promise<string> => {
+    try {
+      // ファイル名を生成（拡張子を保持）
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${userId}-${Date.now()}.${fileExt}`
+      const filePath = `avatars/${fileName}`
+
+      // 既存のアバターを削除（オプション）
+      // await supabase.storage.from('avatars').remove([`avatars/${userId}`])
+
+      // ファイルをアップロード
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        })
+
+      if (error) throw new SupabaseError(error.message)
+
+      // 公開URLを取得
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath)
+
+      return urlData.publicUrl
+    } catch (error: any) {
+      throw new SupabaseError(error.message || 'Failed to upload avatar')
+    }
+  },
+
+  deleteAvatar: async (avatarUrl: string): Promise<void> => {
+    try {
+      // URLからファイルパスを抽出
+      const url = new URL(avatarUrl)
+      const path = url.pathname.split('/storage/v1/object/public/avatars/')[1]
+
+      if (path) {
+        const { error } = await supabase.storage
+          .from('avatars')
+          .remove([path])
+
+        if (error) throw new SupabaseError(error.message)
+      }
+    } catch (error: any) {
+      console.error('Delete avatar error:', error)
+      // エラーを無視（ファイルが存在しない場合など）
+    }
+  }
+}
+
 // 接続テスト関数
 export const testConnection = async () => {
   try {

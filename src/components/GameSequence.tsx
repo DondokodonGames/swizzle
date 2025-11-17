@@ -431,15 +431,44 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
               justifyContent: 'center',
               fontWeight: 'bold',
               transition: 'opacity 0.2s',
+              padding: '8px',
             }}
             onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
             onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             title={currentUser ? 'プロフィール' : 'ログイン'}
           >
-            {currentUser && userProfile
-              ? (userProfile.display_name?.charAt(0).toUpperCase() || userProfile.username?.charAt(0).toUpperCase() || '?')
-              : '👤'
-            }
+            {currentUser && userProfile ? (
+              userProfile.avatar_url ? (
+                <img
+                  src={userProfile.avatar_url}
+                  alt="Avatar"
+                  style={{
+                    width: '34px',
+                    height: '34px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '2px solid white'
+                  }}
+                />
+              ) : (
+                <div style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '50%',
+                  background: 'rgba(255, 255, 255, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  border: '2px solid white'
+                }}>
+                  {(userProfile.display_name?.charAt(0).toUpperCase() || userProfile.username?.charAt(0).toUpperCase() || '?')}
+                </div>
+              )
+            ) : (
+              '👤'
+            )}
           </button>
 
           {/* ゲームをプレイ（ホーム） */}

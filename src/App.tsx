@@ -268,11 +268,24 @@ const AuthenticatedUserInfo: React.FC = () => {
             justifyContent: 'center',
             color: 'white',
             fontWeight: 'bold',
-            fontSize: '16px'
+            fontSize: '16px',
+            overflow: 'hidden'
           }}>
-            {auth.profile?.display_name?.charAt(0).toUpperCase() || 
-             auth.profile?.username?.charAt(0).toUpperCase() || 
-             auth.user?.email?.charAt(0).toUpperCase() || '?'}
+            {auth.profile?.avatar_url ? (
+              <img
+                src={auth.profile.avatar_url}
+                alt="Avatar"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+              />
+            ) : (
+              auth.profile?.display_name?.charAt(0).toUpperCase() ||
+              auth.profile?.username?.charAt(0).toUpperCase() ||
+              auth.user?.email?.charAt(0).toUpperCase() || '?'
+            )}
           </div>
 
           <div>
