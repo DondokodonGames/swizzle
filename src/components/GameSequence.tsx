@@ -140,8 +140,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // ==================== ブリッジタイマー ====================
   useEffect(() => {
     if (gameState === 'bridge') {
-      setBridgeTimeLeft(5);
-      
+      setBridgeTimeLeft(20); // 5秒→20秒に変更
+
       // 1秒ごとにカウントダウン
       bridgeTimerRef.current = setInterval(() => {
         setBridgeTimeLeft(prev => {

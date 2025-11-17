@@ -191,7 +191,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   };
 
   // ==================== 進捗バー ====================
-  const progressPercentage = ((5 - timeLeft) / 5) * 100;
+  const progressPercentage = ((20 - timeLeft) / 20) * 100; // 5秒→20秒に変更
 
   // ==================== スタイル定義 ====================
   const containerStyle: React.CSSProperties = inline ? {
@@ -228,8 +228,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
-    padding: '32px',
-    overflowY: 'auto',
+    padding: '20px',
   } : {
     // フルスクリーンモード
     width: '1080px',
@@ -238,8 +237,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     maxHeight: '100vh',
     display: 'flex',
     flexDirection: 'column',
-    padding: '32px',
-    overflowY: 'auto',
+    padding: '20px',
   };
 
   const titleIconStyle: React.CSSProperties = {
@@ -317,479 +315,232 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   return (
     <div style={containerStyle}>
       <div style={mainBoxStyle}>
-        {/* トップ - ゲーム完了 */}
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={titleIconStyle}>
-            {score?.success ? '🎉' : '💫'}
+        {/* a. 成功/失敗の顔アイコン */}
+        <div style={{ textAlign: 'center', padding: '40px 0' }}>
+          <div style={{ fontSize: '120px', marginBottom: '20px' }}>
+            {score?.success ? '😊' : '😢'}
           </div>
-          <h2 style={titleTextStyle}>
-            {score?.success ? 'クリア！' : 'プレイ完了'}
-          </h2>
-          <p style={{
-            color: '#d1d5db',
-            fontSize: '28px',
-            textAlign: 'center',
-            transform: animationStage >= 2 ? 'translateY(0)' : 'translateY(30px)',
-            opacity: animationStage >= 2 ? 1 : 0,
-            transition: 'all 0.5s ease-out 0.1s',
+        </div>
+
+        {/* b. 作成者情報 */}
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.1)',
+          borderRadius: '20px',
+          padding: '20px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px'
+        }}>
+          <div style={{
+            width: '60px',
+            height: '60px',
+            background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: '32px',
+            fontWeight: 'bold',
           }}>
-            {currentGame.title}
+            {currentGame.author.name.charAt(0).toUpperCase()}
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{ color: 'white', fontWeight: 'bold', fontSize: '24px', margin: 0 }}>
+              {currentGame.author.name}
+            </p>
+            <p style={{ color: '#9ca3af', fontSize: '18px', margin: 0 }}>
+              {currentGame.title}
+            </p>
+          </div>
+          <button
+            onClick={handleLike}
+            disabled={isLiking}
+            style={{
+              padding: '12px 20px',
+              borderRadius: '12px',
+              fontWeight: 'bold',
+              fontSize: '24px',
+              border: 'none',
+              cursor: isLiking ? 'not-allowed' : 'pointer',
+              background: isLiked ? '#ef4444' : 'rgba(255, 255, 255, 0.2)',
+              color: 'white',
+              opacity: isLiking ? 0.5 : 1,
+            }}
+          >
+            {isLiked ? '❤️' : '🤍'} {likeCount}
+          </button>
+        </div>
+
+        {/* c. 広告プレースホルダー */}
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.05)',
+          borderRadius: '20px',
+          padding: '60px',
+          marginBottom: '20px',
+          textAlign: 'center',
+          border: '2px dashed rgba(255, 255, 255, 0.2)'
+        }}>
+          <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '20px', margin: 0 }}>
+            📢 広告表示エリア
           </p>
         </div>
 
-        {/* スコア表示（問題12対応：完全グラフィカル） */}
-        {score && (
-          <div style={scoreCardStyle}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '24px',
-            }}>
-              {/* スコア */}
-              <div
-                style={scoreItemStyle}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                <p style={scoreLabelStyle}>スコア</p>
-                <div style={scoreValueBoxStyle('linear-gradient(135deg, #fbbf24 0%, #f97316 100%)')}>
-                  <p style={scoreValueTextStyle}>{score.points}</p>
-                </div>
-              </div>
+        {/* スペーサー（下部のボタンを下に押し下げる） */}
+        <div style={{ flex: 1 }} />
 
-              {/* 時間 */}
-              <div
-                style={scoreItemStyle}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                <p style={scoreLabelStyle}>時間</p>
-                <div style={scoreValueBoxStyle('linear-gradient(135deg, #60a5fa 0%, #06b6d4 100%)')}>
-                  <p style={scoreValueTextStyle}>{score.time.toFixed(1)}s</p>
-                </div>
-              </div>
-
-              {/* 結果 */}
-              <div
-                style={scoreItemStyle}
-                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                <p style={scoreLabelStyle}>結果</p>
-                <div style={scoreValueBoxStyle(
-                  score.success
-                    ? 'linear-gradient(135deg, #4ade80 0%, #10b981 100%)'
-                    : 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)'
-                )}>
-                  <p style={{ fontSize: '48px' }}>{score.success ? '✅' : '❌'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* パクるボタン */}
+        {/* d. 4つのボタン（横幅いっぱい） */}
         <div style={{
-          background: 'linear-gradient(90deg, #059669 0%, #10b981 100%)',
-          borderRadius: '32px',
-          padding: '24px',
-          marginBottom: '16px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+          display: 'flex',
+          gap: 0,
+          marginBottom: '20px'
         }}>
+          {/* パクる */}
           <button
             onClick={handleCopyGame}
             disabled={isCopying}
             style={{
-              ...buttonStyle('rgba(255, 255, 255, 0.2)'),
-              opacity: isCopying ? 0.5 : 1,
+              flex: 1,
+              padding: '20px 0',
+              border: 'none',
+              background: 'rgba(16, 185, 129, 0.9)',
+              color: 'white',
+              fontSize: '24px',
               cursor: isCopying ? 'not-allowed' : 'pointer',
+              opacity: isCopying ? 0.5 : 1,
+              transition: 'opacity 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px'
             }}
-            onMouseEnter={(e) => !isCopying && (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)')}
-            onMouseLeave={(e) => !isCopying && (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
+            onMouseEnter={(e) => !isCopying && (e.currentTarget.style.opacity = '0.8')}
+            onMouseLeave={(e) => !isCopying && (e.currentTarget.style.opacity = '1')}
           >
-            {isCopying ? '⏳ コピー中...' : '📋 このゲームをパクる'}
+            <div style={{ fontSize: '32px' }}>📋</div>
+            <div style={{ fontSize: '16px' }}>パクる</div>
           </button>
-          <p style={{
-            color: 'rgba(255, 255, 255, 0.8)',
-            fontSize: '16px',
-            textAlign: 'center',
-            marginTop: '12px',
-          }}>
-            ルールをコピーして、画像を差し替えるだけで新しいゲームが作れます！
-          </p>
-        </div>
 
-        {/* ソーシャル機能 */}
-        <div style={{
-          background: 'rgba(0, 0, 0, 0.5)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '32px',
-          padding: '24px',
-          marginBottom: '24px',
-        }}>
-          {/* 作者情報といいね */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '16px',
-          }}>
-            {/* 作者情報 */}
-            <button
-              onClick={handleGoToProfile}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '12px',
-                borderRadius: '20px',
-                transition: 'background 0.3s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              <div style={{
-                width: '48px',
-                height: '48px',
-                background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontSize: '24px',
-                fontWeight: 'bold',
-              }}>
-                {currentGame.author.name.charAt(0).toUpperCase()}
-              </div>
-              <div style={{ textAlign: 'left' }}>
-                <p style={{ color: 'white', fontWeight: 'bold', fontSize: '20px', margin: 0 }}>
-                  {currentGame.author.name}
-                </p>
-                <p style={{ color: '#9ca3af', fontSize: '16px', margin: 0 }}>
-                  作成者プロフィールへ →
-                </p>
-              </div>
-            </button>
-
-            {/* いいねボタン */}
-            <button
-              onClick={handleLike}
-              disabled={isLiking}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 24px',
-                borderRadius: '20px',
-                fontWeight: 'bold',
-                fontSize: '20px',
-                border: 'none',
-                cursor: isLiking ? 'not-allowed' : 'pointer',
-                background: isLiked ? '#ef4444' : 'rgba(255, 255, 255, 0.1)',
-                color: 'white',
-                opacity: isLiking ? 0.5 : 1,
-                transition: 'all 0.3s ease',
-              }}
-              onMouseEnter={(e) => !isLiking && (e.currentTarget.style.background = isLiked ? '#dc2626' : 'rgba(255, 255, 255, 0.2)')}
-              onMouseLeave={(e) => !isLiking && (e.currentTarget.style.background = isLiked ? '#ef4444' : 'rgba(255, 255, 255, 0.1)')}
-            >
-              <span style={{ fontSize: '28px' }}>{isLiked ? '❤️' : '🤍'}</span>
-              <span>{likeCount}</span>
-            </button>
-          </div>
-
-          {/* 感情リアクションボタン */}
-          <div style={{ marginBottom: '16px' }}>
-            <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '16px', marginBottom: '8px' }}>
-              このゲームはどうでしたか？
-            </p>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(5, 1fr)',
-              gap: '8px',
-            }}>
-              {[
-                { emoji: '😆', label: '楽しい' },
-                { emoji: '😮', label: '驚き' },
-                { emoji: '🤔', label: '考えさせられる' },
-                { emoji: '😭', label: '感動' },
-                { emoji: '😎', label: 'カッコイイ' }
-              ].map((reaction) => (
-                <button
-                  key={reaction.emoji}
-                  onClick={() => setSelectedReaction(reaction.emoji)}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '12px',
-                    borderRadius: '12px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: selectedReaction === reaction.emoji ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.1)',
-                    transform: selectedReaction === reaction.emoji ? 'scale(1.1)' : 'scale(1)',
-                    transition: 'all 0.3s ease',
-                  }}
-                  onMouseEnter={(e) => selectedReaction !== reaction.emoji && (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
-                  onMouseLeave={(e) => selectedReaction !== reaction.emoji && (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
-                  title={reaction.label}
-                >
-                  <span style={{ fontSize: '36px', marginBottom: '4px' }}>{reaction.emoji}</span>
-                  <span style={{ color: 'white', fontSize: '14px' }}>{reaction.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* フィードへのリンク */}
+          {/* 次へ（サムネ表示） */}
           <button
-            onClick={handleGoToFeed}
+            onClick={onNextGame}
             style={{
-              ...buttonStyle('linear-gradient(90deg, #9333ea 0%, #ec4899 100%)'),
+              flex: 1,
+              padding: '20px 0',
+              border: 'none',
+              background: 'rgba(59, 130, 246, 0.9)',
+              color: 'white',
+              fontSize: '24px',
+              cursor: 'pointer',
+              transition: 'opacity 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
-            📱 フィードで他のゲームを見る
+            {nextGame.thumbnail ? (
+              <img
+                src={nextGame.thumbnail}
+                alt={nextGame.title}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  objectFit: 'cover'
+                }}
+              />
+            ) : (
+              <div style={{ fontSize: '32px' }}>🎮</div>
+            )}
+            <div style={{ fontSize: '16px' }}>次へ</div>
           </button>
-        </div>
 
-        {/* 広告表示スペース */}
-        <div style={{
-          background: 'linear-gradient(90deg, rgba(234, 179, 8, 0.2) 0%, rgba(249, 115, 22, 0.2) 100%)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '32px',
-          padding: '24px',
-          marginBottom: '24px',
-          border: '2px solid rgba(234, 179, 8, 0.5)',
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ color: '#fef08a', fontSize: '16px', fontWeight: '500', marginBottom: '8px' }}>
-              スポンサー広告
-            </p>
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: '20px',
-              padding: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '120px',
-            }}>
-              <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '20px' }}>広告スペース</p>
-            </div>
-            <p style={{ color: 'rgba(255, 255, 255, 0.4)', fontSize: '14px', marginTop: '8px' }}>
-              広告を見て開発者を応援しよう！
-            </p>
-          </div>
-        </div>
-
-        {/* 次のゲームプレビュー */}
-        <div style={{
-          background: 'rgba(0, 0, 0, 0.5)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '32px',
-          padding: '24px',
-          marginBottom: '24px',
-          flex: 1,
-        }}>
-          <h3 style={{ color: 'white', fontSize: '28px', fontWeight: 'bold', marginBottom: '16px' }}>
-            次のゲーム
-          </h3>
-          <div style={{
-            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%)',
-            borderRadius: '20px',
-            padding: '16px',
-          }}>
-            <div style={{
-              aspectRatio: '16/9',
-              background: '#1f2937',
-              borderRadius: '12px',
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-            }}>
-              {nextGame.thumbnail ? (
-                <img
-                  src={nextGame.thumbnail}
-                  alt={nextGame.title}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    borderRadius: '12px',
-                  }}
-                />
-              ) : (
-                <span style={{ fontSize: '72px' }}>🎮</span>
-              )}
-            </div>
-            <h4 style={{ color: 'white', fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
-              {nextGame.title}
-            </h4>
-            <p style={{ color: '#d1d5db', fontSize: '16px', marginBottom: '12px' }}>
-              {nextGame.description}
-            </p>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              color: '#9ca3af',
-              fontSize: '16px',
-            }}>
-              <span>by {nextGame.author.name}</span>
-              <span>❤️ {nextGame.stats.likes}</span>
-              <span>👁️ {nextGame.stats.views}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 残り時間バー */}
-        <div style={{
-          background: 'rgba(0, 0, 0, 0.5)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '32px',
-          padding: '16px 24px',
-          marginBottom: '24px',
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '8px',
-          }}>
-            <span style={{ color: 'white', fontSize: '20px', fontWeight: '500' }}>
-              {timeLeft}秒後に次のゲームへ
-            </span>
-            <span style={{ color: '#d1d5db', fontSize: '16px' }}>
-              {currentIndex + 1} / {totalGames}
-            </span>
-          </div>
-          <div style={{
-            width: '100%',
-            height: '12px',
-            background: '#374151',
-            borderRadius: '999px',
-            overflow: 'hidden',
-          }}>
-            <div
-              style={{
-                height: '100%',
-                background: 'linear-gradient(90deg, #10b981 0%, #3b82f6 100%)',
-                transition: 'width 1s linear',
-                width: `${progressPercentage}%`,
-              }}
-            />
-          </div>
-        </div>
-
-        {/* 操作ボタン */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '16px',
-          marginBottom: '16px',
-        }}>
+          {/* もう一度 */}
           <button
             onClick={onReplayGame}
-            style={buttonStyle('rgba(37, 99, 235, 0.8)')}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#1d4ed8';
-              e.currentTarget.style.transform = 'translateY(-2px)';
+            style={{
+              flex: 1,
+              padding: '20px 0',
+              border: 'none',
+              background: 'rgba(236, 72, 153, 0.9)',
+              color: 'white',
+              fontSize: '24px',
+              cursor: 'pointer',
+              transition: 'opacity 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px'
             }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(37, 99, 235, 0.8)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
-            🔄 もう一度
+            <div style={{ fontSize: '32px' }}>🔄</div>
+            <div style={{ fontSize: '16px' }}>もう一度</div>
           </button>
+
+          {/* スキップ */}
           <button
             onClick={onNextGame}
-            style={buttonStyle('rgba(22, 163, 74, 0.8)')}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#15803d';
-              e.currentTarget.style.transform = 'translateY(-2px)';
+            style={{
+              flex: 1,
+              padding: '20px 0',
+              border: 'none',
+              background: 'rgba(239, 68, 68, 0.9)',
+              color: 'white',
+              fontSize: '24px',
+              cursor: 'pointer',
+              transition: 'opacity 0.2s',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px'
             }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(22, 163, 74, 0.8)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
-            次へ ⏭️
+            <div style={{ fontSize: '32px' }}>⏭️</div>
+            <div style={{ fontSize: '16px' }}>スキップ</div>
           </button>
         </div>
 
-        {/* 下部ボタン */}
+        {/* e. 下端に残り時間バー */}
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '16px',
+          height: '12px',
+          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+          borderRadius: '6px',
+          overflow: 'hidden',
+          marginBottom: '10px'
         }}>
-          <button
-            onClick={onPreviousGame}
-            disabled={totalGames <= 1}
-            style={{
-              ...buttonStyle(totalGames <= 1 ? 'rgba(31, 41, 55, 0.5)' : 'rgba(55, 65, 81, 0.8)'),
-              cursor: totalGames <= 1 ? 'not-allowed' : 'pointer',
-              fontSize: '20px',
-              padding: '16px',
-            }}
-            onMouseEnter={(e) => totalGames > 1 && (e.currentTarget.style.background = '#374151')}
-            onMouseLeave={(e) => totalGames > 1 && (e.currentTarget.style.background = 'rgba(55, 65, 81, 0.8)')}
-          >
-            ⏮️ 前へ
-          </button>
-          <button
-            onClick={onNextGame}
-            style={{
-              ...buttonStyle('rgba(147, 51, 234, 0.8)'),
-              fontSize: '20px',
-              padding: '16px',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#7c3aed';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(147, 51, 234, 0.8)';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            ⏭️ スキップ
-          </button>
-          {onExit && (
-            <button
-              onClick={onExit}
-              style={{
-                ...buttonStyle('rgba(239, 68, 68, 0.8)'),
-                fontSize: '20px',
-                padding: '16px',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#dc2626';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.8)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              Exit
-            </button>
-          )}
+          <div style={{
+            height: '100%',
+            width: `${progressPercentage}%`,
+            backgroundColor: (() => {
+              const remaining = 100 - progressPercentage;
+              if (remaining > 50) return '#10b981'; // 緑
+              if (remaining > 20) return '#f59e0b'; // 黄色
+              return '#ef4444'; // 赤
+            })(),
+            transition: 'all 0.3s ease',
+            borderRadius: '6px'
+          }} />
+        </div>
+
+        <div style={{ textAlign: 'center', color: 'rgba(255, 255, 255, 0.7)', fontSize: '18px' }}>
+          次のゲームまで: {timeLeft}秒
         </div>
       </div>
 
-      {/* 成功モーダル */}
-      {showSuccessModal && (
+      {/* パクる成功モーダル */}
+      {showSuccessModal && copiedProjectId && (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -800,37 +551,30 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 60,
+          zIndex: 100,
         }}>
           <div style={{
             background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
             borderRadius: '32px',
-            padding: '32px',
-            maxWidth: '500px',
-            margin: '16px',
+            padding: '48px',
+            maxWidth: '600px',
             textAlign: 'center',
           }}>
-            <div style={{ fontSize: '72px', marginBottom: '16px' }}>✅</div>
-            <h2 style={{
-              color: 'white',
-              fontSize: '36px',
-              fontWeight: 'bold',
-              marginBottom: '16px',
-            }}>
-              コピー完了！
+            <div style={{ fontSize: '96px', marginBottom: '24px' }}>🎉</div>
+            <h2 style={{ color: 'white', fontSize: '48px', fontWeight: 'bold', marginBottom: '16px' }}>
+              パクリ完了！
             </h2>
-            <p style={{
-              color: 'rgba(255, 255, 255, 0.9)',
-              fontSize: '20px',
-              marginBottom: '24px',
-            }}>
-              「{currentGame.title}」のルールをコピーしました！<br/>
-              エディターで画像を差し替えて、新しいゲームを作りましょう。
+            <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '24px', marginBottom: '32px' }}>
+              ゲームのルールをコピーしました。<br />
+              エディターで画像を差し替えて、自分だけのゲームを作りましょう！
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <button
-                onClick={handleOpenEditor}
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('switchToEditor'));
+                  setShowSuccessModal(false);
+                }}
                 style={{
                   width: '100%',
                   background: 'white',
@@ -841,10 +585,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   borderRadius: '20px',
                   border: 'none',
                   cursor: 'pointer',
-                  transition: 'background 0.3s ease',
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
               >
                 🎨 エディターを開く
               </button>
@@ -861,25 +602,16 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   borderRadius: '20px',
                   border: 'none',
                   cursor: 'pointer',
-                  transition: 'background 0.3s ease',
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
               >
                 後で編集する
               </button>
             </div>
-
-            <p style={{
-              color: 'rgba(255, 255, 255, 0.6)',
-              fontSize: '14px',
-              marginTop: '16px',
-            }}>
-              プロジェクトID: {copiedProjectId}
-            </p>
           </div>
         </div>
       )}
     </div>
   );
-};
+}
+
+export default BridgeScreen;
