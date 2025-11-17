@@ -577,6 +577,16 @@ function MainApp() {
     );
   }
 
+  // シーケンスモード時のフルスクリーン表示（問題12対応）
+  if (mode === 'sequence') {
+    return (
+      <GameSequence
+        onExit={handleExitSequence}
+        onOpenFeed={handleSwitchToFeed}
+      />
+    );
+  }
+
   // フィードモード時のフルスクリーン表示
   if (mode === 'feed') {
     return (
@@ -671,7 +681,7 @@ function MainApp() {
 
       {ENABLE_AUTH && <AuthenticatedUserInfo />}
 
-      <main style={{ 
+      <main style={{
         backgroundColor: 'white',
         borderRadius: '20px',
         padding: '20px',
@@ -680,12 +690,7 @@ function MainApp() {
         width: '100%',
         position: 'relative'
       }}>
-        {mode === 'sequence' && (
-          <GameSequence
-            onExit={handleExitSequence}
-            onOpenFeed={handleSwitchToFeed}
-          />
-        )}
+        {/* sequenceモードはフルスクリーンで別途表示されるため、ここでは表示しない */}
         {mode === 'test' && (
           <div style={{ textAlign: 'center', padding: '40px' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
