@@ -43,6 +43,9 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
+  const [gameStartTime, setGameStartTime] = useState<number | null>(null);
+  const [gameTimeElapsed, setGameTimeElapsed] = useState(0);
+  const [gameDuration, setGameDuration] = useState<number | null>(null);
 
   // ==================== サービス ====================
   const socialService = useMemo(() => SocialService.getInstance(), []);
@@ -159,6 +162,18 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     }
   }, [gameState]);
 
+  // ==================== ゲーム時間トラッキング ====================
+  useEffect(() => {
+    if (gameStartTime && gameState === 'playing') {
+      const timer = setInterval(() => {
+        const elapsed = (Date.now() - gameStartTime) / 1000;
+        setGameTimeElapsed(elapsed);
+      }, 100); // 100msごとに更新
+
+      return () => clearInterval(timer);
+    }
+  }, [gameStartTime, gameState]);
+
   // ==================== ゲーム実行 ====================
   useEffect(() => {
     if (!canvasRef.current || publicGames.length === 0 || gameState !== 'playing') {
@@ -182,13 +197,26 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
       console.log(`🎮 ゲーム起動: "${currentGame.title}" (${currentGame.id})`);
 
+      // ゲーム時間トラッキング開始
+      setGameStartTime(Date.now());
+      setGameTimeElapsed(0);
+
+      // ゲーム制限時間を取得
+      const duration = currentGame.projectData.settings?.duration?.type === 'unlimited'
+        ? null
+        : (currentGame.projectData.settings?.duration?.seconds || 15);
+      setGameDuration(duration);
+
       try {
         await bridge.launchFullGame(
           currentGame.projectData,
           canvasRef.current!,
           (result: any) => {
             console.log(`🏁 ゲーム終了: "${currentGame.title}"`, result);
-            
+
+            // ゲーム時間トラッキング停止
+            setGameStartTime(null);
+
             // スコア記録
             setCurrentScore({
               points: result.score || 0,
@@ -197,7 +225,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             });
 
             currentGameRef.current = null;
-            
+
             // ブリッジ画面へ遷移
             setGameState('bridge');
           }
@@ -441,8 +469,36 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             </div>
           </div>
 
-          {/* ボトムバー - スキップボタンのみ（問題13対応：スコア表示を非表示） */}
+          {/* ボトムバー - 残り時間バー + スキップボタン（問題14対応） */}
           <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-auto">
+            {/* 残り時間バー */}
+            {gameDuration && (
+              <div className="bg-black/70 backdrop-blur-sm rounded-2xl px-6 py-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white text-sm font-medium">残り時間</span>
+                  <span className="text-gray-300 text-sm">
+                    {gameDuration ? `${Math.max(0, gameDuration - gameTimeElapsed).toFixed(1)}秒` : '無制限'}
+                  </span>
+                </div>
+                <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-100 ${
+                      gameDuration && (gameDuration - gameTimeElapsed) / gameDuration > 0.5
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                        : gameDuration && (gameDuration - gameTimeElapsed) / gameDuration > 0.25
+                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500'
+                        : 'bg-gradient-to-r from-red-500 to-pink-500'
+                    }`}
+                    style={{
+                      width: gameDuration
+                        ? `${Math.max(0, Math.min(100, ((gameDuration - gameTimeElapsed) / gameDuration) * 100))}%`
+                        : '100%'
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* 操作ボタン */}
             <div className="flex gap-3">
               <button
