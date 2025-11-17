@@ -194,8 +194,8 @@
             "conditions": [
               {
                 "type": "time",
-                "timeType": "exact",
-                "seconds": 0
+                "timeType": "interval",
+                "interval": 0.5
               }
             ]
           },
@@ -206,7 +206,7 @@
               "movement": {
                 "type": "wander",
                 "wanderRadius": 0.3,
-                "speed": 100,
+                "speed": 2,
                 "duration": 5,
                 "easing": "linear",
                 "repeat": {
