@@ -122,16 +122,36 @@ export class ProjectStorageManager {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(this.settings));
   }
 
-  // プロジェクト一覧取得
-  public async listProjects(): Promise<ProjectMetadata[]> {
+  // 🔧 修正: ユーザーのプロジェクト一覧取得（Supabaseから）
+  public async listProjects(userId?: string): Promise<ProjectMetadata[]> {
     try {
+      // ユーザーIDが指定されている場合、Supabaseから取得
+      if (userId) {
+        const userGames = await database.userGames.getUserGames(userId);
+
+        return userGames.map((game): ProjectMetadata => {
+          // project_dataからGameProjectを復元
+          const projectData = game.project_data as any as GameProject;
+
+          return {
+            id: game.id,
+            name: game.title,
+            lastModified: game.updated_at,
+            status: game.is_published ? 'published' : 'draft',
+            size: projectData?.totalSize || 0,
+            version: projectData?.version || '1.0.0'
+          };
+        }).sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime());
+      }
+
+      // ユーザーIDがない場合、ローカルストレージから取得
       // IndexedDBが利用可能な場合
       if (this.dbPromise) {
         const db = await this.dbPromise;
         const transaction = db.transaction(['projects'], 'readonly');
         const store = transaction.objectStore('projects');
         const request = store.getAll();
-        
+
         return new Promise((resolve, reject) => {
           request.onsuccess = () => {
             const projects = request.result.map((project: GameProject): ProjectMetadata => ({
@@ -142,7 +162,7 @@ export class ProjectStorageManager {
               size: project.totalSize || 0,
               version: project.version
             }));
-            
+
             // 最終更新日でソート
             projects.sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime());
             resolve(projects);
@@ -154,7 +174,7 @@ export class ProjectStorageManager {
       // localStorageフォールバック
       const stored = localStorage.getItem(STORAGE_KEYS.PROJECTS);
       const projects: GameProject[] = stored ? JSON.parse(stored) : [];
-      
+
       return projects.map((project): ProjectMetadata => ({
         id: project.id,
         name: project.name,
@@ -290,16 +310,31 @@ export class ProjectStorageManager {
     localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
   }
 
-  // プロジェクト読み込み
-  public async loadProject(id: string): Promise<GameProject | null> {
+  // 🔧 修正: プロジェクト読み込み（Supabase対応）
+  public async loadProject(id: string, userId?: string): Promise<GameProject | null> {
     try {
+      // ユーザーIDが指定されている場合、まずSupabaseから取得を試みる
+      if (userId) {
+        try {
+          const userGames = await database.userGames.getUserGames(userId);
+          const game = userGames.find(g => g.id === id);
+
+          if (game && game.project_data) {
+            const projectData = game.project_data as any as GameProject;
+            return projectData;
+          }
+        } catch (err) {
+          console.warn('Failed to load from Supabase, trying local storage:', err);
+        }
+      }
+
       // IndexedDBが利用可能な場合
       if (this.dbPromise) {
         const db = await this.dbPromise;
         const transaction = db.transaction(['projects'], 'readonly');
         const store = transaction.objectStore('projects');
         const request = store.get(id);
-        
+
         return new Promise((resolve, reject) => {
           request.onsuccess = () => resolve(request.result || null);
           request.onerror = () => reject(request.error);

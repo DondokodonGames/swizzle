@@ -6,7 +6,8 @@ import { ProjectAssets } from '../../types/editor/ProjectAssets';
 import { GameScript, createDefaultInitialState } from '../../types/editor/GameScript';
 import { GameSettings } from '../../types/editor/GameSettings';
 import { EDITOR_LIMITS } from '../../constants/EditorLimits';
-import { ProjectStorage } from '../../services/editor/ProjectStorage';
+import { ProjectStorageManager } from '../../services/ProjectStorageManager';
+import { auth } from '../../lib/supabase';
 
 interface UseGameProjectReturn {
   currentProject: GameProject | null;
@@ -228,9 +229,9 @@ export const useGameProject = (): UseGameProjectReturn => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  
-  // ✨ ProjectStorage統合
-  const storage = ProjectStorage.getInstance();
+
+  // ✨ ProjectStorageManager統合
+  const storage = ProjectStorageManager.getInstance();
 
   // エラーハンドリングヘルパー（改善版）
   const handleError = useCallback((operation: string, err: any) => {
@@ -255,23 +256,26 @@ export const useGameProject = (): UseGameProjectReturn => {
     return () => clearTimeout(autoSaveTimer);
   }, [currentProject, hasUnsavedChanges]);
 
-  // プロジェクト一覧取得（✨ ProjectStorage使用）
+  // 🔧 修正: プロジェクト一覧取得（Supabaseから現在のユーザーのプロジェクトのみ）
   const listProjects = useCallback(async (): Promise<GameProject[]> => {
     try {
       setLoading(true);
       setError(null);
-      
-      // ProjectStorageから一覧取得
-      const metadata = await storage.listProjects();
+
+      // 現在のユーザーを取得
+      const user = await auth.getCurrentUser();
+
+      // ProjectStorageManagerから一覧取得（ユーザーIDを渡す）
+      const metadata = await storage.listProjects(user?.id);
       const projects: GameProject[] = [];
-      
+
       for (const meta of metadata) {
-        const project = await storage.loadProject(meta.id);
+        const project = await storage.loadProject(meta.id, user?.id);
         if (project) {
           projects.push(project);
         }
       }
-      
+
       return projects;
     } catch (err: any) {
       handleError('プロジェクト一覧取得', err);
@@ -281,7 +285,7 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [storage, handleError]);
 
-  // プロジェクト作成（✨ ProjectStorage使用）
+  // 🔧 修正: プロジェクト作成（Supabaseに自動保存）
   const createProject = useCallback(async (name: string, template?: string): Promise<GameProject> => {
     try {
       setLoading(true);
@@ -296,15 +300,21 @@ export const useGameProject = (): UseGameProjectReturn => {
       }
 
       const newProject = createDefaultProject(name);
-      
+
       // TODO: テンプレート適用処理
       if (template) {
         console.log('Template application for:', template);
       }
 
-      // ProjectStorageに保存
-      await storage.saveProject(newProject);
-      
+      // 現在のユーザーを取得
+      const user = await auth.getCurrentUser();
+
+      // ProjectStorageManagerに保存（Supabaseに自動保存）
+      await storage.saveProject(newProject, {
+        saveToDatabase: !!user,
+        userId: user?.id
+      });
+
       // 現在のプロジェクトとして設定
       setCurrentProject(newProject);
       setHasUnsavedChanges(false);
@@ -318,13 +328,16 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [storage, handleError]);
 
-  // プロジェクト読み込み（✨ ProjectStorage使用）
+  // 🔧 修正: プロジェクト読み込み（Supabaseから）
   const loadProject = useCallback(async (id: string): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
 
-      const project = await storage.loadProject(id);
+      // 現在のユーザーを取得
+      const user = await auth.getCurrentUser();
+
+      const project = await storage.loadProject(id, user?.id);
 
       if (!project) {
         throw new Error('プロジェクトが見つかりません');
@@ -339,7 +352,7 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [storage, handleError]);
 
-  // プロジェクト保存（✨ ProjectStorage使用）
+  // 🔧 修正: プロジェクト保存（Supabaseに自動保存）
   const saveProject = useCallback(async (project?: GameProject): Promise<void> => {
     try {
       setLoading(true);
@@ -374,9 +387,15 @@ export const useGameProject = (): UseGameProjectReturn => {
         }
       };
 
-      // ProjectStorageに保存
-      await storage.saveProject(updatedProject);
-      
+      // 現在のユーザーを取得
+      const user = await auth.getCurrentUser();
+
+      // ProjectStorageManagerに保存（Supabaseに自動保存）
+      await storage.saveProject(updatedProject, {
+        saveToDatabase: !!user,
+        userId: user?.id
+      });
+
       setCurrentProject(updatedProject);
       setHasUnsavedChanges(false);
     } catch (err: any) {

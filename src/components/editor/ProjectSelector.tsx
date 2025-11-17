@@ -1,5 +1,5 @@
 // src/components/editor/ProjectSelector.tsx
-// 修正版: フォントファミリー型修正 + インポート機能修正 + audio プロパティ安全アクセス対応
+// 修正版: フォントファミリー型修正 + インポート機能修正 + audio プロパティ安全アクセス対応 + Paywall統合
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../../constants/EditorLimits';
@@ -7,6 +7,8 @@ import { useGameProject } from '../../hooks/editor/useGameProject';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 import { ModernButton } from '../ui/ModernButton';
 import { ModernCard, ProjectCard } from '../ui/ModernCard';
+import { useCredits } from '../../hooks/monetization/useCredits';
+import { PaywallModal } from '../monetization/PaywallModal';
 
 interface ProjectSelectorProps {
   onProjectSelect: (project: GameProject) => void;
@@ -33,6 +35,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     type: 'success' | 'error' | 'info';
     message: string;
   } | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // インポート機能用のref
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,8 +49,11 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     duplicateProject,
     exportProject,
     listProjects,
-    importProject  // ← 追加 
+    importProject  // ← 追加
   } = useGameProject();
+
+  // 🔧 追加: Paywall機能統合
+  const { usage, canCreateGame: canCreate, refetch: refetchCredits } = useCredits();
 
   // 通知表示ヘルパー
   const showNotification = useCallback((type: 'success' | 'error' | 'info', message: string) => {
@@ -94,9 +100,16 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     return filtered;
   }, [projects, searchQuery, sortBy]);
 
-  // 新規プロジェクト作成
+  // 🔧 修正: 新規プロジェクト作成（Paywallチェック追加）
   const handleCreateNew = useCallback(async () => {
     if (!newProjectName.trim()) return;
+
+    // 🔧 追加: ゲーム作成可能かチェック
+    if (!canCreate) {
+      setShowNewProjectModal(false);
+      setShowPaywall(true);
+      return;
+    }
 
     try {
       const newProject = await createProject(newProjectName.trim());
@@ -105,10 +118,13 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       setShowNewProjectModal(false);
       setNewProjectName('');
       showNotification('success', `「${newProject.name}」を作成しました`);
+
+      // クレジット情報を更新
+      await refetchCredits();
     } catch (error: any) {
       showNotification('error', `プロジェクト作成に失敗しました: ${error.message}`);
     }
-  }, [createProject, newProjectName, onCreateNew, showNotification]);
+  }, [createProject, newProjectName, onCreateNew, showNotification, canCreate, refetchCredits]);
 
   // プロジェクト削除
   const handleDeleteProject = useCallback(async (projectId: string) => {
@@ -878,7 +894,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       </div>
 
       {/* 開発者情報 */}
-      <div 
+      <div
         style={{
           position: 'fixed',
           bottom: DESIGN_TOKENS.spacing[2],
@@ -890,6 +906,13 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
         <div>Game Editor v1.0.0 - Phase 1-B モダンUI版</div>
         <div>💡 Ctrl+Q: メイン画面に戻る</div>
       </div>
+
+      {/* 🔧 追加: Paywallモーダル */}
+      <PaywallModal
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        currentUsage={usage || undefined}
+      />
     </div>
   );
 };
