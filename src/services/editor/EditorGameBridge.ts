@@ -166,22 +166,30 @@ export class EditorGameBridge {
         }
       }
 
-      // オブジェクト画像読み込み
+      // オブジェクト画像読み込み（全フレーム対応）
       if (project.assets?.objects) {
         for (const asset of project.assets.objects) {
-          const frame = asset.frames?.[0];
-          if (!frame?.dataUrl) {
+          if (!asset.frames || asset.frames.length === 0) {
             warnings.push(`オブジェクト "${asset.name}" の画像データがありません`);
             continue;
           }
-          
-          try {
-            const img = new Image();
-            await this.loadImage(img, frame.dataUrl, 2000);
-            imageCache.set(asset.id, img);
-            console.log(`✅ オブジェクト画像読み込み完了: ${asset.name}`);
-          } catch (error) {
-            warnings.push(`オブジェクト画像 "${asset.name}" の読み込みに失敗しました`);
+
+          // 全フレームを読み込み
+          for (let frameIndex = 0; frameIndex < asset.frames.length; frameIndex++) {
+            const frame = asset.frames[frameIndex];
+            if (!frame?.dataUrl) {
+              warnings.push(`オブジェクト "${asset.name}" のフレーム${frameIndex}の画像データがありません`);
+              continue;
+            }
+
+            try {
+              const img = new Image();
+              await this.loadImage(img, frame.dataUrl, 2000);
+              imageCache.set(`${asset.id}_frame${frameIndex}`, img);
+              console.log(`✅ オブジェクト画像読み込み完了: ${asset.name} (frame ${frameIndex})`);
+            } catch (error) {
+              warnings.push(`オブジェクト画像 "${asset.name}" フレーム${frameIndex}の読み込みに失敗しました`);
+            }
           }
         }
       }
@@ -207,13 +215,15 @@ export class EditorGameBridge {
             height: frame?.height || 50,
             visible: initialObj?.visible !== false,
             animationIndex: 0,
-            animationPlaying: false,
+            animationPlaying: initialObj?.autoStart || false,
+            animationSpeed: initialObj?.animationSpeed || 12,
             scale: asset.defaultScale || 1.0,
             rotation: 0,
             vx: 0,  // ✅ 0に初期化（ルールで制御）
             vy: 0,  // ✅ 0に初期化（ルールで制御）
             frameCount: asset.frames?.length || 1,
-            currentFrame: 0
+            currentFrame: 0,
+            lastFrameUpdate: performance.now()
           });
         });
       }
@@ -337,6 +347,15 @@ export class EditorGameBridge {
           objectsMap.forEach((obj, id) => {
             if (!obj.visible) return;
 
+            // ✅ アニメーションフレーム更新
+            if (obj.animationPlaying && obj.frameCount > 1) {
+              const frameInterval = 1000 / (obj.animationSpeed || 12); // fps to ms
+              if (currentTime - obj.lastFrameUpdate >= frameInterval) {
+                obj.currentFrame = (obj.currentFrame + 1) % obj.frameCount;
+                obj.lastFrameUpdate = currentTime;
+              }
+            }
+
             // ✅ RuleEngineによる移動を適用（vx/vyが0でない場合のみ）
             if (obj.vx !== undefined && obj.vx !== 0) {
               obj.x += obj.vx;
@@ -363,8 +382,9 @@ export class EditorGameBridge {
               obj.vy = 0;
             }
 
-            // 描画
-            const img = imageCache.get(id);
+            // 描画（現在のフレームを使用）
+            const frameKey = `${id}_frame${obj.currentFrame || 0}`;
+            const img = imageCache.get(frameKey);
             if (img && img.complete) {
               ctx.save();
               ctx.globalAlpha = 1.0;
