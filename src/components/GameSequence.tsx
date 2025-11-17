@@ -520,13 +520,18 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
         {/* ボトムバー - 残り時間バー（問題14対応） */}
         {gameDuration && gameState === 'playing' && (
-          <div style={{ position: 'relative' }}>
-            <GameTimerBar
-              currentTime={Math.max(0, gameDuration - gameTimeElapsed)}
-              totalTime={gameDuration}
-              showNumbers={false}
-            />
-          </div>
+          <GameTimerBar
+            currentTime={Math.max(0, gameDuration - gameTimeElapsed)}
+            totalTime={gameDuration}
+            showNumbers={false}
+            style={{
+              position: 'absolute',
+              left: '20px',
+              bottom: '20px',
+              width: 'calc(100% - 40px)',
+              maxWidth: 'calc(100% - 40px)'
+            }}
+          />
         )}
       </div>
 
