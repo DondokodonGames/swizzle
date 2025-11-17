@@ -5,7 +5,6 @@ import { PublicGame } from '../social/types/SocialTypes';
 import { BridgeScreen } from './BridgeScreen';
 import { supabase } from '../lib/supabase';
 import ProfileModal from './ProfileModal';
-import { GameTimerBar } from './common/TimerBar';
 
 /**
  * GameSequence.tsx - Phase H-3&H-4統合版
@@ -417,125 +416,205 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           top: 0,
           left: 0,
           right: 0,
-          padding: '16px',
+          height: '50px',
           zIndex: 1000,
-          pointerEvents: 'none'
+          pointerEvents: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          padding: '0 8px'
         }}>
-          <div style={{
-            background: 'rgba(0, 0, 0, 0.6)',
-            backdropFilter: 'blur(10px)',
-            borderRadius: '20px',
-            padding: '12px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-            pointerEvents: 'auto'
-          }}>
-            {/* 左側: ユーザーアイコン & ユーザー名 または ログイン/新規登録 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {currentUser && userProfile ? (
-                <>
-                  <button
-                    onClick={() => {
-                      setProfileUserId(currentUser.id);
-                      setShowProfileModal(true);
-                    }}
-                    className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-lg hover:scale-110 transition-transform relative"
-                    title="マイプロフィール"
-                  >
-                    {userProfile.display_name?.charAt(0).toUpperCase() ||
-                     userProfile.username?.charAt(0).toUpperCase() || '?'}
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                      3
-                    </div>
-                  </button>
-                  <span className="text-white font-medium text-base">
-                    {userProfile.display_name || userProfile.username || 'ユーザー'}
-                  </span>
-                </>
-              ) : (
-                <button
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('openAuthModal', {
-                      detail: { mode: 'signin' }
-                    }));
-                  }}
-                  className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg transition-colors text-sm"
-                >
-                  ログイン / 新規登録
-                </button>
-              )}
-            </div>
+          {/* ログイン/新規登録またはユーザー情報 */}
+          <button
+            onClick={() => {
+              if (currentUser) {
+                setProfileUserId(currentUser.id);
+                setShowProfileModal(true);
+              } else {
+                window.dispatchEvent(new CustomEvent('openAuthModal', {
+                  detail: { mode: 'signin' }
+                }));
+              }
+            }}
+            style={{
+              pointerEvents: 'auto',
+              width: '50px',
+              height: '50px',
+              borderRadius: '12px',
+              border: 'none',
+              background: currentUser
+                ? 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)'
+                : 'rgba(59, 130, 246, 0.9)',
+              backdropFilter: 'blur(10px)',
+              color: 'white',
+              fontSize: '24px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+              transition: 'transform 0.2s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            title={currentUser ? 'プロフィール' : 'ログイン'}
+          >
+            {currentUser && userProfile
+              ? (userProfile.display_name?.charAt(0).toUpperCase() || userProfile.username?.charAt(0).toUpperCase() || '?')
+              : '👤'
+            }
+          </button>
 
-            {/* 右側: アイコンボタン群 */}
-            <div className="flex items-center gap-2">
-              {/* ホーム */}
-              <button
-                onClick={() => {
-                  if (onExit) {
-                    onExit();
-                  }
-                }}
-                className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
-                title="ホーム"
-              >
-                <span className="text-xl">🏠</span>
-              </button>
+          {/* ゲームをプレイ（ホーム） */}
+          <button
+            onClick={() => {
+              if (onExit) {
+                onExit();
+              }
+            }}
+            style={{
+              pointerEvents: 'auto',
+              width: '50px',
+              height: '50px',
+              borderRadius: '12px',
+              border: 'none',
+              background: 'rgba(16, 185, 129, 0.9)',
+              backdropFilter: 'blur(10px)',
+              color: 'white',
+              fontSize: '24px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+              transition: 'transform 0.2s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            title="ホーム"
+          >
+            🎮
+          </button>
 
-              {/* フィード */}
-              <button
-                onClick={() => {
-                  if (onOpenFeed) {
-                    onOpenFeed();
-                  }
-                }}
-                className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
-                title="フィード"
-              >
-                <span className="text-xl">📱</span>
-              </button>
+          {/* フィード */}
+          <button
+            onClick={() => {
+              if (onOpenFeed) {
+                onOpenFeed();
+              }
+            }}
+            style={{
+              pointerEvents: 'auto',
+              width: '50px',
+              height: '50px',
+              borderRadius: '12px',
+              border: 'none',
+              background: 'rgba(59, 130, 246, 0.9)',
+              backdropFilter: 'blur(10px)',
+              color: 'white',
+              fontSize: '24px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+              transition: 'transform 0.2s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            title="フィード"
+          >
+            📱
+          </button>
 
-              {/* ゲームを作る */}
-              <button
-                onClick={() => {
-                  window.location.href = '/editor';
-                }}
-                className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
-                title="ゲームを作る"
-              >
-                <span className="text-xl">🎨</span>
-              </button>
+          {/* ゲームを作る */}
+          <button
+            onClick={() => {
+              window.location.href = '/editor';
+            }}
+            style={{
+              pointerEvents: 'auto',
+              width: '50px',
+              height: '50px',
+              borderRadius: '12px',
+              border: 'none',
+              background: 'rgba(236, 72, 153, 0.9)',
+              backdropFilter: 'blur(10px)',
+              color: 'white',
+              fontSize: '24px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+              transition: 'transform 0.2s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            title="ゲームを作る"
+          >
+            🎨
+          </button>
 
-              {/* スキップ */}
-              <button
-                onClick={handleSkipToBridge}
-                className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
-                title="スキップ"
-              >
-                <span className="text-xl">⏭️</span>
-              </button>
-            </div>
-          </div>
+          {/* プレミアム */}
+          <button
+            onClick={() => {
+              window.location.href = '/pricing';
+            }}
+            style={{
+              pointerEvents: 'auto',
+              width: '50px',
+              height: '50px',
+              borderRadius: '12px',
+              border: 'none',
+              background: 'rgba(139, 92, 246, 0.9)',
+              backdropFilter: 'blur(10px)',
+              color: 'white',
+              fontSize: '24px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+              transition: 'transform 0.2s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            title="プレミアム"
+          >
+            💎
+          </button>
         </div>
 
         {/* ボトムバー - 残り時間バー（問題14対応） */}
         {gameState === 'playing' && gameDuration !== null && (
-          <GameTimerBar
-            currentTime={Math.max(0, gameDuration - gameTimeElapsed)}
-            totalTime={gameDuration}
-            showNumbers={false}
-            style={{
-              position: 'absolute',
-              left: '20px',
-              bottom: '20px',
-              width: 'calc(100% - 40px)',
-              maxWidth: 'calc(100% - 40px)',
-              height: '8px',
+          <div style={{
+            position: 'absolute',
+            left: '20px',
+            right: '20px',
+            bottom: '20px',
+            height: '8px',
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            borderRadius: '4px',
+            overflow: 'hidden',
+            zIndex: 1000,
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${Math.max(0, Math.min(100, (Math.max(0, gameDuration - gameTimeElapsed) / gameDuration) * 100))}%`,
+              backgroundColor: (() => {
+                const percent = (Math.max(0, gameDuration - gameTimeElapsed) / gameDuration) * 100;
+                if (percent > 50) return '#10b981'; // 緑
+                if (percent > 20) return '#f59e0b'; // 黄色
+                return '#ef4444'; // 赤
+              })(),
               borderRadius: '4px',
-              zIndex: 1000
-            }}
-          />
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+            }} />
+          </div>
         )}
       </div>
 
