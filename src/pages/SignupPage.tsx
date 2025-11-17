@@ -1,0 +1,582 @@
+// src/pages/SignupPage.tsx
+// 専用の新規登録ページ（問題5対応）
+
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
+
+export const SignupPage: React.FC = () => {
+  const navigate = useNavigate()
+  const { signUp, loading, error, clearError, isAuthenticated } = useAuth()
+
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    username: '',
+    displayName: '',
+    age: '',
+    language: 'ja'
+  })
+
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [showPassword, setShowPassword] = useState(false)
+  const [showParentalWarning, setShowParentalWarning] = useState(false)
+
+  // 既にログイン済みの場合はホームにリダイレクト
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/')
+    }
+  }, [isAuthenticated, navigate])
+
+  // バリデーション
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    if (!formData.email.trim()) {
+      errors.email = 'メールアドレスを入力してください'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'メールアドレスの形式が正しくありません'
+    }
+
+    if (!formData.password.trim()) {
+      errors.password = 'パスワードを入力してください'
+    } else if (formData.password.length < 6) {
+      errors.password = 'パスワードは6文字以上である必要があります'
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      errors.confirmPassword = 'パスワードが一致しません'
+    }
+
+    if (!formData.username.trim()) {
+      errors.username = 'ユーザー名を入力してください'
+    } else if (formData.username.length < 3) {
+      errors.username = 'ユーザー名は3文字以上である必要があります'
+    } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+      errors.username = 'ユーザー名は英数字とアンダースコアのみ使用できます'
+    }
+
+    const age = parseInt(formData.age)
+    if (!formData.age.trim() || isNaN(age)) {
+      errors.age = '年齢を入力してください'
+    } else if (age < 6 || age > 100) {
+      errors.age = '年齢は6歳以上100歳以下で入力してください'
+    }
+
+    setValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
+  // フォーム送信処理
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!validateForm()) return
+
+    try {
+      const age = parseInt(formData.age)
+
+      // 13歳未満の場合は保護者同意の警告を表示
+      if (age < 13 && !showParentalWarning) {
+        setShowParentalWarning(true)
+        return
+      }
+
+      await signUp(formData.email, formData.password, {
+        username: formData.username,
+        displayName: formData.displayName || formData.username,
+        age,
+        language: formData.language
+      })
+
+      // 成功したらホームにリダイレクト（useEffectで処理される）
+    } catch (error) {
+      console.error('Signup error:', error)
+    }
+  }
+
+  // 入力変更処理
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+
+    // バリデーションエラーをクリア
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({ ...prev, [name]: '' }))
+    }
+  }
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px'
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '24px',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        width: '100%',
+        maxWidth: '500px',
+        padding: '48px 40px'
+      }}>
+        {/* ヘッダー */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{
+            width: '80px',
+            height: '80px',
+            margin: '0 auto 24px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <span style={{ fontSize: '40px' }}>🎮</span>
+          </div>
+          <h1 style={{
+            fontSize: '32px',
+            fontWeight: 'bold',
+            color: '#111827',
+            margin: '0 0 8px 0'
+          }}>
+            アカウント作成
+          </h1>
+          <p style={{
+            color: '#6b7280',
+            fontSize: '16px',
+            margin: 0
+          }}>
+            Swizzleでゲーム作りを始めましょう！
+          </p>
+        </div>
+
+        {/* エラーメッセージ */}
+        {error && (
+          <div style={{
+            marginBottom: '24px',
+            padding: '16px',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            borderRadius: '12px',
+            color: '#dc2626',
+            fontSize: '14px'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* 13歳未満警告 */}
+        {showParentalWarning && (
+          <div style={{
+            marginBottom: '24px',
+            padding: '20px',
+            backgroundColor: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: '12px'
+          }}>
+            <h3 style={{
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#92400e',
+              marginBottom: '8px'
+            }}>
+              ⚠️ 保護者の同意について
+            </h3>
+            <p style={{
+              color: '#78350f',
+              fontSize: '14px',
+              marginBottom: '16px',
+              lineHeight: '1.5'
+            }}>
+              13歳未満のお子様には保護者の同意が必要です。保護者の方と一緒にアカウントを作成してください。
+            </p>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={() => setShowParentalWarning(false)}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  backgroundColor: 'white',
+                  border: '1px solid #d97706',
+                  color: '#92400e',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowParentalWarning(false)
+                  handleSubmit({ preventDefault: () => {} } as React.FormEvent)
+                }}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  backgroundColor: '#d97706',
+                  border: 'none',
+                  color: 'white',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                同意して続ける
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* フォーム */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* メールアドレス */}
+          <div>
+            <label htmlFor="email" style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '6px'
+            }}>
+              メールアドレス <span style={{ color: '#dc2626' }}>*</span>
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${validationErrors.email ? '#fca5a5' : '#d1d5db'}`,
+                borderRadius: '10px',
+                fontSize: '16px',
+                backgroundColor: validationErrors.email ? '#fef2f2' : 'white',
+                outline: 'none',
+                transition: 'all 0.2s',
+                boxSizing: 'border-box'
+              }}
+              placeholder="your@example.com"
+              disabled={loading}
+            />
+            {validationErrors.email && (
+              <p style={{ marginTop: '4px', fontSize: '13px', color: '#dc2626' }}>
+                {validationErrors.email}
+              </p>
+            )}
+          </div>
+
+          {/* パスワード */}
+          <div>
+            <label htmlFor="password" style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '6px'
+            }}>
+              パスワード <span style={{ color: '#dc2626' }}>*</span>
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                style={{
+                  width: '100%',
+                  padding: '12px 48px 12px 16px',
+                  border: `1px solid ${validationErrors.password ? '#fca5a5' : '#d1d5db'}`,
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  backgroundColor: validationErrors.password ? '#fef2f2' : 'white',
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                  boxSizing: 'border-box'
+                }}
+                placeholder="6文字以上"
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  padding: '4px'
+                }}
+                disabled={loading}
+              >
+                {showPassword ? '🙈' : '👁️'}
+              </button>
+            </div>
+            {validationErrors.password && (
+              <p style={{ marginTop: '4px', fontSize: '13px', color: '#dc2626' }}>
+                {validationErrors.password}
+              </p>
+            )}
+          </div>
+
+          {/* パスワード確認 */}
+          <div>
+            <label htmlFor="confirmPassword" style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '6px'
+            }}>
+              パスワード確認 <span style={{ color: '#dc2626' }}>*</span>
+            </label>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              id="confirmPassword"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${validationErrors.confirmPassword ? '#fca5a5' : '#d1d5db'}`,
+                borderRadius: '10px',
+                fontSize: '16px',
+                backgroundColor: validationErrors.confirmPassword ? '#fef2f2' : 'white',
+                outline: 'none',
+                transition: 'all 0.2s',
+                boxSizing: 'border-box'
+              }}
+              placeholder="パスワードを再入力"
+              disabled={loading}
+            />
+            {validationErrors.confirmPassword && (
+              <p style={{ marginTop: '4px', fontSize: '13px', color: '#dc2626' }}>
+                {validationErrors.confirmPassword}
+              </p>
+            )}
+          </div>
+
+          {/* ユーザー名 */}
+          <div>
+            <label htmlFor="username" style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '6px'
+            }}>
+              ユーザー名 <span style={{ color: '#dc2626' }}>*</span>
+            </label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: `1px solid ${validationErrors.username ? '#fca5a5' : '#d1d5db'}`,
+                borderRadius: '10px',
+                fontSize: '16px',
+                backgroundColor: validationErrors.username ? '#fef2f2' : 'white',
+                outline: 'none',
+                transition: 'all 0.2s',
+                boxSizing: 'border-box'
+              }}
+              placeholder="半角英数字とアンダースコア"
+              disabled={loading}
+            />
+            {validationErrors.username && (
+              <p style={{ marginTop: '4px', fontSize: '13px', color: '#dc2626' }}>
+                {validationErrors.username}
+              </p>
+            )}
+            <p style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>
+              3文字以上、半角英数字とアンダースコア（_）のみ使用可能
+            </p>
+          </div>
+
+          {/* 表示名 */}
+          <div>
+            <label htmlFor="displayName" style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '6px'
+            }}>
+              表示名 <span style={{ fontSize: '12px', color: '#6b7280', fontWeight: 'normal' }}>(任意)</span>
+            </label>
+            <input
+              type="text"
+              id="displayName"
+              name="displayName"
+              value={formData.displayName}
+              onChange={handleInputChange}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '1px solid #d1d5db',
+                borderRadius: '10px',
+                fontSize: '16px',
+                outline: 'none',
+                transition: 'all 0.2s',
+                boxSizing: 'border-box'
+              }}
+              placeholder="みんなに表示される名前"
+              disabled={loading}
+            />
+            <p style={{ marginTop: '4px', fontSize: '12px', color: '#6b7280' }}>
+              空白の場合はユーザー名が表示されます
+            </p>
+          </div>
+
+          {/* 年齢・言語 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div>
+              <label htmlFor="age" style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '6px'
+              }}>
+                年齢 <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input
+                type="number"
+                id="age"
+                name="age"
+                value={formData.age}
+                onChange={handleInputChange}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: `1px solid ${validationErrors.age ? '#fca5a5' : '#d1d5db'}`,
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  backgroundColor: validationErrors.age ? '#fef2f2' : 'white',
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                  boxSizing: 'border-box'
+                }}
+                placeholder="15"
+                min="6"
+                max="100"
+                disabled={loading}
+              />
+              {validationErrors.age && (
+                <p style={{ marginTop: '4px', fontSize: '13px', color: '#dc2626' }}>
+                  {validationErrors.age}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label htmlFor="language" style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '6px'
+              }}>
+                言語
+              </label>
+              <select
+                id="language"
+                name="language"
+                value={formData.language}
+                onChange={handleInputChange}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '10px',
+                  fontSize: '16px',
+                  outline: 'none',
+                  transition: 'all 0.2s',
+                  boxSizing: 'border-box',
+                  backgroundColor: 'white'
+                }}
+                disabled={loading}
+              >
+                <option value="ja">日本語</option>
+                <option value="en">English</option>
+                <option value="ko">한국어</option>
+                <option value="zh">中文</option>
+              </select>
+            </div>
+          </div>
+
+          {/* 送信ボタン */}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '16px',
+              background: loading
+                ? '#9ca3af'
+                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '18px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+              marginTop: '8px'
+            }}
+          >
+            {loading ? '作成中...' : 'アカウント作成'}
+          </button>
+        </form>
+
+        {/* フッター */}
+        <div style={{
+          marginTop: '24px',
+          textAlign: 'center',
+          fontSize: '14px',
+          color: '#6b7280'
+        }}>
+          既にアカウントをお持ちの方は{' '}
+          <button
+            onClick={() => navigate('/login')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#667eea',
+              fontWeight: '600',
+              cursor: 'pointer',
+              textDecoration: 'underline'
+            }}
+            disabled={loading}
+          >
+            ログイン
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default SignupPage

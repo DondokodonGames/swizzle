@@ -12,8 +12,13 @@ import { PremiumBadge } from './components/monetization/PremiumBadge';
 const GameSequence = React.lazy(() => import('./components/GameSequence'));
 const GameFeed = React.lazy(() => import('./components/GameFeed'));
 
+// 認証・プロフィールページの遅延読み込み
+const SignupPage = React.lazy(() => import('./pages/SignupPage'));
+const LoginPage = React.lazy(() => import('./pages/LoginPage'));
+const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
+
 // マネタイズページの遅延読み込み
-const Pricing = React.lazy(() => 
+const Pricing = React.lazy(() =>
   import('./pages/subscription/Pricing').then(module => ({
     default: module.Pricing
   })).catch(error => {
@@ -847,6 +852,23 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* 認証ページ: React Router */}
+        <Route path="/signup" element={
+          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+            <SignupPage />
+          </Suspense>
+        } />
+        <Route path="/login" element={
+          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+            <LoginPage />
+          </Suspense>
+        } />
+        <Route path="/profile/:username" element={
+          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+            <ProfilePage />
+          </Suspense>
+        } />
+
         {/* マネタイズページ: React Router */}
         <Route path="/pricing" element={
           <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
@@ -863,7 +885,7 @@ function App() {
             <SubscriptionCancel />
           </Suspense>
         } />
-        
+
         {/* メインアプリ: 既存のmode-based */}
         <Route path="/*" element={<AppContent />} />
       </Routes>

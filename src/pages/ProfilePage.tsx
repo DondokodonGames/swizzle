@@ -1,0 +1,341 @@
+// src/pages/ProfilePage.tsx
+// プロフィール表示専用ページ（問題7対応）
+
+import React, { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { database } from '../lib/supabase'
+import type { Profile } from '../lib/database.types'
+
+interface ProfilePageProps {
+  // オプションでuserIdを直接渡すこともできる
+  userId?: string
+}
+
+export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) => {
+  const { username } = useParams<{ username: string }>()
+  const navigate = useNavigate()
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        if (propUserId) {
+          // userIdが直接渡された場合
+          const profileData = await database.profiles.get(propUserId)
+          setProfile(profileData)
+        } else if (username) {
+          // usernameからプロフィールを検索
+          const { data, error } = await (window as any).supabase
+            .from('profiles')
+            .select('*')
+            .eq('username', username)
+            .single()
+
+          if (error) throw error
+          setProfile(data)
+        } else {
+          throw new Error('ユーザー情報が指定されていません')
+        }
+      } catch (error: any) {
+        console.error('Profile load error:', error)
+        setError(error.message || 'プロフィールの読み込みに失敗しました')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProfile()
+  }, [username, propUserId])
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '20px',
+          padding: '40px',
+          textAlign: 'center',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+          <p style={{ color: '#6b7280' }}>プロフィールを読み込み中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !profile) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '20px',
+          padding: '40px',
+          textAlign: 'center',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+          maxWidth: '400px'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>😔</div>
+          <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>
+            プロフィールが見つかりません
+          </h2>
+          <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+            {error || '指定されたユーザーは存在しないか、削除されました'}
+          </p>
+          <button
+            onClick={() => navigate('/')}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '16px',
+              fontWeight: '600'
+            }}
+          >
+            ホームに戻る
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      padding: '40px 20px'
+    }}>
+      <div style={{
+        maxWidth: '800px',
+        margin: '0 auto'
+      }}>
+        {/* ヘッダー */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          marginBottom: '24px',
+          gap: '16px'
+        }}>
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: 'rgba(255, 255, 255, 0.2)',
+              backdropFilter: 'blur(10px)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '16px'
+            }}
+          >
+            ← 戻る
+          </button>
+          <h1 style={{
+            color: 'white',
+            fontSize: '24px',
+            fontWeight: 'bold',
+            margin: 0
+          }}>
+            プロフィール
+          </h1>
+        </div>
+
+        {/* プロフィールカード */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '20px',
+          padding: '40px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+        }}>
+          {/* アバターとユーザー情報 */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '24px',
+            marginBottom: '32px',
+            paddingBottom: '32px',
+            borderBottom: '1px solid #e5e7eb'
+          }}>
+            {/* アバター */}
+            <div style={{
+              width: '120px',
+              height: '120px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              flexShrink: 0
+            }}>
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt="Avatar"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover'
+                  }}
+                />
+              ) : (
+                <span style={{
+                  color: 'white',
+                  fontSize: '48px',
+                  fontWeight: 'bold'
+                }}>
+                  {(profile.display_name || profile.username).charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+
+            {/* ユーザー情報 */}
+            <div style={{ flex: 1 }}>
+              <h2 style={{
+                fontSize: '32px',
+                fontWeight: 'bold',
+                color: '#111827',
+                margin: '0 0 8px 0'
+              }}>
+                {profile.display_name || profile.username}
+              </h2>
+              <p style={{
+                fontSize: '18px',
+                color: '#6b7280',
+                margin: '0 0 16px 0'
+              }}>
+                @{profile.username}
+              </p>
+              {profile.bio && (
+                <p style={{
+                  fontSize: '16px',
+                  color: '#374151',
+                  lineHeight: '1.6',
+                  margin: 0
+                }}>
+                  {profile.bio}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* 追加情報 */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '20px'
+          }}>
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#f9fafb',
+              borderRadius: '12px'
+            }}>
+              <div style={{
+                fontSize: '14px',
+                color: '#6b7280',
+                marginBottom: '4px'
+              }}>
+                言語設定
+              </div>
+              <div style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#111827'
+              }}>
+                {profile.language === 'ja' && '🇯🇵 日本語'}
+                {profile.language === 'en' && '🇺🇸 English'}
+                {profile.language === 'ko' && '🇰🇷 한국어'}
+                {profile.language === 'zh' && '🇨🇳 中文'}
+                {!['ja', 'en', 'ko', 'zh'].includes(profile.language) && profile.language}
+              </div>
+            </div>
+
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#f9fafb',
+              borderRadius: '12px'
+            }}>
+              <div style={{
+                fontSize: '14px',
+                color: '#6b7280',
+                marginBottom: '4px'
+              }}>
+                登録日
+              </div>
+              <div style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                color: '#111827'
+              }}>
+                {new Date(profile.created_at).toLocaleDateString('ja-JP')}
+              </div>
+            </div>
+
+            {profile.age && (
+              <div style={{
+                padding: '20px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '12px'
+              }}>
+                <div style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  marginBottom: '4px'
+                }}>
+                  年齢
+                </div>
+                <div style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: '#111827'
+                }}>
+                  {profile.age}歳
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* TODO: ユーザーの作成したゲーム一覧などを追加 */}
+          <div style={{
+            marginTop: '40px',
+            padding: '32px',
+            backgroundColor: '#f9fafb',
+            borderRadius: '12px',
+            textAlign: 'center'
+          }}>
+            <p style={{
+              color: '#6b7280',
+              fontSize: '14px',
+              margin: 0
+            }}>
+              このユーザーの作成したゲームは近日公開予定です
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default ProfilePage
