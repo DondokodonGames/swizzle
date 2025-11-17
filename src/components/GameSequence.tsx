@@ -368,14 +368,13 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // ==================== ゲーム画面 + ブリッジ画面統合 ====================
   return (
     <div className="fixed inset-0 bg-black z-50 overflow-hidden flex items-center justify-center">
-      {/* メインコンテナ（1080x1920） */}
+      {/* メインコンテナ（1080x1920、レスポンシブ対応） */}
       <div
         className="relative bg-black"
         style={{
-          width: '1080px',
-          height: '1920px',
-          maxWidth: '100vw',
-          maxHeight: '100vh'
+          width: 'min(100vw, calc(100vh * 9 / 16), 1080px)',
+          height: 'min(100vh, calc(100vw * 16 / 9), 1920px)',
+          aspectRatio: '9 / 16'
         }}
       >
         {/* ゲームキャンバス */}
