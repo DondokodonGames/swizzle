@@ -24,6 +24,10 @@ export default defineConfig({
           if (id.includes('node_modules/pixi.js')) {
             return 'vendor-pixijs';
           }
+          // Router関連を別チャンクに
+          if (id.includes('node_modules/react-router')) {
+            return 'vendor-router';
+          }
           // その他の大きなライブラリを別チャンクに
           if (id.includes('node_modules')) {
             return 'vendor-other';
@@ -33,6 +37,8 @@ export default defineConfig({
     },
     // チャンクサイズ警告の閾値を上げる
     chunkSizeWarningLimit: 1000,
+    // minify設定（esbuildを使用、本番環境で高速）
+    minify: 'esbuild',
   },
   server: {
     port: 3000,
