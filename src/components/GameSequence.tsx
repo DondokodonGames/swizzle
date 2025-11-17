@@ -417,19 +417,20 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           top: 0,
           left: 0,
           right: 0,
-          padding: '24px',
+          padding: '16px',
           zIndex: 1000,
-          pointerEvents: 'auto'
+          pointerEvents: 'none'
         }}>
           <div style={{
-            background: 'rgba(0, 0, 0, 0.8)',
+            background: 'rgba(0, 0, 0, 0.6)',
             backdropFilter: 'blur(10px)',
-            borderRadius: '24px',
-            padding: '16px 24px',
+            borderRadius: '20px',
+            padding: '12px 16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '16px'
+            gap: '12px',
+            pointerEvents: 'auto'
           }}>
             {/* 左側: ユーザーアイコン & ユーザー名 または ログイン/新規登録 */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -440,16 +441,16 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                       setProfileUserId(currentUser.id);
                       setShowProfileModal(true);
                     }}
-                    className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-xl hover:scale-110 transition-transform relative"
+                    className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold text-lg hover:scale-110 transition-transform relative"
                     title="マイプロフィール"
                   >
                     {userProfile.display_name?.charAt(0).toUpperCase() ||
                      userProfile.username?.charAt(0).toUpperCase() || '?'}
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                       3
                     </div>
                   </button>
-                  <span className="text-white font-medium text-lg">
+                  <span className="text-white font-medium text-base">
                     {userProfile.display_name || userProfile.username || 'ユーザー'}
                   </span>
                 </>
@@ -460,7 +461,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                       detail: { mode: 'signin' }
                     }));
                   }}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl transition-colors text-lg"
+                  className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-lg transition-colors text-sm"
                 >
                   ログイン / 新規登録
                 </button>
@@ -468,7 +469,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             </div>
 
             {/* 右側: アイコンボタン群 */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {/* ホーム */}
               <button
                 onClick={() => {
@@ -476,10 +477,10 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                     onExit();
                   }
                 }}
-                className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+                className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
                 title="ホーム"
               >
-                <span className="text-2xl">🏠</span>
+                <span className="text-xl">🏠</span>
               </button>
 
               {/* フィード */}
@@ -489,10 +490,10 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                     onOpenFeed();
                   }
                 }}
-                className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+                className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
                 title="フィード"
               >
-                <span className="text-2xl">📱</span>
+                <span className="text-xl">📱</span>
               </button>
 
               {/* ゲームを作る */}
@@ -500,19 +501,19 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                 onClick={() => {
                   window.location.href = '/editor';
                 }}
-                className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+                className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
                 title="ゲームを作る"
               >
-                <span className="text-2xl">🎨</span>
+                <span className="text-xl">🎨</span>
               </button>
 
               {/* スキップ */}
               <button
                 onClick={handleSkipToBridge}
-                className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+                className="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
                 title="スキップ"
               >
-                <span className="text-2xl">⏭️</span>
+                <span className="text-xl">⏭️</span>
               </button>
             </div>
           </div>
