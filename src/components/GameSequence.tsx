@@ -519,7 +519,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         </div>
 
         {/* ボトムバー - 残り時間バー（問題14対応） */}
-        {gameDuration && gameState === 'playing' && (
+        {gameState === 'playing' && gameDuration !== null && (
           <GameTimerBar
             currentTime={Math.max(0, gameDuration - gameTimeElapsed)}
             totalTime={gameDuration}
@@ -529,7 +529,10 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
               left: '20px',
               bottom: '20px',
               width: 'calc(100% - 40px)',
-              maxWidth: 'calc(100% - 40px)'
+              maxWidth: 'calc(100% - 40px)',
+              height: '8px',
+              borderRadius: '4px',
+              zIndex: 1000
             }}
           />
         )}

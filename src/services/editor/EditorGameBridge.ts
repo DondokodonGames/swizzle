@@ -70,8 +70,8 @@ export class EditorGameBridge {
         throw new Error('Canvas context を取得できません');
       }
 
-      canvasElement.width = 360;
-      canvasElement.height = 640;
+      canvasElement.width = 1080;
+      canvasElement.height = 1920;
       
       // 2. 初期状態の取得・作成
       let initialState = project.script?.initialState;
@@ -592,12 +592,9 @@ export class EditorGameBridge {
       const canvas = document.createElement('canvas');
       canvas.style.width = '100%';
       canvas.style.height = '100%';
-      canvas.style.maxWidth = '360px';
-      canvas.style.maxHeight = '640px';
-      canvas.style.border = '2px solid #E91E63';
-      canvas.style.borderRadius = '12px';
-      canvas.style.backgroundColor = '#FFE5F1';
-      canvas.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+      canvas.style.maxWidth = '100%';
+      canvas.style.maxHeight = '100%';
+      canvas.style.backgroundColor = '#000000';
       
       // 既存コンテンツクリア
       targetElement.innerHTML = '';
@@ -677,8 +674,8 @@ export class EditorGameBridge {
       
       // 仮想キャンバス作成
       const canvas = document.createElement('canvas');
-      canvas.width = 360;
-      canvas.height = 640;
+      canvas.width = 1080;
+      canvas.height = 1920;
       
       // 短縮実行（5秒間）
       const originalDuration = project.settings.duration;
