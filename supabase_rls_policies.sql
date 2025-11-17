@@ -3,10 +3,19 @@
 --
 -- このスクリプトをSupabase SQL Editorで実行してください
 -- https://supabase.com/dashboard → SQL Editor → New Query
+--
+-- 注意: 既存のポリシーを削除してから再作成します
 
 -- ========================================
 -- user_games テーブルのRLSポリシー
 -- ========================================
+
+-- 既存のポリシーを削除
+DROP POLICY IF EXISTS "Users can view their own games" ON user_games;
+DROP POLICY IF EXISTS "Public games are viewable by everyone" ON user_games;
+DROP POLICY IF EXISTS "Users can create their own games" ON user_games;
+DROP POLICY IF EXISTS "Users can update their own games" ON user_games;
+DROP POLICY IF EXISTS "Users can delete their own games" ON user_games;
 
 -- 1. RLSを有効化
 ALTER TABLE user_games ENABLE ROW LEVEL SECURITY;
@@ -51,6 +60,10 @@ USING (creator_id = auth.uid());
 -- profiles テーブルのRLSポリシー
 -- ========================================
 
+-- 既存のポリシーを削除
+DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
+
 -- 7. RLSを有効化
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
@@ -72,6 +85,11 @@ WITH CHECK (id = auth.uid());
 -- ========================================
 -- likes テーブルのRLSポリシー
 -- ========================================
+
+-- 既存のポリシーを削除
+DROP POLICY IF EXISTS "Likes are viewable by everyone" ON likes;
+DROP POLICY IF EXISTS "Users can create their own likes" ON likes;
+DROP POLICY IF EXISTS "Users can delete their own likes" ON likes;
 
 -- 10. RLSを有効化
 ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
@@ -101,6 +119,11 @@ USING (user_id = auth.uid());
 -- follows テーブルのRLSポリシー
 -- ========================================
 
+-- 既存のポリシーを削除
+DROP POLICY IF EXISTS "Follows are viewable by everyone" ON follows;
+DROP POLICY IF EXISTS "Users can create their own follows" ON follows;
+DROP POLICY IF EXISTS "Users can delete their own follows" ON follows;
+
 -- 14. RLSを有効化
 ALTER TABLE follows ENABLE ROW LEVEL SECURITY;
 
@@ -129,6 +152,10 @@ USING (follower_id = auth.uid());
 -- notifications テーブルのRLSポリシー
 -- ========================================
 
+-- 既存のポリシーを削除
+DROP POLICY IF EXISTS "Users can view their own notifications" ON notifications;
+DROP POLICY IF EXISTS "Users can update their own notifications" ON notifications;
+
 -- 18. RLSを有効化
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
@@ -150,6 +177,11 @@ WITH CHECK (user_id = auth.uid());
 -- ========================================
 -- game_favorites テーブルのRLSポリシー
 -- ========================================
+
+-- 既存のポリシーを削除
+DROP POLICY IF EXISTS "Users can view their own favorites" ON game_favorites;
+DROP POLICY IF EXISTS "Users can create their own favorites" ON game_favorites;
+DROP POLICY IF EXISTS "Users can delete their own favorites" ON game_favorites;
 
 -- 21. RLSを有効化
 ALTER TABLE game_favorites ENABLE ROW LEVEL SECURITY;
