@@ -5,6 +5,7 @@ import { PublicGame } from '../social/types/SocialTypes';
 import { BridgeScreen } from './BridgeScreen';
 import { supabase } from '../lib/supabase';
 import ProfileModal from './ProfileModal';
+import { GameTimerBar } from './common/TimerBar';
 
 /**
  * GameSequence.tsx - Phase H-3&H-4統合版
@@ -501,28 +502,16 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             </div>
           </div>
 
-          {/* ボトムバー - 残り時間バーのみ（問題14対応） */}
-          <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-auto">
-            {/* 残り時間バー - 数字なしでバーのみ表示 */}
-            {gameDuration && (
-              <div className="w-full h-4 bg-black/70 backdrop-blur-sm rounded-full overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-100 ${
-                    gameDuration && (gameDuration - gameTimeElapsed) / gameDuration > 0.5
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                      : gameDuration && (gameDuration - gameTimeElapsed) / gameDuration > 0.25
-                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500'
-                      : 'bg-gradient-to-r from-red-500 to-pink-500'
-                  }`}
-                  style={{
-                    width: gameDuration
-                      ? `${Math.max(0, Math.min(100, ((gameDuration - gameTimeElapsed) / gameDuration) * 100))}%`
-                      : '100%'
-                  }}
-                />
-              </div>
-            )}
-          </div>
+          {/* ボトムバー - 残り時間バー（問題14対応：TimerBarコンポーネント使用） */}
+          {gameDuration && gameState === 'playing' && (
+            <div style={{ position: 'relative' }}>
+              <GameTimerBar
+                currentTime={Math.max(0, gameDuration - gameTimeElapsed)}
+                totalTime={gameDuration}
+                showNumbers={false}
+              />
+            </div>
+          )}
         </div>
 
       </div>
