@@ -394,13 +394,13 @@ export class EditorGameBridge {
             }
           });
 
-          // UI描画（残り時間プログレスバー）- 問題14対応
+          // UI描画（残り時間プログレスバー）- 問題14対応：画面下部に配置
           if (gameDuration) {
             ctx.save();
 
-            const barHeight = 12;
-            const barY = 20;
+            const barHeight = 16;
             const barPadding = 20;
+            const barY = canvasElement.height - barHeight - barPadding; // 画面下部に配置
             const barWidth = canvasElement.width - (barPadding * 2);
 
             // 残り時間の割合を計算
@@ -408,7 +408,7 @@ export class EditorGameBridge {
             const progress = remainingTime / gameDuration;
 
             // プログレスバーの背景（暗い背景）
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
             ctx.fillRect(barPadding, barY, barWidth, barHeight);
 
             // プログレスバーの色を残り時間に応じて変更
@@ -427,7 +427,7 @@ export class EditorGameBridge {
             ctx.fillRect(barPadding, barY, currentBarWidth, barHeight);
 
             // プログレスバーの枠線
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
             ctx.lineWidth = 2;
             ctx.strokeRect(barPadding, barY, barWidth, barHeight);
 
