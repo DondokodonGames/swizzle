@@ -425,10 +425,13 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           {/* ログイン/新規登録またはユーザー情報 */}
           <button
             onClick={() => {
+              console.log('Login button clicked, currentUser:', currentUser);
               if (currentUser) {
+                console.log('Opening profile modal for user:', currentUser.id);
                 setProfileUserId(currentUser.id);
                 setShowProfileModal(true);
               } else {
+                console.log('Dispatching openAuthModal event');
                 window.dispatchEvent(new CustomEvent('openAuthModal', {
                   detail: { mode: 'signin' }
                 }));
