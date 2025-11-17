@@ -2,13 +2,15 @@
 
 import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
-import GameSequence from './components/GameSequence';
-import GameFeed from './components/GameFeed';
 import './styles/arcade-theme.css';
 
 // Phase M: マネタイズ統合インポート
 import { useSubscription } from './hooks/monetization/useSubscription';
 import { PremiumBadge } from './components/monetization/PremiumBadge';
+
+// ゲーム関連コンポーネントの遅延読み込み（問題30・31対応）
+const GameSequence = React.lazy(() => import('./components/GameSequence'));
+const GameFeed = React.lazy(() => import('./components/GameFeed'));
 
 // マネタイズページの遅延読み込み
 const Pricing = React.lazy(() => 
@@ -593,10 +595,25 @@ function MainApp() {
   // フィードモード時のフルスクリーン表示
   if (mode === 'feed') {
     return (
-      <GameFeed
-        onGameSelect={handleFeedGameSelect}
-        onBack={handleExitFeed}
-      />
+      <Suspense fallback={
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ marginBottom: '16px', fontSize: '48px' }}>📱</div>
+            <p style={{ color: '#a21caf', fontSize: '18px' }}>フィードを読み込み中...</p>
+          </div>
+        </div>
+      }>
+        <GameFeed
+          onGameSelect={handleFeedGameSelect}
+          onBack={handleExitFeed}
+        />
+      </Suspense>
     );
   }
 
@@ -694,10 +711,17 @@ function MainApp() {
         position: 'relative'
       }}>
         {mode === 'sequence' && (
-          <GameSequence
-            onExit={handleExitSequence}
-            onOpenFeed={handleSwitchToFeed}
-          />
+          <Suspense fallback={
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div style={{ marginBottom: '16px', fontSize: '48px' }}>🎮</div>
+              <p style={{ color: '#a21caf', fontSize: '18px' }}>ゲームを読み込み中...</p>
+            </div>
+          }>
+            <GameSequence
+              onExit={handleExitSequence}
+              onOpenFeed={handleSwitchToFeed}
+            />
+          </Suspense>
         )}
         {mode === 'test' && (
           <div style={{ textAlign: 'center', padding: '40px' }}>
