@@ -441,22 +441,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             </div>
           </div>
 
-          {/* ボトムバー - 残り時間バー + スキップボタン */}
+          {/* ボトムバー - スキップボタンのみ（問題13対応：スコア表示を非表示） */}
           <div className="absolute bottom-0 left-0 right-0 p-6 pointer-events-auto">
-            {/* 残り時間バー（仮実装 - ゲームエンジンから取得予定） */}
-            <div className="bg-black/70 backdrop-blur-sm rounded-2xl px-6 py-4 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-white text-sm font-medium">ゲーム進行中</span>
-                <span className="text-gray-300 text-sm">{currentIndex + 1} / {publicGames.length}</span>
-              </div>
-              <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-1000"
-                  style={{ width: '50%' }} // TODO: 実際の進捗に置き換え
-                />
-              </div>
-            </div>
-
             {/* 操作ボタン */}
             <div className="flex gap-3">
               <button

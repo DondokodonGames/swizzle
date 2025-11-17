@@ -241,38 +241,71 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         }}
       >
         <div className="w-full h-full flex flex-col p-8">
-          {/* トップ - ゲーム完了 */}
-          <div className="text-center mb-6">
-            <div className="text-6xl mb-4">
+          {/* トップ - ゲーム完了（問題12対応：アニメーション追加） */}
+          <div className="text-center mb-6 animate-fade-in">
+            <div className="text-8xl mb-4 animate-bounce-in">
               {score?.success ? '🎉' : '💫'}
             </div>
-            <h2 className="text-white text-4xl font-bold mb-2">
+            <h2 className="text-white text-5xl font-bold mb-2 animate-slide-up">
               {score?.success ? 'クリア！' : 'プレイ完了'}
             </h2>
-            <p className="text-gray-300 text-xl">
+            <p className="text-gray-300 text-2xl animate-slide-up" style={{ animationDelay: '0.1s' }}>
               {currentGame.title}
             </p>
           </div>
 
-          {/* スコア表示 */}
+          {/* スコア表示（問題12対応：グラフィカルなデザイン） */}
           {score && (
-            <div className="bg-black/50 backdrop-blur-sm rounded-3xl p-6 mb-6">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <p className="text-gray-400 text-sm mb-1">スコア</p>
-                  <p className="text-white text-3xl font-bold">{score.points}</p>
+            <div className="bg-gradient-to-br from-purple-900/50 to-pink-900/50 backdrop-blur-sm rounded-3xl p-8 mb-6 border-2 border-purple-500/30 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+              <div className="grid grid-cols-3 gap-6">
+                <div className="text-center transform hover:scale-110 transition-transform">
+                  <p className="text-purple-300 text-base mb-2 font-semibold">スコア</p>
+                  <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-4 shadow-lg">
+                    <p className="text-white text-4xl font-black drop-shadow-lg">{score.points}</p>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-gray-400 text-sm mb-1">時間</p>
-                  <p className="text-white text-3xl font-bold">{score.time.toFixed(1)}s</p>
+                <div className="text-center transform hover:scale-110 transition-transform">
+                  <p className="text-purple-300 text-base mb-2 font-semibold">時間</p>
+                  <div className="bg-gradient-to-br from-blue-400 to-cyan-500 rounded-2xl p-4 shadow-lg">
+                    <p className="text-white text-4xl font-black drop-shadow-lg">{score.time.toFixed(1)}s</p>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="text-gray-400 text-sm mb-1">結果</p>
-                  <p className="text-2xl">{score.success ? '✅' : '❌'}</p>
+                <div className="text-center transform hover:scale-110 transition-transform">
+                  <p className="text-purple-300 text-base mb-2 font-semibold">結果</p>
+                  <div className={`${score.success ? 'bg-gradient-to-br from-green-400 to-emerald-500' : 'bg-gradient-to-br from-gray-400 to-gray-500'} rounded-2xl p-4 shadow-lg`}>
+                    <p className="text-4xl">{score.success ? '✅' : '❌'}</p>
+                  </div>
                 </div>
               </div>
             </div>
           )}
+
+          {/* CSSアニメーション */}
+          <style>{`
+            @keyframes fade-in {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes bounce-in {
+              0% { transform: scale(0); opacity: 0; }
+              50% { transform: scale(1.2); }
+              100% { transform: scale(1); opacity: 1; }
+            }
+            @keyframes slide-up {
+              from { transform: translateY(30px); opacity: 0; }
+              to { transform: translateY(0); opacity: 1; }
+            }
+            .animate-fade-in {
+              animation: fade-in 0.5s ease-out;
+            }
+            .animate-bounce-in {
+              animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            }
+            .animate-slide-up {
+              animation: slide-up 0.5s ease-out forwards;
+              opacity: 0;
+            }
+          `}</style>
 
           {/* 🆕 パクるボタン */}
           <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-3xl p-6 mb-4">
