@@ -1,0 +1,283 @@
+{
+  "project": {
+    "id": "sample_mosquito_slap_001",
+    "name": "蚊を叩け",
+    "description": "飛んでいる蚊をタップして叩こう！",
+    "createdAt": "2025-11-17T00:00:00.000Z",
+    "lastModified": "2025-11-17T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": {
+      "userId": "sample_creator",
+      "username": "Sample Games",
+      "isAnonymous": false
+    },
+    "assets": {
+      "background": {
+        "id": "bg_room",
+        "name": "背景",
+        "type": "background",
+        "frames": [
+          {
+            "id": "fbg",
+            "frameNumber": 0,
+            "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='640'%3E%3Crect width='360' height='640' fill='%23F5E6D3'/%3E%3Crect x='0' y='200' width='360' height='8' fill='%23D4A373'/%3E%3Crect x='0' y='400' width='360' height='8' fill='%23D4A373'/%3E%3C/svg%3E",
+            "width": 360,
+            "height": 640,
+            "fileSize": 280
+          }
+        ],
+        "defaultScale": 1,
+        "totalSize": 280,
+        "createdAt": "2025-11-17T00:00:00.000Z",
+        "lastModified": "2025-11-17T00:00:00.000Z"
+      },
+      "objects": [
+        {
+          "id": "mosquito",
+          "name": "蚊",
+          "type": "object",
+          "frames": [
+            {
+              "id": "f_mosquito",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cellipse cx='20' cy='20' rx='3' ry='8' fill='%23333'/%3E%3Cellipse cx='20' cy='14' rx='4' ry='3' fill='%23444'/%3E%3Cline x1='17' y1='20' x2='8' y2='18' stroke='%23333' stroke-width='1'/%3E%3Cline x1='23' y1='20' x2='32' y2='18' stroke='%23333' stroke-width='1'/%3E%3Cline x1='17' y1='22' x2='8' y2='24' stroke='%23333' stroke-width='1'/%3E%3Cline x1='23' y1='22' x2='32' y2='24' stroke='%23333' stroke-width='1'/%3E%3Cpath d='M 15 20 Q 12 15 15 10' stroke='%23666' stroke-width='0.5' fill='none' opacity='0.3'/%3E%3Cpath d='M 25 20 Q 28 15 25 10' stroke='%23666' stroke-width='0.5' fill='none' opacity='0.3'/%3E%3C/svg%3E",
+              "width": 40,
+              "height": 40,
+              "fileSize": 480
+            }
+          ],
+          "defaultScale": 1,
+          "totalSize": 480,
+          "createdAt": "2025-11-17T00:00:00.000Z",
+          "lastModified": "2025-11-17T00:00:00.000Z"
+        }
+      ],
+      "texts": [],
+      "audio": {
+        "bgm": null,
+        "se": []
+      },
+      "statistics": {
+        "totalImageSize": 760,
+        "totalAudioSize": 0,
+        "totalSize": 760,
+        "usedSlots": {
+          "background": 1,
+          "objects": 1,
+          "texts": 0,
+          "bgm": 0,
+          "se": 0
+        },
+        "limitations": {
+          "isNearImageLimit": false,
+          "isNearAudioLimit": false,
+          "isNearTotalLimit": false,
+          "hasViolations": false
+        }
+      },
+      "lastModified": "2025-11-17T00:00:00.000Z"
+    },
+    "script": {
+      "initialState": {
+        "layout": {
+          "background": {
+            "visible": true,
+            "initialAnimation": 0,
+            "animationSpeed": 12,
+            "autoStart": false
+          },
+          "objects": [
+            {
+              "objectId": "mosquito",
+              "position": {
+                "x": 0.5,
+                "y": 0.4
+              },
+              "scale": {
+                "x": 1.5,
+                "y": 1.5
+              },
+              "rotation": 0,
+              "zIndex": 100,
+              "initialState": {
+                "visible": true,
+                "animation": 0,
+                "animationSpeed": 12,
+                "autoStart": false
+              }
+            }
+          ],
+          "texts": [],
+          "stage": {
+            "backgroundColor": "#F5E6D3"
+          }
+        },
+        "gameState": {
+          "score": 0,
+          "lives": 1,
+          "timeLimit": 5,
+          "flags": {},
+          "counters": {}
+        }
+      },
+      "layout": {
+        "background": {
+          "visible": true,
+          "initialAnimation": 0,
+          "animationSpeed": 12,
+          "autoStart": false
+        },
+        "objects": [
+          {
+            "objectId": "mosquito",
+            "position": {
+              "x": 0.5,
+              "y": 0.4
+            },
+            "scale": {
+              "x": 1.5,
+              "y": 1.5
+            },
+            "rotation": 0,
+            "zIndex": 100,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          }
+        ],
+        "texts": [],
+        "stage": {
+          "backgroundColor": "#F5E6D3"
+        }
+      },
+      "flags": [],
+      "counters": [],
+      "rules": [
+        {
+          "id": "r1",
+          "name": "蚊を叩く",
+          "enabled": true,
+          "priority": 100,
+          "targetObjectId": "mosquito",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "target": "self"
+            },
+            {
+              "type": "success",
+              "score": 100
+            }
+          ],
+          "createdAt": "2025-11-17T00:00:00.000Z",
+          "lastModified": "2025-11-17T00:00:00.000Z"
+        }
+      ],
+      "successConditions": [],
+      "statistics": {
+        "totalRules": 1,
+        "totalConditions": 1,
+        "totalActions": 2,
+        "complexityScore": 1,
+        "usedTriggerTypes": [
+          "touch"
+        ],
+        "usedActionTypes": [
+          "hide",
+          "success"
+        ],
+        "flagCount": 0,
+        "estimatedCPUUsage": "low",
+        "estimatedMemoryUsage": 100,
+        "maxConcurrentEffects": 1,
+        "counterCount": 0,
+        "usedCounterOperations": [],
+        "usedCounterComparisons": [],
+        "randomConditionCount": 0,
+        "randomActionCount": 0,
+        "totalRandomChoices": 0,
+        "averageRandomProbability": 0,
+        "randomEventsPerSecond": 0,
+        "randomMemoryUsage": 0
+      },
+      "version": "1.0.0",
+      "lastModified": "2025-11-17T00:00:00.000Z"
+    },
+    "settings": {
+      "name": "蚊を叩け",
+      "description": "飛んでいる蚊をタップして叩こう！",
+      "duration": {
+        "type": "fixed",
+        "seconds": 5
+      },
+      "difficulty": "easy",
+      "publishing": {
+        "isPublished": false,
+        "visibility": "public",
+        "allowComments": true,
+        "allowRemix": true,
+        "tags": [
+          "タップ",
+          "アクション",
+          "反射神経"
+        ],
+        "category": "action"
+      },
+      "preview": {},
+      "export": {
+        "includeSourceData": true,
+        "compressionLevel": "medium",
+        "format": "json"
+      }
+    },
+    "status": "published",
+    "totalSize": 760,
+    "metadata": {
+      "statistics": {
+        "totalEditTime": 300,
+        "saveCount": 1,
+        "testPlayCount": 0,
+        "publishCount": 1
+      },
+      "usage": {
+        "lastOpened": "2025-11-17T00:00:00.000Z",
+        "totalOpenCount": 1,
+        "averageSessionTime": 300
+      },
+      "performance": {
+        "lastBuildTime": 50,
+        "averageFPS": 60,
+        "memoryUsage": 0.5
+      }
+    },
+    "versionHistory": [],
+    "projectSettings": {
+      "autoSaveInterval": 30000,
+      "backupEnabled": true,
+      "compressionEnabled": false,
+      "maxVersionHistory": 10
+    }
+  },
+  "metadata": {
+    "id": "sample_mosquito_slap_001",
+    "name": "蚊を叩け",
+    "lastModified": "2025-11-17T00:00:00.000Z",
+    "status": "published",
+    "size": 760,
+    "version": "1.0.0"
+  },
+  "exportedAt": "2025-11-17T00:00:00.000Z",
+  "version": "1.0.0"
+}
