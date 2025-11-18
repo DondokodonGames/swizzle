@@ -78,9 +78,13 @@ export function PaywallModal({
 
           {/* Icon */}
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center">
+            <div
+              className="bg-purple-100 rounded-full flex items-center justify-center"
+              style={{ width: '50px', height: '50px' }}
+            >
               <svg
-                className="w-10 h-10 text-purple-600"
+                className="text-purple-600"
+                style={{ width: '30px', height: '30px' }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

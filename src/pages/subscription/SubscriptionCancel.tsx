@@ -21,9 +21,13 @@ export function SubscriptionCancel() {
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-gray-600 to-gray-500 p-8 text-center">
-            <div className="inline-flex items-center justify-center w-24 h-24 bg-white rounded-full mb-4">
+            <div
+              className="inline-flex items-center justify-center bg-white rounded-full mb-4"
+              style={{ width: '60px', height: '60px' }}
+            >
               <svg
-                className="w-12 h-12 text-gray-400"
+                className="text-gray-400"
+                style={{ width: '36px', height: '36px' }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
