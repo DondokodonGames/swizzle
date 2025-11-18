@@ -139,21 +139,22 @@ export function SubscriptionSuccess() {
               </h2>
               <ul className="space-y-3">
                 {[
-                  '✅ 無制限ゲーム作成',
-                  '✅ 広告非表示',
-                  '✅ 全225テンプレート',
-                  '✅ 高度な編集機能',
-                  '✅ カスタムアセット無制限',
-                  '✅ 分析ダッシュボード',
-                  '✅ ゲームエクスポート（HTML5）',
-                  '✅ 優先サポート（24時間以内）',
+                  '無制限ゲーム作成',
+                  '広告非表示',
+                  '全225テンプレート',
+                  '高度な編集機能',
+                  'カスタムアセット無制限',
+                  '分析ダッシュボード',
+                  'ゲームエクスポート（HTML5）',
+                  '優先サポート（24時間以内）',
                 ].map((feature, index) => (
                   <li
                     key={index}
                     className="flex items-center text-gray-700"
                   >
                     <svg
-                      className="w-5 h-5 text-purple-600 mr-3 flex-shrink-0"
+                      className="text-purple-600 mr-3 flex-shrink-0"
+                      style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -165,7 +166,7 @@ export function SubscriptionSuccess() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    {feature}
+                    <span className="text-sm">{feature}</span>
                   </li>
                 ))}
               </ul>
