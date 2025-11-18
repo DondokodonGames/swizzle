@@ -1,6 +1,5 @@
 // src/components/auth/AuthModal.tsx
-// ログイン・サインアップモーダルUI
-// 既存デザインシステム準拠・COPPA対応
+// ログイン・サインアップモーダルUI（モダンデザイン版）
 
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
@@ -13,13 +12,13 @@ interface AuthModalProps {
 
 type AuthMode = 'signin' | 'signup' | 'reset'
 
-const AuthModal: React.FC<AuthModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  defaultMode = 'signin' 
+const AuthModal: React.FC<AuthModalProps> = ({
+  isOpen,
+  onClose,
+  defaultMode = 'signin'
 }) => {
   const { signIn, signUp, resetPassword, loading, error, clearError } = useAuth()
-  
+
   const [mode, setMode] = useState<AuthMode>(defaultMode)
   const [formData, setFormData] = useState({
     email: '',
@@ -30,12 +29,11 @@ const AuthModal: React.FC<AuthModalProps> = ({
     age: '',
     language: 'ja'
   })
-  
+
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
   const [showParentalWarning, setShowParentalWarning] = useState(false)
 
-  // モーダル開閉時のリセット
   useEffect(() => {
     if (isOpen) {
       setMode(defaultMode)
@@ -53,87 +51,83 @@ const AuthModal: React.FC<AuthModalProps> = ({
     }
   }, [isOpen, defaultMode, clearError])
 
-  // Escキーでモーダルを閉じる
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
         onClose()
       }
     }
-    
+
     if (isOpen) {
       document.addEventListener('keydown', handleEscape)
       document.body.style.overflow = 'hidden'
     }
-    
+
     return () => {
       document.removeEventListener('keydown', handleEscape)
       document.body.style.overflow = 'unset'
     }
   }, [isOpen, onClose])
 
-  // バリデーション
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {}
-    
+
     if (!formData.email.trim()) {
-      errors.email = 'メールアドレスを入力してください'
+      errors.email = 'メールアドレスを入力'
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'メールアドレスの形式が正しくありません'
+      errors.email = 'メールアドレスの形式が不正'
     }
-    
+
     if (mode !== 'reset') {
       if (!formData.password.trim()) {
-        errors.password = 'パスワードを入力してください'
+        errors.password = 'パスワードを入力'
       } else if (formData.password.length < 6) {
-        errors.password = 'パスワードは6文字以上である必要があります'
+        errors.password = '6文字以上必要'
       }
     }
-    
+
     if (mode === 'signup') {
       if (formData.password !== formData.confirmPassword) {
         errors.confirmPassword = 'パスワードが一致しません'
       }
-      
+
       if (!formData.username.trim()) {
-        errors.username = 'ユーザー名を入力してください'
+        errors.username = 'ユーザー名を入力'
       } else if (formData.username.length < 3) {
-        errors.username = 'ユーザー名は3文字以上である必要があります'
+        errors.username = '3文字以上必要'
       } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-        errors.username = 'ユーザー名は英数字とアンダースコアのみ使用できます'
+        errors.username = '英数字と_のみ'
       }
-      
+
       const age = parseInt(formData.age)
       if (!formData.age.trim() || isNaN(age)) {
-        errors.age = '年齢を入力してください'
+        errors.age = '年齢を入力'
       } else if (age < 6 || age > 100) {
-        errors.age = '年齢は6歳以上100歳以下で入力してください'
+        errors.age = '6-100歳で入力'
       }
     }
-    
+
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
   }
 
-  // フォーム送信処理
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
-    
+
     try {
       if (mode === 'signin') {
         await signIn(formData.email, formData.password)
         onClose()
       } else if (mode === 'signup') {
         const age = parseInt(formData.age)
-        
-        // 13歳未満の場合は保護者同意の警告を表示
+
         if (age < 13 && !showParentalWarning) {
           setShowParentalWarning(true)
           return
         }
-        
+
         await signUp(formData.email, formData.password, {
           username: formData.username,
           displayName: formData.displayName || formData.username,
@@ -143,85 +137,82 @@ const AuthModal: React.FC<AuthModalProps> = ({
         onClose()
       } else if (mode === 'reset') {
         await resetPassword(formData.email)
-        alert('パスワードリセットメールを送信しました。メールをご確認ください。')
+        alert('パスワードリセットメールを送信しました。')
         setMode('signin')
       }
     } catch (error) {
-      // エラーはuseAuthで管理されるため、ここでは何もしない
       console.error('Auth error:', error)
     }
   }
 
-  // 入力変更処理
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    
-    // バリデーションエラーをクリア
+
     if (validationErrors[name]) {
       setValidationErrors(prev => ({ ...prev, [name]: '' }))
     }
   }
 
-  // モーダルが閉じている場合は何も表示しない
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* オーバーレイ */}
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+    <div className="fixed inset-0 z-50 overflow-y-auto backdrop-blur-sm bg-black/30 flex items-center justify-center p-4">
+      <div
+        className="fixed inset-0"
         onClick={onClose}
       />
-      
-      {/* モーダル本体 */}
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div
-          className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* 閉じるボタン */}
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-            disabled={loading}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
 
-          {/* ヘッダー */}
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-3xl">🎮</span>
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          animation: 'slideUp 0.3s ease-out'
+        }}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors flex items-center justify-center text-gray-600 hover:text-gray-800 z-10"
+          disabled={loading}
+        >
+          ✕
+        </button>
+
+        {/* ヘッダー */}
+        <div className="px-6 pt-6 pb-4 bg-gradient-to-br from-purple-50 to-pink-50">
+          <div className="flex flex-col items-center">
+            <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg mb-3">
+              <span className="text-2xl">🎮</span>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-gray-900">
               {mode === 'signin' && 'ログイン'}
               {mode === 'signup' && 'アカウント作成'}
               {mode === 'reset' && 'パスワードリセット'}
             </h2>
           </div>
+        </div>
 
-          {/* エラーメッセージ */}
+        <div className="px-6 py-5 max-h-[70vh] overflow-y-auto">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
-              {error}
+            <div className="mb-4 p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
+              <span>⚠️</span>
+              <span>{error}</span>
             </div>
           )}
 
-          {/* 13歳未満警告 */}
           {showParentalWarning && (
-            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-              <h3 className="font-semibold text-amber-800 mb-2">⚠️ 保護者の同意について</h3>
-              <p className="text-amber-700 text-sm mb-3">
-                13歳未満のお子様には保護者の同意が必要です。保護者の方と一緒にアカウントを作成してください。
+            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <h3 className="font-semibold text-amber-800 mb-1 text-sm flex items-center gap-1">
+                <span>⚠️</span> 保護者の同意について
+              </h3>
+              <p className="text-amber-700 text-xs mb-3 leading-relaxed">
+                13歳未満のお子様には保護者の同意が必要です。
               </p>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setShowParentalWarning(false)}
-                  className="px-3 py-1 bg-white border border-amber-300 text-amber-700 rounded-lg text-sm"
+                  className="flex-1 px-3 py-1.5 bg-white border border-amber-300 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-50 transition-colors"
                 >
                   キャンセル
                 </button>
@@ -231,7 +222,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                     setShowParentalWarning(false)
                     handleSubmit({ preventDefault: () => {} } as React.FormEvent)
                   }}
-                  className="px-3 py-1 bg-amber-600 text-white rounded-lg text-sm"
+                  className="flex-1 px-3 py-1.5 bg-amber-600 text-white rounded-lg text-xs font-medium hover:bg-amber-700 transition-colors"
                 >
                   同意して続ける
                 </button>
@@ -239,12 +230,11 @@ const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
-          {/* フォーム */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3.5">
             {/* メールアドレス */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                メールアドレス
+              <label htmlFor="email" className="block text-xs font-semibold text-gray-700 mb-1.5">
+                📧 メールアドレス
               </label>
               <input
                 type="email"
@@ -252,22 +242,22 @@ const AuthModal: React.FC<AuthModalProps> = ({
                 name="email"
                 value={formData.email}
                 onChange={handleInputChange}
-                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors ${
-                  validationErrors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                className={`w-full px-3 py-2 text-sm border-2 rounded-lg transition-all ${
+                  validationErrors.email ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100'
                 }`}
                 placeholder="your@example.com"
                 disabled={loading}
               />
               {validationErrors.email && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+                <p className="mt-1 text-xs text-red-600">{validationErrors.email}</p>
               )}
             </div>
 
             {/* パスワード */}
             {mode !== 'reset' && (
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  パスワード
+                <label htmlFor="password" className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  🔒 パスワード
                 </label>
                 <div className="relative">
                   <input
@@ -276,8 +266,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-3 pr-12 border rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors ${
-                      validationErrors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    className={`w-full px-3 py-2 pr-10 text-sm border-2 rounded-lg transition-all ${
+                      validationErrors.password ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100'
                     }`}
                     placeholder="6文字以上"
                     disabled={loading}
@@ -285,14 +275,14 @@ const AuthModal: React.FC<AuthModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 px-2 py-1 text-gray-400 hover:text-gray-600 transition-colors"
                     disabled={loading}
                   >
                     {showPassword ? '🙈' : '👁️'}
                   </button>
                 </div>
                 {validationErrors.password && (
-                  <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+                  <p className="mt-1 text-xs text-red-600">{validationErrors.password}</p>
                 )}
               </div>
             )}
@@ -302,8 +292,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
               <>
                 {/* パスワード確認 */}
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                    パスワード確認
+                  <label htmlFor="confirmPassword" className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    🔒 パスワード確認
                   </label>
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -311,21 +301,21 @@ const AuthModal: React.FC<AuthModalProps> = ({
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors ${
-                      validationErrors.confirmPassword ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    className={`w-full px-3 py-2 text-sm border-2 rounded-lg transition-all ${
+                      validationErrors.confirmPassword ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100'
                     }`}
                     placeholder="パスワードを再入力"
                     disabled={loading}
                   />
                   {validationErrors.confirmPassword && (
-                    <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
+                    <p className="mt-1 text-xs text-red-600">{validationErrors.confirmPassword}</p>
                   )}
                 </div>
 
                 {/* ユーザー名 */}
                 <div>
-                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                    ユーザー名
+                  <label htmlFor="username" className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    👤 ユーザー名
                   </label>
                   <input
                     type="text"
@@ -333,21 +323,23 @@ const AuthModal: React.FC<AuthModalProps> = ({
                     name="username"
                     value={formData.username}
                     onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors ${
-                      validationErrors.username ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                    className={`w-full px-3 py-2 text-sm border-2 rounded-lg transition-all ${
+                      validationErrors.username ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100'
                     }`}
-                    placeholder="半角英数字とアンダースコア"
+                    placeholder="taro_yamada"
                     disabled={loading}
                   />
-                  {validationErrors.username && (
-                    <p className="mt-1 text-sm text-red-600">{validationErrors.username}</p>
+                  {validationErrors.username ? (
+                    <p className="mt-1 text-xs text-red-600">{validationErrors.username}</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-gray-500">3-20文字、英数字と_のみ</p>
                   )}
                 </div>
 
                 {/* 表示名 */}
                 <div>
-                  <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-1">
-                    表示名 <span className="text-gray-400 text-xs">(任意)</span>
+                  <label htmlFor="displayName" className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    ✨ 表示名 <span className="text-gray-400 font-normal">(任意)</span>
                   </label>
                   <input
                     type="text"
@@ -355,8 +347,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
                     name="displayName"
                     value={formData.displayName}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors"
-                    placeholder="みんなに表示される名前"
+                    className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
+                    placeholder="山田太郎"
                     disabled={loading}
                   />
                 </div>
@@ -364,8 +356,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
                 {/* 年齢・言語 */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-1">
-                      年齢
+                    <label htmlFor="age" className="block text-xs font-semibold text-gray-700 mb-1.5">
+                      🎂 年齢
                     </label>
                     <input
                       type="number"
@@ -373,8 +365,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
                       name="age"
                       value={formData.age}
                       onChange={handleInputChange}
-                      className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-colors ${
-                        validationErrors.age ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                      className={`w-full px-3 py-2 text-sm border-2 rounded-lg transition-all ${
+                        validationErrors.age ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100'
                       }`}
                       placeholder="15"
                       min="6"
@@ -382,31 +374,31 @@ const AuthModal: React.FC<AuthModalProps> = ({
                       disabled={loading}
                     />
                     {validationErrors.age && (
-                      <p className="mt-1 text-sm text-red-600">{validationErrors.age}</p>
+                      <p className="mt-1 text-xs text-red-600">{validationErrors.age}</p>
                     )}
                   </div>
-                  
+
                   <div>
-                    <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-1">
-                      言語
+                    <label htmlFor="language" className="block text-xs font-semibold text-gray-700 mb-1.5">
+                      🌍 言語
                     </label>
                     <select
                       id="language"
                       name="language"
                       value={formData.language}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors"
+                      className="w-full px-2 py-2 text-sm border-2 border-gray-200 rounded-lg focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
                       disabled={loading}
                     >
-                      <option value="ja">日本語</option>
-                      <option value="en">English</option>
-                      <option value="ko">한국어</option>
-                      <option value="zh">中文</option>
-                      <option value="fr">Français</option>
-                      <option value="de">Deutsch</option>
-                      <option value="es">Español</option>
-                      <option value="it">Italiano</option>
-                      <option value="pt">Português</option>
+                      <option value="ja">🇯🇵 日本語</option>
+                      <option value="en">🇺🇸 English</option>
+                      <option value="ko">🇰🇷 한국어</option>
+                      <option value="zh">🇨🇳 中文</option>
+                      <option value="fr">🇫🇷 Français</option>
+                      <option value="de">🇩🇪 Deutsch</option>
+                      <option value="es">🇪🇸 Español</option>
+                      <option value="it">🇮🇹 Italiano</option>
+                      <option value="pt">🇵🇹 Português</option>
                     </select>
                   </div>
                 </div>
@@ -417,68 +409,65 @@ const AuthModal: React.FC<AuthModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:scale-[1.02] focus:ring-4 focus:ring-purple-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2.5 rounded-lg font-bold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none mt-4"
             >
               {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   処理中...
                 </span>
               ) : (
                 <>
-                  {mode === 'signin' && 'ログイン'}
-                  {mode === 'signup' && 'アカウント作成'}
-                  {mode === 'reset' && 'リセットメール送信'}
+                  {mode === 'signin' && '🚀 ログイン'}
+                  {mode === 'signup' && '✨ アカウント作成'}
+                  {mode === 'reset' && '📧 リセットメール送信'}
                 </>
               )}
             </button>
           </form>
 
           {/* フッターリンク */}
-          <div className="mt-6 text-center text-sm">
+          <div className="mt-5 pt-4 border-t border-gray-100">
             {mode === 'signin' && (
-              <>
-                <p className="text-gray-600">
-                  まだアカウントをお持ちでない方は{' '}
+              <div className="space-y-2">
+                <p className="text-center text-xs text-gray-600">
+                  アカウントをお持ちでない方は{' '}
                   <button
                     type="button"
                     onClick={() => setMode('signup')}
-                    className="text-purple-600 hover:text-purple-700 font-semibold"
+                    className="text-purple-600 hover:text-purple-700 font-semibold underline"
                     disabled={loading}
                   >
                     アカウント作成
                   </button>
                 </p>
-                <p className="mt-2">
+                <p className="text-center">
                   <button
                     type="button"
                     onClick={() => setMode('reset')}
-                    className="text-gray-500 hover:text-gray-700 text-sm"
+                    className="text-gray-500 hover:text-gray-700 text-xs underline"
                     disabled={loading}
                   >
                     パスワードを忘れた方
                   </button>
                 </p>
-              </>
+              </div>
             )}
-            
+
             {mode === 'signup' && (
-              <>
-                <p className="text-gray-600">
+              <div className="space-y-2">
+                <p className="text-center text-xs text-gray-600">
                   既にアカウントをお持ちの方は{' '}
                   <button
                     type="button"
                     onClick={() => setMode('signin')}
-                    className="text-purple-600 hover:text-purple-700 font-semibold"
+                    className="text-purple-600 hover:text-purple-700 font-semibold underline"
                     disabled={loading}
                   >
                     ログイン
                   </button>
                 </p>
-                <p className="mt-2 text-gray-500 text-xs">
+                <p className="text-center text-xs text-gray-500">
                   または{' '}
                   <a
                     href="/signup"
@@ -487,15 +476,15 @@ const AuthModal: React.FC<AuthModalProps> = ({
                     専用ページで登録
                   </a>
                 </p>
-              </>
+              </div>
             )}
-            
+
             {mode === 'reset' && (
-              <p className="text-gray-600">
+              <p className="text-center text-xs text-gray-600">
                 <button
                   type="button"
                   onClick={() => setMode('signin')}
-                  className="text-pink-600 hover:text-pink-700 font-medium"
+                  className="text-purple-600 hover:text-purple-700 font-semibold underline"
                   disabled={loading}
                 >
                   ログインに戻る
@@ -505,6 +494,19 @@ const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   )
 }
