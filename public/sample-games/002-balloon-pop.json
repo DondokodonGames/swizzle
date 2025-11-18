@@ -1,0 +1,641 @@
+{
+  "project": {
+    "id": "sample_balloon_pop_002",
+    "name": "風船割り",
+    "description": "浮いていく風船をタップして割ろう！",
+    "createdAt": "2025-11-18T00:00:00.000Z",
+    "lastModified": "2025-11-18T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": {
+      "userId": "sample_creator",
+      "username": "Sample Games",
+      "isAnonymous": false
+    },
+    "assets": {
+      "background": {
+        "id": "bg_sky",
+        "name": "青空",
+        "type": "background",
+        "frames": [
+          {
+            "id": "fbg",
+            "frameNumber": 0,
+            "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='640'%3E%3Cdefs%3E%3ClinearGradient id='sky' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%2387CEEB;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23E0F6FF;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='360' height='640' fill='url(%23sky)'/%3E%3Ccircle cx='80' cy='100' r='30' fill='white' opacity='0.8'/%3E%3Ccircle cx='100' cy='110' r='40' fill='white' opacity='0.8'/%3E%3Ccircle cx='130' cy='105' r='35' fill='white' opacity='0.8'/%3E%3Ccircle cx='280' cy='150' r='25' fill='white' opacity='0.8'/%3E%3Ccircle cx='300' cy='155' r='30' fill='white' opacity='0.8'/%3E%3C/svg%3E",
+            "originalName": "sky.svg",
+            "width": 360,
+            "height": 640,
+            "fileSize": 680,
+            "uploadedAt": "2025-11-18T00:00:00.000Z"
+          }
+        ],
+        "animationSettings": {
+          "speed": 12,
+          "loop": false,
+          "pingPong": false,
+          "autoStart": false
+        },
+        "defaultScale": 1,
+        "totalSize": 680,
+        "createdAt": "2025-11-18T00:00:00.000Z",
+        "lastModified": "2025-11-18T00:00:00.000Z"
+      },
+      "objects": [
+        {
+          "id": "balloon1",
+          "name": "赤い風船",
+          "type": "object",
+          "frames": [
+            {
+              "id": "f_balloon1",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='80'%3E%3Cellipse cx='30' cy='35' rx='25' ry='30' fill='%23FF6B6B' stroke='%23CC5555' stroke-width='2'/%3E%3Cellipse cx='22' cy='25' rx='8' ry='10' fill='%23FF9999' opacity='0.6'/%3E%3Cpath d='M 30 65 L 30 70 L 28 72 L 32 72 Z' fill='%23CC5555'/%3E%3Cline x1='30' y1='72' x2='30' y2='80' stroke='%23999' stroke-width='1'/%3E%3C/svg%3E",
+              "originalName": "balloon_red.svg",
+              "width": 60,
+              "height": 80,
+              "fileSize": 420,
+              "uploadedAt": "2025-11-18T00:00:00.000Z"
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": false,
+            "pingPong": false,
+            "autoStart": false
+          },
+          "defaultScale": 1.0,
+          "defaultOpacity": 1.0,
+          "totalSize": 420,
+          "createdAt": "2025-11-18T00:00:00.000Z",
+          "lastModified": "2025-11-18T00:00:00.000Z"
+        },
+        {
+          "id": "balloon2",
+          "name": "青い風船",
+          "type": "object",
+          "frames": [
+            {
+              "id": "f_balloon2",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='80'%3E%3Cellipse cx='30' cy='35' rx='25' ry='30' fill='%234DA6FF' stroke='%233385CC' stroke-width='2'/%3E%3Cellipse cx='22' cy='25' rx='8' ry='10' fill='%2380BFFF' opacity='0.6'/%3E%3Cpath d='M 30 65 L 30 70 L 28 72 L 32 72 Z' fill='%233385CC'/%3E%3Cline x1='30' y1='72' x2='30' y2='80' stroke='%23999' stroke-width='1'/%3E%3C/svg%3E",
+              "originalName": "balloon_blue.svg",
+              "width": 60,
+              "height": 80,
+              "fileSize": 420,
+              "uploadedAt": "2025-11-18T00:00:00.000Z"
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": false,
+            "pingPong": false,
+            "autoStart": false
+          },
+          "defaultScale": 1.0,
+          "defaultOpacity": 1.0,
+          "totalSize": 420,
+          "createdAt": "2025-11-18T00:00:00.000Z",
+          "lastModified": "2025-11-18T00:00:00.000Z"
+        },
+        {
+          "id": "balloon3",
+          "name": "緑の風船",
+          "type": "object",
+          "frames": [
+            {
+              "id": "f_balloon3",
+              "frameNumber": 0,
+              "dataUrl": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='80'%3E%3Cellipse cx='30' cy='35' rx='25' ry='30' fill='%2366CC66' stroke='%234D994D' stroke-width='2'/%3E%3Cellipse cx='22' cy='25' rx='8' ry='10' fill='%2399DD99' opacity='0.6'/%3E%3Cpath d='M 30 65 L 30 70 L 28 72 L 32 72 Z' fill='%234D994D'/%3E%3Cline x1='30' y1='72' x2='30' y2='80' stroke='%23999' stroke-width='1'/%3E%3C/svg%3E",
+              "originalName": "balloon_green.svg",
+              "width": 60,
+              "height": 80,
+              "fileSize": 420,
+              "uploadedAt": "2025-11-18T00:00:00.000Z"
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": false,
+            "pingPong": false,
+            "autoStart": false
+          },
+          "defaultScale": 1.0,
+          "defaultOpacity": 1.0,
+          "totalSize": 420,
+          "createdAt": "2025-11-18T00:00:00.000Z",
+          "lastModified": "2025-11-18T00:00:00.000Z"
+        }
+      ],
+      "texts": [],
+      "audio": {
+        "bgm": null,
+        "se": []
+      },
+      "statistics": {
+        "totalImageSize": 1940,
+        "totalAudioSize": 0,
+        "totalSize": 1940,
+        "usedSlots": {
+          "background": 1,
+          "objects": 3,
+          "texts": 0,
+          "bgm": 0,
+          "se": 0
+        },
+        "limitations": {
+          "isNearImageLimit": false,
+          "isNearAudioLimit": false,
+          "isNearTotalLimit": false,
+          "hasViolations": false
+        }
+      },
+      "lastModified": "2025-11-18T00:00:00.000Z"
+    },
+    "script": {
+      "initialState": {
+        "layout": {
+          "background": {
+            "visible": true,
+            "frameIndex": 0,
+            "animationSpeed": 12,
+            "autoStart": false
+          },
+          "objects": [
+            {
+              "id": "balloon1",
+              "position": { "x": 0.2, "y": 0.95 },
+              "visible": true,
+              "scale": { "x": 1.0, "y": 1.0 },
+              "rotation": 0,
+              "zIndex": 100,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            },
+            {
+              "id": "balloon2",
+              "position": { "x": 0.5, "y": 0.95 },
+              "visible": true,
+              "scale": { "x": 1.0, "y": 1.0 },
+              "rotation": 0,
+              "zIndex": 100,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            },
+            {
+              "id": "balloon3",
+              "position": { "x": 0.8, "y": 0.95 },
+              "visible": true,
+              "scale": { "x": 1.0, "y": 1.0 },
+              "rotation": 0,
+              "zIndex": 100,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          ],
+          "texts": []
+        },
+        "audio": {
+          "bgm": null,
+          "masterVolume": 0.8,
+          "seVolume": 0.8
+        },
+        "gameState": {
+          "flags": {},
+          "score": 0,
+          "timeLimit": 5,
+          "lives": 1,
+          "counters": {
+            "popped_count": 0
+          }
+        },
+        "autoRules": [
+          {
+            "id": "r_balloon1_float",
+            "delay": 0,
+            "priority": 100
+          },
+          {
+            "id": "r_balloon2_float",
+            "delay": 0,
+            "priority": 100
+          },
+          {
+            "id": "r_balloon3_float",
+            "delay": 0,
+            "priority": 100
+          }
+        ],
+        "metadata": {
+          "version": "1.0.0",
+          "createdAt": "2025-11-18T00:00:00.000Z",
+          "lastModified": "2025-11-18T00:00:00.000Z"
+        }
+      },
+      "layout": {
+        "background": {
+          "visible": true,
+          "initialAnimation": 0,
+          "animationSpeed": 12,
+          "autoStart": false
+        },
+        "objects": [
+          {
+            "objectId": "balloon1",
+            "position": { "x": 0.2, "y": 0.95 },
+            "scale": { "x": 1.0, "y": 1.0 },
+            "rotation": 0,
+            "zIndex": 100,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "balloon2",
+            "position": { "x": 0.5, "y": 0.95 },
+            "scale": { "x": 1.0, "y": 1.0 },
+            "rotation": 0,
+            "zIndex": 100,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "balloon3",
+            "position": { "x": 0.8, "y": 0.95 },
+            "scale": { "x": 1.0, "y": 1.0 },
+            "rotation": 0,
+            "zIndex": 100,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          }
+        ],
+        "texts": [],
+        "stage": {
+          "backgroundColor": "#87CEEB"
+        }
+      },
+      "flags": [],
+      "counters": [
+        {
+          "id": "popped_count",
+          "name": "割った風船の数",
+          "initialValue": 0,
+          "minValue": 0,
+          "maxValue": 3,
+          "resetOnGameRestart": true
+        }
+      ],
+      "rules": [
+        {
+          "id": "r_balloon1_float",
+          "name": "風船1が浮いていく",
+          "enabled": true,
+          "priority": 100,
+          "targetObjectId": "balloon1",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "exact",
+                "seconds": 0
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "balloon1",
+              "movement": {
+                "type": "straight",
+                "target": {
+                  "x": 0.2,
+                  "y": -0.3
+                },
+                "speed": 3,
+                "easing": "linear"
+              }
+            }
+          ],
+          "createdAt": "2025-11-18T00:00:00.000Z",
+          "lastModified": "2025-11-18T00:00:00.000Z"
+        },
+        {
+          "id": "r_balloon2_float",
+          "name": "風船2が浮いていく",
+          "enabled": true,
+          "priority": 100,
+          "targetObjectId": "balloon2",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "exact",
+                "seconds": 0
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "balloon2",
+              "movement": {
+                "type": "straight",
+                "target": {
+                  "x": 0.5,
+                  "y": -0.3
+                },
+                "speed": 3,
+                "easing": "linear"
+              }
+            }
+          ],
+          "createdAt": "2025-11-18T00:00:00.000Z",
+          "lastModified": "2025-11-18T00:00:00.000Z"
+        },
+        {
+          "id": "r_balloon3_float",
+          "name": "風船3が浮いていく",
+          "enabled": true,
+          "priority": 100,
+          "targetObjectId": "balloon3",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "exact",
+                "seconds": 0
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "balloon3",
+              "movement": {
+                "type": "straight",
+                "target": {
+                  "x": 0.8,
+                  "y": -0.3
+                },
+                "speed": 3,
+                "easing": "linear"
+              }
+            }
+          ],
+          "createdAt": "2025-11-18T00:00:00.000Z",
+          "lastModified": "2025-11-18T00:00:00.000Z"
+        },
+        {
+          "id": "r_balloon1_pop",
+          "name": "風船1を割る",
+          "enabled": true,
+          "priority": 200,
+          "targetObjectId": "balloon1",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "balloon1",
+              "fadeOut": false,
+              "duration": 0
+            },
+            {
+              "type": "counter",
+              "counterName": "popped_count",
+              "operation": "add",
+              "value": 1
+            }
+          ],
+          "createdAt": "2025-11-18T00:00:00.000Z",
+          "lastModified": "2025-11-18T00:00:00.000Z"
+        },
+        {
+          "id": "r_balloon2_pop",
+          "name": "風船2を割る",
+          "enabled": true,
+          "priority": 200,
+          "targetObjectId": "balloon2",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "balloon2",
+              "fadeOut": false,
+              "duration": 0
+            },
+            {
+              "type": "counter",
+              "counterName": "popped_count",
+              "operation": "add",
+              "value": 1
+            }
+          ],
+          "createdAt": "2025-11-18T00:00:00.000Z",
+          "lastModified": "2025-11-18T00:00:00.000Z"
+        },
+        {
+          "id": "r_balloon3_pop",
+          "name": "風船3を割る",
+          "enabled": true,
+          "priority": 200,
+          "targetObjectId": "balloon3",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "balloon3",
+              "fadeOut": false,
+              "duration": 0
+            },
+            {
+              "type": "counter",
+              "counterName": "popped_count",
+              "operation": "add",
+              "value": 1
+            }
+          ],
+          "createdAt": "2025-11-18T00:00:00.000Z",
+          "lastModified": "2025-11-18T00:00:00.000Z"
+        },
+        {
+          "id": "r_all_popped_success",
+          "name": "全部割ったら成功",
+          "enabled": true,
+          "priority": 300,
+          "targetObjectId": "stage",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "counter",
+                "counterName": "popped_count",
+                "comparison": "equals",
+                "value": 3
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "success",
+              "score": 300,
+              "message": "全部割った！"
+            }
+          ],
+          "createdAt": "2025-11-18T00:00:00.000Z",
+          "lastModified": "2025-11-18T00:00:00.000Z"
+        },
+        {
+          "id": "r_timeout_fail",
+          "name": "時間切れで失敗",
+          "enabled": true,
+          "priority": 50,
+          "targetObjectId": "stage",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "exact",
+                "seconds": 5
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "failure",
+              "message": "風船が逃げた！"
+            }
+          ],
+          "createdAt": "2025-11-18T00:00:00.000Z",
+          "lastModified": "2025-11-18T00:00:00.000Z"
+        }
+      ],
+      "successConditions": [],
+      "statistics": {
+        "totalRules": 8,
+        "totalConditions": 8,
+        "totalActions": 11,
+        "complexityScore": 4,
+        "usedTriggerTypes": ["time", "touch", "counter"],
+        "usedActionTypes": ["move", "hide", "counter", "success", "failure"],
+        "flagCount": 0,
+        "counterCount": 1,
+        "usedCounterOperations": ["add"],
+        "usedCounterComparisons": ["equals"],
+        "randomConditionCount": 0,
+        "randomActionCount": 0,
+        "totalRandomChoices": 0,
+        "averageRandomProbability": 0,
+        "estimatedCPUUsage": "low",
+        "estimatedMemoryUsage": 160,
+        "maxConcurrentEffects": 0,
+        "randomEventsPerSecond": 0,
+        "randomMemoryUsage": 0
+      },
+      "version": "1.0.0",
+      "lastModified": "2025-11-18T00:00:00.000Z"
+    },
+    "settings": {
+      "name": "風船割り",
+      "description": "浮いていく風船をタップして割ろう！3つ全部割れたらクリア！",
+      "duration": {
+        "type": "fixed",
+        "seconds": 5
+      },
+      "difficulty": "easy",
+      "publishing": {
+        "isPublished": false,
+        "visibility": "public",
+        "allowComments": true,
+        "allowRemix": true,
+        "tags": ["タップ", "アクション", "反射神経"],
+        "category": "action"
+      },
+      "preview": {},
+      "export": {
+        "includeSourceData": true,
+        "compressionLevel": "medium",
+        "format": "json"
+      }
+    },
+    "status": "published",
+    "totalSize": 1940,
+    "metadata": {
+      "statistics": {
+        "totalEditTime": 300,
+        "saveCount": 1,
+        "testPlayCount": 0,
+        "publishCount": 1
+      },
+      "usage": {
+        "lastOpened": "2025-11-18T00:00:00.000Z",
+        "totalOpenCount": 1,
+        "averageSessionTime": 300
+      },
+      "performance": {
+        "lastBuildTime": 50,
+        "averageFPS": 60,
+        "memoryUsage": 0.7
+      }
+    },
+    "versionHistory": [],
+    "projectSettings": {
+      "autoSaveInterval": 30000,
+      "backupEnabled": true,
+      "compressionEnabled": false,
+      "maxVersionHistory": 10
+    }
+  },
+  "metadata": {
+    "id": "sample_balloon_pop_002",
+    "name": "風船割り",
+    "lastModified": "2025-11-18T00:00:00.000Z",
+    "status": "published",
+    "size": 1940,
+    "version": "1.0.0"
+  },
+  "exportedAt": "2025-11-18T00:00:00.000Z",
+  "version": "1.0.0"
+}
