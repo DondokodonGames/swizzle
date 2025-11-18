@@ -156,14 +156,30 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
         language: formData.language
       }
 
+      // アバター画像のアップロード
       if (avatarFile && profile?.id) {
-        const avatarUrl = await storage.uploadAvatar(profile.id, avatarFile)
-        updates.avatar_url = avatarUrl
+        console.log('アバターアップロード開始:', avatarFile.name, 'ユーザーID:', profile.id)
+        try {
+          const avatarUrl = await storage.uploadAvatar(profile.id, avatarFile)
+          console.log('アップロード成功:', avatarUrl)
+          updates.avatar_url = avatarUrl
+        } catch (uploadError: any) {
+          console.error('アバターアップロードエラー:', uploadError)
+          setValidationErrors(prev => ({
+            ...prev,
+            avatar: `アップロード失敗: ${uploadError.message || '不明なエラー'}`
+          }))
+          setAvatarUploading(false)
+          return
+        }
       } else if (avatarPreview === null && profile?.avatar_url) {
         updates.avatar_url = null
       }
 
+      console.log('プロフィール更新:', updates)
       await updateProfile(updates)
+      console.log('プロフィール更新成功')
+
       setHasChanges(false)
       setAvatarFile(null)
       setSuccessMessage('保存しました！')
@@ -179,8 +195,12 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
           onClose()
         }, 1500)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Profile update error:', error)
+      setValidationErrors(prev => ({
+        ...prev,
+        general: `保存失敗: ${error.message || '不明なエラー'}`
+      }))
     } finally {
       setAvatarUploading(false)
     }
@@ -310,6 +330,13 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
             <div className="mb-3 p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
               <span>⚠️</span>
               <span>{error}</span>
+            </div>
+          )}
+
+          {validationErrors.general && activeTab === 'profile' && (
+            <div className="mb-3 p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
+              <span>⚠️</span>
+              <span>{validationErrors.general}</span>
             </div>
           )}
 
