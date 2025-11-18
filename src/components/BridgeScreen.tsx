@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase';
 import { GameProjectCopier } from '../services/editor/GameProjectCopier';
 import { ProjectStorageManager } from '../services/ProjectStorageManager';
 import { GameProject } from '../types/editor/GameProject';
+import { AdUnit } from './monetization/AdUnit';
+import { AdPlacement } from '../types/MonetizationTypes';
 
 /**
  * BridgeScreen.tsx - ゲーム間のブリッジ画面（問題12対応：完全インラインスタイル版）
@@ -373,18 +375,12 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           </button>
         </div>
 
-        {/* c. 広告プレースホルダー */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          borderRadius: '20px',
-          padding: '60px',
-          marginBottom: '20px',
-          textAlign: 'center',
-          border: '2px dashed rgba(255, 255, 255, 0.2)'
-        }}>
-          <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '20px', margin: 0 }}>
-            📢 広告表示エリア
-          </p>
+        {/* c. 広告表示 */}
+        <div style={{ marginBottom: '20px' }}>
+          <AdUnit
+            placement={AdPlacement.GAME_BRIDGE}
+            className="bridge-ad"
+          />
         </div>
 
         {/* スペーサー（下部のボタンを下に押し下げる） */}
