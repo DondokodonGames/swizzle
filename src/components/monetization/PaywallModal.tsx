@@ -136,16 +136,28 @@ export function PaywallModal({
             </h3>
             <ul className="space-y-3">
               {[
-                '✅ 無制限ゲーム作成',
-                '✅ 広告非表示',
-                '✅ 全225テンプレート',
-                '✅ 高度な編集機能',
-                '✅ カスタムアセット無制限',
-                '✅ 優先サポート（24時間以内）',
+                '無制限ゲーム作成',
+                '広告非表示',
+                '全225テンプレート',
+                '高度な編集機能',
+                'カスタムアセット無制限',
+                '優先サポート（24時間以内）',
               ].map((benefit, index) => (
                 <li key={index} className="flex items-center text-gray-700">
-                  <span className="text-purple-600 mr-3 text-lg">•</span>
-                  {benefit}
+                  <svg
+                    className="w-5 h-5 text-purple-600 mr-3 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <span className="text-sm">{benefit}</span>
                 </li>
               ))}
             </ul>
