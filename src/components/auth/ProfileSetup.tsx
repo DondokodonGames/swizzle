@@ -178,6 +178,9 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
       setAvatarFile(null)
       setSuccessMessage('プロフィールを保存しました！')
 
+      // プロフィール更新イベントを発火（アバター表示を更新）
+      window.dispatchEvent(new CustomEvent('profileUpdated'))
+
       // 3秒後に成功メッセージを消す
       setTimeout(() => {
         setSuccessMessage(null)

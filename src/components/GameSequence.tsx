@@ -65,7 +65,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         if (user) {
           // プロフィール情報を取得
           const { data: profile } = await supabase
-            .from('user_profiles')
+            .from('profiles')
             .select('*')
             .eq('id', user.id)
             .single();
@@ -78,6 +78,17 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     };
 
     fetchUser();
+
+    // プロフィール更新イベントのリスナー
+    const handleProfileUpdate = () => {
+      fetchUser();
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
   }, []);
 
   // ==================== Ref ====================
