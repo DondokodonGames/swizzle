@@ -280,7 +280,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
       {/* モーダル本体 */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div
-          className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl transform transition-all max-h-[90vh] flex flex-col"
+          className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl transform transition-all max-h-[85vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* 閉じるボタン */}
@@ -303,20 +303,11 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
           </button>
 
           {/* ヘッダー（固定） */}
-          <div className="p-6 pb-0 flex-shrink-0">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-2xl">👤</span>
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900">
+          <div className="p-4 pb-0 flex-shrink-0">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold text-gray-900">
                 {title || (mode === 'setup' ? 'プロフィール設定' : 'プロフィール編集')}
               </h2>
-              <p className="text-gray-600 mt-2">
-                {mode === 'setup'
-                  ? 'あなたのプロフィールを設定しましょう'
-                  : 'プロフィール情報とサブスクリプションを管理できます'
-                }
-              </p>
             </div>
 
             {/* タブ（edit モードのみ表示） */}
@@ -347,7 +338,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
           </div>
 
           {/* スクロール可能なコンテンツ */}
-          <div className="flex-1 overflow-y-auto px-6 py-6">
+          <div className="flex-1 overflow-y-auto px-4 py-4">
 
           {/* エラーメッセージ */}
           {error && activeTab === 'profile' && (
@@ -375,16 +366,16 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
           {activeTab === 'profile' && (
             <>
               {/* フォーム */}
-              <form id="profile-form" onSubmit={handleSubmit} className="space-y-5">
+              <form id="profile-form" onSubmit={handleSubmit} className="space-y-3">
                 {/* アバター画像アップロード */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     アバター画像
                   </label>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
                     {/* アバタープレビュー */}
                     <div className="relative">
-                      <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center">
+                      <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-r from-pink-500 to-purple-600 flex items-center justify-center">
                         {avatarPreview || profile?.avatar_url ? (
                           <img
                             src={avatarPreview || profile?.avatar_url || ''}
@@ -392,7 +383,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <span className="text-white text-3xl font-bold">
+                          <span className="text-white text-2xl font-bold">
                             {(formData.displayName || formData.username || '?').charAt(0).toUpperCase()}
                           </span>
                         )}
@@ -401,7 +392,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
                         <button
                           type="button"
                           onClick={handleRemoveAvatar}
-                          className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
                           title="削除"
                         >
                           ×
@@ -422,12 +413,12 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
                       />
                       <label
                         htmlFor="avatar-upload"
-                        className="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg cursor-pointer hover:bg-blue-600 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-block px-3 py-1.5 bg-blue-500 text-white rounded-lg cursor-pointer hover:bg-blue-600 transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {avatarUploading ? '⏳ アップロード中...' : '📷 画像を選択'}
+                        {avatarUploading ? 'アップロード中...' : '画像を選択'}
                       </label>
-                      <p className="text-xs text-gray-500 mt-2">
-                        PNG、JPG、GIF（最大5MB）
+                      <p className="text-xs text-gray-500 mt-1">
+                        最大5MB
                       </p>
                       {validationErrors.avatar && (
                         <p className="mt-1 text-sm text-red-600">{validationErrors.avatar}</p>
@@ -564,37 +555,6 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
                   </select>
                 </div>
               </form>
-
-              {/* プロフィールプレビュー */}
-              {mode === 'edit' && (
-                <div className="mt-6 p-4 bg-gray-50 rounded-xl">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">プレビュー</h3>
-                  <div className="flex items-start space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
-                      {avatarPreview || profile?.avatar_url ? (
-                        <img
-                          src={avatarPreview || profile?.avatar_url || ''}
-                          alt="Avatar"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-white font-semibold">
-                          {(formData.displayName || formData.username).charAt(0).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900">
-                        {formData.displayName || formData.username}
-                      </h4>
-                      <p className="text-sm text-gray-500">@{formData.username}</p>
-                      {formData.bio && (
-                        <p className="text-sm text-gray-700 mt-1">{formData.bio}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
             </>
           )}
 
@@ -648,8 +608,8 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
 
           {/* 固定フッター（ボタン） */}
           {activeTab === 'profile' && (
-            <div className="p-6 pt-4 border-t border-gray-200 flex-shrink-0 bg-white rounded-b-2xl">
-              <div className="flex gap-3">
+            <div className="p-4 border-t border-gray-200 flex-shrink-0 bg-white rounded-b-2xl">
+              <div className="flex gap-2">
                 {mode === 'edit' && (
                   <button
                     type="button"
@@ -662,7 +622,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
                         onClose()
                       }
                     }}
-                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition-all"
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-all"
                     disabled={loading}
                   >
                     キャンセル
@@ -673,7 +633,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
                   type="submit"
                   form="profile-form"
                   disabled={loading || !hasChanges || Object.keys(validationErrors).length > 0 || avatarUploading}
-                  className={`${mode === 'edit' ? 'flex-1' : 'w-full'} bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-purple-700 focus:ring-4 focus:ring-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className={`${mode === 'edit' ? 'flex-1' : 'w-full'} bg-gradient-to-r from-blue-500 to-purple-600 text-white py-2 rounded-lg text-sm font-semibold hover:from-blue-600 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {loading || avatarUploading ? (
                     <span className="flex items-center justify-center">

@@ -177,7 +177,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
       {/* モーダル本体 */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div
-          className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 transform transition-all"
+          className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all"
           onClick={(e) => e.stopPropagation()}
         >
           {/* 閉じるボタン */}
@@ -192,20 +192,15 @@ const AuthModal: React.FC<AuthModalProps> = ({
           </button>
 
           {/* ヘッダー */}
-          <div className="text-center mb-8">
-            <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-4xl">🎮</span>
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+              <span className="text-3xl">🎮</span>
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold text-gray-900">
               {mode === 'signin' && 'ログイン'}
               {mode === 'signup' && 'アカウント作成'}
               {mode === 'reset' && 'パスワードリセット'}
             </h2>
-            <p className="text-gray-600 text-base">
-              {mode === 'signin' && 'Swizzleへようこそ！'}
-              {mode === 'signup' && 'ゲーム作りを始めましょう！'}
-              {mode === 'reset' && 'メールアドレスを入力してください'}
-            </p>
           </div>
 
           {/* エラーメッセージ */}
@@ -422,7 +417,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg hover:scale-[1.02] focus:ring-4 focus:ring-purple-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg hover:scale-[1.02] focus:ring-4 focus:ring-purple-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               {loading ? (
                 <span className="flex items-center justify-center">

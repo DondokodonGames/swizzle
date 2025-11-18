@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { SocialService } from '../social/services/SocialService';
 import EditorGameBridge from '../services/editor/EditorGameBridge';
 import { PublicGame } from '../social/types/SocialTypes';
@@ -32,6 +33,9 @@ interface GameSequenceProps {
 }
 
 const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
+  // ==================== React Router ====================
+  const navigate = useNavigate();
+
   // ==================== 状態管理 ====================
   const [publicGames, setPublicGames] = useState<PublicGame[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -406,9 +410,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           {/* ログイン/新規登録またはユーザー情報 */}
           <button
             onClick={() => {
-              if (currentUser) {
-                setProfileUserId(currentUser.id);
-                setShowProfileModal(true);
+              if (currentUser && userProfile) {
+                navigate(`/profile/${userProfile.username}`);
               } else {
                 window.dispatchEvent(new CustomEvent('openAuthModal', {
                   detail: { mode: 'signin' }
