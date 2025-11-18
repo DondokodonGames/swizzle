@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { database } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import type { Profile } from '../lib/database.types'
 
 interface ProfilePageProps {
@@ -26,11 +26,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
 
         if (propUserId) {
           // userIdが直接渡された場合
-          const profileData = await database.profiles.get(propUserId)
-          setProfile(profileData)
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', propUserId)
+            .single()
+
+          if (error) throw error
+          setProfile(data)
         } else if (username) {
           // usernameからプロフィールを検索
-          const { data, error } = await (window as any).supabase
+          const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('username', username)
