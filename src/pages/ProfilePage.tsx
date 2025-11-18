@@ -5,6 +5,9 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Profile } from '../lib/database.types'
+import type { Subscription } from '../types/MonetizationTypes'
+import { PremiumBadge } from '../components/monetization/PremiumBadge'
+import { MVPSubscriptionPlan } from '../types/MonetizationTypes'
 
 interface ProfilePageProps {
   // オプションでuserIdを直接渡すこともできる
@@ -15,6 +18,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
   const { username } = useParams<{ username: string }>()
   const navigate = useNavigate()
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -34,6 +38,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
 
           if (error) throw error
           setProfile(data)
+
+          // サブスクリプション情報も取得
+          const { data: subData } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', propUserId)
+            .single()
+
+          if (subData) {
+            setSubscription(subData as Subscription)
+          }
         } else if (username) {
           // usernameからプロフィールを検索
           const { data, error } = await supabase
@@ -44,6 +59,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
 
           if (error) throw error
           setProfile(data)
+
+          // サブスクリプション情報も取得
+          const { data: subData } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', data.id)
+            .single()
+
+          if (subData) {
+            setSubscription(subData as Subscription)
+          }
         } else {
           throw new Error('ユーザー情報が指定されていません')
         }
@@ -222,9 +248,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
                 fontSize: '32px',
                 fontWeight: 'bold',
                 color: '#111827',
-                margin: '0 0 8px 0'
+                margin: '0 0 8px 0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
               }}>
                 {profile.display_name || profile.username}
+                {/* Premium Badge */}
+                {subscription && subscription.plan_type === MVPSubscriptionPlan.PREMIUM && (
+                  <PremiumBadge size="medium" showLabel={true} />
+                )}
               </h2>
               <p style={{
                 fontSize: '18px',
