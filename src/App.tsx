@@ -822,14 +822,15 @@ const SocialIntegratedApp: React.FC = () => {
 
 // ルートAppコンポーネント（React Router統合）
 function App() {
-  const AppContent = () => {
+  // AuthProviderを使うかどうかのラッパー
+  const AppWithAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     if (ENABLE_AUTH && AuthProvider) {
       return (
         <Suspense fallback={
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
             height: '100vh',
             background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
           }}>
@@ -840,55 +841,57 @@ function App() {
           </div>
         }>
           <AuthProvider>
-            <SocialIntegratedApp />
+            {children}
           </AuthProvider>
         </Suspense>
       );
     }
 
-    return <SocialIntegratedApp />;
+    return <>{children}</>;
   };
 
   return (
     <BrowserRouter>
-      <Routes>
-        {/* 認証ページ: React Router */}
-        <Route path="/signup" element={
-          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
-            <SignupPage />
-          </Suspense>
-        } />
-        <Route path="/login" element={
-          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
-            <LoginPage />
-          </Suspense>
-        } />
-        <Route path="/profile/:username" element={
-          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
-            <ProfilePage />
-          </Suspense>
-        } />
+      <AppWithAuth>
+        <Routes>
+          {/* 認証ページ: React Router */}
+          <Route path="/signup" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+              <SignupPage />
+            </Suspense>
+          } />
+          <Route path="/login" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+              <LoginPage />
+            </Suspense>
+          } />
+          <Route path="/profile/:username" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+              <ProfilePage />
+            </Suspense>
+          } />
 
-        {/* マネタイズページ: React Router */}
-        <Route path="/pricing" element={
-          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
-            <Pricing />
-          </Suspense>
-        } />
-        <Route path="/subscription/success" element={
-          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
-            <SubscriptionSuccess />
-          </Suspense>
-        } />
-        <Route path="/subscription/cancel" element={
-          <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
-            <SubscriptionCancel />
-          </Suspense>
-        } />
+          {/* マネタイズページ: React Router */}
+          <Route path="/pricing" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+              <Pricing />
+            </Suspense>
+          } />
+          <Route path="/subscription/success" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+              <SubscriptionSuccess />
+            </Suspense>
+          } />
+          <Route path="/subscription/cancel" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+              <SubscriptionCancel />
+            </Suspense>
+          } />
 
-        {/* メインアプリ: 既存のmode-based */}
-        <Route path="/*" element={<AppContent />} />
-      </Routes>
+          {/* メインアプリ: 既存のmode-based */}
+          <Route path="/*" element={<SocialIntegratedApp />} />
+        </Routes>
+      </AppWithAuth>
     </BrowserRouter>
   );
 }
