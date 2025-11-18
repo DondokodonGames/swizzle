@@ -273,10 +273,8 @@ export const storage = {
       // ファイル名を生成（拡張子を保持）
       const fileExt = file.name.split('.').pop()
       const fileName = `${userId}-${Date.now()}.${fileExt}`
-      const filePath = `avatars/${fileName}`
-
-      // 既存のアバターを削除（オプション）
-      // await supabase.storage.from('avatars').remove([`avatars/${userId}`])
+      // バケット名は .from('avatars') で指定されているので、パスには含めない
+      const filePath = fileName
 
       // ファイルをアップロード
       const { data, error } = await supabase.storage
@@ -286,7 +284,10 @@ export const storage = {
           upsert: true
         })
 
-      if (error) throw new SupabaseError(error.message)
+      if (error) {
+        console.error('Supabase Storage upload error:', error)
+        throw new SupabaseError(error.message)
+      }
 
       // 公開URLを取得
       const { data: urlData } = supabase.storage
@@ -295,6 +296,7 @@ export const storage = {
 
       return urlData.publicUrl
     } catch (error: any) {
+      console.error('Avatar upload error:', error)
       throw new SupabaseError(error.message || 'Failed to upload avatar')
     }
   },
