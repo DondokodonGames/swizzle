@@ -651,7 +651,177 @@ const handlePublish = useCallback(async () => {
       )}
 
       {/* メインコンテンツ */}
-      {mode === 'selector' ? (
+      {!authLoading && !user ? (
+        // 未ログイン時：登録/ログインを促す画面
+        <div
+          style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: DESIGN_TOKENS.spacing[6],
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+          }}
+        >
+          <ModernCard variant="elevated" size="xl">
+            <div style={{ textAlign: 'center', maxWidth: '500px' }}>
+              {/* アイコン */}
+              <div
+                style={{
+                  width: '80px',
+                  height: '80px',
+                  margin: '0 auto 24px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 10px 25px rgba(102, 126, 234, 0.3)'
+                }}
+              >
+                <svg
+                  style={{ width: '48px', height: '48px', color: 'white' }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                  />
+                </svg>
+              </div>
+
+              {/* タイトル */}
+              <h2
+                style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize['3xl'],
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                  color: DESIGN_TOKENS.colors.neutral[900],
+                  marginBottom: DESIGN_TOKENS.spacing[4]
+                }}
+              >
+                ログインが必要です
+              </h2>
+
+              {/* 説明 */}
+              <p
+                style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                  color: DESIGN_TOKENS.colors.neutral[600],
+                  marginBottom: DESIGN_TOKENS.spacing[6],
+                  lineHeight: '1.6'
+                }}
+              >
+                ゲームエディターを使用するには、アカウントの登録またはログインが必要です。
+                <br />
+                無料でアカウントを作成して、すぐにゲーム制作を始めましょう！
+              </p>
+
+              {/* 機能リスト */}
+              <div
+                style={{
+                  backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+                  borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                  padding: DESIGN_TOKENS.spacing[4],
+                  marginBottom: DESIGN_TOKENS.spacing[6],
+                  textAlign: 'left'
+                }}
+              >
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                  {[
+                    'ゲームプロジェクトの作成・保存',
+                    'クラウドストレージで自動保存',
+                    'ゲームの公開・共有',
+                    'コミュニティへの参加'
+                  ].map((feature, index) => (
+                    <li
+                      key={index}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        marginBottom: index < 3 ? DESIGN_TOKENS.spacing[3] : 0
+                      }}
+                    >
+                      <svg
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          minWidth: '20px',
+                          minHeight: '20px',
+                          marginRight: DESIGN_TOKENS.spacing[3],
+                          color: DESIGN_TOKENS.colors.success[600]
+                        }}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <span
+                        style={{
+                          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                          color: DESIGN_TOKENS.colors.neutral[700]
+                        }}
+                      >
+                        {feature}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* ボタン */}
+              <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[3] }}>
+                <ModernButton
+                  variant="primary"
+                  size="lg"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('openAuthModal', {
+                      detail: { mode: 'signup' }
+                    }));
+                  }}
+                  style={{ flex: 1 }}
+                >
+                  無料で登録
+                </ModernButton>
+                <ModernButton
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('openAuthModal', {
+                      detail: { mode: 'signin' }
+                    }));
+                  }}
+                  style={{ flex: 1 }}
+                >
+                  ログイン
+                </ModernButton>
+              </div>
+
+              {/* 戻るボタン */}
+              {onClose && (
+                <div style={{ marginTop: DESIGN_TOKENS.spacing[4] }}>
+                  <ModernButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={onClose}
+                  >
+                    ← メイン画面に戻る
+                  </ModernButton>
+                </div>
+              )}
+            </div>
+          </ModernCard>
+        </div>
+      ) : mode === 'selector' ? (
         <ProjectSelector
           onProjectSelect={handleProjectSelect}
           onCreateNew={handleCreateNew}
