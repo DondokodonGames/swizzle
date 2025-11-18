@@ -105,7 +105,8 @@ export function PricingTable({
           {planConfig.features.map((feature, index) => (
             <li key={index} className="flex items-start">
               <svg
-                className="w-5 h-5 text-purple-600 mr-3 mt-0.5 flex-shrink-0"
+                className="text-purple-600 mr-3 mt-0.5 flex-shrink-0"
+                style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

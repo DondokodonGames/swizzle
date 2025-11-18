@@ -145,7 +145,8 @@ export function PaywallModal({
               ].map((benefit, index) => (
                 <li key={index} className="flex items-center text-gray-700">
                   <svg
-                    className="w-5 h-5 text-purple-600 mr-3 flex-shrink-0"
+                    className="text-purple-600 mr-3 flex-shrink-0"
+                    style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
