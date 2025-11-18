@@ -32,6 +32,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
   const [showParentalWarning, setShowParentalWarning] = useState(false)
+  const [showSignupSuccess, setShowSignupSuccess] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -45,6 +46,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
         language: 'ja'
       })
       setValidationErrors({})
+      setShowSignupSuccess(false)
       clearError()
     }
   }, [isOpen, defaultMode, clearError])
@@ -124,7 +126,9 @@ const AuthModal: React.FC<AuthModalProps> = ({
           age,
           language: formData.language
         })
-        onClose()
+
+        // サインアップ成功メッセージを表示
+        setShowSignupSuccess(true)
       } else if (mode === 'reset') {
         await resetPassword(formData.email)
         alert('パスワードリセットメールを送信しました。')
@@ -190,6 +194,28 @@ const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
+          {showSignupSuccess && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <h3 className="font-semibold text-green-800 mb-1 text-sm flex items-center gap-1">
+                <span>✅</span> アカウント作成完了！
+              </h3>
+              <p className="text-green-700 text-xs mb-3 leading-relaxed">
+                確認メールを{formData.email}に送信しました。
+                メールを確認してアカウントを有効化してください。
+              </p>
+              <p className="text-green-600 text-xs leading-relaxed">
+                ※ メール確認は任意です。確認しなくてもログインできます。
+              </p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="mt-3 w-full px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+              >
+                閉じる
+              </button>
+            </div>
+          )}
+
           {showParentalWarning && (
             <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <h3 className="font-semibold text-amber-800 mb-1 text-sm flex items-center gap-1">
@@ -220,6 +246,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
+          {!showSignupSuccess && (
           <form onSubmit={handleSubmit} className="space-y-3.5">
             {/* メールアドレス */}
             <div>
@@ -392,8 +419,10 @@ const AuthModal: React.FC<AuthModalProps> = ({
               )}
             </button>
           </form>
+          )}
 
           {/* フッターリンク */}
+          {!showSignupSuccess && (
           <div className="mt-5 pt-4 border-t border-gray-100">
             {mode === 'signin' && (
               <div className="space-y-2">
@@ -459,6 +488,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
               </p>
             )}
           </div>
+          )}
         </div>
       </div>
 

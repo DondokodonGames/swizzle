@@ -21,6 +21,8 @@ export const SignupPage: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
   const [showParentalWarning, setShowParentalWarning] = useState(false)
+  const [showSignupSuccess, setShowSignupSuccess] = useState(false)
+  const [successEmail, setSuccessEmail] = useState('')
 
   // 既にログイン済みの場合はホームにリダイレクト
   useEffect(() => {
@@ -82,7 +84,9 @@ export const SignupPage: React.FC = () => {
         language: formData.language
       })
 
-      // 成功したらホームにリダイレクト（useEffectで処理される）
+      // サインアップ成功メッセージを表示
+      setSuccessEmail(formData.email)
+      setShowSignupSuccess(true)
     } catch (error) {
       console.error('Signup error:', error)
     }
@@ -162,6 +166,62 @@ export const SignupPage: React.FC = () => {
           </div>
         )}
 
+        {/* サインアップ成功メッセージ */}
+        {showSignupSuccess && (
+          <div style={{
+            marginBottom: '24px',
+            padding: '24px',
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #86efac',
+            borderRadius: '12px'
+          }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#166534',
+              marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span style={{ fontSize: '24px' }}>✅</span> アカウント作成完了！
+            </h3>
+            <p style={{
+              color: '#15803d',
+              fontSize: '14px',
+              marginBottom: '12px',
+              lineHeight: '1.6'
+            }}>
+              確認メールを <strong>{successEmail}</strong> に送信しました。
+              メールを確認してアカウントを有効化してください。
+            </p>
+            <p style={{
+              color: '#16a34a',
+              fontSize: '13px',
+              marginBottom: '20px',
+              lineHeight: '1.5'
+            }}>
+              ※ メール確認は任意です。確認しなくてもログインできます。
+            </p>
+            <button
+              onClick={() => navigate('/')}
+              style={{
+                width: '100%',
+                padding: '12px',
+                backgroundColor: '#16a34a',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              ホームに戻る
+            </button>
+          </div>
+        )}
+
         {/* 13歳未満警告 */}
         {showParentalWarning && (
           <div style={{
@@ -230,6 +290,7 @@ export const SignupPage: React.FC = () => {
         )}
 
         {/* フォーム */}
+        {!showSignupSuccess && (
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* メールアドレス */}
           <div>
@@ -505,8 +566,10 @@ export const SignupPage: React.FC = () => {
             {loading ? '作成中...' : 'アカウント作成'}
           </button>
         </form>
+        )}
 
         {/* フッター */}
+        {!showSignupSuccess && (
         <div style={{
           marginTop: '24px',
           textAlign: 'center',
@@ -529,6 +592,7 @@ export const SignupPage: React.FC = () => {
             ログイン
           </button>
         </div>
+        )}
       </div>
     </div>
   )
