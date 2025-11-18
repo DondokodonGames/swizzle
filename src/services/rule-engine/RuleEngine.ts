@@ -144,7 +144,7 @@ export class RuleEngine {
   };
   
   constructor() {
-    console.log('🎮 RuleEngine初期化（Phase 1+2 完全実装版）');
+    // console.log('🎮 RuleEngine初期化（Phase 1+2 完全実装版）');
   }
 
   // ==================== カウンター管理メソッド ====================
@@ -152,14 +152,14 @@ export class RuleEngine {
   addCounterDefinition(counter: GameCounter): void {
     this.counterDefinitions.set(counter.name, counter);
     this.setCounter(counter.name, counter.initialValue);
-    console.log(`カウンター定義追加: ${counter.name} = ${counter.initialValue}`);
+    // console.log(`カウンター定義追加: ${counter.name} = ${counter.initialValue}`);
   }
 
   removeCounterDefinition(counterName: string): void {
     this.counterDefinitions.delete(counterName);
     this.counters.delete(counterName);
     this.counterPreviousValues.delete(counterName);
-    console.log(`カウンター定義削除: ${counterName}`);
+    // console.log(`カウンター定義削除: ${counterName}`);
   }
 
   setCounter(counterName: string, value: number): void {
@@ -184,8 +184,8 @@ export class RuleEngine {
         this.counterHistory.shift();
       }
     }
-    
-    console.log(`カウンター設定: ${counterName} = ${clampedValue} (前回値: ${oldValue})`);
+
+    // console.log(`カウンター設定: ${counterName} = ${clampedValue} (前回値: ${oldValue})`);
   }
 
   getCounter(counterName: string): number {
@@ -228,12 +228,12 @@ export class RuleEngine {
         newValue = value && value !== 0 ? currentValue / value : currentValue;
         break;
       default:
-        console.warn(`未対応のカウンター操作: ${operation}`);
+        // console.warn(`未対応のカウンター操作: ${operation}`);
         return null;
     }
-    
+
     this.setCounter(counterName, newValue);
-    
+
     const changeEvent: CounterChangeEvent = {
       counterName,
       oldValue: currentValue,
@@ -242,9 +242,9 @@ export class RuleEngine {
       timestamp: Date.now(),
       triggeredBy: ruleId
     };
-    
-    console.log(`カウンター操作実行: ${counterName} ${operation} ${value || ''} (${currentValue} → ${changeEvent.newValue})`);
-    
+
+    // console.log(`カウンター操作実行: ${counterName} ${operation} ${value || ''} (${currentValue} → ${changeEvent.newValue})`);
+
     return changeEvent;
   }
 
@@ -258,7 +258,7 @@ export class RuleEngine {
   // ==================== ルール管理メソッド ====================
 
   addRule(rule: GameRule): void {
-    console.log(`ルール追加: ${rule.name} (${rule.id})`);
+    // console.log(`ルール追加: ${rule.name} (${rule.id})`);
     this.rules.push(rule);
     this.executionCounts.set(rule.id, 0);
   }
@@ -266,20 +266,20 @@ export class RuleEngine {
   removeRule(ruleId: string): void {
     this.rules = this.rules.filter(rule => rule.id !== ruleId);
     this.executionCounts.delete(ruleId);
-    console.log(`ルール削除: ${ruleId}`);
+    // console.log(`ルール削除: ${ruleId}`);
   }
 
   updateRule(updatedRule: GameRule): void {
     const index = this.rules.findIndex(rule => rule.id === updatedRule.id);
     if (index !== -1) {
       this.rules[index] = updatedRule;
-      console.log(`ルール更新: ${updatedRule.name}`);
+      // console.log(`ルール更新: ${updatedRule.name}`);
     }
   }
 
   setFlag(flagId: string, value: boolean): void {
     this.flags.set(flagId, value);
-    console.log(`フラグ設定: ${flagId} = ${value}`);
+    // console.log(`フラグ設定: ${flagId} = ${value}`);
   }
 
   getFlag(flagId: string): boolean {
@@ -291,7 +291,7 @@ export class RuleEngine {
   evaluateAndExecuteRules(context: RuleExecutionContext): ActionExecutionResult[] {
     const results: ActionExecutionResult[] = [];
 
-    console.log(`[RuleEngine] ルール評価開始: ルール数=${this.rules.length}, イベント数=${context.events.length}`);
+    // console.log(`[RuleEngine] ルール評価開始: ルール数=${this.rules.length}, イベント数=${context.events.length}`);
 
     // 衝突判定キャッシュを更新（フレームごとに1回）
     const currentTime = Date.now();
@@ -304,26 +304,26 @@ export class RuleEngine {
       .filter(rule => rule.enabled)
       .sort((a, b) => b.priority - a.priority);
 
-    console.log(`[RuleEngine] 有効なルール数: ${sortedRules.length}`);
+    // console.log(`[RuleEngine] 有効なルール数: ${sortedRules.length}`);
 
     for (const rule of sortedRules) {
       try {
-        console.log(`[RuleEngine] ルール評価中: "${rule.name}" (id=${rule.id}, targetObjectId=${rule.targetObjectId})`);
-        console.log(`[RuleEngine] ルール条件数: ${rule.triggers.conditions.length}, アクション数: ${rule.actions.length}`);
+        // console.log(`[RuleEngine] ルール評価中: "${rule.name}" (id=${rule.id}, targetObjectId=${rule.targetObjectId})`);
+        // console.log(`[RuleEngine] ルール条件数: ${rule.triggers.conditions.length}, アクション数: ${rule.actions.length}`);
 
         if (!this.canExecuteRule(rule)) {
-          console.log(`[RuleEngine] ルール実行回数制限により skip: ${rule.name}`);
+          // console.log(`[RuleEngine] ルール実行回数制限により skip: ${rule.name}`);
           continue;
         }
 
         if (!this.isRuleTimeValid(rule, context.gameState.timeElapsed)) {
-          console.log(`[RuleEngine] ルール時間ウィンドウ外により skip: ${rule.name}`);
+          // console.log(`[RuleEngine] ルール時間ウィンドウ外により skip: ${rule.name}`);
           continue;
         }
 
         const evaluation = this.evaluateRule(rule, context);
 
-        console.log(`[RuleEngine] ルール評価結果: "${rule.name}" shouldExecute=${evaluation.shouldExecute}, matchedConditions=[${evaluation.matchedConditions.join(', ')}]`);
+        // console.log(`[RuleEngine] ルール評価結果: "${rule.name}" shouldExecute=${evaluation.shouldExecute}, matchedConditions=[${evaluation.matchedConditions.join(', ')}]`);
 
         if (evaluation.shouldExecute) {
           const result = this.executeActions(rule.actions, context, rule.id);
@@ -332,14 +332,14 @@ export class RuleEngine {
           const currentCount = this.executionCounts.get(rule.id) || 0;
           this.executionCounts.set(rule.id, currentCount + 1);
 
-          console.log(`✅ ルール実行成功: ${rule.name} (${currentCount + 1}回目), effectsApplied=[${result.effectsApplied.join(', ')}]`);
+          // console.log(`✅ ルール実行成功: ${rule.name} (${currentCount + 1}回目), effectsApplied=[${result.effectsApplied.join(', ')}]`);
         }
       } catch (error) {
-        console.error(`❌ ルール実行エラー [${rule.name}]:`, error);
+        // console.error(`❌ ルール実行エラー [${rule.name}]:`, error);
       }
     }
 
-    console.log(`[RuleEngine] ルール評価終了: 実行されたルール数=${results.length}`);
+    // console.log(`[RuleEngine] ルール評価終了: 実行されたルール数=${results.length}`);
     return results;
   }
 
@@ -374,7 +374,7 @@ export class RuleEngine {
     context: RuleExecutionContext,
     targetObjectId: string
   ): boolean {
-    console.log(`[RuleEngine] 条件評価開始: type=${condition.type}, targetObjectId=${targetObjectId}`);
+    // console.log(`[RuleEngine] 条件評価開始: type=${condition.type}, targetObjectId=${targetObjectId}`);
 
     let result = false;
 
@@ -416,11 +416,11 @@ export class RuleEngine {
         break;
 
       default:
-        console.warn(`未対応の条件タイプ: ${(condition as any).type}`);
+        // console.warn(`未対応の条件タイプ: ${(condition as any).type}`);
         result = false;
     }
 
-    console.log(`[RuleEngine] 条件評価結果: type=${condition.type}, result=${result}`);
+    // console.log(`[RuleEngine] 条件評価結果: type=${condition.type}, result=${result}`);
     return result;
   }
 
@@ -502,17 +502,17 @@ export class RuleEngine {
         switch (condition.collisionType) {
           case 'enter':
             const enterResult = isColliding && !wasColliding;
-            if (enterResult) {
-              console.log(`🎯 ${condition.region ? 'ステージ範囲' : '画面端'}衝突開始: ${sourceId}`);
-            }
+            // if (enterResult) {
+            //   console.log(`🎯 ${condition.region ? 'ステージ範囲' : '画面端'}衝突開始: ${sourceId}`);
+            // }
             return enterResult;
           case 'stay':
             return isColliding;
           case 'exit':
             const exitResult = !isColliding && wasColliding;
-            if (exitResult) {
-              console.log(`👋 ${condition.region ? 'ステージ範囲' : '画面端'}衝突終了: ${sourceId}`);
-            }
+            // if (exitResult) {
+            //   console.log(`👋 ${condition.region ? 'ステージ範囲' : '画面端'}衝突終了: ${sourceId}`);
+            // }
             return exitResult;
           default:
             return false;
@@ -534,10 +534,10 @@ export class RuleEngine {
       
       // 衝突判定実行
       let isColliding = false;
-      
+
       if (condition.checkMode === 'pixel') {
         // ピクセル単位の詳細判定（未実装 - hitboxにフォールバック）
-        console.warn('pixel collision は未実装です。hitbox判定を使用します。');
+        // console.warn('pixel collision は未実装です。hitbox判定を使用します。');
         isColliding = this.checkAABBCollision(sourceObj, targetObj);
       } else {
         // hitbox判定（AABB）
@@ -553,9 +553,9 @@ export class RuleEngine {
         case 'enter':
           // 新しく衝突を開始した
           const enterResult = isColliding && !wasCollidingWithTarget;
-          if (enterResult) {
-            console.log(`🎯 衝突開始: ${sourceId} → ${targetId}`);
-          }
+          // if (enterResult) {
+          //   console.log(`🎯 衝突開始: ${sourceId} → ${targetId}`);
+          // }
           return enterResult;
         
         case 'stay':
@@ -565,17 +565,17 @@ export class RuleEngine {
         case 'exit':
           // 衝突が終了した
           const exitResult = !isColliding && wasCollidingWithTarget;
-          if (exitResult) {
-            console.log(`👋 衝突終了: ${sourceId} ← ${targetId}`);
-          }
+          // if (exitResult) {
+          //   console.log(`👋 衝突終了: ${sourceId} ← ${targetId}`);
+          // }
           return exitResult;
-        
+
         default:
-          console.warn(`未対応の衝突タイプ: ${condition.collisionType}`);
+          // console.warn(`未対応の衝突タイプ: ${condition.collisionType}`);
           return false;
       }
     } catch (error) {
-      console.error('衝突条件評価エラー:', error);
+      // console.error('衝突条件評価エラー:', error);
       return false;
     }
   }
@@ -628,9 +628,9 @@ export class RuleEngine {
   ): boolean {
     try {
       const targetObj = context.objects.get(condition.target);
-      
+
       if (!targetObj) {
-        console.warn(`Animation: オブジェクトが見つかりません: ${condition.target}`);
+        // console.warn(`Animation: オブジェクトが見つかりません: ${condition.target}`);
         return false;
       }
       
@@ -655,7 +655,7 @@ export class RuleEngine {
         // ループ検出（最後のフレームから最初のフレームへ）
         if (animState.lastFrame === frameCount - 1 && currentFrame === 0) {
           animState.loopCount++;
-          console.log(`🔄 アニメーションループ: ${condition.target} (${animState.loopCount}回目)`);
+          // console.log(`🔄 アニメーションループ: ${condition.target} (${animState.loopCount}回目)`);
         }
         
         animState.lastFrame = currentFrame;
@@ -667,9 +667,9 @@ export class RuleEngine {
           // 特定フレーム到達
           if (condition.frameNumber !== undefined) {
             const result = currentFrame === condition.frameNumber;
-            if (result) {
-              console.log(`🎞️ フレーム到達: ${condition.target} frame=${currentFrame}`);
-            }
+            // if (result) {
+            //   console.log(`🎞️ フレーム到達: ${condition.target} frame=${currentFrame}`);
+            // }
             return result;
           }
           // animationIndexを使用する場合
@@ -681,33 +681,33 @@ export class RuleEngine {
         case 'start':
           // アニメーション開始（フレーム0 かつ 再生中）
           const isStarting = targetObj.animationPlaying && currentFrame === 0;
-          if (isStarting && animState.lastFrame !== 0) {
-            console.log(`▶️ アニメーション開始: ${condition.target}`);
-          }
+          // if (isStarting && animState.lastFrame !== 0) {
+          //   console.log(`▶️ アニメーション開始: ${condition.target}`);
+          // }
           return isStarting;
         
         case 'end':
           // アニメーション終了（最終フレーム到達）
           const isEnding = currentFrame === frameCount - 1;
-          if (isEnding && animState.lastFrame !== frameCount - 1) {
-            console.log(`⏹️ アニメーション終了: ${condition.target} (frame ${currentFrame}/${frameCount})`);
-          }
+          // if (isEnding && animState.lastFrame !== frameCount - 1) {
+          //   console.log(`⏹️ アニメーション終了: ${condition.target} (frame ${currentFrame}/${frameCount})`);
+          // }
           return isEnding;
         
         case 'loop':
           // ループ完了（1回以上のループ）
           const hasLooped = animState.loopCount > 0;
-          if (hasLooped && animState.loopCount === 1) {
-            console.log(`🔁 アニメーションループ完了: ${condition.target}`);
-          }
+          // if (hasLooped && animState.loopCount === 1) {
+          //   console.log(`🔁 アニメーションループ完了: ${condition.target}`);
+          // }
           return hasLooped;
-        
+
         default:
-          console.warn(`未対応のアニメーション条件: ${condition.condition}`);
+          // console.warn(`未対応のアニメーション条件: ${condition.condition}`);
           return false;
       }
     } catch (error) {
-      console.error('アニメーション条件評価エラー:', error);
+      // console.error('アニメーション条件評価エラー:', error);
       return false;
     }
   }
@@ -782,7 +782,7 @@ export class RuleEngine {
                    gameState.timeElapsed > 0;
           
           default:
-            console.warn(`未知のゲーム状態: ${stateName}`);
+            // console.warn(`未知のゲーム状態: ${stateName}`);
             return false;
         }
       };
@@ -809,11 +809,11 @@ export class RuleEngine {
         case 'is':
           // 現在の状態が指定状態
           const isResult = isState(condition.state);
-          if (isResult && condition.state === 'success') {
-            console.log('🎉 ゲーム成功状態');
-          } else if (isResult && condition.state === 'failure') {
-            console.log('😢 ゲーム失敗状態');
-          }
+          // if (isResult && condition.state === 'success') {
+          //   console.log('🎉 ゲーム成功状態');
+          // } else if (isResult && condition.state === 'failure') {
+          //   console.log('😢 ゲーム失敗状態');
+          // }
           return isResult;
         
         case 'not':
@@ -823,17 +823,17 @@ export class RuleEngine {
         case 'became':
           // 状態が変化した（前回は違う状態で、今回は指定状態）
           const becameResult = !wasState(condition.state) && isState(condition.state);
-          if (becameResult) {
-            console.log(`🔄 状態変化: → ${condition.state}`);
-          }
+          // if (becameResult) {
+          //   console.log(`🔄 状態変化: → ${condition.state}`);
+          // }
           return becameResult;
-        
+
         default:
-          console.warn(`未対応のチェックタイプ: ${checkType}`);
+          // console.warn(`未対応のチェックタイプ: ${checkType}`);
           return isState(condition.state);
       }
     } catch (error) {
-      console.error('ゲーム状態条件評価エラー:', error);
+      // console.error('ゲーム状態条件評価エラー:', error);
       return false;
     }
   }
@@ -877,13 +877,13 @@ export class RuleEngine {
         : Math.random();
       
       const success = randomValue < condition.probability;
-      
+
       if (success) {
         state.eventCount++;
       }
-      
-      console.log(`Random条件評価: 確率=${condition.probability}, 判定=${randomValue.toFixed(3)}, 結果=${success}`);
-      
+
+      // console.log(`Random条件評価: 確率=${condition.probability}, 判定=${randomValue.toFixed(3)}, 結果=${success}`);
+
       if (success && condition.conditions?.onSuccess) {
         return condition.conditions.onSuccess.every(cond => 
           this.evaluateCondition(cond, context, '')
@@ -896,7 +896,7 @@ export class RuleEngine {
       
       return success;
     } catch (error) {
-      console.error('Random条件評価エラー:', error);
+      // console.error('Random条件評価エラー:', error);
       return false;
     }
   }
@@ -931,12 +931,12 @@ export class RuleEngine {
         condition.value,
         condition.rangeMax
       );
-      
-      console.log(`カウンター条件評価: ${condition.counterName}(${currentValue}) ${condition.comparison} ${condition.value} = ${result}`);
-      
+
+      // console.log(`カウンター条件評価: ${condition.counterName}(${currentValue}) ${condition.comparison} ${condition.value} = ${result}`);
+
       return result;
     } catch (error) {
-      console.error('カウンター条件評価エラー:', error);
+      // console.error('カウンター条件評価エラー:', error);
       return false;
     }
   }
@@ -949,23 +949,23 @@ export class RuleEngine {
   ): boolean {
     const touchEvents = context.events.filter(e => e.type === 'touch');
 
-    console.log(`[RuleEngine] タッチ条件評価: targetObjectId=${targetObjectId}, condition.target=${condition.target}, touchEvents=${touchEvents.length}`);
-    if (touchEvents.length > 0) {
-      console.log(`[RuleEngine] タッチイベント詳細:`, touchEvents.map(e => ({ target: e.data.target, x: e.data.x, y: e.data.y })));
-    }
+    // console.log(`[RuleEngine] タッチ条件評価: targetObjectId=${targetObjectId}, condition.target=${condition.target}, touchEvents=${touchEvents.length}`);
+    // if (touchEvents.length > 0) {
+    //   console.log(`[RuleEngine] タッチイベント詳細:`, touchEvents.map(e => ({ target: e.data.target, x: e.data.x, y: e.data.y })));
+    // }
 
     if (!touchEvents.length) return false;
 
     const latestTouch = touchEvents[touchEvents.length - 1];
     const touchTarget = condition.target === 'self' ? targetObjectId : condition.target;
 
-    console.log(`[RuleEngine] タッチターゲット判定: touchTarget=${touchTarget}, latestTouch.data.target=${latestTouch.data.target}`);
+    // console.log(`[RuleEngine] タッチターゲット判定: touchTarget=${touchTarget}, latestTouch.data.target=${latestTouch.data.target}`);
 
     // ✅ 修正: イベントのターゲットが条件のターゲットと一致するかチェック
     if (touchTarget === 'stage') {
       // ステージタッチの場合
       if (latestTouch.data.target !== 'stage') {
-        console.log(`[RuleEngine] タッチターゲット不一致: ステージではなく ${latestTouch.data.target} がタッチされた`);
+        // console.log(`[RuleEngine] タッチターゲット不一致: ステージではなく ${latestTouch.data.target} がタッチされた`);
         return false;
       }
 
@@ -983,7 +983,7 @@ export class RuleEngine {
 
           const inRange = touchX >= rectX && touchX <= rectX + rectWidth &&
                           touchY >= rectY && touchY <= rectY + rectHeight;
-          console.log(`[RuleEngine] ステージ範囲判定（矩形）: inRange=${inRange}`);
+          // console.log(`[RuleEngine] ステージ範囲判定（矩形）: inRange=${inRange}`);
           return inRange;
         } else if (region.shape === 'circle') {
           // 円形範囲チェック（正規化座標→ピクセル座標変換）
@@ -996,19 +996,19 @@ export class RuleEngine {
           );
 
           const inRange = distance <= radius;
-          console.log(`[RuleEngine] ステージ範囲判定（円形）: inRange=${inRange}`);
+          // console.log(`[RuleEngine] ステージ範囲判定（円形）: inRange=${inRange}`);
           return inRange;
         }
       }
 
       // regionなしの場合はステージ全体へのタッチ
-      console.log(`[RuleEngine] ステージタッチ成功（範囲指定なし）`);
+      // console.log(`[RuleEngine] ステージタッチ成功（範囲指定なし）`);
       return true;
     }
 
     // ✅ 修正: オブジェクトタッチの場合、ターゲット IDが一致するかチェック
     const isTargetMatch = latestTouch.data.target === touchTarget;
-    console.log(`[RuleEngine] オブジェクトタッチ判定: isTargetMatch=${isTargetMatch} (${latestTouch.data.target} === ${touchTarget})`);
+    // console.log(`[RuleEngine] オブジェクトタッチ判定: isTargetMatch=${isTargetMatch} (${latestTouch.data.target} === ${touchTarget})`);
     return isTargetMatch;
   }
 
@@ -1124,11 +1124,11 @@ export class RuleEngine {
     const newGameState: Partial<RuleExecutionContext['gameState']> = {};
     const counterChanges: CounterChangeEvent[] = [];
 
-    console.log(`[RuleEngine] アクション実行開始: アクション数=${actions.length}`);
+    // console.log(`[RuleEngine] アクション実行開始: アクション数=${actions.length}`);
 
     for (const action of actions) {
       try {
-        console.log(`[RuleEngine] アクション実行: type=${action.type}`);
+        // console.log(`[RuleEngine] アクション実行: type=${action.type}`);
 
         switch (action.type) {
           case 'addScore':
@@ -1140,13 +1140,13 @@ export class RuleEngine {
             newGameState.score = (context.gameState.score || 0) + (action.score || 0);
             newGameState.isPlaying = false; // ✅ ゲーム終了
             effectsApplied.push('ゲーム成功');
-            console.log('🎉 ゲームクリア！');
+            // console.log('🎉 ゲームクリア！');
             break;
 
           case 'failure':
             newGameState.isPlaying = false; // ✅ ゲーム終了
             effectsApplied.push('ゲーム失敗');
-            console.log('💀 ゲームオーバー');
+            // console.log('💀 ゲームオーバー');
             break;
 
           case 'setFlag':
@@ -1222,7 +1222,7 @@ export class RuleEngine {
             break;
 
           default:
-            console.warn(`未対応のアクション: ${(action as any).type}`);
+            // console.warn(`未対応のアクション: ${(action as any).type}`);
         }
       } catch (error) {
         errors.push(`アクション実行エラー: ${error}`);
@@ -1245,16 +1245,17 @@ export class RuleEngine {
   ): void {
     if (context.audioSystem) {
       const volume = action.volume !== undefined ? action.volume : 1.0;
-      
+
+
       context.audioSystem.playSound(action.soundId, volume)
         .then(() => {
-          console.log(`音声再生成功: ${action.soundId} (volume: ${volume})`);
+          // console.log(`音声再生成功: ${action.soundId} (volume: ${volume})`);
         })
         .catch((error) => {
-          console.error(`音声再生エラー: ${action.soundId}`, error);
+          // console.error(`音声再生エラー: ${action.soundId}`, error);
         });
     } else {
-      console.warn('音声システムが利用できません');
+      // console.warn('音声システムが利用できません');
     }
   }
 
@@ -1265,18 +1266,18 @@ export class RuleEngine {
   ): void {
     const targetObj = context.objects.get(action.targetId);
     if (!targetObj) {
-      console.warn(`SwitchAnimation: オブジェクトが見つかりません: ${action.targetId}`);
+      // console.warn(`SwitchAnimation: オブジェクトが見つかりません: ${action.targetId}`);
       return;
     }
 
     targetObj.animationIndex = action.animationIndex;
     targetObj.animationPlaying = true;
-    
-    if (action.speed !== undefined) {
-      console.log(`再生速度: ${action.speed}`);
-    }
-    
-    console.log(`アニメーション切り替え: ${action.targetId} → フレーム${action.animationIndex}`);
+
+    // if (action.speed !== undefined) {
+    //   console.log(`再生速度: ${action.speed}`);
+    // }
+
+    // console.log(`アニメーション切り替え: ${action.targetId} → フレーム${action.animationIndex}`);
   }
 
   // Effect
@@ -1291,11 +1292,11 @@ export class RuleEngine {
         targetId: action.targetId,
         duration: 1000
       };
-      
+
       context.effectSystem.playEffect(effectConfig);
-      console.log(`エフェクト再生: ${action.effect} (target: ${action.targetId})`);
+      // console.log(`エフェクト再生: ${action.effect} (target: ${action.targetId})`);
     } else {
-      console.log(`[簡易エフェクト] ${action.effect}を${action.targetId}に適用`);
+      // console.log(`[簡易エフェクト] ${action.effect}を${action.targetId}に適用`);
     }
   }
 
@@ -1306,7 +1307,7 @@ export class RuleEngine {
   ): void {
     const targetObj = context.objects.get(action.targetId);
     if (!targetObj) {
-      console.warn(`Show: オブジェクトが見つかりません: ${action.targetId}`);
+      // console.warn(`Show: オブジェクトが見つかりません: ${action.targetId}`);
       return;
     }
 
@@ -1331,22 +1332,23 @@ export class RuleEngine {
         
         // スケールで透明度を表現
         targetObj.scale = startScale + eased * (targetScale - startScale);
-        
+
+
         if (progress >= 1) {
           targetObj.scale = targetScale;
-          console.log(`✨ フェードイン完了: ${action.targetId} (${duration}ms)`);
+          // console.log(`✨ フェードイン完了: ${action.targetId} (${duration}ms)`);
         } else {
           // 次のフレームで継続
           setTimeout(animate, 16); // 60fps
         }
       };
-      
+
       animate();
-      console.log(`🎬 フェードイン開始: ${action.targetId} (${duration}ms)`);
+      // console.log(`🎬 フェードイン開始: ${action.targetId} (${duration}ms)`);
     } else {
       // 即座に表示
       targetObj.scale = 1;
-      console.log(`👁️ オブジェクト表示: ${action.targetId}`);
+      // console.log(`👁️ オブジェクト表示: ${action.targetId}`);
     }
   }
 
@@ -1357,7 +1359,7 @@ export class RuleEngine {
   ): void {
     const targetObj = context.objects.get(action.targetId);
     if (!targetObj) {
-      console.warn(`Hide: オブジェクトが見つかりません: ${action.targetId}`);
+      // console.warn(`Hide: オブジェクトが見つかりません: ${action.targetId}`);
       return;
     }
 
@@ -1384,20 +1386,20 @@ export class RuleEngine {
         if (progress >= 1) {
           targetObj.visible = false;
           targetObj.scale = 0;
-          console.log(`💨 フェードアウト完了: ${action.targetId} (${duration}ms)`);
+          // console.log(`💨 フェードアウト完了: ${action.targetId} (${duration}ms)`);
         } else {
           // 次のフレームで継続
           setTimeout(animate, 16); // 60fps
         }
       };
-      
+
       animate();
-      console.log(`🎬 フェードアウト開始: ${action.targetId} (${duration}ms)`);
+      // console.log(`🎬 フェードアウト開始: ${action.targetId} (${duration}ms)`);
     } else {
       // 即座に非表示
       targetObj.visible = false;
       targetObj.scale = 0;
-      console.log(`🙈 オブジェクト非表示: ${action.targetId}`);
+      // console.log(`🙈 オブジェクト非表示: ${action.targetId}`);
     }
   }
 
@@ -1408,7 +1410,7 @@ export class RuleEngine {
   ): void {
     const targetObj = context.objects.get(action.targetId);
     if (!targetObj) {
-      console.warn(`Move: オブジェクトが見つかりません: ${action.targetId}`);
+      // console.warn(`Move: オブジェクトが見つかりません: ${action.targetId}`);
       return;
     }
 
@@ -1426,7 +1428,7 @@ export class RuleEngine {
               targetX = targetObject.x;
               targetY = targetObject.y;
             } else {
-              console.warn(`Move: ターゲットオブジェクトが見つかりません: ${movement.target}`);
+              // console.warn(`Move: ターゲットオブジェクトが見つかりません: ${movement.target}`);
               return;
             }
           } else {
@@ -1443,8 +1445,8 @@ export class RuleEngine {
             targetObj.vx = (dx / distance) * speed;
             targetObj.vy = (dy / distance) * speed;
           }
-          
-          console.log(`直線移動開始: ${action.targetId} → (${targetX}, ${targetY})`);
+
+          // console.log(`直線移動開始: ${action.targetId} → (${targetX}, ${targetY})`);
         }
         break;
 
@@ -1465,7 +1467,7 @@ export class RuleEngine {
           targetObj.vx = 0;
           targetObj.vy = 0;
 
-          console.log(`瞬間移動: ${action.targetId} → (${targetObj.x}, ${targetObj.y})`);
+          // console.log(`瞬間移動: ${action.targetId} → (${targetObj.x}, ${targetObj.y})`);
         }
         break;
 
@@ -1473,13 +1475,13 @@ export class RuleEngine {
         const randomAngle = Math.random() * Math.PI * 2;
         targetObj.vx = Math.cos(randomAngle) * speed;
         targetObj.vy = Math.sin(randomAngle) * speed;
-        console.log(`ランダム移動: ${action.targetId}`);
+        // console.log(`ランダム移動: ${action.targetId}`);
         break;
 
       case 'stop':
         targetObj.vx = 0;
         targetObj.vy = 0;
-        console.log(`停止: ${action.targetId}`);
+        // console.log(`停止: ${action.targetId}`);
         break;
 
       case 'swap':
@@ -1492,7 +1494,7 @@ export class RuleEngine {
             targetObj.y = targetObject.y;
             targetObject.x = tempX;
             targetObject.y = tempY;
-            console.log(`位置交換: ${action.targetId} ↔ ${movement.target}`);
+            // console.log(`位置交換: ${action.targetId} ↔ ${movement.target}`);
           }
         }
         break;
@@ -1525,8 +1527,8 @@ export class RuleEngine {
             targetObj.vx = 0;
             targetObj.vy = 0;
           }
-          
-          console.log(`接近移動: ${action.targetId} → ターゲット`);
+
+          // console.log(`接近移動: ${action.targetId} → ターゲット`);
         }
         break;
 
@@ -1557,8 +1559,8 @@ export class RuleEngine {
           
           targetObj.x = centerX + Math.cos(newAngle) * radius;
           targetObj.y = centerY + Math.sin(newAngle) * radius;
-          
-          console.log(`周回移動: ${action.targetId} (角度: ${newAngle.toFixed(2)})`);
+
+          // console.log(`周回移動: ${action.targetId} (角度: ${newAngle.toFixed(2)})`);
         }
         break;
 
@@ -1571,12 +1573,12 @@ export class RuleEngine {
         if (targetObj.y <= margin || targetObj.y + targetObj.height >= context.canvas.height - margin) {
           targetObj.vy = -(targetObj.vy || 0);
         }
-        
-        console.log(`跳ね返り移動: ${action.targetId}`);
+
+        // console.log(`跳ね返り移動: ${action.targetId}`);
         break;
 
       default:
-        console.warn(`未対応の移動タイプ: ${movement.type}`);
+        // console.warn(`未対応の移動タイプ: ${movement.type}`);
     }
   }
 
@@ -1629,10 +1631,10 @@ export class RuleEngine {
         effectsApplied.push(...result.effectsApplied);
         errors.push(...result.errors);
         counterChanges.push(...result.counterChanges);
-        
-        console.log(`RandomAction実行: 選択されたアクション = ${selectedAction.type}`);
+
+        // console.log(`RandomAction実行: 選択されたアクション = ${selectedAction.type}`);
       } else {
-        console.warn('RandomAction: アクションが選択されませんでした');
+        // console.warn('RandomAction: アクションが選択されませんでした');
       }
     } catch (error) {
       errors.push(`RandomAction実行エラー: ${error}`);
@@ -1698,8 +1700,8 @@ export class RuleEngine {
     for (const [name, definition] of this.counterDefinitions) {
       this.setCounter(name, definition.initialValue);
     }
-    
-    console.log('🔄 RuleEngine リセット完了（Phase 1+2 完全実装版）');
+
+    // console.log('🔄 RuleEngine リセット完了（Phase 1+2 完全実装版）');
   }
 
   // カウンターのみリセット
@@ -1708,7 +1710,7 @@ export class RuleEngine {
       this.setCounter(name, definition.initialValue);
     }
     this.counterHistory = [];
-    console.log('🔄 カウンターリセット完了');
+    // console.log('🔄 カウンターリセット完了');
   }
 
   // カウンター統計取得
