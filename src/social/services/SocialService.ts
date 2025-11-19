@@ -75,9 +75,9 @@ export class SocialService {
               .select('user_id')
               .eq('user_id', currentUserId)
               .eq('game_id', game.id)
-              .single();
-            
-            isLiked = !likeCheck.error && !!likeCheck.data;
+              .maybeSingle();
+
+            isLiked = !!likeCheck.data;
 
             const favorites = await database.favorites.list(currentUserId);
             isBookmarked = favorites.some((fav: any) => fav.id === game.id);
@@ -463,14 +463,14 @@ export class SocialService {
 
   async toggleLike(gameId: string, userId: string): Promise<{ isLiked: boolean; newCount: number }> {
     try {
-      const { data: existingLike, error: checkError } = await supabase
+      const { data: existingLike } = await supabase
         .from('likes')
         .select('user_id')
         .eq('user_id', userId)
         .eq('game_id', gameId)
-        .single();
+        .maybeSingle();
 
-      const isCurrentlyLiked = !checkError && !!existingLike;
+      const isCurrentlyLiked = !!existingLike;
 
       if (isCurrentlyLiked) {
         const { error: deleteError } = await supabase
@@ -1251,9 +1251,9 @@ export class SocialService {
               .select('user_id')
               .eq('user_id', currentUserId)
               .eq('game_id', game.id)
-              .single();
+              .maybeSingle();
 
-            isLiked = !likeCheck.error && !!likeCheck.data;
+            isLiked = !!likeCheck.data;
 
             const favorites = await database.favorites.list(currentUserId);
             isBookmarked = favorites.some((fav: any) => fav.id === game.id);

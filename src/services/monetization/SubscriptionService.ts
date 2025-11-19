@@ -22,17 +22,13 @@ export async function getUserSubscription(
       .from('subscriptions')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // レコードが見つからない場合はnullを返す
-        return null;
-      }
       throw error;
     }
 
-    return data as Subscription;
+    return data as Subscription | null;
   } catch (error) {
     console.error('Error fetching user subscription:', error);
     throw error;
