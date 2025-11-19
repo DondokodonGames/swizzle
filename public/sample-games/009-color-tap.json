@@ -1,0 +1,520 @@
+{
+  "project": {
+    "id": "sample-009-color-tap",
+    "name": "カラータップ",
+    "description": "同じ色をタップしてスコアを稼ごう！間違えないように注意",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "lastModified": "2025-01-01T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": { "isAnonymous": true },
+    "status": "draft",
+    "totalSize": 4000,
+
+    "metadata": {
+      "statistics": {
+        "totalEditTime": 0,
+        "saveCount": 0,
+        "testPlayCount": 0,
+        "publishCount": 0
+      },
+      "usage": {
+        "lastOpened": "2025-01-01T00:00:00.000Z",
+        "totalOpenCount": 1,
+        "averageSessionTime": 0
+      },
+      "performance": {
+        "lastBuildTime": 0,
+        "averageFPS": 60,
+        "memoryUsage": 0
+      }
+    },
+
+    "versionHistory": [
+      {
+        "id": "vh-001",
+        "version": "1.0.0",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "description": "カラータップゲーム作成",
+        "author": "System",
+        "changes": [
+          {
+            "type": "added",
+            "category": "script",
+            "description": "カラータップゲーム作成",
+            "affectedItems": []
+          }
+        ],
+        "snapshot": {
+          "assetsCount": { "background": 0, "objects": 4, "texts": 0, "bgm": 0, "se": 0 },
+          "rulesCount": 8,
+          "totalSize": 4000
+        }
+      }
+    ],
+
+    "projectSettings": {
+      "autoSaveInterval": 30000,
+      "backupEnabled": true,
+      "compressionEnabled": false,
+      "maxVersionHistory": 10
+    },
+
+    "assets": {
+      "background": null,
+      "objects": [
+        {
+          "id": "circle-red",
+          "name": "赤丸",
+          "frames": [
+            {
+              "id": "circle-red-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiNGRjQxMzYiIHN0cm9rZT0iI0NDMDAwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
+              "originalName": "circle-red.svg",
+              "width": 80,
+              "height": 80,
+              "size": 300
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 300,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.5
+        },
+        {
+          "id": "circle-blue",
+          "name": "青丸",
+          "frames": [
+            {
+              "id": "circle-blue-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiMwMDc0RDkiIHN0cm9rZT0iIzAwNDQ4OCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
+              "originalName": "circle-blue.svg",
+              "width": 80,
+              "height": 80,
+              "size": 300
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 300,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.5
+        },
+        {
+          "id": "circle-green",
+          "name": "緑丸",
+          "frames": [
+            {
+              "id": "circle-green-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiMyRUNDNDAiIHN0cm9rZT0iIzAwODgwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
+              "originalName": "circle-green.svg",
+              "width": 80,
+              "height": 80,
+              "size": 300
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 300,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.5
+        },
+        {
+          "id": "circle-yellow",
+          "name": "黄丸",
+          "frames": [
+            {
+              "id": "circle-yellow-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiNGRkRDMDAiIHN0cm9rZT0iI0NDQUEwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
+              "originalName": "circle-yellow.svg",
+              "width": 80,
+              "height": 80,
+              "size": 300
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 300,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.5
+        }
+      ],
+      "texts": [],
+      "audio": { "bgm": null, "se": [] },
+      "statistics": {
+        "totalImageSize": 1200,
+        "totalAudioSize": 0,
+        "totalSize": 1200,
+        "usedSlots": { "background": 0, "objects": 4, "texts": 0, "bgm": 0, "se": 0 },
+        "limitations": {
+          "isNearImageLimit": false,
+          "isNearAudioLimit": false,
+          "isNearTotalLimit": false,
+          "hasViolations": false
+        }
+      },
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "script": {
+      "initialState": {
+        "objects": [
+          {
+            "id": "stage",
+            "name": "ステージ",
+            "type": "stage",
+            "x": 0,
+            "y": 0,
+            "width": 1080,
+            "height": 1920,
+            "visible": true,
+            "zIndex": 0,
+            "scale": 1,
+            "rotation": 0,
+            "opacity": 1,
+            "backgroundColor": "#f5f5f5"
+          },
+          {
+            "id": "circle-red",
+            "name": "赤丸",
+            "type": "object",
+            "assetId": "circle-red",
+            "x": 0.25,
+            "y": 0.3,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.5,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "circle-blue",
+            "name": "青丸",
+            "type": "object",
+            "assetId": "circle-blue",
+            "x": 0.75,
+            "y": 0.3,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.5,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "circle-green",
+            "name": "緑丸",
+            "type": "object",
+            "assetId": "circle-green",
+            "x": 0.25,
+            "y": 0.6,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.5,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "circle-yellow",
+            "name": "黄丸",
+            "type": "object",
+            "assetId": "circle-yellow",
+            "x": 0.75,
+            "y": 0.6,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.5,
+            "rotation": 0,
+            "opacity": 1
+          }
+        ],
+        "sounds": [],
+        "counters": [
+          { "id": "score", "name": "スコア", "value": 0, "min": 0, "max": 999 }
+        ],
+        "flags": []
+      },
+      "layout": {
+        "background": {
+          "visible": false,
+          "initialAnimation": 0,
+          "animationSpeed": 12,
+          "autoStart": false
+        },
+        "objects": [
+          {
+            "objectId": "circle-red",
+            "position": { "x": 0.25, "y": 0.3 },
+            "scale": { "x": 2.5, "y": 2.5 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "circle-blue",
+            "position": { "x": 0.75, "y": 0.3 },
+            "scale": { "x": 2.5, "y": 2.5 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "circle-green",
+            "position": { "x": 0.25, "y": 0.6 },
+            "scale": { "x": 2.5, "y": 2.5 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "circle-yellow",
+            "position": { "x": 0.75, "y": 0.6 },
+            "scale": { "x": 2.5, "y": 2.5 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          }
+        ],
+        "texts": []
+      },
+      "flags": [],
+      "counters": [
+        { "id": "score", "name": "スコア", "value": 0, "min": 0, "max": 999 }
+      ],
+      "rules": [
+        {
+          "id": "rule-tap-red",
+          "name": "赤タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "circle-red",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "score",
+              "value": 10,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.3,
+                "format": "+{value}"
+              }
+            },
+            {
+              "type": "effect",
+              "targetId": "circle-red",
+              "effect": {
+                "type": "scale",
+                "intensity": 1.3,
+                "duration": 0.2
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-blue",
+          "name": "青タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "circle-blue",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "score",
+              "value": 10,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.3,
+                "format": "+{value}"
+              }
+            },
+            {
+              "type": "effect",
+              "targetId": "circle-blue",
+              "effect": {
+                "type": "scale",
+                "intensity": 1.3,
+                "duration": 0.2
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-green",
+          "name": "緑タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "circle-green",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "score",
+              "value": 10,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.3,
+                "format": "+{value}"
+              }
+            },
+            {
+              "type": "effect",
+              "targetId": "circle-green",
+              "effect": {
+                "type": "scale",
+                "intensity": 1.3,
+                "duration": 0.2
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-yellow",
+          "name": "黄タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "circle-yellow",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "score",
+              "value": 10,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.3,
+                "format": "+{value}"
+              }
+            },
+            {
+              "type": "effect",
+              "targetId": "circle-yellow",
+              "effect": {
+                "type": "scale",
+                "intensity": 1.3,
+                "duration": 0.2
+              }
+            }
+          ]
+        }
+      ],
+      "successConditions": [],
+      "statistics": {
+        "ruleCount": 4,
+        "objectCount": 5,
+        "soundCount": 0,
+        "flagCount": 0,
+        "counterCount": 1
+      },
+      "version": "1.0.0",
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "settings": {
+      "name": "カラータップ",
+      "gameDuration": 30,
+      "difficulty": "easy",
+      "theme": "colorful"
+    },
+
+    "editorState": {
+      "selectedObjectId": null,
+      "selectedRuleId": null,
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0,
+      "showGrid": false,
+      "snapToGrid": false,
+      "gridSize": 10
+    }
+  },
+  "metadata": {
+    "exportVersion": "1.0.0",
+    "exportedBy": "system",
+    "exportedAt": "2025-01-01T00:00:00.000Z",
+    "projectVersion": "1.0.0",
+    "checksum": "sample-color-tap-v1"
+  },
+  "exportedAt": "2025-01-01T00:00:00.000Z",
+  "version": "1.0.0"
+}

@@ -1,0 +1,554 @@
+{
+  "project": {
+    "id": "sample-010-bubble-pop",
+    "name": "バブルポップ",
+    "description": "浮かんでくるバブルをタップして割ろう！",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "lastModified": "2025-01-01T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": { "isAnonymous": true },
+    "status": "draft",
+    "totalSize": 5000,
+
+    "metadata": {
+      "statistics": {
+        "totalEditTime": 0,
+        "saveCount": 0,
+        "testPlayCount": 0,
+        "publishCount": 0
+      },
+      "usage": {
+        "lastOpened": "2025-01-01T00:00:00.000Z",
+        "totalOpenCount": 1,
+        "averageSessionTime": 0
+      },
+      "performance": {
+        "lastBuildTime": 0,
+        "averageFPS": 60,
+        "memoryUsage": 0
+      }
+    },
+
+    "versionHistory": [
+      {
+        "id": "vh-001",
+        "version": "1.0.0",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "description": "バブルポップゲーム作成",
+        "author": "System",
+        "changes": [
+          {
+            "type": "added",
+            "category": "script",
+            "description": "バブルポップゲーム作成",
+            "affectedItems": []
+          }
+        ],
+        "snapshot": {
+          "assetsCount": { "background": 0, "objects": 3, "texts": 0, "bgm": 0, "se": 0 },
+          "rulesCount": 6,
+          "totalSize": 5000
+        }
+      }
+    ],
+
+    "projectSettings": {
+      "autoSaveInterval": 30000,
+      "backupEnabled": true,
+      "compressionEnabled": false,
+      "maxVersionHistory": 10
+    },
+
+    "assets": {
+      "background": null,
+      "objects": [
+        {
+          "id": "bubble-big",
+          "name": "大バブル",
+          "frames": [
+            {
+              "id": "bubble-big-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzg3Q0VFQiIgZmlsbC1vcGFjaXR5PSIwLjYiIHN0cm9rZT0iIzQ0OTlDQyIgc3Ryb2tlLXdpZHRoPSIyIi8+PGVsbGlwc2UgY3g9IjM1IiBjeT0iMzUiIHJ4PSIxMiIgcnk9IjgiIGZpbGw9IiNGRkZGRkYiIGZpbGwtb3BhY2l0eT0iMC43Ii8+PC9zdmc+",
+              "originalName": "bubble-big.svg",
+              "width": 100,
+              "height": 100,
+              "size": 400
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 400,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.5
+        },
+        {
+          "id": "bubble-medium",
+          "name": "中バブル",
+          "frames": [
+            {
+              "id": "bubble-medium-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiNFNkU2RkEiIGZpbGwtb3BhY2l0eT0iMC42IiBzdHJva2U9IiNBQUFBQ0MiIHN0cm9rZS13aWR0aD0iMiIvPjxlbGxpcHNlIGN4PSIyOCIgY3k9IjI4IiByeD0iMTAiIHJ5PSI2IiBmaWxsPSIjRkZGRkZGIiBmaWxsLW9wYWNpdHk9IjAuNyIvPjwvc3ZnPg==",
+              "originalName": "bubble-medium.svg",
+              "width": 80,
+              "height": 80,
+              "size": 400
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 400,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        },
+        {
+          "id": "bubble-small",
+          "name": "小バブル",
+          "frames": [
+            {
+              "id": "bubble-small-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMjUiIGZpbGw9IiNGRkI2QzEiIGZpbGwtb3BhY2l0eT0iMC42IiBzdHJva2U9IiNGRjY2OTkiIHN0cm9rZS13aWR0aD0iMiIvPjxlbGxpcHNlIGN4PSIyMCIgY3k9IjIwIiByeD0iNyIgcnk9IjQiIGZpbGw9IiNGRkZGRkYiIGZpbGwtb3BhY2l0eT0iMC43Ii8+PC9zdmc+",
+              "originalName": "bubble-small.svg",
+              "width": 60,
+              "height": 60,
+              "size": 400
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 400,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 1.8
+        }
+      ],
+      "texts": [],
+      "audio": { "bgm": null, "se": [] },
+      "statistics": {
+        "totalImageSize": 1200,
+        "totalAudioSize": 0,
+        "totalSize": 1200,
+        "usedSlots": { "background": 0, "objects": 3, "texts": 0, "bgm": 0, "se": 0 },
+        "limitations": {
+          "isNearImageLimit": false,
+          "isNearAudioLimit": false,
+          "isNearTotalLimit": false,
+          "hasViolations": false
+        }
+      },
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "script": {
+      "initialState": {
+        "objects": [
+          {
+            "id": "stage",
+            "name": "ステージ",
+            "type": "stage",
+            "x": 0,
+            "y": 0,
+            "width": 1080,
+            "height": 1920,
+            "visible": true,
+            "zIndex": 0,
+            "scale": 1,
+            "rotation": 0,
+            "opacity": 1,
+            "backgroundColor": "#e8f4f8"
+          },
+          {
+            "id": "bubble-big",
+            "name": "大バブル",
+            "type": "object",
+            "assetId": "bubble-big",
+            "x": 0.3,
+            "y": 1.1,
+            "visible": false,
+            "zIndex": 5,
+            "scale": 2.5,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "bubble-medium",
+            "name": "中バブル",
+            "type": "object",
+            "assetId": "bubble-medium",
+            "x": 0.5,
+            "y": 1.1,
+            "visible": false,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "bubble-small",
+            "name": "小バブル",
+            "type": "object",
+            "assetId": "bubble-small",
+            "x": 0.7,
+            "y": 1.1,
+            "visible": false,
+            "zIndex": 5,
+            "scale": 1.8,
+            "rotation": 0,
+            "opacity": 1
+          }
+        ],
+        "sounds": [],
+        "counters": [
+          { "id": "popped", "name": "割った数", "value": 0, "min": 0, "max": 999 }
+        ],
+        "flags": []
+      },
+      "layout": {
+        "background": {
+          "visible": false,
+          "initialAnimation": 0,
+          "animationSpeed": 12,
+          "autoStart": false
+        },
+        "objects": [
+          {
+            "objectId": "bubble-big",
+            "position": { "x": 0.3, "y": 1.1 },
+            "scale": { "x": 2.5, "y": 2.5 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": false,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "bubble-medium",
+            "position": { "x": 0.5, "y": 1.1 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": false,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "bubble-small",
+            "position": { "x": 0.7, "y": 1.1 },
+            "scale": { "x": 1.8, "y": 1.8 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": false,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          }
+        ],
+        "texts": []
+      },
+      "flags": [],
+      "counters": [
+        { "id": "popped", "name": "割った数", "value": 0, "min": 0, "max": 999 }
+      ],
+      "rules": [
+        {
+          "id": "rule-big-rise",
+          "name": "大バブル上昇",
+          "enabled": true,
+          "priority": 5,
+          "targetObjectId": "bubble-big",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 3,
+                "startTime": 0.5
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "bubble-big",
+              "movement": {
+                "type": "teleport",
+                "target": { "x": 0.25, "y": 1.1 },
+                "duration": 0.01
+              }
+            },
+            {
+              "type": "show",
+              "targetId": "bubble-big",
+              "fadeIn": false
+            },
+            {
+              "type": "move",
+              "targetId": "bubble-big",
+              "movement": {
+                "type": "straight",
+                "target": { "x": 0.25, "y": -0.1 },
+                "speed": 200,
+                "duration": 6.0,
+                "easing": "linear"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-medium-rise",
+          "name": "中バブル上昇",
+          "enabled": true,
+          "priority": 5,
+          "targetObjectId": "bubble-medium",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 2.5,
+                "startTime": 1.0
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "bubble-medium",
+              "movement": {
+                "type": "teleport",
+                "target": { "x": 0.55, "y": 1.1 },
+                "duration": 0.01
+              }
+            },
+            {
+              "type": "show",
+              "targetId": "bubble-medium",
+              "fadeIn": false
+            },
+            {
+              "type": "move",
+              "targetId": "bubble-medium",
+              "movement": {
+                "type": "straight",
+                "target": { "x": 0.55, "y": -0.1 },
+                "speed": 250,
+                "duration": 5.0,
+                "easing": "linear"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-small-rise",
+          "name": "小バブル上昇",
+          "enabled": true,
+          "priority": 5,
+          "targetObjectId": "bubble-small",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 2,
+                "startTime": 0.3
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "bubble-small",
+              "movement": {
+                "type": "teleport",
+                "target": { "x": 0.8, "y": 1.1 },
+                "duration": 0.01
+              }
+            },
+            {
+              "type": "show",
+              "targetId": "bubble-small",
+              "fadeIn": false
+            },
+            {
+              "type": "move",
+              "targetId": "bubble-small",
+              "movement": {
+                "type": "straight",
+                "target": { "x": 0.8, "y": -0.1 },
+                "speed": 300,
+                "duration": 4.0,
+                "easing": "linear"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-pop-big",
+          "name": "大バブル割る",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "bubble-big",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "bubble-big",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "popped",
+              "value": 3,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.3,
+                "format": "+{value}"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-pop-medium",
+          "name": "中バブル割る",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "bubble-medium",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "bubble-medium",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "popped",
+              "value": 2,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.3,
+                "format": "+{value}"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-pop-small",
+          "name": "小バブル割る",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "bubble-small",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "bubble-small",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "popped",
+              "value": 1,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.3,
+                "format": "+{value}"
+              }
+            }
+          ]
+        }
+      ],
+      "successConditions": [],
+      "statistics": {
+        "ruleCount": 6,
+        "objectCount": 4,
+        "soundCount": 0,
+        "flagCount": 0,
+        "counterCount": 1
+      },
+      "version": "1.0.0",
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "settings": {
+      "name": "バブルポップ",
+      "gameDuration": 30,
+      "difficulty": "easy",
+      "theme": "colorful"
+    },
+
+    "editorState": {
+      "selectedObjectId": null,
+      "selectedRuleId": null,
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0,
+      "showGrid": false,
+      "snapToGrid": false,
+      "gridSize": 10
+    }
+  },
+  "metadata": {
+    "exportVersion": "1.0.0",
+    "exportedBy": "system",
+    "exportedAt": "2025-01-01T00:00:00.000Z",
+    "projectVersion": "1.0.0",
+    "checksum": "sample-bubble-pop-v1"
+  },
+  "exportedAt": "2025-01-01T00:00:00.000Z",
+  "version": "1.0.0"
+}
