@@ -111,12 +111,57 @@
     },
     "script": {
       "initialState": {
-        "counters": {
-          "popped": 0
+        "layout": {
+          "background": {
+            "visible": false,
+            "frameIndex": 0,
+            "animationSpeed": 12,
+            "autoStart": false
+          },
+          "objects": [
+            {
+              "id": "balloon-red",
+              "position": { "x": 0.2, "y": 0.8 },
+              "visible": true,
+              "scale": { "x": 2.2, "y": 2.2 },
+              "rotation": 0,
+              "zIndex": 1,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            },
+            {
+              "id": "balloon-blue",
+              "position": { "x": 0.5, "y": 0.85 },
+              "visible": true,
+              "scale": { "x": 2.2, "y": 2.2 },
+              "rotation": 0,
+              "zIndex": 2,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            },
+            {
+              "id": "balloon-green",
+              "position": { "x": 0.8, "y": 0.9 },
+              "visible": true,
+              "scale": { "x": 2.2, "y": 2.2 },
+              "rotation": 0,
+              "zIndex": 3,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          ],
+          "texts": []
         },
-        "flags": {},
-        "timers": {},
-        "objectStates": {}
+        "gameState": {
+          "score": 0,
+          "counters": {
+            "popped": 0
+          },
+          "flags": {}
+        }
       },
       "layout": {
         "background": {
@@ -129,29 +174,41 @@
           {
             "objectId": "balloon-red",
             "position": { "x": 0.2, "y": 0.8 },
-            "scale": 2.2,
+            "scale": { "x": 2.2, "y": 2.2 },
             "rotation": 0,
-            "opacity": 1,
-            "visible": true,
-            "zIndex": 1
+            "zIndex": 1,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
           },
           {
             "objectId": "balloon-blue",
             "position": { "x": 0.5, "y": 0.85 },
-            "scale": 2.2,
+            "scale": { "x": 2.2, "y": 2.2 },
             "rotation": 0,
-            "opacity": 1,
-            "visible": true,
-            "zIndex": 2
+            "zIndex": 2,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
           },
           {
             "objectId": "balloon-green",
             "position": { "x": 0.8, "y": 0.9 },
-            "scale": 2.2,
+            "scale": { "x": 2.2, "y": 2.2 },
             "rotation": 0,
-            "opacity": 1,
-            "visible": true,
-            "zIndex": 3
+            "zIndex": 3,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
           }
         ],
         "texts": [],
@@ -180,7 +237,9 @@
             "operator": "AND",
             "conditions": [
               {
-                "type": "always"
+                "type": "time",
+                "timeType": "interval",
+                "interval": 2
               }
             ]
           },
@@ -206,7 +265,9 @@
             "operator": "AND",
             "conditions": [
               {
-                "type": "always"
+                "type": "time",
+                "timeType": "interval",
+                "interval": 2.5
               }
             ]
           },
@@ -232,7 +293,9 @@
             "operator": "AND",
             "conditions": [
               {
-                "type": "always"
+                "type": "time",
+                "timeType": "interval",
+                "interval": 3
               }
             ]
           },
@@ -258,8 +321,9 @@
             "operator": "AND",
             "conditions": [
               {
-                "type": "tap",
-                "targetId": "balloon-red"
+                "type": "touch",
+                "target": "balloon-red",
+                "touchType": "down"
               }
             ]
           },
@@ -270,7 +334,7 @@
             },
             {
               "type": "counter",
-              "counterId": "popped",
+              "counterName": "popped",
               "operation": "add",
               "value": 1
             }
@@ -286,8 +350,9 @@
             "operator": "AND",
             "conditions": [
               {
-                "type": "tap",
-                "targetId": "balloon-blue"
+                "type": "touch",
+                "target": "balloon-blue",
+                "touchType": "down"
               }
             ]
           },
@@ -298,7 +363,7 @@
             },
             {
               "type": "counter",
-              "counterId": "popped",
+              "counterName": "popped",
               "operation": "add",
               "value": 1
             }
@@ -314,8 +379,9 @@
             "operator": "AND",
             "conditions": [
               {
-                "type": "tap",
-                "targetId": "balloon-green"
+                "type": "touch",
+                "target": "balloon-green",
+                "touchType": "down"
               }
             ]
           },
@@ -326,7 +392,7 @@
             },
             {
               "type": "counter",
-              "counterId": "popped",
+              "counterName": "popped",
               "operation": "add",
               "value": 1
             }
@@ -343,16 +409,17 @@
             "conditions": [
               {
                 "type": "counter",
-                "counterId": "popped",
-                "comparison": ">=",
+                "counterName": "popped",
+                "comparison": "greaterOrEqual",
                 "value": 3
               }
             ]
           },
           "actions": [
             {
-              "type": "gameEnd",
-              "result": "clear"
+              "type": "success",
+              "score": 100,
+              "message": "全部割れた！"
             }
           ]
         }
@@ -363,15 +430,15 @@
         "totalConditions": 7,
         "totalActions": 10,
         "complexityScore": 15,
-        "usedTriggerTypes": ["always", "tap", "counter"],
-        "usedActionTypes": ["move", "hide", "counter", "gameEnd"],
+        "usedTriggerTypes": ["time", "touch", "counter"],
+        "usedActionTypes": ["move", "hide", "counter", "success"],
         "flagCount": 0,
         "estimatedCPUUsage": "low",
         "estimatedMemoryUsage": 0,
         "maxConcurrentEffects": 3,
         "counterCount": 1,
         "usedCounterOperations": ["add"],
-        "usedCounterComparisons": [">="],
+        "usedCounterComparisons": ["greaterOrEqual"],
         "randomConditionCount": 0,
         "randomActionCount": 0,
         "totalRandomChoices": 0,
