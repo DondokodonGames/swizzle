@@ -329,6 +329,15 @@
           },
           "actions": [
             {
+              "type": "effect",
+              "targetId": "balloon-red",
+              "effect": {
+                "type": "scale",
+                "scaleAmount": 1.5,
+                "duration": 0.15
+              }
+            },
+            {
               "type": "hide",
               "targetId": "balloon-red"
             },
@@ -362,6 +371,15 @@
           },
           "actions": [
             {
+              "type": "effect",
+              "targetId": "balloon-blue",
+              "effect": {
+                "type": "scale",
+                "scaleAmount": 1.5,
+                "duration": 0.15
+              }
+            },
+            {
               "type": "hide",
               "targetId": "balloon-blue"
             },
@@ -394,6 +412,15 @@
             ]
           },
           "actions": [
+            {
+              "type": "effect",
+              "targetId": "balloon-green",
+              "effect": {
+                "type": "scale",
+                "scaleAmount": 1.5,
+                "duration": 0.15
+              }
+            },
             {
               "type": "hide",
               "targetId": "balloon-green"
@@ -440,10 +467,10 @@
       "statistics": {
         "totalRules": 7,
         "totalConditions": 7,
-        "totalActions": 13,
+        "totalActions": 16,
         "complexityScore": 15,
         "usedTriggerTypes": ["time", "touch", "counter"],
-        "usedActionTypes": ["move", "hide", "counter", "success", "addScore"],
+        "usedActionTypes": ["move", "hide", "counter", "success", "addScore", "effect"],
         "flagCount": 0,
         "estimatedCPUUsage": "low",
         "estimatedMemoryUsage": 0,
@@ -466,7 +493,7 @@
       "description": "ふわふわ浮かぶ風船を全部割ろう！",
       "duration": {
         "type": "fixed",
-        "seconds": 10
+        "seconds": 15
       },
       "difficulty": "easy",
       "publishing": {
