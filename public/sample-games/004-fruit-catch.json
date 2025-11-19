@@ -56,14 +56,14 @@
           "totalSize": 1000,
           "createdAt": "2025-01-01T00:00:00.000Z",
           "lastModified": "2025-01-01T00:00:00.000Z",
-          "defaultScale": 1.8
+          "defaultScale": 1.5
         },
         {
-          "id": "apple",
-          "name": "りんご",
+          "id": "apple1",
+          "name": "りんご1",
           "frames": [
             {
-              "id": "apple-frame-1",
+              "id": "apple1-frame-1",
               "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iOTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGVsbGlwc2UgY3g9IjQwIiBjeT0iNTUiIHJ4PSIzNSIgcnk9IjMwIiBmaWxsPSIjRkYwMDAwIi8+PHBhdGggZD0iTTQwIDI1IFEzNSAxNSAzMCAxMCBRMzUgMTUgNDAgMjAiIGZpbGw9IiM4QjQ1MTMiLz48ZWxsaXBzZSBjeD0iMzAiIGN5PSI4IiByeD0iMTAiIHJ5PSI1IiBmaWxsPSIjMjI4QjIyIi8+PGVsbGlwc2UgY3g9IjI1IiBjeT0iNDUiIHJ4PSI4IiByeT0iMTAiIGZpbGw9IiNGRjY2NjYiIG9wYWNpdHk9IjAuNCIvPjwvc3ZnPg==",
               "originalName": "apple.svg",
               "width": 80,
@@ -79,16 +79,62 @@
           "totalSize": 600,
           "createdAt": "2025-01-01T00:00:00.000Z",
           "lastModified": "2025-01-01T00:00:00.000Z",
-          "defaultScale": 1.5
+          "defaultScale": 1.2
         },
         {
-          "id": "arrow-left",
-          "name": "左矢印",
+          "id": "apple2",
+          "name": "りんご2",
           "frames": [
             {
-              "id": "arrow-left-frame-1",
-              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI3NSIgY3k9Ijc1IiByPSI3MCIgZmlsbD0iI0ZGRkZGRiIgb3BhY2l0eT0iMC44IiBzdHJva2U9IiM2NjY2NjYiIHN0cm9rZS13aWR0aD0iMyIvPjxwb2x5Z29uIHBvaW50cz0iNDUsNzUgOTUsNDUgOTUsMTA1IiBmaWxsPSIjMzMzMzMzIi8+PC9zdmc+",
-              "originalName": "arrow-left.svg",
+              "id": "apple2-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iOTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGVsbGlwc2UgY3g9IjQwIiBjeT0iNTUiIHJ4PSIzNSIgcnk9IjMwIiBmaWxsPSIjRkYwMDAwIi8+PHBhdGggZD0iTTQwIDI1IFEzNSAxNSAzMCAxMCBRMzUgMTUgNDAgMjAiIGZpbGw9IiM4QjQ1MTMiLz48ZWxsaXBzZSBjeD0iMzAiIGN5PSI4IiByeD0iMTAiIHJ5PSI1IiBmaWxsPSIjMjI4QjIyIi8+PGVsbGlwc2UgY3g9IjI1IiBjeT0iNDUiIHJ4PSI4IiByeT0iMTAiIGZpbGw9IiNGRjY2NjYiIG9wYWNpdHk9IjAuNCIvPjwvc3ZnPg==",
+              "originalName": "apple.svg",
+              "width": 80,
+              "height": 90,
+              "size": 600
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 600,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 1.2
+        },
+        {
+          "id": "apple3",
+          "name": "りんご3",
+          "frames": [
+            {
+              "id": "apple3-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iOTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGVsbGlwc2UgY3g9IjQwIiBjeT0iNTUiIHJ4PSIzNSIgcnk9IjMwIiBmaWxsPSIjRkYwMDAwIi8+PHBhdGggZD0iTTQwIDI1IFEzNSAxNSAzMCAxMCBRMzUgMTUgNDAgMjAiIGZpbGw9IiM4QjQ1MTMiLz48ZWxsaXBzZSBjeD0iMzAiIGN5PSI4IiByeD0iMTAiIHJ5PSI1IiBmaWxsPSIjMjI4QjIyIi8+PGVsbGlwc2UgY3g9IjI1IiBjeT0iNDUiIHJ4PSI4IiByeT0iMTAiIGZpbGw9IiNGRjY2NjYiIG9wYWNpdHk9IjAuNCIvPjwvc3ZnPg==",
+              "originalName": "apple.svg",
+              "width": 80,
+              "height": 90,
+              "size": 600
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 600,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 1.2
+        },
+        {
+          "id": "btn-left",
+          "name": "左ボタン",
+          "frames": [
+            {
+              "id": "btn-left-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI3NSIgY3k9Ijc1IiByPSI3MCIgZmlsbD0iI0ZGRkZGRiIgb3BhY2l0eT0iMC45IiBzdHJva2U9IiM2NjY2NjYiIHN0cm9rZS13aWR0aD0iNCIvPjxwb2x5Z29uIHBvaW50cz0iNDUsNzUgOTUsNDUgOTUsMTA1IiBmaWxsPSIjMzMzMzMzIi8+PC9zdmc+",
+              "originalName": "btn-left.svg",
               "width": 150,
               "height": 150,
               "size": 400
@@ -105,13 +151,36 @@
           "defaultScale": 1.0
         },
         {
-          "id": "arrow-right",
-          "name": "右矢印",
+          "id": "btn-center",
+          "name": "中央ボタン",
           "frames": [
             {
-              "id": "arrow-right-frame-1",
-              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI3NSIgY3k9Ijc1IiByPSI3MCIgZmlsbD0iI0ZGRkZGRiIgb3BhY2l0eT0iMC44IiBzdHJva2U9IiM2NjY2NjYiIHN0cm9rZS13aWR0aD0iMyIvPjxwb2x5Z29uIHBvaW50cz0iMTA1LDc1IDU1LDQ1IDU1LDEwNSIgZmlsbD0iIzMzMzMzMyIvPjwvc3ZnPg==",
-              "originalName": "arrow-right.svg",
+              "id": "btn-center-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI3NSIgY3k9Ijc1IiByPSI3MCIgZmlsbD0iI0ZGRkZGRiIgb3BhY2l0eT0iMC45IiBzdHJva2U9IiM2NjY2NjYiIHN0cm9rZS13aWR0aD0iNCIvPjxjaXJjbGUgY3g9Ijc1IiBjeT0iNzUiIHI9IjI1IiBmaWxsPSIjMzMzMzMzIi8+PC9zdmc+",
+              "originalName": "btn-center.svg",
+              "width": 150,
+              "height": 150,
+              "size": 300
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 300,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 1.0
+        },
+        {
+          "id": "btn-right",
+          "name": "右ボタン",
+          "frames": [
+            {
+              "id": "btn-right-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI3NSIgY3k9Ijc1IiByPSI3MCIgZmlsbD0iI0ZGRkZGRiIgb3BhY2l0eT0iMC45IiBzdHJva2U9IiM2NjY2NjYiIHN0cm9rZS13aWR0aD0iNCIvPjxwb2x5Z29uIHBvaW50cz0iMTA1LDc1IDU1LDQ1IDU1LDEwNSIgZmlsbD0iIzMzMzMzMyIvPjwvc3ZnPg==",
+              "originalName": "btn-right.svg",
               "width": 150,
               "height": 150,
               "size": 400
@@ -126,29 +195,6 @@
           "createdAt": "2025-01-01T00:00:00.000Z",
           "lastModified": "2025-01-01T00:00:00.000Z",
           "defaultScale": 1.0
-        },
-        {
-          "id": "splat",
-          "name": "潰れ",
-          "frames": [
-            {
-              "id": "splat-frame-1",
-              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjUwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxlbGxpcHNlIGN4PSI2MCIgY3k9IjI1IiByeD0iNTUiIHJ5PSIyMCIgZmlsbD0iI0ZGMDAwMCIgb3BhY2l0eT0iMC43Ii8+PGVsbGlwc2UgY3g9IjMwIiBjeT0iMTUiIHJ4PSIxNSIgcnk9IjgiIGZpbGw9IiNGRjY2NjYiLz48ZWxsaXBzZSBjeD0iOTAiIGN5PSIzMCIgcng9IjEyIiByeT0iNiIgZmlsbD0iI0ZGNjY2NiIvPjwvc3ZnPg==",
-              "originalName": "splat.svg",
-              "width": 120,
-              "height": 50,
-              "size": 400
-            }
-          ],
-          "animationSettings": {
-            "speed": 12,
-            "loop": true,
-            "autoPlay": false
-          },
-          "totalSize": 400,
-          "createdAt": "2025-01-01T00:00:00.000Z",
-          "lastModified": "2025-01-01T00:00:00.000Z",
-          "defaultScale": 1.5
         }
       ],
       "texts": [],
@@ -157,12 +203,12 @@
         "se": []
       },
       "statistics": {
-        "totalImageSize": 3600,
+        "totalImageSize": 4700,
         "totalAudioSize": 0,
-        "totalSize": 3600,
+        "totalSize": 4700,
         "usedSlots": {
           "background": 1,
-          "objects": 5,
+          "objects": 7,
           "texts": 0,
           "bgm": 0,
           "se": 0
@@ -188,9 +234,9 @@
           "objects": [
             {
               "id": "character",
-              "position": { "x": 0.5, "y": 0.75 },
+              "position": { "x": 0.5, "y": 0.72 },
               "visible": true,
-              "scale": { "x": 1.8, "y": 1.8 },
+              "scale": { "x": 1.5, "y": 1.5 },
               "rotation": 0,
               "zIndex": 10,
               "animationIndex": 0,
@@ -198,10 +244,10 @@
               "autoStart": false
             },
             {
-              "id": "apple",
-              "position": { "x": 0.5, "y": 0.15 },
+              "id": "apple1",
+              "position": { "x": 0.2, "y": 0.1 },
               "visible": true,
-              "scale": { "x": 1.5, "y": 1.5 },
+              "scale": { "x": 1.2, "y": 1.2 },
               "rotation": 0,
               "zIndex": 5,
               "animationIndex": 0,
@@ -209,7 +255,29 @@
               "autoStart": false
             },
             {
-              "id": "arrow-left",
+              "id": "apple2",
+              "position": { "x": 0.8, "y": 0.1 },
+              "visible": true,
+              "scale": { "x": 1.2, "y": 1.2 },
+              "rotation": 0,
+              "zIndex": 5,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            },
+            {
+              "id": "apple3",
+              "position": { "x": 0.5, "y": 0.1 },
+              "visible": true,
+              "scale": { "x": 1.2, "y": 1.2 },
+              "rotation": 0,
+              "zIndex": 5,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            },
+            {
+              "id": "btn-left",
               "position": { "x": 0.15, "y": 0.9 },
               "visible": true,
               "scale": { "x": 1.0, "y": 1.0 },
@@ -220,8 +288,8 @@
               "autoStart": false
             },
             {
-              "id": "arrow-right",
-              "position": { "x": 0.85, "y": 0.9 },
+              "id": "btn-center",
+              "position": { "x": 0.5, "y": 0.9 },
               "visible": true,
               "scale": { "x": 1.0, "y": 1.0 },
               "rotation": 0,
@@ -231,12 +299,12 @@
               "autoStart": false
             },
             {
-              "id": "splat",
-              "position": { "x": 0.5, "y": 0.78 },
-              "visible": false,
-              "scale": { "x": 1.5, "y": 1.5 },
+              "id": "btn-right",
+              "position": { "x": 0.85, "y": 0.9 },
+              "visible": true,
+              "scale": { "x": 1.0, "y": 1.0 },
               "rotation": 0,
-              "zIndex": 3,
+              "zIndex": 20,
               "animationIndex": 0,
               "animationSpeed": 12,
               "autoStart": false
@@ -262,8 +330,8 @@
         "objects": [
           {
             "objectId": "character",
-            "position": { "x": 0.5, "y": 0.75 },
-            "scale": { "x": 1.8, "y": 1.8 },
+            "position": { "x": 0.5, "y": 0.72 },
+            "scale": { "x": 1.5, "y": 1.5 },
             "rotation": 0,
             "zIndex": 10,
             "initialState": {
@@ -274,9 +342,9 @@
             }
           },
           {
-            "objectId": "apple",
-            "position": { "x": 0.5, "y": 0.15 },
-            "scale": { "x": 1.5, "y": 1.5 },
+            "objectId": "apple1",
+            "position": { "x": 0.2, "y": 0.1 },
+            "scale": { "x": 1.2, "y": 1.2 },
             "rotation": 0,
             "zIndex": 5,
             "initialState": {
@@ -287,7 +355,33 @@
             }
           },
           {
-            "objectId": "arrow-left",
+            "objectId": "apple2",
+            "position": { "x": 0.8, "y": 0.1 },
+            "scale": { "x": 1.2, "y": 1.2 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "apple3",
+            "position": { "x": 0.5, "y": 0.1 },
+            "scale": { "x": 1.2, "y": 1.2 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "btn-left",
             "position": { "x": 0.15, "y": 0.9 },
             "scale": { "x": 1.0, "y": 1.0 },
             "rotation": 0,
@@ -300,8 +394,8 @@
             }
           },
           {
-            "objectId": "arrow-right",
-            "position": { "x": 0.85, "y": 0.9 },
+            "objectId": "btn-center",
+            "position": { "x": 0.5, "y": 0.9 },
             "scale": { "x": 1.0, "y": 1.0 },
             "rotation": 0,
             "zIndex": 20,
@@ -313,13 +407,13 @@
             }
           },
           {
-            "objectId": "splat",
-            "position": { "x": 0.5, "y": 0.78 },
-            "scale": { "x": 1.5, "y": 1.5 },
+            "objectId": "btn-right",
+            "position": { "x": 0.85, "y": 0.9 },
+            "scale": { "x": 1.0, "y": 1.0 },
             "rotation": 0,
-            "zIndex": 3,
+            "zIndex": 20,
             "initialState": {
-              "visible": false,
+              "visible": true,
               "animation": 0,
               "animationSpeed": 12,
               "autoStart": false
@@ -343,11 +437,11 @@
       ],
       "rules": [
         {
-          "id": "apple-fall",
-          "name": "りんご落下",
+          "id": "apple1-fall",
+          "name": "りんご1落下",
           "enabled": true,
           "priority": 1,
-          "targetObjectId": "apple",
+          "targetObjectId": "apple1",
           "triggers": {
             "operator": "AND",
             "conditions": [
@@ -361,11 +455,67 @@
           "actions": [
             {
               "type": "move",
-              "targetId": "apple",
+              "targetId": "apple1",
               "movement": {
                 "type": "straight",
-                "target": { "x": 0.5, "y": 0.85 },
-                "speed": 0.8
+                "target": { "x": 0.2, "y": 0.8 },
+                "speed": 3.0
+              }
+            }
+          ]
+        },
+        {
+          "id": "apple2-fall",
+          "name": "りんご2落下",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "apple2",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 0.1
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "apple2",
+              "movement": {
+                "type": "straight",
+                "target": { "x": 0.8, "y": 0.8 },
+                "speed": 2.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "apple3-fall",
+          "name": "りんご3落下",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "apple3",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 0.1
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "apple3",
+              "movement": {
+                "type": "straight",
+                "target": { "x": 0.5, "y": 0.8 },
+                "speed": 2.0
               }
             }
           ]
@@ -375,7 +525,7 @@
           "name": "左ボタンタップ",
           "enabled": true,
           "priority": 5,
-          "targetObjectId": "arrow-left",
+          "targetObjectId": "btn-left",
           "triggers": {
             "operator": "AND",
             "conditions": [
@@ -392,8 +542,36 @@
               "targetId": "character",
               "movement": {
                 "type": "straight",
-                "target": { "x": 0.25, "y": 0.75 },
-                "speed": 10
+                "target": { "x": 0.2, "y": 0.72 },
+                "speed": 15
+              }
+            }
+          ]
+        },
+        {
+          "id": "tap-center",
+          "name": "中央ボタンタップ",
+          "enabled": true,
+          "priority": 5,
+          "targetObjectId": "btn-center",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "character",
+              "movement": {
+                "type": "straight",
+                "target": { "x": 0.5, "y": 0.72 },
+                "speed": 15
               }
             }
           ]
@@ -403,7 +581,7 @@
           "name": "右ボタンタップ",
           "enabled": true,
           "priority": 5,
-          "targetObjectId": "arrow-right",
+          "targetObjectId": "btn-right",
           "triggers": {
             "operator": "AND",
             "conditions": [
@@ -420,18 +598,18 @@
               "targetId": "character",
               "movement": {
                 "type": "straight",
-                "target": { "x": 0.75, "y": 0.75 },
-                "speed": 10
+                "target": { "x": 0.8, "y": 0.72 },
+                "speed": 15
               }
             }
           ]
         },
         {
-          "id": "catch-apple",
-          "name": "りんごキャッチ",
+          "id": "catch-apple1",
+          "name": "りんご1キャッチ",
           "enabled": true,
           "priority": 10,
-          "targetObjectId": "apple",
+          "targetObjectId": "apple1",
           "triggers": {
             "operator": "AND",
             "conditions": [
@@ -446,7 +624,7 @@
           "actions": [
             {
               "type": "hide",
-              "targetId": "apple"
+              "targetId": "apple1"
             },
             {
               "type": "counter",
@@ -456,31 +634,119 @@
             },
             {
               "type": "addScore",
-              "points": 100
+              "points": 10
+            }
+          ]
+        },
+        {
+          "id": "catch-apple2",
+          "name": "りんご2キャッチ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "apple2",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "collision",
+                "target": "character",
+                "collisionType": "enter",
+                "checkMode": "hitbox"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "apple2"
             },
+            {
+              "type": "counter",
+              "counterName": "caught",
+              "operation": "add",
+              "value": 1
+            },
+            {
+              "type": "addScore",
+              "points": 10
+            }
+          ]
+        },
+        {
+          "id": "catch-apple3",
+          "name": "りんご3キャッチ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "apple3",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "collision",
+                "target": "character",
+                "collisionType": "enter",
+                "checkMode": "hitbox"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "apple3"
+            },
+            {
+              "type": "counter",
+              "counterName": "caught",
+              "operation": "add",
+              "value": 1
+            },
+            {
+              "type": "addScore",
+              "points": 10
+            }
+          ]
+        },
+        {
+          "id": "win-condition",
+          "name": "クリア判定",
+          "enabled": true,
+          "priority": 15,
+          "targetObjectId": "stage",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "counter",
+                "counterName": "caught",
+                "comparison": "greaterOrEqual",
+                "value": 3
+              }
+            ]
+          },
+          "actions": [
             {
               "type": "success",
               "score": 100,
-              "message": "ナイスキャッチ！"
+              "message": "全部キャッチ！"
             }
           ]
         }
       ],
       "successConditions": [],
       "statistics": {
-        "totalRules": 4,
-        "totalConditions": 4,
-        "totalActions": 8,
-        "complexityScore": 10,
-        "usedTriggerTypes": ["time", "touch", "collision"],
+        "totalRules": 10,
+        "totalConditions": 10,
+        "totalActions": 15,
+        "complexityScore": 20,
+        "usedTriggerTypes": ["time", "touch", "collision", "counter"],
         "usedActionTypes": ["move", "hide", "counter", "success", "addScore"],
         "flagCount": 0,
         "estimatedCPUUsage": "low",
         "estimatedMemoryUsage": 0,
-        "maxConcurrentEffects": 1,
+        "maxConcurrentEffects": 3,
         "counterCount": 1,
         "usedCounterOperations": ["add"],
-        "usedCounterComparisons": [],
+        "usedCounterComparisons": ["greaterOrEqual"],
         "randomConditionCount": 0,
         "randomActionCount": 0,
         "totalRandomChoices": 0,
