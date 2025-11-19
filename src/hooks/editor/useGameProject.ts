@@ -447,7 +447,10 @@ export const useGameProject = (): UseGameProjectReturn => {
       setLoading(true);
       setError(null);
 
-      const duplicated = await storage.duplicateProject(id, newName);
+      // 現在のユーザーを取得してSupabaseにも保存
+      const user = await auth.getCurrentUser();
+
+      const duplicated = await storage.duplicateProject(id, newName, user?.id);
       return duplicated;
     } catch (err: any) {
       handleError('プロジェクト複製', err);

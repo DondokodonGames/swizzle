@@ -442,7 +442,9 @@ export class ProjectStorageManager {
   }
 
   // プロジェクト複製
-  public async duplicateProject(id: string, newName: string): Promise<GameProject> {
+  public async duplicateProject(id: string, newName: string, userId?: string): Promise<GameProject> {
+    console.log('[DuplicateProject-Manager] Starting duplicate...', { id, newName, userId: userId || 'none' });
+
     const originalProject = await this.loadProject(id);
     if (!originalProject) {
       throw new Error('複製するプロジェクトが見つかりません');
@@ -471,7 +473,22 @@ export class ProjectStorageManager {
       }
     };
 
+    // ローカルに保存
     await this.saveProject(duplicatedProject);
+    console.log('[DuplicateProject-Manager] Saved to local successfully');
+
+    // Supabaseにも保存（ユーザーがログインしている場合）
+    if (userId) {
+      try {
+        console.log('[DuplicateProject-Manager] Saving to Supabase...');
+        await this.saveToDatabase(duplicatedProject, userId);
+        console.log('[DuplicateProject-Manager] Saved to Supabase successfully');
+      } catch (dbError) {
+        console.error('[DuplicateProject-Manager] Failed to save to Supabase:', dbError);
+        // ローカル保存は成功しているのでエラーは警告のみ
+      }
+    }
+
     return duplicatedProject;
   }
 
