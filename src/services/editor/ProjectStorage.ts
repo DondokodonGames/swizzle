@@ -172,9 +172,12 @@ export class ProjectStorage {
   // プロジェクト保存
   public async saveProject(project: GameProject): Promise<void> {
     try {
+      console.log('[SaveProject] Starting save...', { id: project.id, name: project.name });
+
       // バリデーション
       this.validateProject(project);
-      
+      console.log('[SaveProject] Validation passed');
+
       // 容量制限チェック
       if (project.totalSize && project.totalSize > EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE) {
         throw new Error(`プロジェクトサイズが制限を超えています (${(project.totalSize / 1024 / 1024).toFixed(1)}MB)`);
@@ -182,14 +185,21 @@ export class ProjectStorage {
 
       // IndexedDBが利用可能な場合
       if (this.dbPromise) {
+        console.log('[SaveProject] Using IndexedDB');
         const db = await this.dbPromise;
         const transaction = db.transaction(['projects'], 'readwrite');
         const store = transaction.objectStore('projects');
-        
+
         return new Promise((resolve, reject) => {
           const request = store.put(project);
-          request.onsuccess = () => resolve();
-          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            console.log('[SaveProject] IndexedDB save success');
+            resolve();
+          };
+          request.onerror = () => {
+            console.error('[SaveProject] IndexedDB save error:', request.error);
+            reject(request.error);
+          };
         });
       }
 
