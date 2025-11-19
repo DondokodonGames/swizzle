@@ -88,8 +88,13 @@
           "id": "move-red",
           "name": "赤風船浮遊",
           "enabled": true,
-          "condition": {
-            "type": "always"
+          "targetObjectId": "balloon-red",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "always"
+              }
+            ]
           },
           "actions": [
             {
@@ -108,8 +113,13 @@
           "id": "move-blue",
           "name": "青風船浮遊",
           "enabled": true,
-          "condition": {
-            "type": "always"
+          "targetObjectId": "balloon-blue",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "always"
+              }
+            ]
           },
           "actions": [
             {
@@ -128,8 +138,13 @@
           "id": "move-green",
           "name": "緑風船浮遊",
           "enabled": true,
-          "condition": {
-            "type": "always"
+          "targetObjectId": "balloon-green",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "always"
+              }
+            ]
           },
           "actions": [
             {
@@ -148,9 +163,14 @@
           "id": "tap-red",
           "name": "赤風船タップ",
           "enabled": true,
-          "condition": {
-            "type": "tap",
-            "targetId": "balloon-red"
+          "targetObjectId": "balloon-red",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "tap",
+                "targetId": "balloon-red"
+              }
+            ]
           },
           "actions": [
             {
@@ -183,9 +203,14 @@
           "id": "tap-blue",
           "name": "青風船タップ",
           "enabled": true,
-          "condition": {
-            "type": "tap",
-            "targetId": "balloon-blue"
+          "targetObjectId": "balloon-blue",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "tap",
+                "targetId": "balloon-blue"
+              }
+            ]
           },
           "actions": [
             {
@@ -218,9 +243,14 @@
           "id": "tap-green",
           "name": "緑風船タップ",
           "enabled": true,
-          "condition": {
-            "type": "tap",
-            "targetId": "balloon-green"
+          "targetObjectId": "balloon-green",
+          "triggers": {
+            "conditions": [
+              {
+                "type": "tap",
+                "targetId": "balloon-green"
+              }
+            ]
           },
           "actions": [
             {
@@ -253,11 +283,15 @@
           "id": "win-condition",
           "name": "クリア判定",
           "enabled": true,
-          "condition": {
-            "type": "counter",
-            "counterId": "popped",
-            "comparison": ">=",
-            "value": 3
+          "triggers": {
+            "conditions": [
+              {
+                "type": "counter",
+                "counterId": "popped",
+                "comparison": ">=",
+                "value": 3
+              }
+            ]
           },
           "actions": [
             {
