@@ -151,15 +151,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session?.user) {
           setState(prev => ({ ...prev, loading: true, error: null }))
-          const profile = await loadProfile(session.user.id)
-          setState({
-            user: session.user,
-            session,
-            profile,
-            loading: false,
-            initializing: false,
-            error: null
-          })
+          try {
+            const profile = await loadProfile(session.user.id)
+            setState({
+              user: session.user,
+              session,
+              profile,
+              loading: false,
+              initializing: false,
+              error: null
+            })
+          } catch (error) {
+            console.error('Profile loading error during auth state change:', error)
+            // プロフィール読み込みに失敗しても認証状態は維持
+            setState({
+              user: session.user,
+              session,
+              profile: null,
+              loading: false,
+              initializing: false,
+              error: null
+            })
+          }
         }
       } else if (event === 'SIGNED_OUT') {
         setState({
