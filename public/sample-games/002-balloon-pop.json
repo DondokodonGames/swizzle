@@ -1,335 +1,170 @@
 {
   "project": {
-    "id": "balloon-pop-improved",
+    "id": "balloon-pop-sample",
     "name": "風船割り",
+    "description": "ふわふわ浮かぶ風船を全部割ろう！",
     "createdAt": "2025-01-01T00:00:00.000Z",
     "lastModified": "2025-01-01T00:00:00.000Z",
     "version": "1.0.0",
-    "creator": { "isAnonymous": true },
+    "creator": {
+      "isAnonymous": true
+    },
     "status": "draft",
     "totalSize": 0,
-    "metadata": {},
-    "versionHistory": [],
     "assets": {
-      "background": {
-        "type": "color",
-        "value": "#87CEEB"
-      },
-      "objects": [
-        {
-          "id": "balloon-red",
-          "name": "赤風船",
-          "type": "shape",
-          "shape": "ellipse",
-          "color": "#FF6B6B",
-          "position": { "x": 0.2, "y": 0.95 },
-          "size": { "width": 80, "height": 100 },
-          "scale": 2.2,
-          "rotation": 0,
-          "opacity": 1,
-          "visible": true
-        },
-        {
-          "id": "balloon-blue",
-          "name": "青風船",
-          "type": "shape",
-          "shape": "ellipse",
-          "color": "#4ECDC4",
-          "position": { "x": 0.5, "y": 1.1 },
-          "size": { "width": 80, "height": 100 },
-          "scale": 2.2,
-          "rotation": 0,
-          "opacity": 1,
-          "visible": true
-        },
-        {
-          "id": "balloon-green",
-          "name": "緑風船",
-          "type": "shape",
-          "shape": "ellipse",
-          "color": "#95E1D3",
-          "position": { "x": 0.8, "y": 1.25 },
-          "size": { "width": 80, "height": 100 },
-          "scale": 2.2,
-          "rotation": 0,
-          "opacity": 1,
-          "visible": true
-        }
-      ],
-      "texts": [
-        {
-          "id": "score-text",
-          "content": "割った数: 0",
-          "position": { "x": 0.5, "y": 0.08 },
-          "style": {
-            "fontSize": 24,
-            "fontFamily": "sans-serif",
-            "color": "#333333",
-            "fontWeight": "bold",
-            "textAlign": "center"
-          }
-        }
-      ],
+      "background": null,
+      "objects": [],
+      "texts": [],
       "audio": {
         "bgm": null,
         "se": []
-      }
+      },
+      "statistics": {
+        "totalImageSize": 0,
+        "totalAudioSize": 0,
+        "totalSize": 0,
+        "usedSlots": {
+          "background": 0,
+          "objects": 0,
+          "texts": 0,
+          "bgm": 0,
+          "se": 0
+        },
+        "limitations": {
+          "isNearImageLimit": false,
+          "isNearAudioLimit": false,
+          "isNearTotalLimit": false,
+          "hasViolations": false
+        }
+      },
+      "lastModified": "2025-01-01T00:00:00.000Z"
     },
     "script": {
       "initialState": {
-        "counters": {
-          "popped": 0
-        },
-        "flags": {}
+        "counters": {},
+        "flags": {},
+        "timers": {},
+        "objectStates": {}
       },
-      "successConditions": [],
-      "rules": [
-        {
-          "id": "move-red",
-          "name": "赤風船浮遊",
-          "enabled": true,
-          "targetObjectId": "balloon-red",
-          "triggers": {
-            "conditions": [
-              {
-                "type": "always"
-              }
-            ]
-          },
-          "actions": [
-            {
-              "type": "move",
-              "targetId": "balloon-red",
-              "movement": {
-                "pattern": "wander",
-                "speed": 35,
-                "direction": 90,
-                "wanderStrength": 0.4
-              }
-            }
-          ]
+      "layout": {
+        "background": {
+          "visible": false,
+          "initialAnimation": 0,
+          "animationSpeed": 12,
+          "autoStart": false
         },
-        {
-          "id": "move-blue",
-          "name": "青風船浮遊",
-          "enabled": true,
-          "targetObjectId": "balloon-blue",
-          "triggers": {
-            "conditions": [
-              {
-                "type": "always"
-              }
-            ]
-          },
-          "actions": [
-            {
-              "type": "move",
-              "targetId": "balloon-blue",
-              "movement": {
-                "pattern": "wander",
-                "speed": 28,
-                "direction": 90,
-                "wanderStrength": 0.5
-              }
-            }
-          ]
-        },
-        {
-          "id": "move-green",
-          "name": "緑風船浮遊",
-          "enabled": true,
-          "targetObjectId": "balloon-green",
-          "triggers": {
-            "conditions": [
-              {
-                "type": "always"
-              }
-            ]
-          },
-          "actions": [
-            {
-              "type": "move",
-              "targetId": "balloon-green",
-              "movement": {
-                "pattern": "wander",
-                "speed": 22,
-                "direction": 90,
-                "wanderStrength": 0.6
-              }
-            }
-          ]
-        },
-        {
-          "id": "tap-red",
-          "name": "赤風船タップ",
-          "enabled": true,
-          "targetObjectId": "balloon-red",
-          "triggers": {
-            "conditions": [
-              {
-                "type": "tap",
-                "targetId": "balloon-red"
-              }
-            ]
-          },
-          "actions": [
-            {
-              "type": "effect",
-              "targetId": "balloon-red",
-              "effect": {
-                "type": "scale",
-                "scaleAmount": 1.5,
-                "duration": 0.15
-              }
-            },
-            {
-              "type": "hide",
-              "targetId": "balloon-red"
-            },
-            {
-              "type": "counter",
-              "counterId": "popped",
-              "operation": "add",
-              "value": 1
-            },
-            {
-              "type": "setText",
-              "targetId": "score-text",
-              "text": "割った数: {popped}"
-            }
-          ]
-        },
-        {
-          "id": "tap-blue",
-          "name": "青風船タップ",
-          "enabled": true,
-          "targetObjectId": "balloon-blue",
-          "triggers": {
-            "conditions": [
-              {
-                "type": "tap",
-                "targetId": "balloon-blue"
-              }
-            ]
-          },
-          "actions": [
-            {
-              "type": "effect",
-              "targetId": "balloon-blue",
-              "effect": {
-                "type": "scale",
-                "scaleAmount": 1.5,
-                "duration": 0.15
-              }
-            },
-            {
-              "type": "hide",
-              "targetId": "balloon-blue"
-            },
-            {
-              "type": "counter",
-              "counterId": "popped",
-              "operation": "add",
-              "value": 1
-            },
-            {
-              "type": "setText",
-              "targetId": "score-text",
-              "text": "割った数: {popped}"
-            }
-          ]
-        },
-        {
-          "id": "tap-green",
-          "name": "緑風船タップ",
-          "enabled": true,
-          "targetObjectId": "balloon-green",
-          "triggers": {
-            "conditions": [
-              {
-                "type": "tap",
-                "targetId": "balloon-green"
-              }
-            ]
-          },
-          "actions": [
-            {
-              "type": "effect",
-              "targetId": "balloon-green",
-              "effect": {
-                "type": "scale",
-                "scaleAmount": 1.5,
-                "duration": 0.15
-              }
-            },
-            {
-              "type": "hide",
-              "targetId": "balloon-green"
-            },
-            {
-              "type": "counter",
-              "counterId": "popped",
-              "operation": "add",
-              "value": 1
-            },
-            {
-              "type": "setText",
-              "targetId": "score-text",
-              "text": "割った数: {popped}"
-            }
-          ]
-        },
-        {
-          "id": "win-condition",
-          "name": "クリア判定",
-          "enabled": true,
-          "triggers": {
-            "conditions": [
-              {
-                "type": "counter",
-                "counterId": "popped",
-                "comparison": ">=",
-                "value": 3
-              }
-            ]
-          },
-          "actions": [
-            {
-              "type": "gameEnd",
-              "result": "clear"
-            }
-          ]
+        "objects": [],
+        "texts": [],
+        "stage": {
+          "backgroundColor": "#87CEEB"
         }
-      ]
+      },
+      "flags": [],
+      "counters": [],
+      "rules": [],
+      "successConditions": [],
+      "statistics": {
+        "totalRules": 0,
+        "totalConditions": 0,
+        "totalActions": 0,
+        "complexityScore": 0,
+        "usedTriggerTypes": [],
+        "usedActionTypes": [],
+        "flagCount": 0,
+        "estimatedCPUUsage": "low",
+        "estimatedMemoryUsage": 0,
+        "maxConcurrentEffects": 0,
+        "counterCount": 0,
+        "usedCounterOperations": [],
+        "usedCounterComparisons": [],
+        "randomConditionCount": 0,
+        "randomActionCount": 0,
+        "totalRandomChoices": 0,
+        "averageRandomProbability": 0,
+        "randomEventsPerSecond": 0,
+        "randomMemoryUsage": 0
+      },
+      "version": "1.0.0",
+      "lastModified": "2025-01-01T00:00:00.000Z"
     },
     "settings": {
       "name": "風船割り",
       "description": "ふわふわ浮かぶ風船を全部割ろう！",
+      "duration": {
+        "type": "fixed",
+        "seconds": 10
+      },
       "difficulty": "easy",
-      "category": "action",
-      "tags": ["タップ", "風船", "簡単"],
-      "timer": {
-        "enabled": true,
-        "duration": 5,
-        "direction": "down"
-      },
-      "scoring": {
-        "enabled": false
-      },
-      "lives": {
-        "enabled": false
-      },
-      "appearance": {
-        "theme": "light"
-      },
       "publishing": {
         "isPublished": false,
-        "publishedAt": null
+        "visibility": "private",
+        "allowComments": true,
+        "allowRemix": false,
+        "tags": ["タップ", "風船", "簡単"],
+        "category": "action"
+      },
+      "preview": {},
+      "export": {
+        "includeSourceData": true,
+        "compressionLevel": "medium",
+        "format": "json"
       }
+    },
+    "editorState": {
+      "activeTab": "assets",
+      "lastSaved": "2025-01-01T00:00:00.000Z",
+      "autoSaveEnabled": true,
+      "tabStates": {
+        "assets": {
+          "selectedAssetType": null,
+          "selectedAssetId": null,
+          "showAnimationEditor": false
+        },
+        "script": {
+          "mode": "layout",
+          "selectedObjectId": null,
+          "selectedRuleId": null,
+          "showRuleEditor": false
+        },
+        "settings": {
+          "showTestPlay": false,
+          "lastTestResult": null
+        }
+      },
+      "ui": {
+        "sidebarCollapsed": false,
+        "previewVisible": true,
+        "capacityMeterExpanded": false
+      }
+    },
+    "metadata": {
+      "statistics": {
+        "totalEditTime": 0,
+        "saveCount": 0,
+        "testPlayCount": 0,
+        "publishCount": 0
+      },
+      "usage": {
+        "lastOpened": "2025-01-01T00:00:00.000Z",
+        "totalOpenCount": 1,
+        "averageSessionTime": 0
+      },
+      "performance": {
+        "lastBuildTime": 0,
+        "averageFPS": 60,
+        "memoryUsage": 0
+      }
+    },
+    "versionHistory": [],
+    "projectSettings": {
+      "autoSaveInterval": 30000,
+      "backupEnabled": true,
+      "compressionEnabled": false,
+      "maxVersionHistory": 10
     }
   },
   "metadata": {
-    "id": "balloon-pop-improved",
+    "id": "balloon-pop-sample",
     "name": "風船割り",
     "lastModified": "2025-01-01T00:00:00.000Z",
     "status": "draft",
