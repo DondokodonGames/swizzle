@@ -125,9 +125,13 @@ export class ProjectStorageManager {
   // 🔧 修正: ユーザーのプロジェクト一覧取得（Supabaseから）
   public async listProjects(userId?: string): Promise<ProjectMetadata[]> {
     try {
+      console.log('[ListProjects-Manager] Loading projects...', { userId: userId || 'none' });
+
       // ユーザーIDが指定されている場合、Supabaseから取得
       if (userId) {
+        console.log('[ListProjects-Manager] Fetching from Supabase...');
         const userGames = await database.userGames.getUserGames(userId);
+        console.log('[ListProjects-Manager] Supabase games:', userGames?.length || 0);
 
         return userGames.map((game): ProjectMetadata => {
           // project_dataからGameProjectを復元
@@ -145,6 +149,7 @@ export class ProjectStorageManager {
       }
 
       // ユーザーIDがない場合、ローカルストレージから取得
+      console.log('[ListProjects-Manager] Fetching from local storage...');
       // IndexedDBが利用可能な場合
       if (this.dbPromise) {
         const db = await this.dbPromise;
@@ -154,6 +159,7 @@ export class ProjectStorageManager {
 
         return new Promise((resolve, reject) => {
           request.onsuccess = () => {
+            console.log('[ListProjects-Manager] IndexedDB projects:', request.result?.length || 0);
             const projects = request.result.map((project: GameProject): ProjectMetadata => ({
               id: project.id,
               name: project.name,
@@ -162,6 +168,8 @@ export class ProjectStorageManager {
               size: project.totalSize || 0,
               version: project.version
             }));
+
+            console.log('[ListProjects-Manager] Project names:', projects.map(p => p.name));
 
             // 最終更新日でソート
             projects.sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime());
