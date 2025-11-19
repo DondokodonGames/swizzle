@@ -1,64 +1,16 @@
 {
   "project": {
-    "id": "sample-004-fruit-catch",
+    "id": "fruit-catch-sample",
     "name": "フルーツキャッチ",
-    "description": "木から落ちるりんごをカゴでキャッチ！",
+    "description": "落ちてくるりんごをキャッチ！",
     "createdAt": "2025-01-01T00:00:00.000Z",
     "lastModified": "2025-01-01T00:00:00.000Z",
     "version": "1.0.0",
-    "creator": { "isAnonymous": true },
+    "creator": {
+      "isAnonymous": true
+    },
     "status": "draft",
-    "totalSize": 10000,
-
-    "metadata": {
-      "statistics": {
-        "totalEditTime": 0,
-        "saveCount": 0,
-        "testPlayCount": 0,
-        "publishCount": 0
-      },
-      "usage": {
-        "lastOpened": "2025-01-01T00:00:00.000Z",
-        "totalOpenCount": 1,
-        "averageSessionTime": 0
-      },
-      "performance": {
-        "lastBuildTime": 0,
-        "averageFPS": 60,
-        "memoryUsage": 0
-      }
-    },
-
-    "versionHistory": [
-      {
-        "id": "vh-001",
-        "version": "1.0.0",
-        "createdAt": "2025-01-01T00:00:00.000Z",
-        "description": "フルーツキャッチゲーム作成",
-        "author": "System",
-        "changes": [
-          {
-            "type": "added",
-            "category": "script",
-            "description": "フルーツキャッチゲーム作成",
-            "affectedItems": []
-          }
-        ],
-        "snapshot": {
-          "assetsCount": { "background": 1, "objects": 6, "texts": 0, "bgm": 0, "se": 0 },
-          "rulesCount": 6,
-          "totalSize": 10000
-        }
-      }
-    ],
-
-    "projectSettings": {
-      "autoSaveInterval": 30000,
-      "backupEnabled": true,
-      "compressionEnabled": false,
-      "maxVersionHistory": 10
-    },
-
+    "totalSize": 5000,
     "assets": {
       "background": {
         "id": "bg-orchard",
@@ -104,7 +56,7 @@
           "totalSize": 1000,
           "createdAt": "2025-01-01T00:00:00.000Z",
           "lastModified": "2025-01-01T00:00:00.000Z",
-          "defaultScale": 2.0
+          "defaultScale": 1.8
         },
         {
           "id": "apple",
@@ -127,7 +79,53 @@
           "totalSize": 600,
           "createdAt": "2025-01-01T00:00:00.000Z",
           "lastModified": "2025-01-01T00:00:00.000Z",
-          "defaultScale": 1.8
+          "defaultScale": 1.5
+        },
+        {
+          "id": "arrow-left",
+          "name": "左矢印",
+          "frames": [
+            {
+              "id": "arrow-left-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI3NSIgY3k9Ijc1IiByPSI3MCIgZmlsbD0iI0ZGRkZGRiIgb3BhY2l0eT0iMC44IiBzdHJva2U9IiM2NjY2NjYiIHN0cm9rZS13aWR0aD0iMyIvPjxwb2x5Z29uIHBvaW50cz0iNDUsNzUgOTUsNDUgOTUsMTA1IiBmaWxsPSIjMzMzMzMzIi8+PC9zdmc+",
+              "originalName": "arrow-left.svg",
+              "width": 150,
+              "height": 150,
+              "size": 400
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 400,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 1.0
+        },
+        {
+          "id": "arrow-right",
+          "name": "右矢印",
+          "frames": [
+            {
+              "id": "arrow-right-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI3NSIgY3k9Ijc1IiByPSI3MCIgZmlsbD0iI0ZGRkZGRiIgb3BhY2l0eT0iMC44IiBzdHJva2U9IiM2NjY2NjYiIHN0cm9rZS13aWR0aD0iMyIvPjxwb2x5Z29uIHBvaW50cz0iMTA1LDc1IDU1LDQ1IDU1LDEwNSIgZmlsbD0iIzMzMzMzMyIvPjwvc3ZnPg==",
+              "originalName": "arrow-right.svg",
+              "width": 150,
+              "height": 150,
+              "size": 400
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 400,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 1.0
         },
         {
           "id": "splat",
@@ -135,10 +133,10 @@
           "frames": [
             {
               "id": "splat-frame-1",
-              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjQwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxlbGxpcHNlIGN4PSI1MCIgY3k9IjIwIiByeD0iNDUiIHJ5PSIxNSIgZmlsbD0iI0ZGMDAwMCIgb3BhY2l0eT0iMC44Ii8+PGVsbGlwc2UgY3g9IjMwIiBjeT0iMTUiIHJ4PSIxMCIgcnk9IjUiIGZpbGw9IiNGRjY2NjYiLz48ZWxsaXBzZSBjeD0iNzAiIGN5PSIyNSIgcng9IjgiIHJ5PSI0IiBmaWxsPSIjRkY2NjY2Ii8+PC9zdmc+",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjUwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxlbGxpcHNlIGN4PSI2MCIgY3k9IjI1IiByeD0iNTUiIHJ5PSIyMCIgZmlsbD0iI0ZGMDAwMCIgb3BhY2l0eT0iMC43Ii8+PGVsbGlwc2UgY3g9IjMwIiBjeT0iMTUiIHJ4PSIxNSIgcnk9IjgiIGZpbGw9IiNGRjY2NjYiLz48ZWxsaXBzZSBjeD0iOTAiIGN5PSIzMCIgcng9IjEyIiByeT0iNiIgZmlsbD0iI0ZGNjY2NiIvPjwvc3ZnPg==",
               "originalName": "splat.svg",
-              "width": 100,
-              "height": 40,
+              "width": 120,
+              "height": 50,
               "size": 400
             }
           ],
@@ -151,84 +149,24 @@
           "createdAt": "2025-01-01T00:00:00.000Z",
           "lastModified": "2025-01-01T00:00:00.000Z",
           "defaultScale": 1.5
-        },
-        {
-          "id": "sad-face",
-          "name": "残念顔",
-          "frames": [
-            {
-              "id": "sad-face-frame-1",
-              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiNGRkU0QzQiIHN0cm9rZT0iI0RFQjg4NyIgc3Ryb2tlLXdpZHRoPSIyIi8+PGNpcmNsZSBjeD0iMjgiIGN5PSIzNSIgcj0iNCIgZmlsbD0iIzMzMzMzMyIvPjxjaXJjbGUgY3g9IjUyIiBjeT0iMzUiIHI9IjQiIGZpbGw9IiMzMzMzMzMiLz48cGF0aCBkPSJNMzAgNTUgUTQwIDQ3IDUwIDU1IiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzMzMzMiIHN0cm9rZS13aWR0aD0iMyIvPjxsaW5lIHgxPSIyMCIgeTE9IjI1IiB4Mj0iMzUiIHkyPSIzMCIgc3Ryb2tlPSIjODg2NjQ0IiBzdHJva2Utd2lkdGg9IjMiLz48bGluZSB4MT0iNjAiIHkxPSIyNSIgeDI9IjQ1IiB5Mj0iMzAiIHN0cm9rZT0iIzg4NjY0NCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
-              "originalName": "sad-face.svg",
-              "width": 80,
-              "height": 80,
-              "size": 500
-            }
-          ],
-          "animationSettings": {
-            "speed": 12,
-            "loop": true,
-            "autoPlay": false
-          },
-          "totalSize": 500,
-          "createdAt": "2025-01-01T00:00:00.000Z",
-          "lastModified": "2025-01-01T00:00:00.000Z",
-          "defaultScale": 2.0
-        },
-        {
-          "id": "arrow-left",
-          "name": "左矢印",
-          "frames": [
-            {
-              "id": "arrow-left-frame-1",
-              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cG9seWdvbiBwb2ludHM9IjgwLDIwIDIwLDUwIDgwLDgwIDgwLDYwIDYwLDUwIDgwLDQwIiBmaWxsPSIjRkZGRkZGIiBvcGFjaXR5PSIwLjciIHN0cm9rZT0iIzMzMzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
-              "originalName": "arrow-left.svg",
-              "width": 100,
-              "height": 100,
-              "size": 300
-            }
-          ],
-          "animationSettings": {
-            "speed": 12,
-            "loop": true,
-            "autoPlay": false
-          },
-          "totalSize": 300,
-          "createdAt": "2025-01-01T00:00:00.000Z",
-          "lastModified": "2025-01-01T00:00:00.000Z",
-          "defaultScale": 1.5
-        },
-        {
-          "id": "arrow-right",
-          "name": "右矢印",
-          "frames": [
-            {
-              "id": "arrow-right-frame-1",
-              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cG9seWdvbiBwb2ludHM9IjIwLDIwIDgwLDUwIDIwLDgwIDIwLDYwIDQwLDUwIDIwLDQwIiBmaWxsPSIjRkZGRkZGIiBvcGFjaXR5PSIwLjciIHN0cm9rZT0iIzMzMzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
-              "originalName": "arrow-right.svg",
-              "width": 100,
-              "height": 100,
-              "size": 300
-            }
-          ],
-          "animationSettings": {
-            "speed": 12,
-            "loop": true,
-            "autoPlay": false
-          },
-          "totalSize": 300,
-          "createdAt": "2025-01-01T00:00:00.000Z",
-          "lastModified": "2025-01-01T00:00:00.000Z",
-          "defaultScale": 1.5
         }
       ],
       "texts": [],
-      "audio": { "bgm": null, "se": [] },
+      "audio": {
+        "bgm": null,
+        "se": []
+      },
       "statistics": {
-        "totalImageSize": 3900,
+        "totalImageSize": 3600,
         "totalAudioSize": 0,
-        "totalSize": 3900,
-        "usedSlots": { "background": 1, "objects": 6, "texts": 0, "bgm": 0, "se": 0 },
+        "totalSize": 3600,
+        "usedSlots": {
+          "background": 1,
+          "objects": 5,
+          "texts": 0,
+          "bgm": 0,
+          "se": 0
+        },
         "limitations": {
           "isNearImageLimit": false,
           "isNearAudioLimit": false,
@@ -238,109 +176,81 @@
       },
       "lastModified": "2025-01-01T00:00:00.000Z"
     },
-
     "script": {
       "initialState": {
-        "objects": [
-          {
-            "id": "stage",
-            "name": "ステージ",
-            "type": "stage",
-            "x": 0,
-            "y": 0,
-            "width": 1080,
-            "height": 1920,
+        "layout": {
+          "background": {
             "visible": true,
-            "zIndex": 0,
-            "scale": 1,
-            "rotation": 0,
-            "opacity": 1,
-            "backgroundColor": "#87CEEB"
+            "frameIndex": 0,
+            "animationSpeed": 12,
+            "autoStart": false
           },
-          {
-            "id": "arrow-left",
-            "name": "左矢印",
-            "type": "object",
-            "assetId": "arrow-left",
-            "x": 0.12,
-            "y": 0.82,
-            "visible": true,
-            "zIndex": 2,
-            "scale": 1.5,
-            "rotation": 0,
-            "opacity": 0.6
+          "objects": [
+            {
+              "id": "character",
+              "position": { "x": 0.5, "y": 0.75 },
+              "visible": true,
+              "scale": { "x": 1.8, "y": 1.8 },
+              "rotation": 0,
+              "zIndex": 10,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            },
+            {
+              "id": "apple",
+              "position": { "x": 0.5, "y": 0.15 },
+              "visible": true,
+              "scale": { "x": 1.5, "y": 1.5 },
+              "rotation": 0,
+              "zIndex": 5,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            },
+            {
+              "id": "arrow-left",
+              "position": { "x": 0.15, "y": 0.9 },
+              "visible": true,
+              "scale": { "x": 1.0, "y": 1.0 },
+              "rotation": 0,
+              "zIndex": 20,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            },
+            {
+              "id": "arrow-right",
+              "position": { "x": 0.85, "y": 0.9 },
+              "visible": true,
+              "scale": { "x": 1.0, "y": 1.0 },
+              "rotation": 0,
+              "zIndex": 20,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            },
+            {
+              "id": "splat",
+              "position": { "x": 0.5, "y": 0.78 },
+              "visible": false,
+              "scale": { "x": 1.5, "y": 1.5 },
+              "rotation": 0,
+              "zIndex": 3,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          ],
+          "texts": []
+        },
+        "gameState": {
+          "score": 0,
+          "counters": {
+            "caught": 0
           },
-          {
-            "id": "arrow-right",
-            "name": "右矢印",
-            "type": "object",
-            "assetId": "arrow-right",
-            "x": 0.88,
-            "y": 0.82,
-            "visible": true,
-            "zIndex": 2,
-            "scale": 1.5,
-            "rotation": 0,
-            "opacity": 0.6
-          },
-          {
-            "id": "character",
-            "name": "キャラクター",
-            "type": "object",
-            "assetId": "character",
-            "x": 0.5,
-            "y": 0.82,
-            "visible": true,
-            "zIndex": 10,
-            "scale": 2.0,
-            "rotation": 0,
-            "opacity": 1
-          },
-          {
-            "id": "apple",
-            "name": "りんご",
-            "type": "object",
-            "assetId": "apple",
-            "x": 0.5,
-            "y": 0.22,
-            "visible": true,
-            "zIndex": 5,
-            "scale": 1.8,
-            "rotation": 0,
-            "opacity": 1
-          },
-          {
-            "id": "splat",
-            "name": "潰れ",
-            "type": "object",
-            "assetId": "splat",
-            "x": 0.5,
-            "y": 0.92,
-            "visible": false,
-            "zIndex": 3,
-            "scale": 1.5,
-            "rotation": 0,
-            "opacity": 1
-          },
-          {
-            "id": "sad-face",
-            "name": "残念顔",
-            "type": "object",
-            "assetId": "sad-face",
-            "x": 0.5,
-            "y": 0.5,
-            "visible": false,
-            "zIndex": 20,
-            "scale": 2.5,
-            "rotation": 0,
-            "opacity": 1
-          }
-        ],
-        "sounds": [],
-        "counters": [
-          { "id": "score", "name": "スコア", "value": 0, "min": 0, "max": 1 }
-        ],
-        "flags": []
+          "flags": {}
+        }
       },
       "layout": {
         "background": {
@@ -351,35 +261,9 @@
         },
         "objects": [
           {
-            "objectId": "arrow-left",
-            "position": { "x": 0.12, "y": 0.82 },
-            "scale": { "x": 1.5, "y": 1.5 },
-            "rotation": 0,
-            "zIndex": 2,
-            "initialState": {
-              "visible": true,
-              "animation": 0,
-              "animationSpeed": 12,
-              "autoStart": false
-            }
-          },
-          {
-            "objectId": "arrow-right",
-            "position": { "x": 0.88, "y": 0.82 },
-            "scale": { "x": 1.5, "y": 1.5 },
-            "rotation": 0,
-            "zIndex": 2,
-            "initialState": {
-              "visible": true,
-              "animation": 0,
-              "animationSpeed": 12,
-              "autoStart": false
-            }
-          },
-          {
             "objectId": "character",
-            "position": { "x": 0.5, "y": 0.82 },
-            "scale": { "x": 2.0, "y": 2.0 },
+            "position": { "x": 0.5, "y": 0.75 },
+            "scale": { "x": 1.8, "y": 1.8 },
             "rotation": 0,
             "zIndex": 10,
             "initialState": {
@@ -391,8 +275,8 @@
           },
           {
             "objectId": "apple",
-            "position": { "x": 0.5, "y": 0.22 },
-            "scale": { "x": 1.8, "y": 1.8 },
+            "position": { "x": 0.5, "y": 0.15 },
+            "scale": { "x": 1.5, "y": 1.5 },
             "rotation": 0,
             "zIndex": 5,
             "initialState": {
@@ -403,8 +287,34 @@
             }
           },
           {
+            "objectId": "arrow-left",
+            "position": { "x": 0.15, "y": 0.9 },
+            "scale": { "x": 1.0, "y": 1.0 },
+            "rotation": 0,
+            "zIndex": 20,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "arrow-right",
+            "position": { "x": 0.85, "y": 0.9 },
+            "scale": { "x": 1.0, "y": 1.0 },
+            "rotation": 0,
+            "zIndex": 20,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
             "objectId": "splat",
-            "position": { "x": 0.5, "y": 0.92 },
+            "position": { "x": 0.5, "y": 0.78 },
             "scale": { "x": 1.5, "y": 1.5 },
             "rotation": 0,
             "zIndex": 3,
@@ -414,41 +324,37 @@
               "animationSpeed": 12,
               "autoStart": false
             }
-          },
-          {
-            "objectId": "sad-face",
-            "position": { "x": 0.5, "y": 0.5 },
-            "scale": { "x": 2.5, "y": 2.5 },
-            "rotation": 0,
-            "zIndex": 20,
-            "initialState": {
-              "visible": false,
-              "animation": 0,
-              "animationSpeed": 12,
-              "autoStart": false
-            }
           }
         ],
-        "texts": []
+        "texts": [],
+        "stage": {
+          "backgroundColor": "#87CEEB"
+        }
       },
       "flags": [],
       "counters": [
-        { "id": "score", "name": "スコア", "value": 0, "min": 0, "max": 1 }
+        {
+          "id": "caught",
+          "name": "キャッチ数",
+          "initialValue": 0,
+          "minValue": 0,
+          "maxValue": 10
+        }
       ],
       "rules": [
         {
-          "id": "rule-apple-fall",
+          "id": "apple-fall",
           "name": "りんご落下",
           "enabled": true,
-          "priority": 5,
+          "priority": 1,
           "targetObjectId": "apple",
           "triggers": {
             "operator": "AND",
             "conditions": [
               {
                 "type": "time",
-                "timeType": "after",
-                "seconds": 0.5
+                "timeType": "interval",
+                "interval": 0.1
               }
             ]
           },
@@ -458,26 +364,24 @@
               "targetId": "apple",
               "movement": {
                 "type": "straight",
-                "target": { "x": 0.5, "y": 0.88 },
-                "speed": 80,
-                "duration": 5.0,
-                "easing": "ease-in"
+                "target": { "x": 0.5, "y": 0.85 },
+                "speed": 0.8
               }
             }
           ]
         },
         {
-          "id": "rule-move-left",
-          "name": "左移動",
+          "id": "tap-left",
+          "name": "左ボタンタップ",
           "enabled": true,
-          "priority": 10,
-          "targetObjectId": "character",
+          "priority": 5,
+          "targetObjectId": "arrow-left",
           "triggers": {
             "operator": "AND",
             "conditions": [
               {
                 "type": "touch",
-                "target": "arrow-left",
+                "target": "self",
                 "touchType": "down"
               }
             ]
@@ -487,24 +391,25 @@
               "type": "move",
               "targetId": "character",
               "movement": {
-                "type": "teleport",
-                "target": { "x": 0.25, "y": 0.82 }
+                "type": "straight",
+                "target": { "x": 0.25, "y": 0.75 },
+                "speed": 10
               }
             }
           ]
         },
         {
-          "id": "rule-move-right",
-          "name": "右移動",
+          "id": "tap-right",
+          "name": "右ボタンタップ",
           "enabled": true,
-          "priority": 10,
-          "targetObjectId": "character",
+          "priority": 5,
+          "targetObjectId": "arrow-right",
           "triggers": {
             "operator": "AND",
             "conditions": [
               {
                 "type": "touch",
-                "target": "arrow-right",
+                "target": "self",
                 "touchType": "down"
               }
             ]
@@ -514,17 +419,18 @@
               "type": "move",
               "targetId": "character",
               "movement": {
-                "type": "teleport",
-                "target": { "x": 0.75, "y": 0.82 }
+                "type": "straight",
+                "target": { "x": 0.75, "y": 0.75 },
+                "speed": 10
               }
             }
           ]
         },
         {
-          "id": "rule-catch-apple",
+          "id": "catch-apple",
           "name": "りんごキャッチ",
           "enabled": true,
-          "priority": 20,
+          "priority": 10,
           "targetObjectId": "apple",
           "triggers": {
             "operator": "AND",
@@ -540,103 +446,134 @@
           "actions": [
             {
               "type": "hide",
-              "targetId": "apple",
-              "fadeOut": false
+              "targetId": "apple"
             },
             {
               "type": "counter",
-              "operation": "set",
-              "counterName": "score",
-              "value": 1,
-              "notification": {
-                "show": true,
-                "position": "center",
-                "duration": 1.5,
-                "format": "ナイスキャッチ！"
-              }
-            }
-          ]
-        },
-        {
-          "id": "rule-apple-miss",
-          "name": "りんご落下失敗",
-          "enabled": true,
-          "priority": 15,
-          "targetObjectId": "apple",
-          "triggers": {
-            "operator": "AND",
-            "conditions": [
-              {
-                "type": "collision",
-                "target": "stage",
-                "collisionType": "enter",
-                "checkMode": "hitbox",
-                "region": {
-                  "shape": "rect",
-                  "x": 0,
-                  "y": 0.85,
-                  "width": 1,
-                  "height": 0.15
-                }
-              }
-            ]
-          },
-          "actions": [
-            {
-              "type": "hide",
-              "targetId": "apple",
-              "fadeOut": false
+              "counterName": "caught",
+              "operation": "add",
+              "value": 1
             },
             {
-              "type": "show",
-              "targetId": "splat",
-              "fadeIn": false
+              "type": "addScore",
+              "points": 100
             },
             {
-              "type": "show",
-              "targetId": "sad-face",
-              "fadeIn": true,
-              "duration": 0.3
+              "type": "success",
+              "score": 100,
+              "message": "ナイスキャッチ！"
             }
           ]
         }
       ],
       "successConditions": [],
       "statistics": {
-        "ruleCount": 5,
-        "objectCount": 7,
-        "soundCount": 0,
+        "totalRules": 4,
+        "totalConditions": 4,
+        "totalActions": 8,
+        "complexityScore": 10,
+        "usedTriggerTypes": ["time", "touch", "collision"],
+        "usedActionTypes": ["move", "hide", "counter", "success", "addScore"],
         "flagCount": 0,
-        "counterCount": 1
+        "estimatedCPUUsage": "low",
+        "estimatedMemoryUsage": 0,
+        "maxConcurrentEffects": 1,
+        "counterCount": 1,
+        "usedCounterOperations": ["add"],
+        "usedCounterComparisons": [],
+        "randomConditionCount": 0,
+        "randomActionCount": 0,
+        "totalRandomChoices": 0,
+        "averageRandomProbability": 0,
+        "randomEventsPerSecond": 0,
+        "randomMemoryUsage": 0
       },
       "version": "1.0.0",
       "lastModified": "2025-01-01T00:00:00.000Z"
     },
-
     "settings": {
       "name": "フルーツキャッチ",
-      "gameDuration": 8,
+      "description": "落ちてくるりんごをキャッチ！",
+      "duration": {
+        "type": "fixed",
+        "seconds": 10
+      },
       "difficulty": "easy",
-      "theme": "colorful"
+      "publishing": {
+        "isPublished": false,
+        "visibility": "private",
+        "allowComments": true,
+        "allowRemix": false,
+        "tags": ["タップ", "キャッチ", "簡単"],
+        "category": "action"
+      },
+      "preview": {},
+      "export": {
+        "includeSourceData": true,
+        "compressionLevel": "medium",
+        "format": "json"
+      }
     },
-
     "editorState": {
-      "selectedObjectId": null,
-      "selectedRuleId": null,
-      "zoom": 1,
-      "panX": 0,
-      "panY": 0,
-      "showGrid": false,
-      "snapToGrid": false,
-      "gridSize": 10
+      "activeTab": "assets",
+      "lastSaved": "2025-01-01T00:00:00.000Z",
+      "autoSaveEnabled": true,
+      "tabStates": {
+        "assets": {
+          "selectedAssetType": null,
+          "selectedAssetId": null,
+          "showAnimationEditor": false
+        },
+        "script": {
+          "mode": "layout",
+          "selectedObjectId": null,
+          "selectedRuleId": null,
+          "showRuleEditor": false
+        },
+        "settings": {
+          "showTestPlay": false,
+          "lastTestResult": null
+        }
+      },
+      "ui": {
+        "sidebarCollapsed": false,
+        "previewVisible": true,
+        "capacityMeterExpanded": false
+      }
+    },
+    "metadata": {
+      "statistics": {
+        "totalEditTime": 0,
+        "saveCount": 0,
+        "testPlayCount": 0,
+        "publishCount": 0
+      },
+      "usage": {
+        "lastOpened": "2025-01-01T00:00:00.000Z",
+        "totalOpenCount": 1,
+        "averageSessionTime": 0
+      },
+      "performance": {
+        "lastBuildTime": 0,
+        "averageFPS": 60,
+        "memoryUsage": 0
+      }
+    },
+    "versionHistory": [],
+    "projectSettings": {
+      "autoSaveInterval": 30000,
+      "backupEnabled": true,
+      "compressionEnabled": false,
+      "maxVersionHistory": 10
     }
   },
   "metadata": {
-    "exportVersion": "1.0.0",
-    "exportedBy": "system",
-    "exportedAt": "2025-01-01T00:00:00.000Z",
-    "projectVersion": "1.0.0",
-    "checksum": "sample-fruit-catch-v3"
+    "id": "fruit-catch-sample",
+    "name": "フルーツキャッチ",
+    "lastModified": "2025-01-01T00:00:00.000Z",
+    "status": "draft",
+    "size": 5000,
+    "version": "1.0.0"
   },
   "exportedAt": "2025-01-01T00:00:00.000Z",
   "version": "1.0.0"
