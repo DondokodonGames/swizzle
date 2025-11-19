@@ -1,0 +1,493 @@
+{
+  "project": {
+    "id": "sample-007-find-red",
+    "name": "赤を探せ",
+    "description": "赤い丸だけをタップ！他の色はタップしないで",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "lastModified": "2025-01-01T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": { "isAnonymous": true },
+    "status": "draft",
+    "totalSize": 3500,
+
+    "metadata": {
+      "statistics": {
+        "totalEditTime": 0,
+        "saveCount": 0,
+        "testPlayCount": 0,
+        "publishCount": 0
+      },
+      "usage": {
+        "lastOpened": "2025-01-01T00:00:00.000Z",
+        "totalOpenCount": 1,
+        "averageSessionTime": 0
+      },
+      "performance": {
+        "lastBuildTime": 0,
+        "averageFPS": 60,
+        "memoryUsage": 0
+      }
+    },
+
+    "versionHistory": [
+      {
+        "id": "vh-001",
+        "version": "1.0.0",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "description": "赤を探せゲーム作成",
+        "author": "System",
+        "changes": [
+          {
+            "type": "added",
+            "category": "script",
+            "description": "赤を探せゲーム作成",
+            "affectedItems": []
+          }
+        ],
+        "snapshot": {
+          "assetsCount": { "background": 0, "objects": 3, "texts": 0, "bgm": 0, "se": 0 },
+          "rulesCount": 5,
+          "totalSize": 3500
+        }
+      }
+    ],
+
+    "projectSettings": {
+      "autoSaveInterval": 30000,
+      "backupEnabled": true,
+      "compressionEnabled": false,
+      "maxVersionHistory": 10
+    },
+
+    "assets": {
+      "background": null,
+      "objects": [
+        {
+          "id": "circle-red",
+          "name": "赤丸",
+          "frames": [
+            {
+              "id": "circle-red-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiNGRjQxMzYiIHN0cm9rZT0iI0NDMDAwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
+              "originalName": "circle-red.svg",
+              "width": 80,
+              "height": 80,
+              "size": 250
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 250,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        },
+        {
+          "id": "circle-blue",
+          "name": "青丸",
+          "frames": [
+            {
+              "id": "circle-blue-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiMwMDc0RDkiIHN0cm9rZT0iIzAwNDQ4OCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
+              "originalName": "circle-blue.svg",
+              "width": 80,
+              "height": 80,
+              "size": 250
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 250,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        },
+        {
+          "id": "circle-yellow",
+          "name": "黄丸",
+          "frames": [
+            {
+              "id": "circle-yellow-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiNGRkRDMDAiIHN0cm9rZT0iI0NDQUEwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
+              "originalName": "circle-yellow.svg",
+              "width": 80,
+              "height": 80,
+              "size": 250
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 250,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        }
+      ],
+      "texts": [],
+      "audio": { "bgm": null, "se": [] },
+      "statistics": {
+        "totalImageSize": 750,
+        "totalAudioSize": 0,
+        "totalSize": 750,
+        "usedSlots": { "background": 0, "objects": 3, "texts": 0, "bgm": 0, "se": 0 },
+        "limitations": {
+          "isNearImageLimit": false,
+          "isNearAudioLimit": false,
+          "isNearTotalLimit": false,
+          "hasViolations": false
+        }
+      },
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "script": {
+      "initialState": {
+        "objects": [
+          {
+            "id": "stage",
+            "name": "ステージ",
+            "type": "stage",
+            "x": 0,
+            "y": 0,
+            "width": 1080,
+            "height": 1920,
+            "visible": true,
+            "zIndex": 0,
+            "scale": 1,
+            "rotation": 0,
+            "opacity": 1,
+            "backgroundColor": "#F5F5F5"
+          },
+          {
+            "id": "red-1",
+            "name": "赤1",
+            "type": "object",
+            "assetId": "circle-red",
+            "x": 0.25,
+            "y": 0.25,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "red-2",
+            "name": "赤2",
+            "type": "object",
+            "assetId": "circle-red",
+            "x": 0.75,
+            "y": 0.55,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "blue-1",
+            "name": "青1",
+            "type": "object",
+            "assetId": "circle-blue",
+            "x": 0.5,
+            "y": 0.35,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "yellow-1",
+            "name": "黄1",
+            "type": "object",
+            "assetId": "circle-yellow",
+            "x": 0.3,
+            "y": 0.7,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "blue-2",
+            "name": "青2",
+            "type": "object",
+            "assetId": "circle-blue",
+            "x": 0.7,
+            "y": 0.8,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          }
+        ],
+        "sounds": [],
+        "counters": [
+          { "id": "found", "name": "発見", "value": 0, "min": 0, "max": 2 }
+        ],
+        "flags": []
+      },
+      "layout": {
+        "background": {
+          "visible": false,
+          "initialAnimation": 0,
+          "animationSpeed": 12,
+          "autoStart": false
+        },
+        "objects": [
+          {
+            "objectId": "circle-red",
+            "position": { "x": 0.25, "y": 0.25 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "circle-blue",
+            "position": { "x": 0.5, "y": 0.35 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "circle-yellow",
+            "position": { "x": 0.3, "y": 0.7 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          }
+        ],
+        "texts": []
+      },
+      "flags": [],
+      "counters": [
+        { "id": "found", "name": "発見", "value": 0, "min": 0, "max": 2 }
+      ],
+      "rules": [
+        {
+          "id": "rule-tap-red-1",
+          "name": "赤1タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "red-1",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "red-1",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "found",
+              "value": 1,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.3,
+                "format": "正解！"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-red-2",
+          "name": "赤2タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "red-2",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "red-2",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "found",
+              "value": 1,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.3,
+                "format": "正解！"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-blue-1",
+          "name": "青1タップ（ミス）",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "blue-1",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "effect",
+              "targetId": "blue-1",
+              "effect": {
+                "type": "shake",
+                "intensity": 10,
+                "duration": 0.3
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-yellow-1",
+          "name": "黄1タップ（ミス）",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "yellow-1",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "effect",
+              "targetId": "yellow-1",
+              "effect": {
+                "type": "shake",
+                "intensity": 10,
+                "duration": 0.3
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-blue-2",
+          "name": "青2タップ（ミス）",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "blue-2",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "effect",
+              "targetId": "blue-2",
+              "effect": {
+                "type": "shake",
+                "intensity": 10,
+                "duration": 0.3
+              }
+            }
+          ]
+        }
+      ],
+      "successConditions": [],
+      "statistics": {
+        "ruleCount": 5,
+        "objectCount": 6,
+        "soundCount": 0,
+        "flagCount": 0,
+        "counterCount": 1
+      },
+      "version": "1.0.0",
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "settings": {
+      "name": "赤を探せ",
+      "gameDuration": 10,
+      "difficulty": "easy",
+      "theme": "colorful"
+    },
+
+    "editorState": {
+      "selectedObjectId": null,
+      "selectedRuleId": null,
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0,
+      "showGrid": false,
+      "snapToGrid": false,
+      "gridSize": 10
+    }
+  },
+  "metadata": {
+    "exportVersion": "1.0.0",
+    "exportedBy": "system",
+    "exportedAt": "2025-01-01T00:00:00.000Z",
+    "projectVersion": "1.0.0",
+    "checksum": "sample-find-red-v1"
+  },
+  "exportedAt": "2025-01-01T00:00:00.000Z",
+  "version": "1.0.0"
+}

@@ -1,0 +1,396 @@
+{
+  "project": {
+    "id": "sample-008-size-order",
+    "name": "大きさ順",
+    "description": "大きい順にタップしよう！一番大きいのから始めて",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "lastModified": "2025-01-01T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": { "isAnonymous": true },
+    "status": "draft",
+    "totalSize": 3000,
+
+    "metadata": {
+      "statistics": {
+        "totalEditTime": 0,
+        "saveCount": 0,
+        "testPlayCount": 0,
+        "publishCount": 0
+      },
+      "usage": {
+        "lastOpened": "2025-01-01T00:00:00.000Z",
+        "totalOpenCount": 1,
+        "averageSessionTime": 0
+      },
+      "performance": {
+        "lastBuildTime": 0,
+        "averageFPS": 60,
+        "memoryUsage": 0
+      }
+    },
+
+    "versionHistory": [
+      {
+        "id": "vh-001",
+        "version": "1.0.0",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "description": "大きさ順ゲーム作成",
+        "author": "System",
+        "changes": [
+          {
+            "type": "added",
+            "category": "script",
+            "description": "大きさ順ゲーム作成",
+            "affectedItems": []
+          }
+        ],
+        "snapshot": {
+          "assetsCount": { "background": 0, "objects": 1, "texts": 0, "bgm": 0, "se": 0 },
+          "rulesCount": 4,
+          "totalSize": 3000
+        }
+      }
+    ],
+
+    "projectSettings": {
+      "autoSaveInterval": 30000,
+      "backupEnabled": true,
+      "compressionEnabled": false,
+      "maxVersionHistory": 10
+    },
+
+    "assets": {
+      "background": null,
+      "objects": [
+        {
+          "id": "star",
+          "name": "星",
+          "frames": [
+            {
+              "id": "star-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBvbHlnb24gcG9pbnRzPSI0MCw1IDUwLDMwIDgwLDMwIDU1LDQ4IDY1LDc1IDQwLDU4IDE1LDc1IDI1LDQ4IDAsIDMwIDMwLDMwIiBmaWxsPSIjRkZENzAwIiBzdHJva2U9IiNEQUE1MjAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+              "originalName": "star.svg",
+              "width": 80,
+              "height": 80,
+              "size": 350
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 350,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        }
+      ],
+      "texts": [],
+      "audio": { "bgm": null, "se": [] },
+      "statistics": {
+        "totalImageSize": 350,
+        "totalAudioSize": 0,
+        "totalSize": 350,
+        "usedSlots": { "background": 0, "objects": 1, "texts": 0, "bgm": 0, "se": 0 },
+        "limitations": {
+          "isNearImageLimit": false,
+          "isNearAudioLimit": false,
+          "isNearTotalLimit": false,
+          "hasViolations": false
+        }
+      },
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "script": {
+      "initialState": {
+        "objects": [
+          {
+            "id": "stage",
+            "name": "ステージ",
+            "type": "stage",
+            "x": 0,
+            "y": 0,
+            "width": 1080,
+            "height": 1920,
+            "visible": true,
+            "zIndex": 0,
+            "scale": 1,
+            "rotation": 0,
+            "opacity": 1,
+            "backgroundColor": "#E0E0E0"
+          },
+          {
+            "id": "star-big",
+            "name": "大きい星",
+            "type": "object",
+            "assetId": "star",
+            "x": 0.7,
+            "y": 0.25,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 3.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "star-medium",
+            "name": "中くらいの星",
+            "type": "object",
+            "assetId": "star",
+            "x": 0.3,
+            "y": 0.5,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "star-small",
+            "name": "小さい星",
+            "type": "object",
+            "assetId": "star",
+            "x": 0.6,
+            "y": 0.75,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 1.2,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "star-tiny",
+            "name": "とても小さい星",
+            "type": "object",
+            "assetId": "star",
+            "x": 0.2,
+            "y": 0.3,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 0.8,
+            "rotation": 0,
+            "opacity": 1
+          }
+        ],
+        "sounds": [],
+        "counters": [
+          { "id": "progress", "name": "進捗", "value": 0, "min": 0, "max": 4 }
+        ],
+        "flags": []
+      },
+      "layout": {
+        "background": {
+          "visible": false,
+          "initialAnimation": 0,
+          "animationSpeed": 12,
+          "autoStart": false
+        },
+        "objects": [
+          {
+            "objectId": "star",
+            "position": { "x": 0.7, "y": 0.25 },
+            "scale": { "x": 3.0, "y": 3.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          }
+        ],
+        "texts": []
+      },
+      "flags": [],
+      "counters": [
+        { "id": "progress", "name": "進捗", "value": 0, "min": 0, "max": 4 }
+      ],
+      "rules": [
+        {
+          "id": "rule-tap-big",
+          "name": "大きい星タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "star-big",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "star-big",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "progress",
+              "value": 1,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.3,
+                "format": "1番目！"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-medium",
+          "name": "中くらいの星タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "star-medium",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "star-medium",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "progress",
+              "value": 1,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.3,
+                "format": "2番目！"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-small",
+          "name": "小さい星タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "star-small",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "star-small",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "progress",
+              "value": 1,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.3,
+                "format": "3番目！"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-tiny",
+          "name": "とても小さい星タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "star-tiny",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "star-tiny",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "progress",
+              "value": 1,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.5,
+                "format": "完了！"
+              }
+            }
+          ]
+        }
+      ],
+      "successConditions": [],
+      "statistics": {
+        "ruleCount": 4,
+        "objectCount": 5,
+        "soundCount": 0,
+        "flagCount": 0,
+        "counterCount": 1
+      },
+      "version": "1.0.0",
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "settings": {
+      "name": "大きさ順",
+      "gameDuration": 10,
+      "difficulty": "easy",
+      "theme": "colorful"
+    },
+
+    "editorState": {
+      "selectedObjectId": null,
+      "selectedRuleId": null,
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0,
+      "showGrid": false,
+      "snapToGrid": false,
+      "gridSize": 10
+    }
+  },
+  "metadata": {
+    "exportVersion": "1.0.0",
+    "exportedBy": "system",
+    "exportedAt": "2025-01-01T00:00:00.000Z",
+    "projectVersion": "1.0.0",
+    "checksum": "sample-size-order-v1"
+  },
+  "exportedAt": "2025-01-01T00:00:00.000Z",
+  "version": "1.0.0"
+}
