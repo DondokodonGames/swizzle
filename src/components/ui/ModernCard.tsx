@@ -33,27 +33,37 @@ const getVariantStyles = (variant: ModernCardVariant) => {
   const styles = {
     default: {
       backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-      border: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+      borderWidth: '1px',
+      borderStyle: 'solid',
+      borderColor: DESIGN_TOKENS.colors.neutral[200],
       boxShadow: 'none'
     },
     elevated: {
       backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-      border: 'none',
+      borderWidth: '0',
+      borderStyle: 'none',
+      borderColor: 'transparent',
       boxShadow: DESIGN_TOKENS.shadows.md
     },
     outlined: {
       backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-      border: `2px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+      borderWidth: '2px',
+      borderStyle: 'solid',
+      borderColor: DESIGN_TOKENS.colors.neutral[300],
       boxShadow: 'none'
     },
     filled: {
       backgroundColor: DESIGN_TOKENS.colors.neutral[50],
-      border: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+      borderWidth: '1px',
+      borderStyle: 'solid',
+      borderColor: DESIGN_TOKENS.colors.neutral[200],
       boxShadow: 'none'
     },
     interactive: {
       backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-      border: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+      borderWidth: '1px',
+      borderStyle: 'solid',
+      borderColor: DESIGN_TOKENS.colors.neutral[200],
       boxShadow: DESIGN_TOKENS.shadows.sm,
       cursor: 'pointer',
       '&:hover': {
