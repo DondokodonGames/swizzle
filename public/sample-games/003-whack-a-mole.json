@@ -781,6 +781,144 @@
           ]
         },
         {
+          "id": "hide-mole-1",
+          "name": "もぐら1消滅",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "mole-1",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 1.5
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "mole-1"
+            }
+          ]
+        },
+        {
+          "id": "hide-mole-2",
+          "name": "もぐら2消滅",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "mole-2",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 1.6
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "mole-2"
+            }
+          ]
+        },
+        {
+          "id": "hide-mole-3",
+          "name": "もぐら3消滅",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "mole-3",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 1.7
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "mole-3"
+            }
+          ]
+        },
+        {
+          "id": "hide-mole-4",
+          "name": "もぐら4消滅",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "mole-4",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 1.8
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "mole-4"
+            }
+          ]
+        },
+        {
+          "id": "hide-mole-5",
+          "name": "もぐら5消滅",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "mole-5",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 1.9
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "mole-5"
+            }
+          ]
+        },
+        {
+          "id": "hide-mole-6",
+          "name": "もぐら6消滅",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "mole-6",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 2.0
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "mole-6"
+            }
+          ]
+        },
+        {
           "id": "win-condition",
           "name": "クリア判定",
           "enabled": true,
@@ -808,11 +946,11 @@
       ],
       "successConditions": [],
       "statistics": {
-        "totalRules": 13,
-        "totalConditions": 13,
-        "totalActions": 30,
-        "complexityScore": 25,
-        "usedTriggerTypes": ["random", "touch", "counter"],
+        "totalRules": 19,
+        "totalConditions": 19,
+        "totalActions": 36,
+        "complexityScore": 30,
+        "usedTriggerTypes": ["random", "touch", "counter", "time"],
         "usedActionTypes": ["show", "hide", "counter", "success", "addScore", "effect"],
         "flagCount": 0,
         "estimatedCPUUsage": "low",
