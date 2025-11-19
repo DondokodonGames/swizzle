@@ -1,7 +1,7 @@
 // src/hooks/useAuth.ts
 // トリガー対応版 - プロフィール作成自動化により大幅簡素化
 
-import React, { useState, useEffect, useCallback, useContext, createContext, ReactNode } from 'react'
+import React, { useState, useEffect, useCallback, useContext, createContext, ReactNode, useRef } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { auth, database, SupabaseError } from '../lib/supabase'
 import type { Profile } from '../lib/database.types'
@@ -72,6 +72,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     error: null
   })
 
+  // 初期化完了を追跡するためのref（SIGNED_INイベントの重複処理防止用）
+  const initCompletedRef = useRef(false)
+  const profileLoadedRef = useRef(false)
+
   const clearError = useCallback(() => {
     setState(prev => ({ ...prev, error: null }))
   }, [])
@@ -105,6 +109,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (mounted) {
           if (session?.user) {
             const profile = await loadProfile(session.user.id)
+            profileLoadedRef.current = !!profile
+            initCompletedRef.current = true
             setState({
               user: session.user,
               session,
@@ -114,6 +120,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               error: null
             })
           } else {
+            initCompletedRef.current = true
             setState({
               user: null,
               session: null,
@@ -127,6 +134,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } catch (error) {
         console.error('Auth initialization error:', error)
         if (mounted) {
+          initCompletedRef.current = true
           setState({
             user: null,
             session: null,
@@ -163,10 +171,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } else if (event === 'SIGNED_IN') {
         if (session?.user) {
-          // 新規サインイン時のみプロフィール読み込み
+          // 初期化中またはプロフィール読み込み済みの場合は、ローディングなしでセッション情報のみ更新
+          // これにより、ページリロード時の重複ローディングを防止
+          if (!initCompletedRef.current || profileLoadedRef.current) {
+            setState(prev => ({
+              ...prev,
+              user: session.user,
+              session,
+              loading: false,
+              error: null
+            }))
+            return
+          }
+
+          // 新規サインイン時（初期化完了後かつプロフィールなし）
           setState(prev => ({ ...prev, loading: true, error: null }))
+
           try {
             const profile = await loadProfile(session.user.id)
+            profileLoadedRef.current = !!profile
             setState({
               user: session.user,
               session,
@@ -177,7 +200,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             })
           } catch (error) {
             console.error('Profile loading error during auth state change:', error)
-            // プロフィール読み込みに失敗しても認証状態は維持
             setState({
               user: session.user,
               session,
@@ -189,6 +211,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         }
       } else if (event === 'SIGNED_OUT') {
+        profileLoadedRef.current = false
         setState({
           user: null,
           session: null,
