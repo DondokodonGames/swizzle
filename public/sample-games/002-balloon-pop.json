@@ -189,10 +189,9 @@
               "type": "move",
               "targetId": "balloon-red",
               "movement": {
-                "pattern": "wander",
+                "type": "wander",
                 "speed": 35,
-                "direction": 90,
-                "wanderStrength": 0.4
+                "wanderRadius": 50
               }
             }
           ]
@@ -216,10 +215,9 @@
               "type": "move",
               "targetId": "balloon-blue",
               "movement": {
-                "pattern": "wander",
+                "type": "wander",
                 "speed": 28,
-                "direction": 90,
-                "wanderStrength": 0.5
+                "wanderRadius": 60
               }
             }
           ]
@@ -243,10 +241,9 @@
               "type": "move",
               "targetId": "balloon-green",
               "movement": {
-                "pattern": "wander",
+                "type": "wander",
                 "speed": 22,
-                "direction": 90,
-                "wanderStrength": 0.6
+                "wanderRadius": 70
               }
             }
           ]
