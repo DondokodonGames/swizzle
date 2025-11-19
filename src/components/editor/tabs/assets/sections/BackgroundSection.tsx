@@ -84,11 +84,11 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
         </h3>
       </div>
 
-      {project.assets.background ? (
+      {project.assets.background && 'frames' in project.assets.background && project.assets.background.frames ? (
         <ModernCard variant="elevated" size="md" style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
             <img
-              src={project.assets.background.frames[0].dataUrl}
+              src={project.assets.background.frames[0]?.dataUrl}
               alt="背景プレビュー"
               style={{
                 width: '80px',
@@ -99,7 +99,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
               }}
             />
             <div style={{ flex: 1 }}>
-              <h4 
+              <h4
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.lg,
                   fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
@@ -107,33 +107,33 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                   margin: `0 0 ${DESIGN_TOKENS.spacing[1]} 0`
                 }}
               >
-                {project.assets.background.name}
+                {project.assets.background.name || '背景画像'}
               </h4>
-              <p 
+              <p
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                   color: DESIGN_TOKENS.colors.neutral[500],
                   margin: `0 0 ${DESIGN_TOKENS.spacing[1]} 0`
                 }}
               >
-                {project.assets.background.frames[0].width}×{project.assets.background.frames[0].height}px
+                {project.assets.background.frames[0]?.width || 0}×{project.assets.background.frames[0]?.height || 0}px
               </p>
-              <p 
+              <p
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                   color: DESIGN_TOKENS.colors.neutral[500],
                   margin: 0
                 }}
               >
-                {formatFileSize(project.assets.background.totalSize)}
+                {formatFileSize(project.assets.background.totalSize || 0)}
               </p>
               <div className="mt-2 flex items-center gap-2">
                 <span className={`text-xs px-2 py-1 rounded ${
-                  project.script.layout.background.visible
+                  project.script?.layout?.background?.visible
                     ? 'bg-green-100 text-green-700'
                     : 'bg-red-100 text-red-700'
                 }`}>
-                  {project.script.layout.background.visible ? '✅ 表示中' : '❌ 非表示'}
+                  {project.script?.layout?.background?.visible ? '✅ 表示中' : '❌ 非表示'}
                 </span>
               </div>
 
@@ -180,6 +180,50 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                   }}
                 />
               </div>
+            </div>
+            <ModernButton
+              variant="error"
+              size="sm"
+              icon="🗑️"
+              onClick={handleBackgroundDelete}
+              disabled={uploading}
+            >
+              削除
+            </ModernButton>
+          </div>
+        </ModernCard>
+      ) : project.assets.background && 'type' in project.assets.background && project.assets.background.type === 'color' ? (
+        <ModernCard variant="elevated" size="md" style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
+            <div
+              style={{
+                width: '80px',
+                height: '144px',
+                backgroundColor: (project.assets.background as { type: 'color'; value: string }).value,
+                borderRadius: DESIGN_TOKENS.borderRadius.md,
+                border: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`
+              }}
+            />
+            <div style={{ flex: 1 }}>
+              <h4
+                style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  color: DESIGN_TOKENS.colors.neutral[800],
+                  margin: `0 0 ${DESIGN_TOKENS.spacing[1]} 0`
+                }}
+              >
+                背景色
+              </h4>
+              <p
+                style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.neutral[500],
+                  margin: 0
+                }}
+              >
+                {(project.assets.background as { type: 'color'; value: string }).value}
+              </p>
             </div>
             <ModernButton
               variant="error"
