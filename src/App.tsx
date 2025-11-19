@@ -184,74 +184,19 @@ const ProfileSetup = ENABLE_AUTH ? React.lazy(async () => {
   }
 }) : null;
 
-// 認証機能（Premium Badge統合版）
-const AuthenticatedUserInfo: React.FC = () => {
-  const [useAuth, setUseAuth] = useState<any>(null);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
-  const [profileSetupOpen, setProfileSetupOpen] = useState(false);
-
-  // Phase M: サブスクリプション状態取得
-  const { subscription, isPremium } = useSubscription();
-
-  // useAuthフックの読み込み
-  useEffect(() => {
-    if (ENABLE_AUTH) {
-      import('./hooks/useAuth').then(module => {
-        setUseAuth(() => module.useAuth);
-      }).catch(error => {
-        console.warn('useAuth読み込み失敗:', error);
-        setUseAuth(() => () => ({
-          isAuthenticated: false,
-          user: null,
-          profile: null,
-          loading: false,
-          error: null,
-          signOut: () => {},
-          clearError: () => {}
-        }));
-      });
-    }
-  }, []);
-
-  // グローバルイベントリスナー
-  useEffect(() => {
-    const handleOpenAuthModal = (event: CustomEvent) => {
-      setAuthModalMode(event.detail?.mode || 'signin');
-      setAuthModalOpen(true);
-    };
-
-    const handleOpenProfileSetup = () => {
-      setProfileSetupOpen(true);
-    };
-
-    window.addEventListener('openAuthModal', handleOpenAuthModal as EventListener);
-    window.addEventListener('openProfileSetup', handleOpenProfileSetup as EventListener);
-
-    return () => {
-      window.removeEventListener('openAuthModal', handleOpenAuthModal as EventListener);
-      window.removeEventListener('openProfileSetup', handleOpenProfileSetup as EventListener);
-    };
-  }, []);
-
-  // Hooksは条件分岐の前で呼ぶ必要がある
-  const auth = useAuth ? useAuth() : null;
-
-  if (!useAuth || !auth) {
-    return (
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '15px',
-        padding: '15px',
-        marginBottom: '20px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        border: '1px solid #e5e7eb',
-        textAlign: 'center'
-      }}>
-        <div style={{ color: '#6b7280', fontSize: '14px' }}>認証システム読み込み中...</div>
-      </div>
-    );
-  }
+// 認証コンテンツコンポーネント（useAuthを実際に呼び出す）
+const AuthenticatedUserInfoContent: React.FC<{
+  useAuth: any;
+  authModalOpen: boolean;
+  setAuthModalOpen: (open: boolean) => void;
+  authModalMode: 'signin' | 'signup';
+  setAuthModalMode: (mode: 'signin' | 'signup') => void;
+  profileSetupOpen: boolean;
+  setProfileSetupOpen: (open: boolean) => void;
+  isPremium: boolean;
+}> = ({ useAuth, authModalOpen, setAuthModalOpen, authModalMode, setAuthModalMode, profileSetupOpen, setProfileSetupOpen, isPremium }) => {
+  // フックは常に呼ばれる（条件分岐なし）
+  const auth = useAuth();
 
   return (
     <div style={{
@@ -297,8 +242,8 @@ const AuthenticatedUserInfo: React.FC = () => {
           <div>
             {auth.profile ? (
               <>
-                <div style={{ 
-                  fontWeight: '600', 
+                <div style={{
+                  fontWeight: '600',
                   color: '#111827',
                   display: 'flex',
                   alignItems: 'center',
@@ -307,8 +252,8 @@ const AuthenticatedUserInfo: React.FC = () => {
                   {auth.profile.display_name || auth.profile.username}
                   {/* Phase M: Premium Badge 統合 */}
                   {isPremium && (
-                    <PremiumBadge 
-                      size="small" 
+                    <PremiumBadge
+                      size="small"
                       showLabel={false}
                     />
                   )}
@@ -474,6 +419,88 @@ const AuthenticatedUserInfo: React.FC = () => {
         </Suspense>
       )}
     </div>
+  );
+};
+
+// 認証機能（Premium Badge統合版）
+const AuthenticatedUserInfo: React.FC = () => {
+  const [useAuth, setUseAuth] = useState<any>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+  const [profileSetupOpen, setProfileSetupOpen] = useState(false);
+
+  // Phase M: サブスクリプション状態取得
+  const { subscription, isPremium } = useSubscription();
+
+  // useAuthフックの読み込み
+  useEffect(() => {
+    if (ENABLE_AUTH) {
+      import('./hooks/useAuth').then(module => {
+        setUseAuth(() => module.useAuth);
+      }).catch(error => {
+        console.warn('useAuth読み込み失敗:', error);
+        setUseAuth(() => () => ({
+          isAuthenticated: false,
+          user: null,
+          profile: null,
+          loading: false,
+          error: null,
+          signOut: () => {},
+          clearError: () => {}
+        }));
+      });
+    }
+  }, []);
+
+  // グローバルイベントリスナー
+  useEffect(() => {
+    const handleOpenAuthModal = (event: CustomEvent) => {
+      setAuthModalMode(event.detail?.mode || 'signin');
+      setAuthModalOpen(true);
+    };
+
+    const handleOpenProfileSetup = () => {
+      setProfileSetupOpen(true);
+    };
+
+    window.addEventListener('openAuthModal', handleOpenAuthModal as EventListener);
+    window.addEventListener('openProfileSetup', handleOpenProfileSetup as EventListener);
+
+    return () => {
+      window.removeEventListener('openAuthModal', handleOpenAuthModal as EventListener);
+      window.removeEventListener('openProfileSetup', handleOpenProfileSetup as EventListener);
+    };
+  }, []);
+
+  // useAuthがロードされるまでローディング表示
+  if (!useAuth) {
+    return (
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '15px',
+        padding: '15px',
+        marginBottom: '20px',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+        border: '1px solid #e5e7eb',
+        textAlign: 'center'
+      }}>
+        <div style={{ color: '#6b7280', fontSize: '14px' }}>認証システム読み込み中...</div>
+      </div>
+    );
+  }
+
+  // useAuthがロードされたら子コンポーネントをレンダリング
+  return (
+    <AuthenticatedUserInfoContent
+      useAuth={useAuth}
+      authModalOpen={authModalOpen}
+      setAuthModalOpen={setAuthModalOpen}
+      authModalMode={authModalMode}
+      setAuthModalMode={setAuthModalMode}
+      profileSetupOpen={profileSetupOpen}
+      setProfileSetupOpen={setProfileSetupOpen}
+      isPremium={isPremium}
+    />
   );
 };
 
@@ -776,6 +803,36 @@ function MainApp() {
   );
 }
 
+// ソーシャル統合コンテンツ（useAuthを実際に呼び出す）
+const SocialIntegratedAppContent: React.FC<{ useAuth: any }> = ({ useAuth }) => {
+  // フックは常に呼ばれる（条件分岐なし）
+  const auth = useAuth();
+
+  return (
+    <Suspense fallback={
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ marginBottom: '16px', fontSize: '24px' }}>🌟</div>
+          <div style={{ color: '#6b7280' }}>ソーシャル機能読み込み中...</div>
+        </div>
+      </div>
+    }>
+      <SocialIntegrationProvider
+        enableSocial={ENABLE_SOCIAL}
+        currentUser={auth?.user || null}
+      >
+        <MainApp />
+      </SocialIntegrationProvider>
+    </Suspense>
+  );
+};
+
 // ソーシャル統合ラッパー
 const SocialIntegratedApp: React.FC = () => {
   const [useAuth, setUseAuth] = useState<any>(null);
@@ -790,32 +847,26 @@ const SocialIntegratedApp: React.FC = () => {
     }
   }, []);
 
-  // Hooksは条件分岐の外で呼ぶ必要がある
-  const auth = useAuth ? useAuth() : null;
-
   if (ENABLE_SOCIAL) {
+    // useAuthがロードされたら子コンポーネントをレンダリング
+    if (useAuth) {
+      return <SocialIntegratedAppContent useAuth={useAuth} />;
+    }
+
+    // ローディング表示
     return (
-      <Suspense fallback={
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh',
-          background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ marginBottom: '16px', fontSize: '24px' }}>🌟</div>
-            <div style={{ color: '#6b7280' }}>ソーシャル機能読み込み中...</div>
-          </div>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ marginBottom: '16px', fontSize: '24px' }}>🌟</div>
+          <div style={{ color: '#6b7280' }}>認証システム読み込み中...</div>
         </div>
-      }>
-        <SocialIntegrationProvider
-          enableSocial={ENABLE_SOCIAL}
-          currentUser={auth?.user || null}
-        >
-          <MainApp />
-        </SocialIntegrationProvider>
-      </Suspense>
+      </div>
     );
   }
 
