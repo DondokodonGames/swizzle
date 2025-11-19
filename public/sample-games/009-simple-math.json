@@ -1,0 +1,456 @@
+{
+  "project": {
+    "id": "sample-009-simple-math",
+    "name": "足し算",
+    "description": "2 + 3 = ? 正しい答えをタップしよう！",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "lastModified": "2025-01-01T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": { "isAnonymous": true },
+    "status": "draft",
+    "totalSize": 3500,
+
+    "metadata": {
+      "statistics": {
+        "totalEditTime": 0,
+        "saveCount": 0,
+        "testPlayCount": 0,
+        "publishCount": 0
+      },
+      "usage": {
+        "lastOpened": "2025-01-01T00:00:00.000Z",
+        "totalOpenCount": 1,
+        "averageSessionTime": 0
+      },
+      "performance": {
+        "lastBuildTime": 0,
+        "averageFPS": 60,
+        "memoryUsage": 0
+      }
+    },
+
+    "versionHistory": [
+      {
+        "id": "vh-001",
+        "version": "1.0.0",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "description": "足し算ゲーム作成",
+        "author": "System",
+        "changes": [
+          {
+            "type": "added",
+            "category": "script",
+            "description": "足し算ゲーム作成",
+            "affectedItems": []
+          }
+        ],
+        "snapshot": {
+          "assetsCount": { "background": 0, "objects": 4, "texts": 0, "bgm": 0, "se": 0 },
+          "rulesCount": 3,
+          "totalSize": 3500
+        }
+      }
+    ],
+
+    "projectSettings": {
+      "autoSaveInterval": 30000,
+      "backupEnabled": true,
+      "compressionEnabled": false,
+      "maxVersionHistory": 10
+    },
+
+    "assets": {
+      "background": null,
+      "objects": [
+        {
+          "id": "question",
+          "name": "問題",
+          "frames": [
+            {
+              "id": "question-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQwIiBoZWlnaHQ9IjgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSIyNDAiIGhlaWdodD0iODAiIGZpbGw9IiMzMzMzMzMiIHJ4PSIxMCIvPjx0ZXh0IHg9IjEyMCIgeT0iNTUiIGZvbnQtc2l6ZT0iNDAiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjRkZGRkZGIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4yICsgMyA9ID88L3RleHQ+PC9zdmc+",
+              "originalName": "question.svg",
+              "width": 240,
+              "height": 80,
+              "size": 400
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 400,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        },
+        {
+          "id": "btn-4",
+          "name": "答え4",
+          "frames": [
+            {
+              "id": "btn-4-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiNGRkE1MDAiIHN0cm9rZT0iI0NDODQwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PHRleHQgeD0iNDAiIHk9IjUwIiBmb250LXNpemU9IjMyIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+NDwvdGV4dD48L3N2Zz4=",
+              "originalName": "btn-4.svg",
+              "width": 80,
+              "height": 80,
+              "size": 300
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 300,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        },
+        {
+          "id": "btn-5",
+          "name": "答え5",
+          "frames": [
+            {
+              "id": "btn-5-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiMyRUNDNDAiIHN0cm9rZT0iIzAwODgwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PHRleHQgeD0iNDAiIHk9IjUwIiBmb250LXNpemU9IjMyIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+NTwvdGV4dD48L3N2Zz4=",
+              "originalName": "btn-5.svg",
+              "width": 80,
+              "height": 80,
+              "size": 300
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 300,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        },
+        {
+          "id": "btn-6",
+          "name": "答え6",
+          "frames": [
+            {
+              "id": "btn-6-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiMwMDc0RDkiIHN0cm9rZT0iIzAwNDQ4OCIgc3Ryb2tlLXdpZHRoPSIzIi8+PHRleHQgeD0iNDAiIHk9IjUwIiBmb250LXNpemU9IjMyIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+NjwvdGV4dD48L3N2Zz4=",
+              "originalName": "btn-6.svg",
+              "width": 80,
+              "height": 80,
+              "size": 300
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 300,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        }
+      ],
+      "texts": [],
+      "audio": { "bgm": null, "se": [] },
+      "statistics": {
+        "totalImageSize": 1300,
+        "totalAudioSize": 0,
+        "totalSize": 1300,
+        "usedSlots": { "background": 0, "objects": 4, "texts": 0, "bgm": 0, "se": 0 },
+        "limitations": {
+          "isNearImageLimit": false,
+          "isNearAudioLimit": false,
+          "isNearTotalLimit": false,
+          "hasViolations": false
+        }
+      },
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "script": {
+      "initialState": {
+        "objects": [
+          {
+            "id": "stage",
+            "name": "ステージ",
+            "type": "stage",
+            "x": 0,
+            "y": 0,
+            "width": 1080,
+            "height": 1920,
+            "visible": true,
+            "zIndex": 0,
+            "scale": 1,
+            "rotation": 0,
+            "opacity": 1,
+            "backgroundColor": "#FFFAF0"
+          },
+          {
+            "id": "question",
+            "name": "問題",
+            "type": "object",
+            "assetId": "question",
+            "x": 0.5,
+            "y": 0.25,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "btn-4",
+            "name": "答え4",
+            "type": "object",
+            "assetId": "btn-4",
+            "x": 0.2,
+            "y": 0.65,
+            "visible": true,
+            "zIndex": 10,
+            "scale": 2.5,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "btn-5",
+            "name": "答え5",
+            "type": "object",
+            "assetId": "btn-5",
+            "x": 0.5,
+            "y": 0.65,
+            "visible": true,
+            "zIndex": 10,
+            "scale": 2.5,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "btn-6",
+            "name": "答え6",
+            "type": "object",
+            "assetId": "btn-6",
+            "x": 0.8,
+            "y": 0.65,
+            "visible": true,
+            "zIndex": 10,
+            "scale": 2.5,
+            "rotation": 0,
+            "opacity": 1
+          }
+        ],
+        "sounds": [],
+        "counters": [
+          { "id": "correct", "name": "正解", "value": 0, "min": 0, "max": 1 }
+        ],
+        "flags": []
+      },
+      "layout": {
+        "background": {
+          "visible": false,
+          "initialAnimation": 0,
+          "animationSpeed": 12,
+          "autoStart": false
+        },
+        "objects": [
+          {
+            "objectId": "question",
+            "position": { "x": 0.5, "y": 0.25 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "btn-4",
+            "position": { "x": 0.2, "y": 0.65 },
+            "scale": { "x": 2.5, "y": 2.5 },
+            "rotation": 0,
+            "zIndex": 10,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "btn-5",
+            "position": { "x": 0.5, "y": 0.65 },
+            "scale": { "x": 2.5, "y": 2.5 },
+            "rotation": 0,
+            "zIndex": 10,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "btn-6",
+            "position": { "x": 0.8, "y": 0.65 },
+            "scale": { "x": 2.5, "y": 2.5 },
+            "rotation": 0,
+            "zIndex": 10,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          }
+        ],
+        "texts": []
+      },
+      "flags": [],
+      "counters": [
+        { "id": "correct", "name": "正解", "value": 0, "min": 0, "max": 1 }
+      ],
+      "rules": [
+        {
+          "id": "rule-correct",
+          "name": "正解（5をタップ）",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "btn-5",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "counter",
+              "operation": "set",
+              "counterName": "correct",
+              "value": 1,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 1.0,
+                "format": "正解！"
+              }
+            },
+            {
+              "type": "effect",
+              "targetId": "btn-5",
+              "effect": {
+                "type": "scale",
+                "intensity": 1.5,
+                "duration": 0.3
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-wrong-4",
+          "name": "不正解（4をタップ）",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "btn-4",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "effect",
+              "targetId": "btn-4",
+              "effect": {
+                "type": "shake",
+                "intensity": 10,
+                "duration": 0.3
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-wrong-6",
+          "name": "不正解（6をタップ）",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "btn-6",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "effect",
+              "targetId": "btn-6",
+              "effect": {
+                "type": "shake",
+                "intensity": 10,
+                "duration": 0.3
+              }
+            }
+          ]
+        }
+      ],
+      "successConditions": [],
+      "statistics": {
+        "ruleCount": 3,
+        "objectCount": 5,
+        "soundCount": 0,
+        "flagCount": 0,
+        "counterCount": 1
+      },
+      "version": "1.0.0",
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "settings": {
+      "name": "足し算",
+      "gameDuration": 10,
+      "difficulty": "easy",
+      "theme": "colorful"
+    },
+
+    "editorState": {
+      "selectedObjectId": null,
+      "selectedRuleId": null,
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0,
+      "showGrid": false,
+      "snapToGrid": false,
+      "gridSize": 10
+    }
+  },
+  "metadata": {
+    "exportVersion": "1.0.0",
+    "exportedBy": "system",
+    "exportedAt": "2025-01-01T00:00:00.000Z",
+    "projectVersion": "1.0.0",
+    "checksum": "sample-simple-math-v1"
+  },
+  "exportedAt": "2025-01-01T00:00:00.000Z",
+  "version": "1.0.0"
+}

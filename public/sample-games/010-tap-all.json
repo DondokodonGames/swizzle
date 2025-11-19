@@ -1,0 +1,433 @@
+{
+  "project": {
+    "id": "sample-010-tap-all",
+    "name": "全部タップ",
+    "description": "画面の全ての丸をタップして消そう！",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "lastModified": "2025-01-01T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": { "isAnonymous": true },
+    "status": "draft",
+    "totalSize": 3000,
+
+    "metadata": {
+      "statistics": {
+        "totalEditTime": 0,
+        "saveCount": 0,
+        "testPlayCount": 0,
+        "publishCount": 0
+      },
+      "usage": {
+        "lastOpened": "2025-01-01T00:00:00.000Z",
+        "totalOpenCount": 1,
+        "averageSessionTime": 0
+      },
+      "performance": {
+        "lastBuildTime": 0,
+        "averageFPS": 60,
+        "memoryUsage": 0
+      }
+    },
+
+    "versionHistory": [
+      {
+        "id": "vh-001",
+        "version": "1.0.0",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "description": "全部タップゲーム作成",
+        "author": "System",
+        "changes": [
+          {
+            "type": "added",
+            "category": "script",
+            "description": "全部タップゲーム作成",
+            "affectedItems": []
+          }
+        ],
+        "snapshot": {
+          "assetsCount": { "background": 0, "objects": 1, "texts": 0, "bgm": 0, "se": 0 },
+          "rulesCount": 5,
+          "totalSize": 3000
+        }
+      }
+    ],
+
+    "projectSettings": {
+      "autoSaveInterval": 30000,
+      "backupEnabled": true,
+      "compressionEnabled": false,
+      "maxVersionHistory": 10
+    },
+
+    "assets": {
+      "background": null,
+      "objects": [
+        {
+          "id": "dot",
+          "name": "丸",
+          "frames": [
+            {
+              "id": "dot-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMjUiIGZpbGw9IiNGRjY2OTkiIHN0cm9rZT0iI0NDMzM2NiIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
+              "originalName": "dot.svg",
+              "width": 60,
+              "height": 60,
+              "size": 250
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 250,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        }
+      ],
+      "texts": [],
+      "audio": { "bgm": null, "se": [] },
+      "statistics": {
+        "totalImageSize": 250,
+        "totalAudioSize": 0,
+        "totalSize": 250,
+        "usedSlots": { "background": 0, "objects": 1, "texts": 0, "bgm": 0, "se": 0 },
+        "limitations": {
+          "isNearImageLimit": false,
+          "isNearAudioLimit": false,
+          "isNearTotalLimit": false,
+          "hasViolations": false
+        }
+      },
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "script": {
+      "initialState": {
+        "objects": [
+          {
+            "id": "stage",
+            "name": "ステージ",
+            "type": "stage",
+            "x": 0,
+            "y": 0,
+            "width": 1080,
+            "height": 1920,
+            "visible": true,
+            "zIndex": 0,
+            "scale": 1,
+            "rotation": 0,
+            "opacity": 1,
+            "backgroundColor": "#F0F8FF"
+          },
+          {
+            "id": "dot-1",
+            "name": "丸1",
+            "type": "object",
+            "assetId": "dot",
+            "x": 0.2,
+            "y": 0.2,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "dot-2",
+            "name": "丸2",
+            "type": "object",
+            "assetId": "dot",
+            "x": 0.7,
+            "y": 0.3,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "dot-3",
+            "name": "丸3",
+            "type": "object",
+            "assetId": "dot",
+            "x": 0.4,
+            "y": 0.5,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "dot-4",
+            "name": "丸4",
+            "type": "object",
+            "assetId": "dot",
+            "x": 0.8,
+            "y": 0.65,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "dot-5",
+            "name": "丸5",
+            "type": "object",
+            "assetId": "dot",
+            "x": 0.25,
+            "y": 0.75,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          }
+        ],
+        "sounds": [],
+        "counters": [
+          { "id": "tapped", "name": "タップ数", "value": 0, "min": 0, "max": 5 }
+        ],
+        "flags": []
+      },
+      "layout": {
+        "background": {
+          "visible": false,
+          "initialAnimation": 0,
+          "animationSpeed": 12,
+          "autoStart": false
+        },
+        "objects": [
+          {
+            "objectId": "dot",
+            "position": { "x": 0.2, "y": 0.2 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          }
+        ],
+        "texts": []
+      },
+      "flags": [],
+      "counters": [
+        { "id": "tapped", "name": "タップ数", "value": 0, "min": 0, "max": 5 }
+      ],
+      "rules": [
+        {
+          "id": "rule-tap-1",
+          "name": "丸1タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "dot-1",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "dot-1",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "tapped",
+              "value": 1,
+              "notification": {
+                "show": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-2",
+          "name": "丸2タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "dot-2",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "dot-2",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "tapped",
+              "value": 1,
+              "notification": {
+                "show": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-3",
+          "name": "丸3タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "dot-3",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "dot-3",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "tapped",
+              "value": 1,
+              "notification": {
+                "show": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-4",
+          "name": "丸4タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "dot-4",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "dot-4",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "tapped",
+              "value": 1,
+              "notification": {
+                "show": false
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-5",
+          "name": "丸5タップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "dot-5",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "dot-5",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "tapped",
+              "value": 1,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.5,
+                "format": "完了！"
+              }
+            }
+          ]
+        }
+      ],
+      "successConditions": [],
+      "statistics": {
+        "ruleCount": 5,
+        "objectCount": 6,
+        "soundCount": 0,
+        "flagCount": 0,
+        "counterCount": 1
+      },
+      "version": "1.0.0",
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "settings": {
+      "name": "全部タップ",
+      "gameDuration": 10,
+      "difficulty": "easy",
+      "theme": "colorful"
+    },
+
+    "editorState": {
+      "selectedObjectId": null,
+      "selectedRuleId": null,
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0,
+      "showGrid": false,
+      "snapToGrid": false,
+      "gridSize": 10
+    }
+  },
+  "metadata": {
+    "exportVersion": "1.0.0",
+    "exportedBy": "system",
+    "exportedAt": "2025-01-01T00:00:00.000Z",
+    "projectVersion": "1.0.0",
+    "checksum": "sample-tap-all-v1"
+  },
+  "exportedAt": "2025-01-01T00:00:00.000Z",
+  "version": "1.0.0"
+}
