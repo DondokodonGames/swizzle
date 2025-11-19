@@ -37,7 +37,9 @@ const getVariantStyles = (variant: ModernButtonVariant) => {
     primary: {
       backgroundColor: DESIGN_TOKENS.colors.primary[500],
       color: DESIGN_TOKENS.colors.neutral[0],
-      border: `1px solid ${DESIGN_TOKENS.colors.primary[500]}`,
+      borderWidth: '1px',
+      borderStyle: 'solid',
+      borderColor: DESIGN_TOKENS.colors.primary[500],
       '&:hover': {
         backgroundColor: DESIGN_TOKENS.colors.primary[600],
         borderColor: DESIGN_TOKENS.colors.primary[600]
@@ -50,7 +52,9 @@ const getVariantStyles = (variant: ModernButtonVariant) => {
     secondary: {
       backgroundColor: DESIGN_TOKENS.colors.neutral[100],
       color: DESIGN_TOKENS.colors.neutral[700],
-      border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+      borderWidth: '1px',
+      borderStyle: 'solid',
+      borderColor: DESIGN_TOKENS.colors.neutral[300],
       '&:hover': {
         backgroundColor: DESIGN_TOKENS.colors.neutral[200],
         borderColor: DESIGN_TOKENS.colors.neutral[400]
@@ -63,7 +67,9 @@ const getVariantStyles = (variant: ModernButtonVariant) => {
     outline: {
       backgroundColor: 'transparent',
       color: DESIGN_TOKENS.colors.primary[600],
-      border: `1px solid ${DESIGN_TOKENS.colors.primary[500]}`,
+      borderWidth: '1px',
+      borderStyle: 'solid',
+      borderColor: DESIGN_TOKENS.colors.primary[500],
       '&:hover': {
         backgroundColor: DESIGN_TOKENS.colors.primary[50],
         borderColor: DESIGN_TOKENS.colors.primary[600]
@@ -76,7 +82,9 @@ const getVariantStyles = (variant: ModernButtonVariant) => {
     ghost: {
       backgroundColor: 'transparent',
       color: DESIGN_TOKENS.colors.primary[600],
-      border: '1px solid transparent',
+      borderWidth: '1px',
+      borderStyle: 'solid',
+      borderColor: 'transparent',
       '&:hover': {
         backgroundColor: DESIGN_TOKENS.colors.primary[50],
         color: DESIGN_TOKENS.colors.primary[700]
@@ -89,7 +97,9 @@ const getVariantStyles = (variant: ModernButtonVariant) => {
     success: {
       backgroundColor: DESIGN_TOKENS.colors.success[500],
       color: DESIGN_TOKENS.colors.neutral[0],
-      border: `1px solid ${DESIGN_TOKENS.colors.success[500]}`,
+      borderWidth: '1px',
+      borderStyle: 'solid',
+      borderColor: DESIGN_TOKENS.colors.success[500],
       '&:hover': {
         backgroundColor: DESIGN_TOKENS.colors.success[600],
         borderColor: DESIGN_TOKENS.colors.success[600]
@@ -102,20 +112,24 @@ const getVariantStyles = (variant: ModernButtonVariant) => {
     warning: {
       backgroundColor: DESIGN_TOKENS.colors.warning[500],
       color: DESIGN_TOKENS.colors.neutral[0],
-      border: `1px solid ${DESIGN_TOKENS.colors.warning[500]}`,
+      borderWidth: '1px',
+      borderStyle: 'solid',
+      borderColor: DESIGN_TOKENS.colors.warning[500],
       '&:hover': {
         backgroundColor: DESIGN_TOKENS.colors.warning[600],
         borderColor: DESIGN_TOKENS.colors.warning[600]
       },
       '&:active': {
-        backgroundColor: '#d97706', // warning[700] equivalent  
+        backgroundColor: '#d97706', // warning[700] equivalent
         borderColor: '#d97706'
       }
     },
     error: {
       backgroundColor: DESIGN_TOKENS.colors.error[500],
       color: DESIGN_TOKENS.colors.neutral[0],
-      border: `1px solid ${DESIGN_TOKENS.colors.error[500]}`,
+      borderWidth: '1px',
+      borderStyle: 'solid',
+      borderColor: DESIGN_TOKENS.colors.error[500],
       '&:hover': {
         backgroundColor: DESIGN_TOKENS.colors.error[600],
         borderColor: DESIGN_TOKENS.colors.error[600]
