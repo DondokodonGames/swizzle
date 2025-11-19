@@ -180,7 +180,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
 
   // 🔧 拡張: オブジェクトの全ルール取得
   const getObjectRules = (objectId: string): GameRule[] => {
-    return project.script.rules.filter(rule => rule.targetObjectId === objectId);
+    return (project.script?.rules || []).filter(rule => rule.targetObjectId === objectId);
   };
 
   // 🔧 拡張: オブジェクトルール編集（複数対応）
@@ -318,7 +318,7 @@ const getObjectName = (objectId: string) => {
 
   // 🔧 新規: レイアウト配置済みオブジェクト判定
   const isObjectInLayout = (objectId: string): boolean => {
-    return project.script.layout.objects.some(obj => obj.objectId === objectId);
+    return project.script?.layout?.objects?.some(obj => obj.objectId === objectId) || false;
   };
 
   return (
@@ -571,13 +571,13 @@ const getObjectName = (objectId: string) => {
                             margin: 0
                           }}
                         >
-                          レイアウト:{project.script.layout.objects.length}/{project.assets.objects.length}個配置済み
+                          レイアウト:{project.script?.layout?.objects?.length || 0}/{project.assets?.objects?.length || 0}個配置済み
                         </p>
                       </div>
                     </div>
-                    
+
                     <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[3] }}>
-                      {project.assets.objects.map((asset) => {
+                      {(project.assets?.objects || []).map((asset) => {
                         const isInLayout = isObjectInLayout(asset.id);
                         const ruleCount = getRuleCountForObject(asset.id);
                         const isSelected = selectedObjectId === asset.id;
@@ -989,7 +989,7 @@ const getObjectName = (objectId: string) => {
                 </div>
 
                 {/* 🔧 移動：配置済みオブジェクト（ゲーム時間設定の下に配置） */}
-                {project.script.layout.objects.length > 0 && (
+                {(project.script?.layout?.objects?.length || 0) > 0 && (
                   <div>
                     <h4 style={{
                       fontSize: DESIGN_TOKENS.typography.fontSize.lg,
@@ -1002,10 +1002,10 @@ const getObjectName = (objectId: string) => {
                     }}>
                       🎯 配置済みオブジェクト
                     </h4>
-                    
+
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: DESIGN_TOKENS.spacing[2] }}>
-                      {project.script.layout.objects.map((layoutObj) => {
-                        const asset = project.assets.objects.find(obj => obj.id === layoutObj.objectId);
+                      {(project.script?.layout?.objects || []).map((layoutObj) => {
+                        const asset = (project.assets?.objects || []).find(obj => obj.id === layoutObj.objectId);
                         const ruleCount = getRuleCountForObject(layoutObj.objectId);
                         
                         return (

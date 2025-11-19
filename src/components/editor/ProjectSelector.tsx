@@ -66,7 +66,19 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     const loadProjects = async () => {
       try {
         const loadedProjects = await listProjects();
-        setProjects(loadedProjects);
+        // 重複IDを除去（最新の方を残す）
+        const uniqueProjects = loadedProjects.reduce((acc, project) => {
+          const existing = acc.find(p => p.id === project.id);
+          if (!existing) {
+            acc.push(project);
+          } else if (new Date(project.lastModified) > new Date(existing.lastModified)) {
+            // より新しい方で上書き
+            const index = acc.indexOf(existing);
+            acc[index] = project;
+          }
+          return acc;
+        }, [] as GameProject[]);
+        setProjects(uniqueProjects);
       } catch (error) {
         console.error('プロジェクト一覧の読み込みに失敗:', error);
         showNotification('error', 'プロジェクト一覧の読み込みに失敗しました');
@@ -675,9 +687,9 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 status={project.status}
                 lastModified={project.lastModified}
                 stats={{
-                  objects: project.assets.objects.length,
-                  sounds: ((project.assets.audio?.bgm ? 1 : 0) + (project.assets.audio?.se?.length || 0)),
-                  rules: project.script.rules.length
+                  objects: project.assets?.objects?.length || 0,
+                  sounds: ((project.assets?.audio?.bgm ? 1 : 0) + (project.assets?.audio?.se?.length || 0)),
+                  rules: project.script?.rules?.length || 0
                 }}
                 onCardClick={() => onProjectSelect(project)}
               >

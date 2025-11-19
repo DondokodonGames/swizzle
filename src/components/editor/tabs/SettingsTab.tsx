@@ -137,15 +137,15 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       // プロジェクトバリデーション
       const validationErrors: string[] = [];
       
-      if (!project.settings.name?.trim()) {
+      if (!project.settings?.name?.trim()) {
         validationErrors.push('ゲーム名を入力してください');
       }
-      
-      if (!project.assets.objects.length && !project.assets.background) {
+
+      if (!(project.assets?.objects?.length || 0) && !project.assets?.background) {
         validationErrors.push('最低1つのオブジェクトまたは背景を追加してください');
       }
-      
-      if (!project.script.rules.length) {
+
+      if (!(project.script?.rules?.length || 0)) {
         validationErrors.push('最低1つのルールを設定してください');
       }
       
@@ -348,8 +348,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       
       ctx.fillStyle = '#475569';
       ctx.font = '16px Arial';
-      ctx.fillText(`${project.assets.objects.length} Objects`, 150, 325);
-      ctx.fillText(`${project.script.rules.length} Rules`, 150, 345);
+      ctx.fillText(`${project.assets?.objects?.length || 0} Objects`, 150, 325);
+      ctx.fillText(`${project.script?.rules?.length || 0} Rules`, 150, 345);
       const duration = project.settings.duration?.seconds 
         ? `${project.settings.duration.seconds}s` 
         : 'Unlimited';
@@ -384,11 +384,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       // バリデーション
       const errors: string[] = [];
       
-      if (!project.settings.name?.trim()) {
+      if (!project.settings?.name?.trim()) {
         errors.push('ゲーム名を入力してください');
       }
-      
-      if (!project.assets.objects.length && !project.assets.background) {
+
+      if (!(project.assets?.objects?.length || 0) && !project.assets?.background) {
         errors.push('最低1つのオブジェクトまたは背景を追加してください');
       }
       

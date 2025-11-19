@@ -338,7 +338,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
   React.useEffect(() => {
     if (!isPreviewPlaying || !editingObjectId) return;
 
-    const editingObject = project.assets.objects.find(obj => obj.id === editingObjectId);
+    const editingObject = project.assets?.objects?.find(obj => obj.id === editingObjectId);
     if (!editingObject || editingObject.frames.length <= 1) return;
 
     const interval = setInterval(() => {
@@ -346,7 +346,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
     }, 1000 / editingObject.animationSettings.speed);
 
     return () => clearInterval(interval);
-  }, [isPreviewPlaying, editingObjectId, project.assets.objects]);
+  }, [isPreviewPlaying, editingObjectId, project.assets?.objects]);
 
   return (
     <div>
@@ -370,20 +370,20 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
               fontWeight: DESIGN_TOKENS.typography.fontWeight.normal
             }}
           >
-            ({project.assets.objects.length}/{EDITOR_LIMITS.PROJECT.MAX_OBJECTS}) + 🎬 アニメーション
+            ({project.assets?.objects?.length || 0}/{EDITOR_LIMITS.PROJECT.MAX_OBJECTS}) + 🎬 アニメーション
           </span>
         </h3>
       </div>
 
       {/* ドラッグ&ドロップゾーン（新規オブジェクト作成） */}
-      {project.assets.objects.length < EDITOR_LIMITS.PROJECT.MAX_OBJECTS && (
+      {(project.assets?.objects?.length || 0) < EDITOR_LIMITS.PROJECT.MAX_OBJECTS && (
         <DragDropZone
           accept={['image/*']}
-          maxFiles={EDITOR_LIMITS.PROJECT.MAX_OBJECTS - project.assets.objects.length}
+          maxFiles={EDITOR_LIMITS.PROJECT.MAX_OBJECTS - (project.assets?.objects?.length || 0)}
           maxSize={EDITOR_LIMITS.IMAGE.OBJECT_FRAME_MAX_SIZE}
           variant="default"
           title="オブジェクト画像をアップロード"
-          description={`複数ファイルの同時アップロード対応（最大${EDITOR_LIMITS.PROJECT.MAX_OBJECTS - project.assets.objects.length}個）`}
+          description={`複数ファイルの同時アップロード対応（最大${EDITOR_LIMITS.PROJECT.MAX_OBJECTS - (project.assets?.objects?.length || 0)}個）`}
           buttonText="ファイルを選択"
           onFilesDrop={handleObjectUpload}
           loading={uploading}
@@ -400,9 +400,9 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[6]
         }}
       >
-        {project.assets.objects.map((obj) => {
+        {(project.assets?.objects || []).map((obj) => {
           // レイアウト配置状況確認
-          const isPlaced = project.script.layout.objects.some(layoutObj => layoutObj.objectId === obj.id);
+          const isPlaced = project.script?.layout?.objects?.some(layoutObj => layoutObj.objectId === obj.id) || false;
           const isEditing = editingObjectId === obj.id;
           const currentFrame = isEditing ? animationPreviewIndex : 0;
           
@@ -685,7 +685,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
       </div>
 
       {/* オブジェクト上限メッセージ */}
-      {project.assets.objects.length >= EDITOR_LIMITS.PROJECT.MAX_OBJECTS && (
+      {(project.assets?.objects?.length || 0) >= EDITOR_LIMITS.PROJECT.MAX_OBJECTS && (
         <ModernCard variant="filled" size="sm">
           <p 
             style={{
