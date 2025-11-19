@@ -1,0 +1,554 @@
+{
+  "project": {
+    "id": "sample-008-star-catch",
+    "name": "星キャッチ",
+    "description": "降ってくる星をタップしてキャッチ！流れ星をたくさん集めよう",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "lastModified": "2025-01-01T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": { "isAnonymous": true },
+    "status": "draft",
+    "totalSize": 5000,
+
+    "metadata": {
+      "statistics": {
+        "totalEditTime": 0,
+        "saveCount": 0,
+        "testPlayCount": 0,
+        "publishCount": 0
+      },
+      "usage": {
+        "lastOpened": "2025-01-01T00:00:00.000Z",
+        "totalOpenCount": 1,
+        "averageSessionTime": 0
+      },
+      "performance": {
+        "lastBuildTime": 0,
+        "averageFPS": 60,
+        "memoryUsage": 0
+      }
+    },
+
+    "versionHistory": [
+      {
+        "id": "vh-001",
+        "version": "1.0.0",
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "description": "星キャッチゲーム作成",
+        "author": "System",
+        "changes": [
+          {
+            "type": "added",
+            "category": "script",
+            "description": "星キャッチゲーム作成",
+            "affectedItems": []
+          }
+        ],
+        "snapshot": {
+          "assetsCount": { "background": 0, "objects": 3, "texts": 0, "bgm": 0, "se": 0 },
+          "rulesCount": 6,
+          "totalSize": 5000
+        }
+      }
+    ],
+
+    "projectSettings": {
+      "autoSaveInterval": 30000,
+      "backupEnabled": true,
+      "compressionEnabled": false,
+      "maxVersionHistory": 10
+    },
+
+    "assets": {
+      "background": null,
+      "objects": [
+        {
+          "id": "star-gold",
+          "name": "金の星",
+          "frames": [
+            {
+              "id": "star-gold-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBvbHlnb24gcG9pbnRzPSI0MCwwIDUwLDMwIDgwLDMwIDU1LDUwIDY1LDgwIDQwLDYwIDE1LDgwIDI1LDUwIDAsIDMwIDMwLDMwIiBmaWxsPSIjRkZENzAwIiBzdHJva2U9IiNEQUE1MjAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+              "originalName": "star-gold.svg",
+              "width": 80,
+              "height": 80,
+              "size": 400
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 400,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        },
+        {
+          "id": "star-silver",
+          "name": "銀の星",
+          "frames": [
+            {
+              "id": "star-silver-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBvbHlnb24gcG9pbnRzPSI0MCwwIDUwLDMwIDgwLDMwIDU1LDUwIDY1LDgwIDQwLDYwIDE1LDgwIDI1LDUwIDAsIDMwIDMwLDMwIiBmaWxsPSIjQzBDMEMwIiBzdHJva2U9IiM4MDgwODAiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+              "originalName": "star-silver.svg",
+              "width": 80,
+              "height": 80,
+              "size": 400
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 400,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        },
+        {
+          "id": "star-bronze",
+          "name": "銅の星",
+          "frames": [
+            {
+              "id": "star-bronze-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBvbHlnb24gcG9pbnRzPSI0MCwwIDUwLDMwIDgwLDMwIDU1LDUwIDY1LDgwIDQwLDYwIDE1LDgwIDI1LDUwIDAsIDMwIDMwLDMwIiBmaWxsPSIjQ0Q3RjMyIiBzdHJva2U9IiM4QjU1MUEiIHN0cm9rZS13aWR0aD0iMiIvPjwvc3ZnPg==",
+              "originalName": "star-bronze.svg",
+              "width": 80,
+              "height": 80,
+              "size": 400
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 400,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        }
+      ],
+      "texts": [],
+      "audio": { "bgm": null, "se": [] },
+      "statistics": {
+        "totalImageSize": 1200,
+        "totalAudioSize": 0,
+        "totalSize": 1200,
+        "usedSlots": { "background": 0, "objects": 3, "texts": 0, "bgm": 0, "se": 0 },
+        "limitations": {
+          "isNearImageLimit": false,
+          "isNearAudioLimit": false,
+          "isNearTotalLimit": false,
+          "hasViolations": false
+        }
+      },
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "script": {
+      "initialState": {
+        "objects": [
+          {
+            "id": "stage",
+            "name": "ステージ",
+            "type": "stage",
+            "x": 0,
+            "y": 0,
+            "width": 1080,
+            "height": 1920,
+            "visible": true,
+            "zIndex": 0,
+            "scale": 1,
+            "rotation": 0,
+            "opacity": 1,
+            "backgroundColor": "#0a0a2e"
+          },
+          {
+            "id": "star-gold",
+            "name": "金の星",
+            "type": "object",
+            "assetId": "star-gold",
+            "x": 0.2,
+            "y": -0.1,
+            "visible": false,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "star-silver",
+            "name": "銀の星",
+            "type": "object",
+            "assetId": "star-silver",
+            "x": 0.5,
+            "y": -0.1,
+            "visible": false,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "star-bronze",
+            "name": "銅の星",
+            "type": "object",
+            "assetId": "star-bronze",
+            "x": 0.8,
+            "y": -0.1,
+            "visible": false,
+            "zIndex": 5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          }
+        ],
+        "sounds": [],
+        "counters": [
+          { "id": "score", "name": "スコア", "value": 0, "min": 0, "max": 9999 }
+        ],
+        "flags": []
+      },
+      "layout": {
+        "background": {
+          "visible": false,
+          "initialAnimation": 0,
+          "animationSpeed": 12,
+          "autoStart": false
+        },
+        "objects": [
+          {
+            "objectId": "star-gold",
+            "position": { "x": 0.2, "y": -0.1 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": false,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "star-silver",
+            "position": { "x": 0.5, "y": -0.1 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": false,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "star-bronze",
+            "position": { "x": 0.8, "y": -0.1 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": false,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          }
+        ],
+        "texts": []
+      },
+      "flags": [],
+      "counters": [
+        { "id": "score", "name": "スコア", "value": 0, "min": 0, "max": 9999 }
+      ],
+      "rules": [
+        {
+          "id": "rule-gold-fall",
+          "name": "金の星落下",
+          "enabled": true,
+          "priority": 5,
+          "targetObjectId": "star-gold",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 4,
+                "startTime": 0.5
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "star-gold",
+              "movement": {
+                "type": "teleport",
+                "target": { "x": 0.3, "y": -0.1 },
+                "duration": 0.01
+              }
+            },
+            {
+              "type": "show",
+              "targetId": "star-gold",
+              "fadeIn": false
+            },
+            {
+              "type": "move",
+              "targetId": "star-gold",
+              "movement": {
+                "type": "straight",
+                "target": { "x": 0.3, "y": 1.1 },
+                "speed": 300,
+                "duration": 4.0,
+                "easing": "linear"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-silver-fall",
+          "name": "銀の星落下",
+          "enabled": true,
+          "priority": 5,
+          "targetObjectId": "star-silver",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 3,
+                "startTime": 1.5
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "star-silver",
+              "movement": {
+                "type": "teleport",
+                "target": { "x": 0.6, "y": -0.1 },
+                "duration": 0.01
+              }
+            },
+            {
+              "type": "show",
+              "targetId": "star-silver",
+              "fadeIn": false
+            },
+            {
+              "type": "move",
+              "targetId": "star-silver",
+              "movement": {
+                "type": "straight",
+                "target": { "x": 0.6, "y": 1.1 },
+                "speed": 350,
+                "duration": 3.5,
+                "easing": "linear"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-bronze-fall",
+          "name": "銅の星落下",
+          "enabled": true,
+          "priority": 5,
+          "targetObjectId": "star-bronze",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 2,
+                "startTime": 0.8
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "star-bronze",
+              "movement": {
+                "type": "teleport",
+                "target": { "x": 0.8, "y": -0.1 },
+                "duration": 0.01
+              }
+            },
+            {
+              "type": "show",
+              "targetId": "star-bronze",
+              "fadeIn": false
+            },
+            {
+              "type": "move",
+              "targetId": "star-bronze",
+              "movement": {
+                "type": "straight",
+                "target": { "x": 0.8, "y": 1.1 },
+                "speed": 400,
+                "duration": 3.0,
+                "easing": "linear"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-catch-gold",
+          "name": "金の星ゲット",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "star-gold",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "star-gold",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "score",
+              "value": 50,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.5,
+                "format": "+{value}"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-catch-silver",
+          "name": "銀の星ゲット",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "star-silver",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "star-silver",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "score",
+              "value": 30,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.5,
+                "format": "+{value}"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-catch-bronze",
+          "name": "銅の星ゲット",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "star-bronze",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "star-bronze",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "score",
+              "value": 10,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.5,
+                "format": "+{value}"
+              }
+            }
+          ]
+        }
+      ],
+      "successConditions": [],
+      "statistics": {
+        "ruleCount": 6,
+        "objectCount": 4,
+        "soundCount": 0,
+        "flagCount": 0,
+        "counterCount": 1
+      },
+      "version": "1.0.0",
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+
+    "settings": {
+      "name": "星キャッチ",
+      "gameDuration": 30,
+      "difficulty": "normal",
+      "theme": "dark"
+    },
+
+    "editorState": {
+      "selectedObjectId": null,
+      "selectedRuleId": null,
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0,
+      "showGrid": false,
+      "snapToGrid": false,
+      "gridSize": 10
+    }
+  },
+  "metadata": {
+    "exportVersion": "1.0.0",
+    "exportedBy": "system",
+    "exportedAt": "2025-01-01T00:00:00.000Z",
+    "projectVersion": "1.0.0",
+    "checksum": "sample-star-catch-v1"
+  },
+  "exportedAt": "2025-01-01T00:00:00.000Z",
+  "version": "1.0.0"
+}
