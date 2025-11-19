@@ -474,8 +474,11 @@ export const useGameProject = (): UseGameProjectReturn => {
     try {
       setLoading(true);
       setError(null);
-      
-      return await storage.importProject(file);
+
+      // 現在のユーザーを取得してSupabaseにも保存
+      const user = await auth.getCurrentUser();
+
+      return await storage.importProject(file, user?.id);
     } catch (err: any) {
       handleError('プロジェクトインポート', err);
       throw err;

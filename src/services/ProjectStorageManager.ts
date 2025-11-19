@@ -468,9 +468,9 @@ export class ProjectStorageManager {
   }
 
   // プロジェクトインポート
-  public async importProject(file: File): Promise<GameProject> {
+  public async importProject(file: File, userId?: string): Promise<GameProject> {
     try {
-      console.log('[ImportProject-Manager] Starting import...', { fileName: file.name, fileSize: file.size });
+      console.log('[ImportProject-Manager] Starting import...', { fileName: file.name, fileSize: file.size, userId: userId || 'none' });
 
       const text = await file.text();
       console.log('[ImportProject-Manager] File read successfully, length:', text.length);
@@ -507,9 +507,21 @@ export class ProjectStorageManager {
       this.validateProject(importedProject);
       console.log('[ImportProject-Manager] Validation passed');
 
-      console.log('[ImportProject-Manager] Saving project...');
+      console.log('[ImportProject-Manager] Saving project to local...');
       await this.saveProject(importedProject);
-      console.log('[ImportProject-Manager] Project saved successfully');
+      console.log('[ImportProject-Manager] Project saved to local successfully');
+
+      // ユーザーがログインしている場合、Supabaseにも保存
+      if (userId) {
+        console.log('[ImportProject-Manager] Saving project to Supabase...');
+        try {
+          await this.saveToDatabase(importedProject, userId);
+          console.log('[ImportProject-Manager] Project saved to Supabase successfully');
+        } catch (dbError) {
+          console.error('[ImportProject-Manager] Failed to save to Supabase:', dbError);
+          // ローカル保存は成功しているので、エラーは警告のみ
+        }
+      }
 
       return importedProject;
     } catch (error) {
