@@ -359,32 +359,64 @@ export class ProjectStorageManager {
   }
 
   // プロジェクト削除
-  public async deleteProject(id: string): Promise<void> {
+  public async deleteProject(id: string, userId?: string): Promise<void> {
     try {
+      console.log('[DeleteProject-Manager] Starting delete...', { id, userId: userId || 'none' });
+
+      // Supabaseからも削除（ユーザーがログインしている場合）
+      if (userId) {
+        try {
+          // プロジェクトを読み込んでdatabaseIdを取得
+          const project = await this.loadProject(id);
+          const databaseId = project?.metadata?.databaseId;
+
+          if (databaseId) {
+            console.log('[DeleteProject-Manager] Deleting from Supabase...', { databaseId });
+            await database.userGames.delete(databaseId);
+            console.log('[DeleteProject-Manager] Deleted from Supabase successfully');
+          } else {
+            // databaseIdがない場合、IDで直接削除を試みる
+            console.log('[DeleteProject-Manager] No databaseId, trying direct delete with id:', id);
+            try {
+              await database.userGames.delete(id);
+              console.log('[DeleteProject-Manager] Deleted from Supabase with project id');
+            } catch (err) {
+              console.warn('[DeleteProject-Manager] Direct delete failed, may not exist in Supabase');
+            }
+          }
+        } catch (dbError) {
+          console.error('[DeleteProject-Manager] Failed to delete from Supabase:', dbError);
+          // ローカル削除は続行
+        }
+      }
+
       // IndexedDBが利用可能な場合
       if (this.dbPromise) {
         const db = await this.dbPromise;
         const transaction = db.transaction(['projects', 'assets'], 'readwrite');
-        
+
         // プロジェクト削除
         const projectStore = transaction.objectStore('projects');
         const deleteProjectRequest = projectStore.delete(id);
-        
+
         // 関連アセット削除
         const assetStore = transaction.objectStore('assets');
         const assetIndex = assetStore.index('projectId');
         const assetRequest = assetIndex.openCursor(IDBKeyRange.only(id));
-        
+
         return new Promise((resolve, reject) => {
           let completed = 0;
           const checkCompletion = () => {
             completed++;
-            if (completed >= 2) resolve();
+            if (completed >= 2) {
+              console.log('[DeleteProject-Manager] Deleted from local storage successfully');
+              resolve();
+            }
           };
 
           deleteProjectRequest.onsuccess = checkCompletion;
           deleteProjectRequest.onerror = () => reject(deleteProjectRequest.error);
-          
+
           assetRequest.onsuccess = (event) => {
             const cursor = (event.target as IDBRequest).result;
             if (cursor) {
@@ -402,8 +434,9 @@ export class ProjectStorageManager {
       const projects = await this.loadAllProjects();
       const filteredProjects = projects.filter(p => p.id !== id);
       localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(filteredProjects));
+      console.log('[DeleteProject-Manager] Deleted from localStorage successfully');
     } catch (error) {
-      console.error('Failed to delete project:', error);
+      console.error('[DeleteProject-Manager] Failed to delete project:', error);
       throw error;
     }
   }

@@ -78,19 +78,21 @@ export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
 
   const calculateSettingsProgress = () => {
     let progress = 0;
-    
+
     // ゲーム名があれば25%
-    if (project.settings.name?.trim()) progress += 25;
-    
+    if (project.settings?.name?.trim()) progress += 25;
+
     // 説明があれば25%
-    if (project.settings.description?.trim()) progress += 25;
-    
+    if (project.settings?.description?.trim()) progress += 25;
+
     // 時間設定があれば25%
-    if (project.settings.duration.type === 'fixed' && project.settings.duration.seconds) progress += 25;
-    
+    if (project.settings?.duration?.type === 'fixed' && project.settings?.duration?.seconds) progress += 25;
+    // タイマー設定もチェック（別形式）
+    if (project.settings?.timer?.enabled && project.settings?.timer?.duration) progress += 25;
+
     // 公開設定が完了していれば25%
-    if (project.settings.publishing?.isPublished) progress += 25;
-    
+    if (project.settings?.publishing?.isPublished) progress += 25;
+
     return Math.min(progress, 100);
   };
 

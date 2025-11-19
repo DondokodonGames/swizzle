@@ -424,7 +424,10 @@ export const useGameProject = (): UseGameProjectReturn => {
       setLoading(true);
       setError(null);
 
-      await storage.deleteProject(id);
+      // 現在のユーザーを取得してSupabaseからも削除
+      const user = await auth.getCurrentUser();
+
+      await storage.deleteProject(id, user?.id);
 
       // 現在のプロジェクトが削除された場合
       if (currentProject?.id === id) {
