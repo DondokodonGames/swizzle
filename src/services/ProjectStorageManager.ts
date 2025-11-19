@@ -133,12 +133,24 @@ export class ProjectStorageManager {
         const userGames = await database.userGames.getUserGames(userId);
         console.log('[ListProjects-Manager] Supabase games:', userGames?.length || 0);
 
-        return userGames.map((game): ProjectMetadata => {
-          // project_dataからGameProjectを復元
+        // 重複を除去してからマッピング
+        const projectMap = new Map<string, any>();
+        for (const game of userGames) {
+          const projectData = game.project_data as any as GameProject;
+          const projectId = projectData?.id || game.id;
+
+          // 同じproject.idがある場合は新しい方を優先
+          const existing = projectMap.get(projectId);
+          if (!existing || new Date(game.updated_at) > new Date(existing.updated_at)) {
+            projectMap.set(projectId, game);
+          }
+        }
+
+        return Array.from(projectMap.values()).map((game): ProjectMetadata => {
           const projectData = game.project_data as any as GameProject;
 
           return {
-            id: game.id,
+            id: projectData?.id || game.id,  // プロジェクト自体のIDを使用
             name: game.title,
             lastModified: game.updated_at,
             status: game.is_published ? 'published' : 'draft',

@@ -1301,19 +1301,19 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 fontWeight: '700',
                 color: '#10b981'
               }}>
-                {project.script.rules.length}
+                {project.script?.rules?.length || 0}
               </div>
               <div style={{ fontSize: '14px', color: '#6b7280' }}>
                 ルール
               </div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ 
+              <div style={{
                 fontSize: '32px',
                 fontWeight: '700',
                 color: '#f59e0b'
               }}>
-                {project.assets.texts.length}
+                {project.assets?.texts?.length || 0}
               </div>
               <div style={{ fontSize: '14px', color: '#6b7280' }}>
                 テキスト
@@ -1356,32 +1356,32 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               gap: '16px'
             }}>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ 
+                <div style={{
                   fontSize: '32px',
                   fontWeight: '700',
-                  color: project.script.initialState ? '#10b981' : '#f59e0b'
+                  color: project.script?.initialState ? '#10b981' : '#f59e0b'
                 }}>
-                  {project.script.initialState ? '✓' : '⚠️'}
+                  {project.script?.initialState ? '✓' : '⚠️'}
                 </div>
                 <div style={{ fontSize: '12px', color: '#6b7280' }}>初期条件</div>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ 
+                <div style={{
                   fontSize: '32px',
                   fontWeight: '700',
-                  color: project.script.layout.objects.length > 0 ? '#10b981' : '#f59e0b'
+                  color: (project.script?.layout?.objects?.length || 0) > 0 ? '#10b981' : '#f59e0b'
                 }}>
-                  {project.script.layout.objects.length}
+                  {project.script?.layout?.objects?.length || 0}
                 </div>
                 <div style={{ fontSize: '12px', color: '#6b7280' }}>配置済み</div>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ 
+                <div style={{
                   fontSize: '32px',
                   fontWeight: '700',
-                  color: project.script.successConditions.length > 0 ? '#10b981' : '#f59e0b'
+                  color: (project.script?.successConditions?.length || 0) > 0 ? '#10b981' : '#f59e0b'
                 }}>
-                  {project.script.successConditions.length}
+                  {project.script?.successConditions?.length || 0}
                 </div>
                 <div style={{ fontSize: '12px', color: '#6b7280' }}>成功条件</div>
               </div>
