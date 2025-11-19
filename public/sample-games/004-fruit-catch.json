@@ -2,12 +2,13 @@
   "project": {
     "id": "sample-004-fruit-catch",
     "name": "フルーツキャッチ",
+    "description": "落ちてくるフルーツをカゴでキャッチ！左右をタップしてカゴを動かそう",
     "createdAt": "2025-01-01T00:00:00.000Z",
     "lastModified": "2025-01-01T00:00:00.000Z",
     "version": "1.0.0",
     "creator": { "isAnonymous": true },
     "status": "draft",
-    "totalSize": 6000,
+    "totalSize": 8000,
 
     "metadata": {
       "statistics": {
@@ -33,20 +34,20 @@
         "id": "vh-001",
         "version": "1.0.0",
         "createdAt": "2025-01-01T00:00:00.000Z",
-        "description": "サンプルゲーム作成",
+        "description": "フルーツキャッチゲーム作成",
         "author": "System",
         "changes": [
           {
             "type": "added",
             "category": "script",
-            "description": "サンプルゲーム作成",
+            "description": "フルーツキャッチゲーム作成",
             "affectedItems": []
           }
         ],
         "snapshot": {
-          "assetsCount": { "background": 0, "objects": 0, "texts": 0, "bgm": 0, "se": 0 },
-          "rulesCount": 9,
-          "totalSize": 6000
+          "assetsCount": { "background": 0, "objects": 4, "texts": 0, "bgm": 0, "se": 0 },
+          "rulesCount": 12,
+          "totalSize": 8000
         }
       }
     ],
@@ -60,14 +61,107 @@
 
     "assets": {
       "background": null,
-      "objects": [],
+      "objects": [
+        {
+          "id": "basket",
+          "name": "カゴ",
+          "frames": [
+            {
+              "id": "basket-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjgwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0xMCA0MCBMNZBEVCBMMTA1IDQwIEwxMTAgNzUgTDEwIDc1IFoiIGZpbGw9IiM4QjQ1MTMiIHN0cm9rZT0iIzVEMkUwQyIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0iTTAgMzAgUTYwIDAgMTIwIDMwIiBmaWxsPSJub25lIiBzdHJva2U9IiM4QjQ1MTMiIHN0cm9rZS13aWR0aD0iNCIvPjxsaW5lIHgxPSIzMCIgeTE9IjQwIiB4Mj0iMzUiIHkyPSI3MCIgc3Ryb2tlPSIjNUQyRTBDIiBzdHJva2Utd2lkdGg9IjIiLz48bGluZSB4MT0iNjAiIHkxPSI0NSIgeDI9IjYwIiB5Mj0iNzAiIHN0cm9rZT0iIzVEMkUwQyIgc3Ryb2tlLXdpZHRoPSIyIi8+PGxpbmUgeDE9IjkwIiB5MT0iNDAiIHgyPSI4NSIgeTI9IjcwIiBzdHJva2U9IiM1RDJFMEM8IiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+              "originalName": "basket.svg",
+              "width": 120,
+              "height": 80,
+              "size": 800
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 800,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.5
+        },
+        {
+          "id": "apple",
+          "name": "りんご",
+          "frames": [
+            {
+              "id": "apple-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iOTAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGVsbGlwc2UgY3g9IjQwIiBjeT0iNTUiIHJ4PSIzNSIgcnk9IjMwIiBmaWxsPSIjRkYwMDAwIi8+PHBhdGggZD0iTTQwIDI1IFEzNSAxNSAzMCAxMCBRMzUgMTUgNDAgMjAiIGZpbGw9IiM4QjQ1MTMiLz48ZWxsaXBzZSBjeD0iMzAiIGN5PSI4IiByeD0iMTAiIHJ5PSI1IiBmaWxsPSIjMjI4QjIyIi8+PGVsbGlwc2UgY3g9IjI1IiBjeT0iNDUiIHJ4PSI4IiByeT0iMTAiIGZpbGw9IiNGRjY2NjYiIG9wYWNpdHk9IjAuNCIvPjwvc3ZnPg==",
+              "originalName": "apple.svg",
+              "width": 80,
+              "height": 90,
+              "size": 600
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 600,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        },
+        {
+          "id": "orange",
+          "name": "オレンジ",
+          "frames": [
+            {
+              "id": "orange-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0NSIgcj0iMzIiIGZpbGw9IiNGRkE1MDAiLz48ZWxsaXBzZSBjeD0iNDAiIGN5PSI4IiByeD0iNiIgcnk9IjQiIGZpbGw9IiMyMjhCMjIiLz48ZWxsaXBzZSBjeD0iMjgiIGN5PSIzOCIgcng9IjYiIHJ5PSI4IiBmaWxsPSIjRkZDQzY2IiBvcGFjaXR5PSIwLjQiLz48L3N2Zz4=",
+              "originalName": "orange.svg",
+              "width": 80,
+              "height": 80,
+              "size": 500
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 500,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        },
+        {
+          "id": "grape",
+          "name": "ぶどう",
+          "frames": [
+            {
+              "id": "grape-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iMTAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjQwIiBjeT0iMzUiIHI9IjEyIiBmaWxsPSIjOEI0NTEzIi8+PGNpcmNsZSBjeD0iMjgiIGN5PSI1MCIgcj0iMTIiIGZpbGw9IiM4QjAwOEIiLz48Y2lyY2xlIGN4PSI1MiIgY3k9IjUwIiByPSIxMiIgZmlsbD0iIzhCMDA4QiIvPjxjaXJjbGUgY3g9IjQwIiBjeT0iNTAiIHI9IjEyIiBmaWxsPSIjOUIzMDlCIi8+PGNpcmNsZSBjeD0iMzQiIGN5PSI2NSIgcj0iMTIiIGZpbGw9IiM4QjAwOEIiLz48Y2lyY2xlIGN4PSI0NiIgY3k9IjY1IiByPSIxMiIgZmlsbD0iIzhCMDA4QiIvPjxjaXJjbGUgY3g9IjQwIiBjeT0iODAiIHI9IjEyIiBmaWxsPSIjOUIzMDlCIi8+PGVsbGlwc2UgY3g9IjQwIiBjeT0iMTAiIHJ4PSI2IiByeT0iNCIgZmlsbD0iIzIyOEIyMiIvPjxsaW5lIHgxPSI0MCIgeTE9IjE0IiB4Mj0iNDAiIHkyPSIyMyIgc3Ryb2tlPSIjMjI4QjIyIiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+              "originalName": "grape.svg",
+              "width": 80,
+              "height": 100,
+              "size": 700
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 700,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        }
+      ],
       "texts": [],
       "audio": { "bgm": null, "se": [] },
       "statistics": {
-        "totalImageSize": 0,
+        "totalImageSize": 2600,
         "totalAudioSize": 0,
-        "totalSize": 0,
-        "usedSlots": { "background": 0, "objects": 0, "texts": 0, "bgm": 0, "se": 0 },
+        "totalSize": 2600,
+        "usedSlots": { "background": 0, "objects": 4, "texts": 0, "bgm": 0, "se": 0 },
         "limitations": {
           "isNearImageLimit": false,
           "isNearAudioLimit": false,
@@ -97,454 +191,460 @@
             "backgroundColor": "#87CEEB"
           },
           {
+            "id": "basket",
+            "name": "カゴ",
+            "type": "object",
+            "assetId": "basket",
+            "x": 0.5,
+            "y": 0.85,
+            "visible": true,
+            "zIndex": 10,
+            "scale": 2.5,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
             "id": "apple",
             "name": "りんご",
-            "type": "shape",
-            "shapeType": "ellipse",
-            "x": 200,
-            "y": -100,
-            "width": 120,
-            "height": 120,
-            "visible": false,
-            "zIndex": 10,
-            "scale": 1,
+            "type": "object",
+            "assetId": "apple",
+            "x": 0.2,
+            "y": -0.1,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
             "rotation": 0,
-            "opacity": 1,
-            "fillColor": "#FF6B6B",
-            "strokeColor": "#CC5555",
-            "strokeWidth": 3
+            "opacity": 1
           },
           {
             "id": "orange",
             "name": "オレンジ",
-            "type": "shape",
-            "shapeType": "ellipse",
-            "x": 540,
-            "y": -100,
-            "width": 110,
-            "height": 110,
+            "type": "object",
+            "assetId": "orange",
+            "x": 0.5,
+            "y": -0.1,
             "visible": false,
-            "zIndex": 10,
-            "scale": 1,
+            "zIndex": 5,
+            "scale": 2.0,
             "rotation": 0,
-            "opacity": 1,
-            "fillColor": "#FFA500",
-            "strokeColor": "#CC8400",
-            "strokeWidth": 3
+            "opacity": 1
           },
           {
             "id": "grape",
             "name": "ぶどう",
-            "type": "shape",
-            "shapeType": "ellipse",
-            "x": 880,
-            "y": -100,
-            "width": 100,
-            "height": 100,
+            "type": "object",
+            "assetId": "grape",
+            "x": 0.8,
+            "y": -0.1,
             "visible": false,
-            "zIndex": 10,
-            "scale": 1,
+            "zIndex": 5,
+            "scale": 2.0,
             "rotation": 0,
-            "opacity": 1,
-            "fillColor": "#9B59B6",
-            "strokeColor": "#7D3C98",
-            "strokeWidth": 3
-          },
-          {
-            "id": "melon",
-            "name": "メロン",
-            "type": "shape",
-            "shapeType": "ellipse",
-            "x": 100,
-            "y": -100,
-            "width": 130,
-            "height": 130,
-            "visible": false,
-            "zIndex": 10,
-            "scale": 1,
-            "rotation": 0,
-            "opacity": 1,
-            "fillColor": "#2ECC71",
-            "strokeColor": "#27AE60",
-            "strokeWidth": 3
+            "opacity": 1
           }
         ],
         "sounds": [],
         "counters": [
-          {
-            "name": "caught",
-            "initialValue": 0
-          }
+          { "id": "score", "name": "スコア", "value": 0, "min": 0, "max": 999 }
         ],
         "flags": []
       },
       "layout": {
-        "background": { "visible": false, "initialAnimation": 0, "animationSpeed": 10, "autoStart": false },
+        "background": {
+          "visible": false,
+          "initialAnimation": 0,
+          "animationSpeed": 12,
+          "autoStart": false
+        },
         "objects": [
-          { "id": "stage", "position": { "x": 0, "y": 0 }, "size": { "width": 1080, "height": 1920 } },
-          { "id": "apple", "position": { "x": 200, "y": -100 }, "size": { "width": 120, "height": 120 } },
-          { "id": "orange", "position": { "x": 540, "y": -100 }, "size": { "width": 110, "height": 110 } },
-          { "id": "grape", "position": { "x": 880, "y": -100 }, "size": { "width": 100, "height": 100 } },
-          { "id": "melon", "position": { "x": 100, "y": -100 }, "size": { "width": 130, "height": 130 } }
+          {
+            "objectId": "basket",
+            "position": { "x": 0.5, "y": 0.85 },
+            "scale": { "x": 2.5, "y": 2.5 },
+            "rotation": 0,
+            "zIndex": 10,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "apple",
+            "position": { "x": 0.2, "y": -0.1 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "orange",
+            "position": { "x": 0.5, "y": -0.1 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": false,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "grape",
+            "position": { "x": 0.8, "y": -0.1 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": false,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          }
         ],
-        "texts": [],
-        "stage": { "backgroundColor": "#87CEEB" }
+        "texts": []
       },
       "flags": [],
       "counters": [
-        {
-          "name": "caught",
-          "initialValue": 0
-        }
+        { "id": "score", "name": "スコア", "value": 0, "min": 0, "max": 999 }
       ],
       "rules": [
         {
-          "id": "spawn-apple",
-          "name": "りんご出現",
+          "id": "rule-move-left",
+          "name": "左移動",
           "enabled": true,
-          "priority": 1,
+          "priority": 10,
+          "targetObjectId": "basket",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "stage",
+                "touchType": "down",
+                "region": {
+                  "shape": "rect",
+                  "x": 0,
+                  "y": 0,
+                  "width": 0.5,
+                  "height": 1
+                }
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "basket",
+              "movement": {
+                "type": "straight",
+                "target": { "x": 0.15, "y": 0.85 },
+                "speed": 800,
+                "duration": 0.3,
+                "easing": "ease-out"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-move-right",
+          "name": "右移動",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "basket",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "stage",
+                "touchType": "down",
+                "region": {
+                  "shape": "rect",
+                  "x": 0.5,
+                  "y": 0,
+                  "width": 0.5,
+                  "height": 1
+                }
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "basket",
+              "movement": {
+                "type": "straight",
+                "target": { "x": 0.85, "y": 0.85 },
+                "speed": 800,
+                "duration": 0.3,
+                "easing": "ease-out"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-apple-fall",
+          "name": "りんご落下",
+          "enabled": true,
+          "priority": 5,
           "targetObjectId": "apple",
           "triggers": {
             "operator": "AND",
             "conditions": [
               {
-                "type": "random",
-                "probability": 0.3,
-                "interval": 1500
+                "type": "time",
+                "timeType": "interval",
+                "interval": 3,
+                "startTime": 0.5
               }
             ]
           },
           "actions": [
-            { "type": "show", "targetId": "apple" },
             {
               "type": "move",
               "targetId": "apple",
               "movement": {
                 "type": "teleport",
-                "target": { "x": 0.15, "y": 0.0 }
+                "target": { "x": 0.2, "y": -0.1 },
+                "duration": 0.01
               }
-            }
-          ]
-        },
-        {
-          "id": "spawn-orange",
-          "name": "オレンジ出現",
-          "enabled": true,
-          "priority": 1,
-          "targetObjectId": "orange",
-          "triggers": {
-            "operator": "AND",
-            "conditions": [
-              {
-                "type": "random",
-                "probability": 0.3,
-                "interval": 1800
-              }
-            ]
-          },
-          "actions": [
-            { "type": "show", "targetId": "orange" },
+            },
             {
-              "type": "move",
-              "targetId": "orange",
-              "movement": {
-                "type": "teleport",
-                "target": { "x": 0.5, "y": 0.0 }
-              }
-            }
-          ]
-        },
-        {
-          "id": "spawn-grape",
-          "name": "ぶどう出現",
-          "enabled": true,
-          "priority": 1,
-          "targetObjectId": "grape",
-          "triggers": {
-            "operator": "AND",
-            "conditions": [
-              {
-                "type": "random",
-                "probability": 0.25,
-                "interval": 2000
-              }
-            ]
-          },
-          "actions": [
-            { "type": "show", "targetId": "grape" },
-            {
-              "type": "move",
-              "targetId": "grape",
-              "movement": {
-                "type": "teleport",
-                "target": { "x": 0.85, "y": 0.0 }
-              }
-            }
-          ]
-        },
-        {
-          "id": "spawn-melon",
-          "name": "メロン出現",
-          "enabled": true,
-          "priority": 1,
-          "targetObjectId": "melon",
-          "triggers": {
-            "operator": "AND",
-            "conditions": [
-              {
-                "type": "random",
-                "probability": 0.2,
-                "interval": 2200
-              }
-            ]
-          },
-          "actions": [
-            { "type": "show", "targetId": "melon" },
-            {
-              "type": "move",
-              "targetId": "melon",
-              "movement": {
-                "type": "teleport",
-                "target": { "x": 0.08, "y": 0.0 }
-              }
-            }
-          ]
-        },
-        {
-          "id": "fall-apple",
-          "name": "りんご落下",
-          "enabled": true,
-          "priority": 1,
-          "targetObjectId": "apple",
-          "triggers": {
-            "operator": "AND",
-            "conditions": [
-              { "type": "time", "timeType": "interval", "interval": 0.05 }
-            ]
-          },
-          "actions": [
+              "type": "show",
+              "targetId": "apple",
+              "fadeIn": false
+            },
             {
               "type": "move",
               "targetId": "apple",
               "movement": {
                 "type": "straight",
-                "target": { "x": 0.15, "y": 1.1 },
-                "speed": 2.0
+                "target": { "x": 0.2, "y": 1.1 },
+                "speed": 400,
+                "duration": 3.0,
+                "easing": "linear"
               }
             }
           ]
         },
         {
-          "id": "fall-orange",
+          "id": "rule-orange-fall",
           "name": "オレンジ落下",
           "enabled": true,
-          "priority": 1,
+          "priority": 5,
           "targetObjectId": "orange",
           "triggers": {
             "operator": "AND",
             "conditions": [
-              { "type": "time", "timeType": "interval", "interval": 0.05 }
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 3,
+                "startTime": 1.5
+              }
             ]
           },
           "actions": [
+            {
+              "type": "move",
+              "targetId": "orange",
+              "movement": {
+                "type": "teleport",
+                "target": { "x": 0.5, "y": -0.1 },
+                "duration": 0.01
+              }
+            },
+            {
+              "type": "show",
+              "targetId": "orange",
+              "fadeIn": false
+            },
             {
               "type": "move",
               "targetId": "orange",
               "movement": {
                 "type": "straight",
                 "target": { "x": 0.5, "y": 1.1 },
-                "speed": 2.5
+                "speed": 450,
+                "duration": 2.8,
+                "easing": "linear"
               }
             }
           ]
         },
         {
-          "id": "fall-grape",
+          "id": "rule-grape-fall",
           "name": "ぶどう落下",
           "enabled": true,
-          "priority": 1,
+          "priority": 5,
           "targetObjectId": "grape",
-          "triggers": {
-            "operator": "AND",
-            "conditions": [
-              { "type": "time", "timeType": "interval", "interval": 0.05 }
-            ]
-          },
-          "actions": [
-            {
-              "type": "move",
-              "targetId": "grape",
-              "movement": {
-                "type": "straight",
-                "target": { "x": 0.85, "y": 1.1 },
-                "speed": 3.0
-              }
-            }
-          ]
-        },
-        {
-          "id": "fall-melon",
-          "name": "メロン落下",
-          "enabled": true,
-          "priority": 1,
-          "targetObjectId": "melon",
-          "triggers": {
-            "operator": "AND",
-            "conditions": [
-              { "type": "time", "timeType": "interval", "interval": 0.05 }
-            ]
-          },
-          "actions": [
-            {
-              "type": "move",
-              "targetId": "melon",
-              "movement": {
-                "type": "straight",
-                "target": { "x": 0.08, "y": 1.1 },
-                "speed": 1.8
-              }
-            }
-          ]
-        },
-        {
-          "id": "catch-apple",
-          "name": "りんごキャッチ",
-          "enabled": true,
-          "priority": 2,
-          "targetObjectId": "apple",
-          "triggers": {
-            "operator": "AND",
-            "conditions": [
-              { "type": "touch", "target": "self", "touchType": "down" }
-            ]
-          },
-          "actions": [
-            {
-              "type": "effect",
-              "targetId": "apple",
-              "effect": { "type": "scale", "scaleAmount": 1.5, "duration": 0.15 }
-            },
-            { "type": "hide", "targetId": "apple" },
-            { "type": "counter", "counterName": "caught", "operation": "add", "value": 1 },
-            { "type": "addScore", "points": 10 }
-          ]
-        },
-        {
-          "id": "catch-orange",
-          "name": "オレンジキャッチ",
-          "enabled": true,
-          "priority": 2,
-          "targetObjectId": "orange",
-          "triggers": {
-            "operator": "AND",
-            "conditions": [
-              { "type": "touch", "target": "self", "touchType": "down" }
-            ]
-          },
-          "actions": [
-            {
-              "type": "effect",
-              "targetId": "orange",
-              "effect": { "type": "scale", "scaleAmount": 1.5, "duration": 0.15 }
-            },
-            { "type": "hide", "targetId": "orange" },
-            { "type": "counter", "counterName": "caught", "operation": "add", "value": 1 },
-            { "type": "addScore", "points": 10 }
-          ]
-        },
-        {
-          "id": "catch-grape",
-          "name": "ぶどうキャッチ",
-          "enabled": true,
-          "priority": 2,
-          "targetObjectId": "grape",
-          "triggers": {
-            "operator": "AND",
-            "conditions": [
-              { "type": "touch", "target": "self", "touchType": "down" }
-            ]
-          },
-          "actions": [
-            {
-              "type": "effect",
-              "targetId": "grape",
-              "effect": { "type": "scale", "scaleAmount": 1.5, "duration": 0.15 }
-            },
-            { "type": "hide", "targetId": "grape" },
-            { "type": "counter", "counterName": "caught", "operation": "add", "value": 1 },
-            { "type": "addScore", "points": 15 }
-          ]
-        },
-        {
-          "id": "catch-melon",
-          "name": "メロンキャッチ",
-          "enabled": true,
-          "priority": 2,
-          "targetObjectId": "melon",
-          "triggers": {
-            "operator": "AND",
-            "conditions": [
-              { "type": "touch", "target": "self", "touchType": "down" }
-            ]
-          },
-          "actions": [
-            {
-              "type": "effect",
-              "targetId": "melon",
-              "effect": { "type": "scale", "scaleAmount": 1.5, "duration": 0.15 }
-            },
-            { "type": "hide", "targetId": "melon" },
-            { "type": "counter", "counterName": "caught", "operation": "add", "value": 1 },
-            { "type": "addScore", "points": 20 }
-          ]
-        },
-        {
-          "id": "win-condition",
-          "name": "クリア判定",
-          "enabled": true,
-          "priority": 3,
-          "targetObjectId": "stage",
           "triggers": {
             "operator": "AND",
             "conditions": [
               {
-                "type": "counter",
-                "counterName": "caught",
-                "comparison": "greaterOrEqual",
-                "value": 8
+                "type": "time",
+                "timeType": "interval",
+                "interval": 3,
+                "startTime": 2.5
               }
             ]
           },
           "actions": [
             {
-              "type": "success",
-              "score": 100,
-              "message": "8個キャッチ成功！"
+              "type": "move",
+              "targetId": "grape",
+              "movement": {
+                "type": "teleport",
+                "target": { "x": 0.8, "y": -0.1 },
+                "duration": 0.01
+              }
+            },
+            {
+              "type": "show",
+              "targetId": "grape",
+              "fadeIn": false
+            },
+            {
+              "type": "move",
+              "targetId": "grape",
+              "movement": {
+                "type": "straight",
+                "target": { "x": 0.8, "y": 1.1 },
+                "speed": 350,
+                "duration": 3.2,
+                "easing": "linear"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-catch-apple",
+          "name": "りんごキャッチ",
+          "enabled": true,
+          "priority": 20,
+          "targetObjectId": "apple",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "collision",
+                "target": "basket",
+                "collisionType": "enter",
+                "checkMode": "hitbox"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "apple",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "score",
+              "value": 10,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.5,
+                "format": "+{value}"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-catch-orange",
+          "name": "オレンジキャッチ",
+          "enabled": true,
+          "priority": 20,
+          "targetObjectId": "orange",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "collision",
+                "target": "basket",
+                "collisionType": "enter",
+                "checkMode": "hitbox"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "orange",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "score",
+              "value": 15,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.5,
+                "format": "+{value}"
+              }
+            }
+          ]
+        },
+        {
+          "id": "rule-catch-grape",
+          "name": "ぶどうキャッチ",
+          "enabled": true,
+          "priority": 20,
+          "targetObjectId": "grape",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "collision",
+                "target": "basket",
+                "collisionType": "enter",
+                "checkMode": "hitbox"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "grape",
+              "fadeOut": false
+            },
+            {
+              "type": "counter",
+              "operation": "add",
+              "counterName": "score",
+              "value": 20,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.5,
+                "format": "+{value}"
+              }
             }
           ]
         }
       ],
       "successConditions": [],
       "statistics": {
-        "totalRules": 13,
-        "totalConditions": 13,
-        "totalActions": 29,
-        "complexityScore": 22,
-        "usedTriggerTypes": ["random", "time", "touch", "counter"],
-        "usedActionTypes": ["show", "move", "hide", "counter", "success", "addScore", "effect"],
+        "ruleCount": 8,
+        "objectCount": 5,
+        "soundCount": 0,
         "flagCount": 0,
-        "counterCount": 1,
-        "usedCounterOperations": ["add"],
-        "usedCounterComparisons": ["greaterOrEqual"],
-        "randomConditionCount": 4,
-        "randomActionCount": 0,
-        "totalRandomChoices": 0,
-        "averageRandomProbability": 0.26,
-        "estimatedCPUUsage": "low",
-        "estimatedMemoryUsage": 0,
-        "maxConcurrentEffects": 4,
-        "randomEventsPerSecond": 0,
-        "randomMemoryUsage": 0
+        "counterCount": 1
       },
       "version": "1.0.0",
       "lastModified": "2025-01-01T00:00:00.000Z"
@@ -552,54 +652,28 @@
 
     "settings": {
       "name": "フルーツキャッチ",
-      "description": "落ちてくるフルーツをタップしてキャッチしよう！",
-      "duration": { "type": "fixed", "seconds": 20 },
+      "gameDuration": 30,
       "difficulty": "normal",
-      "publishing": {
-        "isPublished": false,
-        "visibility": "private",
-        "allowComments": true,
-        "allowRemix": true,
-        "tags": ["タップ", "フルーツ", "キャッチ"],
-        "category": "arcade"
-      },
-      "preview": {},
-      "export": {
-        "includeSourceData": true,
-        "compressionLevel": "medium",
-        "format": "json"
-      }
+      "theme": "colorful"
     },
 
     "editorState": {
-      "activeTab": "assets",
-      "lastSaved": "2025-01-01T00:00:00.000Z",
-      "autoSaveEnabled": true,
-      "tabStates": {
-        "assets": { "selectedAssetType": null, "selectedAssetId": null, "showAnimationEditor": false },
-        "script": { "mode": "layout", "selectedObjectId": null, "selectedRuleId": null, "showRuleEditor": false },
-        "settings": { "showTestPlay": false, "lastTestResult": null }
-      },
-      "ui": { "sidebarCollapsed": false, "previewVisible": true, "capacityMeterExpanded": false }
+      "selectedObjectId": null,
+      "selectedRuleId": null,
+      "zoom": 1,
+      "panX": 0,
+      "panY": 0,
+      "showGrid": false,
+      "snapToGrid": false,
+      "gridSize": 10
     }
   },
   "metadata": {
-    "statistics": {
-      "totalEditTime": 0,
-      "saveCount": 0,
-      "testPlayCount": 0,
-      "publishCount": 0
-    },
-    "usage": {
-      "lastOpened": "2025-01-01T00:00:00.000Z",
-      "totalOpenCount": 1,
-      "averageSessionTime": 0
-    },
-    "performance": {
-      "lastBuildTime": 0,
-      "averageFPS": 60,
-      "memoryUsage": 0
-    }
+    "exportVersion": "1.0.0",
+    "exportedBy": "system",
+    "exportedAt": "2025-01-01T00:00:00.000Z",
+    "projectVersion": "1.0.0",
+    "checksum": "sample-fruit-catch-v1"
   },
   "exportedAt": "2025-01-01T00:00:00.000Z",
   "version": "1.0.0"
