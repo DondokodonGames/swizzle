@@ -82,6 +82,7 @@
         },
         "flags": {}
       },
+      "successConditions": [],
       "rules": [
         {
           "id": "move-red",
