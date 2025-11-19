@@ -1,8 +1,8 @@
 {
   "project": {
-    "id": "sample-009-color-tap",
-    "name": "カラータップ",
-    "description": "同じ色をタップしてスコアを稼ごう！間違えないように注意",
+    "id": "sample-006-number-order",
+    "name": "順番タップ",
+    "description": "1から5まで順番にタップしよう！",
     "createdAt": "2025-01-01T00:00:00.000Z",
     "lastModified": "2025-01-01T00:00:00.000Z",
     "version": "1.0.0",
@@ -34,19 +34,19 @@
         "id": "vh-001",
         "version": "1.0.0",
         "createdAt": "2025-01-01T00:00:00.000Z",
-        "description": "カラータップゲーム作成",
+        "description": "順番タップゲーム作成",
         "author": "System",
         "changes": [
           {
             "type": "added",
             "category": "script",
-            "description": "カラータップゲーム作成",
+            "description": "順番タップゲーム作成",
             "affectedItems": []
           }
         ],
         "snapshot": {
-          "assetsCount": { "background": 0, "objects": 4, "texts": 0, "bgm": 0, "se": 0 },
-          "rulesCount": 8,
+          "assetsCount": { "background": 0, "objects": 5, "texts": 0, "bgm": 0, "se": 0 },
+          "rulesCount": 5,
           "totalSize": 4000
         }
       }
@@ -63,13 +63,13 @@
       "background": null,
       "objects": [
         {
-          "id": "circle-red",
-          "name": "赤丸",
+          "id": "num-1",
+          "name": "数字1",
           "frames": [
             {
-              "id": "circle-red-frame-1",
-              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiNGRjQxMzYiIHN0cm9rZT0iI0NDMDAwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
-              "originalName": "circle-red.svg",
+              "id": "num-1-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiNGRjY2NjYiIHN0cm9rZT0iI0NDMDAwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PHRleHQgeD0iNDAiIHk9IjUwIiBmb250LXNpemU9IjMyIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+MTwvdGV4dD48L3N2Zz4=",
+              "originalName": "num-1.svg",
               "width": 80,
               "height": 80,
               "size": 300
@@ -83,16 +83,16 @@
           "totalSize": 300,
           "createdAt": "2025-01-01T00:00:00.000Z",
           "lastModified": "2025-01-01T00:00:00.000Z",
-          "defaultScale": 2.5
+          "defaultScale": 2.0
         },
         {
-          "id": "circle-blue",
-          "name": "青丸",
+          "id": "num-2",
+          "name": "数字2",
           "frames": [
             {
-              "id": "circle-blue-frame-1",
-              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiMwMDc0RDkiIHN0cm9rZT0iIzAwNDQ4OCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
-              "originalName": "circle-blue.svg",
+              "id": "num-2-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiNGRkE1MDAiIHN0cm9rZT0iI0NDODQwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PHRleHQgeD0iNDAiIHk9IjUwIiBmb250LXNpemU9IjMyIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+MjwvdGV4dD48L3N2Zz4=",
+              "originalName": "num-2.svg",
               "width": 80,
               "height": 80,
               "size": 300
@@ -106,16 +106,16 @@
           "totalSize": 300,
           "createdAt": "2025-01-01T00:00:00.000Z",
           "lastModified": "2025-01-01T00:00:00.000Z",
-          "defaultScale": 2.5
+          "defaultScale": 2.0
         },
         {
-          "id": "circle-green",
-          "name": "緑丸",
+          "id": "num-3",
+          "name": "数字3",
           "frames": [
             {
-              "id": "circle-green-frame-1",
-              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiMyRUNDNDAiIHN0cm9rZT0iIzAwODgwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
-              "originalName": "circle-green.svg",
+              "id": "num-3-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiNGRkRDMDAiIHN0cm9rZT0iI0NDQUEwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PHRleHQgeD0iNDAiIHk9IjUwIiBmb250LXNpemU9IjMyIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+MzwvdGV4dD48L3N2Zz4=",
+              "originalName": "num-3.svg",
               "width": 80,
               "height": 80,
               "size": 300
@@ -129,16 +129,16 @@
           "totalSize": 300,
           "createdAt": "2025-01-01T00:00:00.000Z",
           "lastModified": "2025-01-01T00:00:00.000Z",
-          "defaultScale": 2.5
+          "defaultScale": 2.0
         },
         {
-          "id": "circle-yellow",
-          "name": "黄丸",
+          "id": "num-4",
+          "name": "数字4",
           "frames": [
             {
-              "id": "circle-yellow-frame-1",
-              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiNGRkRDMDAiIHN0cm9rZT0iI0NDQUEwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
-              "originalName": "circle-yellow.svg",
+              "id": "num-4-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiMyRUNDNDAiIHN0cm9rZT0iIzAwODgwMCIgc3Ryb2tlLXdpZHRoPSIzIi8+PHRleHQgeD0iNDAiIHk9IjUwIiBmb250LXNpemU9IjMyIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+NDwvdGV4dD48L3N2Zz4=",
+              "originalName": "num-4.svg",
               "width": 80,
               "height": 80,
               "size": 300
@@ -152,16 +152,39 @@
           "totalSize": 300,
           "createdAt": "2025-01-01T00:00:00.000Z",
           "lastModified": "2025-01-01T00:00:00.000Z",
-          "defaultScale": 2.5
+          "defaultScale": 2.0
+        },
+        {
+          "id": "num-5",
+          "name": "数字5",
+          "frames": [
+            {
+              "id": "num-5-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iMzUiIGZpbGw9IiMwMDc0RDkiIHN0cm9rZT0iIzAwNDQ4OCIgc3Ryb2tlLXdpZHRoPSIzIi8+PHRleHQgeD0iNDAiIHk9IjUwIiBmb250LXNpemU9IjMyIiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+NTwvdGV4dD48L3N2Zz4=",
+              "originalName": "num-5.svg",
+              "width": 80,
+              "height": 80,
+              "size": 300
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 300,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
         }
       ],
       "texts": [],
       "audio": { "bgm": null, "se": [] },
       "statistics": {
-        "totalImageSize": 1200,
+        "totalImageSize": 1500,
         "totalAudioSize": 0,
-        "totalSize": 1200,
-        "usedSlots": { "background": 0, "objects": 4, "texts": 0, "bgm": 0, "se": 0 },
+        "totalSize": 1500,
+        "usedSlots": { "background": 0, "objects": 5, "texts": 0, "bgm": 0, "se": 0 },
         "limitations": {
           "isNearImageLimit": false,
           "isNearAudioLimit": false,
@@ -188,64 +211,77 @@
             "scale": 1,
             "rotation": 0,
             "opacity": 1,
-            "backgroundColor": "#f5f5f5"
+            "backgroundColor": "#E8E8E8"
           },
           {
-            "id": "circle-red",
-            "name": "赤丸",
+            "id": "num-1",
+            "name": "数字1",
             "type": "object",
-            "assetId": "circle-red",
-            "x": 0.25,
+            "assetId": "num-1",
+            "x": 0.7,
             "y": 0.3,
             "visible": true,
             "zIndex": 5,
-            "scale": 2.5,
+            "scale": 2.0,
             "rotation": 0,
             "opacity": 1
           },
           {
-            "id": "circle-blue",
-            "name": "青丸",
+            "id": "num-2",
+            "name": "数字2",
             "type": "object",
-            "assetId": "circle-blue",
-            "x": 0.75,
-            "y": 0.3,
+            "assetId": "num-2",
+            "x": 0.3,
+            "y": 0.5,
             "visible": true,
             "zIndex": 5,
-            "scale": 2.5,
+            "scale": 2.0,
             "rotation": 0,
             "opacity": 1
           },
           {
-            "id": "circle-green",
-            "name": "緑丸",
+            "id": "num-3",
+            "name": "数字3",
             "type": "object",
-            "assetId": "circle-green",
-            "x": 0.25,
-            "y": 0.6,
+            "assetId": "num-3",
+            "x": 0.8,
+            "y": 0.65,
             "visible": true,
             "zIndex": 5,
-            "scale": 2.5,
+            "scale": 2.0,
             "rotation": 0,
             "opacity": 1
           },
           {
-            "id": "circle-yellow",
-            "name": "黄丸",
+            "id": "num-4",
+            "name": "数字4",
             "type": "object",
-            "assetId": "circle-yellow",
-            "x": 0.75,
-            "y": 0.6,
+            "assetId": "num-4",
+            "x": 0.2,
+            "y": 0.25,
             "visible": true,
             "zIndex": 5,
-            "scale": 2.5,
+            "scale": 2.0,
+            "rotation": 0,
+            "opacity": 1
+          },
+          {
+            "id": "num-5",
+            "name": "数字5",
+            "type": "object",
+            "assetId": "num-5",
+            "x": 0.5,
+            "y": 0.8,
+            "visible": true,
+            "zIndex": 5,
+            "scale": 2.0,
             "rotation": 0,
             "opacity": 1
           }
         ],
         "sounds": [],
         "counters": [
-          { "id": "score", "name": "スコア", "value": 0, "min": 0, "max": 999 }
+          { "id": "progress", "name": "進捗", "value": 0, "min": 0, "max": 5 }
         ],
         "flags": []
       },
@@ -258,9 +294,9 @@
         },
         "objects": [
           {
-            "objectId": "circle-red",
-            "position": { "x": 0.25, "y": 0.3 },
-            "scale": { "x": 2.5, "y": 2.5 },
+            "objectId": "num-1",
+            "position": { "x": 0.7, "y": 0.3 },
+            "scale": { "x": 2.0, "y": 2.0 },
             "rotation": 0,
             "zIndex": 5,
             "initialState": {
@@ -271,9 +307,9 @@
             }
           },
           {
-            "objectId": "circle-blue",
-            "position": { "x": 0.75, "y": 0.3 },
-            "scale": { "x": 2.5, "y": 2.5 },
+            "objectId": "num-2",
+            "position": { "x": 0.3, "y": 0.5 },
+            "scale": { "x": 2.0, "y": 2.0 },
             "rotation": 0,
             "zIndex": 5,
             "initialState": {
@@ -284,9 +320,9 @@
             }
           },
           {
-            "objectId": "circle-green",
-            "position": { "x": 0.25, "y": 0.6 },
-            "scale": { "x": 2.5, "y": 2.5 },
+            "objectId": "num-3",
+            "position": { "x": 0.8, "y": 0.65 },
+            "scale": { "x": 2.0, "y": 2.0 },
             "rotation": 0,
             "zIndex": 5,
             "initialState": {
@@ -297,9 +333,22 @@
             }
           },
           {
-            "objectId": "circle-yellow",
-            "position": { "x": 0.75, "y": 0.6 },
-            "scale": { "x": 2.5, "y": 2.5 },
+            "objectId": "num-4",
+            "position": { "x": 0.2, "y": 0.25 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 5,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "num-5",
+            "position": { "x": 0.5, "y": 0.8 },
+            "scale": { "x": 2.0, "y": 2.0 },
             "rotation": 0,
             "zIndex": 5,
             "initialState": {
@@ -314,15 +363,15 @@
       },
       "flags": [],
       "counters": [
-        { "id": "score", "name": "スコア", "value": 0, "min": 0, "max": 999 }
+        { "id": "progress", "name": "進捗", "value": 0, "min": 0, "max": 5 }
       ],
       "rules": [
         {
-          "id": "rule-tap-red",
-          "name": "赤タップ",
+          "id": "rule-tap-1",
+          "name": "1をタップ",
           "enabled": true,
           "priority": 10,
-          "targetObjectId": "circle-red",
+          "targetObjectId": "num-1",
           "triggers": {
             "operator": "AND",
             "conditions": [
@@ -335,34 +384,30 @@
           },
           "actions": [
             {
+              "type": "hide",
+              "targetId": "num-1",
+              "fadeOut": false
+            },
+            {
               "type": "counter",
               "operation": "add",
-              "counterName": "score",
-              "value": 10,
+              "counterName": "progress",
+              "value": 1,
               "notification": {
                 "show": true,
                 "position": "center",
                 "duration": 0.3,
-                "format": "+{value}"
-              }
-            },
-            {
-              "type": "effect",
-              "targetId": "circle-red",
-              "effect": {
-                "type": "scale",
-                "intensity": 1.3,
-                "duration": 0.2
+                "format": "1!"
               }
             }
           ]
         },
         {
-          "id": "rule-tap-blue",
-          "name": "青タップ",
+          "id": "rule-tap-2",
+          "name": "2をタップ",
           "enabled": true,
           "priority": 10,
-          "targetObjectId": "circle-blue",
+          "targetObjectId": "num-2",
           "triggers": {
             "operator": "AND",
             "conditions": [
@@ -375,34 +420,30 @@
           },
           "actions": [
             {
+              "type": "hide",
+              "targetId": "num-2",
+              "fadeOut": false
+            },
+            {
               "type": "counter",
               "operation": "add",
-              "counterName": "score",
-              "value": 10,
+              "counterName": "progress",
+              "value": 1,
               "notification": {
                 "show": true,
                 "position": "center",
                 "duration": 0.3,
-                "format": "+{value}"
-              }
-            },
-            {
-              "type": "effect",
-              "targetId": "circle-blue",
-              "effect": {
-                "type": "scale",
-                "intensity": 1.3,
-                "duration": 0.2
+                "format": "2!"
               }
             }
           ]
         },
         {
-          "id": "rule-tap-green",
-          "name": "緑タップ",
+          "id": "rule-tap-3",
+          "name": "3をタップ",
           "enabled": true,
           "priority": 10,
-          "targetObjectId": "circle-green",
+          "targetObjectId": "num-3",
           "triggers": {
             "operator": "AND",
             "conditions": [
@@ -415,34 +456,30 @@
           },
           "actions": [
             {
+              "type": "hide",
+              "targetId": "num-3",
+              "fadeOut": false
+            },
+            {
               "type": "counter",
               "operation": "add",
-              "counterName": "score",
-              "value": 10,
+              "counterName": "progress",
+              "value": 1,
               "notification": {
                 "show": true,
                 "position": "center",
                 "duration": 0.3,
-                "format": "+{value}"
-              }
-            },
-            {
-              "type": "effect",
-              "targetId": "circle-green",
-              "effect": {
-                "type": "scale",
-                "intensity": 1.3,
-                "duration": 0.2
+                "format": "3!"
               }
             }
           ]
         },
         {
-          "id": "rule-tap-yellow",
-          "name": "黄タップ",
+          "id": "rule-tap-4",
+          "name": "4をタップ",
           "enabled": true,
           "priority": 10,
-          "targetObjectId": "circle-yellow",
+          "targetObjectId": "num-4",
           "triggers": {
             "operator": "AND",
             "conditions": [
@@ -455,24 +492,56 @@
           },
           "actions": [
             {
+              "type": "hide",
+              "targetId": "num-4",
+              "fadeOut": false
+            },
+            {
               "type": "counter",
               "operation": "add",
-              "counterName": "score",
-              "value": 10,
+              "counterName": "progress",
+              "value": 1,
               "notification": {
                 "show": true,
                 "position": "center",
                 "duration": 0.3,
-                "format": "+{value}"
+                "format": "4!"
               }
+            }
+          ]
+        },
+        {
+          "id": "rule-tap-5",
+          "name": "5をタップ",
+          "enabled": true,
+          "priority": 10,
+          "targetObjectId": "num-5",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "num-5",
+              "fadeOut": false
             },
             {
-              "type": "effect",
-              "targetId": "circle-yellow",
-              "effect": {
-                "type": "scale",
-                "intensity": 1.3,
-                "duration": 0.2
+              "type": "counter",
+              "operation": "add",
+              "counterName": "progress",
+              "value": 1,
+              "notification": {
+                "show": true,
+                "position": "center",
+                "duration": 0.5,
+                "format": "完了！"
               }
             }
           ]
@@ -480,8 +549,8 @@
       ],
       "successConditions": [],
       "statistics": {
-        "ruleCount": 4,
-        "objectCount": 5,
+        "ruleCount": 5,
+        "objectCount": 6,
         "soundCount": 0,
         "flagCount": 0,
         "counterCount": 1
@@ -491,8 +560,8 @@
     },
 
     "settings": {
-      "name": "カラータップ",
-      "gameDuration": 30,
+      "name": "順番タップ",
+      "gameDuration": 10,
       "difficulty": "easy",
       "theme": "colorful"
     },
@@ -513,7 +582,7 @@
     "exportedBy": "system",
     "exportedAt": "2025-01-01T00:00:00.000Z",
     "projectVersion": "1.0.0",
-    "checksum": "sample-color-tap-v1"
+    "checksum": "sample-number-order-v1"
   },
   "exportedAt": "2025-01-01T00:00:00.000Z",
   "version": "1.0.0"
