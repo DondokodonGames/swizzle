@@ -2,7 +2,7 @@
   "project": {
     "id": "sample-004-fruit-catch",
     "name": "フルーツキャッチ",
-    "description": "木から落ちるりんごをカゴでキャッチ！左右をタップしてキャラを動かそう",
+    "description": "木から落ちるりんごをカゴでキャッチ！",
     "createdAt": "2025-01-01T00:00:00.000Z",
     "lastModified": "2025-01-01T00:00:00.000Z",
     "version": "1.0.0",
@@ -45,7 +45,7 @@
           }
         ],
         "snapshot": {
-          "assetsCount": { "background": 1, "objects": 4, "texts": 0, "bgm": 0, "se": 0 },
+          "assetsCount": { "background": 1, "objects": 6, "texts": 0, "bgm": 0, "se": 0 },
           "rulesCount": 6,
           "totalSize": 10000
         }
@@ -66,11 +66,11 @@
         "frames": [
           {
             "id": "bg-orchard-frame-1",
-            "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTA4MCIgaGVpZ2h0PSIxOTIwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjE5MjAiIGZpbGw9IiM4N0NFRUIiLz48cmVjdCB5PSIxNDAwIiB3aWR0aD0iMTA4MCIgaGVpZ2h0PSI1MjAiIGZpbGw9IiM5MENGNUYiLz48cmVjdCB4PSI0NTAiIHk9IjIwMCIgd2lkdGg9IjE4MCIgaGVpZ2h0PSI2MDAiIGZpbGw9IiM4QjQ1MTMiLz48ZWxsaXBzZSBjeD0iNTQwIiBjeT0iMjAwIiByeD0iMzAwIiByeT0iMjAwIiBmaWxsPSIjMjI4QjIyIi8+PGVsbGlwc2UgY3g9IjQwMCIgY3k9IjI1MCIgcng9IjE1MCIgcnk9IjEwMCIgZmlsbD0iIzMyQ0QzMiIvPjxlbGxpcHNlIGN4PSI2ODAiIGN5PSIyNTAiIHJ4PSIxNTAiIHJ5PSIxMDAiIGZpbGw9IiMzMkNEMzIiLz48dGV4dCB4PSI1NDAiIHk9IjEyMDAiIGZvbnQtc2l6ZT0iNDAiIGZpbGw9IiM2NjY2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuKGkCDlt6Ug44O7IOWPsyDihpI8L3RleHQ+PHRleHQgeD0iNTQwIiB5PSIxMjYwIiBmb250LXNpemU9IjMwIiBmaWxsPSIjODg4ODg4IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7jgr/jg4Pjg5fjgafjgq3jg6Pjg6njgpLli5Xjgovjgb48L3RleHQ+PC9zdmc+",
+            "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTA4MCIgaGVpZ2h0PSIxOTIwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDgwIiBoZWlnaHQ9IjE5MjAiIGZpbGw9IiM4N0NFRUIiLz48cmVjdCB5PSIxNDAwIiB3aWR0aD0iMTA4MCIgaGVpZ2h0PSI1MjAiIGZpbGw9IiM5MENGNUYiLz48cmVjdCB4PSI0NTAiIHk9IjIwMCIgd2lkdGg9IjE4MCIgaGVpZ2h0PSI2MDAiIGZpbGw9IiM4QjQ1MTMiLz48ZWxsaXBzZSBjeD0iNTQwIiBjeT0iMjAwIiByeD0iMzAwIiByeT0iMjAwIiBmaWxsPSIjMjI4QjIyIi8+PGVsbGlwc2UgY3g9IjQwMCIgY3k9IjI1MCIgcng9IjE1MCIgcnk9IjEwMCIgZmlsbD0iIzMyQ0QzMiIvPjxlbGxpcHNlIGN4PSI2ODAiIGN5PSIyNTAiIHJ4PSIxNTAiIHJ5PSIxMDAiIGZpbGw9IiMzMkNEMzIiLz48L3N2Zz4=",
             "originalName": "bg-orchard.svg",
             "width": 1080,
             "height": 1920,
-            "size": 1200
+            "size": 800
           }
         ],
         "animationSettings": {
@@ -78,7 +78,7 @@
           "loop": true,
           "autoPlay": false
         },
-        "totalSize": 1200,
+        "totalSize": 800,
         "createdAt": "2025-01-01T00:00:00.000Z",
         "lastModified": "2025-01-01T00:00:00.000Z"
       },
@@ -174,15 +174,61 @@
           "createdAt": "2025-01-01T00:00:00.000Z",
           "lastModified": "2025-01-01T00:00:00.000Z",
           "defaultScale": 2.0
+        },
+        {
+          "id": "arrow-left",
+          "name": "左矢印",
+          "frames": [
+            {
+              "id": "arrow-left-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cG9seWdvbiBwb2ludHM9IjgwLDIwIDIwLDUwIDgwLDgwIDgwLDYwIDYwLDUwIDgwLDQwIiBmaWxsPSIjRkZGRkZGIiBvcGFjaXR5PSIwLjciIHN0cm9rZT0iIzMzMzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
+              "originalName": "arrow-left.svg",
+              "width": 100,
+              "height": 100,
+              "size": 300
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 300,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 1.5
+        },
+        {
+          "id": "arrow-right",
+          "name": "右矢印",
+          "frames": [
+            {
+              "id": "arrow-right-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cG9seWdvbiBwb2ludHM9IjIwLDIwIDgwLDUwIDIwLDgwIDIwLDYwIDQwLDUwIDIwLDQwIiBmaWxsPSIjRkZGRkZGIiBvcGFjaXR5PSIwLjciIHN0cm9rZT0iIzMzMzMzMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+",
+              "originalName": "arrow-right.svg",
+              "width": 100,
+              "height": 100,
+              "size": 300
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 300,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 1.5
         }
       ],
       "texts": [],
       "audio": { "bgm": null, "se": [] },
       "statistics": {
-        "totalImageSize": 3700,
+        "totalImageSize": 3900,
         "totalAudioSize": 0,
-        "totalSize": 3700,
-        "usedSlots": { "background": 1, "objects": 4, "texts": 0, "bgm": 0, "se": 0 },
+        "totalSize": 3900,
+        "usedSlots": { "background": 1, "objects": 6, "texts": 0, "bgm": 0, "se": 0 },
         "limitations": {
           "isNearImageLimit": false,
           "isNearAudioLimit": false,
@@ -212,6 +258,32 @@
             "backgroundColor": "#87CEEB"
           },
           {
+            "id": "arrow-left",
+            "name": "左矢印",
+            "type": "object",
+            "assetId": "arrow-left",
+            "x": 0.12,
+            "y": 0.82,
+            "visible": true,
+            "zIndex": 2,
+            "scale": 1.5,
+            "rotation": 0,
+            "opacity": 0.6
+          },
+          {
+            "id": "arrow-right",
+            "name": "右矢印",
+            "type": "object",
+            "assetId": "arrow-right",
+            "x": 0.88,
+            "y": 0.82,
+            "visible": true,
+            "zIndex": 2,
+            "scale": 1.5,
+            "rotation": 0,
+            "opacity": 0.6
+          },
+          {
             "id": "character",
             "name": "キャラクター",
             "type": "object",
@@ -230,7 +302,7 @@
             "type": "object",
             "assetId": "apple",
             "x": 0.5,
-            "y": 0.25,
+            "y": 0.22,
             "visible": true,
             "zIndex": 5,
             "scale": 1.8,
@@ -243,7 +315,7 @@
             "type": "object",
             "assetId": "splat",
             "x": 0.5,
-            "y": 0.95,
+            "y": 0.92,
             "visible": false,
             "zIndex": 3,
             "scale": 1.5,
@@ -279,6 +351,32 @@
         },
         "objects": [
           {
+            "objectId": "arrow-left",
+            "position": { "x": 0.12, "y": 0.82 },
+            "scale": { "x": 1.5, "y": 1.5 },
+            "rotation": 0,
+            "zIndex": 2,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "arrow-right",
+            "position": { "x": 0.88, "y": 0.82 },
+            "scale": { "x": 1.5, "y": 1.5 },
+            "rotation": 0,
+            "zIndex": 2,
+            "initialState": {
+              "visible": true,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
             "objectId": "character",
             "position": { "x": 0.5, "y": 0.82 },
             "scale": { "x": 2.0, "y": 2.0 },
@@ -293,7 +391,7 @@
           },
           {
             "objectId": "apple",
-            "position": { "x": 0.5, "y": 0.25 },
+            "position": { "x": 0.5, "y": 0.22 },
             "scale": { "x": 1.8, "y": 1.8 },
             "rotation": 0,
             "zIndex": 5,
@@ -306,7 +404,7 @@
           },
           {
             "objectId": "splat",
-            "position": { "x": 0.5, "y": 0.95 },
+            "position": { "x": 0.5, "y": 0.92 },
             "scale": { "x": 1.5, "y": 1.5 },
             "rotation": 0,
             "zIndex": 3,
@@ -339,6 +437,36 @@
       ],
       "rules": [
         {
+          "id": "rule-apple-fall",
+          "name": "りんご落下",
+          "enabled": true,
+          "priority": 5,
+          "targetObjectId": "apple",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "after",
+                "seconds": 0.5
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "apple",
+              "movement": {
+                "type": "straight",
+                "target": { "x": 0.5, "y": 0.88 },
+                "speed": 80,
+                "duration": 5.0,
+                "easing": "ease-in"
+              }
+            }
+          ]
+        },
+        {
           "id": "rule-move-left",
           "name": "左移動",
           "enabled": true,
@@ -349,15 +477,8 @@
             "conditions": [
               {
                 "type": "touch",
-                "target": "stage",
-                "touchType": "down",
-                "region": {
-                  "shape": "rect",
-                  "x": 0,
-                  "y": 0,
-                  "width": 0.5,
-                  "height": 1
-                }
+                "target": "arrow-left",
+                "touchType": "down"
               }
             ]
           },
@@ -366,11 +487,8 @@
               "type": "move",
               "targetId": "character",
               "movement": {
-                "type": "straight",
-                "target": { "x": 0.2, "y": 0.82 },
-                "speed": 500,
-                "duration": 0.5,
-                "easing": "ease-out"
+                "type": "teleport",
+                "target": { "x": 0.25, "y": 0.82 }
               }
             }
           ]
@@ -386,15 +504,8 @@
             "conditions": [
               {
                 "type": "touch",
-                "target": "stage",
-                "touchType": "down",
-                "region": {
-                  "shape": "rect",
-                  "x": 0.5,
-                  "y": 0,
-                  "width": 0.5,
-                  "height": 1
-                }
+                "target": "arrow-right",
+                "touchType": "down"
               }
             ]
           },
@@ -403,41 +514,8 @@
               "type": "move",
               "targetId": "character",
               "movement": {
-                "type": "straight",
-                "target": { "x": 0.8, "y": 0.82 },
-                "speed": 500,
-                "duration": 0.5,
-                "easing": "ease-out"
-              }
-            }
-          ]
-        },
-        {
-          "id": "rule-apple-fall",
-          "name": "りんご落下",
-          "enabled": true,
-          "priority": 5,
-          "targetObjectId": "apple",
-          "triggers": {
-            "operator": "AND",
-            "conditions": [
-              {
-                "type": "time",
-                "timeType": "exact",
-                "seconds": 1
-              }
-            ]
-          },
-          "actions": [
-            {
-              "type": "move",
-              "targetId": "apple",
-              "movement": {
-                "type": "straight",
-                "target": { "x": 0.5, "y": 0.95 },
-                "speed": 200,
-                "duration": 4.0,
-                "easing": "ease-in"
+                "type": "teleport",
+                "target": { "x": 0.75, "y": 0.82 }
               }
             }
           ]
@@ -473,8 +551,8 @@
               "notification": {
                 "show": true,
                 "position": "center",
-                "duration": 1.0,
-                "format": "キャッチ成功！"
+                "duration": 1.5,
+                "format": "ナイスキャッチ！"
               }
             }
           ]
@@ -496,9 +574,9 @@
                 "region": {
                   "shape": "rect",
                   "x": 0,
-                  "y": 0.9,
+                  "y": 0.85,
                   "width": 1,
-                  "height": 0.1
+                  "height": 0.15
                 }
               }
             ]
@@ -518,7 +596,7 @@
               "type": "show",
               "targetId": "sad-face",
               "fadeIn": true,
-              "duration": 0.2
+              "duration": 0.3
             }
           ]
         }
@@ -526,7 +604,7 @@
       "successConditions": [],
       "statistics": {
         "ruleCount": 5,
-        "objectCount": 5,
+        "objectCount": 7,
         "soundCount": 0,
         "flagCount": 0,
         "counterCount": 1
@@ -537,7 +615,7 @@
 
     "settings": {
       "name": "フルーツキャッチ",
-      "gameDuration": 10,
+      "gameDuration": 8,
       "difficulty": "easy",
       "theme": "colorful"
     },
@@ -558,7 +636,7 @@
     "exportedBy": "system",
     "exportedAt": "2025-01-01T00:00:00.000Z",
     "projectVersion": "1.0.0",
-    "checksum": "sample-fruit-catch-v2"
+    "checksum": "sample-fruit-catch-v3"
   },
   "exportedAt": "2025-01-01T00:00:00.000Z",
   "version": "1.0.0"
