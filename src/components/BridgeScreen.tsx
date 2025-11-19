@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PublicGame } from '../social/types/SocialTypes';
 import { SocialService } from '../social/services/SocialService';
-import { supabase } from '../lib/supabase';
+import { supabase, auth } from '../lib/supabase';
 import { GameProjectCopier } from '../services/editor/GameProjectCopier';
 import { ProjectStorageManager } from '../services/ProjectStorageManager';
 import { GameProject } from '../types/editor/GameProject';
@@ -154,7 +154,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
       const copiedProject = copier.copyProject(sourceProjectData);
 
       const storage = ProjectStorageManager.getInstance();
-      await storage.saveProject(copiedProject);
+
+      // ユーザーがログインしている場合はSupabaseにも保存
+      const user = await auth.getCurrentUser();
+      await storage.saveProject(copiedProject, {
+        saveToDatabase: !!user,
+        userId: user?.id
+      });
 
       console.log('✅ プロジェクトを保存しました:', copiedProject.id);
 

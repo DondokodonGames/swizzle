@@ -774,20 +774,22 @@ export class ProjectStorageManager {
   }
 
   // バックアップ復元
-  public async restoreBackup(file: File, mergeMode: 'replace' | 'merge' = 'merge'): Promise<void> {
+  public async restoreBackup(file: File, mergeMode: 'replace' | 'merge' = 'merge', userId?: string): Promise<void> {
     try {
+      console.log('[RestoreBackup-Manager] Starting restore...', { mergeMode, userId: userId || 'none' });
+
       const text = await file.text();
       const backupData = JSON.parse(text);
-      
+
       if (!backupData.projects || !Array.isArray(backupData.projects)) {
         throw new Error('無効なバックアップファイルです');
       }
 
       if (mergeMode === 'replace') {
         // 既存プロジェクトを全削除
-        const existingProjects = await this.listProjects();
+        const existingProjects = await this.listProjects(userId);
         for (const project of existingProjects) {
-          await this.deleteProject(project.id);
+          await this.deleteProject(project.id, userId);
         }
       }
 
@@ -806,11 +808,17 @@ export class ProjectStorageManager {
             lastSyncedAt: undefined
           }
         };
-        
-        await this.saveProject(restoredProject);
+
+        // ローカルとSupabaseに保存
+        await this.saveProject(restoredProject, {
+          saveToDatabase: !!userId,
+          userId
+        });
       }
+
+      console.log('[RestoreBackup-Manager] Restored', backupData.projects.length, 'projects successfully');
     } catch (error) {
-      console.error('Failed to restore backup:', error);
+      console.error('[RestoreBackup-Manager] Failed to restore backup:', error);
       throw new Error('バックアップの復元に失敗しました');
     }
   }
