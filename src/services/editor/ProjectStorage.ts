@@ -124,15 +124,19 @@ export class ProjectStorage {
   // プロジェクト一覧取得
   public async listProjects(): Promise<ProjectMetadata[]> {
     try {
+      console.log('[ListProjects] Loading project list...');
+
       // IndexedDBが利用可能な場合
       if (this.dbPromise) {
+        console.log('[ListProjects] Using IndexedDB');
         const db = await this.dbPromise;
         const transaction = db.transaction(['projects'], 'readonly');
         const store = transaction.objectStore('projects');
         const request = store.getAll();
-        
+
         return new Promise((resolve, reject) => {
           request.onsuccess = () => {
+            console.log('[ListProjects] Raw projects from DB:', request.result?.length || 0);
             const projects = request.result.map((project: GameProject): ProjectMetadata => ({
               id: project.id,
               name: project.name,
@@ -141,12 +145,17 @@ export class ProjectStorage {
               size: project.totalSize || 0,
               version: project.version
             }));
-            
+
+            console.log('[ListProjects] Project names:', projects.map(p => p.name));
+
             // 最終更新日でソート
             projects.sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime());
             resolve(projects);
           };
-          request.onerror = () => reject(request.error);
+          request.onerror = () => {
+            console.error('[ListProjects] IndexedDB error:', request.error);
+            reject(request.error);
+          };
         });
       }
 
