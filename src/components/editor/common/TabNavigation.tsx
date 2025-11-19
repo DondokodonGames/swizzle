@@ -66,13 +66,13 @@ export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
 
   const calculateScriptProgress = () => {
     let progress = 0;
-    
+
     // ルールがあれば50%
-    if (project.script.rules.length > 0) progress += 50;
-    
+    if (project.script?.rules?.length > 0) progress += 50;
+
     // 成功条件があれば50%
-    if (project.script.successConditions.length > 0) progress += 50;
-    
+    if (project.script?.successConditions?.length > 0) progress += 50;
+
     return Math.min(progress, 100);
   };
 
@@ -115,7 +115,7 @@ export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
       label: 'ルール',
       icon: '⚙️',
       description: 'ゲーム動作・条件設定',
-      badge: project.script.rules.length || undefined,
+      badge: project.script?.rules?.length || undefined,
       progress: calculateScriptProgress()
     },
     {
