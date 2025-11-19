@@ -470,11 +470,14 @@ export class EditorGameBridge {
           const rect = canvasElement.getBoundingClientRect();
           const clientX = 'touches' in event ? event.touches[0]?.clientX : event.clientX;
           const clientY = 'touches' in event ? event.touches[0]?.clientY : event.clientY;
-          
+
           if (clientX === undefined || clientY === undefined) return;
-          
-          const x = clientX - rect.left;
-          const y = clientY - rect.top;
+
+          // CSS表示サイズからキャンバス内部サイズ(1080x1920)にスケーリング
+          const scaleX = canvasElement.width / rect.width;
+          const scaleY = canvasElement.height / rect.height;
+          const x = (clientX - rect.left) * scaleX;
+          const y = (clientY - rect.top) * scaleY;
 
           // オブジェクトクリック判定
           let hitObject: string | null = null;
