@@ -234,7 +234,10 @@ const AuthenticatedUserInfo: React.FC = () => {
     };
   }, []);
 
-  if (!useAuth) {
+  // Hooksは条件分岐の前で呼ぶ必要がある
+  const auth = useAuth ? useAuth() : null;
+
+  if (!useAuth || !auth) {
     return (
       <div style={{
         backgroundColor: 'white',
@@ -249,8 +252,6 @@ const AuthenticatedUserInfo: React.FC = () => {
       </div>
     );
   }
-
-  const auth = useAuth();
 
   return (
     <div style={{
@@ -789,15 +790,16 @@ const SocialIntegratedApp: React.FC = () => {
     }
   }, []);
 
+  // Hooksは条件分岐の外で呼ぶ必要がある
+  const auth = useAuth ? useAuth() : null;
+
   if (ENABLE_SOCIAL) {
-    const auth = useAuth ? useAuth() : null;
-    
     return (
       <Suspense fallback={
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
           height: '100vh',
           background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
         }}>
