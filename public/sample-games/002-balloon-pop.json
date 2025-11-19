@@ -10,22 +10,92 @@
       "isAnonymous": true
     },
     "status": "draft",
-    "totalSize": 0,
+    "totalSize": 5000,
     "assets": {
       "background": null,
-      "objects": [],
+      "objects": [
+        {
+          "id": "balloon-red",
+          "name": "赤風船",
+          "frames": [
+            {
+              "id": "balloon-red-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZWxsaXBzZSBjeD0iNTAiIGN5PSI1MCIgcng9IjQ1IiByeT0iNTAiIGZpbGw9IiNGRjZCNkIiLz48bGluZSB4MT0iNTAiIHkxPSIxMDAiIHgyPSI1MCIgeTI9IjEyMCIgc3Ryb2tlPSIjOTk5IiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+              "originalName": "balloon-red.svg",
+              "width": 100,
+              "height": 120,
+              "size": 500
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 500,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.2
+        },
+        {
+          "id": "balloon-blue",
+          "name": "青風船",
+          "frames": [
+            {
+              "id": "balloon-blue-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZWxsaXBzZSBjeD0iNTAiIGN5PSI1MCIgcng9IjQ1IiByeT0iNTAiIGZpbGw9IiM0RUNEQzQiLz48bGluZSB4MT0iNTAiIHkxPSIxMDAiIHgyPSI1MCIgeTI9IjEyMCIgc3Ryb2tlPSIjOTk5IiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+              "originalName": "balloon-blue.svg",
+              "width": 100,
+              "height": 120,
+              "size": 500
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 500,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.2
+        },
+        {
+          "id": "balloon-green",
+          "name": "緑風船",
+          "frames": [
+            {
+              "id": "balloon-green-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZWxsaXBzZSBjeD0iNTAiIGN5PSI1MCIgcng9IjQ1IiByeT0iNTAiIGZpbGw9IiM5NUUxRDMiLz48bGluZSB4MT0iNTAiIHkxPSIxMDAiIHgyPSI1MCIgeTI9IjEyMCIgc3Ryb2tlPSIjOTk5IiBzdHJva2Utd2lkdGg9IjIiLz48L3N2Zz4=",
+              "originalName": "balloon-green.svg",
+              "width": 100,
+              "height": 120,
+              "size": 500
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 500,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.2
+        }
+      ],
       "texts": [],
       "audio": {
         "bgm": null,
         "se": []
       },
       "statistics": {
-        "totalImageSize": 0,
+        "totalImageSize": 1500,
         "totalAudioSize": 0,
-        "totalSize": 0,
+        "totalSize": 1500,
         "usedSlots": {
           "background": 0,
-          "objects": 0,
+          "objects": 3,
           "texts": 0,
           "bgm": 0,
           "se": 0
@@ -41,7 +111,9 @@
     },
     "script": {
       "initialState": {
-        "counters": {},
+        "counters": {
+          "popped": 0
+        },
         "flags": {},
         "timers": {},
         "objectStates": {}
@@ -53,30 +125,256 @@
           "animationSpeed": 12,
           "autoStart": false
         },
-        "objects": [],
+        "objects": [
+          {
+            "objectId": "balloon-red",
+            "position": { "x": 0.2, "y": 0.8 },
+            "scale": 2.2,
+            "rotation": 0,
+            "opacity": 1,
+            "visible": true,
+            "zIndex": 1
+          },
+          {
+            "objectId": "balloon-blue",
+            "position": { "x": 0.5, "y": 0.85 },
+            "scale": 2.2,
+            "rotation": 0,
+            "opacity": 1,
+            "visible": true,
+            "zIndex": 2
+          },
+          {
+            "objectId": "balloon-green",
+            "position": { "x": 0.8, "y": 0.9 },
+            "scale": 2.2,
+            "rotation": 0,
+            "opacity": 1,
+            "visible": true,
+            "zIndex": 3
+          }
+        ],
         "texts": [],
         "stage": {
           "backgroundColor": "#87CEEB"
         }
       },
       "flags": [],
-      "counters": [],
-      "rules": [],
+      "counters": [
+        {
+          "id": "popped",
+          "name": "割った数",
+          "initialValue": 0,
+          "minValue": 0,
+          "maxValue": 100
+        }
+      ],
+      "rules": [
+        {
+          "id": "move-red",
+          "name": "赤風船浮遊",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "balloon-red",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "always"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "balloon-red",
+              "movement": {
+                "pattern": "wander",
+                "speed": 35,
+                "direction": 90,
+                "wanderStrength": 0.4
+              }
+            }
+          ]
+        },
+        {
+          "id": "move-blue",
+          "name": "青風船浮遊",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "balloon-blue",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "always"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "balloon-blue",
+              "movement": {
+                "pattern": "wander",
+                "speed": 28,
+                "direction": 90,
+                "wanderStrength": 0.5
+              }
+            }
+          ]
+        },
+        {
+          "id": "move-green",
+          "name": "緑風船浮遊",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "balloon-green",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "always"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "move",
+              "targetId": "balloon-green",
+              "movement": {
+                "pattern": "wander",
+                "speed": 22,
+                "direction": 90,
+                "wanderStrength": 0.6
+              }
+            }
+          ]
+        },
+        {
+          "id": "tap-red",
+          "name": "赤風船タップ",
+          "enabled": true,
+          "priority": 2,
+          "targetObjectId": "balloon-red",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "tap",
+                "targetId": "balloon-red"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "balloon-red"
+            },
+            {
+              "type": "counter",
+              "counterId": "popped",
+              "operation": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "tap-blue",
+          "name": "青風船タップ",
+          "enabled": true,
+          "priority": 2,
+          "targetObjectId": "balloon-blue",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "tap",
+                "targetId": "balloon-blue"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "balloon-blue"
+            },
+            {
+              "type": "counter",
+              "counterId": "popped",
+              "operation": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "tap-green",
+          "name": "緑風船タップ",
+          "enabled": true,
+          "priority": 2,
+          "targetObjectId": "balloon-green",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "tap",
+                "targetId": "balloon-green"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "hide",
+              "targetId": "balloon-green"
+            },
+            {
+              "type": "counter",
+              "counterId": "popped",
+              "operation": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "win-condition",
+          "name": "クリア判定",
+          "enabled": true,
+          "priority": 3,
+          "targetObjectId": "stage",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "counter",
+                "counterId": "popped",
+                "comparison": ">=",
+                "value": 3
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "gameEnd",
+              "result": "clear"
+            }
+          ]
+        }
+      ],
       "successConditions": [],
       "statistics": {
-        "totalRules": 0,
-        "totalConditions": 0,
-        "totalActions": 0,
-        "complexityScore": 0,
-        "usedTriggerTypes": [],
-        "usedActionTypes": [],
+        "totalRules": 7,
+        "totalConditions": 7,
+        "totalActions": 10,
+        "complexityScore": 15,
+        "usedTriggerTypes": ["always", "tap", "counter"],
+        "usedActionTypes": ["move", "hide", "counter", "gameEnd"],
         "flagCount": 0,
         "estimatedCPUUsage": "low",
         "estimatedMemoryUsage": 0,
-        "maxConcurrentEffects": 0,
-        "counterCount": 0,
-        "usedCounterOperations": [],
-        "usedCounterComparisons": [],
+        "maxConcurrentEffects": 3,
+        "counterCount": 1,
+        "usedCounterOperations": ["add"],
+        "usedCounterComparisons": [">="],
         "randomConditionCount": 0,
         "randomActionCount": 0,
         "totalRandomChoices": 0,
@@ -168,7 +466,7 @@
     "name": "風船割り",
     "lastModified": "2025-01-01T00:00:00.000Z",
     "status": "draft",
-    "size": 0,
+    "size": 5000,
     "version": "1.0.0"
   },
   "exportedAt": "2025-01-01T00:00:00.000Z",
