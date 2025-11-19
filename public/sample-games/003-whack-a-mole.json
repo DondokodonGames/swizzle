@@ -1,0 +1,562 @@
+{
+  "project": {
+    "id": "whack-a-mole-sample",
+    "name": "もぐらたたき",
+    "description": "出てきたもぐらを素早くタップ！",
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "lastModified": "2025-01-01T00:00:00.000Z",
+    "version": "1.0.0",
+    "creator": {
+      "isAnonymous": true
+    },
+    "status": "draft",
+    "totalSize": 5000,
+    "assets": {
+      "background": null,
+      "objects": [
+        {
+          "id": "mole-1",
+          "name": "もぐら1",
+          "frames": [
+            {
+              "id": "mole-1-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzhCNDUxMyIvPjxjaXJjbGUgY3g9IjM1IiBjeT0iNDAiIHI9IjgiIGZpbGw9IiMwMDAiLz48Y2lyY2xlIGN4PSI2NSIgY3k9IjQwIiByPSI4IiBmaWxsPSIjMDAwIi8+PGVsbGlwc2UgY3g9IjUwIiBjeT0iNjAiIHJ4PSIxMiIgcnk9IjgiIGZpbGw9IiNGRjY2OTkiLz48L3N2Zz4=",
+              "originalName": "mole-1.svg",
+              "width": 100,
+              "height": 100,
+              "size": 400
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 400,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        },
+        {
+          "id": "mole-2",
+          "name": "もぐら2",
+          "frames": [
+            {
+              "id": "mole-2-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzhCNDUxMyIvPjxjaXJjbGUgY3g9IjM1IiBjeT0iNDAiIHI9IjgiIGZpbGw9IiMwMDAiLz48Y2lyY2xlIGN4PSI2NSIgY3k9IjQwIiByPSI4IiBmaWxsPSIjMDAwIi8+PGVsbGlwc2UgY3g9IjUwIiBjeT0iNjAiIHJ4PSIxMiIgcnk9IjgiIGZpbGw9IiNGRjY2OTkiLz48L3N2Zz4=",
+              "originalName": "mole-2.svg",
+              "width": 100,
+              "height": 100,
+              "size": 400
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 400,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        },
+        {
+          "id": "mole-3",
+          "name": "もぐら3",
+          "frames": [
+            {
+              "id": "mole-3-frame-1",
+              "dataUrl": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzhCNDUxMyIvPjxjaXJjbGUgY3g9IjM1IiBjeT0iNDAiIHI9IjgiIGZpbGw9IiMwMDAiLz48Y2lyY2xlIGN4PSI2NSIgY3k9IjQwIiByPSI4IiBmaWxsPSIjMDAwIi8+PGVsbGlwc2UgY3g9IjUwIiBjeT0iNjAiIHJ4PSIxMiIgcnk9IjgiIGZpbGw9IiNGRjY2OTkiLz48L3N2Zz4=",
+              "originalName": "mole-3.svg",
+              "width": 100,
+              "height": 100,
+              "size": 400
+            }
+          ],
+          "animationSettings": {
+            "speed": 12,
+            "loop": true,
+            "autoPlay": false
+          },
+          "totalSize": 400,
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "lastModified": "2025-01-01T00:00:00.000Z",
+          "defaultScale": 2.0
+        }
+      ],
+      "texts": [],
+      "audio": {
+        "bgm": null,
+        "se": []
+      },
+      "statistics": {
+        "totalImageSize": 1200,
+        "totalAudioSize": 0,
+        "totalSize": 1200,
+        "usedSlots": {
+          "background": 0,
+          "objects": 3,
+          "texts": 0,
+          "bgm": 0,
+          "se": 0
+        },
+        "limitations": {
+          "isNearImageLimit": false,
+          "isNearAudioLimit": false,
+          "isNearTotalLimit": false,
+          "hasViolations": false
+        }
+      },
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+    "script": {
+      "initialState": {
+        "layout": {
+          "background": {
+            "visible": false,
+            "frameIndex": 0,
+            "animationSpeed": 12,
+            "autoStart": false
+          },
+          "objects": [
+            {
+              "id": "mole-1",
+              "position": { "x": 0.2, "y": 0.3 },
+              "visible": false,
+              "scale": { "x": 2.0, "y": 2.0 },
+              "rotation": 0,
+              "zIndex": 1,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            },
+            {
+              "id": "mole-2",
+              "position": { "x": 0.5, "y": 0.5 },
+              "visible": false,
+              "scale": { "x": 2.0, "y": 2.0 },
+              "rotation": 0,
+              "zIndex": 2,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            },
+            {
+              "id": "mole-3",
+              "position": { "x": 0.8, "y": 0.7 },
+              "visible": false,
+              "scale": { "x": 2.0, "y": 2.0 },
+              "rotation": 0,
+              "zIndex": 3,
+              "animationIndex": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          ],
+          "texts": []
+        },
+        "gameState": {
+          "score": 0,
+          "counters": {
+            "hits": 0
+          },
+          "flags": {}
+        }
+      },
+      "layout": {
+        "background": {
+          "visible": false,
+          "initialAnimation": 0,
+          "animationSpeed": 12,
+          "autoStart": false
+        },
+        "objects": [
+          {
+            "objectId": "mole-1",
+            "position": { "x": 0.2, "y": 0.3 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 1,
+            "initialState": {
+              "visible": false,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "mole-2",
+            "position": { "x": 0.5, "y": 0.5 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 2,
+            "initialState": {
+              "visible": false,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          },
+          {
+            "objectId": "mole-3",
+            "position": { "x": 0.8, "y": 0.7 },
+            "scale": { "x": 2.0, "y": 2.0 },
+            "rotation": 0,
+            "zIndex": 3,
+            "initialState": {
+              "visible": false,
+              "animation": 0,
+              "animationSpeed": 12,
+              "autoStart": false
+            }
+          }
+        ],
+        "texts": [],
+        "stage": {
+          "backgroundColor": "#8FBC8F"
+        }
+      },
+      "flags": [],
+      "counters": [
+        {
+          "id": "hits",
+          "name": "ヒット数",
+          "initialValue": 0,
+          "minValue": 0,
+          "maxValue": 100
+        }
+      ],
+      "rules": [
+        {
+          "id": "show-mole-1",
+          "name": "もぐら1出現",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "mole-1",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 1.5
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "show",
+              "targetId": "mole-1"
+            }
+          ]
+        },
+        {
+          "id": "show-mole-2",
+          "name": "もぐら2出現",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "mole-2",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 2.0
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "show",
+              "targetId": "mole-2"
+            }
+          ]
+        },
+        {
+          "id": "show-mole-3",
+          "name": "もぐら3出現",
+          "enabled": true,
+          "priority": 1,
+          "targetObjectId": "mole-3",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "interval",
+                "interval": 2.5
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "show",
+              "targetId": "mole-3"
+            }
+          ]
+        },
+        {
+          "id": "hit-mole-1",
+          "name": "もぐら1ヒット",
+          "enabled": true,
+          "priority": 2,
+          "targetObjectId": "mole-1",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "effect",
+              "targetId": "mole-1",
+              "effect": {
+                "type": "scale",
+                "scaleAmount": 0.5,
+                "duration": 0.1
+              }
+            },
+            {
+              "type": "hide",
+              "targetId": "mole-1"
+            },
+            {
+              "type": "counter",
+              "counterName": "hits",
+              "operation": "add",
+              "value": 1
+            },
+            {
+              "type": "addScore",
+              "points": 10
+            }
+          ]
+        },
+        {
+          "id": "hit-mole-2",
+          "name": "もぐら2ヒット",
+          "enabled": true,
+          "priority": 2,
+          "targetObjectId": "mole-2",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "effect",
+              "targetId": "mole-2",
+              "effect": {
+                "type": "scale",
+                "scaleAmount": 0.5,
+                "duration": 0.1
+              }
+            },
+            {
+              "type": "hide",
+              "targetId": "mole-2"
+            },
+            {
+              "type": "counter",
+              "counterName": "hits",
+              "operation": "add",
+              "value": 1
+            },
+            {
+              "type": "addScore",
+              "points": 10
+            }
+          ]
+        },
+        {
+          "id": "hit-mole-3",
+          "name": "もぐら3ヒット",
+          "enabled": true,
+          "priority": 2,
+          "targetObjectId": "mole-3",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "touch",
+                "target": "self",
+                "touchType": "down"
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "effect",
+              "targetId": "mole-3",
+              "effect": {
+                "type": "scale",
+                "scaleAmount": 0.5,
+                "duration": 0.1
+              }
+            },
+            {
+              "type": "hide",
+              "targetId": "mole-3"
+            },
+            {
+              "type": "counter",
+              "counterName": "hits",
+              "operation": "add",
+              "value": 1
+            },
+            {
+              "type": "addScore",
+              "points": 10
+            }
+          ]
+        },
+        {
+          "id": "win-condition",
+          "name": "クリア判定",
+          "enabled": true,
+          "priority": 3,
+          "targetObjectId": "stage",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "counter",
+                "counterName": "hits",
+                "comparison": "greaterOrEqual",
+                "value": 5
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "success",
+              "score": 100,
+              "message": "5匹やっつけた！"
+            }
+          ]
+        }
+      ],
+      "successConditions": [],
+      "statistics": {
+        "totalRules": 7,
+        "totalConditions": 7,
+        "totalActions": 16,
+        "complexityScore": 15,
+        "usedTriggerTypes": ["time", "touch", "counter"],
+        "usedActionTypes": ["show", "hide", "counter", "success", "addScore", "effect"],
+        "flagCount": 0,
+        "estimatedCPUUsage": "low",
+        "estimatedMemoryUsage": 0,
+        "maxConcurrentEffects": 3,
+        "counterCount": 1,
+        "usedCounterOperations": ["add"],
+        "usedCounterComparisons": ["greaterOrEqual"],
+        "randomConditionCount": 0,
+        "randomActionCount": 0,
+        "totalRandomChoices": 0,
+        "averageRandomProbability": 0,
+        "randomEventsPerSecond": 0,
+        "randomMemoryUsage": 0
+      },
+      "version": "1.0.0",
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    },
+    "settings": {
+      "name": "もぐらたたき",
+      "description": "出てきたもぐらを素早くタップ！",
+      "duration": {
+        "type": "fixed",
+        "seconds": 20
+      },
+      "difficulty": "easy",
+      "publishing": {
+        "isPublished": false,
+        "visibility": "private",
+        "allowComments": true,
+        "allowRemix": false,
+        "tags": ["タップ", "もぐら", "反射神経"],
+        "category": "action"
+      },
+      "preview": {},
+      "export": {
+        "includeSourceData": true,
+        "compressionLevel": "medium",
+        "format": "json"
+      }
+    },
+    "editorState": {
+      "activeTab": "assets",
+      "lastSaved": "2025-01-01T00:00:00.000Z",
+      "autoSaveEnabled": true,
+      "tabStates": {
+        "assets": {
+          "selectedAssetType": null,
+          "selectedAssetId": null,
+          "showAnimationEditor": false
+        },
+        "script": {
+          "mode": "layout",
+          "selectedObjectId": null,
+          "selectedRuleId": null,
+          "showRuleEditor": false
+        },
+        "settings": {
+          "showTestPlay": false,
+          "lastTestResult": null
+        }
+      },
+      "ui": {
+        "sidebarCollapsed": false,
+        "previewVisible": true,
+        "capacityMeterExpanded": false
+      }
+    },
+    "metadata": {
+      "statistics": {
+        "totalEditTime": 0,
+        "saveCount": 0,
+        "testPlayCount": 0,
+        "publishCount": 0
+      },
+      "usage": {
+        "lastOpened": "2025-01-01T00:00:00.000Z",
+        "totalOpenCount": 1,
+        "averageSessionTime": 0
+      },
+      "performance": {
+        "lastBuildTime": 0,
+        "averageFPS": 60,
+        "memoryUsage": 0
+      }
+    },
+    "versionHistory": [],
+    "projectSettings": {
+      "autoSaveInterval": 30000,
+      "backupEnabled": true,
+      "compressionEnabled": false,
+      "maxVersionHistory": 10
+    }
+  },
+  "metadata": {
+    "id": "whack-a-mole-sample",
+    "name": "もぐらたたき",
+    "lastModified": "2025-01-01T00:00:00.000Z",
+    "status": "draft",
+    "size": 5000,
+    "version": "1.0.0"
+  },
+  "exportedAt": "2025-01-01T00:00:00.000Z",
+  "version": "1.0.0"
+}
