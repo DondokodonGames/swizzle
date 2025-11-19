@@ -148,8 +148,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event, session?.user?.id)
 
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      if (event === 'TOKEN_REFRESHED') {
+        // トークンリフレッシュ時は既存のプロフィールを維持（ローディング状態なし）
         if (session?.user) {
+          setState(prev => ({
+            ...prev,
+            user: session.user,
+            session,
+            // プロフィールは既存のものを維持
+            loading: false,
+            initializing: false,
+            error: null
+          }))
+        }
+      } else if (event === 'SIGNED_IN') {
+        if (session?.user) {
+          // 新規サインイン時のみプロフィール読み込み
           setState(prev => ({ ...prev, loading: true, error: null }))
           try {
             const profile = await loadProfile(session.user.id)
