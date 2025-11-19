@@ -462,9 +462,19 @@ export class ProjectStorageManager {
   // プロジェクトインポート
   public async importProject(file: File): Promise<GameProject> {
     try {
+      console.log('[ImportProject-Manager] Starting import...', { fileName: file.name, fileSize: file.size });
+
       const text = await file.text();
+      console.log('[ImportProject-Manager] File read successfully, length:', text.length);
+
       const importData: ProjectExportData = JSON.parse(text);
-      
+      console.log('[ImportProject-Manager] JSON parsed successfully');
+      console.log('[ImportProject-Manager] Import data:', {
+        hasProject: !!importData.project,
+        hasMetadata: !!importData.metadata,
+        projectName: importData.project?.name
+      });
+
       if (!importData.project || !importData.metadata) {
         throw new Error('無効なプロジェクトファイルです');
       }
@@ -484,14 +494,24 @@ export class ProjectStorageManager {
         }
       };
 
+      console.log('[ImportProject-Manager] Validating project...');
       // バリデーション
       this.validateProject(importedProject);
-      
+      console.log('[ImportProject-Manager] Validation passed');
+
+      console.log('[ImportProject-Manager] Saving project...');
       await this.saveProject(importedProject);
+      console.log('[ImportProject-Manager] Project saved successfully');
+
       return importedProject;
     } catch (error) {
-      console.error('Failed to import project:', error);
-      throw new Error('プロジェクトのインポートに失敗しました');
+      console.error('[ImportProject-Manager] Failed to import project:', error);
+      console.error('[ImportProject-Manager] Error details:', {
+        name: (error as any).name,
+        message: (error as any).message,
+        stack: (error as any).stack
+      });
+      throw new Error(`プロジェクトのインポートに失敗しました: ${(error as any).message}`);
     }
   }
 
