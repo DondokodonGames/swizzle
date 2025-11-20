@@ -534,11 +534,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
         {/* e. 下端に残り時間バー */}
         <div style={{
-          height: '12px',
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: '8px',
           backgroundColor: 'rgba(0, 0, 0, 0.3)',
-          borderRadius: '6px',
-          overflow: 'hidden',
-          marginBottom: '10px'
+          overflow: 'hidden'
         }}>
           <div style={{
             height: '100%',
@@ -548,13 +550,8 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
               if (remainingPercentage > 20) return '#f59e0b'; // 黄色
               return '#ef4444'; // 赤
             })(),
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            borderRadius: '6px'
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
           }} />
-        </div>
-
-        <div style={{ textAlign: 'center', color: 'rgba(255, 255, 255, 0.7)', fontSize: '18px' }}>
-          次のゲームまで: {timeLeft}秒
         </div>
       </div>
 
