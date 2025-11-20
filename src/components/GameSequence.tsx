@@ -450,12 +450,14 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // ==================== ゲーム画面 + ブリッジ画面統合 ====================
   return (
     <div className="fixed inset-0 bg-black z-50 overflow-hidden flex items-center justify-center">
-      {/* メインコンテナ（1080x1920、レスポンシブ対応） */}
+      {/* メインコンテナ（9:16比率を維持しながらビューポートに収める） */}
       <div
         className="relative bg-black"
         style={{
-          width: 'min(100vw, calc(100vh * 9 / 16), 1080px)',
-          height: 'min(100vh, calc(100vw * 16 / 9), 1920px)',
+          width: '100%',
+          height: '100%',
+          maxWidth: 'calc(100vh * 9 / 16)',
+          maxHeight: 'calc(100vw * 16 / 9)',
           aspectRatio: '9 / 16'
         }}
       >
