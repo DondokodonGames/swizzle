@@ -691,61 +691,65 @@ function MainApp() {
           Short Game Platform
         </p>
 
-        <div style={{ marginTop: '15px', display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button
-            onClick={handleSwitchToSequence}
-            style={{
-              backgroundColor: mode === 'sequence' ? '#10b981' : 'white',
-              color: mode === 'sequence' ? 'white' : '#10b981',
-              border: '2px solid #10b981',
-              borderRadius: '20px',
-              padding: '8px 16px',
-              fontSize: '12px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            🎮 ゲームをプレイ
-          </button>
+        {/* ゲームプレイ中はボタンを非表示 */}
+        {mode !== 'sequence' && (
+          <div style={{ marginTop: '15px', display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={handleSwitchToSequence}
+              style={{
+                backgroundColor: mode === 'sequence' ? '#10b981' : 'white',
+                color: mode === 'sequence' ? 'white' : '#10b981',
+                border: '2px solid #10b981',
+                borderRadius: '20px',
+                padding: '8px 16px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              🎮 ゲームをプレイ
+            </button>
 
-          <button
-            onClick={handleSwitchToEditor}
-            style={{
-              backgroundColor: (mode as string) === 'editor' ? '#ec4899' : 'white',
-              color: (mode as string) === 'editor' ? 'white' : '#ec4899',
-              border: '2px solid #ec4899',
-              borderRadius: '20px',
-              padding: '8px 16px',
-              fontSize: '12px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            🎨 ゲームを作る
-          </button>
+            <button
+              onClick={handleSwitchToEditor}
+              style={{
+                backgroundColor: (mode as string) === 'editor' ? '#ec4899' : 'white',
+                color: (mode as string) === 'editor' ? 'white' : '#ec4899',
+                border: '2px solid #ec4899',
+                borderRadius: '20px',
+                padding: '8px 16px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              🎨 ゲームを作る
+            </button>
 
-          <button
-            onClick={handleGoToPricing}
-            style={{
-              backgroundColor: 'white',
-              color: '#8b5cf6',
-              border: '2px solid #8b5cf6',
-              borderRadius: '20px',
-              padding: '8px 16px',
-              fontSize: '12px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            💎 プレミアム
-          </button>
-        </div>
+            <button
+              onClick={handleGoToPricing}
+              style={{
+                backgroundColor: 'white',
+                color: '#8b5cf6',
+                border: '2px solid #8b5cf6',
+                borderRadius: '20px',
+                padding: '8px 16px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              💎 プレミアム
+            </button>
+          </div>
+        )}
       </header>
 
-      {ENABLE_AUTH && <AuthenticatedUserInfo />}
+      {/* ゲームプレイ中はアカウント情報を非表示 */}
+      {ENABLE_AUTH && mode !== 'sequence' && <AuthenticatedUserInfo />}
 
       <main style={{
         backgroundColor: 'white',

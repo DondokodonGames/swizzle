@@ -468,8 +468,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           }}
         />
 
-        {/* トップバー - 6つのアイコン（ブリッジ画面のみ表示） */}
-        {gameState === 'bridge' && (
+        {/* トップバー - 6つのアイコン（問題12-b対応） */}
         <div style={{
           position: 'absolute',
           top: 0,
@@ -680,7 +679,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             ⏭️
           </button>
         </div>
-        )}
 
         {/* ボトムバー - 残り時間バー（問題14対応） */}
         {gameState === 'playing' && gameDuration !== null && (
