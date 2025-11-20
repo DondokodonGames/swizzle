@@ -62,7 +62,7 @@ export function PaywallModal({
             aria-label="閉じる"
           >
             <svg
-              className="w-6 h-6"
+              style={{ width: '24px', height: '24px', minWidth: '24px', minHeight: '24px' }}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

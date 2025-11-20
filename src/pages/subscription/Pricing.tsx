@@ -50,7 +50,8 @@ export function Pricing() {
               className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
             >
               <svg
-                className="w-5 h-5 mr-2"
+                className="mr-2"
+                style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -66,9 +67,10 @@ export function Pricing() {
             </button>
 
             {isPremium && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-purple-100 rounded-full">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full">
                 <svg
-                  className="w-5 h-5 text-purple-600"
+                  className="text-purple-600"
+                  style={{ width: '16px', height: '16px', minWidth: '16px', minHeight: '16px' }}
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
@@ -78,8 +80,8 @@ export function Pricing() {
                     clipRule="evenodd"
                   />
                 </svg>
-                <span className="text-sm font-semibold text-purple-600">
-                  Premium会員
+                <span className="text-xs font-semibold text-purple-600">
+                  Premium
                 </span>
               </div>
             )}
@@ -92,8 +94,11 @@ export function Pricing() {
         {loading ? (
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4" />
-              <p className="text-gray-600">読み込み中...</p>
+              <div
+                className="animate-spin rounded-full border-b-2 border-purple-600 mx-auto mb-4"
+                style={{ width: '48px', height: '48px' }}
+              />
+              <p className="text-gray-600 text-sm">読み込み中...</p>
             </div>
           </div>
         ) : (
@@ -105,52 +110,109 @@ export function Pricing() {
         )}
       </main>
 
-      {/* FAQ Section */}
-      <section className="max-w-4xl mx-auto px-4 py-16">
-        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-          よくある質問
-        </h2>
-        
-        <div className="space-y-6">
+      {/* FAQ Section - モダンデザイン */}
+      <section id="faq" className="max-w-3xl mx-auto px-4 py-12">
+        <div className="text-center mb-8">
+          <span className="inline-block px-3 py-1 bg-purple-100 text-purple-600 text-xs font-semibold rounded-full mb-3">
+            FAQ
+          </span>
+          <h2 className="text-2xl font-bold text-gray-900">
+            よくある質問
+          </h2>
+        </div>
+
+        <div className="space-y-3">
           {/* FAQ Item 1 */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              いつでもキャンセルできますか？
-            </h3>
-            <p className="text-gray-600">
-              はい、いつでもキャンセル可能です。キャンセル後も、次回更新日まではプレミアム機能をご利用いただけます。
-            </p>
-          </div>
+          <details className="group bg-white rounded-xl border border-gray-200 hover:border-purple-200 transition-colors">
+            <summary className="flex items-center justify-between p-4 cursor-pointer list-none">
+              <span className="text-sm font-medium text-gray-900">
+                いつでもキャンセルできますか？
+              </span>
+              <svg
+                className="text-gray-400 group-open:rotate-180 transition-transform"
+                style={{ width: '16px', height: '16px', minWidth: '16px', minHeight: '16px' }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="px-4 pb-4">
+              <p className="text-sm text-gray-600">
+                はい、いつでもキャンセル可能です。キャンセル後も、次回更新日まではプレミアム機能をご利用いただけます。
+              </p>
+            </div>
+          </details>
 
           {/* FAQ Item 2 */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              支払い方法は何が使えますか？
-            </h3>
-            <p className="text-gray-600">
-              クレジットカード（Visa、Mastercard、American Express）がご利用いただけます。決済は安全なStripeで処理されます。
-            </p>
-          </div>
+          <details className="group bg-white rounded-xl border border-gray-200 hover:border-purple-200 transition-colors">
+            <summary className="flex items-center justify-between p-4 cursor-pointer list-none">
+              <span className="text-sm font-medium text-gray-900">
+                支払い方法は何が使えますか？
+              </span>
+              <svg
+                className="text-gray-400 group-open:rotate-180 transition-transform"
+                style={{ width: '16px', height: '16px', minWidth: '16px', minHeight: '16px' }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="px-4 pb-4">
+              <p className="text-sm text-gray-600">
+                クレジットカード（Visa、Mastercard、American Express）がご利用いただけます。決済は安全なStripeで処理されます。
+              </p>
+            </div>
+          </details>
 
           {/* FAQ Item 3 */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              年額プランの方がお得ですか？
-            </h3>
-            <p className="text-gray-600">
-              はい、年額プランは月額プランと比べて約17%お得です。月額$4.99 × 12ヶ月 = $59.88のところ、年額プランは$49.99です。
-            </p>
-          </div>
+          <details className="group bg-white rounded-xl border border-gray-200 hover:border-purple-200 transition-colors">
+            <summary className="flex items-center justify-between p-4 cursor-pointer list-none">
+              <span className="text-sm font-medium text-gray-900">
+                年額プランの方がお得ですか？
+              </span>
+              <svg
+                className="text-gray-400 group-open:rotate-180 transition-transform"
+                style={{ width: '16px', height: '16px', minWidth: '16px', minHeight: '16px' }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="px-4 pb-4">
+              <p className="text-sm text-gray-600">
+                はい、年額プランは月額プランと比べて約17%お得です。月額$4.99 × 12ヶ月 = $59.88のところ、年額プランは$49.99です。
+              </p>
+            </div>
+          </details>
 
           {/* FAQ Item 4 */}
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              プラン変更はできますか？
-            </h3>
-            <p className="text-gray-600">
-              はい、マイページからいつでもプラン変更が可能です。月額⇔年額の切り替えもできます。
-            </p>
-          </div>
+          <details className="group bg-white rounded-xl border border-gray-200 hover:border-purple-200 transition-colors">
+            <summary className="flex items-center justify-between p-4 cursor-pointer list-none">
+              <span className="text-sm font-medium text-gray-900">
+                プラン変更はできますか？
+              </span>
+              <svg
+                className="text-gray-400 group-open:rotate-180 transition-transform"
+                style={{ width: '16px', height: '16px', minWidth: '16px', minHeight: '16px' }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="px-4 pb-4">
+              <p className="text-sm text-gray-600">
+                はい、マイページからいつでもプラン変更が可能です。月額⇔年額の切り替えもできます。
+              </p>
+            </div>
+          </details>
         </div>
       </section>
 
