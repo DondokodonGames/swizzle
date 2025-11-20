@@ -59,15 +59,12 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
   // ==================== フィードデータ取得 ====================
   const fetchFeedData = useCallback(async () => {
     try {
-      console.log('📊 フィードデータ取得開始');
-
       // トレンドゲーム（週間）
       try {
         const trendingGames = await socialService.getTrendingGames('week', 'trending', 12);
-        console.log('📊 トレンドゲーム取得:', trendingGames?.length || 0, '件');
         updateSection('trending', trendingGames || [], false);
       } catch (err) {
-        console.error('❌ トレンドゲーム取得エラー:', err);
+        console.error('トレンドゲーム取得エラー:', err);
         updateSection('trending', [], false);
       }
 
@@ -126,30 +123,26 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       // おすすめ
       try {
         const tagGames = await socialService.getTrendingGames('week', 'popular', 12);
-        console.log('📊 おすすめゲーム取得:', tagGames?.length || 0, '件');
         updateSection('tags', tagGames || [], false);
       } catch (err) {
-        console.error('❌ おすすめゲーム取得エラー:', err);
+        console.error('おすすめゲーム取得エラー:', err);
         updateSection('tags', [], false);
       }
 
       // ランダム
       try {
         const randomGames = await socialService.getRandomGames(12);
-        console.log('📊 ランダムゲーム取得:', randomGames?.length || 0, '件');
         updateSection('random', randomGames || [], false);
       } catch (err) {
-        console.error('❌ ランダムゲーム取得エラー:', err);
+        console.error('ランダムゲーム取得エラー:', err);
         updateSection('random', [], false);
       }
 
       // プレミアム
       updateSection('premium', [], false);
 
-      console.log('📊 フィードデータ取得完了');
-
     } catch (err) {
-      console.error('❌ フィードデータの取得に失敗:', err);
+      console.error('フィードデータの取得に失敗:', err);
     }
   }, [socialService, currentUser, updateSection]);
 
@@ -176,15 +169,15 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: '#0a0a0f',
+      backgroundColor: '#f8fafc',
       zIndex: 50,
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column' as const
     },
     header: {
-      backgroundColor: 'rgba(10, 10, 15, 0.9)',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
       padding: '16px 20px'
     },
     headerContent: {
@@ -198,16 +191,16 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      color: 'rgba(255, 255, 255, 0.7)',
+      color: '#374151',
       padding: '8px 12px',
       borderRadius: '8px',
       border: 'none',
-      background: 'rgba(255, 255, 255, 0.1)',
+      background: '#e5e7eb',
       cursor: 'pointer',
       fontSize: '14px'
     },
     title: {
-      color: 'white',
+      color: '#1f2937',
       fontWeight: 'bold',
       fontSize: '20px',
       margin: 0
@@ -216,14 +209,14 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       padding: '8px 12px',
       borderRadius: '8px',
       border: 'none',
-      background: 'rgba(255, 255, 255, 0.1)',
-      color: 'rgba(255, 255, 255, 0.7)',
+      background: '#e5e7eb',
+      color: '#374151',
       cursor: 'pointer',
       fontSize: '14px'
     },
     tabs: {
-      backgroundColor: 'rgba(10, 10, 15, 0.6)',
-      borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
       padding: '12px 20px',
       overflowX: 'auto' as const
     },
@@ -242,8 +235,8 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       border: 'none',
       background: isActive
         ? 'linear-gradient(to right, #a855f7, #ec4899)'
-        : 'rgba(255, 255, 255, 0.1)',
-      color: isActive ? 'white' : 'rgba(255, 255, 255, 0.6)',
+        : '#e5e7eb',
+      color: isActive ? 'white' : '#4b5563',
       cursor: 'pointer',
       fontSize: '14px',
       fontWeight: isActive ? 'bold' : 'normal',
@@ -264,16 +257,17 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       gap: '20px'
     },
     card: {
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      backgroundColor: '#ffffff',
       borderRadius: '16px',
       overflow: 'hidden',
-      border: '1px solid rgba(255, 255, 255, 0.1)',
+      border: '1px solid #e5e7eb',
       cursor: 'pointer',
-      transition: 'all 0.3s ease'
+      transition: 'all 0.3s ease',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
     },
     thumbnail: {
       aspectRatio: '16/9',
-      backgroundColor: 'rgba(168, 85, 247, 0.1)',
+      backgroundColor: '#f3e8ff',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -289,7 +283,7 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       padding: '16px'
     },
     cardTitle: {
-      color: 'white',
+      color: '#1f2937',
       fontSize: '16px',
       fontWeight: 'bold',
       marginBottom: '8px',
@@ -298,7 +292,7 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       whiteSpace: 'nowrap' as const
     },
     cardDescription: {
-      color: 'rgba(255, 255, 255, 0.5)',
+      color: '#6b7280',
       fontSize: '14px',
       marginBottom: '12px',
       display: '-webkit-box',
@@ -329,19 +323,19 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       fontWeight: 'bold'
     },
     authorName: {
-      color: 'rgba(255, 255, 255, 0.6)',
+      color: '#6b7280',
       fontSize: '13px'
     },
     stats: {
       display: 'flex',
       gap: '12px',
-      color: 'rgba(255, 255, 255, 0.4)',
+      color: '#9ca3af',
       fontSize: '12px'
     },
     loading: {
       textAlign: 'center' as const,
       padding: '60px 20px',
-      color: 'rgba(255, 255, 255, 0.6)'
+      color: '#6b7280'
     },
     empty: {
       textAlign: 'center' as const,
@@ -352,13 +346,13 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       marginBottom: '16px'
     },
     emptyTitle: {
-      color: 'white',
+      color: '#1f2937',
       fontSize: '20px',
       fontWeight: 'bold',
       marginBottom: '8px'
     },
     emptyText: {
-      color: 'rgba(255, 255, 255, 0.5)',
+      color: '#6b7280',
       fontSize: '14px'
     }
   };
@@ -452,12 +446,14 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
                       style={styles.card}
                       onClick={() => onGameSelect(game)}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.5)';
+                        e.currentTarget.style.borderColor = '#a855f7';
                         e.currentTarget.style.transform = 'translateY(-4px)';
+                        e.currentTarget.style.boxShadow = '0 10px 25px rgba(168, 85, 247, 0.2)';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                        e.currentTarget.style.borderColor = '#e5e7eb';
                         e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
                       }}
                     >
                       <div style={styles.thumbnail}>
