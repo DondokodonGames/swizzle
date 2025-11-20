@@ -62,9 +62,14 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       console.log('📊 フィードデータ取得開始');
 
       // トレンドゲーム
-      const trendingGames = await socialService.getTrendingGames('today', 'trending', 12);
-      console.log('📊 トレンドゲーム取得:', trendingGames?.length || 0, '件');
-      updateSection('trending', trendingGames, false);
+      try {
+        const trendingGames = await socialService.getTrendingGames('today', 'trending', 12);
+        console.log('📊 トレンドゲーム取得:', trendingGames?.length || 0, '件');
+        updateSection('trending', trendingGames || [], false);
+      } catch (err) {
+        console.error('❌ トレンドゲーム取得エラー:', err);
+        updateSection('trending', [], false);
+      }
 
       // フォロー中
       if (currentUser) {
@@ -119,14 +124,24 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       }
 
       // おすすめ
-      const tagGames = await socialService.getTrendingGames('week', 'popular', 12);
-      console.log('📊 おすすめゲーム取得:', tagGames?.length || 0, '件');
-      updateSection('tags', tagGames, false);
+      try {
+        const tagGames = await socialService.getTrendingGames('week', 'popular', 12);
+        console.log('📊 おすすめゲーム取得:', tagGames?.length || 0, '件');
+        updateSection('tags', tagGames || [], false);
+      } catch (err) {
+        console.error('❌ おすすめゲーム取得エラー:', err);
+        updateSection('tags', [], false);
+      }
 
       // ランダム
-      const randomGames = await socialService.getRandomGames(12);
-      console.log('📊 ランダムゲーム取得:', randomGames?.length || 0, '件');
-      updateSection('random', randomGames, false);
+      try {
+        const randomGames = await socialService.getRandomGames(12);
+        console.log('📊 ランダムゲーム取得:', randomGames?.length || 0, '件');
+        updateSection('random', randomGames || [], false);
+      } catch (err) {
+        console.error('❌ ランダムゲーム取得エラー:', err);
+        updateSection('random', [], false);
+      }
 
       // プレミアム
       updateSection('premium', [], false);
