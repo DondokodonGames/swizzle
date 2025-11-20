@@ -3,6 +3,7 @@
 // AdvancedRuleModal.tsx分割 - Step 2: 条件エディター分離
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { TriggerCondition, GameFlag } from '../../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
@@ -22,6 +23,7 @@ export const FlagConditionEditor: React.FC<FlagConditionEditorProps> = ({
   projectFlags,
   onUpdate
 }) => {
+  const { t } = useTranslation();
   const flagCondition = condition;
   
   return (
@@ -45,7 +47,7 @@ export const FlagConditionEditor: React.FC<FlagConditionEditorProps> = ({
         gap: DESIGN_TOKENS.spacing[2]
       }}>
         <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🚩</span>
-        フラグ条件詳細設定
+        {t('editor.flagCondition.title')}
       </h5>
 
       {/* フラグ選択 */}
@@ -57,7 +59,7 @@ export const FlagConditionEditor: React.FC<FlagConditionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          対象フラグ
+          {t('editor.flagCondition.targetFlagLabel')}
         </label>
         <select
           value={flagCondition.flagId}
@@ -72,10 +74,13 @@ export const FlagConditionEditor: React.FC<FlagConditionEditorProps> = ({
             outline: 'none'
           }}
         >
-          <option value="">フラグを選択</option>
+          <option value="">{t('editor.flagCondition.selectFlag')}</option>
           {projectFlags.map((flag) => (
             <option key={flag.id} value={flag.id}>
-              {flag.name} ({flag.initialValue ? 'ON' : 'OFF'}初期値)
+              {t('editor.flagCondition.flagWithInitial', {
+                name: flag.name,
+                status: flag.initialValue ? t('editor.flagCondition.initialOn') : t('editor.flagCondition.initialOff')
+              })}
             </option>
           ))}
         </select>
@@ -90,7 +95,7 @@ export const FlagConditionEditor: React.FC<FlagConditionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          条件タイプ
+          {t('editor.flagCondition.conditionTypeLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -136,9 +141,9 @@ export const FlagConditionEditor: React.FC<FlagConditionEditorProps> = ({
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.purple[800]
       }}>
-        💡 設定内容: {FLAG_CONDITION_OPTIONS.find(f => f.value === flagCondition.condition)?.description}
-        {flagCondition.flagId && projectFlags.find(f => f.id === flagCondition.flagId) && 
-          ` - 「${projectFlags.find(f => f.id === flagCondition.flagId)?.name}」フラグ`}
+        {t('editor.flagCondition.settingsSummaryTitle')}{FLAG_CONDITION_OPTIONS.find(f => f.value === flagCondition.condition)?.description}
+        {flagCondition.flagId && projectFlags.find(f => f.id === flagCondition.flagId) &&
+          t('editor.flagCondition.withFlag', { name: projectFlags.find(f => f.id === flagCondition.flagId)?.name })}
       </div>
     </ModernCard>
   );
