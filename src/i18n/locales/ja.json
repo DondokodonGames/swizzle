@@ -1140,6 +1140,21 @@
       "selectEffect": "エフェクトタイプを選択してください",
       "withIntensity": " - 強度{intensity}%",
       "forDuration": " - {seconds}秒間"
+    },
+    "soundAction": {
+      "title": "音再生詳細設定",
+      "soundSelectLabel": "音声選択",
+      "selectSound": "音声を選択",
+      "volumeLabel": "音量: {volume}%",
+      "volumeLevelLabel": "音量レベル:",
+      "volumePercent": "{volume}%",
+      "minVolume": "0%",
+      "maxVolume": "100%",
+      "previewButton": "プレビュー再生",
+      "previewNotice": "プレビュー再生機能は今後実装予定です",
+      "settingsSummaryTitle": "💡 設定内容: ",
+      "playSound": "「{name}」を{volume}%で再生",
+      "selectSoundPrompt": "音声を選択してください"
     }
   },
   "conditions": {

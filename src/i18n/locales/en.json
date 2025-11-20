@@ -1339,6 +1339,21 @@
       "selectEffect": "Please select an effect type",
       "withIntensity": " - Intensity {intensity}%",
       "forDuration": " - For {seconds}s"
+    },
+    "soundAction": {
+      "title": "Sound Playback Settings",
+      "soundSelectLabel": "Sound Selection",
+      "selectSound": "Select sound",
+      "volumeLabel": "Volume: {volume}%",
+      "volumeLevelLabel": "Volume Level:",
+      "volumePercent": "{volume}%",
+      "minVolume": "0%",
+      "maxVolume": "100%",
+      "previewButton": "Preview Playback",
+      "previewNotice": "Preview playback feature coming soon",
+      "settingsSummaryTitle": "💡 Settings: ",
+      "playSound": "Play \"{name}\" at {volume}% volume",
+      "selectSoundPrompt": "Please select a sound"
     }
   },
   "conditions": {

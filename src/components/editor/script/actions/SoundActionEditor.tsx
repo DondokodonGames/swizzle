@@ -3,6 +3,7 @@
 // AdvancedRuleModal.tsx分割 - Step 3: アクションエディター分離
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameAction } from '../../../../types/editor/GameScript';
 import { GameProject } from '../../../../types/editor/GameProject';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
@@ -24,8 +25,9 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
   onUpdate,
   onShowNotification
 }) => {
+  const { t } = useTranslation();
   const soundAction = action;
-  
+
   return (
     <ModernCard 
       variant="outlined" 
@@ -47,7 +49,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
         gap: DESIGN_TOKENS.spacing[2]
       }}>
         <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🔊</span>
-        音再生詳細設定
+        {t('editor.soundAction.title')}
       </h5>
 
       {/* SE選択 */}
@@ -59,7 +61,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          音声選択
+          {t('editor.soundAction.soundSelectLabel')}
         </label>
         <select
           value={soundAction.soundId}
@@ -74,7 +76,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
             outline: 'none'
           }}
         >
-          <option value="">音声を選択</option>
+          <option value="">{t('editor.soundAction.selectSound')}</option>
           {project.assets.audio?.se?.map((sound) => (
             <option key={sound.id} value={sound.id}>
               {sound.name}
@@ -92,7 +94,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          音量: {Math.round((soundAction.volume || 0.8) * 100)}%
+          {t('editor.soundAction.volumeLabel', { volume: Math.round((soundAction.volume || 0.8) * 100) })}
         </label>
         <input
           type="range"
@@ -117,8 +119,8 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
           color: DESIGN_TOKENS.colors.success[600],
           marginTop: DESIGN_TOKENS.spacing[1]
         }}>
-          <span>0%</span>
-          <span>100%</span>
+          <span>{t('editor.soundAction.minVolume')}</span>
+          <span>{t('editor.soundAction.maxVolume')}</span>
         </div>
       </div>
 
@@ -134,7 +136,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
           color: DESIGN_TOKENS.colors.success[800],
           fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
         }}>
-          音量レベル:
+          {t('editor.soundAction.volumeLevelLabel')}
         </span>
         <div style={{
           flex: 1,
@@ -157,7 +159,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
           minWidth: '40px',
           textAlign: 'right'
         }}>
-          {Math.round((soundAction.volume || 0.8) * 100)}%
+          {t('editor.soundAction.volumePercent', { volume: Math.round((soundAction.volume || 0.8) * 100) })}
         </span>
       </div>
 
@@ -168,7 +170,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
           size="sm"
           onClick={() => {
             // TODO: Phase C Step 2で実装予定
-            onShowNotification('info', 'プレビュー再生機能は今後実装予定です');
+            onShowNotification('info', t('editor.soundAction.previewNotice'));
           }}
           style={{
             borderColor: DESIGN_TOKENS.colors.success[200],
@@ -181,7 +183,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
           }}
         >
           <span>▶️</span>
-          <span>プレビュー再生</span>
+          <span>{t('editor.soundAction.previewButton')}</span>
         </ModernButton>
       </div>
 
@@ -192,10 +194,13 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.success[800]
       }}>
-        💡 設定内容: 
-        {soundAction.soundId 
-          ? `「${project.assets.audio?.se?.find(s => s.id === soundAction.soundId)?.name || '音声'}」を${Math.round((soundAction.volume || 0.8) * 100)}%で再生`
-          : '音声を選択してください'}
+        {t('editor.soundAction.settingsSummaryTitle')}
+        {soundAction.soundId
+          ? t('editor.soundAction.playSound', {
+              name: project.assets.audio?.se?.find(s => s.id === soundAction.soundId)?.name || t('editor.soundAction.selectSound'),
+              volume: Math.round((soundAction.volume || 0.8) * 100)
+            })
+          : t('editor.soundAction.selectSoundPrompt')}
       </div>
     </ModernCard>
   );
