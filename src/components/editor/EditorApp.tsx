@@ -173,7 +173,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
 
       // 再度確認（安全措置）
       if (!testPlayContainerRef.current) {
-        throw new Error('テストプレイ画面の準備に失敗しました');
+        throw new Error(t('editor.app.testPlayScreenFailed'));
       }
 
       console.log('✅ テストプレイ画面準備完了、ゲーム実行開始');
@@ -185,11 +185,11 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         (result: GameExecutionResult) => {
           setTestPlayResult(result);
           setIsTestPlaying(false);
-          
+
           if (result.success) {
-            showNotification('success', `テストプレイ完了！スコア: ${result.score || 0}`);
+            showNotification('success', t('editor.app.testPlayComplete', { score: result.score || 0 }));
           } else {
-            showNotification('error', `テストプレイエラー: ${result.errors.join(', ')}`);
+            showNotification('error', t('editor.app.testPlayError', { error: result.errors.join(', ') }));
           }
 
           // プレイ統計更新
@@ -213,7 +213,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     } catch (error: any) {
       console.error('テストプレイエラー:', error);
       setIsTestPlaying(false);
-      showNotification('error', `テストプレイに失敗しました: ${error.message}`);
+      showNotification('error', t('editor.app.testPlayFailed', { error: error.message }));
       setMode('editor');
     }
   }, [currentProject, getValidationErrors, updateProject, showNotification]);
@@ -223,8 +223,8 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     setMode('editor');
     setTestPlayResult(null);
     gameBridge.current.reset();
-    showNotification('info', 'エディターに戻りました');
-  }, [showNotification]);
+    showNotification('info', t('editor.app.returnedToEditor'));
+  }, [showNotification, t]);
 
   // 🔧 完全修正: プロジェクト公開処理にSupabase連携追加
 const handlePublish = useCallback(async () => {
@@ -237,18 +237,18 @@ const handlePublish = useCallback(async () => {
   }
 
   if (!user) {
-    showNotification('error', 'ログインが必要です。公開するにはまずログインしてください。');
+    showNotification('error', t('editor.app.publishRequiresLogin'));
     return;
   }
 
   const errors = getValidationErrors();
   if (errors.length > 0) {
-    showNotification('error', `公開できません: ${errors[0]}`);
+    showNotification('error', t('editor.app.publishCannotWithErrors', { error: errors[0] }));
     return;
   }
 
   try {
-    showNotification('info', '公開処理を開始しています...');
+    showNotification('info', t('editor.app.publishingStarted'));
 
     // 1. 公開前に自動保存（ローカル）
     await saveProject();
@@ -304,18 +304,18 @@ const handlePublish = useCallback(async () => {
 
   } catch (error: any) {
     console.error('Publish failed:', error);
-    
+
     // エラーの種類に応じた詳細メッセージ
-    let errorMessage = '公開に失敗しました';
-    
+    let errorMessage = t('editor.app.publishFailed');
+
     if (error.message?.includes('データベース保存に失敗')) {
-      errorMessage = 'ゲームの公開に失敗しました。ネットワーク接続を確認して再試行してください。';
+      errorMessage = t('editor.app.publishFailedNetwork');
     } else if (error.message?.includes('認証')) {
-      errorMessage = '認証エラーが発生しました。再ログインしてから再試行してください。';
+      errorMessage = t('editor.app.publishFailedAuth');
     } else if (error.message) {
-      errorMessage = `公開に失敗しました: ${error.message}`;
+      errorMessage = t('editor.app.publishFailedWithError', { error: error.message });
     }
-    
+
     showNotification('error', errorMessage);
     
     // 公開状態をロールバック
@@ -335,32 +335,32 @@ const handlePublish = useCallback(async () => {
   // エディターから戻る処理
   const handleBackToSelector = useCallback(async () => {
     if (hasUnsavedChanges) {
-      const shouldSave = window.confirm('未保存の変更があります。保存してから戻りますか？\n\n「OK」→保存して戻る\n「キャンセル」→保存せずに戻る');
-      
+      const shouldSave = window.confirm(t('editor.app.confirmSaveAndLeave'));
+
       if (shouldSave) {
         try {
           await handleSave();
-          showNotification('success', '保存完了');
+          showNotification('success', t('editor.app.savedComplete'));
         } catch (error) {
           console.error('Save failed:', error);
         }
       }
     }
-    
+
     setMode('selector');
     gameBridge.current.reset();
-    showNotification('info', 'プロジェクト一覧に戻りました');
-  }, [hasUnsavedChanges, handleSave, showNotification]);
+    showNotification('info', t('editor.app.returnedToList'));
+  }, [hasUnsavedChanges, handleSave, showNotification, t]);
 
   // アプリ全体を閉じる処理
   const handleExitToMain = useCallback(async () => {
     if (hasUnsavedChanges) {
-      const shouldSave = window.confirm('未保存の変更があります。保存してから終了しますか？\n\n「OK」→保存して終了\n「キャンセル」→保存せずに終了');
-      
+      const shouldSave = window.confirm(t('editor.app.confirmSaveAndExit'));
+
       if (shouldSave) {
         try {
           await handleSave();
-          showNotification('success', '保存完了');
+          showNotification('success', t('editor.app.savedComplete'));
           setTimeout(() => {
             if (onClose) onClose();
           }, 1000);

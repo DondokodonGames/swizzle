@@ -103,7 +103,7 @@ const getAudioInfo = (file: File): Promise<{
     });
     
     audio.addEventListener('error', () => {
-      reject(new Error('音声ファイルの読み込みに失敗しました'));
+      reject(new Error('Failed to load audio file'));
       URL.revokeObjectURL(url);
     });
     
@@ -195,7 +195,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
       const file = files[0];
       
       if (!file || !file.type.startsWith('audio/')) {
-        alert('音声ファイルを選択してください');
+        alert(t('editor.assets.errorSelectAudioFile'));
         return;
       }
       
@@ -205,14 +205,14 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
       // 時間制限チェック
       const maxDuration = type === 'bgm' ? EDITOR_LIMITS.AUDIO.BGM_MAX_DURATION : EDITOR_LIMITS.AUDIO.SE_MAX_DURATION;
       if (audioInfo.duration > maxDuration) {
-        alert(`音声が長すぎます。最大${maxDuration}秒までです。`);
+        alert(t('editor.assets.errorAudioTooLong', { duration: maxDuration }));
         return;
       }
 
       // 🔧 修正箇所2: 容量制限チェック（210行目）
       // ✅ 修正: オプショナルチェーン追加
       if (type === 'se' && (project.assets.audio?.se?.length || 0) >= EDITOR_LIMITS.PROJECT.MAX_SE_COUNT) {
-        alert(`効果音は最大${EDITOR_LIMITS.PROJECT.MAX_SE_COUNT}個まで追加できます`);
+        alert(t('editor.assets.errorMaxSoundEffects', { max: EDITOR_LIMITS.PROJECT.MAX_SE_COUNT }));
         return;
       }
 
@@ -284,7 +284,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
       reader.readAsDataURL(file);
     } catch (error) {
       console.error('音声アップロードエラー:', error);
-      alert('音声ファイルのアップロードに失敗しました');
+      alert(t('editor.assets.errorUploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -309,7 +309,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
       setPlayingId(audio.id);
     }).catch(error => {
       console.error('音声再生エラー:', error);
-      alert('音声の再生に失敗しました');
+      alert(t('editor.assets.errorPlaybackFailed'));
     });
   }, [playingId, volume]);
 
@@ -441,7 +441,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
       {/* 容量表示 */}
       <div className="mb-6 p-4 bg-gray-50 rounded-xl">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-gray-700">音声容量</span>
+          <span className="text-sm font-medium text-gray-700">{t('editor.assets.audioCapacity')}</span>
           <span className="text-sm text-gray-600">
             {formatFileSize(audioSize)} / {formatFileSize(maxAudioSize)}
           </span>
@@ -460,8 +460,8 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
       {/* タブ切り替え */}
       <div className="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-xl">
         {[
-          { id: 'bgm' as AudioType, label: 'BGM', icon: '🎵' },
-          { id: 'se' as AudioType, label: '効果音', icon: '🔊' }
+          { id: 'bgm' as AudioType, label: t('editor.assets.bgm'), icon: '🎵' },
+          { id: 'se' as AudioType, label: t('editor.assets.se'), icon: '🔊' }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -481,7 +481,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
       {/* マスター音量 */}
       <div className="mb-6 p-4 bg-white rounded-xl border border-gray-200">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium">🔊 マスター音量</span>
+          <span className="text-sm font-medium">🔊 {t('editor.assets.masterVolume')}</span>
           <span className="text-sm text-gray-600">{Math.round(volume * 100)}%</span>
         </div>
         <input
@@ -499,8 +499,8 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
       {activeAudioType === 'bgm' && (
         <div>
           <h3 className="text-lg font-semibold mb-4 flex items-center">
-            🎵 BGM
-            <span className="ml-2 text-sm text-gray-500">(1曲まで)</span>
+            🎵 {t('editor.assets.bgm')}
+            <span className="ml-2 text-sm text-gray-500">{t('editor.assets.bgmUpTo1')}</span>
           </h3>
 
           {/* ✅ 修正: オプショナルチェーン追加 */}
@@ -522,7 +522,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
                         : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
                     }`}
                   >
-                    {playingId === project.assets.audio.bgm.id ? '⏹️ 停止' : '▶️ 再生'}
+                    {playingId === project.assets.audio.bgm.id ? `⏹️ ${t('editor.assets.stop')}` : `▶️ ${t('editor.assets.play')}`}
                   </button>
                   <button
                     onClick={() => setEditingId(
@@ -530,13 +530,13 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
                     )}
                     className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
                   >
-                    ⚙️ 設定
+                    ⚙️ {t('editor.assets.settings')}
                   </button>
                   <button
                     onClick={() => deleteAudio('bgm')}
                     className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
                   >
-                    🗑️ 削除
+                    🗑️ {t('common.delete')}
                   </button>
                 </div>
               </div>
@@ -551,7 +551,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
                 />
                 {playingId === project.assets.audio.bgm.id && (
                   <div className="mt-2 text-sm text-gray-600">
-                    再生時間: {formatTime(currentTime)} / {formatTime(project.assets.audio.bgm.duration)}
+                    {t('editor.assets.playbackTime')} {formatTime(currentTime)} / {formatTime(project.assets.audio.bgm.duration)}
                   </div>
                 )}
               </div>
@@ -561,7 +561,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
                 <div className="border-t pt-4 space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      音量 ({Math.round(project.assets.audio.bgm.volume * 100)}%)
+                      {t('editor.assets.volume')} ({Math.round(project.assets.audio.bgm.volume * 100)}%)
                     </label>
                     <input
                       type="range"
@@ -580,7 +580,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
                         checked={project.assets.audio.bgm.loop}
                         onChange={(e) => updateAudioProperty('bgm', project.assets.audio.bgm!.id, 'loop', e.target.checked)}
                       />
-                      <span className="text-sm">ループ再生</span>
+                      <span className="text-sm">{t('editor.assets.loopPlayback')}</span>
                     </label>
                   </div>
                 </div>
@@ -596,15 +596,15 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
             >
               <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-400 hover:bg-purple-50 transition-colors">
                 <div className="text-6xl mb-4">🎵</div>
-                <p className="text-lg font-medium text-gray-700 mb-2">BGMをアップロード</p>
+                <p className="text-lg font-medium text-gray-700 mb-2">{t('editor.assets.uploadBGM')}</p>
                 <p className="text-sm text-gray-500 mb-4">
-                  音声ファイルをドラッグ&ドロップするか、クリックして選択
+                  {t('editor.assets.dragDropOrClick')}
                 </p>
                 <div className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium inline-block">
                   {uploading ? t('common.processing') : t('common.selectFile')}
                 </div>
                 <p className="text-xs text-gray-400 mt-4">
-                  最大{EDITOR_LIMITS.AUDIO.BGM_MAX_DURATION}秒 • {formatFileSize(EDITOR_LIMITS.AUDIO.BGM_MAX_SIZE)}まで
+                  {t('editor.assets.maxDurationSize', { duration: EDITOR_LIMITS.AUDIO.BGM_MAX_DURATION, size: formatFileSize(EDITOR_LIMITS.AUDIO.BGM_MAX_SIZE) })}
                 </p>
               </div>
             </FileUploader>
@@ -616,7 +616,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
       {activeAudioType === 'se' && (
         <div>
           <h3 className="text-lg font-semibold mb-4 flex items-center">
-            🔊 効果音
+            🔊 {t('editor.assets.se')}
             <span className="ml-2 text-sm text-gray-500">
               {/* ✅ 修正: オプショナルチェーン追加 */}
               ({project.assets.audio?.se?.length || 0}/{EDITOR_LIMITS.PROJECT.MAX_SE_COUNT})
@@ -666,7 +666,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
                   <div className="border-t mt-4 pt-4 space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        効果音名
+                        {t('editor.assets.soundEffectName')}
                       </label>
                       <input
                         type="text"
@@ -677,7 +677,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        音量 ({Math.round(se.volume * 100)}%)
+                        {t('editor.assets.volume')} ({Math.round(se.volume * 100)}%)
                       </label>
                       <input
                         type="range"
@@ -707,15 +707,15 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
             >
               <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-purple-400 hover:bg-purple-50 transition-colors">
                 <div className="text-4xl mb-3">🔊</div>
-                <p className="text-lg font-medium text-gray-700 mb-2">効果音を追加</p>
+                <p className="text-lg font-medium text-gray-700 mb-2">{t('editor.assets.addSoundEffect')}</p>
                 <p className="text-sm text-gray-500 mb-3">
-                  音声ファイルをドラッグ&ドロップ
+                  {t('editor.assets.dragDropAudio')}
                 </p>
                 <div className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium inline-block">
                   {uploading ? t('common.processing') : t('common.selectFile')}
                 </div>
                 <p className="text-xs text-gray-400 mt-3">
-                  最大{EDITOR_LIMITS.AUDIO.SE_MAX_DURATION}秒 • {formatFileSize(EDITOR_LIMITS.AUDIO.SE_MAX_SIZE)}まで
+                  {t('editor.assets.maxDurationSize', { duration: EDITOR_LIMITS.AUDIO.SE_MAX_DURATION, size: formatFileSize(EDITOR_LIMITS.AUDIO.SE_MAX_SIZE) })}
                 </p>
               </div>
             </FileUploader>
@@ -745,12 +745,12 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
 
       {/* 音声コントロール説明 */}
       <div className="mt-8 p-4 bg-blue-50 rounded-xl">
-        <h4 className="font-medium text-blue-800 mb-2">💡 音声のヒント</h4>
+        <h4 className="font-medium text-blue-800 mb-2">💡 {t('editor.assets.audioHints')}</h4>
         <ul className="text-sm text-blue-700 space-y-1">
-          <li>• BGMは自動ループ、効果音は1回再生されます</li>
-          <li>• BGMは最大{EDITOR_LIMITS.AUDIO.BGM_MAX_DURATION}秒、効果音は最大{EDITOR_LIMITS.AUDIO.SE_MAX_DURATION}秒まで</li>
-          <li>• 対応形式: MP3, WAV, OGG</li>
-          <li>• 音量は0%〜100%で調整できます</li>
+          <li>• {t('editor.assets.hint1')}</li>
+          <li>• {t('editor.assets.hint2', { bgmDuration: EDITOR_LIMITS.AUDIO.BGM_MAX_DURATION, seDuration: EDITOR_LIMITS.AUDIO.SE_MAX_DURATION })}</li>
+          <li>• {t('editor.assets.hint3')}</li>
+          <li>• {t('editor.assets.hint4')}</li>
         </ul>
       </div>
     </div>
