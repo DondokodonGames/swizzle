@@ -28,7 +28,7 @@ interface GameScore {
 
 interface BridgeScreenProps {
   currentGame: PublicGame;
-  nextGame: PublicGame;
+  nextGame: PublicGame | null;
   score: GameScore | null;
   timeLeft: number;
   totalGames: number;
@@ -446,7 +446,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
             onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
             onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
-            {nextGame.thumbnail ? (
+            {nextGame?.thumbnail ? (
               <img
                 src={nextGame.thumbnail}
                 alt={nextGame.title}
