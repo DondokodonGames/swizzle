@@ -576,7 +576,117 @@
         "publishedAt": "{date}"
       }
     },
-    "preview": "プレビュー"
+    "preview": "プレビュー",
+    "rulePreview": {
+      "conditionLabels": {
+        "touch": "タッチ",
+        "time": "時間",
+        "collision": "衝突",
+        "animation": "アニメ",
+        "flag": "フラグ",
+        "gameState": "ゲーム状態",
+        "counter": "カウンター",
+        "random": "ランダム"
+      },
+      "actionLabels": {
+        "success": "ゲームクリア",
+        "failure": "ゲームオーバー",
+        "playSound": "音再生",
+        "move": "移動",
+        "effect": "エフェクト",
+        "show": "表示",
+        "hide": "非表示",
+        "setFlag": "フラグ設定",
+        "switchAnimation": "アニメ変更",
+        "counterAction": "カウンター操作"
+      },
+      "timeDetails": {
+        "secondsAfter": "{seconds}秒後",
+        "timeRange": "時間範囲"
+      },
+      "touchDetails": {
+        "tap": "タップ",
+        "release": "リリース",
+        "hold": "長押し",
+        "holdDuration": "時間: {duration}秒",
+        "targetThis": "対象: このオブジェクト",
+        "targetStage": "対象: ステージ",
+        "shapeRect": "矩形",
+        "shapeCircle": "円形"
+      },
+      "collisionDetails": {
+        "enter": "衝突開始時",
+        "stay": "衝突中",
+        "exit": "衝突終了時",
+        "detectionHitbox": "当たり判定",
+        "detectionPixel": "ピクセル判定",
+        "targetBackground": "対象: 背景",
+        "targetStageRange": "対象: ステージ範囲",
+        "shapeRect": "矩形",
+        "shapeCircle": "円形"
+      },
+      "animationDetails": {
+        "animationEnd": "アニメーション終了時"
+      },
+      "flagDetails": {
+        "flag": "フラグ: {name}",
+        "notSelected": "未選択"
+      },
+      "gameStateDetails": {
+        "playing": "プレイ中",
+        "clear": "クリア",
+        "gameOver": "ゲームオーバー",
+        "unknown": "不明"
+      },
+      "soundDetails": {
+        "sound": "音声: {name}",
+        "notSelected": "未選択",
+        "selectSound": "音声選択"
+      },
+      "resultDetails": {
+        "gameClear": "ゲームをクリア状態にする",
+        "gameOver": "ゲームオーバー状態にする"
+      },
+      "moveDetails": {
+        "straight": "直線移動",
+        "bounce": "バウンド移動",
+        "teleport": "テレポート",
+        "random": "ランダム移動",
+        "stop": "停止",
+        "swap": "位置交換",
+        "approach": "接近",
+        "orbit": "周回",
+        "unknown": "不明"
+      },
+      "effectDetails": {
+        "blink": "点滅",
+        "shake": "振動",
+        "rotate": "回転",
+        "unknown": "不明"
+      },
+      "showHideDetails": {
+        "show": "オブジェクトを表示",
+        "hide": "オブジェクトを非表示"
+      },
+      "flagActionDetails": {
+        "setFlag": "フラグ: {name}",
+        "toggleFlag": "フラグ: {name}",
+        "toggleValue": "値: 反転"
+      },
+      "animationActionDetails": {
+        "switchTo": "切り替え先: {name}"
+      },
+      "general": {
+        "noCondition": "条件なし",
+        "noAction": "アクションなし",
+        "allConditions": "すべて",
+        "anyCondition": "いずれか",
+        "noRules": "ルールを設定してプレビューを確認",
+        "noRulesSet": "ルールが設定されていません",
+        "frameNumber": "フレーム{number}",
+        "animationEnd": "終了時"
+      }
+    }
   },
   "conditions": {
     "touch": {

@@ -3,6 +3,7 @@
 // 🔧 TypeScriptエラー修正版（5件のエラーを修正）
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
 import { GameProject } from '../../../types/editor/GameProject';
 import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
@@ -32,29 +33,6 @@ interface RulePreviewProps {
   compact?: boolean;
 }
 
-// 条件ライブラリ（AdvancedRuleModalから移植・位置条件削除）
-const CONDITION_LIBRARY = [
-  { type: 'touch', label: 'タッチ', icon: '👆' },
-  { type: 'time', label: '時間', icon: '⏰' },
-  // 位置条件削除: 衝突条件で代用可能
-  { type: 'collision', label: '衝突', icon: '💥' },
-  { type: 'animation', label: 'アニメ', icon: '🎬' },
-  { type: 'flag', label: 'フラグ', icon: '🚩' }
-];
-
-// アクションライブラリ（AdvancedRuleModalから移植）
-const ACTION_LIBRARY = [
-  { type: 'success', label: 'ゲームクリア', icon: '🎉' },
-  { type: 'failure', label: 'ゲームオーバー', icon: '💀' },
-  { type: 'playSound', label: '音再生', icon: '🔊' },
-  { type: 'move', label: '移動', icon: '🏃' },
-  { type: 'effect', label: 'エフェクト', icon: '✨' },
-  { type: 'show', label: '表示', icon: '👁️' },
-  { type: 'hide', label: '非表示', icon: '🫥' },
-  { type: 'setFlag', label: 'フラグ設定', icon: '🚩' },
-  { type: 'switchAnimation', label: 'アニメ変更', icon: '🔄' }
-];
-
 export const RulePreview: React.FC<RulePreviewProps> = ({
   currentRule,
   objectRules = [],
@@ -64,6 +42,29 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
   showTitle = true,
   compact = false
 }) => {
+  const { t } = useTranslation();
+
+  // 条件ライブラリ（多言語化対応）
+  const CONDITION_LIBRARY = React.useMemo(() => [
+    { type: 'touch', label: t('editor.rulePreview.conditionLabels.touch'), icon: '👆' },
+    { type: 'time', label: t('editor.rulePreview.conditionLabels.time'), icon: '⏰' },
+    { type: 'collision', label: t('editor.rulePreview.conditionLabels.collision'), icon: '💥' },
+    { type: 'animation', label: t('editor.rulePreview.conditionLabels.animation'), icon: '🎬' },
+    { type: 'flag', label: t('editor.rulePreview.conditionLabels.flag'), icon: '🚩' }
+  ], [t]);
+
+  // アクションライブラリ（多言語化対応）
+  const ACTION_LIBRARY = React.useMemo(() => [
+    { type: 'success', label: t('editor.rulePreview.actionLabels.success'), icon: '🎉' },
+    { type: 'failure', label: t('editor.rulePreview.actionLabels.failure'), icon: '💀' },
+    { type: 'playSound', label: t('editor.rulePreview.actionLabels.playSound'), icon: '🔊' },
+    { type: 'move', label: t('editor.rulePreview.actionLabels.move'), icon: '🏃' },
+    { type: 'effect', label: t('editor.rulePreview.actionLabels.effect'), icon: '✨' },
+    { type: 'show', label: t('editor.rulePreview.actionLabels.show'), icon: '👁️' },
+    { type: 'hide', label: t('editor.rulePreview.actionLabels.hide'), icon: '🫥' },
+    { type: 'setFlag', label: t('editor.rulePreview.actionLabels.setFlag'), icon: '🚩' },
+    { type: 'switchAnimation', label: t('editor.rulePreview.actionLabels.switchAnimation'), icon: '🔄' }
+  ], [t]);
 
   // 条件表示ヘルパー（簡易版）
   const getConditionDisplay = (condition: TriggerCondition) => {
@@ -75,14 +76,14 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
         details = condition.touchType === 'hold' ? `${condition.holdDuration || 1}秒長押し` : condition.touchType;
         break;
       case 'time':
-        details = condition.timeType === 'exact' ? `${condition.seconds}秒後` : '時間範囲';
+        details = condition.timeType === 'exact' ? t('editor.rulePreview.timeDetails.secondsAfter', { seconds: condition.seconds }) : t('editor.rulePreview.timeDetails.timeRange');
         break;
       // 位置条件削除: 衝突条件で代用可能
       case 'collision':
         details = `${condition.target}と${condition.collisionType}`;
         break;
       case 'animation':
-        details = condition.condition === 'end' ? '終了時' : `フレーム${condition.frameNumber}`;
+        details = condition.condition === 'end' ? t('editor.rulePreview.general.animationEnd') : t('editor.rulePreview.general.frameNumber', { number: condition.frameNumber });
         break;
       case 'flag':
         const flag = projectFlags.find(f => f.id === condition.flagId);
@@ -101,19 +102,19 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
     switch (condition.type) {
       case 'touch':
         // タッチタイプ
-        const touchTypeLabel = condition.touchType === 'down' ? 'タップ' :
-                               condition.touchType === 'up' ? 'リリース' : '長押し';
+        const touchTypeLabel = condition.touchType === 'down' ? t('editor.rulePreview.touchDetails.tap') :
+                               condition.touchType === 'up' ? t('editor.rulePreview.touchDetails.release') : t('editor.rulePreview.touchDetails.hold');
         details.push(`種類: ${touchTypeLabel}`);
         if (condition.touchType === 'hold') {
-          details.push(`時間: ${condition.holdDuration || 1}秒`);
+          details.push(t('editor.rulePreview.touchDetails.holdDuration', { duration: condition.holdDuration || 1 }));
         }
         // ターゲット
         if (condition.target === 'self') {
-          details.push('対象: このオブジェクト');
+          details.push(t('editor.rulePreview.touchDetails.targetThis'));
         } else if (condition.target === 'stage') {
-          details.push('対象: ステージ');
+          details.push(t('editor.rulePreview.touchDetails.targetStage'));
           if (condition.region) {
-            const shape = condition.region.shape === 'rect' ? '矩形' : '円形';
+            const shape = condition.region.shape === 'rect' ? t('editor.rulePreview.touchDetails.shapeRect') : t('editor.rulePreview.touchDetails.shapeCircle');
             details.push(`範囲: ${shape}（中心: ${(condition.region.x * 100).toFixed(0)}%, ${(condition.region.y * 100).toFixed(0)}%）`);
           }
         } else {
@@ -130,19 +131,19 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
         break;
       case 'collision':
         // 衝突タイプ
-        const collisionTypeLabel = condition.collisionType === 'enter' ? '衝突開始時' :
-                                   condition.collisionType === 'stay' ? '衝突中' : '衝突終了時';
+        const collisionTypeLabel = condition.collisionType === 'enter' ? t('editor.rulePreview.collisionDetails.enter') :
+                                   condition.collisionType === 'stay' ? t('editor.rulePreview.collisionDetails.stay') : t('editor.rulePreview.collisionDetails.exit');
         details.push(`種類: ${collisionTypeLabel}`);
         // 判定方式
-        const checkModeLabel = condition.checkMode === 'hitbox' ? '当たり判定' : 'ピクセル判定';
+        const checkModeLabel = condition.checkMode === 'hitbox' ? t('editor.rulePreview.collisionDetails.detectionHitbox') : t('editor.rulePreview.collisionDetails.detectionPixel');
         details.push(`判定: ${checkModeLabel}`);
         // ターゲット
         if (condition.target === 'background') {
-          details.push('対象: 背景');
+          details.push(t('editor.rulePreview.collisionDetails.targetBackground'));
         } else if (condition.target === 'stage') {
-          details.push('対象: ステージ範囲');
+          details.push(t('editor.rulePreview.collisionDetails.targetStageRange'));
           if (condition.region) {
-            const shape = condition.region.shape === 'rect' ? '矩形' : '円形';
+            const shape = condition.region.shape === 'rect' ? t('editor.rulePreview.collisionDetails.shapeRect') : t('editor.rulePreview.collisionDetails.shapeCircle');
             details.push(`範囲: ${shape}（中心: ${(condition.region.x * 100).toFixed(0)}%, ${(condition.region.y * 100).toFixed(0)}%）`);
           }
         } else {
@@ -151,9 +152,9 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
         break;
       case 'animation':
         if (condition.condition === 'end') {
-          details.push('アニメーション終了時');
+          details.push(t('editor.rulePreview.animationDetails.animationEnd'));
         } else {
-          details.push(`フレーム${condition.frameNumber}到達時`);
+          details.push(t('editor.rulePreview.general.frameNumber', { number: condition.frameNumber }) + '到達時');
         }
         break;
       case 'flag':

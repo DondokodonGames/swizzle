@@ -777,7 +777,117 @@
         "publishedAt": "at {date}"
       }
     },
-    "preview": "Preview"
+    "preview": "Preview",
+    "rulePreview": {
+      "conditionLabels": {
+        "touch": "Touch",
+        "time": "Time",
+        "collision": "Collision",
+        "animation": "Animation",
+        "flag": "Flag",
+        "gameState": "Game State",
+        "counter": "Counter",
+        "random": "Random"
+      },
+      "actionLabels": {
+        "success": "Game Clear",
+        "failure": "Game Over",
+        "playSound": "Play Sound",
+        "move": "Move",
+        "effect": "Effect",
+        "show": "Show",
+        "hide": "Hide",
+        "setFlag": "Set Flag",
+        "switchAnimation": "Switch Animation",
+        "counterAction": "Counter Action"
+      },
+      "timeDetails": {
+        "secondsAfter": "After {seconds}s",
+        "timeRange": "Time Range"
+      },
+      "touchDetails": {
+        "tap": "Tap",
+        "release": "Release",
+        "hold": "Hold",
+        "holdDuration": "Duration: {duration}s",
+        "targetThis": "Target: This Object",
+        "targetStage": "Target: Stage",
+        "shapeRect": "Rectangle",
+        "shapeCircle": "Circle"
+      },
+      "collisionDetails": {
+        "enter": "On Collision Enter",
+        "stay": "While Colliding",
+        "exit": "On Collision Exit",
+        "detectionHitbox": "Hitbox Detection",
+        "detectionPixel": "Pixel Detection",
+        "targetBackground": "Target: Background",
+        "targetStageRange": "Target: Stage Range",
+        "shapeRect": "Rectangle",
+        "shapeCircle": "Circle"
+      },
+      "animationDetails": {
+        "animationEnd": "On Animation End"
+      },
+      "flagDetails": {
+        "flag": "Flag: {name}",
+        "notSelected": "Not Selected"
+      },
+      "gameStateDetails": {
+        "playing": "Playing",
+        "clear": "Clear",
+        "gameOver": "Game Over",
+        "unknown": "Unknown"
+      },
+      "soundDetails": {
+        "sound": "Sound: {name}",
+        "notSelected": "Not Selected",
+        "selectSound": "Select Sound"
+      },
+      "resultDetails": {
+        "gameClear": "Set game to clear state",
+        "gameOver": "Set game to game over state"
+      },
+      "moveDetails": {
+        "straight": "Straight",
+        "bounce": "Bounce",
+        "teleport": "Teleport",
+        "random": "Random",
+        "stop": "Stop",
+        "swap": "Swap Position",
+        "approach": "Approach",
+        "orbit": "Orbit",
+        "unknown": "Unknown"
+      },
+      "effectDetails": {
+        "blink": "Blink",
+        "shake": "Shake",
+        "rotate": "Rotate",
+        "unknown": "Unknown"
+      },
+      "showHideDetails": {
+        "show": "Show Object",
+        "hide": "Hide Object"
+      },
+      "flagActionDetails": {
+        "setFlag": "Flag: {name}",
+        "toggleFlag": "Flag: {name}",
+        "toggleValue": "Value: Toggle"
+      },
+      "animationActionDetails": {
+        "switchTo": "Switch to: {name}"
+      },
+      "general": {
+        "noCondition": "No Condition",
+        "noAction": "No Action",
+        "allConditions": "All",
+        "anyCondition": "Any",
+        "noRules": "Set rules to see preview",
+        "noRulesSet": "No rules set",
+        "frameNumber": "Frame {number}",
+        "animationEnd": "End"
+      }
+    }
   },
   "conditions": {
     "touch": {
