@@ -51,10 +51,10 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   const [gameTimeElapsed, setGameTimeElapsed] = useState(0);
   const [gameDuration, setGameDuration] = useState<number | null>(null);
 
-  // 最適化: ゲームIDリストと次のゲームプリロード
-  const [allGameIds, setAllGameIds] = useState<string[]>([]);
+  // 最適化: 全ゲームをキャッシュしてプリロードを高速化
+  const [allValidGames, setAllValidGames] = useState<PublicGame[]>([]);
   const [nextGame, setNextGame] = useState<PublicGame | null>(null);
-  const [isPreloading, setIsPreloading] = useState(false);
+  const [usedGameIds, setUsedGameIds] = useState<Set<string>>(new Set());
 
   // ==================== サービス ====================
   const socialService = useMemo(() => SocialService.getInstance(), []);
@@ -144,9 +144,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           return;
         }
 
-        // ゲームIDリストを保存
-        const gameIds = validGames.map(game => game.id);
-        setAllGameIds(gameIds);
+        // 全有効ゲームをキャッシュ
+        setAllValidGames(validGames);
 
         // ランダムに1つのゲームを選択
         const randomIndex = Math.floor(Math.random() * validGames.length);
@@ -154,8 +153,9 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
         console.log(`🎲 ランダムに選択: "${initialGame.title}" (${validGames.length}件中)`);
 
-        // 初期ゲームを設定
+        // 初期ゲームを設定し、使用済みとしてマーク
         setPublicGames([initialGame]);
+        setUsedGameIds(new Set([initialGame.id]));
         setCurrentIndex(0);
         setGameState('playing');
 
@@ -169,45 +169,29 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     fetchInitialGame();
   }, [socialService]);
 
-  // ==================== 次のゲームをプリロード ====================
-  const preloadNextGame = useCallback(async () => {
-    if (allGameIds.length <= 1 || isPreloading) return;
+  // ==================== 次のゲームをプリロード（キャッシュから即座に選択） ====================
+  const preloadNextGame = useCallback(() => {
+    if (allValidGames.length <= 1) return;
 
-    setIsPreloading(true);
-    try {
-      // 現在のゲーム以外からランダムに選択
-      const currentGameId = publicGames[currentIndex]?.id;
-      const availableIds = allGameIds.filter(id => id !== currentGameId);
+    // 未使用のゲームからランダムに選択
+    const currentGameId = publicGames[currentIndex]?.id;
+    const availableGames = allValidGames.filter(game =>
+      game.id !== currentGameId && !usedGameIds.has(game.id)
+    );
 
-      if (availableIds.length === 0) return;
+    // 全ゲーム使用済みの場合はリセット（現在のゲーム以外）
+    const gamesToChooseFrom = availableGames.length > 0
+      ? availableGames
+      : allValidGames.filter(game => game.id !== currentGameId);
 
-      const randomId = availableIds[Math.floor(Math.random() * availableIds.length)];
+    if (gamesToChooseFrom.length === 0) return;
 
-      console.log('🔄 次のゲームをプリロード中...');
+    const randomIndex = Math.floor(Math.random() * gamesToChooseFrom.length);
+    const nextGameData = gamesToChooseFrom[randomIndex];
 
-      // 次のゲームを取得
-      const result = await socialService.getPublicGames(
-        {
-          sortBy: 'latest',
-          category: 'all',
-          search: undefined
-        },
-        1,
-        100
-      );
-
-      const nextGameData = result.games.find(game => game.id === randomId);
-
-      if (nextGameData && nextGameData.projectData) {
-        setNextGame(nextGameData);
-        console.log(`✅ 次のゲームをプリロード完了: "${nextGameData.title}"`);
-      }
-    } catch (err) {
-      console.warn('次のゲームのプリロードに失敗:', err);
-    } finally {
-      setIsPreloading(false);
-    }
-  }, [allGameIds, publicGames, currentIndex, isPreloading, socialService]);
+    setNextGame(nextGameData);
+    console.log(`✅ 次のゲームを選択: "${nextGameData.title}" (キャッシュから)`);
+  }, [allValidGames, publicGames, currentIndex, usedGameIds]);
 
   // ブリッジ画面表示時に次のゲームをプリロード
   useEffect(() => {
@@ -337,6 +321,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     if (nextGame) {
       setPublicGames([nextGame]);
       setCurrentIndex(0);
+      // 使用済みとしてマーク
+      setUsedGameIds(prev => new Set([...prev, nextGame.id]));
       setNextGame(null);
       console.log(`🎮 プリロードしたゲームを開始: "${nextGame.title}"`);
     } else if (publicGames.length > 0) {
@@ -710,10 +696,10 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         {gameState === 'bridge' && (
           <BridgeScreen
             currentGame={currentGame}
-            nextGame={nextGame || undefined}
+            nextGame={nextGame}
             score={currentScore}
             timeLeft={bridgeTimeLeft}
-            totalGames={allGameIds.length}
+            totalGames={allValidGames.length}
             currentIndex={currentIndex}
             onNextGame={handleNextGame}
             onPreviousGame={handlePreviousGame}
