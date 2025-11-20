@@ -56,6 +56,9 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   const [nextGame, setNextGame] = useState<PublicGame | null>(null);
   const [usedGameIds, setUsedGameIds] = useState<Set<string>>(new Set());
 
+  // AuthModal表示中の一時停止
+  const [paused, setPaused] = useState(false);
+
   // ==================== サービス ====================
   const socialService = useMemo(() => SocialService.getInstance(), []);
   const bridge = useMemo(() => EditorGameBridge.getInstance(), []);
@@ -93,6 +96,25 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
     return () => {
       window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, []);
+
+  // ==================== AuthModal一時停止 ====================
+  useEffect(() => {
+    const handleAuthModalOpened = () => {
+      setPaused(true);
+    };
+
+    const handleAuthModalClosed = () => {
+      setPaused(false);
+    };
+
+    window.addEventListener('authModalOpened', handleAuthModalOpened);
+    window.addEventListener('authModalClosed', handleAuthModalClosed);
+
+    return () => {
+      window.removeEventListener('authModalOpened', handleAuthModalOpened);
+      window.removeEventListener('authModalClosed', handleAuthModalClosed);
     };
   }, []);
 
@@ -222,7 +244,19 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // ==================== ブリッジタイマー ====================
   useEffect(() => {
     if (gameState === 'bridge') {
-      setBridgeTimeLeft(20); // 5秒→20秒に変更
+      // ゲーム状態がbridgeに変わった時だけ初期値をセット
+      if (!paused) {
+        // pausedでない場合のみタイマーをセット（初回のみ20秒にリセット）
+      }
+
+      // 一時停止中はタイマーを動かさない
+      if (paused) {
+        if (bridgeTimerRef.current) {
+          clearInterval(bridgeTimerRef.current);
+          bridgeTimerRef.current = null;
+        }
+        return;
+      }
 
       // 1秒ごとにカウントダウン
       bridgeTimerRef.current = setInterval(() => {
@@ -241,6 +275,13 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           clearInterval(bridgeTimerRef.current);
         }
       };
+    }
+  }, [gameState, paused]);
+
+  // bridgeTimeLeftの初期化（gameStateがbridgeになったときのみ）
+  useEffect(() => {
+    if (gameState === 'bridge') {
+      setBridgeTimeLeft(20);
     }
   }, [gameState]);
 
