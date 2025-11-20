@@ -36,6 +36,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
     fetchCurrentUser()
   }, [])
 
+  // isOwnProfileを別途計算（profileとcurrentUserの両方が揃ったとき）
+  useEffect(() => {
+    if (profile && currentUser) {
+      setIsOwnProfile(currentUser.id === profile.id)
+    } else {
+      setIsOwnProfile(false)
+    }
+  }, [profile, currentUser])
+
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -63,9 +72,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
           if (subData) {
             setSubscription(subData as Subscription)
           }
-
-          // 自分のプロフィールかチェック
-          setIsOwnProfile(currentUser?.id === propUserId)
         } else if (username) {
           // usernameからプロフィールを検索
           const { data, error } = await supabase
@@ -87,9 +93,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
           if (subData) {
             setSubscription(subData as Subscription)
           }
-
-          // 自分のプロフィールかチェック
-          setIsOwnProfile(currentUser?.id === data.id)
         } else {
           throw new Error('ユーザー情報が指定されていません')
         }
@@ -102,7 +105,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
     }
 
     loadProfile()
-  }, [username, propUserId, currentUser])
+  }, [username, propUserId])
 
   // ログアウト処理
   const handleLogout = async () => {

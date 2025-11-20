@@ -147,6 +147,15 @@ const AuthModal: React.FC<AuthModalProps> = ({
     }
   }
 
+  // モーダルが開いたときと閉じたときにイベントを発火
+  useEffect(() => {
+    if (isOpen) {
+      window.dispatchEvent(new CustomEvent('authModalOpened'))
+    } else {
+      window.dispatchEvent(new CustomEvent('authModalClosed'))
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
   // 共通スタイル
