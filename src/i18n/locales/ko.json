@@ -22,7 +22,75 @@
     "processing": "처리 중...",
     "selectFile": "파일 선택",
     "on": "켜기",
-    "off": "끄기"
+    "off": "끄기",
+    "frames": {
+      "frame1": {
+        "label": "프레임 1",
+        "description": "첫 번째 프레임"
+      },
+      "frame2": {
+        "label": "프레임 2",
+        "description": "두 번째 프레임"
+      },
+      "frame3": {
+        "label": "프레임 3",
+        "description": "세 번째 프레임"
+      },
+      "frame4": {
+        "label": "프레임 4",
+        "description": "네 번째 프레임"
+      },
+      "frame5": {
+        "label": "프레임 5",
+        "description": "다섯 번째 프레임"
+      },
+      "frame6": {
+        "label": "프레임 6",
+        "description": "여섯 번째 프레임"
+      },
+      "frame7": {
+        "label": "프레임 7",
+        "description": "일곱 번째 프레임"
+      },
+      "frame8": {
+        "label": "프레임 8",
+        "description": "여덟 번째 프레임"
+      }
+    },
+    "animations": {
+      "animation1": {
+        "label": "애니메이션 1",
+        "description": "첫 번째 애니메이션"
+      },
+      "animation2": {
+        "label": "애니메이션 2",
+        "description": "두 번째 애니메이션"
+      },
+      "animation3": {
+        "label": "애니메이션 3",
+        "description": "세 번째 애니메이션"
+      },
+      "animation4": {
+        "label": "애니메이션 4",
+        "description": "네 번째 애니메이션"
+      },
+      "animation5": {
+        "label": "애니메이션 5",
+        "description": "다섯 번째 애니메이션"
+      },
+      "animation6": {
+        "label": "애니메이션 6",
+        "description": "여섯 번째 애니메이션"
+      },
+      "animation7": {
+        "label": "애니메이션 7",
+        "description": "일곱 번째 애니메이션"
+      },
+      "animation8": {
+        "label": "애니메이션 8",
+        "description": "여덟 번째 애니메이션"
+      }
+    }
   },
   "errors": {
     "generic": "예기치 않은 오류가 발생했습니다",
@@ -134,7 +202,51 @@
         "optimization": "큰 파일은 자동으로 최적화됩니다",
         "autoShow": "추가 시 자동으로 표시로 설정됨",
         "future": "🎬 곧 출시: 다중 프레임 애니메이션 배경"
-      }
+      },
+      "addFrame": "프레임 추가",
+      "animation": "애니메이션",
+      "animationSettings": "애니메이션 설정",
+      "animationSettingsDesc": "프레임 전환 속도 및 루프 설정",
+      "animationTipsTitle": "애니메이션 팁",
+      "autoLoop": "자동 루프",
+      "autoPlayFromStart": "게임 시작 시 자동 재생",
+      "autoPlayOnStart": "자동 재생",
+      "autoStart": "자동 시작",
+      "bgmHints": "BGM은 최대 1곡. mp3/wav 지원. 게임 전체의 BGM으로 사용됩니다.",
+      "bgmMaxDurationSize": "최대 {duration}초, {size}까지",
+      "bgmSettings": "BGM 설정",
+      "canAddFrames": "최대 8프레임까지 추가할 수 있습니다",
+      "dragDropAudioMax": "오디오 파일을 드래그 앤 드롭 (최대 {max}개)",
+      "dragDropOrClickAudio": "오디오 파일을 드래그 앤 드롭하거나 클릭하여 선택",
+      "frameCount": "{count}프레임",
+      "gameIntegration": "게임 연동",
+      "gameIntegrationDesc": "Script 탭에서 규칙 설정",
+      "multiFileUploadSupport": "다중 파일 일괄 업로드 지원",
+      "multipleFrames": "다중 프레임",
+      "multipleFramesDesc": "최대 8프레임 애니메이션",
+      "notPlaced": "미배치",
+      "nowPlaying": "재생 중",
+      "pingPongPlayback": "왕복 재생",
+      "placed": "배치됨",
+      "previewFeature": "미리보기 기능",
+      "previewFeatureDesc": "애니메이션 동작 확인",
+      "ruleControlOnly": "규칙으로 제어",
+      "seMaxDurationSize": "파일당 최대 {duration}초, {size}까지",
+      "selectFile": "파일 선택",
+      "setPlayConditionsInScript": "Script 탭에서 규칙 설정 시 재생 조건 지정",
+      "singlePlayNoLoop": "1회 재생 (루프 없음)",
+      "soundEffectHints": "효과음은 최대 8개. mp3/wav 지원.",
+      "soundEffectMaxLimit": "효과음은 최대 {max}개까지 추가할 수 있습니다",
+      "soundEffectNameEditable": "효과음 이름 (편집 가능)",
+      "soundEffectSettings": "효과음 설정",
+      "soundEffects": "효과음",
+      "soundTitle": "음성",
+      "supportedFormats": "지원 형식: {formats}",
+      "uploadObjectImage": "오브젝트 이미지 업로드",
+      "objectName": "오브젝트 이름",
+      "optimization": "최적화",
+      "optimizationDesc": "이미지를 자동으로 압축하여 파일 크기 축소",
+      "speed": "속도"
     },
     "script": {
       "title": "규칙 설정",
@@ -424,6 +536,165 @@
       }
     },
     "preview": "미리보기",
+    "rulePreview": {
+      "title": "규칙 미리보기",
+      "conditionLabels": {
+        "touch": "터치",
+        "time": "시간",
+        "collision": "충돌",
+        "animation": "애니메이션",
+        "flag": "플래그",
+        "gameState": "게임 상태",
+        "counter": "카운터",
+        "random": "랜덤"
+      },
+      "actionLabels": {
+        "success": "게임 클리어",
+        "failure": "게임 오버",
+        "playSound": "소리 재생",
+        "move": "이동",
+        "effect": "효과",
+        "show": "표시",
+        "hide": "숨기기",
+        "setFlag": "플래그 설정",
+        "switchAnimation": "애니메이션 전환",
+        "counterAction": "카운터 액션"
+      },
+      "timeDetails": {
+        "secondsAfter": "{seconds}초 후",
+        "timeRange": "시간 범위",
+        "exactTime": "{seconds}초 후",
+        "rangeTime": "{min}초에서 {max}초 사이"
+      },
+      "touchDetails": {
+        "tap": "탭",
+        "release": "릴리스",
+        "hold": "홀드",
+        "holdDuration": "지속 시간: {duration}초",
+        "holdSecond": "{duration}초 동안 홀드",
+        "targetThis": "대상: 이 오브젝트",
+        "targetStage": "대상: 스테이지",
+        "target": "대상: {target}",
+        "shapeRect": "사각형",
+        "shapeCircle": "원형",
+        "range": "범위: {shape} (중심: {x}%, {y}%)",
+        "type": "유형: {type}"
+      },
+      "collisionDetails": {
+        "enter": "충돌 시작",
+        "stay": "충돌 중",
+        "exit": "충돌 종료",
+        "detectionHitbox": "히트박스 감지",
+        "detectionPixel": "픽셀 감지",
+        "targetBackground": "대상: 배경",
+        "targetStageRange": "대상: 스테이지 범위",
+        "target": "대상: {target}",
+        "shapeRect": "사각형",
+        "shapeCircle": "원형",
+        "range": "범위: {shape} (중심: {x}%, {y}%)",
+        "type": "유형: {type}",
+        "detection": "감지: {mode}",
+        "collisionWith": "{target}와(과) {collisionType}"
+      },
+      "animationDetails": {
+        "animationEnd": "애니메이션 종료 시",
+        "frameReached": "도달 시"
+      },
+      "flagDetails": {
+        "flag": "플래그: {name}",
+        "notSelected": "선택 안 됨",
+        "condition": "조건: {condition}",
+        "flagCondition": "{name} {condition}"
+      },
+      "gameStateDetails": {
+        "playing": "플레이 중",
+        "clear": "클리어",
+        "gameOver": "게임 오버",
+        "unknown": "알 수 없음",
+        "state": "상태: {state}"
+      },
+      "soundDetails": {
+        "sound": "소리: {name}",
+        "notSelected": "선택 안 됨",
+        "selectSound": "소리 선택",
+        "volume": "볼륨: {volume}%"
+      },
+      "resultDetails": {
+        "gameClear": "게임을 클리어 상태로 설정",
+        "gameOver": "게임을 게임 오버 상태로 설정"
+      },
+      "moveDetails": {
+        "straight": "직선",
+        "bounce": "바운스",
+        "teleport": "순간 이동",
+        "random": "랜덤",
+        "wander": "랜덤",
+        "stop": "정지",
+        "swap": "위치 교환",
+        "approach": "접근",
+        "orbit": "공전",
+        "unknown": "알 수 없음",
+        "type": "유형: {type}",
+        "speed": "속도: {speed}px/초",
+        "duration": "지속 시간: {duration}초",
+        "moveType": "{type} 이동"
+      },
+      "effectDetails": {
+        "blink": "깜빡임",
+        "flash": "플래시",
+        "shake": "흔들림",
+        "rotate": "회전",
+        "unknown": "알 수 없음",
+        "type": "유형: {type}",
+        "duration": "지속 시간: {duration}초",
+        "intensity": "강도: {intensity}%"
+      },
+      "showHideDetails": {
+        "show": "오브젝트 표시",
+        "hide": "오브젝트 숨기기",
+        "fadeIn": "페이드 인: {duration}초",
+        "fadeOut": "페이드 아웃: {duration}초"
+      },
+      "flagActionDetails": {
+        "setFlag": "플래그: {name}",
+        "toggleFlag": "플래그: {name}",
+        "toggleValue": "값: 반전",
+        "value": "값: {value}",
+        "flagValue": "{name} {value}"
+      },
+      "animationActionDetails": {
+        "switchTo": "전환: {name}",
+        "animationNumber": "애니메이션 {number}",
+        "switchToAnimation": "애니메이션 {number}로 전환"
+      },
+      "multipleRules": {
+        "header": "📋 이 오브젝트에는 {count}개의 규칙이 설정되어 있습니다",
+        "ruleNumber": "규칙 {number}",
+        "enabled": "✅ 활성화",
+        "disabled": "⏸️ 비활성화"
+      },
+      "singleRule": {
+        "flowAll": "🔥 모든 조건이 충족될 때 → ⚡ 액션을 순서대로 실행",
+        "flowAny": "🔥 조건 중 하나가 충족될 때 → ⚡ 액션을 순서대로 실행",
+        "flowSingle": "🔥 조건이 충족될 때 → ⚡ 액션을 순서대로 실행",
+        "conditionsTitle": "트리거 조건",
+        "conditionsCount": "트리거 조건 ({count}개)",
+        "actionsTitle": "액션",
+        "actionsCount": "액션 ({count}개)",
+        "conditionNumber": "조건 {number}: {label}",
+        "actionNumber": "액션 {number}: {label}"
+      },
+      "general": {
+        "noCondition": "조건 없음",
+        "noAction": "액션 없음",
+        "allConditions": "모두",
+        "anyCondition": "하나",
+        "noRules": "규칙을 설정하여 미리보기 확인",
+        "noRulesSet": "규칙이 설정되지 않음",
+        "frameNumber": "프레임 {number}",
+        "animationEnd": "종료"
+      }
+    },
     "app": {
       "loginRequired": "로그인 필요",
       "loginRequiredMessage": "게임 에디터를 사용하려면 등록하거나 로그인해야 합니다.",

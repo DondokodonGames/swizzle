@@ -254,7 +254,51 @@
         "optimization": "I file di grandi dimensioni verranno ottimizzati automaticamente",
         "autoShow": "Impostato automaticamente come visibile quando aggiunto",
         "future": "🎬 Prossimamente: Sfondi animati multi-frame"
-      }
+      },
+      "addFrame": "Aggiungi fotogramma",
+      "animation": "Animazione",
+      "animationSettings": "Impostazioni animazione",
+      "animationSettingsDesc": "Frequenza fotogrammi e impostazioni loop",
+      "animationTipsTitle": "Suggerimenti animazione",
+      "autoLoop": "Loop automatico",
+      "autoPlayFromStart": "Riproduzione automatica all'avvio del gioco",
+      "autoPlayOnStart": "Riproduzione automatica",
+      "autoStart": "Avvio automatico",
+      "bgmHints": "Fino a 1 BGM. Supporta mp3/wav. Usato come musica di sottofondo per l'intero gioco.",
+      "bgmMaxDurationSize": "Max {duration}s, {size}",
+      "bgmSettings": "Impostazioni BGM",
+      "canAddFrames": "È possibile aggiungere fino a 8 fotogrammi",
+      "dragDropAudioMax": "Trascina e rilascia file audio (max {max})",
+      "dragDropOrClickAudio": "Trascina e rilascia o fai clic per selezionare il file audio",
+      "frameCount": "{count} fotogramma/i",
+      "gameIntegration": "Integrazione gioco",
+      "gameIntegrationDesc": "Imposta regole nella scheda Script",
+      "multiFileUploadSupport": "Caricamento multiplo file supportato",
+      "multipleFrames": "Fotogrammi multipli",
+      "multipleFramesDesc": "Animazione fino a 8 fotogrammi",
+      "notPlaced": "Non posizionato",
+      "nowPlaying": "In riproduzione",
+      "pingPongPlayback": "Riproduzione ping-pong",
+      "placed": "Posizionato",
+      "previewFeature": "Funzione anteprima",
+      "previewFeatureDesc": "Controlla comportamento animazione",
+      "ruleControlOnly": "Solo controllo regole",
+      "seMaxDurationSize": "Max {duration}s, {size} per file",
+      "selectFile": "Seleziona file",
+      "setPlayConditionsInScript": "Imposta condizioni di riproduzione durante la configurazione delle regole nella scheda Script",
+      "singlePlayNoLoop": "Riproduzione singola (senza loop)",
+      "soundEffectHints": "Fino a 8 effetti sonori. Supporta mp3/wav.",
+      "soundEffectMaxLimit": "È possibile aggiungere fino a {max} effetti sonori",
+      "soundEffectNameEditable": "Nome effetto sonoro (modificabile)",
+      "soundEffectSettings": "Impostazioni effetto sonoro",
+      "soundEffects": "Effetti sonori",
+      "soundTitle": "Audio",
+      "supportedFormats": "Supportati: {formats}",
+      "uploadObjectImage": "Carica immagine oggetto",
+      "objectName": "Nome oggetto",
+      "optimization": "Ottimizzazione",
+      "optimizationDesc": "Comprimi automaticamente le immagini per ridurre le dimensioni del file",
+      "speed": "Velocità"
     },
     "script": {
       "title": "Impostazioni regole",
@@ -543,7 +587,166 @@
         "publishedAt": "il {date}"
       }
     },
-    "preview": "Anteprima"
+    "preview": "Anteprima",
+    "rulePreview": {
+      "title": "Anteprima regola",
+      "conditionLabels": {
+        "touch": "Tocco",
+        "time": "Tempo",
+        "collision": "Collisione",
+        "animation": "Animazione",
+        "flag": "Flag",
+        "gameState": "Stato gioco",
+        "counter": "Contatore",
+        "random": "Casuale"
+      },
+      "actionLabels": {
+        "success": "Vittoria",
+        "failure": "Game Over",
+        "playSound": "Riproduci suono",
+        "move": "Muovi",
+        "effect": "Effetto",
+        "show": "Mostra",
+        "hide": "Nascondi",
+        "setFlag": "Imposta flag",
+        "switchAnimation": "Cambia animazione",
+        "counterAction": "Azione contatore"
+      },
+      "timeDetails": {
+        "secondsAfter": "Dopo {seconds}s",
+        "timeRange": "Intervallo temporale",
+        "exactTime": "Dopo {seconds} secondi",
+        "rangeTime": "Tra {min}s e {max}s"
+      },
+      "touchDetails": {
+        "tap": "Tocco",
+        "release": "Rilascio",
+        "hold": "Tieni premuto",
+        "holdDuration": "Durata: {duration}s",
+        "holdSecond": "Tieni premuto per {duration}s",
+        "targetThis": "Obiettivo: Questo oggetto",
+        "targetStage": "Obiettivo: Stage",
+        "target": "Obiettivo: {target}",
+        "shapeRect": "Rettangolo",
+        "shapeCircle": "Cerchio",
+        "range": "Intervallo: {shape} (Centro: {x}%, {y}%)",
+        "type": "Tipo: {type}"
+      },
+      "collisionDetails": {
+        "enter": "All'inizio della collisione",
+        "stay": "Durante la collisione",
+        "exit": "Alla fine della collisione",
+        "detectionHitbox": "Rilevamento hitbox",
+        "detectionPixel": "Rilevamento pixel",
+        "targetBackground": "Obiettivo: Sfondo",
+        "targetStageRange": "Obiettivo: Intervallo stage",
+        "target": "Obiettivo: {target}",
+        "shapeRect": "Rettangolo",
+        "shapeCircle": "Cerchio",
+        "range": "Intervallo: {shape} (Centro: {x}%, {y}%)",
+        "type": "Tipo: {type}",
+        "detection": "Rilevamento: {mode}",
+        "collisionWith": "{target} e {collisionType}"
+      },
+      "animationDetails": {
+        "animationEnd": "Alla fine dell'animazione",
+        "frameReached": "Al raggiungimento"
+      },
+      "flagDetails": {
+        "flag": "Flag: {name}",
+        "notSelected": "Non selezionato",
+        "condition": "Condizione: {condition}",
+        "flagCondition": "{name} {condition}"
+      },
+      "gameStateDetails": {
+        "playing": "In gioco",
+        "clear": "Vittoria",
+        "gameOver": "Game Over",
+        "unknown": "Sconosciuto",
+        "state": "Stato: {state}"
+      },
+      "soundDetails": {
+        "sound": "Suono: {name}",
+        "notSelected": "Non selezionato",
+        "selectSound": "Seleziona suono",
+        "volume": "Volume: {volume}%"
+      },
+      "resultDetails": {
+        "gameClear": "Imposta gioco in stato vittoria",
+        "gameOver": "Imposta gioco in stato game over"
+      },
+      "moveDetails": {
+        "straight": "Dritto",
+        "bounce": "Rimbalzo",
+        "teleport": "Teletrasporto",
+        "random": "Casuale",
+        "wander": "Casuale",
+        "stop": "Ferma",
+        "swap": "Scambia posizione",
+        "approach": "Avvicinati",
+        "orbit": "Orbita",
+        "unknown": "Sconosciuto",
+        "type": "Tipo: {type}",
+        "speed": "Velocità: {speed}px/s",
+        "duration": "Durata: {duration}s",
+        "moveType": "Movimento {type}"
+      },
+      "effectDetails": {
+        "blink": "Lampeggio",
+        "flash": "Flash",
+        "shake": "Scuotimento",
+        "rotate": "Rotazione",
+        "unknown": "Sconosciuto",
+        "type": "Tipo: {type}",
+        "duration": "Durata: {duration}s",
+        "intensity": "Intensità: {intensity}%"
+      },
+      "showHideDetails": {
+        "show": "Mostra oggetto",
+        "hide": "Nascondi oggetto",
+        "fadeIn": "Dissolvenza in entrata: {duration}s",
+        "fadeOut": "Dissolvenza in uscita: {duration}s"
+      },
+      "flagActionDetails": {
+        "setFlag": "Flag: {name}",
+        "toggleFlag": "Flag: {name}",
+        "toggleValue": "Valore: Inverti",
+        "value": "Valore: {value}",
+        "flagValue": "{name} {value}"
+      },
+      "animationActionDetails": {
+        "switchTo": "Passa a: {name}",
+        "animationNumber": "Animazione {number}",
+        "switchToAnimation": "Passa all'animazione {number}"
+      },
+      "multipleRules": {
+        "header": "📋 Questo oggetto ha {count} regole configurate",
+        "ruleNumber": "Regola {number}",
+        "enabled": "✅ Attivato",
+        "disabled": "⏸️ Disattivato"
+      },
+      "singleRule": {
+        "flowAll": "🔥 Quando tutte le condizioni sono soddisfatte → ⚡ Esegui azioni in ordine",
+        "flowAny": "🔥 Quando qualsiasi condizione è soddisfatta → ⚡ Esegui azioni in ordine",
+        "flowSingle": "🔥 Quando la condizione è soddisfatta → ⚡ Esegui azioni in ordine",
+        "conditionsTitle": "Condizioni di attivazione",
+        "conditionsCount": "Condizioni di attivazione ({count})",
+        "actionsTitle": "Azioni",
+        "actionsCount": "Azioni ({count})",
+        "conditionNumber": "Condizione {number}: {label}",
+        "actionNumber": "Azione {number}: {label}"
+      },
+      "general": {
+        "noCondition": "Nessuna condizione",
+        "noAction": "Nessuna azione",
+        "allConditions": "Tutte",
+        "anyCondition": "Qualsiasi",
+        "noRules": "Imposta regole per vedere l'anteprima",
+        "noRulesSet": "Nessuna regola impostata",
+        "frameNumber": "Fotogramma {number}",
+        "animationEnd": "Fine"
+      }
+    }
   },
   "conditions": {
     "touch": {

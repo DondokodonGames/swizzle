@@ -254,7 +254,51 @@
         "optimization": "Les fichiers volumineux seront automatiquement optimisés",
         "autoShow": "Automatiquement défini comme visible lors de l'ajout",
         "future": "🎬 À venir: Arrière-plans animés multi-images"
-      }
+      },
+      "addFrame": "Ajouter une image",
+      "animation": "Animation",
+      "animationSettings": "Paramètres d'animation",
+      "animationSettingsDesc": "Fréquence d'images et paramètres de boucle",
+      "animationTipsTitle": "Conseils d'animation",
+      "autoLoop": "Boucle automatique",
+      "autoPlayFromStart": "Lecture automatique au démarrage du jeu",
+      "autoPlayOnStart": "Lecture automatique",
+      "autoStart": "Démarrage automatique",
+      "bgmHints": "Jusqu'à 1 BGM. Formats mp3/wav pris en charge. Utilisé comme musique de fond pour l'ensemble du jeu.",
+      "bgmMaxDurationSize": "Max {duration}s, {size}",
+      "bgmSettings": "Paramètres BGM",
+      "canAddFrames": "Jusqu'à 8 images peuvent être ajoutées",
+      "dragDropAudioMax": "Glissez-déposez des fichiers audio (max {max})",
+      "dragDropOrClickAudio": "Glissez-déposez ou cliquez pour sélectionner un fichier audio",
+      "frameCount": "{count} image(s)",
+      "gameIntegration": "Intégration du jeu",
+      "gameIntegrationDesc": "Définir les règles dans l'onglet Script",
+      "multiFileUploadSupport": "Téléchargement de plusieurs fichiers pris en charge",
+      "multipleFrames": "Images multiples",
+      "multipleFramesDesc": "Animation jusqu'à 8 images",
+      "notPlaced": "Non placé",
+      "nowPlaying": "En cours de lecture",
+      "pingPongPlayback": "Lecture ping-pong",
+      "placed": "Placé",
+      "previewFeature": "Fonction d'aperçu",
+      "previewFeatureDesc": "Vérifier le comportement de l'animation",
+      "ruleControlOnly": "Contrôle par règles uniquement",
+      "seMaxDurationSize": "Max {duration}s, {size} par fichier",
+      "selectFile": "Sélectionner un fichier",
+      "setPlayConditionsInScript": "Définir les conditions de lecture lors de la configuration des règles dans l'onglet Script",
+      "singlePlayNoLoop": "Lecture unique (sans boucle)",
+      "soundEffectHints": "Jusqu'à 8 effets sonores. Formats mp3/wav pris en charge.",
+      "soundEffectMaxLimit": "Jusqu'à {max} effets sonores peuvent être ajoutés",
+      "soundEffectNameEditable": "Nom de l'effet sonore (modifiable)",
+      "soundEffectSettings": "Paramètres des effets sonores",
+      "soundEffects": "Effets sonores",
+      "soundTitle": "Audio",
+      "supportedFormats": "Formats pris en charge: {formats}",
+      "uploadObjectImage": "Télécharger l'image de l'objet",
+      "objectName": "Nom de l'objet",
+      "optimization": "Optimisation",
+      "optimizationDesc": "Compresser automatiquement les images pour réduire la taille du fichier",
+      "speed": "Vitesse"
     },
     "script": {
       "title": "Paramètres des règles",
@@ -543,7 +587,166 @@
         "publishedAt": "le {date}"
       }
     },
-    "preview": "Aperçu"
+    "preview": "Aperçu",
+    "rulePreview": {
+      "title": "Aperçu des règles",
+      "conditionLabels": {
+        "touch": "Toucher",
+        "time": "Temps",
+        "collision": "Collision",
+        "animation": "Animation",
+        "flag": "Drapeau",
+        "gameState": "État du jeu",
+        "counter": "Compteur",
+        "random": "Aléatoire"
+      },
+      "actionLabels": {
+        "success": "Victoire",
+        "failure": "Game Over",
+        "playSound": "Jouer son",
+        "move": "Déplacer",
+        "effect": "Effet",
+        "show": "Afficher",
+        "hide": "Masquer",
+        "setFlag": "Définir drapeau",
+        "switchAnimation": "Changer animation",
+        "counterAction": "Action compteur"
+      },
+      "timeDetails": {
+        "secondsAfter": "Après {seconds}s",
+        "timeRange": "Plage horaire",
+        "exactTime": "Après {seconds} secondes",
+        "rangeTime": "Entre {min}s et {max}s"
+      },
+      "touchDetails": {
+        "tap": "Appui",
+        "release": "Relâchement",
+        "hold": "Maintien",
+        "holdDuration": "Durée: {duration}s",
+        "holdSecond": "Maintien pendant {duration}s",
+        "targetThis": "Cible: Cet objet",
+        "targetStage": "Cible: Scène",
+        "target": "Cible: {target}",
+        "shapeRect": "Rectangle",
+        "shapeCircle": "Cercle",
+        "range": "Portée: {shape} (Centre: {x}%, {y}%)",
+        "type": "Type: {type}"
+      },
+      "collisionDetails": {
+        "enter": "Au début de la collision",
+        "stay": "Pendant la collision",
+        "exit": "À la fin de la collision",
+        "detectionHitbox": "Détection hitbox",
+        "detectionPixel": "Détection pixel",
+        "targetBackground": "Cible: Arrière-plan",
+        "targetStageRange": "Cible: Zone de scène",
+        "target": "Cible: {target}",
+        "shapeRect": "Rectangle",
+        "shapeCircle": "Cercle",
+        "range": "Portée: {shape} (Centre: {x}%, {y}%)",
+        "type": "Type: {type}",
+        "detection": "Détection: {mode}",
+        "collisionWith": "{target} et {collisionType}"
+      },
+      "animationDetails": {
+        "animationEnd": "À la fin de l'animation",
+        "frameReached": "Atteint"
+      },
+      "flagDetails": {
+        "flag": "Drapeau: {name}",
+        "notSelected": "Non sélectionné",
+        "condition": "Condition: {condition}",
+        "flagCondition": "{name} {condition}"
+      },
+      "gameStateDetails": {
+        "playing": "En cours",
+        "clear": "Victoire",
+        "gameOver": "Game Over",
+        "unknown": "Inconnu",
+        "state": "État: {state}"
+      },
+      "soundDetails": {
+        "sound": "Son: {name}",
+        "notSelected": "Non sélectionné",
+        "selectSound": "Sélectionner un son",
+        "volume": "Volume: {volume}%"
+      },
+      "resultDetails": {
+        "gameClear": "Définir le jeu en état de victoire",
+        "gameOver": "Définir le jeu en état de game over"
+      },
+      "moveDetails": {
+        "straight": "Ligne droite",
+        "bounce": "Rebond",
+        "teleport": "Téléportation",
+        "random": "Aléatoire",
+        "wander": "Aléatoire",
+        "stop": "Arrêt",
+        "swap": "Échange de position",
+        "approach": "Approche",
+        "orbit": "Orbite",
+        "unknown": "Inconnu",
+        "type": "Type: {type}",
+        "speed": "Vitesse: {speed}px/s",
+        "duration": "Durée: {duration}s",
+        "moveType": "Mouvement {type}"
+      },
+      "effectDetails": {
+        "blink": "Clignotement",
+        "flash": "Flash",
+        "shake": "Secousse",
+        "rotate": "Rotation",
+        "unknown": "Inconnu",
+        "type": "Type: {type}",
+        "duration": "Durée: {duration}s",
+        "intensity": "Intensité: {intensity}%"
+      },
+      "showHideDetails": {
+        "show": "Afficher l'objet",
+        "hide": "Masquer l'objet",
+        "fadeIn": "Apparition en fondu: {duration}s",
+        "fadeOut": "Disparition en fondu: {duration}s"
+      },
+      "flagActionDetails": {
+        "setFlag": "Drapeau: {name}",
+        "toggleFlag": "Drapeau: {name}",
+        "toggleValue": "Valeur: Basculer",
+        "value": "Valeur: {value}",
+        "flagValue": "{name} {value}"
+      },
+      "animationActionDetails": {
+        "switchTo": "Changer vers: {name}",
+        "animationNumber": "Animation {number}",
+        "switchToAnimation": "Changer vers Animation {number}"
+      },
+      "multipleRules": {
+        "header": "📋 Cet objet a {count} règles configurées",
+        "ruleNumber": "Règle {number}",
+        "enabled": "✅ Activée",
+        "disabled": "⏸️ Désactivée"
+      },
+      "singleRule": {
+        "flowAll": "🔥 Quand toutes les conditions sont remplies → ⚡ Exécuter les actions dans l'ordre",
+        "flowAny": "🔥 Quand n'importe quelle condition est remplie → ⚡ Exécuter les actions dans l'ordre",
+        "flowSingle": "🔥 Quand la condition est remplie → ⚡ Exécuter les actions dans l'ordre",
+        "conditionsTitle": "Conditions de déclenchement",
+        "conditionsCount": "Conditions de déclenchement ({count})",
+        "actionsTitle": "Actions",
+        "actionsCount": "Actions ({count})",
+        "conditionNumber": "Condition {number}: {label}",
+        "actionNumber": "Action {number}: {label}"
+      },
+      "general": {
+        "noCondition": "Aucune condition",
+        "noAction": "Aucune action",
+        "allConditions": "Toutes",
+        "anyCondition": "N'importe laquelle",
+        "noRules": "Définir des règles pour voir l'aperçu",
+        "noRulesSet": "Aucune règle définie",
+        "frameNumber": "Image {number}",
+        "animationEnd": "Fin"
+      }
+    }
   },
   "conditions": {
     "touch": {
