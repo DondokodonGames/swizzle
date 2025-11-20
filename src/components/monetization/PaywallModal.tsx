@@ -49,10 +49,10 @@ export function PaywallModal({
         onClick={onClose}
       />
 
-      {/* Modal */}
+      {/* Modal - コンパクト版 */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div
-          className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 transform transition-all"
+          className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Button */}
@@ -76,15 +76,15 @@ export function PaywallModal({
             </svg>
           </button>
 
-          {/* Icon */}
-          <div className="flex justify-center mb-6">
+          {/* Icon - コンパクト版 */}
+          <div className="flex justify-center mb-4">
             <div
-              className="bg-purple-100 rounded-full flex items-center justify-center"
-              style={{ width: '50px', height: '50px' }}
+              className="bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center"
+              style={{ width: '40px', height: '40px' }}
             >
               <svg
                 className="text-purple-600"
-                style={{ width: '30px', height: '30px' }}
+                style={{ width: '24px', height: '24px' }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -99,32 +99,28 @@ export function PaywallModal({
             </div>
           </div>
 
-          {/* Title */}
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
+          {/* Title - コンパクト版 */}
+          <h2 className="text-2xl font-bold text-center text-gray-900 mb-2">
             月間制限に達しました
           </h2>
 
-          {/* Description */}
-          <p className="text-center text-gray-600 mb-8">
-            無料プランでは月に{currentUsage?.limit || 5}ゲームまで作成できます。
-            <br />
-            プレミアムプランにアップグレードして無制限に楽しみましょう！
+          {/* Description - コンパクト版 */}
+          <p className="text-center text-gray-500 text-sm mb-6">
+            無料プランは月{currentUsage?.limit || 5}ゲームまで。プレミアムで無制限に！
           </p>
 
-          {/* Usage Display */}
+          {/* Usage Display - コンパクト版 */}
           {currentUsage && currentUsage.isLimited && (
-            <div className="bg-gray-50 rounded-xl p-6 mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-semibold text-gray-700">
+            <div className="bg-gray-50 rounded-lg p-4 mb-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-gray-600">
                   今月の使用状況
                 </span>
-                <span className={`text-lg font-bold ${getUsageColor(currentUsage.percentage)}`}>
-                  {currentUsage.used} / {currentUsage.limit} ゲーム
+                <span className={`text-sm font-bold ${getUsageColor(currentUsage.percentage)}`}>
+                  {currentUsage.used} / {currentUsage.limit}
                 </span>
               </div>
-
-              {/* Progress Bar */}
-              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                 <div
                   className={`h-full ${getProgressBarColor(currentUsage.percentage)} transition-all duration-500 rounded-full`}
                   style={{ width: `${Math.min(currentUsage.percentage, 100)}%` }}
@@ -133,24 +129,24 @@ export function PaywallModal({
             </div>
           )}
 
-          {/* Premium Benefits */}
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 mb-8">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">
-              🎉 プレミアムプランの特典
+          {/* Premium Benefits - グリッド版 */}
+          <div className="mb-5">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              Premium 特典
             </h3>
-            <ul className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
               {[
-                '無制限ゲーム作成',
+                '無制限ゲーム',
                 '広告非表示',
-                '全225テンプレート',
-                '高度な編集機能',
-                'カスタムアセット無制限',
-                '優先サポート（24時間以内）',
+                '全テンプレート',
+                '高度な編集',
+                'アセット無制限',
+                '優先サポート',
               ].map((benefit, index) => (
-                <li key={index} className="flex items-center text-gray-700">
+                <div key={index} className="flex items-center text-gray-600 bg-purple-50 rounded-lg px-3 py-2">
                   <svg
-                    className="text-purple-600 mr-3 flex-shrink-0"
-                    style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }}
+                    className="text-purple-500 mr-2 flex-shrink-0"
+                    style={{ width: '14px', height: '14px', minWidth: '14px', minHeight: '14px' }}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -158,48 +154,46 @@ export function PaywallModal({
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      strokeWidth={2}
+                      strokeWidth={2.5}
                       d="M5 13l4 4L19 7"
                     />
                   </svg>
-                  <span className="text-sm">{benefit}</span>
-                </li>
+                  <span className="text-xs">{benefit}</span>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
 
-          {/* Pricing Options */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          {/* Pricing Options - コンパクト版 */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
             {/* Monthly */}
-            <div className="border-2 border-gray-200 rounded-xl p-4 hover:border-purple-300 transition-colors">
-              <div className="text-center mb-4">
-                <div className="text-sm text-gray-600 mb-1">月額プラン</div>
-                <div className="text-3xl font-bold text-gray-900">$4.99</div>
-                <div className="text-xs text-gray-500">/月</div>
+            <div className="border border-gray-200 rounded-xl p-3 hover:border-purple-300 transition-colors">
+              <div className="text-center mb-3">
+                <div className="text-xs text-gray-500 mb-0.5">月額</div>
+                <div className="text-2xl font-bold text-gray-800">$4.99</div>
               </div>
               <CheckoutButton
                 plan={MVPSubscriptionPlan.PREMIUM}
                 billingCycle="monthly"
-                className="text-sm"
+                className="text-xs"
               />
             </div>
 
             {/* Yearly */}
-            <div className="border-2 border-purple-500 bg-purple-50 rounded-xl p-4 relative">
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <span className="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                  17% OFF
+            <div className="border-2 border-purple-400 bg-purple-50 rounded-xl p-3 relative">
+              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+                <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  17%OFF
                 </span>
               </div>
-              <div className="text-center mb-4">
-                <div className="text-sm text-gray-600 mb-1">年額プラン</div>
-                <div className="text-3xl font-bold text-gray-900">$49.99</div>
-                <div className="text-xs text-gray-500">/年</div>
+              <div className="text-center mb-3">
+                <div className="text-xs text-gray-500 mb-0.5">年額</div>
+                <div className="text-2xl font-bold text-gray-800">$49.99</div>
               </div>
               <CheckoutButton
                 plan={MVPSubscriptionPlan.PREMIUM}
                 billingCycle="yearly"
-                className="text-sm"
+                className="text-xs"
               />
             </div>
           </div>
