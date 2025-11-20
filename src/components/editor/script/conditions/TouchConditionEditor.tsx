@@ -2,12 +2,13 @@
 // Phase C Step 1-1完了版: タッチ条件詳細設定コンポーネント
 // AdvancedRuleModal.tsx分割 - Step 2: 条件エディター分離
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TriggerCondition } from '../../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
-import { TOUCH_TYPE_OPTIONS, TOUCH_TARGET_OPTIONS } from '../constants/TouchConstants';
+import { getTouchTypeOptions, getTouchTargetOptions } from '../constants/TouchConstants';
 
 interface TouchConditionEditorProps {
   condition: TriggerCondition & { type: 'touch' };
@@ -20,8 +21,13 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
   index,
   onUpdate
 }) => {
+  const { t } = useTranslation();
   const touchCondition = condition;
-  
+
+  // Get localized options using getter functions that access i18n
+  const TOUCH_TYPE_OPTIONS = useMemo(() => getTouchTypeOptions(), []);
+  const TOUCH_TARGET_OPTIONS = useMemo(() => getTouchTargetOptions(), []);
+
   return (
     <ModernCard 
       variant="outlined" 
@@ -43,10 +49,10 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
         gap: DESIGN_TOKENS.spacing[2]
       }}>
         <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>👆</span>
-        タッチ条件詳細設定
+        {t('editor.touchCondition.title')}
       </h5>
 
-      {/* タッチタイプ選択 */}
+      {/* Touch type selection */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <label style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -55,7 +61,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          タッチの種類
+          {t('editor.touchCondition.touchTypeLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -94,7 +100,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
         </div>
       </div>
 
-      {/* 長押し時間設定（holdの場合のみ表示） */}
+      {/* Hold duration setting (only shown for hold type) */}
       {touchCondition.touchType === 'hold' && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
@@ -104,7 +110,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            長押し時間: {touchCondition.holdDuration || 1}秒
+            {t('editor.touchCondition.holdDuration', { seconds: touchCondition.holdDuration || 1 })}
           </label>
           <input
             type="range"
@@ -129,13 +135,13 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
             color: DESIGN_TOKENS.colors.purple[500],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>0.5秒</span>
-            <span>5秒</span>
+            <span>{t('editor.touchCondition.seconds', { seconds: 0.5 })}</span>
+            <span>{t('editor.touchCondition.seconds', { seconds: 5 })}</span>
           </div>
         </div>
       )}
 
-      {/* タッチ対象選択 */}
+      {/* Touch target selection */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <label style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -144,7 +150,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          タッチ対象
+          {t('editor.touchCondition.touchTargetLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -183,7 +189,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
         </div>
       </div>
 
-      {/* ステージ範囲指定（targetが'stage'の場合のみ表示） */}
+      {/* Stage region specification (only shown when target is 'stage') */}
       {touchCondition.target === 'stage' && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
@@ -193,10 +199,10 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            タッチ範囲指定
+            {t('editor.touchCondition.touchRegionLabel')}
           </label>
 
-          {/* 範囲形状選択 */}
+          {/* Region shape selection */}
           <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2], marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <ModernButton
               variant={touchCondition.region?.shape === 'rect' || !touchCondition.region ? 'primary' : 'outline'}
@@ -215,7 +221,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
                 flex: 1
               }}
             >
-              🔲 矩形
+              🔲 {t('editor.touchCondition.shapeRect')}
             </ModernButton>
             <ModernButton
               variant={touchCondition.region?.shape === 'circle' ? 'primary' : 'outline'}
@@ -233,11 +239,11 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
                 flex: 1
               }}
             >
-              ⭕ 円形
+              ⭕ {t('editor.touchCondition.shapeCircle')}
             </ModernButton>
           </div>
 
-          {/* 範囲パラメータ設定 */}
+          {/* Region parameter settings */}
           {touchCondition.region && (
             <div style={{
               backgroundColor: DESIGN_TOKENS.colors.neutral[50],
@@ -248,7 +254,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
             }}>
               <div>
                 <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  中心X: {(touchCondition.region.x * 100).toFixed(0)}%
+                  {t('editor.touchCondition.centerX', { percent: (touchCondition.region.x * 100).toFixed(0) })}
                 </label>
                 <input
                   type="range"
@@ -264,7 +270,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
               </div>
               <div>
                 <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  中心Y: {(touchCondition.region.y * 100).toFixed(0)}%
+                  {t('editor.touchCondition.centerY', { percent: (touchCondition.region.y * 100).toFixed(0) })}
                 </label>
                 <input
                   type="range"
@@ -283,7 +289,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
                 <>
                   <div>
                     <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                      幅: {((touchCondition.region.width || 0.4) * 100).toFixed(0)}%
+                      {t('editor.touchCondition.width', { percent: ((touchCondition.region.width || 0.4) * 100).toFixed(0) })}
                     </label>
                     <input
                       type="range"
@@ -299,7 +305,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
                   </div>
                   <div>
                     <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                      高さ: {((touchCondition.region.height || 0.4) * 100).toFixed(0)}%
+                      {t('editor.touchCondition.height', { percent: ((touchCondition.region.height || 0.4) * 100).toFixed(0) })}
                     </label>
                     <input
                       type="range"
@@ -317,7 +323,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
               ) : (
                 <div>
                   <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                    半径: {((touchCondition.region.radius || 0.2) * 100).toFixed(0)}%
+                    {t('editor.touchCondition.radius', { percent: ((touchCondition.region.radius || 0.2) * 100).toFixed(0) })}
                   </label>
                   <input
                     type="range"
@@ -344,14 +350,16 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.purple[800]
       }}>
-        💡 設定内容: {TOUCH_TYPE_OPTIONS.find(t => t.value === touchCondition.touchType)?.description}
-        {touchCondition.touchType === 'hold' && `（${touchCondition.holdDuration || 1}秒間）`}
-        {touchCondition.target === 'self' ? ' - このオブジェクトへのタッチ' :
+        {t('editor.touchCondition.settingsSummaryTitle')} {TOUCH_TYPE_OPTIONS.find(t => t.value === touchCondition.touchType)?.description}
+        {touchCondition.touchType === 'hold' && t('editor.touchCondition.holdDurationSeconds', { seconds: touchCondition.holdDuration || 1 })}
+        {touchCondition.target === 'self' ? t('editor.touchCondition.touchToSelf') :
          touchCondition.target === 'stage' ?
            (touchCondition.region ?
-             ` - ステージ指定範囲へのタッチ（${touchCondition.region.shape === 'rect' ? '矩形' : '円形'}）` :
-             ' - ステージ全体へのタッチ') :
-         ' - 指定オブジェクトへのタッチ'}
+             t('editor.touchCondition.touchToStageRegion', {
+               shape: touchCondition.region.shape === 'rect' ? t('editor.touchCondition.shapeRect') : t('editor.touchCondition.shapeCircle')
+             }) :
+             t('editor.touchCondition.touchToStageWhole')) :
+         t('editor.touchCondition.touchToObject')}
       </div>
     </ModernCard>
   );

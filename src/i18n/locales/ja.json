@@ -979,12 +979,59 @@
       "flagSelected": "フラグ「{name}」を",
       "setState": "{state}状態に設定",
       "toggleState": "現在の状態から切り替え（ON⇔OFF）"
+    },
+    "touchCondition": {
+      "title": "タッチ条件詳細設定",
+      "touchTypeLabel": "タッチの種類",
+      "holdDuration": "長押し時間: {seconds}秒",
+      "seconds": "{seconds}秒",
+      "touchTargetLabel": "タッチ対象",
+      "touchRegionLabel": "タッチ範囲指定",
+      "shapeRect": "矩形",
+      "shapeCircle": "円形",
+      "centerX": "中心X: {percent}%",
+      "centerY": "中心Y: {percent}%",
+      "width": "幅: {percent}%",
+      "height": "高さ: {percent}%",
+      "radius": "半径: {percent}%",
+      "settingsSummaryTitle": "💡 設定内容:",
+      "holdDurationSeconds": "（{seconds}秒間）",
+      "touchToSelf": " - このオブジェクトへのタッチ",
+      "touchToStageWhole": " - ステージ全体へのタッチ",
+      "touchToStageRegion": " - ステージ指定範囲へのタッチ（{shape}）",
+      "touchToObject": " - 指定オブジェクトへのタッチ"
     }
   },
   "conditions": {
     "touch": {
       "label": "タッチしたとき",
-      "description": "オブジェクトをタップしたら発動"
+      "description": "オブジェクトをタップしたら発動",
+      "down": {
+        "label": "タップ",
+        "description": "タッチした瞬間に発動"
+      },
+      "up": {
+        "label": "リリース",
+        "description": "指を離した瞬間に発動"
+      },
+      "hold": {
+        "label": "長押し",
+        "description": "指定時間タッチし続けたら発動"
+      },
+      "targets": {
+        "self": {
+          "label": "このオブジェクト",
+          "description": "このオブジェクトへのタッチ"
+        },
+        "stage": {
+          "label": "ステージ全体",
+          "description": "ステージ全体へのタッチ"
+        },
+        "stageArea": {
+          "label": "ステージ範囲",
+          "description": "ステージの指定範囲へのタッチ"
+        }
+      }
     },
     "time": {
       "label": "時間経過",

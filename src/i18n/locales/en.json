@@ -1178,12 +1178,59 @@
       "flagSelected": "Flag \"{name}\" will be ",
       "setState": "set to {state} state",
       "toggleState": "flipped from current state (ON⇔OFF)"
+    },
+    "touchCondition": {
+      "title": "Touch Condition Settings",
+      "touchTypeLabel": "Touch Type",
+      "holdDuration": "Hold Duration: {seconds}s",
+      "seconds": "{seconds}s",
+      "touchTargetLabel": "Touch Target",
+      "touchRegionLabel": "Touch Region",
+      "shapeRect": "Rectangle",
+      "shapeCircle": "Circle",
+      "centerX": "Center X: {percent}%",
+      "centerY": "Center Y: {percent}%",
+      "width": "Width: {percent}%",
+      "height": "Height: {percent}%",
+      "radius": "Radius: {percent}%",
+      "settingsSummaryTitle": "💡 Settings:",
+      "holdDurationSeconds": "({seconds} seconds)",
+      "touchToSelf": " - Touch on this object",
+      "touchToStageWhole": " - Touch on entire stage",
+      "touchToStageRegion": " - Touch on stage region ({shape})",
+      "touchToObject": " - Touch on specified object"
     }
   },
   "conditions": {
     "touch": {
       "label": "On Touch",
-      "description": "Triggers when object is tapped"
+      "description": "Triggers when object is tapped",
+      "down": {
+        "label": "Tap",
+        "description": "Triggers at the moment of touch"
+      },
+      "up": {
+        "label": "Release",
+        "description": "Triggers when finger is released"
+      },
+      "hold": {
+        "label": "Hold",
+        "description": "Triggers after holding for specified duration"
+      },
+      "targets": {
+        "self": {
+          "label": "This Object",
+          "description": "Touch on this object"
+        },
+        "stage": {
+          "label": "Entire Stage",
+          "description": "Touch anywhere on stage"
+        },
+        "stageArea": {
+          "label": "Stage Region",
+          "description": "Touch on specified stage region"
+        }
+      }
     },
     "time": {
       "label": "Time Elapsed",
