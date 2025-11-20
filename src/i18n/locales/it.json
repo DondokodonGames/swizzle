@@ -83,7 +83,10 @@
       "addAudio": "Aggiungi audio",
       "addText": "Aggiungi testo",
       "bgm": "Musica",
-      "se": "Effetti sonori"
+      "se": "Effetti sonori",
+      "usedCapacity": "Capacità utilizzata (Immagini + Audio)",
+      "capacityWarning": "Capacità insufficiente. Eliminare gli asset non necessari.",
+      "sound": "Audio"
     },
     "script": {
       "title": "Impostazioni regole",
@@ -363,7 +366,13 @@
     "saveSuccess": "Salvato con successo!",
     "saveFailed": "Salvataggio fallito",
     "unsavedChanges": "Hai modifiche non salvate. Sei sicuro di voler chiudere?",
-    "usernameNote": "Il nome utente verrà visualizzato se vuoto"
+    "usernameNote": "Il nome utente verrà visualizzato se vuoto",
+    "loading": "Caricamento profilo...",
+    "notFound": "Profilo non trovato",
+    "loadError": "Caricamento profilo non riuscito",
+    "createdGames": "Giochi creati",
+    "noGamesYet": "Nessun gioco pubblicato ancora",
+    "loggingOut": "Disconnessione..."
   },
   "game": {
     "start": "Inizia",

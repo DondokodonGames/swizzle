@@ -83,7 +83,10 @@
       "addAudio": "Audio hinzufügen",
       "addText": "Text hinzufügen",
       "bgm": "Musik",
-      "se": "Soundeffekte"
+      "se": "Soundeffekte",
+      "usedCapacity": "Genutzte Kapazität (Bilder + Audio)",
+      "capacityWarning": "Kapazität unzureichend. Bitte unnötige Assets löschen.",
+      "sound": "Audio"
     },
     "script": {
       "title": "Regeleinstellungen",
@@ -363,7 +366,13 @@
     "saveSuccess": "Erfolgreich gespeichert!",
     "saveFailed": "Speichern fehlgeschlagen",
     "unsavedChanges": "Sie haben ungespeicherte Änderungen. Sind Sie sicher, dass Sie schließen möchten?",
-    "usernameNote": "Anzeigename wird angezeigt, wenn leer"
+    "usernameNote": "Anzeigename wird angezeigt, wenn leer",
+    "loading": "Profil wird geladen...",
+    "notFound": "Profil nicht gefunden",
+    "loadError": "Profil konnte nicht geladen werden",
+    "createdGames": "Erstellte Spiele",
+    "noGamesYet": "Noch keine Spiele veröffentlicht",
+    "loggingOut": "Wird abgemeldet..."
   },
   "game": {
     "start": "Start",

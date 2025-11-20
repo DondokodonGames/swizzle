@@ -83,7 +83,10 @@
       "addAudio": "添加音频",
       "addText": "添加文本",
       "bgm": "背景音乐",
-      "se": "音效"
+      "se": "音效",
+      "usedCapacity": "已用容量（图片+音频）",
+      "capacityWarning": "容量不足。请删除不必要的资源。",
+      "sound": "音频"
     },
     "script": {
       "title": "规则设置",
@@ -363,7 +366,13 @@
     "saveSuccess": "保存成功！",
     "saveFailed": "保存失败",
     "unsavedChanges": "您有未保存的更改。确定要关闭吗？",
-    "usernameNote": "如为空则显示用户名"
+    "usernameNote": "如为空则显示用户名",
+    "loading": "加载个人资料中...",
+    "notFound": "未找到个人资料",
+    "loadError": "加载个人资料失败",
+    "createdGames": "创建的游戏",
+    "noGamesYet": "还没有发布任何游戏",
+    "loggingOut": "正在登出..."
   },
   "game": {
     "start": "开始",

@@ -83,7 +83,10 @@
       "addAudio": "오디오 추가",
       "addText": "텍스트 추가",
       "bgm": "배경음악",
-      "se": "효과음"
+      "se": "효과음",
+      "usedCapacity": "사용한 용량 (이미지+음성)",
+      "capacityWarning": "용량이 부족합니다. 불필요한 에셋을 삭제해주세요.",
+      "sound": "음성"
     },
     "script": {
       "title": "규칙 설정",
@@ -363,7 +366,13 @@
     "saveSuccess": "저장 완료!",
     "saveFailed": "저장 실패",
     "unsavedChanges": "저장하지 않은 변경사항이 있습니다. 닫으시겠습니까?",
-    "usernameNote": "비어있으면 사용자 이름이 표시됩니다"
+    "usernameNote": "비어있으면 사용자 이름이 표시됩니다",
+    "loading": "프로필 로딩 중...",
+    "notFound": "프로필을 찾을 수 없습니다",
+    "loadError": "프로필 로드 실패",
+    "createdGames": "만든 게임",
+    "noGamesYet": "아직 게임을 발행하지 않았습니다",
+    "loggingOut": "로그아웃 중..."
   },
   "game": {
     "start": "시작",
