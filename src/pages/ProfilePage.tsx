@@ -8,6 +8,7 @@ import type { Profile } from '../lib/database.types'
 import type { Subscription } from '../types/MonetizationTypes'
 import { PremiumBadge } from '../components/monetization/PremiumBadge'
 import { MVPSubscriptionPlan } from '../types/MonetizationTypes'
+import ProfileSetup from '../components/auth/ProfileSetup'
 
 interface ProfilePageProps {
   // オプションでuserIdを直接渡すこともできる
@@ -21,6 +22,19 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isOwnProfile, setIsOwnProfile] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  // 現在のユーザーを取得
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setCurrentUser(user)
+    }
+    fetchCurrentUser()
+  }, [])
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -49,6 +63,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
           if (subData) {
             setSubscription(subData as Subscription)
           }
+
+          // 自分のプロフィールかチェック
+          setIsOwnProfile(currentUser?.id === propUserId)
         } else if (username) {
           // usernameからプロフィールを検索
           const { data, error } = await supabase
@@ -70,6 +87,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
           if (subData) {
             setSubscription(subData as Subscription)
           }
+
+          // 自分のプロフィールかチェック
+          setIsOwnProfile(currentUser?.id === data.id)
         } else {
           throw new Error('ユーザー情報が指定されていません')
         }
@@ -82,7 +102,29 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
     }
 
     loadProfile()
-  }, [username, propUserId])
+  }, [username, propUserId, currentUser])
+
+  // ログアウト処理
+  const handleLogout = async () => {
+    if (loggingOut) return
+
+    if (!window.confirm('ログアウトしますか？')) return
+
+    setLoggingOut(true)
+    try {
+      await supabase.auth.signOut()
+      navigate('/')
+    } catch (error) {
+      console.error('Logout error:', error)
+      setLoggingOut(false)
+    }
+  }
+
+  // プロフィール更新後の再読み込み
+  const handleProfileUpdated = () => {
+    // プロフィールを再読み込み
+    window.location.reload()
+  }
 
   if (loading) {
     return (
@@ -187,10 +229,49 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
             color: 'white',
             fontSize: '24px',
             fontWeight: 'bold',
-            margin: 0
+            margin: 0,
+            flex: 1
           }}>
             プロフィール
           </h1>
+
+          {/* 自分のプロフィールの場合、編集・ログアウトボタンを表示 */}
+          {isOwnProfile && (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setShowEditModal(true)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  color: '#7c3aed',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600'
+                }}
+              >
+                編集
+              </button>
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: loggingOut ? 'not-allowed' : 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  opacity: loggingOut ? 0.7 : 1
+                }}
+              >
+                {loggingOut ? 'ログアウト中...' : 'ログアウト'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* プロフィールカード */}
@@ -373,6 +454,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
           </div>
         </div>
       </div>
+
+      {/* プロフィール編集モーダル */}
+      <ProfileSetup
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false)
+          handleProfileUpdated()
+        }}
+        mode="edit"
+        title="プロフィール編集"
+      />
     </div>
   )
 }
