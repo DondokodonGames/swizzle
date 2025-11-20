@@ -2,17 +2,18 @@
 // Phase E Step 2: アニメーション条件詳細設定コンポーネント
 // CollisionConditionEditor.tsx成功パターン完全踏襲
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TriggerCondition } from '../../../../types/editor/GameScript';
 import { GameProject } from '../../../../types/editor/GameProject';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
-import { 
-  ANIMATION_CONDITIONS, 
-  ANIMATION_TARGET_OPTIONS,
-  FRAME_NUMBER_OPTIONS,
-  ANIMATION_INDEX_OPTIONS
+import {
+  getAnimationConditions,
+  getAnimationTargetOptions,
+  getFrameNumberOptions,
+  getAnimationIndexOptions
 } from '../constants/AnimationConstants';
 
 interface AnimationConditionEditorProps {
@@ -28,21 +29,28 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
   project,
   onUpdate
 }) => {
+  const { t } = useTranslation();
   const animationCondition = condition;
-  
+
+  // Get localized options using getter functions that access i18n
+  const ANIMATION_CONDITIONS = useMemo(() => getAnimationConditions(), []);
+  const ANIMATION_TARGET_OPTIONS = useMemo(() => getAnimationTargetOptions(), []);
+  const FRAME_NUMBER_OPTIONS = useMemo(() => getFrameNumberOptions(), []);
+  const ANIMATION_INDEX_OPTIONS = useMemo(() => getAnimationIndexOptions(), []);
+
   // プロジェクト内オブジェクト取得
   const projectObjects = project.assets?.objects || [];
-  
+
   // 選択されたオブジェクトのアニメーション情報取得
   const getSelectedObjectAnimations = () => {
     if (animationCondition.target === 'background') {
       return project.assets?.background?.frames || [];
     }
-    
+
     const targetObject = projectObjects.find(obj => obj.id === animationCondition.target);
     return targetObject?.frames || [];
   };
-  
+
   const selectedObjectFrames = getSelectedObjectAnimations();
   const maxFrameNumber = Math.max(1, selectedObjectFrames.length);
   const availableFrameOptions = FRAME_NUMBER_OPTIONS.slice(0, maxFrameNumber);
@@ -68,7 +76,7 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
         gap: DESIGN_TOKENS.spacing[2]
       }}>
         <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🎬</span>
-        アニメーション条件詳細設定
+        {t('editor.animationCondition.title')}
       </h5>
 
       {/* アニメーション対象選択 */}
@@ -80,7 +88,7 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          対象
+          {t('editor.animationCondition.targetLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -147,7 +155,7 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            対象オブジェクト
+            {t('editor.animationCondition.targetObjectLabel')}
           </label>
           <select
             value={animationCondition.target}
@@ -164,7 +172,10 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
           >
             {projectObjects.map((obj) => (
               <option key={obj.id} value={obj.id}>
-                {obj.name || `オブジェクト${obj.id.slice(-1)}`} ({obj.frames.length}フレーム)
+                {t('editor.animationCondition.objectFrames', {
+                  name: obj.name || t('editor.animationCondition.objectWithId', { id: obj.id.slice(-1) }),
+                  count: obj.frames.length
+                })}
               </option>
             ))}
           </select>
@@ -180,7 +191,7 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          発動タイミング
+          {t('editor.animationCondition.triggerTimingLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -229,7 +240,7 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            対象フレーム番号 (最大{maxFrameNumber}フレーム)
+            {t('editor.animationCondition.targetFrameLabel', { max: maxFrameNumber })}
           </label>
           <div style={{
             display: 'grid',
@@ -279,7 +290,7 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            アニメーション番号: {(animationCondition.animationIndex || 0) + 1}
+            {t('editor.animationCondition.animationNumberLabel', { number: (animationCondition.animationIndex || 0) + 1 })}
           </label>
           <input
             type="range"
@@ -304,8 +315,8 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
             color: DESIGN_TOKENS.colors.purple[500],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>アニメ1</span>
-            <span>アニメ{Math.min(8, selectedObjectFrames.length)}</span>
+            <span>{t('editor.animationCondition.animation', { number: 1 })}</span>
+            <span>{t('editor.animationCondition.animation', { number: Math.min(8, selectedObjectFrames.length) })}</span>
           </div>
         </div>
       )}
@@ -318,13 +329,16 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.purple[800]
       }}>
-        💡 設定内容: {ANIMATION_CONDITIONS.find(c => c.value === animationCondition.condition)?.description}
-        {animationCondition.target === 'background' && ' - 背景アニメーション'}
-        {animationCondition.target === 'self' && ' - このオブジェクトのアニメーション'}
-        {animationCondition.target !== 'background' && animationCondition.target !== 'self' && ` - 「${projectObjects.find(obj => obj.id === animationCondition.target)?.name || animationCondition.target}」のアニメーション`}
-        {animationCondition.condition === 'frame' && ` (フレーム${animationCondition.frameNumber || 1})`}
-        {(animationCondition.animationIndex || 0) > 0 && ` - アニメ${(animationCondition.animationIndex || 0) + 1}`}
-        {selectedObjectFrames.length > 0 && ` (${selectedObjectFrames.length}フレーム利用可能)`}
+        {t('editor.animationCondition.settingsSummaryTitle')}
+        {ANIMATION_CONDITIONS.find(c => c.value === animationCondition.condition)?.description}
+        {animationCondition.target === 'background' && t('editor.animationCondition.backgroundAnimation')}
+        {animationCondition.target === 'self' && t('editor.animationCondition.thisObjectAnimation')}
+        {animationCondition.target !== 'background' && animationCondition.target !== 'self' && t('editor.animationCondition.otherObjectAnimation', {
+          name: projectObjects.find(obj => obj.id === animationCondition.target)?.name || animationCondition.target
+        })}
+        {animationCondition.condition === 'frame' && t('editor.animationCondition.frameNumber', { number: animationCondition.frameNumber || 1 })}
+        {(animationCondition.animationIndex || 0) > 0 && t('editor.animationCondition.animationNumber', { number: (animationCondition.animationIndex || 0) + 1 })}
+        {selectedObjectFrames.length > 0 && t('editor.animationCondition.framesAvailable', { count: selectedObjectFrames.length })}
       </div>
     </ModernCard>
   );

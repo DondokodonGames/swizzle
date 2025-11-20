@@ -22,7 +22,27 @@
     "processing": "Processing...",
     "selectFile": "Select File",
     "on": "ON",
-    "off": "OFF"
+    "off": "OFF",
+    "frames": {
+      "frame1": { "label": "Frame 1", "description": "First frame" },
+      "frame2": { "label": "Frame 2", "description": "Second frame" },
+      "frame3": { "label": "Frame 3", "description": "Third frame" },
+      "frame4": { "label": "Frame 4", "description": "Fourth frame" },
+      "frame5": { "label": "Frame 5", "description": "Fifth frame" },
+      "frame6": { "label": "Frame 6", "description": "Sixth frame" },
+      "frame7": { "label": "Frame 7", "description": "Seventh frame" },
+      "frame8": { "label": "Frame 8", "description": "Eighth frame" }
+    },
+    "animations": {
+      "animation1": { "label": "Anim 1", "description": "First animation" },
+      "animation2": { "label": "Anim 2", "description": "Second animation" },
+      "animation3": { "label": "Anim 3", "description": "Third animation" },
+      "animation4": { "label": "Anim 4", "description": "Fourth animation" },
+      "animation5": { "label": "Anim 5", "description": "Fifth animation" },
+      "animation6": { "label": "Anim 6", "description": "Sixth animation" },
+      "animation7": { "label": "Anim 7", "description": "Seventh animation" },
+      "animation8": { "label": "Anim 8", "description": "Eighth animation" }
+    }
   },
   "errors": {
     "generic": "An unexpected error occurred",
@@ -1237,6 +1257,24 @@
       "movementType": "\"{type}\"",
       "withSpeed": " - Speed {speed}px/s",
       "forDuration": " - for {seconds}s"
+    },
+    "animationCondition": {
+      "title": "Animation Condition Settings",
+      "targetLabel": "Target",
+      "targetObjectLabel": "Target Object",
+      "objectFrames": "{name} ({count} frames)",
+      "objectWithId": "Object{id}",
+      "triggerTimingLabel": "Trigger Timing",
+      "targetFrameLabel": "Target Frame Number (max {max} frames)",
+      "animationNumberLabel": "Animation Number: {number}",
+      "animation": "Anim {number}",
+      "settingsSummaryTitle": "💡 Settings: ",
+      "backgroundAnimation": " - Background animation",
+      "thisObjectAnimation": " - This object's animation",
+      "otherObjectAnimation": " - \"{name}\"'s animation",
+      "frameNumber": " (Frame {number})",
+      "animationNumber": " - Anim {number}",
+      "framesAvailable": " ({count} frames available)"
     }
   },
   "conditions": {
@@ -1322,7 +1360,37 @@
     },
     "animation": {
       "label": "Animation End",
-      "description": "When animation completes"
+      "description": "When animation completes",
+      "start": {
+        "label": "Start",
+        "description": "When animation starts"
+      },
+      "end": {
+        "label": "End",
+        "description": "When animation ends"
+      },
+      "frame": {
+        "label": "Specific Frame",
+        "description": "When reaching specific frame"
+      },
+      "loop": {
+        "label": "Loop",
+        "description": "When animation loops"
+      }
+    },
+    "targets": {
+      "background": {
+        "label": "Background",
+        "description": "Background animation"
+      },
+      "this": {
+        "label": "This Object",
+        "description": "This object's animation"
+      },
+      "other": {
+        "label": "Other Object",
+        "description": "Other object's animation"
+      }
     },
     "flag": {
       "label": "Flag is ON",

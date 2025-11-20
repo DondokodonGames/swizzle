@@ -22,7 +22,27 @@
     "processing": "処理中...",
     "selectFile": "ファイルを選択",
     "on": "ON",
-    "off": "OFF"
+    "off": "OFF",
+    "frames": {
+      "frame1": { "label": "フレーム1", "description": "1番目のフレーム" },
+      "frame2": { "label": "フレーム2", "description": "2番目のフレーム" },
+      "frame3": { "label": "フレーム3", "description": "3番目のフレーム" },
+      "frame4": { "label": "フレーム4", "description": "4番目のフレーム" },
+      "frame5": { "label": "フレーム5", "description": "5番目のフレーム" },
+      "frame6": { "label": "フレーム6", "description": "6番目のフレーム" },
+      "frame7": { "label": "フレーム7", "description": "7番目のフレーム" },
+      "frame8": { "label": "フレーム8", "description": "8番目のフレーム" }
+    },
+    "animations": {
+      "animation1": { "label": "アニメ1", "description": "1番目のアニメーション" },
+      "animation2": { "label": "アニメ2", "description": "2番目のアニメーション" },
+      "animation3": { "label": "アニメ3", "description": "3番目のアニメーション" },
+      "animation4": { "label": "アニメ4", "description": "4番目のアニメーション" },
+      "animation5": { "label": "アニメ5", "description": "5番目のアニメーション" },
+      "animation6": { "label": "アニメ6", "description": "6番目のアニメーション" },
+      "animation7": { "label": "アニメ7", "description": "7番目のアニメーション" },
+      "animation8": { "label": "アニメ8", "description": "8番目のアニメーション" }
+    }
   },
   "errors": {
     "generic": "予期しないエラーが発生しました",
@@ -1038,6 +1058,24 @@
       "movementType": "「{type}」",
       "withSpeed": " - 速度{speed}px/秒",
       "forDuration": " - {seconds}秒間"
+    },
+    "animationCondition": {
+      "title": "アニメーション条件詳細設定",
+      "targetLabel": "対象",
+      "targetObjectLabel": "対象オブジェクト",
+      "objectFrames": "{name} ({count}フレーム)",
+      "objectWithId": "オブジェクト{id}",
+      "triggerTimingLabel": "発動タイミング",
+      "targetFrameLabel": "対象フレーム番号 (最大{max}フレーム)",
+      "animationNumberLabel": "アニメーション番号: {number}",
+      "animation": "アニメ{number}",
+      "settingsSummaryTitle": "💡 設定内容: ",
+      "backgroundAnimation": " - 背景アニメーション",
+      "thisObjectAnimation": " - このオブジェクトのアニメーション",
+      "otherObjectAnimation": " - 「{name}」のアニメーション",
+      "frameNumber": " (フレーム{number})",
+      "animationNumber": " - アニメ{number}",
+      "framesAvailable": " ({count}フレーム利用可能)"
     }
   },
   "conditions": {
@@ -1123,7 +1161,37 @@
     },
     "animation": {
       "label": "アニメ終了時",
-      "description": "アニメーションが終了した時"
+      "description": "アニメーションが終了した時",
+      "start": {
+        "label": "開始時",
+        "description": "アニメーション開始した時"
+      },
+      "end": {
+        "label": "終了時",
+        "description": "アニメーション終了した時"
+      },
+      "frame": {
+        "label": "特定フレーム",
+        "description": "特定のフレームに達した時"
+      },
+      "loop": {
+        "label": "ループ時",
+        "description": "アニメーションがループした時"
+      }
+    },
+    "targets": {
+      "background": {
+        "label": "背景",
+        "description": "背景アニメーション"
+      },
+      "this": {
+        "label": "このオブジェクト",
+        "description": "このオブジェクトのアニメーション"
+      },
+      "other": {
+        "label": "他のオブジェクト",
+        "description": "他のオブジェクトのアニメーション"
+      }
     },
     "flag": {
       "label": "フラグがONのとき",
