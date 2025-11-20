@@ -512,6 +512,10 @@ function MainApp() {
   const [selectedFeedGame, setSelectedFeedGame] = useState<any>(null);
   const [volumeSettings, setVolumeSettings] = useState<VolumeSettings>(DEFAULT_VOLUME);
 
+  // グローバルAuthModal用state
+  const [globalAuthModalOpen, setGlobalAuthModalOpen] = useState(false);
+  const [globalAuthModalMode, setGlobalAuthModalMode] = useState<'signin' | 'signup'>('signin');
+
   // コピー完了時のエディター自動起動チェック
   useEffect(() => {
     const shouldOpenEditor = localStorage.getItem('shouldOpenEditor');
@@ -605,61 +609,99 @@ function MainApp() {
     };
   }, []);
 
+  // グローバルAuthModalイベントリスナー
+  useEffect(() => {
+    const handleGlobalOpenAuthModal = (event: CustomEvent) => {
+      setGlobalAuthModalMode(event.detail?.mode || 'signin');
+      setGlobalAuthModalOpen(true);
+    };
+
+    window.addEventListener('openAuthModal', handleGlobalOpenAuthModal as EventListener);
+
+    return () => {
+      window.removeEventListener('openAuthModal', handleGlobalOpenAuthModal as EventListener);
+    };
+  }, []);
+
   // エディターモード時のフルスクリーン表示
   if (mode === 'editor') {
     return (
-      <Suspense fallback={
-        <div style={{ 
-          minHeight: '100vh',
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ marginBottom: '16px', fontSize: '48px', animation: 'pulse 2s infinite' }}>🎨</div>
-            <div style={{ color: '#6b7280', fontSize: '18px', fontWeight: '600' }}>
-              エディターを読み込み中...
+      <>
+        <Suspense fallback={
+          <div style={{
+            minHeight: '100vh',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ marginBottom: '16px', fontSize: '48px', animation: 'pulse 2s infinite' }}>🎨</div>
+              <div style={{ color: '#6b7280', fontSize: '18px', fontWeight: '600' }}>
+                エディターを読み込み中...
+              </div>
+              <style>{`
+                @keyframes pulse {
+                  0%, 100% { opacity: 1; }
+                  50% { opacity: 0.7; }
+                }
+              `}</style>
             </div>
-            <style>{`
-              @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.7; }
-              }
-            `}</style>
           </div>
-        </div>
-      }>
-        <EditorApp 
-          onClose={handleExitEditor} 
-          initialProjectId={editorProjectId}
-        />
-      </Suspense>
+        }>
+          <EditorApp
+            onClose={handleExitEditor}
+            initialProjectId={editorProjectId}
+          />
+        </Suspense>
+        {/* グローバルAuthModal */}
+        {AuthModal && (
+          <Suspense fallback={null}>
+            <AuthModal
+              isOpen={globalAuthModalOpen}
+              onClose={() => setGlobalAuthModalOpen(false)}
+              defaultMode={globalAuthModalMode}
+            />
+          </Suspense>
+        )}
+      </>
     );
   }
 
   // フィードモード時のフルスクリーン表示
   if (mode === 'feed') {
     return (
-      <Suspense fallback={
-        <div style={{
-          minHeight: '100vh',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ marginBottom: '16px', fontSize: '48px' }}>📱</div>
-            <p style={{ color: '#a21caf', fontSize: '18px' }}>フィードを読み込み中...</p>
+      <>
+        <Suspense fallback={
+          <div style={{
+            minHeight: '100vh',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ marginBottom: '16px', fontSize: '48px' }}>📱</div>
+              <p style={{ color: '#a21caf', fontSize: '18px' }}>フィードを読み込み中...</p>
+            </div>
           </div>
-        </div>
-      }>
-        <GameFeed
-          onGameSelect={handleFeedGameSelect}
-          onBack={handleExitFeed}
-        />
-      </Suspense>
+        }>
+          <GameFeed
+            onGameSelect={handleFeedGameSelect}
+            onBack={handleExitFeed}
+          />
+        </Suspense>
+        {/* グローバルAuthModal */}
+        {AuthModal && (
+          <Suspense fallback={null}>
+            <AuthModal
+              isOpen={globalAuthModalOpen}
+              onClose={() => setGlobalAuthModalOpen(false)}
+              defaultMode={globalAuthModalMode}
+            />
+          </Suspense>
+        )}
+      </>
     );
   }
 
@@ -803,6 +845,17 @@ function MainApp() {
       }}>
         © 2024 Swizzle - Phase M: マネタイズ機能統合完了 💰
       </footer>
+
+      {/* グローバルAuthModal（ゲーム中でも開ける） */}
+      {AuthModal && (
+        <Suspense fallback={null}>
+          <AuthModal
+            isOpen={globalAuthModalOpen}
+            onClose={() => setGlobalAuthModalOpen(false)}
+            defaultMode={globalAuthModalMode}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
