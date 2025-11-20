@@ -281,7 +281,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // bridgeTimeLeftの初期化（gameStateがbridgeになったときのみ）
   useEffect(() => {
     if (gameState === 'bridge') {
-      setBridgeTimeLeft(20);
+      setBridgeTimeLeft(10);
     }
   }, [gameState]);
 

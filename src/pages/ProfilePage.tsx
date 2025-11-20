@@ -1,7 +1,7 @@
 // src/pages/ProfilePage.tsx
 // プロフィール表示専用ページ（問題7対応）
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Profile } from '../lib/database.types'
@@ -9,6 +9,8 @@ import type { Subscription } from '../types/MonetizationTypes'
 import { PremiumBadge } from '../components/monetization/PremiumBadge'
 import { MVPSubscriptionPlan } from '../types/MonetizationTypes'
 import ProfileSetup from '../components/auth/ProfileSetup'
+import { SocialService } from '../social/services/SocialService'
+import type { UserGame } from '../social/types/SocialTypes'
 
 interface ProfilePageProps {
   // オプションでuserIdを直接渡すこともできる
@@ -26,6 +28,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [userGames, setUserGames] = useState<UserGame[]>([])
+  const [gamesLoading, setGamesLoading] = useState(false)
+
+  const socialService = useMemo(() => SocialService.getInstance(), [])
 
   // 現在のユーザーを取得
   useEffect(() => {
@@ -106,6 +112,25 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
 
     loadProfile()
   }, [username, propUserId])
+
+  // ユーザーの作成ゲームを取得
+  useEffect(() => {
+    const loadUserGames = async () => {
+      if (!profile?.id) return
+
+      setGamesLoading(true)
+      try {
+        const games = await socialService.getUserGames(profile.id, 'published')
+        setUserGames(games)
+      } catch (error) {
+        console.error('Failed to load user games:', error)
+      } finally {
+        setGamesLoading(false)
+      }
+    }
+
+    loadUserGames()
+  }, [profile?.id, socialService])
 
   // ログアウト処理
   const handleLogout = async () => {
@@ -439,21 +464,118 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
             )}
           </div>
 
-          {/* TODO: ユーザーの作成したゲーム一覧などを追加 */}
-          <div style={{
-            marginTop: '40px',
-            padding: '32px',
-            backgroundColor: '#f9fafb',
-            borderRadius: '12px',
-            textAlign: 'center'
-          }}>
-            <p style={{
-              color: '#6b7280',
-              fontSize: '14px',
-              margin: 0
+          {/* ユーザーの作成したゲーム一覧 */}
+          <div style={{ marginTop: '40px' }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: 'bold',
+              color: '#111827',
+              marginBottom: '16px'
             }}>
-              このユーザーの作成したゲームは近日公開予定です
-            </p>
+              作成したゲーム
+            </h3>
+
+            {gamesLoading ? (
+              <div style={{
+                padding: '32px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '12px',
+                textAlign: 'center'
+              }}>
+                <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
+                  読み込み中...
+                </p>
+              </div>
+            ) : userGames.length === 0 ? (
+              <div style={{
+                padding: '32px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '12px',
+                textAlign: 'center'
+              }}>
+                <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
+                  まだゲームを公開していません
+                </p>
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                gap: '12px'
+              }}>
+                {userGames.map((game) => (
+                  <div
+                    key={game.id}
+                    style={{
+                      backgroundColor: 'white',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s, box-shadow 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)'
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)'
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    {/* サムネイル */}
+                    <div style={{
+                      aspectRatio: '9 / 16',
+                      backgroundColor: '#f3f4f6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden'
+                    }}>
+                      {game.thumbnail ? (
+                        <img
+                          src={game.thumbnail}
+                          alt={game.title}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: '32px' }}>🎮</span>
+                      )}
+                    </div>
+
+                    {/* ゲーム情報 */}
+                    <div style={{ padding: '8px' }}>
+                      <p style={{
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: '#111827',
+                        margin: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {game.title}
+                      </p>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginTop: '4px',
+                        fontSize: '10px',
+                        color: '#6b7280'
+                      }}>
+                        <span>❤️ {game.stats?.likes || 0}</span>
+                        <span>👁️ {game.stats?.views || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

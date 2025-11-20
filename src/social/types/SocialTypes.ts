@@ -47,6 +47,7 @@ export interface PublicGame {
     id: string;
     name: string;
     avatar: string;
+    username?: string;
   };
   stats: SocialStats;
   tags: string[];

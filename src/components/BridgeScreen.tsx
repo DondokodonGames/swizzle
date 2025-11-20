@@ -93,6 +93,10 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         setIsLiked(!newLikeState);
         setLikeCount(prev => newLikeState ? prev - 1 : prev + 1);
         setIsLiking(false);
+        // サインイン画面を開く
+        window.dispatchEvent(new CustomEvent('openAuthModal', {
+          detail: { mode: 'signin' }
+        }));
         return;
       }
 
@@ -195,11 +199,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
   const handleGoToProfile = () => {
     console.log('👤 プロフィールへ遷移');
-    window.location.href = `/profile/${currentGame.author.id}`;
+    if (currentGame.author.username) {
+      window.location.href = `/profile/${currentGame.author.username}`;
+    }
   };
 
   // ==================== 進捗バー ====================
-  const progressPercentage = ((20 - timeLeft) / 20) * 100; // 5秒→20秒に変更
+  const remainingPercentage = (timeLeft / 10) * 100; // 残り時間の割合（10秒基準）
 
   // ==================== スタイル定義 ====================
   const containerStyle: React.CSSProperties = inline ? {
@@ -340,27 +346,39 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           alignItems: 'center',
           gap: '16px'
         }}>
-          <div style={{
-            width: '60px',
-            height: '60px',
-            background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontSize: '32px',
-            fontWeight: 'bold',
-          }}>
-            {currentGame.author.name.charAt(0).toUpperCase()}
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ color: 'white', fontWeight: 'bold', fontSize: '24px', margin: 0 }}>
-              {currentGame.author.name}
-            </p>
-            <p style={{ color: '#9ca3af', fontSize: '18px', margin: 0 }}>
-              {currentGame.title}
-            </p>
+          {/* クリエイター情報（クリックでプロフィールへ） */}
+          <div
+            onClick={handleGoToProfile}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              flex: 1,
+              cursor: 'pointer'
+            }}
+          >
+            <div style={{
+              width: '60px',
+              height: '60px',
+              background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontSize: '32px',
+              fontWeight: 'bold',
+            }}>
+              {currentGame.author.name.charAt(0).toUpperCase()}
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ color: 'white', fontWeight: 'bold', fontSize: '24px', margin: 0 }}>
+                {currentGame.author.name}
+              </p>
+              <p style={{ color: '#9ca3af', fontSize: '18px', margin: 0 }}>
+                {currentGame.title}
+              </p>
+            </div>
           </div>
           <button
             onClick={handleLike}
@@ -524,14 +542,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         }}>
           <div style={{
             height: '100%',
-            width: `${progressPercentage}%`,
+            width: `${remainingPercentage}%`,
             backgroundColor: (() => {
-              const remaining = 100 - progressPercentage;
-              if (remaining > 50) return '#10b981'; // 緑
-              if (remaining > 20) return '#f59e0b'; // 黄色
+              if (remainingPercentage > 50) return '#10b981'; // 緑
+              if (remainingPercentage > 20) return '#f59e0b'; // 黄色
               return '#ef4444'; // 赤
             })(),
-            transition: 'all 0.3s ease',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             borderRadius: '6px'
           }} />
         </div>
