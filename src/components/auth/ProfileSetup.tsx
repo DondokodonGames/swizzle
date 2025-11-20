@@ -21,7 +21,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
   mode = 'setup',
   title
 }) => {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { profile, updateProfile, checkUsernameAvailable, loading, error, clearError } = useAuth()
 
   const [formData, setFormData] = useState({
@@ -69,7 +69,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
         if (hasChanges) {
-          if (window.confirm('変更が保存されていません。閉じてもよろしいですか？')) {
+          if (window.confirm(t('profile.unsavedChanges'))) {
             onClose()
           }
         } else {
@@ -117,7 +117,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
     const errors: Record<string, string> = {}
 
     if (!formData.username.trim()) {
-      errors.username = 'ユーザー名を入力してください'
+      errors.username = t('profile.usernameRequired')
     } else if (formData.username.length < 3) {
       errors.username = '3文字以上必要です'
     } else if (formData.username.length > 20) {
@@ -125,7 +125,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
     } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
       errors.username = '英数字とアンダースコアのみ'
     } else if (formData.username !== profile?.username && usernameAvailable === false) {
-      errors.username = 'このユーザー名は使用されています'
+      errors.username = t('profile.usernameInUse')
     }
 
     if (formData.displayName.length > 50) {
@@ -176,7 +176,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
 
       setHasChanges(false)
       setAvatarFile(null)
-      setSuccessMessage('保存しました！')
+      setSuccessMessage(t('profile.saveSuccess'))
 
       window.dispatchEvent(new CustomEvent('profileUpdated'))
 
@@ -192,7 +192,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
     } catch (error: any) {
       setValidationErrors(prev => ({
         ...prev,
-        general: `保存失敗: ${error.message || '不明なエラー'}`
+        general: `${t('profile.saveFailed')}: ${error.message || t('errors.generic')}`
       }))
     } finally {
       setAvatarUploading(false)
@@ -273,7 +273,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
         style={{ position: 'fixed', inset: 0 }}
         onClick={() => {
           if (hasChanges) {
-            if (window.confirm('変更が保存されていません。閉じてもよろしいですか？')) {
+            if (window.confirm(t('profile.unsavedChanges'))) {
               onClose()
             }
           } else {
@@ -299,7 +299,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
         <button
           onClick={() => {
             if (hasChanges) {
-              if (window.confirm('変更が保存されていません。閉じてもよろしいですか？')) {
+              if (window.confirm(t('profile.unsavedChanges'))) {
                 onClose()
               }
             } else {
@@ -340,7 +340,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
             color: '#111827',
             margin: 0
           }}>
-            {title || (mode === 'setup' ? 'プロフィール設定' : 'プロフィール編集')}
+            {title || t(mode === 'setup' ? 'profile.setup' : 'profile.edit')}
           </h2>
         </div>
 
@@ -490,7 +490,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
                 color: '#374151',
                 marginBottom: '6px'
               }}>
-                ユーザー名 <span style={{ color: '#ef4444' }}>*</span>
+                {t('profile.username')} <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <div style={{ position: 'relative' }}>
                 <input
@@ -543,7 +543,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
                 color: '#374151',
                 marginBottom: '6px'
               }}>
-                表示名
+                {t('profile.displayName')}
               </label>
               <input
                 type="text"
@@ -563,7 +563,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
                 disabled={loading}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                <span style={{ fontSize: '11px', color: '#6b7280' }}>空白の場合はユーザー名が表示</span>
+                <span style={{ fontSize: '11px', color: '#6b7280' }}>{t('profile.usernameNote')}</span>
                 <span style={{ fontSize: '11px', color: formData.displayName.length > 50 ? '#ef4444' : '#9ca3af' }}>
                   {formData.displayName.length}/50
                 </span>
@@ -579,7 +579,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
                 color: '#374151',
                 marginBottom: '6px'
               }}>
-                自己紹介
+                {t('profile.bio')}
               </label>
               <textarea
                 name="bio"
@@ -615,7 +615,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
                 color: '#374151',
                 marginBottom: '6px'
               }}>
-                言語設定
+                {t('profile.languageSetting')}
               </label>
               <select
                 name="language"
@@ -655,7 +655,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
               type="button"
               onClick={() => {
                 if (hasChanges) {
-                  if (window.confirm('変更が保存されていません。閉じてもよろしいですか？')) {
+                  if (window.confirm(t('profile.unsavedChanges'))) {
                     onClose()
                   }
                 } else {
@@ -675,7 +675,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
               }}
               disabled={loading}
             >
-              キャンセル
+              {t('common.cancel')}
             </button>
           )}
 
@@ -697,7 +697,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
               opacity: loading || !hasChanges ? 0.5 : 1
             }}
           >
-            {loading || avatarUploading ? '保存中...' : '保存'}
+            {loading || avatarUploading ? t('profile.saving') : t('common.save')}
           </button>
         </div>
       </div>

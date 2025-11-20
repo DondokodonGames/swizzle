@@ -342,6 +342,8 @@
   },
   "profile": {
     "title": "个人资料",
+    "setup": "设置资料",
+    "edit": "编辑资料",
     "myGames": "我的游戏",
     "favorites": "收藏",
     "followers": "粉丝",
@@ -349,7 +351,19 @@
     "editProfile": "编辑资料",
     "bio": "简介",
     "gamesCreated": "创建的游戏",
-    "totalPlays": "总游玩次数"
+    "totalPlays": "总游玩次数",
+    "username": "用户名",
+    "displayName": "显示名称",
+    "avatarImage": "头像",
+    "language": "语言",
+    "languageSetting": "语言设置",
+    "saving": "保存中...",
+    "usernameRequired": "用户名为必填项",
+    "usernameInUse": "该用户名已被使用",
+    "saveSuccess": "保存成功！",
+    "saveFailed": "保存失败",
+    "unsavedChanges": "您有未保存的更改。确定要关闭吗？",
+    "usernameNote": "如为空则显示用户名"
   },
   "game": {
     "start": "开始",

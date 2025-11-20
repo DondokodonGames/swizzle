@@ -342,6 +342,8 @@
   },
   "profile": {
     "title": "프로필",
+    "setup": "프로필 설정",
+    "edit": "프로필 편집",
     "myGames": "내 게임",
     "favorites": "즐겨찾기",
     "followers": "팔로워",
@@ -349,7 +351,19 @@
     "editProfile": "프로필 편집",
     "bio": "소개",
     "gamesCreated": "만든 게임",
-    "totalPlays": "총 플레이"
+    "totalPlays": "총 플레이",
+    "username": "사용자 이름",
+    "displayName": "표시 이름",
+    "avatarImage": "아바타 이미지",
+    "language": "언어",
+    "languageSetting": "언어 설정",
+    "saving": "저장 중...",
+    "usernameRequired": "사용자 이름을 입력하세요",
+    "usernameInUse": "이 사용자 이름은 이미 사용 중입니다",
+    "saveSuccess": "저장 완료!",
+    "saveFailed": "저장 실패",
+    "unsavedChanges": "저장하지 않은 변경사항이 있습니다. 닫으시겠습니까?",
+    "usernameNote": "비어있으면 사용자 이름이 표시됩니다"
   },
   "game": {
     "start": "시작",
