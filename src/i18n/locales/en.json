@@ -805,7 +805,107 @@
       "cancel": "Cancel",
       "create": "Create",
       "update": "Update",
-      "selectPreset": "Select Preset Counter"
+      "selectPreset": "Select Preset Counter",
+      "ruleComponents": {
+        "conditionTitle": "Counter Condition",
+        "actionTitle": "Counter Action",
+        "deleteButton": "Delete",
+        "targetCounter": "Target Counter",
+        "selectCounterPlaceholder": "Select a counter",
+        "initialValueLabel": "Initial",
+        "currentValueLabel": "Current",
+        "noCountersWarning": "No counters configured. Please create a counter in the settings tab.",
+        "conditionLabel": "Condition",
+        "comparisonValue": "Comparison Value",
+        "minimumValue": "Minimum Value",
+        "maximumValue": "Maximum Value",
+        "conditionPreview": "Condition Preview:",
+        "operationLabel": "Operation",
+        "valueLabel": "Value",
+        "notificationCheckbox": "Show notification on change",
+        "notificationPlaceholder": "Notification message (auto-generated if blank)",
+        "actionPreview": "Action Preview:",
+        "notificationEnabled": "Notification enabled",
+        "noCountersTitle": "No counters configured",
+        "noCountersMessage": "Please create a counter in the settings tab before setting up rules",
+        "counterRuleTitle": "Counter Rules",
+        "countersAvailable": "{count} counters available",
+        "addConditionButton": "Add Counter Condition",
+        "addActionButton": "Add Counter Action",
+        "hint": "Hint: You can set counter conditions like \"score >= 100\" and actions like \"decrease life by 1\"",
+        "comparisonOptions": {
+          "equals": {
+            "label": "Equals (==)",
+            "description": "Exact match"
+          },
+          "notEquals": {
+            "label": "Not Equals (!=)",
+            "description": "Not equal"
+          },
+          "greater": {
+            "label": "Greater Than (>)",
+            "description": "Greater than value"
+          },
+          "greaterOrEqual": {
+            "label": "Greater or Equal (>=)",
+            "description": "Greater than or equal to value"
+          },
+          "less": {
+            "label": "Less Than (<)",
+            "description": "Less than value"
+          },
+          "lessOrEqual": {
+            "label": "Less or Equal (<=)",
+            "description": "Less than or equal to value"
+          },
+          "between": {
+            "label": "Between",
+            "description": "Within range"
+          },
+          "notBetween": {
+            "label": "Not Between",
+            "description": "Outside range"
+          },
+          "changed": {
+            "label": "Changed",
+            "description": "Value changed from previous"
+          }
+        },
+        "operationOptions": {
+          "increment": {
+            "label": "Increment (+)",
+            "description": "Increase by value"
+          },
+          "decrement": {
+            "label": "Decrement (-)",
+            "description": "Decrease by value"
+          },
+          "set": {
+            "label": "Set (=)",
+            "description": "Set to value"
+          },
+          "reset": {
+            "label": "Reset",
+            "description": "Reset to initial value"
+          },
+          "add": {
+            "label": "Add (+)",
+            "description": "Same as increment"
+          },
+          "subtract": {
+            "label": "Subtract (-)",
+            "description": "Same as decrement"
+          },
+          "multiply": {
+            "label": "Multiply (×)",
+            "description": "Multiply by value"
+          },
+          "divide": {
+            "label": "Divide (÷)",
+            "description": "Divide by value"
+          }
+        }
+      }
     },
     "rulePreview": {
       "conditionLabels": {

@@ -606,7 +606,107 @@
       "cancel": "キャンセル",
       "create": "作成",
       "update": "更新",
-      "selectPreset": "プリセットカウンター選択"
+      "selectPreset": "プリセットカウンター選択",
+      "ruleComponents": {
+        "conditionTitle": "カウンター条件",
+        "actionTitle": "カウンターアクション",
+        "deleteButton": "削除",
+        "targetCounter": "対象カウンター",
+        "selectCounterPlaceholder": "カウンターを選択してください",
+        "initialValueLabel": "初期値",
+        "currentValueLabel": "現在値",
+        "noCountersWarning": "カウンターが設定されていません。設定タブでカウンターを作成してください。",
+        "conditionLabel": "条件",
+        "comparisonValue": "比較値",
+        "minimumValue": "最小値",
+        "maximumValue": "最大値",
+        "conditionPreview": "条件プレビュー:",
+        "operationLabel": "操作",
+        "valueLabel": "値",
+        "notificationCheckbox": "変更時に通知を表示",
+        "notificationPlaceholder": "通知メッセージ（空白の場合は自動生成）",
+        "actionPreview": "アクションプレビュー:",
+        "notificationEnabled": "通知あり",
+        "noCountersTitle": "カウンターが設定されていません",
+        "noCountersMessage": "設定タブでカウンターを作成してからルールを設定してください",
+        "counterRuleTitle": "カウンタールール",
+        "countersAvailable": "{count}個のカウンター利用可能",
+        "addConditionButton": "カウンター条件追加",
+        "addActionButton": "カウンターアクション追加",
+        "hint": "ヒント: カウンター条件で「スコアが100以上」、アクションで「ライフを1減らす」等を設定できます",
+        "comparisonOptions": {
+          "equals": {
+            "label": "等しい (==)",
+            "description": "完全一致"
+          },
+          "notEquals": {
+            "label": "等しくない (!=)",
+            "description": "完全不一致"
+          },
+          "greater": {
+            "label": "より大きい (>)",
+            "description": "指定値より大きい"
+          },
+          "greaterOrEqual": {
+            "label": "以上 (>=)",
+            "description": "指定値以上"
+          },
+          "less": {
+            "label": "より小さい (<)",
+            "description": "指定値より小さい"
+          },
+          "lessOrEqual": {
+            "label": "以下 (<=)",
+            "description": "指定値以下"
+          },
+          "between": {
+            "label": "範囲内",
+            "description": "指定範囲内"
+          },
+          "notBetween": {
+            "label": "範囲外",
+            "description": "指定範囲外"
+          },
+          "changed": {
+            "label": "変更された",
+            "description": "前回から値が変化"
+          }
+        },
+        "operationOptions": {
+          "increment": {
+            "label": "増加 (+)",
+            "description": "指定値だけ増加"
+          },
+          "decrement": {
+            "label": "減少 (-)",
+            "description": "指定値だけ減少"
+          },
+          "set": {
+            "label": "設定 (=)",
+            "description": "指定値に設定"
+          },
+          "reset": {
+            "label": "リセット",
+            "description": "初期値に戻す"
+          },
+          "add": {
+            "label": "加算 (+)",
+            "description": "incrementと同じ"
+          },
+          "subtract": {
+            "label": "減算 (-)",
+            "description": "decrementと同じ"
+          },
+          "multiply": {
+            "label": "乗算 (×)",
+            "description": "指定値を掛ける"
+          },
+          "divide": {
+            "label": "除算 (÷)",
+            "description": "指定値で割る"
+          }
+        }
+      }
     },
     "rulePreview": {
       "conditionLabels": {

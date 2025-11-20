@@ -1,7 +1,8 @@
 // src/components/editor/script/CounterRuleComponents.tsx
 // カウンター条件・アクション設定UIコンポーネント - AdvancedRuleModal統合用
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
 import { TriggerCondition, GameAction } from '../../../types/editor/GameScript';
 import { 
@@ -30,6 +31,8 @@ export const CounterConditionEditor: React.FC<CounterConditionEditorProps> = ({
   onChange,
   onRemove
 }) => {
+  const { t } = useTranslation();
+
   // デフォルト条件
   const defaultCondition: Extract<TriggerCondition, { type: 'counter' }> = {
     type: 'counter',
@@ -46,17 +49,20 @@ export const CounterConditionEditor: React.FC<CounterConditionEditorProps> = ({
   };
 
   // 比較演算子オプション
-  const comparisonOptions: Array<{ value: CounterComparison; label: string; description: string }> = [
-    { value: 'equals', label: '等しい (==)', description: '完全一致' },
-    { value: 'notEquals', label: '等しくない (!=)', description: '完全不一致' },
-    { value: 'greater', label: 'より大きい (>)', description: '指定値より大きい' },
-    { value: 'greaterOrEqual', label: '以上 (>=)', description: '指定値以上' },
-    { value: 'less', label: 'より小さい (<)', description: '指定値より小さい' },
-    { value: 'lessOrEqual', label: '以下 (<=)', description: '指定値以下' },
-    { value: 'between', label: '範囲内', description: '指定範囲内' },
-    { value: 'notBetween', label: '範囲外', description: '指定範囲外' },
-    { value: 'changed', label: '変更された', description: '前回から値が変化' }
-  ];
+  const comparisonOptions = useMemo(() => {
+    const options: Array<{ value: CounterComparison; label: string; description: string }> = [
+      { value: 'equals', label: t('editor.counter.ruleComponents.comparisonOptions.equals.label'), description: t('editor.counter.ruleComponents.comparisonOptions.equals.description') },
+      { value: 'notEquals', label: t('editor.counter.ruleComponents.comparisonOptions.notEquals.label'), description: t('editor.counter.ruleComponents.comparisonOptions.notEquals.description') },
+      { value: 'greater', label: t('editor.counter.ruleComponents.comparisonOptions.greater.label'), description: t('editor.counter.ruleComponents.comparisonOptions.greater.description') },
+      { value: 'greaterOrEqual', label: t('editor.counter.ruleComponents.comparisonOptions.greaterOrEqual.label'), description: t('editor.counter.ruleComponents.comparisonOptions.greaterOrEqual.description') },
+      { value: 'less', label: t('editor.counter.ruleComponents.comparisonOptions.less.label'), description: t('editor.counter.ruleComponents.comparisonOptions.less.description') },
+      { value: 'lessOrEqual', label: t('editor.counter.ruleComponents.comparisonOptions.lessOrEqual.label'), description: t('editor.counter.ruleComponents.comparisonOptions.lessOrEqual.description') },
+      { value: 'between', label: t('editor.counter.ruleComponents.comparisonOptions.between.label'), description: t('editor.counter.ruleComponents.comparisonOptions.between.description') },
+      { value: 'notBetween', label: t('editor.counter.ruleComponents.comparisonOptions.notBetween.label'), description: t('editor.counter.ruleComponents.comparisonOptions.notBetween.description') },
+      { value: 'changed', label: t('editor.counter.ruleComponents.comparisonOptions.changed.label'), description: t('editor.counter.ruleComponents.comparisonOptions.changed.description') }
+    ];
+    return options;
+  }, [t]);
 
   const handleFieldUpdate = <K extends keyof Extract<TriggerCondition, { type: 'counter' }>>(
     field: K,
@@ -87,16 +93,16 @@ export const CounterConditionEditor: React.FC<CounterConditionEditorProps> = ({
           alignItems: 'center',
           gap: DESIGN_TOKENS.spacing[2]
         }}>
-          🔢 カウンター条件
+          🔢 {t('editor.counter.ruleComponents.conditionTitle')}
         </h4>
-        
+
         <ModernButton
           variant="ghost"
           size="xs"
           onClick={onRemove}
           style={{ color: DESIGN_TOKENS.colors.error[600] }}
         >
-          🗑️ 削除
+          🗑️ {t('editor.counter.ruleComponents.deleteButton')}
         </ModernButton>
       </div>
 
@@ -110,9 +116,9 @@ export const CounterConditionEditor: React.FC<CounterConditionEditorProps> = ({
             color: DESIGN_TOKENS.colors.neutral[700],
             marginBottom: DESIGN_TOKENS.spacing[2]
           }}>
-            対象カウンター
+            {t('editor.counter.ruleComponents.targetCounter')}
           </label>
-          
+
           {availableCounters.length > 0 ? (
             <select
               value={currentCondition.counterName}
@@ -126,10 +132,10 @@ export const CounterConditionEditor: React.FC<CounterConditionEditorProps> = ({
                 backgroundColor: DESIGN_TOKENS.colors.neutral[0]
               }}
             >
-              <option value="">カウンターを選択してください</option>
+              <option value="">{t('editor.counter.ruleComponents.selectCounterPlaceholder')}</option>
               {availableCounters.map((counter) => (
                 <option key={counter.id} value={counter.name}>
-                  {counter.name} (初期値: {counter.initialValue})
+                  {counter.name} ({t('editor.counter.ruleComponents.initialValueLabel')}: {counter.initialValue})
                 </option>
               ))}
             </select>
@@ -141,7 +147,7 @@ export const CounterConditionEditor: React.FC<CounterConditionEditorProps> = ({
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
               color: DESIGN_TOKENS.colors.neutral[600]
             }}>
-              ⚠️ カウンターが設定されていません。設定タブでカウンターを作成してください。
+              ⚠️ {t('editor.counter.ruleComponents.noCountersWarning')}
             </div>
           )}
         </div>
@@ -155,7 +161,7 @@ export const CounterConditionEditor: React.FC<CounterConditionEditorProps> = ({
             color: DESIGN_TOKENS.colors.neutral[700],
             marginBottom: DESIGN_TOKENS.spacing[2]
           }}>
-            条件
+            {t('editor.counter.ruleComponents.conditionLabel')}
           </label>
           
           <select
@@ -196,7 +202,7 @@ export const CounterConditionEditor: React.FC<CounterConditionEditorProps> = ({
               color: DESIGN_TOKENS.colors.neutral[700],
               marginBottom: DESIGN_TOKENS.spacing[2]
             }}>
-              {currentCondition.comparison === 'between' || currentCondition.comparison === 'notBetween' ? '最小値' : '比較値'}
+              {currentCondition.comparison === 'between' || currentCondition.comparison === 'notBetween' ? t('editor.counter.ruleComponents.minimumValue') : t('editor.counter.ruleComponents.comparisonValue')}
             </label>
             
             <input
@@ -224,7 +230,7 @@ export const CounterConditionEditor: React.FC<CounterConditionEditorProps> = ({
               color: DESIGN_TOKENS.colors.neutral[700],
               marginBottom: DESIGN_TOKENS.spacing[2]
             }}>
-              最大値
+              {t('editor.counter.ruleComponents.maximumValue')}
             </label>
             
             <input
@@ -255,7 +261,7 @@ export const CounterConditionEditor: React.FC<CounterConditionEditorProps> = ({
               fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
               color: DESIGN_TOKENS.colors.purple[800]
             }}>
-              条件プレビュー:
+              {t('editor.counter.ruleComponents.conditionPreview')}
             </div>
             <div style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -285,6 +291,8 @@ export const CounterActionEditor: React.FC<CounterActionEditorProps> = ({
   onChange,
   onRemove
 }) => {
+  const { t } = useTranslation();
+
   // デフォルトアクション
   const defaultAction: Extract<GameAction, { type: 'counter' }> = {
     type: 'counter',
@@ -301,16 +309,19 @@ export const CounterActionEditor: React.FC<CounterActionEditorProps> = ({
   };
 
   // 操作タイプオプション
-  const operationOptions: Array<{ value: CounterOperation; label: string; description: string; needsValue: boolean }> = [
-    { value: 'increment', label: '増加 (+)', description: '指定値だけ増加', needsValue: true },
-    { value: 'decrement', label: '減少 (-)', description: '指定値だけ減少', needsValue: true },
-    { value: 'set', label: '設定 (=)', description: '指定値に設定', needsValue: true },
-    { value: 'reset', label: 'リセット', description: '初期値に戻す', needsValue: false },
-    { value: 'add', label: '加算 (+)', description: 'incrementと同じ', needsValue: true },
-    { value: 'subtract', label: '減算 (-)', description: 'decrementと同じ', needsValue: true },
-    { value: 'multiply', label: '乗算 (×)', description: '指定値を掛ける', needsValue: true },
-    { value: 'divide', label: '除算 (÷)', description: '指定値で割る', needsValue: true }
-  ];
+  const operationOptions = useMemo(() => {
+    const options: Array<{ value: CounterOperation; label: string; description: string; needsValue: boolean }> = [
+      { value: 'increment', label: t('editor.counter.ruleComponents.operationOptions.increment.label'), description: t('editor.counter.ruleComponents.operationOptions.increment.description'), needsValue: true },
+      { value: 'decrement', label: t('editor.counter.ruleComponents.operationOptions.decrement.label'), description: t('editor.counter.ruleComponents.operationOptions.decrement.description'), needsValue: true },
+      { value: 'set', label: t('editor.counter.ruleComponents.operationOptions.set.label'), description: t('editor.counter.ruleComponents.operationOptions.set.description'), needsValue: true },
+      { value: 'reset', label: t('editor.counter.ruleComponents.operationOptions.reset.label'), description: t('editor.counter.ruleComponents.operationOptions.reset.description'), needsValue: false },
+      { value: 'add', label: t('editor.counter.ruleComponents.operationOptions.add.label'), description: t('editor.counter.ruleComponents.operationOptions.add.description'), needsValue: true },
+      { value: 'subtract', label: t('editor.counter.ruleComponents.operationOptions.subtract.label'), description: t('editor.counter.ruleComponents.operationOptions.subtract.description'), needsValue: true },
+      { value: 'multiply', label: t('editor.counter.ruleComponents.operationOptions.multiply.label'), description: t('editor.counter.ruleComponents.operationOptions.multiply.description'), needsValue: true },
+      { value: 'divide', label: t('editor.counter.ruleComponents.operationOptions.divide.label'), description: t('editor.counter.ruleComponents.operationOptions.divide.description'), needsValue: true }
+    ];
+    return options;
+  }, [t]);
 
   const handleFieldUpdate = <K extends keyof Extract<GameAction, { type: 'counter' }>>(
     field: K,
@@ -351,16 +362,16 @@ export const CounterActionEditor: React.FC<CounterActionEditorProps> = ({
           alignItems: 'center',
           gap: DESIGN_TOKENS.spacing[2]
         }}>
-          ⚡ カウンターアクション
+          ⚡ {t('editor.counter.ruleComponents.actionTitle')}
         </h4>
-        
+
         <ModernButton
           variant="ghost"
           size="xs"
           onClick={onRemove}
           style={{ color: DESIGN_TOKENS.colors.error[600] }}
         >
-          🗑️ 削除
+          🗑️ {t('editor.counter.ruleComponents.deleteButton')}
         </ModernButton>
       </div>
 
@@ -374,9 +385,9 @@ export const CounterActionEditor: React.FC<CounterActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.neutral[700],
             marginBottom: DESIGN_TOKENS.spacing[2]
           }}>
-            対象カウンター
+            {t('editor.counter.ruleComponents.targetCounter')}
           </label>
-          
+
           {availableCounters.length > 0 ? (
             <select
               value={currentAction.counterName}
@@ -390,10 +401,10 @@ export const CounterActionEditor: React.FC<CounterActionEditorProps> = ({
                 backgroundColor: DESIGN_TOKENS.colors.neutral[0]
               }}
             >
-              <option value="">カウンターを選択してください</option>
+              <option value="">{t('editor.counter.ruleComponents.selectCounterPlaceholder')}</option>
               {availableCounters.map((counter) => (
                 <option key={counter.id} value={counter.name}>
-                  {counter.name} (現在値: {counter.currentValue})
+                  {counter.name} ({t('editor.counter.ruleComponents.currentValueLabel')}: {counter.currentValue})
                 </option>
               ))}
             </select>
@@ -405,7 +416,7 @@ export const CounterActionEditor: React.FC<CounterActionEditorProps> = ({
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
               color: DESIGN_TOKENS.colors.neutral[600]
             }}>
-              ⚠️ カウンターが設定されていません。設定タブでカウンターを作成してください。
+              ⚠️ {t('editor.counter.ruleComponents.noCountersWarning')}
             </div>
           )}
         </div>
@@ -419,7 +430,7 @@ export const CounterActionEditor: React.FC<CounterActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.neutral[700],
             marginBottom: DESIGN_TOKENS.spacing[2]
           }}>
-            操作
+            {t('editor.counter.ruleComponents.operationLabel')}
           </label>
           
           <select
@@ -460,7 +471,7 @@ export const CounterActionEditor: React.FC<CounterActionEditorProps> = ({
               color: DESIGN_TOKENS.colors.neutral[700],
               marginBottom: DESIGN_TOKENS.spacing[2]
             }}>
-              値
+              {t('editor.counter.ruleComponents.valueLabel')}
             </label>
             
             <input
@@ -494,16 +505,16 @@ export const CounterActionEditor: React.FC<CounterActionEditorProps> = ({
               checked={currentAction.notification?.enabled || false}
               onChange={(e) => handleNotificationUpdate({ enabled: e.target.checked })}
             />
-            変更時に通知を表示
+            {t('editor.counter.ruleComponents.notificationCheckbox')}
           </label>
-          
+
           {currentAction.notification?.enabled && (
             <div style={{ marginTop: DESIGN_TOKENS.spacing[3] }}>
               <input
                 type="text"
                 value={currentAction.notification.message || ''}
                 onChange={(e) => handleNotificationUpdate({ message: e.target.value })}
-                placeholder="通知メッセージ（空白の場合は自動生成）"
+                placeholder={t('editor.counter.ruleComponents.notificationPlaceholder')}
                 style={{
                   width: '100%',
                   padding: DESIGN_TOKENS.spacing[2],
@@ -529,7 +540,7 @@ export const CounterActionEditor: React.FC<CounterActionEditorProps> = ({
               fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
               color: DESIGN_TOKENS.colors.success[800]
             }}>
-              アクションプレビュー:
+              {t('editor.counter.ruleComponents.actionPreview')}
             </div>
             <div style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -539,7 +550,7 @@ export const CounterActionEditor: React.FC<CounterActionEditorProps> = ({
               {getCounterActionDisplayName(currentAction)}
               {currentAction.notification?.enabled && (
                 <span style={{ marginLeft: DESIGN_TOKENS.spacing[2] }}>
-                  📢 通知あり
+                  📢 {t('editor.counter.ruleComponents.notificationEnabled')}
                 </span>
               )}
             </div>
@@ -562,6 +573,7 @@ export const CounterRuleButtons: React.FC<CounterRuleButtonsProps> = ({
   onAddCounterCondition,
   onAddCounterAction
 }) => {
+  const { t } = useTranslation();
   const counters = project.script?.counters || [];
   const hasCounters = counters.length > 0;
 
@@ -581,9 +593,9 @@ export const CounterRuleButtons: React.FC<CounterRuleButtonsProps> = ({
           <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xl, marginBottom: DESIGN_TOKENS.spacing[2] }}>
             🔢
           </div>
-          カウンターが設定されていません
+          {t('editor.counter.ruleComponents.noCountersTitle')}
           <br />
-          設定タブでカウンターを作成してからルールを設定してください
+          {t('editor.counter.ruleComponents.noCountersMessage')}
         </div>
       </div>
     );
@@ -605,16 +617,16 @@ export const CounterRuleButtons: React.FC<CounterRuleButtonsProps> = ({
         alignItems: 'center',
         gap: DESIGN_TOKENS.spacing[2]
       }}>
-        🔢 カウンタールール
+        🔢 {t('editor.counter.ruleComponents.counterRuleTitle')}
         <span style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.xs,
           color: DESIGN_TOKENS.colors.purple[600],
           fontWeight: DESIGN_TOKENS.typography.fontWeight.normal
         }}>
-          ({counters.length}個のカウンター利用可能)
+          ({t('editor.counter.ruleComponents.countersAvailable', { count: counters.length })})
         </span>
       </div>
-      
+
       <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[3] }}>
         <ModernButton
           variant="outline"
@@ -626,9 +638,9 @@ export const CounterRuleButtons: React.FC<CounterRuleButtonsProps> = ({
             flex: 1
           }}
         >
-          🔢 カウンター条件追加
+          🔢 {t('editor.counter.ruleComponents.addConditionButton')}
         </ModernButton>
-        
+
         <ModernButton
           variant="outline"
           size="sm"
@@ -639,17 +651,17 @@ export const CounterRuleButtons: React.FC<CounterRuleButtonsProps> = ({
             flex: 1
           }}
         >
-          ⚡ カウンターアクション追加
+          ⚡ {t('editor.counter.ruleComponents.addActionButton')}
         </ModernButton>
       </div>
-      
+
       <div style={{
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.neutral[500],
         marginTop: DESIGN_TOKENS.spacing[2],
         lineHeight: 1.4
       }}>
-        💡 ヒント: カウンター条件で「スコアが100以上」、アクションで「ライフを1減らす」等を設定できます
+        💡 {t('editor.counter.ruleComponents.hint')}
       </div>
     </div>
   );
