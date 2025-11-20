@@ -1,43 +1,46 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   base: '/',
+  resolve: {
+    dedupe: ['react', 'react-dom', 'react-router-dom'],
+    alias: {
+      'react': path.resolve(__dirname, './node_modules/react'),
+      'react-dom': path.resolve(__dirname, './node_modules/react-dom')
+    }
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom']
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,
     rollupOptions: {
       output: {
-        // 問題30・31対応: チャンク分割で初回読み込みを最適化
         manualChunks: (id) => {
-          // React関連を別チャンクに
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
             return 'vendor-react';
           }
-          // Supabase関連を別チャンクに
           if (id.includes('node_modules/@supabase')) {
             return 'vendor-supabase';
           }
-          // PixiJS関連を別チャンクに（エディター用）
           if (id.includes('node_modules/pixi.js')) {
             return 'vendor-pixijs';
           }
-          // Router関連を別チャンクに
           if (id.includes('node_modules/react-router')) {
             return 'vendor-router';
           }
-          // その他の大きなライブラリを別チャンクに
           if (id.includes('node_modules')) {
             return 'vendor-other';
           }
         },
       },
     },
-    // チャンクサイズ警告の閾値を上げる
     chunkSizeWarningLimit: 1000,
-    // minify設定（esbuildを使用、本番環境で高速）
     minify: 'esbuild',
   },
   server: {
