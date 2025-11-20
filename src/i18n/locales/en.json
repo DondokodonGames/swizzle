@@ -1299,6 +1299,31 @@
       "moment": " (at moment of change)",
       "trigger": ", trigger",
       "stateLabel": "state"
+    },
+    "timeCondition": {
+      "title": "Time Condition Settings",
+      "conditionTypeLabel": "Time Condition Type",
+      "triggerTimeLabel": "Trigger Time: {seconds}s after start",
+      "startTimeLabel": "Start Time: {seconds}s after start",
+      "endTimeLabel": "End Time: {seconds}s after start",
+      "intervalLabel": "Interval: Every {interval}s",
+      "intervalHelp": "Actual interval may vary slightly due to per-frame processing",
+      "seconds": "{seconds}s",
+      "exactDescription": "Triggers once at exact specified time",
+      "rangeDescription": "Triggers continuously within time range",
+      "intervalDescription": "Triggers repeatedly at specified interval",
+      "usagePatternsLabel": "Usage Patterns",
+      "pattern1Title": "Game Start Effect:",
+      "pattern1Detail": "Trigger at 0s → Show title, play BGM",
+      "pattern2Title": "Time Limit:",
+      "pattern2Detail": "Trigger at 60s → Game over, score tally",
+      "pattern3Title": "Periodic Event:",
+      "pattern3Detail": "Trigger every 5s → Spawn enemy, generate item",
+      "settingsSummaryTitle": "💡 Settings: ",
+      "exactTrigger": "Trigger once {seconds}s after game start",
+      "rangeTrigger": "Trigger continuously from {start}s to {end}s",
+      "intervalTrigger": "Trigger repeatedly every {interval}s",
+      "notSet": "Time condition not set"
     }
   },
   "conditions": {
@@ -1334,7 +1359,19 @@
     },
     "time": {
       "label": "Time Elapsed",
-      "description": "Auto triggers after specified time"
+      "description": "Auto triggers after specified time",
+      "exact": {
+        "label": "Exact Time",
+        "description": "Triggers once at exact specified time"
+      },
+      "range": {
+        "label": "Time Range",
+        "description": "Triggers continuously within specified time range"
+      },
+      "interval": {
+        "label": "Repeat",
+        "description": "Triggers repeatedly at specified interval"
+      }
     },
     "position": {
       "label": "At Position",

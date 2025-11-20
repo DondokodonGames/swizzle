@@ -2,12 +2,13 @@
 // Phase C Step 2完了版: 時間条件詳細設定コンポーネント
 // AdvancedRuleModal.tsx分割 - Step 2: 条件エディター分離
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TriggerCondition } from '../../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
-import { TIME_CONDITION_OPTIONS } from '../constants/TimeConstants';
+import { getTimeConditionOptions } from '../constants/TimeConstants';
 
 interface TimeConditionEditorProps {
   condition: TriggerCondition & { type: 'time' };
@@ -22,8 +23,12 @@ export const TimeConditionEditor: React.FC<TimeConditionEditorProps> = ({
   onUpdate,
   gameDuration = 30 // デフォルト30秒、実際の値は設定から取得予定
 }) => {
+  const { t } = useTranslation();
   const timeCondition = condition;
-  
+
+  // Get localized options using getter functions that access i18n
+  const TIME_CONDITION_OPTIONS = useMemo(() => getTimeConditionOptions(), []);
+
   return (
     <ModernCard 
       variant="outlined" 
@@ -45,7 +50,7 @@ export const TimeConditionEditor: React.FC<TimeConditionEditorProps> = ({
         gap: DESIGN_TOKENS.spacing[2]
       }}>
         <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>⏰</span>
-        時間条件詳細設定
+        {t('editor.timeCondition.title')}
       </h5>
 
       {/* 時間タイプ選択 */}
@@ -57,7 +62,7 @@ export const TimeConditionEditor: React.FC<TimeConditionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          時間条件タイプ
+          {t('editor.timeCondition.conditionTypeLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -106,7 +111,7 @@ export const TimeConditionEditor: React.FC<TimeConditionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            発動時刻: {timeCondition.seconds || 3}秒後
+            {t('editor.timeCondition.triggerTimeLabel', { seconds: timeCondition.seconds || 3 })}
           </label>
           <input
             type="range"
@@ -131,8 +136,8 @@ export const TimeConditionEditor: React.FC<TimeConditionEditorProps> = ({
             color: DESIGN_TOKENS.colors.purple[500],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>0秒</span>
-            <span>{gameDuration}秒</span>
+            <span>{t('editor.timeCondition.seconds', { seconds: 0 })}</span>
+            <span>{t('editor.timeCondition.seconds', { seconds: gameDuration })}</span>
           </div>
         </div>
       )}
@@ -148,7 +153,7 @@ export const TimeConditionEditor: React.FC<TimeConditionEditorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              開始時刻: {timeCondition.range?.min || 2}秒後
+              {t('editor.timeCondition.startTimeLabel', { seconds: timeCondition.range?.min || 2 })}
             </label>
             <input
               type="range"
@@ -184,7 +189,7 @@ export const TimeConditionEditor: React.FC<TimeConditionEditorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              終了時刻: {timeCondition.range?.max || 5}秒後
+              {t('editor.timeCondition.endTimeLabel', { seconds: timeCondition.range?.max || 5 })}
             </label>
             <input
               type="range"
@@ -219,8 +224,8 @@ export const TimeConditionEditor: React.FC<TimeConditionEditorProps> = ({
             color: DESIGN_TOKENS.colors.purple[500],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>0秒</span>
-            <span>{gameDuration}秒</span>
+            <span>{t('editor.timeCondition.seconds', { seconds: 0 })}</span>
+            <span>{t('editor.timeCondition.seconds', { seconds: gameDuration })}</span>
           </div>
         </div>
       )}
@@ -235,7 +240,7 @@ export const TimeConditionEditor: React.FC<TimeConditionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            間隔時間: {timeCondition.interval || 2}秒毎
+            {t('editor.timeCondition.intervalLabel', { interval: timeCondition.interval || 2 })}
           </label>
           <input
             type="range"
@@ -260,8 +265,8 @@ export const TimeConditionEditor: React.FC<TimeConditionEditorProps> = ({
             color: DESIGN_TOKENS.colors.purple[500],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>0.1秒毎</span>
-            <span>10秒毎</span>
+            <span>{t('editor.timeCondition.seconds', { seconds: 0.1 })}</span>
+            <span>{t('editor.timeCondition.seconds', { seconds: 10 })}</span>
           </div>
         </div>
       )}
@@ -273,10 +278,14 @@ export const TimeConditionEditor: React.FC<TimeConditionEditorProps> = ({
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.purple[800]
       }}>
-        💡 設定内容: {TIME_CONDITION_OPTIONS.find(t => t.value === timeCondition.timeType)?.description}
-        {timeCondition.timeType === 'exact' && ` - ゲーム開始から${timeCondition.seconds || 3}秒後`}
-        {timeCondition.timeType === 'range' && ` - ${timeCondition.range?.min || 2}秒〜${timeCondition.range?.max || 5}秒の間`}
-        {timeCondition.timeType === 'interval' && ` - ${timeCondition.interval || 2}秒毎に繰り返し`}
+        {t('editor.timeCondition.settingsSummaryTitle')}
+        {timeCondition.timeType === 'exact' && t('editor.timeCondition.exactTrigger', { seconds: timeCondition.seconds || 3 })}
+        {timeCondition.timeType === 'range' && t('editor.timeCondition.rangeTrigger', {
+          start: timeCondition.range?.min || 2,
+          end: timeCondition.range?.max || 5
+        })}
+        {timeCondition.timeType === 'interval' && t('editor.timeCondition.intervalTrigger', { interval: timeCondition.interval || 2 })}
+        {!timeCondition.timeType && t('editor.timeCondition.notSet')}
       </div>
     </ModernCard>
   );
