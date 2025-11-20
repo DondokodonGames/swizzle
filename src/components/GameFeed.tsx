@@ -59,8 +59,11 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
   // ==================== フィードデータ取得 ====================
   const fetchFeedData = useCallback(async () => {
     try {
+      console.log('📊 フィードデータ取得開始');
+
       // トレンドゲーム
       const trendingGames = await socialService.getTrendingGames('today', 'trending', 12);
+      console.log('📊 トレンドゲーム取得:', trendingGames?.length || 0, '件');
       updateSection('trending', trendingGames, false);
 
       // フォロー中
@@ -117,17 +120,21 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
 
       // おすすめ
       const tagGames = await socialService.getTrendingGames('week', 'popular', 12);
+      console.log('📊 おすすめゲーム取得:', tagGames?.length || 0, '件');
       updateSection('tags', tagGames, false);
 
       // ランダム
       const randomGames = await socialService.getRandomGames(12);
+      console.log('📊 ランダムゲーム取得:', randomGames?.length || 0, '件');
       updateSection('random', randomGames, false);
 
       // プレミアム
       updateSection('premium', [], false);
 
+      console.log('📊 フィードデータ取得完了');
+
     } catch (err) {
-      console.error('フィードデータの取得に失敗:', err);
+      console.error('❌ フィードデータの取得に失敗:', err);
     }
   }, [socialService, currentUser, updateSection]);
 
