@@ -688,7 +688,7 @@ function MainApp() {
           fontSize: '1.2rem',
           fontWeight: '500'
         }}>
-          メイドイン俺風・ショートゲームプラットフォーム
+          Short Game Platform
         </p>
 
         <div style={{ marginTop: '15px', display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>

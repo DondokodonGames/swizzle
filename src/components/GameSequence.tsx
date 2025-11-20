@@ -51,6 +51,11 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   const [gameTimeElapsed, setGameTimeElapsed] = useState(0);
   const [gameDuration, setGameDuration] = useState<number | null>(null);
 
+  // 最適化: ゲームIDリストと次のゲームプリロード
+  const [allGameIds, setAllGameIds] = useState<string[]>([]);
+  const [nextGame, setNextGame] = useState<PublicGame | null>(null);
+  const [isPreloading, setIsPreloading] = useState(false);
+
   // ==================== サービス ====================
   const socialService = useMemo(() => SocialService.getInstance(), []);
   const bridge = useMemo(() => EditorGameBridge.getInstance(), []);
@@ -96,15 +101,16 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   const currentGameRef = useRef<string | null>(null);
   const bridgeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ==================== 公開ゲーム取得 ====================
+  // ==================== 公開ゲーム取得（最適化版: ランダム1つ読み込み） ====================
   useEffect(() => {
-    const fetchPublicGames = async () => {
+    const fetchInitialGame = async () => {
       setGameState('loading');
       setError(null);
 
       try {
-        console.log('📥 公開ゲームを取得中...');
-        
+        console.log('📥 公開ゲームを取得中（最適化版）...');
+
+        // まず全ゲームIDを取得（軽量）
         const result = await socialService.getPublicGames(
           {
             sortBy: 'latest',
@@ -112,7 +118,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             search: undefined
           },
           1,
-          50
+          100
         );
 
         console.log(`✅ ${result.games.length}件の公開ゲームを取得`);
@@ -138,8 +144,19 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           return;
         }
 
-        console.log(`✅ ${validGames.length}件の有効なゲームを検出`);
-        setPublicGames(validGames);
+        // ゲームIDリストを保存
+        const gameIds = validGames.map(game => game.id);
+        setAllGameIds(gameIds);
+
+        // ランダムに1つのゲームを選択
+        const randomIndex = Math.floor(Math.random() * validGames.length);
+        const initialGame = validGames[randomIndex];
+
+        console.log(`🎲 ランダムに選択: "${initialGame.title}" (${validGames.length}件中)`);
+
+        // 初期ゲームを設定
+        setPublicGames([initialGame]);
+        setCurrentIndex(0);
         setGameState('playing');
 
       } catch (err) {
@@ -149,8 +166,55 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       }
     };
 
-    fetchPublicGames();
+    fetchInitialGame();
   }, [socialService]);
+
+  // ==================== 次のゲームをプリロード ====================
+  const preloadNextGame = useCallback(async () => {
+    if (allGameIds.length <= 1 || isPreloading) return;
+
+    setIsPreloading(true);
+    try {
+      // 現在のゲーム以外からランダムに選択
+      const currentGameId = publicGames[currentIndex]?.id;
+      const availableIds = allGameIds.filter(id => id !== currentGameId);
+
+      if (availableIds.length === 0) return;
+
+      const randomId = availableIds[Math.floor(Math.random() * availableIds.length)];
+
+      console.log('🔄 次のゲームをプリロード中...');
+
+      // 次のゲームを取得
+      const result = await socialService.getPublicGames(
+        {
+          sortBy: 'latest',
+          category: 'all',
+          search: undefined
+        },
+        1,
+        100
+      );
+
+      const nextGameData = result.games.find(game => game.id === randomId);
+
+      if (nextGameData && nextGameData.projectData) {
+        setNextGame(nextGameData);
+        console.log(`✅ 次のゲームをプリロード完了: "${nextGameData.title}"`);
+      }
+    } catch (err) {
+      console.warn('次のゲームのプリロードに失敗:', err);
+    } finally {
+      setIsPreloading(false);
+    }
+  }, [allGameIds, publicGames, currentIndex, isPreloading, socialService]);
+
+  // ブリッジ画面表示時に次のゲームをプリロード
+  useEffect(() => {
+    if (gameState === 'bridge' && !nextGame) {
+      preloadNextGame();
+    }
+  }, [gameState, nextGame, preloadNextGame]);
 
   // ==================== ブリッジタイマー ====================
   useEffect(() => {
@@ -261,36 +325,34 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
   // ==================== ゲーム遷移ハンドラ ====================
   const handleNextGame = useCallback(() => {
-    if (publicGames.length === 0) return;
-    
     console.log('⏭️ 次のゲームへ');
-    
+
     // ブリッジタイマークリア
     if (bridgeTimerRef.current) {
       clearInterval(bridgeTimerRef.current);
       bridgeTimerRef.current = null;
     }
-    
-    setCurrentIndex(prev => (prev + 1) % publicGames.length);
+
+    // プリロードされた次のゲームを使用
+    if (nextGame) {
+      setPublicGames([nextGame]);
+      setCurrentIndex(0);
+      setNextGame(null);
+      console.log(`🎮 プリロードしたゲームを開始: "${nextGame.title}"`);
+    } else if (publicGames.length > 0) {
+      // フォールバック: 現在のゲームを再利用（プリロードがない場合）
+      setCurrentIndex(0);
+      console.log('🔄 プリロードなし、現在のゲームを再実行');
+    }
+
     setGameState('playing');
     setCurrentScore(null);
-  }, [publicGames.length]);
+  }, [nextGame, publicGames.length]);
 
   const handlePreviousGame = useCallback(() => {
-    if (publicGames.length === 0) return;
-    
-    console.log('⏮️ 前のゲームへ');
-    
-    // ブリッジタイマークリア
-    if (bridgeTimerRef.current) {
-      clearInterval(bridgeTimerRef.current);
-      bridgeTimerRef.current = null;
-    }
-    
-    setCurrentIndex(prev => (prev - 1 + publicGames.length) % publicGames.length);
-    setGameState('playing');
-    setCurrentScore(null);
-  }, [publicGames.length]);
+    // 最適化版では前のゲームには戻れないので、次のゲームと同じ挙動にする
+    handleNextGame();
+  }, [handleNextGame]);
 
   const handleReplayGame = useCallback(() => {
     console.log('🔄 もう一度遊ぶ');
@@ -378,7 +440,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   }
 
   const currentGame = publicGames[currentIndex];
-  const nextGame = publicGames[(currentIndex + 1) % publicGames.length];
+  // nextGameは状態として管理されているプリロードゲームを使用
 
   // ==================== ゲーム画面 + ブリッジ画面統合 ====================
   return (
@@ -406,7 +468,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           }}
         />
 
-        {/* トップバー - 6つのアイコン（問題12-b対応） */}
+        {/* トップバー - 6つのアイコン（ブリッジ画面のみ表示） */}
+        {gameState === 'bridge' && (
         <div style={{
           position: 'absolute',
           top: 0,
@@ -617,6 +680,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             ⏭️
           </button>
         </div>
+        )}
 
         {/* ボトムバー - 残り時間バー（問題14対応） */}
         {gameState === 'playing' && gameDuration !== null && (
@@ -648,10 +712,10 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         {gameState === 'bridge' && (
           <BridgeScreen
             currentGame={currentGame}
-            nextGame={nextGame}
+            nextGame={nextGame || undefined}
             score={currentScore}
             timeLeft={bridgeTimeLeft}
-            totalGames={publicGames.length}
+            totalGames={allGameIds.length}
             currentIndex={currentIndex}
             onNextGame={handleNextGame}
             onPreviousGame={handlePreviousGame}
