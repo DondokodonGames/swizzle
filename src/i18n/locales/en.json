@@ -1130,6 +1130,33 @@
       "withSpeed": " ({speed}fps)",
       "pleaseSelectObject": "Please select target object",
       "objectSelected": "Selected \"{name}\""
+    },
+    "collisionCondition": {
+      "title": "Collision Condition Settings",
+      "collisionTypeLabel": "Collision Type",
+      "collisionTargetLabel": "Collision Target",
+      "detectionMethodLabel": "Detection Method",
+      "regionLabel": "Collision Detection Region",
+      "shapeRect": "Rectangle",
+      "shapeCircle": "Circle",
+      "centerX": "Center X: {percent}%",
+      "centerY": "Center Y: {percent}%",
+      "width": "Width: {percent}%",
+      "height": "Height: {percent}%",
+      "radius": "Radius: {percent}%",
+      "targetObjectLabel": "Target Object",
+      "selectObjectPlaceholder": "Select object",
+      "objectOptions": {
+        "character": "Character",
+        "item": "Item",
+        "obstacle": "Obstacle"
+      },
+      "settingsSummaryTitle": "💡 Settings:",
+      "collisionWithBackground": " - Collision with background",
+      "collisionWithStageEdge": " - Collision with stage edge",
+      "collisionWithStageRegion": " - Collision with stage region ({shape})",
+      "collisionWithObject": " - Collision with \"{target}\"",
+      "usingDetection": " - Using {method}"
     }
   },
   "conditions": {
@@ -1147,7 +1174,45 @@
     },
     "collision": {
       "label": "On Collision",
-      "description": "When colliding with another object"
+      "description": "When colliding with another object",
+      "types": {
+        "enter": {
+          "label": "Collision Enter",
+          "description": "Triggers at the moment of collision"
+        },
+        "stay": {
+          "label": "Collision Stay",
+          "description": "Triggers continuously while colliding"
+        },
+        "exit": {
+          "label": "Collision Exit",
+          "description": "Triggers when collision ends"
+        }
+      },
+      "targets": {
+        "background": {
+          "label": "Background",
+          "description": "Detect collision with background"
+        },
+        "stage": {
+          "label": "Stage Region",
+          "description": "Detect entry into specified stage region"
+        },
+        "object": {
+          "label": "Other Objects",
+          "description": "Detect collision with other objects"
+        }
+      },
+      "checkModes": {
+        "hitbox": {
+          "label": "Hitbox (Fast)",
+          "description": "Fast collision detection using rectangular hitbox"
+        },
+        "pixel": {
+          "label": "Pixel Perfect (Precise)",
+          "description": "Precise collision detection at pixel level"
+        }
+      }
     },
     "animation": {
       "label": "Animation End",

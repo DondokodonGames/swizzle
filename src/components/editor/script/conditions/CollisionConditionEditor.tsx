@@ -2,15 +2,16 @@
 // Phase D Step 1-2修正版: TypeScriptエラー解決・GameScript.ts型定義準拠
 // TouchConditionEditor.tsx成功パターン完全踏襲
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TriggerCondition } from '../../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
-import { 
-  COLLISION_TYPE_OPTIONS, 
-  COLLISION_TARGET_OPTIONS, 
-  COLLISION_CHECK_OPTIONS 
+import {
+  getCollisionTypeOptions,
+  getCollisionTargetOptions,
+  getCollisionCheckOptions
 } from '../constants/CollisionConstants';
 
 interface CollisionConditionEditorProps {
@@ -24,8 +25,14 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
   index,
   onUpdate
 }) => {
+  const { t } = useTranslation();
   const collisionCondition = condition;
-  
+
+  // Get localized options using getter functions that access i18n
+  const COLLISION_TYPE_OPTIONS = useMemo(() => getCollisionTypeOptions(), []);
+  const COLLISION_TARGET_OPTIONS = useMemo(() => getCollisionTargetOptions(), []);
+  const COLLISION_CHECK_OPTIONS = useMemo(() => getCollisionCheckOptions(), []);
+
   return (
     <ModernCard 
       variant="outlined" 
@@ -47,10 +54,10 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
         gap: DESIGN_TOKENS.spacing[2]
       }}>
         <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>💥</span>
-        衝突条件詳細設定
+        {t('editor.collisionCondition.title')}
       </h5>
 
-      {/* 衝突タイプ選択 */}
+      {/* Collision type selection */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <label style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -59,7 +66,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          衝突の種類
+          {t('editor.collisionCondition.collisionTypeLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -98,7 +105,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
         </div>
       </div>
 
-      {/* 衝突対象選択 */}
+      {/* Collision target selection */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <label style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -107,7 +114,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          衝突対象
+          {t('editor.collisionCondition.collisionTargetLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -146,7 +153,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
         </div>
       </div>
 
-      {/* 判定方式選択 */}
+      {/* Detection method selection */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <label style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -155,7 +162,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          判定方式
+          {t('editor.collisionCondition.detectionMethodLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -194,7 +201,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
         </div>
       </div>
 
-      {/* ステージ範囲指定（targetが'stage'の場合のみ表示） */}
+      {/* Stage region specification (only shown when target is 'stage') */}
       {collisionCondition.target === 'stage' && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
@@ -204,10 +211,10 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            衝突判定範囲指定
+            {t('editor.collisionCondition.regionLabel')}
           </label>
 
-          {/* 範囲形状選択 */}
+          {/* Region shape selection */}
           <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2], marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <ModernButton
               variant={collisionCondition.region?.shape === 'rect' || !collisionCondition.region ? 'primary' : 'outline'}
@@ -226,7 +233,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
                 flex: 1
               }}
             >
-              🔲 矩形
+              🔲 {t('editor.collisionCondition.shapeRect')}
             </ModernButton>
             <ModernButton
               variant={collisionCondition.region?.shape === 'circle' ? 'primary' : 'outline'}
@@ -244,11 +251,11 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
                 flex: 1
               }}
             >
-              ⭕ 円形
+              ⭕ {t('editor.collisionCondition.shapeCircle')}
             </ModernButton>
           </div>
 
-          {/* 範囲パラメータ設定 */}
+          {/* Region parameter settings */}
           {collisionCondition.region && (
             <div style={{
               backgroundColor: DESIGN_TOKENS.colors.neutral[50],
@@ -259,7 +266,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
             }}>
               <div>
                 <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  中心X: {(collisionCondition.region.x * 100).toFixed(0)}%
+                  {t('editor.collisionCondition.centerX', { percent: (collisionCondition.region.x * 100).toFixed(0) })}
                 </label>
                 <input
                   type="range"
@@ -275,7 +282,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
               </div>
               <div>
                 <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  中心Y: {(collisionCondition.region.y * 100).toFixed(0)}%
+                  {t('editor.collisionCondition.centerY', { percent: (collisionCondition.region.y * 100).toFixed(0) })}
                 </label>
                 <input
                   type="range"
@@ -294,7 +301,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
                 <>
                   <div>
                     <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                      幅: {((collisionCondition.region.width || 0.4) * 100).toFixed(0)}%
+                      {t('editor.collisionCondition.width', { percent: ((collisionCondition.region.width || 0.4) * 100).toFixed(0) })}
                     </label>
                     <input
                       type="range"
@@ -310,7 +317,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
                   </div>
                   <div>
                     <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                      高さ: {((collisionCondition.region.height || 0.4) * 100).toFixed(0)}%
+                      {t('editor.collisionCondition.height', { percent: ((collisionCondition.region.height || 0.4) * 100).toFixed(0) })}
                     </label>
                     <input
                       type="range"
@@ -328,7 +335,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
               ) : (
                 <div>
                   <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                    半径: {((collisionCondition.region.radius || 0.2) * 100).toFixed(0)}%
+                    {t('editor.collisionCondition.radius', { percent: ((collisionCondition.region.radius || 0.2) * 100).toFixed(0) })}
                   </label>
                   <input
                     type="range"
@@ -348,7 +355,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
         </div>
       )}
 
-      {/* 対象オブジェクト選択（他オブジェクトを指定する場合の修正版） */}
+      {/* Target object selection (shown when target is other object) */}
       {collisionCondition.target !== 'background' && collisionCondition.target !== 'stage' && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
@@ -358,7 +365,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            対象オブジェクト
+            {t('editor.collisionCondition.targetObjectLabel')}
           </label>
           <select
             value={typeof collisionCondition.target === 'string' ? collisionCondition.target : ''}
@@ -373,16 +380,16 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
               outline: 'none'
             }}
           >
-            <option value="">オブジェクトを選択</option>
-            {/* TODO: プロジェクト内オブジェクト一覧から選択 */}
-            <option value="character">キャラクター</option>
-            <option value="item">アイテム</option>
-            <option value="obstacle">障害物</option>
+            <option value="">{t('editor.collisionCondition.selectObjectPlaceholder')}</option>
+            {/* TODO: Select from project objects */}
+            <option value="character">{t('editor.collisionCondition.objectOptions.character')}</option>
+            <option value="item">{t('editor.collisionCondition.objectOptions.item')}</option>
+            <option value="obstacle">{t('editor.collisionCondition.objectOptions.obstacle')}</option>
           </select>
         </div>
       )}
 
-      {/* 設定内容要約表示 */}
+      {/* Settings summary */}
       <div style={{
         padding: DESIGN_TOKENS.spacing[3],
         backgroundColor: DESIGN_TOKENS.colors.purple[100],
@@ -390,14 +397,19 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.purple[800]
       }}>
-        💡 設定内容: {COLLISION_TYPE_OPTIONS.find(t => t.value === collisionCondition.collisionType)?.description}
-        {collisionCondition.target === 'background' && ' - 背景との衝突'}
+        {t('editor.collisionCondition.settingsSummaryTitle')} {COLLISION_TYPE_OPTIONS.find(t => t.value === collisionCondition.collisionType)?.description}
+        {collisionCondition.target === 'background' && t('editor.collisionCondition.collisionWithBackground')}
         {collisionCondition.target === 'stage' &&
           (collisionCondition.region ?
-            ` - ステージ指定範囲への衝突（${collisionCondition.region.shape === 'rect' ? '矩形' : '円形'}）` :
-            ' - ステージ端との衝突')}
-        {collisionCondition.target !== 'background' && collisionCondition.target !== 'stage' && ` - 「${collisionCondition.target}」との衝突`}
-        {` - ${COLLISION_CHECK_OPTIONS.find(c => c.value === collisionCondition.checkMode)?.label}使用`}
+            t('editor.collisionCondition.collisionWithStageRegion', {
+              shape: collisionCondition.region.shape === 'rect' ? t('editor.collisionCondition.shapeRect') : t('editor.collisionCondition.shapeCircle')
+            }) :
+            t('editor.collisionCondition.collisionWithStageEdge'))}
+        {collisionCondition.target !== 'background' && collisionCondition.target !== 'stage' &&
+          t('editor.collisionCondition.collisionWithObject', { target: collisionCondition.target })}
+        {t('editor.collisionCondition.usingDetection', {
+          method: COLLISION_CHECK_OPTIONS.find(c => c.value === collisionCondition.checkMode)?.label
+        })}
       </div>
     </ModernCard>
   );

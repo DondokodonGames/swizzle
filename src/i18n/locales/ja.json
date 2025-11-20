@@ -931,6 +931,33 @@
       "withSpeed": " ({speed}fps)",
       "pleaseSelectObject": "対象オブジェクトを選択してください",
       "objectSelected": "「{name}」を選択しました"
+    },
+    "collisionCondition": {
+      "title": "衝突条件詳細設定",
+      "collisionTypeLabel": "衝突の種類",
+      "collisionTargetLabel": "衝突対象",
+      "detectionMethodLabel": "判定方式",
+      "regionLabel": "衝突判定範囲指定",
+      "shapeRect": "矩形",
+      "shapeCircle": "円形",
+      "centerX": "中心X: {percent}%",
+      "centerY": "中心Y: {percent}%",
+      "width": "幅: {percent}%",
+      "height": "高さ: {percent}%",
+      "radius": "半径: {percent}%",
+      "targetObjectLabel": "対象オブジェクト",
+      "selectObjectPlaceholder": "オブジェクトを選択",
+      "objectOptions": {
+        "character": "キャラクター",
+        "item": "アイテム",
+        "obstacle": "障害物"
+      },
+      "settingsSummaryTitle": "💡 設定内容:",
+      "collisionWithBackground": " - 背景との衝突",
+      "collisionWithStageEdge": " - ステージ端との衝突",
+      "collisionWithStageRegion": " - ステージ指定範囲への衝突（{shape}）",
+      "collisionWithObject": " - 「{target}」との衝突",
+      "usingDetection": " - {method}使用"
     }
   },
   "conditions": {
@@ -948,7 +975,45 @@
     },
     "collision": {
       "label": "ぶつかったとき",
-      "description": "他のオブジェクトと衝突時"
+      "description": "他のオブジェクトと衝突時",
+      "types": {
+        "enter": {
+          "label": "衝突開始",
+          "description": "衝突した瞬間に発動"
+        },
+        "stay": {
+          "label": "衝突中",
+          "description": "衝突している間ずっと発動"
+        },
+        "exit": {
+          "label": "衝突終了",
+          "description": "衝突が終わった瞬間に発動"
+        }
+      },
+      "targets": {
+        "background": {
+          "label": "背景",
+          "description": "背景との衝突を判定"
+        },
+        "stage": {
+          "label": "ステージ範囲",
+          "description": "ステージの指定範囲内への侵入を判定"
+        },
+        "object": {
+          "label": "他のオブジェクト",
+          "description": "他のオブジェクトとの衝突を判定"
+        }
+      },
+      "checkModes": {
+        "hitbox": {
+          "label": "当たり判定（高速）",
+          "description": "矩形の当たり判定で高速に衝突検知"
+        },
+        "pixel": {
+          "label": "ピクセル判定（精密）",
+          "description": "ピクセル単位で精密に衝突検知"
+        }
+      }
     },
     "animation": {
       "label": "アニメ終了時",
