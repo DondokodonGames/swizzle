@@ -864,7 +864,10 @@ function MainApp() {
 const FeedPageWrapper: React.FC = () => {
   const navigate = useNavigate();
 
+  console.log('🎮 FeedPageWrapper レンダリング');
+
   const handleGameSelect = (game: any) => {
+    console.log('🎮 ゲーム選択:', game.title);
     // ゲームを選択したらメインページに戻ってゲームをプレイ
     // 選択したゲームの情報をlocalStorageに保存
     localStorage.setItem('selectedFeedGame', JSON.stringify(game));
@@ -872,6 +875,7 @@ const FeedPageWrapper: React.FC = () => {
   };
 
   const handleBack = () => {
+    console.log('🎮 フィードから戻る');
     navigate('/');
   };
 
