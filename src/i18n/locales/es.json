@@ -98,119 +98,119 @@
       "when": "Cuando",
       "then": "Entonces",
       "gameTime": {
-        "title": "Impostazione tempo di gioco",
+        "title": "Configuración de tiempo de juego",
         "presets": {
           "5": {
-            "label": "5 sec",
-            "description": "Veloce",
+            "label": "5 seg",
+            "description": "Rápido",
             "emoji": "⚡"
           },
           "10": {
-            "label": "10 sec",
-            "description": "Giusto",
+            "label": "10 seg",
+            "description": "Justo",
             "emoji": "⏰"
           },
           "15": {
-            "label": "15 sec",
-            "description": "Esteso",
+            "label": "15 seg",
+            "description": "Extendido",
             "emoji": "🎯"
           },
           "30": {
-            "label": "30 sec",
-            "description": "Lungo",
+            "label": "30 seg",
+            "description": "Largo",
             "emoji": "🏃"
           },
           "unlimited": {
-            "label": "Illimitato",
-            "description": "Gioco libero",
+            "label": "Ilimitado",
+            "description": "Juego libre",
             "emoji": "∞"
           }
         },
-        "current": "Impostazione attuale: {duration}"
+        "current": "Configuración actual: {duration}"
       },
       "objectPlacement": {
-        "title": "Posizionamento oggetti",
-        "placed": "Disposizione: {placed}/{total} posizionati",
-        "addToLayout": "Posiziona",
-        "removeFromLayout": "Rimuovi",
-        "editRule": "Regole",
-        "alreadyPlaced": "Posizionato",
-        "notPlaced": "Non posizionato",
-        "ruleCount": "{count} regole",
+        "title": "Colocación de objetos",
+        "placed": "Diseño: {placed}/{total} colocados",
+        "addToLayout": "Colocar",
+        "removeFromLayout": "Quitar",
+        "editRule": "Reglas",
+        "alreadyPlaced": "Colocado",
+        "notPlaced": "No colocado",
+        "ruleCount": "{count} reglas",
         "hints": {
-          "title": "Come usare:",
-          "place": "Posiziona → Aggiungi allo schermo di disposizione",
-          "rules": "Regole → Imposta logica di gioco",
-          "remove": "Rimuovi → Elimina dalla disposizione",
-          "dragAndDrop": "Funziona anche il trascinamento"
+          "title": "Cómo usar:",
+          "place": "Colocar → Agregar a la pantalla de diseño",
+          "rules": "Reglas → Establecer lógica del juego",
+          "remove": "Quitar → Eliminar del diseño",
+          "dragAndDrop": "También funciona arrastrar y soltar"
         }
       },
       "placedObjects": {
-        "title": "Oggetti posizionati",
-        "hint": "Puoi impostare regole per gli oggetti posizionati nella scheda disposizione"
+        "title": "Objetos colocados",
+        "hint": "Puedes establecer reglas para los objetos colocados en la pestaña de diseño"
       },
       "projectFlags": {
-        "title": "Flag del progetto",
-        "subtitle": "Gestione stato del gioco",
+        "title": "Banderas del proyecto",
+        "subtitle": "Gestión del estado del juego",
         "on": "ON",
         "off": "OFF"
       },
       "ruleList": {
         "empty": {
-          "title": "Crea regole!",
-          "description": "Crea giochi divertenti con regole IF-THEN\nClicca sugli oggetti in modalità disposizione per impostare regole",
+          "title": "¡Crea reglas!",
+          "description": "Crea juegos divertidos con reglas IF-THEN\nHaz clic en los objetos en modo diseño para establecer reglas",
           "features": {
-            "conditions": "Condizioni di attivazione",
-            "conditionsDesc": "Tocco, tempo, posizione, collisione",
-            "actions": "Esegui azioni",
-            "actionsDesc": "Muovi, effetto, suono, successo",
-            "flags": "Gestione flag",
-            "flagsDesc": "Stato del gioco, gestione variabili"
+            "conditions": "Condiciones de activación",
+            "conditionsDesc": "Toque, tiempo, posición, colisión",
+            "actions": "Ejecutar acciones",
+            "actionsDesc": "Mover, efecto, sonido, éxito",
+            "flags": "Gestión de banderas",
+            "flagsDesc": "Estado del juego, gestión de variables"
           },
-          "backToLayout": "Torna alla modalità disposizione"
+          "backToLayout": "Volver al modo diseño"
         },
-        "enabled": "Attivato",
-        "disabled": "Disattivato",
-        "target": "Obiettivo: {target}",
-        "conditionsCount": "{count} condizioni",
-        "actionsCount": "{count} azioni",
-        "edit": "Modifica",
-        "delete": "Elimina",
-        "confirmDelete": "Eliminare \"{name}\"?",
-        "deleted": "Regola eliminata",
-        "gameOverall": "Gioco globale",
+        "enabled": "Activado",
+        "disabled": "Desactivado",
+        "target": "Objetivo: {target}",
+        "conditionsCount": "{count} condiciones",
+        "actionsCount": "{count} acciones",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "confirmDelete": "¿Eliminar \"{name}\"?",
+        "deleted": "Regla eliminada",
+        "gameOverall": "Juego global",
         "objectNotFound": "⚠ {id}",
-        "untitled": "Regola senza titolo"
+        "untitled": "Regla sin título"
       },
       "ruleModal": {
-        "title": "Impostazioni regola (Avanzate)",
-        "subtitle": "1 condizione → 1 azione | {conditions} tipi di condizioni × {actions} tipi di azioni",
-        "ruleName": "Nome regola",
-        "ruleNamePlaceholder": "es: Tocca nell'area centrale per muovere",
-        "triggerCondition": "Condizione di attivazione",
-        "executeAction": "Esegui azione",
+        "title": "Configuración de regla (Avanzada)",
+        "subtitle": "1 condición → 1 acción | {conditions} tipos de condiciones × {actions} tipos de acciones",
+        "ruleName": "Nombre de la regla",
+        "ruleNamePlaceholder": "ej: Tocar en el área central para mover",
+        "triggerCondition": "Condición de activación",
+        "executeAction": "Ejecutar acción",
         "preview": {
-          "title": "Anteprima regola",
+          "title": "Vista previa de la regla",
           "seconds": "({seconds}s)",
-          "area": "(area {area})"
+          "area": "(área {area})"
         },
         "errors": {
-          "nameRequired": "Inserisci un nome per la regola",
-          "conditionRequired": "Seleziona una condizione",
-          "actionRequired": "Seleziona un'azione"
+          "nameRequired": "Ingresa un nombre para la regla",
+          "conditionRequired": "Selecciona una condición",
+          "actionRequired": "Selecciona una acción"
         },
-        "saved": "Regola salvata"
+        "saved": "Regla guardada"
       },
       "ruleSelection": {
-        "title": "Seleziona regola - {object}",
-        "subtitle": "Seleziona regola da modificare ({current}/{max})",
-        "ruleNumber": "Regola {number}: {name}",
-        "createNew": "Crea nuova regola",
-        "limitReached": "Limite regole (32) raggiunto"
+        "title": "Seleccionar regla - {object}",
+        "subtitle": "Selecciona la regla a editar ({current}/{max})",
+        "ruleNumber": "Regla {number}: {name}",
+        "createNew": "Crear nueva regla",
+        "limitReached": "Límite de reglas (32) alcanzado"
       },
-      "subtitle": "Disposizione oggetti, supporto regole multiple, logica di gioco avanzata",
-      "layout": "Disposizione",
-      "rules": "Regole"
+      "subtitle": "Diseño de objetos, soporte para múltiples reglas, lógica de juego avanzada",
+      "layout": "Diseño",
+      "rules": "Reglas"
     },
     "settings": {
       "title": "Configuración de publicación",
@@ -224,215 +224,215 @@
       "private": "Privado",
       "publish": "Publicar",
       "testPlay": {
-        "title": "Test del gioco",
-        "start": "Proviamo il gioco",
-        "startDescription": "Puoi verificare se il gioco creato funziona correttamente",
-        "testing": "Test in corso...",
-        "testingDescription": "Verifica funzionamento del gioco",
-        "startButton": "Test",
-        "success": "Test riuscito!",
-        "failure": "Problemi trovati nel test",
+        "title": "Prueba del juego",
+        "start": "Probemos el juego",
+        "startDescription": "Puedes verificar si el juego creado funciona correctamente",
+        "testing": "Probando...",
+        "testingDescription": "Verificando funcionamiento del juego",
+        "startButton": "Probar",
+        "success": "¡Prueba exitosa!",
+        "failure": "Problemas encontrados en la prueba",
         "stats": {
-          "score": "Punteggio",
-          "playTime": "Tempo di gioco",
-          "interactions": "Interazioni",
-          "rulesTriggered": "Regole eseguite"
+          "score": "Puntuación",
+          "playTime": "Tiempo de juego",
+          "interactions": "Interacciones",
+          "rulesTriggered": "Reglas ejecutadas"
         },
-        "tryAgain": "Prova di nuovo",
-        "errors": "Errori:",
-        "warnings": "Avvisi:",
+        "tryAgain": "Probar de nuevo",
+        "errors": "Errores:",
+        "warnings": "Advertencias:",
         "gameSpeed": {
-          "title": "Velocità del gioco (Livello di sfida)",
+          "title": "Velocidad del juego (Nivel de desafío)",
           "slow": {
             "label": "Lento",
-            "description": "Goditelo con calma"
+            "description": "Disfrútalo con calma"
           },
           "normal": {
-            "label": "Normale",
-            "description": "Velocità giusta"
+            "label": "Normal",
+            "description": "Velocidad adecuada"
           },
           "fast": {
-            "label": "Veloce",
-            "description": "Velocità stimolante"
+            "label": "Rápido",
+            "description": "Velocidad desafiante"
           },
           "superFast": {
-            "label": "Super veloce",
-            "description": "Per esperti"
+            "label": "Súper rápido",
+            "description": "Para expertos"
           },
-          "current": "Impostazione attuale: velocità {speed}"
+          "current": "Configuración actual: velocidad {speed}"
         },
         "fullGame": {
-          "title": "Gioco in esecuzione",
-          "end": "Termina"
+          "title": "Juego en ejecución",
+          "end": "Terminar"
         }
       },
-      "gameNameRequired": "Il nome del gioco è richiesto",
-      "gameNamePlaceholder": "Inserisci un nome fantastico per il gioco",
-      "descriptionPlaceholder": "Descrivi cosa rende questo gioco divertente",
+      "gameNameRequired": "El nombre del juego es obligatorio",
+      "gameNamePlaceholder": "Ingresa un nombre fantástico para el juego",
+      "descriptionPlaceholder": "Describe qué hace divertido este juego",
       "gameInfo": {
-        "title": "Informazioni gioco",
-        "genre": "Genere",
-        "genrePlaceholder": "Seleziona genere",
+        "title": "Información del juego",
+        "genre": "Género",
+        "genrePlaceholder": "Seleccionar género",
         "genres": {
-          "action": "Azione",
+          "action": "Acción",
           "puzzle": "Puzzle",
-          "adventure": "Avventura",
+          "adventure": "Aventura",
           "rpg": "RPG",
-          "shooting": "Sparatutto",
-          "racing": "Corse",
-          "sports": "Sport",
-          "simulation": "Simulazione",
+          "shooting": "Disparos",
+          "racing": "Carreras",
+          "sports": "Deportes",
+          "simulation": "Simulación",
           "casual": "Casual",
           "educational": "Educativo",
-          "music": "Musica",
-          "other": "Altro"
+          "music": "Música",
+          "other": "Otro"
         },
-        "tags": "Tag",
-        "tagsPlaceholder": "es: scorrimento laterale, 2D, semplice (separati da virgole)",
-        "tagsHint": "Separa i tag con virgole (,)"
+        "tags": "Etiquetas",
+        "tagsPlaceholder": "ej: desplazamiento lateral, 2D, simple (separados por comas)",
+        "tagsHint": "Separa las etiquetas con comas (,)"
       },
       "thumbnail": {
         "title": "Miniatura",
-        "subtitle": "Imposta una miniatura che trasmetta l'appeal del gioco",
-        "generate": "Genera automaticamente",
-        "upload": "Carica",
-        "noThumbnail": "Nessuna miniatura"
+        "subtitle": "Establece una miniatura que transmita el atractivo del juego",
+        "generate": "Generar automáticamente",
+        "upload": "Subir",
+        "noThumbnail": "Sin miniatura"
       },
       "publishing": {
-        "title": "Impostazioni pubblicazione",
-        "noRemix": "No copia (Disabilita remix)",
-        "noRemixDescription": "Vieta copia e modifica di questo gioco da parte di altri utenti. Se selezionato, nessuno può copiare e modificare questo gioco.",
-        "noRemixHint": "Suggerimento: Se non selezionato, altri utenti possono creare nuovi giochi basati sul tuo (simile a Creative Commons)"
+        "title": "Configuración de publicación",
+        "noRemix": "No copiar (Desactivar remix)",
+        "noRemixDescription": "Prohíbe la copia y modificación de este juego por otros usuarios. Si está seleccionado, nadie puede copiar y modificar este juego.",
+        "noRemixHint": "Sugerencia: Si no está seleccionado, otros usuarios pueden crear nuevos juegos basados en el tuyo (similar a Creative Commons)"
       },
       "stats": {
-        "title": "Statistiche gioco",
-        "objects": "Oggetti",
-        "rules": "Regole",
-        "texts": "Testo",
-        "capacity": "Capacità totale",
-        "testPlayCount": "Numero di test",
+        "title": "Estadísticas del juego",
+        "objects": "Objetos",
+        "rules": "Reglas",
+        "texts": "Texto",
+        "capacity": "Capacidad total",
+        "testPlayCount": "Número de pruebas",
         "health": {
-          "initialState": "Stato iniziale",
-          "placedObjects": "Posizionati",
-          "successConditions": "Condizioni di successo",
-          "complexity": "Complessità"
+          "initialState": "Estado inicial",
+          "placedObjects": "Colocados",
+          "successConditions": "Condiciones de éxito",
+          "complexity": "Complejidad"
         }
       },
       "actions": {
-        "save": "Salva",
-        "test": "Test",
-        "publish": "Pubblica",
-        "update": "Aggiorna",
-        "export": "Esporta (JSON)",
-        "published": "Pubblicato",
-        "publishedAt": "il {date}"
+        "save": "Guardar",
+        "test": "Probar",
+        "publish": "Publicar",
+        "update": "Actualizar",
+        "export": "Exportar (JSON)",
+        "published": "Publicado",
+        "publishedAt": "el {date}"
       }
     },
     "preview": "Vista previa",
     "app": {
-      "loginRequired": "Accesso richiesto",
-      "loginRequiredMessage": "Devi registrarti o accedere per utilizzare l'editor di giochi.",
-      "loginPrompt": "Crea un account gratuito e inizia a creare giochi ora!",
-      "freeSignup": "Registrazione gratuita",
-      "alreadyHaveAccount": "Hai già un account?",
+      "loginRequired": "Inicio de sesión requerido",
+      "loginRequiredMessage": "Debes registrarte o iniciar sesión para usar el editor de juegos.",
+      "loginPrompt": "¡Crea una cuenta gratuita y comienza a crear juegos ahora!",
+      "freeSignup": "Registro gratuito",
+      "alreadyHaveAccount": "¿Ya tienes una cuenta?",
       "features": {
-        "createProjects": "Crea e salva progetti di gioco",
-        "cloudStorage": "Archiviazione cloud automatica",
-        "publishGames": "Pubblica e condividi giochi",
-        "joinCommunity": "Unisciti alla comunità"
+        "createProjects": "Crea y guarda proyectos de juego",
+        "cloudStorage": "Almacenamiento en la nube automático",
+        "publishGames": "Publica y comparte juegos",
+        "joinCommunity": "Únete a la comunidad"
       },
-      "authenticating": "Autenticazione...",
-      "loadingAccount": "Caricamento informazioni account...",
+      "authenticating": "Autenticando...",
+      "loadingAccount": "Cargando información de cuenta...",
       "loading": "Cargando...",
-      "projectOpened": "Aperto \"{name}\"",
-      "projectCreated": "Creato \"{name}\"",
-      "projectSaved": "Progetto salvato",
-      "projectPublished": "Gioco pubblicato! Apparirà nel feed sociale",
-      "projectDeleted": "Progetto eliminato",
-      "projectDuplicated": "Creato \"{name}\"",
-      "projectExported": "Progetto esportato",
-      "unsavedChanges": "Hai modifiche non salvate. Vuoi salvare prima di uscire?",
-      "confirmSaveAndLeave": "OK → Salva e esci\nAnnulla → Esci senza salvare",
-      "backToList": "Torna all'elenco",
-      "mainScreen": "Schermata principale",
-      "noProjectSelected": "Nessun progetto selezionato",
-      "backToProjectList": "Torna all'elenco progetti",
-      "backToMain": "Torna alla principale",
-      "versionInfo": "Game Editor v1.0.0 - Integrazione Supabase",
-      "shortcuts": "Ctrl+S: Salva | Ctrl+T: Test | Esc: Indietro | Ctrl+Q: Principale",
+      "projectOpened": "Abierto \"{name}\"",
+      "projectCreated": "Creado \"{name}\"",
+      "projectSaved": "Proyecto guardado",
+      "projectPublished": "¡Juego publicado! Aparecerá en el feed social",
+      "projectDeleted": "Proyecto eliminado",
+      "projectDuplicated": "Creado \"{name}\"",
+      "projectExported": "Proyecto exportado",
+      "unsavedChanges": "Tienes cambios sin guardar. ¿Quieres guardar antes de salir?",
+      "confirmSaveAndLeave": "OK → Guardar y salir\nCancelar → Salir sin guardar",
+      "backToList": "Volver a la lista",
+      "mainScreen": "Pantalla principal",
+      "noProjectSelected": "Ningún proyecto seleccionado",
+      "backToProjectList": "Volver a la lista de proyectos",
+      "backToMain": "Volver a la principal",
+      "versionInfo": "Game Editor v1.0.0 - Integración Supabase",
+      "shortcuts": "Ctrl+S: Guardar | Ctrl+T: Probar | Esc: Atrás | Ctrl+Q: Principal",
       "status": {
-        "notLoggedIn": "Non connesso",
-        "unsaved": "Non salvato",
-        "published": "Pubblicato"
+        "notLoggedIn": "Sin iniciar sesión",
+        "unsaved": "Sin guardar",
+        "published": "Publicado"
       },
       "capacity": "{used}MB",
       "buttons": {
-        "save": "Salva",
-        "test": "Test",
-        "publish": "Pubblica",
-        "update": "Aggiorna"
+        "save": "Guardar",
+        "test": "Probar",
+        "publish": "Publicar",
+        "update": "Actualizar"
       }
     },
     "selector": {
-      "title": "Editor di giochi",
-      "subtitle": "Crea facilmente giochi e condividili con tutti!",
+      "title": "Editor de juegos",
+      "subtitle": "¡Crea juegos fácilmente y compártelos con todos!",
       "stats": {
-        "projectCount": "Progetti",
-        "publishedCount": "Pubblicati",
-        "totalCapacity": "Capacità totale"
+        "projectCount": "Proyectos",
+        "publishedCount": "Publicados",
+        "totalCapacity": "Capacidad total"
       },
-      "search": "Cerca progetti...",
+      "search": "Buscar proyectos...",
       "sort": {
-        "latest": "Più recenti",
-        "name": "Nome",
-        "status": "Stato"
+        "latest": "Más recientes",
+        "name": "Nombre",
+        "status": "Estado"
       },
       "view": {
-        "grid": "Griglia",
+        "grid": "Cuadrícula",
         "list": "Lista"
       },
-      "import": "Importa",
-      "createNew": "Crea nuovo gioco",
-      "loadingProjects": "Caricamento progetti...",
-      "noProjects": "Nessun progetto ancora",
-      "noProjectsMessage": "Crea il tuo primo gioco!",
-      "noResults": "Nessun progetto trovato",
-      "noResultsMessage": "Prova a cercare con parole chiave diverse",
+      "import": "Importar",
+      "createNew": "Crear nuevo juego",
+      "loadingProjects": "Cargando proyectos...",
+      "noProjects": "Aún no hay proyectos",
+      "noProjectsMessage": "¡Crea tu primer juego!",
+      "noResults": "No se encontraron proyectos",
+      "noResultsMessage": "Intenta buscar con diferentes palabras clave",
       "newProject": {
-        "title": "Crea nuovo gioco",
-        "subtitle": "Scegli un nome per il tuo gioco",
-        "placeholder": "Inserisci nome del gioco",
-        "charCount": "{count}/50 caratteri",
-        "templateHint": "Puoi anche iniziare da un modello (prossimamente)",
-        "create": "Crea"
+        "title": "Crear nuevo juego",
+        "subtitle": "Elige un nombre para tu juego",
+        "placeholder": "Ingresa el nombre del juego",
+        "charCount": "{count}/50 caracteres",
+        "templateHint": "También puedes empezar desde una plantilla (próximamente)",
+        "create": "Crear"
       },
       "projectCard": {
         "status": {
-          "published": "Pubblicato",
-          "testing": "Test",
-          "draft": "Bozza"
+          "published": "Publicado",
+          "testing": "Prueba",
+          "draft": "Borrador"
         },
-        "new": "NUOVO",
-        "completion": "{percent}% completato",
-        "duplicate": "Duplica",
-        "export": "Esporta",
-        "confirmDelete": "Eliminare \"{name}\"? Questa azione non può essere annullata.",
-        "lastModified": "Ultima modifica",
-        "editButton": "Modifica",
+        "new": "NUEVO",
+        "completion": "{percent}% completado",
+        "duplicate": "Duplicar",
+        "export": "Exportar",
+        "confirmDelete": "¿Eliminar \"{name}\"? Esta acción no se puede deshacer.",
+        "lastModified": "Última modificación",
+        "editButton": "Editar",
         "stats": {
-          "objects": "Oggetti",
-          "sounds": "Suoni",
-          "rules": "Regole",
-          "capacity": "Capacità"
+          "objects": "Objetos",
+          "sounds": "Sonidos",
+          "rules": "Reglas",
+          "capacity": "Capacidad"
         },
         "errors": {
-          "thumbnailError": "Errore caricamento miniatura",
-          "noThumbnail": "Nessuna miniatura"
+          "thumbnailError": "Error al cargar miniatura",
+          "noThumbnail": "Sin miniatura"
         }
       },
-      "help": "Aiuto",
+      "help": "Ayuda",
       "versionInfo": "Game Editor v1.0.0 - UI moderna",
-      "shortcuts": "Ctrl+Q: Schermata principale"
+      "shortcuts": "Ctrl+Q: Pantalla principal"
     }
   },
   "conditions": {
@@ -736,62 +736,62 @@
     "pleaseWait": "Por favor espera un momento",
     "welcomeToPremium": "Bienvenido a Premium",
     "paymentCompleted": "Pago completado",
-    "planInfo": "Informazioni piano",
-    "plan": "Piano",
-    "status": "Stato",
-    "active": "Attivo",
-    "nextRenewal": "Prossimo rinnovo",
-    "availableFeatures": "Funzionalità disponibili",
+    "planInfo": "Información del plan",
+    "plan": "Plan",
+    "status": "Estado",
+    "active": "Activo",
+    "nextRenewal": "Próxima renovación",
+    "availableFeatures": "Funciones disponibles",
     "features": {
-      "unlimitedGames": "Creazione giochi illimitata",
-      "adFree": "Senza pubblicità",
-      "allTemplates": "Tutti i modelli",
-      "advancedEditing": "Modifica avanzata",
-      "unlimitedAssets": "Asset illimitati",
-      "analyticsDashboard": "Dashboard analitica",
-      "html5Export": "Export HTML5",
-      "prioritySupport": "Supporto prioritario"
+      "unlimitedGames": "Creación de juegos ilimitada",
+      "adFree": "Sin publicidad",
+      "allTemplates": "Todas las plantillas",
+      "advancedEditing": "Edición avanzada",
+      "unlimitedAssets": "Assets ilimitados",
+      "analyticsDashboard": "Panel de análisis",
+      "html5Export": "Exportación HTML5",
+      "prioritySupport": "Soporte prioritario"
     },
-    "createGame": "Crea un gioco",
-    "subscriptionManagement": "Per la gestione dell'abbonamento",
-    "sessionId": "ID sessione",
-    "paymentCancelled": "Il pagamento è stato annullato",
-    "paymentNotCompleted": "Pagamento non completato",
-    "paymentCancelledMessage": "Il pagamento è stato annullato.",
-    "upgradeNotCompleted": "Aggiornamento piano non completato.",
-    "problemQuestion": "C'è stato un problema? Contattaci se hai bisogno di aiuto.",
-    "freePlanTitle": "Cosa puoi fare con il piano gratuito",
+    "createGame": "Crear un juego",
+    "subscriptionManagement": "Para la gestión de la suscripción",
+    "sessionId": "ID de sesión",
+    "paymentCancelled": "El pago fue cancelado",
+    "paymentNotCompleted": "Pago no completado",
+    "paymentCancelledMessage": "El pago fue cancelado.",
+    "upgradeNotCompleted": "Actualización del plan no completada.",
+    "problemQuestion": "¿Hubo algún problema? Contáctanos si necesitas ayuda.",
+    "freePlanTitle": "Qué puedes hacer con el plan gratuito",
     "freePlanFeatures": {
-      "limit5Games": "Fino a 5 giochi al mese",
-      "basicTemplates": "50 modelli di base",
-      "basicEditor": "Editor di giochi di base",
-      "socialFeatures": "Funzionalità sociali (mi piace/segui)",
-      "publishShare": "Pubblica e condividi giochi",
-      "communitySupport": "Supporto della comunità"
+      "limit5Games": "Hasta 5 juegos al mes",
+      "basicTemplates": "50 plantillas básicas",
+      "basicEditor": "Editor de juegos básico",
+      "socialFeatures": "Funciones sociales (me gusta/seguir)",
+      "publishShare": "Publicar y compartir juegos",
+      "communitySupport": "Soporte de la comunidad"
     },
-    "premiumBenefitsTitle": "Vantaggi del piano Premium",
+    "premiumBenefitsTitle": "Beneficios del plan Premium",
     "premiumBenefits": {
-      "unlimitedCreation": "🎮 Creazione illimitata",
-      "unlimitedCreationDesc": "Crea giochi illimitati senza limiti mensili",
-      "noAds": "🚫 Nessuna pubblicità",
-      "noAdsDesc": "Esperienza di modifica e gioco confortevole",
-      "allTemplates": "📚 Tutti i modelli",
-      "allTemplatesDesc": "Tutti i 225 modelli",
-      "prioritySupport": "⚡ Supporto prioritario",
-      "prioritySupportDesc": "Risposta rapida entro 24 ore"
+      "unlimitedCreation": "🎮 Creación ilimitada",
+      "unlimitedCreationDesc": "Crea juegos ilimitados sin límites mensuales",
+      "noAds": "🚫 Sin publicidad",
+      "noAdsDesc": "Experiencia de edición y juego cómoda",
+      "allTemplates": "📚 Todas las plantillas",
+      "allTemplatesDesc": "Las 225 plantillas",
+      "prioritySupport": "⚡ Soporte prioritario",
+      "prioritySupportDesc": "Respuesta rápida en 24 horas"
     },
-    "faqTitle": "Domande frequenti",
+    "faqTitle": "Preguntas frecuentes",
     "faq": {
-      "changePaymentMethod": "D. Voglio cambiare il metodo di pagamento",
-      "changePaymentMethodAnswer": "R. Puoi riavviare il processo di pagamento dalla pagina di selezione del piano.",
-      "cardInfoConcern": "D. Sono preoccupato per l'inserimento delle informazioni della carta",
-      "cardInfoConcernAnswer": "R. Il pagamento viene elaborato in modo sicuro tramite Stripe, usato in tutto il mondo. Le informazioni della carta sono crittografate e non vengono conservate da noi.",
-      "canCancel": "D. Posso annullare in seguito?",
-      "canCancelAnswer": "R. Sì, puoi annullare in qualsiasi momento. Dopo l'annullamento, puoi continuare a utilizzare le funzionalità Premium fino alla prossima data di rinnovo."
+      "changePaymentMethod": "P. Quiero cambiar mi método de pago",
+      "changePaymentMethodAnswer": "R. Puedes reiniciar el proceso de pago desde la página de selección del plan.",
+      "cardInfoConcern": "P. Me preocupa ingresar la información de mi tarjeta",
+      "cardInfoConcernAnswer": "R. El pago se procesa de forma segura a través de Stripe, utilizado en todo el mundo. La información de la tarjeta está encriptada y no la guardamos nosotros.",
+      "canCancel": "P. ¿Puedo cancelar más tarde?",
+      "canCancelAnswer": "R. Sí, puedes cancelar en cualquier momento. Después de la cancelación, puedes seguir usando las funciones Premium hasta la próxima fecha de renovación."
     },
-    "reviewPlans": "Rivedi i piani",
-    "continueWithFree": "Continua con il piano gratuito →",
-    "anyQuestions": "Se hai domande",
-    "happyToHelp": "Saremo lieti di aiutarti!"
+    "reviewPlans": "Revisar planes",
+    "continueWithFree": "Continuar con el plan gratuito →",
+    "anyQuestions": "Si tienes alguna pregunta",
+    "happyToHelp": "¡Estaremos encantados de ayudarte!"
   }
 }

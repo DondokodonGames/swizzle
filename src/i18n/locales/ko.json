@@ -98,119 +98,119 @@
       "when": "~할 때",
       "then": "~하기",
       "gameTime": {
-        "title": "Impostazione tempo di gioco",
+        "title": "게임 시간 설정",
         "presets": {
           "5": {
-            "label": "5 sec",
-            "description": "Veloce",
+            "label": "5초",
+            "description": "빠른",
             "emoji": "⚡"
           },
           "10": {
-            "label": "10 sec",
-            "description": "Giusto",
+            "label": "10초",
+            "description": "적당한",
             "emoji": "⏰"
           },
           "15": {
-            "label": "15 sec",
-            "description": "Esteso",
+            "label": "15초",
+            "description": "연장",
             "emoji": "🎯"
           },
           "30": {
-            "label": "30 sec",
-            "description": "Lungo",
+            "label": "30초",
+            "description": "긴",
             "emoji": "🏃"
           },
           "unlimited": {
-            "label": "Illimitato",
-            "description": "Gioco libero",
+            "label": "무제한",
+            "description": "자유 플레이",
             "emoji": "∞"
           }
         },
-        "current": "Impostazione attuale: {duration}"
+        "current": "현재 설정: {duration}"
       },
       "objectPlacement": {
-        "title": "Posizionamento oggetti",
-        "placed": "Disposizione: {placed}/{total} posizionati",
-        "addToLayout": "Posiziona",
-        "removeFromLayout": "Rimuovi",
-        "editRule": "Regole",
-        "alreadyPlaced": "Posizionato",
-        "notPlaced": "Non posizionato",
-        "ruleCount": "{count} regole",
+        "title": "오브젝트 배치",
+        "placed": "배치: {placed}/{total} 배치됨",
+        "addToLayout": "배치",
+        "removeFromLayout": "제거",
+        "editRule": "규칙",
+        "alreadyPlaced": "배치됨",
+        "notPlaced": "배치 안 됨",
+        "ruleCount": "{count}개 규칙",
         "hints": {
-          "title": "Come usare:",
-          "place": "Posiziona → Aggiungi allo schermo di disposizione",
-          "rules": "Regole → Imposta logica di gioco",
-          "remove": "Rimuovi → Elimina dalla disposizione",
-          "dragAndDrop": "Funziona anche il trascinamento"
+          "title": "사용 방법:",
+          "place": "배치 → 레이아웃 화면에 추가",
+          "rules": "규칙 → 게임 로직 설정",
+          "remove": "제거 → 레이아웃에서 삭제",
+          "dragAndDrop": "드래그 앤 드롭도 가능"
         }
       },
       "placedObjects": {
-        "title": "Oggetti posizionati",
-        "hint": "Puoi impostare regole per gli oggetti posizionati nella scheda disposizione"
+        "title": "배치된 오브젝트",
+        "hint": "레이아웃 탭에 배치된 오브젝트에 대한 규칙을 설정할 수 있습니다"
       },
       "projectFlags": {
-        "title": "Flag del progetto",
-        "subtitle": "Gestione stato del gioco",
+        "title": "프로젝트 플래그",
+        "subtitle": "게임 상태 관리",
         "on": "ON",
         "off": "OFF"
       },
       "ruleList": {
         "empty": {
-          "title": "Crea regole!",
-          "description": "Crea giochi divertenti con regole IF-THEN\nClicca sugli oggetti in modalità disposizione per impostare regole",
+          "title": "규칙을 만들어보세요!",
+          "description": "IF-THEN 규칙으로 재미있는 게임 만들기\n레이아웃 모드에서 오브젝트를 클릭하여 규칙 설정",
           "features": {
-            "conditions": "Condizioni di attivazione",
-            "conditionsDesc": "Tocco, tempo, posizione, collisione",
-            "actions": "Esegui azioni",
-            "actionsDesc": "Muovi, effetto, suono, successo",
-            "flags": "Gestione flag",
-            "flagsDesc": "Stato del gioco, gestione variabili"
+            "conditions": "트리거 조건",
+            "conditionsDesc": "터치, 시간, 위치, 충돌",
+            "actions": "액션 실행",
+            "actionsDesc": "이동, 효과, 소리, 성공",
+            "flags": "플래그 관리",
+            "flagsDesc": "게임 상태, 변수 관리"
           },
-          "backToLayout": "Torna alla modalità disposizione"
+          "backToLayout": "레이아웃 모드로 돌아가기"
         },
-        "enabled": "Attivato",
-        "disabled": "Disattivato",
-        "target": "Obiettivo: {target}",
-        "conditionsCount": "{count} condizioni",
-        "actionsCount": "{count} azioni",
-        "edit": "Modifica",
-        "delete": "Elimina",
-        "confirmDelete": "Eliminare \"{name}\"?",
-        "deleted": "Regola eliminata",
-        "gameOverall": "Gioco globale",
+        "enabled": "활성화",
+        "disabled": "비활성화",
+        "target": "대상: {target}",
+        "conditionsCount": "{count}개 조건",
+        "actionsCount": "{count}개 액션",
+        "edit": "편집",
+        "delete": "삭제",
+        "confirmDelete": "\"{name}\"을(를) 삭제하시겠습니까?",
+        "deleted": "규칙이 삭제되었습니다",
+        "gameOverall": "게임 전체",
         "objectNotFound": "⚠ {id}",
-        "untitled": "Regola senza titolo"
+        "untitled": "제목 없는 규칙"
       },
       "ruleModal": {
-        "title": "Impostazioni regola (Avanzate)",
-        "subtitle": "1 condizione → 1 azione | {conditions} tipi di condizioni × {actions} tipi di azioni",
-        "ruleName": "Nome regola",
-        "ruleNamePlaceholder": "es: Tocca nell'area centrale per muovere",
-        "triggerCondition": "Condizione di attivazione",
-        "executeAction": "Esegui azione",
+        "title": "규칙 설정 (고급)",
+        "subtitle": "1 조건 → 1 액션 | {conditions}가지 조건 × {actions}가지 액션",
+        "ruleName": "규칙 이름",
+        "ruleNamePlaceholder": "예: 중앙 영역을 터치하여 이동",
+        "triggerCondition": "트리거 조건",
+        "executeAction": "액션 실행",
         "preview": {
-          "title": "Anteprima regola",
-          "seconds": "({seconds}s)",
-          "area": "(area {area})"
+          "title": "규칙 미리보기",
+          "seconds": "({seconds}초)",
+          "area": "({area} 영역)"
         },
         "errors": {
-          "nameRequired": "Inserisci un nome per la regola",
-          "conditionRequired": "Seleziona una condizione",
-          "actionRequired": "Seleziona un'azione"
+          "nameRequired": "규칙 이름을 입력해주세요",
+          "conditionRequired": "조건을 선택해주세요",
+          "actionRequired": "액션을 선택해주세요"
         },
-        "saved": "Regola salvata"
+        "saved": "규칙이 저장되었습니다"
       },
       "ruleSelection": {
-        "title": "Seleziona regola - {object}",
-        "subtitle": "Seleziona regola da modificare ({current}/{max})",
-        "ruleNumber": "Regola {number}: {name}",
-        "createNew": "Crea nuova regola",
-        "limitReached": "Limite regole (32) raggiunto"
+        "title": "규칙 선택 - {object}",
+        "subtitle": "편집할 규칙 선택 ({current}/{max})",
+        "ruleNumber": "규칙 {number}: {name}",
+        "createNew": "새 규칙 만들기",
+        "limitReached": "규칙 제한 (32) 도달"
       },
-      "subtitle": "Disposizione oggetti, supporto regole multiple, logica di gioco avanzata",
-      "layout": "Disposizione",
-      "rules": "Regole"
+      "subtitle": "오브젝트 배치, 다중 규칙 지원, 고급 게임 로직",
+      "layout": "배치",
+      "rules": "규칙"
     },
     "settings": {
       "title": "게시 설정",
@@ -224,215 +224,215 @@
       "private": "비공개",
       "publish": "게시",
       "testPlay": {
-        "title": "Test del gioco",
-        "start": "Proviamo il gioco",
-        "startDescription": "Puoi verificare se il gioco creato funziona correttamente",
-        "testing": "Test in corso...",
-        "testingDescription": "Verifica funzionamento del gioco",
-        "startButton": "Test",
-        "success": "Test riuscito!",
-        "failure": "Problemi trovati nel test",
+        "title": "게임 테스트",
+        "start": "게임을 테스트해보세요",
+        "startDescription": "만든 게임이 올바르게 작동하는지 확인할 수 있습니다",
+        "testing": "테스트 중...",
+        "testingDescription": "게임 작동 확인 중",
+        "startButton": "테스트",
+        "success": "테스트 성공!",
+        "failure": "테스트에서 문제 발견",
         "stats": {
-          "score": "Punteggio",
-          "playTime": "Tempo di gioco",
-          "interactions": "Interazioni",
-          "rulesTriggered": "Regole eseguite"
+          "score": "점수",
+          "playTime": "플레이 시간",
+          "interactions": "상호작용",
+          "rulesTriggered": "실행된 규칙"
         },
-        "tryAgain": "Prova di nuovo",
-        "errors": "Errori:",
-        "warnings": "Avvisi:",
+        "tryAgain": "다시 시도",
+        "errors": "오류:",
+        "warnings": "경고:",
         "gameSpeed": {
-          "title": "Velocità del gioco (Livello di sfida)",
+          "title": "게임 속도 (도전 레벨)",
           "slow": {
-            "label": "Lento",
-            "description": "Goditelo con calma"
+            "label": "느림",
+            "description": "여유롭게 즐기기"
           },
           "normal": {
-            "label": "Normale",
-            "description": "Velocità giusta"
+            "label": "보통",
+            "description": "적당한 속도"
           },
           "fast": {
-            "label": "Veloce",
-            "description": "Velocità stimolante"
+            "label": "빠름",
+            "description": "도전적인 속도"
           },
           "superFast": {
-            "label": "Super veloce",
-            "description": "Per esperti"
+            "label": "매우 빠름",
+            "description": "전문가용"
           },
-          "current": "Impostazione attuale: velocità {speed}"
+          "current": "현재 설정: {speed} 속도"
         },
         "fullGame": {
-          "title": "Gioco in esecuzione",
-          "end": "Termina"
+          "title": "게임 실행 중",
+          "end": "종료"
         }
       },
-      "gameNameRequired": "Il nome del gioco è richiesto",
-      "gameNamePlaceholder": "Inserisci un nome fantastico per il gioco",
-      "descriptionPlaceholder": "Descrivi cosa rende questo gioco divertente",
+      "gameNameRequired": "게임 이름을 입력해주세요",
+      "gameNamePlaceholder": "멋진 게임 이름을 입력하세요",
+      "descriptionPlaceholder": "이 게임을 재미있게 만드는 요소를 설명하세요",
       "gameInfo": {
-        "title": "Informazioni gioco",
-        "genre": "Genere",
-        "genrePlaceholder": "Seleziona genere",
+        "title": "게임 정보",
+        "genre": "장르",
+        "genrePlaceholder": "장르 선택",
         "genres": {
-          "action": "Azione",
-          "puzzle": "Puzzle",
-          "adventure": "Avventura",
+          "action": "액션",
+          "puzzle": "퍼즐",
+          "adventure": "어드벤처",
           "rpg": "RPG",
-          "shooting": "Sparatutto",
-          "racing": "Corse",
-          "sports": "Sport",
-          "simulation": "Simulazione",
-          "casual": "Casual",
-          "educational": "Educativo",
-          "music": "Musica",
-          "other": "Altro"
+          "shooting": "슈팅",
+          "racing": "레이싱",
+          "sports": "스포츠",
+          "simulation": "시뮬레이션",
+          "casual": "캐주얼",
+          "educational": "교육",
+          "music": "음악",
+          "other": "기타"
         },
-        "tags": "Tag",
-        "tagsPlaceholder": "es: scorrimento laterale, 2D, semplice (separati da virgole)",
-        "tagsHint": "Separa i tag con virgole (,)"
+        "tags": "태그",
+        "tagsPlaceholder": "예: 횡스크롤, 2D, 간단한 (쉼표로 구분)",
+        "tagsHint": "쉼표(,)로 태그 구분"
       },
       "thumbnail": {
-        "title": "Miniatura",
-        "subtitle": "Imposta una miniatura che trasmetta l'appeal del gioco",
-        "generate": "Genera automaticamente",
-        "upload": "Carica",
-        "noThumbnail": "Nessuna miniatura"
+        "title": "썸네일",
+        "subtitle": "게임의 매력을 전달하는 썸네일 설정",
+        "generate": "자동 생성",
+        "upload": "업로드",
+        "noThumbnail": "썸네일 없음"
       },
       "publishing": {
-        "title": "Impostazioni pubblicazione",
-        "noRemix": "No copia (Disabilita remix)",
-        "noRemixDescription": "Vieta copia e modifica di questo gioco da parte di altri utenti. Se selezionato, nessuno può copiare e modificare questo gioco.",
-        "noRemixHint": "Suggerimento: Se non selezionato, altri utenti possono creare nuovi giochi basati sul tuo (simile a Creative Commons)"
+        "title": "게시 설정",
+        "noRemix": "복사 금지 (리믹스 비활성화)",
+        "noRemixDescription": "다른 사용자가 이 게임을 복사하고 수정하는 것을 금지합니다. 선택하면 아무도 이 게임을 복사하고 수정할 수 없습니다.",
+        "noRemixHint": "힌트: 선택하지 않으면 다른 사용자가 당신의 게임을 기반으로 새 게임을 만들 수 있습니다 (크리에이티브 커먼즈와 유사)"
       },
       "stats": {
-        "title": "Statistiche gioco",
-        "objects": "Oggetti",
-        "rules": "Regole",
-        "texts": "Testo",
-        "capacity": "Capacità totale",
-        "testPlayCount": "Numero di test",
+        "title": "게임 통계",
+        "objects": "오브젝트",
+        "rules": "규칙",
+        "texts": "텍스트",
+        "capacity": "총 용량",
+        "testPlayCount": "테스트 횟수",
         "health": {
-          "initialState": "Stato iniziale",
-          "placedObjects": "Posizionati",
-          "successConditions": "Condizioni di successo",
-          "complexity": "Complessità"
+          "initialState": "초기 상태",
+          "placedObjects": "배치됨",
+          "successConditions": "성공 조건",
+          "complexity": "복잡도"
         }
       },
       "actions": {
-        "save": "Salva",
-        "test": "Test",
-        "publish": "Pubblica",
-        "update": "Aggiorna",
-        "export": "Esporta (JSON)",
-        "published": "Pubblicato",
-        "publishedAt": "il {date}"
+        "save": "저장",
+        "test": "테스트",
+        "publish": "게시",
+        "update": "업데이트",
+        "export": "내보내기 (JSON)",
+        "published": "게시됨",
+        "publishedAt": "{date}에"
       }
     },
     "preview": "미리보기",
     "app": {
-      "loginRequired": "Accesso richiesto",
-      "loginRequiredMessage": "Devi registrarti o accedere per utilizzare l'editor di giochi.",
-      "loginPrompt": "Crea un account gratuito e inizia a creare giochi ora!",
-      "freeSignup": "Registrazione gratuita",
-      "alreadyHaveAccount": "Hai già un account?",
+      "loginRequired": "로그인 필요",
+      "loginRequiredMessage": "게임 에디터를 사용하려면 등록하거나 로그인해야 합니다.",
+      "loginPrompt": "무료 계정을 만들고 지금 게임 제작을 시작하세요!",
+      "freeSignup": "무료 가입",
+      "alreadyHaveAccount": "이미 계정이 있으신가요?",
       "features": {
-        "createProjects": "Crea e salva progetti di gioco",
-        "cloudStorage": "Archiviazione cloud automatica",
-        "publishGames": "Pubblica e condividi giochi",
-        "joinCommunity": "Unisciti alla comunità"
+        "createProjects": "게임 프로젝트 생성 및 저장",
+        "cloudStorage": "자동 클라우드 저장",
+        "publishGames": "게임 게시 및 공유",
+        "joinCommunity": "커뮤니티 참여"
       },
-      "authenticating": "Autenticazione...",
-      "loadingAccount": "Caricamento informazioni account...",
+      "authenticating": "인증 중...",
+      "loadingAccount": "계정 정보 로드 중...",
       "loading": "로딩 중...",
-      "projectOpened": "Aperto \"{name}\"",
-      "projectCreated": "Creato \"{name}\"",
-      "projectSaved": "Progetto salvato",
-      "projectPublished": "Gioco pubblicato! Apparirà nel feed sociale",
-      "projectDeleted": "Progetto eliminato",
-      "projectDuplicated": "Creato \"{name}\"",
-      "projectExported": "Progetto esportato",
-      "unsavedChanges": "Hai modifiche non salvate. Vuoi salvare prima di uscire?",
-      "confirmSaveAndLeave": "OK → Salva e esci\nAnnulla → Esci senza salvare",
-      "backToList": "Torna all'elenco",
-      "mainScreen": "Schermata principale",
-      "noProjectSelected": "Nessun progetto selezionato",
-      "backToProjectList": "Torna all'elenco progetti",
-      "backToMain": "Torna alla principale",
-      "versionInfo": "Game Editor v1.0.0 - Integrazione Supabase",
-      "shortcuts": "Ctrl+S: Salva | Ctrl+T: Test | Esc: Indietro | Ctrl+Q: Principale",
+      "projectOpened": "\"{name}\" 열림",
+      "projectCreated": "\"{name}\" 생성됨",
+      "projectSaved": "프로젝트 저장됨",
+      "projectPublished": "게임이 게시되었습니다! 소셜 피드에 표시됩니다",
+      "projectDeleted": "프로젝트 삭제됨",
+      "projectDuplicated": "\"{name}\" 생성됨",
+      "projectExported": "프로젝트 내보내기 완료",
+      "unsavedChanges": "저장하지 않은 변경사항이 있습니다. 나가기 전에 저장하시겠습니까?",
+      "confirmSaveAndLeave": "확인 → 저장하고 나가기\n취소 → 저장하지 않고 나가기",
+      "backToList": "목록으로 돌아가기",
+      "mainScreen": "메인 화면",
+      "noProjectSelected": "선택된 프로젝트 없음",
+      "backToProjectList": "프로젝트 목록으로 돌아가기",
+      "backToMain": "메인으로 돌아가기",
+      "versionInfo": "게임 에디터 v1.0.0 - Supabase 통합",
+      "shortcuts": "Ctrl+S: 저장 | Ctrl+T: 테스트 | Esc: 뒤로 | Ctrl+Q: 메인",
       "status": {
-        "notLoggedIn": "Non connesso",
-        "unsaved": "Non salvato",
-        "published": "Pubblicato"
+        "notLoggedIn": "로그인 안 됨",
+        "unsaved": "저장 안 됨",
+        "published": "게시됨"
       },
       "capacity": "{used}MB",
       "buttons": {
-        "save": "Salva",
-        "test": "Test",
-        "publish": "Pubblica",
-        "update": "Aggiorna"
+        "save": "저장",
+        "test": "테스트",
+        "publish": "게시",
+        "update": "업데이트"
       }
     },
     "selector": {
-      "title": "Editor di giochi",
-      "subtitle": "Crea facilmente giochi e condividili con tutti!",
+      "title": "게임 에디터",
+      "subtitle": "쉽게 게임을 만들고 모두와 공유하세요!",
       "stats": {
-        "projectCount": "Progetti",
-        "publishedCount": "Pubblicati",
-        "totalCapacity": "Capacità totale"
+        "projectCount": "프로젝트",
+        "publishedCount": "게시됨",
+        "totalCapacity": "총 용량"
       },
-      "search": "Cerca progetti...",
+      "search": "프로젝트 검색...",
       "sort": {
-        "latest": "Più recenti",
-        "name": "Nome",
-        "status": "Stato"
+        "latest": "최신순",
+        "name": "이름",
+        "status": "상태"
       },
       "view": {
-        "grid": "Griglia",
-        "list": "Lista"
+        "grid": "그리드",
+        "list": "리스트"
       },
-      "import": "Importa",
-      "createNew": "Crea nuovo gioco",
-      "loadingProjects": "Caricamento progetti...",
-      "noProjects": "Nessun progetto ancora",
-      "noProjectsMessage": "Crea il tuo primo gioco!",
-      "noResults": "Nessun progetto trovato",
-      "noResultsMessage": "Prova a cercare con parole chiave diverse",
+      "import": "가져오기",
+      "createNew": "새 게임 만들기",
+      "loadingProjects": "프로젝트 로드 중...",
+      "noProjects": "아직 프로젝트가 없습니다",
+      "noProjectsMessage": "첫 번째 게임을 만들어보세요!",
+      "noResults": "프로젝트를 찾을 수 없습니다",
+      "noResultsMessage": "다른 키워드로 검색해보세요",
       "newProject": {
-        "title": "Crea nuovo gioco",
-        "subtitle": "Scegli un nome per il tuo gioco",
-        "placeholder": "Inserisci nome del gioco",
-        "charCount": "{count}/50 caratteri",
-        "templateHint": "Puoi anche iniziare da un modello (prossimamente)",
-        "create": "Crea"
+        "title": "새 게임 만들기",
+        "subtitle": "게임 이름을 선택하세요",
+        "placeholder": "게임 이름 입력",
+        "charCount": "{count}/50자",
+        "templateHint": "템플릿으로 시작할 수도 있습니다 (준비 중)",
+        "create": "만들기"
       },
       "projectCard": {
         "status": {
-          "published": "Pubblicato",
-          "testing": "Test",
-          "draft": "Bozza"
+          "published": "게시됨",
+          "testing": "테스트 중",
+          "draft": "초안"
         },
-        "new": "NUOVO",
-        "completion": "{percent}% completato",
-        "duplicate": "Duplica",
-        "export": "Esporta",
-        "confirmDelete": "Eliminare \"{name}\"? Questa azione non può essere annullata.",
-        "lastModified": "Ultima modifica",
-        "editButton": "Modifica",
+        "new": "신규",
+        "completion": "{percent}% 완료",
+        "duplicate": "복제",
+        "export": "내보내기",
+        "confirmDelete": "\"{name}\"을(를) 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
+        "lastModified": "최종 수정",
+        "editButton": "편집",
         "stats": {
-          "objects": "Oggetti",
-          "sounds": "Suoni",
-          "rules": "Regole",
-          "capacity": "Capacità"
+          "objects": "오브젝트",
+          "sounds": "사운드",
+          "rules": "규칙",
+          "capacity": "용량"
         },
         "errors": {
-          "thumbnailError": "Errore caricamento miniatura",
-          "noThumbnail": "Nessuna miniatura"
+          "thumbnailError": "썸네일 로드 오류",
+          "noThumbnail": "썸네일 없음"
         }
       },
-      "help": "Aiuto",
-      "versionInfo": "Game Editor v1.0.0 - UI moderna",
-      "shortcuts": "Ctrl+Q: Schermata principale"
+      "help": "도움말",
+      "versionInfo": "게임 에디터 v1.0.0 - 모던 UI",
+      "shortcuts": "Ctrl+Q: 메인 화면"
     }
   },
   "conditions": {
@@ -736,62 +736,62 @@
     "pleaseWait": "잠시만 기다려주세요",
     "welcomeToPremium": "Premium에 오신 것을 환영합니다",
     "paymentCompleted": "결제 완료",
-    "planInfo": "Informazioni piano",
-    "plan": "Piano",
-    "status": "Stato",
-    "active": "Attivo",
-    "nextRenewal": "Prossimo rinnovo",
-    "availableFeatures": "Funzionalità disponibili",
+    "planInfo": "플랜 정보",
+    "plan": "플랜",
+    "status": "상태",
+    "active": "활성",
+    "nextRenewal": "다음 갱신",
+    "availableFeatures": "사용 가능한 기능",
     "features": {
-      "unlimitedGames": "Creazione giochi illimitata",
-      "adFree": "Senza pubblicità",
-      "allTemplates": "Tutti i modelli",
-      "advancedEditing": "Modifica avanzata",
-      "unlimitedAssets": "Asset illimitati",
-      "analyticsDashboard": "Dashboard analitica",
-      "html5Export": "Export HTML5",
-      "prioritySupport": "Supporto prioritario"
+      "unlimitedGames": "무제한 게임 생성",
+      "adFree": "광고 없음",
+      "allTemplates": "모든 템플릿",
+      "advancedEditing": "고급 편집",
+      "unlimitedAssets": "무제한 에셋",
+      "analyticsDashboard": "분석 대시보드",
+      "html5Export": "HTML5 내보내기",
+      "prioritySupport": "우선 지원"
     },
-    "createGame": "Crea un gioco",
-    "subscriptionManagement": "Per la gestione dell'abbonamento",
-    "sessionId": "ID sessione",
-    "paymentCancelled": "Il pagamento è stato annullato",
-    "paymentNotCompleted": "Pagamento non completato",
-    "paymentCancelledMessage": "Il pagamento è stato annullato.",
-    "upgradeNotCompleted": "Aggiornamento piano non completato.",
-    "problemQuestion": "C'è stato un problema? Contattaci se hai bisogno di aiuto.",
-    "freePlanTitle": "Cosa puoi fare con il piano gratuito",
+    "createGame": "게임 만들기",
+    "subscriptionManagement": "구독 관리",
+    "sessionId": "세션 ID",
+    "paymentCancelled": "결제가 취소되었습니다",
+    "paymentNotCompleted": "결제가 완료되지 않았습니다",
+    "paymentCancelledMessage": "결제가 취소되었습니다.",
+    "upgradeNotCompleted": "플랜 업그레이드가 완료되지 않았습니다.",
+    "problemQuestion": "문제가 있었나요? 도움이 필요하시면 문의해주세요.",
+    "freePlanTitle": "무료 플랜으로 할 수 있는 것",
     "freePlanFeatures": {
-      "limit5Games": "Fino a 5 giochi al mese",
-      "basicTemplates": "50 modelli di base",
-      "basicEditor": "Editor di giochi di base",
-      "socialFeatures": "Funzionalità sociali (mi piace/segui)",
-      "publishShare": "Pubblica e condividi giochi",
-      "communitySupport": "Supporto della comunità"
+      "limit5Games": "월 최대 5개 게임",
+      "basicTemplates": "기본 템플릿 50개",
+      "basicEditor": "기본 게임 에디터",
+      "socialFeatures": "소셜 기능 (좋아요/팔로우)",
+      "publishShare": "게임 게시 및 공유",
+      "communitySupport": "커뮤니티 지원"
     },
-    "premiumBenefitsTitle": "Vantaggi del piano Premium",
+    "premiumBenefitsTitle": "프리미엄 플랜 혜택",
     "premiumBenefits": {
-      "unlimitedCreation": "🎮 Creazione illimitata",
-      "unlimitedCreationDesc": "Crea giochi illimitati senza limiti mensili",
-      "noAds": "🚫 Nessuna pubblicità",
-      "noAdsDesc": "Esperienza di modifica e gioco confortevole",
-      "allTemplates": "📚 Tutti i modelli",
-      "allTemplatesDesc": "Tutti i 225 modelli",
-      "prioritySupport": "⚡ Supporto prioritario",
-      "prioritySupportDesc": "Risposta rapida entro 24 ore"
+      "unlimitedCreation": "🎮 무제한 생성",
+      "unlimitedCreationDesc": "월간 제한 없이 무제한 게임 생성",
+      "noAds": "🚫 광고 없음",
+      "noAdsDesc": "편안한 편집 및 플레이 경험",
+      "allTemplates": "📚 모든 템플릿",
+      "allTemplatesDesc": "225개 템플릿 모두",
+      "prioritySupport": "⚡ 우선 지원",
+      "prioritySupportDesc": "24시간 이내 빠른 응답"
     },
-    "faqTitle": "Domande frequenti",
+    "faqTitle": "자주 묻는 질문",
     "faq": {
-      "changePaymentMethod": "D. Voglio cambiare il metodo di pagamento",
-      "changePaymentMethodAnswer": "R. Puoi riavviare il processo di pagamento dalla pagina di selezione del piano.",
-      "cardInfoConcern": "D. Sono preoccupato per l'inserimento delle informazioni della carta",
-      "cardInfoConcernAnswer": "R. Il pagamento viene elaborato in modo sicuro tramite Stripe, usato in tutto il mondo. Le informazioni della carta sono crittografate e non vengono conservate da noi.",
-      "canCancel": "D. Posso annullare in seguito?",
-      "canCancelAnswer": "R. Sì, puoi annullare in qualsiasi momento. Dopo l'annullamento, puoi continuare a utilizzare le funzionalità Premium fino alla prossima data di rinnovo."
+      "changePaymentMethod": "Q. 결제 방법을 변경하고 싶어요",
+      "changePaymentMethodAnswer": "A. 플랜 선택 페이지에서 결제 프로세스를 다시 시작할 수 있습니다.",
+      "cardInfoConcern": "Q. 카드 정보 입력이 걱정돼요",
+      "cardInfoConcernAnswer": "A. 결제는 전 세계적으로 사용되는 Stripe를 통해 안전하게 처리됩니다. 카드 정보는 암호화되며 저희가 보관하지 않습니다.",
+      "canCancel": "Q. 나중에 취소할 수 있나요?",
+      "canCancelAnswer": "A. 네, 언제든지 취소할 수 있습니다. 취소 후에도 다음 갱신일까지 프리미엄 기능을 계속 사용할 수 있습니다."
     },
-    "reviewPlans": "Rivedi i piani",
-    "continueWithFree": "Continua con il piano gratuito →",
-    "anyQuestions": "Se hai domande",
-    "happyToHelp": "Saremo lieti di aiutarti!"
+    "reviewPlans": "플랜 검토",
+    "continueWithFree": "무료 플랜으로 계속 →",
+    "anyQuestions": "질문이 있으시면",
+    "happyToHelp": "기꺼이 도와드리겠습니다!"
   }
 }

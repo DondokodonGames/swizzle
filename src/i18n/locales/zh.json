@@ -98,119 +98,119 @@
       "when": "当",
       "then": "则",
       "gameTime": {
-        "title": "Impostazione tempo di gioco",
+        "title": "游戏时间设置",
         "presets": {
           "5": {
-            "label": "5 sec",
-            "description": "Veloce",
+            "label": "5秒",
+            "description": "快速",
             "emoji": "⚡"
           },
           "10": {
-            "label": "10 sec",
-            "description": "Giusto",
+            "label": "10秒",
+            "description": "刚好",
             "emoji": "⏰"
           },
           "15": {
-            "label": "15 sec",
-            "description": "Esteso",
+            "label": "15秒",
+            "description": "延长",
             "emoji": "🎯"
           },
           "30": {
-            "label": "30 sec",
-            "description": "Lungo",
+            "label": "30秒",
+            "description": "长时间",
             "emoji": "🏃"
           },
           "unlimited": {
-            "label": "Illimitato",
-            "description": "Gioco libero",
+            "label": "无限制",
+            "description": "自由游玩",
             "emoji": "∞"
           }
         },
-        "current": "Impostazione attuale: {duration}"
+        "current": "当前设置：{duration}"
       },
       "objectPlacement": {
-        "title": "Posizionamento oggetti",
-        "placed": "Disposizione: {placed}/{total} posizionati",
-        "addToLayout": "Posiziona",
-        "removeFromLayout": "Rimuovi",
-        "editRule": "Regole",
-        "alreadyPlaced": "Posizionato",
-        "notPlaced": "Non posizionato",
-        "ruleCount": "{count} regole",
+        "title": "对象放置",
+        "placed": "布局：已放置 {placed}/{total}",
+        "addToLayout": "放置",
+        "removeFromLayout": "移除",
+        "editRule": "规则",
+        "alreadyPlaced": "已放置",
+        "notPlaced": "未放置",
+        "ruleCount": "{count} 条规则",
         "hints": {
-          "title": "Come usare:",
-          "place": "Posiziona → Aggiungi allo schermo di disposizione",
-          "rules": "Regole → Imposta logica di gioco",
-          "remove": "Rimuovi → Elimina dalla disposizione",
-          "dragAndDrop": "Funziona anche il trascinamento"
+          "title": "使用方法：",
+          "place": "放置 → 添加到布局屏幕",
+          "rules": "规则 → 设置游戏逻辑",
+          "remove": "移除 → 从布局中删除",
+          "dragAndDrop": "拖放也可使用"
         }
       },
       "placedObjects": {
-        "title": "Oggetti posizionati",
-        "hint": "Puoi impostare regole per gli oggetti posizionati nella scheda disposizione"
+        "title": "已放置对象",
+        "hint": "您可以为布局标签中放置的对象设置规则"
       },
       "projectFlags": {
-        "title": "Flag del progetto",
-        "subtitle": "Gestione stato del gioco",
-        "on": "ON",
-        "off": "OFF"
+        "title": "项目标志",
+        "subtitle": "游戏状态管理",
+        "on": "开启",
+        "off": "关闭"
       },
       "ruleList": {
         "empty": {
-          "title": "Crea regole!",
-          "description": "Crea giochi divertenti con regole IF-THEN\nClicca sugli oggetti in modalità disposizione per impostare regole",
+          "title": "创建规则！",
+          "description": "使用 IF-THEN 规则创建有趣的游戏\n在布局模式下点击对象以设置规则",
           "features": {
-            "conditions": "Condizioni di attivazione",
-            "conditionsDesc": "Tocco, tempo, posizione, collisione",
-            "actions": "Esegui azioni",
-            "actionsDesc": "Muovi, effetto, suono, successo",
-            "flags": "Gestione flag",
-            "flagsDesc": "Stato del gioco, gestione variabili"
+            "conditions": "触发条件",
+            "conditionsDesc": "触摸、时间、位置、碰撞",
+            "actions": "执行动作",
+            "actionsDesc": "移动、效果、声音、成功",
+            "flags": "标志管理",
+            "flagsDesc": "游戏状态、变量管理"
           },
-          "backToLayout": "Torna alla modalità disposizione"
+          "backToLayout": "返回布局模式"
         },
-        "enabled": "Attivato",
-        "disabled": "Disattivato",
-        "target": "Obiettivo: {target}",
-        "conditionsCount": "{count} condizioni",
-        "actionsCount": "{count} azioni",
-        "edit": "Modifica",
-        "delete": "Elimina",
-        "confirmDelete": "Eliminare \"{name}\"?",
-        "deleted": "Regola eliminata",
-        "gameOverall": "Gioco globale",
+        "enabled": "已启用",
+        "disabled": "已禁用",
+        "target": "目标：{target}",
+        "conditionsCount": "{count} 个条件",
+        "actionsCount": "{count} 个动作",
+        "edit": "编辑",
+        "delete": "删除",
+        "confirmDelete": "删除"{name}"？",
+        "deleted": "规则已删除",
+        "gameOverall": "游戏全局",
         "objectNotFound": "⚠ {id}",
-        "untitled": "Regola senza titolo"
+        "untitled": "未命名规则"
       },
       "ruleModal": {
-        "title": "Impostazioni regola (Avanzate)",
-        "subtitle": "1 condizione → 1 azione | {conditions} tipi di condizioni × {actions} tipi di azioni",
-        "ruleName": "Nome regola",
-        "ruleNamePlaceholder": "es: Tocca nell'area centrale per muovere",
-        "triggerCondition": "Condizione di attivazione",
-        "executeAction": "Esegui azione",
+        "title": "规则设置（高级）",
+        "subtitle": "1 个条件 → 1 个动作 | {conditions} 种条件类型 × {actions} 种动作类型",
+        "ruleName": "规则名称",
+        "ruleNamePlaceholder": "例如：触摸中心区域移动",
+        "triggerCondition": "触发条件",
+        "executeAction": "执行动作",
         "preview": {
-          "title": "Anteprima regola",
-          "seconds": "({seconds}s)",
-          "area": "(area {area})"
+          "title": "规则预览",
+          "seconds": "（{seconds}秒）",
+          "area": "（{area}区域）"
         },
         "errors": {
-          "nameRequired": "Inserisci un nome per la regola",
-          "conditionRequired": "Seleziona una condizione",
-          "actionRequired": "Seleziona un'azione"
+          "nameRequired": "请输入规则名称",
+          "conditionRequired": "请选择条件",
+          "actionRequired": "请选择动作"
         },
-        "saved": "Regola salvata"
+        "saved": "规则已保存"
       },
       "ruleSelection": {
-        "title": "Seleziona regola - {object}",
-        "subtitle": "Seleziona regola da modificare ({current}/{max})",
-        "ruleNumber": "Regola {number}: {name}",
-        "createNew": "Crea nuova regola",
-        "limitReached": "Limite regole (32) raggiunto"
+        "title": "选择规则 - {object}",
+        "subtitle": "选择要编辑的规则（{current}/{max}）",
+        "ruleNumber": "规则 {number}：{name}",
+        "createNew": "创建新规则",
+        "limitReached": "已达到规则限制（32）"
       },
-      "subtitle": "Disposizione oggetti, supporto regole multiple, logica di gioco avanzata",
-      "layout": "Disposizione",
-      "rules": "Regole"
+      "subtitle": "对象布局、多规则支持、高级游戏逻辑",
+      "layout": "布局",
+      "rules": "规则"
     },
     "settings": {
       "title": "发布设置",
@@ -224,215 +224,215 @@
       "private": "私密",
       "publish": "发布",
       "testPlay": {
-        "title": "Test del gioco",
-        "start": "Proviamo il gioco",
-        "startDescription": "Puoi verificare se il gioco creato funziona correttamente",
-        "testing": "Test in corso...",
-        "testingDescription": "Verifica funzionamento del gioco",
-        "startButton": "Test",
-        "success": "Test riuscito!",
-        "failure": "Problemi trovati nel test",
+        "title": "测试游戏",
+        "start": "测试游戏",
+        "startDescription": "您可以检查创建的游戏是否正常运行",
+        "testing": "测试中...",
+        "testingDescription": "检查游戏运行",
+        "startButton": "测试",
+        "success": "测试成功！",
+        "failure": "测试发现问题",
         "stats": {
-          "score": "Punteggio",
-          "playTime": "Tempo di gioco",
-          "interactions": "Interazioni",
-          "rulesTriggered": "Regole eseguite"
+          "score": "得分",
+          "playTime": "游戏时间",
+          "interactions": "交互",
+          "rulesTriggered": "执行的规则"
         },
-        "tryAgain": "Prova di nuovo",
-        "errors": "Errori:",
-        "warnings": "Avvisi:",
+        "tryAgain": "再次测试",
+        "errors": "错误：",
+        "warnings": "警告：",
         "gameSpeed": {
-          "title": "Velocità del gioco (Livello di sfida)",
+          "title": "游戏速度（挑战级别）",
           "slow": {
-            "label": "Lento",
-            "description": "Goditelo con calma"
+            "label": "慢速",
+            "description": "悠闲享受"
           },
           "normal": {
-            "label": "Normale",
-            "description": "Velocità giusta"
+            "label": "正常",
+            "description": "刚好的速度"
           },
           "fast": {
-            "label": "Veloce",
-            "description": "Velocità stimolante"
+            "label": "快速",
+            "description": "挑战性速度"
           },
           "superFast": {
-            "label": "Super veloce",
-            "description": "Per esperti"
+            "label": "超快速",
+            "description": "专家级"
           },
-          "current": "Impostazione attuale: velocità {speed}"
+          "current": "当前设置：{speed} 速度"
         },
         "fullGame": {
-          "title": "Gioco in esecuzione",
-          "end": "Termina"
+          "title": "游戏运行中",
+          "end": "结束"
         }
       },
-      "gameNameRequired": "Il nome del gioco è richiesto",
-      "gameNamePlaceholder": "Inserisci un nome fantastico per il gioco",
-      "descriptionPlaceholder": "Descrivi cosa rende questo gioco divertente",
+      "gameNameRequired": "游戏名称为必填项",
+      "gameNamePlaceholder": "输入精彩的游戏名称",
+      "descriptionPlaceholder": "描述这个游戏的有趣之处",
       "gameInfo": {
-        "title": "Informazioni gioco",
-        "genre": "Genere",
-        "genrePlaceholder": "Seleziona genere",
+        "title": "游戏信息",
+        "genre": "类型",
+        "genrePlaceholder": "选择类型",
         "genres": {
-          "action": "Azione",
-          "puzzle": "Puzzle",
-          "adventure": "Avventura",
-          "rpg": "RPG",
-          "shooting": "Sparatutto",
-          "racing": "Corse",
-          "sports": "Sport",
-          "simulation": "Simulazione",
-          "casual": "Casual",
-          "educational": "Educativo",
-          "music": "Musica",
-          "other": "Altro"
+          "action": "动作",
+          "puzzle": "益智",
+          "adventure": "冒险",
+          "rpg": "角色扮演",
+          "shooting": "射击",
+          "racing": "竞速",
+          "sports": "体育",
+          "simulation": "模拟",
+          "casual": "休闲",
+          "educational": "教育",
+          "music": "音乐",
+          "other": "其他"
         },
-        "tags": "Tag",
-        "tagsPlaceholder": "es: scorrimento laterale, 2D, semplice (separati da virgole)",
-        "tagsHint": "Separa i tag con virgole (,)"
+        "tags": "标签",
+        "tagsPlaceholder": "例如：横向滚动、2D、简单（用逗号分隔）",
+        "tagsHint": "用逗号（,）分隔标签"
       },
       "thumbnail": {
-        "title": "Miniatura",
-        "subtitle": "Imposta una miniatura che trasmetta l'appeal del gioco",
-        "generate": "Genera automaticamente",
-        "upload": "Carica",
-        "noThumbnail": "Nessuna miniatura"
+        "title": "缩略图",
+        "subtitle": "设置能展现游戏魅力的缩略图",
+        "generate": "自动生成",
+        "upload": "上传",
+        "noThumbnail": "无缩略图"
       },
       "publishing": {
-        "title": "Impostazioni pubblicazione",
-        "noRemix": "No copia (Disabilita remix)",
-        "noRemixDescription": "Vieta copia e modifica di questo gioco da parte di altri utenti. Se selezionato, nessuno può copiare e modificare questo gioco.",
-        "noRemixHint": "Suggerimento: Se non selezionato, altri utenti possono creare nuovi giochi basati sul tuo (simile a Creative Commons)"
+        "title": "发布设置",
+        "noRemix": "禁止复制（禁用混音）",
+        "noRemixDescription": "禁止其他用户复制和修改此游戏。选中后，任何人都无法复制和修改此游戏。",
+        "noRemixHint": "提示：如果不选中，其他用户可以基于您的游戏创建新游戏（类似于知识共享）"
       },
       "stats": {
-        "title": "Statistiche gioco",
-        "objects": "Oggetti",
-        "rules": "Regole",
-        "texts": "Testo",
-        "capacity": "Capacità totale",
-        "testPlayCount": "Numero di test",
+        "title": "游戏统计",
+        "objects": "对象",
+        "rules": "规则",
+        "texts": "文本",
+        "capacity": "总容量",
+        "testPlayCount": "测试次数",
         "health": {
-          "initialState": "Stato iniziale",
-          "placedObjects": "Posizionati",
-          "successConditions": "Condizioni di successo",
-          "complexity": "Complessità"
+          "initialState": "初始状态",
+          "placedObjects": "已放置",
+          "successConditions": "成功条件",
+          "complexity": "复杂度"
         }
       },
       "actions": {
-        "save": "Salva",
-        "test": "Test",
-        "publish": "Pubblica",
-        "update": "Aggiorna",
-        "export": "Esporta (JSON)",
-        "published": "Pubblicato",
-        "publishedAt": "il {date}"
+        "save": "保存",
+        "test": "测试",
+        "publish": "发布",
+        "update": "更新",
+        "export": "导出（JSON）",
+        "published": "已发布",
+        "publishedAt": "于 {date}"
       }
     },
     "preview": "预览",
     "app": {
-      "loginRequired": "Accesso richiesto",
-      "loginRequiredMessage": "Devi registrarti o accedere per utilizzare l'editor di giochi.",
-      "loginPrompt": "Crea un account gratuito e inizia a creare giochi ora!",
-      "freeSignup": "Registrazione gratuita",
-      "alreadyHaveAccount": "Hai già un account?",
+      "loginRequired": "需要登录",
+      "loginRequiredMessage": "您需要注册或登录才能使用游戏编辑器。",
+      "loginPrompt": "创建免费账号并立即开始制作游戏！",
+      "freeSignup": "免费注册",
+      "alreadyHaveAccount": "已有账号？",
       "features": {
-        "createProjects": "Crea e salva progetti di gioco",
-        "cloudStorage": "Archiviazione cloud automatica",
-        "publishGames": "Pubblica e condividi giochi",
-        "joinCommunity": "Unisciti alla comunità"
+        "createProjects": "创建并保存游戏项目",
+        "cloudStorage": "自动云存储",
+        "publishGames": "发布并分享游戏",
+        "joinCommunity": "加入社区"
       },
-      "authenticating": "Autenticazione...",
-      "loadingAccount": "Caricamento informazioni account...",
+      "authenticating": "验证中...",
+      "loadingAccount": "加载账号信息...",
       "loading": "加载中...",
-      "projectOpened": "Aperto \"{name}\"",
-      "projectCreated": "Creato \"{name}\"",
-      "projectSaved": "Progetto salvato",
-      "projectPublished": "Gioco pubblicato! Apparirà nel feed sociale",
-      "projectDeleted": "Progetto eliminato",
-      "projectDuplicated": "Creato \"{name}\"",
-      "projectExported": "Progetto esportato",
-      "unsavedChanges": "Hai modifiche non salvate. Vuoi salvare prima di uscire?",
-      "confirmSaveAndLeave": "OK → Salva e esci\nAnnulla → Esci senza salvare",
-      "backToList": "Torna all'elenco",
-      "mainScreen": "Schermata principale",
-      "noProjectSelected": "Nessun progetto selezionato",
-      "backToProjectList": "Torna all'elenco progetti",
-      "backToMain": "Torna alla principale",
-      "versionInfo": "Game Editor v1.0.0 - Integrazione Supabase",
-      "shortcuts": "Ctrl+S: Salva | Ctrl+T: Test | Esc: Indietro | Ctrl+Q: Principale",
+      "projectOpened": "已打开"{name}"",
+      "projectCreated": "已创建"{name}"",
+      "projectSaved": "项目已保存",
+      "projectPublished": "游戏已发布！将显示在社交动态中",
+      "projectDeleted": "项目已删除",
+      "projectDuplicated": "已创建"{name}"",
+      "projectExported": "项目已导出",
+      "unsavedChanges": "您有未保存的更改。要在离开前保存吗？",
+      "confirmSaveAndLeave": "确定 → 保存并离开\n取消 → 不保存离开",
+      "backToList": "返回列表",
+      "mainScreen": "主屏幕",
+      "noProjectSelected": "未选择项目",
+      "backToProjectList": "返回项目列表",
+      "backToMain": "返回主页",
+      "versionInfo": "游戏编辑器 v1.0.0 - Supabase 集成",
+      "shortcuts": "Ctrl+S：保存 | Ctrl+T：测试 | Esc：返回 | Ctrl+Q：主页",
       "status": {
-        "notLoggedIn": "Non connesso",
-        "unsaved": "Non salvato",
-        "published": "Pubblicato"
+        "notLoggedIn": "未登录",
+        "unsaved": "未保存",
+        "published": "已发布"
       },
       "capacity": "{used}MB",
       "buttons": {
-        "save": "Salva",
-        "test": "Test",
-        "publish": "Pubblica",
-        "update": "Aggiorna"
+        "save": "保存",
+        "test": "测试",
+        "publish": "发布",
+        "update": "更新"
       }
     },
     "selector": {
-      "title": "Editor di giochi",
-      "subtitle": "Crea facilmente giochi e condividili con tutti!",
+      "title": "游戏编辑器",
+      "subtitle": "轻松创建游戏并与所有人分享！",
       "stats": {
-        "projectCount": "Progetti",
-        "publishedCount": "Pubblicati",
-        "totalCapacity": "Capacità totale"
+        "projectCount": "项目",
+        "publishedCount": "已发布",
+        "totalCapacity": "总容量"
       },
-      "search": "Cerca progetti...",
+      "search": "搜索项目...",
       "sort": {
-        "latest": "Più recenti",
-        "name": "Nome",
-        "status": "Stato"
+        "latest": "最新",
+        "name": "名称",
+        "status": "状态"
       },
       "view": {
-        "grid": "Griglia",
-        "list": "Lista"
+        "grid": "网格",
+        "list": "列表"
       },
-      "import": "Importa",
-      "createNew": "Crea nuovo gioco",
-      "loadingProjects": "Caricamento progetti...",
-      "noProjects": "Nessun progetto ancora",
-      "noProjectsMessage": "Crea il tuo primo gioco!",
-      "noResults": "Nessun progetto trovato",
-      "noResultsMessage": "Prova a cercare con parole chiave diverse",
+      "import": "导入",
+      "createNew": "创建新游戏",
+      "loadingProjects": "加载项目中...",
+      "noProjects": "还没有项目",
+      "noProjectsMessage": "创建您的第一个游戏！",
+      "noResults": "未找到项目",
+      "noResultsMessage": "尝试使用不同的关键词搜索",
       "newProject": {
-        "title": "Crea nuovo gioco",
-        "subtitle": "Scegli un nome per il tuo gioco",
-        "placeholder": "Inserisci nome del gioco",
-        "charCount": "{count}/50 caratteri",
-        "templateHint": "Puoi anche iniziare da un modello (prossimamente)",
-        "create": "Crea"
+        "title": "创建新游戏",
+        "subtitle": "为您的游戏选择一个名称",
+        "placeholder": "输入游戏名称",
+        "charCount": "{count}/50 个字符",
+        "templateHint": "您也可以从模板开始（即将推出）",
+        "create": "创建"
       },
       "projectCard": {
         "status": {
-          "published": "Pubblicato",
-          "testing": "Test",
-          "draft": "Bozza"
+          "published": "已发布",
+          "testing": "测试中",
+          "draft": "草稿"
         },
-        "new": "NUOVO",
-        "completion": "{percent}% completato",
-        "duplicate": "Duplica",
-        "export": "Esporta",
-        "confirmDelete": "Eliminare \"{name}\"? Questa azione non può essere annullata.",
-        "lastModified": "Ultima modifica",
-        "editButton": "Modifica",
+        "new": "新",
+        "completion": "完成 {percent}%",
+        "duplicate": "复制",
+        "export": "导出",
+        "confirmDelete": "删除"{name}"？此操作无法撤消。",
+        "lastModified": "最后修改",
+        "editButton": "编辑",
         "stats": {
-          "objects": "Oggetti",
-          "sounds": "Suoni",
-          "rules": "Regole",
-          "capacity": "Capacità"
+          "objects": "对象",
+          "sounds": "声音",
+          "rules": "规则",
+          "capacity": "容量"
         },
         "errors": {
-          "thumbnailError": "Errore caricamento miniatura",
-          "noThumbnail": "Nessuna miniatura"
+          "thumbnailError": "缩略图加载错误",
+          "noThumbnail": "无缩略图"
         }
       },
-      "help": "Aiuto",
-      "versionInfo": "Game Editor v1.0.0 - UI moderna",
-      "shortcuts": "Ctrl+Q: Schermata principale"
+      "help": "帮助",
+      "versionInfo": "游戏编辑器 v1.0.0 - 现代界面",
+      "shortcuts": "Ctrl+Q：主屏幕"
     }
   },
   "conditions": {
@@ -728,70 +728,70 @@
   },
   "pricing": {
     "backToHome": "返回首页",
-    "premium": "Premium",
+    "premium": "高级",
     "loading": "加载中...",
     "support": "支持",
     "supportContact": "如需帮助请联系我们",
     "processingPayment": "处理付款中...",
     "pleaseWait": "请稍候",
-    "welcomeToPremium": "欢迎使用 Premium",
+    "welcomeToPremium": "欢迎使用高级版",
     "paymentCompleted": "支付完成",
-    "planInfo": "Informazioni piano",
-    "plan": "Piano",
-    "status": "Stato",
-    "active": "Attivo",
-    "nextRenewal": "Prossimo rinnovo",
-    "availableFeatures": "Funzionalità disponibili",
+    "planInfo": "套餐信息",
+    "plan": "套餐",
+    "status": "状态",
+    "active": "活跃",
+    "nextRenewal": "下次续订",
+    "availableFeatures": "可用功能",
     "features": {
-      "unlimitedGames": "Creazione giochi illimitata",
-      "adFree": "Senza pubblicità",
-      "allTemplates": "Tutti i modelli",
-      "advancedEditing": "Modifica avanzata",
-      "unlimitedAssets": "Asset illimitati",
-      "analyticsDashboard": "Dashboard analitica",
-      "html5Export": "Export HTML5",
-      "prioritySupport": "Supporto prioritario"
+      "unlimitedGames": "无限游戏创建",
+      "adFree": "无广告",
+      "allTemplates": "所有模板",
+      "advancedEditing": "高级编辑",
+      "unlimitedAssets": "无限资源",
+      "analyticsDashboard": "分析面板",
+      "html5Export": "HTML5 导出",
+      "prioritySupport": "优先支持"
     },
-    "createGame": "Crea un gioco",
-    "subscriptionManagement": "Per la gestione dell'abbonamento",
-    "sessionId": "ID sessione",
-    "paymentCancelled": "Il pagamento è stato annullato",
-    "paymentNotCompleted": "Pagamento non completato",
-    "paymentCancelledMessage": "Il pagamento è stato annullato.",
-    "upgradeNotCompleted": "Aggiornamento piano non completato.",
-    "problemQuestion": "C'è stato un problema? Contattaci se hai bisogno di aiuto.",
-    "freePlanTitle": "Cosa puoi fare con il piano gratuito",
+    "createGame": "创建游戏",
+    "subscriptionManagement": "订阅管理",
+    "sessionId": "会话 ID",
+    "paymentCancelled": "支付已取消",
+    "paymentNotCompleted": "支付未完成",
+    "paymentCancelledMessage": "支付已取消。",
+    "upgradeNotCompleted": "套餐升级未完成。",
+    "problemQuestion": "遇到问题了吗？如需帮助请联系我们。",
+    "freePlanTitle": "免费计划可以做什么",
     "freePlanFeatures": {
-      "limit5Games": "Fino a 5 giochi al mese",
-      "basicTemplates": "50 modelli di base",
-      "basicEditor": "Editor di giochi di base",
-      "socialFeatures": "Funzionalità sociali (mi piace/segui)",
-      "publishShare": "Pubblica e condividi giochi",
-      "communitySupport": "Supporto della comunità"
+      "limit5Games": "每月最多 5 个游戏",
+      "basicTemplates": "50 个基础模板",
+      "basicEditor": "基础游戏编辑器",
+      "socialFeatures": "社交功能（点赞/关注）",
+      "publishShare": "发布和分享游戏",
+      "communitySupport": "社区支持"
     },
-    "premiumBenefitsTitle": "Vantaggi del piano Premium",
+    "premiumBenefitsTitle": "高级计划优势",
     "premiumBenefits": {
-      "unlimitedCreation": "🎮 Creazione illimitata",
-      "unlimitedCreationDesc": "Crea giochi illimitati senza limiti mensili",
-      "noAds": "🚫 Nessuna pubblicità",
-      "noAdsDesc": "Esperienza di modifica e gioco confortevole",
-      "allTemplates": "📚 Tutti i modelli",
-      "allTemplatesDesc": "Tutti i 225 modelli",
-      "prioritySupport": "⚡ Supporto prioritario",
-      "prioritySupportDesc": "Risposta rapida entro 24 ore"
+      "unlimitedCreation": "🎮 无限创作",
+      "unlimitedCreationDesc": "创建无限游戏，无月度限制",
+      "noAds": "🚫 无广告",
+      "noAdsDesc": "舒适的编辑和游玩体验",
+      "allTemplates": "📚 所有模板",
+      "allTemplatesDesc": "所有 225 个模板",
+      "prioritySupport": "⚡ 优先支持",
+      "prioritySupportDesc": "24 小时内快速响应"
     },
-    "faqTitle": "Domande frequenti",
+    "faqTitle": "常见问题",
     "faq": {
-      "changePaymentMethod": "D. Voglio cambiare il metodo di pagamento",
-      "changePaymentMethodAnswer": "R. Puoi riavviare il processo di pagamento dalla pagina di selezione del piano.",
-      "cardInfoConcern": "D. Sono preoccupato per l'inserimento delle informazioni della carta",
-      "cardInfoConcernAnswer": "R. Il pagamento viene elaborato in modo sicuro tramite Stripe, usato in tutto il mondo. Le informazioni della carta sono crittografate e non vengono conservate da noi.",
-      "canCancel": "D. Posso annullare in seguito?",
-      "canCancelAnswer": "R. Sì, puoi annullare in qualsiasi momento. Dopo l'annullamento, puoi continuare a utilizzare le funzionalità Premium fino alla prossima data di rinnovo."
+      "changePaymentMethod": "问：我想更改支付方式",
+      "changePaymentMethodAnswer": "答：您可以从套餐选择页面重新开始支付流程。",
+      "cardInfoConcern": "问：我担心输入卡信息",
+      "cardInfoConcernAnswer": "答：支付通过全球使用的 Stripe 安全处理。卡信息已加密，我们不会保存。",
+      "canCancel": "问：我可以随后取消吗？",
+      "canCancelAnswer": "答：可以，您可以随时取消。取消后，您可以继续使用高级功能直到下次续订日期。"
     },
-    "reviewPlans": "Rivedi i piani",
-    "continueWithFree": "Continua con il piano gratuito →",
-    "anyQuestions": "Se hai domande",
-    "happyToHelp": "Saremo lieti di aiutarti!"
+    "reviewPlans": "查看套餐",
+    "continueWithFree": "继续使用免费计划 →",
+    "anyQuestions": "如有任何问题",
+    "happyToHelp": "我们很乐意帮助您！"
   }
 }
