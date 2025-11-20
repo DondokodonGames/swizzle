@@ -10,11 +10,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useSubscription } from '../../hooks/monetization/useSubscription';
 import { PremiumBadge } from '../../components/monetization/PremiumBadge';
 
 export function SubscriptionSuccess() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const { subscription, loading, refetch } = useSubscription();
   const [isRefreshing, setIsRefreshing] = useState(true);
@@ -52,9 +54,9 @@ export function SubscriptionSuccess() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            決済を処理中...
+            {t('pricing.processingPayment')}
           </h2>
-          <p className="text-gray-600">少々お待ちください</p>
+          <p className="text-gray-600">{t('pricing.pleaseWait')}</p>
         </div>
       </div>
     );
@@ -87,10 +89,10 @@ export function SubscriptionSuccess() {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-white mb-1">
-              ようこそ Premium へ
+              {t('pricing.welcomeToPremium')}
             </h1>
             <p className="text-purple-100 text-sm">
-              お支払いが完了しました
+              {t('pricing.paymentCompleted')}
             </p>
           </div>
 
@@ -105,24 +107,24 @@ export function SubscriptionSuccess() {
             {subscription && (
               <div className="bg-gray-50 rounded-xl p-4 mb-6">
                 <h2 className="text-sm font-semibold text-gray-700 mb-3">
-                  プラン情報
+                  {t('pricing.planInfo')}
                 </h2>
                 <div className="space-y-2 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">プラン</span>
+                    <span className="text-gray-500">{t('pricing.plan')}</span>
                     <span className="font-medium text-gray-800">
-                      {subscription.plan_type === 'premium' ? 'Premium' : subscription.plan_type}
+                      {subscription.plan_type === 'premium' ? t('pricing.premium') : subscription.plan_type}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">ステータス</span>
+                    <span className="text-gray-500">{t('pricing.status')}</span>
                     <span className="font-medium text-green-600">
-                      アクティブ
+                      {t('pricing.active')}
                     </span>
                   </div>
                   {subscription.current_period_end && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500">次回更新</span>
+                      <span className="text-gray-500">{t('pricing.nextRenewal')}</span>
                       <span className="font-medium text-gray-800">
                         {new Date(subscription.current_period_end).toLocaleDateString('ja-JP')}
                       </span>
@@ -135,18 +137,18 @@ export function SubscriptionSuccess() {
             {/* Features Unlocked - グリッド表示 */}
             <div className="mb-6">
               <h2 className="text-sm font-semibold text-gray-700 mb-3">
-                利用可能な機能
+                {t('pricing.availableFeatures')}
               </h2>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  '無制限ゲーム作成',
-                  '広告非表示',
-                  '全テンプレート',
-                  '高度な編集機能',
-                  'アセット無制限',
-                  '分析ダッシュボード',
-                  'HTML5エクスポート',
-                  '優先サポート',
+                  t('pricing.features.unlimitedGames'),
+                  t('pricing.features.adFree'),
+                  t('pricing.features.allTemplates'),
+                  t('pricing.features.advancedEditing'),
+                  t('pricing.features.unlimitedAssets'),
+                  t('pricing.features.analyticsDashboard'),
+                  t('pricing.features.html5Export'),
+                  t('pricing.features.prioritySupport'),
                 ].map((feature, index) => (
                   <div
                     key={index}
@@ -178,23 +180,22 @@ export function SubscriptionSuccess() {
                 onClick={() => navigate('/')}
                 className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all shadow-md hover:shadow-lg text-sm"
               >
-                ゲームを作成する
+                {t('pricing.createGame')}
               </button>
               <button
                 onClick={() => navigate('/')}
                 className="w-full py-3 px-4 bg-white text-gray-600 font-medium rounded-xl border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all text-sm"
               >
-                ホームに戻る
+                {t('pricing.backToHome')}
               </button>
             </div>
 
             {/* Help Text */}
             <p className="mt-4 text-xs text-gray-400 text-center">
-              サブスクリプション管理は
+              {t('pricing.subscriptionManagement')}
               <a href="/support" className="text-purple-500 hover:text-purple-600 ml-1">
-                サポート
+                {t('pricing.support')}
               </a>
-              へ
             </p>
           </div>
         </div>
@@ -202,7 +203,7 @@ export function SubscriptionSuccess() {
         {/* Session ID (Debug) */}
         {sessionId && (
           <p className="mt-4 text-xs text-gray-400 text-center">
-            Session ID: {sessionId}
+            {t('pricing.sessionId')}: {sessionId}
           </p>
         )}
       </div>

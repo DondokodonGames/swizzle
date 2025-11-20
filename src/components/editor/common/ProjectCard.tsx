@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18n';
 import { GameProject } from '../../../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../../../constants/EditorLimits';
 
@@ -23,10 +24,10 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   size = 'medium',
   className = ''
 }) => {
+  const { t } = useTranslation();
   const [showMenu, setShowMenu] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  // サイズ設定
   const sizeClasses = {
     small: {
       container: 'rounded-xl',
@@ -59,10 +60,9 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
 
   const classes = sizeClasses[size];
 
-  // プロジェクト統計
   const lastModified = new Date(project.lastModified);
   const isRecent = Date.now() - lastModified.getTime() < 24 * 60 * 60 * 1000;
-  
+
   const stats = {
     objects: project.assets.objects.length,
     sounds: (project.assets.audio?.se?.length || 0) + (project.assets.audio?.bgm ? 1 : 0),
@@ -73,16 +73,14 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
   const sizeInMB = (stats.totalSize / 1024 / 1024).toFixed(1);
   const sizePercentage = (stats.totalSize / EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE) * 100;
 
-  // ステータス設定（型安全に修正）
   const statusConfig = {
-    published: { label: '公開済み', class: 'bg-green-100 text-green-800' },
-    testing: { label: 'テスト中', class: 'bg-blue-100 text-blue-800' },
-    draft: { label: '下書き', class: 'bg-gray-100 text-gray-800' }
+    published: { label: t('editor.selector.projectCard.status.published'), class: 'bg-green-100 text-green-800' },
+    testing: { label: t('editor.selector.projectCard.status.testing'), class: 'bg-blue-100 text-blue-800' },
+    draft: { label: t('editor.selector.projectCard.status.draft'), class: 'bg-gray-100 text-gray-800' }
   } as const;
 
   const status = statusConfig[project.status as keyof typeof statusConfig] || statusConfig.draft;
 
-  // 完成度計算
   const completionScore = Math.round(
     (stats.objects > 0 ? 25 : 0) +
     (stats.sounds > 0 ? 25 : 0) +
@@ -109,32 +107,29 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             <div className="text-center">
               <div className="text-3xl mb-1">🎮</div>
               <div className="text-xs text-gray-500">
-                {imageError ? 'サムネイル読み込みエラー' : 'サムネイル未設定'}
+                {imageError ? t('editor.selector.projectCard.errors.thumbnailError') : t('editor.selector.projectCard.errors.noThumbnail')}
               </div>
             </div>
           </div>
         )}
-        
-        {/* ステータスバッジ */}
+
         <div className="absolute top-2 left-2">
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.class}`}>
             {status.label}
           </span>
         </div>
 
-        {/* 新規作成バッジ */}
         {isRecent && (
           <div className="absolute top-2 right-2">
             <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium">
-              NEW
+              {t('editor.selector.projectCard.new')}
             </span>
           </div>
         )}
 
-        {/* 完成度インジケーター */}
         <div className="absolute bottom-2 left-2">
           <div className="bg-black bg-opacity-50 text-white px-2 py-1 rounded-full text-xs">
-            {completionScore}% 完成
+            {t('editor.selector.projectCard.completion', { percent: completionScore })}
           </div>
         </div>
 
@@ -164,7 +159,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                     className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
                   >
                     <span>📋</span>
-                    <span>複製</span>
+                    <span>{t('editor.selector.projectCard.duplicate')}</span>
                   </button>
                 )}
                 {onExport && (
@@ -177,7 +172,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                     className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
                   >
                     <span>📤</span>
-                    <span>出力</span>
+                    <span>{t('editor.selector.projectCard.export')}</span>
                   </button>
                 )}
                 {onDelete && (
@@ -186,7 +181,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (window.confirm(`「${project.name}」を削除しますか？この操作は取り消せません。`)) {
+                        if (window.confirm(t('editor.selector.projectCard.confirmDelete', { name: project.name }))) {
                           onDelete();
                         }
                         setShowMenu(false);
@@ -194,7 +189,7 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                       className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
                     >
                       <span>🗑️</span>
-                      <span>削除</span>
+                      <span>{t('common.delete')}</span>
                     </button>
                   </>
                 )}
@@ -216,33 +211,31 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           </p>
         )}
 
-        {/* 統計情報 */}
         <div className={`grid grid-cols-3 gap-2 mb-3 text-gray-500 ${classes.stats}`}>
           <div className="text-center">
             <div className="font-medium text-gray-700">{stats.objects}</div>
-            <div>オブジェクト</div>
+            <div>{t('editor.selector.projectCard.stats.objects')}</div>
           </div>
           <div className="text-center">
             <div className="font-medium text-gray-700">{stats.sounds}</div>
-            <div>音声</div>
+            <div>{t('editor.selector.projectCard.stats.sounds')}</div>
           </div>
           <div className="text-center">
             <div className="font-medium text-gray-700">{stats.rules}</div>
-            <div>ルール</div>
+            <div>{t('editor.selector.projectCard.stats.rules')}</div>
           </div>
         </div>
 
-        {/* 容量バー（medium・large時のみ） */}
         {size !== 'small' && (
           <div className="mb-3">
             <div className={`flex justify-between text-gray-500 mb-1 ${classes.stats}`}>
-              <span>容量</span>
+              <span>{t('editor.selector.projectCard.stats.capacity')}</span>
               <span>{sizeInMB}MB</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
+              <div
                 className={`h-2 rounded-full transition-all duration-300 ${
-                  sizePercentage > 90 ? 'bg-red-500' : 
+                  sizePercentage > 90 ? 'bg-red-500' :
                   sizePercentage > 70 ? 'bg-yellow-500' : 'bg-green-500'
                 }`}
                 style={{ width: `${Math.min(sizePercentage, 100)}%` }}
@@ -251,20 +244,18 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           </div>
         )}
 
-        {/* 最終更新日時 */}
         <div className={`text-gray-500 mb-4 ${classes.stats}`}>
-          最終更新: {lastModified.toLocaleDateString('ja-JP')}
+          {t('editor.selector.projectCard.lastModified')}: {lastModified.toLocaleDateString()}
           {size === 'large' && (
-            <span> {lastModified.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}</span>
+            <span> {lastModified.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>
           )}
         </div>
 
-        {/* 編集ボタン */}
         <button
           onClick={onSelect}
           className={`w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-xl font-medium transition-all duration-200 hover:scale-105 ${classes.button}`}
         >
-          編集する
+          {t('editor.selector.projectCard.editButton')}
         </button>
       </div>
 

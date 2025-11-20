@@ -229,7 +229,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
               fontWeight: '600'
             }}
           >
-            ホームに戻る
+            {t('common.backToHome')}
           </button>
         </div>
       </div>
@@ -266,7 +266,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
               fontSize: '16px'
             }}
           >
-            ← 戻る
+            ← {t('common.back')}
           </button>
           <h1 style={{
             color: 'white',
@@ -294,7 +294,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
                   fontWeight: '600'
                 }}
               >
-                編集
+                {t('common.edit')}
               </button>
               <button
                 onClick={handleLogout}

@@ -1,18 +1,17 @@
 // src/components/editor/EditorApp.tsx
-// Phase I-C エディター完全版: Supabase連携・実DB保存対応
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18n';
 import { GameProject } from '../../types/editor/GameProject';
 import { GameEditor } from './GameEditor';
 import { ProjectSelector } from './ProjectSelector';
 import { useGameProject } from '../../hooks/editor/useGameProject';
-import { useAuth } from '../../hooks/useAuth'; // 🔧 追加: 認証フック
+import { useAuth } from '../../hooks/useAuth';
 import { DEFAULT_EDITOR_TABS, getProgressTabConfig } from './common/TabNavigation';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 import { ModernButton } from '../ui/ModernButton';
 import { ModernCard } from '../ui/ModernCard';
 import { EditorGameBridge, GameExecutionResult } from '../../services/editor/EditorGameBridge';
-import { ProjectStorageManager } from '../../services/ProjectStorageManager'; // 🔧 追加: ストレージマネージャー
-// Phase M: マネタイズ機能統合
+import { ProjectStorageManager } from '../../services/ProjectStorageManager';
 import { useCredits } from '../../hooks/monetization/useCredits';
 import { usePaywall } from '../../hooks/monetization/usePaywall';
 import { PaywallModal } from '../monetization/PaywallModal';
@@ -30,26 +29,23 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   initialProjectId,
   className = ''
 }) => {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<AppMode>('selector');
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'info';
     message: string;
     id: string;
   } | null>(null);
-  
-  // テストプレイ関連状態追加
+
   const [isTestPlaying, setIsTestPlaying] = useState(false);
   const [testPlayResult, setTestPlayResult] = useState<GameExecutionResult | null>(null);
   const testPlayContainerRef = useRef<HTMLDivElement>(null);
   const gameBridge = useRef(EditorGameBridge.getInstance());
 
-  // 🔧 修正: 正確な型定義を使用
   const { user, loading: authLoading } = useAuth();
-  // Phase M: マネタイズフック追加（ローディング状態も取得）
   const { canCreateGame, usage, loading: creditsLoading } = useCredits();
   const { shouldShowPaywall, openPaywall, closePaywall } = usePaywall();
 
-  // ローディング完了フラグ（認証とクレジット情報の両方が読み込まれたか）
   const isMonetizationReady = !authLoading && !creditsLoading;
   
   const {
@@ -74,10 +70,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
   }, [initialProjectId]);
 
-  // 🔧 認証確認の簡素化: 鬱陶しい通知を削除
-  // ユーザーは未ログインバッジと公開ボタンの無効化で状態を確認できる
-
-  // 通知表示
   const showNotification = useCallback((type: 'success' | 'error' | 'info', message: string) => {
     const notificationId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setNotification({ type, message, id: notificationId });
@@ -86,20 +78,17 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }, 5000);
   }, []);
 
-  // プロジェクト選択
   const handleProjectSelect = useCallback(async (project: GameProject) => {
     try {
       await loadProject(project.id);
       setMode('editor');
-      showNotification('success', `「${project.name}」を開きました`);
+      showNotification('success', t('editor.app.projectOpened', { name: project.name }));
     } catch (error: any) {
-      showNotification('error', `プロジェクトの読み込みに失敗しました: ${error.message}`);
+      showNotification('error', `${t('errors.projectLoadFailed')}: ${error.message}`);
     }
-  }, [loadProject, showNotification]);
+  }, [loadProject, showNotification, t]);
 
-  // 新規プロジェクト作成
   const handleCreateNew = useCallback(async (name: string) => {
-    // Phase M: クレジット制限チェック
     if (!canCreateGame) {
       openPaywall();
       return;
@@ -108,28 +97,25 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     try {
       const newProject = await createProject(name);
       setMode('editor');
-      showNotification('success', `「${name}」を作成しました`);
+      showNotification('success', t('editor.app.projectCreated', { name }));
     } catch (error: any) {
-      showNotification('error', `プロジェクトの作成に失敗しました: ${error.message}`);
+      showNotification('error', `${t('errors.generic')}: ${error.message}`);
     }
-  }, [createProject, showNotification]);
+  }, [createProject, showNotification, t, canCreateGame, openPaywall]);
 
-  // 🔧 修正: プロジェクト保存処理（通常保存はローカルのみ）
   const handleSave = useCallback(async () => {
     if (!currentProject) return;
 
     try {
-      // プロジェクトの最終チェック
       const errors = getValidationErrors();
       if (errors.length > 0) {
-        console.warn('保存時に警告があります:', errors);
+        console.warn('Validation warnings on save:', errors);
       }
 
       await saveProject();
-      
-      showNotification('success', 'プロジェクトを保存しました');
-      
-      // 保存後にメタデータ更新
+
+      showNotification('success', t('editor.app.projectSaved'));
+
       updateProject({
         metadata: {
           ...currentProject.metadata,
@@ -139,36 +125,34 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           }
         }
       });
-      
+
     } catch (error: any) {
       console.error('Save failed:', error);
-      showNotification('error', `保存に失敗しました: ${error.message}`);
+      showNotification('error', `${t('errors.projectSaveFailed')}: ${error.message}`);
     }
-  }, [currentProject, saveProject, getValidationErrors, updateProject, showNotification]);
+  }, [currentProject, saveProject, getValidationErrors, updateProject, showNotification, t]);
 
-  // テストプレイ処理（既存のまま）
   const handleTestPlay = useCallback(async () => {
     if (!currentProject) return;
 
     const errors = getValidationErrors();
     if (errors.length > 0) {
-      showNotification('error', `テストプレイできません: ${errors[0]}`);
+      showNotification('error', `${t('errors.testPlayFailed')}: ${errors[0]}`);
       return;
     }
 
-    // 基本的な要件チェック
     if (!currentProject.settings.name?.trim()) {
-      showNotification('error', 'ゲーム名を入力してください');
+      showNotification('error', t('errors.gameNameRequired'));
       return;
     }
 
     if (!currentProject.assets.objects.length && !currentProject.assets.background) {
-      showNotification('error', '最低1つのオブジェクトまたは背景を追加してください');
+      showNotification('error', t('errors.noAssets'));
       return;
     }
 
     setIsTestPlaying(true);
-    showNotification('info', 'テストプレイを開始します...');
+    showNotification('info', t('editor.settings.testPlay.testing'));
 
     try {
       // まずモード切り替え

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PublicGame } from '../social/types/SocialTypes';
 import { SocialService } from '../social/services/SocialService';
 import { supabase, auth } from '../lib/supabase';
@@ -7,18 +8,6 @@ import { ProjectStorageManager } from '../services/ProjectStorageManager';
 import { GameProject } from '../types/editor/GameProject';
 import { AdUnit } from './monetization/AdUnit';
 import { AdPlacement } from '../types/MonetizationTypes';
-
-/**
- * BridgeScreen.tsx - ゲーム間のブリッジ画面（問題12対応：完全インラインスタイル版）
- *
- * 機能:
- * - ゲームスコア表示（グラフィカルなデザイン）
- * - ソーシャル機能（いいね、フィード、プロフィール）
- * - 次のゲームプレビュー
- * - 残り時間バー（5秒）
- * - 操作ボタン（次へ/前へ/もう一度/Exit）
- * - パクる機能（ゲームのルールをコピーしてエディターで編集）
- */
 
 interface GameScore {
   points: number;
@@ -37,7 +26,7 @@ interface BridgeScreenProps {
   onPreviousGame: () => void;
   onReplayGame: () => void;
   onExit?: () => void;
-  inline?: boolean; // ゲームコンテナ内に表示する場合は true
+  inline?: boolean;
 }
 
 export const BridgeScreen: React.FC<BridgeScreenProps> = ({
@@ -53,7 +42,8 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   onExit,
   inline = false,
 }) => {
-  // ==================== 状態管理 ====================
+  const { t } = useTranslation();
+
   const [isLiked, setIsLiked] = useState(currentGame.isLiked || false);
   const [likeCount, setLikeCount] = useState(currentGame.stats.likes);
   const [isLiking, setIsLiking] = useState(false);
@@ -63,7 +53,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   const [selectedReaction, setSelectedReaction] = useState<string | null>(null);
   const [animationStage, setAnimationStage] = useState(0);
 
-  // アニメーション制御
   useEffect(() => {
     const timers = [
       setTimeout(() => setAnimationStage(1), 100),
@@ -73,10 +62,8 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  // ==================== サービス ====================
   const socialService = useMemo(() => SocialService.getInstance(), []);
 
-  // ==================== いいね処理 ====================
   const handleLike = async () => {
     if (isLiking) return;
 
@@ -93,7 +80,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         setIsLiked(!newLikeState);
         setLikeCount(prev => newLikeState ? prev - 1 : prev + 1);
         setIsLiking(false);
-        // サインイン画面を開く
         window.dispatchEvent(new CustomEvent('openAuthModal', {
           detail: { mode: 'signin' }
         }));
@@ -111,7 +97,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     }
   };
 
-  // ==================== パクる処理 ====================
   const handleCopyGame = async () => {
     if (isCopying) return;
     setIsCopying(true);
@@ -135,7 +120,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
         if (error || !data?.project_data) {
           console.error('❌ データベース取得エラー:', error);
-          throw new Error('ゲームデータの取得に失敗しました');
+          throw new Error(t('bridge.errors.gameDataFetchFailed'));
         }
 
         sourceProjectData = data.project_data as GameProject;
@@ -143,14 +128,14 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
       }
 
       if (!sourceProjectData) {
-        throw new Error('このゲームはコピーできません');
+        throw new Error(t('bridge.errors.cannotCopy'));
       }
 
       const copier = GameProjectCopier.getInstance();
 
       console.log('🔍 コピー可能かチェック中...');
       if (!copier.canCopy(sourceProjectData)) {
-        alert('このゲームにはルールが設定されていないため、コピーできません。');
+        alert(t('bridge.errors.noRulesToCopy'));
         return;
       }
 
@@ -159,7 +144,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
       const storage = ProjectStorageManager.getInstance();
 
-      // ユーザーがログインしている場合はSupabaseにも保存
       const user = await auth.getCurrentUser();
       await storage.saveProject(copiedProject, {
         saveToDatabase: !!user,
@@ -179,19 +163,17 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
     } catch (error) {
       console.error('❌ コピーエラー:', error);
-      alert(`ゲームのコピーに失敗しました: ${error instanceof Error ? error.message : '不明なエラー'}`);
+      alert(`${t('bridge.errors.copyFailed')}: ${error instanceof Error ? error.message : t('bridge.errors.unknownError')}`);
     } finally {
       setIsCopying(false);
     }
   };
 
-  // ==================== エディターを開く処理 ====================
   const handleOpenEditor = () => {
     if (!copiedProjectId) return;
     window.location.href = `/editor/${copiedProjectId}`;
   };
 
-  // ==================== リンク処理 ====================
   const handleGoToFeed = () => {
     console.log('📱 フィードへ遷移');
     window.location.href = '/feed';
@@ -204,12 +186,9 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     }
   };
 
-  // ==================== 進捗バー ====================
-  const remainingPercentage = (timeLeft / 10) * 100; // 残り時間の割合（10秒基準）
+  const remainingPercentage = (timeLeft / 10) * 100;
 
-  // ==================== スタイル定義 ====================
   const containerStyle: React.CSSProperties = inline ? {
-    // インラインモード（ゲームコンテナ内表示）
     position: 'absolute',
     top: 0,
     left: 0,
@@ -223,7 +202,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     justifyContent: 'center',
     zIndex: 50,
   } : {
-    // フルスクリーンモード
     position: 'fixed',
     top: 0,
     left: 0,
@@ -237,14 +215,12 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   };
 
   const mainBoxStyle: React.CSSProperties = inline ? {
-    // インラインモード
     width: '100%',
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
     padding: '20px',
   } : {
-    // フルスクリーンモード
     width: '1080px',
     height: '1920px',
     maxWidth: '100vw',
@@ -325,18 +301,15 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     width: '100%',
   });
 
-  // ==================== レンダリング ====================
   return (
     <div style={containerStyle}>
       <div style={mainBoxStyle}>
-        {/* a. 成功/失敗の顔アイコン */}
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <div style={{ fontSize: '120px', marginBottom: '20px' }}>
             {score?.success ? '😊' : '😢'}
           </div>
         </div>
 
-        {/* b. 作成者情報 */}
         <div style={{
           background: 'rgba(255, 255, 255, 0.1)',
           borderRadius: '20px',
@@ -346,7 +319,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           alignItems: 'center',
           gap: '16px'
         }}>
-          {/* クリエイター情報（クリックでプロフィールへ） */}
           <div
             onClick={handleGoToProfile}
             style={{
@@ -399,7 +371,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           </button>
         </div>
 
-        {/* c. 広告表示 */}
         <div style={{ marginBottom: '20px' }}>
           <AdUnit
             placement={AdPlacement.GAME_BRIDGE}
@@ -407,16 +378,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           />
         </div>
 
-        {/* スペーサー（下部のボタンを下に押し下げる） */}
         <div style={{ flex: 1 }} />
 
-        {/* d. 4つのボタン（横幅いっぱい） */}
         <div style={{
           display: 'flex',
           gap: 0,
           marginBottom: '20px'
         }}>
-          {/* パクる */}
           <button
             onClick={handleCopyGame}
             disabled={isCopying}
@@ -440,10 +408,9 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
             onMouseLeave={(e) => !isCopying && (e.currentTarget.style.opacity = '1')}
           >
             <div style={{ fontSize: '32px' }}>📋</div>
-            <div style={{ fontSize: '16px' }}>パクる</div>
+            <div style={{ fontSize: '16px' }}>{t('bridge.copyButton')}</div>
           </button>
 
-          {/* 次へ（サムネ表示） */}
           <button
             onClick={onNextGame}
             style={{
@@ -478,10 +445,9 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
             ) : (
               <div style={{ fontSize: '32px' }}>🎮</div>
             )}
-            <div style={{ fontSize: '16px' }}>次へ</div>
+            <div style={{ fontSize: '16px' }}>{t('bridge.nextButton')}</div>
           </button>
 
-          {/* もう一度 */}
           <button
             onClick={onReplayGame}
             style={{
@@ -503,10 +469,9 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
             onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
             <div style={{ fontSize: '32px' }}>🔄</div>
-            <div style={{ fontSize: '16px' }}>もう一度</div>
+            <div style={{ fontSize: '16px' }}>{t('bridge.againButton')}</div>
           </button>
 
-          {/* スキップ */}
           <button
             onClick={onNextGame}
             style={{
@@ -528,11 +493,10 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
             onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
             <div style={{ fontSize: '32px' }}>⏭️</div>
-            <div style={{ fontSize: '16px' }}>スキップ</div>
+            <div style={{ fontSize: '16px' }}>{t('bridge.skipButton')}</div>
           </button>
         </div>
 
-        {/* e. 下端に残り時間バー */}
         <div style={{
           position: 'absolute',
           left: 0,
@@ -546,16 +510,15 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
             height: '100%',
             width: `${remainingPercentage}%`,
             backgroundColor: (() => {
-              if (remainingPercentage > 50) return '#10b981'; // 緑
-              if (remainingPercentage > 20) return '#f59e0b'; // 黄色
-              return '#ef4444'; // 赤
+              if (remainingPercentage > 50) return '#10b981';
+              if (remainingPercentage > 20) return '#f59e0b';
+              return '#ef4444';
             })(),
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
           }} />
         </div>
       </div>
 
-      {/* パクる成功モーダル */}
       {showSuccessModal && copiedProjectId && (
         <div style={{
           position: 'fixed',
@@ -578,11 +541,10 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           }}>
             <div style={{ fontSize: '96px', marginBottom: '24px' }}>🎉</div>
             <h2 style={{ color: 'white', fontSize: '48px', fontWeight: 'bold', marginBottom: '16px' }}>
-              パクリ完了！
+              {t('bridge.copySuccessTitle')}
             </h2>
             <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '24px', marginBottom: '32px' }}>
-              ゲームのルールをコピーしました。<br />
-              エディターで画像を差し替えて、自分だけのゲームを作りましょう！
+              {t('bridge.copySuccessMessage')}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -603,7 +565,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   cursor: 'pointer',
                 }}
               >
-                🎨 エディターを開く
+                🎨 {t('bridge.openEditorButton')}
               </button>
 
               <button
@@ -620,7 +582,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   cursor: 'pointer',
                 }}
               >
-                後で編集する
+                {t('bridge.editLaterButton')}
               </button>
             </div>
           </div>

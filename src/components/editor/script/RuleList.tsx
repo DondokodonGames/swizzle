@@ -1,8 +1,7 @@
 // src/components/editor/script/RuleList.tsx
-// 重複削除・整理版: ヘッダーエリア削除・純粋なルール一覧に集約
-// 🔧 修正: getObjectName関数のobj.name undefined問題を解決
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18n';
 import { GameProject } from '../../../types/editor/GameProject';
 import { GameRule } from '../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
@@ -26,50 +25,45 @@ export const RuleList: React.FC<RuleListProps> = ({
   onCreateRule,
   onModeChange
 }) => {
-  // 通知システム（AssetsTabパターン）
+  const { t } = useTranslation();
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'info';
     message: string;
   } | null>(null);
 
-  // 通知表示ヘルパー
   const showNotification = (type: 'success' | 'error' | 'info', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 4000);
   };
-  
-  // ルール削除
+
   const handleDeleteRule = (ruleId: string) => {
     const rule = project.script.rules.find(r => r.id === ruleId);
-    if (confirm(`「${rule?.name || 'このルール'}」を削除しますか？`)) {
+    if (confirm(t('editor.script.ruleList.confirmDelete', { name: rule?.name || t('editor.script.ruleList.untitled') }))) {
       const updatedScript = { ...project.script };
       updatedScript.rules = updatedScript.rules.filter(r => r.id !== ruleId);
-      
+
       const updatedProject = {
         ...project,
         script: updatedScript,
         lastModified: new Date().toISOString()
       };
-      
+
       onProjectUpdate(updatedProject);
-      showNotification('success', 'ルールを削除しました');
+      showNotification('success', t('editor.script.ruleList.deleted'));
     }
   };
 
-  // 🔧 修正: 対象オブジェクト名取得
   const getObjectName = (objectId: string) => {
-    if (objectId === 'stage') return '🌟 ゲーム全体';
-    
+    if (objectId === 'stage') return `🌟 ${t('editor.script.ruleList.gameOverall')}`;
+
     const obj = project.assets.objects.find(obj => obj.id === objectId);
-    
-    // オブジェクトが見つからない場合
+
     if (!obj) {
-      console.warn(`[RuleList] オブジェクトが見つかりません: ${objectId}`);
-      return `⚠️ ${objectId}`;
+      console.warn(`[RuleList] Object not found: ${objectId}`);
+      return t('editor.script.ruleList.objectNotFound', { id: objectId });
     }
-    
-    // 🔧 修正: nameプロパティがない場合はidを使用
-    // @ts-ignore - nameプロパティの型定義が不完全な場合のため
+
+    // @ts-ignore
     const displayName = obj.name || obj.id;
     return `📦 ${displayName}`;
   };
@@ -155,7 +149,7 @@ export const RuleList: React.FC<RuleListProps> = ({
               >
                 🎯
               </div>
-              <h4 
+              <h4
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
                   fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
@@ -163,9 +157,9 @@ export const RuleList: React.FC<RuleListProps> = ({
                   marginBottom: DESIGN_TOKENS.spacing[3]
                 }}
               >
-                ルールを作成しよう！
+                {t('editor.script.ruleList.empty.title')}
               </h4>
-              <p 
+              <p
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.lg,
                   color: DESIGN_TOKENS.colors.neutral[600],
@@ -177,8 +171,7 @@ export const RuleList: React.FC<RuleListProps> = ({
                   marginBottom: DESIGN_TOKENS.spacing[6]
                 }}
               >
-                IF-THENルールで面白いゲームを作成<br />
-                レイアウトモードでオブジェクトをクリックするとルール設定ができます
+                {t('editor.script.ruleList.empty.description')}
               </p>
               
               {/* 特徴紹介カード */}
@@ -200,18 +193,18 @@ export const RuleList: React.FC<RuleListProps> = ({
                   border: `1px solid ${DESIGN_TOKENS.colors.primary[300]}`
                 }}>
                   <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize['2xl'], marginBottom: DESIGN_TOKENS.spacing[2] }}>🔥</div>
-                  <div style={{ 
+                  <div style={{
                     fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
                     color: DESIGN_TOKENS.colors.neutral[800],
                     fontSize: DESIGN_TOKENS.typography.fontSize.sm
                   }}>
-                    発動条件
+                    {t('editor.script.ruleList.empty.features.conditions')}
                   </div>
-                  <div style={{ 
+                  <div style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                     color: DESIGN_TOKENS.colors.neutral[600]
                   }}>
-                    タッチ・時間・位置・衝突
+                    {t('editor.script.ruleList.empty.features.conditionsDesc')}
                   </div>
                 </div>
 
@@ -222,18 +215,18 @@ export const RuleList: React.FC<RuleListProps> = ({
                   border: `1px solid ${DESIGN_TOKENS.colors.success[600]}`
                 }}>
                   <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize['2xl'], marginBottom: DESIGN_TOKENS.spacing[2] }}>⚡</div>
-                  <div style={{ 
+                  <div style={{
                     fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
                     color: DESIGN_TOKENS.colors.neutral[800],
                     fontSize: DESIGN_TOKENS.typography.fontSize.sm
                   }}>
-                    実行アクション
+                    {t('editor.script.ruleList.empty.features.actions')}
                   </div>
-                  <div style={{ 
+                  <div style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                     color: DESIGN_TOKENS.colors.neutral[600]
                   }}>
-                    移動・効果・音声・成功
+                    {t('editor.script.ruleList.empty.features.actionsDesc')}
                   </div>
                 </div>
 
@@ -244,18 +237,18 @@ export const RuleList: React.FC<RuleListProps> = ({
                   border: `1px solid ${DESIGN_TOKENS.colors.warning[600]}`
                 }}>
                   <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize['2xl'], marginBottom: DESIGN_TOKENS.spacing[2] }}>🚩</div>
-                  <div style={{ 
+                  <div style={{
                     fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
                     color: DESIGN_TOKENS.colors.neutral[800],
                     fontSize: DESIGN_TOKENS.typography.fontSize.sm
                   }}>
-                    フラグ管理
+                    {t('editor.script.ruleList.empty.features.flags')}
                   </div>
-                  <div style={{ 
+                  <div style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                     color: DESIGN_TOKENS.colors.neutral[600]
                   }}>
-                    ゲーム状態・変数管理
+                    {t('editor.script.ruleList.empty.features.flagsDesc')}
                   </div>
                 </div>
               </div>
@@ -265,7 +258,7 @@ export const RuleList: React.FC<RuleListProps> = ({
               variant="primary"
               size="lg"
               onClick={() => onModeChange('layout')}
-              style={{ 
+              style={{
                 backgroundColor: DESIGN_TOKENS.colors.success[500],
                 borderColor: DESIGN_TOKENS.colors.success[500],
                 fontSize: DESIGN_TOKENS.typography.fontSize.lg,
@@ -273,7 +266,7 @@ export const RuleList: React.FC<RuleListProps> = ({
               }}
             >
               <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xl }}>🎨</span>
-              レイアウトモードに戻る
+              {t('editor.script.ruleList.empty.backToLayout')}
             </ModernButton>
           </ModernCard>
         ) : (
@@ -338,7 +331,7 @@ export const RuleList: React.FC<RuleListProps> = ({
                       {rule.name}
                     </h4>
                     
-                    <div 
+                    <div
                       style={{
                         fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                         color: DESIGN_TOKENS.colors.neutral[600],
@@ -346,40 +339,38 @@ export const RuleList: React.FC<RuleListProps> = ({
                         marginBottom: DESIGN_TOKENS.spacing[2]
                       }}
                     >
-                      対象: {getObjectName(rule.targetObjectId)}
+                      {t('editor.script.ruleList.target', { target: getObjectName(rule.targetObjectId) })}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
-                      {/* 有効・無効バッジ */}
-                      <div 
+                      <div
                         style={{
                           padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[3]}`,
                           borderRadius: DESIGN_TOKENS.borderRadius.lg,
                           fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                           fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                          backgroundColor: rule.enabled 
-                            ? DESIGN_TOKENS.colors.success[100] 
+                          backgroundColor: rule.enabled
+                            ? DESIGN_TOKENS.colors.success[100]
                             : DESIGN_TOKENS.colors.neutral[200],
-                          color: rule.enabled 
-                            ? DESIGN_TOKENS.colors.success[800] 
+                          color: rule.enabled
+                            ? DESIGN_TOKENS.colors.success[800]
                             : DESIGN_TOKENS.colors.neutral[600],
-                          border: `1px solid ${rule.enabled 
-                            ? DESIGN_TOKENS.colors.success[600] 
+                          border: `1px solid ${rule.enabled
+                            ? DESIGN_TOKENS.colors.success[600]
                             : DESIGN_TOKENS.colors.neutral[400]}`
                         }}
                       >
-                        {rule.enabled ? '✅ 有効' : '⏸️ 無効'}
+                        {rule.enabled ? `✅ ${t('editor.script.ruleList.enabled')}` : `⏸️ ${t('editor.script.ruleList.disabled')}`}
                       </div>
 
-                      {/* 簡単な統計 */}
-                      <div 
+                      <div
                         style={{
                           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                           color: DESIGN_TOKENS.colors.neutral[500],
                           fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
                         }}
                       >
-                        🔥 {rule.triggers.conditions.length}条件 ⚡ {rule.actions.length}アクション
+                        🔥 {t('editor.script.ruleList.conditionsCount', { count: rule.triggers.conditions.length })} ⚡ {t('editor.script.ruleList.actionsCount', { count: rule.actions.length })}
                       </div>
                     </div>
                   </div>
@@ -398,7 +389,7 @@ export const RuleList: React.FC<RuleListProps> = ({
                     }}
                   >
                     <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>✏️</span>
-                    編集
+                    {t('editor.script.ruleList.edit')}
                   </ModernButton>
                   <ModernButton
                     variant="outline"
@@ -411,7 +402,7 @@ export const RuleList: React.FC<RuleListProps> = ({
                     }}
                   >
                     <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>🗑️</span>
-                    削除
+                    {t('editor.script.ruleList.delete')}
                   </ModernButton>
                 </div>
               </div>

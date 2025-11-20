@@ -17,7 +17,8 @@
     "help": "Aide",
     "logout": "Déconnexion",
     "login": "Connexion",
-    "signup": "Inscription"
+    "signup": "Inscription",
+    "backToHome": "Retour à l'accueil"
   },
   "errors": {
     "generic": "Une erreur inattendue s'est produite",
@@ -72,6 +73,111 @@
       "script": "Règles",
       "settings": "Publier"
     },
+    "app": {
+      "loginRequired": "Connexion requise",
+      "loginRequiredMessage": "Vous devez vous inscrire ou vous connecter pour utiliser l'éditeur de jeu.",
+      "loginPrompt": "Créez un compte gratuit et commencez à créer des jeux maintenant !",
+      "freeSignup": "Inscription gratuite",
+      "alreadyHaveAccount": "Vous avez déjà un compte ?",
+      "features": {
+        "createProjects": "Créer et sauvegarder des projets de jeu",
+        "cloudStorage": "Stockage cloud automatique",
+        "publishGames": "Publier et partager des jeux",
+        "joinCommunity": "Rejoindre la communauté"
+      },
+      "authenticating": "Authentification...",
+      "loadingAccount": "Chargement des informations du compte...",
+      "loading": "Chargement...",
+      "projectOpened": "Ouvert \"{name}\"",
+      "projectCreated": "Créé \"{name}\"",
+      "projectSaved": "Projet enregistré",
+      "projectPublished": "Jeu publié ! Il apparaîtra dans le fil social",
+      "projectDeleted": "Projet supprimé",
+      "projectDuplicated": "Créé \"{name}\"",
+      "projectExported": "Projet exporté",
+      "unsavedChanges": "Vous avez des modifications non enregistrées. Voulez-vous sauvegarder avant de quitter ?",
+      "confirmSaveAndLeave": "OK → Sauvegarder et quitter\nAnnuler → Quitter sans sauvegarder",
+      "backToList": "Retour à la liste",
+      "mainScreen": "Écran principal",
+      "noProjectSelected": "Aucun projet sélectionné",
+      "backToProjectList": "Retour à la liste des projets",
+      "backToMain": "Retour au principal",
+      "versionInfo": "Éditeur de jeu v1.0.0 - Intégration Supabase",
+      "shortcuts": "Ctrl+S : Enregistrer | Ctrl+T : Tester | Esc : Retour | Ctrl+Q : Principal",
+      "status": {
+        "notLoggedIn": "Non connecté",
+        "unsaved": "Non enregistré",
+        "published": "Publié"
+      },
+      "capacity": "{used}MB",
+      "buttons": {
+        "save": "Enregistrer",
+        "test": "Tester",
+        "publish": "Publier",
+        "update": "Mettre à jour"
+      }
+    },
+    "selector": {
+      "title": "Éditeur de jeu",
+      "subtitle": "Créez facilement des jeux et partagez-les avec tout le monde !",
+      "stats": {
+        "projectCount": "Projets",
+        "publishedCount": "Publiés",
+        "totalCapacity": "Capacité totale"
+      },
+      "search": "Rechercher des projets...",
+      "sort": {
+        "latest": "Plus récents",
+        "name": "Nom",
+        "status": "Statut"
+      },
+      "view": {
+        "grid": "Grille",
+        "list": "Liste"
+      },
+      "import": "Importer",
+      "createNew": "Créer un nouveau jeu",
+      "loadingProjects": "Chargement des projets...",
+      "noProjects": "Pas encore de projets",
+      "noProjectsMessage": "Créez votre premier jeu !",
+      "noResults": "Aucun projet trouvé",
+      "noResultsMessage": "Essayez de rechercher avec des mots-clés différents",
+      "newProject": {
+        "title": "Créer un nouveau jeu",
+        "subtitle": "Choisissez un nom pour votre jeu",
+        "placeholder": "Entrez le nom du jeu",
+        "charCount": "{count}/50 caractères",
+        "templateHint": "Vous pouvez également commencer à partir d'un modèle (prochainement)",
+        "create": "Créer"
+      },
+      "projectCard": {
+        "status": {
+          "published": "Publié",
+          "testing": "Test",
+          "draft": "Brouillon"
+        },
+        "new": "NOUVEAU",
+        "completion": "{percent}% terminé",
+        "duplicate": "Dupliquer",
+        "export": "Exporter",
+        "confirmDelete": "Supprimer \"{name}\" ? Cette action ne peut pas être annulée.",
+        "lastModified": "Dernière modification",
+        "editButton": "Modifier",
+        "stats": {
+          "objects": "Objets",
+          "sounds": "Sons",
+          "rules": "Règles",
+          "capacity": "Capacité"
+        },
+        "errors": {
+          "thumbnailError": "Erreur de chargement de la miniature",
+          "noThumbnail": "Aucune miniature"
+        }
+      },
+      "help": "Aide",
+      "versionInfo": "Éditeur de jeu v1.0.0 - UI moderne",
+      "shortcuts": "Ctrl+Q : Écran principal"
+    },
     "assets": {
       "title": "Gestion des assets",
       "background": "Arrière-plan",
@@ -90,17 +196,134 @@
     },
     "script": {
       "title": "Paramètres des règles",
+      "subtitle": "Disposition des objets, support de règles multiples, logique de jeu avancée",
+      "layout": "Disposition",
+      "rules": "Règles",
       "addRule": "Ajouter règle",
       "editRule": "Modifier règle",
       "condition": "Condition",
       "action": "Action",
       "when": "Quand",
-      "then": "Alors"
+      "then": "Alors",
+      "gameTime": {
+        "title": "Paramètre de temps de jeu",
+        "presets": {
+          "5": {
+            "label": "5 sec",
+            "description": "Rapide",
+            "emoji": "⚡"
+          },
+          "10": {
+            "label": "10 sec",
+            "description": "Juste bien",
+            "emoji": "⏰"
+          },
+          "15": {
+            "label": "15 sec",
+            "description": "Étendu",
+            "emoji": "🎯"
+          },
+          "30": {
+            "label": "30 sec",
+            "description": "Long",
+            "emoji": "🏃"
+          },
+          "unlimited": {
+            "label": "Illimité",
+            "description": "Jeu libre",
+            "emoji": "∞"
+          }
+        },
+        "current": "Paramètre actuel : {duration}"
+      },
+      "objectPlacement": {
+        "title": "Placement d'objets",
+        "placed": "Disposition : {placed}/{total} placés",
+        "addToLayout": "Placer",
+        "removeFromLayout": "Retirer",
+        "editRule": "Règles",
+        "alreadyPlaced": "Placé",
+        "notPlaced": "Non placé",
+        "ruleCount": "{count} règles",
+        "hints": {
+          "title": "Comment utiliser :",
+          "place": "Placer → Ajouter à l'écran de disposition",
+          "rules": "Règles → Définir la logique du jeu",
+          "remove": "Retirer → Supprimer de la disposition",
+          "dragAndDrop": "Le glisser-déposer fonctionne également"
+        }
+      },
+      "placedObjects": {
+        "title": "Objets placés",
+        "hint": "Vous pouvez définir des règles pour les objets placés dans l'onglet de disposition"
+      },
+      "projectFlags": {
+        "title": "Drapeaux du projet",
+        "subtitle": "Gestion de l'état du jeu",
+        "on": "ON",
+        "off": "OFF"
+      },
+      "ruleList": {
+        "empty": {
+          "title": "Créez des règles !",
+          "description": "Créez des jeux amusants avec des règles IF-THEN\nCliquez sur les objets en mode disposition pour définir des règles",
+          "features": {
+            "conditions": "Conditions de déclenchement",
+            "conditionsDesc": "Toucher, temps, position, collision",
+            "actions": "Exécuter des actions",
+            "actionsDesc": "Déplacer, effet, son, succès",
+            "flags": "Gestion des drapeaux",
+            "flagsDesc": "État du jeu, gestion des variables"
+          },
+          "backToLayout": "Retour au mode disposition"
+        },
+        "enabled": "Activé",
+        "disabled": "Désactivé",
+        "target": "Cible : {target}",
+        "conditionsCount": "{count} conditions",
+        "actionsCount": "{count} actions",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "confirmDelete": "Supprimer \"{name}\" ?",
+        "deleted": "Règle supprimée",
+        "gameOverall": "Jeu global",
+        "objectNotFound": "⚠ {id}",
+        "untitled": "Règle sans titre"
+      },
+      "ruleModal": {
+        "title": "Paramètres de règle (Avancé)",
+        "subtitle": "1 condition → 1 action | {conditions} types de conditions × {actions} types d'actions",
+        "ruleName": "Nom de la règle",
+        "ruleNamePlaceholder": "ex : Toucher dans la zone centrale pour déplacer",
+        "triggerCondition": "Condition de déclenchement",
+        "executeAction": "Exécuter l'action",
+        "preview": {
+          "title": "Aperçu de la règle",
+          "seconds": "({seconds}s)",
+          "area": "(zone {area})"
+        },
+        "errors": {
+          "nameRequired": "Veuillez entrer un nom de règle",
+          "conditionRequired": "Veuillez sélectionner une condition",
+          "actionRequired": "Veuillez sélectionner une action"
+        },
+        "saved": "Règle enregistrée"
+      },
+      "ruleSelection": {
+        "title": "Sélectionner la règle - {object}",
+        "subtitle": "Sélectionner la règle à modifier ({current}/{max})",
+        "ruleNumber": "Règle {number} : {name}",
+        "createNew": "Créer une nouvelle règle",
+        "limitReached": "Limite de règles (32) atteinte"
+      }
     },
     "settings": {
       "title": "Paramètres de publication",
       "gameName": "Nom du jeu",
+      "gameNameRequired": "Le nom du jeu est requis",
+      "gameNamePlaceholder": "Entrez un nom de jeu génial",
       "description": "Description",
+      "descriptionPlaceholder": "Décrivez ce qui rend ce jeu amusant",
       "duration": "Limite de temps",
       "difficulty": "Difficulté",
       "visibility": "Visibilité",
@@ -108,7 +331,108 @@
       "unlisted": "Non répertorié",
       "private": "Privé",
       "publish": "Publier",
-      "testPlay": "Tester"
+      "testPlay": "Tester",
+      "gameInfo": {
+        "title": "Informations sur le jeu",
+        "genre": "Genre",
+        "genrePlaceholder": "Sélectionner le genre",
+        "genres": {
+          "action": "Action",
+          "puzzle": "Puzzle",
+          "adventure": "Aventure",
+          "rpg": "RPG",
+          "shooting": "Tir",
+          "racing": "Course",
+          "sports": "Sports",
+          "simulation": "Simulation",
+          "casual": "Casual",
+          "educational": "Éducatif",
+          "music": "Musique",
+          "other": "Autre"
+        },
+        "tags": "Tags",
+        "tagsPlaceholder": "ex : défilement latéral, 2D, simple (séparés par des virgules)",
+        "tagsHint": "Séparez les tags par des virgules (,)"
+      },
+      "thumbnail": {
+        "title": "Miniature",
+        "subtitle": "Définir une miniature qui transmet l'attrait du jeu",
+        "generate": "Générer automatiquement",
+        "upload": "Télécharger",
+        "noThumbnail": "Aucune miniature"
+      },
+      "publishing": {
+        "title": "Paramètres de publication",
+        "noRemix": "Pas de copie (Désactiver le remix)",
+        "noRemixDescription": "Interdire la copie et la modification de ce jeu par d'autres utilisateurs. Lorsque coché, personne ne peut copier et modifier ce jeu.",
+        "noRemixHint": "Astuce : Si non coché, d'autres utilisateurs peuvent créer de nouveaux jeux basés sur le vôtre (similaire à Creative Commons)"
+      },
+      "testPlay": {
+        "title": "Test du jeu",
+        "start": "Testons le jeu",
+        "startDescription": "Vous pouvez vérifier si le jeu créé fonctionne correctement",
+        "testing": "Test en cours...",
+        "testingDescription": "Vérification du fonctionnement du jeu",
+        "startButton": "Tester",
+        "success": "Test réussi !",
+        "failure": "Des problèmes ont été trouvés lors du test",
+        "stats": {
+          "score": "Score",
+          "playTime": "Temps de jeu",
+          "interactions": "Interactions",
+          "rulesTriggered": "Règles exécutées"
+        },
+        "tryAgain": "Tester à nouveau",
+        "errors": "Erreurs :",
+        "warnings": "Avertissements :",
+        "gameSpeed": {
+          "title": "Vitesse du jeu (Niveau de défi)",
+          "slow": {
+            "label": "Lent",
+            "description": "Profiter tranquillement"
+          },
+          "normal": {
+            "label": "Normal",
+            "description": "Vitesse juste bien"
+          },
+          "fast": {
+            "label": "Rapide",
+            "description": "Vitesse stimulante"
+          },
+          "superFast": {
+            "label": "Super rapide",
+            "description": "Pour les experts"
+          },
+          "current": "Paramètre actuel : vitesse {speed}"
+        },
+        "fullGame": {
+          "title": "Jeu en cours",
+          "end": "Terminer"
+        }
+      },
+      "stats": {
+        "title": "Statistiques du jeu",
+        "objects": "Objets",
+        "rules": "Règles",
+        "texts": "Texte",
+        "capacity": "Capacité totale",
+        "testPlayCount": "Nombre de tests",
+        "health": {
+          "initialState": "État initial",
+          "placedObjects": "Placés",
+          "successConditions": "Conditions de succès",
+          "complexity": "Complexité"
+        }
+      },
+      "actions": {
+        "save": "Enregistrer",
+        "test": "Tester",
+        "publish": "Publier",
+        "update": "Mettre à jour",
+        "export": "Exporter (JSON)",
+        "published": "Publié",
+        "publishedAt": "le {date}"
+      }
     },
     "preview": "Aperçu"
   },
@@ -385,5 +709,90 @@
     "score": "Score",
     "time": "Temps",
     "bestScore": "Meilleur score"
+  },
+  "bridge": {
+    "copyButton": "Copier",
+    "nextButton": "Suivant",
+    "againButton": "Encore",
+    "skipButton": "Passer",
+    "copySuccessTitle": "Copie terminée !",
+    "copySuccessMessage": "Règles du jeu copiées. Échangez les images dans l'éditeur pour créer votre propre jeu unique !",
+    "openEditorButton": "Ouvrir l'éditeur",
+    "editLaterButton": "Modifier plus tard",
+    "errors": {
+      "gameDataFetchFailed": "Échec de la récupération des données du jeu",
+      "cannotCopy": "Ce jeu ne peut pas être copié",
+      "noRulesToCopy": "Impossible de copier ce jeu car il n'a pas de règles définies.",
+      "copyFailed": "Échec de la copie du jeu",
+      "unknownError": "Erreur inconnue"
+    }
+  },
+  "pricing": {
+    "backToHome": "Retour à l'accueil",
+    "premium": "Premium",
+    "loading": "Chargement...",
+    "support": "Support",
+    "supportContact": "Veuillez nous contacter si vous avez besoin d'aide",
+    "processingPayment": "Traitement du paiement...",
+    "pleaseWait": "Veuillez patienter un instant",
+    "welcomeToPremium": "Bienvenue dans Premium",
+    "paymentCompleted": "Paiement effectué",
+    "planInfo": "Informations sur le plan",
+    "plan": "Plan",
+    "status": "Statut",
+    "active": "Actif",
+    "nextRenewal": "Prochain renouvellement",
+    "availableFeatures": "Fonctionnalités disponibles",
+    "features": {
+      "unlimitedGames": "Création de jeux illimitée",
+      "adFree": "Sans publicité",
+      "allTemplates": "Tous les modèles",
+      "advancedEditing": "Édition avancée",
+      "unlimitedAssets": "Assets illimités",
+      "analyticsDashboard": "Tableau de bord analytique",
+      "html5Export": "Export HTML5",
+      "prioritySupport": "Support prioritaire"
+    },
+    "createGame": "Créer un jeu",
+    "subscriptionManagement": "Pour la gestion de l'abonnement",
+    "sessionId": "ID de session",
+    "paymentCancelled": "Le paiement a été annulé",
+    "paymentNotCompleted": "Paiement non effectué",
+    "paymentCancelledMessage": "Le paiement a été annulé.",
+    "upgradeNotCompleted": "Mise à niveau du plan non effectuée.",
+    "problemQuestion": "Y a-t-il eu un problème ? Veuillez nous contacter si vous avez besoin d'aide.",
+    "freePlanTitle": "Ce que vous pouvez faire avec le plan gratuit",
+    "freePlanFeatures": {
+      "limit5Games": "Jusqu'à 5 jeux par mois",
+      "basicTemplates": "50 modèles de base",
+      "basicEditor": "Éditeur de jeu de base",
+      "socialFeatures": "Fonctionnalités sociales (j'aime/suivre)",
+      "publishShare": "Publier et partager des jeux",
+      "communitySupport": "Support communautaire"
+    },
+    "premiumBenefitsTitle": "Avantages du plan Premium",
+    "premiumBenefits": {
+      "unlimitedCreation": "🎮 Création illimitée",
+      "unlimitedCreationDesc": "Créez des jeux illimités sans limites mensuelles",
+      "noAds": "🚫 Sans publicité",
+      "noAdsDesc": "Expérience d'édition et de jeu confortable",
+      "allTemplates": "📚 Tous les modèles",
+      "allTemplatesDesc": "Tous les 225 modèles",
+      "prioritySupport": "⚡ Support prioritaire",
+      "prioritySupportDesc": "Réponse rapide sous 24 heures"
+    },
+    "faqTitle": "Questions fréquemment posées",
+    "faq": {
+      "changePaymentMethod": "Q. Je veux changer ma méthode de paiement",
+      "changePaymentMethodAnswer": "R. Vous pouvez recommencer le processus de paiement depuis la page de sélection du plan.",
+      "cardInfoConcern": "Q. Je m'inquiète de saisir les informations de carte",
+      "cardInfoConcernAnswer": "R. Le paiement est traité en toute sécurité via Stripe, utilisé dans le monde entier. Les informations de carte sont cryptées et ne sont pas stockées par nous.",
+      "canCancel": "Q. Puis-je annuler plus tard ?",
+      "canCancelAnswer": "R. Oui, vous pouvez annuler à tout moment. Après l'annulation, vous pouvez continuer à utiliser les fonctionnalités Premium jusqu'à la prochaine date de renouvellement."
+    },
+    "reviewPlans": "Revoir les plans",
+    "continueWithFree": "Continuer avec le plan gratuit →",
+    "anyQuestions": "Si vous avez des questions",
+    "happyToHelp": "Nous serons ravis de vous aider !"
   }
 }

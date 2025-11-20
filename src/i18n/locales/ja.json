@@ -17,7 +17,8 @@
     "help": "ヘルプ",
     "logout": "ログアウト",
     "login": "ログイン",
-    "signup": "新規登録"
+    "signup": "新規登録",
+    "backToHome": "ホームに戻る"
   },
   "errors": {
     "generic": "予期しないエラーが発生しました",
@@ -72,6 +73,111 @@
       "script": "ルール",
       "settings": "公開"
     },
+    "app": {
+      "loginRequired": "ログインが必要です",
+      "loginRequiredMessage": "ゲームエディターを使用するには、アカウントの登録またはログインが必要です。",
+      "loginPrompt": "無料でアカウントを作成して、すぐにゲーム制作を始めましょう！",
+      "freeSignup": "無料で登録",
+      "alreadyHaveAccount": "すでにアカウントをお持ちですか？",
+      "features": {
+        "createProjects": "ゲームプロジェクトの作成・保存",
+        "cloudStorage": "クラウドストレージで自動保存",
+        "publishGames": "ゲームの公開・共有",
+        "joinCommunity": "コミュニティへの参加"
+      },
+      "authenticating": "認証確認中...",
+      "loadingAccount": "アカウント情報を確認中...",
+      "loading": "読み込み中...",
+      "projectOpened": "「{name}」を開きました",
+      "projectCreated": "「{name}」を作成しました",
+      "projectSaved": "プロジェクトを保存しました",
+      "projectPublished": "ゲームを公開しました！ソーシャルフィードに表示されます",
+      "projectDeleted": "プロジェクトを削除しました",
+      "projectDuplicated": "「{name}」を作成しました",
+      "projectExported": "プロジェクトをエクスポートしました",
+      "unsavedChanges": "未保存の変更があります。保存してから戻りますか？",
+      "confirmSaveAndLeave": "「OK」→保存して戻る\n「キャンセル」→保存せずに戻る",
+      "backToList": "一覧に戻る",
+      "mainScreen": "メイン画面",
+      "noProjectSelected": "プロジェクトが選択されていません",
+      "backToProjectList": "プロジェクト一覧に戻る",
+      "backToMain": "メイン画面に戻る",
+      "versionInfo": "Game Editor v1.0.0 - Supabase連携対応版",
+      "shortcuts": "Ctrl+S: 保存 | Ctrl+T: テストプレイ | Esc: 戻る | Ctrl+Q: メイン画面",
+      "status": {
+        "notLoggedIn": "未ログイン",
+        "unsaved": "未保存",
+        "published": "公開中"
+      },
+      "capacity": "{used}MB",
+      "buttons": {
+        "save": "保存",
+        "test": "テスト",
+        "publish": "公開",
+        "update": "更新"
+      }
+    },
+    "selector": {
+      "title": "ゲームエディター",
+      "subtitle": "簡単にゲームを作って、みんなに遊んでもらおう！",
+      "stats": {
+        "projectCount": "プロジェクト数",
+        "publishedCount": "公開済み",
+        "totalCapacity": "総容量"
+      },
+      "search": "プロジェクトを検索...",
+      "sort": {
+        "latest": "最新順",
+        "name": "名前順",
+        "status": "ステータス順"
+      },
+      "view": {
+        "grid": "グリッド",
+        "list": "リスト"
+      },
+      "import": "インポート",
+      "createNew": "新しいゲームを作る",
+      "loadingProjects": "プロジェクトを読み込み中...",
+      "noProjects": "まだプロジェクトがありません",
+      "noProjectsMessage": "初めてのゲームを作ってみましょう！",
+      "noResults": "プロジェクトが見つかりません",
+      "noResultsMessage": "別のキーワードで検索してみてください",
+      "newProject": {
+        "title": "新しいゲームを作る",
+        "subtitle": "ゲームの名前を決めましょう",
+        "placeholder": "ゲーム名を入力してください",
+        "charCount": "{count}/50文字",
+        "templateHint": "テンプレートから始めることもできます（準備中）",
+        "create": "作成"
+      },
+      "projectCard": {
+        "status": {
+          "published": "公開済み",
+          "testing": "テスト中",
+          "draft": "下書き"
+        },
+        "new": "NEW",
+        "completion": "{percent}% 完成",
+        "duplicate": "複製",
+        "export": "出力",
+        "confirmDelete": "「{name}」を削除しますか？この操作は取り消せません。",
+        "lastModified": "最終更新",
+        "editButton": "編集する",
+        "stats": {
+          "objects": "オブジェクト",
+          "sounds": "音声",
+          "rules": "ルール",
+          "capacity": "容量"
+        },
+        "errors": {
+          "thumbnailError": "サムネイル読み込みエラー",
+          "noThumbnail": "サムネイル未設定"
+        }
+      },
+      "help": "ヘルプ",
+      "versionInfo": "Game Editor v1.0.0 - Phase 1-B モダンUI版",
+      "shortcuts": "Ctrl+Q: メイン画面に戻る"
+    },
     "assets": {
       "title": "アセット管理",
       "background": "背景",
@@ -89,18 +195,135 @@
       "sound": "サウンド"
     },
     "script": {
-      "title": "ルール設定",
+      "title": "スクリプト設定",
+      "subtitle": "オブジェクト配置・複数ルール対応・高度なゲームロジック設定",
+      "layout": "レイアウト",
+      "rules": "ルール",
       "addRule": "ルールを追加",
       "editRule": "ルールを編集",
       "condition": "条件",
       "action": "アクション",
       "when": "〜のとき",
-      "then": "〜する"
+      "then": "〜する",
+      "gameTime": {
+        "title": "ゲーム時間設定",
+        "presets": {
+          "5": {
+            "label": "5秒",
+            "description": "サクッと",
+            "emoji": "⚡"
+          },
+          "10": {
+            "label": "10秒",
+            "description": "ちょうどいい",
+            "emoji": "⏰"
+          },
+          "15": {
+            "label": "15秒",
+            "description": "じっくり",
+            "emoji": "🎯"
+          },
+          "30": {
+            "label": "30秒",
+            "description": "たっぷり",
+            "emoji": "🏃"
+          },
+          "unlimited": {
+            "label": "無制限",
+            "description": "自由に",
+            "emoji": "∞"
+          }
+        },
+        "current": "現在の設定: {duration}"
+      },
+      "objectPlacement": {
+        "title": "オブジェクト配置",
+        "placed": "レイアウト:{placed}/{total}個配置済み",
+        "addToLayout": "配置",
+        "removeFromLayout": "削除",
+        "editRule": "ルール",
+        "alreadyPlaced": "配置済み",
+        "notPlaced": "未配置",
+        "ruleCount": "{count}ルール",
+        "hints": {
+          "title": "操作方法：",
+          "place": "📍配置 → レイアウト画面に追加",
+          "rules": "⚙️ルール → ゲームロジック設定",
+          "remove": "🗑️削除 → レイアウトから除去",
+          "dragAndDrop": "ドラッグ&ドロップでも配置可能"
+        }
+      },
+      "placedObjects": {
+        "title": "配置済みオブジェクト",
+        "hint": "レイアウトタブで配置されたオブジェクトにルールを設定できます"
+      },
+      "projectFlags": {
+        "title": "プロジェクトフラグ",
+        "subtitle": "ゲーム状態管理",
+        "on": "ON",
+        "off": "OFF"
+      },
+      "ruleList": {
+        "empty": {
+          "title": "ルールを作成しよう！",
+          "description": "IF-THENルールで面白いゲームを作成\nレイアウトモードでオブジェクトをクリックするとルール設定ができます",
+          "features": {
+            "conditions": "発動条件",
+            "conditionsDesc": "タッチ・時間・位置・衝突",
+            "actions": "実行アクション",
+            "actionsDesc": "移動・効果・音声・成功",
+            "flags": "フラグ管理",
+            "flagsDesc": "ゲーム状態・変数管理"
+          },
+          "backToLayout": "レイアウトモードに戻る"
+        },
+        "enabled": "有効",
+        "disabled": "無効",
+        "target": "対象: {target}",
+        "conditionsCount": "{count}条件",
+        "actionsCount": "{count}アクション",
+        "edit": "編集",
+        "delete": "削除",
+        "confirmDelete": "「{name}」を削除しますか？",
+        "deleted": "ルールを削除しました",
+        "gameOverall": "ゲーム全体",
+        "objectNotFound": "⚠ {id}",
+        "untitled": "無題のルール"
+      },
+      "ruleModal": {
+        "title": "ルール設定（拡張版）",
+        "subtitle": "1つの条件 → 1つのアクション | {conditions}種類の条件 × {actions}種類のアクション",
+        "ruleName": "ルール名",
+        "ruleNamePlaceholder": "例: 中央エリアでタッチして移動",
+        "triggerCondition": "発動条件",
+        "executeAction": "実行アクション",
+        "preview": {
+          "title": "ルールプレビュー",
+          "seconds": "({seconds}秒)",
+          "area": "({area}エリア)"
+        },
+        "errors": {
+          "nameRequired": "ルール名を入力してください",
+          "conditionRequired": "条件を選択してください",
+          "actionRequired": "アクションを選択してください"
+        },
+        "saved": "ルールを保存しました"
+      },
+      "ruleSelection": {
+        "title": "ルール選択 - {object}",
+        "subtitle": "編集するルールを選択してください（{current}/{max}）",
+        "ruleNumber": "ルール{number}: {name}",
+        "createNew": "新規ルール作成",
+        "limitReached": "ルール数が上限（32個）に達しています"
+      }
     },
     "settings": {
       "title": "公開設定",
       "gameName": "ゲーム名",
-      "description": "説明",
+      "gameNameRequired": "ゲーム名を入力してください",
+      "gameNamePlaceholder": "素晴らしいゲーム名を入力してください",
+      "description": "ゲーム説明",
+      "descriptionPlaceholder": "このゲームの楽しさを説明してください",
       "duration": "制限時間",
       "difficulty": "難易度",
       "visibility": "公開範囲",
@@ -108,7 +331,108 @@
       "unlisted": "限定公開",
       "private": "非公開",
       "publish": "公開する",
-      "testPlay": "テストプレイ"
+      "testPlay": "テストプレイ",
+      "gameInfo": {
+        "title": "ゲーム情報",
+        "genre": "ジャンル",
+        "genrePlaceholder": "ジャンルを選択",
+        "genres": {
+          "action": "アクション",
+          "puzzle": "パズル",
+          "adventure": "アドベンチャー",
+          "rpg": "RPG",
+          "shooting": "シューティング",
+          "racing": "レーシング",
+          "sports": "スポーツ",
+          "simulation": "シミュレーション",
+          "casual": "カジュアル",
+          "educational": "教育",
+          "music": "音楽",
+          "other": "その他"
+        },
+        "tags": "タグ",
+        "tagsPlaceholder": "例: 横スクロール, 2D, シンプル (カンマ区切り)",
+        "tagsHint": "タグはカンマ（,）で区切って入力してください"
+      },
+      "thumbnail": {
+        "title": "サムネイル",
+        "subtitle": "ゲームの魅力を伝えるサムネイルを設定します",
+        "generate": "自動生成",
+        "upload": "アップロード",
+        "noThumbnail": "No Thumbnail"
+      },
+      "publishing": {
+        "title": "公開設定",
+        "noRemix": "パクり禁止（リミックス禁止）",
+        "noRemixDescription": "他のユーザーによるこのゲームの複製・改変を禁止します。チェックすると、誰もこのゲームをコピーして改変できなくなります。",
+        "noRemixHint": "ヒント: チェックを外すと、他のユーザーがあなたのゲームを元に新しいゲームを作れます（クリエイティブ・コモンズのような仕組み）"
+      },
+      "testPlay": {
+        "title": "テストプレイ",
+        "start": "ゲームをテストしてみましょう",
+        "startDescription": "作成したゲームが正しく動作するか確認できます",
+        "testing": "テストプレイ中...",
+        "testingDescription": "ゲームの動作を確認しています",
+        "startButton": "テスト",
+        "success": "テスト成功！",
+        "failure": "テストで問題発見",
+        "stats": {
+          "score": "スコア",
+          "playTime": "プレイ時間",
+          "interactions": "操作回数",
+          "rulesTriggered": "ルール実行"
+        },
+        "tryAgain": "もう一度テスト",
+        "errors": "エラー:",
+        "warnings": "警告:",
+        "gameSpeed": {
+          "title": "ゲームスピード（挑戦レベル）",
+          "slow": {
+            "label": "スロー",
+            "description": "ゆっくり楽しむ"
+          },
+          "normal": {
+            "label": "標準",
+            "description": "ちょうどいい速さ"
+          },
+          "fast": {
+            "label": "高速",
+            "description": "挑戦的な速さ"
+          },
+          "superFast": {
+            "label": "超高速",
+            "description": "上級者向け"
+          },
+          "current": "現在の設定: {speed} スピード"
+        },
+        "fullGame": {
+          "title": "ゲーム実行中",
+          "end": "終了"
+        }
+      },
+      "stats": {
+        "title": "ゲーム統計",
+        "objects": "オブジェクト",
+        "rules": "ルール",
+        "texts": "テキスト",
+        "capacity": "総容量",
+        "testPlayCount": "テスト回数",
+        "health": {
+          "initialState": "初期条件",
+          "placedObjects": "配置済み",
+          "successConditions": "成功条件",
+          "complexity": "複雑度"
+        }
+      },
+      "actions": {
+        "save": "保存",
+        "test": "テスト",
+        "publish": "公開",
+        "update": "更新",
+        "export": "エクスポート (JSON)",
+        "published": "公開済み",
+        "publishedAt": "{date}"
+      }
     },
     "preview": "プレビュー"
   },
@@ -385,5 +709,90 @@
     "score": "スコア",
     "time": "時間",
     "bestScore": "ハイスコア"
+  },
+  "pricing": {
+    "backToHome": "ホームに戻る",
+    "premium": "Premium",
+    "loading": "読み込み中...",
+    "support": "サポート",
+    "supportContact": "までお問い合わせください",
+    "processingPayment": "決済を処理中...",
+    "pleaseWait": "少々お待ちください",
+    "welcomeToPremium": "ようこそ Premium へ",
+    "paymentCompleted": "お支払いが完了しました",
+    "planInfo": "プラン情報",
+    "plan": "プラン",
+    "status": "ステータス",
+    "active": "アクティブ",
+    "nextRenewal": "次回更新",
+    "availableFeatures": "利用可能な機能",
+    "features": {
+      "unlimitedGames": "無制限ゲーム作成",
+      "adFree": "広告非表示",
+      "allTemplates": "全テンプレート",
+      "advancedEditing": "高度な編集機能",
+      "unlimitedAssets": "アセット無制限",
+      "analyticsDashboard": "分析ダッシュボード",
+      "html5Export": "HTML5エクスポート",
+      "prioritySupport": "優先サポート"
+    },
+    "createGame": "ゲームを作成する",
+    "subscriptionManagement": "サブスクリプション管理は",
+    "sessionId": "Session ID",
+    "paymentCancelled": "お支払いがキャンセルされました",
+    "paymentNotCompleted": "決済は完了していません",
+    "paymentCancelledMessage": "決済処理がキャンセルされました。",
+    "upgradeNotCompleted": "プランのアップグレードは行われていません。",
+    "problemQuestion": "何か問題がありましたか？お困りの際はお気軽にお問い合わせください。",
+    "freePlanTitle": "無料プランでもできること",
+    "freePlanFeatures": {
+      "limit5Games": "月5ゲームまで作成可能",
+      "basicTemplates": "基本テンプレート50種類",
+      "basicEditor": "基本ゲームエディター",
+      "socialFeatures": "ソーシャル機能（いいね・フォロー）",
+      "publishShare": "ゲーム公開・共有",
+      "communitySupport": "コミュニティサポート"
+    },
+    "premiumBenefitsTitle": "プレミアムプランの特典",
+    "premiumBenefits": {
+      "unlimitedCreation": "🎮 無制限作成",
+      "unlimitedCreationDesc": "月間制限なしでゲームを作り放題",
+      "noAds": "🚫 広告なし",
+      "noAdsDesc": "快適な編集・プレイ体験",
+      "allTemplates": "📚 全テンプレート",
+      "allTemplatesDesc": "225種類すべてのテンプレート",
+      "prioritySupport": "⚡ 優先サポート",
+      "prioritySupportDesc": "24時間以内の迅速な対応"
+    },
+    "faqTitle": "よくあるご質問",
+    "faq": {
+      "changePaymentMethod": "Q. 支払い方法を変更したい",
+      "changePaymentMethodAnswer": "A. もう一度プラン選択ページから決済を開始できます。",
+      "cardInfoConcern": "Q. カード情報の入力が不安",
+      "cardInfoConcernAnswer": "A. 決済は世界中で使われているStripeで安全に処理されます。カード情報は暗号化され、当社では保持しません。",
+      "canCancel": "Q. 後から解約できる？",
+      "canCancelAnswer": "A. はい、いつでも解約可能です。解約後も次回更新日までプレミアム機能をご利用いただけます。"
+    },
+    "reviewPlans": "プランを再確認する",
+    "continueWithFree": "無料プランで続ける →",
+    "anyQuestions": "ご不明な点がございましたら",
+    "happyToHelp": "喜んでサポートさせていただきます！"
+  },
+  "bridge": {
+    "copyButton": "パクる",
+    "nextButton": "次へ",
+    "againButton": "もう一度",
+    "skipButton": "スキップ",
+    "copySuccessTitle": "パクリ完了！",
+    "copySuccessMessage": "ゲームのルールをコピーしました。エディターで画像を差し替えて、自分だけのゲームを作りましょう！",
+    "openEditorButton": "エディターを開く",
+    "editLaterButton": "後で編集する",
+    "errors": {
+      "gameDataFetchFailed": "ゲームデータの取得に失敗しました",
+      "cannotCopy": "このゲームはコピーできません",
+      "noRulesToCopy": "このゲームにはルールが設定されていないため、コピーできません。",
+      "copyFailed": "ゲームのコピーに失敗しました",
+      "unknownError": "不明なエラー"
+    }
   }
 }

@@ -17,7 +17,8 @@
     "help": "Help",
     "logout": "Logout",
     "login": "Login",
-    "signup": "Sign Up"
+    "signup": "Sign Up",
+    "backToHome": "Back to Home"
   },
   "errors": {
     "generic": "An unexpected error occurred",
@@ -72,6 +73,111 @@
       "script": "Rules",
       "settings": "Publish"
     },
+    "app": {
+      "loginRequired": "Login Required",
+      "loginRequiredMessage": "You need to register or log in to use the game editor.",
+      "loginPrompt": "Create a free account and start making games now!",
+      "freeSignup": "Sign Up Free",
+      "alreadyHaveAccount": "Already have an account?",
+      "features": {
+        "createProjects": "Create and save game projects",
+        "cloudStorage": "Automatic cloud storage",
+        "publishGames": "Publish and share games",
+        "joinCommunity": "Join the community"
+      },
+      "authenticating": "Authenticating...",
+      "loadingAccount": "Loading account info...",
+      "loading": "Loading...",
+      "projectOpened": "Opened \"{name}\"",
+      "projectCreated": "Created \"{name}\"",
+      "projectSaved": "Project saved",
+      "projectPublished": "Game published! It will appear in the social feed",
+      "projectDeleted": "Project deleted",
+      "projectDuplicated": "Created \"{name}\"",
+      "projectExported": "Project exported",
+      "unsavedChanges": "You have unsaved changes. Do you want to save before leaving?",
+      "confirmSaveAndLeave": "OK → Save and leave\nCancel → Leave without saving",
+      "backToList": "Back to List",
+      "mainScreen": "Main Screen",
+      "noProjectSelected": "No project selected",
+      "backToProjectList": "Back to Project List",
+      "backToMain": "Back to Main",
+      "versionInfo": "Game Editor v1.0.0 - Supabase Integration",
+      "shortcuts": "Ctrl+S: Save | Ctrl+T: Test | Esc: Back | Ctrl+Q: Main",
+      "status": {
+        "notLoggedIn": "Not Logged In",
+        "unsaved": "Unsaved",
+        "published": "Published"
+      },
+      "capacity": "{used}MB",
+      "buttons": {
+        "save": "Save",
+        "test": "Test",
+        "publish": "Publish",
+        "update": "Update"
+      }
+    },
+    "selector": {
+      "title": "Game Editor",
+      "subtitle": "Create games easily and share them with everyone!",
+      "stats": {
+        "projectCount": "Projects",
+        "publishedCount": "Published",
+        "totalCapacity": "Total Capacity"
+      },
+      "search": "Search projects...",
+      "sort": {
+        "latest": "Latest",
+        "name": "Name",
+        "status": "Status"
+      },
+      "view": {
+        "grid": "Grid",
+        "list": "List"
+      },
+      "import": "Import",
+      "createNew": "Create New Game",
+      "loadingProjects": "Loading projects...",
+      "noProjects": "No projects yet",
+      "noProjectsMessage": "Create your first game!",
+      "noResults": "No projects found",
+      "noResultsMessage": "Try searching with different keywords",
+      "newProject": {
+        "title": "Create New Game",
+        "subtitle": "Choose a name for your game",
+        "placeholder": "Enter game name",
+        "charCount": "{count}/50 characters",
+        "templateHint": "You can also start from a template (coming soon)",
+        "create": "Create"
+      },
+      "projectCard": {
+        "status": {
+          "published": "Published",
+          "testing": "Testing",
+          "draft": "Draft"
+        },
+        "new": "NEW",
+        "completion": "{percent}% Complete",
+        "duplicate": "Duplicate",
+        "export": "Export",
+        "confirmDelete": "Delete \"{name}\"? This action cannot be undone.",
+        "lastModified": "Last modified",
+        "editButton": "Edit",
+        "stats": {
+          "objects": "Objects",
+          "sounds": "Sounds",
+          "rules": "Rules",
+          "capacity": "Capacity"
+        },
+        "errors": {
+          "thumbnailError": "Thumbnail load error",
+          "noThumbnail": "No thumbnail"
+        }
+      },
+      "help": "Help",
+      "versionInfo": "Game Editor v1.0.0 - Modern UI",
+      "shortcuts": "Ctrl+Q: Main Screen"
+    },
     "assets": {
       "title": "Asset Management",
       "background": "Background",
@@ -89,18 +195,135 @@
       "sound": "Sound"
     },
     "script": {
-      "title": "Rule Settings",
+      "title": "Script Settings",
+      "subtitle": "Object layout, multiple rules support, advanced game logic",
+      "layout": "Layout",
+      "rules": "Rules",
       "addRule": "Add Rule",
       "editRule": "Edit Rule",
       "condition": "Condition",
       "action": "Action",
       "when": "When",
-      "then": "Then"
+      "then": "Then",
+      "gameTime": {
+        "title": "Game Time Setting",
+        "presets": {
+          "5": {
+            "label": "5 sec",
+            "description": "Quick",
+            "emoji": "⚡"
+          },
+          "10": {
+            "label": "10 sec",
+            "description": "Just right",
+            "emoji": "⏰"
+          },
+          "15": {
+            "label": "15 sec",
+            "description": "Extended",
+            "emoji": "🎯"
+          },
+          "30": {
+            "label": "30 sec",
+            "description": "Long",
+            "emoji": "🏃"
+          },
+          "unlimited": {
+            "label": "Unlimited",
+            "description": "Free play",
+            "emoji": "∞"
+          }
+        },
+        "current": "Current setting: {duration}"
+      },
+      "objectPlacement": {
+        "title": "Object Placement",
+        "placed": "Layout: {placed}/{total} placed",
+        "addToLayout": "Place",
+        "removeFromLayout": "Remove",
+        "editRule": "Rules",
+        "alreadyPlaced": "Placed",
+        "notPlaced": "Not placed",
+        "ruleCount": "{count} rules",
+        "hints": {
+          "title": "How to use:",
+          "place": "Place → Add to layout screen",
+          "rules": "Rules → Set game logic",
+          "remove": "Remove → Delete from layout",
+          "dragAndDrop": "Drag & drop also works"
+        }
+      },
+      "placedObjects": {
+        "title": "Placed Objects",
+        "hint": "You can set rules for objects placed in the layout tab"
+      },
+      "projectFlags": {
+        "title": "Project Flags",
+        "subtitle": "Game state management",
+        "on": "ON",
+        "off": "OFF"
+      },
+      "ruleList": {
+        "empty": {
+          "title": "Create Rules!",
+          "description": "Create fun games with IF-THEN rules\nClick objects in layout mode to set rules",
+          "features": {
+            "conditions": "Trigger Conditions",
+            "conditionsDesc": "Touch, time, position, collision",
+            "actions": "Execute Actions",
+            "actionsDesc": "Move, effect, sound, success",
+            "flags": "Flag Management",
+            "flagsDesc": "Game state, variable management"
+          },
+          "backToLayout": "Back to Layout Mode"
+        },
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "target": "Target: {target}",
+        "conditionsCount": "{count} conditions",
+        "actionsCount": "{count} actions",
+        "edit": "Edit",
+        "delete": "Delete",
+        "confirmDelete": "Delete \"{name}\"?",
+        "deleted": "Rule deleted",
+        "gameOverall": "Game Overall",
+        "objectNotFound": "⚠ {id}",
+        "untitled": "Untitled Rule"
+      },
+      "ruleModal": {
+        "title": "Rule Settings (Advanced)",
+        "subtitle": "1 condition → 1 action | {conditions} condition types × {actions} action types",
+        "ruleName": "Rule Name",
+        "ruleNamePlaceholder": "e.g., Touch in center area to move",
+        "triggerCondition": "Trigger Condition",
+        "executeAction": "Execute Action",
+        "preview": {
+          "title": "Rule Preview",
+          "seconds": "({seconds}s)",
+          "area": "({area} area)"
+        },
+        "errors": {
+          "nameRequired": "Please enter a rule name",
+          "conditionRequired": "Please select a condition",
+          "actionRequired": "Please select an action"
+        },
+        "saved": "Rule saved"
+      },
+      "ruleSelection": {
+        "title": "Select Rule - {object}",
+        "subtitle": "Select rule to edit ({current}/{max})",
+        "ruleNumber": "Rule {number}: {name}",
+        "createNew": "Create New Rule",
+        "limitReached": "Rule limit (32) reached"
+      }
     },
     "settings": {
       "title": "Publish Settings",
       "gameName": "Game Name",
+      "gameNameRequired": "Game name is required",
+      "gameNamePlaceholder": "Enter a great game name",
       "description": "Description",
+      "descriptionPlaceholder": "Describe what makes this game fun",
       "duration": "Time Limit",
       "difficulty": "Difficulty",
       "visibility": "Visibility",
@@ -108,7 +331,108 @@
       "unlisted": "Unlisted",
       "private": "Private",
       "publish": "Publish",
-      "testPlay": "Test Play"
+      "testPlay": "Test Play",
+      "gameInfo": {
+        "title": "Game Information",
+        "genre": "Genre",
+        "genrePlaceholder": "Select genre",
+        "genres": {
+          "action": "Action",
+          "puzzle": "Puzzle",
+          "adventure": "Adventure",
+          "rpg": "RPG",
+          "shooting": "Shooting",
+          "racing": "Racing",
+          "sports": "Sports",
+          "simulation": "Simulation",
+          "casual": "Casual",
+          "educational": "Educational",
+          "music": "Music",
+          "other": "Other"
+        },
+        "tags": "Tags",
+        "tagsPlaceholder": "e.g., side-scrolling, 2D, simple (comma-separated)",
+        "tagsHint": "Separate tags with commas (,)"
+      },
+      "thumbnail": {
+        "title": "Thumbnail",
+        "subtitle": "Set a thumbnail that conveys the appeal of the game",
+        "generate": "Auto Generate",
+        "upload": "Upload",
+        "noThumbnail": "No Thumbnail"
+      },
+      "publishing": {
+        "title": "Publishing Settings",
+        "noRemix": "No Copy (Disable Remix)",
+        "noRemixDescription": "Prohibit copying and modification of this game by other users. When checked, no one can copy and modify this game.",
+        "noRemixHint": "Hint: If unchecked, other users can create new games based on yours (similar to Creative Commons)"
+      },
+      "testPlay": {
+        "title": "Test Play",
+        "start": "Let's test the game",
+        "startDescription": "You can check if the created game works correctly",
+        "testing": "Test playing...",
+        "testingDescription": "Checking game operation",
+        "startButton": "Test",
+        "success": "Test successful!",
+        "failure": "Test found issues",
+        "stats": {
+          "score": "Score",
+          "playTime": "Play Time",
+          "interactions": "Interactions",
+          "rulesTriggered": "Rules Executed"
+        },
+        "tryAgain": "Test Again",
+        "errors": "Errors:",
+        "warnings": "Warnings:",
+        "gameSpeed": {
+          "title": "Game Speed (Challenge Level)",
+          "slow": {
+            "label": "Slow",
+            "description": "Enjoy leisurely"
+          },
+          "normal": {
+            "label": "Normal",
+            "description": "Just right speed"
+          },
+          "fast": {
+            "label": "Fast",
+            "description": "Challenging speed"
+          },
+          "superFast": {
+            "label": "Super Fast",
+            "description": "For experts"
+          },
+          "current": "Current setting: {speed} speed"
+        },
+        "fullGame": {
+          "title": "Game Running",
+          "end": "End"
+        }
+      },
+      "stats": {
+        "title": "Game Statistics",
+        "objects": "Objects",
+        "rules": "Rules",
+        "texts": "Text",
+        "capacity": "Total Capacity",
+        "testPlayCount": "Test Count",
+        "health": {
+          "initialState": "Initial State",
+          "placedObjects": "Placed",
+          "successConditions": "Success Conditions",
+          "complexity": "Complexity"
+        }
+      },
+      "actions": {
+        "save": "Save",
+        "test": "Test",
+        "publish": "Publish",
+        "update": "Update",
+        "export": "Export (JSON)",
+        "published": "Published",
+        "publishedAt": "at {date}"
+      }
     },
     "preview": "Preview"
   },
@@ -385,5 +709,90 @@
     "score": "Score",
     "time": "Time",
     "bestScore": "Best Score"
+  },
+  "bridge": {
+    "copyButton": "Copy",
+    "nextButton": "Next",
+    "againButton": "Again",
+    "skipButton": "Skip",
+    "copySuccessTitle": "Copy Complete!",
+    "copySuccessMessage": "Game rules copied. Swap images in the editor to create your own unique game!",
+    "openEditorButton": "Open Editor",
+    "editLaterButton": "Edit Later",
+    "errors": {
+      "gameDataFetchFailed": "Failed to fetch game data",
+      "cannotCopy": "This game cannot be copied",
+      "noRulesToCopy": "Cannot copy this game as it has no rules set.",
+      "copyFailed": "Failed to copy game",
+      "unknownError": "Unknown error"
+    }
+  },
+  "pricing": {
+    "backToHome": "Back to Home",
+    "premium": "Premium",
+    "loading": "Loading...",
+    "support": "Support",
+    "supportContact": "Please contact us if you need help",
+    "processingPayment": "Processing payment...",
+    "pleaseWait": "Please wait a moment",
+    "welcomeToPremium": "Welcome to Premium",
+    "paymentCompleted": "Payment completed",
+    "planInfo": "Plan Info",
+    "plan": "Plan",
+    "status": "Status",
+    "active": "Active",
+    "nextRenewal": "Next Renewal",
+    "availableFeatures": "Available Features",
+    "features": {
+      "unlimitedGames": "Unlimited game creation",
+      "adFree": "Ad-free",
+      "allTemplates": "All templates",
+      "advancedEditing": "Advanced editing",
+      "unlimitedAssets": "Unlimited assets",
+      "analyticsDashboard": "Analytics dashboard",
+      "html5Export": "HTML5 export",
+      "prioritySupport": "Priority support"
+    },
+    "createGame": "Create a game",
+    "subscriptionManagement": "For subscription management",
+    "sessionId": "Session ID",
+    "paymentCancelled": "Payment was cancelled",
+    "paymentNotCompleted": "Payment not completed",
+    "paymentCancelledMessage": "Payment was cancelled.",
+    "upgradeNotCompleted": "Plan upgrade not completed.",
+    "problemQuestion": "Was there a problem? Please contact us if you need help.",
+    "freePlanTitle": "What you can do with Free Plan",
+    "freePlanFeatures": {
+      "limit5Games": "Up to 5 games per month",
+      "basicTemplates": "50 basic templates",
+      "basicEditor": "Basic game editor",
+      "socialFeatures": "Social features (likes/follow)",
+      "publishShare": "Publish & share games",
+      "communitySupport": "Community support"
+    },
+    "premiumBenefitsTitle": "Premium Plan Benefits",
+    "premiumBenefits": {
+      "unlimitedCreation": "🎮 Unlimited Creation",
+      "unlimitedCreationDesc": "Create unlimited games without monthly limits",
+      "noAds": "🚫 No Ads",
+      "noAdsDesc": "Comfortable editing and play experience",
+      "allTemplates": "📚 All Templates",
+      "allTemplatesDesc": "All 225 templates",
+      "prioritySupport": "⚡ Priority Support",
+      "prioritySupportDesc": "Quick response within 24 hours"
+    },
+    "faqTitle": "Frequently Asked Questions",
+    "faq": {
+      "changePaymentMethod": "Q. I want to change my payment method",
+      "changePaymentMethodAnswer": "A. You can start the payment process again from the plan selection page.",
+      "cardInfoConcern": "Q. I'm concerned about entering card information",
+      "cardInfoConcernAnswer": "A. Payment is processed securely through Stripe, used worldwide. Card information is encrypted and not stored by us.",
+      "canCancel": "Q. Can I cancel later?",
+      "canCancelAnswer": "A. Yes, you can cancel anytime. After cancellation, you can continue using Premium features until the next renewal date."
+    },
+    "reviewPlans": "Review plans",
+    "continueWithFree": "Continue with Free Plan →",
+    "anyQuestions": "If you have any questions",
+    "happyToHelp": "We'll be happy to help!"
   }
 }

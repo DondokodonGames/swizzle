@@ -10,12 +10,14 @@
 
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { PricingTable } from '../../components/monetization/PricingTable';
 import { useSubscription } from '../../hooks/monetization/useSubscription';
 import { MVPSubscriptionPlan } from '../../types/MonetizationTypes';
 
 export function Pricing() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { subscription, isPremium, loading } = useSubscription();
 
   /**
@@ -63,7 +65,7 @@ export function Pricing() {
                   d="M10 19l-7-7m0 0l7-7m-7 7h18"
                 />
               </svg>
-              ホームに戻る
+              {t('pricing.backToHome')}
             </button>
 
             {isPremium && (
@@ -81,7 +83,7 @@ export function Pricing() {
                   />
                 </svg>
                 <span className="text-xs font-semibold text-purple-600">
-                  Premium
+                  {t('pricing.premium')}
                 </span>
               </div>
             )}
@@ -98,7 +100,7 @@ export function Pricing() {
                 className="animate-spin rounded-full border-b-2 border-purple-600 mx-auto mb-4"
                 style={{ width: '48px', height: '48px' }}
               />
-              <p className="text-gray-600 text-sm">読み込み中...</p>
+              <p className="text-gray-600 text-sm">{t('pricing.loading')}</p>
             </div>
           </div>
         ) : (
@@ -114,11 +116,10 @@ export function Pricing() {
       <footer className="bg-white border-t border-gray-200 py-8">
         <div className="max-w-7xl mx-auto px-4 text-center text-gray-600 text-sm">
           <p>
-            お困りの際は{' '}
+            {t('pricing.supportContact')}{' '}
             <a href="/support" className="text-purple-600 hover:text-purple-700 underline">
-              サポート
-            </a>{' '}
-            までお問い合わせください
+              {t('pricing.support')}
+            </a>
           </p>
         </div>
       </footer>

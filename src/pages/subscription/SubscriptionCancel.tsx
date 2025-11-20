@@ -10,9 +10,11 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 export function SubscriptionCancel() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
@@ -41,10 +43,10 @@ export function SubscriptionCancel() {
               </svg>
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">
-              お支払いがキャンセルされました
+              {t('pricing.paymentCancelled')}
             </h1>
             <p className="text-gray-100">
-              決済は完了していません
+              {t('pricing.paymentNotCompleted')}
             </p>
           </div>
 
@@ -53,28 +55,28 @@ export function SubscriptionCancel() {
             {/* Message */}
             <div className="text-center mb-8">
               <p className="text-lg text-gray-700 mb-4">
-                決済処理がキャンセルされました。
+                {t('pricing.paymentCancelledMessage')}
                 <br />
-                プランのアップグレードは行われていません。
+                {t('pricing.upgradeNotCompleted')}
               </p>
               <p className="text-sm text-gray-600">
-                何か問題がありましたか？お困りの際はお気軽にお問い合わせください。
+                {t('pricing.problemQuestion')}
               </p>
             </div>
 
             {/* Free Plan Features */}
             <div className="bg-blue-50 rounded-xl p-6 mb-8">
               <h2 className="text-xl font-bold text-gray-900 mb-4">
-                無料プランでもできること
+                {t('pricing.freePlanTitle')}
               </h2>
               <ul className="space-y-3">
                 {[
-                  '月5ゲームまで作成可能',
-                  '基本テンプレート50種類',
-                  '基本ゲームエディター',
-                  'ソーシャル機能（いいね・フォロー）',
-                  'ゲーム公開・共有',
-                  'コミュニティサポート',
+                  t('pricing.freePlanFeatures.limit5Games'),
+                  t('pricing.freePlanFeatures.basicTemplates'),
+                  t('pricing.freePlanFeatures.basicEditor'),
+                  t('pricing.freePlanFeatures.socialFeatures'),
+                  t('pricing.freePlanFeatures.publishShare'),
+                  t('pricing.freePlanFeatures.communitySupport'),
                 ].map((feature, index) => (
                   <li
                     key={index}
@@ -103,39 +105,39 @@ export function SubscriptionCancel() {
             {/* Why Premium? */}
             <div className="bg-purple-50 rounded-xl p-6 mb-8">
               <h2 className="text-xl font-bold text-gray-900 mb-4">
-                プレミアムプランの特典
+                {t('pricing.premiumBenefitsTitle')}
               </h2>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">
-                    🎮 無制限作成
+                    {t('pricing.premiumBenefits.unlimitedCreation')}
                   </h3>
                   <p className="text-sm text-gray-600">
-                    月間制限なしでゲームを作り放題
+                    {t('pricing.premiumBenefits.unlimitedCreationDesc')}
                   </p>
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">
-                    🚫 広告なし
+                    {t('pricing.premiumBenefits.noAds')}
                   </h3>
                   <p className="text-sm text-gray-600">
-                    快適な編集・プレイ体験
+                    {t('pricing.premiumBenefits.noAdsDesc')}
                   </p>
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">
-                    📚 全テンプレート
+                    {t('pricing.premiumBenefits.allTemplates')}
                   </h3>
                   <p className="text-sm text-gray-600">
-                    225種類すべてのテンプレート
+                    {t('pricing.premiumBenefits.allTemplatesDesc')}
                   </p>
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">
-                    ⚡ 優先サポート
+                    {t('pricing.premiumBenefits.prioritySupport')}
                   </h3>
                   <p className="text-sm text-gray-600">
-                    24時間以内の迅速な対応
+                    {t('pricing.premiumBenefits.prioritySupportDesc')}
                   </p>
                 </div>
               </div>
@@ -144,31 +146,31 @@ export function SubscriptionCancel() {
             {/* Common Questions */}
             <div className="bg-gray-50 rounded-xl p-6 mb-8">
               <h2 className="text-lg font-bold text-gray-900 mb-4">
-                よくあるご質問
+                {t('pricing.faqTitle')}
               </h2>
               <div className="space-y-4 text-sm">
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">
-                    Q. 支払い方法を変更したい
+                    {t('pricing.faq.changePaymentMethod')}
                   </h3>
                   <p className="text-gray-600">
-                    A. もう一度プラン選択ページから決済を開始できます。
+                    {t('pricing.faq.changePaymentMethodAnswer')}
                   </p>
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">
-                    Q. カード情報の入力が不安
+                    {t('pricing.faq.cardInfoConcern')}
                   </h3>
                   <p className="text-gray-600">
-                    A. 決済は世界中で使われているStripeで安全に処理されます。カード情報は暗号化され、当社では保持しません。
+                    {t('pricing.faq.cardInfoConcernAnswer')}
                   </p>
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">
-                    Q. 後から解約できる？
+                    {t('pricing.faq.canCancel')}
                   </h3>
                   <p className="text-gray-600">
-                    A. はい、いつでも解約可能です。解約後も次回更新日までプレミアム機能をご利用いただけます。
+                    {t('pricing.faq.canCancelAnswer')}
                   </p>
                 </div>
               </div>
@@ -180,31 +182,30 @@ export function SubscriptionCancel() {
                 onClick={() => navigate('/pricing')}
                 className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-purple-500 text-white font-bold rounded-xl hover:from-purple-700 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl"
               >
-                プランを再確認する
+                {t('pricing.reviewPlans')}
               </button>
               <button
                 onClick={() => navigate('/')}
                 className="w-full py-4 px-6 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all"
               >
-                ホームに戻る
+                {t('pricing.backToHome')}
               </button>
               <button
                 onClick={() => navigate('/')}
                 className="w-full py-3 px-6 text-gray-600 hover:text-gray-900 font-medium transition-colors"
               >
-                無料プランで続ける →
+                {t('pricing.continueWithFree')}
               </button>
             </div>
 
             {/* Support Link */}
             <p className="mt-6 text-xs text-gray-500 text-center">
-              ご不明な点がございましたら{' '}
+              {t('pricing.anyQuestions')}{' '}
               <a href="/support" className="text-purple-600 hover:text-purple-700 underline">
-                サポート
-              </a>{' '}
-              までお問い合わせください。
+                {t('pricing.support')}
+              </a>
               <br />
-              喜んでサポートさせていただきます！
+              {t('pricing.happyToHelp')}
             </p>
           </div>
         </div>
