@@ -101,82 +101,81 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   const currentGameRef = useRef<string | null>(null);
   const bridgeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ==================== 公開ゲーム取得（高速初期化版: 少数取得→バックグラウンドで残り取得） ====================
+  // ==================== 公開ゲーム取得（超高速版: 1件取得→即開始→バックグラウンドで残り取得） ====================
   useEffect(() => {
     const fetchInitialGame = async () => {
       setGameState('loading');
       setError(null);
 
       try {
-        console.log('📥 公開ゲームを高速取得中...');
+        console.log('📥 最初の1件を高速取得中...');
 
-        // Step 1: まず10件だけ取得して即座に開始
+        // Step 1: ランダムな1件だけ取得して即座に開始
+        // ページをランダムにして異なるゲームが選ばれるようにする
+        const randomPage = Math.floor(Math.random() * 10) + 1; // 1-10のランダムページ
         const initialResult = await socialService.getPublicGames(
           {
             sortBy: 'latest',
             category: 'all',
             search: undefined
           },
-          1,
-          10
+          randomPage,
+          1
         );
 
-        console.log(`✅ 初期ロード: ${initialResult.games.length}件取得`);
-
-        if (initialResult.games.length === 0) {
-          setError('公開ゲームがありません。エディターでゲームを作成して公開してください。');
-          setGameState('loading');
-          return;
-        }
-
-        // project_dataが存在するゲームのみフィルタ
-        const validGames = initialResult.games.filter(game => {
-          if (!game.projectData) {
-            console.warn(`⚠️ ゲーム "${game.title}" にproject_dataがありません（ID: ${game.id}）`);
-            return false;
-          }
-          return true;
-        });
-
-        if (validGames.length === 0) {
-          setError('有効な公開ゲームがありません。');
-          setGameState('loading');
-          return;
-        }
-
-        // ランダムに1つのゲームを選択
-        const randomIndex = Math.floor(Math.random() * validGames.length);
-        const initialGame = validGames[randomIndex];
-
-        console.log(`🎲 ランダムに選択: "${initialGame.title}" (${validGames.length}件中)`);
-
-        // 初期ゲームを設定し、使用済みとしてマーク
-        setPublicGames([initialGame]);
-        setUsedGameIds(new Set([initialGame.id]));
-        setAllValidGames(validGames);
-        setCurrentIndex(0);
-        setGameState('playing');
-
-        // Step 2: バックグラウンドで残りのゲームを取得
-        if (initialResult.total > 10) {
-          console.log('🔄 バックグラウンドで残りのゲームを取得中...');
-
-          const fullResult = await socialService.getPublicGames(
+        // ゲームが見つからない場合は1ページ目から取得
+        let initialGame: PublicGame | null = null;
+        if (initialResult.games.length > 0 && initialResult.games[0].projectData) {
+          initialGame = initialResult.games[0];
+        } else {
+          // フォールバック: 1ページ目から取得
+          const fallbackResult = await socialService.getPublicGames(
             {
               sortBy: 'latest',
               category: 'all',
               search: undefined
             },
             1,
-            100
+            1
           );
-
-          const allValidGames = fullResult.games.filter(game => game.projectData);
-
-          if (allValidGames.length > 0) {
-            setAllValidGames(allValidGames);
-            console.log(`✅ バックグラウンド取得完了: ${allValidGames.length}件のゲームをキャッシュ`);
+          if (fallbackResult.games.length > 0 && fallbackResult.games[0].projectData) {
+            initialGame = fallbackResult.games[0];
           }
+        }
+
+        if (!initialGame) {
+          setError('公開ゲームがありません。エディターでゲームを作成して公開してください。');
+          setGameState('loading');
+          return;
+        }
+
+        console.log(`🎲 即座に開始: "${initialGame.title}"`);
+
+        // 初期ゲームを設定し、即座に開始
+        setPublicGames([initialGame]);
+        setUsedGameIds(new Set([initialGame.id]));
+        setAllValidGames([initialGame]);
+        setCurrentIndex(0);
+        setGameState('playing');
+
+        // Step 2: バックグラウンドで残りのゲームを取得（ゲームプレイ中に実行）
+        console.log('🔄 バックグラウンドで残りのゲームを取得中...');
+
+        const fullResult = await socialService.getPublicGames(
+          {
+            sortBy: 'latest',
+            category: 'all',
+            search: undefined
+          },
+          1,
+          100
+        );
+
+        const allValidGames = fullResult.games.filter(game => game.projectData);
+
+        if (allValidGames.length > 0) {
+          setAllValidGames(allValidGames);
+          console.log(`✅ バックグラウンド取得完了: ${allValidGames.length}件のゲームをキャッシュ`);
         }
 
       } catch (err) {
