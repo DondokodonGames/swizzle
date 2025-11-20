@@ -2,30 +2,32 @@
 // Phase D Step 1-1: 衝突条件詳細定義
 // TouchConstants.ts成功パターン踏襲 - GameScript.ts型定義完全準拠
 
+import i18n from '../../../i18n';
+
 /**
  * Phase D: 衝突タイプ詳細定義（GameScript.ts準拠）
  */
-export const COLLISION_TYPE_OPTIONS = [
-  { value: 'enter', label: '接触開始', icon: '🔥', description: '接触した瞬間に発動' },
-  { value: 'stay', label: '接触継続', icon: '🤝', description: '接触している間継続発動' },
-  { value: 'exit', label: '接触終了', icon: '👋', description: '離れた瞬間に発動' }
+export const getCollisionTypeOptions = () => [
+  { value: 'enter', label: i18n.t('conditions.collision.types.enter.label'), icon: '🔥', description: i18n.t('conditions.collision.types.enter.description') },
+  { value: 'stay', label: i18n.t('conditions.collision.types.stay.label'), icon: '🤝', description: i18n.t('conditions.collision.types.stay.description') },
+  { value: 'exit', label: i18n.t('conditions.collision.types.exit.label'), icon: '👋', description: i18n.t('conditions.collision.types.exit.description') }
 ] as const;
 
 /**
  * Phase D: 衝突対象詳細定義（GameScript.ts準拠）
  */
-export const COLLISION_TARGET_OPTIONS = [
-  { value: 'background', label: '背景', icon: '🖼️', description: '背景との衝突判定' },
-  { value: 'stage', label: 'ステージ端', icon: '🔲', description: 'ステージ境界との衝突' },
-  { value: 'object', label: '他オブジェクト', icon: '🎯', description: '指定オブジェクトとの衝突' }
+export const getCollisionTargetOptions = () => [
+  { value: 'background', label: i18n.t('conditions.collision.targets.background.label'), icon: '🖼️', description: i18n.t('conditions.collision.targets.background.description') },
+  { value: 'stage', label: i18n.t('conditions.collision.targets.stage.label'), icon: '🔲', description: i18n.t('conditions.collision.targets.stage.description') },
+  { value: 'object', label: i18n.t('conditions.collision.targets.object.label'), icon: '🎯', description: i18n.t('conditions.collision.targets.object.description') }
 ] as const;
 
 /**
  * Phase D: 衝突判定方式詳細定義（GameScript.ts準拠）
  */
-export const COLLISION_CHECK_OPTIONS = [
-  { value: 'hitbox', label: 'ヒットボックス', icon: '📦', description: '高速・軽量な矩形判定' },
-  { value: 'pixel', label: 'ピクセル判定', icon: '🔍', description: '精密・高品質なピクセル判定' }
+export const getCollisionCheckOptions = () => [
+  { value: 'hitbox', label: i18n.t('conditions.collision.checkModes.hitbox.label'), icon: '📦', description: i18n.t('conditions.collision.checkModes.hitbox.description') },
+  { value: 'pixel', label: i18n.t('conditions.collision.checkModes.pixel.label'), icon: '🔍', description: i18n.t('conditions.collision.checkModes.pixel.description') }
 ] as const;
 
 /**
@@ -40,9 +42,9 @@ export const COLLISION_DEFAULTS = {
 /**
  * 衝突定数の型定義（TouchConstants.tsパターン踏襲）
  */
-export type CollisionTypeOption = typeof COLLISION_TYPE_OPTIONS[number];
-export type CollisionTargetOption = typeof COLLISION_TARGET_OPTIONS[number];
-export type CollisionCheckOption = typeof COLLISION_CHECK_OPTIONS[number];
+export type CollisionTypeOption = ReturnType<typeof getCollisionTypeOptions>[number];
+export type CollisionTargetOption = ReturnType<typeof getCollisionTargetOptions>[number];
+export type CollisionCheckOption = ReturnType<typeof getCollisionCheckOptions>[number];
 export type CollisionType = CollisionTypeOption['value'];
 export type CollisionTarget = CollisionTargetOption['value'];
 export type CollisionCheckMode = CollisionCheckOption['value'];

@@ -2,51 +2,53 @@
 // Phase E Step 2: アニメーション条件詳細定義
 // CollisionConstants.ts成功パターン踏襲 - GameScript.ts型定義完全準拠
 
+import i18n from '../../../i18n';
+
 /**
  * Phase E: アニメーション条件タイプ詳細定義（GameScript.ts準拠）
  */
-export const ANIMATION_CONDITIONS = [
-  { value: 'start', label: '開始時', icon: '▶️', description: 'アニメーションが開始した瞬間に発動' },
-  { value: 'end', label: '終了時', icon: '🏁', description: 'アニメーションが終了した瞬間に発動' },
-  { value: 'frame', label: '特定フレーム', icon: '📹', description: '指定したフレーム番号に達した時に発動' },
-  { value: 'loop', label: 'ループ時', icon: '🔄', description: 'アニメーションがループした瞬間に発動' }
+export const getAnimationConditions = () => [
+  { value: 'start', label: i18n.t('conditions.animation.start.label'), icon: '▶️', description: i18n.t('conditions.animation.start.description') },
+  { value: 'end', label: i18n.t('conditions.animation.end.label'), icon: '🏁', description: i18n.t('conditions.animation.end.description') },
+  { value: 'frame', label: i18n.t('conditions.animation.frame.label'), icon: '📹', description: i18n.t('conditions.animation.frame.description') },
+  { value: 'loop', label: i18n.t('conditions.animation.loop.label'), icon: '🔄', description: i18n.t('conditions.animation.loop.description') }
 ] as const;
 
 /**
  * Phase E: アニメーション対象選択オプション
  */
-export const ANIMATION_TARGET_OPTIONS = [
-  { value: 'background', label: '背景', icon: '🖼️', description: '背景のアニメーション状態' },
-  { value: 'this', label: 'このオブジェクト', icon: '🎯', description: 'ルール対象オブジェクトのアニメーション' },
-  { value: 'other', label: '他オブジェクト', icon: '👥', description: '指定した他オブジェクトのアニメーション' }
+export const getAnimationTargetOptions = () => [
+  { value: 'background', label: i18n.t('conditions.targets.background.label'), icon: '🖼️', description: i18n.t('conditions.targets.background.description') },
+  { value: 'this', label: i18n.t('conditions.targets.this.label'), icon: '🎯', description: i18n.t('conditions.targets.this.description') },
+  { value: 'other', label: i18n.t('conditions.targets.other.label'), icon: '👥', description: i18n.t('conditions.targets.other.description') }
 ] as const;
 
 /**
  * フレーム番号選択範囲（1-8フレーム対応）
  */
-export const FRAME_NUMBER_OPTIONS = [
-  { value: 1, label: 'フレーム1', icon: '1️⃣', description: '1番目のフレーム' },
-  { value: 2, label: 'フレーム2', icon: '2️⃣', description: '2番目のフレーム' },
-  { value: 3, label: 'フレーム3', icon: '3️⃣', description: '3番目のフレーム' },
-  { value: 4, label: 'フレーム4', icon: '4️⃣', description: '4番目のフレーム' },
-  { value: 5, label: 'フレーム5', icon: '5️⃣', description: '5番目のフレーム' },
-  { value: 6, label: 'フレーム6', icon: '6️⃣', description: '6番目のフレーム' },
-  { value: 7, label: 'フレーム7', icon: '7️⃣', description: '7番目のフレーム' },
-  { value: 8, label: 'フレーム8', icon: '8️⃣', description: '8番目のフレーム' }
+export const getFrameNumberOptions = () => [
+  { value: 1, label: i18n.t('common.frames.frame1.label'), icon: '1️⃣', description: i18n.t('common.frames.frame1.description') },
+  { value: 2, label: i18n.t('common.frames.frame2.label'), icon: '2️⃣', description: i18n.t('common.frames.frame2.description') },
+  { value: 3, label: i18n.t('common.frames.frame3.label'), icon: '3️⃣', description: i18n.t('common.frames.frame3.description') },
+  { value: 4, label: i18n.t('common.frames.frame4.label'), icon: '4️⃣', description: i18n.t('common.frames.frame4.description') },
+  { value: 5, label: i18n.t('common.frames.frame5.label'), icon: '5️⃣', description: i18n.t('common.frames.frame5.description') },
+  { value: 6, label: i18n.t('common.frames.frame6.label'), icon: '6️⃣', description: i18n.t('common.frames.frame6.description') },
+  { value: 7, label: i18n.t('common.frames.frame7.label'), icon: '7️⃣', description: i18n.t('common.frames.frame7.description') },
+  { value: 8, label: i18n.t('common.frames.frame8.label'), icon: '8️⃣', description: i18n.t('common.frames.frame8.description') }
 ] as const;
 
 /**
  * アニメーションインデックス選択（最大8アニメーション対応）
  */
-export const ANIMATION_INDEX_OPTIONS = [
-  { value: 0, label: 'アニメ1', icon: '🎭', description: '1番目のアニメーション' },
-  { value: 1, label: 'アニメ2', icon: '🎪', description: '2番目のアニメーション' },
-  { value: 2, label: 'アニメ3', icon: '🎨', description: '3番目のアニメーション' },
-  { value: 3, label: 'アニメ4', icon: '🎬', description: '4番目のアニメーション' },
-  { value: 4, label: 'アニメ5', icon: '🎵', description: '5番目のアニメーション' },
-  { value: 5, label: 'アニメ6', icon: '🎭', description: '6番目のアニメーション' },
-  { value: 6, label: 'アニメ7', icon: '🌟', description: '7番目のアニメーション' },
-  { value: 7, label: 'アニメ8', icon: '✨', description: '8番目のアニメーション' }
+export const getAnimationIndexOptions = () => [
+  { value: 0, label: i18n.t('common.animations.animation1.label'), icon: '🎭', description: i18n.t('common.animations.animation1.description') },
+  { value: 1, label: i18n.t('common.animations.animation2.label'), icon: '🎪', description: i18n.t('common.animations.animation2.description') },
+  { value: 2, label: i18n.t('common.animations.animation3.label'), icon: '🎨', description: i18n.t('common.animations.animation3.description') },
+  { value: 3, label: i18n.t('common.animations.animation4.label'), icon: '🎬', description: i18n.t('common.animations.animation4.description') },
+  { value: 4, label: i18n.t('common.animations.animation5.label'), icon: '🎵', description: i18n.t('common.animations.animation5.description') },
+  { value: 5, label: i18n.t('common.animations.animation6.label'), icon: '🎭', description: i18n.t('common.animations.animation6.description') },
+  { value: 6, label: i18n.t('common.animations.animation7.label'), icon: '🌟', description: i18n.t('common.animations.animation7.description') },
+  { value: 7, label: i18n.t('common.animations.animation8.label'), icon: '✨', description: i18n.t('common.animations.animation8.description') }
 ] as const;
 
 /**
@@ -62,10 +64,10 @@ export const ANIMATION_DEFAULTS = {
 /**
  * アニメーション定数の型定義（CollisionConstants.tsパターン踏襲）
  */
-export type AnimationConditionOption = typeof ANIMATION_CONDITIONS[number];
-export type AnimationTargetOption = typeof ANIMATION_TARGET_OPTIONS[number];
-export type FrameNumberOption = typeof FRAME_NUMBER_OPTIONS[number];
-export type AnimationIndexOption = typeof ANIMATION_INDEX_OPTIONS[number];
+export type AnimationConditionOption = ReturnType<typeof getAnimationConditions>[number];
+export type AnimationTargetOption = ReturnType<typeof getAnimationTargetOptions>[number];
+export type FrameNumberOption = ReturnType<typeof getFrameNumberOptions>[number];
+export type AnimationIndexOption = ReturnType<typeof getAnimationIndexOptions>[number];
 export type AnimationConditionType = AnimationConditionOption['value'];
 export type AnimationTarget = AnimationTargetOption['value'];
 export type FrameNumber = FrameNumberOption['value'];

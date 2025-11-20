@@ -2,34 +2,36 @@
 // Phase D Step 2-B-1: フラグ操作アクション定数定義
 // TimeConstants.ts成功パターン踏襲 - GameScript.ts型定義完全準拠
 
+import i18n from '../../../i18n';
+
 /**
  * Phase D: フラグ操作アクションタイプ定義（GameScript.ts準拠）
  */
-export const FLAG_ACTION_OPTIONS = [
-  { value: 'setFlag', label: 'フラグ設定', icon: '🚩', description: 'フラグを指定の値に設定' },
-  { value: 'toggleFlag', label: 'フラグ切替', icon: '🔄', description: 'フラグのON/OFFを切り替え' }
+export const getFlagActionOptions = () => [
+  { value: 'setFlag', label: i18n.t('actions.flags.setFlag.label'), icon: '🚩', description: i18n.t('actions.flags.setFlag.description') },
+  { value: 'toggleFlag', label: i18n.t('actions.flags.toggleFlag.label'), icon: '🔄', description: i18n.t('actions.flags.toggleFlag.description') }
 ] as const;
 
 /**
  * Phase D: フラグ値設定オプション（setFlag用）
  */
-export const FLAG_VALUE_OPTIONS = [
-  { value: true, label: 'ON', icon: '🟢', description: 'フラグをON状態に設定' },
-  { value: false, label: 'OFF', icon: '🔴', description: 'フラグをOFF状態に設定' }
+export const getFlagValueOptions = () => [
+  { value: true, label: i18n.t('actions.flags.values.on.label'), icon: '🟢', description: i18n.t('actions.flags.values.on.description') },
+  { value: false, label: i18n.t('actions.flags.values.off.label'), icon: '🔴', description: i18n.t('actions.flags.values.off.description') }
 ] as const;
 
 /**
  * Phase D: フラグ操作の効果表示用
  */
-export const FLAG_OPERATION_EFFECTS = {
+export const getFlagOperationEffects = () => ({
   setFlag: {
-    true: { icon: '🟢', description: '→ ON状態に設定' },
-    false: { icon: '🔴', description: '→ OFF状態に設定' }
+    true: { icon: '🟢', description: i18n.t('actions.flags.effects.setOn') },
+    false: { icon: '🔴', description: i18n.t('actions.flags.effects.setOff') }
   },
   toggleFlag: {
-    description: '→ 現在の状態を反転（ON⇔OFF）'
+    description: i18n.t('actions.flags.effects.toggle')
   }
-} as const;
+} as const);
 
 /**
  * フラグ操作のデフォルト値
@@ -42,9 +44,9 @@ export const FLAG_ACTION_DEFAULTS = {
 /**
  * フラグ操作定数の型定義
  */
-export type FlagActionOption = typeof FLAG_ACTION_OPTIONS[number];
-export type FlagValueOption = typeof FLAG_VALUE_OPTIONS[number];
+export type FlagActionOption = ReturnType<typeof getFlagActionOptions>[number];
+export type FlagValueOption = ReturnType<typeof getFlagValueOptions>[number];
 export type FlagActionType = FlagActionOption['value'];
 export type FlagValue = FlagValueOption['value'];
 export type FlagActionDefaults = typeof FLAG_ACTION_DEFAULTS;
-export type FlagOperationEffects = typeof FLAG_OPERATION_EFFECTS;
+export type FlagOperationEffects = ReturnType<typeof getFlagOperationEffects>;

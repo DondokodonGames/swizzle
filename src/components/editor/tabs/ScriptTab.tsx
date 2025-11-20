@@ -2,6 +2,7 @@
 // 重複削除・情報整理版 - 配置済みオブジェクトをゲーム時間設定下に移動
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
 import { GameRule } from '../../../types/editor/GameScript';
 import { GamePreview } from '../script/GamePreview';
@@ -18,16 +19,18 @@ interface ScriptTabProps {
   onProjectUpdate: (project: GameProject) => void;
 }
 
-// ゲーム時間のプリセット
-const DURATION_PRESETS = [
-  { value: 5, label: '5秒', description: 'サクッと', emoji: '⚡' },
-  { value: 10, label: '10秒', description: 'ちょうどいい', emoji: '⏰' },
-  { value: 15, label: '15秒', description: 'じっくり', emoji: '🎯' },
-  { value: 30, label: '30秒', description: 'たっぷり', emoji: '🏃' },
-  { value: null, label: '無制限', description: '自由に', emoji: '∞' },
-] as const;
-
 export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }) => {
+  const { t } = useTranslation();
+
+  // ゲーム時間のプリセット
+  const DURATION_PRESETS = [
+    { value: 5, label: t('editor.script.gameTime.presets.5.label'), description: t('editor.script.gameTime.presets.5.description'), emoji: t('editor.script.gameTime.presets.5.emoji') },
+    { value: 10, label: t('editor.script.gameTime.presets.10.label'), description: t('editor.script.gameTime.presets.10.description'), emoji: t('editor.script.gameTime.presets.10.emoji') },
+    { value: 15, label: t('editor.script.gameTime.presets.15.label'), description: t('editor.script.gameTime.presets.15.description'), emoji: t('editor.script.gameTime.presets.15.emoji') },
+    { value: 30, label: t('editor.script.gameTime.presets.30.label'), description: t('editor.script.gameTime.presets.30.description'), emoji: t('editor.script.gameTime.presets.30.emoji') },
+    { value: null, label: t('editor.script.gameTime.presets.unlimited.label'), description: t('editor.script.gameTime.presets.unlimited.description'), emoji: t('editor.script.gameTime.presets.unlimited.emoji') },
+  ] as const;
+
   // 状態管理
   const [mode, setMode] = useState<'layout' | 'rules'>('layout');
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
@@ -63,7 +66,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     console.log('[ScriptTab] プロジェクト更新:', Object.keys(updates).join(', '));
     onProjectUpdate(updatedProject);
     setForceRender(prev => prev + 1);
-    showNotification('success', 'プロジェクトを更新しました');
+    showNotification('success', t('editor.app.projectSaved'));
   };
 
   // 🔧 新規追加: ゲーム時間設定の更新
@@ -82,7 +85,10 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     };
     
     updateProject({ settings: updatedSettings });
-    showNotification('success', `ゲーム時間を${seconds === null ? '無制限' : seconds + '秒'}に設定しました`);
+    const durationText = seconds === null
+      ? t('editor.script.gameTime.presets.unlimited.label')
+      : `${seconds}${t('editor.script.gameTime.presets.5.label').replace('5', '')}`;
+    showNotification('success', t('editor.script.gameTime.current', { duration: durationText }));
   };
 
   // 🔧 新規: オブジェクトを初期配置（ドラッグ&ドロップの代替）
@@ -95,7 +101,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     const existingIndex = updatedScript.layout.objects.findIndex((obj: any) => obj.objectId === objectId);
     
     if (existingIndex >= 0) {
-      showNotification('info', 'このオブジェクトは既に配置されています');
+      showNotification('info', t('editor.script.objectPlacement.alreadyPlaced'));
       return;
     }
     
@@ -122,7 +128,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
       
       updateProject({ script: updatedScript });
       setSelectedObjectId(objectId); // 自動選択
-      showNotification('success', `「${asset.name}」をレイアウトに追加しました`);
+      showNotification('success', t('success.fileUploaded'));
     }
   };
 
@@ -138,7 +144,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
       if (selectedObjectId === objectId) {
         setSelectedObjectId(null);
       }
-      showNotification('success', 'オブジェクトをレイアウトから削除しました');
+      showNotification('success', t('common.delete'));
     }
   };
 
@@ -212,13 +218,13 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     
     // 🔧 制限チェック（32個まで）
     if (existingRules.length >= 32) {
-      showNotification('error', 'ルール数が上限（32個）に達しています');
+      showNotification('error', t('editor.script.ruleSelection.limitReached'));
       return;
     }
     
     const newRule: GameRule = {
       id: `rule_${Date.now()}`,
-      name: `${asset?.name || 'オブジェクト'}のルール${existingRules.length + 1}`,
+      name: t('editor.script.ruleSelection.ruleNumber', { number: existingRules.length + 1, name: asset?.name || t('editor.script.ruleList.untitled') }),
       enabled: true,
       priority: 50,
       targetObjectId: objectId,
@@ -263,12 +269,12 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
       // 既存ルール更新
       updatedScript.rules[existingIndex] = rule;
       console.log('[ScriptTab] 既存ルール更新:', { index: existingIndex, ruleId: rule.id });
-      showNotification('success', 'ルールを更新しました');
+      showNotification('success', t('editor.script.ruleModal.saved'));
     } else {
       // 新規ルール追加
       updatedScript.rules.push(rule);
       console.log('[ScriptTab] 新規ルール追加:', { ruleId: rule.id, totalRules: updatedScript.rules.length });
-      showNotification('success', 'ルールを追加しました');
+      showNotification('success', t('editor.script.ruleModal.saved'));
     }
 
     console.log('[ScriptTab] 保存後のルール一覧:', updatedScript.rules.map((r: GameRule) => ({ id: r.id, name: r.name, enabled: r.enabled })));
@@ -303,15 +309,15 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
 
   // 🔧 新規: オブジェクト名取得ヘルパー
 const getObjectName = (objectId: string) => {
-  if (objectId === 'stage') return '🌟 ゲーム全体';
-  
+  if (objectId === 'stage') return `🌟 ${t('editor.script.ruleList.gameOverall')}`;
+
   const obj = project.assets.objects.find(obj => obj.id === objectId);
-  
+
   if (!obj) {
     console.warn(`[ScriptTab] オブジェクトが見つかりません: ${objectId}`);
     return objectId;
   }
-  
+
   // @ts-ignore - nameプロパティの型定義が不完全な場合のため
   return obj.name || obj.id;
 };
@@ -415,9 +421,9 @@ const getObjectName = (objectId: string) => {
               >
                 <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xl, color: DESIGN_TOKENS.colors.purple[600] }}>📝</span>
               </div>
-              <span>スクリプト設定</span>
+              <span>{t('editor.script.title')}</span>
             </h2>
-            <p 
+            <p
               style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 color: DESIGN_TOKENS.colors.purple[100],
@@ -425,7 +431,7 @@ const getObjectName = (objectId: string) => {
                 margin: `${DESIGN_TOKENS.spacing[2]} 0 0 53px`
               }}
             >
-              オブジェクト配置・複数ルール対応・高度なゲームロジック設定
+              {t('editor.script.subtitle')}
             </p>
           </div>
           
@@ -440,8 +446,8 @@ const getObjectName = (objectId: string) => {
             }}
           >
             {[
-              { id: 'layout' as 'layout' | 'rules', label: 'レイアウト', icon: '🎨' },
-              { id: 'rules' as 'layout' | 'rules', label: 'ルール', icon: '⚙️' }
+              { id: 'layout' as 'layout' | 'rules', label: t('editor.script.layout'), icon: '🎨' },
+              { id: 'rules' as 'layout' | 'rules', label: t('editor.script.rules'), icon: '⚙️' }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -554,7 +560,7 @@ const getObjectName = (objectId: string) => {
                         <span style={{ color: DESIGN_TOKENS.colors.neutral[0], fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>🎯</span>
                       </div>
                       <div>
-                        <h5 
+                        <h5
                           style={{
                             fontSize: DESIGN_TOKENS.typography.fontSize.lg,
                             fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
@@ -562,16 +568,19 @@ const getObjectName = (objectId: string) => {
                             margin: 0
                           }}
                         >
-                          オブジェクト配置
+                          {t('editor.script.objectPlacement.title')}
                         </h5>
-                        <p 
+                        <p
                           style={{
                             fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                             color: DESIGN_TOKENS.colors.primary[600],
                             margin: 0
                           }}
                         >
-                          レイアウト:{project.script?.layout?.objects?.length || 0}/{project.assets?.objects?.length || 0}個配置済み
+                          {t('editor.script.objectPlacement.placed', {
+                            placed: project.script?.layout?.objects?.length || 0,
+                            total: project.assets?.objects?.length || 0
+                          })}
                         </p>
                       </div>
                     </div>
@@ -646,13 +655,13 @@ const getObjectName = (objectId: string) => {
                                 <div
                                   style={{
                                     fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                                    color: isInLayout 
+                                    color: isInLayout
                                       ? DESIGN_TOKENS.colors.success[600]
                                       : DESIGN_TOKENS.colors.neutral[500]
                                   }}
                                 >
-                                  {isInLayout ? '✅ 配置済み' : '⚪ 未配置'} 
-                                  {ruleCount > 0 && ` • ${ruleCount}ルール`}
+                                  {isInLayout ? `✅ ${t('editor.script.objectPlacement.alreadyPlaced')}` : `⚪ ${t('editor.script.objectPlacement.notPlaced')}`}
+                                  {ruleCount > 0 && ` • ${t('editor.script.objectPlacement.ruleCount', { count: ruleCount })}`}
                                 </div>
                               </div>
                             </div>
@@ -672,7 +681,7 @@ const getObjectName = (objectId: string) => {
                                     fontSize: DESIGN_TOKENS.typography.fontSize.xs
                                   }}
                                 >
-                                  📍 配置
+                                  📍 {t('editor.script.objectPlacement.addToLayout')}
                                 </ModernButton>
                               ) : (
                                 <>
@@ -689,7 +698,7 @@ const getObjectName = (objectId: string) => {
                                       fontSize: DESIGN_TOKENS.typography.fontSize.xs
                                     }}
                                   >
-                                    ⚙️ ルール
+                                    ⚙️ {t('editor.script.objectPlacement.editRule')}
                                   </ModernButton>
                                   <ModernButton
                                     variant="ghost"
@@ -722,11 +731,11 @@ const getObjectName = (objectId: string) => {
                       fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                       color: DESIGN_TOKENS.colors.primary[800]
                     }}>
-                      💡 操作方法：
-                      <br />• 📍配置 → レイアウト画面に追加
-                      <br />• ⚙️ルール → ゲームロジック設定
-                      <br />• 🗑️削除 → レイアウトから除去
-                      <br />• ドラッグ&ドロップでも配置可能
+                      💡 {t('editor.script.objectPlacement.hints.title')}
+                      <br />• {t('editor.script.objectPlacement.hints.place')}
+                      <br />• {t('editor.script.objectPlacement.hints.rules')}
+                      <br />• {t('editor.script.objectPlacement.hints.remove')}
+                      <br />• {t('editor.script.objectPlacement.hints.dragAndDrop')}
                     </div>
                   </ModernCard>
                 </div>
@@ -766,7 +775,7 @@ const getObjectName = (objectId: string) => {
                         <span style={{ color: DESIGN_TOKENS.colors.neutral[0], fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>🚩</span>
                       </div>
                       <div>
-                        <h5 
+                        <h5
                           style={{
                             fontSize: DESIGN_TOKENS.typography.fontSize.lg,
                             fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
@@ -774,16 +783,16 @@ const getObjectName = (objectId: string) => {
                             margin: 0
                           }}
                         >
-                          プロジェクトフラグ
+                          {t('editor.script.projectFlags.title')}
                         </h5>
-                        <p 
+                        <p
                           style={{
                             fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                             color: DESIGN_TOKENS.colors.purple[600],
                             margin: 0
                           }}
                         >
-                          ゲーム状態管理
+                          {t('editor.script.projectFlags.subtitle')}
                         </p>
                       </div>
                     </div>
@@ -828,7 +837,7 @@ const getObjectName = (objectId: string) => {
                                 : DESIGN_TOKENS.colors.neutral[200]}`
                             }}
                           >
-                            {flag.initialValue ? 'ON' : 'OFF'}
+                            {flag.initialValue ? t('editor.script.projectFlags.on') : t('editor.script.projectFlags.off')}
                           </div>
                         </div>
                       ))}
@@ -869,7 +878,7 @@ const getObjectName = (objectId: string) => {
                     <span style={{ color: DESIGN_TOKENS.colors.neutral[0], fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>⚙️</span>
                   </div>
                   <div>
-                    <h3 
+                    <h3
                       style={{
                         fontSize: DESIGN_TOKENS.typography.fontSize.xl,
                         fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
@@ -877,16 +886,16 @@ const getObjectName = (objectId: string) => {
                         margin: 0
                       }}
                     >
-                      ゲームルール設定
+                      {t('editor.script.title')}
                     </h3>
-                    <p 
+                    <p
                       style={{
                         fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                         color: DESIGN_TOKENS.colors.purple[600],
                         margin: 0
                       }}
                     >
-                      オブジェクトを選択してルールを設定
+                      {t('editor.script.subtitle')}
                     </p>
                   </div>
                 </div>
@@ -902,7 +911,7 @@ const getObjectName = (objectId: string) => {
                     alignItems: 'center',
                     gap: DESIGN_TOKENS.spacing[2]
                   }}>
-                    ⏰ ゲーム時間設定
+                    ⏰ {t('editor.script.gameTime.title')}
                   </h4>
                   
                   <div style={{ 
@@ -979,11 +988,11 @@ const getObjectName = (objectId: string) => {
                       color: DESIGN_TOKENS.colors.purple[800],
                       fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
                     }}>
-                      💡 現在の設定: {
-                        project.settings.duration?.type === 'unlimited' 
-                          ? '無制限でプレイ可能'
-                          : `${project.settings.duration?.seconds || 10}秒でゲーム終了`
-                      }
+                      💡 {t('editor.script.gameTime.current', {
+                        duration: project.settings.duration?.type === 'unlimited'
+                          ? t('editor.script.gameTime.presets.unlimited.label')
+                          : `${project.settings.duration?.seconds || 10}${t('editor.script.gameTime.presets.5.label').replace('5', '')}`
+                      })}
                     </div>
                   </div>
                 </div>
@@ -1000,7 +1009,7 @@ const getObjectName = (objectId: string) => {
                       alignItems: 'center',
                       gap: DESIGN_TOKENS.spacing[2]
                     }}>
-                      🎯 配置済みオブジェクト
+                      🎯 {t('editor.script.placedObjects.title')}
                     </h4>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: DESIGN_TOKENS.spacing[2] }}>
@@ -1061,7 +1070,7 @@ const getObjectName = (objectId: string) => {
                       fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                       color: DESIGN_TOKENS.colors.purple[600]
                     }}>
-                      レイアウトタブで配置されたオブジェクトにルールを設定できます
+                      {t('editor.script.placedObjects.hint')}
                     </div>
                   </div>
                 )}
@@ -1118,7 +1127,7 @@ const getObjectName = (objectId: string) => {
                 backgroundColor: DESIGN_TOKENS.colors.purple[50]
               }}
             >
-              <h3 
+              <h3
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.xl,
                   fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
@@ -1131,16 +1140,16 @@ const getObjectName = (objectId: string) => {
                 }}
               >
                 <span>📝</span>
-                ルール選択 - {getObjectName(selectedObjectId)}
+                {t('editor.script.ruleSelection.title', { object: getObjectName(selectedObjectId) })}
               </h3>
-              <p 
+              <p
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                   color: DESIGN_TOKENS.colors.purple[600],
                   margin: 0
                 }}
               >
-                編集するルールを選択してください（{objectRulesForSelection.length}/32）
+                {t('editor.script.ruleSelection.subtitle', { current: objectRulesForSelection.length, max: 32 })}
               </p>
             </div>
 
@@ -1183,33 +1192,33 @@ const getObjectName = (objectId: string) => {
                         color: DESIGN_TOKENS.colors.neutral[800],
                         marginBottom: DESIGN_TOKENS.spacing[2]
                       }}>
-                        ルール{index + 1}: {rule.name}
+                        {t('editor.script.ruleSelection.ruleNumber', { number: index + 1, name: rule.name })}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
                         <div style={{
                           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                           color: DESIGN_TOKENS.colors.neutral[600]
                         }}>
-                          🔥 {rule.triggers.conditions.length}条件 ⚡ {rule.actions.length}アクション
+                          🔥 {t('editor.script.ruleList.conditionsCount', { count: rule.triggers.conditions.length })} ⚡ {t('editor.script.ruleList.actionsCount', { count: rule.actions.length })}
                         </div>
-                        <div 
+                        <div
                           style={{
                             padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[3]}`,
                             borderRadius: DESIGN_TOKENS.borderRadius.lg,
                             fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                             fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                            backgroundColor: rule.enabled 
-                              ? DESIGN_TOKENS.colors.success[100] 
+                            backgroundColor: rule.enabled
+                              ? DESIGN_TOKENS.colors.success[100]
                               : DESIGN_TOKENS.colors.neutral[200],
-                            color: rule.enabled 
-                              ? DESIGN_TOKENS.colors.success[800] 
+                            color: rule.enabled
+                              ? DESIGN_TOKENS.colors.success[800]
                               : DESIGN_TOKENS.colors.neutral[600],
-                            border: `1px solid ${rule.enabled 
-                              ? DESIGN_TOKENS.colors.success[600] 
+                            border: `1px solid ${rule.enabled
+                              ? DESIGN_TOKENS.colors.success[600]
                               : DESIGN_TOKENS.colors.neutral[400]}`
                           }}
                         >
-                          {rule.enabled ? '✅ 有効' : '⏸️ 無効'}
+                          {rule.enabled ? `✅ ${t('editor.script.ruleList.enabled')}` : `⏸️ ${t('editor.script.ruleList.disabled')}`}
                         </div>
                       </div>
                     </div>
@@ -1246,15 +1255,15 @@ const getObjectName = (objectId: string) => {
                 }}
               >
                 <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>➕</span>
-                新規ルール作成
+                {t('editor.script.ruleSelection.createNew')}
               </ModernButton>
-              
+
               <ModernButton
                 variant="secondary"
                 size="md"
                 onClick={() => setShowRuleSelectionModal(false)}
               >
-                キャンセル
+                {t('common.cancel')}
               </ModernButton>
             </div>
           </ModernCard>

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
 import { GameSettings } from '../../../types/editor/GameProject';
 import ModernCard from '../../ui/ModernCard';
@@ -18,19 +19,20 @@ interface SettingsTabProps {
 }
 
 // 🆕 ゲームスピード設定（テストプレイ下に移動）
-const GAME_SPEED_LEVELS = [
-  { value: 0.7, label: 'スロー', description: 'ゆっくり楽しむ', emoji: '🐌' },
-  { value: 1.0, label: '標準', description: 'ちょうどいい速さ', emoji: '🚶' },
-  { value: 1.3, label: '高速', description: '挑戦的な速さ', emoji: '🏃' },
-  { value: 1.6, label: '超高速', description: '上級者向け', emoji: '⚡' },
+const getGameSpeedLevels = (t: any) => [
+  { value: 0.7, labelKey: 'editor.settings.testPlay.gameSpeed.slow.label', descriptionKey: 'editor.settings.testPlay.gameSpeed.slow.description', emoji: '🐌' },
+  { value: 1.0, labelKey: 'editor.settings.testPlay.gameSpeed.normal.label', descriptionKey: 'editor.settings.testPlay.gameSpeed.normal.description', emoji: '🚶' },
+  { value: 1.3, labelKey: 'editor.settings.testPlay.gameSpeed.fast.label', descriptionKey: 'editor.settings.testPlay.gameSpeed.fast.description', emoji: '🏃' },
+  { value: 1.6, labelKey: 'editor.settings.testPlay.gameSpeed.superFast.label', descriptionKey: 'editor.settings.testPlay.gameSpeed.superFast.description', emoji: '⚡' },
 ] as const;
 
-export const SettingsTab: React.FC<SettingsTabProps> = ({ 
-  project, 
-  onProjectUpdate, 
+export const SettingsTab: React.FC<SettingsTabProps> = ({
+  project,
+  onProjectUpdate,
   onTestPlay,
   onSave
 }) => {
+  const { t } = useTranslation();
   const [isTestPlaying, setIsTestPlaying] = useState(false);
   const [testPlayResult, setTestPlayResult] = useState<'success' | 'failure' | null>(null);
   const [testPlayDetails, setTestPlayDetails] = useState<GameExecutionResult | null>(null);
@@ -136,17 +138,17 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     try {
       // プロジェクトバリデーション
       const validationErrors: string[] = [];
-      
+
       if (!project.settings?.name?.trim()) {
-        validationErrors.push('ゲーム名を入力してください');
+        validationErrors.push(t('editor.settings.gameNameRequired'));
       }
 
       if (!(project.assets?.objects?.length || 0) && !project.assets?.background) {
-        validationErrors.push('最低1つのオブジェクトまたは背景を追加してください');
+        validationErrors.push(t('errors.noAssets'));
       }
 
       if (!(project.script?.rules?.length || 0)) {
-        validationErrors.push('最低1つのルールを設定してください');
+        validationErrors.push(t('errors.noRules'));
       }
       
       if (validationErrors.length > 0) {
@@ -155,7 +157,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
       const bridge = bridgeRef.current;
       if (!bridge) {
-        throw new Error('ゲームエンジンが初期化されていません');
+        throw new Error(t('errors.testPlayFailed'));
       }
 
       console.log('🔄 EditorGameBridge でテストプレイ実行...');
@@ -169,7 +171,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       } else {
         setTestPlayResult('failure');
         if (result.errors.length > 0) {
-          alert(`テストプレイで問題が発生しました:\n${result.errors.join('\n')}`);
+          alert(`${t('editor.settings.testPlay.failure')}:\n${result.errors.join('\n')}`);
         }
       }
       
@@ -195,7 +197,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         warnings: [],
         performance: { averageFPS: 0, memoryUsage: 0, renderTime: 0, objectCount: 0, ruleExecutions: 0 }
       });
-      alert(`テストプレイエラー:\n${error instanceof Error ? error.message : 'テストプレイに失敗しました'}`);
+      alert(`${t('errors.testPlayFailed')}:\n${error instanceof Error ? error.message : t('errors.testPlayFailed')}`);
     } finally {
       setIsTestPlaying(false);
     }
@@ -204,9 +206,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   // フルゲーム実行機能（DOM要素待機対応版）
   const handleFullGamePlay = useCallback(async () => {
     console.log('🎮 フルゲーム実行開始:', project.name);
-    
+
     if (!bridgeRef.current) {
-      alert('ゲーム実行環境が準備されていません');
+      alert(t('errors.testPlayFailed'));
       return;
     }
     
@@ -226,7 +228,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       });
       
       if (!fullGameRef.current) {
-        throw new Error('DOM要素の作成に失敗しました');
+        throw new Error(t('errors.generic'));
       }
       
       console.log('✅ DOM要素準備完了、ゲーム実行開始');
@@ -237,11 +239,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         (result) => {
           console.log('🏁 フルゲーム終了:', result);
           setShowFullGame(false);
-          
+
           if (result.success) {
-            alert(`ゲーム完了！\nスコア: ${result.score || 0}\n時間: ${result.timeElapsed.toFixed(1)}秒`);
+            alert(`${t('game.success')}\n${t('editor.settings.testPlay.stats.score')}: ${result.score || 0}\n${t('editor.settings.testPlay.stats.playTime')}: ${result.timeElapsed.toFixed(1)}s`);
           } else {
-            alert(`ゲームエラー:\n${result.errors.join('\n')}`);
+            alert(`${t('errors.generic')}:\n${result.errors.join('\n')}`);
           }
         }
       );
@@ -249,9 +251,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     } catch (error) {
       console.error('❌ フルゲーム実行エラー:', error);
       setShowFullGame(false);
-      alert(`フルゲーム実行エラー:\n${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`${t('errors.testPlayFailed')}:\n${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [project]);
+  }, [project, t]);
 
   // 保存機能
   const handleSave = useCallback(async () => {
@@ -288,11 +290,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       }
     } catch (error) {
       console.error('保存エラー:', error);
-      alert(`保存エラー:\n${error instanceof Error ? error.message : '保存に失敗しました'}`);
+      alert(`${t('errors.projectSaveFailed')}:\n${error instanceof Error ? error.message : t('errors.projectSaveFailed')}`);
     } finally {
       setIsSaving(false);
     }
-  }, [project, onSave]);
+  }, [project, onSave, t]);
 
   // サムネイル自動生成
   const handleGenerateThumbnail = useCallback(async () => {
@@ -307,7 +309,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       const ctx = canvas.getContext('2d');
       
       if (!ctx) {
-        throw new Error('Canvas context を取得できません');
+        throw new Error(t('errors.generic'));
       }
       
       // 背景描画（白基調グラデーション）
@@ -367,11 +369,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       console.log('サムネイル生成完了');
     } catch (error) {
       console.error('サムネイル生成エラー:', error);
-      alert(`サムネイル生成エラー:\n${error instanceof Error ? error.message : 'サムネイル生成に失敗しました'}`);
+      alert(`${t('errors.generic')}:\n${error instanceof Error ? error.message : t('errors.generic')}`);
     } finally {
       setGenerateThumbnail(false);
     }
-  }, [project, updateSettings]);
+  }, [project, updateSettings, t]);
 
   // 🔧 Phase H-2修正: プロジェクト公開（Supabase保存追加）
   const handlePublish = useCallback(async () => {
@@ -383,25 +385,25 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       
       // バリデーション
       const errors: string[] = [];
-      
+
       if (!project.settings?.name?.trim()) {
-        errors.push('ゲーム名を入力してください');
+        errors.push(t('editor.settings.gameNameRequired'));
       }
 
       if (!(project.assets?.objects?.length || 0) && !project.assets?.background) {
-        errors.push('最低1つのオブジェクトまたは背景を追加してください');
+        errors.push(t('errors.noAssets'));
       }
-      
+
       if (errors.length > 0) {
         throw new Error(errors.join('\n'));
       }
-      
+
       // 🔧 Phase H-2: ユーザーIDを取得
       console.log('🔐 ユーザー認証確認...');
       const user = await auth.getCurrentUser();
-      
+
       if (!user) {
-        throw new Error('ログインが必要です。先にログインしてください。');
+        throw new Error(t('editor.app.loginRequired'));
       }
       
       console.log('✅ ユーザー確認完了:', user.id);
@@ -470,17 +472,17 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       });
       
       console.log('🎉 公開完了:', { projectId, name: project.settings.name });
-      alert(`✅ ゲーム "${project.settings.name}" を公開しました！\n\nSupabaseに保存されたので、ソーシャルフィードに表示されます。`);
-      
+      alert(`✅ ${t('editor.app.projectPublished')}`);
+
     } catch (error) {
       console.error('❌ 公開エラー:', error);
-      const errorMessage = error instanceof Error ? error.message : '公開に失敗しました';
+      const errorMessage = error instanceof Error ? error.message : t('errors.publishFailed');
       setPublishError(errorMessage);
-      alert(`❌ 公開エラー:\n${errorMessage}`);
+      alert(`❌ ${t('errors.publishFailed')}:\n${errorMessage}`);
     } finally {
       setIsPublishing(false);
     }
-  }, [project, updateProject]);
+  }, [project, updateProject, t]);
 
   // エクスポート機能
   const handleExport = useCallback(async () => {
@@ -510,15 +512,15 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       console.log('エクスポート完了');
-      alert(`ゲーム "${project.settings.name}" をエクスポートしました！`);
-      
+      alert(t('editor.app.projectExported'));
+
     } catch (error) {
       console.error('エクスポートエラー:', error);
-      alert(`エクスポートエラー:\n${error instanceof Error ? error.message : 'エクスポートに失敗しました'}`);
+      alert(`${t('errors.exportFailed')}:\n${error instanceof Error ? error.message : t('errors.exportFailed')}`);
     }
-  }, [project]);
+  }, [project, t]);
 
   return (
     <div style={{ 
@@ -530,35 +532,35 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         
         {/* 1️⃣ ゲーム基本情報 */}
         <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
-          <h2 style={{ 
-            fontSize: '24px', 
-            fontWeight: '600', 
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: '600',
             color: '#1e293b',
             marginBottom: '24px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
           }}>
-            🎮 ゲーム情報
+            🎮 {t('editor.settings.gameInfo.title')}
           </h2>
           
           <div style={{ marginBottom: '24px' }}>
             {/* ゲーム名 */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ 
+              <label style={{
                 display: 'block',
                 fontSize: '14px',
                 fontWeight: '500',
                 color: '#374151',
                 marginBottom: '8px'
               }}>
-                ゲーム名 <span style={{ color: '#ef4444' }}>*</span>
+                {t('editor.settings.gameName')} <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <input
                 type="text"
                 value={project.settings.name || ''}
                 onChange={(e) => handleGameNameChange(e.target.value)}
-                placeholder="素晴らしいゲーム名を入力してください"
+                placeholder={t('editor.settings.gameNamePlaceholder')}
                 style={{
                   width: '100%',
                   padding: '12px 16px',
@@ -599,12 +601,12 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 color: '#374151',
                 marginBottom: '8px'
               }}>
-                ゲーム説明
+                {t('editor.settings.description')}
               </label>
               <textarea
                 value={project.settings.description || ''}
                 onChange={(e) => handleDescriptionChange(e.target.value)}
-                placeholder="このゲームの楽しさを説明してください"
+                placeholder={t('editor.settings.descriptionPlaceholder')}
                 rows={3}
                 style={{
                   width: '100%',
@@ -639,7 +641,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 color: '#374151',
                 marginBottom: '8px'
               }}>
-                ジャンル
+                {t('editor.settings.gameInfo.genre')}
               </label>
               <select
                 value={project.settings.publishing?.category || ''}
@@ -657,19 +659,19 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   cursor: 'pointer'
                 }}
               >
-                <option value="">ジャンルを選択</option>
-                <option value="action">🎯 アクション</option>
-                <option value="puzzle">🧩 パズル</option>
-                <option value="adventure">🗺️ アドベンチャー</option>
-                <option value="rpg">⚔️ RPG</option>
-                <option value="shooting">🔫 シューティング</option>
-                <option value="racing">🏎️ レーシング</option>
-                <option value="sports">⚽ スポーツ</option>
-                <option value="simulation">🎮 シミュレーション</option>
-                <option value="casual">🌟 カジュアル</option>
-                <option value="educational">📚 教育</option>
-                <option value="music">🎵 音楽</option>
-                <option value="other">✨ その他</option>
+                <option value="">{t('editor.settings.gameInfo.genrePlaceholder')}</option>
+                <option value="action">🎯 {t('editor.settings.gameInfo.genres.action')}</option>
+                <option value="puzzle">🧩 {t('editor.settings.gameInfo.genres.puzzle')}</option>
+                <option value="adventure">🗺️ {t('editor.settings.gameInfo.genres.adventure')}</option>
+                <option value="rpg">⚔️ {t('editor.settings.gameInfo.genres.rpg')}</option>
+                <option value="shooting">🔫 {t('editor.settings.gameInfo.genres.shooting')}</option>
+                <option value="racing">🏎️ {t('editor.settings.gameInfo.genres.racing')}</option>
+                <option value="sports">⚽ {t('editor.settings.gameInfo.genres.sports')}</option>
+                <option value="simulation">🎮 {t('editor.settings.gameInfo.genres.simulation')}</option>
+                <option value="casual">🌟 {t('editor.settings.gameInfo.genres.casual')}</option>
+                <option value="educational">📚 {t('editor.settings.gameInfo.genres.educational')}</option>
+                <option value="music">🎵 {t('editor.settings.gameInfo.genres.music')}</option>
+                <option value="other">✨ {t('editor.settings.gameInfo.genres.other')}</option>
               </select>
             </div>
 
@@ -682,13 +684,13 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 color: '#374151',
                 marginBottom: '8px'
               }}>
-                タグ
+                {t('editor.settings.gameInfo.tags')}
               </label>
               <input
                 type="text"
                 value={project.settings.publishing?.tags?.join(', ') || ''}
                 onChange={(e) => handleTagsChange(e.target.value)}
-                placeholder="例: 横スクロール, 2D, シンプル (カンマ区切り)"
+                placeholder={t('editor.settings.gameInfo.tagsPlaceholder')}
                 style={{
                   width: '100%',
                   padding: '12px 16px',
@@ -714,7 +716,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 color: '#6b7280',
                 marginTop: '4px'
               }}>
-                💡 タグはカンマ（,）で区切って入力してください
+                💡 {t('editor.settings.gameInfo.tagsHint')}
               </div>
             </div>
           </div>
@@ -722,16 +724,16 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
         {/* 2️⃣ サムネイル設定 */}
         <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
-          <h2 style={{ 
-            fontSize: '24px', 
-            fontWeight: '600', 
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: '600',
             color: '#1e293b',
             marginBottom: '24px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
           }}>
-            📸 サムネイル
+            📸 {t('editor.settings.thumbnail.title')}
           </h2>
           
           <div style={{ 
@@ -766,27 +768,27 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 ) : (
                   <div style={{ textAlign: 'center', color: '#9ca3af' }}>
                     <div style={{ fontSize: '32px', marginBottom: '8px' }}>📸</div>
-                    <div style={{ fontSize: '12px' }}>No Thumbnail</div>
+                    <div style={{ fontSize: '12px' }}>{t('editor.settings.thumbnail.noThumbnail')}</div>
                   </div>
                 )}
               </div>
             </div>
-            
+
             <div style={{ flex: 1, textAlign: window.innerWidth < 768 ? 'center' : 'left' }}>
-              <h3 style={{ 
+              <h3 style={{
                 fontSize: '18px',
                 fontWeight: '600',
                 color: '#1f2937',
                 marginBottom: '8px'
               }}>
-                ゲームサムネイル
+                {t('editor.settings.thumbnail.title')}
               </h3>
-              <p style={{ 
+              <p style={{
                 fontSize: '14px',
                 color: '#6b7280',
                 marginBottom: '16px'
               }}>
-                ゲームの魅力を伝えるサムネイルを設定します
+                {t('editor.settings.thumbnail.subtitle')}
               </p>
               
               <div style={{ 
@@ -802,16 +804,16 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   disabled={generateThumbnail}
                   loading={generateThumbnail}
                 >
-                  🎨 自動生成
+                  🎨 {t('editor.settings.thumbnail.generate')}
                 </ModernButton>
-                
+
                 <label>
                   <ModernButton
                     variant="secondary"
                     size="md"
                     style={{ cursor: 'pointer' }}
                   >
-                    📁 アップロード
+                    📁 {t('editor.settings.thumbnail.upload')}
                   </ModernButton>
                   <input
                     type="file"
@@ -851,7 +853,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             alignItems: 'center',
             gap: '8px'
           }}>
-            🔒 公開設定
+            🔒 {t('editor.settings.publishing.title')}
           </h2>
 
           <div style={{ marginBottom: '24px' }}>
@@ -883,15 +885,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     color: '#92400e',
                     marginBottom: '4px'
                   }}>
-                    🚫 パクり禁止（リミックス禁止）
+                    🚫 {t('editor.settings.publishing.noRemix')}
                   </div>
                   <div style={{
                     fontSize: '14px',
                     color: '#78350f',
                     lineHeight: '1.6'
                   }}>
-                    他のユーザーによるこのゲームの複製・改変を禁止します。
-                    チェックすると、誰もこのゲームをコピーして改変できなくなります。
+                    {t('editor.settings.publishing.noRemixDescription')}
                   </div>
                 </label>
               </div>
@@ -904,7 +905,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 fontSize: '13px',
                 color: '#78350f'
               }}>
-                💡 <strong>ヒント:</strong> チェックを外すと、他のユーザーがあなたのゲームを元に新しいゲームを作れます（クリエイティブ・コモンズのような仕組み）
+                💡 <strong>{t('common.help')}:</strong> {t('editor.settings.publishing.noRemixHint')}
               </div>
             </div>
           </div>
@@ -912,16 +913,16 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
         {/* 3️⃣ テストプレイセクション */}
         <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
-          <h2 style={{ 
-            fontSize: '24px', 
-            fontWeight: '600', 
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: '600',
             color: '#1e293b',
             marginBottom: '24px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
           }}>
-            🎯 テストプレイ
+            🎯 {t('editor.settings.testPlay.title')}
           </h2>
           
           <div style={{ textAlign: 'center' }}>
@@ -934,14 +935,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   color: '#1f2937',
                   marginBottom: '8px'
                 }}>
-                  ゲームをテストしてみましょう
+                  {t('editor.settings.testPlay.start')}
                 </h3>
                 <p style={{
                   color: '#6b7280',
                   marginBottom: '24px',
                   fontSize: '16px'
                 }}>
-                  作成したゲームが正しく動作するか確認できます
+                  {t('editor.settings.testPlay.startDescription')}
                 </p>
                 <ModernButton
                   variant="primary"
@@ -949,34 +950,34 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   onClick={handleFullGamePlay}
                   disabled={!project.settings.name || isTestPlaying}
                 >
-                  ▶️ テスト
+                  ▶️ {t('editor.settings.testPlay.startButton')}
                 </ModernButton>
               </div>
             )}
             
             {isTestPlaying && (
               <div>
-                <div style={{ 
+                <div style={{
                   fontSize: '96px',
                   marginBottom: '16px',
                   animation: 'bounce 1s infinite'
                 }}>
                   🎮
                 </div>
-                <h3 style={{ 
+                <h3 style={{
                   fontSize: '20px',
                   fontWeight: '600',
                   color: '#1f2937',
                   marginBottom: '8px'
                 }}>
-                  テストプレイ中...
+                  {t('editor.settings.testPlay.testing')}
                 </h3>
-                <p style={{ 
+                <p style={{
                   color: '#6b7280',
                   marginBottom: '24px',
                   fontSize: '16px'
                 }}>
-                  ゲームの動作を確認しています
+                  {t('editor.settings.testPlay.testingDescription')}
                 </p>
                 <div style={{
                   width: '100%',
@@ -1001,13 +1002,13 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             {testPlayResult === 'success' && testPlayDetails && (
               <div>
                 <div style={{ fontSize: '96px', marginBottom: '16px' }}>🎉</div>
-                <h3 style={{ 
+                <h3 style={{
                   fontSize: '20px',
                   fontWeight: '600',
                   color: '#10b981',
                   marginBottom: '16px'
                 }}>
-                  テスト成功！
+                  {t('editor.settings.testPlay.success')}
                 </h3>
                 <div style={{
                   maxWidth: '500px',
@@ -1024,44 +1025,44 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     fontSize: '14px'
                   }}>
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ 
+                      <div style={{
                         fontSize: '32px',
                         fontWeight: '700',
                         color: '#10b981'
                       }}>
                         {testPlayDetails.score || 0}
                       </div>
-                      <div style={{ color: '#374151' }}>スコア</div>
+                      <div style={{ color: '#374151' }}>{t('editor.settings.testPlay.stats.score')}</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ 
+                      <div style={{
                         fontSize: '32px',
                         fontWeight: '700',
                         color: '#10b981'
                       }}>
                         {testPlayDetails.timeElapsed.toFixed(1)}s
                       </div>
-                      <div style={{ color: '#374151' }}>プレイ時間</div>
+                      <div style={{ color: '#374151' }}>{t('editor.settings.testPlay.stats.playTime')}</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ 
+                      <div style={{
                         fontSize: '32px',
                         fontWeight: '700',
                         color: '#10b981'
                       }}>
                         {testPlayDetails.finalState?.objectsInteracted?.length || 0}
                       </div>
-                      <div style={{ color: '#374151' }}>操作回数</div>
+                      <div style={{ color: '#374151' }}>{t('editor.settings.testPlay.stats.interactions')}</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
-                      <div style={{ 
+                      <div style={{
                         fontSize: '32px',
                         fontWeight: '700',
                         color: '#10b981'
                       }}>
                         {testPlayDetails.finalState?.rulesTriggered?.length || 0}
                       </div>
-                      <div style={{ color: '#374151' }}>ルール実行</div>
+                      <div style={{ color: '#374151' }}>{t('editor.settings.testPlay.stats.rulesTriggered')}</div>
                     </div>
                   </div>
                 </div>
@@ -1070,21 +1071,21 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   size="md"
                   onClick={() => setTestPlayResult(null)}
                 >
-                  もう一度テスト
+                  {t('editor.settings.testPlay.tryAgain')}
                 </ModernButton>
               </div>
             )}
-            
+
             {testPlayResult === 'failure' && testPlayDetails && (
               <div>
                 <div style={{ fontSize: '96px', marginBottom: '16px' }}>⚠️</div>
-                <h3 style={{ 
+                <h3 style={{
                   fontSize: '20px',
                   fontWeight: '600',
                   color: '#ef4444',
                   marginBottom: '16px'
                 }}>
-                  テストで問題発見
+                  {t('editor.settings.testPlay.failure')}
                 </h3>
                 <div style={{
                   maxWidth: '500px',
@@ -1096,8 +1097,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   textAlign: 'left'
                 }}>
                   <div style={{ fontSize: '14px', color: '#374151' }}>
-                    <strong>エラー:</strong>
-                    <ul style={{ 
+                    <strong>{t('editor.settings.testPlay.errors')}</strong>
+                    <ul style={{
                       listStyle: 'disc',
                       listStylePosition: 'inside',
                       marginTop: '8px',
@@ -1109,8 +1110,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     </ul>
                     {testPlayDetails.warnings.length > 0 && (
                       <>
-                        <strong style={{ display: 'block', marginTop: '12px' }}>警告:</strong>
-                        <ul style={{ 
+                        <strong style={{ display: 'block', marginTop: '12px' }}>{t('editor.settings.testPlay.warnings')}</strong>
+                        <ul style={{
                           listStyle: 'disc',
                           listStylePosition: 'inside',
                           marginTop: '8px',
@@ -1129,14 +1130,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   size="md"
                   onClick={() => setTestPlayResult(null)}
                 >
-                  もう一度テスト
+                  {t('editor.settings.testPlay.tryAgain')}
                 </ModernButton>
               </div>
             )}
           </div>
 
           {/* 🆕 ゲームスピード設定（テストプレイボタンの下に移動） */}
-          <div style={{ 
+          <div style={{
             marginTop: '40px',
             paddingTop: '32px',
             borderTop: '1px solid #e5e7eb'
@@ -1151,19 +1152,19 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               gap: '8px',
               justifyContent: 'center'
             }}>
-              ⚡ ゲームスピード（挑戦レベル）
+              ⚡ {t('editor.settings.testPlay.gameSpeed.title')}
             </h4>
             
-            <div style={{ 
+            <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
               gap: '12px',
               maxWidth: '600px',
               margin: '0 auto'
             }}>
-              {GAME_SPEED_LEVELS.map((level) => {
+              {getGameSpeedLevels(t).map((level) => {
                 const isSelected = (project.metadata?.gameSpeed || 1.0) === level.value;
-                
+
                 return (
                   <button
                     key={level.value}
@@ -1194,10 +1195,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   >
                     <div style={{ fontSize: '32px', marginBottom: '8px' }}>{level.emoji}</div>
                     <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
-                      {level.label}
+                      {t(level.labelKey)}
                     </div>
                     <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                      {level.description}
+                      {t(level.descriptionKey)}
                     </div>
                   </button>
                 );
@@ -1211,9 +1212,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               fontSize: '14px',
               color: '#6b7280'
             }}>
-              現在の設定: {
-                GAME_SPEED_LEVELS.find(level => level.value === (project.metadata?.gameSpeed || 1.0))?.label || '標準'
-              } スピード
+              {t('editor.settings.testPlay.gameSpeed.current', {
+                speed: t(getGameSpeedLevels(t).find(level => level.value === (project.metadata?.gameSpeed || 1.0))?.labelKey || 'editor.settings.testPlay.gameSpeed.normal.label')
+              })}
             </div>
           </div>
         </ModernCard>
@@ -1222,26 +1223,26 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         {showFullGame && (
           <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
             <div style={{ marginBottom: '16px' }}>
-              <div style={{ 
+              <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 marginBottom: '16px'
               }}>
-                <h3 style={{ 
+                <h3 style={{
                   fontSize: '20px',
                   fontWeight: '600',
                   color: '#1f2937',
                   margin: '0'
                 }}>
-                  🎮 ゲーム実行中
+                  🎮 {t('editor.settings.testPlay.fullGame.title')}
                 </h3>
                 <ModernButton
                   variant="error"
                   size="sm"
                   onClick={() => setShowFullGame(false)}
                 >
-                  ✕ 終了
+                  ✕ {t('editor.settings.testPlay.fullGame.end')}
                 </ModernButton>
               </div>
               <div
@@ -1265,16 +1266,16 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
         {/* 4️⃣ ゲーム統計情報 */}
         <ModernCard variant="default" size="lg" style={{ marginBottom: '24px' }}>
-          <h2 style={{ 
-            fontSize: '24px', 
-            fontWeight: '600', 
+          <h2 style={{
+            fontSize: '24px',
+            fontWeight: '600',
             color: '#1e293b',
             marginBottom: '24px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px'
           }}>
-            📊 ゲーム統計
+            📊 {t('editor.settings.stats.title')}
           </h2>
           
           <div style={{ 
@@ -1284,7 +1285,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             marginBottom: '32px'
           }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ 
+              <div style={{
                 fontSize: '32px',
                 fontWeight: '700',
                 color: '#3b82f6'
@@ -1292,11 +1293,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 {project.assets.objects.length}
               </div>
               <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                オブジェクト
+                {t('editor.settings.stats.objects')}
               </div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ 
+              <div style={{
                 fontSize: '32px',
                 fontWeight: '700',
                 color: '#10b981'
@@ -1304,7 +1305,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 {project.script?.rules?.length || 0}
               </div>
               <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                ルール
+                {t('editor.settings.stats.rules')}
               </div>
             </div>
             <div style={{ textAlign: 'center' }}>
@@ -1316,11 +1317,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 {project.assets?.texts?.length || 0}
               </div>
               <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                テキスト
+                {t('editor.settings.stats.texts')}
               </div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ 
+              <div style={{
                 fontSize: '32px',
                 fontWeight: '700',
                 color: '#8b5cf6'
@@ -1328,11 +1329,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 {Math.round((project.totalSize || 0) / 1024 / 1024 * 10) / 10}MB
               </div>
               <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                総容量
+                {t('editor.settings.stats.capacity')}
               </div>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ 
+              <div style={{
                 fontSize: '32px',
                 fontWeight: '700',
                 color: '#ef4444'
@@ -1340,7 +1341,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 {project.metadata?.statistics?.testPlayCount || 0}
               </div>
               <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                テスト回数
+                {t('editor.settings.stats.testPlayCount')}
               </div>
             </div>
           </div>
@@ -1363,7 +1364,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 }}>
                   {project.script?.initialState ? '✓' : '⚠️'}
                 </div>
-                <div style={{ fontSize: '12px', color: '#6b7280' }}>初期条件</div>
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>{t('editor.settings.stats.health.initialState')}</div>
               </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{
@@ -1373,7 +1374,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 }}>
                   {project.script?.layout?.objects?.length || 0}
                 </div>
-                <div style={{ fontSize: '12px', color: '#6b7280' }}>配置済み</div>
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>{t('editor.settings.stats.health.placedObjects')}</div>
               </div>
               <div style={{ textAlign: 'center' }}>
                 <div style={{
@@ -1383,17 +1384,17 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 }}>
                   {project.script?.successConditions?.length || 0}
                 </div>
-                <div style={{ fontSize: '12px', color: '#6b7280' }}>成功条件</div>
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>{t('editor.settings.stats.health.successConditions')}</div>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ 
+                <div style={{
                   fontSize: '32px',
                   fontWeight: '700',
                   color: project.script.statistics?.complexityScore || 0 > 0 ? '#10b981' : '#6b7280'
                 }}>
                   {project.script.statistics?.complexityScore || 0}
                 </div>
-                <div style={{ fontSize: '12px', color: '#6b7280' }}>複雑度</div>
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>{t('editor.settings.stats.health.complexity')}</div>
               </div>
             </div>
           </div>
@@ -1414,7 +1415,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             disabled={isSaving}
             loading={isSaving}
           >
-            💾 保存
+            💾 {t('editor.settings.actions.save')}
           </ModernButton>
 
           <ModernButton
@@ -1423,7 +1424,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             onClick={handleFullGamePlay}
             disabled={!project.settings.name || isTestPlaying}
           >
-            ▶️ テスト
+            ▶️ {t('editor.settings.actions.test')}
           </ModernButton>
 
           <ModernButton
@@ -1433,7 +1434,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             disabled={!project.settings.name || isPublishing || (!project.assets.objects.length && !project.assets.background)}
             loading={isPublishing}
           >
-            {project.settings.publishing?.isPublished ? '🔄 更新' : '🚀 公開'}
+            {project.settings.publishing?.isPublished ? `🔄 ${t('editor.settings.actions.update')}` : `🚀 ${t('editor.settings.actions.publish')}`}
           </ModernButton>
 
           <ModernButton
@@ -1441,7 +1442,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             size="lg"
             onClick={handleExport}
           >
-            📦 エクスポート (JSON)
+            📦 {t('editor.settings.actions.export')}
           </ModernButton>
         </div>
         
@@ -1458,10 +1459,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               borderRadius: '8px',
               color: '#10b981'
             }}>
-              <span>✅ 公開済み</span>
+              <span>✅ {t('editor.settings.actions.published')}</span>
             {project.settings.publishing?.publishedAt && (
               <span style={{ fontSize: '14px' }}>
-              {new Date(project.settings.publishing.publishedAt).toLocaleString('ja-JP')}
+              {new Date(project.settings.publishing.publishedAt).toLocaleString()}
               </span>
           )}
             </div>

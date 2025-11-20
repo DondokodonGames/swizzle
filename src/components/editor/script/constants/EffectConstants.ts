@@ -2,14 +2,16 @@
 // Phase C Step 2完了版: エフェクトタイプ詳細定義
 // AdvancedRuleModal.tsx分割 - Step 1: エフェクト定数分離
 
+import i18n from '../../../i18n';
+
 /**
  * Phase C Step 2: エフェクトタイプ詳細定義
  */
-export const EFFECT_TYPE_OPTIONS = [
-  { value: 'glow', label: '光る', icon: '✨', description: 'オブジェクトを光らせる' },
-  { value: 'shake', label: '揺れる', icon: '📳', description: 'オブジェクトを振動させる' },
-  { value: 'confetti', label: '紙吹雪', icon: '🎉', description: '紙吹雪エフェクト' },
-  { value: 'monochrome', label: 'モノクロ', icon: '⚫⚪', description: 'モノクロ化エフェクト' }
+export const getEffectTypeOptions = () => [
+  { value: 'glow', label: i18n.t('effects.glow.label'), icon: '✨', description: i18n.t('effects.glow.description') },
+  { value: 'shake', label: i18n.t('effects.shake.label'), icon: '📳', description: i18n.t('effects.shake.description') },
+  { value: 'confetti', label: i18n.t('effects.confetti.label'), icon: '🎉', description: i18n.t('effects.confetti.description') },
+  { value: 'monochrome', label: i18n.t('effects.monochrome.label'), icon: '⚫⚪', description: i18n.t('effects.monochrome.description') }
 ] as const;
 
 /**
@@ -31,7 +33,7 @@ export const EFFECT_RANGES = {
 /**
  * エフェクト定数の型定義
  */
-export type EffectTypeOption = typeof EFFECT_TYPE_OPTIONS[number];
+export type EffectTypeOption = ReturnType<typeof getEffectTypeOptions>[number];
 export type EffectType = EffectTypeOption['value'];
 export type EffectDefaults = typeof EFFECT_DEFAULTS;
 export type EffectRanges = typeof EFFECT_RANGES;

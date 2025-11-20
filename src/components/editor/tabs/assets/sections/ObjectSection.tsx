@@ -1,6 +1,7 @@
 // src/components/editor/tabs/assets/sections/ObjectSection.tsx
 // 🔧 Phase E-1: オブジェクト管理+アニメーション統合セクション
 import React, { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../../../types/editor/GameProject';
 import { ObjectAsset, AssetFrame, AnimationSettings } from '../../../../../types/editor/ProjectAssets';
 import { EDITOR_LIMITS } from '../../../../../constants/EditorLimits';
@@ -64,10 +65,11 @@ const optimizeImage = async (file: File, maxWidth: number, maxHeight: number, qu
   });
 };
 
-export const ObjectSection: React.FC<ObjectSectionProps> = ({ 
-  project, 
-  onProjectUpdate 
+export const ObjectSection: React.FC<ObjectSectionProps> = ({
+  project,
+  onProjectUpdate
 }) => {
+  const { t } = useTranslation();
   const { uploading, deleteAsset } = useAssetUpload(project, onProjectUpdate);
   const { showSuccess, showError } = useNotification();
   
@@ -87,24 +89,24 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
 
       for (const result of results) {
         if (!result.accepted) {
-          showError(result.error || 'ファイルが受け入れられませんでした');
+          showError(result.error || t('errors.fileNotAccepted'));
           continue;
         }
 
         if (result.type !== 'image') {
-          showError('画像ファイルのみアップロード可能です');
+          showError(t('errors.onlyImagesAllowed'));
           continue;
         }
 
         // オブジェクト数制限チェック
         if (updatedAssets.objects.length >= EDITOR_LIMITS.PROJECT.MAX_OBJECTS) {
-          showError(`オブジェクトは最大${EDITOR_LIMITS.PROJECT.MAX_OBJECTS}個まで追加できます`);
+          showError(t('errors.maxObjectsReached', { max: EDITOR_LIMITS.PROJECT.MAX_OBJECTS }));
           continue;
         }
 
         // サイズチェック
         if (result.file.size > EDITOR_LIMITS.IMAGE.OBJECT_FRAME_MAX_SIZE) {
-          showError(`ファイルサイズが大きすぎます: ${result.file.name}`);
+          showError(t('errors.fileSizeTooLarge', { fileName: result.file.name }));
           continue;
         }
 
@@ -132,13 +134,13 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
             // 新しいオブジェクト作成
             const newObject: ObjectAsset = {
               id: crypto.randomUUID(),
-              name: `オブジェクト${updatedAssets.objects.length + 1}`,
+              name: t('editor.assets.objectName', { number: updatedAssets.objects.length + 1 }),
               frames: [frame], // 初期1フレーム
-              animationSettings: { 
-                speed: 10, 
-                loop: true, 
-                pingPong: false, 
-                autoStart: true 
+              animationSettings: {
+                speed: 10,
+                loop: true,
+                pingPong: false,
+                autoStart: true
               },
               totalSize: frame.fileSize,
               createdAt: now,
@@ -192,13 +194,13 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
           lastModified: now
         });
 
-        showSuccess(`${addedCount}個のオブジェクトをアップロードしました`);
+        showSuccess(t('success.objectsUploaded', { count: addedCount }));
       }
     } catch (error) {
       console.error('オブジェクトアップロードエラー:', error);
-      showError('オブジェクトのアップロードに失敗しました');
+      showError(t('errors.objectUploadFailed'));
     }
-  }, [project, onProjectUpdate, uploading, showSuccess, showError]);
+  }, [project, onProjectUpdate, uploading, showSuccess, showError, t]);
 
   // オブジェクトにフレーム追加（アニメーション用）
   const addFrameToObject = useCallback(async (objectId: string, results: FileProcessingResult[]) => {
@@ -206,17 +208,17 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
       const now = new Date().toISOString();
       const updatedAssets = { ...project.assets };
       const objectIndex = updatedAssets.objects.findIndex(obj => obj.id === objectId);
-      
+
       if (objectIndex === -1) {
-        showError('オブジェクトが見つかりません');
+        showError(t('errors.objectNotFound'));
         return;
       }
 
       const targetObject = updatedAssets.objects[objectIndex];
-      
+
       // フレーム数制限チェック
       if (targetObject.frames.length >= 8) {
-        showError('1つのオブジェクトには最大8フレームまで追加できます');
+        showError(t('errors.maxFramesReached'));
         return;
       }
 
@@ -278,13 +280,13 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
           lastModified: now
         });
 
-        showSuccess(`${addedFrames}フレームを追加しました`);
+        showSuccess(t('success.framesAdded', { count: addedFrames }));
       }
     } catch (error) {
       console.error('フレーム追加エラー:', error);
-      showError('フレームの追加に失敗しました');
+      showError(t('errors.frameAddFailed'));
     }
-  }, [project, onProjectUpdate, showSuccess, showError]);
+  }, [project, onProjectUpdate, showSuccess, showError, t]);
 
   // アニメーション設定更新
   const updateAnimationSettings = useCallback((objectId: string, settings: Partial<AnimationSettings>) => {
@@ -351,7 +353,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: DESIGN_TOKENS.spacing[4] }}>
-        <h3 
+        <h3
           style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.lg,
             fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
@@ -362,15 +364,15 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
             gap: DESIGN_TOKENS.spacing[2]
           }}
         >
-          🎨 オブジェクト
-          <span 
+          🎨 {t('editor.assets.objects')}
+          <span
             style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
               color: DESIGN_TOKENS.colors.neutral[500],
               fontWeight: DESIGN_TOKENS.typography.fontWeight.normal
             }}
           >
-            ({project.assets?.objects?.length || 0}/{EDITOR_LIMITS.PROJECT.MAX_OBJECTS}) + 🎬 アニメーション
+            ({project.assets?.objects?.length || 0}/{EDITOR_LIMITS.PROJECT.MAX_OBJECTS}) + 🎬 {t('editor.assets.animation')}
           </span>
         </h3>
       </div>
@@ -382,9 +384,9 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
           maxFiles={EDITOR_LIMITS.PROJECT.MAX_OBJECTS - (project.assets?.objects?.length || 0)}
           maxSize={EDITOR_LIMITS.IMAGE.OBJECT_FRAME_MAX_SIZE}
           variant="default"
-          title="オブジェクト画像をアップロード"
-          description={`複数ファイルの同時アップロード対応（最大${EDITOR_LIMITS.PROJECT.MAX_OBJECTS - (project.assets?.objects?.length || 0)}個）`}
-          buttonText="ファイルを選択"
+          title={t('editor.assets.uploadObjectImage')}
+          description={t('editor.assets.multiFileUploadSupport', { max: EDITOR_LIMITS.PROJECT.MAX_OBJECTS - (project.assets?.objects?.length || 0) })}
+          buttonText={t('common.selectFile')}
           onFilesDrop={handleObjectUpload}
           loading={uploading}
           style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}
@@ -474,24 +476,24 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
               >
                 {obj.name}
               </h4>
-              <p 
+              <p
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                   color: DESIGN_TOKENS.colors.neutral[500],
                   margin: `0 0 ${DESIGN_TOKENS.spacing[2]} 0`
                 }}
               >
-                {formatFileSize(obj.totalSize)} • {obj.frames.length}フレーム
+                {formatFileSize(obj.totalSize)} • {t('editor.assets.frameCount', { count: obj.frames.length })}
               </p>
-              
+
               {/* 配置状況表示 */}
               <div className="mb-3">
                 <span className={`text-xs px-2 py-1 rounded ${
-                  isPlaced 
-                    ? 'bg-green-100 text-green-700' 
+                  isPlaced
+                    ? 'bg-green-100 text-green-700'
                     : 'bg-gray-100 text-gray-700'
                 }`}>
-                  {isPlaced ? '✅ 配置済み' : '📦 未配置'}
+                  {isPlaced ? `✅ ${t('editor.assets.placed')}` : `📦 ${t('editor.assets.notPlaced')}`}
                 </span>
               </div>
 
@@ -504,7 +506,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                   icon="🎬"
                   onClick={() => setEditingObjectId(isEditing ? null : obj.id)}
                 >
-                  {isEditing ? '完了' : 'アニメ'}
+                  {isEditing ? t('common.done') : t('editor.assets.animation')}
                 </ModernButton>
 
                 {/* プレビューボタン */}
@@ -515,7 +517,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                     icon={isPreviewPlaying && isEditing ? '⏹️' : '▶️'}
                     onClick={() => toggleAnimationPreview(obj.id)}
                   >
-                    {isPreviewPlaying && isEditing ? '停止' : '再生'}
+                    {isPreviewPlaying && isEditing ? t('common.stop') : t('common.play')}
                   </ModernButton>
                 )}
 
@@ -527,7 +529,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                   onClick={() => handleObjectDelete(obj.id)}
                   disabled={uploading}
                 >
-                  削除
+                  {t('common.delete')}
                 </ModernButton>
               </div>
 
@@ -539,7 +541,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                     paddingTop: DESIGN_TOKENS.spacing[3]
                   }}
                 >
-                  <h5 
+                  <h5
                     style={{
                       fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                       fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
@@ -547,7 +549,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                       margin: `0 0 ${DESIGN_TOKENS.spacing[3]} 0`
                     }}
                   >
-                    🎬 アニメーション設定
+                    🎬 {t('editor.assets.animationSettings')}
                   </h5>
 
                   {/* フレーム追加 */}
@@ -558,9 +560,9 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                         maxFiles={8 - obj.frames.length}
                         maxSize={EDITOR_LIMITS.IMAGE.OBJECT_FRAME_MAX_SIZE}
                         variant="compact"
-                        title="フレーム追加"
-                        description={`${8 - obj.frames.length}フレームまで追加可能`}
-                        buttonText="フレーム追加"
+                        title={t('editor.assets.addFrame')}
+                        description={t('editor.assets.canAddFrames', { count: 8 - obj.frames.length })}
+                        buttonText={t('editor.assets.addFrame')}
                         onFilesDrop={(results) => addFrameToObject(obj.id, results)}
                         loading={uploading}
                       />
@@ -578,7 +580,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                         marginBottom: DESIGN_TOKENS.spacing[1]
                       }}
                     >
-                      サイズ: {((obj.defaultScale || 1.0) * 100).toFixed(0)}%
+                      {t('editor.assets.size')}: {((obj.defaultScale || 1.0) * 100).toFixed(0)}%
                     </label>
                     <input
                       type="range"
@@ -623,7 +625,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                         marginBottom: DESIGN_TOKENS.spacing[1]
                       }}
                     >
-                      速度: {obj.animationSettings.speed}fps {obj.animationSettings.speed === 0 && '(ルール制御のみ)'}
+                      {t('editor.assets.speed')}: {obj.animationSettings.speed}fps {obj.animationSettings.speed === 0 && `(${t('editor.assets.ruleControlOnly')})`}
                     </label>
                     <input
                       type="range"
@@ -651,10 +653,10 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                         onChange={(e) => updateAnimationSettings(obj.id, { loop: e.target.checked })}
                       />
                       <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.neutral[700] }}>
-                        🔄 ループ再生
+                        🔄 {t('editor.assets.loopPlayback')}
                       </span>
                     </label>
-                    
+
                     <label style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
                       <input
                         type="checkbox"
@@ -662,10 +664,10 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                         onChange={(e) => updateAnimationSettings(obj.id, { pingPong: e.target.checked })}
                       />
                       <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.neutral[700] }}>
-                        ↔️ 往復再生
+                        ↔️ {t('editor.assets.pingPongPlayback')}
                       </span>
                     </label>
-                    
+
                     <label style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
                       <input
                         type="checkbox"
@@ -673,7 +675,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                         onChange={(e) => updateAnimationSettings(obj.id, { autoStart: e.target.checked })}
                       />
                       <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.neutral[700] }}>
-                        ▶️ 自動開始
+                        ▶️ {t('editor.assets.autoStart')}
                       </span>
                     </label>
                   </div>
@@ -687,7 +689,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
       {/* オブジェクト上限メッセージ */}
       {(project.assets?.objects?.length || 0) >= EDITOR_LIMITS.PROJECT.MAX_OBJECTS && (
         <ModernCard variant="filled" size="sm">
-          <p 
+          <p
             style={{
               textAlign: 'center',
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -695,14 +697,14 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
               margin: 0
             }}
           >
-            オブジェクトは最大{EDITOR_LIMITS.PROJECT.MAX_OBJECTS}個まで追加できます
+            {t('errors.maxObjectsReached', { max: EDITOR_LIMITS.PROJECT.MAX_OBJECTS })}
           </p>
         </ModernCard>
       )}
 
       {/* アニメーション機能ガイド */}
       <ModernCard variant="filled" size="sm" style={{ marginTop: DESIGN_TOKENS.spacing[4] }}>
-        <h4 
+        <h4
           style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
             fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
@@ -710,9 +712,9 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
             margin: `0 0 ${DESIGN_TOKENS.spacing[2]} 0`
           }}
         >
-          🎬 アニメーション機能のヒント
+          🎬 {t('editor.assets.animationTipsTitle')}
         </h4>
-        <ul 
+        <ul
           style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
             color: DESIGN_TOKENS.colors.primary[700],
@@ -721,11 +723,11 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
             lineHeight: DESIGN_TOKENS.typography.lineHeight.relaxed
           }}
         >
-          <li><strong>複数フレーム</strong>: 1つのオブジェクトに最大8フレーム追加可能</li>
-          <li><strong>アニメーション設定</strong>: 速度・ループ・往復・自動開始を調整</li>
-          <li><strong>プレビュー機能</strong>: リアルタイムでアニメーション確認</li>
-          <li><strong>ゲーム連携</strong>: スクリプトタブでアニメーション条件設定可能</li>
-          <li><strong>最適化</strong>: 画像は自動で512x512に最適化されます</li>
+          <li><strong>{t('editor.assets.multipleFrames')}</strong>: {t('editor.assets.multipleFramesDesc')}</li>
+          <li><strong>{t('editor.assets.animationSettings')}</strong>: {t('editor.assets.animationSettingsDesc')}</li>
+          <li><strong>{t('editor.assets.previewFeature')}</strong>: {t('editor.assets.previewFeatureDesc')}</li>
+          <li><strong>{t('editor.assets.gameIntegration')}</strong>: {t('editor.assets.gameIntegrationDesc')}</li>
+          <li><strong>{t('editor.assets.optimization')}</strong>: {t('editor.assets.optimizationDesc')}</li>
         </ul>
       </ModernCard>
     </div>

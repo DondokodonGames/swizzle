@@ -2,6 +2,7 @@
 // アイコン中心・言語フリー ルール設定エディター（型安全性修正版）
 
 import React, { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameRule, TriggerCondition, GameAction } from '../../../types/editor/GameScript';
 
 interface VisualRuleEditorProps {
@@ -14,36 +15,36 @@ interface VisualRuleEditorProps {
 
 // 🔧 修正：条件タイプのアイコン・説明（不足していた型を追加）
 const CONDITION_TYPES = {
-  touch: { icon: '👆', name: 'タッチ', color: 'bg-blue-100 border-blue-300' },
-  time: { icon: '⏰', name: '時間', color: 'bg-green-100 border-green-300' },
-  collision: { icon: '💥', name: '衝突', color: 'bg-red-100 border-red-300' },
-  flag: { icon: '🚩', name: 'フラグ', color: 'bg-purple-100 border-purple-300' },
-  animation: { icon: '🎬', name: 'アニメ', color: 'bg-yellow-100 border-yellow-300' },
-  position: { icon: '📍', name: '位置', color: 'bg-pink-100 border-pink-300' },
+  touch: { icon: '👆', color: 'bg-blue-100 border-blue-300' },
+  time: { icon: '⏰', color: 'bg-green-100 border-green-300' },
+  collision: { icon: '💥', color: 'bg-red-100 border-red-300' },
+  flag: { icon: '🚩', color: 'bg-purple-100 border-purple-300' },
+  animation: { icon: '🎬', color: 'bg-yellow-100 border-yellow-300' },
+  position: { icon: '📍', color: 'bg-pink-100 border-pink-300' },
   // 🔧 追加：不足していた型
-  gameState: { icon: '🎮', name: 'ゲーム状態', color: 'bg-orange-100 border-orange-300' }
+  gameState: { icon: '🎮', color: 'bg-orange-100 border-orange-300' }
 } as const;
 
 // 🔧 修正：アクションタイプのアイコン・説明（不足していた型を追加）
 const ACTION_TYPES = {
-  addScore: { icon: '⭐', name: '得点', color: 'bg-yellow-100 border-yellow-300' },
-  success: { icon: '🎉', name: '成功', color: 'bg-green-100 border-green-300' },
-  failure: { icon: '💔', name: '失敗', color: 'bg-red-100 border-red-300' },
-  setFlag: { icon: '🏳️', name: 'フラグ', color: 'bg-purple-100 border-purple-300' },
-  playSound: { icon: '🔊', name: '音再生', color: 'bg-blue-100 border-blue-300' },
-  showMessage: { icon: '💬', name: 'メッセージ', color: 'bg-gray-100 border-gray-300' },
-  hide: { icon: '👻', name: '非表示', color: 'bg-gray-100 border-gray-300' },
-  show: { icon: '👁️', name: '表示', color: 'bg-blue-100 border-blue-300' },
+  addScore: { icon: '⭐', color: 'bg-yellow-100 border-yellow-300' },
+  success: { icon: '🎉', color: 'bg-green-100 border-green-300' },
+  failure: { icon: '💔', color: 'bg-red-100 border-red-300' },
+  setFlag: { icon: '🏳️', color: 'bg-purple-100 border-purple-300' },
+  playSound: { icon: '🔊', color: 'bg-blue-100 border-blue-300' },
+  showMessage: { icon: '💬', color: 'bg-gray-100 border-gray-300' },
+  hide: { icon: '👻', color: 'bg-gray-100 border-gray-300' },
+  show: { icon: '👁️', color: 'bg-blue-100 border-blue-300' },
   // 🔧 追加：不足していた型
-  move: { icon: '🏃', name: '移動', color: 'bg-cyan-100 border-cyan-300' },
-  pause: { icon: '⏸️', name: '一時停止', color: 'bg-gray-100 border-gray-300' },
-  restart: { icon: '🔄', name: '再開', color: 'bg-blue-100 border-blue-300' },
-  stopSound: { icon: '🔇', name: '音停止', color: 'bg-red-100 border-red-300' },
-  playBGM: { icon: '🎵', name: 'BGM再生', color: 'bg-indigo-100 border-indigo-300' },
-  stopBGM: { icon: '🔇', name: 'BGM停止', color: 'bg-red-100 border-red-300' },
-  toggleFlag: { icon: '🔄', name: 'フラグ切替', color: 'bg-purple-100 border-purple-300' },
-  switchAnimation: { icon: '🎬', name: 'アニメ変更', color: 'bg-yellow-100 border-yellow-300' },
-  effect: { icon: '✨', name: 'エフェクト', color: 'bg-pink-100 border-pink-300' }
+  move: { icon: '🏃', color: 'bg-cyan-100 border-cyan-300' },
+  pause: { icon: '⏸️', color: 'bg-gray-100 border-gray-300' },
+  restart: { icon: '🔄', color: 'bg-blue-100 border-blue-300' },
+  stopSound: { icon: '🔇', color: 'bg-red-100 border-red-300' },
+  playBGM: { icon: '🎵', color: 'bg-indigo-100 border-indigo-300' },
+  stopBGM: { icon: '🔇', color: 'bg-red-100 border-red-300' },
+  toggleFlag: { icon: '🔄', color: 'bg-purple-100 border-purple-300' },
+  switchAnimation: { icon: '🎬', color: 'bg-yellow-100 border-yellow-300' },
+  effect: { icon: '✨', color: 'bg-pink-100 border-pink-300' }
 } as const;
 
 export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
@@ -53,6 +54,46 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
   availableObjects,
   availableFlags
 }) => {
+  const { t } = useTranslation();
+
+  // 条件タイプの名前を取得
+  const getConditionTypeName = (type: keyof typeof CONDITION_TYPES): string => {
+    const typeMap: Record<keyof typeof CONDITION_TYPES, string> = {
+      touch: t('conditions.touch'),
+      time: t('conditions.time'),
+      collision: t('conditions.collision'),
+      flag: t('conditions.flag'),
+      animation: t('conditions.animation'),
+      position: t('conditions.position'),
+      gameState: t('conditions.gameState')
+    };
+    return typeMap[type];
+  };
+
+  // アクションタイプの名前を取得
+  const getActionTypeName = (type: keyof typeof ACTION_TYPES): string => {
+    const typeMap: Record<keyof typeof ACTION_TYPES, string> = {
+      addScore: t('actions.addScore'),
+      success: t('actions.success'),
+      failure: t('actions.failure'),
+      setFlag: t('actions.setFlag'),
+      playSound: t('actions.playSound'),
+      showMessage: t('actions.showMessage'),
+      hide: t('actions.hide'),
+      show: t('actions.show'),
+      move: t('actions.move'),
+      pause: t('actions.pause'),
+      restart: t('actions.restart'),
+      stopSound: t('actions.stopSound'),
+      playBGM: t('actions.playBGM'),
+      stopBGM: t('actions.stopBGM'),
+      toggleFlag: t('actions.toggleFlag'),
+      switchAnimation: t('actions.switchAnimation'),
+      effect: t('actions.effect')
+    };
+    return typeMap[type];
+  };
+
   // ルール状態管理
   const [ruleName, setRuleName] = useState(rule?.name || '');
   const [targetObjectId, setTargetObjectId] = useState(rule?.targetObjectId || 'stage');
@@ -143,10 +184,10 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
         newAction = { type: 'addScore', points: 10 };
         break;
       case 'success':
-        newAction = { type: 'success', score: 100, message: 'やったね！' };
+        newAction = { type: 'success', score: 100, message: t('editor.script.greatJob') };
         break;
       case 'failure':
-        newAction = { type: 'failure', message: 'ざんねん...' };
+        newAction = { type: 'failure', message: t('editor.script.tooBad') };
         break;
       case 'setFlag':
         newAction = { type: 'setFlag', flagId: availableFlags[0]?.id || 'flag1', value: true };
@@ -155,7 +196,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
         newAction = { type: 'playSound', soundId: 'sound1', volume: 0.8 };
         break;
       case 'showMessage':
-        newAction = { type: 'showMessage', text: 'メッセージ', duration: 2 };
+        newAction = { type: 'showMessage', text: t('editor.script.messageText'), duration: 2 };
         break;
       case 'move':
         newAction = { 
@@ -180,7 +221,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
     }
     
     setActions(prev => [...prev, newAction]);
-  }, [availableFlags]);
+  }, [availableFlags, t]);
 
   // 条件削除
   const removeCondition = useCallback((index: number) => {
@@ -217,17 +258,17 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
   // 保存
   const handleSave = useCallback(() => {
     if (!ruleName.trim()) {
-      alert('ルール名を入力してください');
+      alert(t('editor.script.pleaseEnterRuleName'));
       return;
     }
 
     if (!conditions.length) {
-      alert('最低1つの条件を設定してください');
+      alert(t('editor.script.pleaseAddCondition'));
       return;
     }
 
     if (!actions.length) {
-      alert('最低1つのアクションを設定してください');
+      alert(t('editor.script.pleaseAddAction'));
       return;
     }
 
@@ -247,7 +288,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
     };
 
     onSave(newRule);
-  }, [ruleName, targetObjectId, priority, operator, conditions, actions, rule, onSave]);
+  }, [ruleName, targetObjectId, priority, operator, conditions, actions, rule, onSave, t]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -256,13 +297,13 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
         {/* ヘッダー */}
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 rounded-t-lg">
           <h2 className="text-2xl font-bold flex items-center gap-3">
-            🎯 ルール設定
+            🎯 {t('editor.script.ruleSetting')}
             <span className="text-lg font-normal opacity-80">
-              {rule ? '編集' : '新規作成'}
+              {rule ? t('editor.script.edit') : t('editor.script.create')}
             </span>
           </h2>
           <p className="mt-2 opacity-90">
-            アイコンを使って簡単にゲームのルールを作ろう！
+            {t('editor.script.ruleEditorHelp')}
           </p>
         </div>
 
@@ -271,33 +312,33 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
           {/* 基本設定 */}
           <section>
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              ⚙️ 基本設定
+              ⚙️ {t('editor.script.basicSettings')}
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ルール名 *
+                  {t('editor.script.ruleName')} *
                 </label>
                 <input
                   type="text"
                   value={ruleName}
                   onChange={(e) => setRuleName(e.target.value)}
-                  placeholder="例: 星をタッチで得点"
+                  placeholder={t('editor.script.ruleNamePlaceholder')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  対象オブジェクト
+                  {t('editor.script.targetObject')}
                 </label>
                 <select
                   value={targetObjectId}
                   onChange={(e) => setTargetObjectId(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="stage">🌟 ゲーム全体</option>
+                  <option value="stage">🌟 {t('editor.script.gameOverall')}</option>
                   {availableObjects.map(obj => (
                     <option key={obj.id} value={obj.id}>
                       📦 {obj.name}
@@ -305,10 +346,10 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                   ))}
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  優先度 (0-100)
+                  {t('editor.script.priority')} (0-100)
                 </label>
                 <input
                   type="number"
@@ -325,34 +366,34 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
           {/* IF条件設定 */}
           <section>
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              🔍 IF - 条件設定
+              🔍 {t('editor.script.ifConditions')}
             </h3>
-            
+
             {/* 条件の組み合わせ方法 */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                条件の組み合わせ方法
+                {t('editor.script.conditionCombination')}
               </label>
               <div className="flex gap-3">
                 <button
                   onClick={() => setOperator('AND')}
                   className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                    operator === 'AND' 
+                    operator === 'AND'
                       ? 'bg-blue-100 border-blue-500 text-blue-700'
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >
-                  🔗 すべて満たす (AND)
+                  🔗 {t('editor.script.allConditions')}
                 </button>
                 <button
                   onClick={() => setOperator('OR')}
                   className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                    operator === 'OR' 
+                    operator === 'OR'
                       ? 'bg-blue-100 border-blue-500 text-blue-700'
                       : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >
-                  🌈 どれか満たす (OR)
+                  🌈 {t('editor.script.anyCondition')}
                 </button>
               </div>
             </div>
@@ -360,7 +401,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
             {/* 条件追加ボタン */}
             <div className="mb-4">
               <div className="text-sm font-medium text-gray-700 mb-2">
-                条件を追加
+                {t('editor.script.addCondition')}
               </div>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(CONDITION_TYPES).map(([type, config]) => (
@@ -370,7 +411,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                     className={`px-3 py-2 rounded-lg border-2 transition-all hover:scale-105 ${config.color}`}
                   >
                     <span className="text-xl">{config.icon}</span>
-                    <span className="ml-1 text-sm font-medium">{config.name}</span>
+                    <span className="ml-1 text-sm font-medium">{getConditionTypeName(type as keyof typeof CONDITION_TYPES)}</span>
                   </button>
                 ))}
               </div>
@@ -388,7 +429,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                       </span>
                       <span className="font-medium">
                         {/* 🔧 修正：安全なオブジェクトアクセス */}
-                        {CONDITION_TYPES[condition.type as keyof typeof CONDITION_TYPES]?.name || condition.type} 条件
+                        {getConditionTypeName(condition.type as keyof typeof CONDITION_TYPES)} {t('editor.script.condition')}
                       </span>
                     </div>
                     <button
@@ -403,29 +444,29 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                   {condition.type === 'touch' && (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">対象</label>
+                        <label className="block text-sm text-gray-600 mb-1">{t('editor.script.target')}</label>
                         <select
                           value={condition.target}
                           onChange={(e) => updateCondition(index, { target: e.target.value })}
                           className="w-full px-2 py-1 border rounded text-sm"
                         >
-                          <option value="self">自分</option>
-                          <option value="stage">画面</option>
+                          <option value="self">{t('editor.script.self')}</option>
+                          <option value="stage">{t('editor.script.screen')}</option>
                           {availableObjects.map(obj => (
                             <option key={obj.id} value={obj.id}>{obj.name}</option>
                           ))}
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">タッチタイプ</label>
+                        <label className="block text-sm text-gray-600 mb-1">{t('editor.script.touchType')}</label>
                         <select
                           value={condition.touchType}
                           onChange={(e) => updateCondition(index, { touchType: e.target.value as any })}
                           className="w-full px-2 py-1 border rounded text-sm"
                         >
-                          <option value="down">押した時</option>
-                          <option value="up">離した時</option>
-                          <option value="hold">長押し</option>
+                          <option value="down">{t('editor.script.onPress')}</option>
+                          <option value="up">{t('editor.script.onRelease')}</option>
+                          <option value="hold">{t('editor.script.onHold')}</option>
                         </select>
                       </div>
                     </div>
@@ -434,19 +475,19 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                   {condition.type === 'time' && (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">時間タイプ</label>
+                        <label className="block text-sm text-gray-600 mb-1">{t('editor.script.timeType')}</label>
                         <select
                           value={condition.timeType}
                           onChange={(e) => updateCondition(index, { timeType: e.target.value as any })}
                           className="w-full px-2 py-1 border rounded text-sm"
                         >
-                          <option value="exact">正確な時間</option>
-                          <option value="range">時間範囲</option>
-                          <option value="interval">繰り返し</option>
+                          <option value="exact">{t('editor.script.exactTime')}</option>
+                          <option value="range">{t('editor.script.timeRange')}</option>
+                          <option value="interval">{t('editor.script.interval')}</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">秒数</label>
+                        <label className="block text-sm text-gray-600 mb-1">{t('editor.script.seconds')}</label>
                         <input
                           type="number"
                           min="0"
@@ -462,7 +503,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                   {condition.type === 'flag' && (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">フラグ</label>
+                        <label className="block text-sm text-gray-600 mb-1">{t('editor.script.flag')}</label>
                         <select
                           value={condition.flagId}
                           onChange={(e) => updateCondition(index, { flagId: e.target.value })}
@@ -474,15 +515,15 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">条件</label>
+                        <label className="block text-sm text-gray-600 mb-1">{t('editor.script.condition')}</label>
                         <select
                           value={condition.condition}
                           onChange={(e) => updateCondition(index, { condition: e.target.value as any })}
                           className="w-full px-2 py-1 border rounded text-sm"
                         >
-                          <option value="ON">ONの時</option>
-                          <option value="OFF">OFFの時</option>
-                          <option value="CHANGED">変化した時</option>
+                          <option value="ON">{t('editor.script.whenOn')}</option>
+                          <option value="OFF">{t('editor.script.whenOff')}</option>
+                          <option value="CHANGED">{t('editor.script.whenChanged')}</option>
                         </select>
                       </div>
                     </div>
@@ -493,7 +534,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
               {conditions.length === 0 && (
                 <div className="text-center text-gray-500 py-8 border-2 border-dashed border-gray-300 rounded-lg">
                   <div className="text-4xl mb-2">🔍</div>
-                  <div>上のボタンから条件を追加してください</div>
+                  <div>{t('editor.script.addConditionFromButtons')}</div>
                 </div>
               )}
             </div>
@@ -502,13 +543,13 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
           {/* THENアクション設定 */}
           <section>
             <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              ⚡ THEN - アクション設定
+              ⚡ {t('editor.script.thenActions')}
             </h3>
-            
+
             {/* アクション追加ボタン */}
             <div className="mb-4">
               <div className="text-sm font-medium text-gray-700 mb-2">
-                アクションを追加
+                {t('editor.script.addAction')}
               </div>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(ACTION_TYPES).map(([type, config]) => (
@@ -518,7 +559,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                     className={`px-3 py-2 rounded-lg border-2 transition-all hover:scale-105 ${config.color}`}
                   >
                     <span className="text-xl">{config.icon}</span>
-                    <span className="ml-1 text-sm font-medium">{config.name}</span>
+                    <span className="ml-1 text-sm font-medium">{getActionTypeName(type as keyof typeof ACTION_TYPES)}</span>
                   </button>
                 ))}
               </div>
@@ -536,7 +577,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                       </span>
                       <span className="font-medium">
                         {/* 🔧 修正：安全なオブジェクトアクセス */}
-                        {ACTION_TYPES[action.type as keyof typeof ACTION_TYPES]?.name || action.type} アクション
+                        {getActionTypeName(action.type as keyof typeof ACTION_TYPES)} {t('editor.script.action')}
                       </span>
                     </div>
                     <button
@@ -550,7 +591,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                   {/* アクション詳細設定 */}
                   {action.type === 'addScore' && (
                     <div>
-                      <label className="block text-sm text-gray-600 mb-1">得点</label>
+                      <label className="block text-sm text-gray-600 mb-1">{t('editor.script.points')}</label>
                       <input
                         type="number"
                         value={action.points}
@@ -563,7 +604,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                   {action.type === 'showMessage' && (
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">メッセージ</label>
+                        <label className="block text-sm text-gray-600 mb-1">{t('editor.script.message')}</label>
                         <input
                           type="text"
                           value={action.text}
@@ -572,7 +613,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="block text-sm text-gray-600 mb-1">表示時間(秒)</label>
+                        <label className="block text-sm text-gray-600 mb-1">{t('editor.script.displayDuration')}</label>
                         <input
                           type="number"
                           min="0.5"
@@ -587,12 +628,12 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
 
                   {(action.type === 'success' || action.type === 'failure') && (
                     <div>
-                      <label className="block text-sm text-gray-600 mb-1">メッセージ</label>
+                      <label className="block text-sm text-gray-600 mb-1">{t('editor.script.message')}</label>
                       <input
                         type="text"
                         value={action.message || ''}
                         onChange={(e) => updateAction(index, { message: e.target.value })}
-                        placeholder={action.type === 'success' ? 'おめでとう！' : 'もう一度がんばろう！'}
+                        placeholder={action.type === 'success' ? t('editor.script.congratulations') : t('editor.script.tryAgain')}
                         className="w-full px-2 py-1 border rounded text-sm"
                       />
                     </div>
@@ -603,7 +644,7 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
               {actions.length === 0 && (
                 <div className="text-center text-gray-500 py-8 border-2 border-dashed border-gray-300 rounded-lg">
                   <div className="text-4xl mb-2">⚡</div>
-                  <div>上のボタンからアクションを追加してください</div>
+                  <div>{t('editor.script.addActionFromButtons')}</div>
                 </div>
               )}
             </div>
@@ -615,13 +656,13 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
               onClick={onCancel}
               className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              キャンセル
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleSave}
               className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
-              💾 保存
+              💾 {t('common.save')}
             </button>
           </div>
         </div>

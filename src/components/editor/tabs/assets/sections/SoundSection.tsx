@@ -2,6 +2,7 @@
 // 🔧 Phase E-1修正版: TypeScriptエラー解決・nullチェック追加
 // 🔧 audio プロパティエラー修正版（約40箇所修正）
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../../../types/editor/GameProject';
 import { AudioAsset } from '../../../../../types/editor/ProjectAssets';
 import { EDITOR_LIMITS } from '../../../../../constants/EditorLimits';
@@ -29,19 +30,20 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-export const SoundSection: React.FC<SoundSectionProps> = ({ 
-  project, 
-  onProjectUpdate 
+export const SoundSection: React.FC<SoundSectionProps> = ({
+  project,
+  onProjectUpdate
 }) => {
+  const { t } = useTranslation();
   const { uploading, uploadAudioFile, deleteAsset, updateAssetProperty } = useAssetUpload(project, onProjectUpdate);
   const { showSuccess, showError } = useNotification();
-  const { 
-    playbackState, 
-    audioRef, 
-    playAudio, 
-    stopAudio, 
-    isPlaying, 
-    formatTime 
+  const {
+    playbackState,
+    audioRef,
+    playAudio,
+    stopAudio,
+    isPlaying,
+    formatTime
   } = useAudioPlayback();
 
   // サウンド管理用状態
@@ -54,7 +56,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
 
     const file = files[0];
     if (!file) {
-      showError('ファイルが選択されていません');
+      showError(t('errors.fileNotSelected'));
       return;
     }
 
@@ -96,14 +98,14 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
     try {
       await playAudio(audio);
     } catch (error) {
-      showError('音声の再生に失敗しました');
+      showError(t('errors.audioPlaybackFailed'));
     }
   };
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: DESIGN_TOKENS.spacing[4] }}>
-        <h3 
+        <h3
           style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.lg,
             fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
@@ -114,8 +116,8 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
             gap: DESIGN_TOKENS.spacing[2]
           }}
         >
-          🎵 サウンド
-          <span 
+          {t('editor.assets.soundTitle')}
+          <span
             style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
               color: DESIGN_TOKENS.colors.neutral[500],
@@ -143,8 +145,8 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
         {/* 🔧 修正箇所3: タブカウント（140-141行目） */}
         {[
           /* ✅ 修正: オプショナルチェーン追加 */
-          { id: 'bgm' as SoundType, label: 'BGM', icon: '🎵', count: project.assets.audio?.bgm ? 1 : 0 },
-          { id: 'se' as SoundType, label: '効果音', icon: '🔊', count: project.assets.audio?.se?.length || 0 }
+          { id: 'bgm' as SoundType, label: t('editor.assets.bgm'), icon: '🎵', count: project.assets.audio?.bgm ? 1 : 0 },
+          { id: 'se' as SoundType, label: t('editor.assets.soundEffects'), icon: '🔊', count: project.assets.audio?.se?.length || 0 }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -263,7 +265,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                     }}
                     disabled={playbackState.isLoading}
                   >
-                    {project.assets.audio.bgm && isPlaying(project.assets.audio.bgm.id) ? '停止' : '再生'}
+                    {project.assets.audio.bgm && isPlaying(project.assets.audio.bgm.id) ? t('common.stop') : t('common.play')}
                   </ModernButton>
                   <ModernButton
                     variant="outline"
@@ -273,7 +275,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                       project.assets.audio?.bgm && editingAudioId === project.assets.audio.bgm.id ? null : project.assets.audio?.bgm?.id || null
                     )}
                   >
-                    設定
+                    {t('common.settings')}
                   </ModernButton>
                   <ModernButton
                     variant="error"
@@ -282,21 +284,21 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                     onClick={() => handleAudioDelete('bgm')}
                     disabled={uploading}
                   >
-                    削除
+                    {t('common.delete')}
                   </ModernButton>
                 </div>
               </div>
 
               {/* BGM設定パネル */}
               {project.assets.audio.bgm && editingAudioId === project.assets.audio.bgm.id && (
-                <div 
+                <div
                   style={{
                     borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
                     paddingTop: DESIGN_TOKENS.spacing[4],
                     marginTop: DESIGN_TOKENS.spacing[4]
                   }}
                 >
-                  <h5 
+                  <h5
                     style={{
                       fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                       fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
@@ -304,11 +306,11 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                       margin: `0 0 ${DESIGN_TOKENS.spacing[3]} 0`
                     }}
                   >
-                    🎛️ BGM設定
+                    {t('editor.assets.bgmSettings')}
                   </h5>
-                  
+
                   <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-                    <label 
+                    <label
                       style={{
                         display: 'block',
                         fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -317,7 +319,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                         marginBottom: DESIGN_TOKENS.spacing[2]
                       }}
                     >
-                      音量 ({Math.round(project.assets.audio.bgm.volume * 100)}%)
+                      {t('editor.assets.volume', { percent: Math.round(project.assets.audio.bgm.volume * 100) })}
                     </label>
                     <input
                       type="range"
@@ -350,7 +352,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                           color: DESIGN_TOKENS.colors.neutral[700]
                         }}
                       >
-                        🔄 ループ再生
+                        {t('editor.assets.loopPlayback')}
                       </span>
                     </label>
 
@@ -366,7 +368,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                           color: DESIGN_TOKENS.colors.neutral[700]
                         }}
                       >
-                        ▶️ ゲーム開始時に自動再生
+                        {t('editor.assets.autoPlayOnStart')}
                       </span>
                     </label>
                   </div>
@@ -379,9 +381,9 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
               maxFiles={1}
               maxSize={EDITOR_LIMITS.AUDIO.BGM_MAX_SIZE}
               variant="large"
-              title="BGMをアップロード"
-              description="音声ファイルをドラッグ&ドロップするか、クリックしてファイルを選択"
-              buttonText="ファイルを選択"
+              title={t('editor.assets.uploadBGM')}
+              description={t('editor.assets.dragDropOrClickAudio')}
+              buttonText={t('common.selectFile')}
               onFilesDrop={(results) => {
                 const files = new DataTransfer();
                 results.forEach(result => {
@@ -395,7 +397,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
           )}
 
           <ModernCard variant="filled" size="sm">
-            <h4 
+            <h4
               style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
@@ -403,9 +405,9 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                 margin: `0 0 ${DESIGN_TOKENS.spacing[2]} 0`
               }}
             >
-              💡 BGMのヒント
+              {t('editor.assets.bgmHints')}
             </h4>
-            <ul 
+            <ul
               style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 color: DESIGN_TOKENS.colors.primary[700],
@@ -414,10 +416,10 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                 lineHeight: DESIGN_TOKENS.typography.lineHeight.relaxed
               }}
             >
-              <li>最大{EDITOR_LIMITS.AUDIO.BGM_MAX_DURATION}秒、{formatFileSize(EDITOR_LIMITS.AUDIO.BGM_MAX_SIZE)}まで</li>
-              <li>対応形式: MP3, WAV, OGG</li>
-              <li>自動ループ再生されます</li>
-              <li>ゲーム開始時から自動再生されます</li>
+              <li>{t('editor.assets.bgmMaxDurationSize', { duration: EDITOR_LIMITS.AUDIO.BGM_MAX_DURATION, size: formatFileSize(EDITOR_LIMITS.AUDIO.BGM_MAX_SIZE) })}</li>
+              <li>{t('editor.assets.supportedFormats')}</li>
+              <li>{t('editor.assets.autoLoop')}</li>
+              <li>{t('editor.assets.autoPlayFromStart')}</li>
             </ul>
           </ModernCard>
         </div>
@@ -453,7 +455,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                       {formatTime(se.duration)} • {formatFileSize(se.fileSize)} • {se.format.toUpperCase()}
                     </p>
                     {isPlaying(se.id) && (
-                      <p 
+                      <p
                         style={{
                           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                           color: DESIGN_TOKENS.colors.success[600],
@@ -463,7 +465,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                           gap: DESIGN_TOKENS.spacing[1]
                         }}
                       >
-                        🔊 再生中
+                        {t('editor.assets.nowPlaying')}
                       </p>
                     )}
                   </div>
@@ -493,14 +495,14 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
 
                 {/* SE設定パネル */}
                 {editingAudioId === se.id && (
-                  <div 
+                  <div
                     style={{
                       borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
                       paddingTop: DESIGN_TOKENS.spacing[4],
                       marginTop: DESIGN_TOKENS.spacing[4]
                     }}
                   >
-                    <h5 
+                    <h5
                       style={{
                         fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                         fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
@@ -508,11 +510,11 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                         margin: `0 0 ${DESIGN_TOKENS.spacing[3]} 0`
                       }}
                     >
-                      🔊 効果音設定
+                      {t('editor.assets.soundEffectSettings')}
                     </h5>
-                    
+
                     <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
-                      <label 
+                      <label
                         style={{
                           display: 'block',
                           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -521,7 +523,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                           marginBottom: DESIGN_TOKENS.spacing[2]
                         }}
                       >
-                        効果音名
+                        {t('editor.assets.soundEffectName')}
                       </label>
                       <input
                         type="text"
@@ -539,7 +541,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                       />
                     </div>
                     <div>
-                      <label 
+                      <label
                         style={{
                           display: 'block',
                           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -548,7 +550,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                           marginBottom: DESIGN_TOKENS.spacing[2]
                         }}
                       >
-                        音量 ({Math.round(se.volume * 100)}%)
+                        {t('editor.assets.volume', { percent: Math.round(se.volume * 100) })}
                       </label>
                       <input
                         type="range"
@@ -581,9 +583,9 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
               maxFiles={EDITOR_LIMITS.PROJECT.MAX_SE_COUNT - (project.assets.audio?.se?.length || 0)}
               maxSize={EDITOR_LIMITS.AUDIO.SE_MAX_SIZE}
               variant="default"
-              title="効果音を追加"
-              description={`音声ファイルをドラッグ&ドロップ（最大${EDITOR_LIMITS.PROJECT.MAX_SE_COUNT - (project.assets.audio?.se?.length || 0)}個）`}
-              buttonText="ファイルを選択"
+              title={t('editor.assets.addSoundEffect')}
+              description={t('editor.assets.dragDropAudioMax', { max: EDITOR_LIMITS.PROJECT.MAX_SE_COUNT - (project.assets.audio?.se?.length || 0) })}
+              buttonText={t('common.selectFile')}
               onFilesDrop={(results) => {
                 results.forEach(result => {
                   if (result.accepted) {
@@ -602,7 +604,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
           {/* ✅ 修正: オプショナルチェーン追加 */}
           {(project.assets.audio?.se?.length || 0) >= EDITOR_LIMITS.PROJECT.MAX_SE_COUNT && (
             <ModernCard variant="filled" size="sm" style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-              <p 
+              <p
                 style={{
                   textAlign: 'center',
                   fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -610,13 +612,13 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                   margin: 0
                 }}
               >
-                効果音は最大{EDITOR_LIMITS.PROJECT.MAX_SE_COUNT}個まで追加できます
+                {t('editor.assets.soundEffectMaxLimit', { max: EDITOR_LIMITS.PROJECT.MAX_SE_COUNT })}
               </p>
             </ModernCard>
           )}
 
           <ModernCard variant="filled" size="sm">
-            <h4 
+            <h4
               style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
@@ -624,9 +626,9 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                 margin: `0 0 ${DESIGN_TOKENS.spacing[2]} 0`
               }}
             >
-              💡 効果音のヒント
+              {t('editor.assets.soundEffectHints')}
             </h4>
-            <ul 
+            <ul
               style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 color: DESIGN_TOKENS.colors.success[600],
@@ -635,11 +637,11 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                 lineHeight: DESIGN_TOKENS.typography.lineHeight.relaxed
               }}
             >
-              <li>最大{EDITOR_LIMITS.AUDIO.SE_MAX_DURATION}秒、{formatFileSize(EDITOR_LIMITS.AUDIO.SE_MAX_SIZE)}まで</li>
-              <li>対応形式: MP3, WAV, OGG</li>
-              <li>1回再生（ループなし）で実行されます</li>
-              <li>スクリプトタブで再生条件を設定できます</li>
-              <li>効果音名は自由に変更可能です</li>
+              <li>{t('editor.assets.seMaxDurationSize', { duration: EDITOR_LIMITS.AUDIO.SE_MAX_DURATION, size: formatFileSize(EDITOR_LIMITS.AUDIO.SE_MAX_SIZE) })}</li>
+              <li>{t('editor.assets.supportedFormats')}</li>
+              <li>{t('editor.assets.singlePlayNoLoop')}</li>
+              <li>{t('editor.assets.setPlayConditionsInScript')}</li>
+              <li>{t('editor.assets.soundEffectNameEditable')}</li>
             </ul>
           </ModernCard>
         </div>

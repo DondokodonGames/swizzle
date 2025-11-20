@@ -97,21 +97,6 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         </div>
       ))}
 
-      {/* 分割アーキテクチャ完成通知 */}
-      <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-green-600 font-medium">🎉 分割アーキテクチャ完成:</span>
-            <span className="text-sm">
-              3セクション統合完了・1000行→300行×3・保守性劇的向上
-            </span>
-          </div>
-          <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded font-bold">
-            Phase E-1 完了
-          </span>
-        </div>
-      </div>
-
       {/* 容量表示（画像+音声統合） */}
       <ModernCard variant="filled" size="sm" style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: DESIGN_TOKENS.spacing[2] }}>
@@ -180,26 +165,23 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         }}
       >
         {[
-          { 
-            id: 'background' as AssetType, 
-            label: t('editor.assets.background'), 
-            icon: '🖼️', 
-            count: project.assets.background ? 1 : 0,
-            status: '✅ 完成'
+          {
+            id: 'background' as AssetType,
+            label: t('editor.assets.background'),
+            icon: '🖼️',
+            count: project.assets.background ? 1 : 0
           },
-          { 
-            id: 'objects' as AssetType, 
-            label: t('editor.assets.objects'), 
-            icon: '🎨', 
-            count: project.assets.objects.length,
-            status: '🎬 アニメ統合'
+          {
+            id: 'objects' as AssetType,
+            label: t('editor.assets.objects'),
+            icon: '🎨',
+            count: project.assets.objects.length
           },
-          { 
-            id: 'sound' as AssetType, 
-            label: t('editor.assets.sound'), 
-            icon: '🎵', 
-            count: (project.assets.audio?.bgm ? 1 : 0) + (project.assets.audio?.se?.length || 0),
-            status: '✅ 完成'
+          {
+            id: 'sound' as AssetType,
+            label: t('editor.assets.sound'),
+            icon: '🎵',
+            count: (project.assets.audio?.bgm ? 1 : 0) + (project.assets.audio?.se?.length || 0)
           }
         ].map((tab) => (
           <button
@@ -243,14 +225,14 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
               <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{tab.icon}</span>
               <span>{tab.label}</span>
               {tab.count > 0 && (
-                <span 
+                <span
                   style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                     padding: `2px ${DESIGN_TOKENS.spacing[1]}`,
-                    backgroundColor: activeAssetType === tab.id 
+                    backgroundColor: activeAssetType === tab.id
                       ? DESIGN_TOKENS.colors.neutral[0]
                       : DESIGN_TOKENS.colors.purple[100],
-                    color: activeAssetType === tab.id 
+                    color: activeAssetType === tab.id
                       ? DESIGN_TOKENS.colors.purple[600]
                       : DESIGN_TOKENS.colors.purple[700],
                     borderRadius: DESIGN_TOKENS.borderRadius.full,
@@ -263,15 +245,6 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
                 </span>
               )}
             </div>
-            <span 
-              style={{
-                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                opacity: 0.8,
-                fontWeight: DESIGN_TOKENS.typography.fontWeight.normal
-              }}
-            >
-              {tab.status}
-            </span>
           </button>
         ))}
       </div>

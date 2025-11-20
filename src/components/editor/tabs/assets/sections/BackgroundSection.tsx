@@ -1,6 +1,7 @@
 // src/components/editor/tabs/assets/sections/BackgroundSection.tsx
 // 🔧 Phase E-1: 背景管理セクション分離
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../../../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../../../../../constants/EditorLimits';
 import { DESIGN_TOKENS } from '../../../../../constants/DesignSystem';
@@ -27,10 +28,11 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-export const BackgroundSection: React.FC<BackgroundSectionProps> = ({ 
-  project, 
-  onProjectUpdate 
+export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
+  project,
+  onProjectUpdate
 }) => {
+  const { t } = useTranslation();
   const { uploading, uploadImageFiles, deleteAsset } = useAssetUpload(project, onProjectUpdate);
   const { showSuccess, showError } = useNotification();
 
@@ -74,15 +76,15 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
             gap: DESIGN_TOKENS.spacing[2]
           }}
         >
-          🖼️ 背景
-          <span 
+          🖼️ {t('editor.assets.background', '背景')}
+          <span
             style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
               color: DESIGN_TOKENS.colors.neutral[500],
               fontWeight: DESIGN_TOKENS.typography.fontWeight.normal
             }}
           >
-            (1枚まで)
+            {t('editor.assets.backgroundLimit', '(1枚まで)')}
           </span>
         </h3>
       </div>
@@ -110,7 +112,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                   margin: `0 0 ${DESIGN_TOKENS.spacing[1]} 0`
                 }}
               >
-                {project.assets.background.name || '背景画像'}
+                {project.assets.background.name || t('editor.assets.backgroundImage', '背景画像')}
               </h4>
               <p
                 style={{
@@ -136,7 +138,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                     ? 'bg-green-100 text-green-700'
                     : 'bg-red-100 text-red-700'
                 }`}>
-                  {project.script?.layout?.background?.visible ? '✅ 表示中' : '❌ 非表示'}
+                  {project.script?.layout?.background?.visible ? t('editor.assets.backgroundVisible', '✅ 表示中') : t('editor.assets.backgroundHidden', '❌ 非表示')}
                 </span>
               </div>
 
@@ -151,7 +153,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                     marginBottom: DESIGN_TOKENS.spacing[1]
                   }}
                 >
-                  サイズ: {((project.assets.background.defaultScale || 1.0) * 100).toFixed(0)}%
+                  {t('editor.assets.size', 'サイズ')}: {((project.assets.background.defaultScale || 1.0) * 100).toFixed(0)}%
                 </label>
                 <input
                   type="range"
@@ -191,7 +193,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
               onClick={handleBackgroundDelete}
               disabled={uploading}
             >
-              削除
+              {t('common.delete', '削除')}
             </ModernButton>
           </div>
         </ModernCard>
@@ -216,7 +218,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                   margin: `0 0 ${DESIGN_TOKENS.spacing[1]} 0`
                 }}
               >
-                背景色
+                {t('editor.assets.backgroundColor', '背景色')}
               </h4>
               <p
                 style={{
@@ -235,7 +237,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
               onClick={handleBackgroundDelete}
               disabled={uploading}
             >
-              削除
+              {t('common.delete', '削除')}
             </ModernButton>
           </div>
         </ModernCard>
@@ -245,9 +247,9 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
           maxFiles={1}
           maxSize={EDITOR_LIMITS.IMAGE.BACKGROUND_FRAME_MAX_SIZE}
           variant="large"
-          title="背景画像をアップロード"
-          description="画像をドラッグ&ドロップするか、クリックしてファイルを選択"
-          buttonText="ファイルを選択"
+          title={t('editor.assets.uploadBackground', '背景画像をアップロード')}
+          description={t('editor.assets.dragDropImage', '画像をドラッグ&ドロップするか、クリックしてファイルを選択')}
+          buttonText={t('editor.assets.selectFile', 'ファイルを選択')}
           onFilesDrop={handleBackgroundUpload}
           loading={uploading}
           style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}
@@ -255,7 +257,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
       )}
 
       <ModernCard variant="filled" size="sm">
-        <h4 
+        <h4
           style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
             fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
@@ -263,9 +265,9 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
             margin: `0 0 ${DESIGN_TOKENS.spacing[2]} 0`
           }}
         >
-          💡 背景のヒント
+          💡 {t('editor.assets.backgroundHints.title', '背景のヒント')}
         </h4>
-        <ul 
+        <ul
           style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
             color: DESIGN_TOKENS.colors.primary[700],
@@ -274,11 +276,11 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
             lineHeight: DESIGN_TOKENS.typography.lineHeight.relaxed
           }}
         >
-          <li>9:16（縦向き）の比率が推奨です</li>
-          <li>最大{formatFileSize(EDITOR_LIMITS.IMAGE.BACKGROUND_FRAME_MAX_SIZE)}まで対応</li>
-          <li>ファイルサイズが大きい場合は自動で最適化されます</li>
-          <li>追加すると自動的に表示設定されます</li>
-          <li><strong>🎬 将来対応予定:</strong> 複数フレーム・アニメーション背景</li>
+          <li>{t('editor.assets.backgroundHints.ratio', '9:16（縦向き）の比率が推奨です')}</li>
+          <li>{t('editor.assets.backgroundHints.maxSize', '最大{{size}}まで対応', { size: formatFileSize(EDITOR_LIMITS.IMAGE.BACKGROUND_FRAME_MAX_SIZE) })}</li>
+          <li>{t('editor.assets.backgroundHints.optimization', 'ファイルサイズが大きい場合は自動で最適化されます')}</li>
+          <li>{t('editor.assets.backgroundHints.autoShow', '追加すると自動的に表示設定されます')}</li>
+          <li><strong>{t('editor.assets.backgroundHints.future', '🎬 将来対応予定: 複数フレーム・アニメーション背景')}</strong></li>
         </ul>
       </ModernCard>
     </div>

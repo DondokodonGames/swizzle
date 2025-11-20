@@ -1,6 +1,7 @@
 // src/components/editor/ProjectSelector.tsx
 // 修正版: フォントファミリー型修正 + インポート機能修正 + audio プロパティ安全アクセス対応 + Paywall統合
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../../constants/EditorLimits';
 import { useGameProject } from '../../hooks/editor/useGameProject';
@@ -25,6 +26,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   onDuplicate,
   onExport
 }) => {
+  const { t } = useTranslation();
   const [projects, setProjects] = useState<GameProject[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
@@ -81,7 +83,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
         setProjects(uniqueProjects);
       } catch (error) {
         console.error('プロジェクト一覧の読み込みに失敗:', error);
-        showNotification('error', 'プロジェクト一覧の読み込みに失敗しました');
+        showNotification('error', t('errors.projectLoadFailed'));
       }
     };
 
@@ -129,14 +131,14 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       onCreateNew(newProjectName.trim());
       setShowNewProjectModal(false);
       setNewProjectName('');
-      showNotification('success', `「${newProject.name}」を作成しました`);
+      showNotification('success', t('editor.app.projectCreated', { name: newProject.name }));
 
       // クレジット情報を更新
       await refetchCredits();
     } catch (error: any) {
-      showNotification('error', `プロジェクト作成に失敗しました: ${error.message}`);
+      showNotification('error', `${t('errors.projectSaveFailed')}: ${error.message}`);
     }
-  }, [createProject, newProjectName, onCreateNew, showNotification, canCreate, refetchCredits]);
+  }, [createProject, newProjectName, onCreateNew, showNotification, canCreate, refetchCredits, t]);
 
   // プロジェクト削除
   const handleDeleteProject = useCallback(async (projectId: string) => {
@@ -144,11 +146,11 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       await deleteProject(projectId);
       setProjects(prev => prev.filter(p => p.id !== projectId));
       if (onDelete) onDelete(projectId);
-      showNotification('success', 'プロジェクトを削除しました');
+      showNotification('success', t('editor.app.projectDeleted'));
     } catch (error: any) {
-      showNotification('error', `削除に失敗しました: ${error.message}`);
+      showNotification('error', `${t('common.delete')}: ${error.message}`);
     }
-  }, [deleteProject, onDelete, showNotification]);
+  }, [deleteProject, onDelete, showNotification, t]);
 
   // プロジェクト複製
   const handleDuplicateProject = useCallback(async (projectId: string) => {
@@ -156,15 +158,15 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       const originalProject = projects.find(p => p.id === projectId);
       if (!originalProject) return;
 
-      const newName = `${originalProject.name} のコピー`;
+      const newName = `${originalProject.name} (Copy)`;
       const duplicated = await duplicateProject(projectId, newName);
       setProjects(prev => [duplicated, ...prev]);
       if (onDuplicate) onDuplicate(projectId);
-      showNotification('success', `「${duplicated.name}」を作成しました`);
+      showNotification('success', t('editor.app.projectDuplicated', { name: duplicated.name }));
     } catch (error: any) {
-      showNotification('error', `複製に失敗しました: ${error.message}`);
+      showNotification('error', `${t('common.create')}: ${error.message}`);
     }
-  }, [projects, duplicateProject, onDuplicate, showNotification]);
+  }, [projects, duplicateProject, onDuplicate, showNotification, t]);
 
   // プロジェクトエクスポート
   const handleExportProject = useCallback(async (projectId: string) => {
@@ -173,7 +175,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       if (!project) return;
 
       const blob = await exportProject(projectId);
-      
+
       // ダウンロード
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -183,29 +185,29 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       if (onExport) onExport(projectId);
-      showNotification('success', 'プロジェクトをエクスポートしました');
+      showNotification('success', t('editor.app.projectExported'));
     } catch (error: any) {
-      showNotification('error', `エクスポートに失敗しました: ${error.message}`);
+      showNotification('error', `${t('errors.exportFailed')}: ${error.message}`);
     }
-  }, [projects, exportProject, onExport, showNotification]);
+  }, [projects, exportProject, onExport, showNotification, t]);
 
   // ファイルインポート処理（修正版）
   const handleFileImport = useCallback(async (file: File) => {
     try {
       // ✅ useGameProjectのimportProjectメソッドを使用
       const importedProject = await importProject(file);
-      
+
       // ✅ プロジェクト一覧を再取得（永続化されているため）
       const updatedProjects = await listProjects();
       setProjects(updatedProjects);
-      
-      showNotification('success', `「${importedProject.name}」をインポートしました`);
+
+      showNotification('success', t('editor.app.projectCreated', { name: importedProject.name }));
     } catch (error: any) {
-      showNotification('error', `インポートに失敗しました: ${error.message}`);
+      showNotification('error', `${t('errors.fileUploadFailed')}: ${error.message}`);
     }
-  }, [importProject, listProjects, showNotification]);
+  }, [importProject, listProjects, showNotification, t]);
 
   return (
     <div 
@@ -325,7 +327,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           }}
         >
           <div style={{ textAlign: 'center', marginBottom: DESIGN_TOKENS.spacing[6] }}>
-            <h1 
+            <h1
               style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize['4xl'],
                 fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
@@ -335,16 +337,16 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 margin: `0 0 ${DESIGN_TOKENS.spacing[2]} 0`
               }}
             >
-              🎮 ゲームエディター
+              🎮 {t('editor.selector.title')}
             </h1>
-            <p 
+            <p
               style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.lg,
                 color: DESIGN_TOKENS.colors.neutral[600],
                 margin: 0
               }}
             >
-              簡単にゲームを作って、みんなに遊んでもらおう！
+              {t('editor.selector.subtitle')}
             </p>
           </div>
 
@@ -359,7 +361,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           >
             <ModernCard variant="filled" size="sm">
               <div style={{ textAlign: 'center' }}>
-                <div 
+                <div
                   style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
                     fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
@@ -369,20 +371,20 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 >
                   {projects.length}
                 </div>
-                <div 
+                <div
                   style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                     color: DESIGN_TOKENS.colors.neutral[600]
                   }}
                 >
-                  プロジェクト数
+                  {t('editor.selector.stats.projectCount')}
                 </div>
               </div>
             </ModernCard>
 
             <ModernCard variant="filled" size="sm">
               <div style={{ textAlign: 'center' }}>
-                <div 
+                <div
                   style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
                     fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
@@ -392,20 +394,20 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 >
                   {projects.filter(p => p.status === 'published').length}
                 </div>
-                <div 
+                <div
                   style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                     color: DESIGN_TOKENS.colors.neutral[600]
                   }}
                 >
-                  公開済み
+                  {t('editor.selector.stats.publishedCount')}
                 </div>
               </div>
             </ModernCard>
 
             <ModernCard variant="filled" size="sm">
               <div style={{ textAlign: 'center' }}>
-                <div 
+                <div
                   style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
                     fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
@@ -415,13 +417,13 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 >
                   {(projects.reduce((sum, p) => sum + p.totalSize, 0) / 1024 / 1024).toFixed(1)}MB
                 </div>
-                <div 
+                <div
                   style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                     color: DESIGN_TOKENS.colors.neutral[600]
                   }}
                 >
-                  総容量
+                  {t('editor.selector.stats.totalCapacity')}
                 </div>
               </div>
             </ModernCard>
@@ -449,7 +451,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           <div style={{ position: 'relative' }}>
             <input
               type="text"
-              placeholder="プロジェクトを検索..."
+              placeholder={t('editor.selector.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
@@ -509,9 +511,9 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   outline: 'none'
                 }}
               >
-                <option value="lastModified">最新順</option>
-                <option value="name">名前順</option>
-                <option value="status">ステータス順</option>
+                <option value="lastModified">{t('editor.selector.sort.latest')}</option>
+                <option value="name">{t('editor.selector.sort.name')}</option>
+                <option value="status">{t('editor.selector.sort.status')}</option>
               </select>
 
               <div 
@@ -535,7 +537,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                     transition: `all ${DESIGN_TOKENS.animation.duration.fast} ${DESIGN_TOKENS.animation.easing.inOut}`
                   }}
                 >
-                  ⊞ グリッド
+                  ⊞ {t('editor.selector.view.grid')}
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
@@ -550,7 +552,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                     transition: `all ${DESIGN_TOKENS.animation.duration.fast} ${DESIGN_TOKENS.animation.easing.inOut}`
                   }}
                 >
-                  ☰ リスト
+                  ☰ {t('editor.selector.view.list')}
                 </button>
               </div>
             </div>
@@ -581,16 +583,16 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   }
                 }}
               >
-                インポート
+                {t('editor.selector.import')}
               </ModernButton>
-              
+
               {/* 新規作成ボタン */}
               <ModernButton
                 variant="primary"
                 size="md"
                 onClick={() => setShowNewProjectModal(true)}
               >
-                新しいゲームを作る
+                {t('editor.selector.createNew')}
               </ModernButton>
             </div>
           </div>
@@ -598,13 +600,13 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
         {/* プロジェクト一覧 */}
         {loading ? (
-          <div 
+          <div
             style={{
               textAlign: 'center',
               padding: `${DESIGN_TOKENS.spacing[20]} 0`
             }}
           >
-            <div 
+            <div
               style={{
                 width: '48px',
                 height: '48px',
@@ -615,24 +617,24 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 margin: `0 auto ${DESIGN_TOKENS.spacing[4]} auto`
               }}
             />
-            <p 
+            <p
               style={{
                 color: DESIGN_TOKENS.colors.neutral[600],
                 fontSize: DESIGN_TOKENS.typography.fontSize.lg,
                 margin: 0
               }}
             >
-              プロジェクトを読み込み中...
+              {t('editor.selector.loadingProjects')}
             </p>
           </div>
         ) : filteredAndSortedProjects.length === 0 ? (
-          <div 
+          <div
             style={{
               textAlign: 'center',
               padding: `${DESIGN_TOKENS.spacing[20]} 0`
             }}
           >
-            <div 
+            <div
               style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize['6xl'],
                 marginBottom: DESIGN_TOKENS.spacing[4]
@@ -640,7 +642,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
             >
               🎨
             </div>
-            <h3 
+            <h3
               style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.xl,
                 fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
@@ -648,15 +650,15 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 margin: `0 0 ${DESIGN_TOKENS.spacing[2]} 0`
               }}
             >
-              {searchQuery ? 'プロジェクトが見つかりません' : 'まだプロジェクトがありません'}
+              {searchQuery ? t('editor.selector.noResults') : t('editor.selector.noProjects')}
             </h3>
-            <p 
+            <p
               style={{
                 color: DESIGN_TOKENS.colors.neutral[600],
                 margin: `0 0 ${DESIGN_TOKENS.spacing[8]} 0`
               }}
             >
-              {searchQuery ? '別のキーワードで検索してみてください' : '初めてのゲームを作ってみましょう！'}
+              {searchQuery ? t('editor.selector.noResultsMessage') : t('editor.selector.noProjectsMessage')}
             </p>
             {!searchQuery && (
               <ModernButton
@@ -664,7 +666,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 size="lg"
                 onClick={() => setShowNewProjectModal(true)}
               >
-                新しいゲームを作る
+                {t('editor.selector.createNew')}
               </ModernButton>
             )}
           </div>
@@ -726,7 +728,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                     size="xs"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (window.confirm(`「${project.name}」を削除しますか？この操作は取り消せません。`)) {
+                      if (window.confirm(t('editor.selector.projectCard.confirmDelete', { name: project.name }))) {
                         handleDeleteProject(project.id);
                       }
                     }}
@@ -762,7 +764,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ textAlign: 'center', marginBottom: DESIGN_TOKENS.spacing[6] }}>
-              <div 
+              <div
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize['4xl'],
                   marginBottom: DESIGN_TOKENS.spacing[2]
@@ -770,7 +772,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
               >
                 ✨
               </div>
-              <h2 
+              <h2
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
                   fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
@@ -778,15 +780,15 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   margin: `0 0 ${DESIGN_TOKENS.spacing[2]} 0`
                 }}
               >
-                新しいゲームを作る
+                {t('editor.selector.newProject.title')}
               </h2>
-              <p 
+              <p
                 style={{
                   color: DESIGN_TOKENS.colors.neutral[600],
                   margin: 0
                 }}
               >
-                ゲームの名前を決めましょう
+                {t('editor.selector.newProject.subtitle')}
               </p>
             </div>
 
@@ -795,7 +797,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 type="text"
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
-                placeholder="ゲーム名を入力してください"
+                placeholder={t('editor.selector.newProject.placeholder')}
                 maxLength={50}
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
@@ -822,7 +824,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   e.target.style.boxShadow = 'none';
                 }}
               />
-              <div 
+              <div
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                   color: DESIGN_TOKENS.colors.neutral[500],
@@ -830,7 +832,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   textAlign: 'right'
                 }}
               >
-                {newProjectName.length}/50文字
+                {t('editor.selector.newProject.charCount', { count: newProjectName.length })}
               </div>
             </div>
 
@@ -845,7 +847,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 }}
                 disabled={loading}
               >
-                キャンセル
+                {t('common.cancel')}
               </ModernButton>
               <ModernButton
                 variant="primary"
@@ -855,12 +857,12 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 disabled={!newProjectName.trim() || loading}
                 loading={loading}
               >
-                作成
+                {t('editor.selector.newProject.create')}
               </ModernButton>
             </div>
 
             {/* テンプレート選択（将来実装） */}
-            <div 
+            <div
               style={{
                 marginTop: DESIGN_TOKENS.spacing[6],
                 paddingTop: DESIGN_TOKENS.spacing[6],
@@ -868,14 +870,14 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 textAlign: 'center'
               }}
             >
-              <p 
+              <p
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                   color: DESIGN_TOKENS.colors.neutral[500],
                   margin: 0
                 }}
               >
-                💡 テンプレートから始めることもできます（準備中）
+                💡 {t('editor.selector.newProject.templateHint')}
               </p>
             </div>
           </ModernCard>
@@ -915,8 +917,8 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           color: DESIGN_TOKENS.colors.neutral[400]
         }}
       >
-        <div>Game Editor v1.0.0 - Phase 1-B モダンUI版</div>
-        <div>💡 Ctrl+Q: メイン画面に戻る</div>
+        <div>{t('editor.selector.versionInfo')}</div>
+        <div>💡 {t('editor.selector.shortcuts')}</div>
       </div>
 
       {/* 🔧 追加: Paywallモーダル */}

@@ -3,6 +3,7 @@
 // 🔧 audio プロパティエラー修正版（3箇所修正）
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import ModernButton from '../ui/ModernButton';
 import { GameProject } from '../../types/editor/GameProject';
 import { EDITOR_LIMITS, EditorTab } from '../../constants/EditorLimits';
@@ -34,6 +35,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
   onTestPlay,
   tabs: customTabs
 }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<EditorTab>('assets');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
@@ -121,32 +123,32 @@ export const GameEditor: React.FC<GameEditorProps> = ({
 
   // 🔧 修正箇所2: タブの設定（131-135行目）
   const tabs = customTabs || [
-    { 
-      id: 'assets' as EditorTab, 
-      label: 'アセット', 
-      icon: '🎨', 
-      description: '画像・音声・テキスト管理',
+    {
+      id: 'assets' as EditorTab,
+      label: t('editor.tabs.assets'),
+      icon: '🎨',
+      description: t('editor.assets.title'),
       // ✅ 修正: オプショナルチェーン追加
       badge: (
-        project.assets.objects.length + 
-        (project.assets.background ? 1 : 0) + 
+        project.assets.objects.length +
+        (project.assets.background ? 1 : 0) +
         project.assets.texts.length +
-        (project.assets.audio?.bgm ? 1 : 0) + 
+        (project.assets.audio?.bgm ? 1 : 0) +
         (project.assets.audio?.se?.length || 0)
       ) || undefined
     },
-    { 
-      id: 'script' as EditorTab, 
-      label: 'ルール', 
-      icon: '⚙️', 
-      description: 'ゲーム動作・条件設定',
+    {
+      id: 'script' as EditorTab,
+      label: t('editor.tabs.script'),
+      icon: '⚙️',
+      description: t('editor.script.title'),
       badge: project.script.rules.length || undefined
     },
-    { 
-      id: 'settings' as EditorTab, 
-      label: '公開', 
-      icon: '🚀', 
-      description: 'テストプレイ・公開管理',
+    {
+      id: 'settings' as EditorTab,
+      label: t('editor.tabs.settings'),
+      icon: '🚀',
+      description: t('editor.settings.title'),
       badge: project.settings.publishing?.isPublished ? '✓' : (project.settings.name ? '📝' : undefined)
     }
   ];
@@ -160,19 +162,19 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     if (project.settings.name?.trim()) {
       score += 1;
     } else {
-      issues.push('ゲーム名を設定してください');
+      issues.push(t('errors.gameNameRequired'));
     }
 
     if (project.assets.objects.length > 0 || project.assets.background) {
       score += 1;
     } else {
-      issues.push('背景またはオブジェクトを追加してください');
+      issues.push(t('errors.noAssets'));
     }
 
     if (project.settings.duration) {
       score += 1;
     } else {
-      issues.push('ゲーム時間を設定してください');
+      issues.push(t('editor.settings.duration'));
     }
 
     if (project.script.rules.length > 0) {
@@ -222,7 +224,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                   margin: 0,
                   marginBottom: '8px'
                 }}>
-                  {project.name || project.settings.name || 'マイゲーム'}
+                  {project.name || project.settings.name || t('editor.selector.createNew')}
                 </h1>
                 <div style={{ 
                   display: 'flex',
@@ -232,11 +234,11 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                   fontSize: '14px',
                   color: '#6b7280'
                 }}>
-                  <span>最終更新: {new Date(project.lastModified).toLocaleDateString('ja-JP')}</span>
-                  
+                  <span>{t('editor.selector.projectCard.lastModified')}: {new Date(project.lastModified).toLocaleDateString('ja-JP')}</span>
+
                   {/* 完成度表示 */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>完成度:</span>
+                    <span>{t('editor.selector.projectCard.completion', { percent: '' }).replace('%', '')}:</span>
                     <div style={{
                       width: '80px',
                       height: '12px',
@@ -274,7 +276,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                       fontSize: '12px',
                       fontWeight: '500'
                     }}>
-                      • 未保存
+                      • {t('editor.app.status.unsaved')}
                     </span>
                   )}
                   {project.status === 'published' && (
@@ -286,7 +288,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                       fontSize: '12px',
                       fontWeight: '500'
                     }}>
-                      • 公開中
+                      • {t('editor.app.status.published')}
                     </span>
                   )}
                 </div>
@@ -298,7 +300,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
               {/* 容量表示 */}
               <div style={{ fontSize: '14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#6b7280' }}>容量:</span>
+                  <span style={{ color: '#6b7280' }}>{t('editor.settings.stats.capacity')}:</span>
                   <div style={{
                     width: '96px',
                     height: '12px',
@@ -328,7 +330,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
               </div>
 
               {/* 自動保存切り替え */}
-              <label style={{ 
+              <label style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
@@ -345,7 +347,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                     accentColor: '#3b82f6'
                   }}
                 />
-                <span style={{ color: '#6b7280' }}>自動保存</span>
+                <span style={{ color: '#6b7280' }}>{t('common.save')} (Auto)</span>
               </label>
 
               {/* アクションボタン */}
@@ -355,25 +357,25 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                 onClick={onSave}
                 disabled={!hasUnsavedChanges}
               >
-                💾 保存
+                💾 {t('editor.app.buttons.save')}
               </ModernButton>
-              
+
               <ModernButton
                 variant="primary"
                 size="sm"
                 onClick={onTestPlay}
                 disabled={completeness.issues.length > 2}
               >
-                ▶️ テスト
+                ▶️ {t('editor.app.buttons.test')}
               </ModernButton>
-              
+
               <ModernButton
                 variant="success"
                 size="sm"
                 onClick={onPublish}
                 disabled={completeness.percentage < 60}
               >
-                {project.status === 'published' ? '🔄 更新' : '🚀 公開'}
+                {project.status === 'published' ? '🔄 ' + t('editor.app.buttons.update') : '🚀 ' + t('editor.app.buttons.publish')}
               </ModernButton>
             </div>
           </div>
@@ -390,10 +392,10 @@ export const GameEditor: React.FC<GameEditorProps> = ({
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '18px' }}>⚠️</span>
-                <span style={{ fontWeight: '500' }}>完成に向けて：</span>
+                <span style={{ fontWeight: '500' }}>{t('editor.selector.projectCard.completion', { percent: Math.round(completeness.percentage) })}:</span>
                 <span style={{ fontSize: '14px' }}>
-                  {completeness.issues.slice(0, 2).join('、')}
-                  {completeness.issues.length > 2 && `など${completeness.issues.length}項目`}
+                  {completeness.issues.slice(0, 2).join(', ')}
+                  {completeness.issues.length > 2 && ` (+${completeness.issues.length - 2})`}
                 </span>
               </div>
             </div>
@@ -530,14 +532,14 @@ export const GameEditor: React.FC<GameEditorProps> = ({
         <ModernButton
           variant="primary"
           size="lg"
-          style={{ 
+          style={{
             borderRadius: '50%',
             width: '56px',
             height: '56px',
             boxShadow: '0 8px 25px rgba(59, 130, 246, 0.4)'
           }}
           onClick={() => {
-            alert(`🎮 ゲームエディターヘルプ\n\n🎨 アセットタブ：画像・音声・テキストを追加\n⚙️ ルールタブ：ゲームの動作を決定\n🚀 公開タブ：テストプレイ・完成・公開\n\n💡 Ctrl+S: 保存\n💡 Ctrl+T: テストプレイ`);
+            alert(`🎮 ${t('common.help')}\n\n🎨 ${t('editor.tabs.assets')}: ${t('editor.assets.title')}\n⚙️ ${t('editor.tabs.script')}: ${t('editor.script.title')}\n🚀 ${t('editor.tabs.settings')}: ${t('editor.settings.title')}\n\n${t('editor.app.shortcuts')}`);
           }}
         >
           <span style={{ fontSize: '20px' }}>❓</span>
@@ -560,10 +562,10 @@ export const GameEditor: React.FC<GameEditorProps> = ({
           maxWidth: '300px'
         }}>
           <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '8px' }}>
-            🎯 エディター統合完了
+            🎯 Editor Debug
           </div>
           <div style={{ marginBottom: '4px' }}>
-            🎨 デザイン: シンプル白基調
+            🎨 Design: Modern Clean
           </div>
           {/* 🔧 修正箇所3: 開発時デバッグ表示（566行目） */}
           <div style={{ marginBottom: '4px' }}>
@@ -574,10 +576,10 @@ export const GameEditor: React.FC<GameEditorProps> = ({
             💾 Size: {(totalSize / 1024 / 1024).toFixed(1)}MB
           </div>
           <div style={{ marginBottom: '12px' }}>
-            ✅ 完成度: {Math.round(completeness.percentage)}%
+            ✅ {t('editor.selector.projectCard.completion', { percent: Math.round(completeness.percentage) })}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <button 
+            <button
               onClick={() => setActiveTab('assets')}
               style={{
                 background: 'none',
@@ -589,9 +591,9 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                 fontSize: '12px'
               }}
             >
-              → アセットタブ
+              → {t('editor.tabs.assets')}
             </button>
-            <button 
+            <button
               onClick={() => setActiveTab('settings')}
               style={{
                 background: 'none',
@@ -603,7 +605,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                 fontSize: '12px'
               }}
             >
-              → 公開タブ
+              → {t('editor.tabs.settings')}
             </button>
           </div>
         </div>

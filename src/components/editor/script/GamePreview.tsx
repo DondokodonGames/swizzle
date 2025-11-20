@@ -2,6 +2,7 @@
 // ゲーム画面プレビュー表示コンポーネント
 
 import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
 
 interface GamePreviewProps {
@@ -25,6 +26,7 @@ export const GamePreview: React.FC<GamePreviewProps> = ({
   onSetDraggedItem,
   hasRuleForObject
 }) => {
+  const { t } = useTranslation();
   const gamePreviewRef = useRef<HTMLDivElement>(null);
 
   // 背景画像URL取得
@@ -38,7 +40,7 @@ export const GamePreview: React.FC<GamePreviewProps> = ({
   return (
     <div className="flex-1">
       <h3 className="text-lg font-semibold text-gray-800 mb-4">
-        🎮 ゲーム画面 (9:16)
+        🎮 {t('editor.script.gamePreview.title', 'ゲーム画面 (9:16)')}
       </h3>
       
       <div className="flex justify-center">
@@ -260,34 +262,33 @@ export const GamePreview: React.FC<GamePreviewProps> = ({
             <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 30 }}>
               <div className="text-center p-6 bg-white bg-opacity-95 rounded-lg shadow-lg">
                 <div className="text-4xl mb-3">📁</div>
-                <h4 className="font-semibold text-gray-800 mb-2">オブジェクトを追加</h4>
-                <p className="text-gray-600 text-sm">Assetsタブでオブジェクトを追加してください</p>
+                <h4 className="font-semibold text-gray-800 mb-2">{t('editor.script.gamePreview.noObjects.title', 'オブジェクトを追加')}</h4>
+                <p className="text-gray-600 text-sm">{t('editor.script.gamePreview.noObjects.description', 'Assetsタブでオブジェクトを追加してください')}</p>
               </div>
             </div>
           )}
-          
+
           {project.assets.objects.length > 0 && project.script.layout.objects.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 30 }}>
               <div className="text-center p-6 bg-white bg-opacity-95 rounded-lg shadow-lg">
                 <div className="text-4xl mb-3">🎯</div>
-                <h4 className="font-semibold text-gray-800 mb-2">オブジェクトを配置</h4>
+                <h4 className="font-semibold text-gray-800 mb-2">{t('editor.script.gamePreview.noPlaced.title', 'オブジェクトを配置')}</h4>
                 <p className="text-gray-600 text-sm">
-                  Assetsタブで追加したオブジェクトを<br/>
-                  この画面にドラッグ&ドロップして配置してください
+                  {t('editor.script.gamePreview.noPlaced.description', 'Assetsタブで追加したオブジェクトをこの画面にドラッグ&ドロップして配置してください')}
                 </p>
               </div>
             </div>
           )}
-          
+
           {project.script.layout.objects.length > 0 && (
             <div className="absolute bottom-2 left-2 right-2" style={{ zIndex: 30 }}>
               <div className="text-center p-3 bg-black bg-opacity-75 text-white rounded-lg">
-                <div className="text-sm font-medium mb-1">💡 操作ヒント</div>
+                <div className="text-sm font-medium mb-1">💡 {t('editor.script.gamePreview.hints.title', '操作ヒント')}</div>
                 <div className="text-xs">
-                  <span style={{color: '#3b82f6'}}>■</span> 選択中 | 
-                  <span style={{color: '#16a34a'}}>■</span> ルール設定済み | 
-                  <span style={{color: '#dc2626'}}>■</span> ルール未設定<br/>
-                  クリック → ルール設定 | ドラッグ → 移動
+                  <span style={{color: '#3b82f6'}}>■</span> {t('editor.script.gamePreview.hints.selected', '選択中')} |
+                  <span style={{color: '#16a34a'}}>■</span> {t('editor.script.gamePreview.hints.hasRule', 'ルール設定済み')} |
+                  <span style={{color: '#dc2626'}}>■</span> {t('editor.script.gamePreview.hints.noRule', 'ルール未設定')}<br/>
+                  {t('editor.script.gamePreview.hints.clickToRule', 'クリック → ルール設定')} | {t('editor.script.gamePreview.hints.dragToMove', 'ドラッグ → 移動')}
                 </div>
               </div>
             </div>
@@ -296,9 +297,9 @@ export const GamePreview: React.FC<GamePreviewProps> = ({
         
         {/* プレビュー情報 */}
         <div className="mt-3 text-center text-sm text-gray-500">
-          画面サイズ: 300×533px (9:16) | 
-          背景: {project.script.layout.background.visible ? '表示' : '非表示'} | 
-          オブジェクト: {project.script.layout.objects.length}個
+          {t('editor.script.gamePreview.screenSize', '画面サイズ')}: 300×533px (9:16) |
+          {t('editor.script.gamePreview.background', '背景')}: {project.script.layout.background.visible ? t('editor.script.gamePreview.visible', '表示') : t('editor.script.gamePreview.hidden', '非表示')} |
+          {t('editor.script.gamePreview.objectCount', 'オブジェクト')}: {project.script.layout.objects.length}{t('editor.script.gamePreview.objects', '個')}
         </div>
       </div>
     </div>

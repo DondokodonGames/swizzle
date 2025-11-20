@@ -3,6 +3,7 @@
 // DESIGN_TOKENS問題修正 + RandomRuleComponents統合
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
 import { GameProject } from '../../../types/editor/GameProject';
 import { GameCounter, PRESET_COUNTERS, createCounterFromPreset, createCounter } from '../../../types/counterTypes';
@@ -73,6 +74,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
   onSave,
   onClose
 }) => {
+  const { t } = useTranslation();
   const [rule, setRule] = useState<GameRule>(initialRule);
   const [conditions, setConditions] = useState<TriggerCondition[]>(initialRule.triggers.conditions);
   const [actions, setActions] = useState<GameAction[]>(initialRule.actions);
@@ -125,7 +127,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
       };
       updateProjectFlags([...projectFlags, newFlag]);
       setNewFlagName('');
-      showNotification('success', `フラグ「${newFlag.name}」を追加しました`);
+      showNotification('success', t('editor.script.ruleModal.notifications.flagAdded', { name: newFlag.name }));
     }
   };
 
@@ -136,7 +138,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
       updateProjectCounters([...projectCounters, newCounter]);
       setNewCounterName('');
       setNewCounterValue(0);
-      showNotification('success', `カウンター「${newCounter.name}」を追加しました`);
+      showNotification('success', t('editor.script.ruleModal.notifications.counterAdded', { name: newCounter.name }));
     }
   };
 
@@ -147,30 +149,30 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
       // 既存カウンターと名前重複チェック
       const existingNames = projectCounters.map(c => c.name);
       if (existingNames.includes(newCounter.name)) {
-        showNotification('error', `カウンター「${newCounter.name}」は既に存在します`);
+        showNotification('error', t('editor.script.ruleModal.notifications.counterExists', { name: newCounter.name }));
         return;
       }
-      
+
       updateProjectCounters([...projectCounters, newCounter]);
-      showNotification('success', `カウンター「${newCounter.name}」を追加しました`);
+      showNotification('success', t('editor.script.ruleModal.notifications.counterAdded', { name: newCounter.name }));
     }
   };
 
   // フラグ削除（Phase A・B保護）
   const removeFlag = (flagId: string) => {
     const flag = projectFlags.find(f => f.id === flagId);
-    if (confirm(`フラグ「${flag?.name}」を削除しますか？`)) {
+    if (confirm(t('editor.script.ruleModal.notifications.confirmDeleteFlag', { name: flag?.name }))) {
       updateProjectFlags(projectFlags.filter(flag => flag.id !== flagId));
-      showNotification('success', 'フラグを削除しました');
+      showNotification('success', t('editor.script.ruleModal.notifications.flagDeleted'));
     }
   };
 
   // Phase G追加: カウンター削除
   const removeCounter = (counterId: string) => {
     const counter = projectCounters.find(c => c.id === counterId);
-    if (confirm(`カウンター「${counter?.name}」を削除しますか？`)) {
+    if (confirm(t('editor.script.ruleModal.notifications.confirmDeleteCounter', { name: counter?.name }))) {
       updateProjectCounters(projectCounters.filter(counter => counter.id !== counterId));
-      showNotification('success', 'カウンターを削除しました');
+      showNotification('success', t('editor.script.ruleModal.notifications.counterDeleted'));
     }
   };
 
@@ -267,13 +269,13 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     }
     
     setConditions([...conditions, newCondition]);
-    showNotification('success', '条件を追加しました');
+    showNotification('success', t('editor.script.ruleModal.notifications.conditionAdded'));
   };
 
   // 条件削除（Phase A・B保護）
   const removeCondition = (index: number) => {
     setConditions(conditions.filter((_, i) => i !== index));
-    showNotification('success', '条件を削除しました');
+    showNotification('success', t('editor.script.ruleModal.notifications.conditionRemoved'));
   };
 
   // 条件更新（Phase C: 詳細パラメータ対応）
@@ -371,13 +373,13 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     }
     
     setActions([...actions, newAction]);
-    showNotification('success', 'アクションを追加しました');
+    showNotification('success', t('editor.script.ruleModal.notifications.actionAdded'));
   };
 
   // アクション削除（Phase A・B保護）
   const removeAction = (index: number) => {
     setActions(actions.filter((_, i) => i !== index));
-    showNotification('success', 'アクションを削除しました');
+    showNotification('success', t('editor.script.ruleModal.notifications.actionRemoved'));
   };
 
   // アクション更新（Phase A・B保護・Phase E・G・G-3拡張）
@@ -415,17 +417,17 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
   // 保存処理（Phase A・B保護）
   const handleSave = () => {
     if (!rule.name.trim()) {
-      showNotification('error', 'ルール名を入力してください');
+      showNotification('error', t('editor.script.ruleModal.notifications.errorRuleName'));
       return;
     }
 
     if (conditions.length === 0) {
-      showNotification('error', '最低1つの条件を設定してください');
+      showNotification('error', t('editor.script.ruleModal.notifications.errorMinConditions'));
       return;
     }
 
     if (actions.length === 0) {
-      showNotification('error', '最低1つのアクションを設定してください');
+      showNotification('error', t('editor.script.ruleModal.notifications.errorMinActions'));
       return;
     }
 
@@ -440,7 +442,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
     };
 
     onSave(updatedRule);
-    showNotification('success', 'ルールを保存しました');
+    showNotification('success', t('editor.script.ruleModal.notifications.ruleSaved'));
   };
 
   // 条件エディター分岐レンダリング（Phase G・G-3拡張）
@@ -708,7 +710,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 </span>
               </div>
               <div style={{ flex: 1 }}>
-                <h3 
+                <h3
                   style={{
                     fontSize: '24px',
                     fontWeight: 'bold',
@@ -717,9 +719,9 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     marginBottom: SPACING[2]
                   }}
                 >
-                  高度なルール設定 - Phase G-3完了
+                  {t('editor.script.ruleModal.title')}
                 </h3>
-                <p 
+                <p
                   style={{
                     fontSize: '14px',
                     color: COLORS.purple[100],
@@ -727,7 +729,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     margin: 0
                   }}
                 >
-                  ランダムシステム統合・エンドレス系対応（9条件・13アクション）
+                  {t('editor.script.ruleModal.subtitle')}
                 </p>
               </div>
             </div>
@@ -755,19 +757,19 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
               {/* 左上: ルール名（Phase A・B保護） */}
               <ModernCard variant="outlined" size="lg">
                 <div style={{ marginBottom: SPACING[4] }}>
-                  <div style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
                     gap: SPACING[2],
                     marginBottom: SPACING[3]
                   }}>
                     <span style={{ fontSize: '20px' }}>📝</span>
-                    <span style={{ 
+                    <span style={{
                       fontWeight: '600',
                       color: COLORS.neutral[700],
                       fontSize: '14px'
                     }}>
-                      ルール名
+                      {t('editor.script.ruleModal.sections.ruleName')}
                     </span>
                   </div>
                   <input
@@ -786,7 +788,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       outline: 'none',
                       boxShadow: SHADOWS.sm
                     }}
-                    placeholder="例: 30%の確率で障害物生成"
+                    placeholder={t('editor.script.ruleModal.placeholders.ruleName')}
                     onFocus={(e) => {
                       e.target.style.borderColor = COLORS.purple[500];
                       e.target.style.boxShadow = `0 0 0 3px ${COLORS.purple[500]}20`;
@@ -819,7 +821,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                   gap: SPACING[2]
                 }}>
                   <span style={{ fontSize: '20px' }}>⚡</span>
-                  実行アクション ({actions.length}個)
+                  {t('editor.script.ruleModal.sections.actions', { count: actions.length })}
                 </h4>
 
                 {/* アクション追加ボタン（コンパクト版・Phase A・B保護・Phase D・E・G・G-3拡張） */}
@@ -856,7 +858,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       fontSize: '18px',
                       padding: SPACING[2]
                     }}
-                    title="ランダムアクション（重み付き選択）"
+                    title={t('editor.script.ruleModal.tooltips.randomAction')}
                   >
                     <span style={{ fontSize: '24px' }}>🎲</span>
                   </ModernButton>
@@ -878,7 +880,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                         }}
                       >
                         <span style={{ fontSize: '20px' }}>{action.type === 'randomAction' ? '🎲' : (PRIORITY_ACTION_LIBRARY.find(a => a.type === action.type)?.icon || ACTION_LIBRARY.find(a => a.type === action.type)?.icon || '⚡')}</span>
-                        <span style={{ fontWeight: '600' }}>{action.type === 'randomAction' ? 'ランダムアクション' : (PRIORITY_ACTION_LIBRARY.find(a => a.type === action.type)?.label || ACTION_LIBRARY.find(a => a.type === action.type)?.label || action.type)}</span>
+                        <span style={{ fontWeight: '600' }}>{action.type === 'randomAction' ? t('actions.randomAction.label') : (PRIORITY_ACTION_LIBRARY.find(a => a.type === action.type)?.label || ACTION_LIBRARY.find(a => a.type === action.type)?.label || action.type)}</span>
                         {/* アクション詳細設定ボタン（Phase D・E・G・G-3拡張対応） */}
                         {['playSound', 'move', 'effect', 'show', 'hide', 'setFlag', 'toggleFlag', 'switchAnimation', 'counter', 'randomAction'].includes(action.type) && (
                           <ModernButton
@@ -918,7 +920,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       color: COLORS.neutral[500],
                       textAlign: 'center'
                     }}>
-                      他 {actions.length - 3}個のアクション
+                      {t('editor.script.ruleModal.more.actions', { count: actions.length - 3 })}
                     </div>
                   )}
                 </div>
@@ -944,7 +946,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     gap: SPACING[2]
                   }}>
                     <span style={{ fontSize: '20px' }}>🔥</span>
-                    発動条件 ({conditions.length}個)
+                    {t('editor.script.ruleModal.sections.conditions', { count: conditions.length })}
                   </h4>
                   <select
                     value={operator}
@@ -957,8 +959,8 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       backgroundColor: COLORS.neutral[0]
                     }}
                   >
-                    <option value="AND">すべて (AND)</option>
-                    <option value="OR">いずれか (OR)</option>
+                    <option value="AND">{t('editor.script.ruleModal.operators.and')}</option>
+                    <option value="OR">{t('editor.script.ruleModal.operators.or')}</option>
                   </select>
                 </div>
 
@@ -1058,7 +1060,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     gap: SPACING[2]
                   }}>
                     <span style={{ fontSize: '18px' }}>🚩</span>
-                    フラグ管理 ({projectFlags.length}個)
+                    {t('editor.script.ruleModal.sections.flags', { count: projectFlags.length })}
                   </h4>
 
                   {/* 新規フラグ追加（Phase A・B保護） */}
@@ -1067,7 +1069,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       type="text"
                       value={newFlagName}
                       onChange={(e) => setNewFlagName(e.target.value)}
-                      placeholder="フラグ名"
+                      placeholder={t('editor.script.ruleModal.placeholders.flagName')}
                       style={{
                         flex: 1,
                         padding: SPACING[2],
@@ -1130,7 +1132,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                         color: COLORS.neutral[500],
                         textAlign: 'center'
                       }}>
-                        他 {projectFlags.length - 3}個のフラグ
+                        {t('editor.script.ruleModal.more.flags', { count: projectFlags.length - 3 })}
                       </div>
                     )}
                   </div>
@@ -1156,7 +1158,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                     gap: SPACING[2]
                   }}>
                     <span style={{ fontSize: '18px' }}>🔢</span>
-                    カウンター管理 ({projectCounters.length}個)
+                    {t('editor.script.ruleModal.sections.counters', { count: projectCounters.length })}
                   </h4>
 
                   {/* プリセットカウンター追加 */}
@@ -1195,7 +1197,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       type="text"
                       value={newCounterName}
                       onChange={(e) => setNewCounterName(e.target.value)}
-                      placeholder="カウンター名"
+                      placeholder={t('editor.script.ruleModal.placeholders.counterName')}
                       style={{
                         flex: 1,
                         padding: SPACING[1],
@@ -1209,7 +1211,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                       type="number"
                       value={newCounterValue}
                       onChange={(e) => setNewCounterValue(Number(e.target.value))}
-                      placeholder="初期値"
+                      placeholder={t('editor.script.ruleModal.placeholders.initialValue')}
                       style={{
                         width: '60px',
                         padding: SPACING[1],
@@ -1280,7 +1282,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                         color: COLORS.neutral[500],
                         textAlign: 'center'
                       }}>
-                        他 {projectCounters.length - 3}個のカウンター
+                        {t('editor.script.ruleModal.more.counters', { count: projectCounters.length - 3 })}
                       </div>
                     )}
                   </div>
@@ -1324,7 +1326,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
               alignItems: 'center'
             }}
           >
-            <div style={{ 
+            <div style={{
               fontSize: '14px',
               color: COLORS.neutral[600],
               display: 'flex',
@@ -1332,40 +1334,40 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
               gap: SPACING[6]
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: SPACING[2] }}>
-                <span style={{ 
-                  width: '12px', 
-                  height: '12px', 
-                  backgroundColor: COLORS.purple[500], 
-                  borderRadius: BORDER_RADIUS.full 
+                <span style={{
+                  width: '12px',
+                  height: '12px',
+                  backgroundColor: COLORS.purple[500],
+                  borderRadius: BORDER_RADIUS.full
                 }}></span>
-                <span>条件 {conditions.length}個</span>
+                <span>{t('editor.script.ruleModal.status.conditions', { count: conditions.length })}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: SPACING[2] }}>
-                <span style={{ 
-                  width: '12px', 
-                  height: '12px', 
-                  backgroundColor: COLORS.success[500], 
-                  borderRadius: BORDER_RADIUS.full 
+                <span style={{
+                  width: '12px',
+                  height: '12px',
+                  backgroundColor: COLORS.success[500],
+                  borderRadius: BORDER_RADIUS.full
                 }}></span>
-                <span>アクション {actions.length}個</span>
+                <span>{t('editor.script.ruleModal.status.actions', { count: actions.length })}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: SPACING[2] }}>
-                <span style={{ 
-                  width: '12px', 
-                  height: '12px', 
-                  backgroundColor: COLORS.warning[500], 
-                  borderRadius: BORDER_RADIUS.full 
+                <span style={{
+                  width: '12px',
+                  height: '12px',
+                  backgroundColor: COLORS.warning[500],
+                  borderRadius: BORDER_RADIUS.full
                 }}></span>
-                <span>フラグ {projectFlags.length}個</span>
+                <span>{t('editor.script.ruleModal.status.flags', { count: projectFlags.length })}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: SPACING[2] }}>
-                <span style={{ 
-                  width: '12px', 
-                  height: '12px', 
-                  backgroundColor: COLORS.primary[500], 
-                  borderRadius: BORDER_RADIUS.full 
+                <span style={{
+                  width: '12px',
+                  height: '12px',
+                  backgroundColor: COLORS.primary[500],
+                  borderRadius: BORDER_RADIUS.full
                 }}></span>
-                <span>カウンター {projectCounters.length}個</span>
+                <span>{t('editor.script.ruleModal.status.counters', { count: projectCounters.length })}</span>
               </div>
             </div>
             <div style={{ display: 'flex', gap: SPACING[4] }}>
@@ -1374,7 +1376,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 size="lg"
                 onClick={onClose}
               >
-                キャンセル
+                {t('editor.script.ruleModal.buttons.cancel')}
               </ModernButton>
               <ModernButton
                 variant="primary"
@@ -1387,7 +1389,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 }}
               >
                 <span style={{ fontSize: '18px' }}>💾</span>
-                保存
+                {t('editor.script.ruleModal.buttons.save')}
               </ModernButton>
             </div>
           </div>
