@@ -1155,6 +1155,17 @@
       "settingsSummaryTitle": "💡 設定内容: ",
       "playSound": "「{name}」を{volume}%で再生",
       "selectSoundPrompt": "音声を選択してください"
+    },
+    "flagCondition": {
+      "title": "フラグ条件詳細設定",
+      "targetFlagLabel": "対象フラグ",
+      "selectFlag": "フラグを選択",
+      "flagWithInitial": "{name} ({status}初期値)",
+      "initialOn": "ON",
+      "initialOff": "OFF",
+      "conditionTypeLabel": "条件タイプ",
+      "settingsSummaryTitle": "💡 設定内容: ",
+      "withFlag": " - 「{name}」フラグ"
     }
   },
   "conditions": {

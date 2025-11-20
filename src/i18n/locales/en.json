@@ -1354,6 +1354,17 @@
       "settingsSummaryTitle": "💡 Settings: ",
       "playSound": "Play \"{name}\" at {volume}% volume",
       "selectSoundPrompt": "Please select a sound"
+    },
+    "flagCondition": {
+      "title": "Flag Condition Settings",
+      "targetFlagLabel": "Target Flag",
+      "selectFlag": "Select flag",
+      "flagWithInitial": "{name} (Initial: {status})",
+      "initialOn": "ON",
+      "initialOff": "OFF",
+      "conditionTypeLabel": "Condition Type",
+      "settingsSummaryTitle": "💡 Settings: ",
+      "withFlag": " - \"{name}\" flag"
     }
   },
   "conditions": {
