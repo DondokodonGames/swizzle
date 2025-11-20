@@ -19,6 +19,11 @@ export const getMovementTypeOptions = () => [
 ] as const;
 
 /**
+ * 後方互換性のための静的エクスポート
+ */
+export const MOVEMENT_TYPE_OPTIONS = getMovementTypeOptions();
+
+/**
  * 移動パラメータのデフォルト値
  */
 export const MOVEMENT_DEFAULTS = {

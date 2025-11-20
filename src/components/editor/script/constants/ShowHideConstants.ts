@@ -50,6 +50,13 @@ export const DURATION_RANGE = {
 } as const;
 
 /**
+ * 後方互換性のための静的エクスポート
+ */
+export const SHOW_HIDE_ACTION_OPTIONS = getShowHideActionOptions();
+export const FADE_OPTIONS = getFadeOptions();
+export const DURATION_PRESETS = getDurationPresets();
+
+/**
  * 表示制御定数の型定義
  */
 export type ShowHideActionOption = ReturnType<typeof getShowHideActionOptions>[number];

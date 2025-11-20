@@ -62,6 +62,14 @@ export const ANIMATION_DEFAULTS = {
 } as const;
 
 /**
+ * 後方互換性のための静的エクスポート
+ */
+export const ANIMATION_CONDITIONS = getAnimationConditions();
+export const ANIMATION_TARGET_OPTIONS = getAnimationTargetOptions();
+export const FRAME_NUMBER_OPTIONS = getFrameNumberOptions();
+export const ANIMATION_INDEX_OPTIONS = getAnimationIndexOptions();
+
+/**
  * アニメーション定数の型定義（CollisionConstants.tsパターン踏襲）
  */
 export type AnimationConditionOption = ReturnType<typeof getAnimationConditions>[number];

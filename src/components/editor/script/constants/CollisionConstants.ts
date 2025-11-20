@@ -40,6 +40,13 @@ export const COLLISION_DEFAULTS = {
 } as const;
 
 /**
+ * 後方互換性のための静的エクスポート
+ */
+export const COLLISION_TYPE_OPTIONS = getCollisionTypeOptions();
+export const COLLISION_TARGET_OPTIONS = getCollisionTargetOptions();
+export const COLLISION_CHECK_OPTIONS = getCollisionCheckOptions();
+
+/**
  * 衝突定数の型定義（TouchConstants.tsパターン踏襲）
  */
 export type CollisionTypeOption = ReturnType<typeof getCollisionTypeOptions>[number];

@@ -24,6 +24,12 @@ export const getFlagConditionOptions = () => [
 ] as const;
 
 /**
+ * 後方互換性のための静的エクスポート
+ */
+export const TIME_CONDITION_OPTIONS = getTimeConditionOptions();
+export const FLAG_CONDITION_OPTIONS = getFlagConditionOptions();
+
+/**
  * 時間・フラグ定数の型定義
  */
 export type TimeConditionOption = ReturnType<typeof getTimeConditionOptions>[number];

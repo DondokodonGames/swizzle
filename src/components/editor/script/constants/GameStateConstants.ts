@@ -54,6 +54,13 @@ export const GAME_STATE_DEFAULTS = {
 } as const;
 
 /**
+ * 後方互換性のための静的エクスポート
+ */
+export const GAME_STATE_OPTIONS = getGameStateOptions();
+export const STATE_CHECK_OPTIONS = getStateCheckOptions();
+export const GAME_STATE_DESCRIPTIONS = getGameStateDescriptions();
+
+/**
  * ゲーム状態定数の型定義（TouchConstants.tsパターン踏襲）
  */
 export type GameStateOption = ReturnType<typeof getGameStateOptions>[number];

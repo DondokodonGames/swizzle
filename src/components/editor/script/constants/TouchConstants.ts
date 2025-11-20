@@ -23,6 +23,12 @@ export const getTouchTargetOptions = () => [
 ] as const;
 
 /**
+ * 後方互換性のための静的エクスポート
+ */
+export const TOUCH_TYPE_OPTIONS = getTouchTypeOptions();
+export const TOUCH_TARGET_OPTIONS = getTouchTargetOptions();
+
+/**
  * タッチ定数の型定義
  */
 export type TouchTypeOption = ReturnType<typeof getTouchTypeOptions>[number];

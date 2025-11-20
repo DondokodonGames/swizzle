@@ -42,6 +42,13 @@ export const FLAG_ACTION_DEFAULTS = {
 } as const;
 
 /**
+ * 後方互換性のための静的エクスポート
+ */
+export const FLAG_ACTION_OPTIONS = getFlagActionOptions();
+export const FLAG_VALUE_OPTIONS = getFlagValueOptions();
+export const FLAG_OPERATION_EFFECTS = getFlagOperationEffects();
+
+/**
  * フラグ操作定数の型定義
  */
 export type FlagActionOption = ReturnType<typeof getFlagActionOptions>[number];

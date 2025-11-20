@@ -15,6 +15,11 @@ export const getEffectTypeOptions = () => [
 ] as const;
 
 /**
+ * 後方互換性のための静的エクスポート
+ */
+export const EFFECT_TYPE_OPTIONS = getEffectTypeOptions();
+
+/**
  * エフェクトパラメータのデフォルト値
  */
 export const EFFECT_DEFAULTS = {
