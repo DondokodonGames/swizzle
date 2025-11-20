@@ -2,7 +2,7 @@
 // Phase E Step 2: アニメーション条件詳細定義
 // CollisionConstants.ts成功パターン踏襲 - GameScript.ts型定義完全準拠
 
-import i18n from '../../../i18n';
+import i18n from '../../../../i18n';
 
 /**
  * Phase E: アニメーション条件タイプ詳細定義（GameScript.ts準拠）

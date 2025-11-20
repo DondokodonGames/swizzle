@@ -2,7 +2,7 @@
 // Phase C Step 2完了版: 時間条件タイプ定義
 // AdvancedRuleModal.tsx分割 - Step 1: 時間定数分離
 
-import i18n from '../../../i18n';
+import i18n from '../../../../i18n';
 
 /**
  * Phase C Step 2: 時間条件タイプ定義

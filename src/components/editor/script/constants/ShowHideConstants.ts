@@ -2,7 +2,7 @@
 // Phase D Step 2-A-1: 表示制御アクション統合定数定義
 // SoundActionEditor.tsx成功パターン踏襲 - GameScript.ts型定義完全準拠
 
-import i18n from '../../../i18n';
+import i18n from '../../../../i18n';
 
 /**
  * Phase D: 表示制御アクションタイプ定義（GameScript.ts準拠）

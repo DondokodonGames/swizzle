@@ -2,7 +2,7 @@
 // Phase D Step 1-1: 衝突条件詳細定義
 // TouchConstants.ts成功パターン踏襲 - GameScript.ts型定義完全準拠
 
-import i18n from '../../../i18n';
+import i18n from '../../../../i18n';
 
 /**
  * Phase D: 衝突タイプ詳細定義（GameScript.ts準拠）

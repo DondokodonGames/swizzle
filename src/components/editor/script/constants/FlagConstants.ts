@@ -2,7 +2,7 @@
 // Phase D Step 2-B-1: フラグ操作アクション定数定義
 // TimeConstants.ts成功パターン踏襲 - GameScript.ts型定義完全準拠
 
-import i18n from '../../../i18n';
+import i18n from '../../../../i18n';
 
 /**
  * Phase D: フラグ操作アクションタイプ定義（GameScript.ts準拠）

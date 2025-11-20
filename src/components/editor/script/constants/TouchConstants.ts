@@ -2,7 +2,7 @@
 // Phase C Step 1-1完了版: タッチ条件詳細定義
 // AdvancedRuleModal.tsx分割 - Step 1: タッチ定数分離
 
-import i18n from '../../../i18n';
+import i18n from '../../../../i18n';
 
 /**
  * Phase C Step 1-1: タッチタイプ詳細定義（保護）
