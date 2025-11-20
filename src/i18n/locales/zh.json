@@ -18,7 +18,9 @@
     "logout": "登出",
     "login": "登录",
     "signup": "注册",
-    "backToHome": "返回首页"
+    "backToHome": "返回首页",
+    "processing": "处理中...",
+    "selectFile": "选择文件"
   },
   "errors": {
     "generic": "发生意外错误",
@@ -87,7 +89,8 @@
       "se": "音效",
       "usedCapacity": "已用容量（图片+音频）",
       "capacityWarning": "容量不足。请删除不必要的资源。",
-      "sound": "音频"
+      "sound": "音频",
+      "processingAudio": "处理音频中..."
     },
     "script": {
       "title": "规则设置",

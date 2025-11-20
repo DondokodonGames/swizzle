@@ -18,7 +18,9 @@
     "logout": "로그아웃",
     "login": "로그인",
     "signup": "회원가입",
-    "backToHome": "홈으로 돌아가기"
+    "backToHome": "홈으로 돌아가기",
+    "processing": "처리 중...",
+    "selectFile": "파일 선택"
   },
   "errors": {
     "generic": "예기치 않은 오류가 발생했습니다",
@@ -87,7 +89,8 @@
       "se": "효과음",
       "usedCapacity": "사용한 용량 (이미지+음성)",
       "capacityWarning": "용량이 부족합니다. 불필요한 에셋을 삭제해주세요.",
-      "sound": "음성"
+      "sound": "음성",
+      "processingAudio": "오디오 처리 중..."
     },
     "script": {
       "title": "규칙 설정",

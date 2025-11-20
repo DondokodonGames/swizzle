@@ -18,7 +18,9 @@
     "logout": "Logout",
     "login": "Login",
     "signup": "Sign Up",
-    "backToHome": "Back to Home"
+    "backToHome": "Back to Home",
+    "processing": "Processing...",
+    "selectFile": "Select File"
   },
   "errors": {
     "generic": "An unexpected error occurred",
@@ -192,7 +194,8 @@
       "se": "Sound Effects",
       "usedCapacity": "Used Capacity (Images + Audio)",
       "capacityWarning": "Capacity is insufficient. Please delete unnecessary assets.",
-      "sound": "Sound"
+      "sound": "Sound",
+      "processingAudio": "Processing audio..."
     },
     "script": {
       "title": "Script Settings",

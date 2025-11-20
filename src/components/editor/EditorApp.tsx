@@ -547,7 +547,7 @@ const handlePublish = useCallback(async () => {
                   margin: 0
                 }}
               >
-                {authLoading ? '認証確認中...' : creditsLoading ? 'アカウント情報を確認中...' : '読み込み中...'}
+                {authLoading ? t('editor.app.authenticating') : creditsLoading ? t('editor.app.loadingAccount') : t('editor.app.loading')}
               </p>
             </div>
           </ModernCard>

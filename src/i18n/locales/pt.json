@@ -18,7 +18,9 @@
     "logout": "Sair",
     "login": "Entrar",
     "signup": "Cadastrar",
-    "backToHome": "Voltar para o início"
+    "backToHome": "Voltar para o início",
+    "processing": "Processando...",
+    "selectFile": "Selecionar arquivo"
   },
   "errors": {
     "generic": "Ocorreu um erro inesperado",
@@ -87,7 +89,8 @@
       "se": "Efeitos sonoros",
       "usedCapacity": "Capacidade usada (Imagens + Áudio)",
       "capacityWarning": "Capacidade insuficiente. Exclua os assets desnecessários.",
-      "sound": "Áudio"
+      "sound": "Áudio",
+      "processingAudio": "Processando áudio..."
     },
     "script": {
       "title": "Configurações de regras",

@@ -18,7 +18,9 @@
     "logout": "ログアウト",
     "login": "ログイン",
     "signup": "新規登録",
-    "backToHome": "ホームに戻る"
+    "backToHome": "ホームに戻る",
+    "processing": "処理中...",
+    "selectFile": "ファイルを選択"
   },
   "errors": {
     "generic": "予期しないエラーが発生しました",
@@ -192,7 +194,8 @@
       "se": "効果音",
       "usedCapacity": "使用容量（画像+音声）",
       "capacityWarning": "容量が不足しています。不要なアセットを削除してください。",
-      "sound": "サウンド"
+      "sound": "サウンド",
+      "processingAudio": "音声を処理中..."
     },
     "script": {
       "title": "スクリプト設定",

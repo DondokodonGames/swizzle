@@ -18,7 +18,9 @@
     "logout": "Déconnexion",
     "login": "Connexion",
     "signup": "Inscription",
-    "backToHome": "Retour à l'accueil"
+    "backToHome": "Retour à l'accueil",
+    "processing": "En cours...",
+    "selectFile": "Sélectionner un fichier"
   },
   "errors": {
     "generic": "Une erreur inattendue s'est produite",
@@ -192,7 +194,8 @@
       "se": "Effets sonores",
       "usedCapacity": "Capacité utilisée (Images + Audio)",
       "capacityWarning": "La capacité est insuffisante. Veuillez supprimer les assets inutiles.",
-      "sound": "Son"
+      "sound": "Son",
+      "processingAudio": "Traitement de l'audio..."
     },
     "script": {
       "title": "Paramètres des règles",

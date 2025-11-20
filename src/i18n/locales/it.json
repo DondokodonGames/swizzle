@@ -18,7 +18,9 @@
     "logout": "Esci",
     "login": "Accedi",
     "signup": "Registrati",
-    "backToHome": "Torna alla home"
+    "backToHome": "Torna alla home",
+    "processing": "Elaborazione...",
+    "selectFile": "Seleziona file"
   },
   "errors": {
     "generic": "Si è verificato un errore imprevisto",
@@ -192,7 +194,8 @@
       "se": "Effetti sonori",
       "usedCapacity": "Capacità utilizzata (Immagini + Audio)",
       "capacityWarning": "Capacità insufficiente. Eliminare gli asset non necessari.",
-      "sound": "Audio"
+      "sound": "Audio",
+      "processingAudio": "Elaborazione audio..."
     },
     "script": {
       "title": "Impostazioni regole",

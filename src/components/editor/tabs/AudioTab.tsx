@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
 import { AudioAsset } from '../../../types/editor/ProjectAssets';
 import { EDITOR_LIMITS } from '../../../constants/EditorLimits';
@@ -159,13 +160,14 @@ const formatFileSize = (bytes: number): string => {
 };
 
 export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) => {
+  const { t } = useTranslation();
   const [activeAudioType, setActiveAudioType] = useState<AudioType>('bgm');
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [uploading, setUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [volume, setVolume] = useState<number>(1.0);
-  
+
   const audioRef = useRef<HTMLAudioElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -599,7 +601,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
                   音声ファイルをドラッグ&ドロップするか、クリックして選択
                 </p>
                 <div className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium inline-block">
-                  {uploading ? '処理中...' : 'ファイルを選択'}
+                  {uploading ? t('common.processing') : t('common.selectFile')}
                 </div>
                 <p className="text-xs text-gray-400 mt-4">
                   最大{EDITOR_LIMITS.AUDIO.BGM_MAX_DURATION}秒 • {formatFileSize(EDITOR_LIMITS.AUDIO.BGM_MAX_SIZE)}まで
@@ -710,7 +712,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
                   音声ファイルをドラッグ&ドロップ
                 </p>
                 <div className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium inline-block">
-                  {uploading ? '処理中...' : 'ファイルを選択'}
+                  {uploading ? t('common.processing') : t('common.selectFile')}
                 </div>
                 <p className="text-xs text-gray-400 mt-3">
                   最大{EDITOR_LIMITS.AUDIO.SE_MAX_DURATION}秒 • {formatFileSize(EDITOR_LIMITS.AUDIO.SE_MAX_SIZE)}まで
@@ -735,8 +737,8 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 text-center">
             <div className="animate-spin text-4xl mb-4">🎵</div>
-            <p className="text-lg font-semibold">音声を処理中...</p>
-            <p className="text-sm text-gray-600 mt-2">少々お待ちください</p>
+            <p className="text-lg font-semibold">{t('editor.assets.processingAudio')}</p>
+            <p className="text-sm text-gray-600 mt-2">{t('common.loading')}</p>
           </div>
         </div>
       )}

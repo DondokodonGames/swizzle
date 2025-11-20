@@ -18,7 +18,9 @@
     "logout": "Abmelden",
     "login": "Anmelden",
     "signup": "Registrieren",
-    "backToHome": "Zurück zur Startseite"
+    "backToHome": "Zurück zur Startseite",
+    "processing": "Verarbeitung...",
+    "selectFile": "Datei auswählen"
   },
   "errors": {
     "generic": "Ein unerwarteter Fehler ist aufgetreten",
@@ -87,7 +89,8 @@
       "se": "Soundeffekte",
       "usedCapacity": "Genutzte Kapazität (Bilder + Audio)",
       "capacityWarning": "Kapazität unzureichend. Bitte unnötige Assets löschen.",
-      "sound": "Audio"
+      "sound": "Audio",
+      "processingAudio": "Audio wird verarbeitet..."
     },
     "script": {
       "title": "Regeleinstellungen",

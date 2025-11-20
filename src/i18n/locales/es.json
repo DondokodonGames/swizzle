@@ -18,7 +18,9 @@
     "logout": "Cerrar sesión",
     "login": "Iniciar sesión",
     "signup": "Registrarse",
-    "backToHome": "Volver al inicio"
+    "backToHome": "Volver al inicio",
+    "processing": "Procesando...",
+    "selectFile": "Seleccionar archivo"
   },
   "errors": {
     "generic": "Se produjo un error inesperado",
@@ -87,7 +89,8 @@
       "se": "Efectos de sonido",
       "usedCapacity": "Capacidad utilizada (Imágenes + Audio)",
       "capacityWarning": "Capacidad insuficiente. Elimine los assets innecesarios.",
-      "sound": "Audio"
+      "sound": "Audio",
+      "processingAudio": "Procesando audio..."
     },
     "script": {
       "title": "Configuración de reglas",
