@@ -860,6 +860,29 @@ function MainApp() {
   );
 }
 
+// フィードページラッパー（/feed ルート用）
+const FeedPageWrapper: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleGameSelect = (game: any) => {
+    // ゲームを選択したらメインページに戻ってゲームをプレイ
+    // 選択したゲームの情報をlocalStorageに保存
+    localStorage.setItem('selectedFeedGame', JSON.stringify(game));
+    navigate('/');
+  };
+
+  const handleBack = () => {
+    navigate('/');
+  };
+
+  return (
+    <GameFeed
+      onGameSelect={handleGameSelect}
+      onBack={handleBack}
+    />
+  );
+};
+
 // ソーシャル統合コンテンツ（useAuthを実際に呼び出す）
 const SocialIntegratedAppContent: React.FC<{ useAuth: any }> = ({ useAuth }) => {
   // フックは常に呼ばれる（条件分岐なし）
@@ -995,6 +1018,26 @@ function App() {
           <Route path="/subscription/cancel" element={
             <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
               <SubscriptionCancel />
+            </Suspense>
+          } />
+
+          {/* フィードページ: 直接GameFeedを表示 */}
+          <Route path="/feed" element={
+            <Suspense fallback={
+              <div style={{
+                minHeight: '100vh',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                background: '#0a0a0f'
+              }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ marginBottom: '16px', fontSize: '48px' }}>📱</div>
+                  <p style={{ color: '#a855f7', fontSize: '18px' }}>フィードを読み込み中...</p>
+                </div>
+              </div>
+            }>
+              <FeedPageWrapper />
             </Suspense>
           } />
 
