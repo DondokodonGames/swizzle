@@ -899,6 +899,38 @@
         "effect": "エフェクト",
         "move": "移動"
       }
+    },
+    "animationAction": {
+      "title": "アニメーション切り替え詳細設定",
+      "targetObjectLabel": "対象オブジェクト",
+      "selectObjectPlaceholder": "オブジェクトを選択",
+      "animationsCount": "{count}アニメーション",
+      "selectedPrefix": "選択中:",
+      "animationsAvailable": "{count}種類のアニメーション利用可能",
+      "switchToAnimationLabel": "切り替え先アニメーション:",
+      "animationLabel": "アニメ{number}",
+      "speedLabel": "アニメーション速度: {speed} fps",
+      "fpsUnit": "fps",
+      "lowSpeed": "{fps} fps (低速)",
+      "highSpeed": "{fps} fps (高速)",
+      "speedPresets": {
+        "slow": "低速",
+        "normal": "標準",
+        "fast": "高速",
+        "veryFast": "超高速"
+      },
+      "futureOptionsTitle": "将来実装予定の詳細オプション:",
+      "futureOptionsLoop": "ループ再生制御 (loop)",
+      "futureOptionsAutoStart": "自動開始設定 (autoStart)",
+      "futureOptionsStartFrame": "開始フレーム指定 (startFrame)",
+      "futureOptionsNote": "現在はオブジェクト・アニメーション番号・速度制御に対応",
+      "previewNotice": "アニメーション切り替えプレビュー機能は今後実装予定です",
+      "previewButton": "アニメーション切り替えプレビュー",
+      "settingsSummaryTitle": "設定内容:",
+      "switchToAnimation": "の\nアニメーション{index}に切り替え",
+      "withSpeed": " ({speed}fps)",
+      "pleaseSelectObject": "対象オブジェクトを選択してください",
+      "objectSelected": "「{name}」を選択しました"
     }
   },
   "conditions": {

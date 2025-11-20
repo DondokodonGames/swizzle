@@ -1098,6 +1098,38 @@
         "effect": "Effect",
         "move": "Move"
       }
+    },
+    "animationAction": {
+      "title": "Animation Switch Settings",
+      "targetObjectLabel": "Target Object",
+      "selectObjectPlaceholder": "Select object",
+      "animationsCount": "{count} animations",
+      "selectedPrefix": "Selected:",
+      "animationsAvailable": "{count} animations available",
+      "switchToAnimationLabel": "Switch to Animation:",
+      "animationLabel": "Anim {number}",
+      "speedLabel": "Animation Speed: {speed} fps",
+      "fpsUnit": "fps",
+      "lowSpeed": "{fps} fps (slow)",
+      "highSpeed": "{fps} fps (fast)",
+      "speedPresets": {
+        "slow": "Slow",
+        "normal": "Normal",
+        "fast": "Fast",
+        "veryFast": "Very Fast"
+      },
+      "futureOptionsTitle": "Future Options (Planned):",
+      "futureOptionsLoop": "Loop Control (loop)",
+      "futureOptionsAutoStart": "Auto Start (autoStart)",
+      "futureOptionsStartFrame": "Start Frame (startFrame)",
+      "futureOptionsNote": "Currently supports: object, animation index, speed control",
+      "previewNotice": "Animation switch preview feature coming soon",
+      "previewButton": "Preview Animation Switch",
+      "settingsSummaryTitle": "Settings:",
+      "switchToAnimation": "\nSwitch to Animation {index}",
+      "withSpeed": " ({speed}fps)",
+      "pleaseSelectObject": "Please select target object",
+      "objectSelected": "Selected \"{name}\""
     }
   },
   "conditions": {
