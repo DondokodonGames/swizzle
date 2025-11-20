@@ -817,6 +817,88 @@
         "frameNumber": "フレーム{number}",
         "animationEnd": "終了時"
       }
+    },
+    "random": {
+      "conditionTitle": "ランダム条件設定",
+      "actionTitle": "ランダムアクション設定",
+      "probabilityWith": "{percentage}%の確率で{interval}で発動",
+      "everyFrame": "毎フレーム",
+      "interval": "{interval}ms間隔",
+      "choices": "{count}択からランダム選択 ({probabilities}%)",
+      "presetLabel": "プリセット:",
+      "probabilityLabel": "発動確率: {percentage}%",
+      "intervalLabel": "判定間隔: {interval}ms",
+      "milliseconds": "ミリ秒",
+      "advancedSettings": "高度な設定",
+      "seedLabel": "シード値（デバッグ用）:",
+      "seedPlaceholder": "例: test123",
+      "seedDescription": "同じシード値で同じランダム結果を再現",
+      "forEndlessGames": "エンドレス系ゲーム向け",
+      "deleteButton": "削除",
+      "choicesLabel": "選択肢アクション:",
+      "addButton": "追加",
+      "weightLabel": "重み:",
+      "selectionModeLabel": "選択方式:",
+      "weighted": "重み付き（推奨）",
+      "uniform": "均等選択",
+      "probability": "個別確率",
+      "executionLimitSettings": "実行制限設定",
+      "maxExecutionsLabel": "最大実行回数:",
+      "maxExecutionsPlaceholder": "無制限",
+      "cooldownLabel": "クールダウン時間:",
+      "cooldownPlaceholder": "0",
+      "debugMode": "デバッグモード（選択結果をログ出力）",
+      "forEndlessAndAutogen": "エンドレス系・自動生成向け",
+      "conditionDisplayName": "{interval}{percentage}%の確率で条件成立",
+      "actionDisplayName": "{count}択からランダム選択 ({probabilities}%)",
+      "presets": {
+        "condition": {
+          "lowProbability": {
+            "label": "低確率",
+            "description": "10%の確率、2秒間隔"
+          },
+          "mediumProbability": {
+            "label": "中確率",
+            "description": "30%の確率、1秒間隔"
+          },
+          "highProbability": {
+            "label": "高確率",
+            "description": "70%の確率、0.5秒間隔"
+          },
+          "endless": {
+            "label": "エンドレス",
+            "description": "Flappy Bird風"
+          },
+          "runner": {
+            "label": "ランナー",
+            "description": "Temple Run風"
+          }
+        },
+        "action": {
+          "endlessObstacles": {
+            "label": "エンドレス障害物",
+            "description": "障害物とアイテムのランダム生成"
+          },
+          "bonusEffects": {
+            "label": "ボーナス効果",
+            "description": "ランダムボーナス効果"
+          },
+          "difficultyAdjustment": {
+            "label": "難易度調整",
+            "description": "自動難易度調整"
+          }
+        }
+      },
+      "actionTypes": {
+        "success": "成功",
+        "failure": "失敗",
+        "playSound": "音再生",
+        "show": "表示",
+        "hide": "非表示",
+        "counter": "カウンター",
+        "effect": "エフェクト",
+        "move": "移動"
+      }
     }
   },
   "conditions": {

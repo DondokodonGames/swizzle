@@ -1016,6 +1016,88 @@
         "frameNumber": "Frame {number}",
         "animationEnd": "End"
       }
+    },
+    "random": {
+      "conditionTitle": "Random Condition Settings",
+      "actionTitle": "Random Action Settings",
+      "probabilityWith": "{percentage}% probability with {interval} trigger",
+      "everyFrame": "every frame",
+      "interval": "{interval}ms interval",
+      "choices": "Random selection from {count} choices ({probabilities}%)",
+      "presetLabel": "Presets:",
+      "probabilityLabel": "Trigger Probability: {percentage}%",
+      "intervalLabel": "Check Interval: {interval}ms",
+      "milliseconds": "milliseconds",
+      "advancedSettings": "Advanced Settings",
+      "seedLabel": "Seed Value (for debugging):",
+      "seedPlaceholder": "e.g., test123",
+      "seedDescription": "Use same seed to reproduce same random results",
+      "forEndlessGames": "For endless-style games",
+      "deleteButton": "Delete",
+      "choicesLabel": "Choice Actions:",
+      "addButton": "Add",
+      "weightLabel": "Weight:",
+      "selectionModeLabel": "Selection Mode:",
+      "weighted": "Weighted (recommended)",
+      "uniform": "Uniform",
+      "probability": "Individual Probability",
+      "executionLimitSettings": "Execution Limit Settings",
+      "maxExecutionsLabel": "Max Executions:",
+      "maxExecutionsPlaceholder": "Unlimited",
+      "cooldownLabel": "Cooldown Time:",
+      "cooldownPlaceholder": "0",
+      "debugMode": "Debug Mode (log selection results)",
+      "forEndlessAndAutogen": "For endless-style & auto-generation",
+      "conditionDisplayName": "{interval}{percentage}% probability condition met",
+      "actionDisplayName": "Random selection from {count} choices ({probabilities}%)",
+      "presets": {
+        "condition": {
+          "lowProbability": {
+            "label": "Low Probability",
+            "description": "10% probability, 2s interval"
+          },
+          "mediumProbability": {
+            "label": "Medium Probability",
+            "description": "30% probability, 1s interval"
+          },
+          "highProbability": {
+            "label": "High Probability",
+            "description": "70% probability, 0.5s interval"
+          },
+          "endless": {
+            "label": "Endless",
+            "description": "Flappy Bird style"
+          },
+          "runner": {
+            "label": "Runner",
+            "description": "Temple Run style"
+          }
+        },
+        "action": {
+          "endlessObstacles": {
+            "label": "Endless Obstacles",
+            "description": "Random obstacle and item generation"
+          },
+          "bonusEffects": {
+            "label": "Bonus Effects",
+            "description": "Random bonus effects"
+          },
+          "difficultyAdjustment": {
+            "label": "Difficulty Adjustment",
+            "description": "Automatic difficulty adjustment"
+          }
+        }
+      },
+      "actionTypes": {
+        "success": "Success",
+        "failure": "Failure",
+        "playSound": "Play Sound",
+        "show": "Show",
+        "hide": "Hide",
+        "counter": "Counter",
+        "effect": "Effect",
+        "move": "Move"
+      }
     }
   },
   "conditions": {
