@@ -1,12 +1,6 @@
 /**
  * PricingTable.tsx
- * プラン比較表コンポーネント
- * 
- * 機能:
- * - Free/Premiumプランの比較表示
- * - 月額/年額切り替え
- * - 現在のプラン表示
- * - CheckoutButtonとの統合
+ * モダンなプラン比較表コンポーネント
  */
 
 import React, { useState } from 'react';
@@ -18,9 +12,22 @@ import {
 } from '../../types/MonetizationTypes';
 import { CheckoutButton } from './CheckoutButton';
 
-/**
- * Pricing Table コンポーネント
- */
+// プラン機能の定義
+const PLAN_FEATURES = {
+  free: [
+    { text: 'ゲームをプレイ', included: true },
+    { text: 'ソーシャル機能', included: true },
+    { text: '広告表示あり', included: true, isNegative: true },
+    { text: 'エディター機能', included: false },
+  ],
+  premium: [
+    { text: 'ゲームをプレイ', included: true },
+    { text: 'ソーシャル機能', included: true },
+    { text: '広告非表示', included: true, isHighlight: true },
+    { text: 'エディター機能（月20個まで）', included: true, isHighlight: true },
+  ],
+};
+
 export function PricingTable({
   currentPlan = MVPSubscriptionPlan.FREE,
   onSelectPlan,
@@ -28,171 +35,353 @@ export function PricingTable({
 }: MVPPricingTableProps) {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
-  /**
-   * プランカードのレンダリング - モダンデザイン版
-   */
-  const renderPlanCard = (plan: MVPSubscriptionPlan) => {
-    const planConfig = MVP_PLAN_CONFIGS[plan];
-    const isCurrentPlan = currentPlan === plan;
-    const price = billingCycle === 'yearly' ? planConfig.yearlyPrice : planConfig.price;
-    const yearlyDiscount = calculateYearlyDiscount(plan);
-
-    return (
-      <div
-        key={plan}
-        className={`
-          relative rounded-xl p-5 flex flex-col
-          ${planConfig.recommended
-            ? 'bg-white border-2 border-purple-500 shadow-lg shadow-purple-100'
-            : 'bg-white border border-gray-200 shadow-sm'}
-          ${isCurrentPlan ? 'ring-2 ring-green-400' : ''}
-          transition-all duration-200 hover:shadow-md
-        `}
-      >
-        {/* Recommended Badge */}
-        {planConfig.recommended && (
-          <div className="absolute -top-2.5 left-1/2 transform -translate-x-1/2">
-            <span className="bg-purple-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-              人気
-            </span>
-          </div>
-        )}
-
-        {/* Current Plan Badge */}
-        {isCurrentPlan && (
-          <div className="absolute top-2 right-2">
-            <span className="bg-green-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded">
-              利用中
-            </span>
-          </div>
-        )}
-
-        {/* Plan Header */}
-        <div className="text-center mb-3">
-          <h3 className="text-lg font-bold text-gray-900">
-            {planConfig.displayName}
-          </h3>
-        </div>
-
-        {/* Price */}
-        <div className="text-center mb-4">
-          {plan === 'free' ? (
-            <div>
-              <span className="text-3xl font-bold text-gray-900">¥0</span>
-              <span className="text-gray-500 text-xs ml-1">/月</span>
-            </div>
-          ) : (
-            <div>
-              <span className="text-3xl font-bold text-purple-600">
-                ${price}
-              </span>
-              <span className="text-gray-500 text-xs ml-1">
-                /{billingCycle === 'yearly' ? '年' : '月'}
-              </span>
-              {billingCycle === 'yearly' && yearlyDiscount > 0 && (
-                <div className="mt-1">
-                  <span className="inline-block bg-green-100 text-green-700 text-[10px] font-semibold px-1.5 py-0.5 rounded">
-                    {yearlyDiscount}% OFF
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Features List */}
-        <ul className="space-y-1.5 mb-4 flex-grow">
-          {planConfig.features.map((feature, index) => (
-            <li key={index} className="flex items-start">
-              <svg
-                className={`mr-1.5 mt-0.5 flex-shrink-0 ${planConfig.recommended ? 'text-purple-500' : 'text-gray-400'}`}
-                style={{ width: '12px', height: '12px', minWidth: '12px', minHeight: '12px' }}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={3}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              <span className="text-gray-600 text-[11px] leading-tight">{feature}</span>
-            </li>
-          ))}
-        </ul>
-
-        {/* CTA Button */}
-        <div className="mt-auto">
-          {isCurrentPlan ? (
-            <button
-              disabled
-              className="w-full py-2 px-3 rounded-lg font-medium bg-gray-100 text-gray-400 cursor-not-allowed text-xs"
-            >
-              利用中
-            </button>
-          ) : (
-            <CheckoutButton
-              plan={plan}
-              billingCycle={billingCycle}
-              onSuccess={() => {
-                onSelectPlan?.(plan);
-              }}
-            />
-          )}
-        </div>
-      </div>
-    );
-  };
+  const yearlyDiscount = calculateYearlyDiscount(MVPSubscriptionPlan.PREMIUM);
+  const premiumConfig = MVP_PLAN_CONFIGS[MVPSubscriptionPlan.PREMIUM];
+  const price = billingCycle === 'yearly' ? premiumConfig.yearlyPrice : premiumConfig.price;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
-      {/* Header - コンパクトで洗練されたデザイン */}
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          プラン選択
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px 16px' }}>
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <h2 style={{
+          fontSize: '24px',
+          fontWeight: '700',
+          color: '#111827',
+          margin: '0 0 8px 0'
+        }}>
+          プランを選択
         </h2>
-        <p className="text-sm text-gray-500">
-          あなたに最適なプランを選んでください
+        <p style={{
+          fontSize: '14px',
+          color: '#6b7280',
+          margin: 0
+        }}>
+          無料で始めて、必要に応じてアップグレード
         </p>
       </div>
 
-      {/* Billing Cycle Toggle */}
+      {/* Billing Toggle */}
       {showAnnualToggle && (
-        <div className="flex justify-center mb-6">
-          <div className="bg-gray-100 rounded-lg p-0.5 inline-flex">
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          marginBottom: '24px'
+        }}>
+          <div style={{
+            display: 'inline-flex',
+            backgroundColor: '#f3f4f6',
+            borderRadius: '8px',
+            padding: '4px'
+          }}>
             <button
               onClick={() => setBillingCycle('monthly')}
-              className={`
-                px-4 py-1.5 rounded-md font-medium text-xs transition-all duration-150
-                ${billingCycle === 'monthly'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'}
-              `}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '6px',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                backgroundColor: billingCycle === 'monthly' ? '#ffffff' : 'transparent',
+                color: billingCycle === 'monthly' ? '#111827' : '#6b7280',
+                boxShadow: billingCycle === 'monthly' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+              }}
             >
               月額
             </button>
             <button
               onClick={() => setBillingCycle('yearly')}
-              className={`
-                px-4 py-1.5 rounded-md font-medium text-xs transition-all duration-150
-                ${billingCycle === 'yearly'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'}
-              `}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '6px',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                backgroundColor: billingCycle === 'yearly' ? '#ffffff' : 'transparent',
+                color: billingCycle === 'yearly' ? '#111827' : '#6b7280',
+                boxShadow: billingCycle === 'yearly' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+              }}
             >
               年額
-              <span className="ml-1 text-green-600 text-[10px]">17%OFF</span>
+              <span style={{
+                marginLeft: '4px',
+                color: '#059669',
+                fontSize: '11px'
+              }}>
+                {yearlyDiscount}%OFF
+              </span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Plans Grid */}
-      <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-        {renderPlanCard(MVPSubscriptionPlan.FREE)}
-        {renderPlanCard(MVPSubscriptionPlan.PREMIUM)}
+      {/* Plans */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: '16px',
+        maxWidth: '600px',
+        margin: '0 auto'
+      }}>
+        {/* Free Plan */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          border: '1px solid #e5e7eb',
+          borderRadius: '12px',
+          padding: '24px',
+          position: 'relative'
+        }}>
+          {currentPlan === MVPSubscriptionPlan.FREE && (
+            <div style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              backgroundColor: '#10b981',
+              color: '#ffffff',
+              fontSize: '10px',
+              fontWeight: '600',
+              padding: '2px 6px',
+              borderRadius: '4px'
+            }}>
+              現在
+            </div>
+          )}
+
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#111827',
+              margin: '0 0 4px 0'
+            }}>
+              Free
+            </h3>
+            <p style={{
+              fontSize: '12px',
+              color: '#6b7280',
+              margin: 0
+            }}>
+              基本機能を無料で
+            </p>
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <span style={{
+              fontSize: '32px',
+              fontWeight: '700',
+              color: '#111827'
+            }}>
+              ¥0
+            </span>
+            <span style={{
+              fontSize: '14px',
+              color: '#6b7280',
+              marginLeft: '4px'
+            }}>
+              /月
+            </span>
+          </div>
+
+          <ul style={{
+            listStyle: 'none',
+            padding: 0,
+            margin: '0 0 20px 0'
+          }}>
+            {PLAN_FEATURES.free.map((feature, index) => (
+              <li key={index} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '8px',
+                fontSize: '13px',
+                color: feature.isNegative ? '#9ca3af' : '#374151'
+              }}>
+                {feature.included ? (
+                  <span style={{ color: feature.isNegative ? '#9ca3af' : '#10b981' }}>✓</span>
+                ) : (
+                  <span style={{ color: '#d1d5db' }}>✗</span>
+                )}
+                {feature.text}
+              </li>
+            ))}
+          </ul>
+
+          {currentPlan === MVPSubscriptionPlan.FREE ? (
+            <button
+              disabled
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: '#f3f4f6',
+                color: '#9ca3af',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'not-allowed'
+              }}
+            >
+              現在のプラン
+            </button>
+          ) : (
+            <button
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+                backgroundColor: '#ffffff',
+                color: '#374151',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+            >
+              ダウングレード
+            </button>
+          )}
+        </div>
+
+        {/* Premium Plan */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          border: '2px solid #8b5cf6',
+          borderRadius: '12px',
+          padding: '24px',
+          position: 'relative',
+          boxShadow: '0 4px 6px -1px rgba(139, 92, 246, 0.1)'
+        }}>
+          <div style={{
+            position: 'absolute',
+            top: '-10px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#8b5cf6',
+            color: '#ffffff',
+            fontSize: '10px',
+            fontWeight: '600',
+            padding: '3px 10px',
+            borderRadius: '10px'
+          }}>
+            おすすめ
+          </div>
+
+          {currentPlan === MVPSubscriptionPlan.PREMIUM && (
+            <div style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              backgroundColor: '#10b981',
+              color: '#ffffff',
+              fontSize: '10px',
+              fontWeight: '600',
+              padding: '2px 6px',
+              borderRadius: '4px'
+            }}>
+              現在
+            </div>
+          )}
+
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#111827',
+              margin: '0 0 4px 0'
+            }}>
+              Premium
+            </h3>
+            <p style={{
+              fontSize: '12px',
+              color: '#6b7280',
+              margin: 0
+            }}>
+              全機能をアンロック
+            </p>
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <span style={{
+              fontSize: '32px',
+              fontWeight: '700',
+              color: '#8b5cf6'
+            }}>
+              ${price}
+            </span>
+            <span style={{
+              fontSize: '14px',
+              color: '#6b7280',
+              marginLeft: '4px'
+            }}>
+              /{billingCycle === 'yearly' ? '年' : '月'}
+            </span>
+            {billingCycle === 'yearly' && (
+              <div style={{ marginTop: '4px' }}>
+                <span style={{
+                  backgroundColor: '#d1fae5',
+                  color: '#059669',
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  padding: '2px 6px',
+                  borderRadius: '4px'
+                }}>
+                  {yearlyDiscount}% お得
+                </span>
+              </div>
+            )}
+          </div>
+
+          <ul style={{
+            listStyle: 'none',
+            padding: 0,
+            margin: '0 0 20px 0'
+          }}>
+            {PLAN_FEATURES.premium.map((feature, index) => (
+              <li key={index} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '8px',
+                fontSize: '13px',
+                color: feature.isHighlight ? '#7c3aed' : '#374151',
+                fontWeight: feature.isHighlight ? '500' : '400'
+              }}>
+                <span style={{ color: '#8b5cf6' }}>✓</span>
+                {feature.text}
+              </li>
+            ))}
+          </ul>
+
+          {currentPlan === MVPSubscriptionPlan.PREMIUM ? (
+            <button
+              disabled
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: '#f3f4f6',
+                color: '#9ca3af',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'not-allowed'
+              }}
+            >
+              現在のプラン
+            </button>
+          ) : (
+            <CheckoutButton
+              plan={MVPSubscriptionPlan.PREMIUM}
+              billingCycle={billingCycle}
+              onSuccess={() => {
+                onSelectPlan?.(MVPSubscriptionPlan.PREMIUM);
+              }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
