@@ -29,7 +29,7 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
     { id: 'random', title: 'ランダム', icon: '🎲', games: [], loading: true },
     { id: 'premium', title: 'プレミアム', icon: '💎', games: [], loading: true }
   ]);
-  const [selectedSection, setSelectedSection] = useState<string>('trending');
+  const [selectedSection, setSelectedSection] = useState<string>('tags'); // デフォルトは「おすすめ」
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // ==================== サービス ====================
@@ -61,9 +61,9 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
     try {
       console.log('📊 フィードデータ取得開始');
 
-      // トレンドゲーム
+      // トレンドゲーム（週間）
       try {
-        const trendingGames = await socialService.getTrendingGames('today', 'trending', 12);
+        const trendingGames = await socialService.getTrendingGames('week', 'trending', 12);
         console.log('📊 トレンドゲーム取得:', trendingGames?.length || 0, '件');
         updateSection('trending', trendingGames || [], false);
       } catch (err) {
