@@ -78,11 +78,11 @@ export const TimeBarSelector: React.FC<TimeBarSelectorProps> = ({
   // 時間フォーマット関数
   const formatTime = useCallback((seconds: number) => {
     if (seconds < 60) {
-      return `${seconds.toFixed(1)}${t('editor.script.timeBarSelector.seconds', '秒')}`;
+      return `${seconds.toFixed(1)}${t('editor.script.timeBarSelector.seconds')}`;
     } else {
       const minutes = Math.floor(seconds / 60);
       const remainingSeconds = seconds % 60;
-      return `${minutes}${t('editor.script.timeBarSelector.minutes', '分')}${remainingSeconds.toFixed(1)}${t('editor.script.timeBarSelector.seconds', '秒')}`;
+      return `${minutes}${t('editor.script.timeBarSelector.minutes')}${remainingSeconds.toFixed(1)}${t('editor.script.timeBarSelector.seconds')}`;
     }
   }, [t]);
 
@@ -91,16 +91,16 @@ export const TimeBarSelector: React.FC<TimeBarSelectorProps> = ({
     switch (timeType) {
       case 'exact':
         return selectedTime !== undefined
-          ? t('editor.script.timeBarSelector.description.exact', { time: formatTime(selectedTime) }, `ゲーム開始から${formatTime(selectedTime)}後に発動`)
-          : t('editor.script.timeBarSelector.description.selectTime', '時間を選択してください');
+          ? t('editor.script.timeBarSelector.description.exact', { time: formatTime(selectedTime) })
+          : t('editor.script.timeBarSelector.description.selectTime');
       case 'range':
         return selectedRange
-          ? t('editor.script.timeBarSelector.description.range', { start: formatTime(selectedRange.start), end: formatTime(selectedRange.end) }, `${formatTime(selectedRange.start)}〜${formatTime(selectedRange.end)}の間で発動`)
-          : t('editor.script.timeBarSelector.description.selectRange', '時間範囲を選択してください');
+          ? t('editor.script.timeBarSelector.description.range', { start: formatTime(selectedRange.start), end: formatTime(selectedRange.end) })
+          : t('editor.script.timeBarSelector.description.selectRange');
       case 'interval':
         return selectedTime !== undefined
-          ? t('editor.script.timeBarSelector.description.interval', { time: formatTime(selectedTime) }, `${formatTime(selectedTime)}毎に繰り返し発動`)
-          : t('editor.script.timeBarSelector.description.selectInterval', '間隔時間を選択してください');
+          ? t('editor.script.timeBarSelector.description.interval', { time: formatTime(selectedTime) })
+          : t('editor.script.timeBarSelector.description.selectInterval');
       default:
         return '';
     }
@@ -127,7 +127,7 @@ export const TimeBarSelector: React.FC<TimeBarSelectorProps> = ({
         gap: DESIGN_TOKENS.spacing[2]
       }}>
         <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>⏰</span>
-        {t('editor.script.timeBarSelector.title', '時間条件詳細設定')}
+        {t('editor.script.timeBarSelector.title')}
       </h5>
 
       {/* 時間タイプ選択（TouchConditionEditorパターン） */}
@@ -139,7 +139,7 @@ export const TimeBarSelector: React.FC<TimeBarSelectorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          {t('editor.script.timeBarSelector.typeLabel', '時間条件タイプ')}
+          {t('editor.script.timeBarSelector.typeLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -187,7 +187,7 @@ export const TimeBarSelector: React.FC<TimeBarSelectorProps> = ({
         fontSize: DESIGN_TOKENS.typography.fontSize.sm,
         color: DESIGN_TOKENS.colors.purple[800]
       }}>
-        📊 {t('editor.script.timeBarSelector.gameDuration', 'ゲーム全体時間')}: {formatTime(gameDuration)}
+        📊 {t('editor.script.timeBarSelector.gameDuration')}: {formatTime(gameDuration)}
       </div>
 
       {/* 時間バー表示 */}
@@ -199,7 +199,7 @@ export const TimeBarSelector: React.FC<TimeBarSelectorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          {t('editor.script.timeBarSelector.timeBar', '時間選択バー')}
+          {t('editor.script.timeBarSelector.timeBar')}
         </label>
         
         {/* プログレスバー本体 */}
@@ -296,7 +296,7 @@ export const TimeBarSelector: React.FC<TimeBarSelectorProps> = ({
           color: DESIGN_TOKENS.colors.purple[500],
           marginTop: DESIGN_TOKENS.spacing[1]
         }}>
-          <span>0{t('editor.script.timeBarSelector.seconds', '秒')}</span>
+          <span>0{t('editor.script.timeBarSelector.seconds')}</span>
           <span>{formatTime(gameDuration / 4)}</span>
           <span>{formatTime(gameDuration / 2)}</span>
           <span>{formatTime(gameDuration * 3 / 4)}</span>
@@ -315,7 +315,7 @@ export const TimeBarSelector: React.FC<TimeBarSelectorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              {t('editor.script.timeBarSelector.exactTime', '正確な時刻（秒）')}
+              {t('editor.script.timeBarSelector.exactTime')}
             </label>
             <input
               type="number"
@@ -347,7 +347,7 @@ export const TimeBarSelector: React.FC<TimeBarSelectorProps> = ({
                 marginBottom: DESIGN_TOKENS.spacing[2],
                 display: 'block'
               }}>
-                {t('editor.script.timeBarSelector.startTime', '開始時刻（秒）')}
+                {t('editor.script.timeBarSelector.startTime')}
               </label>
               <input
                 type="number"
@@ -381,7 +381,7 @@ export const TimeBarSelector: React.FC<TimeBarSelectorProps> = ({
                 marginBottom: DESIGN_TOKENS.spacing[2],
                 display: 'block'
               }}>
-                {t('editor.script.timeBarSelector.endTime', '終了時刻（秒）')}
+                {t('editor.script.timeBarSelector.endTime')}
               </label>
               <input
                 type="number"
@@ -419,7 +419,7 @@ export const TimeBarSelector: React.FC<TimeBarSelectorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              {t('editor.script.timeBarSelector.intervalTime', '間隔時間（秒）')}
+              {t('editor.script.timeBarSelector.intervalTime')}
             </label>
             <input
               type="number"
@@ -450,7 +450,7 @@ export const TimeBarSelector: React.FC<TimeBarSelectorProps> = ({
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.purple[800]
       }}>
-        💡 {t('editor.script.timeBarSelector.setting', '設定内容')}: {getTimeDescription()}
+        💡 {t('editor.script.timeBarSelector.setting')}: {getTimeDescription()}
       </div>
     </ModernCard>
   );
