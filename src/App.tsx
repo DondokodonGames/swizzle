@@ -1,10 +1,9 @@
-// src/App.tsx - React Router ハイブリッド構造版（Phase M 統合完了 + Premium Badge）
+// src/App.tsx
 
 import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import './styles/arcade-theme.css';
 
-// Phase M: マネタイズ統合インポート
 import { useSubscription } from './hooks/monetization/useSubscription';
 import { PremiumBadge } from './components/monetization/PremiumBadge';
 
@@ -27,7 +26,7 @@ const Pricing = React.lazy(() =>
       default: () => (
         <div style={{ padding: '40px', textAlign: 'center' }}>
           <h2>料金プランページを読み込めませんでした</h2>
-          <p>Phase M のファイルが正しく配置されていることを確認してください。</p>
+          <p>Please make sure the required files are properly configured.</p>
         </div>
       )
     };
@@ -91,7 +90,7 @@ const EditorFallback: React.FC<EditorAppProps> = ({ onClose }) => (
       <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>エディター機能を読み込めませんでした</h2>
       <p style={{ color: '#6b7280', marginBottom: '24px' }}>
         エディター機能の実装が必要です。<br />
-        Phase 6.2のファイルが正しく配置されていることを確認してください。
+        Please make sure the editor files are properly configured.
       </p>
       <button
         onClick={onClose || (() => {})}
@@ -250,7 +249,6 @@ const AuthenticatedUserInfoContent: React.FC<{
                   gap: '6px'
                 }}>
                   {auth.profile.display_name || auth.profile.username}
-                  {/* Phase M: Premium Badge 統合 */}
                   {isPremium && (
                     <PremiumBadge
                       size="small"
@@ -429,7 +427,6 @@ const AuthenticatedUserInfo: React.FC = () => {
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [profileSetupOpen, setProfileSetupOpen] = useState(false);
 
-  // Phase M: サブスクリプション状態取得
   const { subscription, isPremium } = useSubscription();
 
   // useAuthフックの読み込み
@@ -843,7 +840,7 @@ function MainApp() {
         fontSize: '12px',
         textAlign: 'center'
       }}>
-        © 2024 Swizzle - Phase M: マネタイズ機能統合完了 💰
+        © 2024 Swizzle
       </footer>
 
       {/* グローバルAuthModal（ゲーム中でも開ける） */}

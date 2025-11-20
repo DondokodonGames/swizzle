@@ -83,7 +83,10 @@
       "addAudio": "Add Audio",
       "addText": "Add Text",
       "bgm": "BGM",
-      "se": "Sound Effects"
+      "se": "Sound Effects",
+      "usedCapacity": "Used Capacity (Images + Audio)",
+      "capacityWarning": "Capacity is insufficient. Please delete unnecessary assets.",
+      "sound": "Sound"
     },
     "script": {
       "title": "Rule Settings",
@@ -363,7 +366,13 @@
     "saveSuccess": "Saved successfully!",
     "saveFailed": "Save failed",
     "unsavedChanges": "You have unsaved changes. Are you sure you want to close?",
-    "usernameNote": "Display name will be shown if empty"
+    "usernameNote": "Display name will be shown if empty",
+    "loading": "Loading profile...",
+    "notFound": "Profile not found",
+    "loadError": "Failed to load profile",
+    "createdGames": "Created Games",
+    "noGamesYet": "No games published yet",
+    "loggingOut": "Logging out..."
   },
   "game": {
     "start": "Start",

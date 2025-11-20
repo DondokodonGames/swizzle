@@ -1,6 +1,6 @@
 // src/components/editor/tabs/AssetsTab.tsx
-// 🔧 Phase E-1: 分割アーキテクチャ完成版 - メインハブ（3セクション統合）
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../../../constants/EditorLimits';
 import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
@@ -29,6 +29,7 @@ const formatFileSize = (bytes: number): string => {
 };
 
 export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }) => {
+  const { t } = useTranslation();
   const [activeAssetType, setActiveAssetType] = useState<AssetType>('background');
   const { notifications, hideNotification } = useNotification();
 
@@ -121,7 +122,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
               color: DESIGN_TOKENS.colors.neutral[700] 
             }}
           >
-            使用容量（画像+音声）
+            {t('editor.assets.usedCapacity')}
           </span>
           <span 
             style={{ 
@@ -162,7 +163,7 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
               margin: `${DESIGN_TOKENS.spacing[1]} 0 0 0`
             }}
           >
-            容量が不足しています。不要なアセットを削除してください。
+            {t('editor.assets.capacityWarning')}
           </p>
         )}
       </ModernCard>
@@ -181,21 +182,21 @@ export const AssetsTab: React.FC<AssetsTabProps> = ({ project, onProjectUpdate }
         {[
           { 
             id: 'background' as AssetType, 
-            label: '背景', 
+            label: t('editor.assets.background'), 
             icon: '🖼️', 
             count: project.assets.background ? 1 : 0,
             status: '✅ 完成'
           },
           { 
             id: 'objects' as AssetType, 
-            label: 'オブジェクト', 
+            label: t('editor.assets.objects'), 
             icon: '🎨', 
             count: project.assets.objects.length,
             status: '🎬 アニメ統合'
           },
           { 
             id: 'sound' as AssetType, 
-            label: 'サウンド', 
+            label: t('editor.assets.sound'), 
             icon: '🎵', 
             count: (project.assets.audio?.bgm ? 1 : 0) + (project.assets.audio?.se?.length || 0),
             status: '✅ 完成'

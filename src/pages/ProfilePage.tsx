@@ -1,8 +1,8 @@
 // src/pages/ProfilePage.tsx
-// プロフィール表示専用ページ（問題7対応）
 
 import React, { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import type { Profile } from '../lib/database.types'
 import type { Subscription } from '../types/MonetizationTypes'
@@ -32,6 +32,7 @@ interface ProfilePageProps {
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) => {
+  const { t } = useTranslation()
   const { username } = useParams<{ username: string }>()
   const navigate = useNavigate()
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -118,7 +119,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
         }
       } catch (error: any) {
         console.error('Profile load error:', error)
-        setError(error.message || 'プロフィールの読み込みに失敗しました')
+        setError(error.message || t('profile.loadError'))
       } finally {
         setLoading(false)
       }
@@ -150,7 +151,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
   const handleLogout = async () => {
     if (loggingOut) return
 
-    if (!window.confirm('ログアウトしますか？')) return
+    if (!window.confirm(t('common.logout') + '?')) return
 
     setLoggingOut(true)
     try {
@@ -185,7 +186,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
         }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
-          <p style={{ color: '#6b7280' }}>プロフィールを読み込み中...</p>
+          <p style={{ color: '#6b7280' }}>{t('profile.loading')}</p>
         </div>
       </div>
     )
@@ -210,7 +211,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
         }}>
           <div style={{ fontSize: '48px', marginBottom: '16px' }}>😔</div>
           <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>
-            プロフィールが見つかりません
+            {t('profile.notFound')}
           </h2>
           <p style={{ color: '#6b7280', marginBottom: '24px' }}>
             {error || '指定されたユーザーは存在しないか、削除されました'}
@@ -274,7 +275,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
             margin: 0,
             flex: 1
           }}>
-            プロフィール
+            {t('profile.title')}
           </h1>
 
           {/* 自分のプロフィールの場合、編集・ログアウトボタンを表示 */}
@@ -310,7 +311,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
                   opacity: loggingOut ? 0.7 : 1
                 }}
               >
-                {loggingOut ? 'ログアウト中...' : 'ログアウト'}
+                {loggingOut ? t('profile.loggingOut') : t('common.logout')}
               </button>
             </div>
           )}
@@ -482,7 +483,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
               color: '#111827',
               marginBottom: '16px'
             }}>
-              作成したゲーム
+              {t('profile.createdGames')}
             </h3>
 
             {gamesLoading ? (
@@ -504,7 +505,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
                 textAlign: 'center'
               }}>
                 <p style={{ color: '#6b7280', fontSize: '14px', margin: 0 }}>
-                  まだゲームを公開していません
+                  {t('profile.noGamesYet')}
                 </p>
               </div>
             ) : (
@@ -598,7 +599,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
           handleProfileUpdated()
         }}
         mode="edit"
-        title="プロフィール編集"
+        title={t('profile.editProfile')}
       />
     </div>
   )
