@@ -1,6 +1,6 @@
 // src/components/editor/EditorApp.tsx
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18n';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../types/editor/GameProject';
 import { GameEditor } from './GameEditor';
 import { ProjectSelector } from './ProjectSelector';

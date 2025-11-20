@@ -1,7 +1,7 @@
 // src/components/editor/script/SimpleRuleModal.tsx
 
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18n';
+import { useTranslation } from 'react-i18next';
 import { GameRule, TriggerCondition, GameAction } from '../../../types/editor/GameScript';
 import { GameProject } from '../../../types/editor/GameProject';
 

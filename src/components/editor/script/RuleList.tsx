@@ -1,7 +1,7 @@
 // src/components/editor/script/RuleList.tsx
 
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18n';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
 import { GameRule } from '../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
