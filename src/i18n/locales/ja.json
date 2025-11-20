@@ -342,6 +342,8 @@
   },
   "profile": {
     "title": "プロフィール",
+    "setup": "プロフィール設定",
+    "edit": "プロフィール編集",
     "myGames": "マイゲーム",
     "favorites": "お気に入り",
     "followers": "フォロワー",
@@ -349,7 +351,19 @@
     "editProfile": "プロフィール編集",
     "bio": "自己紹介",
     "gamesCreated": "作成したゲーム",
-    "totalPlays": "総プレイ数"
+    "totalPlays": "総プレイ数",
+    "username": "ユーザー名",
+    "displayName": "表示名",
+    "avatarImage": "アバター画像",
+    "language": "言語",
+    "languageSetting": "言語設定",
+    "saving": "保存中...",
+    "usernameRequired": "ユーザー名を入力してください",
+    "usernameInUse": "このユーザー名は使用されています",
+    "saveSuccess": "保存しました！",
+    "saveFailed": "保存失敗",
+    "unsavedChanges": "変更が保存されていません。閉じてもよろしいですか？",
+    "usernameNote": "空白の場合はユーザー名が表示"
   },
   "game": {
     "start": "スタート",

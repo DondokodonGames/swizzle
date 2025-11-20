@@ -342,6 +342,8 @@
   },
   "profile": {
     "title": "Profil",
+    "setup": "Configuration du profil",
+    "edit": "Modifier le profil",
     "myGames": "Mes jeux",
     "favorites": "Favoris",
     "followers": "Abonnés",
@@ -349,7 +351,19 @@
     "editProfile": "Modifier le profil",
     "bio": "Bio",
     "gamesCreated": "Jeux créés",
-    "totalPlays": "Parties totales"
+    "totalPlays": "Parties totales",
+    "username": "Nom d'utilisateur",
+    "displayName": "Nom d'affichage",
+    "avatarImage": "Image d'avatar",
+    "language": "Langue",
+    "languageSetting": "Paramètre de langue",
+    "saving": "Enregistrement...",
+    "usernameRequired": "Le nom d'utilisateur est requis",
+    "usernameInUse": "Ce nom d'utilisateur est déjà utilisé",
+    "saveSuccess": "Enregistré avec succès !",
+    "saveFailed": "Échec de l'enregistrement",
+    "unsavedChanges": "Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir fermer ?",
+    "usernameNote": "Le nom d'utilisateur sera affiché si vide"
   },
   "game": {
     "start": "Démarrer",
