@@ -2,12 +2,13 @@
 // Phase C Step 2完了版: エフェクトアクション詳細設定コンポーネント
 // AdvancedRuleModal.tsx分割 - Step 3: アクションエディター分離
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameAction } from '../../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
-import { EFFECT_TYPE_OPTIONS } from '../constants/EffectConstants';
+import { getEffectTypeOptions } from '../constants/EffectConstants';
 
 interface EffectActionEditorProps {
   action: GameAction & { type: 'effect' };
@@ -22,8 +23,12 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
   onUpdate,
   onShowNotification
 }) => {
+  const { t } = useTranslation();
   const effectAction = action;
-  
+
+  // Get localized options using getter functions that access i18n
+  const EFFECT_TYPE_OPTIONS = useMemo(() => getEffectTypeOptions(), []);
+
   return (
     <ModernCard 
       variant="outlined" 
@@ -45,7 +50,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
         gap: DESIGN_TOKENS.spacing[2]
       }}>
         <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>✨</span>
-        エフェクト詳細設定
+        {t('editor.effectAction.title')}
       </h5>
 
       {/* エフェクトタイプ選択 */}
@@ -57,7 +62,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          エフェクトタイプ
+          {t('editor.effectAction.effectTypeLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -113,7 +118,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            エフェクト強度: {Math.round((effectAction.effect?.intensity || 0.8) * 100)}%
+            {t('editor.effectAction.intensityLabel', { intensity: Math.round((effectAction.effect?.intensity || 0.8) * 100) })}
           </label>
           <input
             type="range"
@@ -121,11 +126,11 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
             max="1"
             step="0.1"
             value={effectAction.effect?.intensity || 0.8}
-            onChange={(e) => onUpdate(index, { 
-              effect: { 
+            onChange={(e) => onUpdate(index, {
+              effect: {
                 ...effectAction.effect,
-                intensity: parseFloat(e.target.value) 
-              } 
+                intensity: parseFloat(e.target.value)
+              }
             })}
             style={{
               width: '100%',
@@ -143,8 +148,8 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.success[600],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>10%</span>
-            <span>100%</span>
+            <span>{t('editor.effectAction.intensityRange', { percent: 10 })}</span>
+            <span>{t('editor.effectAction.intensityRange', { percent: 100 })}</span>
           </div>
         </div>
       )}
@@ -159,7 +164,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            持続時間: {effectAction.effect?.duration || 1}秒
+            {t('editor.effectAction.durationLabel', { seconds: effectAction.effect?.duration || 1 })}
           </label>
           <input
             type="range"
@@ -167,11 +172,11 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
             max="10"
             step="0.1"
             value={effectAction.effect?.duration || 1}
-            onChange={(e) => onUpdate(index, { 
-              effect: { 
+            onChange={(e) => onUpdate(index, {
+              effect: {
                 ...effectAction.effect,
-                duration: parseFloat(e.target.value) 
-              } 
+                duration: parseFloat(e.target.value)
+              }
             })}
             style={{
               width: '100%',
@@ -189,8 +194,8 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.success[600],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>0.1秒</span>
-            <span>10秒</span>
+            <span>{t('editor.effectAction.seconds', { seconds: 0.1 })}</span>
+            <span>{t('editor.effectAction.seconds', { seconds: 10 })}</span>
           </div>
         </div>
       )}
@@ -202,7 +207,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
           size="sm"
           onClick={() => {
             // TODO: Phase C Step 2で実装予定
-            onShowNotification('info', 'エフェクトプレビュー機能は今後実装予定です');
+            onShowNotification('info', t('editor.effectAction.previewNotice'));
           }}
           style={{
             borderColor: DESIGN_TOKENS.colors.success[200],
@@ -215,7 +220,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
           }}
         >
           <span>👁️</span>
-          <span>エフェクトプレビュー</span>
+          <span>{t('editor.effectAction.previewButton')}</span>
         </ModernButton>
       </div>
 
@@ -226,12 +231,14 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.success[800]
       }}>
-        💡 設定内容: 
-        {effectAction.effect?.type 
-          ? `「${EFFECT_TYPE_OPTIONS.find(e => e.value === effectAction.effect?.type)?.label || 'エフェクト'}」`
-          : 'エフェクトタイプを選択してください'}
-        {effectAction.effect?.intensity && ` - 強度${Math.round(effectAction.effect.intensity * 100)}%`}
-        {effectAction.effect?.duration && ` - ${effectAction.effect.duration}秒間`}
+        {t('editor.effectAction.settingsSummaryTitle')}
+        {effectAction.effect?.type
+          ? t('editor.effectAction.effectType', {
+              type: EFFECT_TYPE_OPTIONS.find(e => e.value === effectAction.effect?.type)?.label || t('editor.effectAction.selectEffect')
+            })
+          : t('editor.effectAction.selectEffect')}
+        {effectAction.effect?.intensity && t('editor.effectAction.withIntensity', { intensity: Math.round(effectAction.effect.intensity * 100) })}
+        {effectAction.effect?.duration && t('editor.effectAction.forDuration', { seconds: effectAction.effect.duration })}
       </div>
     </ModernCard>
   );

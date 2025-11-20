@@ -1125,6 +1125,21 @@
       "rangeTrigger": "{start}秒～{end}秒の間、継続的に発動",
       "intervalTrigger": "{interval}秒間隔で繰り返し発動",
       "notSet": "時間条件が設定されていません"
+    },
+    "effectAction": {
+      "title": "エフェクト詳細設定",
+      "effectTypeLabel": "エフェクトタイプ",
+      "intensityLabel": "エフェクト強度: {intensity}%",
+      "durationLabel": "持続時間: {seconds}秒",
+      "seconds": "{seconds}秒",
+      "intensityRange": "{percent}%",
+      "previewButton": "エフェクトプレビュー",
+      "previewNotice": "エフェクトプレビュー機能は今後実装予定です",
+      "settingsSummaryTitle": "💡 設定内容: ",
+      "effectType": "「{type}」",
+      "selectEffect": "エフェクトタイプを選択してください",
+      "withIntensity": " - 強度{intensity}%",
+      "forDuration": " - {seconds}秒間"
     }
   },
   "conditions": {
@@ -1461,6 +1476,10 @@
       "label": "フラッシュ",
       "description": "画面・オブジェクトを光らせる"
     },
+    "glow": {
+      "label": "発光",
+      "description": "オブジェクトを光らせる"
+    },
     "shake": {
       "label": "シェイク",
       "description": "振動・揺れエフェクト"
@@ -1476,6 +1495,14 @@
     "fade": {
       "label": "フェード",
       "description": "フェードイン・アウト"
+    },
+    "confetti": {
+      "label": "紙吹雪",
+      "description": "お祝い用パーティクル"
+    },
+    "monochrome": {
+      "label": "モノクロ",
+      "description": "白黒フィルター効果"
     },
     "particles": {
       "label": "パーティクル",

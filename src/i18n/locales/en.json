@@ -1324,6 +1324,21 @@
       "rangeTrigger": "Trigger continuously from {start}s to {end}s",
       "intervalTrigger": "Trigger repeatedly every {interval}s",
       "notSet": "Time condition not set"
+    },
+    "effectAction": {
+      "title": "Effect Settings",
+      "effectTypeLabel": "Effect Type",
+      "intensityLabel": "Effect Intensity: {intensity}%",
+      "durationLabel": "Duration: {seconds}s",
+      "seconds": "{seconds}s",
+      "intensityRange": "{percent}%",
+      "previewButton": "Preview Effect",
+      "previewNotice": "Effect preview feature coming soon",
+      "settingsSummaryTitle": "💡 Settings: ",
+      "effectType": "\"{type}\"",
+      "selectEffect": "Please select an effect type",
+      "withIntensity": " - Intensity {intensity}%",
+      "forDuration": " - For {seconds}s"
     }
   },
   "conditions": {
@@ -1660,6 +1675,10 @@
       "label": "Flash",
       "description": "Flash screen/object"
     },
+    "glow": {
+      "label": "Glow",
+      "description": "Make object glow"
+    },
     "shake": {
       "label": "Shake",
       "description": "Vibration effect"
@@ -1675,6 +1694,14 @@
     "fade": {
       "label": "Fade",
       "description": "Fade in/out"
+    },
+    "confetti": {
+      "label": "Confetti",
+      "description": "Celebration particles"
+    },
+    "monochrome": {
+      "label": "Monochrome",
+      "description": "Black and white filter"
     },
     "particles": {
       "label": "Particles",
