@@ -2,6 +2,7 @@
 // カウンター管理UIコンポーネント - SettingsTab統合用
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
 import { 
   GameCounter, 
@@ -89,12 +90,14 @@ export const CounterManager: React.FC<CounterManagerProps> = ({
     }, 0);
   };
 
+  const { t } = useTranslation();
+
   // プリセットカウンター追加
   const handleAddPresetCounter = (presetId: string) => {
     const presetCounter = createCounterFromPreset(presetId);
-    
+
     if (!presetCounter) {
-      showNotification('error', 'プリセットカウンターの作成に失敗しました');
+      showNotification('error', t('editor.counter.presetCreationFailed'));
       return;
     }
     
@@ -123,12 +126,12 @@ export const CounterManager: React.FC<CounterManagerProps> = ({
     });
     
     setShowPresetModal(false);
-    showNotification('success', `プリセットカウンター「${presetCounter.name}」を追加しました`);
+    showNotification('success', t('editor.counter.presetCounterAdded', { name: presetCounter.name }));
   };
 
   // カスタムカウンター作成
   const handleCreateCustomCounter = () => {
-    const newCounter = createCounter('新しいカウンター', 0);
+    const newCounter = createCounter(t('editor.counter.newCounter'), 0);
     
     setEditState({
       counter: newCounter,
@@ -173,7 +176,7 @@ export const CounterManager: React.FC<CounterManagerProps> = ({
       }
     });
     
-    showNotification('success', `カウンター「${counterToDelete.name}」を削除しました`);
+    showNotification('success', t('editor.counter.counterDeleted', { name: counterToDelete.name }));
   };
 
   // カウンター保存
@@ -185,7 +188,7 @@ export const CounterManager: React.FC<CounterManagerProps> = ({
       const nameExists = existingCounters.some(c => c.name === updatedCounter.name && c.id !== updatedCounter.id);
       
       if (nameExists) {
-        showNotification('error', `カウンター名「${updatedCounter.name}」は既に使用されています`);
+        showNotification('error', t('editor.counter.nameAlreadyUsed', { name: updatedCounter.name }));
         return;
       }
       
@@ -197,7 +200,7 @@ export const CounterManager: React.FC<CounterManagerProps> = ({
         }
       });
       
-      showNotification('success', `カウンター「${updatedCounter.name}」を作成しました`);
+      showNotification('success', t('editor.counter.counterCreated', { name: updatedCounter.name }));
     } else {
       // 既存更新
       const updatedCounterList = existingCounters.map(c => 
@@ -211,7 +214,7 @@ export const CounterManager: React.FC<CounterManagerProps> = ({
         }
       });
       
-      showNotification('success', `カウンター「${updatedCounter.name}」を更新しました`);
+      showNotification('success', t('editor.counter.counterUpdated', { name: updatedCounter.name }));
     }
     
     setEditState({ counter: null, isNew: false, isVisible: false });
@@ -601,14 +604,14 @@ const CounterEditModal: React.FC<CounterEditModalProps> = ({ counter, isNew, onS
   const handleSave = () => {
     // 基本検証
     if (!editingCounter.name.trim()) {
-      alert('カウンター名を入力してください');
+      alert(t('editor.counter.counterNameRequired'));
       return;
     }
 
     // 範囲検証
     if (editingCounter.min !== undefined && editingCounter.max !== undefined) {
       if (editingCounter.min > editingCounter.max) {
-        alert('最小値は最大値以下にしてください');
+        alert(t('editor.counter.minMaxValidation'));
         return;
       }
     }
@@ -728,7 +731,7 @@ const CounterEditModal: React.FC<CounterEditModalProps> = ({ counter, isNew, onS
                   type="number"
                   value={editingCounter.min || ''}
                   onChange={(e) => updateCounterField('min', e.target.value ? Number(e.target.value) : undefined)}
-                  placeholder="制限なし"
+                  placeholder={t('editor.counter.noLimit')}
                   style={{
                     width: '100%',
                     padding: DESIGN_TOKENS.spacing[3],
@@ -753,7 +756,7 @@ const CounterEditModal: React.FC<CounterEditModalProps> = ({ counter, isNew, onS
                   type="number"
                   value={editingCounter.max || ''}
                   onChange={(e) => updateCounterField('max', e.target.value ? Number(e.target.value) : undefined)}
-                  placeholder="制限なし"
+                  placeholder={t('editor.counter.noLimit')}
                   style={{
                     width: '100%',
                     padding: DESIGN_TOKENS.spacing[3],
@@ -779,7 +782,7 @@ const CounterEditModal: React.FC<CounterEditModalProps> = ({ counter, isNew, onS
               <textarea
                 value={editingCounter.description || ''}
                 onChange={(e) => updateCounterField('description', e.target.value)}
-                placeholder="カウンターの用途や説明を入力..."
+                placeholder={t('editor.counter.descriptionPlaceholder')}
                 rows={3}
                 style={{
                   width: '100%',

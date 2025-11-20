@@ -590,6 +590,8 @@
       "presetCounterAdded": "プリセットカウンター「{name}」を追加しました",
       "counterCreated": "カウンター「{name}」を作成しました",
       "counterUpdated": "カウンター「{name}」を更新しました",
+      "counterDeleted": "カウンター「{name}」を削除しました",
+      "nameAlreadyUsed": "カウンター名「{name}」は既に使用されています",
       "presetCreationFailed": "プリセットカウンターの作成に失敗しました",
       "counterNameRequired": "カウンター名を入力してください",
       "minMaxValidation": "最小値は最大値以下にしてください",
