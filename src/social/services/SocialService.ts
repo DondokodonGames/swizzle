@@ -1284,7 +1284,8 @@ export class SocialService {
       author: {
         id: dbGame.creator_id,
         name: profile?.display_name || profile?.username || 'クリエイター',
-        avatar: profile?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${profile?.username || 'user'}`
+        avatar: profile?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${profile?.username || 'user'}`,
+        username: profile?.username
       },
       stats: {
         likes: dbGame.like_count || 0,
