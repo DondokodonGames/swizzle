@@ -470,7 +470,59 @@
           "conditionRequired": "Please select a condition",
           "actionRequired": "Please select an action"
         },
-        "saved": "Rule saved"
+        "saved": "Rule saved",
+        "sections": {
+          "ruleName": "Rule Name",
+          "conditions": "Trigger Conditions",
+          "actions": "Actions",
+          "flags": "Flags Management",
+          "counters": "Counters Management"
+        },
+        "placeholders": {
+          "ruleName": "e.g., Move on center area touch",
+          "flagName": "Enter flag name",
+          "counterName": "Enter counter name",
+          "initialValue": "Initial value"
+        },
+        "buttons": {
+          "save": "Save",
+          "cancel": "Cancel"
+        },
+        "operators": {
+          "and": "AND (all conditions)",
+          "or": "OR (any condition)"
+        },
+        "status": {
+          "conditions": "{count} condition(s)",
+          "actions": "{count} action(s)",
+          "flags": "{count} flag(s)",
+          "counters": "{count} counter(s)"
+        },
+        "more": {
+          "flags": "Manage Flags",
+          "counters": "Manage Counters",
+          "actions": "Add Actions"
+        },
+        "tooltips": {
+          "randomAction": "Random Action: Execute one action randomly from multiple options"
+        },
+        "notifications": {
+          "ruleSaved": "Rule saved",
+          "conditionAdded": "Condition added",
+          "conditionRemoved": "Condition removed",
+          "actionAdded": "Action added",
+          "actionRemoved": "Action removed",
+          "flagAdded": "Flag \"{name}\" added",
+          "flagDeleted": "Flag deleted",
+          "confirmDeleteFlag": "Delete flag \"{name}\"?",
+          "counterAdded": "Counter \"{name}\" added",
+          "counterDeleted": "Counter deleted",
+          "counterExists": "Counter \"{name}\" already exists",
+          "confirmDeleteCounter": "Delete counter \"{name}\"?",
+          "errorRuleName": "Please enter a rule name",
+          "errorMinConditions": "Please add at least one condition",
+          "errorMinActions": "Please add at least one action"
+        }
       },
       "ruleSelection": {
         "title": "Select Rule - {object}",

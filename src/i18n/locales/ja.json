@@ -470,7 +470,59 @@
           "conditionRequired": "条件を選択してください",
           "actionRequired": "アクションを選択してください"
         },
-        "saved": "ルールを保存しました"
+        "saved": "ルールを保存しました",
+        "sections": {
+          "ruleName": "ルール名",
+          "conditions": "発動条件",
+          "actions": "実行アクション",
+          "flags": "フラグ管理",
+          "counters": "カウンター管理"
+        },
+        "placeholders": {
+          "ruleName": "例: 中央エリアタッチで移動",
+          "flagName": "フラグ名を入力",
+          "counterName": "カウンター名を入力",
+          "initialValue": "初期値"
+        },
+        "buttons": {
+          "save": "保存",
+          "cancel": "キャンセル"
+        },
+        "operators": {
+          "and": "AND（すべて満たす）",
+          "or": "OR（いずれか満たす）"
+        },
+        "status": {
+          "conditions": "条件 {count}個",
+          "actions": "アクション {count}個",
+          "flags": "フラグ {count}個",
+          "counters": "カウンター {count}個"
+        },
+        "more": {
+          "flags": "フラグを管理",
+          "counters": "カウンターを管理",
+          "actions": "アクションを追加"
+        },
+        "tooltips": {
+          "randomAction": "ランダムアクション: 複数のアクションから1つをランダムに実行"
+        },
+        "notifications": {
+          "ruleSaved": "ルールを保存しました",
+          "conditionAdded": "条件を追加しました",
+          "conditionRemoved": "条件を削除しました",
+          "actionAdded": "アクションを追加しました",
+          "actionRemoved": "アクションを削除しました",
+          "flagAdded": "フラグ「{name}」を追加しました",
+          "flagDeleted": "フラグを削除しました",
+          "confirmDeleteFlag": "フラグ「{name}」を削除しますか？",
+          "counterAdded": "カウンター「{name}」を追加しました",
+          "counterDeleted": "カウンターを削除しました",
+          "counterExists": "カウンター「{name}」は既に存在します",
+          "confirmDeleteCounter": "カウンター「{name}」を削除しますか？",
+          "errorRuleName": "ルール名を入力してください",
+          "errorMinConditions": "最低1つの条件を追加してください",
+          "errorMinActions": "最低1つのアクションを追加してください"
+        }
       },
       "ruleSelection": {
         "title": "ルール選択 - {object}",
