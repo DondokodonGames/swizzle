@@ -35,12 +35,12 @@ export const BackgroundControl: React.FC<BackgroundControlProps> = ({
     <div className="w-full xl:w-80">
       <div className="bg-green-50 rounded-lg p-4 border-2 border-green-200">
         <h4 className="font-semibold text-green-800 mb-3 flex items-center">
-          🌄 {t('editor.script.backgroundControl.title', '背景制御')}
+          🌄 {t('editor.script.backgroundControl.title')}
         </h4>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-green-700">{t('editor.script.backgroundControl.visibility', '表示')}:</span>
+            <span className="text-sm text-green-700">{t('editor.script.backgroundControl.visibility')}:</span>
             <button
               onClick={toggleBackgroundVisibility}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -49,7 +49,7 @@ export const BackgroundControl: React.FC<BackgroundControlProps> = ({
                   : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
               }`}
             >
-              {project.script.layout.background.visible ? t('common.on', 'ON') : t('common.off', 'OFF')}
+              {project.script.layout.background.visible ? t('common.on') : t('common.off')}
             </button>
           </div>
 
@@ -58,20 +58,20 @@ export const BackgroundControl: React.FC<BackgroundControlProps> = ({
               <>
                 📁 {project.assets.background.name}<br/>
                 📏 {project.assets.background.frames[0]?.width}×{project.assets.background.frames[0]?.height}px<br/>
-                🖼️ {project.assets.background.frames.length}{t('editor.script.backgroundControl.frames', 'フレーム')}
+                🖼️ {project.assets.background.frames.length}{t('editor.script.backgroundControl.frames')}
               </>
             ) : (
-              t('editor.script.backgroundControl.noBackground', '❌ 背景データなし (Assetsタブで追加)')
+              t('editor.script.backgroundControl.noBackground')
             )}
           </div>
 
           {/* 状態説明 */}
           <div className="mt-4 p-3 bg-green-100 rounded text-xs text-green-600">
-            💡 <strong>{t('editor.script.backgroundControl.hints.title', '操作方法')}</strong><br/>
-            • {t('editor.script.backgroundControl.hints.addAssets', 'Assetsタブでオブジェクトを追加')}<br/>
-            • {t('editor.script.backgroundControl.hints.dragDrop', 'ゲーム画面にドラッグ&ドロップで配置')}<br/>
-            • {t('editor.script.backgroundControl.hints.clickRule', 'オブジェクトクリックでルール設定')}<br/>
-            • {t('editor.script.backgroundControl.hints.colorBorder', '色付き枠線で状態確認')}
+            💡 <strong>{t('editor.script.backgroundControl.hints.title')}</strong><br/>
+            • {t('editor.script.backgroundControl.hints.addAssets')}<br/>
+            • {t('editor.script.backgroundControl.hints.dragDrop')}<br/>
+            • {t('editor.script.backgroundControl.hints.clickRule')}<br/>
+            • {t('editor.script.backgroundControl.hints.colorBorder')}
           </div>
         </div>
       </div>

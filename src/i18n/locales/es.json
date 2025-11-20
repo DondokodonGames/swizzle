@@ -20,7 +20,9 @@
     "signup": "Registrarse",
     "backToHome": "Volver al inicio",
     "processing": "Procesando...",
-    "selectFile": "Seleccionar archivo"
+    "selectFile": "Seleccionar archivo",
+    "on": "ENCENDIDO",
+    "off": "APAGADO"
   },
   "errors": {
     "generic": "Se produjo un error inesperado",
@@ -116,7 +118,23 @@
       "errorMaxSoundEffects": "Puedes agregar hasta {max} efectos de sonido",
       "errorUploadFailed": "Error al subir el archivo de audio",
       "errorPlaybackFailed": "Error al reproducir audio",
-      "errorLoadFailed": "Error al cargar el archivo de audio"
+      "errorLoadFailed": "Error al cargar el archivo de audio",
+      "backgroundLimit": "(Hasta 1 imagen)",
+      "backgroundImage": "Imagen de fondo",
+      "backgroundVisible": "✅ Visible",
+      "backgroundHidden": "❌ Oculto",
+      "size": "Tamaño",
+      "backgroundColor": "Color de fondo",
+      "uploadBackground": "Subir imagen de fondo",
+      "dragDropImage": "Arrastra y suelta una imagen o haz clic para seleccionar",
+      "backgroundHints": {
+        "title": "Consejos de fondo",
+        "ratio": "Relación 9:16 (retrato) recomendada",
+        "maxSize": "Hasta {size} compatible",
+        "optimization": "Los archivos grandes se optimizarán automáticamente",
+        "autoShow": "Se establece automáticamente como visible al agregar",
+        "future": "🎬 Próximamente: Fondos animados de múltiples fotogramas"
+      }
     },
     "script": {
       "title": "Configuración de reglas",
@@ -239,7 +257,55 @@
       },
       "subtitle": "Diseño de objetos, soporte para múltiples reglas, lógica de juego avanzada",
       "layout": "Diseño",
-      "rules": "Reglas"
+      "rules": "Reglas",
+      "backgroundControl": {
+        "title": "Control de fondo",
+        "visibility": "Visibilidad",
+        "frames": " fotograma(s)",
+        "noBackground": "❌ Sin datos de fondo (Agregar en pestaña Assets)",
+        "hints": {
+          "title": "Cómo usar",
+          "addAssets": "Agregar objetos en pestaña Assets",
+          "dragDrop": "Arrastrar y soltar en pantalla de juego para colocar",
+          "clickRule": "Hacer clic en objeto para establecer reglas",
+          "colorBorder": "Verificar estado por bordes de colores"
+        }
+      },
+      "timeBarSelector": {
+        "seconds": "s",
+        "minutes": "m",
+        "title": "Configuración de condición de tiempo",
+        "typeLabel": "Tipo de condición de tiempo",
+        "types": {
+          "exact": {
+            "label": "Tiempo exacto",
+            "description": "Activar en momento específico"
+          },
+          "range": {
+            "label": "Rango de tiempo",
+            "description": "Activar dentro de rango de tiempo"
+          },
+          "interval": {
+            "label": "Intervalo",
+            "description": "Repetir en intervalos"
+          }
+        },
+        "gameDuration": "Duración total del juego",
+        "timeBar": "Barra de selección de tiempo",
+        "exactTime": "Tiempo exacto (segundos)",
+        "startTime": "Tiempo de inicio (segundos)",
+        "endTime": "Tiempo de fin (segundos)",
+        "intervalTime": "Tiempo de intervalo (segundos)",
+        "setting": "Configuración",
+        "description": {
+          "exact": "Se activa {time} después del inicio del juego",
+          "range": "Se activa entre {start} y {end}",
+          "interval": "Se activa cada {time}",
+          "selectTime": "Por favor seleccione un tiempo",
+          "selectRange": "Por favor seleccione un rango de tiempo",
+          "selectInterval": "Por favor seleccione un tiempo de intervalo"
+        }
+      }
     },
     "settings": {
       "title": "Configuración de publicación",

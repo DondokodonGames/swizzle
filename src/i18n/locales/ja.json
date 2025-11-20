@@ -20,7 +20,9 @@
     "signup": "新規登録",
     "backToHome": "ホームに戻る",
     "processing": "処理中...",
-    "selectFile": "ファイルを選択"
+    "selectFile": "ファイルを選択",
+    "on": "ON",
+    "off": "OFF"
   },
   "errors": {
     "generic": "予期しないエラーが発生しました",
@@ -236,7 +238,23 @@
       "errorMaxSoundEffects": "効果音は最大{max}個まで追加できます",
       "errorUploadFailed": "音声ファイルのアップロードに失敗しました",
       "errorPlaybackFailed": "音声の再生に失敗しました",
-      "errorLoadFailed": "音声ファイルの読み込みに失敗しました"
+      "errorLoadFailed": "音声ファイルの読み込みに失敗しました",
+      "backgroundLimit": "(1枚まで)",
+      "backgroundImage": "背景画像",
+      "backgroundVisible": "✅ 表示中",
+      "backgroundHidden": "❌ 非表示",
+      "size": "サイズ",
+      "backgroundColor": "背景色",
+      "uploadBackground": "背景画像をアップロード",
+      "dragDropImage": "画像をドラッグ&ドロップするか、クリックしてファイルを選択",
+      "backgroundHints": {
+        "title": "背景のヒント",
+        "ratio": "9:16（縦向き）の比率が推奨です",
+        "maxSize": "最大{size}まで対応",
+        "optimization": "ファイルサイズが大きい場合は自動で最適化されます",
+        "autoShow": "追加すると自動的に表示設定されます",
+        "future": "🎬 将来対応予定: 複数フレーム・アニメーション背景"
+      }
     },
     "script": {
       "title": "スクリプト設定",
@@ -359,6 +377,54 @@
         "ruleNumber": "ルール{number}: {name}",
         "createNew": "新規ルール作成",
         "limitReached": "ルール数が上限（32個）に達しています"
+      },
+      "backgroundControl": {
+        "title": "背景制御",
+        "visibility": "表示",
+        "frames": "フレーム",
+        "noBackground": "❌ 背景データなし (Assetsタブで追加)",
+        "hints": {
+          "title": "操作方法",
+          "addAssets": "Assetsタブでオブジェクトを追加",
+          "dragDrop": "ゲーム画面にドラッグ&ドロップで配置",
+          "clickRule": "オブジェクトクリックでルール設定",
+          "colorBorder": "色付き枠線で状態確認"
+        }
+      },
+      "timeBarSelector": {
+        "seconds": "秒",
+        "minutes": "分",
+        "title": "時間条件詳細設定",
+        "typeLabel": "時間条件タイプ",
+        "types": {
+          "exact": {
+            "label": "正確な時刻",
+            "description": "特定の時刻で発動"
+          },
+          "range": {
+            "label": "時間範囲",
+            "description": "時間範囲内で発動"
+          },
+          "interval": {
+            "label": "間隔",
+            "description": "一定間隔で繰り返し"
+          }
+        },
+        "gameDuration": "ゲーム全体時間",
+        "timeBar": "時間選択バー",
+        "exactTime": "正確な時刻（秒）",
+        "startTime": "開始時刻（秒）",
+        "endTime": "終了時刻（秒）",
+        "intervalTime": "間隔時間（秒）",
+        "setting": "設定内容",
+        "description": {
+          "exact": "ゲーム開始から{time}後に発動",
+          "range": "{start}〜{end}の間で発動",
+          "interval": "{time}毎に繰り返し発動",
+          "selectTime": "時間を選択してください",
+          "selectRange": "時間範囲を選択してください",
+          "selectInterval": "間隔時間を選択してください"
+        }
       }
     },
     "settings": {
@@ -375,42 +441,6 @@
       "unlisted": "限定公開",
       "private": "非公開",
       "publish": "公開する",
-      "testPlay": "テストプレイ",
-      "gameInfo": {
-        "title": "ゲーム情報",
-        "genre": "ジャンル",
-        "genrePlaceholder": "ジャンルを選択",
-        "genres": {
-          "action": "アクション",
-          "puzzle": "パズル",
-          "adventure": "アドベンチャー",
-          "rpg": "RPG",
-          "shooting": "シューティング",
-          "racing": "レーシング",
-          "sports": "スポーツ",
-          "simulation": "シミュレーション",
-          "casual": "カジュアル",
-          "educational": "教育",
-          "music": "音楽",
-          "other": "その他"
-        },
-        "tags": "タグ",
-        "tagsPlaceholder": "例: 横スクロール, 2D, シンプル (カンマ区切り)",
-        "tagsHint": "タグはカンマ（,）で区切って入力してください"
-      },
-      "thumbnail": {
-        "title": "サムネイル",
-        "subtitle": "ゲームの魅力を伝えるサムネイルを設定します",
-        "generate": "自動生成",
-        "upload": "アップロード",
-        "noThumbnail": "No Thumbnail"
-      },
-      "publishing": {
-        "title": "公開設定",
-        "noRemix": "パクり禁止（リミックス禁止）",
-        "noRemixDescription": "他のユーザーによるこのゲームの複製・改変を禁止します。チェックすると、誰もこのゲームをコピーして改変できなくなります。",
-        "noRemixHint": "ヒント: チェックを外すと、他のユーザーがあなたのゲームを元に新しいゲームを作れます（クリエイティブ・コモンズのような仕組み）"
-      },
       "testPlay": {
         "title": "テストプレイ",
         "start": "ゲームをテストしてみましょう",
@@ -453,6 +483,41 @@
           "title": "ゲーム実行中",
           "end": "終了"
         }
+      },
+      "gameInfo": {
+        "title": "ゲーム情報",
+        "genre": "ジャンル",
+        "genrePlaceholder": "ジャンルを選択",
+        "genres": {
+          "action": "アクション",
+          "puzzle": "パズル",
+          "adventure": "アドベンチャー",
+          "rpg": "RPG",
+          "shooting": "シューティング",
+          "racing": "レーシング",
+          "sports": "スポーツ",
+          "simulation": "シミュレーション",
+          "casual": "カジュアル",
+          "educational": "教育",
+          "music": "音楽",
+          "other": "その他"
+        },
+        "tags": "タグ",
+        "tagsPlaceholder": "例: 横スクロール, 2D, シンプル (カンマ区切り)",
+        "tagsHint": "タグはカンマ（,）で区切って入力してください"
+      },
+      "thumbnail": {
+        "title": "サムネイル",
+        "subtitle": "ゲームの魅力を伝えるサムネイルを設定します",
+        "generate": "自動生成",
+        "upload": "アップロード",
+        "noThumbnail": "No Thumbnail"
+      },
+      "publishing": {
+        "title": "公開設定",
+        "noRemix": "パクり禁止（リミックス禁止）",
+        "noRemixDescription": "他のユーザーによるこのゲームの複製・改変を禁止します。チェックすると、誰もこのゲームをコピーして改変できなくなります。",
+        "noRemixHint": "ヒント: チェックを外すと、他のユーザーがあなたのゲームを元に新しいゲームを作れます（クリエイティブ・コモンズのような仕組み）"
       },
       "stats": {
         "title": "ゲーム統計",

@@ -20,7 +20,9 @@
     "signup": "Sign Up",
     "backToHome": "Back to Home",
     "processing": "Processing...",
-    "selectFile": "Select File"
+    "selectFile": "Select File",
+    "on": "ON",
+    "off": "OFF"
   },
   "errors": {
     "generic": "An unexpected error occurred",
@@ -236,7 +238,23 @@
       "errorMaxSoundEffects": "Can add up to {max} sound effects",
       "errorUploadFailed": "Failed to upload audio file",
       "errorPlaybackFailed": "Failed to play audio",
-      "errorLoadFailed": "Failed to load audio file"
+      "errorLoadFailed": "Failed to load audio file",
+      "backgroundLimit": "(Up to 1 image)",
+      "backgroundImage": "Background Image",
+      "backgroundVisible": "✅ Visible",
+      "backgroundHidden": "❌ Hidden",
+      "size": "Size",
+      "backgroundColor": "Background Color",
+      "uploadBackground": "Upload Background Image",
+      "dragDropImage": "Drag & drop an image or click to select",
+      "backgroundHints": {
+        "title": "Background Tips",
+        "ratio": "9:16 (portrait) ratio recommended",
+        "maxSize": "Up to {size} supported",
+        "optimization": "Large files will be automatically optimized",
+        "autoShow": "Automatically set to visible when added",
+        "future": "🎬 Coming soon: Multi-frame animated backgrounds"
+      }
     },
     "script": {
       "title": "Script Settings",
@@ -359,6 +377,254 @@
         "ruleNumber": "Rule {number}: {name}",
         "createNew": "Create New Rule",
         "limitReached": "Rule limit (32) reached"
+      },
+      "backgroundControl": {
+        "title": "Background Control",
+        "visibility": "Visibility",
+        "frames": " frame(s)",
+        "noBackground": "❌ No background data (Add in Assets tab)",
+        "hints": {
+          "title": "How to Use",
+          "addAssets": "Add objects in Assets tab",
+          "dragDrop": "Drag & drop on game screen to place",
+          "clickRule": "Click object to set rules",
+          "colorBorder": "Check status by colored borders"
+        }
+      },
+      "timeBarSelector": {
+        "seconds": "s",
+        "minutes": "m",
+        "title": "Time Condition Settings",
+        "typeLabel": "Time Condition Type",
+        "types": {
+          "exact": {
+            "label": "Exact Time",
+            "description": "Trigger at specific time"
+          },
+          "range": {
+            "label": "Time Range",
+            "description": "Trigger within time range"
+          },
+          "interval": {
+            "label": "Interval",
+            "description": "Repeat at intervals"
+          }
+        },
+        "gameDuration": "Total Game Duration",
+        "timeBar": "Time Selection Bar",
+        "exactTime": "Exact Time (seconds)",
+        "startTime": "Start Time (seconds)",
+        "endTime": "End Time (seconds)",
+        "intervalTime": "Interval Time (seconds)",
+        "setting": "Setting",
+        "description": {
+          "exact": "Triggers {time} after game start",
+          "range": "Triggers between {start} and {end}",
+          "interval": "Triggers every {time}",
+          "selectTime": "Please select a time",
+          "selectRange": "Please select a time range",
+          "selectInterval": "Please select an interval time"
+        }
+      },
+      "randomRule": {
+        "conditionTitle": "Random Condition Settings",
+        "conditionDescription": "{probability}% probability, {interval}ms interval to trigger",
+        "conditionDescriptionEveryFrame": "{probability}% probability, every frame to trigger",
+        "presets": "Presets",
+        "presetsOptions": {
+          "lowProbability": {
+            "label": "Low Probability",
+            "description": "10% probability, 2s interval"
+          },
+          "mediumProbability": {
+            "label": "Medium Probability",
+            "description": "30% probability, 1s interval"
+          },
+          "highProbability": {
+            "label": "High Probability",
+            "description": "70% probability, 0.5s interval"
+          },
+          "endless": {
+            "label": "Endless",
+            "description": "Flappy Bird style"
+          },
+          "runner": {
+            "label": "Runner",
+            "description": "Temple Run style"
+          }
+        },
+        "triggerProbability": "Trigger Probability",
+        "checkInterval": "Check Interval",
+        "milliseconds": "milliseconds",
+        "advancedSettings": "Advanced Settings",
+        "seedValue": "Seed Value (for debugging)",
+        "seedPlaceholder": "e.g., test123",
+        "seedDescription": "Reproduce same random results with same seed value",
+        "forEndlessGames": "For endless-type games",
+        "actionTitle": "Random Action Settings",
+        "actionDescription": "Random selection from {count} options ({probabilities}%)",
+        "actionPresetsOptions": {
+          "endlessObstacles": {
+            "label": "Endless Obstacles",
+            "description": "Random generation of obstacles and items"
+          },
+          "bonusEffects": {
+            "label": "Bonus Effects",
+            "description": "Random bonus effects"
+          },
+          "difficultyAdjustment": {
+            "label": "Difficulty Adjustment",
+            "description": "Automatic difficulty adjustment"
+          }
+        },
+        "selectionOptions": "Selection Options",
+        "addOption": "➕ Add",
+        "weight": "Weight",
+        "selectionMode": "Selection Mode",
+        "selectionModes": {
+          "weighted": "Weighted (Recommended)",
+          "uniform": "Uniform Selection",
+          "probability": "Individual Probability"
+        },
+        "executionLimit": "Execution Limit Settings",
+        "maxExecutions": "Max Executions",
+        "unlimited": "Unlimited",
+        "cooldownTime": "Cooldown Time",
+        "debugMode": "Debug Mode (Log selection results)",
+        "forAutoGeneration": "For endless/auto-generation games",
+        "remove": "✕ Remove",
+        "actionTypes": {
+          "success": "✅ Success",
+          "failure": "❌ Failure",
+          "playSound": "🔊 Play Sound",
+          "show": "👁️ Show",
+          "hide": "🚫 Hide",
+          "counter": "🔢 Counter",
+          "effect": "✨ Effect",
+          "move": "🏃 Move"
+        }
+      },
+      "rulePreview": {
+        "title": "Rule Preview",
+        "conditionTypes": {
+          "touch": "Touch",
+          "time": "Time",
+          "collision": "Collision",
+          "animation": "Animation",
+          "flag": "Flag"
+        },
+        "actionTypes": {
+          "success": "Game Clear",
+          "failure": "Game Over",
+          "playSound": "Play Sound",
+          "move": "Move",
+          "effect": "Effect",
+          "show": "Show",
+          "hide": "Hide",
+          "setFlag": "Set Flag",
+          "switchAnimation": "Switch Animation"
+        },
+        "touchTypes": {
+          "down": "Tap",
+          "up": "Release",
+          "hold": "Hold"
+        },
+        "targets": {
+          "self": "This Object",
+          "stage": "Stage",
+          "background": "Background"
+        },
+        "regions": {
+          "rect": "Rectangle",
+          "circle": "Circle"
+        },
+        "collisionTypes": {
+          "enter": "On Collision Start",
+          "stay": "During Collision",
+          "exit": "On Collision End"
+        },
+        "checkModes": {
+          "hitbox": "Hitbox",
+          "pixel": "Pixel"
+        },
+        "animationConditions": {
+          "end": "On Animation End",
+          "frame": "On Frame"
+        },
+        "gameStates": {
+          "playing": "Playing",
+          "success": "Clear",
+          "failure": "Game Over"
+        },
+        "moveTypes": {
+          "straight": "Straight",
+          "bounce": "Bounce",
+          "teleport": "Teleport",
+          "wander": "Wander",
+          "stop": "Stop",
+          "swap": "Swap Position",
+          "approach": "Approach",
+          "orbit": "Orbit"
+        },
+        "effectTypes": {
+          "flash": "Flash",
+          "shake": "Shake",
+          "rotate": "Rotate"
+        },
+        "details": {
+          "type": "Type",
+          "time": "Time",
+          "target": "Target",
+          "range": "Range",
+          "center": "center",
+          "judgment": "Judgment",
+          "flag": "Flag",
+          "condition": "Condition",
+          "state": "State",
+          "sound": "Sound",
+          "volume": "Volume",
+          "speed": "Speed",
+          "duration": "Duration",
+          "intensity": "Intensity",
+          "value": "Value",
+          "invert": "Invert",
+          "onAnimationEnd": "On animation end",
+          "secondsLater": "seconds later",
+          "to": "to",
+          "between": "between",
+          "secondsHold": "seconds hold",
+          "and": "and",
+          "notSelected": "Not selected",
+          "gameClear": "Make game clear",
+          "gameOver": "Make game over",
+          "showObject": "Show object",
+          "fadeIn": "Fade in",
+          "hideObject": "Hide object",
+          "fadeOut": "Fade out",
+          "on": "ON",
+          "off": "OFF",
+          "switchToAnimation": "Switch to animation"
+        },
+        "flow": {
+          "allConditions": "🔥 When all conditions are met → ⚡ Execute actions in order",
+          "anyCondition": "🔥 When any condition is met → ⚡ Execute actions in order",
+          "singleCondition": "🔥 When condition is met → ⚡ Execute actions in order"
+        },
+        "triggerConditions": "Trigger Conditions",
+        "executeActions": "Execute Actions",
+        "conditionCount": "({count} conditions)",
+        "actionCount": "({count} actions)",
+        "all": "All",
+        "any": "Any",
+        "condition": "Condition",
+        "action": "Action",
+        "enabled": "✅ Enabled",
+        "disabled": "⏸️ Disabled",
+        "objectHasRules": "📋 This object has {count} rule(s) set",
+        "rule": "Rule",
+        "noRules": "No rules set",
+        "createRule": "Set rules to view preview",
+        "emptyMessage": "No rules set"
       }
     },
     "settings": {

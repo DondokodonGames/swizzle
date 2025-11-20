@@ -20,7 +20,9 @@
     "signup": "Inscription",
     "backToHome": "Retour à l'accueil",
     "processing": "En cours...",
-    "selectFile": "Sélectionner un fichier"
+    "selectFile": "Sélectionner un fichier",
+    "on": "ON",
+    "off": "OFF"
   },
   "errors": {
     "generic": "Une erreur inattendue s'est produite",
@@ -236,7 +238,23 @@
       "errorMaxSoundEffects": "Vous pouvez ajouter jusqu'à {max} effets sonores",
       "errorUploadFailed": "Échec du téléchargement du fichier audio",
       "errorPlaybackFailed": "Échec de la lecture audio",
-      "errorLoadFailed": "Échec du chargement du fichier audio"
+      "errorLoadFailed": "Échec du chargement du fichier audio",
+      "backgroundLimit": "(Jusqu'à 1 image)",
+      "backgroundImage": "Image de fond",
+      "backgroundVisible": "✅ Visible",
+      "backgroundHidden": "❌ Masqué",
+      "size": "Taille",
+      "backgroundColor": "Couleur de fond",
+      "uploadBackground": "Télécharger l'image de fond",
+      "dragDropImage": "Glissez-déposez une image ou cliquez pour sélectionner",
+      "backgroundHints": {
+        "title": "Conseils sur le fond",
+        "ratio": "Rapport 9:16 (portrait) recommandé",
+        "maxSize": "Jusqu'à {size} pris en charge",
+        "optimization": "Les fichiers volumineux seront automatiquement optimisés",
+        "autoShow": "Automatiquement défini comme visible lors de l'ajout",
+        "future": "🎬 À venir: Arrière-plans animés multi-images"
+      }
     },
     "script": {
       "title": "Paramètres des règles",
@@ -359,6 +377,54 @@
         "ruleNumber": "Règle {number} : {name}",
         "createNew": "Créer une nouvelle règle",
         "limitReached": "Limite de règles (32) atteinte"
+      },
+      "backgroundControl": {
+        "title": "Contrôle de l'arrière-plan",
+        "visibility": "Visibilité",
+        "frames": " image(s)",
+        "noBackground": "❌ Pas de données d'arrière-plan (Ajouter dans l'onglet Assets)",
+        "hints": {
+          "title": "Comment utiliser",
+          "addAssets": "Ajouter des objets dans l'onglet Assets",
+          "dragDrop": "Glisser-déposer sur l'écran de jeu pour placer",
+          "clickRule": "Cliquer sur l'objet pour définir les règles",
+          "colorBorder": "Vérifier l'état par les bordures colorées"
+        }
+      },
+      "timeBarSelector": {
+        "seconds": "s",
+        "minutes": "m",
+        "title": "Paramètres de condition temporelle",
+        "typeLabel": "Type de condition temporelle",
+        "types": {
+          "exact": {
+            "label": "Heure exacte",
+            "description": "Déclencher à un moment précis"
+          },
+          "range": {
+            "label": "Plage horaire",
+            "description": "Déclencher dans une plage horaire"
+          },
+          "interval": {
+            "label": "Intervalle",
+            "description": "Répéter à intervalles"
+          }
+        },
+        "gameDuration": "Durée totale du jeu",
+        "timeBar": "Barre de sélection du temps",
+        "exactTime": "Heure exacte (secondes)",
+        "startTime": "Heure de début (secondes)",
+        "endTime": "Heure de fin (secondes)",
+        "intervalTime": "Intervalle de temps (secondes)",
+        "setting": "Paramètre",
+        "description": {
+          "exact": "Se déclenche {time} après le début du jeu",
+          "range": "Se déclenche entre {start} et {end}",
+          "interval": "Se déclenche toutes les {time}",
+          "selectTime": "Veuillez sélectionner une heure",
+          "selectRange": "Veuillez sélectionner une plage horaire",
+          "selectInterval": "Veuillez sélectionner un intervalle de temps"
+        }
       }
     },
     "settings": {
@@ -375,42 +441,6 @@
       "unlisted": "Non répertorié",
       "private": "Privé",
       "publish": "Publier",
-      "testPlay": "Tester",
-      "gameInfo": {
-        "title": "Informations sur le jeu",
-        "genre": "Genre",
-        "genrePlaceholder": "Sélectionner le genre",
-        "genres": {
-          "action": "Action",
-          "puzzle": "Puzzle",
-          "adventure": "Aventure",
-          "rpg": "RPG",
-          "shooting": "Tir",
-          "racing": "Course",
-          "sports": "Sports",
-          "simulation": "Simulation",
-          "casual": "Casual",
-          "educational": "Éducatif",
-          "music": "Musique",
-          "other": "Autre"
-        },
-        "tags": "Tags",
-        "tagsPlaceholder": "ex : défilement latéral, 2D, simple (séparés par des virgules)",
-        "tagsHint": "Séparez les tags par des virgules (,)"
-      },
-      "thumbnail": {
-        "title": "Miniature",
-        "subtitle": "Définir une miniature qui transmet l'attrait du jeu",
-        "generate": "Générer automatiquement",
-        "upload": "Télécharger",
-        "noThumbnail": "Aucune miniature"
-      },
-      "publishing": {
-        "title": "Paramètres de publication",
-        "noRemix": "Pas de copie (Désactiver le remix)",
-        "noRemixDescription": "Interdire la copie et la modification de ce jeu par d'autres utilisateurs. Lorsque coché, personne ne peut copier et modifier ce jeu.",
-        "noRemixHint": "Astuce : Si non coché, d'autres utilisateurs peuvent créer de nouveaux jeux basés sur le vôtre (similaire à Creative Commons)"
-      },
       "testPlay": {
         "title": "Test du jeu",
         "start": "Testons le jeu",
@@ -453,6 +483,41 @@
           "title": "Jeu en cours",
           "end": "Terminer"
         }
+      },
+      "gameInfo": {
+        "title": "Informations sur le jeu",
+        "genre": "Genre",
+        "genrePlaceholder": "Sélectionner le genre",
+        "genres": {
+          "action": "Action",
+          "puzzle": "Puzzle",
+          "adventure": "Aventure",
+          "rpg": "RPG",
+          "shooting": "Tir",
+          "racing": "Course",
+          "sports": "Sports",
+          "simulation": "Simulation",
+          "casual": "Casual",
+          "educational": "Éducatif",
+          "music": "Musique",
+          "other": "Autre"
+        },
+        "tags": "Tags",
+        "tagsPlaceholder": "ex : défilement latéral, 2D, simple (séparés par des virgules)",
+        "tagsHint": "Séparez les tags par des virgules (,)"
+      },
+      "thumbnail": {
+        "title": "Miniature",
+        "subtitle": "Définir une miniature qui transmet l'attrait du jeu",
+        "generate": "Générer automatiquement",
+        "upload": "Télécharger",
+        "noThumbnail": "Aucune miniature"
+      },
+      "publishing": {
+        "title": "Paramètres de publication",
+        "noRemix": "Pas de copie (Désactiver le remix)",
+        "noRemixDescription": "Interdire la copie et la modification de ce jeu par d'autres utilisateurs. Lorsque coché, personne ne peut copier et modifier ce jeu.",
+        "noRemixHint": "Astuce : Si non coché, d'autres utilisateurs peuvent créer de nouveaux jeux basés sur le vôtre (similaire à Creative Commons)"
       },
       "stats": {
         "title": "Statistiques du jeu",

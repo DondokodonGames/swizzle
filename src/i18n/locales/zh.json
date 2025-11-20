@@ -20,7 +20,9 @@
     "signup": "注册",
     "backToHome": "返回首页",
     "processing": "处理中...",
-    "selectFile": "选择文件"
+    "selectFile": "选择文件",
+    "on": "开",
+    "off": "关"
   },
   "errors": {
     "generic": "发生意外错误",
@@ -116,7 +118,23 @@
       "errorMaxSoundEffects": "最多可添加{max}个音效",
       "errorUploadFailed": "上传音频文件失败",
       "errorPlaybackFailed": "播放音频失败",
-      "errorLoadFailed": "加载音频文件失败"
+      "errorLoadFailed": "加载音频文件失败",
+      "backgroundLimit": "(最多1张)",
+      "backgroundImage": "背景图片",
+      "backgroundVisible": "✅ 可见",
+      "backgroundHidden": "❌ 隐藏",
+      "size": "大小",
+      "backgroundColor": "背景颜色",
+      "uploadBackground": "上传背景图片",
+      "dragDropImage": "拖放图片或点击选择",
+      "backgroundHints": {
+        "title": "背景提示",
+        "ratio": "推荐9:16（纵向）比例",
+        "maxSize": "最大支持{size}",
+        "optimization": "大文件将自动优化",
+        "autoShow": "添加时自动设置为可见",
+        "future": "🎬 即将推出：多帧动画背景"
+      }
     },
     "script": {
       "title": "规则设置",
@@ -239,7 +257,55 @@
       },
       "subtitle": "对象布局、多规则支持、高级游戏逻辑",
       "layout": "布局",
-      "rules": "规则"
+      "rules": "规则",
+      "backgroundControl": {
+        "title": "背景控制",
+        "visibility": "可见性",
+        "frames": "帧",
+        "noBackground": "❌ 无背景数据（在Assets选项卡中添加）",
+        "hints": {
+          "title": "使用方法",
+          "addAssets": "在Assets选项卡中添加对象",
+          "dragDrop": "拖放到游戏屏幕上放置",
+          "clickRule": "点击对象设置规则",
+          "colorBorder": "通过彩色边框检查状态"
+        }
+      },
+      "timeBarSelector": {
+        "seconds": "秒",
+        "minutes": "分",
+        "title": "时间条件设置",
+        "typeLabel": "时间条件类型",
+        "types": {
+          "exact": {
+            "label": "精确时间",
+            "description": "在特定时间触发"
+          },
+          "range": {
+            "label": "时间范围",
+            "description": "在时间范围内触发"
+          },
+          "interval": {
+            "label": "间隔",
+            "description": "以间隔重复"
+          }
+        },
+        "gameDuration": "游戏总时长",
+        "timeBar": "时间选择条",
+        "exactTime": "精确时间（秒）",
+        "startTime": "开始时间（秒）",
+        "endTime": "结束时间（秒）",
+        "intervalTime": "间隔时间（秒）",
+        "setting": "设置",
+        "description": {
+          "exact": "游戏开始{time}后触发",
+          "range": "{start}到{end}之间触发",
+          "interval": "每{time}触发",
+          "selectTime": "请选择时间",
+          "selectRange": "请选择时间范围",
+          "selectInterval": "请选择间隔时间"
+        }
+      }
     },
     "settings": {
       "title": "发布设置",

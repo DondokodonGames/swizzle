@@ -20,7 +20,9 @@
     "signup": "Cadastrar",
     "backToHome": "Voltar para o início",
     "processing": "Processando...",
-    "selectFile": "Selecionar arquivo"
+    "selectFile": "Selecionar arquivo",
+    "on": "LIGADO",
+    "off": "DESLIGADO"
   },
   "errors": {
     "generic": "Ocorreu um erro inesperado",
@@ -116,7 +118,23 @@
       "errorMaxSoundEffects": "Pode adicionar até {max} efeitos sonoros",
       "errorUploadFailed": "Falha ao enviar arquivo de áudio",
       "errorPlaybackFailed": "Falha ao reproduzir áudio",
-      "errorLoadFailed": "Falha ao carregar arquivo de áudio"
+      "errorLoadFailed": "Falha ao carregar arquivo de áudio",
+      "backgroundLimit": "(Até 1 imagem)",
+      "backgroundImage": "Imagem de fundo",
+      "backgroundVisible": "✅ Visível",
+      "backgroundHidden": "❌ Oculto",
+      "size": "Tamanho",
+      "backgroundColor": "Cor de fundo",
+      "uploadBackground": "Carregar imagem de fundo",
+      "dragDropImage": "Arraste e solte uma imagem ou clique para selecionar",
+      "backgroundHints": {
+        "title": "Dicas de fundo",
+        "ratio": "Proporção 9:16 (retrato) recomendada",
+        "maxSize": "Até {size} suportado",
+        "optimization": "Arquivos grandes serão otimizados automaticamente",
+        "autoShow": "Definido automaticamente como visível ao adicionar",
+        "future": "🎬 Em breve: Fundos animados multi-quadros"
+      }
     },
     "script": {
       "title": "Configurações de regras",
@@ -239,7 +257,55 @@
       },
       "subtitle": "Layout de objetos, suporte a múltiplas regras, lógica avançada de jogo",
       "layout": "Layout",
-      "rules": "Regras"
+      "rules": "Regras",
+      "backgroundControl": {
+        "title": "Controle de fundo",
+        "visibility": "Visibilidade",
+        "frames": " quadro(s)",
+        "noBackground": "❌ Sem dados de fundo (Adicionar na aba Assets)",
+        "hints": {
+          "title": "Como usar",
+          "addAssets": "Adicionar objetos na aba Assets",
+          "dragDrop": "Arrastar e soltar na tela do jogo para posicionar",
+          "clickRule": "Clique no objeto para definir regras",
+          "colorBorder": "Verifique o status pelas bordas coloridas"
+        }
+      },
+      "timeBarSelector": {
+        "seconds": "s",
+        "minutes": "m",
+        "title": "Configurações de condição de tempo",
+        "typeLabel": "Tipo de condição de tempo",
+        "types": {
+          "exact": {
+            "label": "Tempo exato",
+            "description": "Acionar em tempo específico"
+          },
+          "range": {
+            "label": "Intervalo de tempo",
+            "description": "Acionar dentro do intervalo de tempo"
+          },
+          "interval": {
+            "label": "Intervalo",
+            "description": "Repetir em intervalos"
+          }
+        },
+        "gameDuration": "Duração total do jogo",
+        "timeBar": "Barra de seleção de tempo",
+        "exactTime": "Tempo exato (segundos)",
+        "startTime": "Tempo de início (segundos)",
+        "endTime": "Tempo de fim (segundos)",
+        "intervalTime": "Tempo de intervalo (segundos)",
+        "setting": "Configuração",
+        "description": {
+          "exact": "Aciona {time} após o início do jogo",
+          "range": "Aciona entre {start} e {end}",
+          "interval": "Aciona a cada {time}",
+          "selectTime": "Por favor, selecione um tempo",
+          "selectRange": "Por favor, selecione um intervalo de tempo",
+          "selectInterval": "Por favor, selecione um tempo de intervalo"
+        }
+      }
     },
     "settings": {
       "title": "Configurações de publicação",

@@ -20,7 +20,9 @@
     "signup": "Registrati",
     "backToHome": "Torna alla home",
     "processing": "Elaborazione...",
-    "selectFile": "Seleziona file"
+    "selectFile": "Seleziona file",
+    "on": "ON",
+    "off": "OFF"
   },
   "errors": {
     "generic": "Si è verificato un errore imprevisto",
@@ -236,7 +238,23 @@
       "errorMaxSoundEffects": "Puoi aggiungere fino a {max} effetti sonori",
       "errorUploadFailed": "Caricamento file audio fallito",
       "errorPlaybackFailed": "Riproduzione audio fallita",
-      "errorLoadFailed": "Caricamento file audio fallito"
+      "errorLoadFailed": "Caricamento file audio fallito",
+      "backgroundLimit": "(Fino a 1 immagine)",
+      "backgroundImage": "Immagine di sfondo",
+      "backgroundVisible": "✅ Visibile",
+      "backgroundHidden": "❌ Nascosto",
+      "size": "Dimensione",
+      "backgroundColor": "Colore di sfondo",
+      "uploadBackground": "Carica immagine di sfondo",
+      "dragDropImage": "Trascina e rilascia un'immagine o fai clic per selezionare",
+      "backgroundHints": {
+        "title": "Suggerimenti per lo sfondo",
+        "ratio": "Rapporto 9:16 (verticale) raccomandato",
+        "maxSize": "Fino a {size} supportato",
+        "optimization": "I file di grandi dimensioni verranno ottimizzati automaticamente",
+        "autoShow": "Impostato automaticamente come visibile quando aggiunto",
+        "future": "🎬 Prossimamente: Sfondi animati multi-frame"
+      }
     },
     "script": {
       "title": "Impostazioni regole",
@@ -359,6 +377,54 @@
         "ruleNumber": "Regola {number}: {name}",
         "createNew": "Crea nuova regola",
         "limitReached": "Limite regole (32) raggiunto"
+      },
+      "backgroundControl": {
+        "title": "Controllo sfondo",
+        "visibility": "Visibilità",
+        "frames": " fotogramma/i",
+        "noBackground": "❌ Nessun dato di sfondo (Aggiungi nella scheda Assets)",
+        "hints": {
+          "title": "Come usare",
+          "addAssets": "Aggiungi oggetti nella scheda Assets",
+          "dragDrop": "Trascina e rilascia sulla schermata di gioco per posizionare",
+          "clickRule": "Fai clic sull'oggetto per impostare le regole",
+          "colorBorder": "Controlla lo stato dai bordi colorati"
+        }
+      },
+      "timeBarSelector": {
+        "seconds": "s",
+        "minutes": "m",
+        "title": "Impostazioni condizione temporale",
+        "typeLabel": "Tipo di condizione temporale",
+        "types": {
+          "exact": {
+            "label": "Tempo esatto",
+            "description": "Attivare a tempo specifico"
+          },
+          "range": {
+            "label": "Intervallo temporale",
+            "description": "Attivare nell'intervallo temporale"
+          },
+          "interval": {
+            "label": "Intervallo",
+            "description": "Ripetere a intervalli"
+          }
+        },
+        "gameDuration": "Durata totale del gioco",
+        "timeBar": "Barra di selezione del tempo",
+        "exactTime": "Tempo esatto (secondi)",
+        "startTime": "Tempo di inizio (secondi)",
+        "endTime": "Tempo di fine (secondi)",
+        "intervalTime": "Tempo di intervallo (secondi)",
+        "setting": "Impostazione",
+        "description": {
+          "exact": "Si attiva {time} dopo l'inizio del gioco",
+          "range": "Si attiva tra {start} e {end}",
+          "interval": "Si attiva ogni {time}",
+          "selectTime": "Seleziona un tempo",
+          "selectRange": "Seleziona un intervallo temporale",
+          "selectInterval": "Seleziona un tempo di intervallo"
+        }
       }
     },
     "settings": {
@@ -375,42 +441,6 @@
       "unlisted": "Non elencato",
       "private": "Privato",
       "publish": "Pubblica",
-      "testPlay": "Prova",
-      "gameInfo": {
-        "title": "Informazioni gioco",
-        "genre": "Genere",
-        "genrePlaceholder": "Seleziona genere",
-        "genres": {
-          "action": "Azione",
-          "puzzle": "Puzzle",
-          "adventure": "Avventura",
-          "rpg": "RPG",
-          "shooting": "Sparatutto",
-          "racing": "Corse",
-          "sports": "Sport",
-          "simulation": "Simulazione",
-          "casual": "Casual",
-          "educational": "Educativo",
-          "music": "Musica",
-          "other": "Altro"
-        },
-        "tags": "Tag",
-        "tagsPlaceholder": "es: scorrimento laterale, 2D, semplice (separati da virgole)",
-        "tagsHint": "Separa i tag con virgole (,)"
-      },
-      "thumbnail": {
-        "title": "Miniatura",
-        "subtitle": "Imposta una miniatura che trasmetta l'appeal del gioco",
-        "generate": "Genera automaticamente",
-        "upload": "Carica",
-        "noThumbnail": "Nessuna miniatura"
-      },
-      "publishing": {
-        "title": "Impostazioni pubblicazione",
-        "noRemix": "No copia (Disabilita remix)",
-        "noRemixDescription": "Vieta copia e modifica di questo gioco da parte di altri utenti. Se selezionato, nessuno può copiare e modificare questo gioco.",
-        "noRemixHint": "Suggerimento: Se non selezionato, altri utenti possono creare nuovi giochi basati sul tuo (simile a Creative Commons)"
-      },
       "testPlay": {
         "title": "Test del gioco",
         "start": "Proviamo il gioco",
@@ -453,6 +483,41 @@
           "title": "Gioco in esecuzione",
           "end": "Termina"
         }
+      },
+      "gameInfo": {
+        "title": "Informazioni gioco",
+        "genre": "Genere",
+        "genrePlaceholder": "Seleziona genere",
+        "genres": {
+          "action": "Azione",
+          "puzzle": "Puzzle",
+          "adventure": "Avventura",
+          "rpg": "RPG",
+          "shooting": "Sparatutto",
+          "racing": "Corse",
+          "sports": "Sport",
+          "simulation": "Simulazione",
+          "casual": "Casual",
+          "educational": "Educativo",
+          "music": "Musica",
+          "other": "Altro"
+        },
+        "tags": "Tag",
+        "tagsPlaceholder": "es: scorrimento laterale, 2D, semplice (separati da virgole)",
+        "tagsHint": "Separa i tag con virgole (,)"
+      },
+      "thumbnail": {
+        "title": "Miniatura",
+        "subtitle": "Imposta una miniatura che trasmetta l'appeal del gioco",
+        "generate": "Genera automaticamente",
+        "upload": "Carica",
+        "noThumbnail": "Nessuna miniatura"
+      },
+      "publishing": {
+        "title": "Impostazioni pubblicazione",
+        "noRemix": "No copia (Disabilita remix)",
+        "noRemixDescription": "Vieta copia e modifica di questo gioco da parte di altri utenti. Se selezionato, nessuno può copiare e modificare questo gioco.",
+        "noRemixHint": "Suggerimento: Se non selezionato, altri utenti possono creare nuovi giochi basati sul tuo (simile a Creative Commons)"
       },
       "stats": {
         "title": "Statistiche gioco",

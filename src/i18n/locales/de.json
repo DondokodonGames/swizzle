@@ -20,7 +20,9 @@
     "signup": "Registrieren",
     "backToHome": "Zurück zur Startseite",
     "processing": "Verarbeitung...",
-    "selectFile": "Datei auswählen"
+    "selectFile": "Datei auswählen",
+    "on": "EIN",
+    "off": "AUS"
   },
   "errors": {
     "generic": "Ein unerwarteter Fehler ist aufgetreten",
@@ -116,7 +118,23 @@
       "errorMaxSoundEffects": "Sie können bis zu {max} Soundeffekte hinzufügen",
       "errorUploadFailed": "Hochladen der Audiodatei fehlgeschlagen",
       "errorPlaybackFailed": "Audiowiedergabe fehlgeschlagen",
-      "errorLoadFailed": "Laden der Audiodatei fehlgeschlagen"
+      "errorLoadFailed": "Laden der Audiodatei fehlgeschlagen",
+      "backgroundLimit": "(Bis zu 1 Bild)",
+      "backgroundImage": "Hintergrundbild",
+      "backgroundVisible": "✅ Sichtbar",
+      "backgroundHidden": "❌ Versteckt",
+      "size": "Größe",
+      "backgroundColor": "Hintergrundfarbe",
+      "uploadBackground": "Hintergrundbild hochladen",
+      "dragDropImage": "Bild per Drag & Drop ablegen oder klicken zum Auswählen",
+      "backgroundHints": {
+        "title": "Hintergrund-Tipps",
+        "ratio": "9:16 (Hochformat) Verhältnis empfohlen",
+        "maxSize": "Bis zu {size} unterstützt",
+        "optimization": "Große Dateien werden automatisch optimiert",
+        "autoShow": "Wird beim Hinzufügen automatisch auf sichtbar gesetzt",
+        "future": "🎬 Demnächst: Mehrbild-animierte Hintergründe"
+      }
     },
     "script": {
       "title": "Regeleinstellungen",
@@ -239,7 +257,55 @@
       },
       "subtitle": "Objektlayout, Unterstützung für mehrere Regeln, erweiterte Spiellogik",
       "layout": "Layout",
-      "rules": "Regeln"
+      "rules": "Regeln",
+      "backgroundControl": {
+        "title": "Hintergrundsteuerung",
+        "visibility": "Sichtbarkeit",
+        "frames": " Bild(er)",
+        "noBackground": "❌ Keine Hintergrunddaten (Im Assets-Tab hinzufügen)",
+        "hints": {
+          "title": "Verwendung",
+          "addAssets": "Objekte im Assets-Tab hinzufügen",
+          "dragDrop": "Drag & Drop auf Spielbildschirm zum Platzieren",
+          "clickRule": "Objekt klicken um Regeln festzulegen",
+          "colorBorder": "Status anhand farbiger Rahmen prüfen"
+        }
+      },
+      "timeBarSelector": {
+        "seconds": "s",
+        "minutes": "m",
+        "title": "Zeitbedingungs-Einstellungen",
+        "typeLabel": "Zeitbedingungs-Typ",
+        "types": {
+          "exact": {
+            "label": "Genaue Zeit",
+            "description": "Zu bestimmter Zeit auslösen"
+          },
+          "range": {
+            "label": "Zeitbereich",
+            "description": "Im Zeitbereich auslösen"
+          },
+          "interval": {
+            "label": "Intervall",
+            "description": "In Intervallen wiederholen"
+          }
+        },
+        "gameDuration": "Gesamtspieldauer",
+        "timeBar": "Zeitauswahlleiste",
+        "exactTime": "Genaue Zeit (Sekunden)",
+        "startTime": "Startzeit (Sekunden)",
+        "endTime": "Endzeit (Sekunden)",
+        "intervalTime": "Intervallzeit (Sekunden)",
+        "setting": "Einstellung",
+        "description": {
+          "exact": "Wird {time} nach Spielstart ausgelöst",
+          "range": "Wird zwischen {start} und {end} ausgelöst",
+          "interval": "Wird alle {time} ausgelöst",
+          "selectTime": "Bitte wählen Sie eine Zeit",
+          "selectRange": "Bitte wählen Sie einen Zeitbereich",
+          "selectInterval": "Bitte wählen Sie eine Intervallzeit"
+        }
+      }
     },
     "settings": {
       "title": "Veröffentlichungseinstellungen",
