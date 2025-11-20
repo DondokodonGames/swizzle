@@ -24,24 +24,72 @@
     "on": "ON",
     "off": "OFF",
     "frames": {
-      "frame1": { "label": "フレーム1", "description": "1番目のフレーム" },
-      "frame2": { "label": "フレーム2", "description": "2番目のフレーム" },
-      "frame3": { "label": "フレーム3", "description": "3番目のフレーム" },
-      "frame4": { "label": "フレーム4", "description": "4番目のフレーム" },
-      "frame5": { "label": "フレーム5", "description": "5番目のフレーム" },
-      "frame6": { "label": "フレーム6", "description": "6番目のフレーム" },
-      "frame7": { "label": "フレーム7", "description": "7番目のフレーム" },
-      "frame8": { "label": "フレーム8", "description": "8番目のフレーム" }
+      "frame1": {
+        "label": "フレーム1",
+        "description": "1番目のフレーム"
+      },
+      "frame2": {
+        "label": "フレーム2",
+        "description": "2番目のフレーム"
+      },
+      "frame3": {
+        "label": "フレーム3",
+        "description": "3番目のフレーム"
+      },
+      "frame4": {
+        "label": "フレーム4",
+        "description": "4番目のフレーム"
+      },
+      "frame5": {
+        "label": "フレーム5",
+        "description": "5番目のフレーム"
+      },
+      "frame6": {
+        "label": "フレーム6",
+        "description": "6番目のフレーム"
+      },
+      "frame7": {
+        "label": "フレーム7",
+        "description": "7番目のフレーム"
+      },
+      "frame8": {
+        "label": "フレーム8",
+        "description": "8番目のフレーム"
+      }
     },
     "animations": {
-      "animation1": { "label": "アニメ1", "description": "1番目のアニメーション" },
-      "animation2": { "label": "アニメ2", "description": "2番目のアニメーション" },
-      "animation3": { "label": "アニメ3", "description": "3番目のアニメーション" },
-      "animation4": { "label": "アニメ4", "description": "4番目のアニメーション" },
-      "animation5": { "label": "アニメ5", "description": "5番目のアニメーション" },
-      "animation6": { "label": "アニメ6", "description": "6番目のアニメーション" },
-      "animation7": { "label": "アニメ7", "description": "7番目のアニメーション" },
-      "animation8": { "label": "アニメ8", "description": "8番目のアニメーション" }
+      "animation1": {
+        "label": "アニメ1",
+        "description": "1番目のアニメーション"
+      },
+      "animation2": {
+        "label": "アニメ2",
+        "description": "2番目のアニメーション"
+      },
+      "animation3": {
+        "label": "アニメ3",
+        "description": "3番目のアニメーション"
+      },
+      "animation4": {
+        "label": "アニメ4",
+        "description": "4番目のアニメーション"
+      },
+      "animation5": {
+        "label": "アニメ5",
+        "description": "5番目のアニメーション"
+      },
+      "animation6": {
+        "label": "アニメ6",
+        "description": "6番目のアニメーション"
+      },
+      "animation7": {
+        "label": "アニメ7",
+        "description": "7番目のアニメーション"
+      },
+      "animation8": {
+        "label": "アニメ8",
+        "description": "8番目のアニメーション"
+      }
     }
   },
   "errors": {
@@ -1297,7 +1345,23 @@
     },
     "flag": {
       "label": "フラグがONのとき",
-      "description": "カスタムフラグの状態確認"
+      "description": "カスタムフラグの状態確認",
+      "on": {
+        "label": "ONのとき",
+        "description": "フラグがONの状態で発動"
+      },
+      "off": {
+        "label": "OFFのとき",
+        "description": "フラグがOFFの状態で発動"
+      },
+      "offToOn": {
+        "label": "OFF→ON",
+        "description": "フラグがOFFからONに変化した瞬間に発動"
+      },
+      "onToOff": {
+        "label": "ON→OFF",
+        "description": "フラグがONからOFFに変化した瞬間に発動"
+      }
     },
     "gameState": {
       "label": "ゲーム状態",
@@ -1306,25 +1370,41 @@
         "label": "成功状態",
         "description": "ゲームクリア状態",
         "detail": "プレイヤーが勝利条件を達成し、ゲームをクリアした状態",
-        "examples": ["全てのアイテムを集めた", "ゴールに到達した", "スコアが目標値に達した"]
+        "examples": [
+          "全てのアイテムを集めた",
+          "ゴールに到達した",
+          "スコアが目標値に達した"
+        ]
       },
       "failure": {
         "label": "失敗状態",
         "description": "ゲームオーバー状態",
         "detail": "プレイヤーが敗北条件を満たし、ゲームオーバーになった状態",
-        "examples": ["ライフが0になった", "時間切れになった", "障害物に当たった"]
+        "examples": [
+          "ライフが0になった",
+          "時間切れになった",
+          "障害物に当たった"
+        ]
       },
       "playing": {
         "label": "プレイ中",
         "description": "通常のプレイ状態",
         "detail": "ゲームが開始され、プレイヤーが操作可能な通常のプレイ状態",
-        "examples": ["ゲーム開始直後", "通常の操作中", "アクション実行中"]
+        "examples": [
+          "ゲーム開始直後",
+          "通常の操作中",
+          "アクション実行中"
+        ]
       },
       "paused": {
         "label": "一時停止中",
         "description": "ポーズ状態",
         "detail": "ゲームが一時停止され、時間が停止している状態",
-        "examples": ["ポーズボタン押下時", "メニュー表示中", "設定画面表示中"]
+        "examples": [
+          "ポーズボタン押下時",
+          "メニュー表示中",
+          "設定画面表示中"
+        ]
       },
       "checkTypes": {
         "is": {
@@ -1495,6 +1575,14 @@
     "approach": {
       "label": "追跡移動",
       "description": "他のオブジェクトに近づく"
+    },
+    "stop": {
+      "label": "停止",
+      "description": "その場で停止"
+    },
+    "swap": {
+      "label": "入れ替わり",
+      "description": "目標と位置を入れ替える"
     }
   },
   "effects": {

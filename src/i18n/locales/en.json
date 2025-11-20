@@ -24,24 +24,72 @@
     "on": "ON",
     "off": "OFF",
     "frames": {
-      "frame1": { "label": "Frame 1", "description": "First frame" },
-      "frame2": { "label": "Frame 2", "description": "Second frame" },
-      "frame3": { "label": "Frame 3", "description": "Third frame" },
-      "frame4": { "label": "Frame 4", "description": "Fourth frame" },
-      "frame5": { "label": "Frame 5", "description": "Fifth frame" },
-      "frame6": { "label": "Frame 6", "description": "Sixth frame" },
-      "frame7": { "label": "Frame 7", "description": "Seventh frame" },
-      "frame8": { "label": "Frame 8", "description": "Eighth frame" }
+      "frame1": {
+        "label": "Frame 1",
+        "description": "First frame"
+      },
+      "frame2": {
+        "label": "Frame 2",
+        "description": "Second frame"
+      },
+      "frame3": {
+        "label": "Frame 3",
+        "description": "Third frame"
+      },
+      "frame4": {
+        "label": "Frame 4",
+        "description": "Fourth frame"
+      },
+      "frame5": {
+        "label": "Frame 5",
+        "description": "Fifth frame"
+      },
+      "frame6": {
+        "label": "Frame 6",
+        "description": "Sixth frame"
+      },
+      "frame7": {
+        "label": "Frame 7",
+        "description": "Seventh frame"
+      },
+      "frame8": {
+        "label": "Frame 8",
+        "description": "Eighth frame"
+      }
     },
     "animations": {
-      "animation1": { "label": "Anim 1", "description": "First animation" },
-      "animation2": { "label": "Anim 2", "description": "Second animation" },
-      "animation3": { "label": "Anim 3", "description": "Third animation" },
-      "animation4": { "label": "Anim 4", "description": "Fourth animation" },
-      "animation5": { "label": "Anim 5", "description": "Fifth animation" },
-      "animation6": { "label": "Anim 6", "description": "Sixth animation" },
-      "animation7": { "label": "Anim 7", "description": "Seventh animation" },
-      "animation8": { "label": "Anim 8", "description": "Eighth animation" }
+      "animation1": {
+        "label": "Anim 1",
+        "description": "First animation"
+      },
+      "animation2": {
+        "label": "Anim 2",
+        "description": "Second animation"
+      },
+      "animation3": {
+        "label": "Anim 3",
+        "description": "Third animation"
+      },
+      "animation4": {
+        "label": "Anim 4",
+        "description": "Fourth animation"
+      },
+      "animation5": {
+        "label": "Anim 5",
+        "description": "Fifth animation"
+      },
+      "animation6": {
+        "label": "Anim 6",
+        "description": "Sixth animation"
+      },
+      "animation7": {
+        "label": "Anim 7",
+        "description": "Seventh animation"
+      },
+      "animation8": {
+        "label": "Anim 8",
+        "description": "Eighth animation"
+      }
     }
   },
   "errors": {
@@ -694,42 +742,6 @@
       "unlisted": "Unlisted",
       "private": "Private",
       "publish": "Publish",
-      "testPlay": "Test Play",
-      "gameInfo": {
-        "title": "Game Information",
-        "genre": "Genre",
-        "genrePlaceholder": "Select genre",
-        "genres": {
-          "action": "Action",
-          "puzzle": "Puzzle",
-          "adventure": "Adventure",
-          "rpg": "RPG",
-          "shooting": "Shooting",
-          "racing": "Racing",
-          "sports": "Sports",
-          "simulation": "Simulation",
-          "casual": "Casual",
-          "educational": "Educational",
-          "music": "Music",
-          "other": "Other"
-        },
-        "tags": "Tags",
-        "tagsPlaceholder": "e.g., side-scrolling, 2D, simple (comma-separated)",
-        "tagsHint": "Separate tags with commas (,)"
-      },
-      "thumbnail": {
-        "title": "Thumbnail",
-        "subtitle": "Set a thumbnail that conveys the appeal of the game",
-        "generate": "Auto Generate",
-        "upload": "Upload",
-        "noThumbnail": "No Thumbnail"
-      },
-      "publishing": {
-        "title": "Publishing Settings",
-        "noRemix": "No Copy (Disable Remix)",
-        "noRemixDescription": "Prohibit copying and modification of this game by other users. When checked, no one can copy and modify this game.",
-        "noRemixHint": "Hint: If unchecked, other users can create new games based on yours (similar to Creative Commons)"
-      },
       "testPlay": {
         "title": "Test Play",
         "start": "Let's test the game",
@@ -772,6 +784,41 @@
           "title": "Game Running",
           "end": "End"
         }
+      },
+      "gameInfo": {
+        "title": "Game Information",
+        "genre": "Genre",
+        "genrePlaceholder": "Select genre",
+        "genres": {
+          "action": "Action",
+          "puzzle": "Puzzle",
+          "adventure": "Adventure",
+          "rpg": "RPG",
+          "shooting": "Shooting",
+          "racing": "Racing",
+          "sports": "Sports",
+          "simulation": "Simulation",
+          "casual": "Casual",
+          "educational": "Educational",
+          "music": "Music",
+          "other": "Other"
+        },
+        "tags": "Tags",
+        "tagsPlaceholder": "e.g., side-scrolling, 2D, simple (comma-separated)",
+        "tagsHint": "Separate tags with commas (,)"
+      },
+      "thumbnail": {
+        "title": "Thumbnail",
+        "subtitle": "Set a thumbnail that conveys the appeal of the game",
+        "generate": "Auto Generate",
+        "upload": "Upload",
+        "noThumbnail": "No Thumbnail"
+      },
+      "publishing": {
+        "title": "Publishing Settings",
+        "noRemix": "No Copy (Disable Remix)",
+        "noRemixDescription": "Prohibit copying and modification of this game by other users. When checked, no one can copy and modify this game.",
+        "noRemixHint": "Hint: If unchecked, other users can create new games based on yours (similar to Creative Commons)"
       },
       "stats": {
         "title": "Game Statistics",
@@ -1496,7 +1543,23 @@
     },
     "flag": {
       "label": "Flag is ON",
-      "description": "Check custom flag state"
+      "description": "Check custom flag state",
+      "on": {
+        "label": "When ON",
+        "description": "Triggers when flag is ON"
+      },
+      "off": {
+        "label": "When OFF",
+        "description": "Triggers when flag is OFF"
+      },
+      "offToOn": {
+        "label": "OFF→ON",
+        "description": "Triggers when flag changes from OFF to ON"
+      },
+      "onToOff": {
+        "label": "ON→OFF",
+        "description": "Triggers when flag changes from ON to OFF"
+      }
     },
     "gameState": {
       "label": "Game State",
@@ -1505,25 +1568,41 @@
         "label": "Success State",
         "description": "Game cleared state",
         "detail": "State when player has achieved victory conditions and cleared the game",
-        "examples": ["Collected all items", "Reached the goal", "Score reached target value"]
+        "examples": [
+          "Collected all items",
+          "Reached the goal",
+          "Score reached target value"
+        ]
       },
       "failure": {
         "label": "Failure State",
         "description": "Game over state",
         "detail": "State when player has met defeat conditions and game is over",
-        "examples": ["Life reached 0", "Time ran out", "Hit an obstacle"]
+        "examples": [
+          "Life reached 0",
+          "Time ran out",
+          "Hit an obstacle"
+        ]
       },
       "playing": {
         "label": "Playing",
         "description": "Normal play state",
         "detail": "Normal play state when game has started and player can operate",
-        "examples": ["Right after game start", "During normal operation", "During action execution"]
+        "examples": [
+          "Right after game start",
+          "During normal operation",
+          "During action execution"
+        ]
       },
       "paused": {
         "label": "Paused",
         "description": "Pause state",
         "detail": "State when game is paused and time is stopped",
-        "examples": ["When pause button pressed", "During menu display", "During settings screen"]
+        "examples": [
+          "When pause button pressed",
+          "During menu display",
+          "During settings screen"
+        ]
       },
       "checkTypes": {
         "is": {
@@ -1694,6 +1773,14 @@
     "approach": {
       "label": "Chase",
       "description": "Approach another object"
+    },
+    "stop": {
+      "label": "Stop",
+      "description": "Stop in place"
+    },
+    "swap": {
+      "label": "Swap",
+      "description": "Swap position with target"
     }
   },
   "effects": {
