@@ -45,9 +45,12 @@ export const EditorApp: React.FC<EditorAppProps> = ({
 
   // 🔧 修正: 正確な型定義を使用
   const { user, loading: authLoading } = useAuth();
-  // Phase M: マネタイズフック追加
-  const { canCreateGame, usage } = useCredits();
+  // Phase M: マネタイズフック追加（ローディング状態も取得）
+  const { canCreateGame, usage, loading: creditsLoading } = useCredits();
   const { shouldShowPaywall, openPaywall, closePaywall } = usePaywall();
+
+  // ローディング完了フラグ（認証とクレジット情報の両方が読み込まれたか）
+  const isMonetizationReady = !authLoading && !creditsLoading;
   
   const {
     currentProject,
@@ -516,16 +519,18 @@ const handlePublish = useCallback(async () => {
         fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')
       }}
     >
-            {/* Phase M: Paywall Modal 追加 */}
-      <PaywallModal 
-        isOpen={shouldShowPaywall}
-        onClose={closePaywall}
-        currentUsage={usage || undefined}
-      />
+            {/* Phase M: Paywall Modal 追加（ローディング完了後のみ表示） */}
+      {isMonetizationReady && (
+        <PaywallModal
+          isOpen={shouldShowPaywall}
+          onClose={closePaywall}
+          currentUsage={usage || undefined}
+        />
+      )}
 
-      {/* ローディング表示 */}
-      {(loading || authLoading) && (
-        <div 
+      {/* ローディング表示（認証とクレジット情報の両方） */}
+      {(loading || authLoading || creditsLoading) && (
+        <div
           style={{
             position: 'fixed',
             inset: 0,
@@ -539,7 +544,7 @@ const handlePublish = useCallback(async () => {
         >
           <ModernCard variant="elevated" size="lg">
             <div style={{ textAlign: 'center' }}>
-              <div 
+              <div
                 style={{
                   width: '48px',
                   height: '48px',
@@ -550,7 +555,7 @@ const handlePublish = useCallback(async () => {
                   margin: `0 auto ${DESIGN_TOKENS.spacing[4]} auto`
                 }}
               />
-              <p 
+              <p
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.lg,
                   fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
@@ -558,7 +563,7 @@ const handlePublish = useCallback(async () => {
                   margin: 0
                 }}
               >
-                {authLoading ? '認証確認中...' : '読み込み中...'}
+                {authLoading ? '認証確認中...' : creditsLoading ? 'アカウント情報を確認中...' : '読み込み中...'}
               </p>
             </div>
           </ModernCard>

@@ -61,19 +61,19 @@ export function SubscriptionSuccess() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
-      <div className="max-w-3xl mx-auto px-4 py-16">
-        {/* Success Card */}
-        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          {/* Success Icon */}
-          <div className="bg-gradient-to-r from-purple-600 to-purple-500 p-8 text-center">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
+      <div className="max-w-2xl mx-auto px-4 py-12">
+        {/* Success Card - モダンデザイン */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          {/* Success Header - コンパクト版 */}
+          <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 text-center">
             <div
-              className="inline-flex items-center justify-center bg-white rounded-full mb-4"
-              style={{ width: '60px', height: '60px' }}
+              className="inline-flex items-center justify-center bg-white rounded-full mb-3"
+              style={{ width: '48px', height: '48px' }}
             >
               <svg
                 className="text-green-500"
-                style={{ width: '36px', height: '36px' }}
+                style={{ width: '28px', height: '28px' }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -86,44 +86,44 @@ export function SubscriptionSuccess() {
                 />
               </svg>
             </div>
-            <h1 className="text-3xl font-bold text-white mb-2">
-              お支払いが完了しました！
+            <h1 className="text-2xl font-bold text-white mb-1">
+              ようこそ Premium へ
             </h1>
-            <p className="text-purple-100">
-              プレミアムプランへようこそ🎉
+            <p className="text-purple-100 text-sm">
+              お支払いが完了しました
             </p>
           </div>
 
           {/* Content */}
-          <div className="p-8">
-            {/* Premium Badge */}
-            <div className="flex justify-center mb-8">
-              <PremiumBadge size="large" />
+          <div className="p-6">
+            {/* Premium Badge - 適切なサイズ */}
+            <div className="flex justify-center mb-6">
+              <PremiumBadge size="medium" />
             </div>
 
-            {/* Subscription Info */}
+            {/* Subscription Info - コンパクト版 */}
             {subscription && (
-              <div className="bg-purple-50 rounded-xl p-6 mb-8">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">
-                  サブスクリプション情報
+              <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                <h2 className="text-sm font-semibold text-gray-700 mb-3">
+                  プラン情報
                 </h2>
-                <div className="space-y-3 text-sm">
+                <div className="space-y-2 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">プラン:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="text-gray-500">プラン</span>
+                    <span className="font-medium text-gray-800">
                       {subscription.plan_type === 'premium' ? 'Premium' : subscription.plan_type}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">ステータス:</span>
-                    <span className="font-semibold text-green-600">
+                    <span className="text-gray-500">ステータス</span>
+                    <span className="font-medium text-green-600">
                       アクティブ
                     </span>
                   </div>
                   {subscription.current_period_end && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">次回更新日:</span>
-                      <span className="font-semibold text-gray-900">
+                      <span className="text-gray-500">次回更新</span>
+                      <span className="font-medium text-gray-800">
                         {new Date(subscription.current_period_end).toLocaleDateString('ja-JP')}
                       </span>
                     </div>
@@ -132,29 +132,29 @@ export function SubscriptionSuccess() {
               </div>
             )}
 
-            {/* Features Unlocked */}
-            <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                利用可能になった機能
+            {/* Features Unlocked - グリッド表示 */}
+            <div className="mb-6">
+              <h2 className="text-sm font-semibold text-gray-700 mb-3">
+                利用可能な機能
               </h2>
-              <ul className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
                 {[
                   '無制限ゲーム作成',
                   '広告非表示',
-                  '全225テンプレート',
+                  '全テンプレート',
                   '高度な編集機能',
-                  'カスタムアセット無制限',
+                  'アセット無制限',
                   '分析ダッシュボード',
-                  'ゲームエクスポート（HTML5）',
-                  '優先サポート（24時間以内）',
+                  'HTML5エクスポート',
+                  '優先サポート',
                 ].map((feature, index) => (
-                  <li
+                  <div
                     key={index}
-                    className="flex items-center text-gray-700"
+                    className="flex items-center text-gray-600 bg-gray-50 rounded-lg px-3 py-2"
                   >
                     <svg
-                      className="text-purple-600 mr-3 flex-shrink-0"
-                      style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }}
+                      className="text-purple-500 mr-2 flex-shrink-0"
+                      style={{ width: '14px', height: '14px', minWidth: '14px', minHeight: '14px' }}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -162,54 +162,39 @@ export function SubscriptionSuccess() {
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        strokeWidth={2}
+                        strokeWidth={2.5}
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    <span className="text-sm">{feature}</span>
-                  </li>
+                    <span className="text-xs">{feature}</span>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
 
-            {/* Next Steps */}
-            <div className="bg-gray-50 rounded-xl p-6 mb-8">
-              <h2 className="text-lg font-bold text-gray-900 mb-3">
-                次のステップ
-              </h2>
-              <ol className="space-y-2 text-sm text-gray-700 list-decimal list-inside">
-                <li>早速ゲームを作成してみましょう</li>
-                <li>全225種類のテンプレートをチェック</li>
-                <li>高度な編集機能を試してみる</li>
-                <li>作品をコミュニティに公開</li>
-              </ol>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="space-y-3">
+            {/* Action Buttons - コンパクト版 */}
+            <div className="space-y-2">
               <button
                 onClick={() => navigate('/')}
-                className="w-full py-4 px-6 bg-gradient-to-r from-purple-600 to-purple-500 text-white font-bold rounded-xl hover:from-purple-700 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl"
+                className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all shadow-md hover:shadow-lg text-sm"
               >
                 ゲームを作成する
               </button>
               <button
                 onClick={() => navigate('/')}
-                className="w-full py-4 px-6 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all"
+                className="w-full py-3 px-4 bg-white text-gray-600 font-medium rounded-xl border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all text-sm"
               >
                 ホームに戻る
               </button>
             </div>
 
             {/* Help Text */}
-            <p className="mt-6 text-xs text-gray-500 text-center">
-              サブスクリプションの管理は、マイページから行えます。
-              <br />
-              ご質問がある場合は{' '}
-              <a href="/support" className="text-purple-600 hover:text-purple-700 underline">
+            <p className="mt-4 text-xs text-gray-400 text-center">
+              サブスクリプション管理は
+              <a href="/support" className="text-purple-500 hover:text-purple-600 ml-1">
                 サポート
-              </a>{' '}
-              までお問い合わせください。
+              </a>
+              へ
             </p>
           </div>
         </div>
