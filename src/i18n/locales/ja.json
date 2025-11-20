@@ -898,6 +898,7 @@
       }
     },
     "rulePreview": {
+      "title": "ルールプレビュー",
       "conditionLabels": {
         "touch": "タッチ",
         "time": "時間",
@@ -922,17 +923,23 @@
       },
       "timeDetails": {
         "secondsAfter": "{seconds}秒後",
-        "timeRange": "時間範囲"
+        "timeRange": "時間範囲",
+        "exactTime": "{seconds}秒経過後",
+        "rangeTime": "{min}秒〜{max}秒の間"
       },
       "touchDetails": {
         "tap": "タップ",
         "release": "リリース",
         "hold": "長押し",
         "holdDuration": "時間: {duration}秒",
+        "holdSecond": "{duration}秒長押し",
         "targetThis": "対象: このオブジェクト",
         "targetStage": "対象: ステージ",
+        "target": "対象: {target}",
         "shapeRect": "矩形",
-        "shapeCircle": "円形"
+        "shapeCircle": "円形",
+        "range": "範囲: {shape}（中心: {x}%, {y}%）",
+        "type": "種類: {type}"
       },
       "collisionDetails": {
         "enter": "衝突開始時",
@@ -942,26 +949,36 @@
         "detectionPixel": "ピクセル判定",
         "targetBackground": "対象: 背景",
         "targetStageRange": "対象: ステージ範囲",
+        "target": "対象: {target}",
         "shapeRect": "矩形",
-        "shapeCircle": "円形"
+        "shapeCircle": "円形",
+        "range": "範囲: {shape}（中心: {x}%, {y}%）",
+        "type": "種類: {type}",
+        "detection": "判定: {mode}",
+        "collisionWith": "{target}と{collisionType}"
       },
       "animationDetails": {
-        "animationEnd": "アニメーション終了時"
+        "animationEnd": "アニメーション終了時",
+        "frameReached": "到達時"
       },
       "flagDetails": {
         "flag": "フラグ: {name}",
-        "notSelected": "未選択"
+        "notSelected": "未選択",
+        "condition": "条件: {condition}",
+        "flagCondition": "{name} {condition}"
       },
       "gameStateDetails": {
         "playing": "プレイ中",
         "clear": "クリア",
         "gameOver": "ゲームオーバー",
-        "unknown": "不明"
+        "unknown": "不明",
+        "state": "状態: {state}"
       },
       "soundDetails": {
         "sound": "音声: {name}",
         "notSelected": "未選択",
-        "selectSound": "音声選択"
+        "selectSound": "音声選択",
+        "volume": "音量: {volume}%"
       },
       "resultDetails": {
         "gameClear": "ゲームをクリア状態にする",
@@ -972,29 +989,61 @@
         "bounce": "バウンド移動",
         "teleport": "テレポート",
         "random": "ランダム移動",
+        "wander": "ランダム移動",
         "stop": "停止",
         "swap": "位置交換",
         "approach": "接近",
         "orbit": "周回",
-        "unknown": "不明"
+        "unknown": "不明",
+        "type": "種類: {type}",
+        "speed": "速度: {speed}px/秒",
+        "duration": "時間: {duration}秒",
+        "moveType": "{type}移動"
       },
       "effectDetails": {
         "blink": "点滅",
+        "flash": "点滅",
         "shake": "振動",
         "rotate": "回転",
-        "unknown": "不明"
+        "unknown": "不明",
+        "type": "種類: {type}",
+        "duration": "時間: {duration}秒",
+        "intensity": "強度: {intensity}%"
       },
       "showHideDetails": {
         "show": "オブジェクトを表示",
-        "hide": "オブジェクトを非表示"
+        "hide": "オブジェクトを非表示",
+        "fadeIn": "フェードイン: {duration}秒",
+        "fadeOut": "フェードアウト: {duration}秒"
       },
       "flagActionDetails": {
         "setFlag": "フラグ: {name}",
         "toggleFlag": "フラグ: {name}",
-        "toggleValue": "値: 反転"
+        "toggleValue": "値: 反転",
+        "value": "値: {value}",
+        "flagValue": "{name} {value}"
       },
       "animationActionDetails": {
-        "switchTo": "切り替え先: {name}"
+        "switchTo": "切り替え先: {name}",
+        "animationNumber": "アニメ{number}",
+        "switchToAnimation": "アニメーション{number}に切り替え"
+      },
+      "multipleRules": {
+        "header": "📋 このオブジェクトには{count}個のルールが設定されています",
+        "ruleNumber": "ルール{number}",
+        "enabled": "✅ 有効",
+        "disabled": "⏸️ 無効"
+      },
+      "singleRule": {
+        "flowAll": "🔥 すべての条件が満たされた時に → ⚡ アクションを順番に実行",
+        "flowAny": "🔥 いずれかの条件が満たされた時に → ⚡ アクションを順番に実行",
+        "flowSingle": "🔥 条件が満たされた時に → ⚡ アクションを順番に実行",
+        "conditionsTitle": "発動条件",
+        "conditionsCount": "発動条件 ({count}個)",
+        "actionsTitle": "実行アクション",
+        "actionsCount": "実行アクション ({count}個)",
+        "conditionNumber": "条件{number}: {label}",
+        "actionNumber": "アクション{number}: {label}"
       },
       "general": {
         "noCondition": "条件なし",

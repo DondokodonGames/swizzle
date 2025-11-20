@@ -1096,6 +1096,7 @@
       }
     },
     "rulePreview": {
+      "title": "Rule Preview",
       "conditionLabels": {
         "touch": "Touch",
         "time": "Time",
@@ -1120,17 +1121,23 @@
       },
       "timeDetails": {
         "secondsAfter": "After {seconds}s",
-        "timeRange": "Time Range"
+        "timeRange": "Time Range",
+        "exactTime": "After {seconds} seconds",
+        "rangeTime": "Between {min}s and {max}s"
       },
       "touchDetails": {
         "tap": "Tap",
         "release": "Release",
         "hold": "Hold",
         "holdDuration": "Duration: {duration}s",
+        "holdSecond": "Hold for {duration}s",
         "targetThis": "Target: This Object",
         "targetStage": "Target: Stage",
+        "target": "Target: {target}",
         "shapeRect": "Rectangle",
-        "shapeCircle": "Circle"
+        "shapeCircle": "Circle",
+        "range": "Range: {shape} (Center: {x}%, {y}%)",
+        "type": "Type: {type}"
       },
       "collisionDetails": {
         "enter": "On Collision Enter",
@@ -1140,26 +1147,36 @@
         "detectionPixel": "Pixel Detection",
         "targetBackground": "Target: Background",
         "targetStageRange": "Target: Stage Range",
+        "target": "Target: {target}",
         "shapeRect": "Rectangle",
-        "shapeCircle": "Circle"
+        "shapeCircle": "Circle",
+        "range": "Range: {shape} (Center: {x}%, {y}%)",
+        "type": "Type: {type}",
+        "detection": "Detection: {mode}",
+        "collisionWith": "{target} and {collisionType}"
       },
       "animationDetails": {
-        "animationEnd": "On Animation End"
+        "animationEnd": "On Animation End",
+        "frameReached": "On Reached"
       },
       "flagDetails": {
         "flag": "Flag: {name}",
-        "notSelected": "Not Selected"
+        "notSelected": "Not Selected",
+        "condition": "Condition: {condition}",
+        "flagCondition": "{name} {condition}"
       },
       "gameStateDetails": {
         "playing": "Playing",
         "clear": "Clear",
         "gameOver": "Game Over",
-        "unknown": "Unknown"
+        "unknown": "Unknown",
+        "state": "State: {state}"
       },
       "soundDetails": {
         "sound": "Sound: {name}",
         "notSelected": "Not Selected",
-        "selectSound": "Select Sound"
+        "selectSound": "Select Sound",
+        "volume": "Volume: {volume}%"
       },
       "resultDetails": {
         "gameClear": "Set game to clear state",
@@ -1170,29 +1187,61 @@
         "bounce": "Bounce",
         "teleport": "Teleport",
         "random": "Random",
+        "wander": "Random",
         "stop": "Stop",
         "swap": "Swap Position",
         "approach": "Approach",
         "orbit": "Orbit",
-        "unknown": "Unknown"
+        "unknown": "Unknown",
+        "type": "Type: {type}",
+        "speed": "Speed: {speed}px/s",
+        "duration": "Duration: {duration}s",
+        "moveType": "{type} Movement"
       },
       "effectDetails": {
         "blink": "Blink",
+        "flash": "Flash",
         "shake": "Shake",
         "rotate": "Rotate",
-        "unknown": "Unknown"
+        "unknown": "Unknown",
+        "type": "Type: {type}",
+        "duration": "Duration: {duration}s",
+        "intensity": "Intensity: {intensity}%"
       },
       "showHideDetails": {
         "show": "Show Object",
-        "hide": "Hide Object"
+        "hide": "Hide Object",
+        "fadeIn": "Fade In: {duration}s",
+        "fadeOut": "Fade Out: {duration}s"
       },
       "flagActionDetails": {
         "setFlag": "Flag: {name}",
         "toggleFlag": "Flag: {name}",
-        "toggleValue": "Value: Toggle"
+        "toggleValue": "Value: Toggle",
+        "value": "Value: {value}",
+        "flagValue": "{name} {value}"
       },
       "animationActionDetails": {
-        "switchTo": "Switch to: {name}"
+        "switchTo": "Switch to: {name}",
+        "animationNumber": "Animation {number}",
+        "switchToAnimation": "Switch to Animation {number}"
+      },
+      "multipleRules": {
+        "header": "📋 This object has {count} rules configured",
+        "ruleNumber": "Rule {number}",
+        "enabled": "✅ Enabled",
+        "disabled": "⏸️ Disabled"
+      },
+      "singleRule": {
+        "flowAll": "🔥 When all conditions are met → ⚡ Execute actions in order",
+        "flowAny": "🔥 When any condition is met → ⚡ Execute actions in order",
+        "flowSingle": "🔥 When condition is met → ⚡ Execute actions in order",
+        "conditionsTitle": "Trigger Conditions",
+        "conditionsCount": "Trigger Conditions ({count})",
+        "actionsTitle": "Actions",
+        "actionsCount": "Actions ({count})",
+        "conditionNumber": "Condition {number}: {label}",
+        "actionNumber": "Action {number}: {label}"
       },
       "general": {
         "noCondition": "No Condition",

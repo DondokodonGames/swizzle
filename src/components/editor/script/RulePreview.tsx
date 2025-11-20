@@ -73,21 +73,21 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
 
     switch (condition.type) {
       case 'touch':
-        details = condition.touchType === 'hold' ? `${condition.holdDuration || 1}秒長押し` : condition.touchType;
+        details = condition.touchType === 'hold' ? t('editor.rulePreview.touchDetails.holdSecond', { duration: condition.holdDuration || 1 }) : condition.touchType;
         break;
       case 'time':
         details = condition.timeType === 'exact' ? t('editor.rulePreview.timeDetails.secondsAfter', { seconds: condition.seconds }) : t('editor.rulePreview.timeDetails.timeRange');
         break;
       // 位置条件削除: 衝突条件で代用可能
       case 'collision':
-        details = `${condition.target}と${condition.collisionType}`;
+        details = t('editor.rulePreview.collisionDetails.collisionWith', { target: condition.target, collisionType: condition.collisionType });
         break;
       case 'animation':
         details = condition.condition === 'end' ? t('editor.rulePreview.general.animationEnd') : t('editor.rulePreview.general.frameNumber', { number: condition.frameNumber });
         break;
       case 'flag':
         const flag = projectFlags.find(f => f.id === condition.flagId);
-        details = `${flag?.name || '???'} ${condition.condition}`;
+        details = t('editor.rulePreview.flagDetails.flagCondition', { name: flag?.name || '???', condition: condition.condition });
         break;
     }
 
@@ -104,7 +104,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
         // タッチタイプ
         const touchTypeLabel = condition.touchType === 'down' ? t('editor.rulePreview.touchDetails.tap') :
                                condition.touchType === 'up' ? t('editor.rulePreview.touchDetails.release') : t('editor.rulePreview.touchDetails.hold');
-        details.push(`種類: ${touchTypeLabel}`);
+        details.push(t('editor.rulePreview.touchDetails.type', { type: touchTypeLabel }));
         if (condition.touchType === 'hold') {
           details.push(t('editor.rulePreview.touchDetails.holdDuration', { duration: condition.holdDuration || 1 }));
         }
@@ -115,28 +115,28 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
           details.push(t('editor.rulePreview.touchDetails.targetStage'));
           if (condition.region) {
             const shape = condition.region.shape === 'rect' ? t('editor.rulePreview.touchDetails.shapeRect') : t('editor.rulePreview.touchDetails.shapeCircle');
-            details.push(`範囲: ${shape}（中心: ${(condition.region.x * 100).toFixed(0)}%, ${(condition.region.y * 100).toFixed(0)}%）`);
+            details.push(t('editor.rulePreview.touchDetails.range', { shape, x: (condition.region.x * 100).toFixed(0), y: (condition.region.y * 100).toFixed(0) }));
           }
         } else {
-          details.push(`対象: ${condition.target}`);
+          details.push(t('editor.rulePreview.touchDetails.target', { target: condition.target }));
         }
         break;
       case 'time':
         if (condition.timeType === 'exact') {
-          details.push(`${condition.seconds}秒経過後`);
+          details.push(t('editor.rulePreview.timeDetails.exactTime', { seconds: condition.seconds }));
         } else {
           // 🔧 修正1-2: range.start/end → range.min/max
-          details.push(`${condition.range?.min || 0}秒〜${condition.range?.max || 10}秒の間`);
+          details.push(t('editor.rulePreview.timeDetails.rangeTime', { min: condition.range?.min || 0, max: condition.range?.max || 10 }));
         }
         break;
       case 'collision':
         // 衝突タイプ
         const collisionTypeLabel = condition.collisionType === 'enter' ? t('editor.rulePreview.collisionDetails.enter') :
                                    condition.collisionType === 'stay' ? t('editor.rulePreview.collisionDetails.stay') : t('editor.rulePreview.collisionDetails.exit');
-        details.push(`種類: ${collisionTypeLabel}`);
+        details.push(t('editor.rulePreview.collisionDetails.type', { type: collisionTypeLabel }));
         // 判定方式
         const checkModeLabel = condition.checkMode === 'hitbox' ? t('editor.rulePreview.collisionDetails.detectionHitbox') : t('editor.rulePreview.collisionDetails.detectionPixel');
-        details.push(`判定: ${checkModeLabel}`);
+        details.push(t('editor.rulePreview.collisionDetails.detection', { mode: checkModeLabel }));
         // ターゲット
         if (condition.target === 'background') {
           details.push(t('editor.rulePreview.collisionDetails.targetBackground'));
@@ -144,29 +144,29 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
           details.push(t('editor.rulePreview.collisionDetails.targetStageRange'));
           if (condition.region) {
             const shape = condition.region.shape === 'rect' ? t('editor.rulePreview.collisionDetails.shapeRect') : t('editor.rulePreview.collisionDetails.shapeCircle');
-            details.push(`範囲: ${shape}（中心: ${(condition.region.x * 100).toFixed(0)}%, ${(condition.region.y * 100).toFixed(0)}%）`);
+            details.push(t('editor.rulePreview.collisionDetails.range', { shape, x: (condition.region.x * 100).toFixed(0), y: (condition.region.y * 100).toFixed(0) }));
           }
         } else {
-          details.push(`対象: ${condition.target}`);
+          details.push(t('editor.rulePreview.collisionDetails.target', { target: condition.target }));
         }
         break;
       case 'animation':
         if (condition.condition === 'end') {
           details.push(t('editor.rulePreview.animationDetails.animationEnd'));
         } else {
-          details.push(t('editor.rulePreview.general.frameNumber', { number: condition.frameNumber }) + '到達時');
+          details.push(t('editor.rulePreview.general.frameNumber', { number: condition.frameNumber }) + t('editor.rulePreview.animationDetails.frameReached'));
         }
         break;
       case 'flag':
         const flag = projectFlags.find(f => f.id === condition.flagId);
-        details.push(`フラグ: ${flag?.name || '未選択'}`);
-        details.push(`条件: ${condition.condition}`);
+        details.push(t('editor.rulePreview.flagDetails.flag', { name: flag?.name || t('editor.rulePreview.flagDetails.notSelected') }));
+        details.push(t('editor.rulePreview.flagDetails.condition', { condition: condition.condition }));
         break;
       case 'gameState':
-        const stateLabel = condition.state === 'playing' ? 'プレイ中' :
-                          condition.state === 'success' ? 'クリア' :
-                          condition.state === 'failure' ? 'ゲームオーバー' : '不明';
-        details.push(`状態: ${stateLabel}`);
+        const stateLabel = condition.state === 'playing' ? t('editor.rulePreview.gameStateDetails.playing') :
+                          condition.state === 'success' ? t('editor.rulePreview.gameStateDetails.clear') :
+                          condition.state === 'failure' ? t('editor.rulePreview.gameStateDetails.gameOver') : t('editor.rulePreview.gameStateDetails.unknown');
+        details.push(t('editor.rulePreview.gameStateDetails.state', { state: stateLabel }));
         break;
     }
 
@@ -185,20 +185,20 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
     switch (action.type) {
       case 'playSound':
         const sound = project.assets.audio?.se?.find(s => s.id === action.soundId);
-        details = sound?.name || '音声選択';
+        details = sound?.name || t('editor.rulePreview.soundDetails.selectSound');
         break;
       case 'move':
-        details = `${action.movement.type}移動`;
+        details = t('editor.rulePreview.moveDetails.moveType', { type: action.movement.type });
         break;
       case 'effect':
         details = action.effect.type;
         break;
       case 'setFlag':
         const flag = projectFlags.find(f => f.id === action.flagId);
-        details = `${flag?.name || '???'} ${action.value ? 'ON' : 'OFF'}`;
+        details = t('editor.rulePreview.flagActionDetails.flagValue', { name: flag?.name || '???', value: action.value ? 'ON' : 'OFF' });
         break;
       case 'switchAnimation':
-        details = `アニメ${action.animationIndex}`;
+        details = t('editor.rulePreview.animationActionDetails.animationNumber', { number: action.animationIndex });
         break;
     }
 
@@ -212,62 +212,62 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
 
     switch (action.type) {
       case 'success':
-        details.push('ゲームをクリア状態にする');
+        details.push(t('editor.rulePreview.resultDetails.gameClear'));
         break;
       case 'failure':
-        details.push('ゲームオーバー状態にする');
+        details.push(t('editor.rulePreview.resultDetails.gameOver'));
         break;
       case 'playSound':
         const sound = project.assets.audio?.se?.find(s => s.id === action.soundId);
-        details.push(`音声: ${sound?.name || '未選択'}`);
-        details.push(`音量: ${((action.volume || 0.8) * 100).toFixed(0)}%`);
+        details.push(t('editor.rulePreview.soundDetails.sound', { name: sound?.name || t('editor.rulePreview.soundDetails.notSelected') }));
+        details.push(t('editor.rulePreview.soundDetails.volume', { volume: ((action.volume || 0.8) * 100).toFixed(0) }));
         break;
       case 'move':
         // 🔧 修正3-4: 型安全な方法で movement.type を処理
-        const moveTypeLabel = action.movement.type === 'straight' ? '直線移動' :
-                             action.movement.type === 'bounce' ? 'バウンド移動' :
-                             action.movement.type === 'teleport' ? 'テレポート' :
-                             action.movement.type === 'wander' ? 'ランダム移動' :
-                             action.movement.type === 'stop' ? '停止' :
-                             action.movement.type === 'swap' ? '位置交換' :
-                             action.movement.type === 'approach' ? '接近' :
-                             action.movement.type === 'orbit' ? '周回' : '不明';
-        details.push(`種類: ${moveTypeLabel}`);
-        details.push(`速度: ${action.movement.speed}px/秒`);
-        details.push(`時間: ${action.movement.duration}秒`);
+        const moveTypeLabel = action.movement.type === 'straight' ? t('editor.rulePreview.moveDetails.straight') :
+                             action.movement.type === 'bounce' ? t('editor.rulePreview.moveDetails.bounce') :
+                             action.movement.type === 'teleport' ? t('editor.rulePreview.moveDetails.teleport') :
+                             action.movement.type === 'wander' ? t('editor.rulePreview.moveDetails.wander') :
+                             action.movement.type === 'stop' ? t('editor.rulePreview.moveDetails.stop') :
+                             action.movement.type === 'swap' ? t('editor.rulePreview.moveDetails.swap') :
+                             action.movement.type === 'approach' ? t('editor.rulePreview.moveDetails.approach') :
+                             action.movement.type === 'orbit' ? t('editor.rulePreview.moveDetails.orbit') : t('editor.rulePreview.moveDetails.unknown');
+        details.push(t('editor.rulePreview.moveDetails.type', { type: moveTypeLabel }));
+        details.push(t('editor.rulePreview.moveDetails.speed', { speed: action.movement.speed }));
+        details.push(t('editor.rulePreview.moveDetails.duration', { duration: action.movement.duration }));
         break;
       case 'effect':
-        const effectTypeLabel = action.effect.type === 'flash' ? '点滅' :
-                               action.effect.type === 'shake' ? '振動' :
-                               action.effect.type === 'rotate' ? '回転' : '不明';
-        details.push(`種類: ${effectTypeLabel}`);
-        details.push(`時間: ${action.effect.duration}秒`);
-        details.push(`強度: ${((action.effect.intensity || 0.8) * 100).toFixed(0)}%`);
+        const effectTypeLabel = action.effect.type === 'flash' ? t('editor.rulePreview.effectDetails.flash') :
+                               action.effect.type === 'shake' ? t('editor.rulePreview.effectDetails.shake') :
+                               action.effect.type === 'rotate' ? t('editor.rulePreview.effectDetails.rotate') : t('editor.rulePreview.effectDetails.unknown');
+        details.push(t('editor.rulePreview.effectDetails.type', { type: effectTypeLabel }));
+        details.push(t('editor.rulePreview.effectDetails.duration', { duration: action.effect.duration }));
+        details.push(t('editor.rulePreview.effectDetails.intensity', { intensity: ((action.effect.intensity || 0.8) * 100).toFixed(0) }));
         break;
       case 'show':
-        details.push('オブジェクトを表示');
+        details.push(t('editor.rulePreview.showHideDetails.show'));
         if (action.fadeIn) {
-          details.push(`フェードイン: ${action.duration || 0.5}秒`);
+          details.push(t('editor.rulePreview.showHideDetails.fadeIn', { duration: action.duration || 0.5 }));
         }
         break;
       case 'hide':
-        details.push('オブジェクトを非表示');
+        details.push(t('editor.rulePreview.showHideDetails.hide'));
         if (action.fadeOut) {
-          details.push(`フェードアウト: ${action.duration || 0.5}秒`);
+          details.push(t('editor.rulePreview.showHideDetails.fadeOut', { duration: action.duration || 0.5 }));
         }
         break;
       case 'setFlag':
         const setFlag = projectFlags.find(f => f.id === action.flagId);
-        details.push(`フラグ: ${setFlag?.name || '未選択'}`);
-        details.push(`値: ${action.value ? 'ON' : 'OFF'}`);
+        details.push(t('editor.rulePreview.flagActionDetails.setFlag', { name: setFlag?.name || t('editor.rulePreview.flagDetails.notSelected') }));
+        details.push(t('editor.rulePreview.flagActionDetails.value', { value: action.value ? 'ON' : 'OFF' }));
         break;
       case 'toggleFlag':
         const toggleFlag = projectFlags.find(f => f.id === action.flagId);
-        details.push(`フラグ: ${toggleFlag?.name || '未選択'}`);
-        details.push('値: 反転');
+        details.push(t('editor.rulePreview.flagActionDetails.toggleFlag', { name: toggleFlag?.name || t('editor.rulePreview.flagDetails.notSelected') }));
+        details.push(t('editor.rulePreview.flagActionDetails.toggleValue'));
         break;
       case 'switchAnimation':
-        details.push(`アニメーション${action.animationIndex}に切り替え`);
+        details.push(t('editor.rulePreview.animationActionDetails.switchToAnimation', { number: action.animationIndex }));
         break;
     }
 
@@ -286,17 +286,17 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
       return `${display.icon}${display.label}`;
     });
     
-    const conditionPart = conditionTexts.length > 1 
+    const conditionPart = conditionTexts.length > 1
       ? `${conditionTexts.join(operator === 'AND' ? '＋' : '・')}`
-      : conditionTexts[0] || '条件なし';
+      : conditionTexts[0] || t('editor.rulePreview.general.noCondition');
 
     // アクション部分
     const actionTexts = actions.map(action => {
       const display = getActionDisplay(action);
       return `${display.icon}${display.label}`;
     });
-    
-    const actionPart = actionTexts.join('・') || 'アクションなし';
+
+    const actionPart = actionTexts.join('・') || t('editor.rulePreview.general.noAction');
 
     return { conditionPart, actionPart };
   };
@@ -341,7 +341,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
           gap: DESIGN_TOKENS.spacing[2]
         }}>
           <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize['2xl'] }}>📋</span>
-          ルールプレビュー
+          {t('editor.rulePreview.title')}
         </h4>
       )}
 
@@ -362,7 +362,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
               fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
               textAlign: 'center'
             }}>
-              📋 このオブジェクトには{objectRules.length}個のルールが設定されています
+              {t('editor.rulePreview.multipleRules.header', { count: objectRules.length })}
             </div>
           </div>
 
@@ -412,7 +412,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
                     }}>
                       {ruleInfo.index}
                     </span>
-                    <span>ルール{ruleInfo.index}</span>
+                    <span>{t('editor.rulePreview.multipleRules.ruleNumber', { number: ruleInfo.index })}</span>
                   </div>
 
                   {/* フロー表示（フィードバック要求形式） */}
@@ -472,7 +472,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
                         : DESIGN_TOKENS.colors.neutral[400]}`
                     }}
                   >
-                    {ruleInfo.enabled ? '✅ 有効' : '⏸️ 無効'}
+                    {ruleInfo.enabled ? t('editor.rulePreview.multipleRules.enabled') : t('editor.rulePreview.multipleRules.disabled')}
                   </div>
                 </div>
 
@@ -508,10 +508,10 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
                 fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
               }}>
                 {currentRule.conditions.length > 1 && currentRule.operator === 'AND'
-                  ? '🔥 すべての条件が満たされた時に → ⚡ アクションを順番に実行'
+                  ? t('editor.rulePreview.singleRule.flowAll')
                   : currentRule.conditions.length > 1 && currentRule.operator === 'OR'
-                  ? '🔥 いずれかの条件が満たされた時に → ⚡ アクションを順番に実行'
-                  : '🔥 条件が満たされた時に → ⚡ アクションを順番に実行'
+                  ? t('editor.rulePreview.singleRule.flowAny')
+                  : t('editor.rulePreview.singleRule.flowSingle')
                 }
               </div>
             </div>
@@ -531,7 +531,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
                 gap: DESIGN_TOKENS.spacing[2]
               }}>
                 <span>🔥</span>
-                発動条件 ({currentRule.conditions.length}個)
+                {t('editor.rulePreview.singleRule.conditionsCount', { count: currentRule.conditions.length })}
                 {currentRule.conditions.length > 1 && (
                   <span style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.xs,
@@ -541,7 +541,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
                     padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
                     borderRadius: DESIGN_TOKENS.borderRadius.full
                   }}>
-                    {currentRule.operator === 'AND' ? 'すべて' : 'いずれか'}
+                    {currentRule.operator === 'AND' ? t('editor.rulePreview.general.allConditions') : t('editor.rulePreview.general.anyCondition')}
                   </span>
                 )}
               </h5>
@@ -582,7 +582,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
                           fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
                           color: DESIGN_TOKENS.colors.purple[800]
                         }}>
-                          条件{index + 1}: {display.label}
+                          {t('editor.rulePreview.singleRule.conditionNumber', { number: index + 1, label: display.label })}
                         </span>
                       </div>
                       <div style={{
@@ -636,7 +636,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
                 gap: DESIGN_TOKENS.spacing[2]
               }}>
                 <span>⚡</span>
-                実行アクション ({currentRule.actions.length}個)
+                {t('editor.rulePreview.singleRule.actionsCount', { count: currentRule.actions.length })}
               </h5>
               <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[3] }}>
                 {currentRule.actions.map((action, index) => {
@@ -676,7 +676,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
                           fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
                           color: DESIGN_TOKENS.colors.success[800]
                         }}>
-                          アクション{index + 1}: {display.label}
+                          {t('editor.rulePreview.singleRule.actionNumber', { number: index + 1, label: display.label })}
                         </span>
                       </div>
                       <div style={{
@@ -716,7 +716,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
             📋
           </div>
           <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>
-            {mode === 'single' ? 'ルールを設定してプレビューを確認' : 'ルールが設定されていません'}
+            {mode === 'single' ? t('editor.rulePreview.general.noRules') : t('editor.rulePreview.general.noRulesSet')}
           </div>
         </div>
       )}
