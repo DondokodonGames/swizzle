@@ -2,7 +2,8 @@
 // Phase G-3完了版: ランダムシステム専用UIコンポーネント（TypeScriptエラー修正）
 // ランダム条件・ランダムアクション専用エディター
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TriggerCondition, GameAction } from '../../../types/editor/GameScript';
 import { ModernCard } from '../../ui/ModernCard';
 import { ModernButton } from '../../ui/ModernButton';
@@ -94,10 +95,20 @@ export const RandomConditionEditor: React.FC<RandomConditionEditorProps> = ({
   onChange,
   onRemove
 }) => {
+  const { t } = useTranslation();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // プリセットを動的に生成
+  const randomPresets = useMemo(() => [
+    { label: t('editor.random.presets.condition.lowProbability.label'), probability: 0.1, interval: 2000, description: t('editor.random.presets.condition.lowProbability.description') },
+    { label: t('editor.random.presets.condition.mediumProbability.label'), probability: 0.3, interval: 1000, description: t('editor.random.presets.condition.mediumProbability.description') },
+    { label: t('editor.random.presets.condition.highProbability.label'), probability: 0.7, interval: 500, description: t('editor.random.presets.condition.highProbability.description') },
+    { label: t('editor.random.presets.condition.endless.label'), probability: 0.8, interval: 2500, description: t('editor.random.presets.condition.endless.description') },
+    { label: t('editor.random.presets.condition.runner.label'), probability: 0.3, interval: 1200, description: t('editor.random.presets.condition.runner.description') }
+  ], [t]);
+
   // プリセット適用
-  const applyPreset = (preset: typeof RANDOM_PRESETS[0]) => {
+  const applyPreset = (preset: typeof randomPresets[0]) => {
     onChange({
       ...condition,
       probability: preset.probability,
@@ -134,41 +145,44 @@ export const RandomConditionEditor: React.FC<RandomConditionEditorProps> = ({
       <div style={{ display: 'flex', alignItems: 'center', gap: SPACING[3], marginBottom: SPACING[3] }}>
         <span style={{ fontSize: '18px' }}>🎲</span>
         <div style={{ flex: 1 }}>
-          <h5 style={{ 
-            margin: 0, 
-            fontSize: '14px', 
-            fontWeight: 'bold', 
-            color: COLORS.blue[800] 
+          <h5 style={{
+            margin: 0,
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: COLORS.blue[800]
           }}>
-            ランダム条件設定
+            {t('editor.random.conditionTitle')}
           </h5>
-          <p style={{ 
-            margin: 0, 
-            fontSize: '12px', 
-            color: COLORS.neutral[600] 
+          <p style={{
+            margin: 0,
+            fontSize: '12px',
+            color: COLORS.neutral[600]
           }}>
-            {Math.round(condition.probability * 100)}%の確率で{condition.interval ? `${condition.interval}ms間隔` : '毎フレーム'}で発動
+            {t('editor.random.probabilityWith', {
+              percentage: Math.round(condition.probability * 100),
+              interval: condition.interval ? t('editor.random.interval', { interval: condition.interval }) : t('editor.random.everyFrame')
+            })}
           </p>
         </div>
       </div>
 
       {/* プリセット選択 */}
       <div style={{ marginBottom: SPACING[3] }}>
-        <label style={{ 
-          fontSize: '12px', 
-          fontWeight: '600', 
+        <label style={{
+          fontSize: '12px',
+          fontWeight: '600',
           color: COLORS.neutral[700],
           display: 'block',
           marginBottom: SPACING[2]
         }}>
-          プリセット:
+          {t('editor.random.presetLabel')}
         </label>
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
           gap: SPACING[1]
         }}>
-          {RANDOM_PRESETS.map((preset, index) => (
+          {randomPresets.map((preset, index) => (
             <ModernButton
               key={index}
               variant="outline"
@@ -190,14 +204,14 @@ export const RandomConditionEditor: React.FC<RandomConditionEditorProps> = ({
 
       {/* 確率設定 */}
       <div style={{ marginBottom: SPACING[3] }}>
-        <label style={{ 
-          fontSize: '12px', 
-          fontWeight: '600', 
+        <label style={{
+          fontSize: '12px',
+          fontWeight: '600',
           color: COLORS.neutral[700],
           display: 'block',
           marginBottom: SPACING[1]
         }}>
-          発動確率: {Math.round(condition.probability * 100)}%
+          {t('editor.random.probabilityLabel', { percentage: Math.round(condition.probability * 100) })}
         </label>
         <input
           type="range"
@@ -226,14 +240,14 @@ export const RandomConditionEditor: React.FC<RandomConditionEditorProps> = ({
 
       {/* 間隔設定 */}
       <div style={{ marginBottom: SPACING[3] }}>
-        <label style={{ 
-          fontSize: '12px', 
-          fontWeight: '600', 
+        <label style={{
+          fontSize: '12px',
+          fontWeight: '600',
           color: COLORS.neutral[700],
           display: 'block',
           marginBottom: SPACING[1]
         }}>
-          判定間隔: {condition.interval || 1000}ms
+          {t('editor.random.intervalLabel', { interval: condition.interval || 1000 })}
         </label>
         <div style={{ display: 'flex', gap: SPACING[2], alignItems: 'center' }}>
           <input
@@ -251,7 +265,7 @@ export const RandomConditionEditor: React.FC<RandomConditionEditorProps> = ({
               borderRadius: BORDER_RADIUS.md
             }}
           />
-          <span style={{ fontSize: '12px', color: COLORS.neutral[600] }}>ミリ秒</span>
+          <span style={{ fontSize: '12px', color: COLORS.neutral[600] }}>{t('editor.random.milliseconds')}</span>
         </div>
       </div>
 
@@ -263,25 +277,25 @@ export const RandomConditionEditor: React.FC<RandomConditionEditorProps> = ({
           onClick={() => setShowAdvanced(!showAdvanced)}
           style={{ fontSize: '11px', color: COLORS.neutral[600] }}
         >
-          {showAdvanced ? '▼' : '▶'} 高度な設定
+          {showAdvanced ? '▼' : '▶'} {t('editor.random.advancedSettings')}
         </ModernButton>
-        
+
         {showAdvanced && (
           <div style={{ marginTop: SPACING[2] }}>
-            <label style={{ 
-              fontSize: '12px', 
-              fontWeight: '600', 
+            <label style={{
+              fontSize: '12px',
+              fontWeight: '600',
               color: COLORS.neutral[700],
               display: 'block',
               marginBottom: SPACING[1]
             }}>
-              シード値（デバッグ用）:
+              {t('editor.random.seedLabel')}
             </label>
             <input
               type="text"
               value={condition.seed || ''}
               onChange={(e) => onChange({ ...condition, seed: e.target.value || undefined })}
-              placeholder="例: test123"
+              placeholder={t('editor.random.seedPlaceholder')}
               style={{
                 width: '100%',
                 padding: SPACING[2],
@@ -290,27 +304,27 @@ export const RandomConditionEditor: React.FC<RandomConditionEditorProps> = ({
                 borderRadius: BORDER_RADIUS.md
               }}
             />
-            <p style={{ 
-              fontSize: '10px', 
-              color: COLORS.neutral[600], 
-              margin: `${SPACING[1]} 0 0 0` 
+            <p style={{
+              fontSize: '10px',
+              color: COLORS.neutral[600],
+              margin: `${SPACING[1]} 0 0 0`
             }}>
-              同じシード値で同じランダム結果を再現
+              {t('editor.random.seedDescription')}
             </p>
           </div>
         )}
       </div>
 
       {/* フッター */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'center',
         paddingTop: SPACING[2],
         borderTop: `1px solid ${COLORS.neutral[100]}`
       }}>
         <div style={{ fontSize: '10px', color: COLORS.neutral[600] }}>
-          エンドレス系ゲーム向け
+          {t('editor.random.forEndlessGames')}
         </div>
         <ModernButton
           variant="ghost"
@@ -318,7 +332,7 @@ export const RandomConditionEditor: React.FC<RandomConditionEditorProps> = ({
           onClick={onRemove}
           style={{ color: COLORS.warning[600] }}
         >
-          ✕ 削除
+          ✕ {t('editor.random.deleteButton')}
         </ModernButton>
       </div>
     </ModernCard>
@@ -337,10 +351,39 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
   onChange,
   onRemove
 }) => {
+  const { t } = useTranslation();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // プリセットを動的に生成
+  const randomActionPresets = useMemo(() => [
+    {
+      label: t('editor.random.presets.action.endlessObstacles.label'),
+      description: t('editor.random.presets.action.endlessObstacles.description'),
+      actions: [
+        { action: { type: 'show' as const, targetId: 'obstacle' }, weight: 3 },
+        { action: { type: 'show' as const, targetId: 'item' }, weight: 1 }
+      ]
+    },
+    {
+      label: t('editor.random.presets.action.bonusEffects.label'),
+      description: t('editor.random.presets.action.bonusEffects.description'),
+      actions: [
+        { action: { type: 'playSound' as const, soundId: 'bonus' }, weight: 2 },
+        { action: { type: 'success' as const }, weight: 1 }
+      ]
+    },
+    {
+      label: t('editor.random.presets.action.difficultyAdjustment.label'),
+      description: t('editor.random.presets.action.difficultyAdjustment.description'),
+      actions: [
+        { action: { type: 'show' as const, targetId: 'enemy' }, weight: 1 },
+        { action: { type: 'hide' as const, targetId: 'enemy' }, weight: 1 }
+      ]
+    }
+  ], [t]);
+
   // プリセット適用（型安全版）
-  const applyPreset = (preset: typeof RANDOM_ACTION_PRESETS[0]) => {
+  const applyPreset = (preset: typeof randomActionPresets[0]) => {
     onChange({
       ...action,
       actions: preset.actions,
@@ -395,6 +438,21 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
 
   const probabilities = calculateProbabilities();
 
+  // アクションタイプ表示用のラベル
+  const getActionTypeLabel = (actionType: string): string => {
+    const typeMap: Record<string, string> = {
+      'success': `✅ ${t('editor.random.actionTypes.success')}`,
+      'failure': `❌ ${t('editor.random.actionTypes.failure')}`,
+      'playSound': `🔊 ${t('editor.random.actionTypes.playSound')}`,
+      'show': `👁️ ${t('editor.random.actionTypes.show')}`,
+      'hide': `🚫 ${t('editor.random.actionTypes.hide')}`,
+      'counter': `🔢 ${t('editor.random.actionTypes.counter')}`,
+      'effect': `✨ ${t('editor.random.actionTypes.effect')}`,
+      'move': `🏃 ${t('editor.random.actionTypes.move')}`
+    };
+    return typeMap[actionType] || actionType;
+  };
+
   return (
     <ModernCard 
       variant="outlined" 
@@ -408,41 +466,41 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
       <div style={{ display: 'flex', alignItems: 'center', gap: SPACING[3], marginBottom: SPACING[3] }}>
         <span style={{ fontSize: '18px' }}>🎲</span>
         <div style={{ flex: 1 }}>
-          <h5 style={{ 
-            margin: 0, 
-            fontSize: '14px', 
-            fontWeight: 'bold', 
-            color: COLORS.blue[800] 
+          <h5 style={{
+            margin: 0,
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: COLORS.blue[800]
           }}>
-            ランダムアクション設定
+            {t('editor.random.actionTitle')}
           </h5>
-          <p style={{ 
-            margin: 0, 
-            fontSize: '12px', 
-            color: COLORS.neutral[600] 
+          <p style={{
+            margin: 0,
+            fontSize: '12px',
+            color: COLORS.neutral[600]
           }}>
-            {action.actions.length}択からランダム選択 ({probabilities.join('%, ')}%)
+            {t('editor.random.choices', { count: action.actions.length, probabilities: probabilities.join(', ') })}
           </p>
         </div>
       </div>
 
       {/* プリセット選択 */}
       <div style={{ marginBottom: SPACING[3] }}>
-        <label style={{ 
-          fontSize: '12px', 
-          fontWeight: '600', 
+        <label style={{
+          fontSize: '12px',
+          fontWeight: '600',
           color: COLORS.neutral[700],
           display: 'block',
           marginBottom: SPACING[2]
         }}>
-          プリセット:
+          {t('editor.random.presetLabel')}
         </label>
         <div style={{
           display: 'flex',
           flexDirection: 'column',
           gap: SPACING[1]
         }}>
-          {RANDOM_ACTION_PRESETS.map((preset, index) => (
+          {randomActionPresets.map((preset, index) => (
             <ModernButton
               key={index}
               variant="outline"
@@ -467,18 +525,18 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
 
       {/* アクション選択肢一覧 */}
       <div style={{ marginBottom: SPACING[3] }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: SPACING[2]
         }}>
-          <label style={{ 
-            fontSize: '12px', 
-            fontWeight: '600', 
+          <label style={{
+            fontSize: '12px',
+            fontWeight: '600',
             color: COLORS.neutral[700]
           }}>
-            選択肢アクション:
+            {t('editor.random.choicesLabel')}
           </label>
           <ModernButton
             variant="outline"
@@ -490,7 +548,7 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
               fontSize: '11px'
             }}
           >
-            ➕ 追加
+            ➕ {t('editor.random.addButton')}
           </ModernButton>
         </div>
 
@@ -512,18 +570,10 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
                 {probabilities[index]}%
               </span>
               <div style={{ flex: 1, fontSize: '11px' }}>
-                {option.action.type === 'success' ? '✅ 成功' :
-                 option.action.type === 'failure' ? '❌ 失敗' :
-                 option.action.type === 'playSound' ? '🔊 音再生' :
-                 option.action.type === 'show' ? '👁️ 表示' :
-                 option.action.type === 'hide' ? '🚫  非表示' :
-                 option.action.type === 'counter' ? '🔢 カウンター' :
-                 option.action.type === 'effect' ? '✨ エフェクト' :
-                 option.action.type === 'move' ? '🏃 移動' :
-                 option.action.type}
+                {getActionTypeLabel(option.action.type)}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: SPACING[1] }}>
-                <span style={{ fontSize: '10px', color: COLORS.neutral[600] }}>重み:</span>
+                <span style={{ fontSize: '10px', color: COLORS.neutral[600] }}>{t('editor.random.weightLabel')}</span>
                 <input
                   type="number"
                   min="1"
@@ -555,20 +605,20 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
 
       {/* 選択方式設定 */}
       <div style={{ marginBottom: SPACING[3] }}>
-        <label style={{ 
-          fontSize: '12px', 
-          fontWeight: '600', 
+        <label style={{
+          fontSize: '12px',
+          fontWeight: '600',
           color: COLORS.neutral[700],
           display: 'block',
           marginBottom: SPACING[1]
         }}>
-          選択方式:
+          {t('editor.random.selectionModeLabel')}
         </label>
         <select
           value={action.selectionMode || 'weighted'}
-          onChange={(e) => onChange({ 
-            ...action, 
-            selectionMode: e.target.value as 'weighted' | 'probability' | 'uniform' 
+          onChange={(e) => onChange({
+            ...action,
+            selectionMode: e.target.value as 'weighted' | 'probability' | 'uniform'
           })}
           style={{
             width: '100%',
@@ -579,9 +629,9 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
             backgroundColor: COLORS.neutral[0]
           }}
         >
-          <option value="weighted">重み付き（推奨）</option>
-          <option value="uniform">均等選択</option>
-          <option value="probability">個別確率</option>
+          <option value="weighted">{t('editor.random.weighted')}</option>
+          <option value="uniform">{t('editor.random.uniform')}</option>
+          <option value="probability">{t('editor.random.probability')}</option>
         </select>
       </div>
 
@@ -593,29 +643,29 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
           onClick={() => setShowAdvanced(!showAdvanced)}
           style={{ fontSize: '11px', color: COLORS.neutral[600] }}
         >
-          {showAdvanced ? '▼' : '▶'} 実行制限設定
+          {showAdvanced ? '▼' : '▶'} {t('editor.random.executionLimitSettings')}
         </ModernButton>
-        
+
         {showAdvanced && (
           <div style={{ marginTop: SPACING[2] }}>
             <div style={{ marginBottom: SPACING[2] }}>
-              <label style={{ 
-                fontSize: '12px', 
-                fontWeight: '600', 
+              <label style={{
+                fontSize: '12px',
+                fontWeight: '600',
                 color: COLORS.neutral[700],
                 display: 'block',
                 marginBottom: SPACING[1]
               }}>
-                最大実行回数:
+                {t('editor.random.maxExecutionsLabel')}
               </label>
               <input
                 type="number"
                 min="0"
                 value={action.executionLimit?.maxExecutions || ''}
-                onChange={(e) => updateExecutionLimit({ 
-                  maxExecutions: e.target.value ? Number(e.target.value) : undefined 
+                onChange={(e) => updateExecutionLimit({
+                  maxExecutions: e.target.value ? Number(e.target.value) : undefined
                 })}
-                placeholder="無制限"
+                placeholder={t('editor.random.maxExecutionsPlaceholder')}
                 style={{
                   width: '100%',
                   padding: SPACING[2],
@@ -627,24 +677,24 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
             </div>
 
             <div style={{ marginBottom: SPACING[2] }}>
-              <label style={{ 
-                fontSize: '12px', 
-                fontWeight: '600', 
+              <label style={{
+                fontSize: '12px',
+                fontWeight: '600',
                 color: COLORS.neutral[700],
                 display: 'block',
                 marginBottom: SPACING[1]
               }}>
-                クールダウン時間:
+                {t('editor.random.cooldownLabel')}
               </label>
               <div style={{ display: 'flex', gap: SPACING[2], alignItems: 'center' }}>
                 <input
                   type="number"
                   min="0"
                   value={action.executionLimit?.cooldown || ''}
-                  onChange={(e) => updateExecutionLimit({ 
-                    cooldown: e.target.value ? Number(e.target.value) : undefined 
+                  onChange={(e) => updateExecutionLimit({
+                    cooldown: e.target.value ? Number(e.target.value) : undefined
                   })}
-                  placeholder="0"
+                  placeholder={t('editor.random.cooldownPlaceholder')}
                   style={{
                     flex: 1,
                     padding: SPACING[2],
@@ -653,13 +703,13 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
                     borderRadius: BORDER_RADIUS.md
                   }}
                 />
-                <span style={{ fontSize: '12px', color: COLORS.neutral[600] }}>ミリ秒</span>
+                <span style={{ fontSize: '12px', color: COLORS.neutral[600] }}>{t('editor.random.milliseconds')}</span>
               </div>
             </div>
 
             <div>
-              <label style={{ 
-                fontSize: '12px', 
+              <label style={{
+                fontSize: '12px',
                 color: COLORS.neutral[700],
                 display: 'flex',
                 alignItems: 'center',
@@ -668,12 +718,12 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
                 <input
                   type="checkbox"
                   checked={action.debugMode || false}
-                  onChange={(e) => onChange({ 
-                    ...action, 
-                    debugMode: e.target.checked 
+                  onChange={(e) => onChange({
+                    ...action,
+                    debugMode: e.target.checked
                   })}
                 />
-                デバッグモード（選択結果をログ出力）
+                {t('editor.random.debugMode')}
               </label>
             </div>
           </div>
@@ -681,15 +731,15 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
       </div>
 
       {/* フッター */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'center',
         paddingTop: SPACING[2],
         borderTop: `1px solid ${COLORS.neutral[100]}`
       }}>
         <div style={{ fontSize: '10px', color: COLORS.neutral[600] }}>
-          エンドレス系・自動生成向け
+          {t('editor.random.forEndlessAndAutogen')}
         </div>
         <ModernButton
           variant="ghost"
@@ -697,7 +747,7 @@ export const RandomActionEditor: React.FC<RandomActionEditorProps> = ({
           onClick={onRemove}
           style={{ color: COLORS.warning[600] }}
         >
-          ✕ 削除
+          ✕ {t('editor.random.deleteButton')}
         </ModernButton>
       </div>
     </ModernCard>
