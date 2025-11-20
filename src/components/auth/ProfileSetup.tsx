@@ -2,9 +2,11 @@
 // プロフィール設定・編集画面（モダンデザイン版）
 
 import React, { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 import { storage } from '../../lib/supabase'
 import type { Profile } from '../../lib/database.types'
+import { supportedLanguages } from '../../i18n'
 
 interface ProfileSetupProps {
   isOpen: boolean
@@ -19,6 +21,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
   mode = 'setup',
   title
 }) => {
+  const { i18n } = useTranslation()
   const { profile, updateProfile, checkUsernameAvailable, loading, error, clearError } = useAuth()
 
   const [formData, setFormData] = useState({
@@ -200,6 +203,11 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
     setHasChanges(true)
+
+    // 言語設定が変更された場合、i18nの言語も切り替える
+    if (name === 'language') {
+      i18n.changeLanguage(value)
+    }
 
     if (validationErrors[name]) {
       setValidationErrors(prev => ({ ...prev, [name]: '' }))
@@ -622,10 +630,11 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
                 }}
                 disabled={loading}
               >
-                <option value="ja">日本語</option>
-                <option value="en">English</option>
-                <option value="ko">한국어</option>
-                <option value="zh">中文</option>
+                {supportedLanguages.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.nativeName}
+                  </option>
+                ))}
               </select>
             </div>
           </form>

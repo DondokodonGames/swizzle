@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback, useContext, createContext, Rea
 import { User, Session } from '@supabase/supabase-js'
 import { auth, database, SupabaseError } from '../lib/supabase'
 import type { Profile } from '../lib/database.types'
+import i18n from '../i18n'
 
 interface AuthState {
   user: User | null
@@ -84,13 +85,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       // トリガーによる自動作成を考慮し、少し待機してからプロフィール取得
       let profile = await database.profiles.get(userId)
-      
+
       // プロフィールが存在しない場合、少し待ってリトライ（トリガー処理時間考慮）
       if (!profile) {
         await new Promise(resolve => setTimeout(resolve, 1000))
         profile = await database.profiles.get(userId)
       }
-      
+
+      // プロフィールの言語設定でi18nを同期
+      if (profile?.language) {
+        i18n.changeLanguage(profile.language)
+      }
+
       return profile
     } catch (error) {
       console.error('Load profile error:', error)

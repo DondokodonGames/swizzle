@@ -11,6 +11,20 @@ import { MVPSubscriptionPlan } from '../types/MonetizationTypes'
 import ProfileSetup from '../components/auth/ProfileSetup'
 import { SocialService } from '../social/services/SocialService'
 import type { UserGame } from '../social/types/SocialTypes'
+import { supportedLanguages } from '../i18n'
+
+// 言語コードから表示名を取得するヘルパー関数
+const getLanguageDisplay = (code: string): string => {
+  const lang = supportedLanguages.find(l => l.code === code)
+  if (lang) {
+    const flags: Record<string, string> = {
+      en: '🇺🇸', ja: '🇯🇵', fr: '🇫🇷', it: '🇮🇹', de: '🇩🇪',
+      es: '🇪🇸', zh: '🇨🇳', ko: '🇰🇷', pt: '🇧🇷'
+    }
+    return `${flags[code] || ''} ${lang.nativeName}`
+  }
+  return code
+}
 
 interface ProfilePageProps {
   // オプションでuserIdを直接渡すこともできる
@@ -411,11 +425,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
                 fontWeight: '600',
                 color: '#111827'
               }}>
-                {profile.language === 'ja' && '🇯🇵 日本語'}
-                {profile.language === 'en' && '🇺🇸 English'}
-                {profile.language === 'ko' && '🇰🇷 한국어'}
-                {profile.language === 'zh' && '🇨🇳 中文'}
-                {!['ja', 'en', 'ko', 'zh'].includes(profile.language) && profile.language}
+                {getLanguageDisplay(profile.language)}
               </div>
             </div>
 
