@@ -1,0 +1,366 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "confirm": "Confirm",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "retry": "Retry",
+    "search": "Search",
+    "settings": "Settings",
+    "help": "Help",
+    "logout": "Logout",
+    "login": "Login",
+    "signup": "Sign Up"
+  },
+  "errors": {
+    "generic": "An unexpected error occurred",
+    "network": "A network error occurred",
+    "projectNotFound": "Project not found",
+    "projectLoadFailed": "Failed to load project",
+    "projectSaveFailed": "Failed to save project",
+    "fileTooLarge": "File size exceeds the limit",
+    "invalidFileType": "Unsupported file format",
+    "fileUploadFailed": "Failed to upload file",
+    "gameNameRequired": "Please enter a game name",
+    "gameNameTooLong": "Game name must be 50 characters or less",
+    "descriptionTooLong": "Description must be 200 characters or less",
+    "noAssets": "Please add at least one object or background",
+    "noRules": "Please set game rules or success conditions",
+    "publishFailed": "Failed to publish game",
+    "exportFailed": "Failed to export",
+    "testPlayFailed": "Test play failed",
+    "projectSizeExceeded": "Project size exceeds the limit",
+    "assetLimitExceeded": "Asset count exceeds the limit"
+  },
+  "success": {
+    "projectSaved": "Project saved",
+    "projectPublished": "Game published",
+    "projectExported": "Project exported",
+    "fileUploaded": "File uploaded",
+    "testPlaySuccess": "Test play successful",
+    "thumbnailGenerated": "Thumbnail generated"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "username": "Username",
+    "loginTitle": "Login",
+    "signupTitle": "Sign Up",
+    "forgotPassword": "Forgot your password?",
+    "alreadyHaveAccount": "Already have an account?",
+    "dontHaveAccount": "Don't have an account?",
+    "invalidCredentials": "Invalid email or password",
+    "emailNotConfirmed": "Email not confirmed",
+    "passwordTooShort": "Password must be at least 6 characters",
+    "emailAlreadyExists": "This email is already in use",
+    "invalidEmail": "Please enter a valid email address",
+    "accountCreated": "Account created",
+    "loginSuccess": "Logged in successfully",
+    "logoutSuccess": "Logged out successfully"
+  },
+  "editor": {
+    "tabs": {
+      "assets": "Assets",
+      "script": "Rules",
+      "settings": "Publish"
+    },
+    "assets": {
+      "title": "Asset Management",
+      "background": "Background",
+      "objects": "Objects",
+      "audio": "Audio",
+      "text": "Text",
+      "addBackground": "Add Background",
+      "addObject": "Add Object",
+      "addAudio": "Add Audio",
+      "addText": "Add Text",
+      "bgm": "BGM",
+      "se": "Sound Effects"
+    },
+    "script": {
+      "title": "Rule Settings",
+      "addRule": "Add Rule",
+      "editRule": "Edit Rule",
+      "condition": "Condition",
+      "action": "Action",
+      "when": "When",
+      "then": "Then"
+    },
+    "settings": {
+      "title": "Publish Settings",
+      "gameName": "Game Name",
+      "description": "Description",
+      "duration": "Time Limit",
+      "difficulty": "Difficulty",
+      "visibility": "Visibility",
+      "public": "Public",
+      "unlisted": "Unlisted",
+      "private": "Private",
+      "publish": "Publish",
+      "testPlay": "Test Play"
+    },
+    "preview": "Preview"
+  },
+  "conditions": {
+    "touch": {
+      "label": "On Touch",
+      "description": "Triggers when object is tapped"
+    },
+    "time": {
+      "label": "Time Elapsed",
+      "description": "Auto triggers after specified time"
+    },
+    "position": {
+      "label": "At Position",
+      "description": "When entering/leaving specified area"
+    },
+    "collision": {
+      "label": "On Collision",
+      "description": "When colliding with another object"
+    },
+    "animation": {
+      "label": "Animation End",
+      "description": "When animation completes"
+    },
+    "flag": {
+      "label": "Flag is ON",
+      "description": "Check custom flag state"
+    },
+    "gameState": {
+      "label": "Game State",
+      "description": "Check overall game state"
+    },
+    "score": {
+      "label": "Score Condition",
+      "description": "When score reaches specific value"
+    }
+  },
+  "actions": {
+    "success": {
+      "label": "Game Clear!",
+      "description": "End game with success"
+    },
+    "failure": {
+      "label": "Game Over",
+      "description": "End game with failure"
+    },
+    "pause": {
+      "label": "Pause",
+      "description": "Pause the game"
+    },
+    "restart": {
+      "label": "Restart",
+      "description": "Restart the game"
+    },
+    "playSound": {
+      "label": "Play Sound",
+      "description": "Play sound effect"
+    },
+    "playBGM": {
+      "label": "Play BGM",
+      "description": "Play background music"
+    },
+    "stopSound": {
+      "label": "Stop Sound",
+      "description": "Stop audio playback"
+    },
+    "move": {
+      "label": "Move",
+      "description": "Move to specified position"
+    },
+    "show": {
+      "label": "Show",
+      "description": "Show object"
+    },
+    "hide": {
+      "label": "Hide",
+      "description": "Hide object"
+    },
+    "switchAnimation": {
+      "label": "Change Animation",
+      "description": "Switch animation"
+    },
+    "effect": {
+      "label": "Effect",
+      "description": "Flash, shake, etc."
+    },
+    "particles": {
+      "label": "Particles",
+      "description": "Particle effect"
+    },
+    "setFlag": {
+      "label": "Set Flag",
+      "description": "Set custom flag ON/OFF"
+    }
+  },
+  "movements": {
+    "straight": {
+      "label": "Straight",
+      "description": "Move in straight line to position"
+    },
+    "teleport": {
+      "label": "Teleport",
+      "description": "Instant position change"
+    },
+    "wander": {
+      "label": "Wander",
+      "description": "Move in random direction"
+    },
+    "bounce": {
+      "label": "Bounce",
+      "description": "Bouncing movement"
+    },
+    "orbit": {
+      "label": "Orbit",
+      "description": "Move in circular path"
+    },
+    "approach": {
+      "label": "Chase",
+      "description": "Approach another object"
+    }
+  },
+  "effects": {
+    "flash": {
+      "label": "Flash",
+      "description": "Flash screen/object"
+    },
+    "shake": {
+      "label": "Shake",
+      "description": "Vibration effect"
+    },
+    "scale": {
+      "label": "Scale",
+      "description": "Size change effect"
+    },
+    "rotate": {
+      "label": "Rotate",
+      "description": "Rotation effect"
+    },
+    "fade": {
+      "label": "Fade",
+      "description": "Fade in/out"
+    },
+    "particles": {
+      "label": "Particles",
+      "description": "Emit particles"
+    }
+  },
+  "positions": {
+    "center": "Center",
+    "top": "Top",
+    "bottom": "Bottom",
+    "left": "Left",
+    "right": "Right",
+    "corners": "Corners"
+  },
+  "speeds": {
+    "slow": {
+      "label": "Slow",
+      "description": "100px/sec"
+    },
+    "normal": {
+      "label": "Normal",
+      "description": "300px/sec"
+    },
+    "fast": {
+      "label": "Fast",
+      "description": "600px/sec"
+    },
+    "instant": {
+      "label": "Instant",
+      "description": "Immediate"
+    }
+  },
+  "durations": {
+    "5": {
+      "label": "5 sec",
+      "description": "Quick"
+    },
+    "10": {
+      "label": "10 sec",
+      "description": "Standard"
+    },
+    "15": {
+      "label": "15 sec",
+      "description": "Extended"
+    },
+    "30": {
+      "label": "30 sec",
+      "description": "Long"
+    }
+  },
+  "difficulties": {
+    "easy": {
+      "label": "Easy",
+      "description": "Fun for everyone"
+    },
+    "normal": {
+      "label": "Normal",
+      "description": "Balanced challenge"
+    },
+    "hard": {
+      "label": "Hard",
+      "description": "For experts"
+    }
+  },
+  "gameFeed": {
+    "trending": "Trending",
+    "following": "Following",
+    "recommended": "Recommended",
+    "random": "Random",
+    "premium": "Premium",
+    "newGames": "New Games",
+    "popular": "Popular",
+    "play": "Play",
+    "like": "Like",
+    "share": "Share",
+    "views": "plays",
+    "likes": "likes"
+  },
+  "monetization": {
+    "premium": "Premium",
+    "subscribe": "Subscribe",
+    "freeTier": "Free Plan",
+    "proPlan": "Pro Plan",
+    "premiumPlan": "Premium Plan",
+    "monthlyPrice": "Monthly",
+    "yearlyPrice": "Yearly",
+    "features": "Features",
+    "upgrade": "Upgrade",
+    "currentPlan": "Current Plan",
+    "cancelSubscription": "Cancel Subscription",
+    "paymentSuccess": "Payment completed",
+    "paymentFailed": "Payment failed"
+  },
+  "profile": {
+    "title": "Profile",
+    "myGames": "My Games",
+    "favorites": "Favorites",
+    "followers": "Followers",
+    "following": "Following",
+    "editProfile": "Edit Profile",
+    "bio": "Bio",
+    "gamesCreated": "Games Created",
+    "totalPlays": "Total Plays"
+  },
+  "game": {
+    "start": "Start",
+    "pause": "Pause",
+    "resume": "Resume",
+    "restart": "Restart",
+    "quit": "Quit",
+    "success": "Clear!",
+    "failure": "Game Over",
+    "score": "Score",
+    "time": "Time",
+    "bestScore": "Best Score"
+  }
+}

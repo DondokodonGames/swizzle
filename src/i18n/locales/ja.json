@@ -1,0 +1,366 @@
+{
+  "common": {
+    "loading": "読み込み中...",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "create": "作成",
+    "confirm": "確認",
+    "close": "閉じる",
+    "back": "戻る",
+    "next": "次へ",
+    "done": "完了",
+    "retry": "再試行",
+    "search": "検索",
+    "settings": "設定",
+    "help": "ヘルプ",
+    "logout": "ログアウト",
+    "login": "ログイン",
+    "signup": "新規登録"
+  },
+  "errors": {
+    "generic": "予期しないエラーが発生しました",
+    "network": "ネットワークエラーが発生しました",
+    "projectNotFound": "プロジェクトが見つかりません",
+    "projectLoadFailed": "プロジェクトの読み込みに失敗しました",
+    "projectSaveFailed": "プロジェクトの保存に失敗しました",
+    "fileTooLarge": "ファイルサイズが上限を超えています",
+    "invalidFileType": "サポートされていないファイル形式です",
+    "fileUploadFailed": "ファイルのアップロードに失敗しました",
+    "gameNameRequired": "ゲーム名を入力してください",
+    "gameNameTooLong": "ゲーム名は50文字以内で入力してください",
+    "descriptionTooLong": "説明文は200文字以内で入力してください",
+    "noAssets": "最低1つのオブジェクトまたは背景を追加してください",
+    "noRules": "ゲームルールまたは成功条件を設定してください",
+    "publishFailed": "ゲームの公開に失敗しました",
+    "exportFailed": "エクスポートに失敗しました",
+    "testPlayFailed": "テストプレイに失敗しました",
+    "projectSizeExceeded": "プロジェクトサイズが上限を超えています",
+    "assetLimitExceeded": "アセット数が上限を超えています"
+  },
+  "success": {
+    "projectSaved": "プロジェクトを保存しました",
+    "projectPublished": "ゲームを公開しました",
+    "projectExported": "プロジェクトをエクスポートしました",
+    "fileUploaded": "ファイルをアップロードしました",
+    "testPlaySuccess": "テストプレイが成功しました",
+    "thumbnailGenerated": "サムネイルを生成しました"
+  },
+  "auth": {
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "confirmPassword": "パスワード確認",
+    "username": "ユーザー名",
+    "loginTitle": "ログイン",
+    "signupTitle": "新規登録",
+    "forgotPassword": "パスワードをお忘れですか？",
+    "alreadyHaveAccount": "すでにアカウントをお持ちですか？",
+    "dontHaveAccount": "アカウントをお持ちでない方",
+    "invalidCredentials": "メールアドレスまたはパスワードが正しくありません",
+    "emailNotConfirmed": "メールアドレスが確認されていません",
+    "passwordTooShort": "パスワードは6文字以上である必要があります",
+    "emailAlreadyExists": "このメールアドレスは既に使用されています",
+    "invalidEmail": "有効なメールアドレスを入力してください",
+    "accountCreated": "アカウントを作成しました",
+    "loginSuccess": "ログインしました",
+    "logoutSuccess": "ログアウトしました"
+  },
+  "editor": {
+    "tabs": {
+      "assets": "アセット",
+      "script": "ルール",
+      "settings": "公開"
+    },
+    "assets": {
+      "title": "アセット管理",
+      "background": "背景",
+      "objects": "オブジェクト",
+      "audio": "音声",
+      "text": "テキスト",
+      "addBackground": "背景を追加",
+      "addObject": "オブジェクトを追加",
+      "addAudio": "音声を追加",
+      "addText": "テキストを追加",
+      "bgm": "BGM",
+      "se": "効果音"
+    },
+    "script": {
+      "title": "ルール設定",
+      "addRule": "ルールを追加",
+      "editRule": "ルールを編集",
+      "condition": "条件",
+      "action": "アクション",
+      "when": "〜のとき",
+      "then": "〜する"
+    },
+    "settings": {
+      "title": "公開設定",
+      "gameName": "ゲーム名",
+      "description": "説明",
+      "duration": "制限時間",
+      "difficulty": "難易度",
+      "visibility": "公開範囲",
+      "public": "公開",
+      "unlisted": "限定公開",
+      "private": "非公開",
+      "publish": "公開する",
+      "testPlay": "テストプレイ"
+    },
+    "preview": "プレビュー"
+  },
+  "conditions": {
+    "touch": {
+      "label": "タッチしたとき",
+      "description": "オブジェクトをタップしたら発動"
+    },
+    "time": {
+      "label": "時間経過",
+      "description": "指定時間後に自動発動"
+    },
+    "position": {
+      "label": "位置にいるとき",
+      "description": "指定エリアに入った・出た時"
+    },
+    "collision": {
+      "label": "ぶつかったとき",
+      "description": "他のオブジェクトと衝突時"
+    },
+    "animation": {
+      "label": "アニメ終了時",
+      "description": "アニメーションが終了した時"
+    },
+    "flag": {
+      "label": "フラグがONのとき",
+      "description": "カスタムフラグの状態確認"
+    },
+    "gameState": {
+      "label": "ゲーム状態",
+      "description": "ゲーム全体の状態確認"
+    },
+    "score": {
+      "label": "スコア条件",
+      "description": "スコアが特定値に達した時"
+    }
+  },
+  "actions": {
+    "success": {
+      "label": "ゲームクリア！",
+      "description": "成功でゲーム終了"
+    },
+    "failure": {
+      "label": "ゲームオーバー",
+      "description": "失敗でゲーム終了"
+    },
+    "pause": {
+      "label": "ポーズ",
+      "description": "ゲームを一時停止"
+    },
+    "restart": {
+      "label": "リスタート",
+      "description": "ゲームを最初から"
+    },
+    "playSound": {
+      "label": "音を鳴らす",
+      "description": "効果音を再生"
+    },
+    "playBGM": {
+      "label": "BGM再生",
+      "description": "バックグラウンドミュージック再生"
+    },
+    "stopSound": {
+      "label": "音停止",
+      "description": "音声再生を停止"
+    },
+    "move": {
+      "label": "移動する",
+      "description": "指定位置に移動"
+    },
+    "show": {
+      "label": "表示する",
+      "description": "オブジェクトを表示"
+    },
+    "hide": {
+      "label": "隠す",
+      "description": "オブジェクトを非表示"
+    },
+    "switchAnimation": {
+      "label": "アニメ変更",
+      "description": "アニメーションを切り替え"
+    },
+    "effect": {
+      "label": "エフェクト",
+      "description": "フラッシュ・シェイク等"
+    },
+    "particles": {
+      "label": "パーティクル",
+      "description": "パーティクルエフェクト"
+    },
+    "setFlag": {
+      "label": "フラグ設定",
+      "description": "カスタムフラグをON/OFF"
+    }
+  },
+  "movements": {
+    "straight": {
+      "label": "まっすぐ移動",
+      "description": "指定位置へ直線移動"
+    },
+    "teleport": {
+      "label": "瞬間移動",
+      "description": "即座に位置変更"
+    },
+    "wander": {
+      "label": "ふらふら移動",
+      "description": "ランダムな方向に移動"
+    },
+    "bounce": {
+      "label": "ぴょんぴょん",
+      "description": "跳ねるような移動"
+    },
+    "orbit": {
+      "label": "回転移動",
+      "description": "円形軌道で移動"
+    },
+    "approach": {
+      "label": "追跡移動",
+      "description": "他のオブジェクトに近づく"
+    }
+  },
+  "effects": {
+    "flash": {
+      "label": "フラッシュ",
+      "description": "画面・オブジェクトを光らせる"
+    },
+    "shake": {
+      "label": "シェイク",
+      "description": "振動・揺れエフェクト"
+    },
+    "scale": {
+      "label": "拡大縮小",
+      "description": "サイズ変更エフェクト"
+    },
+    "rotate": {
+      "label": "回転",
+      "description": "回転エフェクト"
+    },
+    "fade": {
+      "label": "フェード",
+      "description": "フェードイン・アウト"
+    },
+    "particles": {
+      "label": "パーティクル",
+      "description": "パーティクル放出"
+    }
+  },
+  "positions": {
+    "center": "中央エリア",
+    "top": "上部エリア",
+    "bottom": "下部エリア",
+    "left": "左側エリア",
+    "right": "右側エリア",
+    "corners": "四隅"
+  },
+  "speeds": {
+    "slow": {
+      "label": "ゆっくり",
+      "description": "100px/秒"
+    },
+    "normal": {
+      "label": "普通",
+      "description": "300px/秒"
+    },
+    "fast": {
+      "label": "早い",
+      "description": "600px/秒"
+    },
+    "instant": {
+      "label": "瞬間",
+      "description": "即座移動"
+    }
+  },
+  "durations": {
+    "5": {
+      "label": "5秒",
+      "description": "サクッと"
+    },
+    "10": {
+      "label": "10秒",
+      "description": "ちょうどいい"
+    },
+    "15": {
+      "label": "15秒",
+      "description": "じっくり"
+    },
+    "30": {
+      "label": "30秒",
+      "description": "たっぷり"
+    }
+  },
+  "difficulties": {
+    "easy": {
+      "label": "やさしい",
+      "description": "誰でも楽しめる"
+    },
+    "normal": {
+      "label": "ふつう",
+      "description": "ちょうどいい挑戦"
+    },
+    "hard": {
+      "label": "むずかしい",
+      "description": "上級者向け"
+    }
+  },
+  "gameFeed": {
+    "trending": "トレンド",
+    "following": "フォロー中",
+    "recommended": "おすすめ",
+    "random": "ランダム",
+    "premium": "プレミアム",
+    "newGames": "新着ゲーム",
+    "popular": "人気",
+    "play": "プレイ",
+    "like": "いいね",
+    "share": "シェア",
+    "views": "回プレイ",
+    "likes": "いいね"
+  },
+  "monetization": {
+    "premium": "プレミアム",
+    "subscribe": "購読する",
+    "freeTier": "無料プラン",
+    "proPlan": "Proプラン",
+    "premiumPlan": "プレミアムプラン",
+    "monthlyPrice": "月額",
+    "yearlyPrice": "年額",
+    "features": "機能",
+    "upgrade": "アップグレード",
+    "currentPlan": "現在のプラン",
+    "cancelSubscription": "購読をキャンセル",
+    "paymentSuccess": "お支払いが完了しました",
+    "paymentFailed": "お支払いに失敗しました"
+  },
+  "profile": {
+    "title": "プロフィール",
+    "myGames": "マイゲーム",
+    "favorites": "お気に入り",
+    "followers": "フォロワー",
+    "following": "フォロー中",
+    "editProfile": "プロフィール編集",
+    "bio": "自己紹介",
+    "gamesCreated": "作成したゲーム",
+    "totalPlays": "総プレイ数"
+  },
+  "game": {
+    "start": "スタート",
+    "pause": "ポーズ",
+    "resume": "再開",
+    "restart": "リスタート",
+    "quit": "やめる",
+    "success": "クリア！",
+    "failure": "ゲームオーバー",
+    "score": "スコア",
+    "time": "時間",
+    "bestScore": "ハイスコア"
+  }
+}

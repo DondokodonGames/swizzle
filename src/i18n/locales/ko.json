@@ -1,0 +1,366 @@
+{
+  "common": {
+    "loading": "로딩 중...",
+    "save": "저장",
+    "cancel": "취소",
+    "delete": "삭제",
+    "edit": "편집",
+    "create": "생성",
+    "confirm": "확인",
+    "close": "닫기",
+    "back": "뒤로",
+    "next": "다음",
+    "done": "완료",
+    "retry": "재시도",
+    "search": "검색",
+    "settings": "설정",
+    "help": "도움말",
+    "logout": "로그아웃",
+    "login": "로그인",
+    "signup": "회원가입"
+  },
+  "errors": {
+    "generic": "예기치 않은 오류가 발생했습니다",
+    "network": "네트워크 오류가 발생했습니다",
+    "projectNotFound": "프로젝트를 찾을 수 없습니다",
+    "projectLoadFailed": "프로젝트 로드 실패",
+    "projectSaveFailed": "프로젝트 저장 실패",
+    "fileTooLarge": "파일 크기가 제한을 초과했습니다",
+    "invalidFileType": "지원되지 않는 파일 형식입니다",
+    "fileUploadFailed": "파일 업로드 실패",
+    "gameNameRequired": "게임 이름을 입력해주세요",
+    "gameNameTooLong": "게임 이름은 50자 이하여야 합니다",
+    "descriptionTooLong": "설명은 200자 이하여야 합니다",
+    "noAssets": "최소 하나의 오브젝트 또는 배경을 추가해주세요",
+    "noRules": "게임 규칙이나 성공 조건을 설정해주세요",
+    "publishFailed": "게임 게시 실패",
+    "exportFailed": "내보내기 실패",
+    "testPlayFailed": "테스트 실패",
+    "projectSizeExceeded": "프로젝트 크기가 제한을 초과했습니다",
+    "assetLimitExceeded": "에셋 수가 제한을 초과했습니다"
+  },
+  "success": {
+    "projectSaved": "프로젝트가 저장되었습니다",
+    "projectPublished": "게임이 게시되었습니다",
+    "projectExported": "프로젝트가 내보내기 되었습니다",
+    "fileUploaded": "파일이 업로드되었습니다",
+    "testPlaySuccess": "테스트 성공",
+    "thumbnailGenerated": "썸네일이 생성되었습니다"
+  },
+  "auth": {
+    "email": "이메일",
+    "password": "비밀번호",
+    "confirmPassword": "비밀번호 확인",
+    "username": "사용자 이름",
+    "loginTitle": "로그인",
+    "signupTitle": "회원가입",
+    "forgotPassword": "비밀번호를 잊으셨나요?",
+    "alreadyHaveAccount": "이미 계정이 있으신가요?",
+    "dontHaveAccount": "계정이 없으신가요?",
+    "invalidCredentials": "이메일 또는 비밀번호가 올바르지 않습니다",
+    "emailNotConfirmed": "이메일이 확인되지 않았습니다",
+    "passwordTooShort": "비밀번호는 최소 6자 이상이어야 합니다",
+    "emailAlreadyExists": "이 이메일은 이미 사용 중입니다",
+    "invalidEmail": "유효한 이메일 주소를 입력해주세요",
+    "accountCreated": "계정이 생성되었습니다",
+    "loginSuccess": "로그인 성공",
+    "logoutSuccess": "로그아웃 성공"
+  },
+  "editor": {
+    "tabs": {
+      "assets": "에셋",
+      "script": "규칙",
+      "settings": "게시"
+    },
+    "assets": {
+      "title": "에셋 관리",
+      "background": "배경",
+      "objects": "오브젝트",
+      "audio": "오디오",
+      "text": "텍스트",
+      "addBackground": "배경 추가",
+      "addObject": "오브젝트 추가",
+      "addAudio": "오디오 추가",
+      "addText": "텍스트 추가",
+      "bgm": "배경음악",
+      "se": "효과음"
+    },
+    "script": {
+      "title": "규칙 설정",
+      "addRule": "규칙 추가",
+      "editRule": "규칙 편집",
+      "condition": "조건",
+      "action": "액션",
+      "when": "~할 때",
+      "then": "~하기"
+    },
+    "settings": {
+      "title": "게시 설정",
+      "gameName": "게임 이름",
+      "description": "설명",
+      "duration": "제한 시간",
+      "difficulty": "난이도",
+      "visibility": "공개 범위",
+      "public": "공개",
+      "unlisted": "비공개",
+      "private": "비공개",
+      "publish": "게시",
+      "testPlay": "테스트"
+    },
+    "preview": "미리보기"
+  },
+  "conditions": {
+    "touch": {
+      "label": "터치할 때",
+      "description": "오브젝트를 탭하면 발동"
+    },
+    "time": {
+      "label": "시간 경과",
+      "description": "지정 시간 후 자동 발동"
+    },
+    "position": {
+      "label": "위치에 있을 때",
+      "description": "지정 영역에 들어갔을 때/나갔을 때"
+    },
+    "collision": {
+      "label": "충돌할 때",
+      "description": "다른 오브젝트와 충돌할 때"
+    },
+    "animation": {
+      "label": "애니메이션 종료",
+      "description": "애니메이션이 완료될 때"
+    },
+    "flag": {
+      "label": "플래그가 ON일 때",
+      "description": "커스텀 플래그 상태 확인"
+    },
+    "gameState": {
+      "label": "게임 상태",
+      "description": "전체 게임 상태 확인"
+    },
+    "score": {
+      "label": "점수 조건",
+      "description": "점수가 특정 값에 도달할 때"
+    }
+  },
+  "actions": {
+    "success": {
+      "label": "게임 클리어!",
+      "description": "성공으로 게임 종료"
+    },
+    "failure": {
+      "label": "게임 오버",
+      "description": "실패로 게임 종료"
+    },
+    "pause": {
+      "label": "일시정지",
+      "description": "게임 일시정지"
+    },
+    "restart": {
+      "label": "재시작",
+      "description": "게임 재시작"
+    },
+    "playSound": {
+      "label": "소리 재생",
+      "description": "효과음 재생"
+    },
+    "playBGM": {
+      "label": "배경음악 재생",
+      "description": "배경음악 재생"
+    },
+    "stopSound": {
+      "label": "소리 정지",
+      "description": "오디오 재생 정지"
+    },
+    "move": {
+      "label": "이동",
+      "description": "지정 위치로 이동"
+    },
+    "show": {
+      "label": "표시",
+      "description": "오브젝트 표시"
+    },
+    "hide": {
+      "label": "숨기기",
+      "description": "오브젝트 숨기기"
+    },
+    "switchAnimation": {
+      "label": "애니메이션 변경",
+      "description": "애니메이션 전환"
+    },
+    "effect": {
+      "label": "효과",
+      "description": "플래시, 흔들림 등"
+    },
+    "particles": {
+      "label": "파티클",
+      "description": "파티클 효과"
+    },
+    "setFlag": {
+      "label": "플래그 설정",
+      "description": "커스텀 플래그 ON/OFF"
+    }
+  },
+  "movements": {
+    "straight": {
+      "label": "직선 이동",
+      "description": "위치로 직선 이동"
+    },
+    "teleport": {
+      "label": "순간 이동",
+      "description": "즉시 위치 변경"
+    },
+    "wander": {
+      "label": "배회",
+      "description": "랜덤 방향으로 이동"
+    },
+    "bounce": {
+      "label": "바운스",
+      "description": "튀는 움직임"
+    },
+    "orbit": {
+      "label": "공전",
+      "description": "원형 경로로 이동"
+    },
+    "approach": {
+      "label": "추적",
+      "description": "다른 오브젝트에 접근"
+    }
+  },
+  "effects": {
+    "flash": {
+      "label": "플래시",
+      "description": "화면/오브젝트 깜빡임"
+    },
+    "shake": {
+      "label": "흔들림",
+      "description": "진동 효과"
+    },
+    "scale": {
+      "label": "크기 조절",
+      "description": "크기 변경 효과"
+    },
+    "rotate": {
+      "label": "회전",
+      "description": "회전 효과"
+    },
+    "fade": {
+      "label": "페이드",
+      "description": "페이드 인/아웃"
+    },
+    "particles": {
+      "label": "파티클",
+      "description": "파티클 방출"
+    }
+  },
+  "positions": {
+    "center": "중앙",
+    "top": "상단",
+    "bottom": "하단",
+    "left": "좌측",
+    "right": "우측",
+    "corners": "모서리"
+  },
+  "speeds": {
+    "slow": {
+      "label": "느림",
+      "description": "100px/초"
+    },
+    "normal": {
+      "label": "보통",
+      "description": "300px/초"
+    },
+    "fast": {
+      "label": "빠름",
+      "description": "600px/초"
+    },
+    "instant": {
+      "label": "즉시",
+      "description": "즉각"
+    }
+  },
+  "durations": {
+    "5": {
+      "label": "5초",
+      "description": "빠른"
+    },
+    "10": {
+      "label": "10초",
+      "description": "표준"
+    },
+    "15": {
+      "label": "15초",
+      "description": "연장"
+    },
+    "30": {
+      "label": "30초",
+      "description": "긴"
+    }
+  },
+  "difficulties": {
+    "easy": {
+      "label": "쉬움",
+      "description": "모두가 즐길 수 있는"
+    },
+    "normal": {
+      "label": "보통",
+      "description": "균형 잡힌 도전"
+    },
+    "hard": {
+      "label": "어려움",
+      "description": "전문가용"
+    }
+  },
+  "gameFeed": {
+    "trending": "트렌드",
+    "following": "팔로잉",
+    "recommended": "추천",
+    "random": "랜덤",
+    "premium": "프리미엄",
+    "newGames": "신규 게임",
+    "popular": "인기",
+    "play": "플레이",
+    "like": "좋아요",
+    "share": "공유",
+    "views": "회 플레이",
+    "likes": "좋아요"
+  },
+  "monetization": {
+    "premium": "프리미엄",
+    "subscribe": "구독",
+    "freeTier": "무료 플랜",
+    "proPlan": "프로 플랜",
+    "premiumPlan": "프리미엄 플랜",
+    "monthlyPrice": "월간",
+    "yearlyPrice": "연간",
+    "features": "기능",
+    "upgrade": "업그레이드",
+    "currentPlan": "현재 플랜",
+    "cancelSubscription": "구독 취소",
+    "paymentSuccess": "결제 완료",
+    "paymentFailed": "결제 실패"
+  },
+  "profile": {
+    "title": "프로필",
+    "myGames": "내 게임",
+    "favorites": "즐겨찾기",
+    "followers": "팔로워",
+    "following": "팔로잉",
+    "editProfile": "프로필 편집",
+    "bio": "소개",
+    "gamesCreated": "만든 게임",
+    "totalPlays": "총 플레이"
+  },
+  "game": {
+    "start": "시작",
+    "pause": "일시정지",
+    "resume": "재개",
+    "restart": "재시작",
+    "quit": "종료",
+    "success": "클리어!",
+    "failure": "게임 오버",
+    "score": "점수",
+    "time": "시간",
+    "bestScore": "최고 점수"
+  }
+}

@@ -2,6 +2,7 @@
 // モダンなゲームフィード画面 - 完全インラインスタイル版
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SocialService } from '../social/services/SocialService';
 import { PublicGame } from '../social/types/SocialTypes';
 import { supabase } from '../lib/supabase';
@@ -20,16 +21,19 @@ interface FeedSection {
 }
 
 export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
+  // ==================== i18n ====================
+  const { t } = useTranslation();
+
   // ==================== 状態管理 ====================
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sections, setSections] = useState<FeedSection[]>([
-    { id: 'trending', title: 'トレンド', icon: '🔥', games: [], loading: true },
-    { id: 'following', title: 'フォロー中', icon: '👥', games: [], loading: true },
-    { id: 'tags', title: 'おすすめ', icon: '✨', games: [], loading: true },
-    { id: 'random', title: 'ランダム', icon: '🎲', games: [], loading: true },
-    { id: 'premium', title: 'プレミアム', icon: '💎', games: [], loading: true }
+    { id: 'trending', title: t('gameFeed.trending'), icon: '🔥', games: [], loading: true },
+    { id: 'following', title: t('gameFeed.following'), icon: '👥', games: [], loading: true },
+    { id: 'tags', title: t('gameFeed.recommended'), icon: '✨', games: [], loading: true },
+    { id: 'random', title: t('gameFeed.random'), icon: '🎲', games: [], loading: true },
+    { id: 'premium', title: t('gameFeed.premium'), icon: '💎', games: [], loading: true }
   ]);
-  const [selectedSection, setSelectedSection] = useState<string>('tags'); // デフォルトは「おすすめ」
+  const [selectedSection, setSelectedSection] = useState<string>('tags');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // ==================== サービス ====================
@@ -363,9 +367,9 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       <header style={styles.header}>
         <div style={styles.headerContent}>
           <button onClick={onBack} style={styles.backButton}>
-            ← 戻る
+            ← {t('common.back')}
           </button>
-          <h1 style={styles.title}>ゲームフィード</h1>
+          <h1 style={styles.title}>{t('gameFeed.newGames')}</h1>
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
@@ -374,7 +378,7 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
               opacity: isRefreshing ? 0.5 : 1
             }}
           >
-            {isRefreshing ? '更新中...' : '🔄 更新'}
+            {isRefreshing ? t('common.loading') : `🔄 ${t('common.retry')}`}
           </button>
         </div>
       </header>
@@ -411,7 +415,7 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
           {selectedSection === 'premium' && (
             <div style={styles.empty}>
               <div style={styles.emptyIcon}>💎</div>
-              <div style={styles.emptyTitle}>プレミアムゲーム</div>
+              <div style={styles.emptyTitle}>{t('gameFeed.premium')}</div>
               <p style={styles.emptyText}>Coming Soon...</p>
             </div>
           )}
@@ -422,20 +426,20 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
               {currentSection.loading ? (
                 <div style={styles.loading}>
                   <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
-                  <p>読み込み中...</p>
+                  <p>{t('common.loading')}</p>
                 </div>
               ) : currentSection.games.length === 0 ? (
                 <div style={styles.empty}>
                   <div style={styles.emptyIcon}>{currentSection.icon}</div>
                   <div style={styles.emptyTitle}>
                     {currentSection.id === 'following' && !currentUser
-                      ? 'ログインが必要です'
-                      : 'ゲームがありません'}
+                      ? t('auth.loginTitle')
+                      : t('gameFeed.newGames')}
                   </div>
                   <p style={styles.emptyText}>
                     {currentSection.id === 'following' && !currentUser
-                      ? 'フォロー中のユーザーのゲームを見るにはログインしてください'
-                      : '新しいゲームが投稿されるまでお待ちください'}
+                      ? t('auth.dontHaveAccount')
+                      : t('common.loading')}
                   </p>
                 </div>
               ) : (

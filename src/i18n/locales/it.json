@@ -1,0 +1,366 @@
+{
+  "common": {
+    "loading": "Caricamento...",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "create": "Crea",
+    "confirm": "Conferma",
+    "close": "Chiudi",
+    "back": "Indietro",
+    "next": "Avanti",
+    "done": "Fatto",
+    "retry": "Riprova",
+    "search": "Cerca",
+    "settings": "Impostazioni",
+    "help": "Aiuto",
+    "logout": "Esci",
+    "login": "Accedi",
+    "signup": "Registrati"
+  },
+  "errors": {
+    "generic": "Si è verificato un errore imprevisto",
+    "network": "Si è verificato un errore di rete",
+    "projectNotFound": "Progetto non trovato",
+    "projectLoadFailed": "Impossibile caricare il progetto",
+    "projectSaveFailed": "Impossibile salvare il progetto",
+    "fileTooLarge": "Dimensione file supera il limite",
+    "invalidFileType": "Formato file non supportato",
+    "fileUploadFailed": "Impossibile caricare il file",
+    "gameNameRequired": "Inserisci un nome per il gioco",
+    "gameNameTooLong": "Il nome del gioco deve essere di 50 caratteri o meno",
+    "descriptionTooLong": "La descrizione deve essere di 200 caratteri o meno",
+    "noAssets": "Aggiungi almeno un oggetto o sfondo",
+    "noRules": "Imposta le regole del gioco o le condizioni di vittoria",
+    "publishFailed": "Impossibile pubblicare il gioco",
+    "exportFailed": "Impossibile esportare",
+    "testPlayFailed": "Test fallito",
+    "projectSizeExceeded": "Dimensione progetto supera il limite",
+    "assetLimitExceeded": "Numero di asset supera il limite"
+  },
+  "success": {
+    "projectSaved": "Progetto salvato",
+    "projectPublished": "Gioco pubblicato",
+    "projectExported": "Progetto esportato",
+    "fileUploaded": "File caricato",
+    "testPlaySuccess": "Test riuscito",
+    "thumbnailGenerated": "Miniatura generata"
+  },
+  "auth": {
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Conferma password",
+    "username": "Nome utente",
+    "loginTitle": "Accedi",
+    "signupTitle": "Registrati",
+    "forgotPassword": "Password dimenticata?",
+    "alreadyHaveAccount": "Hai già un account?",
+    "dontHaveAccount": "Non hai un account?",
+    "invalidCredentials": "Email o password non validi",
+    "emailNotConfirmed": "Email non confermata",
+    "passwordTooShort": "La password deve essere di almeno 6 caratteri",
+    "emailAlreadyExists": "Questa email è già in uso",
+    "invalidEmail": "Inserisci un indirizzo email valido",
+    "accountCreated": "Account creato",
+    "loginSuccess": "Accesso effettuato",
+    "logoutSuccess": "Disconnessione effettuata"
+  },
+  "editor": {
+    "tabs": {
+      "assets": "Asset",
+      "script": "Regole",
+      "settings": "Pubblica"
+    },
+    "assets": {
+      "title": "Gestione asset",
+      "background": "Sfondo",
+      "objects": "Oggetti",
+      "audio": "Audio",
+      "text": "Testo",
+      "addBackground": "Aggiungi sfondo",
+      "addObject": "Aggiungi oggetto",
+      "addAudio": "Aggiungi audio",
+      "addText": "Aggiungi testo",
+      "bgm": "Musica",
+      "se": "Effetti sonori"
+    },
+    "script": {
+      "title": "Impostazioni regole",
+      "addRule": "Aggiungi regola",
+      "editRule": "Modifica regola",
+      "condition": "Condizione",
+      "action": "Azione",
+      "when": "Quando",
+      "then": "Allora"
+    },
+    "settings": {
+      "title": "Impostazioni pubblicazione",
+      "gameName": "Nome gioco",
+      "description": "Descrizione",
+      "duration": "Limite tempo",
+      "difficulty": "Difficoltà",
+      "visibility": "Visibilità",
+      "public": "Pubblico",
+      "unlisted": "Non elencato",
+      "private": "Privato",
+      "publish": "Pubblica",
+      "testPlay": "Prova"
+    },
+    "preview": "Anteprima"
+  },
+  "conditions": {
+    "touch": {
+      "label": "Al tocco",
+      "description": "Si attiva quando l'oggetto viene toccato"
+    },
+    "time": {
+      "label": "Tempo trascorso",
+      "description": "Si attiva dopo un tempo specificato"
+    },
+    "position": {
+      "label": "Alla posizione",
+      "description": "Entrando/uscendo da un'area specificata"
+    },
+    "collision": {
+      "label": "Alla collisione",
+      "description": "In caso di collisione con un altro oggetto"
+    },
+    "animation": {
+      "label": "Fine animazione",
+      "description": "Quando l'animazione termina"
+    },
+    "flag": {
+      "label": "Flag attivo",
+      "description": "Controlla lo stato del flag personalizzato"
+    },
+    "gameState": {
+      "label": "Stato gioco",
+      "description": "Controlla lo stato generale del gioco"
+    },
+    "score": {
+      "label": "Condizione punteggio",
+      "description": "Quando il punteggio raggiunge un valore specifico"
+    }
+  },
+  "actions": {
+    "success": {
+      "label": "Vittoria!",
+      "description": "Termina il gioco con successo"
+    },
+    "failure": {
+      "label": "Game Over",
+      "description": "Termina il gioco con fallimento"
+    },
+    "pause": {
+      "label": "Pausa",
+      "description": "Metti in pausa il gioco"
+    },
+    "restart": {
+      "label": "Riavvia",
+      "description": "Riavvia il gioco"
+    },
+    "playSound": {
+      "label": "Riproduci suono",
+      "description": "Riproduci effetto sonoro"
+    },
+    "playBGM": {
+      "label": "Riproduci musica",
+      "description": "Riproduci musica di sottofondo"
+    },
+    "stopSound": {
+      "label": "Ferma suono",
+      "description": "Ferma riproduzione audio"
+    },
+    "move": {
+      "label": "Muovi",
+      "description": "Muovi verso posizione specificata"
+    },
+    "show": {
+      "label": "Mostra",
+      "description": "Mostra oggetto"
+    },
+    "hide": {
+      "label": "Nascondi",
+      "description": "Nascondi oggetto"
+    },
+    "switchAnimation": {
+      "label": "Cambia animazione",
+      "description": "Cambia animazione"
+    },
+    "effect": {
+      "label": "Effetto",
+      "description": "Flash, scuotimento, ecc."
+    },
+    "particles": {
+      "label": "Particelle",
+      "description": "Effetto particelle"
+    },
+    "setFlag": {
+      "label": "Imposta flag",
+      "description": "Attiva/Disattiva flag personalizzato"
+    }
+  },
+  "movements": {
+    "straight": {
+      "label": "Linea retta",
+      "description": "Muovi in linea retta verso la posizione"
+    },
+    "teleport": {
+      "label": "Teletrasporto",
+      "description": "Cambio posizione istantaneo"
+    },
+    "wander": {
+      "label": "Vagare",
+      "description": "Muovi in direzione casuale"
+    },
+    "bounce": {
+      "label": "Rimbalza",
+      "description": "Movimento rimbalzante"
+    },
+    "orbit": {
+      "label": "Orbita",
+      "description": "Muovi in cerchio"
+    },
+    "approach": {
+      "label": "Insegui",
+      "description": "Avvicinati a un altro oggetto"
+    }
+  },
+  "effects": {
+    "flash": {
+      "label": "Flash",
+      "description": "Fai lampeggiare schermo/oggetto"
+    },
+    "shake": {
+      "label": "Scuotimento",
+      "description": "Effetto vibrazione"
+    },
+    "scale": {
+      "label": "Scala",
+      "description": "Effetto cambio dimensione"
+    },
+    "rotate": {
+      "label": "Rotazione",
+      "description": "Effetto rotazione"
+    },
+    "fade": {
+      "label": "Dissolvenza",
+      "description": "Dissolvenza in entrata/uscita"
+    },
+    "particles": {
+      "label": "Particelle",
+      "description": "Emetti particelle"
+    }
+  },
+  "positions": {
+    "center": "Centro",
+    "top": "Alto",
+    "bottom": "Basso",
+    "left": "Sinistra",
+    "right": "Destra",
+    "corners": "Angoli"
+  },
+  "speeds": {
+    "slow": {
+      "label": "Lento",
+      "description": "100px/sec"
+    },
+    "normal": {
+      "label": "Normale",
+      "description": "300px/sec"
+    },
+    "fast": {
+      "label": "Veloce",
+      "description": "600px/sec"
+    },
+    "instant": {
+      "label": "Istantaneo",
+      "description": "Immediato"
+    }
+  },
+  "durations": {
+    "5": {
+      "label": "5 sec",
+      "description": "Veloce"
+    },
+    "10": {
+      "label": "10 sec",
+      "description": "Standard"
+    },
+    "15": {
+      "label": "15 sec",
+      "description": "Esteso"
+    },
+    "30": {
+      "label": "30 sec",
+      "description": "Lungo"
+    }
+  },
+  "difficulties": {
+    "easy": {
+      "label": "Facile",
+      "description": "Divertente per tutti"
+    },
+    "normal": {
+      "label": "Normale",
+      "description": "Sfida bilanciata"
+    },
+    "hard": {
+      "label": "Difficile",
+      "description": "Per esperti"
+    }
+  },
+  "gameFeed": {
+    "trending": "Tendenze",
+    "following": "Seguiti",
+    "recommended": "Consigliati",
+    "random": "Casuale",
+    "premium": "Premium",
+    "newGames": "Nuovi giochi",
+    "popular": "Popolare",
+    "play": "Gioca",
+    "like": "Mi piace",
+    "share": "Condividi",
+    "views": "partite",
+    "likes": "mi piace"
+  },
+  "monetization": {
+    "premium": "Premium",
+    "subscribe": "Abbonati",
+    "freeTier": "Piano gratuito",
+    "proPlan": "Piano Pro",
+    "premiumPlan": "Piano Premium",
+    "monthlyPrice": "Mensile",
+    "yearlyPrice": "Annuale",
+    "features": "Funzionalità",
+    "upgrade": "Aggiorna",
+    "currentPlan": "Piano attuale",
+    "cancelSubscription": "Annulla abbonamento",
+    "paymentSuccess": "Pagamento completato",
+    "paymentFailed": "Pagamento fallito"
+  },
+  "profile": {
+    "title": "Profilo",
+    "myGames": "I miei giochi",
+    "favorites": "Preferiti",
+    "followers": "Follower",
+    "following": "Seguiti",
+    "editProfile": "Modifica profilo",
+    "bio": "Bio",
+    "gamesCreated": "Giochi creati",
+    "totalPlays": "Partite totali"
+  },
+  "game": {
+    "start": "Inizia",
+    "pause": "Pausa",
+    "resume": "Riprendi",
+    "restart": "Riavvia",
+    "quit": "Esci",
+    "success": "Vittoria!",
+    "failure": "Game Over",
+    "score": "Punteggio",
+    "time": "Tempo",
+    "bestScore": "Miglior punteggio"
+  }
+}
