@@ -75,7 +75,22 @@
     "tabs": {
       "assets": "アセット",
       "script": "ルール",
-      "settings": "公開"
+      "settings": "公開",
+      "assetsDescription": "画像・音声・テキスト管理",
+      "scriptDescription": "ゲーム動作・条件設定",
+      "settingsDescription": "テストプレイ・公開管理"
+    },
+    "validation": {
+      "warnings": {
+        "addBackgroundOrObjects": "背景またはオブジェクトを追加することをおすすめします",
+        "addAudioRecommended": "音声を追加するとゲームがより楽しくなります",
+        "setGameRules": "ゲームルールを設定してください",
+        "setSuccessConditions": "成功条件を設定してください"
+      },
+      "errors": {
+        "gameNameRequired": "ゲーム名は必須です",
+        "atLeastOneAsset": "公開するには最低1つのアセットが必要です"
+      }
     },
     "app": {
       "loginRequired": "ログインが必要です",
@@ -134,7 +149,25 @@
         "test": "テスト",
         "publish": "公開",
         "update": "更新"
-      }
+      },
+      "testPlay": "テストプレイ",
+      "running": "実行中",
+      "rerun": "再実行",
+      "returnToEditor": "エディターに戻る",
+      "preparingGame": "ゲームを準備中...",
+      "testPlaySuccess": "テストプレイ成功！",
+      "testPlayFailure": "テストプレイ失敗",
+      "myGame": "マイゲーム",
+      "returnToMainLoading": "メイン画面に戻ります...",
+      "copy": "コピー",
+      "copyOf": " のコピー",
+      "deleteFailed": "削除に失敗しました: {error}",
+      "duplicateFailed": "複製に失敗しました: {error}",
+      "exportFailedWithError": "エクスポートに失敗しました: {error}",
+      "backToMainArrow": "← メイン画面に戻る",
+      "loginRequiredTitle": "ログインが必要です",
+      "projectPublishedSuccess": "🚀 ゲームを公開しました！ソーシャルフィードに表示されます",
+      "publishedEmoji": "🚀"
     },
     "selector": {
       "title": "ゲームエディター",

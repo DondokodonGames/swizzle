@@ -292,7 +292,7 @@ const handlePublish = useCallback(async () => {
     // 5. ローカル保存も再実行（データベースIDなど更新された情報を保存）
     await saveProject();
 
-    showNotification('success', '🚀 ゲームを公開しました！ソーシャルフィードに表示されます');
+    showNotification('success', t('editor.app.projectPublishedSuccess'));
     
     console.log('✅ Game published successfully:', {
       projectId: publishedProject.id,
@@ -376,7 +376,7 @@ const handlePublish = useCallback(async () => {
     if (onClose) {
       onClose();
     } else {
-      showNotification('info', 'メイン画面に戻ります...');
+      showNotification('info', t('editor.app.returnToMainLoading'));
       setTimeout(() => {
         window.location.reload();
       }, 1000);
@@ -387,21 +387,21 @@ const handlePublish = useCallback(async () => {
   const handleProjectDelete = useCallback(async (projectId: string) => {
     try {
       await deleteProject(projectId);
-      showNotification('success', 'プロジェクトを削除しました');
+      showNotification('success', t('editor.app.projectDeleted'));
     } catch (error: any) {
-      showNotification('error', `削除に失敗しました: ${error.message}`);
+      showNotification('error', t('editor.app.deleteFailed', { error: error.message }));
     }
   }, [deleteProject, showNotification]);
 
   // プロジェクト複製
   const handleProjectDuplicate = useCallback(async (projectId: string) => {
     try {
-      const originalProject = currentProject || { name: 'コピー' } as GameProject;
-      const newName = `${originalProject.name} のコピー`;
+      const originalProject = currentProject || { name: t('editor.app.copy') } as GameProject;
+      const newName = `${originalProject.name}${t('editor.app.copyOf')}`;
       const duplicated = await duplicateProject(projectId, newName);
-      showNotification('success', `「${duplicated.name}」を作成しました`);
+      showNotification('success', t('editor.app.projectDuplicated', { name: duplicated.name }));
     } catch (error: any) {
-      showNotification('error', `複製に失敗しました: ${error.message}`);
+      showNotification('error', t('editor.app.duplicateFailed', { error: error.message }));
     }
   }, [currentProject, duplicateProject, showNotification]);
 
@@ -435,10 +435,10 @@ const handlePublish = useCallback(async () => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        showNotification('success', 'プロジェクトをエクスポートしました');
+        showNotification('success', t('editor.app.projectExported'));
       }
     } catch (error: any) {
-      showNotification('error', `エクスポートに失敗しました: ${error.message}`);
+      showNotification('error', t('editor.app.exportFailedWithError', { error: error.message }));
     }
   }, [currentProject, showNotification]);
 
@@ -692,7 +692,7 @@ const handlePublish = useCallback(async () => {
                   marginBottom: DESIGN_TOKENS.spacing[4]
                 }}
               >
-                ログインが必要です
+                {t('editor.app.loginRequiredTitle')}
               </h2>
 
               {/* 説明 */}
@@ -704,9 +704,9 @@ const handlePublish = useCallback(async () => {
                   lineHeight: '1.6'
                 }}
               >
-                ゲームエディターを使用するには、アカウントの登録またはログインが必要です。
+                {t('editor.app.loginRequiredMessage')}
                 <br />
-                無料でアカウントを作成して、すぐにゲーム制作を始めましょう！
+                {t('editor.app.loginPrompt')}
               </p>
 
               {/* 機能リスト */}
@@ -721,10 +721,10 @@ const handlePublish = useCallback(async () => {
               >
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
                   {[
-                    'ゲームプロジェクトの作成・保存',
-                    'クラウドストレージで自動保存',
-                    'ゲームの公開・共有',
-                    'コミュニティへの参加'
+                    t('editor.app.features.createProjects'),
+                    t('editor.app.features.cloudStorage'),
+                    t('editor.app.features.publishGames'),
+                    t('editor.app.features.joinCommunity')
                   ].map((feature, index) => (
                     <li
                       key={index}
@@ -779,7 +779,7 @@ const handlePublish = useCallback(async () => {
                   }}
                   style={{ flex: 1 }}
                 >
-                  無料で登録
+                  {t('editor.app.freeSignup')}
                 </ModernButton>
                 <ModernButton
                   variant="secondary"
@@ -791,7 +791,7 @@ const handlePublish = useCallback(async () => {
                   }}
                   style={{ flex: 1 }}
                 >
-                  ログイン
+                  {t('common.login')}
                 </ModernButton>
               </div>
 
@@ -803,7 +803,7 @@ const handlePublish = useCallback(async () => {
                     size="sm"
                     onClick={onClose}
                   >
-                    ← メイン画面に戻る
+                    {t('editor.app.backToMainArrow')}
                   </ModernButton>
                 </div>
               )}
@@ -856,7 +856,7 @@ const handlePublish = useCallback(async () => {
                       gap: DESIGN_TOKENS.spacing[2]
                     }}
                   >
-                    🎮 {currentProject?.settings.name || 'テストプレイ'}
+                    🎮 {currentProject?.settings.name || t('editor.app.testPlay')}
                   </h1>
                   
                   {isTestPlaying && (
@@ -882,7 +882,7 @@ const handlePublish = useCallback(async () => {
                           animation: 'pulse 1.5s ease-in-out infinite'
                         }}
                       />
-                      実行中
+                      {t('editor.app.running')}
                     </div>
                   )}
                 </div>
@@ -895,7 +895,7 @@ const handlePublish = useCallback(async () => {
                     onClick={handleTestPlay}
                     disabled={isTestPlaying}
                   >
-                    再実行
+                    {t('editor.app.rerun')}
                   </ModernButton>
                   
                   <ModernButton
@@ -904,7 +904,7 @@ const handlePublish = useCallback(async () => {
                     icon="←"
                     onClick={handleTestPlayEnd}
                   >
-                    エディターに戻る
+                    {t('editor.app.returnToEditor')}
                   </ModernButton>
                 </div>
               </div>
@@ -939,7 +939,7 @@ const handlePublish = useCallback(async () => {
               {!isTestPlaying && !testPlayResult && (
                 <div style={{ textAlign: 'center', color: DESIGN_TOKENS.colors.neutral[400] }}>
                   <div style={{ fontSize: '4rem', marginBottom: DESIGN_TOKENS.spacing[4] }}>🎮</div>
-                  <p>ゲームを準備中...</p>
+                  <p>{t('editor.app.preparingGame')}</p>
                 </div>
               )}
             </div>
@@ -972,7 +972,7 @@ const handlePublish = useCallback(async () => {
                       marginBottom: DESIGN_TOKENS.spacing[3]
                     }}
                   >
-                    {testPlayResult.success ? 'テストプレイ成功！' : 'テストプレイ失敗'}
+                    {testPlayResult.success ? t('editor.app.testPlaySuccess') : t('editor.app.testPlayFailure')}
                   </h3>
                   
                   {testPlayResult.success && (
@@ -1158,7 +1158,7 @@ const handlePublish = useCallback(async () => {
                         margin: 0
                       }}
                     >
-                      {currentProject.name || currentProject.settings.name || 'マイゲーム'}
+                      {currentProject.name || currentProject.settings.name || t('editor.app.myGame')}
                     </h1>
                   </div>
 
@@ -1187,7 +1187,7 @@ const handlePublish = useCallback(async () => {
                             borderRadius: '50%'
                           }}
                         />
-                        未ログイン
+                        {t('editor.app.status.notLoggedIn')}
                       </div>
                     )}
 
@@ -1213,7 +1213,7 @@ const handlePublish = useCallback(async () => {
                             borderRadius: '50%'
                           }}
                         />
-                        未保存
+                        {t('editor.app.status.unsaved')}
                       </div>
                     )}
                     
@@ -1239,7 +1239,7 @@ const handlePublish = useCallback(async () => {
                             borderRadius: '50%'
                           }}
                         />
-                        公開中
+                        {t('editor.app.status.published')}
                       </div>
                     )}
                   </div>
@@ -1266,7 +1266,7 @@ const handlePublish = useCallback(async () => {
                     onClick={handleSave}
                     disabled={!hasUnsavedChanges}
                   >
-                    保存
+                    {t('editor.app.buttons.save')}
                   </ModernButton>
                   
                   <ModernButton
@@ -1276,7 +1276,7 @@ const handlePublish = useCallback(async () => {
                     onClick={handleTestPlay}
                     disabled={isTestPlaying}
                   >
-                    テスト
+                    {t('editor.app.buttons.test')}
                   </ModernButton>
                   
                   <ModernButton
@@ -1285,9 +1285,9 @@ const handlePublish = useCallback(async () => {
                     icon="🚀"
                     onClick={handlePublish}
                     disabled={!user} // 🔧 修正: user を使用
-                    title={!user ? 'ログインが必要です' : ''}
+                    title={!user ? t('editor.app.loginRequired') : ''}
                   >
-                    公開
+                    {t('editor.app.buttons.publish')}
                   </ModernButton>
                 </div>
               </div>
@@ -1301,7 +1301,7 @@ const handlePublish = useCallback(async () => {
             onSave={handleSave}
             onPublish={handlePublish}
             onTestPlay={handleTestPlay}
-            tabs={getProgressTabConfig(currentProject)}
+            tabs={getProgressTabConfig(currentProject, t)}
           />
         </div>
       ) : (

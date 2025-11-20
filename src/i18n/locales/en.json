@@ -75,7 +75,22 @@
     "tabs": {
       "assets": "Assets",
       "script": "Rules",
-      "settings": "Publish"
+      "settings": "Publish",
+      "assetsDescription": "Image, Audio, Text Management",
+      "scriptDescription": "Game Logic & Conditions",
+      "settingsDescription": "Test Play & Publishing"
+    },
+    "validation": {
+      "warnings": {
+        "addBackgroundOrObjects": "We recommend adding a background or objects",
+        "addAudioRecommended": "Adding audio makes the game more fun",
+        "setGameRules": "Please set game rules",
+        "setSuccessConditions": "Please set success conditions"
+      },
+      "errors": {
+        "gameNameRequired": "Game name is required",
+        "atLeastOneAsset": "At least one asset is required to publish"
+      }
     },
     "app": {
       "loginRequired": "Login Required",
@@ -134,7 +149,25 @@
         "test": "Test",
         "publish": "Publish",
         "update": "Update"
-      }
+      },
+      "testPlay": "Test Play",
+      "running": "Running",
+      "rerun": "Rerun",
+      "returnToEditor": "Return to Editor",
+      "preparingGame": "Preparing game...",
+      "testPlaySuccess": "Test Play Success!",
+      "testPlayFailure": "Test Play Failed",
+      "myGame": "My Game",
+      "returnToMainLoading": "Returning to main screen...",
+      "copy": "Copy",
+      "copyOf": " Copy",
+      "deleteFailed": "Delete failed: {error}",
+      "duplicateFailed": "Duplicate failed: {error}",
+      "exportFailedWithError": "Export failed: {error}",
+      "backToMainArrow": "← Back to Main",
+      "loginRequiredTitle": "Login Required",
+      "projectPublishedSuccess": "🚀 Game published! It will appear in the social feed",
+      "publishedEmoji": "🚀"
     },
     "selector": {
       "title": "Game Editor",

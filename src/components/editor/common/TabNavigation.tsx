@@ -1,4 +1,5 @@
 import React from 'react';
+import { TFunction } from 'i18next';
 import { GameProject } from '../../../types/editor/GameProject';
 
 // 🔧 修正: エディタータブ型定義（3タブ統合）
@@ -15,34 +16,59 @@ export interface TabConfig {
   progress?: number; // 0-100 完成度
 }
 
-// 🔧 修正: デフォルトタブ設定（3タブ統合）
-export const DEFAULT_EDITOR_TABS: TabConfig[] = [
+// 🔧 修正: デフォルトタブ設定（3タブ統合・多言語化対応）
+export const getDefaultEditorTabs = (t: TFunction): TabConfig[] => [
   {
     id: 'assets',
-    label: 'アセット',
+    label: t('editor.tabs.assets'),
     icon: '🎨',
-    description: '画像・音声・テキスト管理',
+    description: t('editor.tabs.assetsDescription'),
     progress: 0
   },
   {
     id: 'script',
-    label: 'ルール',
+    label: t('editor.tabs.script'),
     icon: '⚙️',
-    description: 'ゲーム動作・条件設定',
+    description: t('editor.tabs.scriptDescription'),
     progress: 0
   },
   {
     id: 'settings',
-    label: '公開',
+    label: t('editor.tabs.settings'),
     icon: '🚀',
-    description: 'テストプレイ・公開管理',
+    description: t('editor.tabs.settingsDescription'),
     progress: 0
   }
 ];
 
-// 🔧 修正: プロジェクトの進捗を反映したタブ設定生成（3タブ統合 + audio安全アクセス対応）
-export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
-  if (!project) return DEFAULT_EDITOR_TABS;
+// 後方互換性のため、デフォルト値を保持（非推奨）
+export const DEFAULT_EDITOR_TABS: TabConfig[] = [
+  {
+    id: 'assets',
+    label: 'Assets',
+    icon: '🎨',
+    description: 'Image, Audio, Text Management',
+    progress: 0
+  },
+  {
+    id: 'script',
+    label: 'Rules',
+    icon: '⚙️',
+    description: 'Game Logic & Conditions',
+    progress: 0
+  },
+  {
+    id: 'settings',
+    label: 'Publish',
+    icon: '🚀',
+    description: 'Test Play & Publishing',
+    progress: 0
+  }
+];
+
+// 🔧 修正: プロジェクトの進捗を反映したタブ設定生成（3タブ統合 + audio安全アクセス対応 + 多言語化対応）
+export const getProgressTabConfig = (project: GameProject, t: TFunction): TabConfig[] => {
+  if (!project) return getDefaultEditorTabs(t);
 
   // 🔧 修正: アセット進捗計算（音声を含む統合版 + 安全アクセス）
   const calculateAssetsProgress = () => {
@@ -97,40 +123,40 @@ export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
   return [
     {
       id: 'assets',
-      label: 'アセット',
+      label: t('editor.tabs.assets'),
       icon: '🎨',
-      description: '画像・音声・テキスト管理',
+      description: t('editor.tabs.assetsDescription'),
       // 🔧 修正: badge計算（オプショナルチェーン使用）
       badge: (
-        project.assets.objects.length + 
-        (project.assets.background ? 1 : 0) + 
+        project.assets.objects.length +
+        (project.assets.background ? 1 : 0) +
         project.assets.texts.length +
-        (project.assets.audio?.bgm ? 1 : 0) + 
+        (project.assets.audio?.bgm ? 1 : 0) +
         (project.assets.audio?.se?.length || 0)
       ) || undefined,
       progress: calculateAssetsProgress()
     },
     {
       id: 'script',
-      label: 'ルール',
+      label: t('editor.tabs.script'),
       icon: '⚙️',
-      description: 'ゲーム動作・条件設定',
+      description: t('editor.tabs.scriptDescription'),
       badge: project.script?.rules?.length || undefined,
       progress: calculateScriptProgress()
     },
     {
       id: 'settings',
-      label: '公開',
+      label: t('editor.tabs.settings'),
       icon: '🚀',
-      description: 'テストプレイ・公開管理',
+      description: t('editor.tabs.settingsDescription'),
       badge: project.settings.publishing?.isPublished ? '✓' : undefined,
       progress: calculateSettingsProgress()
     }
   ];
 };
 
-// 🔧 修正: タブナビゲーション判定ヘルパー（3タブ対応 + audio安全アクセス対応）
-export const getTabValidationStatus = (project: GameProject, tabId: EditorTab): {
+// 🔧 修正: タブナビゲーション判定ヘルパー（3タブ対応 + audio安全アクセス対応 + 多言語化対応）
+export const getTabValidationStatus = (project: GameProject, tabId: EditorTab, t: TFunction): {
   canNavigate: boolean;
   warnings: string[];
   errors: string[];
@@ -141,31 +167,31 @@ export const getTabValidationStatus = (project: GameProject, tabId: EditorTab): 
   switch (tabId) {
     case 'assets':
       if (!project.assets.background && project.assets.objects.length === 0) {
-        warnings.push('背景またはオブジェクトを追加することをおすすめします');
+        warnings.push(t('editor.validation.warnings.addBackgroundOrObjects'));
       }
       // 🔧 修正: audio チェック（オプショナルチェーン使用）
       if (!project.assets.audio?.bgm && (project.assets.audio?.se?.length || 0) === 0) {
-        warnings.push('音声を追加するとゲームがより楽しくなります');
+        warnings.push(t('editor.validation.warnings.addAudioRecommended'));
       }
       break;
-      
+
     // 🔧 削除: audioケース（assetsに統合）
-      
+
     case 'script':
       if (project.script.rules.length === 0) {
-        warnings.push('ゲームルールを設定してください');
+        warnings.push(t('editor.validation.warnings.setGameRules'));
       }
       if (project.script.successConditions.length === 0) {
-        warnings.push('成功条件を設定してください');
+        warnings.push(t('editor.validation.warnings.setSuccessConditions'));
       }
       break;
-      
+
     case 'settings':
       if (!project.settings.name?.trim()) {
-        errors.push('ゲーム名は必須です');
+        errors.push(t('editor.validation.errors.gameNameRequired'));
       }
       if (project.assets.objects.length === 0 && !project.assets.background) {
-        errors.push('公開するには最低1つのアセットが必要です');
+        errors.push(t('editor.validation.errors.atLeastOneAsset'));
       }
       break;
   }
