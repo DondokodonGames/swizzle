@@ -94,7 +94,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
             <img
               src={project.assets.background.frames[0]?.dataUrl}
-              alt="背景プレビュー"
+              alt={t('editor.assets.backgroundImage')}
               style={{
                 width: '80px',
                 height: '144px',
