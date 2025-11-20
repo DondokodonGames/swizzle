@@ -31,7 +31,7 @@ i18n
   .init({
     resources,
     fallbackLng: 'en',
-    debug: false,
+    debug: true, // デバッグモードを有効化
 
     interpolation: {
       escapeValue: false, // React already escapes

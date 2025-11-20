@@ -94,7 +94,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // プロフィールの言語設定でi18nを同期
       if (profile?.language) {
-        i18n.changeLanguage(profile.language)
+        console.log('プロフィールから言語を同期:', profile.language)
+        i18n.changeLanguage(profile.language).then(() => {
+          console.log('i18n言語同期完了:', i18n.language)
+        })
       }
 
       return profile
@@ -332,7 +335,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // 言語設定が更新された場合、i18nを同期
       if (updates.language && updates.language !== state.profile.language) {
-        i18n.changeLanguage(updates.language)
+        console.log('プロフィール更新で言語を変更:', updates.language)
+        i18n.changeLanguage(updates.language).then(() => {
+          console.log('i18n言語変更完了:', i18n.language)
+        })
       }
 
       setState(prev => ({

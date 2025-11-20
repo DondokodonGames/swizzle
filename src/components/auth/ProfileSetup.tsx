@@ -206,7 +206,10 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
 
     // 言語設定が変更された場合、i18nの言語も切り替える
     if (name === 'language') {
-      i18n.changeLanguage(value)
+      console.log('言語変更:', value)
+      i18n.changeLanguage(value).then(() => {
+        console.log('i18n言語切り替え完了:', i18n.language)
+      })
     }
 
     if (validationErrors[name]) {
