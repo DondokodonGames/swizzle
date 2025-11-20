@@ -101,36 +101,36 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   const currentGameRef = useRef<string | null>(null);
   const bridgeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ==================== 公開ゲーム取得（最適化版: ランダム1つ読み込み） ====================
+  // ==================== 公開ゲーム取得（高速初期化版: 少数取得→バックグラウンドで残り取得） ====================
   useEffect(() => {
     const fetchInitialGame = async () => {
       setGameState('loading');
       setError(null);
 
       try {
-        console.log('📥 公開ゲームを取得中（最適化版）...');
+        console.log('📥 公開ゲームを高速取得中...');
 
-        // まず全ゲームIDを取得（軽量）
-        const result = await socialService.getPublicGames(
+        // Step 1: まず10件だけ取得して即座に開始
+        const initialResult = await socialService.getPublicGames(
           {
             sortBy: 'latest',
             category: 'all',
             search: undefined
           },
           1,
-          100
+          10
         );
 
-        console.log(`✅ ${result.games.length}件の公開ゲームを取得`);
+        console.log(`✅ 初期ロード: ${initialResult.games.length}件取得`);
 
-        if (result.games.length === 0) {
+        if (initialResult.games.length === 0) {
           setError('公開ゲームがありません。エディターでゲームを作成して公開してください。');
           setGameState('loading');
           return;
         }
 
         // project_dataが存在するゲームのみフィルタ
-        const validGames = result.games.filter(game => {
+        const validGames = initialResult.games.filter(game => {
           if (!game.projectData) {
             console.warn(`⚠️ ゲーム "${game.title}" にproject_dataがありません（ID: ${game.id}）`);
             return false;
@@ -144,9 +144,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           return;
         }
 
-        // 全有効ゲームをキャッシュ
-        setAllValidGames(validGames);
-
         // ランダムに1つのゲームを選択
         const randomIndex = Math.floor(Math.random() * validGames.length);
         const initialGame = validGames[randomIndex];
@@ -156,8 +153,31 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         // 初期ゲームを設定し、使用済みとしてマーク
         setPublicGames([initialGame]);
         setUsedGameIds(new Set([initialGame.id]));
+        setAllValidGames(validGames);
         setCurrentIndex(0);
         setGameState('playing');
+
+        // Step 2: バックグラウンドで残りのゲームを取得
+        if (initialResult.total > 10) {
+          console.log('🔄 バックグラウンドで残りのゲームを取得中...');
+
+          const fullResult = await socialService.getPublicGames(
+            {
+              sortBy: 'latest',
+              category: 'all',
+              search: undefined
+            },
+            1,
+            100
+          );
+
+          const allValidGames = fullResult.games.filter(game => game.projectData);
+
+          if (allValidGames.length > 0) {
+            setAllValidGames(allValidGames);
+            console.log(`✅ バックグラウンド取得完了: ${allValidGames.length}件のゲームをキャッシュ`);
+          }
+        }
 
       } catch (err) {
         console.error('❌ 公開ゲーム取得エラー:', err);
