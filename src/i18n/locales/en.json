@@ -726,6 +726,31 @@
         "noRules": "No rules set",
         "createRule": "Set rules to view preview",
         "emptyMessage": "No rules set"
+      },
+      "gamePreview": {
+        "title": "Game Screen (9:16)",
+        "screenSize": "Screen Size",
+        "background": "Background",
+        "visible": "Visible",
+        "hidden": "Hidden",
+        "objectCount": "Objects",
+        "objects": "",
+        "noObjects": {
+          "title": "Add Objects",
+          "description": "Please add objects in the Assets tab"
+        },
+        "noPlaced": {
+          "title": "Place Objects",
+          "description": "Drag and drop objects from the Assets tab onto this screen to place them"
+        },
+        "hints": {
+          "title": "Tips",
+          "selected": "Selected",
+          "hasRule": "Has Rules",
+          "noRule": "No Rules",
+          "clickToRule": "Click → Set Rule",
+          "dragToMove": "Drag → Move"
+        }
       }
     },
     "settings": {
@@ -1747,6 +1772,10 @@
           "description": "2.0s"
         }
       }
+    },
+    "randomAction": {
+      "label": "Random Action",
+      "description": "Execute random action from multiple options"
     }
   },
   "movements": {

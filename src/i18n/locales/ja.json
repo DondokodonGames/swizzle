@@ -526,6 +526,31 @@
           "selectRange": "時間範囲を選択してください",
           "selectInterval": "間隔時間を選択してください"
         }
+      },
+      "gamePreview": {
+        "title": "ゲーム画面 (9:16)",
+        "screenSize": "画面サイズ",
+        "background": "背景",
+        "visible": "表示",
+        "hidden": "非表示",
+        "objectCount": "オブジェクト",
+        "objects": "個",
+        "noObjects": {
+          "title": "オブジェクトを追加",
+          "description": "Assetsタブでオブジェクトを追加してください"
+        },
+        "noPlaced": {
+          "title": "オブジェクトを配置",
+          "description": "Assetsタブで追加したオブジェクトをこの画面にドラッグ&ドロップして配置してください"
+        },
+        "hints": {
+          "title": "操作ヒント",
+          "selected": "選択中",
+          "hasRule": "ルール設定済み",
+          "noRule": "ルール未設定",
+          "clickToRule": "クリック → ルール設定",
+          "dragToMove": "ドラッグ → 移動"
+        }
       }
     },
     "settings": {
@@ -1549,6 +1574,10 @@
           "description": "2.0秒"
         }
       }
+    },
+    "randomAction": {
+      "label": "ランダムアクション",
+      "description": "複数のアクションからランダムに実行"
     }
   },
   "movements": {
