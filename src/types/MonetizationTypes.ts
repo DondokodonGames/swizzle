@@ -235,12 +235,12 @@ export const MVP_PLAN_CONFIGS: Record<MVPSubscriptionPlan, MVPPlanDetails> = {
     stripePriceId: '',
     stripeYearlyPriceId: '',
     limits: {
-      gamesPerMonth: 5,
+      gamesPerMonth: 3,
       hasAds: true,
       templates: 50,
     },
     features: [
-      '月5ゲーム作成',
+      '月3ゲーム作成',
       '基本テンプレート50種類',
       '基本ゲームエディター',
       'ソーシャル機能',

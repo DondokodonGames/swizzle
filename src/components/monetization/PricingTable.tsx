@@ -18,13 +18,13 @@ const PLAN_FEATURES = {
     { text: 'ゲームをプレイ', included: true },
     { text: 'ソーシャル機能', included: true },
     { text: '広告表示あり', included: true, isNegative: true },
-    { text: 'エディター機能', included: false },
+    { text: '月3ゲームまで作成', included: true },
   ],
   premium: [
     { text: 'ゲームをプレイ', included: true },
     { text: 'ソーシャル機能', included: true },
     { text: '広告非表示', included: true, isHighlight: true },
-    { text: 'エディター機能（月20個まで）', included: true, isHighlight: true },
+    { text: '無制限ゲーム作成', included: true, isHighlight: true },
   ],
 };
 
