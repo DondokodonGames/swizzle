@@ -87,8 +87,6 @@ export const getProgressTabConfig = (project: GameProject): TabConfig[] => {
 
     // 時間設定があれば25%
     if (project.settings?.duration?.type === 'fixed' && project.settings?.duration?.seconds) progress += 25;
-    // タイマー設定もチェック（別形式）
-    if (project.settings?.timer?.enabled && project.settings?.timer?.duration) progress += 25;
 
     // 公開設定が完了していれば25%
     if (project.settings?.publishing?.isPublished) progress += 25;

@@ -10,6 +10,9 @@ import { DragDropZone, FileProcessingResult } from '../../../../ui/DragDropZone'
 import { useAssetUpload } from '../../../../../hooks/editor/useAssetUpload';
 import { useNotification } from '../../../../../hooks/editor/useNotification';
 
+// Type guard for color background
+type ColorBackground = { type: 'color'; value: string };
+
 interface BackgroundSectionProps {
   project: GameProject;
   onProjectUpdate: (project: GameProject) => void;
@@ -199,7 +202,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
               style={{
                 width: '80px',
                 height: '144px',
-                backgroundColor: (project.assets.background as { type: 'color'; value: string }).value,
+                backgroundColor: (project.assets.background as unknown as ColorBackground).value,
                 borderRadius: DESIGN_TOKENS.borderRadius.md,
                 border: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`
               }}
@@ -222,7 +225,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                   margin: 0
                 }}
               >
-                {(project.assets.background as { type: 'color'; value: string }).value}
+                {(project.assets.background as unknown as ColorBackground).value}
               </p>
             </div>
             <ModernButton

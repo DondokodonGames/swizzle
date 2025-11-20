@@ -739,8 +739,8 @@ function MainApp() {
             <button
               onClick={handleSwitchToSequence}
               style={{
-                backgroundColor: mode === 'sequence' ? '#10b981' : 'white',
-                color: mode === 'sequence' ? 'white' : '#10b981',
+                backgroundColor: 'white',
+                color: '#10b981',
                 border: '2px solid #10b981',
                 borderRadius: '20px',
                 padding: '8px 16px',
@@ -756,8 +756,8 @@ function MainApp() {
             <button
               onClick={handleSwitchToEditor}
               style={{
-                backgroundColor: (mode as string) === 'editor' ? '#ec4899' : 'white',
-                color: (mode as string) === 'editor' ? 'white' : '#ec4899',
+                backgroundColor: 'white',
+                color: '#ec4899',
                 border: '2px solid #ec4899',
                 borderRadius: '20px',
                 padding: '8px 16px',
