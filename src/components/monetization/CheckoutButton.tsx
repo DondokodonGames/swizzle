@@ -122,7 +122,8 @@ export function CheckoutButton({
       {loading && (
         <span className="inline-block mr-2">
           <svg
-            className="animate-spin h-5 w-5 inline-block"
+            className="animate-spin inline-block"
+            style={{ width: '20px', height: '20px' }}
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
