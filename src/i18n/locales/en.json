@@ -1199,6 +1199,26 @@
       "touchToStageWhole": " - Touch on entire stage",
       "touchToStageRegion": " - Touch on stage region ({shape})",
       "touchToObject": " - Touch on specified object"
+    },
+    "showHideAction": {
+      "title": "Show/Hide Action Settings",
+      "actionTypeLabel": "Action Type",
+      "fadeEffectLabel": "Fade Effect",
+      "fadeDuration": "Fade Duration: {seconds}s",
+      "seconds": "{seconds}s",
+      "targetObjectLabel": "Target Object",
+      "targetObjectDefault": "Target Object",
+      "previewButton": "Show/Hide Preview",
+      "previewNotice": "Show/Hide preview feature coming soon",
+      "settingsSummaryTitle": "💡 Settings: ",
+      "object": "\"{target}\" will be ",
+      "show": "shown",
+      "hide": "hidden",
+      "to": "",
+      "fadeInOut": " (fade {fadeType} in {seconds}s)",
+      "fadeIn": "in",
+      "fadeOut": "out",
+      "instant": " (instantly)"
     }
   },
   "conditions": {
@@ -1379,6 +1399,48 @@
         "setOn": "Set flag to ON state",
         "setOff": "Set flag to OFF state",
         "toggle": "Flip from current state (ON⇔OFF)"
+      }
+    },
+    "showHide": {
+      "show": {
+        "label": "Show",
+        "description": "Show the object"
+      },
+      "hide": {
+        "label": "Hide",
+        "description": "Hide the object"
+      },
+      "fade": {
+        "enabled": {
+          "label": "Fade Enabled",
+          "description": "Smoothly show/hide"
+        },
+        "disabled": {
+          "label": "Instant Switch",
+          "description": "Instantly show/hide"
+        }
+      },
+      "duration": {
+        "instant": {
+          "label": "Instant",
+          "description": "0.1s"
+        },
+        "fast": {
+          "label": "Fast",
+          "description": "0.3s"
+        },
+        "normal": {
+          "label": "Normal",
+          "description": "0.5s"
+        },
+        "slow": {
+          "label": "Slow",
+          "description": "1.0s"
+        },
+        "verySlow": {
+          "label": "Very Slow",
+          "description": "2.0s"
+        }
       }
     }
   },

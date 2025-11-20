@@ -1000,6 +1000,26 @@
       "touchToStageWhole": " - ステージ全体へのタッチ",
       "touchToStageRegion": " - ステージ指定範囲へのタッチ（{shape}）",
       "touchToObject": " - 指定オブジェクトへのタッチ"
+    },
+    "showHideAction": {
+      "title": "表示制御詳細設定",
+      "actionTypeLabel": "アクションタイプ",
+      "fadeEffectLabel": "フェード効果",
+      "fadeDuration": "フェード時間: {seconds}秒",
+      "seconds": "{seconds}秒",
+      "targetObjectLabel": "対象オブジェクト",
+      "targetObjectDefault": "対象オブジェクト",
+      "previewButton": "表示制御プレビュー",
+      "previewNotice": "表示制御プレビュー機能は今後実装予定です",
+      "settingsSummaryTitle": "💡 設定内容: ",
+      "object": "「{target}」を",
+      "show": "表示",
+      "hide": "非表示",
+      "to": "に",
+      "fadeInOut": "（{seconds}秒でフェード{fadeType}）",
+      "fadeIn": "イン",
+      "fadeOut": "アウト",
+      "instant": "（即座に切り替え）"
     }
   },
   "conditions": {
@@ -1180,6 +1200,48 @@
         "setOn": "フラグをON状態に設定",
         "setOff": "フラグをOFF状態に設定",
         "toggle": "現在の状態から反転（ON⇔OFF）"
+      }
+    },
+    "showHide": {
+      "show": {
+        "label": "表示",
+        "description": "オブジェクトを表示する"
+      },
+      "hide": {
+        "label": "非表示",
+        "description": "オブジェクトを非表示にする"
+      },
+      "fade": {
+        "enabled": {
+          "label": "フェード有効",
+          "description": "滑らかに表示/非表示を切り替え"
+        },
+        "disabled": {
+          "label": "即座に切替",
+          "description": "瞬時に表示/非表示を切り替え"
+        }
+      },
+      "duration": {
+        "instant": {
+          "label": "瞬時",
+          "description": "0.1秒"
+        },
+        "fast": {
+          "label": "速い",
+          "description": "0.3秒"
+        },
+        "normal": {
+          "label": "標準",
+          "description": "0.5秒"
+        },
+        "slow": {
+          "label": "遅い",
+          "description": "1.0秒"
+        },
+        "verySlow": {
+          "label": "とても遅い",
+          "description": "2.0秒"
+        }
       }
     }
   },

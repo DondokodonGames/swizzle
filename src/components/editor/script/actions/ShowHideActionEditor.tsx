@@ -2,15 +2,16 @@
 // Phase D Step 2-A-2: 表示制御アクション統合エディター
 // SoundActionEditor.tsx成功パターン完全踏襲
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameAction } from '../../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
-import { 
-  SHOW_HIDE_ACTION_OPTIONS, 
-  FADE_OPTIONS, 
-  DURATION_PRESETS 
+import {
+  getShowHideActionOptions,
+  getFadeOptions,
+  getDurationPresets
 } from '../constants/ShowHideConstants';
 
 interface ShowHideActionEditorProps {
@@ -26,7 +27,13 @@ export const ShowHideActionEditor: React.FC<ShowHideActionEditorProps> = ({
   onUpdate,
   onShowNotification
 }) => {
+  const { t } = useTranslation();
   const showHideAction = action;
+
+  // Get localized options using getter functions that access i18n
+  const SHOW_HIDE_ACTION_OPTIONS = useMemo(() => getShowHideActionOptions(), []);
+  const FADE_OPTIONS = useMemo(() => getFadeOptions(), []);
+  const DURATION_PRESETS = useMemo(() => getDurationPresets(), []);
   
   // show/hide切り替え処理
   const handleActionTypeChange = (newType: 'show' | 'hide') => {
@@ -84,7 +91,7 @@ export const ShowHideActionEditor: React.FC<ShowHideActionEditorProps> = ({
         gap: DESIGN_TOKENS.spacing[2]
       }}>
         <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>👁️</span>
-        表示制御詳細設定
+        {t('editor.showHideAction.title')}
       </h5>
 
       {/* 表示・非表示アクション選択 */}
@@ -96,7 +103,7 @@ export const ShowHideActionEditor: React.FC<ShowHideActionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          アクションタイプ
+          {t('editor.showHideAction.actionTypeLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -144,7 +151,7 @@ export const ShowHideActionEditor: React.FC<ShowHideActionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          フェード効果
+          {t('editor.showHideAction.fadeEffectLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -193,7 +200,7 @@ export const ShowHideActionEditor: React.FC<ShowHideActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            フェード時間: {showHideAction.duration || 0.5}秒
+            {t('editor.showHideAction.fadeDuration', { seconds: showHideAction.duration || 0.5 })}
           </label>
           <input
             type="range"
@@ -218,8 +225,8 @@ export const ShowHideActionEditor: React.FC<ShowHideActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.success[600],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>0.1秒</span>
-            <span>5秒</span>
+            <span>{t('editor.showHideAction.seconds', { seconds: 0.1 })}</span>
+            <span>{t('editor.showHideAction.seconds', { seconds: 5 })}</span>
           </div>
 
           {/* 持続時間プリセットボタン */}
@@ -265,7 +272,7 @@ export const ShowHideActionEditor: React.FC<ShowHideActionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          対象オブジェクト
+          {t('editor.showHideAction.targetObjectLabel')}
         </label>
         <div style={{
           padding: DESIGN_TOKENS.spacing[2],
@@ -275,7 +282,7 @@ export const ShowHideActionEditor: React.FC<ShowHideActionEditorProps> = ({
           color: DESIGN_TOKENS.colors.success[800],
           border: `1px solid ${DESIGN_TOKENS.colors.success[200]}`
         }}>
-          🎯 {showHideAction.targetId || '対象オブジェクト'}
+          🎯 {showHideAction.targetId || t('editor.showHideAction.targetObjectDefault')}
         </div>
       </div>
 
@@ -286,7 +293,7 @@ export const ShowHideActionEditor: React.FC<ShowHideActionEditorProps> = ({
           size="sm"
           onClick={() => {
             // TODO: Phase Dで実装予定
-            onShowNotification('info', '表示制御プレビュー機能は今後実装予定です');
+            onShowNotification('info', t('editor.showHideAction.previewNotice'));
           }}
           style={{
             borderColor: DESIGN_TOKENS.colors.success[200],
@@ -299,7 +306,7 @@ export const ShowHideActionEditor: React.FC<ShowHideActionEditorProps> = ({
           }}
         >
           <span>👁️</span>
-          <span>表示制御プレビュー</span>
+          <span>{t('editor.showHideAction.previewButton')}</span>
         </ModernButton>
       </div>
 
@@ -311,12 +318,16 @@ export const ShowHideActionEditor: React.FC<ShowHideActionEditorProps> = ({
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.success[800]
       }}>
-        💡 設定内容: 
-        「{showHideAction.targetId || 'オブジェクト'}」を
-        {showHideAction.type === 'show' ? '表示' : '非表示'}に
-        {getCurrentFade() 
-          ? `（${showHideAction.duration || 0.5}秒でフェード${showHideAction.type === 'show' ? 'イン' : 'アウト'}）`
-          : '（即座に切り替え）'
+        {t('editor.showHideAction.settingsSummaryTitle')}
+        {t('editor.showHideAction.object', { target: showHideAction.targetId || t('editor.showHideAction.targetObjectDefault') })}
+        {showHideAction.type === 'show' ? t('editor.showHideAction.show') : t('editor.showHideAction.hide')}
+        {t('editor.showHideAction.to')}
+        {getCurrentFade()
+          ? t('editor.showHideAction.fadeInOut', {
+              seconds: showHideAction.duration || 0.5,
+              fadeType: showHideAction.type === 'show' ? t('editor.showHideAction.fadeIn') : t('editor.showHideAction.fadeOut')
+            })
+          : t('editor.showHideAction.instant')
         }
       </div>
     </ModernCard>
