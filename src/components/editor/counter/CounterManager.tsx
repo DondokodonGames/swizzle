@@ -599,6 +599,7 @@ interface CounterEditModalProps {
 }
 
 const CounterEditModal: React.FC<CounterEditModalProps> = ({ counter, isNew, onSave, onCancel }) => {
+  const { t } = useTranslation();
   const [editingCounter, setEditingCounter] = useState<GameCounter>({ ...counter });
 
   const handleSave = () => {

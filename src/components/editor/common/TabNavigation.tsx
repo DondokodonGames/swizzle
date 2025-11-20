@@ -1,5 +1,6 @@
 import React from 'react';
 import { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
 
 // 🔧 修正: エディタータブ型定義（3タブ統合）
@@ -217,11 +218,13 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
   onTabChange,
   project
 }) => {
+  const { t } = useTranslation();
+
   return (
     <nav className="flex space-x-1 bg-gray-100 p-1 rounded-xl">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
-        const validation = project ? getTabValidationStatus(project, tab.id) : { canNavigate: true, warnings: [], errors: [] };
+        const validation = project ? getTabValidationStatus(project, tab.id, t) : { canNavigate: true, warnings: [], errors: [] };
         
         return (
           <button
@@ -277,15 +280,15 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
 };
 
 // タブ完成度の総合計算
-export const calculateOverallProgress = (project: GameProject): number => {
-  const tabs = getProgressTabConfig(project);
+export const calculateOverallProgress = (project: GameProject, t: TFunction): number => {
+  const tabs = getProgressTabConfig(project, t);
   const totalProgress = tabs.reduce((sum, tab) => sum + (tab.progress || 0), 0);
   return Math.round(totalProgress / tabs.length);
 };
 
 // 次に推奨するタブの取得
-export const getRecommendedNextTab = (project: GameProject, currentTab: EditorTab): EditorTab | null => {
-  const tabs = getProgressTabConfig(project);
+export const getRecommendedNextTab = (project: GameProject, currentTab: EditorTab, t: TFunction): EditorTab | null => {
+  const tabs = getProgressTabConfig(project, t);
   
   // 現在のタブのインデックス
   const currentIndex = tabs.findIndex(tab => tab.id === currentTab);
