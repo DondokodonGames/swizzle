@@ -329,7 +329,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       const profile = await database.profiles.upsert(updatedProfile)
-      
+
+      // 言語設定が更新された場合、i18nを同期
+      if (updates.language && updates.language !== state.profile.language) {
+        i18n.changeLanguage(updates.language)
+      }
+
       setState(prev => ({
         ...prev,
         profile,

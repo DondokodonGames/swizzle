@@ -14,7 +14,7 @@ interface GameFeedProps {
 
 interface FeedSection {
   id: string;
-  title: string;
+  titleKey: string; // 翻訳キー
   icon: string;
   games: PublicGame[];
   loading: boolean;
@@ -27,11 +27,11 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
   // ==================== 状態管理 ====================
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sections, setSections] = useState<FeedSection[]>([
-    { id: 'trending', title: t('gameFeed.trending'), icon: '🔥', games: [], loading: true },
-    { id: 'following', title: t('gameFeed.following'), icon: '👥', games: [], loading: true },
-    { id: 'tags', title: t('gameFeed.recommended'), icon: '✨', games: [], loading: true },
-    { id: 'random', title: t('gameFeed.random'), icon: '🎲', games: [], loading: true },
-    { id: 'premium', title: t('gameFeed.premium'), icon: '💎', games: [], loading: true }
+    { id: 'trending', titleKey: 'gameFeed.trending', icon: '🔥', games: [], loading: true },
+    { id: 'following', titleKey: 'gameFeed.following', icon: '👥', games: [], loading: true },
+    { id: 'tags', titleKey: 'gameFeed.recommended', icon: '✨', games: [], loading: true },
+    { id: 'random', titleKey: 'gameFeed.random', icon: '🎲', games: [], loading: true },
+    { id: 'premium', titleKey: 'gameFeed.premium', icon: '💎', games: [], loading: true }
   ]);
   const [selectedSection, setSelectedSection] = useState<string>('tags');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -393,7 +393,7 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
               style={styles.tab(selectedSection === section.id)}
             >
               <span>{section.icon}</span>
-              <span>{section.title}</span>
+              <span>{t(section.titleKey)}</span>
               {!section.loading && section.games.length > 0 && (
                 <span style={{
                   fontSize: '12px',
