@@ -1157,6 +1157,27 @@
       "collisionWithStageRegion": " - Collision with stage region ({shape})",
       "collisionWithObject": " - Collision with \"{target}\"",
       "usingDetection": " - Using {method}"
+    },
+    "flagAction": {
+      "title": "Flag Action Settings",
+      "operationTypeLabel": "Operation Type",
+      "targetFlagLabel": "Target Flag",
+      "selectFlagPlaceholder": "Select flag",
+      "flagState": "{name} ({state})",
+      "on": "ON",
+      "off": "OFF",
+      "noFlagsWarning": "No flags created. Please create flags from flag manager in bottom right.",
+      "setValueLabel": "Set Value",
+      "stateChangePredictionLabel": "State Change Prediction",
+      "currentState": "Current: {state}",
+      "afterExecution": "After execution: {state}",
+      "previewButton": "Flag Operation Preview",
+      "previewNotice": "Flag operation preview feature coming soon",
+      "settingsSummaryTitle": "💡 Settings: ",
+      "selectFlag": "Please select a flag",
+      "flagSelected": "Flag \"{name}\" will be ",
+      "setState": "set to {state} state",
+      "toggleState": "flipped from current state (ON⇔OFF)"
     }
   },
   "conditions": {
@@ -1287,6 +1308,31 @@
     "setFlag": {
       "label": "Set Flag",
       "description": "Set custom flag ON/OFF"
+    },
+    "flags": {
+      "setFlag": {
+        "label": "Set Flag",
+        "description": "Set flag to specified state (ON/OFF)"
+      },
+      "toggleFlag": {
+        "label": "Toggle Flag",
+        "description": "Flip flag state (ON⇔OFF)"
+      },
+      "values": {
+        "on": {
+          "label": "ON",
+          "description": "Set flag to ON state"
+        },
+        "off": {
+          "label": "OFF",
+          "description": "Set flag to OFF state"
+        }
+      },
+      "effects": {
+        "setOn": "Set flag to ON state",
+        "setOff": "Set flag to OFF state",
+        "toggle": "Flip from current state (ON⇔OFF)"
+      }
     }
   },
   "movements": {

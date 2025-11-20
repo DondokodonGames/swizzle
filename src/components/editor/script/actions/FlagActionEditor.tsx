@@ -2,15 +2,16 @@
 // Phase D Step 2-B-2: フラグ操作アクション詳細設定コンポーネント
 // SoundActionEditor.tsx成功パターン完全踏襲
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameAction, GameFlag } from '../../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
-import { 
-  FLAG_ACTION_OPTIONS, 
-  FLAG_VALUE_OPTIONS,
-  FLAG_OPERATION_EFFECTS
+import {
+  getFlagActionOptions,
+  getFlagValueOptions,
+  getFlagOperationEffects
 } from '../constants/FlagConstants';
 
 interface FlagActionEditorProps {
@@ -28,9 +29,14 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
   onUpdate,
   onShowNotification
 }) => {
+  const { t } = useTranslation();
   const flagAction = action;
-  
-  // アクションタイプ切り替え処理
+
+  // Get localized options using getter functions that access i18n
+  const FLAG_ACTION_OPTIONS = useMemo(() => getFlagActionOptions(), []);
+  const FLAG_VALUE_OPTIONS = useMemo(() => getFlagValueOptions(), []);
+
+  // Action type switching handler
   const handleActionTypeChange = (newType: 'setFlag' | 'toggleFlag') => {
     if (newType === 'setFlag') {
       onUpdate(index, {
@@ -88,10 +94,10 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
         gap: DESIGN_TOKENS.spacing[2]
       }}>
         <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🚩</span>
-        フラグ操作詳細設定
+        {t('editor.flagAction.title')}
       </h5>
 
-      {/* フラグ操作タイプ選択 */}
+      {/* Flag action type selection */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <label style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -100,7 +106,7 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          操作タイプ
+          {t('editor.flagAction.operationTypeLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -139,7 +145,7 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
         </div>
       </div>
 
-      {/* 対象フラグ選択 */}
+      {/* Target flag selection */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <label style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -148,7 +154,7 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          対象フラグ
+          {t('editor.flagAction.targetFlagLabel')}
         </label>
         <select
           value={flagAction.flagId}
@@ -163,15 +169,18 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
             outline: 'none'
           }}
         >
-          <option value="">フラグを選択</option>
+          <option value="">{t('editor.flagAction.selectFlagPlaceholder')}</option>
           {projectFlags.map((flag) => (
             <option key={flag.id} value={flag.id}>
-              {flag.name} ({flag.initialValue ? 'ON' : 'OFF'})
+              {t('editor.flagAction.flagState', {
+                name: flag.name,
+                state: flag.initialValue ? t('editor.flagAction.on') : t('editor.flagAction.off')
+              })}
             </option>
           ))}
         </select>
-        
-        {/* フラグが選択されていない場合の警告 */}
+
+        {/* Warning when no flags created */}
         {!flagAction.flagId && projectFlags.length === 0 && (
           <div style={{
             marginTop: DESIGN_TOKENS.spacing[2],
@@ -185,12 +194,12 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
             gap: DESIGN_TOKENS.spacing[2]
           }}>
             <span>⚠️</span>
-            <span>フラグが作成されていません。右下のフラグ管理から作成してください。</span>
+            <span>{t('editor.flagAction.noFlagsWarning')}</span>
           </div>
         )}
       </div>
 
-      {/* フラグ値設定（setFlagの場合のみ） */}
+      {/* Flag value setting (only for setFlag) */}
       {flagAction.type === 'setFlag' && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
@@ -200,7 +209,7 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            設定値
+            {t('editor.flagAction.setValueLabel')}
           </label>
           <div style={{
             display: 'grid',
@@ -240,7 +249,7 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
         </div>
       )}
 
-      {/* フラグ状態変化の予測表示 */}
+      {/* Flag state change prediction display */}
       {flagAction.flagId && getCurrentFlag() && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
@@ -250,7 +259,7 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            状態変化予測
+            {t('editor.flagAction.stateChangePredictionLabel')}
           </label>
           <div style={{
             padding: DESIGN_TOKENS.spacing[3],
@@ -267,7 +276,9 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
                 {getFlagCurrentState() ? '🟢' : '🔴'}
               </span>
               <span style={{ fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}>
-                現在: {getFlagCurrentState() ? 'ON' : 'OFF'}
+                {t('editor.flagAction.currentState', {
+                  state: getFlagCurrentState() ? t('editor.flagAction.on') : t('editor.flagAction.off')
+                })}
               </span>
             </div>
             <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base, color: DESIGN_TOKENS.colors.neutral[500] }}>
@@ -278,21 +289,23 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
                 {getPredictedState() ? '🟢' : '🔴'}
               </span>
               <span style={{ fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}>
-                実行後: {getPredictedState() ? 'ON' : 'OFF'}
+                {t('editor.flagAction.afterExecution', {
+                  state: getPredictedState() ? t('editor.flagAction.on') : t('editor.flagAction.off')
+                })}
               </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* プレビューボタン */}
+      {/* Preview button */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <ModernButton
           variant="outline"
           size="sm"
           onClick={() => {
-            // TODO: Phase Dで実装予定
-            onShowNotification('info', 'フラグ操作プレビュー機能は今後実装予定です');
+            // TODO: To be implemented in Phase D
+            onShowNotification('info', t('editor.flagAction.previewNotice'));
           }}
           style={{
             borderColor: DESIGN_TOKENS.colors.success[200],
@@ -305,11 +318,11 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
           }}
         >
           <span>👁️</span>
-          <span>フラグ操作プレビュー</span>
+          <span>{t('editor.flagAction.previewButton')}</span>
         </ModernButton>
       </div>
 
-      {/* 設定内容要約 */}
+      {/* Settings summary */}
       <div style={{
         padding: DESIGN_TOKENS.spacing[3],
         backgroundColor: DESIGN_TOKENS.colors.success[100],
@@ -317,15 +330,17 @@ export const FlagActionEditor: React.FC<FlagActionEditorProps> = ({
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.success[800]
       }}>
-        💡 設定内容: 
-        {flagAction.flagId 
-          ? `フラグ「${getCurrentFlag()?.name || 'フラグ'}」を`
-          : 'フラグを選択してください'
+        {t('editor.flagAction.settingsSummaryTitle')}
+        {flagAction.flagId
+          ? t('editor.flagAction.flagSelected', { name: getCurrentFlag()?.name || 'Flag' })
+          : t('editor.flagAction.selectFlag')
         }
-        {flagAction.type === 'setFlag' 
-          ? `${(flagAction as any).value ? 'ON' : 'OFF'}状態に設定`
-          : '現在の状態から切り替え（ON⇔OFF）'
-        }
+        {flagAction.flagId && (flagAction.type === 'setFlag'
+          ? t('editor.flagAction.setState', {
+              state: (flagAction as any).value ? t('editor.flagAction.on') : t('editor.flagAction.off')
+            })
+          : t('editor.flagAction.toggleState')
+        )}
       </div>
     </ModernCard>
   );

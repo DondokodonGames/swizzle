@@ -958,6 +958,27 @@
       "collisionWithStageRegion": " - ステージ指定範囲への衝突（{shape}）",
       "collisionWithObject": " - 「{target}」との衝突",
       "usingDetection": " - {method}使用"
+    },
+    "flagAction": {
+      "title": "フラグ操作詳細設定",
+      "operationTypeLabel": "操作タイプ",
+      "targetFlagLabel": "対象フラグ",
+      "selectFlagPlaceholder": "フラグを選択",
+      "flagState": "{name} ({state})",
+      "on": "ON",
+      "off": "OFF",
+      "noFlagsWarning": "フラグが作成されていません。右下のフラグ管理から作成してください。",
+      "setValueLabel": "設定値",
+      "stateChangePredictionLabel": "状態変化予測",
+      "currentState": "現在: {state}",
+      "afterExecution": "実行後: {state}",
+      "previewButton": "フラグ操作プレビュー",
+      "previewNotice": "フラグ操作プレビュー機能は今後実装予定です",
+      "settingsSummaryTitle": "💡 設定内容: ",
+      "selectFlag": "フラグを選択してください",
+      "flagSelected": "フラグ「{name}」を",
+      "setState": "{state}状態に設定",
+      "toggleState": "現在の状態から切り替え（ON⇔OFF）"
     }
   },
   "conditions": {
@@ -1088,6 +1109,31 @@
     "setFlag": {
       "label": "フラグ設定",
       "description": "カスタムフラグをON/OFF"
+    },
+    "flags": {
+      "setFlag": {
+        "label": "フラグ設定",
+        "description": "フラグを指定状態（ON/OFF）に設定"
+      },
+      "toggleFlag": {
+        "label": "フラグ反転",
+        "description": "フラグの状態を反転（ON⇔OFF）"
+      },
+      "values": {
+        "on": {
+          "label": "ON",
+          "description": "フラグをON状態に設定"
+        },
+        "off": {
+          "label": "OFF",
+          "description": "フラグをOFF状態に設定"
+        }
+      },
+      "effects": {
+        "setOn": "フラグをON状態に設定",
+        "setOff": "フラグをOFF状態に設定",
+        "toggle": "現在の状態から反転（ON⇔OFF）"
+      }
     }
   },
   "movements": {
