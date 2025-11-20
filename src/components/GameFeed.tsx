@@ -76,6 +76,8 @@ const BookmarkIcon = () => (
 );
 
 export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
+  console.log('🎯 GameFeed コンポーネント レンダリング開始');
+
   // ==================== 状態管理 ====================
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sections, setSections] = useState<FeedSection[]>([
@@ -240,6 +242,8 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
     return num.toString();
   };
+
+  console.log('🎯 GameFeed レンダリング実行中 - selectedSection:', selectedSection);
 
   return (
     <div className="fixed inset-0 bg-[#0a0a0f] z-50 overflow-hidden flex flex-col">
