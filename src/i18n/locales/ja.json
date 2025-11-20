@@ -1020,6 +1020,24 @@
       "fadeIn": "イン",
       "fadeOut": "アウト",
       "instant": "（即座に切り替え）"
+    },
+    "moveAction": {
+      "title": "移動アクション詳細設定",
+      "movementTypeLabel": "移動タイプ",
+      "speedLabel": "移動速度: {speed}px/秒",
+      "speedUnit": "{speed}px/秒",
+      "durationLabel": "移動時間: {seconds}秒",
+      "seconds": "{seconds}秒",
+      "targetCoordinatesLabel": "目標座標",
+      "xCoordinate": "X座標: {value}",
+      "yCoordinate": "Y座標: {value}",
+      "previewButton": "移動プレビュー",
+      "previewNotice": "移動プレビュー機能は今後実装予定です",
+      "settingsSummaryTitle": "💡 設定内容: ",
+      "selectMovementType": "移動タイプを選択してください",
+      "movementType": "「{type}」",
+      "withSpeed": " - 速度{speed}px/秒",
+      "forDuration": " - {seconds}秒間"
     }
   },
   "conditions": {

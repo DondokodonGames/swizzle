@@ -1219,6 +1219,24 @@
       "fadeIn": "in",
       "fadeOut": "out",
       "instant": " (instantly)"
+    },
+    "moveAction": {
+      "title": "Move Action Settings",
+      "movementTypeLabel": "Movement Type",
+      "speedLabel": "Movement Speed: {speed}px/s",
+      "speedUnit": "{speed}px/s",
+      "durationLabel": "Movement Duration: {seconds}s",
+      "seconds": "{seconds}s",
+      "targetCoordinatesLabel": "Target Coordinates",
+      "xCoordinate": "X Coordinate: {value}",
+      "yCoordinate": "Y Coordinate: {value}",
+      "previewButton": "Movement Preview",
+      "previewNotice": "Movement preview feature coming soon",
+      "settingsSummaryTitle": "💡 Settings: ",
+      "selectMovementType": "Please select movement type",
+      "movementType": "\"{type}\"",
+      "withSpeed": " - Speed {speed}px/s",
+      "forDuration": " - for {seconds}s"
     }
   },
   "conditions": {

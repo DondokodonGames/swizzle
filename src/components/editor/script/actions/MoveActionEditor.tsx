@@ -2,12 +2,13 @@
 // Phase C Step 2完了版: 移動アクション詳細設定コンポーネント
 // AdvancedRuleModal.tsx分割 - Step 3: アクションエディター分離
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameAction } from '../../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
-import { MOVEMENT_TYPE_OPTIONS } from '../constants/MovementConstants';
+import { getMovementTypeOptions } from '../constants/MovementConstants';
 
 interface MoveActionEditorProps {
   action: GameAction & { type: 'move' };
@@ -22,7 +23,11 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
   onUpdate,
   onShowNotification
 }) => {
+  const { t } = useTranslation();
   const moveAction = action;
+
+  // Get localized options using getter functions that access i18n
+  const MOVEMENT_TYPE_OPTIONS = useMemo(() => getMovementTypeOptions(), []);
   
   return (
     <ModernCard 
@@ -45,7 +50,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
         gap: DESIGN_TOKENS.spacing[2]
       }}>
         <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🏃</span>
-        移動アクション詳細設定
+        {t('editor.moveAction.title')}
       </h5>
 
       {/* 移動タイプ選択 */}
@@ -57,7 +62,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          移動タイプ
+          {t('editor.moveAction.movementTypeLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -160,7 +165,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            移動速度: {moveAction.movement?.speed || 300}px/秒
+            {t('editor.moveAction.speedLabel', { speed: moveAction.movement?.speed || 300 })}
           </label>
           <input
             type="range"
@@ -190,8 +195,8 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.success[600],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>50px/秒</span>
-            <span>1000px/秒</span>
+            <span>{t('editor.moveAction.speedUnit', { speed: 50 })}</span>
+            <span>{t('editor.moveAction.speedUnit', { speed: 1000 })}</span>
           </div>
         </div>
       )}
@@ -206,7 +211,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            移動時間: {moveAction.movement?.duration || 2}秒
+            {t('editor.moveAction.durationLabel', { seconds: moveAction.movement?.duration || 2 })}
           </label>
           <input
             type="range"
@@ -236,8 +241,8 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.success[600],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>0.1秒</span>
-            <span>10秒</span>
+            <span>{t('editor.moveAction.seconds', { seconds: 0.1 })}</span>
+            <span>{t('editor.moveAction.seconds', { seconds: 10 })}</span>
           </div>
         </div>
       )}
@@ -252,7 +257,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            目標座標
+            {t('editor.moveAction.targetCoordinatesLabel')}
           </label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: DESIGN_TOKENS.spacing[2] }}>
             <div>
@@ -262,7 +267,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 marginBottom: DESIGN_TOKENS.spacing[1],
                 display: 'block'
               }}>
-                X座標: {((moveAction.movement?.target as any)?.x || 0.5).toFixed(2)}
+                {t('editor.moveAction.xCoordinate', { value: ((moveAction.movement?.target as any)?.x || 0.5).toFixed(2) })}
               </label>
               <input
                 type="range"
@@ -296,7 +301,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 marginBottom: DESIGN_TOKENS.spacing[1],
                 display: 'block'
               }}>
-                Y座標: {((moveAction.movement?.target as any)?.y || 0.5).toFixed(2)}
+                {t('editor.moveAction.yCoordinate', { value: ((moveAction.movement?.target as any)?.y || 0.5).toFixed(2) })}
               </label>
               <input
                 type="range"
@@ -334,7 +339,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
           size="sm"
           onClick={() => {
             // TODO: Phase C Step 2で実装予定
-            onShowNotification('info', '移動プレビュー機能は今後実装予定です');
+            onShowNotification('info', t('editor.moveAction.previewNotice'));
           }}
           style={{
             borderColor: DESIGN_TOKENS.colors.success[200],
@@ -347,7 +352,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
           }}
         >
           <span>👁️</span>
-          <span>移動プレビュー</span>
+          <span>{t('editor.moveAction.previewButton')}</span>
         </ModernButton>
       </div>
 
@@ -358,13 +363,15 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.success[800]
       }}>
-        💡 設定内容: 
-        {moveAction.movement?.type 
-          ? `「${MOVEMENT_TYPE_OPTIONS.find(m => m.value === moveAction.movement?.type)?.label || '移動'}」`
-          : '移動タイプを選択してください'}
-        {moveAction.movement?.type && !['stop', 'teleport'].includes(moveAction.movement.type) && 
-          ` - 速度${moveAction.movement?.speed || 300}px/秒`}
-        {moveAction.movement?.duration && ` - ${moveAction.movement.duration}秒間`}
+        {t('editor.moveAction.settingsSummaryTitle')}
+        {moveAction.movement?.type
+          ? t('editor.moveAction.movementType', {
+              type: MOVEMENT_TYPE_OPTIONS.find(m => m.value === moveAction.movement?.type)?.label || t('editor.moveAction.movementTypeLabel')
+            })
+          : t('editor.moveAction.selectMovementType')}
+        {moveAction.movement?.type && !['stop', 'teleport'].includes(moveAction.movement.type) &&
+          t('editor.moveAction.withSpeed', { speed: moveAction.movement?.speed || 300 })}
+        {moveAction.movement?.duration && t('editor.moveAction.forDuration', { seconds: moveAction.movement.duration })}
       </div>
     </ModernCard>
   );
