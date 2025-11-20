@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../hooks/useAuth'
-import { SubscriptionManager } from '../monetization/SubscriptionManager'
 import { storage } from '../../lib/supabase'
 import type { Profile } from '../../lib/database.types'
 
@@ -21,8 +20,6 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
   title
 }) => {
   const { profile, updateProfile, checkUsernameAvailable, loading, error, clearError } = useAuth()
-
-  const [activeTab, setActiveTab] = useState<'profile' | 'settings'>('profile')
 
   const [formData, setFormData] = useState({
     username: '',
@@ -59,7 +56,6 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
       setValidationErrors({})
       clearError()
       setSuccessMessage(null)
-      setActiveTab('profile')
     } else {
       setHasChanges(false)
       setSuccessMessage(null)
@@ -158,13 +154,10 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
 
       // アバター画像のアップロード
       if (avatarFile && profile?.id) {
-        console.log('アバターアップロード開始:', avatarFile.name, 'ユーザーID:', profile.id)
         try {
           const avatarUrl = await storage.uploadAvatar(profile.id, avatarFile)
-          console.log('アップロード成功:', avatarUrl)
           updates.avatar_url = avatarUrl
         } catch (uploadError: any) {
-          console.error('アバターアップロードエラー:', uploadError)
           setValidationErrors(prev => ({
             ...prev,
             avatar: `アップロード失敗: ${uploadError.message || '不明なエラー'}`
@@ -176,9 +169,7 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
         updates.avatar_url = null
       }
 
-      console.log('プロフィール更新:', updates)
       await updateProfile(updates)
-      console.log('プロフィール更新成功')
 
       setHasChanges(false)
       setAvatarFile(null)
@@ -196,7 +187,6 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
         }, 1500)
       }
     } catch (error: any) {
-      console.error('Profile update error:', error)
       setValidationErrors(prev => ({
         ...prev,
         general: `保存失敗: ${error.message || '不明なエラー'}`
@@ -256,9 +246,20 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto backdrop-blur-sm bg-black/30 flex items-center justify-center p-4">
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      zIndex: 50,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '16px',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backdropFilter: 'blur(4px)'
+    }}>
+      {/* Backdrop */}
       <div
-        className="fixed inset-0"
+        style={{ position: 'fixed', inset: 0 }}
         onClick={() => {
           if (hasChanges) {
             if (window.confirm('変更が保存されていません。閉じてもよろしいですか？')) {
@@ -270,13 +271,20 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
         }}
       />
 
-      <div
-        className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all max-h-[85vh] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          animation: 'slideUp 0.3s ease-out'
-        }}
-      >
+      {/* Modal */}
+      <div style={{
+        position: 'relative',
+        backgroundColor: '#ffffff',
+        borderRadius: '16px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        width: '100%',
+        maxWidth: '400px',
+        maxHeight: '85vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
+        {/* Close button */}
         <button
           onClick={() => {
             if (hasChanges) {
@@ -287,306 +295,400 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
               onClose()
             }
           }}
-          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors flex items-center justify-center text-gray-600 hover:text-gray-800 z-10"
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            border: 'none',
+            backgroundColor: '#f3f4f6',
+            color: '#6b7280',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '16px',
+            zIndex: 10
+          }}
           disabled={loading}
         >
           ✕
         </button>
 
-        {/* ヘッダー */}
-        <div className="px-5 pt-5 pb-3 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900 text-center mb-3">
-            {title || (mode === 'setup' ? '✨ プロフィール設定' : '⚙️ プロフィール編集')}
+        {/* Header */}
+        <div style={{
+          padding: '24px 24px 16px',
+          borderBottom: '1px solid #f3f4f6',
+          textAlign: 'center'
+        }}>
+          <h2 style={{
+            fontSize: '18px',
+            fontWeight: '700',
+            color: '#111827',
+            margin: 0
+          }}>
+            {title || (mode === 'setup' ? 'プロフィール設定' : 'プロフィール編集')}
           </h2>
-
-          {mode === 'edit' && (
-            <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => setActiveTab('profile')}
-                className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all ${
-                  activeTab === 'profile'
-                    ? 'bg-white text-purple-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                👤 プロフィール
-              </button>
-              <button
-                onClick={() => setActiveTab('settings')}
-                className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all ${
-                  activeTab === 'settings'
-                    ? 'bg-white text-purple-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
-              >
-                ⚙️ 設定
-              </button>
-            </div>
-          )}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          {error && activeTab === 'profile' && (
-            <div className="mb-3 p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
-              <span>⚠️</span>
-              <span>{error}</span>
+        {/* Content */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '20px 24px'
+        }}>
+          {error && (
+            <div style={{
+              marginBottom: '16px',
+              padding: '12px',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              color: '#dc2626',
+              fontSize: '13px'
+            }}>
+              {error}
             </div>
           )}
 
-          {validationErrors.general && activeTab === 'profile' && (
-            <div className="mb-3 p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
-              <span>⚠️</span>
-              <span>{validationErrors.general}</span>
+          {validationErrors.general && (
+            <div style={{
+              marginBottom: '16px',
+              padding: '12px',
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              color: '#dc2626',
+              fontSize: '13px'
+            }}>
+              {validationErrors.general}
             </div>
           )}
 
-          {successMessage && activeTab === 'profile' && (
-            <div className="mb-3 p-2.5 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm flex items-center gap-2">
-              <span>✓</span>
-              <span>{successMessage}</span>
+          {successMessage && (
+            <div style={{
+              marginBottom: '16px',
+              padding: '12px',
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: '8px',
+              color: '#16a34a',
+              fontSize: '13px'
+            }}>
+              ✓ {successMessage}
             </div>
           )}
 
-          {activeTab === 'profile' && (
-            <form id="profile-form" onSubmit={handleSubmit} className="space-y-3.5">
-              {/* アバター */}
-              <div className="flex flex-col items-center gap-2.5 pb-3 border-b border-gray-100">
-                <div className="relative group">
-                  <div className="w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center ring-4 ring-white shadow-lg">
-                    {avatarPreview || profile?.avatar_url ? (
-                      <img
-                        src={avatarPreview || profile?.avatar_url || ''}
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-white text-2xl font-bold">
-                        {(formData.displayName || formData.username || '?').charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  {(avatarPreview || profile?.avatar_url) && (
-                    <button
-                      type="button"
-                      onClick={handleRemoveAvatar}
-                      className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition-colors shadow-md"
-                      title="削除"
-                    >
-                      ✕
-                    </button>
+          <form id="profile-form" onSubmit={handleSubmit}>
+            {/* Avatar */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '20px',
+              paddingBottom: '20px',
+              borderBottom: '1px solid #f3f4f6'
+            }}>
+              <div style={{ position: 'relative' }}>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}>
+                  {avatarPreview || profile?.avatar_url ? (
+                    <img
+                      src={avatarPreview || profile?.avatar_url || ''}
+                      alt="Avatar"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <span style={{ color: 'white', fontSize: '28px', fontWeight: 'bold' }}>
+                      {(formData.displayName || formData.username || '?').charAt(0).toUpperCase()}
+                    </span>
                   )}
                 </div>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  className="hidden"
-                  id="avatar-upload"
-                  disabled={loading || avatarUploading}
-                />
-                <label
-                  htmlFor="avatar-upload"
-                  className="px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full cursor-pointer hover:shadow-lg transition-all text-xs font-medium"
-                >
-                  {avatarUploading ? '📤 アップロード中...' : '📷 画像を選択'}
-                </label>
-                {validationErrors.avatar && (
-                  <p className="text-xs text-red-600">{validationErrors.avatar}</p>
+                {(avatarPreview || profile?.avatar_url) && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    style={{
+                      position: 'absolute',
+                      top: '-4px',
+                      right: '-4px',
+                      width: '24px',
+                      height: '24px',
+                      backgroundColor: '#ef4444',
+                      color: 'white',
+                      borderRadius: '50%',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    ✕
+                  </button>
                 )}
               </div>
 
-              {/* ユーザー名 */}
-              <div>
-                <label htmlFor="username" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  ユーザー名 <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    id="username"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 pr-10 text-sm border-2 rounded-lg transition-all ${
-                      validationErrors.username ? 'border-red-300 bg-red-50' :
-                      usernameAvailable === true ? 'border-green-300 bg-green-50' :
-                      usernameAvailable === false ? 'border-red-300 bg-red-50' :
-                      'border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100'
-                    }`}
-                    placeholder="例: taro_yamada"
-                    disabled={loading}
-                  />
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    {usernameChecking ? (
-                      <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-                    ) : usernameAvailable === true ? (
-                      <span className="text-green-500 text-lg">✓</span>
-                    ) : usernameAvailable === false ? (
-                      <span className="text-red-500 text-lg">✕</span>
-                    ) : null}
-                  </div>
-                </div>
-                {validationErrors.username ? (
-                  <p className="mt-1 text-xs text-red-600">{validationErrors.username}</p>
-                ) : usernameAvailable === true && formData.username !== profile?.username ? (
-                  <p className="mt-1 text-xs text-green-600">✓ 使用できます</p>
-                ) : (
-                  <p className="mt-1 text-xs text-gray-500">3-20文字、英数字と_のみ</p>
-                )}
-              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                style={{ display: 'none' }}
+                id="avatar-upload"
+                disabled={loading || avatarUploading}
+              />
+              <label
+                htmlFor="avatar-upload"
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#8b5cf6',
+                  color: 'white',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '500'
+                }}
+              >
+                {avatarUploading ? 'アップロード中...' : '画像を選択'}
+              </label>
+              {validationErrors.avatar && (
+                <p style={{ color: '#dc2626', fontSize: '11px', margin: 0 }}>{validationErrors.avatar}</p>
+              )}
+            </div>
 
-              {/* 表示名 */}
-              <div>
-                <label htmlFor="displayName" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  表示名
-                </label>
+            {/* Username */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '6px'
+              }}>
+                ユーザー名 <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <div style={{ position: 'relative' }}>
                 <input
                   type="text"
-                  id="displayName"
-                  name="displayName"
-                  value={formData.displayName}
+                  name="username"
+                  value={formData.username}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 text-sm border-2 rounded-lg transition-all ${
-                    validationErrors.displayName ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100'
-                  }`}
-                  placeholder="例: 山田太郎"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    paddingRight: '36px',
+                    fontSize: '14px',
+                    border: `2px solid ${validationErrors.username ? '#fca5a5' : usernameAvailable === true ? '#86efac' : usernameAvailable === false ? '#fca5a5' : '#e5e7eb'}`,
+                    borderRadius: '8px',
+                    backgroundColor: validationErrors.username || usernameAvailable === false ? '#fef2f2' : usernameAvailable === true ? '#f0fdf4' : '#ffffff',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                  placeholder="例: taro_yamada"
                   disabled={loading}
                 />
-                <div className="flex justify-between items-center mt-1">
-                  {validationErrors.displayName ? (
-                    <p className="text-xs text-red-600">{validationErrors.displayName}</p>
-                  ) : (
-                    <p className="text-xs text-gray-500">空白の場合はユーザー名が表示</p>
-                  )}
-                  <span className={`text-xs ${formData.displayName.length > 50 ? 'text-red-500' : 'text-gray-400'}`}>
-                    {formData.displayName.length}/50
-                  </span>
+                <div style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)'
+                }}>
+                  {usernameChecking ? (
+                    <span style={{ fontSize: '12px' }}>...</span>
+                  ) : usernameAvailable === true ? (
+                    <span style={{ color: '#22c55e' }}>✓</span>
+                  ) : usernameAvailable === false ? (
+                    <span style={{ color: '#ef4444' }}>✗</span>
+                  ) : null}
                 </div>
               </div>
+              {validationErrors.username ? (
+                <p style={{ marginTop: '4px', fontSize: '11px', color: '#dc2626' }}>{validationErrors.username}</p>
+              ) : (
+                <p style={{ marginTop: '4px', fontSize: '11px', color: '#6b7280' }}>3-20文字、英数字と_のみ</p>
+              )}
+            </div>
 
-              {/* 自己紹介 */}
-              <div>
-                <label htmlFor="bio" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  自己紹介
-                </label>
-                <textarea
-                  id="bio"
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleInputChange}
-                  rows={3}
-                  className={`w-full px-3 py-2 text-sm border-2 rounded-lg transition-all resize-none ${
-                    validationErrors.bio ? 'border-red-300 bg-red-50' : 'border-gray-200 focus:border-purple-400 focus:ring-2 focus:ring-purple-100'
-                  }`}
-                  placeholder="あなたについて教えてください..."
-                  disabled={loading}
-                />
-                <div className="flex justify-between items-center mt-1">
-                  {validationErrors.bio ? (
-                    <p className="text-xs text-red-600">{validationErrors.bio}</p>
-                  ) : (
-                    <span className="text-xs text-gray-500"></span>
-                  )}
-                  <span className={`text-xs ${formData.bio.length > 160 ? 'text-red-500' : 'text-gray-400'}`}>
-                    {formData.bio.length}/160
-                  </span>
-                </div>
-              </div>
-
-              {/* 言語設定 */}
-              <div>
-                <label htmlFor="language" className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  🌍 言語設定
-                </label>
-                <select
-                  id="language"
-                  name="language"
-                  value={formData.language}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition-all"
-                  disabled={loading}
-                >
-                  <option value="ja">🇯🇵 日本語</option>
-                  <option value="en">🇺🇸 English</option>
-                  <option value="ko">🇰🇷 한국어</option>
-                  <option value="zh">🇨🇳 中文</option>
-                  <option value="fr">🇫🇷 Français</option>
-                  <option value="de">🇩🇪 Deutsch</option>
-                  <option value="es">🇪🇸 Español</option>
-                  <option value="it">🇮🇹 Italiano</option>
-                  <option value="pt">🇵🇹 Português</option>
-                </select>
-              </div>
-            </form>
-          )}
-
-          {activeTab === 'settings' && mode === 'edit' && (
-            <div className="space-y-4">
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
-                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2 text-sm">
-                  <span className="text-lg">💎</span>
-                  <span>サブスクリプション管理</span>
-                </h3>
-                <SubscriptionManager />
+            {/* Display Name */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '6px'
+              }}>
+                表示名
+              </label>
+              <input
+                type="text"
+                name="displayName"
+                value={formData.displayName}
+                onChange={handleInputChange}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  fontSize: '14px',
+                  border: `2px solid ${validationErrors.displayName ? '#fca5a5' : '#e5e7eb'}`,
+                  borderRadius: '8px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+                placeholder="例: 山田太郎"
+                disabled={loading}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                <span style={{ fontSize: '11px', color: '#6b7280' }}>空白の場合はユーザー名が表示</span>
+                <span style={{ fontSize: '11px', color: formData.displayName.length > 50 ? '#ef4444' : '#9ca3af' }}>
+                  {formData.displayName.length}/50
+                </span>
               </div>
             </div>
-          )}
-        </div>
 
-        {activeTab === 'profile' && (
-          <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 flex gap-2">
-            {mode === 'edit' && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (hasChanges) {
-                    if (window.confirm('変更が保存されていません。閉じてもよろしいですか？')) {
-                      onClose()
-                    }
-                  } else {
-                    onClose()
-                  }
+            {/* Bio */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '6px'
+              }}>
+                自己紹介
+              </label>
+              <textarea
+                name="bio"
+                value={formData.bio}
+                onChange={handleInputChange}
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  fontSize: '14px',
+                  border: `2px solid ${validationErrors.bio ? '#fca5a5' : '#e5e7eb'}`,
+                  borderRadius: '8px',
+                  outline: 'none',
+                  resize: 'none',
+                  boxSizing: 'border-box'
                 }}
-                className="flex-1 px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:bg-white transition-all"
+                placeholder="あなたについて教えてください..."
+                disabled={loading}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                <span style={{ fontSize: '11px', color: formData.bio.length > 160 ? '#ef4444' : '#9ca3af' }}>
+                  {formData.bio.length}/160
+                </span>
+              </div>
+            </div>
+
+            {/* Language */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '6px'
+              }}>
+                言語設定
+              </label>
+              <select
+                name="language"
+                value={formData.language}
+                onChange={handleInputChange}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  fontSize: '14px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  backgroundColor: '#ffffff',
+                  boxSizing: 'border-box'
+                }}
                 disabled={loading}
               >
-                キャンセル
-              </button>
-            )}
+                <option value="ja">日本語</option>
+                <option value="en">English</option>
+                <option value="ko">한국어</option>
+                <option value="zh">中文</option>
+              </select>
+            </div>
+          </form>
+        </div>
 
+        {/* Footer */}
+        <div style={{
+          padding: '16px 24px',
+          borderTop: '1px solid #f3f4f6',
+          display: 'flex',
+          gap: '8px'
+        }}>
+          {mode === 'edit' && (
             <button
-              type="submit"
-              form="profile-form"
-              disabled={loading || !hasChanges || Object.keys(validationErrors).length > 0 || avatarUploading}
-              className={`${mode === 'edit' ? 'flex-1' : 'w-full'} bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2.5 rounded-lg text-sm font-bold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none`}
+              type="button"
+              onClick={() => {
+                if (hasChanges) {
+                  if (window.confirm('変更が保存されていません。閉じてもよろしいですか？')) {
+                    onClose()
+                  }
+                } else {
+                  onClose()
+                }
+              }}
+              style={{
+                flex: 1,
+                padding: '10px',
+                border: '2px solid #e5e7eb',
+                borderRadius: '8px',
+                backgroundColor: '#ffffff',
+                color: '#374151',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+              disabled={loading}
             >
-              {loading || avatarUploading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  {avatarUploading ? 'アップロード中...' : '保存中...'}
-                </span>
-              ) : (
-                '💾 保存'
-              )}
+              キャンセル
             </button>
-          </div>
-        )}
-      </div>
+          )}
 
-      <style>{`
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
+          <button
+            type="submit"
+            form="profile-form"
+            disabled={loading || !hasChanges || Object.keys(validationErrors).length > 0 || avatarUploading}
+            style={{
+              flex: mode === 'edit' ? 1 : undefined,
+              width: mode === 'setup' ? '100%' : undefined,
+              padding: '10px',
+              border: 'none',
+              borderRadius: '8px',
+              backgroundColor: '#8b5cf6',
+              color: '#ffffff',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: loading || !hasChanges ? 'not-allowed' : 'pointer',
+              opacity: loading || !hasChanges ? 0.5 : 1
+            }}
+          >
+            {loading || avatarUploading ? '保存中...' : '保存'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
