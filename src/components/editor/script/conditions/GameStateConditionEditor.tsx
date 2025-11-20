@@ -2,15 +2,16 @@
 // Phase E Step 0修正版: TypeScriptエラー解決・DESIGN_TOKENS対応
 // TouchConditionEditor.tsx成功パターン完全踏襲
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TriggerCondition } from '../../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
-import { 
-  GAME_STATE_OPTIONS, 
-  STATE_CHECK_OPTIONS,
-  GAME_STATE_DESCRIPTIONS
+import {
+  getGameStateOptions,
+  getStateCheckOptions,
+  getGameStateDescriptions
 } from '../constants/GameStateConstants';
 
 interface GameStateConditionEditorProps {
@@ -24,8 +25,14 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
   index,
   onUpdate
 }) => {
+  const { t } = useTranslation();
   const gameStateCondition = condition;
-  
+
+  // Get localized options using getter functions that access i18n
+  const GAME_STATE_OPTIONS = useMemo(() => getGameStateOptions(), []);
+  const STATE_CHECK_OPTIONS = useMemo(() => getStateCheckOptions(), []);
+  const GAME_STATE_DESCRIPTIONS = useMemo(() => getGameStateDescriptions(), []);
+
   // 現在選択されている状態の詳細情報を取得
   const getCurrentStateDetails = () => {
     const stateKey = gameStateCondition.state as keyof typeof GAME_STATE_DESCRIPTIONS;
@@ -53,7 +60,7 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
         gap: DESIGN_TOKENS.spacing[2]
       }}>
         <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🎮</span>
-        ゲーム状態条件詳細設定
+        {t('editor.gameStateCondition.title')}
       </h5>
 
       {/* ゲーム状態選択 */}
@@ -65,7 +72,7 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          ゲーム状態
+          {t('editor.gameStateCondition.gameStateLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -113,7 +120,7 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          チェック方式
+          {t('editor.gameStateCondition.checkTypeLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -162,7 +169,7 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            状態詳細説明
+            {t('editor.gameStateCondition.stateDetailLabel')}
           </label>
           <div style={{
             padding: DESIGN_TOKENS.spacing[3],
@@ -182,7 +189,7 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
               fontSize: DESIGN_TOKENS.typography.fontSize.xs,
               color: DESIGN_TOKENS.colors.neutral[700]
             }}>
-              <strong>例:</strong> {getCurrentStateDetails()?.examples.join('・')}
+              <strong>{t('editor.gameStateCondition.exampleLabel')}</strong> {getCurrentStateDetails()?.examples.join('・')}
             </div>
           </div>
         </div>
@@ -195,7 +202,7 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
             padding: DESIGN_TOKENS.spacing[3],
             backgroundColor: DESIGN_TOKENS.colors.warning[50],
             borderRadius: DESIGN_TOKENS.borderRadius.lg,
-            border: `1px solid ${DESIGN_TOKENS.colors.warning[100]}`, // 修正: warning[200] → warning[100]
+            border: `1px solid ${DESIGN_TOKENS.colors.warning[100]}`,
             fontSize: DESIGN_TOKENS.typography.fontSize.xs,
             color: DESIGN_TOKENS.colors.warning[800],
             display: 'flex',
@@ -204,9 +211,9 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
           }}>
             <span>⚡</span>
             <div>
-              <strong>瞬間発動:</strong> 状態変化の瞬間のみ1回発動します。<br/>
+              <strong>{t('editor.gameStateCondition.becameNoticeTitle')}</strong> {t('editor.gameStateCondition.becameNoticeDetail')}<br/>
               <span style={{ color: DESIGN_TOKENS.colors.neutral[600] }}>
-                （例: ゲーム開始瞬間、クリア瞬間、ゲームオーバー瞬間）
+                {t('editor.gameStateCondition.becameNoticeExample')}
               </span>
             </div>
           </div>
@@ -222,7 +229,7 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          応用例・使用パターン
+          {t('editor.gameStateCondition.usagePatternsLabel')}
         </label>
         <div style={{
           display: 'grid',
@@ -236,7 +243,7 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
             fontSize: DESIGN_TOKENS.typography.fontSize.xs,
             color: DESIGN_TOKENS.colors.neutral[700]
           }}>
-            💡 <strong>ゲーム開始演出:</strong> プレイ中状態になった瞬間 → BGM再生・UI表示
+            💡 <strong>{t('editor.gameStateCondition.pattern1Title')}</strong> {t('editor.gameStateCondition.pattern1Detail')}
           </div>
           <div style={{
             padding: DESIGN_TOKENS.spacing[2],
@@ -245,7 +252,7 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
             fontSize: DESIGN_TOKENS.typography.fontSize.xs,
             color: DESIGN_TOKENS.colors.neutral[700]
           }}>
-            🏆 <strong>クリア演出:</strong> 成功状態になった瞬間 → 紙吹雪エフェクト・勝利音
+            🏆 <strong>{t('editor.gameStateCondition.pattern2Title')}</strong> {t('editor.gameStateCondition.pattern2Detail')}
           </div>
           <div style={{
             padding: DESIGN_TOKENS.spacing[2],
@@ -254,7 +261,7 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
             fontSize: DESIGN_TOKENS.typography.fontSize.xs,
             color: DESIGN_TOKENS.colors.neutral[700]
           }}>
-            ⏸️ <strong>ポーズ機能:</strong> 一時停止状態である間 → 操作無効・半透明表示
+            ⏸️ <strong>{t('editor.gameStateCondition.pattern3Title')}</strong> {t('editor.gameStateCondition.pattern3Detail')}
           </div>
         </div>
       </div>
@@ -267,15 +274,15 @@ export const GameStateConditionEditor: React.FC<GameStateConditionEditorProps> =
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.purple[800]
       }}>
-        💡 設定内容: 
-        ゲームが
+        {t('editor.gameStateCondition.settingsSummaryTitle')}
+        {t('editor.gameStateCondition.gameIs')}
         <strong>
-          {GAME_STATE_OPTIONS.find(s => s.value === gameStateCondition.state)?.label || '状態'}
+          {GAME_STATE_OPTIONS.find(s => s.value === gameStateCondition.state)?.label || t('editor.gameStateCondition.stateLabel')}
         </strong>
-        {gameStateCondition.checkType === 'is' && 'である間'}
-        {gameStateCondition.checkType === 'not' && 'でない間'}
-        {gameStateCondition.checkType === 'became' && 'になった瞬間'}
-        に発動
+        {gameStateCondition.checkType === 'is' && t('editor.gameStateCondition.during')}
+        {gameStateCondition.checkType === 'not' && t('editor.gameStateCondition.notDuring')}
+        {gameStateCondition.checkType === 'became' && t('editor.gameStateCondition.moment')}
+        {t('editor.gameStateCondition.trigger')}
         <br/>
         <span style={{ color: DESIGN_TOKENS.colors.purple[600] }}>
           {STATE_CHECK_OPTIONS.find(c => c.value === gameStateCondition.checkType)?.description}

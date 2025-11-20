@@ -1076,6 +1076,30 @@
       "frameNumber": " (フレーム{number})",
       "animationNumber": " - アニメ{number}",
       "framesAvailable": " ({count}フレーム利用可能)"
+    },
+    "gameStateCondition": {
+      "title": "ゲーム状態条件詳細設定",
+      "gameStateLabel": "ゲーム状態",
+      "checkTypeLabel": "チェック方式",
+      "stateDetailLabel": "状態詳細説明",
+      "exampleLabel": "例:",
+      "becameNoticeTitle": "瞬間発動:",
+      "becameNoticeDetail": "状態変化の瞬間のみ1回発動します。",
+      "becameNoticeExample": "（例: ゲーム開始瞬間、クリア瞬間、ゲームオーバー瞬間）",
+      "usagePatternsLabel": "応用例・使用パターン",
+      "pattern1Title": "ゲーム開始演出:",
+      "pattern1Detail": "プレイ中状態になった瞬間 → BGM再生・UI表示",
+      "pattern2Title": "クリア演出:",
+      "pattern2Detail": "成功状態になった瞬間 → 紙吹雪エフェクト・勝利音",
+      "pattern3Title": "ポーズ機能:",
+      "pattern3Detail": "一時停止状態である間 → 操作無効・半透明表示",
+      "settingsSummaryTitle": "💡 設定内容: ",
+      "gameIs": "ゲームが",
+      "during": "である間",
+      "notDuring": "でない間",
+      "moment": "になった瞬間",
+      "trigger": "に発動",
+      "stateLabel": "状態"
     }
   },
   "conditions": {
@@ -1199,7 +1223,45 @@
     },
     "gameState": {
       "label": "ゲーム状態",
-      "description": "ゲーム全体の状態確認"
+      "description": "ゲーム全体の状態確認",
+      "success": {
+        "label": "成功状態",
+        "description": "ゲームクリア状態",
+        "detail": "プレイヤーが勝利条件を達成し、ゲームをクリアした状態",
+        "examples": ["全てのアイテムを集めた", "ゴールに到達した", "スコアが目標値に達した"]
+      },
+      "failure": {
+        "label": "失敗状態",
+        "description": "ゲームオーバー状態",
+        "detail": "プレイヤーが敗北条件を満たし、ゲームオーバーになった状態",
+        "examples": ["ライフが0になった", "時間切れになった", "障害物に当たった"]
+      },
+      "playing": {
+        "label": "プレイ中",
+        "description": "通常のプレイ状態",
+        "detail": "ゲームが開始され、プレイヤーが操作可能な通常のプレイ状態",
+        "examples": ["ゲーム開始直後", "通常の操作中", "アクション実行中"]
+      },
+      "paused": {
+        "label": "一時停止中",
+        "description": "ポーズ状態",
+        "detail": "ゲームが一時停止され、時間が停止している状態",
+        "examples": ["ポーズボタン押下時", "メニュー表示中", "設定画面表示中"]
+      },
+      "checkTypes": {
+        "is": {
+          "label": "である間",
+          "description": "指定状態である間、継続的に発動"
+        },
+        "not": {
+          "label": "でない間",
+          "description": "指定状態でない間、継続的に発動"
+        },
+        "became": {
+          "label": "になった瞬間",
+          "description": "状態変化の瞬間のみ1回発動"
+        }
+      }
     },
     "score": {
       "label": "スコア条件",

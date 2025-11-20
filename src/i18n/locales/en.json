@@ -1275,6 +1275,30 @@
       "frameNumber": " (Frame {number})",
       "animationNumber": " - Anim {number}",
       "framesAvailable": " ({count} frames available)"
+    },
+    "gameStateCondition": {
+      "title": "Game State Condition Settings",
+      "gameStateLabel": "Game State",
+      "checkTypeLabel": "Check Type",
+      "stateDetailLabel": "State Detail",
+      "exampleLabel": "Example:",
+      "becameNoticeTitle": "Instant Trigger:",
+      "becameNoticeDetail": "Triggers once only at the moment of state change.",
+      "becameNoticeExample": "(e.g. game start moment, clear moment, game over moment)",
+      "usagePatternsLabel": "Usage Patterns",
+      "pattern1Title": "Game Start Effect:",
+      "pattern1Detail": "Moment playing state is reached → Play BGM, show UI",
+      "pattern2Title": "Clear Effect:",
+      "pattern2Detail": "Moment success state is reached → Confetti effect, victory sound",
+      "pattern3Title": "Pause Function:",
+      "pattern3Detail": "While in paused state → Disable controls, semi-transparent display",
+      "settingsSummaryTitle": "💡 Settings: ",
+      "gameIs": "When game is ",
+      "during": " (while in state)",
+      "notDuring": " (while not in state)",
+      "moment": " (at moment of change)",
+      "trigger": ", trigger",
+      "stateLabel": "state"
     }
   },
   "conditions": {
@@ -1398,7 +1422,45 @@
     },
     "gameState": {
       "label": "Game State",
-      "description": "Check overall game state"
+      "description": "Check overall game state",
+      "success": {
+        "label": "Success State",
+        "description": "Game cleared state",
+        "detail": "State when player has achieved victory conditions and cleared the game",
+        "examples": ["Collected all items", "Reached the goal", "Score reached target value"]
+      },
+      "failure": {
+        "label": "Failure State",
+        "description": "Game over state",
+        "detail": "State when player has met defeat conditions and game is over",
+        "examples": ["Life reached 0", "Time ran out", "Hit an obstacle"]
+      },
+      "playing": {
+        "label": "Playing",
+        "description": "Normal play state",
+        "detail": "Normal play state when game has started and player can operate",
+        "examples": ["Right after game start", "During normal operation", "During action execution"]
+      },
+      "paused": {
+        "label": "Paused",
+        "description": "Pause state",
+        "detail": "State when game is paused and time is stopped",
+        "examples": ["When pause button pressed", "During menu display", "During settings screen"]
+      },
+      "checkTypes": {
+        "is": {
+          "label": "While in state",
+          "description": "Triggers continuously while in specified state"
+        },
+        "not": {
+          "label": "While not in state",
+          "description": "Triggers continuously while not in specified state"
+        },
+        "became": {
+          "label": "Moment of change",
+          "description": "Triggers once only at moment of state change"
+        }
+      }
     },
     "score": {
       "label": "Score Condition",
