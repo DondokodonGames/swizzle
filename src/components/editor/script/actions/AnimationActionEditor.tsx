@@ -3,12 +3,13 @@
 // SoundActionEditor.tsx + ShowHideActionEditor.tsx成功パターン完全踏襲
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameAction } from '../../../../types/editor/GameScript';
 import { GameProject } from '../../../../types/editor/GameProject';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
-import { 
+import {
   ANIMATION_INDEX_OPTIONS
 } from '../constants/AnimationConstants';
 
@@ -27,6 +28,7 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
   onUpdate,
   onShowNotification
 }) => {
+  const { t } = useTranslation();
   const animationAction = action;
   
   // プロジェクト内オブジェクト取得
@@ -66,7 +68,7 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
         gap: DESIGN_TOKENS.spacing[2]
       }}>
         <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🎬</span>
-        アニメーション切り替え詳細設定
+        {t('editor.animationAction.title')}
       </h5>
 
       {/* オブジェクト選択 */}
@@ -78,19 +80,19 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'block'
         }}>
-          対象オブジェクト
+          {t('editor.animationAction.targetObjectLabel')}
         </label>
         <select
           value={animationAction.targetId || ''}
           onChange={(e) => {
-            onUpdate(index, { 
+            onUpdate(index, {
               targetId: e.target.value,
               // オブジェクト変更時はアニメーション番号をリセット
               animationIndex: 0
             });
             if (e.target.value) {
               const obj = projectObjects.find(o => o.id === e.target.value);
-              onShowNotification('success', `「${obj?.name || 'オブジェクト'}」を選択しました`);
+              onShowNotification('success', t('editor.animationAction.objectSelected', { name: obj?.name || 'Object' }));
             }
           }}
           style={{
@@ -103,14 +105,14 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
             outline: 'none'
           }}
         >
-          <option value="">オブジェクトを選択</option>
+          <option value="">{t('editor.animationAction.selectObjectPlaceholder')}</option>
           {projectObjects.map((obj) => (
             <option key={obj.id} value={obj.id}>
-              {obj.name || `オブジェクト${obj.id.slice(-1)}`} ({obj.frames.length}アニメーション)
+              {obj.name || `Object${obj.id.slice(-1)}`} ({t('editor.animationAction.animationsCount', { count: obj.frames.length })})
             </option>
           ))}
         </select>
-        
+
         {/* 選択オブジェクト情報表示 */}
         {selectedObject && (
           <div style={{
@@ -121,8 +123,8 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
             fontSize: DESIGN_TOKENS.typography.fontSize.xs,
             color: DESIGN_TOKENS.colors.purple[800]
           }}>
-            🎯 選択中: 「{selectedObject.name || 'オブジェクト'}」 
-            - {selectedObject.frames.length}種類のアニメーション利用可能
+            🎯 {t('editor.animationAction.selectedPrefix')} 「{selectedObject.name || 'Object'}」
+            - {t('editor.animationAction.animationsAvailable', { count: selectedObject.frames.length })}
           </div>
         )}
       </div>
@@ -137,9 +139,9 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            切り替え先アニメーション: {availableAnimationOptions[(animationAction.animationIndex || 0)]?.label || 'アニメ1'}
+            {t('editor.animationAction.switchToAnimationLabel')} {availableAnimationOptions[(animationAction.animationIndex || 0)]?.label || t('editor.animationAction.animationLabel', { number: 1 })}
           </label>
-          
+
           {/* スライダー制御 */}
           <input
             type="range"
@@ -164,8 +166,8 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.purple[600],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>アニメ1</span>
-            <span>アニメ{selectedObjectFrames.length}</span>
+            <span>{t('editor.animationAction.animationLabel', { number: 1 })}</span>
+            <span>{t('editor.animationAction.animationLabel', { number: selectedObjectFrames.length })}</span>
           </div>
 
           {/* アニメーション選択ボタン（4個以下の場合のみ表示） */}
@@ -220,7 +222,7 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            アニメーション速度: {animationAction.speed || 12} fps
+            {t('editor.animationAction.speedLabel', { speed: animationAction.speed || 12 })}
           </label>
           <input
             type="range"
@@ -245,8 +247,8 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.purple[600],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>1 fps (低速)</span>
-            <span>60 fps (高速)</span>
+            <span>{t('editor.animationAction.lowSpeed', { fps: 1 })}</span>
+            <span>{t('editor.animationAction.highSpeed', { fps: 60 })}</span>
           </div>
 
           {/* 速度プリセット */}
@@ -257,10 +259,10 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
             marginTop: DESIGN_TOKENS.spacing[2]
           }}>
             {[
-              { value: 6, label: '低速', icon: '🐌' },
-              { value: 12, label: '標準', icon: '🚶' },
-              { value: 24, label: '高速', icon: '🏃' },
-              { value: 48, label: '超高速', icon: '⚡' }
+              { value: 6, label: t('editor.animationAction.speedPresets.slow'), icon: '🐌' },
+              { value: 12, label: t('editor.animationAction.speedPresets.normal'), icon: '🚶' },
+              { value: 24, label: t('editor.animationAction.speedPresets.fast'), icon: '🏃' },
+              { value: 48, label: t('editor.animationAction.speedPresets.veryFast'), icon: '⚡' }
             ].map((preset) => (
               <ModernButton
                 key={preset.value}
@@ -302,11 +304,11 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
             color: DESIGN_TOKENS.colors.purple[800]
           }}>
-            💡 将来実装予定の詳細オプション: 
-            <br />• ループ再生制御 (loop)
-            <br />• 自動開始設定 (autoStart)
-            <br />• 開始フレーム指定 (startFrame)
-            <br />※ 現在はオブジェクト・アニメーション番号・速度制御に対応
+            💡 {t('editor.animationAction.futureOptionsTitle')}
+            <br />• {t('editor.animationAction.futureOptionsLoop')}
+            <br />• {t('editor.animationAction.futureOptionsAutoStart')}
+            <br />• {t('editor.animationAction.futureOptionsStartFrame')}
+            <br />※ {t('editor.animationAction.futureOptionsNote')}
           </div>
         </div>
       )}
@@ -319,7 +321,7 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
             size="sm"
             onClick={() => {
               // TODO: Phase E Step 4で実装予定
-              onShowNotification('info', 'アニメーション切り替えプレビュー機能は今後実装予定です');
+              onShowNotification('info', t('editor.animationAction.previewNotice'));
             }}
             style={{
               borderColor: DESIGN_TOKENS.colors.purple[200],
@@ -332,7 +334,7 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
             }}
           >
             <span>🎬</span>
-            <span>アニメーション切り替えプレビュー</span>
+            <span>{t('editor.animationAction.previewButton')}</span>
           </ModernButton>
         </div>
       )}
@@ -345,15 +347,14 @@ export const AnimationActionEditor: React.FC<AnimationActionEditorProps> = ({
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.purple[800]
       }}>
-        💡 設定内容: 
+        💡 {t('editor.animationAction.settingsSummaryTitle')}
         {animationAction.targetId ? (
           <>
-            「{selectedObject?.name || animationAction.targetId}」の
-            アニメーション{(animationAction.animationIndex || 0) + 1}に切り替え
-            {animationAction.speed && ` (${animationAction.speed}fps)`}
+            「{selectedObject?.name || animationAction.targetId}」{t('editor.animationAction.switchToAnimation', { index: (animationAction.animationIndex || 0) + 1 })}
+            {animationAction.speed && t('editor.animationAction.withSpeed', { speed: animationAction.speed })}
           </>
         ) : (
-          '対象オブジェクトを選択してください'
+          t('editor.animationAction.pleaseSelectObject')
         )}
       </div>
     </ModernCard>
