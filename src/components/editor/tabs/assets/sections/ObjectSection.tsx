@@ -486,13 +486,21 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                 {formatFileSize(obj.totalSize)} • {t('editor.assets.frameCount', { count: obj.frames.length })}
               </p>
 
-              {/* 配置状況表示 */}
-              <div className="mb-3">
-                <span className={`text-xs px-2 py-1 rounded ${
-                  isPlaced
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-gray-100 text-gray-700'
-                }`}>
+              {/* 配置状況表示 - Tailwind → インラインスタイル変換済み */}
+              <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                <span
+                  style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                    padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                    borderRadius: DESIGN_TOKENS.borderRadius.sm,
+                    backgroundColor: isPlaced 
+                      ? DESIGN_TOKENS.colors.success[50]
+                      : DESIGN_TOKENS.colors.neutral[100],
+                    color: isPlaced 
+                      ? DESIGN_TOKENS.colors.success[600]
+                      : DESIGN_TOKENS.colors.neutral[600]
+                  }}
+                >
                   {isPlaced ? `✅ ${t('editor.assets.placed')}` : `📦 ${t('editor.assets.notPlaced')}`}
                 </span>
               </div>
