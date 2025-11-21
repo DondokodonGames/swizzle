@@ -440,7 +440,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: DESIGN_TOKENS.colors.neutral[900],
+      backgroundColor: DESIGN_TOKENS.colors.neutral[50],
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -461,7 +461,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       margin: `0 auto ${DESIGN_TOKENS.spacing[4]}`
     },
     loadingText: {
-      color: DESIGN_TOKENS.colors.neutral[0],
+      color: DESIGN_TOKENS.colors.neutral[700],
       fontSize: DESIGN_TOKENS.typography.fontSize.lg
     },
     errorContainer: {
@@ -476,13 +476,13 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       marginBottom: DESIGN_TOKENS.spacing[4]
     },
     errorTitle: {
-      color: DESIGN_TOKENS.colors.neutral[0],
+      color: DESIGN_TOKENS.colors.neutral[800],
       fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
       fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
       marginBottom: DESIGN_TOKENS.spacing[4]
     },
     errorMessage: {
-      color: DESIGN_TOKENS.colors.neutral[300],
+      color: DESIGN_TOKENS.colors.neutral[600],
       marginBottom: DESIGN_TOKENS.spacing[6],
       fontSize: DESIGN_TOKENS.typography.fontSize.base
     },
@@ -508,7 +508,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: DESIGN_TOKENS.colors.neutral[950],
+      backgroundColor: DESIGN_TOKENS.colors.neutral[100],
       zIndex: 50,
       overflow: 'hidden',
       display: 'flex',
@@ -517,7 +517,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     },
     aspectRatioContainer: {
       position: 'relative' as const,
-      backgroundColor: DESIGN_TOKENS.colors.neutral[950],
+      backgroundColor: DESIGN_TOKENS.colors.neutral[0],
       width: '100%',
       height: '100%',
       maxWidth: 'calc(100vh * 9 / 16)',

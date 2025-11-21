@@ -1,6 +1,6 @@
 /**
  * CheckoutButton.tsx
- * Stripe Checkoutページへリダイレクトする決済ボタン
+ * Stripe Checkoutページへリダイレクトする決済ボタン（インラインスタイル版）
  * 
  * 機能:
  * - Stripe Checkout Sessionの作成
@@ -11,6 +11,7 @@
 import React, { useState } from 'react';
 import type { CheckoutButtonProps } from '../../types/MonetizationTypes';
 import { redirectToCheckout } from '../../services/monetization/StripeService';
+import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 
 /**
  * Checkout Button コンポーネント
@@ -24,6 +25,8 @@ export function CheckoutButton({
   onError,
 }: CheckoutButtonProps) {
   const [loading, setLoading] = useState(false);
+  const [isHover, setIsHover] = useState(false);
+  const [isActive, setIsActive] = useState(false);
 
   /**
    * チェックアウトボタンクリック時の処理
@@ -69,67 +72,108 @@ export function CheckoutButton({
   };
 
   /**
-   * ボタンのスタイルクラス
+   * ボタンのスタイル
    */
-  const getButtonClassName = () => {
-    const baseClasses = [
-      'w-full',
-      'py-3',
-      'px-6',
-      'rounded-lg',
-      'font-semibold',
-      'transition-all',
-      'duration-200',
-    ];
+  const getButtonStyle = (): React.CSSProperties => {
+    const isDisabled = disabled || loading;
 
-    if (disabled || loading) {
-      baseClasses.push(
-        'bg-gray-300',
-        'text-gray-500',
-        'cursor-not-allowed',
-        'opacity-50'
-      );
-    } else if (plan === 'premium') {
-      baseClasses.push(
-        'bg-purple-600',
-        'text-white',
-        'hover:bg-purple-700',
-        'hover:scale-105',
-        'active:scale-95',
-        'shadow-lg',
-        'hover:shadow-xl'
-      );
-    } else {
-      baseClasses.push(
-        'bg-gray-200',
-        'text-gray-700',
-        'hover:bg-gray-300',
-        'border',
-        'border-gray-300'
-      );
+    // 基本スタイル
+    const baseStyle: React.CSSProperties = {
+      width: '100%',
+      padding: `${DESIGN_TOKENS.spacing[3]} ${DESIGN_TOKENS.spacing[6]}`,
+      borderRadius: DESIGN_TOKENS.borderRadius.lg,
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+      fontSize: DESIGN_TOKENS.typography.fontSize.base,
+      transition: `all ${DESIGN_TOKENS.animation.duration.normal}`,
+      cursor: isDisabled ? 'not-allowed' : 'pointer',
+      border: 'none',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow: DESIGN_TOKENS.shadows.lg,
+    };
+
+    // disabled/loading時
+    if (isDisabled) {
+      return {
+        ...baseStyle,
+        backgroundColor: DESIGN_TOKENS.colors.neutral[300],
+        color: DESIGN_TOKENS.colors.neutral[500],
+        opacity: 0.5,
+        boxShadow: 'none',
+      };
     }
 
-    return [...baseClasses, className].join(' ');
+    // Premiumプラン
+    if (plan === 'premium') {
+      if (isActive) {
+        return {
+          ...baseStyle,
+          backgroundColor: DESIGN_TOKENS.colors.purple[600],
+          color: DESIGN_TOKENS.colors.neutral[0],
+          transform: 'scale(0.95)',
+          boxShadow: DESIGN_TOKENS.shadows.lg,
+        };
+      } else if (isHover) {
+        return {
+          ...baseStyle,
+          backgroundColor: DESIGN_TOKENS.colors.purple[700],
+          color: DESIGN_TOKENS.colors.neutral[0],
+          transform: 'scale(1.05)',
+          boxShadow: DESIGN_TOKENS.shadows.xl,
+        };
+      } else {
+        return {
+          ...baseStyle,
+          backgroundColor: DESIGN_TOKENS.colors.purple[600],
+          color: DESIGN_TOKENS.colors.neutral[0],
+          transform: 'scale(1)',
+          boxShadow: DESIGN_TOKENS.shadows.lg,
+        };
+      }
+    }
+
+    // Freeプラン
+    return {
+      ...baseStyle,
+      backgroundColor: isHover 
+        ? DESIGN_TOKENS.colors.neutral[300]
+        : DESIGN_TOKENS.colors.neutral[200],
+      color: DESIGN_TOKENS.colors.neutral[700],
+      border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+      boxShadow: 'none',
+    };
   };
 
   return (
     <button
       onClick={handleCheckout}
       disabled={disabled || loading}
-      className={getButtonClassName()}
+      onMouseEnter={() => setIsHover(true)}
+      onMouseLeave={() => {
+        setIsHover(false);
+        setIsActive(false);
+      }}
+      onMouseDown={() => setIsActive(true)}
+      onMouseUp={() => setIsActive(false)}
+      style={getButtonStyle()}
       aria-label={getButtonLabel()}
     >
       {loading && (
-        <span className="inline-block mr-2">
+        <span style={{ display: 'inline-block', marginRight: DESIGN_TOKENS.spacing[2] }}>
           <svg
-            className="animate-spin inline-block"
-            style={{ width: '20px', height: '20px' }}
+            style={{ 
+              width: '20px', 
+              height: '20px',
+              display: 'inline-block',
+              animation: 'spin 1s linear infinite'
+            }}
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
           >
             <circle
-              className="opacity-25"
+              style={{ opacity: 0.25 }}
               cx="12"
               cy="12"
               r="10"
@@ -137,7 +181,7 @@ export function CheckoutButton({
               strokeWidth="4"
             />
             <path
-              className="opacity-75"
+              style={{ opacity: 0.75 }}
               fill="currentColor"
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
@@ -160,8 +204,21 @@ export function CheckoutButtonWithText({
   onSuccess,
   onError,
 }: CheckoutButtonProps) {
+  const containerStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: DESIGN_TOKENS.spacing[2],
+  };
+
+  const textStyle: React.CSSProperties = {
+    fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+    color: DESIGN_TOKENS.colors.neutral[500],
+    textAlign: 'center',
+    margin: 0,
+  };
+
   return (
-    <div className="space-y-2">
+    <div style={containerStyle}>
       <CheckoutButton
         plan={plan}
         billingCycle={billingCycle}
@@ -170,9 +227,17 @@ export function CheckoutButtonWithText({
         onSuccess={onSuccess}
         onError={onError}
       />
-      <p className="text-xs text-gray-500 text-center">
+      <p style={textStyle}>
         ※ 安全な決済はStripeで処理されます
       </p>
+
+      {/* スピナーアニメーション用のスタイルタグ */}
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
