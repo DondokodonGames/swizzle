@@ -1,11 +1,12 @@
 // src/components/ProfileModal.tsx
 // ゲーム画面からポップアップで表示するユーザープロフィール（Phase M: SubscriptionManager統合版）
-// 修正: user_profiles → profiles
+// 修正: Tailwindクラス → インラインスタイル完全変換
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { SocialService } from '../social/services/SocialService';
 import { supabase } from '../lib/supabase';
 import { SubscriptionManager } from './monetization/SubscriptionManager';
+import { DESIGN_TOKENS } from '../constants/DesignSystem';
 
 interface ProfileModalProps {
   userId: string;
@@ -46,6 +47,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'settings'>('info');
+  
+  // ホバー状態管理
+  const [closeButtonHover, setCloseButtonHover] = useState(false);
+  const [followButtonHover, setFollowButtonHover] = useState(false);
+  const [errorCloseButtonHover, setErrorCloseButtonHover] = useState(false);
+  const [infoTabHover, setInfoTabHover] = useState(false);
+  const [settingsTabHover, setSettingsTabHover] = useState(false);
+  const [websiteLinkHover, setWebsiteLinkHover] = useState(false);
+  const [changeEarningsButtonHover, setChangeEarningsButtonHover] = useState(false);
 
   const socialService = useMemo(() => SocialService.getInstance(), []);
 
@@ -56,11 +66,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
         setLoading(true);
         setError(null);
 
-        // 現在のユーザーを取得
         const { data: { user } } = await supabase.auth.getUser();
         const currentUserId = user?.id;
 
-        // プロフィール情報を取得（修正: user_profiles → profiles）
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -69,7 +77,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
 
         if (profileError) throw profileError;
 
-        // ゲーム統計を取得
         const { data: games } = await supabase
           .from('user_games')
           .select('*')
@@ -79,7 +86,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
         const totalPlays = games?.reduce((sum, game) => sum + (game.play_count || 0), 0) || 0;
         const totalLikes = games?.reduce((sum, game) => sum + (game.like_count || 0), 0) || 0;
 
-        // フォロワー/フォロー中を取得
         const { count: followersCount } = await supabase
           .from('follows')
           .select('*', { count: 'exact', head: true })
@@ -90,7 +96,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
           .select('*', { count: 'exact', head: true })
           .eq('follower_id', userId);
 
-        // フォロー状態を確認
         let isFollowing = false;
         if (currentUserId && currentUserId !== userId) {
           const { data: followData } = await supabase
@@ -103,7 +108,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
           isFollowing = !!followData;
         }
 
-        // ユーザー設定を取得
         const { data: preferences } = await supabase
           .from('user_preferences')
           .select('*')
@@ -174,13 +178,355 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
     }
   };
 
+  // スタイル定義
+  const styles = {
+    overlay: {
+      position: 'fixed' as const,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backdropFilter: 'blur(4px)',
+      zIndex: 100,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: DESIGN_TOKENS.spacing[4],
+      overflowY: 'auto' as const
+    },
+    loadingCard: {
+      backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+      borderRadius: DESIGN_TOKENS.borderRadius['3xl'],
+      padding: DESIGN_TOKENS.spacing[8],
+      maxWidth: '640px',
+      width: '100%',
+      margin: '0 ' + DESIGN_TOKENS.spacing[4]
+    },
+    loadingContent: {
+      textAlign: 'center' as const
+    },
+    spinner: {
+      display: 'inline-block',
+      width: '48px',
+      height: '48px',
+      border: `4px solid ${DESIGN_TOKENS.colors.purple[500]}20`,
+      borderTopColor: DESIGN_TOKENS.colors.purple[500],
+      borderRadius: DESIGN_TOKENS.borderRadius.full,
+      animation: 'spin 1s linear infinite',
+      marginBottom: DESIGN_TOKENS.spacing[4]
+    },
+    loadingText: {
+      color: DESIGN_TOKENS.colors.neutral[600],
+      fontSize: DESIGN_TOKENS.typography.fontSize.base
+    },
+    errorEmoji: {
+      fontSize: DESIGN_TOKENS.typography.fontSize['6xl'],
+      marginBottom: DESIGN_TOKENS.spacing[4],
+      display: 'block'
+    },
+    errorTitle: {
+      fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      color: DESIGN_TOKENS.colors.neutral[800],
+      marginBottom: DESIGN_TOKENS.spacing[2]
+    },
+    errorMessage: {
+      color: DESIGN_TOKENS.colors.neutral[600],
+      marginBottom: DESIGN_TOKENS.spacing[6],
+      fontSize: DESIGN_TOKENS.typography.fontSize.base
+    },
+    errorCloseButton: {
+      padding: `${DESIGN_TOKENS.spacing[3]} ${DESIGN_TOKENS.spacing[6]}`,
+      backgroundColor: errorCloseButtonHover 
+        ? DESIGN_TOKENS.colors.purple[600] 
+        : DESIGN_TOKENS.colors.purple[500],
+      color: DESIGN_TOKENS.colors.neutral[0],
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      borderRadius: DESIGN_TOKENS.borderRadius.xl,
+      transition: `all ${DESIGN_TOKENS.animation.duration.normal} ${DESIGN_TOKENS.animation.easing.inOut}`,
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: DESIGN_TOKENS.typography.fontSize.base
+    },
+    modal: {
+      backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+      borderRadius: DESIGN_TOKENS.borderRadius['3xl'],
+      maxWidth: '768px',
+      width: '100%',
+      margin: DESIGN_TOKENS.spacing[8] + ' 0',
+      boxShadow: DESIGN_TOKENS.shadows['2xl']
+    },
+    header: {
+      position: 'relative' as const
+    },
+    banner: {
+      width: '100%',
+      height: '128px',
+      objectFit: 'cover' as const,
+      borderTopLeftRadius: DESIGN_TOKENS.borderRadius['3xl'],
+      borderTopRightRadius: DESIGN_TOKENS.borderRadius['3xl']
+    },
+    bannerOverlay: {
+      position: 'absolute' as const,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.3))',
+      borderTopLeftRadius: DESIGN_TOKENS.borderRadius['3xl'],
+      borderTopRightRadius: DESIGN_TOKENS.borderRadius['3xl']
+    },
+    closeButton: {
+      position: 'absolute' as const,
+      top: DESIGN_TOKENS.spacing[4],
+      right: DESIGN_TOKENS.spacing[4],
+      width: '40px',
+      height: '40px',
+      backgroundColor: closeButtonHover ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
+      backdropFilter: 'blur(4px)',
+      borderRadius: DESIGN_TOKENS.borderRadius.full,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: DESIGN_TOKENS.colors.neutral[0],
+      fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+      transition: `all ${DESIGN_TOKENS.animation.duration.normal} ${DESIGN_TOKENS.animation.easing.inOut}`,
+      border: 'none',
+      cursor: 'pointer'
+    },
+    content: {
+      padding: `0 ${DESIGN_TOKENS.spacing[6]} ${DESIGN_TOKENS.spacing[6]}`
+    },
+    profileHeader: {
+      display: 'flex',
+      alignItems: 'flex-end',
+      gap: DESIGN_TOKENS.spacing[4],
+      marginTop: '-48px',
+      marginBottom: DESIGN_TOKENS.spacing[4]
+    },
+    avatar: {
+      width: '96px',
+      height: '96px',
+      borderRadius: DESIGN_TOKENS.borderRadius.full,
+      border: `4px solid ${DESIGN_TOKENS.colors.neutral[0]}`,
+      boxShadow: DESIGN_TOKENS.shadows.lg
+    },
+    profileInfo: {
+      flex: 1
+    },
+    displayName: {
+      fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      color: DESIGN_TOKENS.colors.neutral[800]
+    },
+    username: {
+      color: DESIGN_TOKENS.colors.neutral[600],
+      fontSize: DESIGN_TOKENS.typography.fontSize.base
+    },
+    followButton: {
+      padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[6]}`,
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      borderRadius: DESIGN_TOKENS.borderRadius.xl,
+      transition: `all ${DESIGN_TOKENS.animation.duration.normal} ${DESIGN_TOKENS.animation.easing.inOut}`,
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: DESIGN_TOKENS.typography.fontSize.base
+    },
+    followButtonFollowing: {
+      backgroundColor: followButtonHover 
+        ? DESIGN_TOKENS.colors.neutral[200] 
+        : DESIGN_TOKENS.colors.neutral[100],
+      color: DESIGN_TOKENS.colors.neutral[700]
+    },
+    followButtonNotFollowing: {
+      backgroundColor: followButtonHover 
+        ? DESIGN_TOKENS.colors.purple[600] 
+        : DESIGN_TOKENS.colors.purple[500],
+      color: DESIGN_TOKENS.colors.neutral[0]
+    },
+    bio: {
+      color: DESIGN_TOKENS.colors.neutral[700],
+      marginBottom: DESIGN_TOKENS.spacing[4],
+      fontSize: DESIGN_TOKENS.typography.fontSize.base,
+      lineHeight: DESIGN_TOKENS.typography.lineHeight.relaxed
+    },
+    infoRow: {
+      display: 'flex',
+      flexWrap: 'wrap' as const,
+      gap: DESIGN_TOKENS.spacing[4],
+      fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+      color: DESIGN_TOKENS.colors.neutral[600],
+      marginBottom: DESIGN_TOKENS.spacing[6]
+    },
+    websiteLink: {
+      color: websiteLinkHover 
+        ? DESIGN_TOKENS.colors.purple[600] 
+        : DESIGN_TOKENS.colors.purple[500],
+      transition: `color ${DESIGN_TOKENS.animation.duration.normal}`,
+      textDecoration: 'none'
+    },
+    tabContainer: {
+      display: 'flex',
+      gap: DESIGN_TOKENS.spacing[2],
+      borderBottom: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+      marginBottom: DESIGN_TOKENS.spacing[6]
+    },
+    tab: {
+      padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[4]}`,
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      transition: `all ${DESIGN_TOKENS.animation.duration.normal}`,
+      border: 'none',
+      background: 'none',
+      cursor: 'pointer',
+      fontSize: DESIGN_TOKENS.typography.fontSize.base
+    },
+    tabActive: {
+      color: DESIGN_TOKENS.colors.purple[600],
+      borderBottom: `2px solid ${DESIGN_TOKENS.colors.purple[600]}`,
+      marginBottom: '-1px'
+    },
+    tabInactive: (isHover: boolean) => ({
+      color: isHover ? DESIGN_TOKENS.colors.neutral[700] : DESIGN_TOKENS.colors.neutral[500]
+    }),
+    statsGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+      gap: DESIGN_TOKENS.spacing[4],
+      marginBottom: DESIGN_TOKENS.spacing[6]
+    },
+    statCard: (fromColor: string, toColor: string) => ({
+      background: `linear-gradient(135deg, ${fromColor}, ${toColor})`,
+      borderRadius: DESIGN_TOKENS.borderRadius['2xl'],
+      padding: DESIGN_TOKENS.spacing[4],
+      textAlign: 'center' as const
+    }),
+    statValue: (color: string) => ({
+      fontSize: DESIGN_TOKENS.typography.fontSize['3xl'],
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      color: color
+    }),
+    statLabel: {
+      fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+      color: DESIGN_TOKENS.colors.neutral[600]
+    },
+    settingsSection: {
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: DESIGN_TOKENS.spacing[6]
+    },
+    subscriptionCard: {
+      background: `linear-gradient(135deg, ${DESIGN_TOKENS.colors.purple[50]}, ${DESIGN_TOKENS.colors.purple[100]})`,
+      borderRadius: DESIGN_TOKENS.borderRadius['2xl'],
+      padding: DESIGN_TOKENS.spacing[6],
+      border: `2px solid ${DESIGN_TOKENS.colors.purple[200]}`
+    },
+    sectionTitle: {
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      color: DESIGN_TOKENS.colors.neutral[800],
+      marginBottom: DESIGN_TOKENS.spacing[4],
+      display: 'flex',
+      alignItems: 'center',
+      gap: DESIGN_TOKENS.spacing[2],
+      fontSize: DESIGN_TOKENS.typography.fontSize.base
+    },
+    titleEmoji: {
+      fontSize: DESIGN_TOKENS.typography.fontSize['2xl']
+    },
+    settingsCard: {
+      backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+      borderRadius: DESIGN_TOKENS.borderRadius['2xl'],
+      padding: DESIGN_TOKENS.spacing[4]
+    },
+    select: {
+      width: '100%',
+      padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[4]}`,
+      border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+      borderRadius: DESIGN_TOKENS.borderRadius.xl,
+      fontSize: DESIGN_TOKENS.typography.fontSize.base,
+      outline: 'none'
+    },
+    tagsContainer: {
+      display: 'flex',
+      flexWrap: 'wrap' as const,
+      gap: DESIGN_TOKENS.spacing[2],
+      marginBottom: DESIGN_TOKENS.spacing[3]
+    },
+    tag: {
+      padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[3]}`,
+      backgroundColor: DESIGN_TOKENS.colors.error[200],
+      color: DESIGN_TOKENS.colors.error[800],
+      borderRadius: DESIGN_TOKENS.borderRadius.full,
+      fontSize: DESIGN_TOKENS.typography.fontSize.sm
+    },
+    noTags: {
+      color: DESIGN_TOKENS.colors.neutral[500],
+      fontSize: DESIGN_TOKENS.typography.fontSize.sm
+    },
+    input: {
+      width: '100%',
+      padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[4]}`,
+      border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+      borderRadius: DESIGN_TOKENS.borderRadius.xl,
+      fontSize: DESIGN_TOKENS.typography.fontSize.base,
+      outline: 'none'
+    },
+    earningsCard: {
+      background: `linear-gradient(135deg, ${DESIGN_TOKENS.colors.warning[50]}, ${DESIGN_TOKENS.colors.warning[100]})`,
+      borderRadius: DESIGN_TOKENS.borderRadius['2xl'],
+      padding: DESIGN_TOKENS.spacing[4],
+      border: `2px solid ${DESIGN_TOKENS.colors.warning[500]}`
+    },
+    earningsInfo: {
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: DESIGN_TOKENS.spacing[3]
+    },
+    earningsRow: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between'
+    },
+    earningsLabel: {
+      color: DESIGN_TOKENS.colors.neutral[700],
+      fontSize: DESIGN_TOKENS.typography.fontSize.base
+    },
+    badge: (enabled: boolean) => ({
+      padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[3]}`,
+      borderRadius: DESIGN_TOKENS.borderRadius.full,
+      fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      backgroundColor: enabled ? DESIGN_TOKENS.colors.success[100] : DESIGN_TOKENS.colors.neutral[100],
+      color: enabled ? DESIGN_TOKENS.colors.success[800] : DESIGN_TOKENS.colors.neutral[700]
+    }),
+    earningsValue: {
+      fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      color: DESIGN_TOKENS.colors.warning[600]
+    },
+    changeEarningsButton: {
+      width: '100%',
+      padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[4]}`,
+      background: changeEarningsButtonHover
+        ? `linear-gradient(to right, ${DESIGN_TOKENS.colors.warning[600]}, ${DESIGN_TOKENS.colors.warning[800]})`
+        : `linear-gradient(to right, ${DESIGN_TOKENS.colors.warning[500]}, ${DESIGN_TOKENS.colors.warning[600]})`,
+      color: DESIGN_TOKENS.colors.neutral[0],
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      borderRadius: DESIGN_TOKENS.borderRadius.xl,
+      transition: `all ${DESIGN_TOKENS.animation.duration.normal}`,
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: DESIGN_TOKENS.typography.fontSize.base
+    }
+  };
+
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center">
-        <div className="bg-white rounded-3xl p-8 max-w-2xl w-full mx-4">
-          <div className="text-center">
-            <div className="inline-block w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mb-4"></div>
-            <p className="text-gray-600">プロフィール読み込み中...</p>
+      <div style={styles.overlay}>
+        <div style={styles.loadingCard}>
+          <div style={styles.loadingContent}>
+            <div style={styles.spinner}></div>
+            <p style={styles.loadingText}>プロフィール読み込み中...</p>
           </div>
         </div>
       </div>
@@ -189,15 +535,17 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
 
   if (error || !profile) {
     return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center">
-        <div className="bg-white rounded-3xl p-8 max-w-2xl w-full mx-4">
-          <div className="text-center">
-            <span className="text-6xl mb-4 block">😵</span>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">エラー</h3>
-            <p className="text-gray-600 mb-6">{error || 'プロフィールが見つかりません'}</p>
+      <div style={styles.overlay}>
+        <div style={styles.loadingCard}>
+          <div style={styles.loadingContent}>
+            <span style={styles.errorEmoji}>😵</span>
+            <h3 style={styles.errorTitle}>エラー</h3>
+            <p style={styles.errorMessage}>{error || 'プロフィールが見つかりません'}</p>
             <button
               onClick={onClose}
-              className="px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-xl transition-colors"
+              onMouseEnter={() => setErrorCloseButtonHover(true)}
+              onMouseLeave={() => setErrorCloseButtonHover(false)}
+              style={styles.errorCloseButton}
             >
               閉じる
             </button>
@@ -208,48 +556,50 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-3xl w-full my-8 shadow-2xl">
+    <div style={styles.overlay}>
+      <div style={styles.modal}>
         {/* ヘッダー */}
-        <div className="relative">
-          {/* バナー */}
+        <div style={styles.header}>
           <img
             src={profile.banner}
             alt="Banner"
-            className="w-full h-32 object-cover rounded-t-3xl"
+            style={styles.banner}
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30 rounded-t-3xl"></div>
-
-          {/* 閉じるボタン */}
+          <div style={styles.bannerOverlay}></div>
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full flex items-center justify-center text-white text-xl transition-colors"
+            onMouseEnter={() => setCloseButtonHover(true)}
+            onMouseLeave={() => setCloseButtonHover(false)}
+            style={styles.closeButton}
           >
             ✕
           </button>
         </div>
 
         {/* プロフィール内容 */}
-        <div className="px-6 pb-6">
+        <div style={styles.content}>
           {/* アバターと基本情報 */}
-          <div className="flex items-end gap-4 -mt-12 mb-4">
+          <div style={styles.profileHeader}>
             <img
               src={profile.avatar}
               alt={profile.displayName}
-              className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
+              style={styles.avatar}
             />
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold text-gray-800">{profile.displayName}</h2>
-              <p className="text-gray-600">@{profile.username}</p>
+            <div style={styles.profileInfo}>
+              <h2 style={styles.displayName}>{profile.displayName}</h2>
+              <p style={styles.username}>@{profile.username}</p>
             </div>
             {!profile.isOwner && (
               <button
                 onClick={handleFollow}
-                className={`px-6 py-2 font-bold rounded-xl transition-colors ${
-                  profile.isFollowing
-                    ? 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                    : 'bg-purple-500 hover:bg-purple-600 text-white'
-                }`}
+                onMouseEnter={() => setFollowButtonHover(true)}
+                onMouseLeave={() => setFollowButtonHover(false)}
+                style={{
+                  ...styles.followButton,
+                  ...(profile.isFollowing 
+                    ? styles.followButtonFollowing 
+                    : styles.followButtonNotFollowing)
+                }}
               >
                 {profile.isFollowing ? '✓ フォロー中' : '+ フォロー'}
               </button>
@@ -258,11 +608,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
 
           {/* バイオ */}
           {profile.bio && (
-            <p className="text-gray-700 mb-4">{profile.bio}</p>
+            <p style={styles.bio}>{profile.bio}</p>
           )}
 
           {/* 追加情報 */}
-          <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-6">
+          <div style={styles.infoRow}>
             {profile.location && (
               <span>📍 {profile.location}</span>
             )}
@@ -271,7 +621,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
                 href={profile.website}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-purple-500 hover:text-purple-600"
+                onMouseEnter={() => setWebsiteLinkHover(true)}
+                onMouseLeave={() => setWebsiteLinkHover(false)}
+                style={styles.websiteLink}
               >
                 🔗 {profile.website}
               </a>
@@ -280,25 +632,31 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
           </div>
 
           {/* タブ */}
-          <div className="flex gap-2 border-b border-gray-200 mb-6">
+          <div style={styles.tabContainer}>
             <button
               onClick={() => setActiveTab('info')}
-              className={`px-4 py-2 font-bold transition-colors ${
-                activeTab === 'info'
-                  ? 'text-purple-600 border-b-2 border-purple-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
+              onMouseEnter={() => setInfoTabHover(true)}
+              onMouseLeave={() => setInfoTabHover(false)}
+              style={{
+                ...styles.tab,
+                ...(activeTab === 'info' 
+                  ? styles.tabActive 
+                  : styles.tabInactive(infoTabHover))
+              }}
             >
               📊 統計情報
             </button>
             {profile.isOwner && (
               <button
                 onClick={() => setActiveTab('settings')}
-                className={`px-4 py-2 font-bold transition-colors ${
-                  activeTab === 'settings'
-                    ? 'text-purple-600 border-b-2 border-purple-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
+                onMouseEnter={() => setSettingsTabHover(true)}
+                onMouseLeave={() => setSettingsTabHover(false)}
+                style={{
+                  ...styles.tab,
+                  ...(activeTab === 'settings' 
+                    ? styles.tabActive 
+                    : styles.tabInactive(settingsTabHover))
+                }}
               >
                 ⚙️ 設定
               </button>
@@ -309,52 +667,64 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
           {activeTab === 'info' && (
             <div>
               {/* 統計情報 */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-4 text-center">
-                  <div className="text-3xl font-bold text-purple-600">{profile.stats.totalGames}</div>
-                  <div className="text-sm text-gray-600">作品</div>
+              <div style={styles.statsGrid}>
+                <div style={styles.statCard(DESIGN_TOKENS.colors.purple[50], DESIGN_TOKENS.colors.purple[100])}>
+                  <div style={styles.statValue(DESIGN_TOKENS.colors.purple[600])}>
+                    {profile.stats.totalGames}
+                  </div>
+                  <div style={styles.statLabel}>作品</div>
                 </div>
-                <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-4 text-center">
-                  <div className="text-3xl font-bold text-blue-600">{profile.stats.totalLikes.toLocaleString()}</div>
-                  <div className="text-sm text-gray-600">貰ったいいね</div>
+                <div style={styles.statCard(DESIGN_TOKENS.colors.primary[50], DESIGN_TOKENS.colors.primary[100])}>
+                  <div style={styles.statValue(DESIGN_TOKENS.colors.primary[600])}>
+                    {profile.stats.totalLikes.toLocaleString()}
+                  </div>
+                  <div style={styles.statLabel}>貰ったいいね</div>
                 </div>
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-4 text-center">
-                  <div className="text-3xl font-bold text-green-600">{profile.stats.totalPlays.toLocaleString()}</div>
-                  <div className="text-sm text-gray-600">プレイされた数</div>
+                <div style={styles.statCard(DESIGN_TOKENS.colors.success[50], DESIGN_TOKENS.colors.success[100])}>
+                  <div style={styles.statValue(DESIGN_TOKENS.colors.success[600])}>
+                    {profile.stats.totalPlays.toLocaleString()}
+                  </div>
+                  <div style={styles.statLabel}>プレイされた数</div>
                 </div>
-                <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-2xl p-4 text-center">
-                  <div className="text-3xl font-bold text-orange-600">{profile.stats.totalPlays.toLocaleString()}</div>
-                  <div className="text-sm text-gray-600">プレイした数</div>
+                <div style={styles.statCard(DESIGN_TOKENS.colors.warning[50], DESIGN_TOKENS.colors.warning[100])}>
+                  <div style={styles.statValue(DESIGN_TOKENS.colors.warning[600])}>
+                    {profile.stats.totalPlays.toLocaleString()}
+                  </div>
+                  <div style={styles.statLabel}>プレイした数</div>
                 </div>
-                <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl p-4 text-center">
-                  <div className="text-3xl font-bold text-pink-600">{profile.stats.totalFollowers.toLocaleString()}</div>
-                  <div className="text-sm text-gray-600">フォロワー</div>
+                <div style={styles.statCard('#fce7f3', '#fecdd3')}>
+                  <div style={styles.statValue('#ec4899')}>
+                    {profile.stats.totalFollowers.toLocaleString()}
+                  </div>
+                  <div style={styles.statLabel}>フォロワー</div>
                 </div>
-                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl p-4 text-center">
-                  <div className="text-3xl font-bold text-indigo-600">{profile.stats.totalFollowing.toLocaleString()}</div>
-                  <div className="text-sm text-gray-600">フォロー中</div>
+                <div style={styles.statCard(DESIGN_TOKENS.colors.secondary[100], DESIGN_TOKENS.colors.purple[50])}>
+                  <div style={styles.statValue(DESIGN_TOKENS.colors.secondary[700])}>
+                    {profile.stats.totalFollowing.toLocaleString()}
+                  </div>
+                  <div style={styles.statLabel}>フォロー中</div>
                 </div>
               </div>
             </div>
           )}
 
           {activeTab === 'settings' && profile.isOwner && (
-            <div className="space-y-6">
+            <div style={styles.settingsSection}>
               {/* Phase M: サブスクリプション管理セクション */}
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border-2 border-purple-200">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <span className="text-2xl">💎</span>
+              <div style={styles.subscriptionCard}>
+                <h3 style={styles.sectionTitle}>
+                  <span style={styles.titleEmoji}>💎</span>
                   <span>サブスクリプション管理</span>
                 </h3>
                 <SubscriptionManager />
               </div>
 
               {/* 設定言語 */}
-              <div className="bg-gray-50 rounded-2xl p-4">
-                <h3 className="font-bold text-gray-800 mb-3">🌐 設定言語</h3>
+              <div style={styles.settingsCard}>
+                <h3 style={styles.sectionTitle}>🌐 設定言語</h3>
                 <select
                   value={profile.preferences.language}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500"
+                  style={styles.select}
                 >
                   <option value="ja">日本語</option>
                   <option value="en">English</option>
@@ -364,50 +734,47 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
               </div>
 
               {/* 避けたいタグ */}
-              <div className="bg-gray-50 rounded-2xl p-4">
-                <h3 className="font-bold text-gray-800 mb-3">🚫 避けたいタグ</h3>
-                <div className="flex flex-wrap gap-2 mb-3">
+              <div style={styles.settingsCard}>
+                <h3 style={styles.sectionTitle}>🚫 避けたいタグ</h3>
+                <div style={styles.tagsContainer}>
                   {profile.preferences.avoidTags.length > 0 ? (
                     profile.preferences.avoidTags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm"
-                      >
+                      <span key={index} style={styles.tag}>
                         {tag} ✕
                       </span>
                     ))
                   ) : (
-                    <p className="text-gray-500 text-sm">設定されていません</p>
+                    <p style={styles.noTags}>設定されていません</p>
                   )}
                 </div>
                 <input
                   type="text"
                   placeholder="タグを追加..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500"
+                  style={styles.input}
                 />
               </div>
 
               {/* 収益関連情報 */}
-              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-4 border-2 border-yellow-200">
-                <h3 className="font-bold text-gray-800 mb-3">💰 収益関連情報</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-700">収益化設定</span>
-                    <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-                      profile.preferences.monetization.enabled
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-700'
-                    }`}>
+              <div style={styles.earningsCard}>
+                <h3 style={styles.sectionTitle}>💰 収益関連情報</h3>
+                <div style={styles.earningsInfo}>
+                  <div style={styles.earningsRow}>
+                    <span style={styles.earningsLabel}>収益化設定</span>
+                    <span style={styles.badge(profile.preferences.monetization.enabled)}>
                       {profile.preferences.monetization.enabled ? '有効' : '無効'}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-700">累計収益</span>
-                    <span className="text-2xl font-bold text-yellow-600">
+                  <div style={styles.earningsRow}>
+                    <span style={styles.earningsLabel}>累計収益</span>
+                    <span style={styles.earningsValue}>
                       ¥{profile.preferences.monetization.earnings.toLocaleString()}
                     </span>
                   </div>
-                  <button className="w-full px-4 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold rounded-xl transition-colors">
+                  <button 
+                    onMouseEnter={() => setChangeEarningsButtonHover(true)}
+                    onMouseLeave={() => setChangeEarningsButtonHover(false)}
+                    style={styles.changeEarningsButton}
+                  >
                     収益設定を変更
                   </button>
                 </div>
@@ -416,6 +783,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
           )}
         </div>
       </div>
+
+      {/* スピナーアニメーション用のスタイルタグ */}
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };

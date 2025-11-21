@@ -1,17 +1,16 @@
 /**
  * PaywallModal.tsx
- * 無料プラン制限到達時のPaywallモーダル
+ * 無料プラン制限到達時のPaywallモーダル（完全インラインスタイル版）
  * 
- * 機能:
- * - 月間制限到達時の表示
- * - クレジット使用状況の表示
- * - プレミアムプランへのアップグレード促進
+ * 修正内容:
+ * - Tailwind CSSクラス → 完全インラインスタイル + DESIGN_TOKENS
  */
 
 import React from 'react';
 import type { PaywallModalProps } from '../../types/MonetizationTypes';
 import { MVPSubscriptionPlan } from '../../types/MonetizationTypes';
 import { CheckoutButton } from './CheckoutButton';
+import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 
 /**
  * Paywall Modal コンポーネント
@@ -26,43 +25,96 @@ export function PaywallModal({
   /**
    * 使用率の色を決定
    */
-  const getUsageColor = (percentage: number) => {
-    if (percentage >= 100) return 'text-red-600';
-    if (percentage >= 80) return 'text-orange-600';
-    return 'text-blue-600';
+  const getUsageColor = (percentage: number): string => {
+    if (percentage >= 100) return DESIGN_TOKENS.colors.error[600];
+    if (percentage >= 80) return DESIGN_TOKENS.colors.warning[600];
+    return DESIGN_TOKENS.colors.primary[600];
   };
 
   /**
    * プログレスバーの色を決定
    */
-  const getProgressBarColor = (percentage: number) => {
-    if (percentage >= 100) return 'bg-red-500';
-    if (percentage >= 80) return 'bg-orange-500';
-    return 'bg-blue-500';
+  const getProgressBarColor = (percentage: number): string => {
+    if (percentage >= 100) return DESIGN_TOKENS.colors.error[500];
+    if (percentage >= 80) return DESIGN_TOKENS.colors.warning[500];
+    return DESIGN_TOKENS.colors.primary[500];
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: DESIGN_TOKENS.zIndex.modal,
+      overflowY: 'auto'
+    }}>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          transition: `opacity ${DESIGN_TOKENS.animation.duration.normal}`
+        }}
         onClick={onClose}
       />
 
-      {/* Modal - コンパクト版 */}
-      <div className="flex min-h-full items-center justify-center p-4">
+      {/* Modal Container */}
+      <div style={{
+        display: 'flex',
+        minHeight: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: DESIGN_TOKENS.spacing[4]
+      }}>
         <div
-          className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all"
+          style={{
+            position: 'relative',
+            backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+            borderRadius: DESIGN_TOKENS.borderRadius['2xl'],
+            boxShadow: DESIGN_TOKENS.shadows['2xl'],
+            maxWidth: '448px',
+            width: '100%',
+            padding: DESIGN_TOKENS.spacing[6],
+            transform: 'scale(1)',
+            transition: `all ${DESIGN_TOKENS.animation.duration.normal}`
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            style={{
+              position: 'absolute',
+              top: DESIGN_TOKENS.spacing[4],
+              right: DESIGN_TOKENS.spacing[4],
+              color: DESIGN_TOKENS.colors.neutral[400],
+              backgroundColor: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: DESIGN_TOKENS.spacing[1],
+              transition: `color ${DESIGN_TOKENS.animation.duration.normal}`
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = DESIGN_TOKENS.colors.neutral[600];
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = DESIGN_TOKENS.colors.neutral[400];
+            }}
             aria-label="閉じる"
           >
             <svg
-              style={{ width: '24px', height: '24px', minWidth: '24px', minHeight: '24px' }}
+              style={{ 
+                width: '24px', 
+                height: '24px', 
+                minWidth: '24px', 
+                minHeight: '24px' 
+              }}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -76,15 +128,27 @@ export function PaywallModal({
             </svg>
           </button>
 
-          {/* Icon - コンパクト版 */}
-          <div className="flex justify-center mb-4">
-            <div
-              className="bg-gradient-to-br from-purple-100 to-pink-100 rounded-full flex items-center justify-center"
-              style={{ width: '40px', height: '40px' }}
-            >
+          {/* Icon */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: DESIGN_TOKENS.spacing[4]
+          }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              background: 'linear-gradient(135deg, #f3e8ff 0%, #fce7f3 100%)',
+              borderRadius: DESIGN_TOKENS.borderRadius.full,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
               <svg
-                className="text-purple-600"
-                style={{ width: '24px', height: '24px' }}
+                style={{ 
+                  width: '24px', 
+                  height: '24px',
+                  color: DESIGN_TOKENS.colors.purple[600]
+                }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -99,42 +163,89 @@ export function PaywallModal({
             </div>
           </div>
 
-          {/* Title - コンパクト版 */}
-          <h2 className="text-2xl font-bold text-center text-gray-900 mb-2">
+          {/* Title */}
+          <h2 style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+            textAlign: 'center',
+            color: DESIGN_TOKENS.colors.neutral[900],
+            marginBottom: DESIGN_TOKENS.spacing[2]
+          }}>
             月間制限に達しました
           </h2>
 
-          {/* Description - コンパクト版 */}
-          <p className="text-center text-gray-500 text-sm mb-6">
+          {/* Description */}
+          <p style={{
+            textAlign: 'center',
+            color: DESIGN_TOKENS.colors.neutral[500],
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            marginBottom: DESIGN_TOKENS.spacing[6]
+          }}>
             無料プランは月{currentUsage?.limit || 5}ゲームまで。プレミアムで無制限に！
           </p>
 
-          {/* Usage Display - コンパクト版 */}
+          {/* Usage Display */}
           {currentUsage && currentUsage.isLimited && (
-            <div className="bg-gray-50 rounded-lg p-4 mb-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-gray-600">
+            <div style={{
+              backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+              borderRadius: DESIGN_TOKENS.borderRadius.lg,
+              padding: DESIGN_TOKENS.spacing[4],
+              marginBottom: DESIGN_TOKENS.spacing[5]
+            }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: DESIGN_TOKENS.spacing[2]
+              }}>
+                <span style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  color: DESIGN_TOKENS.colors.neutral[600]
+                }}>
                   今月の使用状況
                 </span>
-                <span className={`text-sm font-bold ${getUsageColor(currentUsage.percentage)}`}>
+                <span style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                  color: getUsageColor(currentUsage.percentage)
+                }}>
                   {currentUsage.used} / {currentUsage.limit}
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div
-                  className={`h-full ${getProgressBarColor(currentUsage.percentage)} transition-all duration-500 rounded-full`}
-                  style={{ width: `${Math.min(currentUsage.percentage, 100)}%` }}
-                />
+              <div style={{
+                width: '100%',
+                backgroundColor: DESIGN_TOKENS.colors.neutral[200],
+                borderRadius: DESIGN_TOKENS.borderRadius.full,
+                height: '8px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  height: '100%',
+                  backgroundColor: getProgressBarColor(currentUsage.percentage),
+                  width: `${Math.min(currentUsage.percentage, 100)}%`,
+                  transition: `width ${DESIGN_TOKENS.animation.duration.slower}`,
+                  borderRadius: DESIGN_TOKENS.borderRadius.full
+                }} />
               </div>
             </div>
           )}
 
-          {/* Premium Benefits - グリッド版 */}
-          <div className="mb-5">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+          {/* Premium Benefits */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[5] }}>
+            <h3 style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+              color: DESIGN_TOKENS.colors.neutral[700],
+              marginBottom: DESIGN_TOKENS.spacing[3]
+            }}>
               Premium 特典
             </h3>
-            <div className="grid grid-cols-2 gap-2">
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: DESIGN_TOKENS.spacing[2]
+            }}>
               {[
                 '無制限ゲーム',
                 '広告非表示',
@@ -143,10 +254,27 @@ export function PaywallModal({
                 'アセット無制限',
                 '優先サポート',
               ].map((benefit, index) => (
-                <div key={index} className="flex items-center text-gray-600 bg-purple-50 rounded-lg px-3 py-2">
+                <div 
+                  key={index}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: DESIGN_TOKENS.colors.neutral[600],
+                    backgroundColor: DESIGN_TOKENS.colors.purple[50],
+                    borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                    padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`
+                  }}
+                >
                   <svg
-                    className="text-purple-500 mr-2 flex-shrink-0"
-                    style={{ width: '14px', height: '14px', minWidth: '14px', minHeight: '14px' }}
+                    style={{
+                      width: '14px',
+                      height: '14px',
+                      minWidth: '14px',
+                      minHeight: '14px',
+                      color: DESIGN_TOKENS.colors.purple[500],
+                      marginRight: DESIGN_TOKENS.spacing[2],
+                      flexShrink: 0
+                    }}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -158,19 +286,53 @@ export function PaywallModal({
                       d="M5 13l4 4L19 7"
                     />
                   </svg>
-                  <span className="text-xs">{benefit}</span>
+                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs }}>
+                    {benefit}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Pricing Options - コンパクト版 */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          {/* Pricing Options */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: DESIGN_TOKENS.spacing[3],
+            marginBottom: DESIGN_TOKENS.spacing[4]
+          }}>
             {/* Monthly */}
-            <div className="border border-gray-200 rounded-xl p-3 hover:border-purple-300 transition-colors">
-              <div className="text-center mb-3">
-                <div className="text-xs text-gray-500 mb-0.5">月額</div>
-                <div className="text-2xl font-bold text-gray-800">$4.99</div>
+            <div style={{
+              border: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+              borderRadius: DESIGN_TOKENS.borderRadius.xl,
+              padding: DESIGN_TOKENS.spacing[3],
+              transition: `border-color ${DESIGN_TOKENS.animation.duration.normal}`,
+              cursor: 'pointer'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = DESIGN_TOKENS.colors.purple[300];
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = DESIGN_TOKENS.colors.neutral[200];
+            }}>
+              <div style={{
+                textAlign: 'center',
+                marginBottom: DESIGN_TOKENS.spacing[3]
+              }}>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[500],
+                  marginBottom: '2px'
+                }}>
+                  月額
+                </div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                  color: DESIGN_TOKENS.colors.neutral[800]
+                }}>
+                  $4.99
+                </div>
               </div>
               <CheckoutButton
                 plan={MVPSubscriptionPlan.PREMIUM}
@@ -180,15 +342,48 @@ export function PaywallModal({
             </div>
 
             {/* Yearly */}
-            <div className="border-2 border-purple-400 bg-purple-50 rounded-xl p-3 relative">
-              <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
-                <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+            <div style={{
+              border: `2px solid ${DESIGN_TOKENS.colors.purple[400]}`,
+              backgroundColor: DESIGN_TOKENS.colors.purple[50],
+              borderRadius: DESIGN_TOKENS.borderRadius.xl,
+              padding: DESIGN_TOKENS.spacing[3],
+              position: 'relative'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-8px',
+                left: '50%',
+                transform: 'translateX(-50%)'
+              }}>
+                <span style={{
+                  backgroundColor: DESIGN_TOKENS.colors.success[500],
+                  color: DESIGN_TOKENS.colors.neutral[0],
+                  fontSize: '10px',
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                  padding: `2px ${DESIGN_TOKENS.spacing[2]}`,
+                  borderRadius: DESIGN_TOKENS.borderRadius.full
+                }}>
                   17%OFF
                 </span>
               </div>
-              <div className="text-center mb-3">
-                <div className="text-xs text-gray-500 mb-0.5">年額</div>
-                <div className="text-2xl font-bold text-gray-800">$49.99</div>
+              <div style={{
+                textAlign: 'center',
+                marginBottom: DESIGN_TOKENS.spacing[3]
+              }}>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[500],
+                  marginBottom: '2px'
+                }}>
+                  年額
+                </div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                  color: DESIGN_TOKENS.colors.neutral[800]
+                }}>
+                  $49.99
+                </div>
               </div>
               <CheckoutButton
                 plan={MVPSubscriptionPlan.PREMIUM}
@@ -199,7 +394,12 @@ export function PaywallModal({
           </div>
 
           {/* Footer Note */}
-          <p className="text-xs text-gray-500 text-center">
+          <p style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+            color: DESIGN_TOKENS.colors.neutral[500],
+            textAlign: 'center',
+            lineHeight: DESIGN_TOKENS.typography.lineHeight.relaxed
+          }}>
             いつでもキャンセル可能。安全な決済はStripeで処理されます。
           </p>
         </div>
