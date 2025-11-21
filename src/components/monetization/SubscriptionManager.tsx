@@ -16,6 +16,7 @@ import { redirectToCustomerPortal } from '../../services/monetization/StripeServ
 import { PremiumBadge } from './PremiumBadge';
 import { CheckoutButton } from './CheckoutButton';
 import { MVPSubscriptionPlan, MVP_PLAN_CONFIGS } from '../../types/MonetizationTypes';
+import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 
 /**
  * Subscription Manager コンポーネント
@@ -24,6 +25,8 @@ export function SubscriptionManager() {
   const { subscription, loading, isPremium, isFree, period } = useSubscription();
   const { usage } = useCredits();
   const [isLoading, setIsLoading] = useState(false);
+  const [isManageHover, setIsManageHover] = useState(false);
+
   // ===== デバッグ用ログ（一時的に追加）=====
   console.log('🔍 SubscriptionManager Debug:', {
     subscription,
@@ -34,6 +37,7 @@ export function SubscriptionManager() {
     status: subscription?.status
   });
   // ========================================
+
   /**
    * Customer Portalを開く
    */
@@ -49,13 +53,41 @@ export function SubscriptionManager() {
     }
   };
 
+  // スタイル定義
+  const containerStyle: React.CSSProperties = {
+    backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+    borderRadius: '16px',
+    boxShadow: DESIGN_TOKENS.shadows.lg,
+    padding: DESIGN_TOKENS.spacing[8],
+  };
+
+  const skeletonContainerStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: DESIGN_TOKENS.spacing[4],
+  };
+
+  const skeletonBarStyle = (width: string): React.CSSProperties => ({
+    height: '1rem',
+    backgroundColor: DESIGN_TOKENS.colors.neutral[200],
+    borderRadius: DESIGN_TOKENS.borderRadius.md,
+    width,
+    animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+  });
+
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl shadow-lg p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-gray-200 rounded w-1/3" />
-          <div className="h-4 bg-gray-200 rounded w-2/3" />
-          <div className="h-4 bg-gray-200 rounded w-1/2" />
+      <div style={containerStyle}>
+        <style>{`
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+        `}</style>
+        <div style={skeletonContainerStyle}>
+          <div style={skeletonBarStyle('33%')} />
+          <div style={skeletonBarStyle('66%')} />
+          <div style={skeletonBarStyle('50%')} />
         </div>
       </div>
     );
@@ -64,38 +96,281 @@ export function SubscriptionManager() {
   const currentPlan = subscription?.plan_type || 'free';
   const planConfig = MVP_PLAN_CONFIGS[currentPlan as MVPSubscriptionPlan];
 
+  const headerStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: DESIGN_TOKENS.spacing[6],
+  };
+
+  const headingStyle: React.CSSProperties = {
+    fontSize: '1.5rem',
+    fontWeight: 700,
+    color: DESIGN_TOKENS.colors.neutral[900],
+    margin: 0,
+  };
+
+  const planCardStyle: React.CSSProperties = {
+    background: `linear-gradient(to bottom right, ${DESIGN_TOKENS.colors.purple[50]}, ${DESIGN_TOKENS.colors.purple[100]})`,
+    borderRadius: DESIGN_TOKENS.borderRadius.xl,
+    padding: DESIGN_TOKENS.spacing[6],
+    marginBottom: DESIGN_TOKENS.spacing[6],
+  };
+
+  const planHeaderStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: DESIGN_TOKENS.spacing[4],
+  };
+
+  const planTitleStyle: React.CSSProperties = {
+    fontSize: '1.25rem',
+    fontWeight: 700,
+    color: DESIGN_TOKENS.colors.neutral[900],
+    marginBottom: DESIGN_TOKENS.spacing[1],
+  };
+
+  const planDescStyle: React.CSSProperties = {
+    fontSize: '0.875rem',
+    color: DESIGN_TOKENS.colors.neutral[600],
+  };
+
+  const priceStyle: React.CSSProperties = {
+    fontSize: '1.875rem',
+    fontWeight: 700,
+    color: isPremium ? DESIGN_TOKENS.colors.purple[600] : DESIGN_TOKENS.colors.neutral[900],
+  };
+
+  const periodStyle: React.CSSProperties = {
+    fontSize: '0.875rem',
+    color: DESIGN_TOKENS.colors.neutral[600],
+  };
+
+  const savingsStyle: React.CSSProperties = {
+    marginTop: DESIGN_TOKENS.spacing[1],
+    fontSize: '0.75rem',
+    color: DESIGN_TOKENS.colors.success[600],
+    fontWeight: 600,
+  };
+
+  const periodInfoStyle: React.CSSProperties = {
+    marginTop: DESIGN_TOKENS.spacing[4],
+    paddingTop: DESIGN_TOKENS.spacing[4],
+    borderTop: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`,
+  };
+
+  const gridStyle: React.CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: DESIGN_TOKENS.spacing[4],
+    fontSize: '0.875rem',
+  };
+
+  const usageCardStyle: React.CSSProperties = {
+    backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+    borderRadius: DESIGN_TOKENS.borderRadius.xl,
+    padding: DESIGN_TOKENS.spacing[6],
+    marginBottom: DESIGN_TOKENS.spacing[6],
+  };
+
+  const usageHeaderStyle: React.CSSProperties = {
+    fontSize: '1.125rem',
+    fontWeight: 600,
+    color: DESIGN_TOKENS.colors.neutral[900],
+    marginBottom: DESIGN_TOKENS.spacing[4],
+  };
+
+  const usageRowStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: DESIGN_TOKENS.spacing[3],
+  };
+
+  const getProgressBarColor = () => {
+    if (!usage || !usage.isLimited) return DESIGN_TOKENS.colors.primary[500];
+    if (usage.percentage >= 100) return DESIGN_TOKENS.colors.error[500];
+    if (usage.percentage >= 80) return DESIGN_TOKENS.colors.warning[500];
+    return DESIGN_TOKENS.colors.primary[500];
+  };
+
+  const progressBarBgStyle: React.CSSProperties = {
+    width: '100%',
+    backgroundColor: DESIGN_TOKENS.colors.neutral[200],
+    borderRadius: DESIGN_TOKENS.borderRadius.full,
+    height: '12px',
+    overflow: 'hidden',
+  };
+
+  const progressBarFillStyle: React.CSSProperties = {
+    height: '100%',
+    backgroundColor: getProgressBarColor(),
+    transition: 'all 0.5s ease-in-out',
+    borderRadius: DESIGN_TOKENS.borderRadius.full,
+    width: usage && usage.isLimited ? `${Math.min(usage.percentage, 100)}%` : '0%',
+  };
+
+  const featuresHeaderStyle: React.CSSProperties = {
+    fontSize: '1.125rem',
+    fontWeight: 600,
+    color: DESIGN_TOKENS.colors.neutral[900],
+    marginBottom: DESIGN_TOKENS.spacing[4],
+  };
+
+  const featureListStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: DESIGN_TOKENS.spacing[2],
+    marginBottom: DESIGN_TOKENS.spacing[6],
+  };
+
+  const featureItemStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'flex-start',
+  };
+
+  const checkIconStyle: React.CSSProperties = {
+    color: DESIGN_TOKENS.colors.purple[600],
+    marginRight: DESIGN_TOKENS.spacing[3],
+    marginTop: '2px',
+    flexShrink: 0,
+    width: '20px',
+    height: '20px',
+    minWidth: '20px',
+    minHeight: '20px',
+  };
+
+  const featureTextStyle: React.CSSProperties = {
+    fontSize: '0.875rem',
+    color: DESIGN_TOKENS.colors.neutral[700],
+  };
+
+  const actionsStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: DESIGN_TOKENS.spacing[3],
+  };
+
+  const upgradeHeaderStyle: React.CSSProperties = {
+    fontSize: '1.125rem',
+    fontWeight: 600,
+    color: DESIGN_TOKENS.colors.neutral[900],
+    marginBottom: DESIGN_TOKENS.spacing[3],
+  };
+
+  const upgradeGridStyle: React.CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: DESIGN_TOKENS.spacing[3],
+  };
+
+  const savingsTextStyle: React.CSSProperties = {
+    marginTop: DESIGN_TOKENS.spacing[3],
+    fontSize: '0.75rem',
+    textAlign: 'center',
+    color: DESIGN_TOKENS.colors.neutral[600],
+  };
+
+  const getManageButtonStyle = (): React.CSSProperties => {
+    if (isLoading) {
+      return {
+        width: '100%',
+        padding: `${DESIGN_TOKENS.spacing[4]} ${DESIGN_TOKENS.spacing[6]}`,
+        background: `linear-gradient(to right, ${DESIGN_TOKENS.colors.primary[600]}, ${DESIGN_TOKENS.colors.primary[700]})`,
+        color: DESIGN_TOKENS.colors.neutral[0],
+        fontWeight: 600,
+        borderRadius: DESIGN_TOKENS.borderRadius.lg,
+        transition: 'all 0.2s ease-in-out',
+        boxShadow: DESIGN_TOKENS.shadows.md,
+        border: 'none',
+        cursor: 'not-allowed',
+        opacity: 0.5,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      };
+    }
+
+    return {
+      width: '100%',
+      padding: `${DESIGN_TOKENS.spacing[4]} ${DESIGN_TOKENS.spacing[6]}`,
+      background: isManageHover
+        ? `linear-gradient(to right, ${DESIGN_TOKENS.colors.primary[700]}, ${DESIGN_TOKENS.colors.primary[800]})`
+        : `linear-gradient(to right, ${DESIGN_TOKENS.colors.primary[600]}, ${DESIGN_TOKENS.colors.primary[700]})`,
+      color: DESIGN_TOKENS.colors.neutral[0],
+      fontWeight: 600,
+      borderRadius: DESIGN_TOKENS.borderRadius.lg,
+      transition: 'all 0.2s ease-in-out',
+      boxShadow: isManageHover ? DESIGN_TOKENS.shadows.lg : DESIGN_TOKENS.shadows.md,
+      border: 'none',
+      cursor: 'pointer',
+    };
+  };
+
+  const helpTextStyle: React.CSSProperties = {
+    marginTop: DESIGN_TOKENS.spacing[6],
+    fontSize: '0.75rem',
+    color: DESIGN_TOKENS.colors.neutral[500],
+    textAlign: 'center',
+  };
+
+  const spinnerContainerStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  };
+
+  const spinnerStyle: React.CSSProperties = {
+    width: '20px',
+    height: '20px',
+    marginRight: DESIGN_TOKENS.spacing[2],
+    animation: 'spin 1s linear infinite',
+  };
+
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-8">
+    <div style={containerStyle}>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">サブスクリプション</h2>
+      <div style={headerStyle}>
+        <h2 style={headingStyle}>サブスクリプション</h2>
         {isPremium && <PremiumBadge size="small" showLabel={true} />}
       </div>
 
       {/* Current Plan Card */}
-      <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
+      <div style={planCardStyle}>
+        <div style={planHeaderStyle}>
           <div>
-            <h3 className="text-xl font-bold text-gray-900 mb-1">
+            <h3 style={planTitleStyle}>
               {planConfig.displayName} プラン
             </h3>
-            <p className="text-sm text-gray-600">{planConfig.description}</p>
+            <p style={planDescStyle}>{planConfig.description}</p>
           </div>
-          <div className="text-right">
+          <div style={{ textAlign: 'right' }}>
             {isFree ? (
-              <div className="text-3xl font-bold text-gray-900">
+              <div style={priceStyle}>
                 無料
               </div>
             ) : (
               <>
-                <div className="text-3xl font-bold text-purple-600">
+                <div style={priceStyle}>
                   ${subscription?.stripe_price_id?.includes('year') ? planConfig.yearlyPrice : planConfig.price}
                 </div>
-                <div className="text-sm text-gray-600">
+                <div style={periodStyle}>
                   /{subscription?.stripe_price_id?.includes('year') ? '年' : '月'}
                 </div>
                 {subscription?.stripe_price_id?.includes('year') && (
-                  <div className="mt-1 text-xs text-green-600 font-semibold">
+                  <div style={savingsStyle}>
                     月額換算: ${(planConfig.yearlyPrice / 12).toFixed(2)}
                   </div>
                 )}
@@ -106,26 +381,26 @@ export function SubscriptionManager() {
 
         {/* Period Info */}
         {period && (
-          <div className="mt-4 pt-4 border-t border-purple-200">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+          <div style={periodInfoStyle}>
+            <div style={gridStyle}>
               <div>
-                <span className="text-gray-600">開始日:</span>
-                <span className="ml-2 font-semibold text-gray-900">
+                <span style={{ color: DESIGN_TOKENS.colors.neutral[600] }}>開始日:</span>
+                <span style={{ marginLeft: DESIGN_TOKENS.spacing[2], fontWeight: 600, color: DESIGN_TOKENS.colors.neutral[900] }}>
                   {period.start.toLocaleDateString('ja-JP')}
                 </span>
               </div>
               <div>
-                <span className="text-gray-600">次回更新:</span>
-                <span className="ml-2 font-semibold text-gray-900">
+                <span style={{ color: DESIGN_TOKENS.colors.neutral[600] }}>次回更新:</span>
+                <span style={{ marginLeft: DESIGN_TOKENS.spacing[2], fontWeight: 600, color: DESIGN_TOKENS.colors.neutral[900] }}>
                   {period.end.toLocaleDateString('ja-JP')}
                 </span>
               </div>
             </div>
             {period.daysRemaining > 0 && (
-              <div className="mt-2 text-sm text-gray-600">
+              <div style={{ marginTop: DESIGN_TOKENS.spacing[2], fontSize: '0.875rem', color: DESIGN_TOKENS.colors.neutral[600] }}>
                 残り {period.daysRemaining} 日
                 {!period.willRenew && (
-                  <span className="ml-2 text-orange-600 font-semibold">
+                  <span style={{ marginLeft: DESIGN_TOKENS.spacing[2], color: DESIGN_TOKENS.colors.warning[600], fontWeight: 600 }}>
                     （更新予定なし）
                   </span>
                 )}
@@ -137,30 +412,21 @@ export function SubscriptionManager() {
 
       {/* Usage Statistics (Free Plan) */}
       {isFree && usage && usage.isLimited && (
-        <div className="bg-gray-50 rounded-xl p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        <div style={usageCardStyle}>
+          <h3 style={usageHeaderStyle}>
             今月の使用状況
           </h3>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-gray-600">ゲーム作成数</span>
-            <span className="text-lg font-bold text-gray-900">
+          <div style={usageRowStyle}>
+            <span style={{ fontSize: '0.875rem', color: DESIGN_TOKENS.colors.neutral[600] }}>ゲーム作成数</span>
+            <span style={{ fontSize: '1.125rem', fontWeight: 700, color: DESIGN_TOKENS.colors.neutral[900] }}>
               {usage.used} / {usage.limit}
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-            <div
-              className={`h-full ${
-                usage.percentage >= 100
-                  ? 'bg-red-500'
-                  : usage.percentage >= 80
-                  ? 'bg-orange-500'
-                  : 'bg-blue-500'
-              } transition-all duration-500 rounded-full`}
-              style={{ width: `${Math.min(usage.percentage, 100)}%` }}
-            />
+          <div style={progressBarBgStyle}>
+            <div style={progressBarFillStyle} />
           </div>
           {usage.remaining === 0 && (
-            <p className="mt-3 text-sm text-red-600 font-semibold">
+            <p style={{ marginTop: DESIGN_TOKENS.spacing[3], fontSize: '0.875rem', color: DESIGN_TOKENS.colors.error[600], fontWeight: 600 }}>
               今月の制限に達しました。プレミアムにアップグレードして無制限に作成しましょう！
             </p>
           )}
@@ -168,16 +434,15 @@ export function SubscriptionManager() {
       )}
 
       {/* Features List */}
-      <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+      <div style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
+        <h3 style={featuresHeaderStyle}>
           利用可能な機能
         </h3>
-        <ul className="space-y-2">
+        <ul style={{ ...featureListStyle, listStyle: 'none', padding: 0, margin: 0 }}>
           {planConfig.features.map((feature, index) => (
-            <li key={index} className="flex items-start">
+            <li key={index} style={featureItemStyle}>
               <svg
-                className="text-purple-600 mr-3 mt-0.5 flex-shrink-0"
-                style={{ width: '20px', height: '20px', minWidth: '20px', minHeight: '20px' }}
+                style={checkIconStyle}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -189,21 +454,21 @@ export function SubscriptionManager() {
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-              <span className="text-sm text-gray-700">{feature}</span>
+              <span style={featureTextStyle}>{feature}</span>
             </li>
           ))}
         </ul>
       </div>
 
       {/* Actions */}
-      <div className="space-y-3">
+      <div style={actionsStyle}>
         {isFree ? (
           // Upgrade Button
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+            <h3 style={upgradeHeaderStyle}>
               🚀 プレミアムにアップグレード
             </h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div style={upgradeGridStyle}>
               <CheckoutButton
                 plan={MVPSubscriptionPlan.PREMIUM}
                 billingCycle="monthly"
@@ -215,8 +480,8 @@ export function SubscriptionManager() {
                 className="text-sm py-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
               />
             </div>
-            <p className="mt-3 text-xs text-center text-gray-600">
-              年額プランなら<strong className="text-green-600">2ヶ月分お得</strong>！
+            <p style={savingsTextStyle}>
+              年額プランなら<strong style={{ color: DESIGN_TOKENS.colors.success[600] }}>2ヶ月分お得</strong>！
             </p>
           </div>
         ) : (
@@ -225,13 +490,15 @@ export function SubscriptionManager() {
             <button
               onClick={handleOpenPortal}
               disabled={isLoading}
-              className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-md"
+              onMouseEnter={() => setIsManageHover(true)}
+              onMouseLeave={() => setIsManageHover(false)}
+              style={getManageButtonStyle()}
             >
               {isLoading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                <span style={spinnerContainerStyle}>
+                  <svg style={spinnerStyle} viewBox="0 0 24 24">
+                    <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
                   処理中...
                 </span>
@@ -239,7 +506,7 @@ export function SubscriptionManager() {
                 '⚙️ サブスクリプションを管理'
               )}
             </button>
-            <p className="mt-2 text-xs text-center text-gray-600">
+            <p style={{ marginTop: DESIGN_TOKENS.spacing[2], fontSize: '0.75rem', textAlign: 'center', color: DESIGN_TOKENS.colors.neutral[600] }}>
               プラン変更・キャンセル・支払い方法の更新
             </p>
           </div>
@@ -247,7 +514,7 @@ export function SubscriptionManager() {
       </div>
 
       {/* Help Text */}
-      <p className="mt-6 text-xs text-gray-500 text-center">
+      <p style={helpTextStyle}>
         {isPremium
           ? 'いつでもキャンセル可能。返金ポリシーについては利用規約をご確認ください。'
           : 'いつでもキャンセル可能。安全な決済はStripeで処理されます。'}
