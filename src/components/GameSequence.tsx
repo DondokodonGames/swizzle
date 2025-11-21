@@ -6,9 +6,10 @@ import { PublicGame } from '../social/types/SocialTypes';
 import { BridgeScreen } from './BridgeScreen';
 import { supabase } from '../lib/supabase';
 import ProfileModal from './ProfileModal';
+import { DESIGN_TOKENS } from '../constants/DesignSystem';
 
 /**
- * GameSequence.tsx - Phase H-3&H-4統合版
+ * GameSequence.tsx - Phase H-3&H-4統合版（インラインスタイル版）
  * 
  * 機能:
  * - Supabaseから公開ゲームを取得
@@ -58,6 +59,10 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
   // AuthModal表示中の一時停止
   const [paused, setPaused] = useState(false);
+
+  // ホバー状態管理
+  const [errorButtonHover, setErrorButtonHover] = useState(false);
+  const [noGamesButtonHover, setNoGamesButtonHover] = useState(false);
 
   // ==================== サービス ====================
   const socialService = useMemo(() => SocialService.getInstance(), []);
@@ -427,15 +432,183 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     setGameState('bridge');
   }, []);
 
+  // ==================== スタイル定義 ====================
+  const styles = {
+    fullScreenContainer: {
+      position: 'fixed' as const,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: DESIGN_TOKENS.colors.neutral[900],
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 50
+    },
+    centerContent: {
+      textAlign: 'center' as const
+    },
+    spinner: {
+      display: 'inline-block',
+      width: '64px',
+      height: '64px',
+      border: `2px solid transparent`,
+      borderTopColor: DESIGN_TOKENS.colors.purple[500],
+      borderBottomColor: DESIGN_TOKENS.colors.purple[500],
+      borderRadius: DESIGN_TOKENS.borderRadius.full,
+      animation: 'spin 1s linear infinite',
+      margin: `0 auto ${DESIGN_TOKENS.spacing[4]}`
+    },
+    loadingText: {
+      color: DESIGN_TOKENS.colors.neutral[0],
+      fontSize: DESIGN_TOKENS.typography.fontSize.lg
+    },
+    errorContainer: {
+      textAlign: 'center' as const,
+      maxWidth: '448px',
+      margin: '0 auto',
+      padding: `0 ${DESIGN_TOKENS.spacing[4]}`
+    },
+    errorIcon: {
+      color: DESIGN_TOKENS.colors.error[500],
+      fontSize: DESIGN_TOKENS.typography.fontSize['6xl'],
+      marginBottom: DESIGN_TOKENS.spacing[4]
+    },
+    errorTitle: {
+      color: DESIGN_TOKENS.colors.neutral[0],
+      fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      marginBottom: DESIGN_TOKENS.spacing[4]
+    },
+    errorMessage: {
+      color: DESIGN_TOKENS.colors.neutral[300],
+      marginBottom: DESIGN_TOKENS.spacing[6],
+      fontSize: DESIGN_TOKENS.typography.fontSize.base
+    },
+    button: (isHover: boolean) => ({
+      backgroundColor: isHover ? DESIGN_TOKENS.colors.purple[700] : DESIGN_TOKENS.colors.purple[600],
+      color: DESIGN_TOKENS.colors.neutral[0],
+      padding: `${DESIGN_TOKENS.spacing[3]} ${DESIGN_TOKENS.spacing[6]}`,
+      borderRadius: DESIGN_TOKENS.borderRadius.lg,
+      transition: `background-color ${DESIGN_TOKENS.animation.duration.normal}`,
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: DESIGN_TOKENS.typography.fontSize.base,
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
+    }),
+    noGamesIcon: {
+      color: DESIGN_TOKENS.colors.neutral[400],
+      fontSize: DESIGN_TOKENS.typography.fontSize['6xl'],
+      marginBottom: DESIGN_TOKENS.spacing[4]
+    },
+    gameContainer: {
+      position: 'fixed' as const,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: DESIGN_TOKENS.colors.neutral[950],
+      zIndex: 50,
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    aspectRatioContainer: {
+      position: 'relative' as const,
+      backgroundColor: DESIGN_TOKENS.colors.neutral[950],
+      width: '100%',
+      height: '100%',
+      maxWidth: 'calc(100vh * 9 / 16)',
+      maxHeight: 'calc(100vw * 16 / 9)',
+      aspectRatio: '9 / 16'
+    },
+    canvas: {
+      position: 'absolute' as const,
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      touchAction: 'none'
+    },
+    topBar: {
+      position: 'absolute' as const,
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '50px',
+      zIndex: 1000,
+      pointerEvents: 'none' as const,
+      display: 'flex',
+      alignItems: 'stretch'
+    },
+    topBarButton: (bgColor: string, isHover: boolean) => ({
+      pointerEvents: 'auto' as const,
+      flex: 1,
+      border: 'none',
+      background: bgColor,
+      backdropFilter: 'blur(10px)',
+      color: DESIGN_TOKENS.colors.neutral[0],
+      fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      transition: `opacity ${DESIGN_TOKENS.animation.duration.normal}`,
+      opacity: isHover ? 0.8 : 1,
+      padding: DESIGN_TOKENS.spacing[2]
+    }),
+    avatar: {
+      width: '34px',
+      height: '34px',
+      borderRadius: DESIGN_TOKENS.borderRadius.full,
+      objectFit: 'cover' as const,
+      border: `2px solid ${DESIGN_TOKENS.colors.neutral[0]}`
+    },
+    avatarPlaceholder: {
+      width: '34px',
+      height: '34px',
+      borderRadius: DESIGN_TOKENS.borderRadius.full,
+      background: 'rgba(255, 255, 255, 0.3)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      border: `2px solid ${DESIGN_TOKENS.colors.neutral[0]}`
+    },
+    progressBarContainer: {
+      position: 'absolute' as const,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: '8px',
+      backgroundColor: 'rgba(0, 0, 0, 0.3)',
+      overflow: 'hidden',
+      zIndex: 1000
+    },
+    progressBar: (percent: number) => ({
+      height: '100%',
+      width: `${percent}%`,
+      backgroundColor: (() => {
+        if (percent > 50) return DESIGN_TOKENS.colors.success[500];
+        if (percent > 20) return DESIGN_TOKENS.colors.warning[500];
+        return DESIGN_TOKENS.colors.error[500];
+      })(),
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+    })
+  };
+
   // ==================== レンダリング ====================
 
   // ローディング画面
   if (gameState === 'loading' && !error) {
     return (
-      <div className="fixed inset-0 bg-gray-900 flex items-center justify-center z-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-white text-lg">公開ゲームを読み込み中...</p>
+      <div style={styles.fullScreenContainer}>
+        <div style={styles.centerContent}>
+          <div style={styles.spinner}></div>
+          <p style={styles.loadingText}>公開ゲームを読み込み中...</p>
         </div>
       </div>
     );
@@ -444,15 +617,17 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // エラー画面
   if (error) {
     return (
-      <div className="fixed inset-0 bg-gray-900 flex items-center justify-center z-50">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-white text-2xl font-bold mb-4">エラー</h2>
-          <p className="text-gray-300 mb-6">{error}</p>
+      <div style={styles.fullScreenContainer}>
+        <div style={styles.errorContainer}>
+          <div style={styles.errorIcon}>⚠️</div>
+          <h2 style={styles.errorTitle}>エラー</h2>
+          <p style={styles.errorMessage}>{error}</p>
           {onExit && (
             <button
               onClick={onExit}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg transition-colors"
+              onMouseEnter={() => setErrorButtonHover(true)}
+              onMouseLeave={() => setErrorButtonHover(false)}
+              style={styles.button(errorButtonHover)}
             >
               メニューに戻る
             </button>
@@ -465,17 +640,19 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // ゲームがない場合
   if (publicGames.length === 0) {
     return (
-      <div className="fixed inset-0 bg-gray-900 flex items-center justify-center z-50">
-        <div className="text-center max-w-md mx-auto px-4">
-          <div className="text-gray-400 text-6xl mb-4">🎮</div>
-          <h2 className="text-white text-2xl font-bold mb-4">公開ゲームがありません</h2>
-          <p className="text-gray-300 mb-6">
+      <div style={styles.fullScreenContainer}>
+        <div style={styles.errorContainer}>
+          <div style={styles.noGamesIcon}>🎮</div>
+          <h2 style={styles.errorTitle}>公開ゲームがありません</h2>
+          <p style={styles.errorMessage}>
             エディターでゲームを作成して公開してください。
           </p>
           {onExit && (
             <button
               onClick={onExit}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg transition-colors"
+              onMouseEnter={() => setNoGamesButtonHover(true)}
+              onMouseLeave={() => setNoGamesButtonHover(false)}
+              style={styles.button(noGamesButtonHover)}
             >
               エディターを開く
             </button>
@@ -486,48 +663,17 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   }
 
   const currentGame = publicGames[currentIndex];
-  // nextGameは状態として管理されているプリロードゲームを使用
 
   // ==================== ゲーム画面 + ブリッジ画面統合 ====================
   return (
-    <div className="fixed inset-0 bg-black z-50 overflow-hidden flex items-center justify-center">
+    <div style={styles.gameContainer}>
       {/* メインコンテナ（9:16比率を維持しながらビューポートに収める） */}
-      <div
-        className="relative bg-black"
-        style={{
-          width: '100%',
-          height: '100%',
-          maxWidth: 'calc(100vh * 9 / 16)',
-          maxHeight: 'calc(100vw * 16 / 9)',
-          aspectRatio: '9 / 16'
-        }}
-      >
+      <div style={styles.aspectRatioContainer}>
         {/* ゲームキャンバス */}
-        <div
-          ref={canvasRef}
-          className="w-full h-full"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            touchAction: 'none'
-          }}
-        />
+        <div ref={canvasRef} style={styles.canvas} />
 
-        {/* トップバー - 6つのアイコン（問題12-b対応） */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '50px',
-          zIndex: 1000,
-          pointerEvents: 'none',
-          display: 'flex',
-          alignItems: 'stretch'
-        }}>
+        {/* トップバー - 6つのアイコン */}
+        <div style={styles.topBar}>
           {/* ログイン/新規登録またはユーザー情報 */}
           <button
             onClick={() => {
@@ -539,26 +685,12 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                 }));
               }
             }}
-            style={{
-              pointerEvents: 'auto',
-              flex: 1,
-              border: 'none',
-              background: currentUser
+            style={styles.topBarButton(
+              currentUser
                 ? 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)'
                 : 'rgba(59, 130, 246, 0.9)',
-              backdropFilter: 'blur(10px)',
-              color: 'white',
-              fontSize: '28px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              transition: 'opacity 0.2s',
-              padding: '8px',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              false
+            )}
             title={currentUser ? 'プロフィール' : 'ログイン'}
           >
             {currentUser && userProfile ? (
@@ -566,27 +698,10 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                 <img
                   src={userProfile.avatar_url}
                   alt="Avatar"
-                  style={{
-                    width: '34px',
-                    height: '34px',
-                    borderRadius: '50%',
-                    objectFit: 'cover',
-                    border: '2px solid white'
-                  }}
+                  style={styles.avatar}
                 />
               ) : (
-                <div style={{
-                  width: '34px',
-                  height: '34px',
-                  borderRadius: '50%',
-                  background: 'rgba(255, 255, 255, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  border: '2px solid white'
-                }}>
+                <div style={styles.avatarPlaceholder}>
                   {(userProfile.display_name?.charAt(0).toUpperCase() || userProfile.username?.charAt(0).toUpperCase() || '?')}
                 </div>
               )
@@ -602,22 +717,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                 onExit();
               }
             }}
-            style={{
-              pointerEvents: 'auto',
-              flex: 1,
-              border: 'none',
-              background: 'rgba(16, 185, 129, 0.9)',
-              backdropFilter: 'blur(10px)',
-              color: 'white',
-              fontSize: '28px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'opacity 0.2s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            style={styles.topBarButton('rgba(16, 185, 129, 0.9)', false)}
             title="ホーム"
           >
             🎮
@@ -630,22 +730,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                 onOpenFeed();
               }
             }}
-            style={{
-              pointerEvents: 'auto',
-              flex: 1,
-              border: 'none',
-              background: 'rgba(59, 130, 246, 0.9)',
-              backdropFilter: 'blur(10px)',
-              color: 'white',
-              fontSize: '28px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'opacity 0.2s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            style={styles.topBarButton('rgba(59, 130, 246, 0.9)', false)}
             title="フィード"
           >
             📱
@@ -656,22 +741,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             onClick={() => {
               window.dispatchEvent(new CustomEvent('switchToEditor'));
             }}
-            style={{
-              pointerEvents: 'auto',
-              flex: 1,
-              border: 'none',
-              background: 'rgba(236, 72, 153, 0.9)',
-              backdropFilter: 'blur(10px)',
-              color: 'white',
-              fontSize: '28px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'opacity 0.2s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            style={styles.topBarButton('rgba(236, 72, 153, 0.9)', false)}
             title="ゲームを作る"
           >
             🎨
@@ -682,22 +752,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             onClick={() => {
               window.location.href = '/pricing';
             }}
-            style={{
-              pointerEvents: 'auto',
-              flex: 1,
-              border: 'none',
-              background: 'rgba(139, 92, 246, 0.9)',
-              backdropFilter: 'blur(10px)',
-              color: 'white',
-              fontSize: '28px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'opacity 0.2s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            style={styles.topBarButton('rgba(139, 92, 246, 0.9)', false)}
             title="プレミアム"
           >
             💎
@@ -706,51 +761,19 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           {/* スキップ */}
           <button
             onClick={handleSkipToBridge}
-            style={{
-              pointerEvents: 'auto',
-              flex: 1,
-              border: 'none',
-              background: 'rgba(239, 68, 68, 0.9)',
-              backdropFilter: 'blur(10px)',
-              color: 'white',
-              fontSize: '28px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'opacity 0.2s',
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            style={styles.topBarButton('rgba(239, 68, 68, 0.9)', false)}
             title="スキップ"
           >
             ⏭️
           </button>
         </div>
 
-        {/* ボトムバー - 残り時間バー（問題14対応） */}
+        {/* ボトムバー - 残り時間バー */}
         {gameState === 'playing' && gameDuration !== null && (
-          <div style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: '8px',
-            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-            overflow: 'hidden',
-            zIndex: 1000
-          }}>
-            <div style={{
-              height: '100%',
-              width: `${Math.max(0, Math.min(100, (Math.max(0, gameDuration - gameTimeElapsed) / gameDuration) * 100))}%`,
-              backgroundColor: (() => {
-                const percent = (Math.max(0, gameDuration - gameTimeElapsed) / gameDuration) * 100;
-                if (percent > 50) return '#10b981'; // 緑
-                if (percent > 20) return '#f59e0b'; // 黄色
-                return '#ef4444'; // 赤
-              })(),
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-            }} />
+          <div style={styles.progressBarContainer}>
+            <div style={styles.progressBar(
+              Math.max(0, Math.min(100, (Math.max(0, gameDuration - gameTimeElapsed) / gameDuration) * 100))
+            )} />
           </div>
         )}
 
@@ -782,6 +805,14 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           }}
         />
       )}
+
+      {/* スピナーアニメーション用のスタイルタグ */}
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };
