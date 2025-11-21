@@ -4,6 +4,7 @@
 import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
+import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
 
 interface GamePreviewProps {
   project: GameProject;
@@ -37,22 +38,106 @@ export const GamePreview: React.FC<GamePreviewProps> = ({
     return project.assets.background.frames?.[0]?.dataUrl || null;
   };
 
+  // スタイル定義
+  const containerStyle: React.CSSProperties = {
+    flex: 1,
+  };
+
+  const titleStyle: React.CSSProperties = {
+    fontSize: '1.125rem',
+    fontWeight: 600,
+    color: DESIGN_TOKENS.colors.neutral[800],
+    marginBottom: DESIGN_TOKENS.spacing[4],
+  };
+
+  const centerWrapperStyle: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'center',
+  };
+
+  const messageContainerStyle: React.CSSProperties = {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 30,
+  };
+
+  const messageBoxStyle: React.CSSProperties = {
+    textAlign: 'center',
+    padding: DESIGN_TOKENS.spacing[6],
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: DESIGN_TOKENS.borderRadius.lg,
+    boxShadow: DESIGN_TOKENS.shadows.lg,
+  };
+
+  const iconStyle: React.CSSProperties = {
+    fontSize: '2.25rem',
+    marginBottom: DESIGN_TOKENS.spacing[3],
+  };
+
+  const messageTitleStyle: React.CSSProperties = {
+    fontWeight: 600,
+    color: DESIGN_TOKENS.colors.neutral[800],
+    marginBottom: DESIGN_TOKENS.spacing[2],
+  };
+
+  const messageDescStyle: React.CSSProperties = {
+    color: DESIGN_TOKENS.colors.neutral[600],
+    fontSize: '0.875rem',
+  };
+
+  const hintsContainerStyle: React.CSSProperties = {
+    position: 'absolute',
+    bottom: DESIGN_TOKENS.spacing[2],
+    left: DESIGN_TOKENS.spacing[2],
+    right: DESIGN_TOKENS.spacing[2],
+    zIndex: 30,
+  };
+
+  const hintsBoxStyle: React.CSSProperties = {
+    textAlign: 'center',
+    padding: DESIGN_TOKENS.spacing[3],
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    color: DESIGN_TOKENS.colors.neutral[0],
+    borderRadius: DESIGN_TOKENS.borderRadius.lg,
+  };
+
+  const hintsTitleStyle: React.CSSProperties = {
+    fontSize: '0.875rem',
+    fontWeight: 500,
+    marginBottom: DESIGN_TOKENS.spacing[1],
+  };
+
+  const hintsDescStyle: React.CSSProperties = {
+    fontSize: '0.75rem',
+  };
+
+  const previewInfoStyle: React.CSSProperties = {
+    marginTop: DESIGN_TOKENS.spacing[3],
+    textAlign: 'center',
+    fontSize: '0.875rem',
+    color: DESIGN_TOKENS.colors.neutral[500],
+  };
+
   return (
-    <div className="flex-1">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">
+    <div style={containerStyle}>
+      <h3 style={titleStyle}>
         🎮 {t('editor.script.gamePreview.title', 'ゲーム画面 (9:16)')}
       </h3>
       
-      <div className="flex justify-center">
+      <div style={centerWrapperStyle}>
         <div
           ref={gamePreviewRef}
-          className="relative overflow-hidden cursor-crosshair"
           style={{ 
+            position: 'relative',
+            overflow: 'hidden',
+            cursor: 'crosshair',
             width: '300px',
             height: '533px',
-            border: '3px solid #6b7280',
+            border: `3px solid ${DESIGN_TOKENS.colors.neutral[500]}`,
             borderRadius: '16px',
-            position: 'relative',
             boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
           }}
           onDragOver={(e) => {
@@ -259,21 +344,21 @@ export const GamePreview: React.FC<GamePreviewProps> = ({
           
           {/* ガイドメッセージ */}
           {project.assets.objects.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 30 }}>
-              <div className="text-center p-6 bg-white bg-opacity-95 rounded-lg shadow-lg">
-                <div className="text-4xl mb-3">📁</div>
-                <h4 className="font-semibold text-gray-800 mb-2">{t('editor.script.gamePreview.noObjects.title', 'オブジェクトを追加')}</h4>
-                <p className="text-gray-600 text-sm">{t('editor.script.gamePreview.noObjects.description', 'Assetsタブでオブジェクトを追加してください')}</p>
+            <div style={messageContainerStyle}>
+              <div style={messageBoxStyle}>
+                <div style={iconStyle}>📁</div>
+                <h4 style={messageTitleStyle}>{t('editor.script.gamePreview.noObjects.title', 'オブジェクトを追加')}</h4>
+                <p style={messageDescStyle}>{t('editor.script.gamePreview.noObjects.description', 'Assetsタブでオブジェクトを追加してください')}</p>
               </div>
             </div>
           )}
 
           {project.assets.objects.length > 0 && project.script.layout.objects.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center" style={{ zIndex: 30 }}>
-              <div className="text-center p-6 bg-white bg-opacity-95 rounded-lg shadow-lg">
-                <div className="text-4xl mb-3">🎯</div>
-                <h4 className="font-semibold text-gray-800 mb-2">{t('editor.script.gamePreview.noPlaced.title', 'オブジェクトを配置')}</h4>
-                <p className="text-gray-600 text-sm">
+            <div style={messageContainerStyle}>
+              <div style={messageBoxStyle}>
+                <div style={iconStyle}>🎯</div>
+                <h4 style={messageTitleStyle}>{t('editor.script.gamePreview.noPlaced.title', 'オブジェクトを配置')}</h4>
+                <p style={messageDescStyle}>
                   {t('editor.script.gamePreview.noPlaced.description', 'Assetsタブで追加したオブジェクトをこの画面にドラッグ&ドロップして配置してください')}
                 </p>
               </div>
@@ -281,10 +366,10 @@ export const GamePreview: React.FC<GamePreviewProps> = ({
           )}
 
           {project.script.layout.objects.length > 0 && (
-            <div className="absolute bottom-2 left-2 right-2" style={{ zIndex: 30 }}>
-              <div className="text-center p-3 bg-black bg-opacity-75 text-white rounded-lg">
-                <div className="text-sm font-medium mb-1">💡 {t('editor.script.gamePreview.hints.title', '操作ヒント')}</div>
-                <div className="text-xs">
+            <div style={hintsContainerStyle}>
+              <div style={hintsBoxStyle}>
+                <div style={hintsTitleStyle}>💡 {t('editor.script.gamePreview.hints.title', '操作ヒント')}</div>
+                <div style={hintsDescStyle}>
                   <span style={{color: '#3b82f6'}}>■</span> {t('editor.script.gamePreview.hints.selected', '選択中')} |
                   <span style={{color: '#16a34a'}}>■</span> {t('editor.script.gamePreview.hints.hasRule', 'ルール設定済み')} |
                   <span style={{color: '#dc2626'}}>■</span> {t('editor.script.gamePreview.hints.noRule', 'ルール未設定')}<br/>
@@ -296,7 +381,7 @@ export const GamePreview: React.FC<GamePreviewProps> = ({
         </div>
         
         {/* プレビュー情報 */}
-        <div className="mt-3 text-center text-sm text-gray-500">
+        <div style={previewInfoStyle}>
           {t('editor.script.gamePreview.screenSize', '画面サイズ')}: 300×533px (9:16) |
           {t('editor.script.gamePreview.background', '背景')}: {project.script.layout.background.visible ? t('editor.script.gamePreview.visible', '表示') : t('editor.script.gamePreview.hidden', '非表示')} |
           {t('editor.script.gamePreview.objectCount', 'オブジェクト')}: {project.script.layout.objects.length}{t('editor.script.gamePreview.objects', '個')}

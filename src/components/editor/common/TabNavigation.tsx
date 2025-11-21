@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
+import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
 
 // 🔧 修正: エディタータブ型定義（3タブ統合）
 export type EditorTab = 'assets' | 'script' | 'settings';
@@ -219,58 +220,191 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
   project
 }) => {
   const { t } = useTranslation();
+  const [hoveredTabId, setHoveredTabId] = useState<EditorTab | null>(null);
+
+  // 進捗バーの色を取得
+  const getProgressBarColor = (progress: number) => {
+    if (progress === 100) return DESIGN_TOKENS.colors.success[500];
+    if (progress >= 50) return DESIGN_TOKENS.colors.warning[500];
+    return DESIGN_TOKENS.colors.primary[500];
+  };
+
+  // スタイル定義
+  const navContainerStyle: React.CSSProperties = {
+    display: 'flex',
+    gap: DESIGN_TOKENS.spacing[1],
+    backgroundColor: DESIGN_TOKENS.colors.neutral[100],
+    padding: DESIGN_TOKENS.spacing[1],
+    borderRadius: DESIGN_TOKENS.borderRadius.xl,
+  };
+
+  const getTabButtonStyle = (
+    tab: TabConfig,
+    isActive: boolean,
+    isHovered: boolean,
+    isDisabled: boolean
+  ): React.CSSProperties => {
+    if (isDisabled) {
+      return {
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        gap: DESIGN_TOKENS.spacing[2],
+        paddingLeft: DESIGN_TOKENS.spacing[4],
+        paddingRight: DESIGN_TOKENS.spacing[4],
+        paddingTop: DESIGN_TOKENS.spacing[2],
+        paddingBottom: DESIGN_TOKENS.spacing[2],
+        borderRadius: DESIGN_TOKENS.borderRadius.lg,
+        fontWeight: 500,
+        transition: 'all 0.2s ease-in-out',
+        opacity: 0.5,
+        cursor: 'not-allowed',
+        backgroundColor: 'transparent',
+        color: DESIGN_TOKENS.colors.neutral[600],
+        border: 'none',
+      };
+    }
+
+    if (isActive) {
+      return {
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        gap: DESIGN_TOKENS.spacing[2],
+        paddingLeft: DESIGN_TOKENS.spacing[4],
+        paddingRight: DESIGN_TOKENS.spacing[4],
+        paddingTop: DESIGN_TOKENS.spacing[2],
+        paddingBottom: DESIGN_TOKENS.spacing[2],
+        borderRadius: DESIGN_TOKENS.borderRadius.lg,
+        fontWeight: 500,
+        transition: 'all 0.2s ease-in-out',
+        backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+        color: DESIGN_TOKENS.colors.purple[600],
+        boxShadow: DESIGN_TOKENS.shadows.sm,
+        cursor: 'pointer',
+        border: 'none',
+      };
+    }
+
+    return {
+      position: 'relative',
+      display: 'flex',
+      alignItems: 'center',
+      gap: DESIGN_TOKENS.spacing[2],
+      paddingLeft: DESIGN_TOKENS.spacing[4],
+      paddingRight: DESIGN_TOKENS.spacing[4],
+      paddingTop: DESIGN_TOKENS.spacing[2],
+      paddingBottom: DESIGN_TOKENS.spacing[2],
+      borderRadius: DESIGN_TOKENS.borderRadius.lg,
+      fontWeight: 500,
+      transition: 'all 0.2s ease-in-out',
+      backgroundColor: isHovered ? DESIGN_TOKENS.colors.neutral[50] : 'transparent',
+      color: isHovered ? DESIGN_TOKENS.colors.neutral[800] : DESIGN_TOKENS.colors.neutral[600],
+      cursor: 'pointer',
+      border: 'none',
+    };
+  };
+
+  const iconStyle: React.CSSProperties = {
+    fontSize: '1.125rem',
+  };
+
+  const getBadgeStyle = (isActive: boolean): React.CSSProperties => ({
+    position: 'absolute',
+    top: '-4px',
+    right: '-4px',
+    minWidth: '20px',
+    height: '20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    borderRadius: DESIGN_TOKENS.borderRadius.full,
+    backgroundColor: isActive ? DESIGN_TOKENS.colors.purple[100] : DESIGN_TOKENS.colors.neutral[300],
+    color: isActive ? DESIGN_TOKENS.colors.purple[600] : DESIGN_TOKENS.colors.neutral[600],
+  });
+
+  const progressBarContainerStyle: React.CSSProperties = {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '4px',
+    backgroundColor: DESIGN_TOKENS.colors.neutral[200],
+    borderBottomLeftRadius: DESIGN_TOKENS.borderRadius.lg,
+    borderBottomRightRadius: DESIGN_TOKENS.borderRadius.lg,
+    overflow: 'hidden',
+  };
+
+  const getProgressBarFillStyle = (progress: number): React.CSSProperties => ({
+    height: '100%',
+    transition: 'all 0.3s ease-in-out',
+    backgroundColor: getProgressBarColor(progress),
+    width: `${progress}%`,
+  });
+
+  const errorIndicatorStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '-4px',
+    left: '-4px',
+    width: '12px',
+    height: '12px',
+    backgroundColor: DESIGN_TOKENS.colors.error[500],
+    borderRadius: DESIGN_TOKENS.borderRadius.full,
+  };
+
+  const warningIndicatorStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '-4px',
+    left: '-4px',
+    width: '12px',
+    height: '12px',
+    backgroundColor: DESIGN_TOKENS.colors.warning[500],
+    borderRadius: DESIGN_TOKENS.borderRadius.full,
+  };
 
   return (
-    <nav className="flex space-x-1 bg-gray-100 p-1 rounded-xl">
+    <nav style={navContainerStyle}>
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
+        const isHovered = hoveredTabId === tab.id;
         const validation = project ? getTabValidationStatus(project, tab.id, t) : { canNavigate: true, warnings: [], errors: [] };
+        const titleText = `${tab.description}${validation.warnings.length > 0 ? '\n⚠️ ' + validation.warnings.join('\n') : ''}${validation.errors.length > 0 ? '\n❌ ' + validation.errors.join('\n') : ''}`;
         
         return (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
             disabled={tab.disabled}
-            className={`relative flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
-              isActive
-                ? 'bg-white text-purple-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-            } ${tab.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-            title={`${tab.description}${validation.warnings.length > 0 ? '\n⚠️ ' + validation.warnings.join('\n') : ''}${validation.errors.length > 0 ? '\n❌ ' + validation.errors.join('\n') : ''}`}
+            onMouseEnter={() => setHoveredTabId(tab.id)}
+            onMouseLeave={() => setHoveredTabId(null)}
+            style={getTabButtonStyle(tab, isActive, isHovered, !!tab.disabled)}
+            title={titleText}
           >
-            <span className="text-lg">{tab.icon}</span>
+            <span style={iconStyle}>{tab.icon}</span>
             <span>{tab.label}</span>
             
             {/* バッジ表示 */}
             {tab.badge && (
-              <span className={`absolute -top-1 -right-1 min-w-5 h-5 flex items-center justify-center text-xs font-bold rounded-full ${
-                isActive 
-                  ? 'bg-purple-100 text-purple-600'
-                  : 'bg-gray-300 text-gray-600'
-              }`}>
+              <span style={getBadgeStyle(isActive)}>
                 {tab.badge}
               </span>
             )}
             
             {/* 進捗バー */}
             {typeof tab.progress === 'number' && tab.progress > 0 && (
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 rounded-b-lg overflow-hidden">
-                <div 
-                  className={`h-full transition-all duration-300 ${
-                    tab.progress === 100 ? 'bg-green-500' :
-                    tab.progress >= 50 ? 'bg-yellow-500' : 'bg-blue-500'
-                  }`}
-                  style={{ width: `${tab.progress}%` }}
-                />
+              <div style={progressBarContainerStyle}>
+                <div style={getProgressBarFillStyle(tab.progress)} />
               </div>
             )}
             
             {/* エラー・警告インジケーター */}
             {validation.errors.length > 0 && (
-              <span className="absolute -top-1 -left-1 w-3 h-3 bg-red-500 rounded-full"></span>
+              <span style={errorIndicatorStyle}></span>
             )}
             {validation.warnings.length > 0 && validation.errors.length === 0 && (
-              <span className="absolute -top-1 -left-1 w-3 h-3 bg-yellow-500 rounded-full"></span>
+              <span style={warningIndicatorStyle}></span>
             )}
           </button>
         );
