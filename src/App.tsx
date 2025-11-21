@@ -16,6 +16,10 @@ const SignupPage = React.lazy(() => import('./pages/SignupPage'));
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 
+// 利用規約・プライバシーポリシーページの遅延読み込み
+const TermsPage = React.lazy(() => import('./pages/TermsPage').then(module => ({ default: module.TermsPage })));
+const PrivacyPage = React.lazy(() => import('./pages/PrivacyPage').then(module => ({ default: module.PrivacyPage })));
+
 // マネタイズページの遅延読み込み
 const Pricing = React.lazy(() =>
   import('./pages/subscription/Pricing').then(module => ({
@@ -1019,6 +1023,18 @@ function App() {
           <Route path="/subscription/cancel" element={
             <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
               <SubscriptionCancel />
+            </Suspense>
+          } />
+
+          {/* 利用規約・プライバシーポリシー */}
+          <Route path="/terms" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>}>
+              <TermsPage />
+            </Suspense>
+          } />
+          <Route path="/privacy" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>}>
+              <PrivacyPage />
             </Suspense>
           } />
 
