@@ -74,6 +74,9 @@ WITH CHECK (user_id = auth.uid());
 -- トリガー: updated_at 自動更新
 -- ========================================
 
+-- 既存の関数を削除（存在する場合）
+DROP FUNCTION IF EXISTS update_updated_at_column();
+
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -96,6 +99,9 @@ CREATE TRIGGER update_subscriptions_updated_at
 -- ========================================
 -- 初期データ: 新規ユーザーにFreeプランを自動付与
 -- ========================================
+
+-- 既存の関数を削除（存在する場合）
+DROP FUNCTION IF EXISTS create_default_subscription();
 
 CREATE OR REPLACE FUNCTION create_default_subscription()
 RETURNS TRIGGER
@@ -124,6 +130,9 @@ CREATE TRIGGER on_auth_user_created
 -- ヘルパー関数: ユーザーの現在のプランを取得
 -- ========================================
 
+-- 既存の関数を削除（存在する場合）
+DROP FUNCTION IF EXISTS get_user_plan(UUID);
+
 CREATE OR REPLACE FUNCTION get_user_plan(user_uuid UUID)
 RETURNS TEXT
 LANGUAGE plpgsql
@@ -151,6 +160,9 @@ $$;
 -- ========================================
 -- ヘルパー関数: ユーザーがプレミアムかチェック
 -- ========================================
+
+-- 既存の関数を削除（存在する場合）
+DROP FUNCTION IF EXISTS is_premium_user(UUID);
 
 CREATE OR REPLACE FUNCTION is_premium_user(user_uuid UUID)
 RETURNS BOOLEAN
