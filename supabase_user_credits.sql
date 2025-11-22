@@ -37,6 +37,10 @@ CREATE INDEX IF NOT EXISTS idx_user_credits_month_year ON user_credits(month_yea
 
 ALTER TABLE user_credits ENABLE ROW LEVEL SECURITY;
 
+-- 既存のポリシーを削除（存在する場合）
+DROP POLICY IF EXISTS "Users can view their own credits" ON user_credits;
+DROP POLICY IF EXISTS "Users can update their own credits" ON user_credits;
+
 -- ユーザーは自分のクレジット情報のみ閲覧可能
 CREATE POLICY "Users can view their own credits"
 ON user_credits
@@ -70,7 +74,8 @@ CREATE TRIGGER update_user_credits_updated_at
 -- ========================================
 
 -- 既存の関数を削除（存在する場合）
-DROP FUNCTION IF EXISTS check_game_creation_limit();
+-- CASCADE: この関数に依存するポリシーなども一緒に削除
+DROP FUNCTION IF EXISTS check_game_creation_limit() CASCADE;
 
 CREATE OR REPLACE FUNCTION check_game_creation_limit()
 RETURNS BOOLEAN
@@ -143,7 +148,8 @@ $$;
 -- ========================================
 
 -- 既存の関数を削除（存在する場合）
-DROP FUNCTION IF EXISTS increment_game_count();
+-- CASCADE: この関数に依存するトリガーなども一緒に削除
+DROP FUNCTION IF EXISTS increment_game_count() CASCADE;
 
 CREATE OR REPLACE FUNCTION increment_game_count()
 RETURNS VOID
@@ -199,7 +205,8 @@ $$;
 -- ========================================
 
 -- 既存の関数を削除（存在する場合）
-DROP FUNCTION IF EXISTS trigger_increment_game_count();
+-- CASCADE: この関数に依存するトリガーも一緒に削除
+DROP FUNCTION IF EXISTS trigger_increment_game_count() CASCADE;
 
 CREATE OR REPLACE FUNCTION trigger_increment_game_count()
 RETURNS TRIGGER
