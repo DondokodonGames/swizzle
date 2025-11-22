@@ -1,0 +1,235 @@
+-- Supabase User Credits Schema
+-- ユーザーのゲーム作成クレジット（制限）管理
+--
+-- このスクリプトをSupabase SQL Editorで実行してください
+-- https://supabase.com/dashboard → SQL Editor → New Query
+
+-- ========================================
+-- user_credits テーブル作成
+-- ========================================
+
+CREATE TABLE IF NOT EXISTS user_credits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+
+  -- クレジット情報
+  games_created_this_month INTEGER NOT NULL DEFAULT 0,
+  month_year TEXT NOT NULL, -- 'YYYY-MM'形式
+
+  -- プラン制限
+  monthly_limit INTEGER NOT NULL DEFAULT 3, -- -1 = 無制限（Premium）
+
+  -- タイムスタンプ
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+  -- 制約: ユーザーごと・月ごとに1レコードのみ
+  UNIQUE(user_id, month_year)
+);
+
+-- インデックス作成
+CREATE INDEX IF NOT EXISTS idx_user_credits_user_id ON user_credits(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_credits_month_year ON user_credits(month_year);
+
+-- ========================================
+-- RLS (Row Level Security) ポリシー
+-- ========================================
+
+ALTER TABLE user_credits ENABLE ROW LEVEL SECURITY;
+
+-- ユーザーは自分のクレジット情報のみ閲覧可能
+CREATE POLICY "Users can view their own credits"
+ON user_credits
+FOR SELECT
+TO authenticated
+USING (user_id = auth.uid());
+
+-- ユーザーは自分のクレジット情報のみ更新可能
+CREATE POLICY "Users can update their own credits"
+ON user_credits
+FOR UPDATE
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+
+-- ========================================
+-- トリガー: updated_at 自動更新
+-- ========================================
+
+-- 既存のトリガーを削除（存在する場合）
+DROP TRIGGER IF EXISTS update_user_credits_updated_at ON user_credits;
+
+-- トリガーを作成
+CREATE TRIGGER update_user_credits_updated_at
+  BEFORE UPDATE ON user_credits
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- ========================================
+-- RPC関数: ゲーム作成可能かチェック
+-- ========================================
+
+CREATE OR REPLACE FUNCTION check_game_creation_limit()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  current_user_id UUID;
+  current_month TEXT;
+  user_credit RECORD;
+  user_plan TEXT;
+BEGIN
+  -- 現在のユーザーIDを取得
+  current_user_id := auth.uid();
+
+  IF current_user_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  -- 現在の年月を取得（'YYYY-MM'形式）
+  current_month := TO_CHAR(NOW(), 'YYYY-MM');
+
+  -- ユーザーのプランを取得（subscriptionsテーブルから）
+  SELECT plan_type INTO user_plan
+  FROM subscriptions
+  WHERE user_id = current_user_id
+    AND status IN ('active', 'trialing')
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  -- プランが見つからない場合はFreeプラン扱い
+  IF user_plan IS NULL THEN
+    user_plan := 'free';
+  END IF;
+
+  -- Premiumプランは無制限
+  IF user_plan = 'premium' THEN
+    RETURN TRUE;
+  END IF;
+
+  -- user_creditsテーブルからクレジット情報を取得
+  SELECT * INTO user_credit
+  FROM user_credits
+  WHERE user_id = current_user_id
+    AND month_year = current_month;
+
+  -- レコードが存在しない場合は作成
+  IF NOT FOUND THEN
+    INSERT INTO user_credits (user_id, month_year, monthly_limit)
+    VALUES (current_user_id, current_month, 3) -- Freeプランは月3ゲームまで
+    RETURNING * INTO user_credit;
+  END IF;
+
+  -- 制限チェック
+  IF user_credit.monthly_limit = -1 THEN
+    -- 無制限
+    RETURN TRUE;
+  ELSIF user_credit.games_created_this_month < user_credit.monthly_limit THEN
+    -- まだ制限に達していない
+    RETURN TRUE;
+  ELSE
+    -- 制限に達している
+    RETURN FALSE;
+  END IF;
+END;
+$$;
+
+-- ========================================
+-- RPC関数: ゲーム作成数をインクリメント
+-- ========================================
+
+CREATE OR REPLACE FUNCTION increment_game_count()
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  current_user_id UUID;
+  current_month TEXT;
+  user_plan TEXT;
+  plan_limit INTEGER;
+BEGIN
+  -- 現在のユーザーIDを取得
+  current_user_id := auth.uid();
+
+  IF current_user_id IS NULL THEN
+    RAISE EXCEPTION 'User not authenticated';
+  END IF;
+
+  -- 現在の年月を取得（'YYYY-MM'形式）
+  current_month := TO_CHAR(NOW(), 'YYYY-MM');
+
+  -- ユーザーのプランを取得
+  SELECT plan_type INTO user_plan
+  FROM subscriptions
+  WHERE user_id = current_user_id
+    AND status IN ('active', 'trialing')
+  ORDER BY created_at DESC
+  LIMIT 1;
+
+  -- プランが見つからない場合はFreeプラン扱い
+  IF user_plan IS NULL THEN
+    user_plan := 'free';
+    plan_limit := 3; -- Freeプランは月3ゲームまで
+  ELSIF user_plan = 'premium' THEN
+    plan_limit := -1; -- Premiumは無制限
+  ELSE
+    plan_limit := 3; -- デフォルトはFreeプラン
+  END IF;
+
+  -- user_creditsレコードをINSERT OR UPDATE
+  INSERT INTO user_credits (user_id, month_year, games_created_this_month, monthly_limit)
+  VALUES (current_user_id, current_month, 1, plan_limit)
+  ON CONFLICT (user_id, month_year)
+  DO UPDATE SET
+    games_created_this_month = user_credits.games_created_this_month + 1,
+    updated_at = NOW();
+END;
+$$;
+
+-- ========================================
+-- トリガー: user_gamesテーブルへのINSERT時に自動実行
+-- ========================================
+
+CREATE OR REPLACE FUNCTION trigger_increment_game_count()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- ゲームが作成されたときにカウントをインクリメント
+  PERFORM increment_game_count();
+  RETURN NEW;
+END;
+$$;
+
+-- 既存のトリガーを削除（存在する場合）
+DROP TRIGGER IF EXISTS on_user_game_created ON user_games;
+
+-- トリガーを作成
+CREATE TRIGGER on_user_game_created
+  AFTER INSERT ON user_games
+  FOR EACH ROW
+  EXECUTE FUNCTION trigger_increment_game_count();
+
+-- ========================================
+-- 確認クエリ
+-- ========================================
+
+-- テーブルが作成されているか確認
+SELECT tablename, rowsecurity
+FROM pg_tables
+WHERE schemaname = 'public'
+  AND tablename = 'user_credits';
+
+-- RLS ポリシーを確認
+SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual
+FROM pg_policies
+WHERE schemaname = 'public'
+  AND tablename = 'user_credits';
+
+-- RPC関数が作成されているか確認
+SELECT proname, prosrc
+FROM pg_proc
+WHERE proname IN ('check_game_creation_limit', 'increment_game_count', 'trigger_increment_game_count');
