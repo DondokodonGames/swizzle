@@ -52,8 +52,8 @@ export async function getCreditUsage(userId: string): Promise<CreditUsage> {
     const credits = await getUserCredits(userId);
 
     if (!credits) {
-      // 初回の場合、デフォルト値を返す
-      return calculateCreditUsage(0, 5);
+      // 初回の場合、デフォルト値を返す（フリープランは月3ゲームまで）
+      return calculateCreditUsage(0, 3);
     }
 
     return calculateCreditUsage(
@@ -62,8 +62,8 @@ export async function getCreditUsage(userId: string): Promise<CreditUsage> {
     );
   } catch (error) {
     console.error('Error getting credit usage:', error);
-    // エラー時はデフォルト値を返す
-    return calculateCreditUsage(0, 5);
+    // エラー時はデフォルト値を返す（フリープランは月3ゲームまで）
+    return calculateCreditUsage(0, 3);
   }
 }
 
