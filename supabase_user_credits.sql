@@ -69,6 +69,9 @@ CREATE TRIGGER update_user_credits_updated_at
 -- RPC関数: ゲーム作成可能かチェック
 -- ========================================
 
+-- 既存の関数を削除（存在する場合）
+DROP FUNCTION IF EXISTS check_game_creation_limit();
+
 CREATE OR REPLACE FUNCTION check_game_creation_limit()
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -139,6 +142,9 @@ $$;
 -- RPC関数: ゲーム作成数をインクリメント
 -- ========================================
 
+-- 既存の関数を削除（存在する場合）
+DROP FUNCTION IF EXISTS increment_game_count();
+
 CREATE OR REPLACE FUNCTION increment_game_count()
 RETURNS VOID
 LANGUAGE plpgsql
@@ -191,6 +197,9 @@ $$;
 -- ========================================
 -- トリガー: user_gamesテーブルへのINSERT時に自動実行
 -- ========================================
+
+-- 既存の関数を削除（存在する場合）
+DROP FUNCTION IF EXISTS trigger_increment_game_count();
 
 CREATE OR REPLACE FUNCTION trigger_increment_game_count()
 RETURNS TRIGGER
