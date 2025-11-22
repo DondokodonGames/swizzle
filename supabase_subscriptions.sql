@@ -55,6 +55,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_user_active_unique
 
 ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
 
+-- 既存のポリシーを削除（存在する場合）
+DROP POLICY IF EXISTS "Users can view their own subscriptions" ON subscriptions;
+DROP POLICY IF EXISTS "Users can update their own subscriptions" ON subscriptions;
+
 -- ユーザーは自分のサブスクリプション情報のみ閲覧可能
 CREATE POLICY "Users can view their own subscriptions"
 ON subscriptions
@@ -75,7 +79,8 @@ WITH CHECK (user_id = auth.uid());
 -- ========================================
 
 -- 既存の関数を削除（存在する場合）
-DROP FUNCTION IF EXISTS update_updated_at_column();
+-- CASCADE: この関数に依存するトリガーも一緒に削除
+DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER
@@ -101,7 +106,8 @@ CREATE TRIGGER update_subscriptions_updated_at
 -- ========================================
 
 -- 既存の関数を削除（存在する場合）
-DROP FUNCTION IF EXISTS create_default_subscription();
+-- CASCADE: この関数に依存するトリガーも一緒に削除
+DROP FUNCTION IF EXISTS create_default_subscription() CASCADE;
 
 CREATE OR REPLACE FUNCTION create_default_subscription()
 RETURNS TRIGGER
@@ -131,7 +137,8 @@ CREATE TRIGGER on_auth_user_created
 -- ========================================
 
 -- 既存の関数を削除（存在する場合）
-DROP FUNCTION IF EXISTS get_user_plan(UUID);
+-- CASCADE: この関数に依存する他の関数も一緒に削除
+DROP FUNCTION IF EXISTS get_user_plan(UUID) CASCADE;
 
 CREATE OR REPLACE FUNCTION get_user_plan(user_uuid UUID)
 RETURNS TEXT
@@ -162,7 +169,8 @@ $$;
 -- ========================================
 
 -- 既存の関数を削除（存在する場合）
-DROP FUNCTION IF EXISTS is_premium_user(UUID);
+-- CASCADE: この関数に依存する他のオブジェクトも一緒に削除
+DROP FUNCTION IF EXISTS is_premium_user(UUID) CASCADE;
 
 CREATE OR REPLACE FUNCTION is_premium_user(user_uuid UUID)
 RETURNS BOOLEAN
