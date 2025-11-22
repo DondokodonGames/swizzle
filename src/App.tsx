@@ -187,324 +187,6 @@ const ProfileSetup = ENABLE_AUTH ? React.lazy(async () => {
   }
 }) : null;
 
-// 認証コンテンツコンポーネント（useAuthを実際に呼び出す）
-const AuthenticatedUserInfoContent: React.FC<{
-  useAuth: any;
-  authModalOpen: boolean;
-  setAuthModalOpen: (open: boolean) => void;
-  authModalMode: 'signin' | 'signup';
-  setAuthModalMode: (mode: 'signin' | 'signup') => void;
-  profileSetupOpen: boolean;
-  setProfileSetupOpen: (open: boolean) => void;
-  isPremium: boolean;
-}> = ({ useAuth, authModalOpen, setAuthModalOpen, authModalMode, setAuthModalMode, profileSetupOpen, setProfileSetupOpen, isPremium }) => {
-  // フックは常に呼ばれる（条件分岐なし）
-  const auth = useAuth();
-
-  return (
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '15px',
-      padding: '15px',
-      marginBottom: '20px',
-      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-      border: '1px solid #e5e7eb'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '50%',
-            background: 'linear-gradient(45deg, #d946ef, #8b5cf6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontWeight: 'bold',
-            fontSize: '16px',
-            overflow: 'hidden'
-          }}>
-            {auth.profile?.avatar_url ? (
-              <img
-                src={auth.profile.avatar_url}
-                alt="Avatar"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover'
-                }}
-              />
-            ) : (
-              auth.profile?.display_name?.charAt(0).toUpperCase() ||
-              auth.profile?.username?.charAt(0).toUpperCase() ||
-              auth.user?.email?.charAt(0).toUpperCase() || '?'
-            )}
-          </div>
-
-          <div>
-            {auth.profile ? (
-              <>
-                <div style={{
-                  fontWeight: '600',
-                  color: '#111827',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  {auth.profile.display_name || auth.profile.username}
-                  {isPremium && (
-                    <PremiumBadge
-                      size="small"
-                      showLabel={false}
-                    />
-                  )}
-                </div>
-                <div style={{ fontSize: '12px', color: '#6b7280' }}>
-                  @{auth.profile.username}
-                </div>
-              </>
-            ) : auth.user ? (
-              <>
-                <div style={{ fontWeight: '600', color: '#111827' }}>
-                  {auth.user.email}
-                </div>
-                <div style={{ fontSize: '12px', color: '#f59e0b' }}>
-                  プロフィール設定が必要
-                </div>
-              </>
-            ) : (
-              <div style={{ fontWeight: '600', color: '#6b7280' }}>ゲスト</div>
-            )}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {auth.isAuthenticated ? (
-            <>
-              {auth.profile ? (
-                <button
-                  onClick={() => setProfileSetupOpen(true)}
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    color: '#3b82f6',
-                    backgroundColor: '#eff6ff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  編集
-                </button>
-              ) : (
-                <button
-                  onClick={() => setProfileSetupOpen(true)}
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: '12px',
-                    color: 'white',
-                    background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  設定
-                </button>
-              )}
-              <button
-                onClick={auth.signOut}
-                disabled={auth.loading}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  color: '#ef4444',
-                  backgroundColor: '#fef2f2',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  opacity: auth.loading ? 0.5 : 1
-                }}
-              >
-                ログアウト
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => {
-                  setAuthModalMode('signin');
-                  setAuthModalOpen(true);
-                }}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  color: '#3b82f6',
-                  backgroundColor: '#eff6ff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer'
-                }}
-              >
-                ログイン
-              </button>
-              <button
-                onClick={() => {
-                  setAuthModalMode('signup');
-                  setAuthModalOpen(true);
-                }}
-                style={{
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  color: 'white',
-                  background: 'linear-gradient(45deg, #3b82f6, #8b5cf6)',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer'
-                }}
-              >
-                新規登録
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {auth.error && (
-        <div style={{
-          marginTop: '12px',
-          padding: '8px',
-          backgroundColor: '#fef2f2',
-          border: '1px solid #fecaca',
-          borderRadius: '6px',
-          color: '#dc2626',
-          fontSize: '14px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <span>{auth.error}</span>
-          <button
-            onClick={auth.clearError}
-            style={{
-              color: '#dc2626',
-              backgroundColor: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '0',
-              fontSize: '16px'
-            }}
-          >
-            ×
-          </button>
-        </div>
-      )}
-
-      {AuthModal && (
-        <Suspense fallback={null}>
-          <AuthModal
-            isOpen={authModalOpen}
-            onClose={() => setAuthModalOpen(false)}
-            defaultMode={authModalMode}
-          />
-        </Suspense>
-      )}
-
-      {ProfileSetup && (
-        <Suspense fallback={null}>
-          <ProfileSetup
-            isOpen={profileSetupOpen}
-            onClose={() => setProfileSetupOpen(false)}
-            mode={auth.profile ? 'edit' : 'setup'}
-          />
-        </Suspense>
-      )}
-    </div>
-  );
-};
-
-// 認証機能（Premium Badge統合版）
-const AuthenticatedUserInfo: React.FC = () => {
-  const [useAuth, setUseAuth] = useState<any>(null);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
-  const [profileSetupOpen, setProfileSetupOpen] = useState(false);
-
-  const { subscription, isPremium } = useSubscription();
-
-  // useAuthフックの読み込み
-  useEffect(() => {
-    if (ENABLE_AUTH) {
-      import('./hooks/useAuth').then(module => {
-        setUseAuth(() => module.useAuth);
-      }).catch(error => {
-        console.warn('useAuth読み込み失敗:', error);
-        setUseAuth(() => () => ({
-          isAuthenticated: false,
-          user: null,
-          profile: null,
-          loading: false,
-          error: null,
-          signOut: () => {},
-          clearError: () => {}
-        }));
-      });
-    }
-  }, []);
-
-  // グローバルイベントリスナー
-  useEffect(() => {
-    const handleOpenAuthModal = (event: CustomEvent) => {
-      setAuthModalMode(event.detail?.mode || 'signin');
-      setAuthModalOpen(true);
-    };
-
-    const handleOpenProfileSetup = () => {
-      setProfileSetupOpen(true);
-    };
-
-    window.addEventListener('openAuthModal', handleOpenAuthModal as EventListener);
-    window.addEventListener('openProfileSetup', handleOpenProfileSetup as EventListener);
-
-    return () => {
-      window.removeEventListener('openAuthModal', handleOpenAuthModal as EventListener);
-      window.removeEventListener('openProfileSetup', handleOpenProfileSetup as EventListener);
-    };
-  }, []);
-
-  // useAuthがロードされるまでローディング表示
-  if (!useAuth) {
-    return (
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '15px',
-        padding: '15px',
-        marginBottom: '20px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-        border: '1px solid #e5e7eb',
-        textAlign: 'center'
-      }}>
-        <div style={{ color: '#6b7280', fontSize: '14px' }}>認証システム読み込み中...</div>
-      </div>
-    );
-  }
-
-  // useAuthがロードされたら子コンポーネントをレンダリング
-  return (
-    <AuthenticatedUserInfoContent
-      useAuth={useAuth}
-      authModalOpen={authModalOpen}
-      setAuthModalOpen={setAuthModalOpen}
-      authModalMode={authModalMode}
-      setAuthModalMode={setAuthModalMode}
-      profileSetupOpen={profileSetupOpen}
-      setProfileSetupOpen={setProfileSetupOpen}
-      isPremium={isPremium}
-    />
-  );
-};
-
 // 🎨 スプラッシュスクリーンコンポーネント
 const SplashScreen: React.FC = () => {
   return (
@@ -721,6 +403,7 @@ function MainApp() {
   };
 
   const handleFeedGameSelect = (game: any) => {
+    console.log('🎮 フィードからゲームを選択:', game.title);
     setSelectedFeedGame(game);
     setMode('sequence');
   };
@@ -764,6 +447,43 @@ function MainApp() {
   // ✅ スプラッシュ画面表示中
   if (showSplash) {
     return <SplashScreen />;
+  }
+
+  // 🔧 修正: ゲームプレイ時もフルスクリーン表示（旧トップ画面を完全にスキップ）
+  if (mode === 'sequence') {
+    return (
+      <>
+        <Suspense fallback={
+          <div style={{
+            minHeight: '100vh',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ marginBottom: '16px', fontSize: '48px' }}>🎮</div>
+              <p style={{ color: '#a21caf', fontSize: '18px' }}>ゲームを読み込み中...</p>
+            </div>
+          </div>
+        }>
+          <GameSequence
+            onExit={handleExitSequence}
+            onOpenFeed={handleSwitchToFeed}
+          />
+        </Suspense>
+        {/* グローバルAuthModal */}
+        {AuthModal && (
+          <Suspense fallback={null}>
+            <AuthModal
+              isOpen={globalAuthModalOpen}
+              onClose={() => setGlobalAuthModalOpen(false)}
+              defaultMode={globalAuthModalMode}
+            />
+          </Suspense>
+        )}
+      </>
+    );
   }
 
   // エディターモード時のフルスクリーン表示
@@ -848,157 +568,43 @@ function MainApp() {
     );
   }
 
+  // 🔧 修正: 旧トップ画面レイアウトを完全に削除
+  // testモードやその他の予期しないモードの場合のみ、シンプルなエラー画面を表示
   return (
-    <div className="App" style={{ 
+    <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)',
-      padding: '20px',
       display: 'flex',
-      flexDirection: 'column',
+      justifyContent: 'center',
       alignItems: 'center',
-      fontFamily: 'Inter, sans-serif'
+      background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
     }}>
-      <header style={{ marginBottom: '20px', textAlign: 'center' }}>
-        <h1 style={{
-          color: '#a21caf',
-          fontSize: '2.5rem',
-          margin: '0 0 10px 0',
-          textShadow: '2px 2px 4px rgba(0,0,0,0.1)'
-        }}>
-          🌟 Swizzle
-        </h1>
-        <p style={{
-          color: '#52525b',
-          margin: 0,
-          fontSize: '1.2rem',
-          fontWeight: '500'
-        }}>
-          Short Game Platform
-        </p>
-
-        {/* ゲームプレイ中はボタンを非表示 */}
-        {mode !== 'sequence' && (
-          <div style={{ marginTop: '15px', display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button
-              onClick={handleSwitchToSequence}
-              style={{
-                backgroundColor: 'white',
-                color: '#10b981',
-                border: '2px solid #10b981',
-                borderRadius: '20px',
-                padding: '8px 16px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              🎮 ゲームをプレイ
-            </button>
-
-            <button
-              onClick={handleSwitchToEditor}
-              style={{
-                backgroundColor: 'white',
-                color: '#ec4899',
-                border: '2px solid #ec4899',
-                borderRadius: '20px',
-                padding: '8px 16px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              🎨 ゲームを作る
-            </button>
-
-            <button
-              onClick={handleGoToPricing}
-              style={{
-                backgroundColor: 'white',
-                color: '#8b5cf6',
-                border: '2px solid #8b5cf6',
-                borderRadius: '20px',
-                padding: '8px 16px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              💎 プレミアム
-            </button>
-          </div>
-        )}
-      </header>
-
-      {/* ゲームプレイ中はアカウント情報を非表示 */}
-      {ENABLE_AUTH && mode !== 'sequence' && <AuthenticatedUserInfo />}
-
-      <main style={{
+      <div style={{
         backgroundColor: 'white',
+        padding: '40px',
         borderRadius: '20px',
-        padding: '20px',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-        maxWidth: '450px',
-        width: '100%',
-        position: 'relative'
+        textAlign: 'center',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
       }}>
-        {mode === 'sequence' && (
-          <Suspense fallback={
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <div style={{ marginBottom: '16px', fontSize: '48px' }}>🎮</div>
-              <p style={{ color: '#a21caf', fontSize: '18px' }}>ゲームを読み込み中...</p>
-            </div>
-          }>
-            <GameSequence
-              onExit={handleExitSequence}
-              onOpenFeed={handleSwitchToFeed}
-            />
-          </Suspense>
-        )}
-        {mode === 'test' && (
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
-            <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>テストモード未実装</h2>
-            <button
-              onClick={handleSwitchToSequence}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '16px'
-              }}
-            >
-              通常プレイに戻る
-            </button>
-          </div>
-        )}
-      </main>
-
-      <footer style={{
-        marginTop: '20px',
-        color: '#9ca3af',
-        fontSize: '12px',
-        textAlign: 'center'
-      }}>
-        © 2024 Swizzle
-      </footer>
-
-      {/* グローバルAuthModal（ゲーム中でも開ける） */}
-      {AuthModal && (
-        <Suspense fallback={null}>
-          <AuthModal
-            isOpen={globalAuthModalOpen}
-            onClose={() => setGlobalAuthModalOpen(false)}
-            defaultMode={globalAuthModalMode}
-          />
-        </Suspense>
-      )}
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
+        <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>予期しないモード</h2>
+        <p style={{ color: '#6b7280', marginBottom: '24px' }}>
+          現在のモード: {mode}
+        </p>
+        <button
+          onClick={handleSwitchToSequence}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '16px'
+          }}
+        >
+          ゲームに戻る
+        </button>
+      </div>
     </div>
   );
 }
