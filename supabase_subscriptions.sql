@@ -35,10 +35,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 
   -- タイムスタンプ
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  -- 制約: ユーザーごとに有効なサブスクリプションは1つのみ
-  UNIQUE(user_id, status) WHERE status IN ('active', 'trialing')
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- インデックス作成
@@ -46,6 +43,11 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_customer_id ON subscriptions(stripe_customer_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_subscription_id ON subscriptions(stripe_subscription_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+
+-- 部分一意インデックス: ユーザーごとに有効なサブスクリプションは1つのみ
+CREATE UNIQUE INDEX IF NOT EXISTS idx_subscriptions_user_active_unique
+  ON subscriptions(user_id)
+  WHERE status IN ('active', 'trialing');
 
 -- ========================================
 -- RLS (Row Level Security) ポリシー
