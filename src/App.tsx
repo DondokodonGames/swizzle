@@ -505,9 +505,137 @@ const AuthenticatedUserInfo: React.FC = () => {
   );
 };
 
+// 🎨 スプラッシュスクリーンコンポーネント
+const SplashScreen: React.FC = () => {
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 50%, #fef3c7 100%)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 9999
+    }}>
+      {/* ロゴアニメーション */}
+      <div style={{
+        fontSize: '120px',
+        marginBottom: '32px',
+        animation: 'bounce 2s ease-in-out infinite'
+      }}>
+        🌟
+      </div>
+
+      {/* タイトル */}
+      <h1 style={{
+        color: '#a21caf',
+        fontSize: '4rem',
+        fontWeight: 'bold',
+        margin: '0 0 16px 0',
+        textShadow: '4px 4px 8px rgba(0,0,0,0.1)',
+        animation: 'fadeIn 1s ease-in-out',
+        letterSpacing: '0.05em'
+      }}>
+        Swizzle
+      </h1>
+
+      {/* サブタイトル */}
+      <p style={{
+        color: '#52525b',
+        fontSize: '1.5rem',
+        fontWeight: '500',
+        margin: '0 0 48px 0',
+        animation: 'fadeIn 1.5s ease-in-out'
+      }}>
+        Short Game Platform
+      </p>
+
+      {/* ローディングインジケーター */}
+      <div style={{
+        width: '200px',
+        height: '4px',
+        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+        borderRadius: '2px',
+        overflow: 'hidden',
+        position: 'relative'
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          height: '100%',
+          width: '50%',
+          background: 'linear-gradient(90deg, #a855f7, #ec4899)',
+          borderRadius: '2px',
+          animation: 'loading 1.5s ease-in-out infinite'
+        }} />
+      </div>
+
+      {/* ローディングテキスト */}
+      <p style={{
+        color: '#9ca3af',
+        fontSize: '14px',
+        marginTop: '24px',
+        animation: 'pulse 2s ease-in-out infinite'
+      }}>
+        Loading your gaming experience...
+      </p>
+
+      {/* アニメーション定義 */}
+      <style>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes bounce {
+          0%, 100% {
+            transform: translateY(0) scale(1);
+          }
+          50% {
+            transform: translateY(-20px) scale(1.1);
+          }
+        }
+
+        @keyframes loading {
+          0% {
+            left: -50%;
+          }
+          100% {
+            left: 100%;
+          }
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
 // メインアプリケーションコンポーネント
 function MainApp() {
   const navigate = useNavigate();
+  
+  // ✅ スプラッシュ画面の表示状態（1.5秒間表示）
+  const [showSplash, setShowSplash] = useState(true);
+  
   const [mode, setMode] = useState<AppMode>('sequence');
   const [editorProjectId, setEditorProjectId] = useState<string | undefined>(undefined);
   const [selectedFeedGame, setSelectedFeedGame] = useState<any>(null);
@@ -547,6 +675,15 @@ function MainApp() {
       console.warn('音量設定の読み込みに失敗:', error)
     }
   }, [])
+
+  // ✅ スプラッシュ画面を1.5秒間表示
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const saveVolumeSettings = useCallback((newSettings: VolumeSettings) => {
     try {
@@ -623,6 +760,11 @@ function MainApp() {
       window.removeEventListener('openAuthModal', handleGlobalOpenAuthModal as EventListener);
     };
   }, []);
+
+  // ✅ スプラッシュ画面表示中
+  if (showSplash) {
+    return <SplashScreen />;
+  }
 
   // エディターモード時のフルスクリーン表示
   if (mode === 'editor') {

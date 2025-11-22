@@ -1,5 +1,5 @@
 // src/components/GameFeed.tsx
-// モダンなゲームフィード画面 - 完全インラインスタイル版
+// モダンなゲームフィード画面 - TypeScriptエラー修正版
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,17 +14,16 @@ interface GameFeedProps {
 
 interface FeedSection {
   id: string;
-  titleKey: string; // 翻訳キー
+  titleKey: string;
   icon: string;
   games: PublicGame[];
   loading: boolean;
+  error?: string;
 }
 
 export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
-  // ==================== i18n ====================
   const { t } = useTranslation();
 
-  // ==================== 状態管理 ====================
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [sections, setSections] = useState<FeedSection[]>([
     { id: 'trending', titleKey: 'gameFeed.trending', icon: '🔥', games: [], loading: true },
@@ -36,7 +35,6 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
   const [selectedSection, setSelectedSection] = useState<string>('tags');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // ==================== サービス ====================
   const socialService = useMemo(() => SocialService.getInstance(), []);
 
   // ==================== ユーザー情報取得 ====================
@@ -54,112 +52,145 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
   }, []);
 
   // ==================== セクション更新 ====================
-  const updateSection = useCallback((id: string, games: PublicGame[], loading: boolean) => {
+  const updateSection = useCallback((id: string, games: PublicGame[], loading: boolean, error?: string) => {
     setSections(prev => prev.map(section =>
-      section.id === id ? { ...section, games, loading } : section
+      section.id === id ? { ...section, games, loading, error } : section
     ));
   }, []);
 
+  // ==================== タイムアウト付きPromise ====================
+  const withTimeout = <T,>(promise: PromiseLike<T>, timeoutMs: number = 10000): Promise<T> => {
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+      )
+    ]);
+  };
+
   // ==================== フィードデータ取得 ====================
   const fetchFeedData = useCallback(async () => {
+    console.log('🎮 GameFeed: フィードデータ取得開始');
+
+    // トレンドゲーム（週間）
     try {
-      // トレンドゲーム（週間）
+      const trendingGames = await withTimeout(
+        socialService.getTrendingGames('week', 'trending', 12),
+        10000
+      );
+      console.log('✅ トレンドゲーム取得成功:', trendingGames?.length || 0);
+      updateSection('trending', trendingGames || [], false);
+    } catch (err) {
+      console.error('❌ トレンドゲーム取得エラー:', err);
+      updateSection('trending', [], false, 'Failed to load trending games');
+    }
+
+    // フォロー中
+    if (currentUser) {
       try {
-        const trendingGames = await socialService.getTrendingGames('week', 'trending', 12);
-        updateSection('trending', trendingGames || [], false);
-      } catch (err) {
-        console.error('トレンドゲーム取得エラー:', err);
-        updateSection('trending', [], false);
-      }
+        const followsQuery = supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', currentUser.id);
 
-      // フォロー中
-      if (currentUser) {
-        try {
-          const { data: followingData } = await supabase
-            .from('follows')
-            .select('following_id')
-            .eq('follower_id', currentUser.id);
+        const followsResult = await withTimeout(followsQuery, 10000);
+        const followingData = followsResult?.data;
 
-          if (followingData && followingData.length > 0) {
-            const followingIds = followingData.map(f => f.following_id);
-            const { data: followingGames } = await supabase
-              .from('user_games')
-              .select(`
-                id, title, description, thumbnail_url, user_id, created_at, updated_at,
-                profiles!user_games_user_id_fkey (id, username, avatar_url)
-              `)
-              .in('user_id', followingIds)
-              .eq('status', 'published')
-              .order('created_at', { ascending: false })
-              .limit(12);
+        if (followingData && followingData.length > 0) {
+          const followingIds = followingData.map((f: any) => f.following_id);
+          
+          const gamesQuery = supabase
+            .from('user_games')
+            .select(`
+              id, title, description, thumbnail_url, user_id, created_at, updated_at,
+              profiles!user_games_user_id_fkey (id, username, avatar_url)
+            `)
+            .in('user_id', followingIds)
+            .eq('status', 'published')
+            .order('created_at', { ascending: false })
+            .limit(12);
 
-            if (followingGames) {
-              const formattedGames: PublicGame[] = followingGames.map((game: any) => ({
-                id: game.id,
-                title: game.title || 'Untitled',
-                description: game.description || '',
-                thumbnail: game.thumbnail_url || '',
-                author: {
-                  id: game.profiles?.id || game.user_id,
-                  name: game.profiles?.username || 'Unknown',
-                  avatar: game.profiles?.avatar_url || ''
-                },
-                stats: { likes: 0, shares: 0, bookmarks: 0, views: 0 },
-                tags: [],
-                category: '',
-                createdAt: game.created_at,
-                updatedAt: game.updated_at
-              }));
-              updateSection('following', formattedGames, false);
-            } else {
-              updateSection('following', [], false);
-            }
+          const gamesResult = await withTimeout(gamesQuery, 10000);
+          const followingGames = gamesResult?.data;
+
+          if (followingGames) {
+            const formattedGames: PublicGame[] = followingGames.map((game: any) => ({
+              id: game.id,
+              title: game.title || 'Untitled',
+              description: game.description || '',
+              thumbnail: game.thumbnail_url || '',
+              author: {
+                id: game.profiles?.id || game.user_id,
+                name: game.profiles?.username || 'Unknown',
+                avatar: game.profiles?.avatar_url || ''
+              },
+              stats: { likes: 0, shares: 0, bookmarks: 0, views: 0 },
+              tags: [],
+              category: '',
+              createdAt: game.created_at,
+              updatedAt: game.updated_at
+            }));
+            console.log('✅ フォロー中ゲーム取得成功:', formattedGames.length);
+            updateSection('following', formattedGames, false);
           } else {
             updateSection('following', [], false);
           }
-        } catch (err) {
+        } else {
           updateSection('following', [], false);
         }
-      } else {
-        updateSection('following', [], false);
-      }
-
-      // おすすめ
-      try {
-        const tagGames = await socialService.getTrendingGames('week', 'popular', 12);
-        updateSection('tags', tagGames || [], false);
       } catch (err) {
-        console.error('おすすめゲーム取得エラー:', err);
-        updateSection('tags', [], false);
+        console.error('❌ フォロー中ゲーム取得エラー:', err);
+        updateSection('following', [], false, 'Failed to load following games');
       }
-
-      // ランダム
-      try {
-        const randomGames = await socialService.getRandomGames(12);
-        updateSection('random', randomGames || [], false);
-      } catch (err) {
-        console.error('ランダムゲーム取得エラー:', err);
-        updateSection('random', [], false);
-      }
-
-      // プレミアム
-      updateSection('premium', [], false);
-
-    } catch (err) {
-      console.error('フィードデータの取得に失敗:', err);
+    } else {
+      updateSection('following', [], false);
     }
+
+    // おすすめ
+    try {
+      const tagGames = await withTimeout(
+        socialService.getTrendingGames('week', 'popular', 12),
+        10000
+      );
+      console.log('✅ おすすめゲーム取得成功:', tagGames?.length || 0);
+      updateSection('tags', tagGames || [], false);
+    } catch (err) {
+      console.error('❌ おすすめゲーム取得エラー:', err);
+      updateSection('tags', [], false, 'Failed to load recommended games');
+    }
+
+    // ランダム
+    try {
+      const randomGames = await withTimeout(
+        socialService.getRandomGames(12),
+        10000
+      );
+      console.log('✅ ランダムゲーム取得成功:', randomGames?.length || 0);
+      updateSection('random', randomGames || [], false);
+    } catch (err) {
+      console.error('❌ ランダムゲーム取得エラー:', err);
+      updateSection('random', [], false, 'Failed to load random games');
+    }
+
+    // プレミアム
+    updateSection('premium', [], false);
+
+    console.log('🎮 GameFeed: フィードデータ取得完了');
   }, [socialService, currentUser, updateSection]);
 
   useEffect(() => {
+    console.log('🎮 GameFeed: useEffect発火 - fetchFeedData呼び出し');
     fetchFeedData();
   }, [fetchFeedData]);
 
   // ==================== リフレッシュ ====================
   const handleRefresh = async () => {
+    console.log('🔄 リフレッシュ開始');
     setIsRefreshing(true);
-    setSections(prev => prev.map(section => ({ ...section, loading: true })));
+    setSections(prev => prev.map(section => ({ ...section, loading: true, error: undefined })));
     await fetchFeedData();
     setIsRefreshing(false);
+    console.log('🔄 リフレッシュ完了');
   };
 
   // ==================== 現在のセクション ====================
@@ -358,6 +389,35 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
     emptyText: {
       color: '#6b7280',
       fontSize: '14px'
+    },
+    error: {
+      textAlign: 'center' as const,
+      padding: '60px 20px'
+    },
+    errorIcon: {
+      fontSize: '48px',
+      marginBottom: '16px'
+    },
+    errorTitle: {
+      color: '#dc2626',
+      fontSize: '20px',
+      fontWeight: 'bold',
+      marginBottom: '8px'
+    },
+    errorText: {
+      color: '#6b7280',
+      fontSize: '14px',
+      marginBottom: '16px'
+    },
+    retryButton: {
+      padding: '10px 20px',
+      backgroundColor: '#3b82f6',
+      color: 'white',
+      border: 'none',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      fontSize: '14px',
+      fontWeight: 'bold'
     }
   };
 
@@ -428,18 +488,27 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
                   <div style={{ fontSize: '32px', marginBottom: '12px' }}>⏳</div>
                   <p>{t('common.loading')}</p>
                 </div>
+              ) : currentSection.error ? (
+                <div style={styles.error}>
+                  <div style={styles.errorIcon}>⚠️</div>
+                  <div style={styles.errorTitle}>Failed to Load</div>
+                  <p style={styles.errorText}>{currentSection.error}</p>
+                  <button onClick={handleRefresh} style={styles.retryButton}>
+                    {t('common.retry')}
+                  </button>
+                </div>
               ) : currentSection.games.length === 0 ? (
                 <div style={styles.empty}>
                   <div style={styles.emptyIcon}>{currentSection.icon}</div>
                   <div style={styles.emptyTitle}>
                     {currentSection.id === 'following' && !currentUser
                       ? t('auth.loginTitle')
-                      : t('gameFeed.newGames')}
+                      : 'No Games Yet'}
                   </div>
                   <p style={styles.emptyText}>
                     {currentSection.id === 'following' && !currentUser
                       ? t('auth.dontHaveAccount')
-                      : t('common.loading')}
+                      : 'Check back later for new games!'}
                   </p>
                 </div>
               ) : (

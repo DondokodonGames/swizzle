@@ -30,15 +30,17 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
+    lng: 'en', // ✅ デフォルト言語を英語に明示的に指定（海外コミュニティ先行戦略）
     fallbackLng: 'en',
-    debug: false, // デバッグモードを有効化
+    debug: false,
 
     interpolation: {
       escapeValue: false, // React already escapes
     },
 
     detection: {
-      order: ['localStorage', 'navigator', 'htmlTag'],
+      // ✅ localStorageに保存されている言語を最優先、なければ英語
+      order: ['localStorage', 'querystring', 'cookie'],
       caches: ['localStorage'],
       lookupLocalStorage: 'swizzle-language',
     },
