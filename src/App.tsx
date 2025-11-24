@@ -187,7 +187,7 @@ const ProfileSetup = ENABLE_AUTH ? React.lazy(async () => {
   }
 }) : null;
 
-// 🎨 スプラッシュスクリーンコンポーネント
+// 🎨 スプラッシュスクリーンコンポーネント（ロゴ画像版）
 const SplashScreen: React.FC = () => {
   return (
     <div style={{
@@ -203,38 +203,21 @@ const SplashScreen: React.FC = () => {
       justifyContent: 'center',
       zIndex: 9999
     }}>
-      {/* ロゴアニメーション */}
+      {/* ロゴ画像アニメーション */}
       <div style={{
-        fontSize: '120px',
-        marginBottom: '32px',
+        marginBottom: '48px',
         animation: 'bounce 2s ease-in-out infinite'
       }}>
-        🌟
+        <img 
+          src="/logo-splash.png" 
+          alt="Swizzle - Short Game Platform"
+          style={{
+            maxWidth: '400px',
+            width: '80vw',
+            height: 'auto'
+          }}
+        />
       </div>
-
-      {/* タイトル */}
-      <h1 style={{
-        color: '#a21caf',
-        fontSize: '4rem',
-        fontWeight: 'bold',
-        margin: '0 0 16px 0',
-        textShadow: '4px 4px 8px rgba(0,0,0,0.1)',
-        animation: 'fadeIn 1s ease-in-out',
-        letterSpacing: '0.05em'
-      }}>
-        Swizzle
-      </h1>
-
-      {/* サブタイトル */}
-      <p style={{
-        color: '#52525b',
-        fontSize: '1.5rem',
-        fontWeight: '500',
-        margin: '0 0 48px 0',
-        animation: 'fadeIn 1.5s ease-in-out'
-      }}>
-        Short Game Platform
-      </p>
 
       {/* ローディングインジケーター */}
       <div style={{
@@ -269,23 +252,12 @@ const SplashScreen: React.FC = () => {
 
       {/* アニメーション定義 */}
       <style>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
         @keyframes bounce {
           0%, 100% {
             transform: translateY(0) scale(1);
           }
           50% {
-            transform: translateY(-20px) scale(1.1);
+            transform: translateY(-20px) scale(1.05);
           }
         }
 
