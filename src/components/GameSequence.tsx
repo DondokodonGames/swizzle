@@ -266,14 +266,14 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       // 1秒ごとにカウントダウン
       bridgeTimerRef.current = setInterval(() => {
         setBridgeTimeLeft(prev => {
-          if (prev <= 1) {
+          if (prev <= 0.1) {
             // タイマー終了 → 次のゲームへ
             handleNextGame();
             return 0;
           }
-          return prev - 1;
+          return prev - 0.1;
         });
-      }, 1000);
+      }, 100);
 
       return () => {
         if (bridgeTimerRef.current) {
