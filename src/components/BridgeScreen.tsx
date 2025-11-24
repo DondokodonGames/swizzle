@@ -53,6 +53,9 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   const [selectedReaction, setSelectedReaction] = useState<string | null>(null);
   const [animationStage, setAnimationStage] = useState(0);
 
+  // 🔧 問題3修正: プロフィールボタンのクールダウン（1秒間無効化）
+  const [profileClickEnabled, setProfileClickEnabled] = useState(false);
+
   useEffect(() => {
     const timers = [
       setTimeout(() => setAnimationStage(1), 100),
@@ -61,6 +64,15 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
+
+  // 🔧 問題3修正: 1秒後にプロフィールクリックを有効化
+  useEffect(() => {
+    setProfileClickEnabled(false); // リセット
+    const timer = setTimeout(() => {
+      setProfileClickEnabled(true);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [currentGame.id]); // ゲームが変わるたびにリセット
 
   const socialService = useMemo(() => SocialService.getInstance(), []);
 
@@ -179,7 +191,12 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     window.location.href = '/feed';
   };
 
+  // 🔧 問題3修正: クールダウン中はプロフィール遷移を無効化
   const handleGoToProfile = () => {
+    if (!profileClickEnabled) {
+      console.log('⏳ プロフィールクリックはクールダウン中です');
+      return;
+    }
     console.log('👤 プロフィールへ遷移');
     if (currentGame.author.username) {
       window.location.href = `/profile/${currentGame.author.username}`;
@@ -188,6 +205,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
   const remainingPercentage = (timeLeft / 10) * 100;
 
+  // 🔧 問題1修正: コンテナスタイルを改善（スマホ対応）
   const containerStyle: React.CSSProperties = inline ? {
     position: 'absolute',
     top: 0,
@@ -201,6 +219,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 50,
+    overflow: 'hidden',
   } : {
     position: 'fixed',
     top: 0,
@@ -212,22 +231,26 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 50,
+    overflow: 'hidden',
   };
 
+  // 🔧 問題1修正: メインボックスを相対配置に変更
   const mainBoxStyle: React.CSSProperties = inline ? {
+    position: 'relative',
     width: '100%',
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
-    padding: '20px',
+    overflow: 'hidden',
   } : {
+    position: 'relative',
     width: '1080px',
     height: '1920px',
     maxWidth: '100vw',
     maxHeight: '100vh',
     display: 'flex',
     flexDirection: 'column',
-    padding: '20px',
+    overflow: 'hidden',
   };
 
   const titleIconStyle: React.CSSProperties = {
@@ -304,199 +327,256 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   return (
     <div style={containerStyle}>
       <div style={mainBoxStyle}>
-        <div style={{ textAlign: 'center', padding: '40px 0' }}>
-          <div style={{ fontSize: '120px', marginBottom: '20px' }}>
-            {score?.success ? '😊' : '😢'}
-          </div>
-        </div>
-
+        {/* 🔧 問題1修正: スクロール可能なコンテンツエリア */}
         <div style={{
-          background: 'rgba(255, 255, 255, 0.1)',
-          borderRadius: '20px',
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'hidden',
           padding: '20px',
-          marginBottom: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px'
+          paddingBottom: '140px', // ボタンエリア + 残り時間バーの高さ分の余白
         }}>
-          <div
-            onClick={handleGoToProfile}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              flex: 1,
-              cursor: 'pointer'
-            }}
-          >
-            <div style={{
-              width: '60px',
-              height: '60px',
-              background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '32px',
-              fontWeight: 'bold',
-            }}>
-              {currentGame.author.name.charAt(0).toUpperCase()}
-            </div>
-            <div style={{ flex: 1 }}>
-              <p style={{ color: 'white', fontWeight: 'bold', fontSize: '24px', margin: 0 }}>
-                {currentGame.author.name}
-              </p>
-              <p style={{ color: '#9ca3af', fontSize: '18px', margin: 0 }}>
-                {currentGame.title}
-              </p>
+          {/* 結果アイコン */}
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ fontSize: '100px', marginBottom: '10px' }}>
+              {score?.success ? '😊' : '😢'}
             </div>
           </div>
-          <button
-            onClick={handleLike}
-            disabled={isLiking}
-            style={{
-              padding: '12px 20px',
-              borderRadius: '12px',
-              fontWeight: 'bold',
-              fontSize: '24px',
-              border: 'none',
-              cursor: isLiking ? 'not-allowed' : 'pointer',
-              background: isLiked ? '#ef4444' : 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              opacity: isLiking ? 0.5 : 1,
-            }}
-          >
-            {isLiked ? '❤️' : '🤍'} {likeCount}
-          </button>
-        </div>
 
-        <div style={{ marginBottom: '20px' }}>
-          <AdUnit
-            placement={AdPlacement.GAME_BRIDGE}
-            className="bridge-ad"
-          />
-        </div>
-
-        <div style={{ flex: 1 }} />
-
-        <div style={{
-          display: 'flex',
-          gap: 0,
-          marginBottom: '20px'
-        }}>
-          <button
-            onClick={handleCopyGame}
-            disabled={isCopying}
-            style={{
-              flex: 1,
-              padding: '20px 0',
-              border: 'none',
-              background: 'rgba(16, 185, 129, 0.9)',
-              color: 'white',
-              fontSize: '24px',
-              cursor: isCopying ? 'not-allowed' : 'pointer',
-              opacity: isCopying ? 0.5 : 1,
-              transition: 'opacity 0.2s',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px'
-            }}
-            onMouseEnter={(e) => !isCopying && (e.currentTarget.style.opacity = '0.8')}
-            onMouseLeave={(e) => !isCopying && (e.currentTarget.style.opacity = '1')}
-          >
-            <div style={{ fontSize: '32px' }}>📋</div>
-            <div style={{ fontSize: '16px' }}>{t('bridge.copyButton')}</div>
-          </button>
-
-          <button
-            onClick={onNextGame}
-            style={{
-              flex: 1,
-              padding: '20px 0',
-              border: 'none',
-              background: 'rgba(59, 130, 246, 0.9)',
-              color: 'white',
-              fontSize: '24px',
-              cursor: 'pointer',
-              transition: 'opacity 0.2s',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-          >
-            {nextGame?.thumbnail ? (
-              <img
-                src={nextGame.thumbnail}
-                alt={nextGame.title}
-                style={{
-                  width: '32px',
-                  height: '32px',
+          {/* 🔧 問題3修正: 作成者情報（クールダウン対応） */}
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '20px',
+            padding: '16px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <div
+              onClick={handleGoToProfile}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                flex: 1,
+                cursor: profileClickEnabled ? 'pointer' : 'default',
+                opacity: profileClickEnabled ? 1 : 0.5,
+                transition: 'opacity 0.3s ease',
+                // タッチデバイスでのハイライト無効化（クールダウン中）
+                WebkitTapHighlightColor: profileClickEnabled ? undefined : 'transparent',
+                pointerEvents: profileClickEnabled ? 'auto' : 'none',
+              }}
+            >
+              <div style={{
+                width: '50px',
+                height: '50px',
+                background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontSize: '24px',
+                fontWeight: 'bold',
+                flexShrink: 0,
+              }}>
+                {currentGame.author.name.charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ 
+                  color: 'white', 
+                  fontWeight: 'bold', 
+                  fontSize: '18px', 
+                  margin: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {currentGame.author.name}
+                </p>
+                <p style={{ 
+                  color: '#9ca3af', 
+                  fontSize: '14px', 
+                  margin: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {currentGame.title}
+                </p>
+              </div>
+              {/* クールダウン中のインジケーター */}
+              {!profileClickEnabled && (
+                <div style={{
+                  fontSize: '12px',
+                  color: '#9ca3af',
+                  padding: '4px 8px',
+                  background: 'rgba(255, 255, 255, 0.1)',
                   borderRadius: '8px',
-                  objectFit: 'cover'
-                }}
-              />
-            ) : (
-              <div style={{ fontSize: '32px' }}>🎮</div>
-            )}
-            <div style={{ fontSize: '16px' }}>{t('bridge.nextButton')}</div>
-          </button>
+                  flexShrink: 0,
+                }}>
+                  ⏳
+                </div>
+              )}
+            </div>
+            <button
+              onClick={handleLike}
+              disabled={isLiking}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '12px',
+                fontWeight: 'bold',
+                fontSize: '20px',
+                border: 'none',
+                cursor: isLiking ? 'not-allowed' : 'pointer',
+                background: isLiked ? '#ef4444' : 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                opacity: isLiking ? 0.5 : 1,
+                flexShrink: 0,
+              }}
+            >
+              {isLiked ? '❤️' : '🤍'} {likeCount}
+            </button>
+          </div>
 
-          <button
-            onClick={onReplayGame}
-            style={{
-              flex: 1,
-              padding: '20px 0',
-              border: 'none',
-              background: 'rgba(236, 72, 153, 0.9)',
-              color: 'white',
-              fontSize: '24px',
-              cursor: 'pointer',
-              transition: 'opacity 0.2s',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-          >
-            <div style={{ fontSize: '32px' }}>🔄</div>
-            <div style={{ fontSize: '16px' }}>{t('bridge.againButton')}</div>
-          </button>
-
-          <button
-            onClick={onNextGame}
-            style={{
-              flex: 1,
-              padding: '20px 0',
-              border: 'none',
-              background: 'rgba(239, 68, 68, 0.9)',
-              color: 'white',
-              fontSize: '24px',
-              cursor: 'pointer',
-              transition: 'opacity 0.2s',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-          >
-            <div style={{ fontSize: '32px' }}>⏭️</div>
-            <div style={{ fontSize: '16px' }}>{t('bridge.skipButton')}</div>
-          </button>
+          {/* 広告エリア */}
+          <div style={{ marginBottom: '16px' }}>
+            <AdUnit
+              placement={AdPlacement.GAME_BRIDGE}
+              className="bridge-ad"
+            />
+          </div>
         </div>
 
+        {/* 🔧 問題1修正: ボタンエリアを画面下部に固定 */}
+        <div style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: '8px', // 残り時間バーの高さ分上に
+          padding: '0 20px 12px 20px',
+          background: 'linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, transparent 100%)',
+        }}>
+          <div style={{
+            display: 'flex',
+            gap: 0,
+          }}>
+            <button
+              onClick={handleCopyGame}
+              disabled={isCopying}
+              style={{
+                flex: 1,
+                padding: '16px 0',
+                border: 'none',
+                background: 'rgba(16, 185, 129, 0.9)',
+                color: 'white',
+                fontSize: '20px',
+                cursor: isCopying ? 'not-allowed' : 'pointer',
+                opacity: isCopying ? 0.5 : 1,
+                transition: 'opacity 0.2s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '2px',
+                borderRadius: '12px 0 0 12px',
+              }}
+              onMouseEnter={(e) => !isCopying && (e.currentTarget.style.opacity = '0.8')}
+              onMouseLeave={(e) => !isCopying && (e.currentTarget.style.opacity = '1')}
+            >
+              <div style={{ fontSize: '28px' }}>📋</div>
+              <div style={{ fontSize: '12px' }}>{t('bridge.copyButton')}</div>
+            </button>
+
+            <button
+              onClick={onNextGame}
+              style={{
+                flex: 1,
+                padding: '16px 0',
+                border: 'none',
+                background: 'rgba(59, 130, 246, 0.9)',
+                color: 'white',
+                fontSize: '20px',
+                cursor: 'pointer',
+                transition: 'opacity 0.2s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '2px'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            >
+              {nextGame?.thumbnail ? (
+                <img
+                  src={nextGame.thumbnail}
+                  alt={nextGame.title}
+                  style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '6px',
+                    objectFit: 'cover'
+                  }}
+                />
+              ) : (
+                <div style={{ fontSize: '28px' }}>🎮</div>
+              )}
+              <div style={{ fontSize: '12px' }}>{t('bridge.nextButton')}</div>
+            </button>
+
+            <button
+              onClick={onReplayGame}
+              style={{
+                flex: 1,
+                padding: '16px 0',
+                border: 'none',
+                background: 'rgba(236, 72, 153, 0.9)',
+                color: 'white',
+                fontSize: '20px',
+                cursor: 'pointer',
+                transition: 'opacity 0.2s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '2px'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            >
+              <div style={{ fontSize: '28px' }}>🔄</div>
+              <div style={{ fontSize: '12px' }}>{t('bridge.againButton')}</div>
+            </button>
+
+            <button
+              onClick={onNextGame}
+              style={{
+                flex: 1,
+                padding: '16px 0',
+                border: 'none',
+                background: 'rgba(239, 68, 68, 0.9)',
+                color: 'white',
+                fontSize: '20px',
+                cursor: 'pointer',
+                transition: 'opacity 0.2s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '2px',
+                borderRadius: '0 12px 12px 0',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            >
+              <div style={{ fontSize: '28px' }}>⏭️</div>
+              <div style={{ fontSize: '12px' }}>{t('bridge.skipButton')}</div>
+            </button>
+          </div>
+        </div>
+
+        {/* 残り時間バー（画面最下部に固定） */}
         <div style={{
           position: 'absolute',
           left: 0,
@@ -519,6 +599,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         </div>
       </div>
 
+      {/* 成功モーダル */}
       {showSuccessModal && copiedProjectId && (
         <div style={{
           position: 'fixed',
@@ -531,23 +612,25 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 100,
+          padding: '20px',
         }}>
           <div style={{
             background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-            borderRadius: '32px',
-            padding: '48px',
-            maxWidth: '600px',
+            borderRadius: '24px',
+            padding: '32px',
+            maxWidth: '400px',
+            width: '100%',
             textAlign: 'center',
           }}>
-            <div style={{ fontSize: '96px', marginBottom: '24px' }}>🎉</div>
-            <h2 style={{ color: 'white', fontSize: '48px', fontWeight: 'bold', marginBottom: '16px' }}>
+            <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
+            <h2 style={{ color: 'white', fontSize: '28px', fontWeight: 'bold', marginBottom: '12px' }}>
               {t('bridge.copySuccessTitle')}
             </h2>
-            <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '24px', marginBottom: '32px' }}>
+            <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '16px', marginBottom: '24px' }}>
               {t('bridge.copySuccessMessage')}
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <button
                 onClick={() => {
                   window.dispatchEvent(new CustomEvent('switchToEditor'));
@@ -558,9 +641,9 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   background: 'white',
                   color: '#059669',
                   fontWeight: 'bold',
-                  fontSize: '24px',
-                  padding: '16px',
-                  borderRadius: '20px',
+                  fontSize: '18px',
+                  padding: '14px',
+                  borderRadius: '16px',
                   border: 'none',
                   cursor: 'pointer',
                 }}
@@ -575,9 +658,9 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   background: 'rgba(255, 255, 255, 0.2)',
                   color: 'white',
                   fontWeight: 'bold',
-                  fontSize: '20px',
+                  fontSize: '16px',
                   padding: '12px',
-                  borderRadius: '20px',
+                  borderRadius: '16px',
                   border: 'none',
                   cursor: 'pointer',
                 }}
