@@ -211,63 +211,75 @@ export class ProjectStorageManager {
   }
 
   // 🔧 新機能: Supabaseデータベース保存
-  public async saveToDatabase(project: GameProject, userId: string): Promise<void> {
-    try {
-      console.log('Saving project to Supabase database:', { 
-        projectId: project.id, 
-        projectName: project.settings?.name || project.name,
-        userId,
-        isPublished: project.status === 'published' 
-      });
+public async saveToDatabase(project: GameProject, userId: string): Promise<void> {
+  try {
+    console.log('Saving project to Supabase database:', { 
+      projectId: project.id, 
+      projectName: project.settings?.name || project.name,
+      userId,
+      isPublished: project.status === 'published' 
+    });
 
-      // user_gamesテーブルに保存するデータを準備
-      const gameData = {
-        creator_id: userId,
-        title: project.settings?.name || project.name || 'Untitled Game',
-        description: project.settings?.description || '',
-        template_id: 'editor_created',
-        game_data: {},  // 🔧 修正: 旧カラム（互換性のため空オブジェクト）
-        project_data: project,  // 🔧 追加: 完全なGameProjectデータ
-        is_published: project.status === 'published',
-        thumbnail_url: project.metadata?.thumbnailUrl || null,
-        // オプショナルフィールド
-        //difficulty_level: project.metadata?.difficulty || 'medium',
-        //estimated_play_time: project.metadata?.estimatedPlayTime || 60,
-        //tags: project.settings?.publishing?.tags || []
-      };
+    // 🔧 追加: プレミアムチェック
+    const { data: credits } = await supabase
+      .from('user_credits')
+      .select('is_premium, games_created_this_month, monthly_limit')
+      .eq('user_id', userId)
+      .single();
 
-      // Supabaseに保存
-      const result = await database.userGames.save(gameData);
-      
-      console.log('✅ Successfully saved to database:', result);
-      
-      // ローカルプロジェクトにデータベースIDを記録（今後の更新用）
-      if (result && 'id' in result) {
-        project.metadata = {
-          ...project.metadata,
-          databaseId: result.id,
-          lastSyncedAt: new Date().toISOString()
-        };
-        
-        // ローカルストレージも更新
-        await this.saveProject(project);
-      }
-      
-    } catch (error: any) {
-      console.error('Failed to save project to database:', error);
-      
-      // エラーの詳細をログ出力
-      if (error.message) {
-        console.error('Error message:', error.message);
-      }
-      if (error.details) {
-        console.error('Error details:', error.details);
-      }
-      
-      // エラーを再スロー（呼び出し元でハンドリング）
-      throw new Error(`データベース保存に失敗: ${error.message || 'Unknown error'}`);
+    if (!credits) {
+      throw new Error('ユーザーのクレジット情報が見つかりません');
     }
+
+    // プレミアムでない場合のみ制限チェック
+    if (!credits.is_premium && credits.games_created_this_month >= credits.monthly_limit) {
+      throw new Error('月間ゲーム作成制限に達しています。プレミアムプランにアップグレードしてください。');
+    }
+
+    // user_gamesテーブルに保存するデータを準備
+    const gameData = {
+      creator_id: userId,
+      title: project.settings?.name || project.name || 'Untitled Game',
+      description: project.settings?.description || '',
+      template_id: 'editor_created',
+      game_data: {},
+      project_data: project,
+      is_published: project.status === 'published',
+      thumbnail_url: project.metadata?.thumbnailUrl || null,
+    };
+
+    // Supabaseに保存
+    const result = await database.userGames.save(gameData);
+    
+    console.log('✅ Successfully saved to database:', result);
+    
+    // 🔧 追加: user_creditsのカウンターを手動で増やす（トリガーがない場合）
+    if (!credits.is_premium) {
+      await supabase
+        .from('user_credits')
+        .update({ 
+          games_created_this_month: credits.games_created_this_month + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
+    }
+    
+    // ローカルプロジェクトにデータベースIDを記録
+    if (result && 'id' in result) {
+      project.metadata = {
+        ...project.metadata,
+        databaseId: result.id,
+        lastSyncedAt: new Date().toISOString()
+      };
+      
+      await this.saveProject(project);
+    }
+    
+  } catch (error: any) {
+    console.error('Failed to save project to database:', error);
+    throw new Error(`データベース保存に失敗: ${error.message || 'Unknown error'}`);
   }
+}
 
   // 🔧 拡張: プロジェクト保存（ローカル + オプションでデータベース）
   public async saveProject(project: GameProject, options?: { 
