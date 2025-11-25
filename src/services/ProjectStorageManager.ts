@@ -1,6 +1,6 @@
 import { GameProject } from '../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../constants/EditorLimits';
-import { database } from '../lib/supabase';
+import { database, supabase } from '../lib/supabase'; // 🔧 supabase追加
 
 // ストレージキー定数
 const STORAGE_KEYS = {
@@ -210,76 +210,116 @@ export class ProjectStorageManager {
     }
   }
 
-  // 🔧 新機能: Supabaseデータベース保存
-public async saveToDatabase(project: GameProject, userId: string): Promise<void> {
-  try {
-    console.log('Saving project to Supabase database:', { 
-      projectId: project.id, 
-      projectName: project.settings?.name || project.name,
-      userId,
-      isPublished: project.status === 'published' 
-    });
+  // 🔧 新機能: Supabaseデータベース保存（プレミアムチェック完全実装）
+  public async saveToDatabase(project: GameProject, userId: string): Promise<void> {
+    try {
+      console.log('[SaveDB-Manager] Saving project to Supabase database:', { 
+        projectId: project.id, 
+        projectName: project.settings?.name || project.name,
+        userId,
+        isPublished: project.status === 'published' 
+      });
 
-    // 🔧 追加: プレミアムチェック
-    const { data: credits } = await supabase
-      .from('user_credits')
-      .select('is_premium, games_created_this_month, monthly_limit')
-      .eq('user_id', userId)
-      .single();
-
-    if (!credits) {
-      throw new Error('ユーザーのクレジット情報が見つかりません');
-    }
-
-    // プレミアムでない場合のみ制限チェック
-    if (!credits.is_premium && credits.games_created_this_month >= credits.monthly_limit) {
-      throw new Error('月間ゲーム作成制限に達しています。プレミアムプランにアップグレードしてください。');
-    }
-
-    // user_gamesテーブルに保存するデータを準備
-    const gameData = {
-      creator_id: userId,
-      title: project.settings?.name || project.name || 'Untitled Game',
-      description: project.settings?.description || '',
-      template_id: 'editor_created',
-      game_data: {},
-      project_data: project,
-      is_published: project.status === 'published',
-      thumbnail_url: project.metadata?.thumbnailUrl || null,
-    };
-
-    // Supabaseに保存
-    const result = await database.userGames.save(gameData);
-    
-    console.log('✅ Successfully saved to database:', result);
-    
-    // 🔧 追加: user_creditsのカウンターを手動で増やす（トリガーがない場合）
-    if (!credits.is_premium) {
-      await supabase
+      // 🔧 追加: プレミアムチェック
+      const { data: credits, error: creditsError } = await supabase
         .from('user_credits')
-        .update({ 
-          games_created_this_month: credits.games_created_this_month + 1,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', userId);
-    }
-    
-    // ローカルプロジェクトにデータベースIDを記録
-    if (result && 'id' in result) {
-      project.metadata = {
-        ...project.metadata,
-        databaseId: result.id,
-        lastSyncedAt: new Date().toISOString()
+        .select('is_premium, games_created_this_month, monthly_limit')
+        .eq('user_id', userId)
+        .single();
+
+      if (creditsError) {
+        console.error('[SaveDB-Manager] Failed to fetch user credits:', creditsError);
+        throw new Error(`クレジット情報の取得に失敗: ${creditsError.message}`);
+      }
+
+      if (!credits) {
+        console.error('[SaveDB-Manager] No credits found for user:', userId);
+        throw new Error('ユーザーのクレジット情報が見つかりません');
+      }
+
+      console.log('[SaveDB-Manager] User credits:', credits);
+
+      // プレミアムでない場合のみ制限チェック
+      if (!credits.is_premium && credits.games_created_this_month >= credits.monthly_limit) {
+        console.warn('[SaveDB-Manager] Monthly limit reached:', {
+          created: credits.games_created_this_month,
+          limit: credits.monthly_limit
+        });
+        throw new Error('月間ゲーム作成制限に達しています。プレミアムプランにアップグレードしてください。');
+      }
+
+      console.log('[SaveDB-Manager] Credit check passed, saving to user_games...');
+
+      // user_gamesテーブルに保存するデータを準備
+      const gameData = {
+        creator_id: userId,
+        title: project.settings?.name || project.name || 'Untitled Game',
+        description: project.settings?.description || '',
+        template_id: 'editor_created',
+        game_data: {},
+        project_data: project,
+        is_published: project.status === 'published',
+        thumbnail_url: project.metadata?.thumbnailUrl || null,
       };
+
+      // Supabaseに保存
+      const result = await database.userGames.save(gameData);
       
-      await this.saveProject(project);
+      console.log('[SaveDB-Manager] ✅ Successfully saved to database:', result);
+      
+      // 🔧 修正: プレミアムユーザーはカウンター更新をスキップ
+      if (!credits.is_premium) {
+        console.log('[SaveDB-Manager] Updating user_credits counter...');
+        try {
+          const { error: updateError } = await supabase
+            .from('user_credits')
+            .update({ 
+              games_created_this_month: credits.games_created_this_month + 1,
+              updated_at: new Date().toISOString()
+            })
+            .eq('user_id', userId);
+
+          if (updateError) {
+            console.error('[SaveDB-Manager] Failed to update credits counter:', updateError);
+            // カウンター更新失敗は警告のみ（ゲーム保存は成功している）
+          } else {
+            console.log('[SaveDB-Manager] Credits counter updated successfully');
+          }
+        } catch (counterError) {
+          console.error('[SaveDB-Manager] Exception while updating counter:', counterError);
+          // カウンター更新失敗は警告のみ
+        }
+      } else {
+        console.log('[SaveDB-Manager] Premium user, skipping counter update');
+      }
+      
+      // ローカルプロジェクトにデータベースIDを記録
+      if (result && 'id' in result) {
+        project.metadata = {
+          ...project.metadata,
+          databaseId: result.id,
+          lastSyncedAt: new Date().toISOString()
+        };
+        
+        // ローカルストレージも更新（再帰呼び出しを避けるため、saveToDatabase: falseを指定）
+        await this.saveProject(project, { saveToDatabase: false });
+      }
+      
+    } catch (error: any) {
+      console.error('[SaveDB-Manager] Failed to save project to database:', error);
+      
+      // エラーの詳細をログ出力
+      if (error.message) {
+        console.error('[SaveDB-Manager] Error message:', error.message);
+      }
+      if (error.details) {
+        console.error('[SaveDB-Manager] Error details:', error.details);
+      }
+      
+      // エラーを再スロー（呼び出し元でハンドリング）
+      throw new Error(`データベース保存に失敗: ${error.message || 'Unknown error'}`);
     }
-    
-  } catch (error: any) {
-    console.error('Failed to save project to database:', error);
-    throw new Error(`データベース保存に失敗: ${error.message || 'Unknown error'}`);
   }
-}
 
   // 🔧 拡張: プロジェクト保存（ローカル + オプションでデータベース）
   public async saveProject(project: GameProject, options?: { 
