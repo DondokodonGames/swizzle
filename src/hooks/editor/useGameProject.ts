@@ -25,9 +25,9 @@ interface UseGameProjectReturn {
   
   // EditorApp.tsx用の追加メソッド
   hasUnsavedChanges: boolean;
-  updateProject: (project: GameProject) => Promise<void>;
-  getTotalSize: (project: GameProject) => number;
-  getValidationErrors: (project: GameProject) => string[];
+  updateProject: (updates?: Partial<GameProject>) => Promise<void>;  // ✅ オプショナル + 部分更新対応
+  getTotalSize: (project?: GameProject) => number;  // ✅ オプショナル対応
+  getValidationErrors: (project?: GameProject) => string[];  // ✅ オプショナル対応
 }
 
 // ユーザー情報キャッシュ
@@ -247,13 +247,22 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [currentProject, storage, listProjects]);
 
-  // updateProjectを追加
-  const updateProject = useCallback(async (project: GameProject): Promise<void> => {
-    console.log('[UpdateProject] プロジェクト更新:', project.id);
+  // ✅ 修正: updateProjectをオプショナル引数 + 部分更新対応に変更
+  const updateProject = useCallback(async (updates?: Partial<GameProject>): Promise<void> => {
+    if (!currentProject) {
+      console.error('[UpdateProject] currentProjectが存在しません');
+      return;
+    }
+    
+    const updatedProject = updates 
+      ? { ...currentProject, ...updates }  // 部分更新: 既存プロジェクトとマージ
+      : currentProject;                     // 引数なしの場合はそのまま
+    
+    console.log('[UpdateProject] プロジェクト更新:', updatedProject.id);
     setHasUnsavedChanges(true);
-    setCurrentProject(project);
+    setCurrentProject(updatedProject);
     // 自動保存は行わず、ユーザーが明示的にsaveProjectを呼ぶまで待つ
-  }, []);
+  }, [currentProject]);
 
   const deleteProject = useCallback(async (id: string): Promise<void> => {
     console.log('[DeleteProject] プロジェクト削除開始:', id);
@@ -413,35 +422,42 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [storage, listProjects]);
 
-  const getTotalSize = useCallback((project: GameProject): number => {
-    return project.totalSize || 0;
-  }, []);
+  // ✅ 修正: getTotalSizeをオプショナル引数対応
+  const getTotalSize = useCallback((project?: GameProject): number => {
+    const targetProject = project || currentProject;
+    if (!targetProject) return 0;
+    return targetProject.totalSize || 0;
+  }, [currentProject]);
 
-  const getValidationErrors = useCallback((project: GameProject): string[] => {
+  // ✅ 修正: getValidationErrorsをオプショナル引数対応
+  const getValidationErrors = useCallback((project?: GameProject): string[] => {
+    const targetProject = project || currentProject;
+    if (!targetProject) return ['プロジェクトが存在しません'];
+    
     const errors: string[] = [];
 
     // プロジェクト名チェック
-    if (!project.name || project.name.trim() === '') {
+    if (!targetProject.name || targetProject.name.trim() === '') {
       errors.push('プロジェクト名が空です');
     }
 
     // アセットチェック
-    if (!project.assets) {
+    if (!targetProject.assets) {
       errors.push('アセットが存在しません');
     }
 
     // スクリプトチェック
-    if (!project.script) {
+    if (!targetProject.script) {
       errors.push('スクリプトが存在しません');
     }
 
     // 設定チェック
-    if (!project.settings) {
+    if (!targetProject.settings) {
       errors.push('設定が存在しません');
     }
 
     return errors;
-  }, []);
+  }, [currentProject]);
 
   const clearError = useCallback(() => {
     setError(null);
