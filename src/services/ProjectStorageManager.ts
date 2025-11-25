@@ -17,9 +17,9 @@ interface ProjectMetadata {
 // エクスポート/インポート用の型
 interface ProjectExportData {
   project: GameProject;
-  metadata: ProjectMetadata;
-  exportedAt: string;
-  version: string;
+  metadata?: ProjectMetadata;  // ✅ オプショナルに変更
+  exportedAt?: string;
+  version?: string;
 }
 
 export class ProjectStorageManager {
@@ -358,9 +358,22 @@ export class ProjectStorageManager {
       const importData: ProjectExportData = JSON.parse(text);
       console.log('[ImportProject-Manager] JSON parsed successfully');
 
-      if (!importData.project || !importData.metadata) {
+      // ✅ 修正: projectのみをチェック（metadataはオプショナル）
+      if (!importData.project) {
         throw new Error('無効なプロジェクトファイルです');
       }
+
+      // ✅ metadataがない場合はprojectから生成
+      const metadata = importData.metadata || {
+        id: importData.project.id,
+        name: importData.project.name || importData.project.settings?.name || 'Untitled',
+        lastModified: importData.project.lastModified || new Date().toISOString(),
+        status: importData.project.status || 'draft',
+        size: importData.project.totalSize || 0,
+        version: importData.project.version || '1.0.0'
+      };
+
+      console.log('[ImportProject-Manager] Metadata generated:', metadata);
 
       // 新しいIDを生成（重複防止）
       const importedProject: GameProject = {
