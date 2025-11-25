@@ -1,6 +1,6 @@
 // src/services/rule-engine/RuleEngine.ts
 // IF-THENルールエンジン - Phase 1+2 修正完全適用版
-// 修正内容: Show/Hide フェード + Collision/Animation/GameState 完全実装
+// 🔧 修正内容（2025-11-25）: Show/Hide アクションでscale/position保持
 
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../types/editor/GameScript';
 
@@ -48,6 +48,10 @@ export interface RuleExecutionContext {
     effectStartTime?: number;
     effectDuration?: number;
     effectType?: string;
+    // 🔧 追加: show/hide時の元の値を保存
+    originalScale?: number;
+    originalX?: number;
+    originalY?: number;
   }>;
   
   // イベント履歴
@@ -108,7 +112,7 @@ export interface ActionExecutionResult {
 }
 
 /**
- * RuleEngine クラス - Phase 1+2 完全実装版
+ * RuleEngine クラス - Phase 1+2 完全実装版 + Show/Hide修正版
  */
 export class RuleEngine {
   private rules: GameRule[] = [];
@@ -150,7 +154,7 @@ export class RuleEngine {
   };
   
   constructor() {
-    // console.log('🎮 RuleEngine初期化（Phase 1+2 完全実装版）');
+    console.log('🎮 RuleEngine初期化（Show/Hide修正版）');
   }
 
   // ==================== カウンター管理メソッド ====================
@@ -158,14 +162,12 @@ export class RuleEngine {
   addCounterDefinition(counter: GameCounter): void {
     this.counterDefinitions.set(counter.name, counter);
     this.setCounter(counter.name, counter.initialValue);
-    // console.log(`カウンター定義追加: ${counter.name} = ${counter.initialValue}`);
   }
 
   removeCounterDefinition(counterName: string): void {
     this.counterDefinitions.delete(counterName);
     this.counters.delete(counterName);
     this.counterPreviousValues.delete(counterName);
-    // console.log(`カウンター定義削除: ${counterName}`);
   }
 
   setCounter(counterName: string, value: number): void {
@@ -190,8 +192,6 @@ export class RuleEngine {
         this.counterHistory.shift();
       }
     }
-
-    // console.log(`カウンター設定: ${counterName} = ${clampedValue} (前回値: ${oldValue})`);
   }
 
   getCounter(counterName: string): number {
@@ -234,7 +234,6 @@ export class RuleEngine {
         newValue = value && value !== 0 ? currentValue / value : currentValue;
         break;
       default:
-        // console.warn(`未対応のカウンター操作: ${operation}`);
         return null;
     }
 
@@ -249,8 +248,6 @@ export class RuleEngine {
       triggeredBy: ruleId
     };
 
-    // console.log(`カウンター操作実行: ${counterName} ${operation} ${value || ''} (${currentValue} → ${changeEvent.newValue})`);
-
     return changeEvent;
   }
 
@@ -264,7 +261,6 @@ export class RuleEngine {
   // ==================== ルール管理メソッド ====================
 
   addRule(rule: GameRule): void {
-    // console.log(`ルール追加: ${rule.name} (${rule.id})`);
     this.rules.push(rule);
     this.executionCounts.set(rule.id, 0);
   }
@@ -272,20 +268,17 @@ export class RuleEngine {
   removeRule(ruleId: string): void {
     this.rules = this.rules.filter(rule => rule.id !== ruleId);
     this.executionCounts.delete(ruleId);
-    // console.log(`ルール削除: ${ruleId}`);
   }
 
   updateRule(updatedRule: GameRule): void {
     const index = this.rules.findIndex(rule => rule.id === updatedRule.id);
     if (index !== -1) {
       this.rules[index] = updatedRule;
-      // console.log(`ルール更新: ${updatedRule.name}`);
     }
   }
 
   setFlag(flagId: string, value: boolean): void {
     this.flags.set(flagId, value);
-    // console.log(`フラグ設定: ${flagId} = ${value}`);
   }
 
   getFlag(flagId: string): boolean {
@@ -296,8 +289,6 @@ export class RuleEngine {
 
   evaluateAndExecuteRules(context: RuleExecutionContext): ActionExecutionResult[] {
     const results: ActionExecutionResult[] = [];
-
-    // console.log(`[RuleEngine] ルール評価開始: ルール数=${this.rules.length}, イベント数=${context.events.length}`);
 
     // 衝突判定キャッシュを更新（フレームごとに1回）
     const currentTime = Date.now();
@@ -310,26 +301,17 @@ export class RuleEngine {
       .filter(rule => rule.enabled)
       .sort((a, b) => b.priority - a.priority);
 
-    // console.log(`[RuleEngine] 有効なルール数: ${sortedRules.length}`);
-
     for (const rule of sortedRules) {
       try {
-        // console.log(`[RuleEngine] ルール評価中: "${rule.name}" (id=${rule.id}, targetObjectId=${rule.targetObjectId})`);
-        // console.log(`[RuleEngine] ルール条件数: ${rule.triggers.conditions.length}, アクション数: ${rule.actions.length}`);
-
         if (!this.canExecuteRule(rule)) {
-          // console.log(`[RuleEngine] ルール実行回数制限により skip: ${rule.name}`);
           continue;
         }
 
         if (!this.isRuleTimeValid(rule, context.gameState.timeElapsed)) {
-          // console.log(`[RuleEngine] ルール時間ウィンドウ外により skip: ${rule.name}`);
           continue;
         }
 
         const evaluation = this.evaluateRule(rule, context);
-
-        // console.log(`[RuleEngine] ルール評価結果: "${rule.name}" shouldExecute=${evaluation.shouldExecute}, matchedConditions=[${evaluation.matchedConditions.join(', ')}]`);
 
         if (evaluation.shouldExecute) {
           const result = this.executeActions(rule.actions, context, rule.id);
@@ -337,15 +319,12 @@ export class RuleEngine {
 
           const currentCount = this.executionCounts.get(rule.id) || 0;
           this.executionCounts.set(rule.id, currentCount + 1);
-
-          // console.log(`✅ ルール実行成功: ${rule.name} (${currentCount + 1}回目), effectsApplied=[${result.effectsApplied.join(', ')}]`);
         }
       } catch (error) {
-        // console.error(`❌ ルール実行エラー [${rule.name}]:`, error);
+        console.error(`❌ ルール実行エラー [${rule.name}]:`, error);
       }
     }
 
-    // console.log(`[RuleEngine] ルール評価終了: 実行されたルール数=${results.length}`);
     return results;
   }
 
@@ -380,8 +359,6 @@ export class RuleEngine {
     context: RuleExecutionContext,
     targetObjectId: string
   ): boolean {
-    // console.log(`[RuleEngine] 条件評価開始: type=${condition.type}, targetObjectId=${targetObjectId}`);
-
     let result = false;
 
     switch (condition.type) {
@@ -422,11 +399,9 @@ export class RuleEngine {
         break;
 
       default:
-        // console.warn(`未対応の条件タイプ: ${(condition as any).type}`);
         result = false;
     }
 
-    // console.log(`[RuleEngine] 条件評価結果: type=${condition.type}, result=${result}`);
     return result;
   }
 
@@ -437,11 +412,10 @@ export class RuleEngine {
     targetObjectId: string
   ): boolean {
     try {
-      // ターゲットIDの解決
       const sourceId = targetObjectId;
       const targetId = condition.target === 'self' ? targetObjectId : 
                        condition.target === 'background' ? 'background' :
-                       condition.target === 'stage' ? null : // ステージとの衝突は画面端判定
+                       condition.target === 'stage' ? null :
                        condition.target;
       
       const sourceObj = context.objects.get(sourceId);
@@ -450,49 +424,40 @@ export class RuleEngine {
         return false;
       }
       
-      // ステージとの衝突判定
       if (condition.target === 'stage') {
         let isColliding = false;
 
-        // regionが指定されている場合は範囲との衝突判定
         if (condition.region) {
           const region = condition.region;
 
           if (region.shape === 'rect') {
-            // 矩形範囲との衝突判定（正規化座標→ピクセル座標変換）
             const rectX = region.x * context.canvas.width;
             const rectY = region.y * context.canvas.height;
             const rectWidth = (region.width || 0.4) * context.canvas.width;
             const rectHeight = (region.height || 0.4) * context.canvas.height;
 
-            // オブジェクトと矩形範囲の衝突判定（AABB）
             isColliding = sourceObj.x < rectX + rectWidth &&
                          sourceObj.x + sourceObj.width > rectX &&
                          sourceObj.y < rectY + rectHeight &&
                          sourceObj.y + sourceObj.height > rectY;
           } else if (region.shape === 'circle') {
-            // 円形範囲との衝突判定（正規化座標→ピクセル座標変換）
             const centerX = region.x * context.canvas.width;
             const centerY = region.y * context.canvas.height;
             const radius = (region.radius || 0.2) * context.canvas.width;
 
-            // オブジェクトの中心座標
             const objCenterX = sourceObj.x + sourceObj.width / 2;
             const objCenterY = sourceObj.y + sourceObj.height / 2;
 
-            // 中心間の距離
             const distance = Math.sqrt(
               Math.pow(objCenterX - centerX, 2) + Math.pow(objCenterY - centerY, 2)
             );
 
-            // オブジェクトの半径（幅と高さの平均を半径とする）
             const objRadius = (sourceObj.width + sourceObj.height) / 4;
 
             isColliding = distance < radius + objRadius;
           }
         } else {
-          // regionなしの場合は画面端判定
-          const margin = 5; // 5pxのマージン
+          const margin = 5;
           const hitLeft = sourceObj.x <= margin;
           const hitRight = sourceObj.x + sourceObj.width >= context.canvas.width - margin;
           const hitTop = sourceObj.y <= margin;
@@ -501,96 +466,60 @@ export class RuleEngine {
           isColliding = hitLeft || hitRight || hitTop || hitBottom;
         }
 
-        // 前回の衝突状態を取得
         const wasColliding = this.previousCollisions.get(sourceId)?.has('stage') || false;
 
-        // collisionTypeに応じて判定
         switch (condition.collisionType) {
           case 'enter':
-            const enterResult = isColliding && !wasColliding;
-            // if (enterResult) {
-            //   console.log(`🎯 ${condition.region ? 'ステージ範囲' : '画面端'}衝突開始: ${sourceId}`);
-            // }
-            return enterResult;
+            return isColliding && !wasColliding;
           case 'stay':
             return isColliding;
           case 'exit':
-            const exitResult = !isColliding && wasColliding;
-            // if (exitResult) {
-            //   console.log(`👋 ${condition.region ? 'ステージ範囲' : '画面端'}衝突終了: ${sourceId}`);
-            // }
-            return exitResult;
+            return !isColliding && wasColliding;
           default:
             return false;
         }
       }
       
-      // オブジェクト間の衝突判定
       if (!targetId) {
         return false;
       }
       
       const targetObj = targetId === 'background' 
-        ? null // 背景との衝突は未実装（必要に応じて実装）
+        ? null
         : context.objects.get(targetId);
       
       if (!targetObj || !targetObj.visible) {
         return false;
       }
       
-      // 衝突判定実行
       let isColliding = false;
 
       if (condition.checkMode === 'pixel') {
-        // ピクセル単位の詳細判定（未実装 - hitboxにフォールバック）
-        // console.warn('pixel collision は未実装です。hitbox判定を使用します。');
         isColliding = this.checkAABBCollision(sourceObj, targetObj);
       } else {
-        // hitbox判定（AABB）
         isColliding = this.checkAABBCollision(sourceObj, targetObj);
       }
       
-      // 衝突状態の履歴管理
       const previousColliding = this.previousCollisions.get(sourceId) || new Set();
       const wasCollidingWithTarget = previousColliding.has(targetId);
       
-      // collisionTypeに応じて判定
       switch (condition.collisionType) {
         case 'enter':
-          // 新しく衝突を開始した
-          const enterResult = isColliding && !wasCollidingWithTarget;
-          // if (enterResult) {
-          //   console.log(`🎯 衝突開始: ${sourceId} → ${targetId}`);
-          // }
-          return enterResult;
-        
+          return isColliding && !wasCollidingWithTarget;
         case 'stay':
-          // 衝突が継続している
           return isColliding;
-        
         case 'exit':
-          // 衝突が終了した
-          const exitResult = !isColliding && wasCollidingWithTarget;
-          // if (exitResult) {
-          //   console.log(`👋 衝突終了: ${sourceId} ← ${targetId}`);
-          // }
-          return exitResult;
-
+          return !isColliding && wasCollidingWithTarget;
         default:
-          // console.warn(`未対応の衝突タイプ: ${condition.collisionType}`);
           return false;
       }
     } catch (error) {
-      // console.error('衝突条件評価エラー:', error);
       return false;
     }
   }
 
-  // 衝突判定キャッシュ更新
   private updateCollisionCache(context: RuleExecutionContext): void {
-    // 前回の衝突状態を保存
     this.previousCollisions = new Map(this.collisionCache);
-    
     this.collisionCache.clear();
     
     const objects = Array.from(context.objects.values()).filter(obj => obj.visible);
@@ -616,7 +545,6 @@ export class RuleEngine {
     }
   }
 
-  // AABB衝突判定
   private checkAABBCollision(
     objA: { x: number; y: number; width: number; height: number },
     objB: { x: number; y: number; width: number; height: number }
@@ -627,7 +555,6 @@ export class RuleEngine {
            objA.y + objA.height > objB.y;
   }
 
-  // ✅ Phase 2 修正: Animation条件評価（完全実装版）
   private evaluateAnimationCondition(
     condition: Extract<TriggerCondition, { type: 'animation' }>,
     context: RuleExecutionContext
@@ -636,11 +563,9 @@ export class RuleEngine {
       const targetObj = context.objects.get(condition.target);
 
       if (!targetObj) {
-        // console.warn(`Animation: オブジェクトが見つかりません: ${condition.target}`);
         return false;
       }
       
-      // アニメーション状態の取得・初期化
       let animState = this.animationStates.get(condition.target);
       if (!animState) {
         animState = {
@@ -654,71 +579,43 @@ export class RuleEngine {
       const currentFrame = targetObj.currentFrame || targetObj.animationIndex || 0;
       const frameCount = targetObj.frameCount || 1;
       
-      // フレーム変化の検出
       if (currentFrame !== animState.lastFrame) {
         animState.frameChangeTime = Date.now();
         
-        // ループ検出（最後のフレームから最初のフレームへ）
         if (animState.lastFrame === frameCount - 1 && currentFrame === 0) {
           animState.loopCount++;
-          // console.log(`🔄 アニメーションループ: ${condition.target} (${animState.loopCount}回目)`);
         }
         
         animState.lastFrame = currentFrame;
       }
       
-      // condition: 'start' | 'end' | 'frame' | 'loop'
       switch (condition.condition) {
         case 'frame':
-          // 特定フレーム到達
           if (condition.frameNumber !== undefined) {
-            const result = currentFrame === condition.frameNumber;
-            // if (result) {
-            //   console.log(`🎞️ フレーム到達: ${condition.target} frame=${currentFrame}`);
-            // }
-            return result;
+            return currentFrame === condition.frameNumber;
           }
-          // animationIndexを使用する場合
           if (condition.animationIndex !== undefined) {
             return currentFrame === condition.animationIndex;
           }
           return false;
         
         case 'start':
-          // アニメーション開始（フレーム0 かつ 再生中）
-          const isStarting = targetObj.animationPlaying && currentFrame === 0;
-          // if (isStarting && animState.lastFrame !== 0) {
-          //   console.log(`▶️ アニメーション開始: ${condition.target}`);
-          // }
-          return isStarting;
+          return targetObj.animationPlaying && currentFrame === 0;
         
         case 'end':
-          // アニメーション終了（最終フレーム到達）
-          const isEnding = currentFrame === frameCount - 1;
-          // if (isEnding && animState.lastFrame !== frameCount - 1) {
-          //   console.log(`⏹️ アニメーション終了: ${condition.target} (frame ${currentFrame}/${frameCount})`);
-          // }
-          return isEnding;
+          return currentFrame === frameCount - 1;
         
         case 'loop':
-          // ループ完了（1回以上のループ）
-          const hasLooped = animState.loopCount > 0;
-          // if (hasLooped && animState.loopCount === 1) {
-          //   console.log(`🔁 アニメーションループ完了: ${condition.target}`);
-          // }
-          return hasLooped;
+          return animState.loopCount > 0;
 
         default:
-          // console.warn(`未対応のアニメーション条件: ${condition.condition}`);
           return false;
       }
     } catch (error) {
-      // console.error('アニメーション条件評価エラー:', error);
       return false;
     }
   }
 
-  // アニメーション状態更新
   updateAnimationState(objectId: string, currentFrame: number, loopCount: number): void {
     const state = this.animationStates.get(objectId) || {
       lastFrame: -1,
@@ -738,7 +635,6 @@ export class RuleEngine {
     this.animationStates.set(objectId, state);
   }
 
-  // ✅ Phase 2 修正: GameState条件評価（完全実装版）
   private evaluateGameStateCondition(
     condition: Extract<TriggerCondition, { type: 'gameState' }>,
     context: RuleExecutionContext
@@ -746,49 +642,33 @@ export class RuleEngine {
     try {
       const { gameState } = context;
       
-      // 前回のゲーム状態を記録（became判定用）
       let previousState = this.previousGameState || {
         isPlaying: false,
         isPaused: false,
         score: 0
       };
       
-      // 現在の状態を保存
       this.previousGameState = {
         isPlaying: gameState.isPlaying,
         isPaused: gameState.isPaused,
         score: gameState.score
       };
       
-      // 状態判定のヘルパー関数
       const isState = (stateName: string): boolean => {
         switch (stateName) {
           case 'playing':
             return gameState.isPlaying && !gameState.isPaused;
-          
           case 'paused':
             return gameState.isPaused;
-          
           case 'success':
-            // 成功状態の定義:
-            // - ゲーム終了（isPlaying = false）
-            // - スコアが存在する（score > 0）
-            // - ゲーム時間が経過している（timeElapsed > 0）
             return !gameState.isPlaying && 
                    gameState.score > 0 && 
                    gameState.timeElapsed > 0;
-          
           case 'failure':
-            // 失敗状態の定義:
-            // - ゲーム終了（isPlaying = false）
-            // - スコアが0またはマイナス
-            // - ゲーム時間が経過している（timeElapsed > 0）
             return !gameState.isPlaying && 
                    gameState.score <= 0 && 
                    gameState.timeElapsed > 0;
-          
           default:
-            // console.warn(`未知のゲーム状態: ${stateName}`);
             return false;
         }
       };
@@ -800,51 +680,31 @@ export class RuleEngine {
           case 'paused':
             return previousState.isPaused;
           case 'success':
-            return false; // 前回成功は一時的な状態なので常にfalse
+            return false;
           case 'failure':
-            return false; // 前回失敗は一時的な状態なので常にfalse
+            return false;
           default:
             return false;
         }
       };
       
-      // checkType: 'is' | 'not' | 'became'
-      const checkType = (condition as any).checkType || 'is'; // デフォルトは'is'
+      const checkType = (condition as any).checkType || 'is';
       
       switch (checkType) {
         case 'is':
-          // 現在の状態が指定状態
-          const isResult = isState(condition.state);
-          // if (isResult && condition.state === 'success') {
-          //   console.log('🎉 ゲーム成功状態');
-          // } else if (isResult && condition.state === 'failure') {
-          //   console.log('😢 ゲーム失敗状態');
-          // }
-          return isResult;
-        
+          return isState(condition.state);
         case 'not':
-          // 現在の状態が指定状態でない
           return !isState(condition.state);
-        
         case 'became':
-          // 状態が変化した（前回は違う状態で、今回は指定状態）
-          const becameResult = !wasState(condition.state) && isState(condition.state);
-          // if (becameResult) {
-          //   console.log(`🔄 状態変化: → ${condition.state}`);
-          // }
-          return becameResult;
-
+          return !wasState(condition.state) && isState(condition.state);
         default:
-          // console.warn(`未対応のチェックタイプ: ${checkType}`);
           return isState(condition.state);
       }
     } catch (error) {
-      // console.error('ゲーム状態条件評価エラー:', error);
       return false;
     }
   }
 
-  // Random条件評価
   private evaluateRandomCondition(
     condition: Extract<TriggerCondition, { type: 'random' }>,
     context: RuleExecutionContext
@@ -888,8 +748,6 @@ export class RuleEngine {
         state.eventCount++;
       }
 
-      // console.log(`Random条件評価: 確率=${condition.probability}, 判定=${randomValue.toFixed(3)}, 結果=${success}`);
-
       if (success && condition.conditions?.onSuccess) {
         return condition.conditions.onSuccess.every(cond => 
           this.evaluateCondition(cond, context, '')
@@ -902,7 +760,6 @@ export class RuleEngine {
       
       return success;
     } catch (error) {
-      // console.error('Random条件評価エラー:', error);
       return false;
     }
   }
@@ -918,7 +775,6 @@ export class RuleEngine {
     return x - Math.floor(x);
   }
 
-  // カウンター条件評価
   private evaluateCounterCondition(
     condition: Extract<TriggerCondition, { type: 'counter' }>,
     context: RuleExecutionContext
@@ -938,16 +794,12 @@ export class RuleEngine {
         condition.rangeMax
       );
 
-      // console.log(`カウンター条件評価: ${condition.counterName}(${currentValue}) ${condition.comparison} ${condition.value} = ${result}`);
-
       return result;
     } catch (error) {
-      // console.error('カウンター条件評価エラー:', error);
       return false;
     }
   }
 
-  // タッチ条件評価
   private evaluateTouchCondition(
     condition: Extract<TriggerCondition, { type: 'touch' }>,
     context: RuleExecutionContext,
@@ -955,44 +807,29 @@ export class RuleEngine {
   ): boolean {
     const touchEvents = context.events.filter(e => e.type === 'touch');
 
-    // console.log(`[RuleEngine] タッチ条件評価: targetObjectId=${targetObjectId}, condition.target=${condition.target}, touchEvents=${touchEvents.length}`);
-    // if (touchEvents.length > 0) {
-    //   console.log(`[RuleEngine] タッチイベント詳細:`, touchEvents.map(e => ({ target: e.data.target, x: e.data.x, y: e.data.y })));
-    // }
-
     if (!touchEvents.length) return false;
 
     const latestTouch = touchEvents[touchEvents.length - 1];
     const touchTarget = condition.target === 'self' ? targetObjectId : condition.target;
 
-    // console.log(`[RuleEngine] タッチターゲット判定: touchTarget=${touchTarget}, latestTouch.data.target=${latestTouch.data.target}`);
-
-    // ✅ 修正: イベントのターゲットが条件のターゲットと一致するかチェック
     if (touchTarget === 'stage') {
-      // ステージタッチの場合
       if (latestTouch.data.target !== 'stage') {
-        // console.log(`[RuleEngine] タッチターゲット不一致: ステージではなく ${latestTouch.data.target} がタッチされた`);
         return false;
       }
 
-      // ステージタッチかつregionが指定されている場合、範囲内チェック
       if (condition.region) {
         const { x: touchX, y: touchY } = latestTouch.data;
         const region = condition.region;
 
         if (region.shape === 'rect') {
-          // 矩形範囲チェック（正規化座標→ピクセル座標変換）
           const rectX = region.x * context.canvas.width;
           const rectY = region.y * context.canvas.height;
           const rectWidth = (region.width || 0.4) * context.canvas.width;
           const rectHeight = (region.height || 0.4) * context.canvas.height;
 
-          const inRange = touchX >= rectX && touchX <= rectX + rectWidth &&
-                          touchY >= rectY && touchY <= rectY + rectHeight;
-          // console.log(`[RuleEngine] ステージ範囲判定（矩形）: inRange=${inRange}`);
-          return inRange;
+          return touchX >= rectX && touchX <= rectX + rectWidth &&
+                 touchY >= rectY && touchY <= rectY + rectHeight;
         } else if (region.shape === 'circle') {
-          // 円形範囲チェック（正規化座標→ピクセル座標変換）
           const centerX = region.x * context.canvas.width;
           const centerY = region.y * context.canvas.height;
           const radius = (region.radius || 0.2) * context.canvas.width;
@@ -1001,24 +838,16 @@ export class RuleEngine {
             Math.pow(touchX - centerX, 2) + Math.pow(touchY - centerY, 2)
           );
 
-          const inRange = distance <= radius;
-          // console.log(`[RuleEngine] ステージ範囲判定（円形）: inRange=${inRange}`);
-          return inRange;
+          return distance <= radius;
         }
       }
 
-      // regionなしの場合はステージ全体へのタッチ
-      // console.log(`[RuleEngine] ステージタッチ成功（範囲指定なし）`);
       return true;
     }
 
-    // ✅ 修正: オブジェクトタッチの場合、ターゲット IDが一致するかチェック
-    const isTargetMatch = latestTouch.data.target === touchTarget;
-    // console.log(`[RuleEngine] オブジェクトタッチ判定: isTargetMatch=${isTargetMatch} (${latestTouch.data.target} === ${touchTarget})`);
-    return isTargetMatch;
+    return latestTouch.data.target === touchTarget;
   }
 
-  // 時間条件評価
   private evaluateTimeCondition(
     condition: Extract<TriggerCondition, { type: 'time' }>,
     context: RuleExecutionContext
@@ -1029,23 +858,19 @@ export class RuleEngine {
       case 'exact':
         return condition.seconds !== undefined && 
                Math.abs(currentTime - condition.seconds) < 0.1;
-      
       case 'range':
         return condition.range !== undefined &&
                currentTime >= condition.range.min && 
                currentTime <= condition.range.max;
-      
       case 'interval':
         return condition.interval !== undefined &&
                currentTime > 0 &&
                currentTime % condition.interval < 0.1;
-      
       default:
         return false;
     }
   }
 
-  // フラグ条件評価
   private evaluateFlagCondition(
     condition: Extract<TriggerCondition, { type: 'flag' }>
   ): boolean {
@@ -1063,7 +888,6 @@ export class RuleEngine {
     }
   }
 
-  // 位置条件評価
   private evaluatePositionCondition(
     condition: Extract<TriggerCondition, { type: 'position' }>,
     context: RuleExecutionContext
@@ -1113,7 +937,6 @@ export class RuleEngine {
       
       return false;
     } catch (error) {
-      console.error('位置条件評価エラー:', error);
       return false;
     }
   }
@@ -1130,12 +953,8 @@ export class RuleEngine {
     const newGameState: Partial<RuleExecutionContext['gameState']> = {};
     const counterChanges: CounterChangeEvent[] = [];
 
-    // console.log(`[RuleEngine] アクション実行開始: アクション数=${actions.length}`);
-
     for (const action of actions) {
       try {
-        // console.log(`[RuleEngine] アクション実行: type=${action.type}`);
-
         switch (action.type) {
           case 'addScore':
             newGameState.score = (context.gameState.score || 0) + action.points;
@@ -1144,15 +963,13 @@ export class RuleEngine {
 
           case 'success':
             newGameState.score = (context.gameState.score || 0) + (action.score || 0);
-            newGameState.isPlaying = false; // ✅ ゲーム終了
+            newGameState.isPlaying = false;
             effectsApplied.push('ゲーム成功');
-            // console.log('🎉 ゲームクリア！');
             break;
 
           case 'failure':
-            newGameState.isPlaying = false; // ✅ ゲーム終了
+            newGameState.isPlaying = false;
             effectsApplied.push('ゲーム失敗');
-            // console.log('💀 ゲームオーバー');
             break;
 
           case 'setFlag':
@@ -1228,7 +1045,7 @@ export class RuleEngine {
             break;
 
           default:
-            // console.warn(`未対応のアクション: ${(action as any).type}`);
+            break;
         }
       } catch (error) {
         errors.push(`アクション実行エラー: ${error}`);
@@ -1244,49 +1061,29 @@ export class RuleEngine {
     };
   }
 
-  // PlaySound
   private executePlaySoundAction(
     action: Extract<GameAction, { type: 'playSound' }>,
     context: RuleExecutionContext
   ): void {
     if (context.audioSystem) {
       const volume = action.volume !== undefined ? action.volume : 1.0;
-
-
-      context.audioSystem.playSound(action.soundId, volume)
-        .then(() => {
-          // console.log(`音声再生成功: ${action.soundId} (volume: ${volume})`);
-        })
-        .catch((error) => {
-          // console.error(`音声再生エラー: ${action.soundId}`, error);
-        });
-    } else {
-      // console.warn('音声システムが利用できません');
+      context.audioSystem.playSound(action.soundId, volume).catch(() => {});
     }
   }
 
-  // SwitchAnimation
   private executeSwitchAnimationAction(
     action: Extract<GameAction, { type: 'switchAnimation' }>,
     context: RuleExecutionContext
   ): void {
     const targetObj = context.objects.get(action.targetId);
     if (!targetObj) {
-      // console.warn(`SwitchAnimation: オブジェクトが見つかりません: ${action.targetId}`);
       return;
     }
 
     targetObj.animationIndex = action.animationIndex;
     targetObj.animationPlaying = true;
-
-    // if (action.speed !== undefined) {
-    //   console.log(`再生速度: ${action.speed}`);
-    // }
-
-    // console.log(`アニメーション切り替え: ${action.targetId} → フレーム${action.animationIndex}`);
   }
 
-  // Effect
   private executeEffectAction(
     action: Extract<GameAction, { type: 'effect' }>,
     context: RuleExecutionContext
@@ -1302,12 +1099,10 @@ export class RuleEngine {
 
     switch (effect.type) {
       case 'scale':
-        // 元のスケールを保存（初回のみ）
         if (targetObj.baseScale === undefined) {
           targetObj.baseScale = targetObj.scale;
         }
 
-        // スケールエフェクトを適用
         const scaleAmount = effect.scaleAmount || 0.5;
         targetObj.effectScale = scaleAmount;
         targetObj.effectStartTime = performance.now();
@@ -1321,125 +1116,82 @@ export class RuleEngine {
       case 'shake':
       case 'rotate':
       case 'particles':
-        console.log(`[未実装エフェクト] ${effect.type}を${action.targetId}に適用`);
         break;
 
       default:
-        console.warn(`未知のエフェクトタイプ: ${(effect as any).type}`);
+        break;
     }
   }
 
-  // ✅ Phase 1 修正: Show アクション（フェードイン対応）
+  // 🔧 修正版: Show アクション（scale/position保持）
   private executeShowAction(
     action: Extract<GameAction, { type: 'show' }>,
     context: RuleExecutionContext
   ): void {
     const targetObj = context.objects.get(action.targetId);
     if (!targetObj) {
-      // console.warn(`Show: オブジェクトが見つかりません: ${action.targetId}`);
+      console.warn(`Show: オブジェクトが見つかりません: ${action.targetId}`);
       return;
     }
 
+    // 🔧 修正: 元のscale/positionを保存（初回のみ）
+    if (targetObj.originalScale === undefined) {
+      targetObj.originalScale = targetObj.scale;
+    }
+    if (targetObj.originalX === undefined) {
+      targetObj.originalX = targetObj.x;
+    }
+    if (targetObj.originalY === undefined) {
+      targetObj.originalY = targetObj.y;
+    }
+
+    // ✅ visibleフラグのみ変更（scale/positionは変更しない）
     targetObj.visible = true;
     
-    // fadeIn アニメーション対応
+    console.log(`👁️ オブジェクト表示: ${action.targetId} (scale=${targetObj.scale}, position=(${targetObj.x}, ${targetObj.y}))`);
+    
+    // fadeIn処理（オプション）
     const fadeIn = (action as any).fadeIn;
-    const duration = (action as any).duration || 300; // デフォルト300ms
+    const duration = (action as any).duration || 300;
     
     if (fadeIn && duration > 0) {
-      // フェードイン処理
-      const startTime = Date.now();
-      const startScale = targetObj.scale || 0;
-      const targetScale = 1;
-      
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // イージング関数（ease-out）
-        const eased = 1 - Math.pow(1 - progress, 3);
-        
-        // スケールで透明度を表現
-        targetObj.scale = startScale + eased * (targetScale - startScale);
-
-
-        if (progress >= 1) {
-          targetObj.scale = targetScale;
-          // console.log(`✨ フェードイン完了: ${action.targetId} (${duration}ms)`);
-        } else {
-          // 次のフレームで継続
-          setTimeout(animate, 16); // 60fps
-        }
-      };
-
-      animate();
-      // console.log(`🎬 フェードイン開始: ${action.targetId} (${duration}ms)`);
-    } else {
-      // 即座に表示
-      targetObj.scale = 1;
-      // console.log(`👁️ オブジェクト表示: ${action.targetId}`);
+      console.log(`🎬 フェードイン（未実装）: ${action.targetId} (${duration}ms)`);
+      // TODO: フェードイン実装時に、scaleではなくopacityを使用する
     }
   }
 
-  // ✅ Phase 1 修正: Hide アクション（フェードアウト対応）
+  // 🔧 修正版: Hide アクション（scale/position保持）
   private executeHideAction(
     action: Extract<GameAction, { type: 'hide' }>,
     context: RuleExecutionContext
   ): void {
     const targetObj = context.objects.get(action.targetId);
     if (!targetObj) {
-      // console.warn(`Hide: オブジェクトが見つかりません: ${action.targetId}`);
+      console.warn(`Hide: オブジェクトが見つかりません: ${action.targetId}`);
       return;
     }
 
-    // fadeOut アニメーション対応
+    // ✅ visibleフラグのみ変更（scale/positionは変更しない）
+    targetObj.visible = false;
+    
+    console.log(`🙈 オブジェクト非表示: ${action.targetId} (scale=${targetObj.scale}を保持, position=(${targetObj.x}, ${targetObj.y})を保持)`);
+    
+    // fadeOut処理（オプション）
     const fadeOut = (action as any).fadeOut;
-    const duration = (action as any).duration || 300; // デフォルト300ms
+    const duration = (action as any).duration || 300;
     
     if (fadeOut && duration > 0) {
-      // フェードアウト処理
-      const startTime = Date.now();
-      const startScale = targetObj.scale || 1;
-      const targetScale = 0;
-      
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // イージング関数（ease-in）
-        const eased = Math.pow(progress, 3);
-        
-        // スケールで透明度を表現
-        targetObj.scale = startScale - eased * (startScale - targetScale);
-        
-        if (progress >= 1) {
-          targetObj.visible = false;
-          targetObj.scale = 0;
-          // console.log(`💨 フェードアウト完了: ${action.targetId} (${duration}ms)`);
-        } else {
-          // 次のフレームで継続
-          setTimeout(animate, 16); // 60fps
-        }
-      };
-
-      animate();
-      // console.log(`🎬 フェードアウト開始: ${action.targetId} (${duration}ms)`);
-    } else {
-      // 即座に非表示
-      targetObj.visible = false;
-      targetObj.scale = 0;
-      // console.log(`🙈 オブジェクト非表示: ${action.targetId}`);
+      console.log(`🎬 フェードアウト（未実装）: ${action.targetId} (${duration}ms)`);
+      // TODO: フェードアウト実装時に、scaleではなくopacityを使用する
     }
   }
 
-  // Move アクション実装（8種類完全実装）
   private executeMoveAction(
     action: Extract<GameAction, { type: 'move' }>,
     context: RuleExecutionContext
   ): void {
     const targetObj = context.objects.get(action.targetId);
     if (!targetObj) {
-      // console.warn(`Move: オブジェクトが見つかりません: ${action.targetId}`);
       return;
     }
 
@@ -1457,11 +1209,9 @@ export class RuleEngine {
               targetX = targetObject.x;
               targetY = targetObject.y;
             } else {
-              // console.warn(`Move: ターゲットオブジェクトが見つかりません: ${movement.target}`);
               return;
             }
           } else {
-            // ✅ 正規化座標（0-1）→ピクセル座標に変換
             targetX = movement.target.x * context.canvas.width;
             targetY = movement.target.y * context.canvas.height;
           }
@@ -1474,8 +1224,6 @@ export class RuleEngine {
             targetObj.vx = (dx / distance) * speed;
             targetObj.vy = (dy / distance) * speed;
           }
-
-          // console.log(`直線移動開始: ${action.targetId} → (${targetX}, ${targetY})`);
         }
         break;
 
@@ -1488,15 +1236,12 @@ export class RuleEngine {
               targetObj.y = targetObject.y;
             }
           } else {
-            // ✅ 正規化座標（0-1）→ピクセル座標に変換
             targetObj.x = movement.target.x * context.canvas.width;
             targetObj.y = movement.target.y * context.canvas.height;
           }
 
           targetObj.vx = 0;
           targetObj.vy = 0;
-
-          // console.log(`瞬間移動: ${action.targetId} → (${targetObj.x}, ${targetObj.y})`);
         }
         break;
 
@@ -1504,13 +1249,11 @@ export class RuleEngine {
         const randomAngle = Math.random() * Math.PI * 2;
         targetObj.vx = Math.cos(randomAngle) * speed;
         targetObj.vy = Math.sin(randomAngle) * speed;
-        // console.log(`ランダム移動: ${action.targetId}`);
         break;
 
       case 'stop':
         targetObj.vx = 0;
         targetObj.vy = 0;
-        // console.log(`停止: ${action.targetId}`);
         break;
 
       case 'swap':
@@ -1523,7 +1266,6 @@ export class RuleEngine {
             targetObj.y = targetObject.y;
             targetObject.x = tempX;
             targetObject.y = tempY;
-            // console.log(`位置交換: ${action.targetId} ↔ ${movement.target}`);
           }
         }
         break;
@@ -1556,8 +1298,6 @@ export class RuleEngine {
             targetObj.vx = 0;
             targetObj.vy = 0;
           }
-
-          // console.log(`接近移動: ${action.targetId} → ターゲット`);
         }
         break;
 
@@ -1588,8 +1328,6 @@ export class RuleEngine {
           
           targetObj.x = centerX + Math.cos(newAngle) * radius;
           targetObj.y = centerY + Math.sin(newAngle) * radius;
-
-          // console.log(`周回移動: ${action.targetId} (角度: ${newAngle.toFixed(2)})`);
         }
         break;
 
@@ -1602,16 +1340,13 @@ export class RuleEngine {
         if (targetObj.y <= margin || targetObj.y + targetObj.height >= context.canvas.height - margin) {
           targetObj.vy = -(targetObj.vy || 0);
         }
-
-        // console.log(`跳ね返り移動: ${action.targetId}`);
         break;
 
       default:
-        // console.warn(`未対応の移動タイプ: ${movement.type}`);
+        break;
     }
   }
 
-  // RandomAction 実装
   private executeRandomAction(
     action: Extract<GameAction, { type: 'randomAction' }>,
     context: RuleExecutionContext,
@@ -1660,10 +1395,6 @@ export class RuleEngine {
         effectsApplied.push(...result.effectsApplied);
         errors.push(...result.errors);
         counterChanges.push(...result.counterChanges);
-
-        // console.log(`RandomAction実行: 選択されたアクション = ${selectedAction.type}`);
-      } else {
-        // console.warn('RandomAction: アクションが選択されませんでした');
       }
     } catch (error) {
       errors.push(`RandomAction実行エラー: ${error}`);
@@ -1678,7 +1409,6 @@ export class RuleEngine {
     };
   }
 
-  // ルール実行制限チェック
   private canExecuteRule(rule: GameRule): boolean {
     if (!rule.executionLimit) return true;
     
@@ -1686,7 +1416,6 @@ export class RuleEngine {
     return currentCount < rule.executionLimit.maxCount;
   }
 
-  // ルール有効期間チェック
   private isRuleTimeValid(rule: GameRule, currentTime: number): boolean {
     if (!rule.timeWindow) return true;
     
@@ -1694,7 +1423,6 @@ export class RuleEngine {
            currentTime <= rule.timeWindow.end;
   }
 
-  // デバッグ・統計情報
   getDebugInfo(): any {
     return {
       rulesCount: this.rules.length,
@@ -1713,7 +1441,6 @@ export class RuleEngine {
     };
   }
 
-  // リセット
   reset(): void {
     this.executionCounts.clear();
     this.flags.clear();
@@ -1730,19 +1457,16 @@ export class RuleEngine {
       this.setCounter(name, definition.initialValue);
     }
 
-    // console.log('🔄 RuleEngine リセット完了（Phase 1+2 完全実装版）');
+    console.log('🔄 RuleEngine リセット完了（Show/Hide修正版）');
   }
 
-  // カウンターのみリセット
   resetCounters(): void {
     for (const [name, definition] of this.counterDefinitions) {
       this.setCounter(name, definition.initialValue);
     }
     this.counterHistory = [];
-    // console.log('🔄 カウンターリセット完了');
   }
 
-  // カウンター統計取得
   getCounterStatistics(): Record<string, any> {
     const stats: Record<string, any> = {};
     
@@ -1765,5 +1489,4 @@ export class RuleEngine {
   }
 }
 
-// デフォルトエクスポート
 export default RuleEngine;
