@@ -1,5 +1,5 @@
 // src/hooks/editor/useGameProject.ts
-// 完全修正版 - EditorApp.tsx/ProjectSelector.tsx完全対応
+// 完全修正版 - saveProject()引数なし対応
 
 import { useState, useCallback, useEffect } from 'react';
 import { GameProject, createDefaultGameProject } from '../../types/editor/GameProject';
@@ -7,30 +7,30 @@ import { ProjectStorageManager } from '../../services/ProjectStorageManager';
 import { supabase } from '../../lib/supabase';
 
 interface UseGameProjectReturn {
-  projects: GameProject[];  // ✅ GameProject[]に変更
+  projects: GameProject[];
   currentProject: GameProject | null;
   loading: boolean;
   error: string | null;
   
   // 基本操作
-  listProjects: () => Promise<GameProject[]>;  // ✅ GameProject[]を返す
+  listProjects: () => Promise<GameProject[]>;
   createProject: (name: string) => Promise<GameProject>;
   loadProject: (id: string) => Promise<void>;
-  saveProject: (project: GameProject) => Promise<void>;
+  saveProject: () => Promise<void>;  // ✅ 引数なしに変更
   deleteProject: (id: string) => Promise<void>;
-  duplicateProject: (id: string, newName: string) => Promise<GameProject>;  // ✅ 戻り値追加
+  duplicateProject: (id: string, newName: string) => Promise<GameProject>;
   exportProject: (id: string) => Promise<Blob>;
   importProject: (file: File) => Promise<GameProject>;
   clearError: () => void;
   
-  // ✅ EditorApp.tsx用の追加メソッド
+  // EditorApp.tsx用の追加メソッド
   hasUnsavedChanges: boolean;
   updateProject: (project: GameProject) => Promise<void>;
   getTotalSize: (project: GameProject) => number;
   getValidationErrors: (project: GameProject) => string[];
 }
 
-// ✅ ユーザー情報キャッシュ
+// ユーザー情報キャッシュ
 let cachedUser: any = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 60000; // 1分間キャッシュ
@@ -83,20 +83,19 @@ export function clearUserCache(): void {
 }
 
 export const useGameProject = (): UseGameProjectReturn => {
-  const [projects, setProjects] = useState<GameProject[]>([]);  // ✅ GameProject[]
+  const [projects, setProjects] = useState<GameProject[]>([]);
   const [currentProject, setCurrentProject] = useState<GameProject | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);  // ✅ 追加
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const storage = ProjectStorageManager.getInstance();
 
-  // ✅ 初回マウント時にユーザー情報を取得してキャッシュ
+  // 初回マウント時にユーザー情報を取得してキャッシュ
   useEffect(() => {
     getCachedUser(true);
   }, []);
 
-  // ✅ GameProject[]を返すように修正
   const listProjects = useCallback(async (): Promise<GameProject[]> => {
     console.log('[ListProjects] プロジェクト一覧取得開始...');
     setLoading(true);
@@ -117,7 +116,6 @@ export const useGameProject = (): UseGameProjectReturn => {
       const metadataList = await storage.listProjects(user.id);
       console.log('[ListProjects] メタデータ取得完了:', metadataList.length, '件');
 
-      // ✅ GameProjectの配列を返す
       const loadedProjects: GameProject[] = [];
 
       for (const meta of metadataList) {
@@ -127,7 +125,7 @@ export const useGameProject = (): UseGameProjectReturn => {
           const project = await storage.loadProject(meta.id, user.id);
           
           if (project) {
-            loadedProjects.push(project);  // ✅ GameProjectをそのまま追加
+            loadedProjects.push(project);
           } else {
             console.warn(`[ListProjects] プロジェクトが見つかりません: ${meta.id}`);
           }
@@ -216,8 +214,13 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [storage]);
 
-  const saveProject = useCallback(async (project: GameProject): Promise<void> => {
-    console.log('[SaveProject] プロジェクト保存開始:', project.id);
+  // ✅ 修正: saveProject()を引数なしに変更
+  const saveProject = useCallback(async (): Promise<void> => {
+    if (!currentProject) {
+      throw new Error('保存するプロジェクトがありません');
+    }
+    
+    console.log('[SaveProject] プロジェクト保存開始:', currentProject.id);
     setLoading(true);
     setError(null);
 
@@ -228,10 +231,9 @@ export const useGameProject = (): UseGameProjectReturn => {
         throw new Error('プロジェクトを保存するにはログインが必要です');
       }
 
-      await storage.saveProject(project, { saveToDatabase: true, userId: user.id });
+      await storage.saveProject(currentProject, { saveToDatabase: true, userId: user.id });
       console.log('[SaveProject] プロジェクト保存完了');
 
-      setCurrentProject(project);
       setHasUnsavedChanges(false);
       await listProjects();
 
@@ -243,10 +245,11 @@ export const useGameProject = (): UseGameProjectReturn => {
     } finally {
       setLoading(false);
     }
-  }, [storage, listProjects]);
+  }, [currentProject, storage, listProjects]);
 
-  // ✅ updateProjectを追加（saveProjectのエイリアス）
+  // updateProjectを追加
   const updateProject = useCallback(async (project: GameProject): Promise<void> => {
+    console.log('[UpdateProject] プロジェクト更新:', project.id);
     setHasUnsavedChanges(true);
     setCurrentProject(project);
     // 自動保存は行わず、ユーザーが明示的にsaveProjectを呼ぶまで待つ
@@ -284,7 +287,6 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [storage, currentProject, listProjects]);
 
-  // ✅ GameProjectを返すように修正
   const duplicateProject = useCallback(async (id: string, newName: string): Promise<GameProject> => {
     console.log('[DuplicateProject] プロジェクト複製開始:', id, '→', newName);
     setLoading(true);
@@ -411,12 +413,10 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [storage, listProjects]);
 
-  // ✅ getTotalSizeを追加
   const getTotalSize = useCallback((project: GameProject): number => {
     return project.totalSize || 0;
   }, []);
 
-  // ✅ getValidationErrorsを追加
   const getValidationErrors = useCallback((project: GameProject): string[] => {
     const errors: string[] = [];
 
