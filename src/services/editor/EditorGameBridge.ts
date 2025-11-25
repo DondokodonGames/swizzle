@@ -1,6 +1,6 @@
 // src/services/editor/EditorGameBridge.ts
 // Phase 1+2 完全統合版 - RuleEngine.ts 統合対応
-// 🔧 修正: オブジェクト自動移動削除 + タッチイベント修正
+// 🔧 修正: 描画を中心基準に変更（左に動く問題を解決）
 
 import { GameProject } from '../../types/editor/GameProject';
 import { GameRule, TriggerCondition, GameAction } from '../../types/editor/GameScript';
@@ -202,15 +202,15 @@ export class EditorGameBridge {
           const frame = asset.frames?.[0];
           const initialObj = initialState!.layout?.objects?.find(obj => obj.id === asset.id);
           
-          // 初期位置（0-1正規化座標をピクセル座標に変換）
+          // 🔧 修正: 初期位置を中心座標として保存
           const initialX = initialObj?.position?.x ?? (0.2 + (index * 0.15) % 0.6);
           const initialY = initialObj?.position?.y ?? (0.3 + (index * 0.1) % 0.4);
           
-          // 🔧 修正: vx, vy を 0 に初期化（勝手に動かない）
           objectsMap.set(asset.id, {
             id: asset.id,
-            x: initialX * canvasElement.width,
-            y: initialY * canvasElement.height,
+            // ✅ 中心座標として保存（centerX, centerY）
+            centerX: initialX * canvasElement.width,
+            centerY: initialY * canvasElement.height,
             width: frame?.width || 50,
             height: frame?.height || 50,
             visible: initialObj?.visible !== false,
@@ -219,8 +219,8 @@ export class EditorGameBridge {
             animationSpeed: initialObj?.animationSpeed || 12,
             scale: asset.defaultScale || 1.0,
             rotation: 0,
-            vx: 0,  // ✅ 0に初期化（ルールで制御）
-            vy: 0,  // ✅ 0に初期化（ルールで制御）
+            vx: 0,
+            vy: 0,
             frameCount: asset.frames?.length || 1,
             currentFrame: 0,
             lastFrameUpdate: performance.now()
@@ -368,15 +368,15 @@ export class EditorGameBridge {
                   const t = progress * 2; // 0-2の範囲
                   if (t < 1) {
                     // 前半: 1.0 → scaleAmount
-                    obj.scale = (obj.baseScale || 1.5) * (1.0 - (1.0 - (obj.effectScale || 0.3)) * t);
+                    obj.scale = obj.baseScale * (1.0 - (1.0 - obj.effectScale) * t);
                   } else {
                     // 後半: scaleAmount → 1.0
-                    obj.scale = (obj.baseScale || 1.5) * ((obj.effectScale || 0.3) + (1.0 - (obj.effectScale || 0.3)) * (t - 1));
+                    obj.scale = obj.baseScale * (obj.effectScale + (1.0 - obj.effectScale) * (t - 1));
                   }
                 }
               } else {
                 // エフェクト終了
-                obj.scale = obj.baseScale || 1.5;
+                obj.scale = obj.baseScale;
                 obj.effectStartTime = undefined;
                 obj.effectDuration = undefined;
                 obj.effectType = undefined;
@@ -386,34 +386,37 @@ export class EditorGameBridge {
 
             // ✅ RuleEngineによる移動を適用（vx/vyが0でない場合のみ）
             if (obj.vx !== undefined && obj.vx !== 0) {
-              obj.x += obj.vx;
+              obj.centerX += obj.vx;
             }
             if (obj.vy !== undefined && obj.vy !== 0) {
-              obj.y += obj.vy;
+              obj.centerY += obj.vy;
             }
 
-            // 画面外チェック（オブジェクトが画面外に出た場合、跳ね返る）
+            // 🔧 修正: 中心座標から左上座標を計算（描画用）
             const objWidth = obj.width * obj.scale;
             const objHeight = obj.height * obj.scale;
+            const x = obj.centerX - objWidth / 2;
+            const y = obj.centerY - objHeight / 2;
 
-            if (obj.x < 0) {
-              obj.x = 0;
+            // 画面外チェック（中心座標ベース）
+            if (obj.centerX - objWidth / 2 < 0) {
+              obj.centerX = objWidth / 2;
               if (obj.vx !== undefined) obj.vx = Math.abs(obj.vx);
             }
-            if (obj.x + objWidth > canvasElement.width) {
-              obj.x = canvasElement.width - objWidth;
+            if (obj.centerX + objWidth / 2 > canvasElement.width) {
+              obj.centerX = canvasElement.width - objWidth / 2;
               if (obj.vx !== undefined) obj.vx = -Math.abs(obj.vx);
             }
-            if (obj.y < 0) {
-              obj.y = 0;
+            if (obj.centerY - objHeight / 2 < 0) {
+              obj.centerY = objHeight / 2;
               if (obj.vy !== undefined) obj.vy = Math.abs(obj.vy);
             }
-            if (obj.y + objHeight > canvasElement.height) {
-              obj.y = canvasElement.height - objHeight;
+            if (obj.centerY + objHeight / 2 > canvasElement.height) {
+              obj.centerY = canvasElement.height - objHeight / 2;
               if (obj.vy !== undefined) obj.vy = -Math.abs(obj.vy);
             }
 
-            // 描画（現在のフレームを使用）
+            // 🔧 修正: 中心座標から計算した左上座標で描画
             const frameKey = `${id}_frame${obj.currentFrame || 0}`;
             const img = imageCache.get(frameKey);
             if (img && img.complete) {
@@ -421,16 +424,16 @@ export class EditorGameBridge {
               ctx.globalAlpha = 1.0;
               ctx.drawImage(
                 img,
-                obj.x,
-                obj.y,
-                obj.width * obj.scale,
-                obj.height * obj.scale
+                x,  // ✅ 中心座標から計算した左上X
+                y,  // ✅ 中心座標から計算した左上Y
+                objWidth,
+                objHeight
               );
               ctx.restore();
             } else {
               // フォールバック描画（画像未ロードの場合）
               ctx.fillStyle = '#FF6B9D';
-              ctx.fillRect(obj.x, obj.y, obj.width * obj.scale, obj.height * obj.scale);
+              ctx.fillRect(x, y, objWidth, objHeight);
               
               // オブジェクト名表示
               ctx.fillStyle = 'white';
@@ -439,8 +442,8 @@ export class EditorGameBridge {
               ctx.textBaseline = 'middle';
               ctx.fillText(
                 project.assets?.objects?.find(a => a.id === id)?.name || 'Object',
-                obj.x + (obj.width * obj.scale) / 2,
-                obj.y + (obj.height * obj.scale) / 2
+                obj.centerX,  // ✅ 中心X
+                obj.centerY   // ✅ 中心Y
               );
             }
           });
@@ -479,23 +482,27 @@ export class EditorGameBridge {
           const x = (clientX - rect.left) * scaleX;
           const y = (clientY - rect.top) * scaleY;
 
-          // オブジェクトクリック判定
+          // 🔧 修正: 中心座標ベースでクリック判定
           let hitObject: string | null = null;
           
           objectsMap.forEach((obj, id) => {
             if (!obj.visible) return;
             
-            if (x >= obj.x && x <= obj.x + obj.width * obj.scale &&
-                y >= obj.y && y <= obj.y + obj.height * obj.scale) {
+            const objWidth = obj.width * obj.scale;
+            const objHeight = obj.height * obj.scale;
+            const left = obj.centerX - objWidth / 2;
+            const top = obj.centerY - objHeight / 2;
+            
+            if (x >= left && x <= left + objWidth &&
+                y >= top && y <= top + objHeight) {
               hitObject = id;
               objectsInteracted.push(id);
               
-              // 🔧 修正: RuleEngineが期待する形式でイベント記録
               this.currentContext!.events.push({
                 type: 'touch',
                 timestamp: Date.now(),
                 data: { 
-                  target: id,  // ✅ 'target' キーを使用
+                  target: id,
                   x, 
                   y 
                 }
@@ -507,12 +514,11 @@ export class EditorGameBridge {
           
           // ステージタッチの場合
           if (!hitObject) {
-            // 🔧 修正: RuleEngineが期待する形式でイベント記録
             this.currentContext!.events.push({
               type: 'touch',
               timestamp: Date.now(),
               data: { 
-                target: 'stage',  // ✅ 'target' キーを使用
+                target: 'stage',
                 x, 
                 y 
               }
