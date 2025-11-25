@@ -1,4 +1,4 @@
-// src/hooks/editor/useGameProject.ts - ScriptStatistics完全実装版 + audio安全アクセス修正
+// src/hooks/editor/useGameProject.ts - Supabase専用版対応
 
 import { useState, useCallback, useEffect } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
@@ -41,13 +41,13 @@ interface UseGameProjectReturn {
   canAddAsset: (type: string, size?: number) => boolean;
   getValidationErrors: () => string[];
   
-  // ✨ ProjectStorage統合機能
+  // ProjectStorage統合機能
   listProjects: () => Promise<GameProject[]>;
   exportProject: (id: string) => Promise<Blob>;
   importProject: (file: File) => Promise<GameProject>;
 }
 
-// 🔧 修正: デフォルトプロジェクト作成（3タブ統合版）
+// デフォルトプロジェクト作成
 const createDefaultProject = (name: string): GameProject => {
   const now = new Date().toISOString();
   return {
@@ -136,7 +136,6 @@ const createDefaultProject = (name: string): GameProject => {
     },
     
     script: {
-      // 🔧 修正: initialState追加
       initialState: createDefaultInitialState(),
       layout: {
         background: { visible: false, initialAnimation: 0, animationSpeed: 10, autoStart: false },
@@ -145,10 +144,9 @@ const createDefaultProject = (name: string): GameProject => {
         stage: { backgroundColor: '#ffffff' }
       },
       flags: [],
-      counters: [], // 🔧 追加: カウンター配列
+      counters: [],
       rules: [],
       successConditions: [],
-      // 🔧 修正: ScriptStatistics完全実装
       statistics: { 
         totalRules: 0, 
         totalConditions: 0, 
@@ -157,7 +155,6 @@ const createDefaultProject = (name: string): GameProject => {
         usedTriggerTypes: [],
         usedActionTypes: [],
         flagCount: 0,
-        // 🔧 追加: 不足していたプロパティ
         counterCount: 0,
         usedCounterOperations: [],
         usedCounterComparisons: [],
@@ -193,7 +190,6 @@ const createDefaultProject = (name: string): GameProject => {
       }
     },
     
-    // 🔧 修正: editorState（3タブ統合版）
     editorState: {
       activeTab: 'assets',
       lastSaved: now,
@@ -230,10 +226,9 @@ export const useGameProject = (): UseGameProjectReturn => {
   const [error, setError] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // ✨ ProjectStorageManager統合
   const storage = ProjectStorageManager.getInstance();
 
-  // エラーハンドリングヘルパー（改善版）
+  // エラーハンドリング
   const handleError = useCallback((operation: string, err: any) => {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error(`${operation} failed:`, err);
@@ -241,7 +236,7 @@ export const useGameProject = (): UseGameProjectReturn => {
     setLoading(false);
   }, []);
 
-  // 自動保存機能（新実装）
+  // 自動保存
   useEffect(() => {
     if (!currentProject || !hasUnsavedChanges || !currentProject.editorState?.autoSaveEnabled) {
       return;
@@ -256,26 +251,34 @@ export const useGameProject = (): UseGameProjectReturn => {
     return () => clearTimeout(autoSaveTimer);
   }, [currentProject, hasUnsavedChanges]);
 
-  // 🔧 修正: プロジェクト一覧取得（Supabaseから現在のユーザーのプロジェクトのみ）
+  // ✅ プロジェクト一覧取得（Supabaseから）
   const listProjects = useCallback(async (): Promise<GameProject[]> => {
     try {
       setLoading(true);
       setError(null);
 
-      // 現在のユーザーを取得
       const user = await auth.getCurrentUser();
+      if (!user) {
+        console.warn('[ListProjects] No user logged in');
+        return [];
+      }
 
-      // ProjectStorageManagerから一覧取得（ユーザーIDを渡す）
-      const metadata = await storage.listProjects(user?.id);
+      // metadataを取得
+      const metadata = await storage.listProjects(user.id);
+      console.log('[ListProjects] Metadata count:', metadata.length);
+
+      // 各プロジェクトを読み込み
       const projects: GameProject[] = [];
-
       for (const meta of metadata) {
-        const project = await storage.loadProject(meta.id, user?.id);
+        const project = await storage.loadProject(meta.id, user.id);
         if (project) {
           projects.push(project);
+        } else {
+          console.warn('[ListProjects] Failed to load project:', meta.id);
         }
       }
 
+      console.log('[ListProjects] Loaded projects:', projects.length);
       return projects;
     } catch (err: any) {
       handleError('プロジェクト一覧取得', err);
@@ -285,7 +288,7 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [storage, handleError]);
 
-  // 🔧 修正: プロジェクト作成（Supabaseに自動保存）
+  // ✅ プロジェクト作成（Supabaseに保存）
   const createProject = useCallback(async (name: string, template?: string): Promise<GameProject> => {
     try {
       setLoading(true);
@@ -301,21 +304,17 @@ export const useGameProject = (): UseGameProjectReturn => {
 
       const newProject = createDefaultProject(name);
 
-      // TODO: テンプレート適用処理
-      if (template) {
-        console.log('Template application for:', template);
+      const user = await auth.getCurrentUser();
+      if (!user) {
+        throw new Error('ログインが必要です');
       }
 
-      // 現在のユーザーを取得
-      const user = await auth.getCurrentUser();
-
-      // ProjectStorageManagerに保存（Supabaseに自動保存）
+      // Supabaseに保存
       await storage.saveProject(newProject, {
-        saveToDatabase: !!user,
-        userId: user?.id
+        saveToDatabase: true,
+        userId: user.id
       });
 
-      // 現在のプロジェクトとして設定
       setCurrentProject(newProject);
       setHasUnsavedChanges(false);
 
@@ -328,16 +327,18 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [storage, handleError]);
 
-  // 🔧 修正: プロジェクト読み込み（Supabaseから）
+  // ✅ プロジェクト読み込み（Supabaseから）
   const loadProject = useCallback(async (id: string): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
 
-      // 現在のユーザーを取得
       const user = await auth.getCurrentUser();
+      if (!user) {
+        throw new Error('ログインが必要です');
+      }
 
-      const project = await storage.loadProject(id, user?.id);
+      const project = await storage.loadProject(id, user.id);
 
       if (!project) {
         throw new Error('プロジェクトが見つかりません');
@@ -352,7 +353,7 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [storage, handleError]);
 
-  // 🔧 修正: プロジェクト保存（Supabaseに自動保存）
+  // ✅ プロジェクト保存（Supabaseに保存）
   const saveProject = useCallback(async (project?: GameProject): Promise<void> => {
     try {
       setLoading(true);
@@ -363,7 +364,6 @@ export const useGameProject = (): UseGameProjectReturn => {
         throw new Error('保存するプロジェクトがありません');
       }
 
-      // 保存時に統計更新
       const updatedProject: GameProject = {
         ...projectToSave,
         lastModified: new Date().toISOString(),
@@ -387,13 +387,15 @@ export const useGameProject = (): UseGameProjectReturn => {
         }
       };
 
-      // 現在のユーザーを取得
       const user = await auth.getCurrentUser();
+      if (!user) {
+        throw new Error('ログインが必要です');
+      }
 
-      // ProjectStorageManagerに保存（Supabaseに自動保存）
+      // Supabaseに保存
       await storage.saveProject(updatedProject, {
-        saveToDatabase: !!user,
-        userId: user?.id
+        saveToDatabase: true,
+        userId: user.id
       });
 
       setCurrentProject(updatedProject);
@@ -405,7 +407,7 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [currentProject, storage, handleError]);
 
-  // プロジェクト更新（改善版）
+  // プロジェクト更新
   const updateProject = useCallback((updates: Partial<GameProject>) => {
     if (!currentProject) return;
 
@@ -418,18 +420,19 @@ export const useGameProject = (): UseGameProjectReturn => {
     setHasUnsavedChanges(true);
   }, [currentProject]);
 
-  // プロジェクト削除（✨ ProjectStorage使用）
+  // ✅ プロジェクト削除（Supabaseから）
   const deleteProject = useCallback(async (id: string): Promise<void> => {
     try {
       setLoading(true);
       setError(null);
 
-      // 現在のユーザーを取得してSupabaseからも削除
       const user = await auth.getCurrentUser();
+      if (!user) {
+        throw new Error('ログインが必要です');
+      }
 
-      await storage.deleteProject(id, user?.id);
+      await storage.deleteProject(id, user.id);
 
-      // 現在のプロジェクトが削除された場合
       if (currentProject?.id === id) {
         setCurrentProject(null);
         setHasUnsavedChanges(false);
@@ -441,16 +444,18 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [currentProject, storage, handleError]);
 
-  // プロジェクト複製（✨ ProjectStorage使用）
+  // ✅ プロジェクト複製（Supabaseに保存）
   const duplicateProject = useCallback(async (id: string, newName: string): Promise<GameProject> => {
     try {
       setLoading(true);
       setError(null);
 
-      // 現在のユーザーを取得してSupabaseにも保存
       const user = await auth.getCurrentUser();
+      if (!user) {
+        throw new Error('ログインが必要です');
+      }
 
-      const duplicated = await storage.duplicateProject(id, newName, user?.id);
+      const duplicated = await storage.duplicateProject(id, newName, user.id);
       return duplicated;
     } catch (err: any) {
       handleError('プロジェクト複製', err);
@@ -460,13 +465,40 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [storage, handleError]);
 
-  // プロジェクトエクスポート（✨ ProjectStorage使用）
+  // ✅ プロジェクトエクスポート（修正版）
   const exportProject = useCallback(async (id: string): Promise<Blob> => {
     try {
       setLoading(true);
       setError(null);
-      
-      return await storage.exportProject(id);
+
+      const user = await auth.getCurrentUser();
+      if (!user) {
+        throw new Error('ログインが必要です');
+      }
+
+      // プロジェクトを読み込み
+      const project = await storage.loadProject(id, user.id);
+      if (!project) {
+        throw new Error('エクスポートするプロジェクトが見つかりません');
+      }
+
+      // エクスポートデータを作成
+      const exportData = {
+        project,
+        metadata: {
+          id: project.id,
+          name: project.name,
+          lastModified: project.lastModified,
+          status: project.status,
+          size: project.totalSize || 0,
+          version: project.version
+        },
+        exportedAt: new Date().toISOString(),
+        version: '1.0.0'
+      };
+
+      const jsonData = JSON.stringify(exportData, null, 2);
+      return new Blob([jsonData], { type: 'application/json' });
     } catch (err: any) {
       handleError('プロジェクトエクスポート', err);
       throw err;
@@ -475,16 +507,18 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [storage, handleError]);
 
-  // プロジェクトインポート（✨ ProjectStorage使用）
+  // ✅ プロジェクトインポート（Supabaseに保存）
   const importProject = useCallback(async (file: File): Promise<GameProject> => {
     try {
       setLoading(true);
       setError(null);
 
-      // 現在のユーザーを取得してSupabaseにも保存
       const user = await auth.getCurrentUser();
+      if (!user) {
+        throw new Error('ログインが必要です');
+      }
 
-      return await storage.importProject(file, user?.id);
+      return await storage.importProject(file, user.id);
     } catch (err: any) {
       handleError('プロジェクトインポート', err);
       throw err;
@@ -627,12 +661,10 @@ export const useGameProject = (): UseGameProjectReturn => {
     const currentSize = getTotalSize();
     const limits = EDITOR_LIMITS;
 
-    // 総容量チェック
     if (currentSize + size > limits.PROJECT.TOTAL_MAX_SIZE) {
       return false;
     }
 
-    // 種類別制限チェック
     switch (type) {
       case 'background':
         return !currentProject.assets.background && size <= limits.IMAGE.BACKGROUND_TOTAL_MAX_SIZE;
@@ -640,7 +672,7 @@ export const useGameProject = (): UseGameProjectReturn => {
         return currentProject.assets.objects.length < limits.PROJECT.MAX_OBJECTS && 
                size <= limits.IMAGE.OBJECT_TOTAL_MAX_SIZE;
       case 'text':
-        return currentProject.assets.texts.length < limits.TEXT.MAX_COUNT;
+        return currentProject.assets.texts.length < EDITOR_LIMITS.TEXT.MAX_COUNT;
       case 'bgm':
         return !currentProject.assets.audio.bgm && size <= limits.AUDIO.BGM_MAX_SIZE;
       case 'se':
@@ -651,29 +683,25 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [currentProject, getTotalSize]);
 
-  // バリデーションエラー取得（改善版）
+  // バリデーション
   const getValidationErrors = useCallback((): string[] => {
     if (!currentProject) return [];
 
     const errors: string[] = [];
 
-    // 基本情報チェック
     if (!currentProject.name.trim()) {
       errors.push('ゲーム名が入力されていません');
     }
 
-    // 容量チェック
     const totalSize = getTotalSize();
     if (totalSize > EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE) {
       errors.push(`プロジェクトサイズが制限を超えています (${(totalSize / 1024 / 1024).toFixed(1)}MB / ${EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE / 1024 / 1024}MB)`);
     }
 
-    // アセットチェック
     if (currentProject.assets.objects.length === 0 && !currentProject.assets.background) {
       errors.push('背景またはオブジェクトを最低1つ追加してください');
     }
 
-    // ルールチェック（警告レベル）
     if (currentProject.script.rules.length === 0) {
       errors.push('ゲームルールを設定することをおすすめします');
     }
@@ -681,16 +709,12 @@ export const useGameProject = (): UseGameProjectReturn => {
     return errors;
   }, [currentProject, getTotalSize]);
 
-  // 初期化処理（改善版）
+  // エラー自動クリア
   useEffect(() => {
-    // 最後に開いたプロジェクトの復元は一旦無効化
-    // （ProjectSelectorで明示的に選択してもらう方針）
-    
-    // エラーの自動クリア
     if (error) {
       const clearTimer = setTimeout(() => {
         setError(null);
-      }, 10000); // 10秒後に自動クリア
+      }, 10000);
       
       return () => clearTimeout(clearTimer);
     }
@@ -723,7 +747,6 @@ export const useGameProject = (): UseGameProjectReturn => {
     canAddAsset,
     getValidationErrors,
     
-    // ✨ ProjectStorage統合機能
     listProjects,
     exportProject,
     importProject
@@ -732,21 +755,17 @@ export const useGameProject = (): UseGameProjectReturn => {
 
 // ヘルパー関数
 
-// 🔧 修正: 総容量計算（audio安全アクセス対応）
 const calculateTotalSize = (project: GameProject): number => {
   let total = 0;
 
-  // 背景サイズ
   if (project.assets.background) {
     total += project.assets.background.totalSize;
   }
 
-  // オブジェクトサイズ
   project.assets.objects.forEach(obj => {
     total += obj.totalSize;
   });
 
-  // 🔧 修正: 音声サイズ（オプショナルチェーン使用）
   if (project.assets.audio?.bgm) {
     total += project.assets.audio.bgm.fileSize;
   }
@@ -757,12 +776,10 @@ const calculateTotalSize = (project: GameProject): number => {
   return total;
 };
 
-// 🔧 修正: アセット統計計算（audio安全アクセス対応）
 const calculateAssetStatistics = (assets: ProjectAssets): ProjectAssets['statistics'] => {
   let totalImageSize = 0;
   let totalAudioSize = 0;
 
-  // 画像サイズ計算
   if (assets.background) {
     totalImageSize += assets.background.totalSize;
   }
@@ -770,7 +787,6 @@ const calculateAssetStatistics = (assets: ProjectAssets): ProjectAssets['statist
     totalImageSize += obj.totalSize;
   });
 
-  // 🔧 修正: 音声サイズ計算（オプショナルチェーン使用）
   if (assets.audio?.bgm) {
     totalAudioSize += assets.audio.bgm.fileSize;
   }
@@ -798,7 +814,6 @@ const calculateAssetStatistics = (assets: ProjectAssets): ProjectAssets['statist
   };
 };
 
-// 🔧 修正: スクリプト統計計算（完全実装）
 const calculateScriptStatistics = (script: GameScript): GameScript['statistics'] => {
   let totalConditions = 0;
   let totalActions = 0;
@@ -816,7 +831,6 @@ const calculateScriptStatistics = (script: GameScript): GameScript['statistics']
     (script.successConditions.length * 5)
   ));
 
-  // 🔧 完全なScriptStatisticsオブジェクト作成
   return {
     totalRules: script.rules.length,
     totalConditions,
@@ -825,7 +839,6 @@ const calculateScriptStatistics = (script: GameScript): GameScript['statistics']
     usedTriggerTypes: [],
     usedActionTypes: [],
     flagCount: script.flags.length,
-    // 🔧 追加: 不足していたプロパティ
     counterCount: script.counters?.length || 0,
     usedCounterOperations: [],
     usedCounterComparisons: [],
