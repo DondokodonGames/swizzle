@@ -1,7 +1,7 @@
 // src/components/GameFeed.tsx
-// モダンなゲームフィード画面 - useEffect無限ループ修正版
+// モダンなゲームフィード画面 - useEffect無限ループ完全修正版
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SocialService } from '../social/services/SocialService';
 import { PublicGame } from '../social/types/SocialTypes';
@@ -25,6 +25,7 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
   const { t } = useTranslation();
 
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userLoaded, setUserLoaded] = useState(false); // ✅ ユーザー読み込み完了フラグ
   const [sections, setSections] = useState<FeedSection[]>([
     { id: 'trending', titleKey: 'gameFeed.trending', icon: '🔥', games: [], loading: true },
     { id: 'following', titleKey: 'gameFeed.following', icon: '👥', games: [], loading: true },
@@ -34,6 +35,9 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
   ]);
   const [selectedSection, setSelectedSection] = useState<string>('tags');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // ✅ 重複実行防止フラグ
+  const fetchedRef = useRef(false);
 
   const socialService = useMemo(() => SocialService.getInstance(), []);
 
@@ -41,18 +45,22 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
+        console.log('🔐 GameFeed: ユーザー情報取得開始...');
         const { data: { user } } = await supabase.auth.getUser();
         setCurrentUser(user);
+        setUserLoaded(true); // ✅ 読み込み完了フラグを立てる
         console.log('✅ GameFeed: ユーザー情報取得完了', user?.id || 'Guest');
       } catch (err) {
         console.warn('⚠️ GameFeed: ユーザー情報の取得に失敗:', err);
+        setCurrentUser(null);
+        setUserLoaded(true); // ✅ エラーでも完了フラグを立てる
       }
     };
 
     fetchUser();
   }, []); // 初回のみ実行
 
-  // ==================== セクション更新（useCallbackから削除） ====================
+  // ==================== セクション更新 ====================
   const updateSection = (id: string, games: PublicGame[], loading: boolean, error?: string) => {
     setSections(prev => prev.map(section =>
       section.id === id ? { ...section, games, loading, error } : section
@@ -69,8 +77,17 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
     ]);
   };
 
-  // ==================== フィードデータ取得（初回のみ実行） ====================
+  // ==================== フィードデータ取得（userLoaded後に1回だけ実行） ====================
   useEffect(() => {
+    // ✅ 条件1: userLoadedがtrueになった後
+    // ✅ 条件2: まだ実行されていない
+    if (!userLoaded || fetchedRef.current) {
+      return;
+    }
+
+    // ✅ 実行フラグを立てる（重複実行を防止）
+    fetchedRef.current = true;
+
     const fetchFeedData = async () => {
       console.log('🎮 GameFeed: フィードデータ取得開始');
 
@@ -186,11 +203,8 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       console.log('🎮 GameFeed: フィードデータ取得完了');
     };
 
-    // ユーザー情報取得後に実行
-    if (currentUser !== null || currentUser === null) {
-      fetchFeedData();
-    }
-  }, [currentUser, socialService]); // currentUserとsocialServiceのみ依存
+    fetchFeedData();
+  }, [userLoaded, currentUser, socialService]); // ✅ userLoadedが変わった時のみ実行
 
   // ==================== リフレッシュ ====================
   const handleRefresh = async () => {
@@ -198,16 +212,22 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
     setIsRefreshing(true);
     setSections(prev => prev.map(section => ({ ...section, loading: true, error: undefined })));
     
+    // ✅ 実行フラグをリセット
+    fetchedRef.current = false;
+    
     // ユーザー情報を再取得
     try {
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUser(user);
+      setUserLoaded(true); // ✅ これによりuseEffectが再実行される
     } catch (err) {
       console.warn('⚠️ ユーザー情報の再取得に失敗:', err);
+      setCurrentUser(null);
+      setUserLoaded(true);
     }
     
     setIsRefreshing(false);
-    console.log('🔄 リフレッシュ完了（データはuseEffectで自動取得）');
+    console.log('🔄 リフレッシュ完了');
   };
 
   // ==================== 現在のセクション ====================
