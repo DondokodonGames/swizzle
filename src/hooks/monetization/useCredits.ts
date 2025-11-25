@@ -134,11 +134,12 @@ export function useCredits(): UseCreditsResult {
 
   /**
    * 手動リフレッシュ用の関数
+   * ✅ async/awaitを追加してPromise<void>を返す
    */
-  const refetch = useCallback(() => {
+  const refetch = useCallback(async () => {
     if (user) {
       console.log('[useCredits] 🔄 手動リフレッシュ');
-      fetchCredits(user.id);
+      await fetchCredits(user.id);
     }
   }, [user, fetchCredits]);
 
