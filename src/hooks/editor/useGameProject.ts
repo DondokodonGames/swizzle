@@ -1,13 +1,24 @@
 // src/hooks/editor/useGameProject.ts
-// Supabase専用版 - ユーザー認証キャッシュ対応
+// Supabase専用版 - ユーザー認証キャッシュ対応 - 型エラー完全修正版
 
 import { useState, useCallback, useEffect } from 'react';
-import { GameProject, GameProjectMetadata } from '../../types/editor/GameProject';
+import { GameProject, createDefaultGameProject } from '../../types/editor/GameProject';
 import { ProjectStorageManager } from '../../services/ProjectStorageManager';
-import * as auth from '../../services/AuthService';
+import { supabase } from '../../lib/supabase';
+
+// ✅ 修正: ProjectMetadataをProjectStorageManager.tsから取得
+interface ProjectMetadata {
+  id: string;
+  name: string;
+  lastModified: string;
+  status: GameProject['status'];
+  size: number;
+  version: string;
+  databaseId?: string;
+}
 
 interface UseGameProjectReturn {
-  projects: GameProjectMetadata[];
+  projects: ProjectMetadata[];
   currentProject: GameProject | null;
   loading: boolean;
   error: string | null;
@@ -40,20 +51,34 @@ async function getCachedUser(forceRefresh: boolean = false): Promise<any> {
   
   // キャッシュが無効またはforceRefreshの場合、新規取得
   console.log('[useGameProject] 🔄 ユーザー情報を新規取得中...');
-  const user = await auth.getCurrentUser();
   
-  if (user) {
-    cachedUser = user;
-    cacheTimestamp = now;
-    console.log('[useGameProject] ✅ ユーザー情報をキャッシュ:', user.id);
-  } else {
-    // ユーザーがいない場合、キャッシュをクリア
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error) {
+      console.error('[useGameProject] ❌ ユーザー取得エラー:', error);
+      cachedUser = null;
+      cacheTimestamp = 0;
+      return null;
+    }
+    
+    if (user) {
+      cachedUser = user;
+      cacheTimestamp = now;
+      console.log('[useGameProject] ✅ ユーザー情報をキャッシュ:', user.id);
+    } else {
+      cachedUser = null;
+      cacheTimestamp = 0;
+      console.log('[useGameProject] ⚠️ ユーザーが見つかりません（ゲスト状態）');
+    }
+    
+    return cachedUser;
+  } catch (error) {
+    console.error('[useGameProject] ❌ ユーザー取得例外:', error);
     cachedUser = null;
     cacheTimestamp = 0;
-    console.log('[useGameProject] ⚠️ ユーザーが見つかりません（ゲスト状態）');
+    return null;
   }
-  
-  return cachedUser;
 }
 
 // キャッシュをクリア（ログアウト時に使用）
@@ -64,7 +89,7 @@ export function clearUserCache(): void {
 }
 
 export const useGameProject = (): UseGameProjectReturn => {
-  const [projects, setProjects] = useState<GameProjectMetadata[]>([]);
+  const [projects, setProjects] = useState<ProjectMetadata[]>([]);
   const [currentProject, setCurrentProject] = useState<GameProject | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,23 +123,24 @@ export const useGameProject = (): UseGameProjectReturn => {
       console.log('[ListProjects] メタデータ取得完了:', metadataList.length, '件');
 
       // 各メタデータに対してプロジェクトをロード
-      const loadedProjects: GameProjectMetadata[] = [];
+      const loadedProjects: ProjectMetadata[] = [];
 
       for (const meta of metadataList) {
         try {
           console.log(`[ListProjects] プロジェクトロード中: ${meta.id} (${meta.name})`);
           
-          const result = await storage.loadProject(meta.id, user.id);
+          // ✅ 修正: loadProjectは直接GameProjectを返す
+          const project = await storage.loadProject(meta.id, user.id);
           
-          if (result?.project) {
+          if (project) {
             loadedProjects.push({
-              id: result.project.id,
-              name: result.project.name,
-              lastModified: result.project.lastModified,
-              status: result.project.status || 'draft',
-              size: result.project.totalSize || 0,
-              version: result.project.version || '1.0.0',
-              databaseId: result.metadata?.databaseId
+              id: project.id,
+              name: project.name,
+              lastModified: project.lastModified,
+              status: project.status || 'draft',
+              size: project.totalSize || 0,
+              version: project.version || '1.0.0',
+              databaseId: (project.metadata as any)?.databaseId
             });
           } else {
             console.warn(`[ListProjects] プロジェクトが見つかりません: ${meta.id}`);
@@ -150,10 +176,11 @@ export const useGameProject = (): UseGameProjectReturn => {
         throw new Error('プロジェクトを作成するにはログインが必要です');
       }
 
-      const project = await storage.createProject(name);
+      // ✅ 修正: createDefaultGameProjectを使用
+      const project = createDefaultGameProject(name, user.id);
       console.log('[CreateProject] プロジェクト作成完了:', project.id);
 
-      await storage.saveProject(project, user.id);
+      await storage.saveProject(project, { saveToDatabase: true, userId: user.id });
       console.log('[CreateProject] プロジェクト保存完了');
 
       setCurrentProject(project);
@@ -183,14 +210,15 @@ export const useGameProject = (): UseGameProjectReturn => {
         throw new Error('プロジェクトをロードするにはログインが必要です');
       }
 
-      const result = await storage.loadProject(id, user.id);
+      // ✅ 修正: loadProjectは直接GameProjectを返す
+      const project = await storage.loadProject(id, user.id);
 
-      if (!result?.project) {
+      if (!project) {
         throw new Error('プロジェクトが見つかりません');
       }
 
-      console.log('[LoadProject] プロジェクトロード完了:', result.project.id);
-      setCurrentProject(result.project);
+      console.log('[LoadProject] プロジェクトロード完了:', project.id);
+      setCurrentProject(project);
 
     } catch (err) {
       const message = err instanceof Error ? err.message : '不明なエラー';
@@ -215,7 +243,7 @@ export const useGameProject = (): UseGameProjectReturn => {
         throw new Error('プロジェクトを保存するにはログインが必要です');
       }
 
-      await storage.saveProject(project, user.id);
+      await storage.saveProject(project, { saveToDatabase: true, userId: user.id });
       console.log('[SaveProject] プロジェクト保存完了');
 
       setCurrentProject(project);
@@ -305,15 +333,23 @@ export const useGameProject = (): UseGameProjectReturn => {
       }
 
       // プロジェクトを事前にロード
-      const result = await storage.loadProject(id, user.id);
+      const project = await storage.loadProject(id, user.id);
 
-      if (!result?.project) {
+      if (!project) {
         throw new Error('プロジェクトが見つかりません');
       }
 
       // エクスポートデータを手動作成
       const exportData = {
-        project: result.project,
+        project: project,
+        metadata: {
+          id: project.id,
+          name: project.name,
+          lastModified: project.lastModified,
+          status: project.status,
+          size: project.totalSize,
+          version: project.version
+        },
         exportedAt: new Date().toISOString(),
         version: '1.0.0'
       };
@@ -325,7 +361,7 @@ export const useGameProject = (): UseGameProjectReturn => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${result.project.name}-${Date.now()}.json`;
+      link.download = `${project.name}-${Date.now()}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
