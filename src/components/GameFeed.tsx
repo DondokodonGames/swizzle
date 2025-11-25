@@ -1,5 +1,5 @@
 // src/components/GameFeed.tsx
-// モダンなゲームフィード画面 - TypeScriptエラー修正版
+// モダンなゲームフィード画面 - useEffect無限ループ修正版
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,29 +37,30 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
 
   const socialService = useMemo(() => SocialService.getInstance(), []);
 
-  // ==================== ユーザー情報取得 ====================
+  // ==================== ユーザー情報取得（初回のみ） ====================
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         setCurrentUser(user);
+        console.log('✅ GameFeed: ユーザー情報取得完了', user?.id || 'Guest');
       } catch (err) {
-        console.warn('ユーザー情報の取得に失敗:', err);
+        console.warn('⚠️ GameFeed: ユーザー情報の取得に失敗:', err);
       }
     };
 
     fetchUser();
-  }, []);
+  }, []); // 初回のみ実行
 
-  // ==================== セクション更新 ====================
-  const updateSection = useCallback((id: string, games: PublicGame[], loading: boolean, error?: string) => {
+  // ==================== セクション更新（useCallbackから削除） ====================
+  const updateSection = (id: string, games: PublicGame[], loading: boolean, error?: string) => {
     setSections(prev => prev.map(section =>
       section.id === id ? { ...section, games, loading, error } : section
     ));
-  }, []);
+  };
 
   // ==================== タイムアウト付きPromise ====================
-  const withTimeout = <T,>(promise: PromiseLike<T>, timeoutMs: number = 10000): Promise<T> => {
+  const withTimeout = <T,>(promise: PromiseLike<T>, timeoutMs: number = 8000): Promise<T> => {
     return Promise.race([
       Promise.resolve(promise),
       new Promise<T>((_, reject) =>
@@ -68,129 +69,145 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
     ]);
   };
 
-  // ==================== フィードデータ取得 ====================
-  const fetchFeedData = useCallback(async () => {
-    console.log('🎮 GameFeed: フィードデータ取得開始');
+  // ==================== フィードデータ取得（初回のみ実行） ====================
+  useEffect(() => {
+    const fetchFeedData = async () => {
+      console.log('🎮 GameFeed: フィードデータ取得開始');
 
-    // トレンドゲーム（週間）
-    try {
-      const trendingGames = await withTimeout(
-        socialService.getTrendingGames('week', 'trending', 12),
-        10000
-      );
-      console.log('✅ トレンドゲーム取得成功:', trendingGames?.length || 0);
-      updateSection('trending', trendingGames || [], false);
-    } catch (err) {
-      console.error('❌ トレンドゲーム取得エラー:', err);
-      updateSection('trending', [], false, 'Failed to load trending games');
-    }
-
-    // フォロー中
-    if (currentUser) {
+      // トレンドゲーム（週間、12件に制限）
       try {
-        const followsQuery = supabase
-          .from('follows')
-          .select('following_id')
-          .eq('follower_id', currentUser.id);
+        console.log('📊 トレンドゲーム取得中...');
+        const trendingGames = await withTimeout(
+          socialService.getTrendingGames('week', 'trending', 12),
+          8000
+        );
+        console.log('✅ トレンドゲーム取得成功:', trendingGames?.length || 0);
+        updateSection('trending', trendingGames || [], false);
+      } catch (err) {
+        console.error('❌ トレンドゲーム取得エラー:', err);
+        updateSection('trending', [], false, 'Failed to load trending games');
+      }
 
-        const followsResult = await withTimeout(followsQuery, 10000);
-        const followingData = followsResult?.data;
+      // フォロー中（ログインユーザーのみ、12件に制限）
+      if (currentUser) {
+        try {
+          console.log('👥 フォロー中ゲーム取得中...');
+          const followsQuery = supabase
+            .from('follows')
+            .select('following_id')
+            .eq('follower_id', currentUser.id);
 
-        if (followingData && followingData.length > 0) {
-          const followingIds = followingData.map((f: any) => f.following_id);
-          
-          const gamesQuery = supabase
-            .from('user_games')
-            .select(`
-              id, title, description, thumbnail_url, user_id, created_at, updated_at,
-              profiles!user_games_user_id_fkey (id, username, avatar_url)
-            `)
-            .in('user_id', followingIds)
-            .eq('status', 'published')
-            .order('created_at', { ascending: false })
-            .limit(12);
+          const followsResult = await withTimeout(followsQuery, 8000);
+          const followingData = followsResult?.data;
 
-          const gamesResult = await withTimeout(gamesQuery, 10000);
-          const followingGames = gamesResult?.data;
+          if (followingData && followingData.length > 0) {
+            const followingIds = followingData.map((f: any) => f.following_id);
+            
+            const gamesQuery = supabase
+              .from('user_games')
+              .select(`
+                id, title, description, thumbnail_url, user_id, created_at, updated_at,
+                profiles!user_games_user_id_fkey (id, username, avatar_url)
+              `)
+              .in('user_id', followingIds)
+              .eq('status', 'published')
+              .order('created_at', { ascending: false })
+              .limit(12);
 
-          if (followingGames) {
-            const formattedGames: PublicGame[] = followingGames.map((game: any) => ({
-              id: game.id,
-              title: game.title || 'Untitled',
-              description: game.description || '',
-              thumbnail: game.thumbnail_url || '',
-              author: {
-                id: game.profiles?.id || game.user_id,
-                name: game.profiles?.username || 'Unknown',
-                avatar: game.profiles?.avatar_url || ''
-              },
-              stats: { likes: 0, shares: 0, bookmarks: 0, views: 0 },
-              tags: [],
-              category: '',
-              createdAt: game.created_at,
-              updatedAt: game.updated_at
-            }));
-            console.log('✅ フォロー中ゲーム取得成功:', formattedGames.length);
-            updateSection('following', formattedGames, false);
+            const gamesResult = await withTimeout(gamesQuery, 8000);
+            const followingGames = gamesResult?.data;
+
+            if (followingGames) {
+              const formattedGames: PublicGame[] = followingGames.map((game: any) => ({
+                id: game.id,
+                title: game.title || 'Untitled',
+                description: game.description || '',
+                thumbnail: game.thumbnail_url || '',
+                author: {
+                  id: game.profiles?.id || game.user_id,
+                  name: game.profiles?.username || 'Unknown',
+                  avatar: game.profiles?.avatar_url || ''
+                },
+                stats: { likes: 0, shares: 0, bookmarks: 0, views: 0 },
+                tags: [],
+                category: '',
+                createdAt: game.created_at,
+                updatedAt: game.updated_at
+              }));
+              console.log('✅ フォロー中ゲーム取得成功:', formattedGames.length);
+              updateSection('following', formattedGames, false);
+            } else {
+              updateSection('following', [], false);
+            }
           } else {
+            console.log('ℹ️ フォロー中のユーザーなし');
             updateSection('following', [], false);
           }
-        } else {
-          updateSection('following', [], false);
+        } catch (err) {
+          console.error('❌ フォロー中ゲーム取得エラー:', err);
+          updateSection('following', [], false, 'Failed to load following games');
         }
-      } catch (err) {
-        console.error('❌ フォロー中ゲーム取得エラー:', err);
-        updateSection('following', [], false, 'Failed to load following games');
+      } else {
+        console.log('ℹ️ ゲストユーザー - フォロー中スキップ');
+        updateSection('following', [], false);
       }
-    } else {
-      updateSection('following', [], false);
+
+      // おすすめ（12件に制限）
+      try {
+        console.log('✨ おすすめゲーム取得中...');
+        const tagGames = await withTimeout(
+          socialService.getTrendingGames('week', 'popular', 12),
+          8000
+        );
+        console.log('✅ おすすめゲーム取得成功:', tagGames?.length || 0);
+        updateSection('tags', tagGames || [], false);
+      } catch (err) {
+        console.error('❌ おすすめゲーム取得エラー:', err);
+        updateSection('tags', [], false, 'Failed to load recommended games');
+      }
+
+      // ランダム（12件に制限）
+      try {
+        console.log('🎲 ランダムゲーム取得中...');
+        const randomGames = await withTimeout(
+          socialService.getRandomGames(12),
+          8000
+        );
+        console.log('✅ ランダムゲーム取得成功:', randomGames?.length || 0);
+        updateSection('random', randomGames || [], false);
+      } catch (err) {
+        console.error('❌ ランダムゲーム取得エラー:', err);
+        updateSection('random', [], false, 'Failed to load random games');
+      }
+
+      // プレミアム（Coming Soon）
+      updateSection('premium', [], false);
+
+      console.log('🎮 GameFeed: フィードデータ取得完了');
+    };
+
+    // ユーザー情報取得後に実行
+    if (currentUser !== null || currentUser === null) {
+      fetchFeedData();
     }
-
-    // おすすめ
-    try {
-      const tagGames = await withTimeout(
-        socialService.getTrendingGames('week', 'popular', 12),
-        10000
-      );
-      console.log('✅ おすすめゲーム取得成功:', tagGames?.length || 0);
-      updateSection('tags', tagGames || [], false);
-    } catch (err) {
-      console.error('❌ おすすめゲーム取得エラー:', err);
-      updateSection('tags', [], false, 'Failed to load recommended games');
-    }
-
-    // ランダム
-    try {
-      const randomGames = await withTimeout(
-        socialService.getRandomGames(12),
-        10000
-      );
-      console.log('✅ ランダムゲーム取得成功:', randomGames?.length || 0);
-      updateSection('random', randomGames || [], false);
-    } catch (err) {
-      console.error('❌ ランダムゲーム取得エラー:', err);
-      updateSection('random', [], false, 'Failed to load random games');
-    }
-
-    // プレミアム
-    updateSection('premium', [], false);
-
-    console.log('🎮 GameFeed: フィードデータ取得完了');
-  }, [socialService, currentUser, updateSection]);
-
-  useEffect(() => {
-    console.log('🎮 GameFeed: useEffect発火 - fetchFeedData呼び出し');
-    fetchFeedData();
-  }, [fetchFeedData]);
+  }, [currentUser, socialService]); // currentUserとsocialServiceのみ依存
 
   // ==================== リフレッシュ ====================
   const handleRefresh = async () => {
     console.log('🔄 リフレッシュ開始');
     setIsRefreshing(true);
     setSections(prev => prev.map(section => ({ ...section, loading: true, error: undefined })));
-    await fetchFeedData();
+    
+    // ユーザー情報を再取得
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+    } catch (err) {
+      console.warn('⚠️ ユーザー情報の再取得に失敗:', err);
+    }
+    
     setIsRefreshing(false);
-    console.log('🔄 リフレッシュ完了');
+    console.log('🔄 リフレッシュ完了（データはuseEffectで自動取得）');
   };
 
   // ==================== 現在のセクション ====================
