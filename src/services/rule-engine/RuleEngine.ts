@@ -2,6 +2,7 @@
 // IF-THENルールエンジン - Phase 1+2 修正完全適用版 + Position条件修正版
 // 🔧 修正内容（2025-11-25）: Show/Hide アクションでscale/position保持
 // 🔧 修正内容（2025-11-26）: Position条件の座標系修正（正規化→ピクセル変換）
+// 🔍 デバッグ: タッチ条件詳細ログ追加
 
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../types/editor/GameScript';
 
@@ -113,7 +114,7 @@ export interface ActionExecutionResult {
 }
 
 /**
- * RuleEngine クラス - Phase 1+2 完全実装版 + Show/Hide修正版 + Position条件修正版
+ * RuleEngine クラス - Phase 1+2 完全実装版 + Show/Hide修正版 + Position条件修正版 + Touch条件デバッグ版
  */
 export class RuleEngine {
   private rules: GameRule[] = [];
@@ -155,7 +156,7 @@ export class RuleEngine {
   };
   
   constructor() {
-    console.log('🎮 RuleEngine初期化（Show/Hide修正版 + Position条件修正版）');
+    console.log('🎮 RuleEngine初期化（Show/Hide修正版 + Position条件修正版 + Touch条件デバッグ版）');
   }
 
   // ==================== カウンター管理メソッド ====================
@@ -291,6 +292,15 @@ export class RuleEngine {
   evaluateAndExecuteRules(context: RuleExecutionContext): ActionExecutionResult[] {
     const results: ActionExecutionResult[] = [];
 
+    // 🔍 デバッグ: context.eventsの確認
+    if (context.events.length > 0) {
+      console.log('🔍 [RuleEngine] evaluateAndExecuteRules開始 - context.events:', context.events.map(e => ({
+        type: e.type,
+        timestamp: e.timestamp,
+        data: e.data
+      })));
+    }
+
     // 衝突判定キャッシュを更新（フレームごとに1回）
     const currentTime = Date.now();
     if (currentTime - this.lastCollisionCheckTime > 16) {
@@ -335,6 +345,12 @@ export class RuleEngine {
     const { triggers } = rule;
     const matchedConditions: string[] = [];
     
+    // 🔍 デバッグ: ルール評価開始
+    const hasTouch = triggers.conditions.some(c => c.type === 'touch');
+    if (hasTouch && context.events.length > 0) {
+      console.log(`🔍 [RuleEngine] evaluateRule開始 [${rule.name}] - touch条件あり, events=${context.events.length}個`);
+    }
+    
     const conditionResults = triggers.conditions.map(condition => {
       const result = this.evaluateCondition(condition, context, rule.targetObjectId);
       if (result) {
@@ -346,6 +362,11 @@ export class RuleEngine {
     const shouldExecute = triggers.operator === 'AND' 
       ? conditionResults.every(result => result)
       : conditionResults.some(result => result);
+
+    // 🔍 デバッグ: ルール評価結果
+    if (hasTouch && context.events.length > 0) {
+      console.log(`🔍 [RuleEngine] evaluateRule結果 [${rule.name}] - shouldExecute=${shouldExecute}, matchedConditions=${matchedConditions.join(', ')}`);
+    }
 
     return {
       shouldExecute,
@@ -361,6 +382,11 @@ export class RuleEngine {
     targetObjectId: string
   ): boolean {
     let result = false;
+
+    // 🔍 デバッグ: 条件評価開始（touch条件のみ）
+    if (condition.type === 'touch' && context.events.length > 0) {
+      console.log(`🔍 [RuleEngine] evaluateCondition開始 [type=touch] - targetObjectId=${targetObjectId}, events=${context.events.length}個`);
+    }
 
     switch (condition.type) {
       case 'touch':
@@ -401,6 +427,11 @@ export class RuleEngine {
 
       default:
         result = false;
+    }
+
+    // 🔍 デバッグ: 条件評価結果（touch条件のみ）
+    if (condition.type === 'touch' && context.events.length > 0) {
+      console.log(`🔍 [RuleEngine] evaluateCondition結果 [type=touch] - result=${result}`);
     }
 
     return result;
@@ -801,20 +832,37 @@ export class RuleEngine {
     }
   }
 
+  // 🔍 デバッグ版: Touch条件評価（詳細ログ追加）
   private evaluateTouchCondition(
     condition: Extract<TriggerCondition, { type: 'touch' }>,
     context: RuleExecutionContext,
     targetObjectId: string
   ): boolean {
-    const touchEvents = context.events.filter(e => e.type === 'touch');
+    console.log('🔍 [RuleEngine] evaluateTouchCondition開始');
+    console.log('🔍   - targetObjectId:', targetObjectId);
+    console.log('🔍   - condition.target:', condition.target);
+    console.log('🔍   - context.events:', context.events);
 
-    if (!touchEvents.length) return false;
+    const touchEvents = context.events.filter(e => e.type === 'touch');
+    console.log('🔍   - touchEvents (filtered):', touchEvents);
+
+    if (!touchEvents.length) {
+      console.log('🔍   - 結果: false（タッチイベントなし）');
+      return false;
+    }
 
     const latestTouch = touchEvents[touchEvents.length - 1];
+    console.log('🔍   - latestTouch:', latestTouch);
+
     const touchTarget = condition.target === 'self' ? targetObjectId : condition.target;
+    console.log('🔍   - touchTarget:', touchTarget);
 
     if (touchTarget === 'stage') {
+      console.log('🔍   - touchTarget === "stage" の分岐');
+      console.log('🔍   - latestTouch.data.target:', latestTouch.data.target);
+
       if (latestTouch.data.target !== 'stage') {
+        console.log('🔍   - 結果: false（latestTouch.data.target !== "stage"）');
         return false;
       }
 
@@ -822,14 +870,24 @@ export class RuleEngine {
         const { x: touchX, y: touchY } = latestTouch.data;
         const region = condition.region;
 
+        console.log('🔍   - region指定あり:', region);
+        console.log('🔍   - タッチ座標: (', touchX, ',', touchY, ')');
+
         if (region.shape === 'rect') {
           const rectX = region.x * context.canvas.width;
           const rectY = region.y * context.canvas.height;
           const rectWidth = (region.width || 0.4) * context.canvas.width;
           const rectHeight = (region.height || 0.4) * context.canvas.height;
 
-          return touchX >= rectX && touchX <= rectX + rectWidth &&
-                 touchY >= rectY && touchY <= rectY + rectHeight;
+          const result = touchX >= rectX && touchX <= rectX + rectWidth &&
+                        touchY >= rectY && touchY <= rectY + rectHeight;
+
+          console.log('🔍   - rect判定:', {
+            rectX, rectY, rectWidth, rectHeight,
+            inRect: result
+          });
+
+          return result;
         } else if (region.shape === 'circle') {
           const centerX = region.x * context.canvas.width;
           const centerY = region.y * context.canvas.height;
@@ -839,14 +897,26 @@ export class RuleEngine {
             Math.pow(touchX - centerX, 2) + Math.pow(touchY - centerY, 2)
           );
 
-          return distance <= radius;
+          const result = distance <= radius;
+
+          console.log('🔍   - circle判定:', {
+            centerX, centerY, radius, distance,
+            inCircle: result
+          });
+
+          return result;
         }
       }
 
+      console.log('🔍   - 結果: true（stage タッチ、region指定なし）');
       return true;
     }
 
-    return latestTouch.data.target === touchTarget;
+    const result = latestTouch.data.target === touchTarget;
+    console.log('🔍   - 最終判定: latestTouch.data.target === touchTarget');
+    console.log('🔍   - 結果:', result);
+
+    return result;
   }
 
   private evaluateTimeCondition(
@@ -1475,7 +1545,7 @@ export class RuleEngine {
       this.setCounter(name, definition.initialValue);
     }
 
-    console.log('🔄 RuleEngine リセット完了（Show/Hide修正版 + Position条件修正版）');
+    console.log('🔄 RuleEngine リセット完了（Show/Hide修正版 + Position条件修正版 + Touch条件デバッグ版）');
   }
 
   resetCounters(): void {
