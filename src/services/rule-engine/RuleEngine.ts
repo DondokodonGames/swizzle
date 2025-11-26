@@ -3,6 +3,7 @@
 // 🔧 修正内容（2025-11-25）: Show/Hide アクションでscale/position保持
 // 🔧 修正内容（2025-11-26）: Position条件の座標系修正（正規化→ピクセル変換）
 // 🔍 デバッグ: タッチ条件詳細ログ追加
+// 🔍 デバッグ: アクション実行フロー詳細ログ追加
 
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../types/editor/GameScript';
 
@@ -114,7 +115,7 @@ export interface ActionExecutionResult {
 }
 
 /**
- * RuleEngine クラス - Phase 1+2 完全実装版 + Show/Hide修正版 + Position条件修正版 + Touch条件デバッグ版
+ * RuleEngine クラス - Phase 1+2 完全実装版 + Show/Hide修正版 + Position条件修正版 + Touch条件デバッグ版 + アクション実行デバッグ版
  */
 export class RuleEngine {
   private rules: GameRule[] = [];
@@ -156,7 +157,7 @@ export class RuleEngine {
   };
   
   constructor() {
-    console.log('🎮 RuleEngine初期化（Show/Hide修正版 + Position条件修正版 + Touch条件デバッグ版）');
+    console.log('🎮 RuleEngine初期化（Show/Hide修正版 + Position条件修正版 + Touch条件デバッグ版 + アクション実行デバッグ版）');
   }
 
   // ==================== カウンター管理メソッド ====================
@@ -314,19 +315,60 @@ export class RuleEngine {
 
     for (const rule of sortedRules) {
       try {
-        if (!this.canExecuteRule(rule)) {
+        // 🔍 デバッグ: ルール処理開始（touch条件のみ）
+        const hasTouch = rule.triggers.conditions.some(c => c.type === 'touch');
+        if (hasTouch && context.events.length > 0) {
+          console.log(`🔍 [RuleEngine] ルール処理開始 [${rule.name}] (id=${rule.id})`);
+        }
+
+        // 🔍 デバッグ: canExecuteRuleチェック
+        const canExecute = this.canExecuteRule(rule);
+        if (hasTouch && context.events.length > 0) {
+          console.log(`🔍 [RuleEngine]   - canExecuteRule: ${canExecute}`);
+          if (!canExecute) {
+            const currentCount = this.executionCounts.get(rule.id) || 0;
+            const maxCount = rule.executionLimit?.maxCount || 'unlimited';
+            console.log(`🔍 [RuleEngine]   - 実行回数制限に達しました: ${currentCount}/${maxCount}`);
+          }
+        }
+
+        if (!canExecute) {
           continue;
         }
 
-        if (!this.isRuleTimeValid(rule, context.gameState.timeElapsed)) {
+        // 🔍 デバッグ: isRuleTimeValidチェック
+        const timeValid = this.isRuleTimeValid(rule, context.gameState.timeElapsed);
+        if (hasTouch && context.events.length > 0) {
+          console.log(`🔍 [RuleEngine]   - isRuleTimeValid: ${timeValid}`);
+          if (!timeValid) {
+            console.log(`🔍 [RuleEngine]   - 時間範囲外: timeElapsed=${context.gameState.timeElapsed.toFixed(2)}, timeWindow=${JSON.stringify(rule.timeWindow)}`);
+          }
+        }
+
+        if (!timeValid) {
           continue;
         }
 
         const evaluation = this.evaluateRule(rule, context);
 
         if (evaluation.shouldExecute) {
+          // 🔍 デバッグ: アクション実行開始
+          if (hasTouch && context.events.length > 0) {
+            console.log(`🔍 [RuleEngine]   - アクション実行開始: ${rule.actions.length}個のアクション`);
+            console.log(`🔍 [RuleEngine]   - アクション詳細:`, rule.actions.map(a => ({
+              type: a.type,
+              targetId: (a as any).targetId,
+              movement: (a as any).movement
+            })));
+          }
+
           const result = this.executeActions(rule.actions, context, rule.id);
           results.push(result);
+
+          // 🔍 デバッグ: アクション実行結果
+          if (hasTouch && context.events.length > 0) {
+            console.log(`🔍 [RuleEngine]   - アクション実行結果:`, result);
+          }
 
           const currentCount = this.executionCounts.get(rule.id) || 0;
           this.executionCounts.set(rule.id, currentCount + 1);
@@ -1041,8 +1083,12 @@ export class RuleEngine {
     const newGameState: Partial<RuleExecutionContext['gameState']> = {};
     const counterChanges: CounterChangeEvent[] = [];
 
+    console.log(`🎬 [RuleEngine] executeActions開始 - ${actions.length}個のアクション`);
+
     for (const action of actions) {
       try {
+        console.log(`🎬 [RuleEngine]   - アクション実行: type=${action.type}, targetId=${(action as any).targetId}`);
+
         switch (action.type) {
           case 'addScore':
             newGameState.score = (context.gameState.score || 0) + action.points;
@@ -1111,6 +1157,10 @@ export class RuleEngine {
             break;
 
           case 'move':
+            console.log(`🎬 [RuleEngine]     - Move アクション詳細:`, {
+              targetId: action.targetId,
+              movement: action.movement
+            });
             this.executeMoveAction(action, context);
             effectsApplied.push(`移動: ${action.targetId} (${action.movement.type})`);
             break;
@@ -1136,9 +1186,12 @@ export class RuleEngine {
             break;
         }
       } catch (error) {
+        console.error(`❌ [RuleEngine] アクション実行エラー:`, error);
         errors.push(`アクション実行エラー: ${error}`);
       }
     }
+
+    console.log(`🎬 [RuleEngine] executeActions完了 - effectsApplied=${effectsApplied.length}個, errors=${errors.length}個`);
 
     return {
       success: errors.length === 0,
@@ -1280,8 +1333,11 @@ export class RuleEngine {
   ): void {
     const targetObj = context.objects.get(action.targetId);
     if (!targetObj) {
+      console.warn(`🎬 [RuleEngine] Move: オブジェクトが見つかりません: ${action.targetId}`);
       return;
     }
+
+    console.log(`🎬 [RuleEngine] Move実行開始 - targetId=${action.targetId}, movement.type=${action.movement.type}`);
 
     const { movement } = action;
     const speed = movement.speed || 1.0;
@@ -1297,21 +1353,30 @@ export class RuleEngine {
               targetX = targetObject.x;
               targetY = targetObject.y;
             } else {
+              console.warn(`🎬 [RuleEngine] Move: ターゲットオブジェクトが見つかりません: ${movement.target}`);
               return;
             }
           } else {
             targetX = movement.target.x * context.canvas.width;
             targetY = movement.target.y * context.canvas.height;
+            console.log(`🎬 [RuleEngine] Move: target座標 (正規化→ピクセル変換): (${movement.target.x}, ${movement.target.y}) → (${targetX.toFixed(0)}, ${targetY.toFixed(0)})`);
           }
           
           const dx = targetX - targetObj.x;
           const dy = targetY - targetObj.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
           
+          console.log(`🎬 [RuleEngine] Move: 現在位置=(${targetObj.x.toFixed(0)}, ${targetObj.y.toFixed(0)}), 目標=(${targetX.toFixed(0)}, ${targetY.toFixed(0)}), 距離=${distance.toFixed(0)}`);
+          
           if (distance > 0) {
             targetObj.vx = (dx / distance) * speed;
             targetObj.vy = (dy / distance) * speed;
+            console.log(`🎬 [RuleEngine] Move: vx=${targetObj.vx.toFixed(2)}, vy=${targetObj.vy.toFixed(2)}, speed=${speed}`);
+          } else {
+            console.log(`🎬 [RuleEngine] Move: 距離=0のため移動なし`);
           }
+        } else {
+          console.warn(`🎬 [RuleEngine] Move: movement.targetが未指定`);
         }
         break;
 
@@ -1330,6 +1395,7 @@ export class RuleEngine {
 
           targetObj.vx = 0;
           targetObj.vy = 0;
+          console.log(`🎬 [RuleEngine] Teleport実行: 新しい位置=(${targetObj.x.toFixed(0)}, ${targetObj.y.toFixed(0)})`);
         }
         break;
 
@@ -1337,11 +1403,13 @@ export class RuleEngine {
         const randomAngle = Math.random() * Math.PI * 2;
         targetObj.vx = Math.cos(randomAngle) * speed;
         targetObj.vy = Math.sin(randomAngle) * speed;
+        console.log(`🎬 [RuleEngine] Wander実行: vx=${targetObj.vx.toFixed(2)}, vy=${targetObj.vy.toFixed(2)}`);
         break;
 
       case 'stop':
         targetObj.vx = 0;
         targetObj.vy = 0;
+        console.log(`🎬 [RuleEngine] Stop実行: vx=0, vy=0`);
         break;
 
       case 'swap':
@@ -1354,6 +1422,7 @@ export class RuleEngine {
             targetObj.y = targetObject.y;
             targetObject.x = tempX;
             targetObject.y = tempY;
+            console.log(`🎬 [RuleEngine] Swap実行`);
           }
         }
         break;
@@ -1382,9 +1451,11 @@ export class RuleEngine {
           if (distance > 5) {
             targetObj.vx = (dx / distance) * speed;
             targetObj.vy = (dy / distance) * speed;
+            console.log(`🎬 [RuleEngine] Approach実行: vx=${targetObj.vx.toFixed(2)}, vy=${targetObj.vy.toFixed(2)}`);
           } else {
             targetObj.vx = 0;
             targetObj.vy = 0;
+            console.log(`🎬 [RuleEngine] Approach実行: 到達したため停止`);
           }
         }
         break;
@@ -1416,6 +1487,7 @@ export class RuleEngine {
           
           targetObj.x = centerX + Math.cos(newAngle) * radius;
           targetObj.y = centerY + Math.sin(newAngle) * radius;
+          console.log(`🎬 [RuleEngine] Orbit実行: 新しい位置=(${targetObj.x.toFixed(0)}, ${targetObj.y.toFixed(0)})`);
         }
         break;
 
@@ -1424,13 +1496,16 @@ export class RuleEngine {
         
         if (targetObj.x <= margin || targetObj.x + targetObj.width >= context.canvas.width - margin) {
           targetObj.vx = -(targetObj.vx || 0);
+          console.log(`🎬 [RuleEngine] Bounce実行: 横方向反転, vx=${targetObj.vx.toFixed(2)}`);
         }
         if (targetObj.y <= margin || targetObj.y + targetObj.height >= context.canvas.height - margin) {
           targetObj.vy = -(targetObj.vy || 0);
+          console.log(`🎬 [RuleEngine] Bounce実行: 縦方向反転, vy=${targetObj.vy.toFixed(2)}`);
         }
         break;
 
       default:
+        console.warn(`🎬 [RuleEngine] Move: 未対応のmovement.type: ${movement.type}`);
         break;
     }
   }
@@ -1545,7 +1620,7 @@ export class RuleEngine {
       this.setCounter(name, definition.initialValue);
     }
 
-    console.log('🔄 RuleEngine リセット完了（Show/Hide修正版 + Position条件修正版 + Touch条件デバッグ版）');
+    console.log('🔄 RuleEngine リセット完了（Show/Hide修正版 + Position条件修正版 + Touch条件デバッグ版 + アクション実行デバッグ版）');
   }
 
   resetCounters(): void {
