@@ -1,6 +1,7 @@
 // src/services/editor/EditorGameBridge.ts
 // Phase 1+2 完全統合版 - RuleEngine.ts 統合対応
 // 🔧 修正: 描画を中心基準に変更（左に動く問題を解決）
+// 🔧 修正: 画面外チェック削除（オブジェクトが画面外に出られるように）
 
 import { GameProject } from '../../types/editor/GameProject';
 import { GameRule, TriggerCondition, GameAction } from '../../types/editor/GameScript';
@@ -404,31 +405,13 @@ export class EditorGameBridge {
               obj.y += obj.vy;
             }
 
-            // 🔧 修正: 中心座標を計算（描画用）
-            const objWidth = obj.width * obj.scale;
-            const objHeight = obj.height * obj.scale;
-            const centerX = obj.x + objWidth / 2;
-            const centerY = obj.y + objHeight / 2;
-
-            // 画面外チェック（中心座標ベース）
-            if (centerX - objWidth / 2 < 0) {
-              obj.x = 0;
-              if (obj.vx !== undefined) obj.vx = Math.abs(obj.vx);
-            }
-            if (centerX + objWidth / 2 > canvasElement.width) {
-              obj.x = canvasElement.width - objWidth;
-              if (obj.vx !== undefined) obj.vx = -Math.abs(obj.vx);
-            }
-            if (centerY - objHeight / 2 < 0) {
-              obj.y = 0;
-              if (obj.vy !== undefined) obj.vy = Math.abs(obj.vy);
-            }
-            if (centerY + objHeight / 2 > canvasElement.height) {
-              obj.y = canvasElement.height - objHeight;
-              if (obj.vy !== undefined) obj.vy = -Math.abs(obj.vy);
-            }
+            // 🔧 削除: 画面外チェックを削除（オブジェクトが画面外に出られるように）
+            // オブジェクトは自由に画面外へ移動可能
+            // position条件やcollision条件で制御する
 
             // 🔧 修正: 中心基準で描画（scaleが変わっても中心が固定される）
+            const objWidth = obj.width * obj.scale;
+            const objHeight = obj.height * obj.scale;
             const drawCenterX = obj.x + objWidth / 2;
             const drawCenterY = obj.y + objHeight / 2;
             const drawX = drawCenterX - objWidth / 2;
