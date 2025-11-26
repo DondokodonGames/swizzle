@@ -1364,6 +1364,20 @@ const handlePublish = useCallback(async () => {
           </ModernCard>
         </div>
       )}
+
+      {/* キーボードショートカットヘルプ */}
+      <div 
+        style={{
+          position: 'fixed',
+          bottom: DESIGN_TOKENS.spacing[2],
+          left: DESIGN_TOKENS.spacing[2],
+          fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+          color: DESIGN_TOKENS.colors.neutral[400],
+          zIndex: DESIGN_TOKENS.zIndex[10]
+        }}
+      >
+        <div>Game Editor v1.0.0 - Supabase連携対応版</div>
+        <div>💡 Ctrl+S: 保存 | Ctrl+T: テストプレイ | Esc: 戻る | Ctrl+Q: メイン画面</div>
       </div>
     </div>
   );
