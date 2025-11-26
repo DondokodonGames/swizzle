@@ -146,7 +146,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             category: 'all',
             search: undefined
           },
-          randomPage,
+          1,
           1
         );
 
