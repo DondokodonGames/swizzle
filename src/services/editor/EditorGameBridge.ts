@@ -2,6 +2,7 @@
 // Phase 1+2 完全統合版 - RuleEngine.ts 統合対応
 // 🔧 修正: 描画を中心基準に変更（左に動く問題を解決）
 // 🔧 修正: 画面外チェック削除（オブジェクトが画面外に出られるように）
+// 🔍 デバッグ: タッチイベント詳細ログ追加
 
 import { GameProject } from '../../types/editor/GameProject';
 import { GameRule, TriggerCondition, GameAction } from '../../types/editor/GameScript';
@@ -32,7 +33,7 @@ export interface GameExecutionResult {
 }
 
 /**
- * EditorGameBridge - Phase 1+2 完全統合版
+ * EditorGameBridge - Phase 1+2 完全統合版 + タッチデバッグ版
  * RuleEngine.ts を使用してエディターで作成したゲームを実行
  */
 export class EditorGameBridge {
@@ -306,6 +307,15 @@ export class EditorGameBridge {
           gameState.timeElapsed += deltaTime / 1000;
           this.currentContext!.gameState.timeElapsed = gameState.timeElapsed;
 
+          // 🔍 デバッグ: ルール評価前のイベント確認
+          if (this.currentContext!.events.length > 0) {
+            console.log('🔍 [GameLoop] ルール評価前 - context.events:', this.currentContext!.events.map(e => ({
+              type: e.type,
+              timestamp: e.timestamp,
+              data: e.data
+            })));
+          }
+
           // ✅ RuleEngine実行（毎フレーム）- イベントクリア前に実行
           try {
             const results = this.ruleEngine!.evaluateAndExecuteRules(this.currentContext!);
@@ -334,6 +344,9 @@ export class EditorGameBridge {
           }
 
           // 🔧 修正: イベント履歴をフレーム終了時にクリア
+          if (this.currentContext!.events.length > 0) {
+            console.log('🔍 [GameLoop] イベントクリア実行 - クリア前の件数:', this.currentContext!.events.length);
+          }
           this.currentContext!.events = [];
 
           // 背景描画
@@ -498,34 +511,40 @@ export class EditorGameBridge {
               objectsInteracted.push(id);
               
               // 🔧 修正: RuleEngineが期待する形式でイベント記録
-              this.currentContext!.events.push({
+              const touchEvent = {
                 type: 'touch',
                 timestamp: Date.now(),
                 data: { 
-                  target: id,  // ✅ 'target' キーを使用
+                  target: id,
+                  touchType: 'down',
                   x, 
                   y 
                 }
-              });
+              };
+              this.currentContext!.events.push(touchEvent);
               
               console.log(`👆 オブジェクトタッチ: ${id} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
+              console.log('🔍 [HandleInteraction] イベント追加後 - context.events:', this.currentContext!.events);
             }
           });
           
           // ステージタッチの場合
           if (!hitObject) {
             // 🔧 修正: RuleEngineが期待する形式でイベント記録
-            this.currentContext!.events.push({
+            const touchEvent = {
               type: 'touch',
               timestamp: Date.now(),
               data: { 
-                target: 'stage',  // ✅ 'target' キーを使用
+                target: 'stage',
+                touchType: 'down',
                 x, 
                 y 
               }
-            });
+            };
+            this.currentContext!.events.push(touchEvent);
             
             console.log(`👆 ステージタッチ: at (${x.toFixed(0)}, ${y.toFixed(0)})`);
+            console.log('🔍 [HandleInteraction] イベント追加後 - context.events:', this.currentContext!.events);
           }
           
         } catch (error) {
