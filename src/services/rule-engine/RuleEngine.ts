@@ -1,6 +1,7 @@
 // src/services/rule-engine/RuleEngine.ts
-// IF-THENルールエンジン - Phase 1+2 修正完全適用版
+// IF-THENルールエンジン - Phase 1+2 修正完全適用版 + Position条件修正版
 // 🔧 修正内容（2025-11-25）: Show/Hide アクションでscale/position保持
+// 🔧 修正内容（2025-11-26）: Position条件の座標系修正（正規化→ピクセル変換）
 
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../types/editor/GameScript';
 
@@ -112,7 +113,7 @@ export interface ActionExecutionResult {
 }
 
 /**
- * RuleEngine クラス - Phase 1+2 完全実装版 + Show/Hide修正版
+ * RuleEngine クラス - Phase 1+2 完全実装版 + Show/Hide修正版 + Position条件修正版
  */
 export class RuleEngine {
   private rules: GameRule[] = [];
@@ -154,7 +155,7 @@ export class RuleEngine {
   };
   
   constructor() {
-    console.log('🎮 RuleEngine初期化（Show/Hide修正版）');
+    console.log('🎮 RuleEngine初期化（Show/Hide修正版 + Position条件修正版）');
   }
 
   // ==================== カウンター管理メソッド ====================
@@ -888,6 +889,7 @@ export class RuleEngine {
     }
   }
 
+  // 🔧 修正版: Position条件評価（座標系修正）
   private evaluatePositionCondition(
     condition: Extract<TriggerCondition, { type: 'position' }>,
     context: RuleExecutionContext
@@ -901,11 +903,19 @@ export class RuleEngine {
       
       const { region } = condition;
       
+      // 🔧 修正: 矩形の場合、正規化座標（0.0〜1.0）をピクセル座標に変換
       if (region.shape === 'rect' && region.width && region.height) {
-        const inRect = targetObj.x >= region.x && 
-                      targetObj.x <= region.x + region.width &&
-                      targetObj.y >= region.y && 
-                      targetObj.y <= region.y + region.height;
+        const rectX = region.x * context.canvas.width;
+        const rectY = region.y * context.canvas.height;
+        const rectWidth = region.width * context.canvas.width;
+        const rectHeight = region.height * context.canvas.height;
+        
+        const inRect = targetObj.x >= rectX && 
+                      targetObj.x <= rectX + rectWidth &&
+                      targetObj.y >= rectY && 
+                      targetObj.y <= rectY + rectHeight;
+        
+        console.log(`📍 Position評価 [${condition.target}]: obj=(${targetObj.x.toFixed(0)}, ${targetObj.y.toFixed(0)}) rect=(${rectX.toFixed(0)}, ${rectY.toFixed(0)}, ${rectWidth.toFixed(0)}x${rectHeight.toFixed(0)}) area=${condition.area} result=${condition.area === 'inside' ? inRect : !inRect}`);
         
         switch (condition.area) {
           case 'inside':
@@ -917,13 +927,20 @@ export class RuleEngine {
         }
       }
       
+      // 🔧 修正: 円形の場合も正規化座標をピクセル座標に変換
       if (region.shape === 'circle' && region.radius) {
+        const centerX = region.x * context.canvas.width;
+        const centerY = region.y * context.canvas.height;
+        const radius = region.radius * context.canvas.width;
+        
         const distance = Math.sqrt(
-          Math.pow(targetObj.x - region.x, 2) + 
-          Math.pow(targetObj.y - region.y, 2)
+          Math.pow(targetObj.x - centerX, 2) + 
+          Math.pow(targetObj.y - centerY, 2)
         );
         
-        const inCircle = distance <= region.radius;
+        const inCircle = distance <= radius;
+        
+        console.log(`📍 Position評価（円形） [${condition.target}]: obj=(${targetObj.x.toFixed(0)}, ${targetObj.y.toFixed(0)}) center=(${centerX.toFixed(0)}, ${centerY.toFixed(0)}) radius=${radius.toFixed(0)} distance=${distance.toFixed(0)} area=${condition.area} result=${condition.area === 'inside' ? inCircle : !inCircle}`);
         
         switch (condition.area) {
           case 'inside':
@@ -937,6 +954,7 @@ export class RuleEngine {
       
       return false;
     } catch (error) {
+      console.error('❌ Position条件評価エラー:', error);
       return false;
     }
   }
@@ -1457,7 +1475,7 @@ export class RuleEngine {
       this.setCounter(name, definition.initialValue);
     }
 
-    console.log('🔄 RuleEngine リセット完了（Show/Hide修正版）');
+    console.log('🔄 RuleEngine リセット完了（Show/Hide修正版 + Position条件修正版）');
   }
 
   resetCounters(): void {
