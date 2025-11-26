@@ -116,12 +116,14 @@ export const EditorApp: React.FC<EditorAppProps> = ({
 
       showNotification('success', t('editor.app.projectSaved'));
 
+      // 🔧 修正: 安全なアクセスでsaveCountを更新
+      const currentStatistics = currentProject.metadata?.statistics || {};
       updateProject({
         metadata: {
           ...currentProject.metadata,
           statistics: {
-            ...currentProject.metadata.statistics,
-            saveCount: (currentProject.metadata.statistics.saveCount || 0) + 1
+            ...currentStatistics,
+            saveCount: (currentStatistics.saveCount || 0) + 1
           }
         }
       });
@@ -192,16 +194,19 @@ export const EditorApp: React.FC<EditorAppProps> = ({
             showNotification('error', t('editor.app.testPlayError', { error: result.errors.join(', ') }));
           }
 
-          // プレイ統計更新
+          // 🔧 修正: 安全なアクセスでtestPlayCountとperformanceを更新
+          const currentStatistics = currentProject.metadata?.statistics || {};
+          const currentPerformance = currentProject.metadata?.performance || {};
+          
           updateProject({
             metadata: {
               ...currentProject.metadata,
               statistics: {
-                ...currentProject.metadata.statistics,
-                testPlayCount: (currentProject.metadata.statistics.testPlayCount || 0) + 1
+                ...currentStatistics,
+                testPlayCount: (currentStatistics.testPlayCount || 0) + 1
               },
               performance: {
-                ...currentProject.metadata.performance,
+                ...currentPerformance,
                 lastBuildTime: result.performance.renderTime,
                 averageFPS: result.performance.averageFPS,
                 memoryUsage: result.performance.memoryUsage
@@ -253,6 +258,9 @@ const handlePublish = useCallback(async () => {
     // 1. 公開前に自動保存（ローカル）
     await saveProject();
 
+    // 🔧 修正: 安全なアクセスでpublishCountを更新
+    const currentStatistics = currentProject.metadata?.statistics || {};
+
     // 2. 🔧 修正: 公開状態に更新されたプロジェクトデータを明示的に作成
     const publishedProject: GameProject = {
       ...currentProject,
@@ -268,8 +276,8 @@ const handlePublish = useCallback(async () => {
       metadata: {
         ...currentProject.metadata,
         statistics: {
-          ...currentProject.metadata.statistics,
-          publishCount: (currentProject.metadata.statistics.publishCount || 0) + 1
+          ...currentStatistics,
+          publishCount: (currentStatistics.publishCount || 0) + 1
         },
         lastSyncedAt: new Date().toISOString()
       }
