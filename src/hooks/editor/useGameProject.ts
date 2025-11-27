@@ -1,5 +1,5 @@
 // src/hooks/editor/useGameProject.ts
-// 完全修正版 - 並列実行防止・認証キャッシュ最適化
+// 完全修正版 - 並列実行防止・認証キャッシュ最適化・無限ループ修正
 
 import { useState, useCallback, useEffect } from 'react';
 import { GameProject, createDefaultGameProject } from '../../types/editor/GameProject';
@@ -108,6 +108,7 @@ export const useGameProject = (): UseGameProjectReturn => {
   const [error, setError] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // 🔧 修正: storage はシングルトンなので useCallback の依存に含めない
   const storage = ProjectStorageManager.getInstance();
 
   // ✅ 初回マウント時にユーザー情報を取得してキャッシュ（1回のみ）
@@ -132,6 +133,7 @@ export const useGameProject = (): UseGameProjectReturn => {
     };
   }, []); // ✅ 空の依存配列 - 初回のみ実行
 
+  // 🔧 修正: [storage] → [] (storageはシングルトンなので依存不要)
   const listProjects = useCallback(async (): Promise<GameProject[]> => {
     console.log('[ListProjects] プロジェクト一覧取得開始...');
     setLoading(true);
@@ -183,8 +185,9 @@ export const useGameProject = (): UseGameProjectReturn => {
     } finally {
       setLoading(false);
     }
-  }, [storage]);
+  }, []); // 🔧 修正: storage依存を削除
 
+  // 🔧 修正: [storage, listProjects] → [listProjects] (storageはシングルトン)
   const createProject = useCallback(async (name: string): Promise<GameProject> => {
     console.log('[CreateProject] プロジェクト作成開始:', name);
     setLoading(true);
@@ -216,8 +219,9 @@ export const useGameProject = (): UseGameProjectReturn => {
     } finally {
       setLoading(false);
     }
-  }, [storage, listProjects]);
+  }, [listProjects]); // 🔧 修正: storage依存を削除
 
+  // 🔧 修正: [storage] → [] (storageはシングルトン)
   const loadProject = useCallback(async (id: string): Promise<void> => {
     console.log('[LoadProject] プロジェクトロード開始:', id);
     setLoading(true);
@@ -248,8 +252,9 @@ export const useGameProject = (): UseGameProjectReturn => {
     } finally {
       setLoading(false);
     }
-  }, [storage]);
+  }, []); // 🔧 修正: storage依存を削除
 
+  // 🔧 修正: [currentProject, storage, listProjects] → [currentProject, listProjects]
   const saveProject = useCallback(async (): Promise<void> => {
     if (!currentProject) {
       throw new Error('保存するプロジェクトがありません');
@@ -280,7 +285,7 @@ export const useGameProject = (): UseGameProjectReturn => {
     } finally {
       setLoading(false);
     }
-  }, [currentProject, storage, listProjects]);
+  }, [currentProject, listProjects]); // 🔧 修正: storage依存を削除
 
   const updateProject = useCallback(async (updates?: Partial<GameProject>): Promise<void> => {
     if (!currentProject) {
@@ -297,6 +302,7 @@ export const useGameProject = (): UseGameProjectReturn => {
     setCurrentProject(updatedProject);
   }, [currentProject]);
 
+  // 🔧 修正: [storage, currentProject, listProjects] → [currentProject, listProjects]
   const deleteProject = useCallback(async (id: string): Promise<void> => {
     console.log('[DeleteProject] プロジェクト削除開始:', id);
     setLoading(true);
@@ -327,8 +333,9 @@ export const useGameProject = (): UseGameProjectReturn => {
     } finally {
       setLoading(false);
     }
-  }, [storage, currentProject, listProjects]);
+  }, [currentProject, listProjects]); // 🔧 修正: storage依存を削除
 
+  // 🔧 修正: [storage, listProjects] → [listProjects]
   const duplicateProject = useCallback(async (id: string, newName: string): Promise<GameProject> => {
     console.log('[DuplicateProject] プロジェクト複製開始:', id, '→', newName);
     setLoading(true);
@@ -370,8 +377,9 @@ export const useGameProject = (): UseGameProjectReturn => {
     } finally {
       setLoading(false);
     }
-  }, [storage, listProjects]);
+  }, [listProjects]); // 🔧 修正: storage依存を削除
 
+  // 🔧 修正: [storage] → []
   const exportProject = useCallback(async (id: string): Promise<Blob> => {
     console.log('[ExportProject] プロジェクトエクスポート開始:', id);
     setLoading(true);
@@ -419,8 +427,9 @@ export const useGameProject = (): UseGameProjectReturn => {
     } finally {
       setLoading(false);
     }
-  }, [storage]);
+  }, []); // 🔧 修正: storage依存を削除
 
+  // 🔧 修正: [storage, listProjects] → [listProjects]
   const importProject = useCallback(async (file: File): Promise<GameProject> => {
     console.log('[ImportProject] プロジェクトインポート開始:', file.name);
     setLoading(true);
@@ -450,7 +459,7 @@ export const useGameProject = (): UseGameProjectReturn => {
     } finally {
       setLoading(false);
     }
-  }, [storage, listProjects]);
+  }, [listProjects]); // 🔧 修正: storage依存を削除
 
   const getTotalSize = useCallback((project?: GameProject): number => {
     const targetProject = project || currentProject;
