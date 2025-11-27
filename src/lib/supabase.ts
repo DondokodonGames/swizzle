@@ -141,109 +141,124 @@ export const database = {
 
   userGames: {
     getPublished: async (options: any = {}) => {
-  console.log('🔍 [database.userGames.getPublished] 開始:', options);
-  
-  try {
-    // Step 1: 基本クエリ（JOINなし）でまずテストする
-    let query = supabase
-      .from('user_games')
-      .select('*')
-      .eq('is_published', true)
-      .order('created_at', { ascending: false });
-
-    console.log('🔍 [database.userGames.getPublished] 基本クエリ構築完了');
-
-    // フィルター適用
-    if (options.templateType) {
-      query = query.eq('template_id', options.templateType);
-      console.log('🔍 [database.userGames.getPublished] templateType フィルター:', options.templateType);
-    }
-
-    if (options.searchQuery) {
-      query = query.ilike('title', `%${options.searchQuery}%`);
-      console.log('🔍 [database.userGames.getPublished] searchQuery フィルター:', options.searchQuery);
-    }
-
-    if (options.limit) {
-      query = query.limit(options.limit);
-      console.log('🔍 [database.userGames.getPublished] limit:', options.limit);
-    }
-
-    if (options.offset) {
-      query = query.range(options.offset, options.offset + (options.limit || 20) - 1);
-      console.log('🔍 [database.userGames.getPublished] offset:', options.offset);
-    }
-
-    console.log('🔍 [database.userGames.getPublished] クエリ実行中...');
-
-    // タイムアウト処理付きでクエリ実行
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('データベースクエリがタイムアウトしました（10秒）')), 10000)
-    );
-
-    const queryPromise = query;
-
-    const { data, error } = await Promise.race([
-      queryPromise,
-      timeoutPromise
-    ]) as any;
-
-    if (error) {
-      console.error('❌ [database.userGames.getPublished] クエリエラー:', error);
-      throw new SupabaseError(error.message);
-    }
-
-    console.log('✅ [database.userGames.getPublished] クエリ成功:', data?.length || 0, '件');
-
-    // Step 2: プロフィール情報を別途取得（JOINエラー回避）
-    if (data && data.length > 0) {
-      console.log('🔍 [database.userGames.getPublished] プロフィール情報取得中...');
+      console.log('🔍 [database.userGames.getPublished] 開始:', options);
       
-      const gamesWithProfiles = await Promise.all(
-        data.map(async (game: any) => {
-          try {
-            // プロフィール情報を個別に取得
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('username, display_name, avatar_url')
-              .eq('id', game.creator_id)
-              .single();
+      try {
+        // Step 1: 基本クエリでゲーム取得
+        let query = supabase
+          .from('user_games')
+          .select('*')
+          .eq('is_published', true)
+          .order('created_at', { ascending: false });
 
-            return {
-              ...game,
-              profiles: profile || null
-            };
-          } catch (err) {
-            console.warn(`⚠️ プロフィール取得失敗 (creator_id: ${game.creator_id}):`, err);
-            // プロフィールがない場合はnull
-            return {
-              ...game,
-              profiles: null
-            };
-          }
-        })
-      );
+        console.log('🔍 [Step 1] 基本クエリ構築完了');
 
-      console.log('✅ [database.userGames.getPublished] プロフィール取得完了');
-      return gamesWithProfiles;
-    }
+        // フィルター適用
+        if (options.templateType) {
+          query = query.eq('template_id', options.templateType);
+          console.log('🔍 [Step 1] templateType フィルター:', options.templateType);
+        }
 
-    console.log('✅ [database.userGames.getPublished] 完了（データなし）');
-    return data || [];
+        if (options.searchQuery) {
+          query = query.ilike('title', `%${options.searchQuery}%`);
+          console.log('🔍 [Step 1] searchQuery フィルター:', options.searchQuery);
+        }
 
-  } catch (error) {
-    console.error('❌ [database.userGames.getPublished] エラー:', error);
-    
-    if (error instanceof Error) {
-      console.error('❌ エラーメッセージ:', error.message);
-      console.error('❌ エラースタック:', error.stack);
-    }
-    
-    // エラーを再スローせず、空配列を返す（サイトが表示されるようにする）
-    console.warn('⚠️ エラーが発生しましたが、空配列を返して続行します');
-    return [];
-  }
-},
+        if (options.limit) {
+          query = query.limit(options.limit);
+          console.log('🔍 [Step 1] limit:', options.limit);
+        }
+
+        if (options.offset) {
+          query = query.range(options.offset, options.offset + (options.limit || 20) - 1);
+          console.log('🔍 [Step 1] offset:', options.offset);
+        }
+
+        console.log('🔍 [Step 1] クエリ実行中...');
+
+        // タイムアウト処理付きでクエリ実行
+        const timeoutPromise1 = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('ゲーム取得がタイムアウトしました（10秒）')), 10000)
+        );
+
+        const { data, error } = await Promise.race([
+          query,
+          timeoutPromise1
+        ]) as any;
+
+        if (error) {
+          console.error('❌ [Step 1] クエリエラー:', error);
+          throw new SupabaseError(error.message);
+        }
+
+        console.log('✅ [Step 1] ゲーム取得成功:', data?.length || 0, '件');
+
+        // データがない場合は空配列を返す
+        if (!data || data.length === 0) {
+          console.log('✅ [完了] データなし、空配列を返します');
+          return [];
+        }
+
+        // Step 2: プロフィール情報を一括取得
+        console.log('🔍 [Step 2] プロフィール情報を一括取得中...');
+
+        // creator_idのリストを抽出（重複排除）
+        const creatorIds = [...new Set(data.map((game: any) => game.creator_id))];
+        console.log('🔍 [Step 2] 取得するプロフィール数:', creatorIds.length);
+
+        // タイムアウト処理付きでプロフィール一括取得
+        const timeoutPromise2 = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('プロフィール取得がタイムアウトしました（5秒）')), 5000)
+        );
+
+        const profileQuery = supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url')
+          .in('id', creatorIds);
+
+        const profileResult = await Promise.race([
+          profileQuery,
+          timeoutPromise2
+        ]) as any;
+
+        let profilesMap: Record<string, any> = {};
+
+        if (profileResult.error) {
+          console.warn('⚠️ [Step 2] プロフィール取得エラー:', profileResult.error);
+          console.warn('⚠️ [Step 2] プロフィールなしで続行します');
+        } else if (profileResult.data) {
+          console.log('✅ [Step 2] プロフィール取得成功:', profileResult.data.length, '件');
+          // プロフィールをMapに変換（高速検索用）
+          profilesMap = profileResult.data.reduce((acc: any, profile: any) => {
+            acc[profile.id] = profile;
+            return acc;
+          }, {});
+        }
+
+        // Step 3: ゲームとプロフィールを結合
+        console.log('🔍 [Step 3] ゲームとプロフィールを結合中...');
+
+        const gamesWithProfiles = data.map((game: any) => ({
+          ...game,
+          profiles: profilesMap[game.creator_id] || null
+        }));
+
+        console.log('✅ [完了] 全処理完了:', gamesWithProfiles.length, '件');
+        return gamesWithProfiles;
+
+      } catch (error) {
+        console.error('❌ [エラー] getPublished で予期しないエラー:', error);
+        
+        if (error instanceof Error) {
+          console.error('❌ エラーメッセージ:', error.message);
+          console.error('❌ エラースタック:', error.stack);
+        }
+        
+        // エラーを再スローせず、空配列を返す（サイトが表示されるようにする）
+        console.warn('⚠️ エラーが発生しましたが、空配列を返して続行します');
+        return [];
+      }
+    },
 
     getUserGames: async (userId: string) => {
       const { data, error } = await supabase
