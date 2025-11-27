@@ -243,7 +243,7 @@ export const database = {
     console.warn('⚠️ エラーが発生しましたが、空配列を返して続行します');
     return [];
   }
-}
+},
 
     getUserGames: async (userId: string) => {
       const { data, error } = await supabase
