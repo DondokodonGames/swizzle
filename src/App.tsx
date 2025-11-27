@@ -16,9 +16,10 @@ const SignupPage = React.lazy(() => import('./pages/SignupPage'));
 const LoginPage = React.lazy(() => import('./pages/LoginPage'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 
-// 利用規約・プライバシーポリシーページの遅延読み込み
+// 利用規約・プライバシーポリシー・Aboutページの遅延読み込み
 const TermsPage = React.lazy(() => import('./pages/TermsPage').then(module => ({ default: module.TermsPage })));
 const PrivacyPage = React.lazy(() => import('./pages/PrivacyPage').then(module => ({ default: module.PrivacyPage })));
+const AboutPage = React.lazy(() => import('./pages/AboutPage'));
 
 // マネタイズページの遅延読み込み
 const Pricing = React.lazy(() =>
@@ -746,7 +747,12 @@ function App() {
             </Suspense>
           } />
 
-          {/* 利用規約・プライバシーポリシー */}
+          {/* About・利用規約・プライバシーポリシー */}
+          <Route path="/about" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>}>
+              <AboutPage />
+            </Suspense>
+          } />
           <Route path="/terms" element={
             <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>}>
               <TermsPage />
