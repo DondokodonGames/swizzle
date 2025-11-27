@@ -172,18 +172,18 @@
       "loopPlayback": "반복 재생",
       "uploadBGM": "BGM 업로드",
       "dragDropOrClick": "오디오 파일을 드래그 앤 드롭하거나 클릭하여 선택",
-      "maxDurationSize": "최대 {duration}초 • {size}까지",
+      "maxDurationSize": "최대 {{duration}}초 • {{size}}까지",
       "addSoundEffect": "음향 효과 추가",
       "dragDropAudio": "오디오 파일을 드래그 앤 드롭",
       "soundEffectName": "음향 효과 이름",
       "audioHints": "오디오 팁",
       "hint1": "BGM은 자동 반복, 음향 효과는 한 번 재생됩니다",
-      "hint2": "BGM 최대 {bgmDuration}초, 음향 효과 최대 {seDuration}초",
+      "hint2": "BGM 최대 {{bgmDuration}}초, 음향 효과 최대 {{seDuration}}초",
       "hint3": "지원 형식: MP3, WAV, OGG",
       "hint4": "볼륨은 0%에서 100%까지 조절 가능",
       "errorSelectAudioFile": "오디오 파일을 선택하세요",
-      "errorAudioTooLong": "오디오가 너무 깁니다. 최대 {duration}초입니다.",
-      "errorMaxSoundEffects": "최대 {max}개의 음향 효과를 추가할 수 있습니다",
+      "errorAudioTooLong": "오디오가 너무 깁니다. 최대 {{duration}}초입니다.",
+      "errorMaxSoundEffects": "최대 {{max}}개의 음향 효과를 추가할 수 있습니다",
       "errorUploadFailed": "오디오 파일 업로드 실패",
       "errorPlaybackFailed": "오디오 재생 실패",
       "errorLoadFailed": "오디오 파일 로드 실패",
@@ -198,7 +198,7 @@
       "backgroundHints": {
         "title": "배경 팁",
         "ratio": "9:16(세로) 비율 권장",
-        "maxSize": "최대 {size}까지 지원",
+        "maxSize": "최대 {{size}}까지 지원",
         "optimization": "큰 파일은 자동으로 최적화됩니다",
         "autoShow": "추가 시 자동으로 표시로 설정됨",
         "future": "🎬 곧 출시: 다중 프레임 애니메이션 배경"
@@ -213,12 +213,12 @@
       "autoPlayOnStart": "자동 재생",
       "autoStart": "자동 시작",
       "bgmHints": "BGM은 최대 1곡. mp3/wav 지원. 게임 전체의 BGM으로 사용됩니다.",
-      "bgmMaxDurationSize": "최대 {duration}초, {size}까지",
+      "bgmMaxDurationSize": "최대 {{duration}}초, {{size}}까지",
       "bgmSettings": "BGM 설정",
       "canAddFrames": "최대 8프레임까지 추가할 수 있습니다",
-      "dragDropAudioMax": "오디오 파일을 드래그 앤 드롭 (최대 {max}개)",
+      "dragDropAudioMax": "오디오 파일을 드래그 앤 드롭 (최대 {{max}}개)",
       "dragDropOrClickAudio": "오디오 파일을 드래그 앤 드롭하거나 클릭하여 선택",
-      "frameCount": "{count}프레임",
+      "frameCount": "{{count}}프레임",
       "gameIntegration": "게임 연동",
       "gameIntegrationDesc": "Script 탭에서 규칙 설정",
       "multiFileUploadSupport": "다중 파일 일괄 업로드 지원",
@@ -231,17 +231,17 @@
       "previewFeature": "미리보기 기능",
       "previewFeatureDesc": "애니메이션 동작 확인",
       "ruleControlOnly": "규칙으로 제어",
-      "seMaxDurationSize": "파일당 최대 {duration}초, {size}까지",
+      "seMaxDurationSize": "파일당 최대 {{duration}}초, {{size}}까지",
       "selectFile": "파일 선택",
       "setPlayConditionsInScript": "Script 탭에서 규칙 설정 시 재생 조건 지정",
       "singlePlayNoLoop": "1회 재생 (루프 없음)",
       "soundEffectHints": "효과음은 최대 8개. mp3/wav 지원.",
-      "soundEffectMaxLimit": "효과음은 최대 {max}개까지 추가할 수 있습니다",
+      "soundEffectMaxLimit": "효과음은 최대 {{max}}개까지 추가할 수 있습니다",
       "soundEffectNameEditable": "효과음 이름 (편집 가능)",
       "soundEffectSettings": "효과음 설정",
       "soundEffects": "효과음",
       "soundTitle": "음성",
-      "supportedFormats": "지원 형식: {formats}",
+      "supportedFormats": "지원 형식: {{formats}}",
       "uploadObjectImage": "오브젝트 이미지 업로드",
       "objectName": "오브젝트 이름",
       "optimization": "최적화",
@@ -285,17 +285,17 @@
             "emoji": "∞"
           }
         },
-        "current": "현재 설정: {duration}"
+        "current": "현재 설정: {{duration}}"
       },
       "objectPlacement": {
         "title": "오브젝트 배치",
-        "placed": "배치: {placed}/{total} 배치됨",
+        "placed": "배치: {{placed}}/{{total}} 배치됨",
         "addToLayout": "배치",
         "removeFromLayout": "제거",
         "editRule": "규칙",
         "alreadyPlaced": "배치됨",
         "notPlaced": "배치 안 됨",
-        "ruleCount": "{count}개 규칙",
+        "ruleCount": "{{count}}개 규칙",
         "hints": {
           "title": "사용 방법:",
           "place": "배치 → 레이아웃 화면에 추가",
@@ -330,28 +330,28 @@
         },
         "enabled": "활성화",
         "disabled": "비활성화",
-        "target": "대상: {target}",
-        "conditionsCount": "{count}개 조건",
-        "actionsCount": "{count}개 액션",
+        "target": "대상: {{target}}",
+        "conditionsCount": "{{count}}개 조건",
+        "actionsCount": "{{count}}개 액션",
         "edit": "편집",
         "delete": "삭제",
-        "confirmDelete": "\"{name}\"을(를) 삭제하시겠습니까?",
+        "confirmDelete": "\"{{name}}\"을(를) 삭제하시겠습니까?",
         "deleted": "규칙이 삭제되었습니다",
         "gameOverall": "게임 전체",
-        "objectNotFound": "⚠ {id}",
+        "objectNotFound": "⚠ {{id}}",
         "untitled": "제목 없는 규칙"
       },
       "ruleModal": {
         "title": "규칙 설정 (고급)",
-        "subtitle": "1 조건 → 1 액션 | {conditions}가지 조건 × {actions}가지 액션",
+        "subtitle": "1 조건 → 1 액션 | {{conditions}}가지 조건 × {{actions}}가지 액션",
         "ruleName": "규칙 이름",
         "ruleNamePlaceholder": "예: 중앙 영역을 터치하여 이동",
         "triggerCondition": "트리거 조건",
         "executeAction": "액션 실행",
         "preview": {
           "title": "규칙 미리보기",
-          "seconds": "({seconds}초)",
-          "area": "({area} 영역)"
+          "seconds": "({{seconds}}초)",
+          "area": "({{area}} 영역)"
         },
         "errors": {
           "nameRequired": "규칙 이름을 입력해주세요",
@@ -361,9 +361,9 @@
         "saved": "규칙이 저장되었습니다"
       },
       "ruleSelection": {
-        "title": "규칙 선택 - {object}",
-        "subtitle": "편집할 규칙 선택 ({current}/{max})",
-        "ruleNumber": "규칙 {number}: {name}",
+        "title": "규칙 선택 - {{object}}",
+        "subtitle": "편집할 규칙 선택 ({{current}}/{{max}})",
+        "ruleNumber": "규칙 {{number}}: {{name}}",
         "createNew": "새 규칙 만들기",
         "limitReached": "규칙 제한 (32) 도달"
       },
@@ -410,9 +410,9 @@
         "intervalTime": "간격 시간 (초)",
         "setting": "설정",
         "description": {
-          "exact": "게임 시작 {time} 후 트리거",
-          "range": "{start}에서 {end} 사이에 트리거",
-          "interval": "{time}마다 트리거",
+          "exact": "게임 시작 {{time}} 후 트리거",
+          "range": "{{start}}에서 {{end}} 사이에 트리거",
+          "interval": "{{time}}마다 트리거",
           "selectTime": "시간을 선택하세요",
           "selectRange": "시간 범위를 선택하세요",
           "selectInterval": "간격 시간을 선택하세요"
@@ -466,7 +466,7 @@
             "label": "매우 빠름",
             "description": "전문가용"
           },
-          "current": "현재 설정: {speed} 속도"
+          "current": "현재 설정: {{speed}} 속도"
         },
         "fullGame": {
           "title": "게임 실행 중",
@@ -532,7 +532,7 @@
         "update": "업데이트",
         "export": "내보내기 (JSON)",
         "published": "게시됨",
-        "publishedAt": "{date}에"
+        "publishedAt": "{{date}}에"
       }
     },
     "preview": "미리보기",
@@ -561,24 +561,24 @@
         "counterAction": "카운터 액션"
       },
       "timeDetails": {
-        "secondsAfter": "{seconds}초 후",
+        "secondsAfter": "{{seconds}}초 후",
         "timeRange": "시간 범위",
-        "exactTime": "{seconds}초 후",
-        "rangeTime": "{min}초에서 {max}초 사이"
+        "exactTime": "{{seconds}}초 후",
+        "rangeTime": "{{min}}초에서 {{max}}초 사이"
       },
       "touchDetails": {
         "tap": "탭",
         "release": "릴리스",
         "hold": "홀드",
-        "holdDuration": "지속 시간: {duration}초",
-        "holdSecond": "{duration}초 동안 홀드",
+        "holdDuration": "지속 시간: {{duration}}초",
+        "holdSecond": "{{duration}}초 동안 홀드",
         "targetThis": "대상: 이 오브젝트",
         "targetStage": "대상: 스테이지",
-        "target": "대상: {target}",
+        "target": "대상: {{target}}",
         "shapeRect": "사각형",
         "shapeCircle": "원형",
-        "range": "범위: {shape} (중심: {x}%, {y}%)",
-        "type": "유형: {type}"
+        "range": "범위: {{shape}} (중심: {{x}}%, {{y}}%)",
+        "type": "유형: {{type}}"
       },
       "collisionDetails": {
         "enter": "충돌 시작",
@@ -588,36 +588,36 @@
         "detectionPixel": "픽셀 감지",
         "targetBackground": "대상: 배경",
         "targetStageRange": "대상: 스테이지 범위",
-        "target": "대상: {target}",
+        "target": "대상: {{target}}",
         "shapeRect": "사각형",
         "shapeCircle": "원형",
-        "range": "범위: {shape} (중심: {x}%, {y}%)",
-        "type": "유형: {type}",
-        "detection": "감지: {mode}",
-        "collisionWith": "{target}와(과) {collisionType}"
+        "range": "범위: {{shape}} (중심: {{x}}%, {{y}}%)",
+        "type": "유형: {{type}}",
+        "detection": "감지: {{mode}}",
+        "collisionWith": "{{target}}와(과) {{collisionType}}"
       },
       "animationDetails": {
         "animationEnd": "애니메이션 종료 시",
         "frameReached": "도달 시"
       },
       "flagDetails": {
-        "flag": "플래그: {name}",
+        "flag": "플래그: {{name}}",
         "notSelected": "선택 안 됨",
-        "condition": "조건: {condition}",
-        "flagCondition": "{name} {condition}"
+        "condition": "조건: {{condition}}",
+        "flagCondition": "{{name}} {{condition}}"
       },
       "gameStateDetails": {
         "playing": "플레이 중",
         "clear": "클리어",
         "gameOver": "게임 오버",
         "unknown": "알 수 없음",
-        "state": "상태: {state}"
+        "state": "상태: {{state}}"
       },
       "soundDetails": {
-        "sound": "소리: {name}",
+        "sound": "소리: {{name}}",
         "notSelected": "선택 안 됨",
         "selectSound": "소리 선택",
-        "volume": "볼륨: {volume}%"
+        "volume": "볼륨: {{volume}}%"
       },
       "resultDetails": {
         "gameClear": "게임을 클리어 상태로 설정",
@@ -634,10 +634,10 @@
         "approach": "접근",
         "orbit": "공전",
         "unknown": "알 수 없음",
-        "type": "유형: {type}",
-        "speed": "속도: {speed}px/초",
-        "duration": "지속 시간: {duration}초",
-        "moveType": "{type} 이동"
+        "type": "유형: {{type}}",
+        "speed": "속도: {{speed}}px/초",
+        "duration": "지속 시간: {{duration}}초",
+        "moveType": "{{type}} 이동"
       },
       "effectDetails": {
         "blink": "깜빡임",
@@ -645,31 +645,31 @@
         "shake": "흔들림",
         "rotate": "회전",
         "unknown": "알 수 없음",
-        "type": "유형: {type}",
-        "duration": "지속 시간: {duration}초",
-        "intensity": "강도: {intensity}%"
+        "type": "유형: {{type}}",
+        "duration": "지속 시간: {{duration}}초",
+        "intensity": "강도: {{intensity}}%"
       },
       "showHideDetails": {
         "show": "오브젝트 표시",
         "hide": "오브젝트 숨기기",
-        "fadeIn": "페이드 인: {duration}초",
-        "fadeOut": "페이드 아웃: {duration}초"
+        "fadeIn": "페이드 인: {{duration}}초",
+        "fadeOut": "페이드 아웃: {{duration}}초"
       },
       "flagActionDetails": {
-        "setFlag": "플래그: {name}",
-        "toggleFlag": "플래그: {name}",
+        "setFlag": "플래그: {{name}}",
+        "toggleFlag": "플래그: {{name}}",
         "toggleValue": "값: 반전",
-        "value": "값: {value}",
-        "flagValue": "{name} {value}"
+        "value": "값: {{value}}",
+        "flagValue": "{{name}} {{value}}"
       },
       "animationActionDetails": {
-        "switchTo": "전환: {name}",
-        "animationNumber": "애니메이션 {number}",
-        "switchToAnimation": "애니메이션 {number}로 전환"
+        "switchTo": "전환: {{name}}",
+        "animationNumber": "애니메이션 {{number}}",
+        "switchToAnimation": "애니메이션 {{number}}로 전환"
       },
       "multipleRules": {
-        "header": "📋 이 오브젝트에는 {count}개의 규칙이 설정되어 있습니다",
-        "ruleNumber": "규칙 {number}",
+        "header": "📋 이 오브젝트에는 {{count}}개의 규칙이 설정되어 있습니다",
+        "ruleNumber": "규칙 {{number}}",
         "enabled": "✅ 활성화",
         "disabled": "⏸️ 비활성화"
       },
@@ -678,11 +678,11 @@
         "flowAny": "🔥 조건 중 하나가 충족될 때 → ⚡ 액션을 순서대로 실행",
         "flowSingle": "🔥 조건이 충족될 때 → ⚡ 액션을 순서대로 실행",
         "conditionsTitle": "트리거 조건",
-        "conditionsCount": "트리거 조건 ({count}개)",
+        "conditionsCount": "트리거 조건 ({{count}}개)",
         "actionsTitle": "액션",
-        "actionsCount": "액션 ({count}개)",
-        "conditionNumber": "조건 {number}: {label}",
-        "actionNumber": "액션 {number}: {label}"
+        "actionsCount": "액션 ({{count}}개)",
+        "conditionNumber": "조건 {{number}}: {{label}}",
+        "actionNumber": "액션 {{number}}: {{label}}"
       },
       "general": {
         "noCondition": "조건 없음",
@@ -691,7 +691,7 @@
         "anyCondition": "하나",
         "noRules": "규칙을 설정하여 미리보기 확인",
         "noRulesSet": "규칙이 설정되지 않음",
-        "frameNumber": "프레임 {number}",
+        "frameNumber": "프레임 {{number}}",
         "animationEnd": "종료"
       }
     },
@@ -710,12 +710,12 @@
       "authenticating": "인증 중...",
       "loadingAccount": "계정 정보 로드 중...",
       "loading": "로딩 중...",
-      "projectOpened": "\"{name}\" 열림",
-      "projectCreated": "\"{name}\" 생성됨",
+      "projectOpened": "\"{{name}}\" 열림",
+      "projectCreated": "\"{{name}}\" 생성됨",
       "projectSaved": "프로젝트 저장됨",
       "projectPublished": "게임이 게시되었습니다! 소셜 피드에 표시됩니다",
       "projectDeleted": "프로젝트 삭제됨",
-      "projectDuplicated": "\"{name}\" 생성됨",
+      "projectDuplicated": "\"{{name}}\" 생성됨",
       "projectExported": "프로젝트 내보내기 완료",
       "unsavedChanges": "저장하지 않은 변경사항이 있습니다. 나가기 전에 저장하시겠습니까?",
       "confirmSaveAndLeave": "확인 → 저장하고 나가기\n취소 → 저장하지 않고 나가기",
@@ -723,17 +723,17 @@
       "savedComplete": "저장 완료",
       "returnedToList": "프로젝트 목록으로 돌아갔습니다",
       "returnedToEditor": "편집기로 돌아갔습니다",
-      "testPlayComplete": "테스트 플레이 완료! 점수: {score}",
-      "testPlayError": "테스트 플레이 오류: {error}",
-      "testPlayFailed": "테스트 플레이 실패: {error}",
+      "testPlayComplete": "테스트 플레이 완료! 점수: {{score}}",
+      "testPlayError": "테스트 플레이 오류: {{error}}",
+      "testPlayFailed": "테스트 플레이 실패: {{error}}",
       "testPlayScreenFailed": "테스트 플레이 화면 준비 실패",
       "publishingStarted": "게시 프로세스 시작 중...",
       "publishFailed": "게시 실패",
       "publishFailedNetwork": "게임 게시에 실패했습니다. 네트워크 연결을 확인하고 다시 시도하세요.",
       "publishFailedAuth": "인증 오류가 발생했습니다. 다시 로그인하고 재시도하세요.",
-      "publishFailedWithError": "게시 실패: {error}",
+      "publishFailedWithError": "게시 실패: {{error}}",
       "publishRequiresLogin": "로그인이 필요합니다. 게시하려면 먼저 로그인하세요.",
-      "publishCannotWithErrors": "게시할 수 없습니다: {error}",
+      "publishCannotWithErrors": "게시할 수 없습니다: {{error}}",
       "backToList": "목록으로 돌아가기",
       "mainScreen": "메인 화면",
       "noProjectSelected": "선택된 프로젝트 없음",
@@ -746,7 +746,7 @@
         "unsaved": "저장 안 됨",
         "published": "게시됨"
       },
-      "capacity": "{used}MB",
+      "capacity": "{{used}}MB",
       "buttons": {
         "save": "저장",
         "test": "테스트",
@@ -783,7 +783,7 @@
         "title": "새 게임 만들기",
         "subtitle": "게임 이름을 선택하세요",
         "placeholder": "게임 이름 입력",
-        "charCount": "{count}/50자",
+        "charCount": "{{count}}/50자",
         "templateHint": "템플릿으로 시작할 수도 있습니다 (준비 중)",
         "create": "만들기"
       },
@@ -794,10 +794,10 @@
           "draft": "초안"
         },
         "new": "신규",
-        "completion": "{percent}% 완료",
+        "completion": "{{percent}}% 완료",
         "duplicate": "복제",
         "export": "내보내기",
-        "confirmDelete": "\"{name}\"을(를) 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
+        "confirmDelete": "\"{{name}}\"을(를) 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
         "lastModified": "최종 수정",
         "editButton": "편집",
         "stats": {
