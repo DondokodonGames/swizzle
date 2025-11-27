@@ -92,12 +92,12 @@
       "authenticating": "Authentification...",
       "loadingAccount": "Chargement des informations du compte...",
       "loading": "Chargement...",
-      "projectOpened": "Ouvert \"{name}\"",
-      "projectCreated": "Créé \"{name}\"",
+      "projectOpened": "Ouvert \"{{name}}\"",
+      "projectCreated": "Créé \"{{name}}\"",
       "projectSaved": "Projet enregistré",
       "projectPublished": "Jeu publié ! Il apparaîtra dans le fil social",
       "projectDeleted": "Projet supprimé",
-      "projectDuplicated": "Créé \"{name}\"",
+      "projectDuplicated": "Créé \"{{name}}\"",
       "projectExported": "Projet exporté",
       "unsavedChanges": "Vous avez des modifications non enregistrées. Voulez-vous sauvegarder avant de quitter ?",
       "confirmSaveAndLeave": "OK → Sauvegarder et quitter\nAnnuler → Quitter sans sauvegarder",
@@ -105,17 +105,17 @@
       "savedComplete": "Enregistré",
       "returnedToList": "Retourné à la liste des projets",
       "returnedToEditor": "Retourné à l'éditeur",
-      "testPlayComplete": "Test terminé ! Score : {score}",
-      "testPlayError": "Erreur de test : {error}",
-      "testPlayFailed": "Le test a échoué : {error}",
+      "testPlayComplete": "Test terminé ! Score : {{score}}",
+      "testPlayError": "Erreur de test : {{error}}",
+      "testPlayFailed": "Le test a échoué : {{error}}",
       "testPlayScreenFailed": "Impossible de préparer l'écran de test",
       "publishingStarted": "Démarrage de la publication...",
       "publishFailed": "La publication a échoué",
       "publishFailedNetwork": "La publication du jeu a échoué. Veuillez vérifier votre connexion réseau et réessayer.",
       "publishFailedAuth": "Une erreur d'authentification s'est produite. Veuillez vous reconnecter et réessayer.",
-      "publishFailedWithError": "La publication a échoué : {error}",
+      "publishFailedWithError": "La publication a échoué : {{error}}",
       "publishRequiresLogin": "Connexion requise. Veuillez vous connecter d'abord pour publier.",
-      "publishCannotWithErrors": "Impossible de publier : {error}",
+      "publishCannotWithErrors": "Impossible de publier : {{error}}",
       "backToList": "Retour à la liste",
       "mainScreen": "Écran principal",
       "noProjectSelected": "Aucun projet sélectionné",
@@ -128,7 +128,7 @@
         "unsaved": "Non enregistré",
         "published": "Publié"
       },
-      "capacity": "{used}MB",
+      "capacity": "{{used}}MB",
       "buttons": {
         "save": "Enregistrer",
         "test": "Tester",
@@ -165,7 +165,7 @@
         "title": "Créer un nouveau jeu",
         "subtitle": "Choisissez un nom pour votre jeu",
         "placeholder": "Entrez le nom du jeu",
-        "charCount": "{count}/50 caractères",
+        "charCount": "{{count}}/50 caractères",
         "templateHint": "Vous pouvez également commencer à partir d'un modèle (prochainement)",
         "create": "Créer"
       },
@@ -176,10 +176,10 @@
           "draft": "Brouillon"
         },
         "new": "NOUVEAU",
-        "completion": "{percent}% terminé",
+        "completion": "{{percent}}% terminé",
         "duplicate": "Dupliquer",
         "export": "Exporter",
-        "confirmDelete": "Supprimer \"{name}\" ? Cette action ne peut pas être annulée.",
+        "confirmDelete": "Supprimer \"{{name}}\" ? Cette action ne peut pas être annulée.",
         "lastModified": "Dernière modification",
         "editButton": "Modifier",
         "stats": {
@@ -224,18 +224,18 @@
       "loopPlayback": "Lecture en boucle",
       "uploadBGM": "Télécharger BGM",
       "dragDropOrClick": "Glissez-déposez un fichier audio ou cliquez pour sélectionner",
-      "maxDurationSize": "Max {duration}s • Jusqu'à {size}",
+      "maxDurationSize": "Max {{duration}}s • Jusqu'à {{size}}",
       "addSoundEffect": "Ajouter un effet sonore",
       "dragDropAudio": "Glissez-déposez un fichier audio",
       "soundEffectName": "Nom de l'effet sonore",
       "audioHints": "Conseils audio",
       "hint1": "La BGM boucle automatiquement, les effets sonores jouent une fois",
-      "hint2": "BGM max {bgmDuration}s, effets sonores max {seDuration}s",
+      "hint2": "BGM max {{bgmDuration}}s, effets sonores max {{seDuration}}s",
       "hint3": "Formats supportés: MP3, WAV, OGG",
       "hint4": "Volume ajustable de 0% à 100%",
       "errorSelectAudioFile": "Veuillez sélectionner un fichier audio",
-      "errorAudioTooLong": "L'audio est trop long. Maximum {duration} secondes.",
-      "errorMaxSoundEffects": "Vous pouvez ajouter jusqu'à {max} effets sonores",
+      "errorAudioTooLong": "L'audio est trop long. Maximum {{duration}} secondes.",
+      "errorMaxSoundEffects": "Vous pouvez ajouter jusqu'à {{max}} effets sonores",
       "errorUploadFailed": "Échec du téléchargement du fichier audio",
       "errorPlaybackFailed": "Échec de la lecture audio",
       "errorLoadFailed": "Échec du chargement du fichier audio",
@@ -250,7 +250,7 @@
       "backgroundHints": {
         "title": "Conseils sur le fond",
         "ratio": "Rapport 9:16 (portrait) recommandé",
-        "maxSize": "Jusqu'à {size} pris en charge",
+        "maxSize": "Jusqu'à {{size}} pris en charge",
         "optimization": "Les fichiers volumineux seront automatiquement optimisés",
         "autoShow": "Automatiquement défini comme visible lors de l'ajout",
         "future": "🎬 À venir: Arrière-plans animés multi-images"
@@ -265,12 +265,12 @@
       "autoPlayOnStart": "Lecture automatique",
       "autoStart": "Démarrage automatique",
       "bgmHints": "Jusqu'à 1 BGM. Formats mp3/wav pris en charge. Utilisé comme musique de fond pour l'ensemble du jeu.",
-      "bgmMaxDurationSize": "Max {duration}s, {size}",
+      "bgmMaxDurationSize": "Max {{duration}}s, {{size}}",
       "bgmSettings": "Paramètres BGM",
       "canAddFrames": "Jusqu'à 8 images peuvent être ajoutées",
-      "dragDropAudioMax": "Glissez-déposez des fichiers audio (max {max})",
+      "dragDropAudioMax": "Glissez-déposez des fichiers audio (max {{max}})",
       "dragDropOrClickAudio": "Glissez-déposez ou cliquez pour sélectionner un fichier audio",
-      "frameCount": "{count} image(s)",
+      "frameCount": "{{count}} image(s)",
       "gameIntegration": "Intégration du jeu",
       "gameIntegrationDesc": "Définir les règles dans l'onglet Script",
       "multiFileUploadSupport": "Téléchargement de plusieurs fichiers pris en charge",
@@ -283,17 +283,17 @@
       "previewFeature": "Fonction d'aperçu",
       "previewFeatureDesc": "Vérifier le comportement de l'animation",
       "ruleControlOnly": "Contrôle par règles uniquement",
-      "seMaxDurationSize": "Max {duration}s, {size} par fichier",
+      "seMaxDurationSize": "Max {{duration}}s, {{size}} par fichier",
       "selectFile": "Sélectionner un fichier",
       "setPlayConditionsInScript": "Définir les conditions de lecture lors de la configuration des règles dans l'onglet Script",
       "singlePlayNoLoop": "Lecture unique (sans boucle)",
       "soundEffectHints": "Jusqu'à 8 effets sonores. Formats mp3/wav pris en charge.",
-      "soundEffectMaxLimit": "Jusqu'à {max} effets sonores peuvent être ajoutés",
+      "soundEffectMaxLimit": "Jusqu'à {{max}} effets sonores peuvent être ajoutés",
       "soundEffectNameEditable": "Nom de l'effet sonore (modifiable)",
       "soundEffectSettings": "Paramètres des effets sonores",
       "soundEffects": "Effets sonores",
       "soundTitle": "Audio",
-      "supportedFormats": "Formats pris en charge: {formats}",
+      "supportedFormats": "Formats pris en charge: {{formats}}",
       "uploadObjectImage": "Télécharger l'image de l'objet",
       "objectName": "Nom de l'objet",
       "optimization": "Optimisation",
@@ -340,17 +340,17 @@
             "emoji": "∞"
           }
         },
-        "current": "Paramètre actuel : {duration}"
+        "current": "Paramètre actuel : {{duration}}"
       },
       "objectPlacement": {
         "title": "Placement d'objets",
-        "placed": "Disposition : {placed}/{total} placés",
+        "placed": "Disposition : {{placed}}/{{total}} placés",
         "addToLayout": "Placer",
         "removeFromLayout": "Retirer",
         "editRule": "Règles",
         "alreadyPlaced": "Placé",
         "notPlaced": "Non placé",
-        "ruleCount": "{count} règles",
+        "ruleCount": "{{count}} règles",
         "hints": {
           "title": "Comment utiliser :",
           "place": "Placer → Ajouter à l'écran de disposition",
@@ -385,28 +385,28 @@
         },
         "enabled": "Activé",
         "disabled": "Désactivé",
-        "target": "Cible : {target}",
-        "conditionsCount": "{count} conditions",
-        "actionsCount": "{count} actions",
+        "target": "Cible : {{target}}",
+        "conditionsCount": "{{count}} conditions",
+        "actionsCount": "{{count}} actions",
         "edit": "Modifier",
         "delete": "Supprimer",
-        "confirmDelete": "Supprimer \"{name}\" ?",
+        "confirmDelete": "Supprimer \"{{name}}\" ?",
         "deleted": "Règle supprimée",
         "gameOverall": "Jeu global",
-        "objectNotFound": "⚠ {id}",
+        "objectNotFound": "⚠ {{id}}",
         "untitled": "Règle sans titre"
       },
       "ruleModal": {
         "title": "Paramètres de règle (Avancé)",
-        "subtitle": "1 condition → 1 action | {conditions} types de conditions × {actions} types d'actions",
+        "subtitle": "1 condition → 1 action | {{conditions}} types de conditions × {{actions}} types d'actions",
         "ruleName": "Nom de la règle",
         "ruleNamePlaceholder": "ex : Toucher dans la zone centrale pour déplacer",
         "triggerCondition": "Condition de déclenchement",
         "executeAction": "Exécuter l'action",
         "preview": {
           "title": "Aperçu de la règle",
-          "seconds": "({seconds}s)",
-          "area": "(zone {area})"
+          "seconds": "({{seconds}}s)",
+          "area": "(zone {{area}})"
         },
         "errors": {
           "nameRequired": "Veuillez entrer un nom de règle",
@@ -416,9 +416,9 @@
         "saved": "Règle enregistrée"
       },
       "ruleSelection": {
-        "title": "Sélectionner la règle - {object}",
-        "subtitle": "Sélectionner la règle à modifier ({current}/{max})",
-        "ruleNumber": "Règle {number} : {name}",
+        "title": "Sélectionner la règle - {{object}}",
+        "subtitle": "Sélectionner la règle à modifier ({{current}}/{{max}})",
+        "ruleNumber": "Règle {{number}} : {{name}}",
         "createNew": "Créer une nouvelle règle",
         "limitReached": "Limite de règles (32) atteinte"
       },
@@ -462,9 +462,9 @@
         "intervalTime": "Intervalle de temps (secondes)",
         "setting": "Paramètre",
         "description": {
-          "exact": "Se déclenche {time} après le début du jeu",
-          "range": "Se déclenche entre {start} et {end}",
-          "interval": "Se déclenche toutes les {time}",
+          "exact": "Se déclenche {{time}} après le début du jeu",
+          "range": "Se déclenche entre {{start}} et {{end}}",
+          "interval": "Se déclenche toutes les {{time}}",
           "selectTime": "Veuillez sélectionner une heure",
           "selectRange": "Veuillez sélectionner une plage horaire",
           "selectInterval": "Veuillez sélectionner un intervalle de temps"
@@ -521,7 +521,7 @@
             "label": "Super rapide",
             "description": "Pour les experts"
           },
-          "current": "Paramètre actuel : vitesse {speed}"
+          "current": "Paramètre actuel : vitesse {{speed}}"
         },
         "fullGame": {
           "title": "Jeu en cours",
@@ -584,7 +584,7 @@
         "update": "Mettre à jour",
         "export": "Exporter (JSON)",
         "published": "Publié",
-        "publishedAt": "le {date}"
+        "publishedAt": "le {{date}}"
       }
     },
     "preview": "Aperçu",
@@ -613,24 +613,24 @@
         "counterAction": "Action compteur"
       },
       "timeDetails": {
-        "secondsAfter": "Après {seconds}s",
+        "secondsAfter": "Après {{seconds}}s",
         "timeRange": "Plage horaire",
-        "exactTime": "Après {seconds} secondes",
-        "rangeTime": "Entre {min}s et {max}s"
+        "exactTime": "Après {{seconds}} secondes",
+        "rangeTime": "Entre {{min}}s et {{max}}s"
       },
       "touchDetails": {
         "tap": "Appui",
         "release": "Relâchement",
         "hold": "Maintien",
-        "holdDuration": "Durée: {duration}s",
-        "holdSecond": "Maintien pendant {duration}s",
+        "holdDuration": "Durée: {{duration}}s",
+        "holdSecond": "Maintien pendant {{duration}}s",
         "targetThis": "Cible: Cet objet",
         "targetStage": "Cible: Scène",
-        "target": "Cible: {target}",
+        "target": "Cible: {{target}}",
         "shapeRect": "Rectangle",
         "shapeCircle": "Cercle",
-        "range": "Portée: {shape} (Centre: {x}%, {y}%)",
-        "type": "Type: {type}"
+        "range": "Portée: {{shape}} (Centre: {{x}}%, {{y}}%)",
+        "type": "Type: {{type}}"
       },
       "collisionDetails": {
         "enter": "Au début de la collision",
@@ -640,36 +640,36 @@
         "detectionPixel": "Détection pixel",
         "targetBackground": "Cible: Arrière-plan",
         "targetStageRange": "Cible: Zone de scène",
-        "target": "Cible: {target}",
+        "target": "Cible: {{target}}",
         "shapeRect": "Rectangle",
         "shapeCircle": "Cercle",
-        "range": "Portée: {shape} (Centre: {x}%, {y}%)",
-        "type": "Type: {type}",
-        "detection": "Détection: {mode}",
-        "collisionWith": "{target} et {collisionType}"
+        "range": "Portée: {{shape}} (Centre: {{x}}%, {{y}}%)",
+        "type": "Type: {{type}}",
+        "detection": "Détection: {{mode}}",
+        "collisionWith": "{{target}} et {{collisionType}}"
       },
       "animationDetails": {
         "animationEnd": "À la fin de l'animation",
         "frameReached": "Atteint"
       },
       "flagDetails": {
-        "flag": "Drapeau: {name}",
+        "flag": "Drapeau: {{name}}",
         "notSelected": "Non sélectionné",
-        "condition": "Condition: {condition}",
-        "flagCondition": "{name} {condition}"
+        "condition": "Condition: {{condition}}",
+        "flagCondition": "{{name}} {{condition}}"
       },
       "gameStateDetails": {
         "playing": "En cours",
         "clear": "Victoire",
         "gameOver": "Game Over",
         "unknown": "Inconnu",
-        "state": "État: {state}"
+        "state": "État: {{state}}"
       },
       "soundDetails": {
-        "sound": "Son: {name}",
+        "sound": "Son: {{name}}",
         "notSelected": "Non sélectionné",
         "selectSound": "Sélectionner un son",
-        "volume": "Volume: {volume}%"
+        "volume": "Volume: {{volume}}%"
       },
       "resultDetails": {
         "gameClear": "Définir le jeu en état de victoire",
@@ -686,10 +686,10 @@
         "approach": "Approche",
         "orbit": "Orbite",
         "unknown": "Inconnu",
-        "type": "Type: {type}",
-        "speed": "Vitesse: {speed}px/s",
-        "duration": "Durée: {duration}s",
-        "moveType": "Mouvement {type}"
+        "type": "Type: {{type}}",
+        "speed": "Vitesse: {{speed}}px/s",
+        "duration": "Durée: {{duration}}s",
+        "moveType": "Mouvement {{type}}"
       },
       "effectDetails": {
         "blink": "Clignotement",
@@ -697,31 +697,31 @@
         "shake": "Secousse",
         "rotate": "Rotation",
         "unknown": "Inconnu",
-        "type": "Type: {type}",
-        "duration": "Durée: {duration}s",
-        "intensity": "Intensité: {intensity}%"
+        "type": "Type: {{type}}",
+        "duration": "Durée: {{duration}}s",
+        "intensity": "Intensité: {{intensity}}%"
       },
       "showHideDetails": {
         "show": "Afficher l'objet",
         "hide": "Masquer l'objet",
-        "fadeIn": "Apparition en fondu: {duration}s",
-        "fadeOut": "Disparition en fondu: {duration}s"
+        "fadeIn": "Apparition en fondu: {{duration}}s",
+        "fadeOut": "Disparition en fondu: {{duration}}s"
       },
       "flagActionDetails": {
-        "setFlag": "Drapeau: {name}",
-        "toggleFlag": "Drapeau: {name}",
+        "setFlag": "Drapeau: {{name}}",
+        "toggleFlag": "Drapeau: {{name}}",
         "toggleValue": "Valeur: Basculer",
-        "value": "Valeur: {value}",
-        "flagValue": "{name} {value}"
+        "value": "Valeur: {{value}}",
+        "flagValue": "{{name}} {{value}}"
       },
       "animationActionDetails": {
-        "switchTo": "Changer vers: {name}",
-        "animationNumber": "Animation {number}",
-        "switchToAnimation": "Changer vers Animation {number}"
+        "switchTo": "Changer vers: {{name}}",
+        "animationNumber": "Animation {{number}}",
+        "switchToAnimation": "Changer vers Animation {{number}}"
       },
       "multipleRules": {
-        "header": "📋 Cet objet a {count} règles configurées",
-        "ruleNumber": "Règle {number}",
+        "header": "📋 Cet objet a {{count}} règles configurées",
+        "ruleNumber": "Règle {{number}}",
         "enabled": "✅ Activée",
         "disabled": "⏸️ Désactivée"
       },
@@ -730,11 +730,11 @@
         "flowAny": "🔥 Quand n'importe quelle condition est remplie → ⚡ Exécuter les actions dans l'ordre",
         "flowSingle": "🔥 Quand la condition est remplie → ⚡ Exécuter les actions dans l'ordre",
         "conditionsTitle": "Conditions de déclenchement",
-        "conditionsCount": "Conditions de déclenchement ({count})",
+        "conditionsCount": "Conditions de déclenchement ({{count}})",
         "actionsTitle": "Actions",
-        "actionsCount": "Actions ({count})",
-        "conditionNumber": "Condition {number}: {label}",
-        "actionNumber": "Action {number}: {label}"
+        "actionsCount": "Actions ({{count}})",
+        "conditionNumber": "Condition {{number}}: {{label}}",
+        "actionNumber": "Action {{number}}: {{label}}"
       },
       "general": {
         "noCondition": "Aucune condition",
@@ -743,7 +743,7 @@
         "anyCondition": "N'importe laquelle",
         "noRules": "Définir des règles pour voir l'aperçu",
         "noRulesSet": "Aucune règle définie",
-        "frameNumber": "Image {number}",
+        "frameNumber": "Image {{number}}",
         "animationEnd": "Fin"
       }
     }
