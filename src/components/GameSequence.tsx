@@ -18,6 +18,7 @@ import { DESIGN_TOKENS } from '../constants/DesignSystem';
  * - 残り時間バー表示（ゲーム中+ブリッジ中）
  * - 1080x1920画面サイズ
  * - 非ログイン対応
+ * - ホームボタン → /about ページへ遷移
  */
 
 type GameState = 'loading' | 'playing' | 'bridge';
@@ -710,17 +711,15 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             )}
           </button>
 
-          {/* ゲームをプレイ（ホーム） */}
+          {/* About Us (ホームボタン → /about へ遷移) */}
           <button
             onClick={() => {
-              if (onExit) {
-                onExit();
-              }
+              navigate('/about');
             }}
             style={styles.topBarButton('rgba(16, 185, 129, 0.9)', false)}
-            title="ホーム"
+            title="About Us"
           >
-            🎮
+            ℹ️
           </button>
 
           {/* フィード */}
