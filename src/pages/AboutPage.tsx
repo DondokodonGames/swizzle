@@ -68,13 +68,6 @@ export const AboutPage: React.FC = () => {
             </h2>
             <div style={{ marginBottom: '24px' }}>
               <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
-                🎨 Create Games in 3 Taps
-              </h3>
-              <p style={{ marginBottom: '16px' }}>
-                Our intuitive editor lets you create games faster than ever. Choose a template, customize the assets, and publish—all in under a minute. No complex menus, no overwhelming options, just pure creative flow.
-              </p>
-
-              <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#111827', marginBottom: '12px' }}>
                 🎮 Play Endless Games
               </h3>
               <p style={{ marginBottom: '16px' }}>
@@ -143,57 +136,6 @@ export const AboutPage: React.FC = () => {
             <p style={{ marginBottom: '24px' }}>
               We envision a future where game creation is as ubiquitous as photo sharing. Where anyone with an idea can transform it into an interactive experience in seconds. Where the next generation of game creators emerges not from traditional studios, but from a global community of creative minds on platforms like Swizzle. We're building the tools that will empower millions to express themselves through interactive media.
             </p>
-
-            {/* Statistics */}
-            <h2 style={{ fontSize: '1.75rem', fontWeight: '600', color: '#111827', marginTop: '32px', marginBottom: '16px' }}>
-              By The Numbers
-            </h2>
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '16px',
-              marginBottom: '24px'
-            }}>
-              <div style={{ 
-                padding: '20px',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#a855f7', marginBottom: '8px' }}>
-                  250+
-                </div>
-                <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                  Games Available
-                </div>
-              </div>
-              <div style={{ 
-                padding: '20px',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#ec4899', marginBottom: '8px' }}>
-                  3 Taps
-                </div>
-                <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                  To Create a Game
-                </div>
-              </div>
-              <div style={{ 
-                padding: '20px',
-                backgroundColor: '#f3f4f6',
-                borderRadius: '12px',
-                textAlign: 'center'
-              }}>
-                <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#3b82f6', marginBottom: '8px' }}>
-                  22+
-                </div>
-                <div style={{ fontSize: '14px', color: '#6b7280' }}>
-                  Game Templates
-                </div>
-              </div>
-            </div>
 
             {/* Contact Section */}
             <h2 style={{ fontSize: '1.75rem', fontWeight: '600', color: '#111827', marginTop: '40px', marginBottom: '16px' }}>
