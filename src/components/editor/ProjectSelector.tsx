@@ -1,5 +1,6 @@
 // src/components/editor/ProjectSelector.tsx
-// 修正版: フォントファミリー型修正 + インポート機能修正 + audio プロパティ安全アクセス対応 + Paywall統合
+// 修正版: 無限ループ修正 - useEffect依存配列からlistProjects削除
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../types/editor/GameProject';
@@ -42,7 +43,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   // インポート機能用のref
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ✨ useGameProject統合（修正版 - importProject追加）
+  // ✅ 修正: useGameProject統合
   const {
     loading,
     error,
@@ -51,7 +52,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     duplicateProject,
     exportProject,
     listProjects,
-    importProject  // ← 追加
+    importProject
   } = useGameProject();
 
   // 🔧 追加: Paywall機能統合
@@ -63,11 +64,16 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     setTimeout(() => setNotification(null), 5000);
   }, []);
 
-  // プロジェクト一覧の読み込み
+  // 🔧 修正: プロジェクト一覧の読み込み（無限ループ修正）
   useEffect(() => {
+    let isMounted = true;
+
     const loadProjects = async () => {
       try {
         const loadedProjects = await listProjects();
+        
+        if (!isMounted) return;
+
         // 重複IDを除去（最新の方を残す）
         const uniqueProjects = loadedProjects.reduce((acc, project) => {
           const existing = acc.find(p => p.id === project.id);
@@ -80,15 +86,47 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           }
           return acc;
         }, [] as GameProject[]);
+        
         setProjects(uniqueProjects);
       } catch (error) {
+        if (!isMounted) return;
         console.error('プロジェクト一覧の読み込みに失敗:', error);
         showNotification('error', t('errors.projectLoadFailed'));
       }
     };
 
     loadProjects();
-  }, [listProjects]);
+
+    return () => {
+      isMounted = false;
+    };
+    // ✅ 修正: 依存配列を空にして初回マウント時のみ実行
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // listProjects を依存配列から削除 - 無限ループ防止
+
+  // 🔧 修正: プロジェクトリロード用の関数（明示的な再読み込み）
+  const reloadProjects = useCallback(async () => {
+    try {
+      const loadedProjects = await listProjects();
+      
+      // 重複IDを除去
+      const uniqueProjects = loadedProjects.reduce((acc, project) => {
+        const existing = acc.find(p => p.id === project.id);
+        if (!existing) {
+          acc.push(project);
+        } else if (new Date(project.lastModified) > new Date(existing.lastModified)) {
+          const index = acc.indexOf(existing);
+          acc[index] = project;
+        }
+        return acc;
+      }, [] as GameProject[]);
+      
+      setProjects(uniqueProjects);
+    } catch (error) {
+      console.error('プロジェクト一覧の再読み込みに失敗:', error);
+      showNotification('error', t('errors.projectLoadFailed'));
+    }
+  }, [listProjects, showNotification, t]);
 
   // 検索・ソート・フィルター
   const filteredAndSortedProjects = React.useMemo(() => {
@@ -114,11 +152,10 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     return filtered;
   }, [projects, searchQuery, sortBy]);
 
-  // 🔧 修正: 新規プロジェクト作成（Paywallチェック追加）
+  // 🔧 修正: 新規プロジェクト作成（Paywallチェック追加 + 再読み込み）
   const handleCreateNew = useCallback(async () => {
     if (!newProjectName.trim()) return;
 
-    // 🔧 追加: ゲーム作成可能かチェック
     if (!canCreate) {
       setShowNewProjectModal(false);
       setShowPaywall(true);
@@ -127,7 +164,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
     try {
       const newProject = await createProject(newProjectName.trim());
-      setProjects(prev => [newProject, ...prev]);
+      await reloadProjects(); // ✅ 明示的に再読み込み
       onCreateNew(newProjectName.trim());
       setShowNewProjectModal(false);
       setNewProjectName('');
@@ -138,21 +175,21 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     } catch (error: any) {
       showNotification('error', `${t('errors.projectSaveFailed')}: ${error.message}`);
     }
-  }, [createProject, newProjectName, onCreateNew, showNotification, canCreate, refetchCredits, t]);
+  }, [createProject, newProjectName, onCreateNew, showNotification, canCreate, refetchCredits, t, reloadProjects]);
 
-  // プロジェクト削除
+  // 🔧 修正: プロジェクト削除（再読み込み追加）
   const handleDeleteProject = useCallback(async (projectId: string) => {
     try {
       await deleteProject(projectId);
-      setProjects(prev => prev.filter(p => p.id !== projectId));
+      await reloadProjects(); // ✅ 明示的に再読み込み
       if (onDelete) onDelete(projectId);
       showNotification('success', t('editor.app.projectDeleted'));
     } catch (error: any) {
       showNotification('error', `${t('common.delete')}: ${error.message}`);
     }
-  }, [deleteProject, onDelete, showNotification, t]);
+  }, [deleteProject, onDelete, showNotification, t, reloadProjects]);
 
-  // プロジェクト複製
+  // 🔧 修正: プロジェクト複製（再読み込み追加）
   const handleDuplicateProject = useCallback(async (projectId: string) => {
     try {
       const originalProject = projects.find(p => p.id === projectId);
@@ -160,13 +197,13 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
       const newName = `${originalProject.name} (Copy)`;
       const duplicated = await duplicateProject(projectId, newName);
-      setProjects(prev => [duplicated, ...prev]);
+      await reloadProjects(); // ✅ 明示的に再読み込み
       if (onDuplicate) onDuplicate(projectId);
       showNotification('success', t('editor.app.projectDuplicated', { name: duplicated.name }));
     } catch (error: any) {
       showNotification('error', `${t('common.create')}: ${error.message}`);
     }
-  }, [projects, duplicateProject, onDuplicate, showNotification, t]);
+  }, [projects, duplicateProject, onDuplicate, showNotification, t, reloadProjects]);
 
   // プロジェクトエクスポート
   const handleExportProject = useCallback(async (projectId: string) => {
@@ -193,28 +230,23 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     }
   }, [projects, exportProject, onExport, showNotification, t]);
 
-  // ファイルインポート処理（修正版）
+  // 🔧 修正: ファイルインポート処理（再読み込み追加）
   const handleFileImport = useCallback(async (file: File) => {
     try {
-      // ✅ useGameProjectのimportProjectメソッドを使用
       const importedProject = await importProject(file);
-
-      // ✅ プロジェクト一覧を再取得（永続化されているため）
-      const updatedProjects = await listProjects();
-      setProjects(updatedProjects);
-
+      await reloadProjects(); // ✅ 明示的に再読み込み
       showNotification('success', t('editor.app.projectCreated', { name: importedProject.name }));
     } catch (error: any) {
       showNotification('error', `${t('errors.fileUploadFailed')}: ${error.message}`);
     }
-  }, [importProject, listProjects, showNotification, t]);
+  }, [importProject, showNotification, t, reloadProjects]);
 
   return (
     <div 
       style={{ 
         minHeight: '100vh',
         backgroundColor: DESIGN_TOKENS.colors.neutral[50],
-        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')  // 🔧 フォント修正
+        fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')
       }}
     >
       {/* エラー・通知表示 */}
@@ -559,7 +591,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
             {/* アクションボタン */}
             <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[3] }}>
-              {/* インポートボタン - 修正版 */}
+              {/* インポートボタン */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -921,7 +953,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
         <div>💡 {t('editor.selector.shortcuts')}</div>
       </div>
 
-      {/* 🔧 追加: Paywallモーダル */}
+      {/* Paywallモーダル */}
       <PaywallModal
         isOpen={showPaywall}
         onClose={() => setShowPaywall(false)}
