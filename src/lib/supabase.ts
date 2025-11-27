@@ -141,40 +141,109 @@ export const database = {
 
   userGames: {
     getPublished: async (options: any = {}) => {
-      let query = supabase
-        .from('user_games')
-        .select(`
-          *,
-          profiles:creator_id (
-            username,
-            display_name,
-            avatar_url
-          )
-        `)
-        .eq('is_published', true)
-        .order('created_at', { ascending: false })
+  console.log('🔍 [database.userGames.getPublished] 開始:', options);
+  
+  try {
+    // Step 1: 基本クエリ（JOINなし）でまずテストする
+    let query = supabase
+      .from('user_games')
+      .select('*')
+      .eq('is_published', true)
+      .order('created_at', { ascending: false });
 
-      if (options.templateType) {
-        query = query.eq('template_id', options.templateType)
-      }
+    console.log('🔍 [database.userGames.getPublished] 基本クエリ構築完了');
 
-      if (options.searchQuery) {
-        query = query.ilike('title', `%${options.searchQuery}%`)
-      }
+    // フィルター適用
+    if (options.templateType) {
+      query = query.eq('template_id', options.templateType);
+      console.log('🔍 [database.userGames.getPublished] templateType フィルター:', options.templateType);
+    }
 
-      if (options.limit) {
-        query = query.limit(options.limit)
-      }
+    if (options.searchQuery) {
+      query = query.ilike('title', `%${options.searchQuery}%`);
+      console.log('🔍 [database.userGames.getPublished] searchQuery フィルター:', options.searchQuery);
+    }
 
-      if (options.offset) {
-        query = query.range(options.offset, options.offset + (options.limit || 20) - 1)
-      }
+    if (options.limit) {
+      query = query.limit(options.limit);
+      console.log('🔍 [database.userGames.getPublished] limit:', options.limit);
+    }
 
-      const { data, error } = await query
+    if (options.offset) {
+      query = query.range(options.offset, options.offset + (options.limit || 20) - 1);
+      console.log('🔍 [database.userGames.getPublished] offset:', options.offset);
+    }
 
-      if (error) throw new SupabaseError(error.message)
-      return data || []
-    },
+    console.log('🔍 [database.userGames.getPublished] クエリ実行中...');
+
+    // タイムアウト処理付きでクエリ実行
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('データベースクエリがタイムアウトしました（10秒）')), 10000)
+    );
+
+    const queryPromise = query;
+
+    const { data, error } = await Promise.race([
+      queryPromise,
+      timeoutPromise
+    ]) as any;
+
+    if (error) {
+      console.error('❌ [database.userGames.getPublished] クエリエラー:', error);
+      throw new SupabaseError(error.message);
+    }
+
+    console.log('✅ [database.userGames.getPublished] クエリ成功:', data?.length || 0, '件');
+
+    // Step 2: プロフィール情報を別途取得（JOINエラー回避）
+    if (data && data.length > 0) {
+      console.log('🔍 [database.userGames.getPublished] プロフィール情報取得中...');
+      
+      const gamesWithProfiles = await Promise.all(
+        data.map(async (game: any) => {
+          try {
+            // プロフィール情報を個別に取得
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('username, display_name, avatar_url')
+              .eq('id', game.creator_id)
+              .single();
+
+            return {
+              ...game,
+              profiles: profile || null
+            };
+          } catch (err) {
+            console.warn(`⚠️ プロフィール取得失敗 (creator_id: ${game.creator_id}):`, err);
+            // プロフィールがない場合はnull
+            return {
+              ...game,
+              profiles: null
+            };
+          }
+        })
+      );
+
+      console.log('✅ [database.userGames.getPublished] プロフィール取得完了');
+      return gamesWithProfiles;
+    }
+
+    console.log('✅ [database.userGames.getPublished] 完了（データなし）');
+    return data || [];
+
+  } catch (error) {
+    console.error('❌ [database.userGames.getPublished] エラー:', error);
+    
+    if (error instanceof Error) {
+      console.error('❌ エラーメッセージ:', error.message);
+      console.error('❌ エラースタック:', error.stack);
+    }
+    
+    // エラーを再スローせず、空配列を返す（サイトが表示されるようにする）
+    console.warn('⚠️ エラーが発生しましたが、空配列を返して続行します');
+    return [];
+  }
+}
 
     getUserGames: async (userId: string) => {
       const { data, error } = await supabase
