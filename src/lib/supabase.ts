@@ -145,6 +145,8 @@ export const database = {
       
       try {
         // Step 1: 基本クエリでゲーム取得
+        const queryStartTime = Date.now();
+        
         let query = supabase
           .from('user_games')
           .select('*')
@@ -174,17 +176,20 @@ export const database = {
           console.log('🔍 [Step 1] offset:', options.offset);
         }
 
-        console.log('🔍 [Step 1] クエリ実行中...');
+        console.log('🔍 [Step 1] クエリ実行中... (タイムアウト: 30秒)');
 
-        // タイムアウト処理付きでクエリ実行
+        // タイムアウト処理付きでクエリ実行（30秒に延長）
         const timeoutPromise1 = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('ゲーム取得がタイムアウトしました（10秒）')), 10000)
+          setTimeout(() => reject(new Error('ゲーム取得がタイムアウトしました（30秒）')), 30000)
         );
 
         const { data, error } = await Promise.race([
           query,
           timeoutPromise1
         ]) as any;
+
+        const queryElapsed = Date.now() - queryStartTime;
+        console.log(`⏱️ [Step 1] クエリ実行時間: ${queryElapsed}ms`);
 
         if (error) {
           console.error('❌ [Step 1] クエリエラー:', error);
@@ -201,14 +206,15 @@ export const database = {
 
         // Step 2: プロフィール情報を一括取得
         console.log('🔍 [Step 2] プロフィール情報を一括取得中...');
+        const profileStartTime = Date.now();
 
         // creator_idのリストを抽出（重複排除）
         const creatorIds = [...new Set(data.map((game: any) => game.creator_id))];
         console.log('🔍 [Step 2] 取得するプロフィール数:', creatorIds.length);
 
-        // タイムアウト処理付きでプロフィール一括取得
+        // タイムアウト処理付きでプロフィール一括取得（15秒に延長）
         const timeoutPromise2 = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('プロフィール取得がタイムアウトしました（5秒）')), 5000)
+          setTimeout(() => reject(new Error('プロフィール取得がタイムアウトしました（15秒）')), 15000)
         );
 
         const profileQuery = supabase
@@ -220,6 +226,9 @@ export const database = {
           profileQuery,
           timeoutPromise2
         ]) as any;
+
+        const profileElapsed = Date.now() - profileStartTime;
+        console.log(`⏱️ [Step 2] プロフィール取得時間: ${profileElapsed}ms`);
 
         let profilesMap: Record<string, any> = {};
 
@@ -243,7 +252,9 @@ export const database = {
           profiles: profilesMap[game.creator_id] || null
         }));
 
-        console.log('✅ [完了] 全処理完了:', gamesWithProfiles.length, '件');
+        const totalElapsed = Date.now() - queryStartTime;
+        console.log(`✅ [完了] 全処理完了: ${gamesWithProfiles.length}件 (合計時間: ${totalElapsed}ms)`);
+        
         return gamesWithProfiles;
 
       } catch (error) {
