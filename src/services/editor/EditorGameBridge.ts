@@ -2,6 +2,7 @@
 // Phase 1+2 完全統合版 - RuleEngine.ts 統合対応
 // 🔧 修正: 描画を中心基準に変更（左に動く問題を解決）
 // 🔧 修正: 画面外チェック削除（オブジェクトが画面外に出られるように）
+// 🔧 修正: layoutObj の全プロパティを反映（position, scale, rotation, zIndex, animation）
 // 🔍 デバッグ: タッチイベント詳細ログ追加
 
 import { GameProject } from '../../types/editor/GameProject';
@@ -33,7 +34,7 @@ export interface GameExecutionResult {
 }
 
 /**
- * EditorGameBridge - Phase 1+2 完全統合版 + タッチデバッグ版
+ * EditorGameBridge - Phase 1+2 完全統合版 + 全プロパティ反映版
  * RuleEngine.ts を使用してエディターで作成したゲームを実行
  */
 export class EditorGameBridge {
@@ -202,13 +203,69 @@ export class EditorGameBridge {
       if (project.assets?.objects) {
         project.assets.objects.forEach((asset, index) => {
           const frame = asset.frames?.[0];
+          
+          // 🔧 修正: layoutから全プロパティを取得（エディターで設定した値を使用）
+          const layoutObj = project.script?.layout?.objects?.find(obj => obj.objectId === asset.id);
+          
+          // フォールバック用にinitialStateも取得
           const initialObj = initialState!.layout?.objects?.find(obj => obj.id === asset.id);
           
-          // 🔧 修正: 初期位置（中心座標）を左上座標に変換
-          const centerX = (initialObj?.position?.x ?? (0.2 + (index * 0.15) % 0.6)) * canvasElement.width;
-          const centerY = (initialObj?.position?.y ?? (0.3 + (index * 0.1) % 0.4)) * canvasElement.height;
+          // ✅ 位置優先順位: layoutObj.position > initialObj.position > デフォルト
+          const posX = layoutObj?.position?.x ?? initialObj?.position?.x ?? (0.2 + (index * 0.15) % 0.6);
+          const posY = layoutObj?.position?.y ?? initialObj?.position?.y ?? (0.3 + (index * 0.1) % 0.4);
           
-          const scale = asset.defaultScale || 1.0;
+          console.log(`📍 オブジェクト "${asset.name}" 位置:`, {
+            layoutPosition: layoutObj?.position,
+            initialPosition: initialObj?.position,
+            finalPosition: { x: posX, y: posY }
+          });
+          
+          // 🔧 修正: 初期位置（中心座標）を左上座標に変換
+          const centerX = posX * canvasElement.width;
+          const centerY = posY * canvasElement.height;
+          
+          // ✅ スケール優先順位: layoutObj.scale > asset.defaultScale > 1.0
+          const layoutScaleX = layoutObj?.scale?.x;
+          const layoutScaleY = layoutObj?.scale?.y;
+          const defaultScale = asset.defaultScale || 1.0;
+          
+          // X/Yスケールが別々に設定されている場合も対応
+          const scaleX = layoutScaleX ?? defaultScale;
+          const scaleY = layoutScaleY ?? defaultScale;
+          // 内部処理用に平均値を使用（後方互換性のため）
+          const scale = (scaleX + scaleY) / 2;
+          
+          console.log(`📐 オブジェクト "${asset.name}" スケール:`, {
+            layoutScale: layoutObj?.scale,
+            defaultScale,
+            finalScale: scale
+          });
+          
+          // ✅ 回転: layoutObj.rotation を使用
+          const rotation = layoutObj?.rotation ?? 0;
+          
+          // ✅ zIndex: layoutObj.zIndex を使用（描画順序に影響）
+          const zIndex = layoutObj?.zIndex ?? index + 1;
+          
+          // ✅ 初期アニメーションフレーム: layoutObj.initialState.animation を使用
+          const initialFrame = layoutObj?.initialState?.animation ?? 0;
+          
+          // ✅ 表示状態の取得
+          const visible = layoutObj?.initialState?.visible ?? initialObj?.visible ?? true;
+          
+          // ✅ アニメーション設定
+          const animationPlaying = layoutObj?.initialState?.autoStart ?? initialObj?.autoStart ?? false;
+          const animationSpeed = layoutObj?.initialState?.animationSpeed ?? initialObj?.animationSpeed ?? 12;
+          
+          console.log(`🎬 オブジェクト "${asset.name}" その他:`, {
+            rotation,
+            zIndex,
+            initialFrame,
+            visible,
+            animationPlaying,
+            animationSpeed
+          });
+          
           const width = frame?.width || 50;
           const height = frame?.height || 50;
           
@@ -222,16 +279,19 @@ export class EditorGameBridge {
             y,  // ✅ 左上Y（RuleEngine互換）
             width,
             height,
-            visible: initialObj?.visible !== false,
+            visible,
             animationIndex: 0,
-            animationPlaying: initialObj?.autoStart || false,
-            animationSpeed: initialObj?.animationSpeed || 12,
-            scale,
-            rotation: 0,
+            animationPlaying,
+            animationSpeed,
+            scale,  // ✅ layoutObj.scaleを反映
+            scaleX, // ✅ X方向スケール保存
+            scaleY, // ✅ Y方向スケール保存
+            rotation, // ✅ layoutObj.rotationを反映
+            zIndex,   // ✅ layoutObj.zIndexを反映
             vx: 0,
             vy: 0,
             frameCount: asset.frames?.length || 1,
-            currentFrame: 0,
+            currentFrame: initialFrame, // ✅ 初期アニメーションフレームを反映
             lastFrameUpdate: performance.now()
           });
         });
@@ -364,8 +424,12 @@ export class EditorGameBridge {
             ctx.fillRect(0, 0, canvasElement.width, canvasElement.height);
           }
 
-          // オブジェクト更新・描画
-          objectsMap.forEach((obj, id) => {
+          // ✅ zIndex順にソートしてから描画
+          const sortedObjects = Array.from(objectsMap.entries())
+            .sort((a, b) => (a[1].zIndex || 0) - (b[1].zIndex || 0));
+
+          // オブジェクト更新・描画（zIndex順）
+          sortedObjects.forEach(([id, obj]) => {
             if (!obj.visible) return;
 
             // ✅ アニメーションフレーム更新
@@ -427,27 +491,38 @@ export class EditorGameBridge {
             const objHeight = obj.height * obj.scale;
             const drawCenterX = obj.x + objWidth / 2;
             const drawCenterY = obj.y + objHeight / 2;
-            const drawX = drawCenterX - objWidth / 2;
-            const drawY = drawCenterY - objHeight / 2;
 
             // 描画（現在のフレームを使用）
             const frameKey = `${id}_frame${obj.currentFrame || 0}`;
             const img = imageCache.get(frameKey);
+            
+            ctx.save();
+            
+            // ✅ 回転を適用（中心を基準に回転）
+            if (obj.rotation && obj.rotation !== 0) {
+              ctx.translate(drawCenterX, drawCenterY);
+              ctx.rotate((obj.rotation * Math.PI) / 180); // 度をラジアンに変換
+              ctx.translate(-drawCenterX, -drawCenterY);
+            }
+            
             if (img && img.complete) {
-              ctx.save();
               ctx.globalAlpha = 1.0;
               ctx.drawImage(
                 img,
-                drawX,  // ✅ 中心基準で計算した左上X
-                drawY,  // ✅ 中心基準で計算した左上Y
+                drawCenterX - objWidth / 2,  // ✅ 中心基準で計算した左上X
+                drawCenterY - objHeight / 2,  // ✅ 中心基準で計算した左上Y
                 objWidth,
                 objHeight
               );
-              ctx.restore();
             } else {
               // フォールバック描画（画像未ロードの場合）
               ctx.fillStyle = '#FF6B9D';
-              ctx.fillRect(drawX, drawY, objWidth, objHeight);
+              ctx.fillRect(
+                drawCenterX - objWidth / 2,
+                drawCenterY - objHeight / 2,
+                objWidth,
+                objHeight
+              );
               
               // オブジェクト名表示
               ctx.fillStyle = 'white';
@@ -460,6 +535,8 @@ export class EditorGameBridge {
                 drawCenterY   // ✅ 中心Y
               );
             }
+            
+            ctx.restore();
           });
 
           // ゲーム終了判定（制限時間）
@@ -496,11 +573,14 @@ export class EditorGameBridge {
           const x = (clientX - rect.left) * scaleX;
           const y = (clientY - rect.top) * scaleY;
 
-          // オブジェクトクリック判定（左上座標ベース）
+          // ✅ zIndex順（逆順＝上から）でヒット判定
+          const sortedForHitTest = Array.from(objectsMap.entries())
+            .sort((a, b) => (b[1].zIndex || 0) - (a[1].zIndex || 0)); // 上のオブジェクトから判定
+
           let hitObject: string | null = null;
           
-          objectsMap.forEach((obj, id) => {
-            if (!obj.visible) return;
+          for (const [id, obj] of sortedForHitTest) {
+            if (!obj.visible) continue;
             
             const objWidth = obj.width * obj.scale;
             const objHeight = obj.height * obj.scale;
@@ -525,8 +605,10 @@ export class EditorGameBridge {
               
               console.log(`👆 オブジェクトタッチ: ${id} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
               console.log('🔍 [HandleInteraction] イベント追加後 - context.events:', this.currentContext!.events);
+              
+              break; // 最前面のオブジェクトのみヒット
             }
-          });
+          }
           
           // ステージタッチの場合
           if (!hitObject) {

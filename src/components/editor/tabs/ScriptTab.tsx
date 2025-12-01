@@ -1,5 +1,5 @@
 // src/components/editor/tabs/ScriptTab.tsx
-// 重複削除・情報整理版 - 配置済みオブジェクトをゲーム時間設定下に移動
+// 配置ツール改善版 - スケール更新機能追加
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -115,7 +115,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
       updatedScript.layout.objects.push({
         objectId: objectId,
         position: { x: baseX, y: baseY },
-        scale: { x: 1.0, y: 1.0 },
+        scale: { x: 1.5, y: 1.5 }, // 🔧 デフォルトスケールを1.5に
         rotation: 0,
         zIndex: existingCount + 10,
         initialState: {
@@ -167,7 +167,7 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
         updatedScript.layout.objects.push({
           objectId: objectId,
           position: position,
-          scale: { x: 1.0, y: 1.0 },
+          scale: { x: 1.5, y: 1.5 }, // 🔧 デフォルトスケールを1.5に
           rotation: 0,
           zIndex: updatedScript.layout.objects.length + 10,
           initialState: {
@@ -182,6 +182,27 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     }
     
     updateProject({ script: updatedScript });
+  };
+
+  // 🔧 新規追加: スケール更新ハンドラ
+  const handleObjectScaleUpdate = (objectId: string, scale: { x: number; y: number }) => {
+    console.log(`[ScriptTab] スケール更新: ${objectId} → (${scale.x.toFixed(2)}, ${scale.y.toFixed(2)})`);
+    
+    const updatedScript = JSON.parse(JSON.stringify(project.script));
+    const existingIndex = updatedScript.layout.objects.findIndex((obj: any) => obj.objectId === objectId);
+    
+    if (existingIndex >= 0) {
+      updatedScript.layout.objects[existingIndex].scale = scale;
+      
+      // 🔧 通知なしで更新（リサイズ中は頻繁に呼ばれるため）
+      const updatedProject = {
+        ...project,
+        script: updatedScript,
+        lastModified: new Date().toISOString()
+      };
+      onProjectUpdate(updatedProject);
+      setForceRender(prev => prev + 1);
+    }
   };
 
   // 🔧 拡張: オブジェクトの全ルール取得
@@ -308,23 +329,29 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
   };
 
   // 🔧 新規: オブジェクト名取得ヘルパー
-const getObjectName = (objectId: string) => {
-  if (objectId === 'stage') return `🌟 ${t('editor.script.ruleList.gameOverall')}`;
+  const getObjectName = (objectId: string) => {
+    if (objectId === 'stage') return `🌟 ${t('editor.script.ruleList.gameOverall')}`;
 
-  const obj = project.assets.objects.find(obj => obj.id === objectId);
+    const obj = project.assets.objects.find(obj => obj.id === objectId);
 
-  if (!obj) {
-    console.warn(`[ScriptTab] オブジェクトが見つかりません: ${objectId}`);
-    return objectId;
-  }
+    if (!obj) {
+      console.warn(`[ScriptTab] オブジェクトが見つかりません: ${objectId}`);
+      return objectId;
+    }
 
-  // @ts-ignore - nameプロパティの型定義が不完全な場合のため
-  return obj.name || obj.id;
-};
+    // @ts-ignore - nameプロパティの型定義が不完全な場合のため
+    return obj.name || obj.id;
+  };
 
   // 🔧 新規: レイアウト配置済みオブジェクト判定
   const isObjectInLayout = (objectId: string): boolean => {
     return project.script?.layout?.objects?.some(obj => obj.objectId === objectId) || false;
+  };
+
+  // 🔧 新規: スケール取得ヘルパー
+  const getObjectScale = (objectId: string): { x: number; y: number } => {
+    const layoutObj = project.script?.layout?.objects?.find(obj => obj.objectId === objectId);
+    return layoutObj?.scale || { x: 1.0, y: 1.0 };
   };
 
   return (
@@ -497,16 +524,16 @@ const getObjectName = (objectId: string) => {
       <div style={{ flex: 1, overflow: 'hidden', color: DESIGN_TOKENS.colors.neutral[800] }}>
         {mode === 'layout' ? (
           <div style={{ height: '100%', display: 'flex' }}>
-            {/* ゲームプレビュー - 中央配置 */}
+            {/* ゲームプレビュー - 左上配置 */}
             <div 
               style={{ 
                 flex: 1, 
                 display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center',
-                backgroundColor: DESIGN_TOKENS.colors.neutral[50],
-                padding: DESIGN_TOKENS.spacing[6],
-                color: DESIGN_TOKENS.colors.neutral[800] // 濃いテキスト色を明示的に指定
+                justifyContent: 'flex-start', 
+                alignItems: 'flex-start',
+                backgroundColor: DESIGN_TOKENS.colors.neutral[100],
+                padding: DESIGN_TOKENS.spacing[4],
+                overflowY: 'auto'
               }}
             >
               <GamePreview
@@ -518,13 +545,14 @@ const getObjectName = (objectId: string) => {
                 onObjectRuleEdit={handleObjectRuleEdit}
                 onSetDraggedItem={setDraggedItem}
                 hasRuleForObject={hasRuleForObject}
+                onObjectScaleUpdate={handleObjectScaleUpdate}
               />
             </div>
             
             {/* 右サイドパネル - ModernCard統一 + オブジェクト選択UI復旧 */}
             <div 
               style={{
-                width: '360px',
+                width: '380px',
                 backgroundColor: DESIGN_TOKENS.colors.neutral[0],
                 borderLeft: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
                 overflowY: 'auto',
@@ -590,6 +618,7 @@ const getObjectName = (objectId: string) => {
                         const isInLayout = isObjectInLayout(asset.id);
                         const ruleCount = getRuleCountForObject(asset.id);
                         const isSelected = selectedObjectId === asset.id;
+                        const scale = getObjectScale(asset.id);
                         
                         return (
                           <div 
@@ -616,11 +645,12 @@ const getObjectName = (objectId: string) => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3] }}>
                               {/* サムネイル */}
                               <div style={{
-                                width: '32px',
-                                height: '32px',
+                                width: '40px',
+                                height: '40px',
                                 borderRadius: DESIGN_TOKENS.borderRadius.md,
                                 overflow: 'hidden',
-                                backgroundColor: DESIGN_TOKENS.colors.neutral[100]
+                                backgroundColor: DESIGN_TOKENS.colors.neutral[100],
+                                border: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`
                               }}>
                                 {asset.frames[0]?.dataUrl ? (
                                   <img 
@@ -657,11 +687,27 @@ const getObjectName = (objectId: string) => {
                                     fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                                     color: isInLayout
                                       ? DESIGN_TOKENS.colors.success[600]
-                                      : DESIGN_TOKENS.colors.neutral[500]
+                                      : DESIGN_TOKENS.colors.neutral[500],
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
                                   }}
                                 >
-                                  {isInLayout ? `✅ ${t('editor.script.objectPlacement.alreadyPlaced')}` : `⚪ ${t('editor.script.objectPlacement.notPlaced')}`}
-                                  {ruleCount > 0 && ` • ${t('editor.script.objectPlacement.ruleCount', { count: ruleCount })}`}
+                                  {isInLayout ? (
+                                    <>
+                                      ✅ {t('editor.script.objectPlacement.alreadyPlaced')}
+                                      <span style={{ color: DESIGN_TOKENS.colors.neutral[500] }}>
+                                        ({scale.x.toFixed(1)}x)
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>⚪ {t('editor.script.objectPlacement.notPlaced')}</>
+                                  )}
+                                  {ruleCount > 0 && (
+                                    <span style={{ marginLeft: '4px' }}>
+                                      • {t('editor.script.objectPlacement.ruleCount', { count: ruleCount })}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -734,7 +780,7 @@ const getObjectName = (objectId: string) => {
                       💡 {t('editor.script.objectPlacement.hints.title')}
                       <br />• {t('editor.script.objectPlacement.hints.place')}
                       <br />• {t('editor.script.objectPlacement.hints.rules')}
-                      <br />• {t('editor.script.objectPlacement.hints.remove')}
+                      <br />• {t('editor.script.objectPlacement.hints.resize')}
                       <br />• {t('editor.script.objectPlacement.hints.dragAndDrop')}
                     </div>
                   </ModernCard>
