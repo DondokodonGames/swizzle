@@ -1,5 +1,5 @@
 // src/components/editor/script/RuleList.tsx
-// IF-THEN設定詳細表示対応版
+// IF-THEN設定詳細表示対応版 - TypeScriptエラー修正
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -129,11 +129,13 @@ export const RuleList: React.FC<RuleListProps> = ({
 
       case 'counter':
         const counterCond = condition as Extract<TriggerCondition, { type: 'counter' }>;
+        // 🔧 修正: 正しい比較演算子名を使用
         const compOp = counterCond.comparison === 'equals' ? '=' :
-                      counterCond.comparison === 'greaterThan' ? '>' :
-                      counterCond.comparison === 'lessThan' ? '<' :
+                      counterCond.comparison === 'greater' ? '>' :
+                      counterCond.comparison === 'less' ? '<' :
                       counterCond.comparison === 'greaterOrEqual' ? '>=' :
-                      counterCond.comparison === 'lessOrEqual' ? '<=' : counterCond.comparison;
+                      counterCond.comparison === 'lessOrEqual' ? '<=' :
+                      counterCond.comparison === 'notEquals' ? '!=' : counterCond.comparison;
         return <span><strong>🔢 カウンター</strong>: {counterCond.counterName} {compOp} {counterCond.value}</span>;
 
       case 'flag':
@@ -145,12 +147,21 @@ export const RuleList: React.FC<RuleListProps> = ({
         return <span><strong>🎲 ランダム</strong>: {Math.round((randCond.probability || 0) * 100)}%（{randCond.interval}ms間隔）</span>;
 
       case 'position':
+        // 🔧 修正: 正しい型定義に合わせる
         const posCond = condition as Extract<TriggerCondition, { type: 'position' }>;
-        return <span><strong>📍 位置</strong>: {posCond.axis} {posCond.comparison} {posCond.value}</span>;
+        const areaText = posCond.area === 'inside' ? '内部' : 
+                        posCond.area === 'outside' ? '外部' : '交差';
+        const shapeText = posCond.region?.shape === 'circle' ? '円形' : '矩形';
+        return <span><strong>📍 位置</strong>: {getObjectName(posCond.target)} が {shapeText}領域の{areaText}</span>;
 
       case 'animation':
+        // 🔧 修正: 正しい型定義に合わせる
         const animCond = condition as Extract<TriggerCondition, { type: 'animation' }>;
-        return <span><strong>🎬 アニメ</strong>: {animCond.animationState}</span>;
+        const condText = animCond.condition === 'end' ? '終了' :
+                        animCond.condition === 'start' ? '開始' :
+                        animCond.condition === 'frame' ? `フレーム${animCond.frameNumber}` :
+                        animCond.condition === 'loop' ? 'ループ' : animCond.condition;
+        return <span><strong>🎬 アニメ</strong>: {condText}</span>;
 
       case 'gameState':
         const stateCond = condition as Extract<TriggerCondition, { type: 'gameState' }>;
@@ -187,10 +198,17 @@ export const RuleList: React.FC<RuleListProps> = ({
         const moveType = moveAction.movement?.type || 'straight';
         const speed = moveAction.movement?.speed || 1;
         const targetPos = moveAction.movement?.target;
+        // 🔧 修正: targetがstring | Positionなので型チェック
+        let posText = '';
+        if (targetPos && typeof targetPos === 'object' && 'x' in targetPos && 'y' in targetPos) {
+          posText = ` → (${targetPos.x?.toFixed(2)}, ${targetPos.y?.toFixed(2)})`;
+        } else if (typeof targetPos === 'string') {
+          posText = ` → ${targetPos}`;
+        }
         return (
           <span>
             <strong>🚀 移動</strong>: {getObjectName(moveAction.targetId)} 
-            {targetPos && ` → (${targetPos.x?.toFixed(2)}, ${targetPos.y?.toFixed(2)})`}
+            {posText}
             {` [${moveType}, 速度${speed}]`}
           </span>
         );
@@ -318,7 +336,7 @@ export const RuleList: React.FC<RuleListProps> = ({
             onClick={toggleAllRules}
             style={{
               borderColor: DESIGN_TOKENS.colors.purple[400],
-              color: DESIGN_TOKENS.colors.purple[700]
+              color: DESIGN_TOKENS.colors.purple[800]
             }}
           >
             {expandedRules.size === project.script.rules.length ? '📁 すべて折りたたむ' : '📂 すべて展開'}
@@ -599,7 +617,7 @@ export const RuleList: React.FC<RuleListProps> = ({
                       onClick={() => onEditRule(rule)}
                       style={{
                         borderColor: DESIGN_TOKENS.colors.purple[500],
-                        color: DESIGN_TOKENS.colors.purple[700]
+                        color: DESIGN_TOKENS.colors.purple[800]
                       }}
                     >
                       ✏️ 編集
@@ -644,7 +662,7 @@ export const RuleList: React.FC<RuleListProps> = ({
                         <span style={{ 
                           fontSize: DESIGN_TOKENS.typography.fontSize.lg,
                           fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                          color: DESIGN_TOKENS.colors.primary[700]
+                          color: DESIGN_TOKENS.colors.primary[800]
                         }}>
                           IF
                         </span>
@@ -715,7 +733,7 @@ export const RuleList: React.FC<RuleListProps> = ({
                         <span style={{ 
                           fontSize: DESIGN_TOKENS.typography.fontSize.lg,
                           fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                          color: DESIGN_TOKENS.colors.success[700]
+                          color: DESIGN_TOKENS.colors.success[800]
                         }}>
                           THEN
                         </span>
