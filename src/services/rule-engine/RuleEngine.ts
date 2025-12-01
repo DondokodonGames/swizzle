@@ -1250,22 +1250,30 @@ export class RuleEngine {
       case 'straight':
         if (movement.target) {
           let targetX: number, targetY: number;
-
           if (typeof movement.target === 'string') {
             const targetObject = context.objects.get(movement.target);
             if (targetObject) {
-              targetX = targetObject.x;
-              targetY = targetObject.y;
+              // 🔧 修正: 対象オブジェクトの中心座標を計算
+              const targetScale = targetObject.scale || 1;
+              targetX = targetObject.x + (targetObject.width * targetScale) / 2;
+              targetY = targetObject.y + (targetObject.height * targetScale) / 2;
             } else {
               return;
             }
           } else {
+            // 正規化座標をピクセル座標に変換（中心座標として解釈）
             targetX = movement.target.x * context.canvas.width;
             targetY = movement.target.y * context.canvas.height;
           }
           
-          const dx = targetX - targetObj.x;
-          const dy = targetY - targetObj.y;
+          // 🔧 修正: オブジェクトの中心座標を計算（左上座標から変換）
+          const objScale = targetObj.scale || 1;
+          const objCenterX = targetObj.x + (targetObj.width * objScale) / 2;
+          const objCenterY = targetObj.y + (targetObj.height * objScale) / 2;
+          
+          // 中心座標間の差分を計算
+          const dx = targetX - objCenterX;
+          const dy = targetY - objCenterY;
           const distance = Math.sqrt(dx * dx + dy * dy);
           
           if (distance > 0) {
