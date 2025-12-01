@@ -1318,4 +1318,4 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
       )}
     </div>
   );
-};gi
+};
