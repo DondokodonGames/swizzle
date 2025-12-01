@@ -1,5 +1,5 @@
 // src/components/editor/tabs/ScriptTab.tsx
-// 配置ツール改善版 - スケール更新機能追加
+// RulePreview削除版 - ルール詳細はRuleListで確認
 
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +9,6 @@ import { GamePreview } from '../script/GamePreview';
 import { BackgroundControl } from '../script/BackgroundControl';
 import { RuleList } from '../script/RuleList';
 import { AdvancedRuleModal } from '../script/AdvancedRuleModal';
-import { RulePreview } from '../script/RulePreview';
 import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
 import { ModernCard } from '../../ui/ModernCard';
 import { ModernButton } from '../../ui/ModernButton';
@@ -786,20 +785,9 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                   </ModernCard>
                 </div>
               )}
-              
-              {/* 🔧 追加: 複数ルールプレビュー表示 */}
-              {selectedObjectId && getObjectRules(selectedObjectId).length > 1 && (
-                <div style={{ padding: DESIGN_TOKENS.spacing[6] }}>
-                  <RulePreview
-                    objectRules={getObjectRules(selectedObjectId)}
-                    project={project}
-                    projectFlags={project.script?.flags || []}
-                    mode="multiple"
-                    showTitle={true}
-                    compact={true}
-                  />
-                </div>
-              )}
+
+              {/* 🔧 削除: RulePreview表示（問題のある部分を削除）*/}
+              {/* ルール詳細はRuleListタブで確認できるようになりました */}
 
               {/* フラグ統計表示 - purple系統一 */}
               {project.script.flags && project.script.flags.length > 0 && (
