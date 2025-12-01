@@ -1,7 +1,8 @@
 // src/services/rule-engine/RuleEngine.ts
-// IF-THENルールエンジン - Phase 1+2 修正完全適用版 + Position条件修正版
+// IF-THENルールエンジン - Phase 1+2 修正完全適用版 + Position条件修正版 + Flag初期化対応版
 // 🔧 修正内容（2025-11-25）: Show/Hide アクションでscale/position保持
 // 🔧 修正内容（2025-11-26）: Position条件の座標系修正（正規化→ピクセル変換）
+// 🔧 修正内容（2025-12-02）: Flag初期化機能追加（addFlagDefinition, reset時の復元）
 // 🔍 デバッグ: タッチ条件詳細ログ追加
 // 🔍 デバッグ: アクション実行フロー詳細ログ追加
 
@@ -114,8 +115,14 @@ export interface ActionExecutionResult {
   counterChanges: CounterChangeEvent[];
 }
 
+// 🔧 追加: フラグ定義インターフェース
+export interface FlagDefinition {
+  id: string;
+  initialValue: boolean;
+}
+
 /**
- * RuleEngine クラス - Phase 1+2 完全実装版 + Show/Hide修正版 + Position条件修正版 + Touch条件デバッグ版 + アクション実行デバッグ版
+ * RuleEngine クラス - Phase 1+2 完全実装版 + Show/Hide修正版 + Position条件修正版 + Flag初期化対応版
  */
 export class RuleEngine {
   private rules: GameRule[] = [];
@@ -127,6 +134,9 @@ export class RuleEngine {
   private counterDefinitions: Map<string, GameCounter> = new Map();
   private counterHistory: CounterChangeEvent[] = [];
   private counterPreviousValues: Map<string, number> = new Map();
+  
+  // 🔧 追加: フラグ定義管理
+  private flagDefinitions: Map<string, boolean> = new Map();
   
   // Random条件用の状態管理
   private randomStates: Map<string, {
@@ -157,7 +167,37 @@ export class RuleEngine {
   };
   
   constructor() {
-    console.log('🎮 RuleEngine初期化（Show/Hide修正版 + Position条件修正版 + Touch条件デバッグ版 + アクション実行デバッグ版）');
+    console.log('🎮 RuleEngine初期化（Flag初期化対応版）');
+  }
+
+  // ==================== フラグ管理メソッド ====================
+
+  // 🔧 追加: フラグ定義追加メソッド
+  addFlagDefinition(flag: FlagDefinition): void {
+    this.flagDefinitions.set(flag.id, flag.initialValue);
+    this.setFlag(flag.id, flag.initialValue);
+    console.log(`🚩 フラグ定義追加: ${flag.id} = ${flag.initialValue}`);
+  }
+
+  // 🔧 追加: フラグ定義削除メソッド
+  removeFlagDefinition(flagId: string): void {
+    this.flagDefinitions.delete(flagId);
+    this.flags.delete(flagId);
+  }
+
+  // 🔧 追加: 複数フラグ定義を一括追加
+  addFlagDefinitions(flags: FlagDefinition[]): void {
+    for (const flag of flags) {
+      this.addFlagDefinition(flag);
+    }
+  }
+
+  setFlag(flagId: string, value: boolean): void {
+    this.flags.set(flagId, value);
+  }
+
+  getFlag(flagId: string): boolean {
+    return this.flags.get(flagId) || false;
   }
 
   // ==================== カウンター管理メソッド ====================
@@ -278,14 +318,6 @@ export class RuleEngine {
     if (index !== -1) {
       this.rules[index] = updatedRule;
     }
-  }
-
-  setFlag(flagId: string, value: boolean): void {
-    this.flags.set(flagId, value);
-  }
-
-  getFlag(flagId: string): boolean {
-    return this.flags.get(flagId) || false;
   }
 
   // ==================== メインルール評価・実行 ====================
@@ -896,10 +928,14 @@ export class RuleEngine {
     }
   }
 
+  // 🔧 修正版: Flag条件評価（デバッグログ追加）
   private evaluateFlagCondition(
     condition: Extract<TriggerCondition, { type: 'flag' }>
   ): boolean {
     const currentValue = this.getFlag(condition.flagId);
+    
+    // デバッグログ
+    console.log(`🚩 Flag条件評価: ${condition.flagId} = ${currentValue}, 期待: ${condition.condition}`);
     
     switch (condition.condition) {
       case 'ON':
@@ -1484,8 +1520,10 @@ export class RuleEngine {
       rulesCount: this.rules.length,
       enabledRules: this.rules.filter(r => r.enabled).length,
       flagsCount: this.flags.size,
+      flagDefinitionsCount: this.flagDefinitions.size,
       executionCounts: Object.fromEntries(this.executionCounts),
       flags: Object.fromEntries(this.flags),
+      flagDefinitions: Object.fromEntries(this.flagDefinitions),
       countersCount: this.counters.size,
       counterDefinitionsCount: this.counterDefinitions.size,
       counters: Object.fromEntries(this.counters),
@@ -1509,11 +1547,17 @@ export class RuleEngine {
     this.animationStates.clear();
     this.previousGameState = undefined;
     
+    // カウンターの初期値を復元
     for (const [name, definition] of this.counterDefinitions) {
       this.setCounter(name, definition.initialValue);
     }
 
-    console.log('🔄 RuleEngine リセット完了（Show/Hide修正版 + Position条件修正版 + Touch条件デバッグ版 + アクション実行デバッグ版）');
+    // 🔧 追加: フラグの初期値を復元
+    for (const [id, value] of this.flagDefinitions) {
+      this.setFlag(id, value);
+    }
+
+    console.log('🔄 RuleEngine リセット完了（Flag初期化対応版）');
   }
 
   resetCounters(): void {
