@@ -1,6 +1,6 @@
 // src/components/editor/tabs/assets/sections/BackgroundSection.tsx
-// 🔧 Phase E-1: 背景管理セクション分離
-import React from 'react';
+// 🔧 Phase E-1: 背景管理セクション分離 + 画像差し替え機能追加
+import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../../../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../../../../../constants/EditorLimits';
@@ -28,6 +28,42 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+// 画像最適化関数
+const optimizeImage = async (file: File, maxWidth: number, maxHeight: number, quality: number = 0.8): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d')!;
+    const img = new Image();
+    
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width *= ratio;
+        height *= ratio;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('Canvas to blob conversion failed'));
+        }
+      }, 'image/webp', quality);
+    };
+    
+    img.onerror = () => reject(new Error('Image load failed'));
+    img.src = URL.createObjectURL(file);
+  });
+};
+
 export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
   project,
   onProjectUpdate
@@ -35,6 +71,9 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
   const { t } = useTranslation();
   const { uploading, uploadImageFiles, deleteAsset } = useAssetUpload(project, onProjectUpdate);
   const { showSuccess, showError } = useNotification();
+  
+  // 差し替え用の隠しinput参照
+  const replaceInputRef = useRef<HTMLInputElement>(null);
 
   // 背景ファイルアップロード処理
   const handleBackgroundUpload = async (results: FileProcessingResult[]) => {
@@ -62,8 +101,113 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
     }
   };
 
+  // 🔄 背景画像差し替え処理
+  const handleBackgroundReplace = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // ファイルタイプチェック
+    if (!file.type.startsWith('image/')) {
+      showError(t('errors.onlyImagesAllowed'));
+      return;
+    }
+
+    // サイズチェック
+    if (file.size > EDITOR_LIMITS.IMAGE.BACKGROUND_FRAME_MAX_SIZE) {
+      showError(t('errors.fileSizeTooLarge', { fileName: file.name }));
+      return;
+    }
+
+    try {
+      const now = new Date().toISOString();
+      
+      // 画像最適化
+      const optimized = await optimizeImage(file, 1080, 1920, 0.85);
+      
+      // Base64変換
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        
+        if (!project.assets.background || !('frames' in project.assets.background)) {
+          showError(t('editor.assets.errors.backgroundNotFound'));
+          return;
+        }
+
+        // 既存の背景設定を維持しつつ、画像のみ差し替え
+        const updatedBackground = {
+          ...project.assets.background,
+          frames: [{
+            ...project.assets.background.frames[0],
+            dataUrl,
+            originalName: file.name,
+            fileSize: optimized.size,
+            uploadedAt: now
+          }],
+          totalSize: optimized.size,
+          lastModified: now
+        };
+
+        // 統計更新
+        const updatedAssets = {
+          ...project.assets,
+          background: updatedBackground
+        };
+
+        const imageSize = (updatedBackground.totalSize || 0) + 
+                         project.assets.objects.reduce((sum, obj) => sum + obj.totalSize, 0);
+        const audioSize = (project.assets.audio?.bgm?.fileSize || 0) + 
+                         (project.assets.audio?.se?.reduce((sum, se) => sum + se.fileSize, 0) || 0);
+
+        updatedAssets.statistics = {
+          ...updatedAssets.statistics,
+          totalImageSize: imageSize,
+          totalSize: imageSize + audioSize
+        };
+
+        onProjectUpdate({
+          ...project,
+          assets: updatedAssets,
+          totalSize: imageSize + audioSize,
+          lastModified: now
+        });
+
+        showSuccess(t('editor.assets.backgroundReplaced'));
+      };
+
+      reader.onerror = () => {
+        showError(t('errors.fileReadFailed'));
+      };
+
+      reader.readAsDataURL(optimized);
+    } catch (error) {
+      console.error('背景差し替えエラー:', error);
+      showError(t('editor.assets.errors.backgroundReplaceFailed'));
+    }
+
+    // inputをリセット（同じファイルを再選択可能に）
+    if (replaceInputRef.current) {
+      replaceInputRef.current.value = '';
+    }
+  };
+
+  // 差し替えボタンクリック
+  const triggerReplaceInput = () => {
+    replaceInputRef.current?.click();
+  };
+
   return (
     <div>
+      {/* 隠しファイル入力（差し替え用） */}
+      <input
+        ref={replaceInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleBackgroundReplace}
+      />
+
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <h3 
           style={{
@@ -186,15 +330,31 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                 />
               </div>
             </div>
-            <ModernButton
-              variant="error"
-              size="sm"
-              icon="🗑️"
-              onClick={handleBackgroundDelete}
-              disabled={uploading}
-            >
-              {t('common.delete')}
-            </ModernButton>
+            
+            {/* ボタングループ */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
+              {/* 🔄 差し替えボタン */}
+              <ModernButton
+                variant="secondary"
+                size="sm"
+                icon="🔄"
+                onClick={triggerReplaceInput}
+                disabled={uploading}
+              >
+                {t('editor.assets.replaceImage')}
+              </ModernButton>
+              
+              {/* 削除ボタン */}
+              <ModernButton
+                variant="error"
+                size="sm"
+                icon="🗑️"
+                onClick={handleBackgroundDelete}
+                disabled={uploading}
+              >
+                {t('common.delete')}
+              </ModernButton>
+            </div>
           </div>
         </ModernCard>
       ) : project.assets.background && 'type' in project.assets.background && project.assets.background.type === 'color' ? (

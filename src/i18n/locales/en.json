@@ -399,7 +399,15 @@
       "objectName": "Object Name",
       "optimization": "Optimization",
       "optimizationDesc": "Automatically compress images to reduce file size",
-      "speed": "Speed"
+      "speed": "Speed",
+      "replaceImage": "Replace",
+      "backgroundReplaced": "Background image replaced",
+      "objectReplaced": "Object image replaced",
+      "errors": {
+        "backgroundNotFound": "Background not found",
+        "backgroundReplaceFailed": "Failed to replace background",
+        "objectReplaceFailed": "Failed to replace object"
+      }
     },
     "script": {
       "title": "Script Settings",

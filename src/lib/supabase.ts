@@ -1,9 +1,8 @@
 // src/lib/supabase.ts
-// 超シンプル・完全エラーフリー版
-// 複雑な型定義を排除し、確実に動作することを最優先
+// ウォームアップ機能追加版 - コールドスタート対策
 
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js'
-import type { Database } from './database.types' // ← この行を追加
+import type { Database } from './database.types'
 
 // 環境変数を直接ハードコード（型エラー完全回避）
 const supabaseUrl = 'https://rqzehjsygvkkvntswqbs.supabase.co'
@@ -11,6 +10,10 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 // シンプルなSupabaseクライアント作成（型制約なし）
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// ウォームアップ状態管理
+let isWarmedUp = false;
+let warmupPromise: Promise<boolean> | null = null;
 
 // シンプルな認証状態型
 export interface AuthState {
@@ -26,6 +29,57 @@ export class SupabaseError extends Error {
     this.name = 'SupabaseError'
   }
 }
+
+// ウォームアップ関数（コールドスタート対策）
+export const warmupConnection = async (): Promise<boolean> => {
+  // 既にウォームアップ済みの場合はスキップ
+  if (isWarmedUp) {
+    console.log('🔥 [Warmup] 既にウォームアップ済み');
+    return true;
+  }
+
+  // ウォームアップ中の場合は待機
+  if (warmupPromise) {
+    console.log('🔥 [Warmup] ウォームアップ中...待機');
+    return warmupPromise;
+  }
+
+  // ウォームアップ開始
+  warmupPromise = (async () => {
+    console.log('🔥 [Warmup] データベース接続をウォームアップ中...');
+    const startTime = Date.now();
+
+    try {
+      // 軽量なクエリで接続を確立（1件のみ取得）
+      const { data, error } = await supabase
+        .from('user_games')
+        .select('id')
+        .limit(1);
+
+      const elapsed = Date.now() - startTime;
+
+      if (error) {
+        console.warn(`⚠️ [Warmup] エラー (${elapsed}ms):`, error.message);
+        return false;
+      }
+
+      isWarmedUp = true;
+      console.log(`✅ [Warmup] 接続確立完了 (${elapsed}ms)`);
+      return true;
+    } catch (error) {
+      const elapsed = Date.now() - startTime;
+      console.error(`❌ [Warmup] 失敗 (${elapsed}ms):`, error);
+      return false;
+    } finally {
+      warmupPromise = null;
+    }
+  })();
+
+  return warmupPromise;
+};
+
+// 即座にウォームアップを開始（モジュール読み込み時）
+warmupConnection().catch(console.error);
 
 // 認証機能（シンプル版）
 export const auth = {
@@ -143,6 +197,9 @@ export const database = {
     getPublished: async (options: any = {}) => {
       console.log('🔍 [database.userGames.getPublished] 開始:', options);
       
+      // ウォームアップ完了を待機
+      await warmupConnection();
+      
       try {
         // Step 1: 基本クエリでゲーム取得
         const queryStartTime = Date.now();
@@ -178,7 +235,7 @@ export const database = {
 
         console.log('🔍 [Step 1] クエリ実行中... (タイムアウト: 30秒)');
 
-        // タイムアウト処理付きでクエリ実行（30秒に延長）
+        // タイムアウト処理付きでクエリ実行（30秒）
         const timeoutPromise1 = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('ゲーム取得がタイムアウトしました（30秒）')), 30000)
         );
@@ -212,7 +269,7 @@ export const database = {
         const creatorIds = [...new Set(data.map((game: any) => game.creator_id))];
         console.log('🔍 [Step 2] 取得するプロフィール数:', creatorIds.length);
 
-        // タイムアウト処理付きでプロフィール一括取得（15秒に延長）
+        // タイムアウト処理付きでプロフィール一括取得（15秒）
         const timeoutPromise2 = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('プロフィール取得がタイムアウトしました（15秒）')), 15000)
         );

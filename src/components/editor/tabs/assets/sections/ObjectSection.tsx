@@ -1,6 +1,6 @@
 // src/components/editor/tabs/assets/sections/ObjectSection.tsx
-// 🔧 Phase E-1: オブジェクト管理+アニメーション統合セクション
-import React, { useState, useCallback } from 'react';
+// 🔧 Phase E-1: オブジェクト管理+アニメーション統合セクション + 画像差し替え機能追加
+import React, { useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../../../types/editor/GameProject';
 import { ObjectAsset, AssetFrame, AnimationSettings } from '../../../../../types/editor/ProjectAssets';
@@ -77,6 +77,10 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
   const [editingObjectId, setEditingObjectId] = useState<string | null>(null);
   const [animationPreviewIndex, setAnimationPreviewIndex] = useState<number>(0);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState<boolean>(false);
+  
+  // 🔄 差し替え用の状態と参照
+  const [replacingObjectId, setReplacingObjectId] = useState<string | null>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
 
   // オブジェクト単独アップロード処理（複数フレーム対応）
   const handleObjectUpload = useCallback(async (results: FileProcessingResult[]) => {
@@ -201,6 +205,116 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
       showError(t('errors.objectUploadFailed'));
     }
   }, [project, onProjectUpdate, uploading, showSuccess, showError, t]);
+
+  // 🔄 オブジェクト画像差し替え処理
+  const handleObjectReplace = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !replacingObjectId) return;
+
+    // ファイルタイプチェック
+    if (!file.type.startsWith('image/')) {
+      showError(t('errors.onlyImagesAllowed'));
+      setReplacingObjectId(null);
+      return;
+    }
+
+    // サイズチェック
+    if (file.size > EDITOR_LIMITS.IMAGE.OBJECT_FRAME_MAX_SIZE) {
+      showError(t('errors.fileSizeTooLarge', { fileName: file.name }));
+      setReplacingObjectId(null);
+      return;
+    }
+
+    try {
+      const now = new Date().toISOString();
+      const updatedAssets = { ...project.assets };
+      const objectIndex = updatedAssets.objects.findIndex(obj => obj.id === replacingObjectId);
+
+      if (objectIndex === -1) {
+        showError(t('errors.objectNotFound'));
+        setReplacingObjectId(null);
+        return;
+      }
+
+      // 画像最適化
+      const optimized = await optimizeImage(file, 512, 512, 0.8);
+
+      // Base64変換
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        
+        const targetObject = updatedAssets.objects[objectIndex];
+        const oldSize = targetObject.frames[0]?.fileSize || 0;
+        const newSize = optimized.size;
+
+        // 既存のオブジェクト設定を維持しつつ、最初のフレームの画像のみ差し替え
+        // （アニメーションフレームが複数ある場合は最初のフレームのみ）
+        updatedAssets.objects[objectIndex] = {
+          ...targetObject,
+          frames: [
+            {
+              ...targetObject.frames[0],
+              dataUrl,
+              originalName: file.name,
+              fileSize: newSize,
+              uploadedAt: now
+            },
+            ...targetObject.frames.slice(1) // 2フレーム目以降は維持
+          ],
+          totalSize: targetObject.totalSize - oldSize + newSize,
+          lastModified: now
+        };
+
+        // 統計更新
+        const imageSize = updatedAssets.objects.reduce((sum, obj) => sum + obj.totalSize, 0) + 
+                         (updatedAssets.background?.totalSize || 0);
+        const audioSize = (updatedAssets.audio?.bgm?.fileSize || 0) + 
+                         (updatedAssets.audio?.se?.reduce((sum, se) => sum + se.fileSize, 0) || 0);
+
+        updatedAssets.statistics = {
+          ...updatedAssets.statistics,
+          totalImageSize: imageSize,
+          totalSize: imageSize + audioSize
+        };
+
+        onProjectUpdate({
+          ...project,
+          assets: updatedAssets,
+          totalSize: imageSize + audioSize,
+          lastModified: now
+        });
+
+        showSuccess(t('editor.assets.objectReplaced'));
+        setReplacingObjectId(null);
+      };
+
+      reader.onerror = () => {
+        showError(t('errors.fileReadFailed'));
+        setReplacingObjectId(null);
+      };
+
+      reader.readAsDataURL(optimized);
+    } catch (error) {
+      console.error('オブジェクト差し替えエラー:', error);
+      showError(t('editor.assets.errors.objectReplaceFailed'));
+      setReplacingObjectId(null);
+    }
+
+    // inputをリセット（同じファイルを再選択可能に）
+    if (replaceInputRef.current) {
+      replaceInputRef.current.value = '';
+    }
+  }, [project, onProjectUpdate, replacingObjectId, showSuccess, showError, t]);
+
+  // 差し替えボタンクリック
+  const triggerReplaceInput = useCallback((objectId: string) => {
+    setReplacingObjectId(objectId);
+    setTimeout(() => {
+      replaceInputRef.current?.click();
+    }, 0);
+  }, []);
 
   // オブジェクトにフレーム追加（アニメーション用）
   const addFrameToObject = useCallback(async (objectId: string, results: FileProcessingResult[]) => {
@@ -352,6 +466,15 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
 
   return (
     <div>
+      {/* 🔄 隠しファイル入力（差し替え用） */}
+      <input
+        ref={replaceInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleObjectReplace}
+      />
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <h3
           style={{
@@ -506,7 +629,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
               </div>
 
               {/* コントロールボタン */}
-              <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2], marginBottom: DESIGN_TOKENS.spacing[3] }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: DESIGN_TOKENS.spacing[2], marginBottom: DESIGN_TOKENS.spacing[3] }}>
                 {/* アニメーション編集ボタン */}
                 <ModernButton
                   variant={isEditing ? "secondary" : "outline"}
@@ -528,6 +651,17 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                     {isPreviewPlaying && isEditing ? t('common.stop') : t('common.play')}
                   </ModernButton>
                 )}
+
+                {/* 🔄 差し替えボタン（新規追加） */}
+                <ModernButton
+                  variant="secondary"
+                  size="xs"
+                  icon="🔄"
+                  onClick={() => triggerReplaceInput(obj.id)}
+                  disabled={uploading}
+                >
+                  {t('editor.assets.replaceImage')}
+                </ModernButton>
 
                 {/* 削除ボタン */}
                 <ModernButton
