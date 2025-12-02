@@ -1199,6 +1199,7 @@ export class RuleEngine {
     }
 
     targetObj.animationIndex = action.animationIndex;
+    targetObj.currentFrame = action.animationIndex;
     // 🔧 修正: animationPlaying は変更しない（フレーム切り替え専用）
     // 以前: targetObj.animationPlaying = true;
     // アニメーション再生を開始したい場合は別途 startAnimation アクションを追加する
