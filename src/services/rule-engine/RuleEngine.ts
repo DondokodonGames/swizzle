@@ -3,6 +3,7 @@
 // 🔧 修正内容（2025-11-25）: Show/Hide アクションでscale/position保持
 // 🔧 修正内容（2025-11-26）: Position条件の座標系修正（正規化→ピクセル変換）
 // 🔧 修正内容（2025-12-02）: Flag初期化機能追加（addFlagDefinition, reset時の復元）
+// 🔧 修正内容（2025-12-02）: 8方向移動タイプ(direction)追加
 // 🔍 デバッグ: タッチ条件詳細ログ追加
 // 🔍 デバッグ: アクション実行フロー詳細ログ追加
 
@@ -121,8 +122,22 @@ export interface FlagDefinition {
   initialValue: boolean;
 }
 
+// 🔧 追加: 8方向の定義
+type DirectionType = 'up' | 'down' | 'left' | 'right' | 'up-left' | 'up-right' | 'down-left' | 'down-right';
+
+const DIRECTION_VECTORS: Record<DirectionType, { vx: number; vy: number }> = {
+  'up': { vx: 0, vy: -1 },
+  'down': { vx: 0, vy: 1 },
+  'left': { vx: -1, vy: 0 },
+  'right': { vx: 1, vy: 0 },
+  'up-left': { vx: -0.7071, vy: -0.7071 },    // 45度: 1/√2 ≈ 0.7071
+  'up-right': { vx: 0.7071, vy: -0.7071 },
+  'down-left': { vx: -0.7071, vy: 0.7071 },
+  'down-right': { vx: 0.7071, vy: 0.7071 }
+};
+
 /**
- * RuleEngine クラス - Phase 1+2 完全実装版 + Show/Hide修正版 + Position条件修正版 + Flag初期化対応版
+ * RuleEngine クラス - Phase 1+2 完全実装版 + Show/Hide修正版 + Position条件修正版 + Flag初期化対応版 + 8方向移動対応版
  */
 export class RuleEngine {
   private rules: GameRule[] = [];
@@ -167,7 +182,7 @@ export class RuleEngine {
   };
   
   constructor() {
-    console.log('🎮 RuleEngine初期化（Flag初期化対応版）');
+    console.log('🎮 RuleEngine初期化（8方向移動対応版）');
   }
 
   // ==================== フラグ管理メソッド ====================
@@ -1270,6 +1285,7 @@ export class RuleEngine {
     }
   }
 
+  // 🔧 修正版: Move アクション（8方向移動対応）
   private executeMoveAction(
     action: Extract<GameAction, { type: 'move' }>,
     context: RuleExecutionContext
@@ -1316,6 +1332,21 @@ export class RuleEngine {
             targetObj.vx = (dx / distance) * speed;
             targetObj.vy = (dy / distance) * speed;
           }
+        }
+        break;
+
+      // 🔧 追加: 8方向移動タイプ
+      case 'direction':
+        const direction = (movement as any).direction as DirectionType;
+        const dirVector = DIRECTION_VECTORS[direction];
+        
+        if (dirVector) {
+          // 現在の横移動を完全にリセットして、指定方向にのみ移動
+          targetObj.vx = dirVector.vx * speed;
+          targetObj.vy = dirVector.vy * speed;
+          console.log(`🧭 方向移動: ${action.targetId} → ${direction} (vx=${targetObj.vx.toFixed(2)}, vy=${targetObj.vy.toFixed(2)})`);
+        } else {
+          console.warn(`❌ 不明な方向: ${direction}`);
         }
         break;
 
@@ -1557,7 +1588,7 @@ export class RuleEngine {
       this.setFlag(id, value);
     }
 
-    console.log('🔄 RuleEngine リセット完了（Flag初期化対応版）');
+    console.log('🔄 RuleEngine リセット完了（8方向移動対応版）');
   }
 
   resetCounters(): void {
