@@ -1,6 +1,7 @@
 /**
  * ゲームスクリプト・ロジック型定義
  * Phase 6: ゲームエディター実装用 + 初期条件システム追加 + カウンターシステム追加 + ランダムシステム追加
+ * 🔧 修正（2025-12-02）: MovementPatternに8方向移動用directionプロパティ追加
  */
 
 // TextStyleをインポート
@@ -269,6 +270,9 @@ export type TriggerCondition =
       };
     };
 
+// 🔧 追加: 8方向の型定義
+export type MovementDirection = 'up' | 'down' | 'left' | 'right' | 'up-left' | 'up-right' | 'down-left' | 'down-right';
+
 // 移動パターン
 export interface MovementPattern {
   type: 'straight' | 'teleport' | 'wander' | 'stop' | 'swap' | 'approach' | 'orbit' | 'bounce';
@@ -278,6 +282,9 @@ export interface MovementPattern {
   speed?: number;                         // 移動速度（px/sec）
   duration?: number;                      // 移動時間（秒）
   easing?: 'linear' | 'ease-in' | 'ease-out' | 'bounce'; // イージング
+  
+  // 🔧 追加: 8方向移動用（type='straight'で使用、targetの代わりに指定可能）
+  direction?: MovementDirection;
   
   // パターン固有設定
   wanderRadius?: number;                  // wander用の半径
@@ -808,5 +815,34 @@ export const estimateRandomConditionPerformance = (condition: Extract<TriggerCon
     eventsPerSecond,
     memoryUsage,
     cpuLoad
+  };
+};
+
+// 🔧 追加: 8方向移動ヘルパー関数
+export const MOVEMENT_DIRECTIONS: { value: MovementDirection; label: string }[] = [
+  { value: 'up', label: '↑ 上' },
+  { value: 'down', label: '↓ 下' },
+  { value: 'left', label: '← 左' },
+  { value: 'right', label: '→ 右' },
+  { value: 'up-left', label: '↖ 左上' },
+  { value: 'up-right', label: '↗ 右上' },
+  { value: 'down-left', label: '↙ 左下' },
+  { value: 'down-right', label: '↘ 右下' },
+];
+
+// 方向移動アクション作成ヘルパー
+export const createDirectionMoveAction = (
+  targetId: string,
+  direction: MovementDirection,
+  speed: number = 3.0
+): Extract<GameAction, { type: 'move' }> => {
+  return {
+    type: 'move',
+    targetId,
+    movement: {
+      type: 'straight',
+      direction,
+      speed
+    }
   };
 };
