@@ -5,6 +5,7 @@
 // 🔧 修正内容（2025-12-02）: Flag初期化機能追加（addFlagDefinition, reset時の復元）
 // 🔧 修正内容（2025-12-02）: straight移動タイプにdirectionパラメータ追加（8方向移動対応）
 // 🔧 修正内容（2025-12-02）: touchイベント消費機能追加（神経衰弱ゲーム対応）
+// 🔧 修正内容（2025-12-02）: switchAnimationでanimationPlayingを変更しない（フレーム切り替え専用に）
 
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../types/editor/GameScript';
 
@@ -136,7 +137,7 @@ const DIRECTION_VECTORS: Record<DirectionType, { vx: number; vy: number }> = {
 };
 
 /**
- * RuleEngine クラス - touchイベント消費機能追加版
+ * RuleEngine クラス - switchAnimation修正版
  */
 export class RuleEngine {
   private rules: GameRule[] = [];
@@ -184,7 +185,7 @@ export class RuleEngine {
   };
   
   constructor() {
-    console.log('🎮 RuleEngine初期化（touchイベント消費機能追加版）');
+    console.log('🎮 RuleEngine初期化（switchAnimation修正版）');
   }
 
   // ==================== フラグ管理メソッド ====================
@@ -1187,6 +1188,7 @@ export class RuleEngine {
     }
   }
 
+  // 🔧 修正: switchAnimationでanimationPlayingを変更しない
   private executeSwitchAnimationAction(
     action: Extract<GameAction, { type: 'switchAnimation' }>,
     context: RuleExecutionContext
@@ -1197,7 +1199,10 @@ export class RuleEngine {
     }
 
     targetObj.animationIndex = action.animationIndex;
-    targetObj.animationPlaying = true;
+    // 🔧 修正: animationPlaying は変更しない（フレーム切り替え専用）
+    // 以前: targetObj.animationPlaying = true;
+    // アニメーション再生を開始したい場合は別途 startAnimation アクションを追加する
+    console.log(`🎬 フレーム切り替え: ${action.targetId} → frame ${action.animationIndex}`);
   }
 
   private executeEffectAction(
@@ -1602,7 +1607,7 @@ export class RuleEngine {
       this.setFlag(id, value);
     }
 
-    console.log('🔄 RuleEngine リセット完了（touchイベント消費機能追加版）');
+    console.log('🔄 RuleEngine リセット完了（switchAnimation修正版）');
   }
 
   resetCounters(): void {
