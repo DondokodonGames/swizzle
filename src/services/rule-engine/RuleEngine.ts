@@ -4,8 +4,7 @@
 // 🔧 修正内容（2025-11-26）: Position条件の座標系修正（正規化→ピクセル変換）
 // 🔧 修正内容（2025-12-02）: Flag初期化機能追加（addFlagDefinition, reset時の復元）
 // 🔧 修正内容（2025-12-02）: straight移動タイプにdirectionパラメータ追加（8方向移動対応）
-// 🔍 デバッグ: タッチ条件詳細ログ追加
-// 🔍 デバッグ: アクション実行フロー詳細ログ追加
+// 🔧 修正内容（2025-12-02）: touchイベント消費機能追加（神経衰弱ゲーム対応）
 
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../types/editor/GameScript';
 
@@ -137,7 +136,7 @@ const DIRECTION_VECTORS: Record<DirectionType, { vx: number; vy: number }> = {
 };
 
 /**
- * RuleEngine クラス - Phase 1+2 完全実装版 + Show/Hide修正版 + Position条件修正版 + Flag初期化対応版 + 8方向移動対応版
+ * RuleEngine クラス - touchイベント消費機能追加版
  */
 export class RuleEngine {
   private rules: GameRule[] = [];
@@ -152,6 +151,9 @@ export class RuleEngine {
   
   // 🔧 追加: フラグ定義管理
   private flagDefinitions: Map<string, boolean> = new Map();
+  
+  // 🔧 追加: 消費済みtouchイベント管理（timestamp + targetId）
+  private consumedTouchEvents: Set<string> = new Set();
   
   // Random条件用の状態管理
   private randomStates: Map<string, {
@@ -182,7 +184,7 @@ export class RuleEngine {
   };
   
   constructor() {
-    console.log('🎮 RuleEngine初期化（8方向移動対応版 - アプローチB）');
+    console.log('🎮 RuleEngine初期化（touchイベント消費機能追加版）');
   }
 
   // ==================== フラグ管理メソッド ====================
@@ -340,6 +342,19 @@ export class RuleEngine {
   evaluateAndExecuteRules(context: RuleExecutionContext): ActionExecutionResult[] {
     const results: ActionExecutionResult[] = [];
 
+    // 🔧 追加: 古い消費済みtouchイベントをクリーンアップ（500ms以上前のもの）
+    const now = Date.now();
+    const keysToDelete: string[] = [];
+    for (const key of this.consumedTouchEvents) {
+      const timestamp = parseInt(key.split('-')[0], 10);
+      if (now - timestamp > 500) {
+        keysToDelete.push(key);
+      }
+    }
+    for (const key of keysToDelete) {
+      this.consumedTouchEvents.delete(key);
+    }
+
     // 衝突判定キャッシュを更新（フレームごとに1回）
     const currentTime = Date.now();
     if (currentTime - this.lastCollisionCheckTime > 16) {
@@ -397,12 +412,6 @@ export class RuleEngine {
     const shouldExecute = triggers.operator === 'AND' 
       ? conditionResults.every(result => result)
       : conditionResults.some(result => result);
-
-    // 🔍 デバッグ: player-jumpルールのみログ出力
-    if (rule.id === 'player-jump' && context.events.length > 0) {
-      console.log(`🎯 [player-jump] 評価結果: shouldExecute=${shouldExecute}, conditions=`, 
-        triggers.conditions.map(c => ({ type: c.type, target: (c as any).target })));
-    }
 
     return {
       shouldExecute,
@@ -858,7 +867,7 @@ export class RuleEngine {
     }
   }
 
-  // 🔍 デバッグ版: Touch条件評価（最小限ログ）
+  // 🔧 修正版: Touch条件評価（消費機能付き）
   private evaluateTouchCondition(
     condition: Extract<TriggerCondition, { type: 'touch' }>,
     context: RuleExecutionContext,
@@ -873,9 +882,10 @@ export class RuleEngine {
     const latestTouch = touchEvents[touchEvents.length - 1];
     const touchTarget = condition.target === 'self' ? targetObjectId : condition.target;
 
-    // 🔍 重要ログのみ出力
-    if (context.events.length > 0) {
-      console.log(`👆 Touch条件: condition.target="${condition.target}", touchTarget="${touchTarget}", latestTouch.data.target="${latestTouch.data.target}", 結果=${touchTarget === 'stage' ? latestTouch.data.target === 'stage' : latestTouch.data.target === touchTarget}`);
+    // 🔧 追加: 消費済みチェック（timestamp + target で一意識別）
+    const touchKey = `${latestTouch.timestamp}-${latestTouch.data.target}`;
+    if (this.consumedTouchEvents.has(touchKey)) {
+      return false;
     }
 
     if (touchTarget === 'stage') {
@@ -896,6 +906,11 @@ export class RuleEngine {
           const result = touchX >= rectX && touchX <= rectX + rectWidth &&
                         touchY >= rectY && touchY <= rectY + rectHeight;
 
+          // 🔧 追加: マッチした場合は消費済みとしてマーク
+          if (result) {
+            this.consumedTouchEvents.add(touchKey);
+          }
+
           return result;
         } else if (region.shape === 'circle') {
           const centerX = region.x * context.canvas.width;
@@ -908,14 +923,28 @@ export class RuleEngine {
 
           const result = distance <= radius;
 
+          // 🔧 追加: マッチした場合は消費済みとしてマーク
+          if (result) {
+            this.consumedTouchEvents.add(touchKey);
+          }
+
           return result;
         }
       }
 
+      // 🔧 追加: stageタッチがマッチした場合は消費済みとしてマーク
+      this.consumedTouchEvents.add(touchKey);
       return true;
     }
 
+    // オブジェクトタッチの場合
     const result = latestTouch.data.target === touchTarget;
+
+    // 🔧 追加: マッチした場合は消費済みとしてマーク
+    if (result) {
+      this.consumedTouchEvents.add(touchKey);
+      console.log(`👆 Touch消費: ${touchKey} (target: ${touchTarget})`);
+    }
 
     return result;
   }
@@ -943,14 +972,11 @@ export class RuleEngine {
     }
   }
 
-  // 🔧 修正版: Flag条件評価（デバッグログ追加）
+  // 🔧 修正版: Flag条件評価
   private evaluateFlagCondition(
     condition: Extract<TriggerCondition, { type: 'flag' }>
   ): boolean {
     const currentValue = this.getFlag(condition.flagId);
-    
-    // デバッグログ
-    console.log(`🚩 Flag条件評価: ${condition.flagId} = ${currentValue}, 期待: ${condition.condition}`);
     
     switch (condition.condition) {
       case 'ON':
@@ -1042,17 +1068,8 @@ export class RuleEngine {
     const newGameState: Partial<RuleExecutionContext['gameState']> = {};
     const counterChanges: CounterChangeEvent[] = [];
 
-    // 🔍 player-jumpのみログ出力
-    if (ruleId === 'player-jump') {
-      console.log(`✅ [player-jump] アクション実行: ${actions.length}個`);
-    }
-
     for (const action of actions) {
       try {
-        if (ruleId === 'player-jump') {
-          console.log(`  → type=${action.type}, targetId=${(action as any).targetId}`);
-        }
-
         switch (action.type) {
           case 'addScore':
             newGameState.score = (context.gameState.score || 0) + action.points;
@@ -1247,15 +1264,12 @@ export class RuleEngine {
     // ✅ visibleフラグのみ変更（scale/positionは変更しない）
     targetObj.visible = true;
     
-    console.log(`👁️ オブジェクト表示: ${action.targetId} (scale=${targetObj.scale}, position=(${targetObj.x}, ${targetObj.y}))`);
-    
     // fadeIn処理（オプション）
     const fadeIn = (action as any).fadeIn;
     const duration = (action as any).duration || 300;
     
     if (fadeIn && duration > 0) {
       console.log(`🎬 フェードイン（未実装）: ${action.targetId} (${duration}ms)`);
-      // TODO: フェードイン実装時に、scaleではなくopacityを使用する
     }
   }
 
@@ -1273,15 +1287,12 @@ export class RuleEngine {
     // ✅ visibleフラグのみ変更（scale/positionは変更しない）
     targetObj.visible = false;
     
-    console.log(`🙈 オブジェクト非表示: ${action.targetId} (scale=${targetObj.scale}を保持, position=(${targetObj.x}, ${targetObj.y})を保持)`);
-    
     // fadeOut処理（オプション）
     const fadeOut = (action as any).fadeOut;
     const duration = (action as any).duration || 300;
     
     if (fadeOut && duration > 0) {
       console.log(`🎬 フェードアウト（未実装）: ${action.targetId} (${duration}ms)`);
-      // TODO: フェードアウト実装時に、scaleではなくopacityを使用する
     }
   }
 
@@ -1561,7 +1572,8 @@ export class RuleEngine {
       recentCounterChanges: this.counterHistory.slice(-10),
       randomStatesCount: this.randomStates.size,
       collisionCacheSize: this.collisionCache.size,
-      animationStatesCount: this.animationStates.size
+      animationStatesCount: this.animationStates.size,
+      consumedTouchEventsCount: this.consumedTouchEvents.size
     };
   }
 
@@ -1577,6 +1589,9 @@ export class RuleEngine {
     this.animationStates.clear();
     this.previousGameState = undefined;
     
+    // 🔧 追加: 消費済みtouchイベントをクリア
+    this.consumedTouchEvents.clear();
+    
     // カウンターの初期値を復元
     for (const [name, definition] of this.counterDefinitions) {
       this.setCounter(name, definition.initialValue);
@@ -1587,7 +1602,7 @@ export class RuleEngine {
       this.setFlag(id, value);
     }
 
-    console.log('🔄 RuleEngine リセット完了（8方向移動対応版 - アプローチB）');
+    console.log('🔄 RuleEngine リセット完了（touchイベント消費機能追加版）');
   }
 
   resetCounters(): void {
@@ -1616,6 +1631,12 @@ export class RuleEngine {
     }
     
     return stats;
+  }
+  
+  // 🔧 追加: 消費済みtouchイベントを手動でクリア（デバッグ用）
+  clearConsumedTouchEvents(): void {
+    this.consumedTouchEvents.clear();
+    console.log('🔄 消費済みtouchイベントをクリア');
   }
 }
 
