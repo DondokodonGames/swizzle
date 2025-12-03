@@ -1,6 +1,6 @@
 // src/components/editor/script/actions/MoveActionEditor.tsx
-// Phase C Step 2完了版: 移動アクション詳細設定コンポーネント
-// AdvancedRuleModal.tsx分割 - Step 3: アクションエディター分離
+// 拡張版: followDrag の完全実装
+// 新機能: ドラッグ追従移動、減衰係数、境界制約
 
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +8,12 @@ import { GameAction } from '../../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
-import { getMovementTypeOptions } from '../constants/MovementConstants';
+import { 
+  getMovementTypeOptions,
+  getFollowDragOptions,
+  MOVEMENT_DEFAULTS,
+  MOVEMENT_RANGES
+} from '../constants/MovementConstants';
 
 interface MoveActionEditorProps {
   action: GameAction & { type: 'move' };
@@ -26,8 +31,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
   const { t } = useTranslation();
   const moveAction = action;
 
-  // Get localized options using getter functions that access i18n
+  // Get localized options
   const MOVEMENT_TYPE_OPTIONS = useMemo(() => getMovementTypeOptions(), []);
+  const FOLLOW_DRAG_OPTIONS = useMemo(() => getFollowDragOptions(), []);
   
   return (
     <ModernCard 
@@ -53,7 +59,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
         {t('editor.moveAction.title')}
       </h5>
 
-      {/* 移動タイプ選択 */}
+      {/* Movement type selection */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <label style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -69,7 +75,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
           gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
           gap: DESIGN_TOKENS.spacing[2]
         }}>
-          {MOVEMENT_TYPE_OPTIONS.slice(0, 4).map((option) => (
+          {MOVEMENT_TYPE_OPTIONS.slice(0, 5).map((option) => (
             <ModernButton
               key={option.value}
               variant={moveAction.movement?.type === option.value ? 'primary' : 'outline'}
@@ -79,8 +85,8 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                   ...moveAction.movement,
                   type: option.value as any,
                   target: option.value === 'stop' ? undefined : { x: 0.5, y: 0.5 },
-                  speed: option.value === 'teleport' ? undefined : 300,
-                  duration: option.value === 'teleport' ? 0.1 : 2.0
+                  speed: option.value === 'teleport' ? undefined : MOVEMENT_DEFAULTS.speed,
+                  duration: option.value === 'teleport' ? MOVEMENT_DEFAULTS.teleportDuration : MOVEMENT_DEFAULTS.duration
                 } 
               })}
               style={{
@@ -108,14 +114,14 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
           ))}
         </div>
         
-        {/* 追加移動タイプ（2行目） */}
+        {/* Additional movement types (2nd row) */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
           gap: DESIGN_TOKENS.spacing[2],
           marginTop: DESIGN_TOKENS.spacing[2]
         }}>
-          {MOVEMENT_TYPE_OPTIONS.slice(4).map((option) => (
+          {MOVEMENT_TYPE_OPTIONS.slice(5).map((option) => (
             <ModernButton
               key={option.value}
               variant={moveAction.movement?.type === option.value ? 'primary' : 'outline'}
@@ -125,8 +131,8 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                   ...moveAction.movement,
                   type: option.value as any,
                   target: option.value === 'stop' ? undefined : { x: 0.5, y: 0.5 },
-                  speed: option.value === 'teleport' ? undefined : 300,
-                  duration: option.value === 'teleport' ? 0.1 : 2.0
+                  speed: option.value === 'teleport' ? undefined : MOVEMENT_DEFAULTS.speed,
+                  duration: option.value === 'teleport' ? MOVEMENT_DEFAULTS.teleportDuration : MOVEMENT_DEFAULTS.duration
                 } 
               })}
               style={{
@@ -155,8 +161,218 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
         </div>
       </div>
 
-      {/* 移動速度設定（stopとteleport以外） */}
-      {moveAction.movement?.type && !['stop', 'teleport'].includes(moveAction.movement.type) && (
+      {/* FollowDrag settings (when movement type is 'followDrag') */}
+      {moveAction.movement?.type === 'followDrag' && (
+        <>
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.moveAction.followDragDampingLabel')}
+            </label>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+              gap: DESIGN_TOKENS.spacing[2],
+              marginBottom: DESIGN_TOKENS.spacing[2]
+            }}>
+              {FOLLOW_DRAG_OPTIONS.map((option) => (
+                <ModernButton
+                  key={option.value}
+                  variant={moveAction.movement?.damping === option.value ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => onUpdate(index, { 
+                    movement: { 
+                      ...moveAction.movement,
+                      damping: option.value
+                    } 
+                  })}
+                  style={{
+                    borderColor: moveAction.movement?.damping === option.value 
+                      ? DESIGN_TOKENS.colors.success[500] 
+                      : DESIGN_TOKENS.colors.success[200],
+                    backgroundColor: moveAction.movement?.damping === option.value 
+                      ? DESIGN_TOKENS.colors.success[500] 
+                      : 'transparent',
+                    color: moveAction.movement?.damping === option.value 
+                      ? DESIGN_TOKENS.colors.neutral[0] 
+                      : DESIGN_TOKENS.colors.success[800]
+                  }}
+                >
+                  <span>{option.label}</span>
+                </ModernButton>
+              ))}
+            </div>
+
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.moveAction.dampingValueLabel', { damping: (moveAction.movement?.damping ?? MOVEMENT_DEFAULTS.damping).toFixed(1) })}
+            </label>
+            <input
+              type="range"
+              min={MOVEMENT_RANGES.damping.min}
+              max={MOVEMENT_RANGES.damping.max}
+              step={MOVEMENT_RANGES.damping.step}
+              value={moveAction.movement?.damping ?? MOVEMENT_DEFAULTS.damping}
+              onChange={(e) => onUpdate(index, {
+                movement: {
+                  ...moveAction.movement,
+                  damping: parseFloat(e.target.value)
+                }
+              })}
+              style={{ width: '100%' }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.success[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>{t('editor.moveAction.highDamping')}</span>
+              <span>{t('editor.moveAction.noDamping')}</span>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: DESIGN_TOKENS.spacing[2],
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              color: DESIGN_TOKENS.colors.success[800]
+            }}>
+              <input
+                type="checkbox"
+                checked={moveAction.movement?.constrainToBounds ?? false}
+                onChange={(e) => onUpdate(index, {
+                  movement: {
+                    ...moveAction.movement,
+                    constrainToBounds: e.target.checked
+                  }
+                })}
+              />
+              {t('editor.moveAction.constrainToBoundsLabel')}
+            </label>
+          </div>
+
+          {moveAction.movement?.constrainToBounds && (
+            <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+              <label style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                color: DESIGN_TOKENS.colors.success[800],
+                marginBottom: DESIGN_TOKENS.spacing[2],
+                display: 'block'
+              }}>
+                {t('editor.moveAction.boundingBoxLabel')}
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: DESIGN_TOKENS.spacing[2] }}>
+                <div>
+                  <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.success[700] }}>
+                    X最小: {((moveAction.movement?.boundingBox?.minX ?? 0) * 100).toFixed(0)}%
+                  </label>
+                  <input
+                    type="range"
+                    min={MOVEMENT_RANGES.boundingBoxValue.min}
+                    max={MOVEMENT_RANGES.boundingBoxValue.max}
+                    step={MOVEMENT_RANGES.boundingBoxValue.step}
+                    value={moveAction.movement?.boundingBox?.minX ?? 0}
+                    onChange={(e) => onUpdate(index, {
+                      movement: {
+                        ...moveAction.movement,
+                        boundingBox: {
+                          ...moveAction.movement?.boundingBox,
+                          minX: parseFloat(e.target.value)
+                        }
+                      }
+                    })}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.success[700] }}>
+                    X最大: {((moveAction.movement?.boundingBox?.maxX ?? 1) * 100).toFixed(0)}%
+                  </label>
+                  <input
+                    type="range"
+                    min={MOVEMENT_RANGES.boundingBoxValue.min}
+                    max={MOVEMENT_RANGES.boundingBoxValue.max}
+                    step={MOVEMENT_RANGES.boundingBoxValue.step}
+                    value={moveAction.movement?.boundingBox?.maxX ?? 1}
+                    onChange={(e) => onUpdate(index, {
+                      movement: {
+                        ...moveAction.movement,
+                        boundingBox: {
+                          ...moveAction.movement?.boundingBox,
+                          maxX: parseFloat(e.target.value)
+                        }
+                      }
+                    })}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.success[700] }}>
+                    Y最小: {((moveAction.movement?.boundingBox?.minY ?? 0) * 100).toFixed(0)}%
+                  </label>
+                  <input
+                    type="range"
+                    min={MOVEMENT_RANGES.boundingBoxValue.min}
+                    max={MOVEMENT_RANGES.boundingBoxValue.max}
+                    step={MOVEMENT_RANGES.boundingBoxValue.step}
+                    value={moveAction.movement?.boundingBox?.minY ?? 0}
+                    onChange={(e) => onUpdate(index, {
+                      movement: {
+                        ...moveAction.movement,
+                        boundingBox: {
+                          ...moveAction.movement?.boundingBox,
+                          minY: parseFloat(e.target.value)
+                        }
+                      }
+                    })}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.success[700] }}>
+                    Y最大: {((moveAction.movement?.boundingBox?.maxY ?? 1) * 100).toFixed(0)}%
+                  </label>
+                  <input
+                    type="range"
+                    min={MOVEMENT_RANGES.boundingBoxValue.min}
+                    max={MOVEMENT_RANGES.boundingBoxValue.max}
+                    step={MOVEMENT_RANGES.boundingBoxValue.step}
+                    value={moveAction.movement?.boundingBox?.maxY ?? 1}
+                    onChange={(e) => onUpdate(index, {
+                      movement: {
+                        ...moveAction.movement,
+                        boundingBox: {
+                          ...moveAction.movement?.boundingBox,
+                          maxY: parseFloat(e.target.value)
+                        }
+                      }
+                    })}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Movement speed setting (for non-stop and non-teleport types) */}
+      {moveAction.movement?.type && !['stop', 'teleport', 'followDrag'].includes(moveAction.movement.type) && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -165,14 +381,14 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            {t('editor.moveAction.speedLabel', { speed: moveAction.movement?.speed || 300 })}
+            {t('editor.moveAction.speedLabel', { speed: moveAction.movement?.speed || MOVEMENT_DEFAULTS.speed })}
           </label>
           <input
             type="range"
-            min="50"
-            max="1000"
-            step="50"
-            value={moveAction.movement?.speed || 300}
+            min={MOVEMENT_RANGES.speed.min}
+            max={MOVEMENT_RANGES.speed.max}
+            step={MOVEMENT_RANGES.speed.step}
+            value={moveAction.movement?.speed || MOVEMENT_DEFAULTS.speed}
             onChange={(e) => onUpdate(index, { 
               movement: { 
                 ...moveAction.movement,
@@ -195,14 +411,14 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.success[600],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>{t('editor.moveAction.speedUnit', { speed: 50 })}</span>
-            <span>{t('editor.moveAction.speedUnit', { speed: 1000 })}</span>
+            <span>{t('editor.moveAction.speedUnit', { speed: MOVEMENT_RANGES.speed.min })}</span>
+            <span>{t('editor.moveAction.speedUnit', { speed: MOVEMENT_RANGES.speed.max })}</span>
           </div>
         </div>
       )}
 
-      {/* 移動時間設定（stopとstraight以外） */}
-      {moveAction.movement?.type && !['stop'].includes(moveAction.movement.type) && (
+      {/* Movement duration setting (for non-stop types) */}
+      {moveAction.movement?.type && !['stop', 'followDrag'].includes(moveAction.movement.type) && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -211,14 +427,14 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            {t('editor.moveAction.durationLabel', { seconds: moveAction.movement?.duration || 2 })}
+            {t('editor.moveAction.durationLabel', { seconds: moveAction.movement?.duration || MOVEMENT_DEFAULTS.duration })}
           </label>
           <input
             type="range"
-            min="0.1"
-            max="10"
-            step="0.1"
-            value={moveAction.movement?.duration || 2}
+            min={MOVEMENT_RANGES.duration.min}
+            max={MOVEMENT_RANGES.duration.max}
+            step={MOVEMENT_RANGES.duration.step}
+            value={moveAction.movement?.duration || MOVEMENT_DEFAULTS.duration}
             onChange={(e) => onUpdate(index, { 
               movement: { 
                 ...moveAction.movement,
@@ -241,13 +457,13 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.success[600],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>{t('editor.moveAction.seconds', { seconds: 0.1 })}</span>
-            <span>{t('editor.moveAction.seconds', { seconds: 10 })}</span>
+            <span>{t('editor.moveAction.seconds', { seconds: MOVEMENT_RANGES.duration.min })}</span>
+            <span>{t('editor.moveAction.seconds', { seconds: MOVEMENT_RANGES.duration.max })}</span>
           </div>
         </div>
       )}
 
-      {/* 移動座標設定（座標指定が必要なタイプ） */}
+      {/* Movement target coordinates (for types requiring coordinates) */}
       {moveAction.movement?.type && ['straight', 'teleport', 'approach'].includes(moveAction.movement.type) && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
@@ -271,9 +487,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               </label>
               <input
                 type="range"
-                min="0"
-                max="1"
-                step="0.01"
+                min={MOVEMENT_RANGES.coordinates.min}
+                max={MOVEMENT_RANGES.coordinates.max}
+                step={MOVEMENT_RANGES.coordinates.step}
                 value={(moveAction.movement?.target as any)?.x || 0.5}
                 onChange={(e) => onUpdate(index, { 
                   movement: { 
@@ -305,9 +521,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               </label>
               <input
                 type="range"
-                min="0"
-                max="1"
-                step="0.01"
+                min={MOVEMENT_RANGES.coordinates.min}
+                max={MOVEMENT_RANGES.coordinates.max}
+                step={MOVEMENT_RANGES.coordinates.step}
                 value={(moveAction.movement?.target as any)?.y || 0.5}
                 onChange={(e) => onUpdate(index, { 
                   movement: { 
@@ -332,13 +548,12 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
         </div>
       )}
 
-      {/* 移動プレビューボタン */}
+      {/* Movement preview button */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <ModernButton
           variant="outline"
           size="sm"
           onClick={() => {
-            // TODO: Phase C Step 2で実装予定
             onShowNotification('info', t('editor.moveAction.previewNotice'));
           }}
           style={{
@@ -356,6 +571,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
         </ModernButton>
       </div>
 
+      {/* Settings summary */}
       <div style={{
         padding: DESIGN_TOKENS.spacing[3],
         backgroundColor: DESIGN_TOKENS.colors.success[100],
@@ -369,8 +585,8 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               type: MOVEMENT_TYPE_OPTIONS.find(m => m.value === moveAction.movement?.type)?.label || t('editor.moveAction.movementTypeLabel')
             })
           : t('editor.moveAction.selectMovementType')}
-        {moveAction.movement?.type && !['stop', 'teleport'].includes(moveAction.movement.type) &&
-          t('editor.moveAction.withSpeed', { speed: moveAction.movement?.speed || 300 })}
+        {moveAction.movement?.type && !['stop', 'teleport', 'followDrag'].includes(moveAction.movement.type) &&
+          t('editor.moveAction.withSpeed', { speed: moveAction.movement?.speed || MOVEMENT_DEFAULTS.speed })}
         {moveAction.movement?.duration && t('editor.moveAction.forDuration', { seconds: moveAction.movement.duration })}
       </div>
     </ModernCard>

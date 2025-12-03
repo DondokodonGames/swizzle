@@ -1,6 +1,6 @@
 // src/components/editor/script/conditions/TouchConditionEditor.tsx
-// Phase C Step 1-1完了版: タッチ条件詳細設定コンポーネント
-// AdvancedRuleModal.tsx分割 - Step 2: 条件エディター分離
+// 拡張版: drag/swipe/flick/hold の完全実装
+// 新機能: ドラッグ追従、スワイプ検出、フリック検出、長押し拡張
 
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +8,16 @@ import { TriggerCondition } from '../../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
-import { getTouchTypeOptions, getTouchTargetOptions } from '../constants/TouchConstants';
+import { 
+  getTouchTypeOptions, 
+  getTouchTargetOptions,
+  getDragTypeOptions,
+  getDragConstraintOptions,
+  getSwipeDirectionOptions,
+  getFlickDirectionOptions,
+  TOUCH_DEFAULTS,
+  TOUCH_RANGES
+} from '../constants/TouchConstants';
 
 interface TouchConditionEditorProps {
   condition: TriggerCondition & { type: 'touch' };
@@ -24,9 +33,13 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
   const { t } = useTranslation();
   const touchCondition = condition;
 
-  // Get localized options using getter functions that access i18n
+  // Get localized options
   const TOUCH_TYPE_OPTIONS = useMemo(() => getTouchTypeOptions(), []);
   const TOUCH_TARGET_OPTIONS = useMemo(() => getTouchTargetOptions(), []);
+  const DRAG_TYPE_OPTIONS = useMemo(() => getDragTypeOptions(), []);
+  const DRAG_CONSTRAINT_OPTIONS = useMemo(() => getDragConstraintOptions(), []);
+  const SWIPE_DIRECTION_OPTIONS = useMemo(() => getSwipeDirectionOptions(), []);
+  const FLICK_DIRECTION_OPTIONS = useMemo(() => getFlickDirectionOptions(), []);
 
   return (
     <ModernCard 
@@ -84,15 +97,15 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
                 color: touchCondition.touchType === option.value 
                   ? DESIGN_TOKENS.colors.neutral[0] 
                   : DESIGN_TOKENS.colors.purple[800],
-                padding: DESIGN_TOKENS.spacing[3],
+                padding: DESIGN_TOKENS.spacing[2],
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: DESIGN_TOKENS.spacing[1]
               }}
             >
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>{option.icon}</span>
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}>
+              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
+              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
                 {option.label}
               </span>
             </ModernButton>
@@ -100,45 +113,568 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
         </div>
       </div>
 
-      {/* Hold duration setting (only shown for hold type) */}
-      {touchCondition.touchType === 'hold' && (
-        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-          <label style={{
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-            color: DESIGN_TOKENS.colors.purple[800],
-            marginBottom: DESIGN_TOKENS.spacing[2],
-            display: 'block'
-          }}>
-            {t('editor.touchCondition.holdDuration', { seconds: touchCondition.holdDuration || 1 })}
-          </label>
-          <input
-            type="range"
-            min="0.5"
-            max="5"
-            step="0.5"
-            value={touchCondition.holdDuration || 1}
-            onChange={(e) => onUpdate(index, { holdDuration: parseFloat(e.target.value) })}
-            style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: DESIGN_TOKENS.colors.purple[200],
-              borderRadius: DESIGN_TOKENS.borderRadius.full,
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-            color: DESIGN_TOKENS.colors.purple[500],
-            marginTop: DESIGN_TOKENS.spacing[1]
-          }}>
-            <span>{t('editor.touchCondition.seconds', { seconds: 0.5 })}</span>
-            <span>{t('editor.touchCondition.seconds', { seconds: 5 })}</span>
+      {/* Drag settings (when touchType is 'drag') */}
+      {touchCondition.touchType === 'drag' && (
+        <>
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.touchCondition.dragTypeLabel')}
+            </label>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+              gap: DESIGN_TOKENS.spacing[2]
+            }}>
+              {DRAG_TYPE_OPTIONS.map((option) => (
+                <ModernButton
+                  key={option.value}
+                  variant={touchCondition.dragType === option.value ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => onUpdate(index, { dragType: option.value as any })}
+                  style={{
+                    borderColor: touchCondition.dragType === option.value 
+                      ? DESIGN_TOKENS.colors.purple[500] 
+                      : DESIGN_TOKENS.colors.purple[200],
+                    backgroundColor: touchCondition.dragType === option.value 
+                      ? DESIGN_TOKENS.colors.purple[500] 
+                      : 'transparent',
+                    color: touchCondition.dragType === option.value 
+                      ? DESIGN_TOKENS.colors.neutral[0] 
+                      : DESIGN_TOKENS.colors.purple[800]
+                  }}
+                >
+                  <span>{option.label}</span>
+                </ModernButton>
+              ))}
+            </div>
           </div>
-        </div>
+
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.touchCondition.dragConstraintLabel')}
+            </label>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+              gap: DESIGN_TOKENS.spacing[2]
+            }}>
+              {DRAG_CONSTRAINT_OPTIONS.map((option) => (
+                <ModernButton
+                  key={option.value}
+                  variant={touchCondition.dragConstraint === option.value ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => onUpdate(index, { dragConstraint: option.value as any })}
+                  style={{
+                    borderColor: touchCondition.dragConstraint === option.value 
+                      ? DESIGN_TOKENS.colors.purple[500] 
+                      : DESIGN_TOKENS.colors.purple[200],
+                    backgroundColor: touchCondition.dragConstraint === option.value 
+                      ? DESIGN_TOKENS.colors.purple[500] 
+                      : 'transparent',
+                    color: touchCondition.dragConstraint === option.value 
+                      ? DESIGN_TOKENS.colors.neutral[0] 
+                      : DESIGN_TOKENS.colors.purple[800]
+                  }}
+                >
+                  <span>{option.label}</span>
+                </ModernButton>
+              ))}
+            </div>
+          </div>
+
+          {/* Drag bounding box settings */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.touchCondition.boundingBoxLabel')}
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: DESIGN_TOKENS.spacing[2] }}>
+              <div>
+                <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
+                  X最小: {((touchCondition.boundingBox?.minX ?? 0) * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={touchCondition.boundingBox?.minX ?? 0}
+                  onChange={(e) => onUpdate(index, {
+                    boundingBox: { ...touchCondition.boundingBox, minX: parseFloat(e.target.value) }
+                  })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
+                  X最大: {((touchCondition.boundingBox?.maxX ?? 1) * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={touchCondition.boundingBox?.maxX ?? 1}
+                  onChange={(e) => onUpdate(index, {
+                    boundingBox: { ...touchCondition.boundingBox, maxX: parseFloat(e.target.value) }
+                  })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
+                  Y最小: {((touchCondition.boundingBox?.minY ?? 0) * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={touchCondition.boundingBox?.minY ?? 0}
+                  onChange={(e) => onUpdate(index, {
+                    boundingBox: { ...touchCondition.boundingBox, minY: parseFloat(e.target.value) }
+                  })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
+                  Y最大: {((touchCondition.boundingBox?.maxY ?? 1) * 100).toFixed(0)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={touchCondition.boundingBox?.maxY ?? 1}
+                  onChange={(e) => onUpdate(index, {
+                    boundingBox: { ...touchCondition.boundingBox, maxY: parseFloat(e.target.value) }
+                  })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Swipe settings (when touchType is 'swipe') */}
+      {touchCondition.touchType === 'swipe' && (
+        <>
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.touchCondition.swipeDirectionLabel')}
+            </label>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: DESIGN_TOKENS.spacing[2]
+            }}>
+              {SWIPE_DIRECTION_OPTIONS.map((option) => (
+                <ModernButton
+                  key={option.value}
+                  variant={touchCondition.swipeDirection === option.value ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => onUpdate(index, { swipeDirection: option.value as any })}
+                  style={{
+                    borderColor: touchCondition.swipeDirection === option.value 
+                      ? DESIGN_TOKENS.colors.purple[500] 
+                      : DESIGN_TOKENS.colors.purple[200],
+                    backgroundColor: touchCondition.swipeDirection === option.value 
+                      ? DESIGN_TOKENS.colors.purple[500] 
+                      : 'transparent',
+                    color: touchCondition.swipeDirection === option.value 
+                      ? DESIGN_TOKENS.colors.neutral[0] 
+                      : DESIGN_TOKENS.colors.purple[800],
+                    padding: DESIGN_TOKENS.spacing[2]
+                  }}
+                >
+                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
+                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs }}>{option.label}</span>
+                </ModernButton>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.touchCondition.swipeMinDistanceLabel', { distance: touchCondition.swipeMinDistance ?? TOUCH_DEFAULTS.swipeMinDistance })}
+            </label>
+            <input
+              type="range"
+              min={TOUCH_RANGES.swipeMinDistance.min}
+              max={TOUCH_RANGES.swipeMinDistance.max}
+              step={TOUCH_RANGES.swipeMinDistance.step}
+              value={touchCondition.swipeMinDistance ?? TOUCH_DEFAULTS.swipeMinDistance}
+              onChange={(e) => onUpdate(index, { swipeMinDistance: parseFloat(e.target.value) })}
+              style={{ width: '100%' }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.purple[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>{TOUCH_RANGES.swipeMinDistance.min}px</span>
+              <span>{TOUCH_RANGES.swipeMinDistance.max}px</span>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.touchCondition.swipeMaxDurationLabel', { duration: touchCondition.swipeMaxDuration ?? TOUCH_DEFAULTS.swipeMaxDuration })}
+            </label>
+            <input
+              type="range"
+              min={TOUCH_RANGES.swipeMaxDuration.min}
+              max={TOUCH_RANGES.swipeMaxDuration.max}
+              step={TOUCH_RANGES.swipeMaxDuration.step}
+              value={touchCondition.swipeMaxDuration ?? TOUCH_DEFAULTS.swipeMaxDuration}
+              onChange={(e) => onUpdate(index, { swipeMaxDuration: parseFloat(e.target.value) })}
+              style={{ width: '100%' }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.purple[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>{TOUCH_RANGES.swipeMaxDuration.min}ms</span>
+              <span>{TOUCH_RANGES.swipeMaxDuration.max}ms</span>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.touchCondition.swipeMinVelocityLabel', { velocity: touchCondition.swipeMinVelocity ?? TOUCH_DEFAULTS.swipeMinVelocity })}
+            </label>
+            <input
+              type="range"
+              min={TOUCH_RANGES.swipeMinVelocity.min}
+              max={TOUCH_RANGES.swipeMinVelocity.max}
+              step={TOUCH_RANGES.swipeMinVelocity.step}
+              value={touchCondition.swipeMinVelocity ?? TOUCH_DEFAULTS.swipeMinVelocity}
+              onChange={(e) => onUpdate(index, { swipeMinVelocity: parseFloat(e.target.value) })}
+              style={{ width: '100%' }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.purple[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>{TOUCH_RANGES.swipeMinVelocity.min} px/ms</span>
+              <span>{TOUCH_RANGES.swipeMinVelocity.max} px/ms</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Flick settings (when touchType is 'flick') */}
+      {touchCondition.touchType === 'flick' && (
+        <>
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.touchCondition.flickDirectionLabel')}
+            </label>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: DESIGN_TOKENS.spacing[2]
+            }}>
+              {FLICK_DIRECTION_OPTIONS.map((option) => (
+                <ModernButton
+                  key={option.value}
+                  variant={touchCondition.flickDirection === option.value ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => onUpdate(index, { flickDirection: option.value as any })}
+                  style={{
+                    borderColor: touchCondition.flickDirection === option.value 
+                      ? DESIGN_TOKENS.colors.purple[500] 
+                      : DESIGN_TOKENS.colors.purple[200],
+                    backgroundColor: touchCondition.flickDirection === option.value 
+                      ? DESIGN_TOKENS.colors.purple[500] 
+                      : 'transparent',
+                    color: touchCondition.flickDirection === option.value 
+                      ? DESIGN_TOKENS.colors.neutral[0] 
+                      : DESIGN_TOKENS.colors.purple[800],
+                    padding: DESIGN_TOKENS.spacing[2]
+                  }}
+                >
+                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
+                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs }}>{option.label}</span>
+                </ModernButton>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.touchCondition.flickMinVelocityLabel', { velocity: touchCondition.flickMinVelocity ?? TOUCH_DEFAULTS.flickMinVelocity })}
+            </label>
+            <input
+              type="range"
+              min={TOUCH_RANGES.flickMinVelocity.min}
+              max={TOUCH_RANGES.flickMinVelocity.max}
+              step={TOUCH_RANGES.flickMinVelocity.step}
+              value={touchCondition.flickMinVelocity ?? TOUCH_DEFAULTS.flickMinVelocity}
+              onChange={(e) => onUpdate(index, { flickMinVelocity: parseFloat(e.target.value) })}
+              style={{ width: '100%' }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.purple[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>{TOUCH_RANGES.flickMinVelocity.min} px/ms</span>
+              <span>{TOUCH_RANGES.flickMinVelocity.max} px/ms</span>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.touchCondition.flickMaxDistanceLabel', { distance: touchCondition.flickMaxDistance ?? TOUCH_DEFAULTS.flickMaxDistance })}
+            </label>
+            <input
+              type="range"
+              min={TOUCH_RANGES.flickMaxDistance.min}
+              max={TOUCH_RANGES.flickMaxDistance.max}
+              step={TOUCH_RANGES.flickMaxDistance.step}
+              value={touchCondition.flickMaxDistance ?? TOUCH_DEFAULTS.flickMaxDistance}
+              onChange={(e) => onUpdate(index, { flickMaxDistance: parseFloat(e.target.value) })}
+              style={{ width: '100%' }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.purple[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>{TOUCH_RANGES.flickMaxDistance.min}px</span>
+              <span>{TOUCH_RANGES.flickMaxDistance.max}px</span>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.touchCondition.flickMaxDurationLabel', { duration: touchCondition.flickMaxDuration ?? TOUCH_DEFAULTS.flickMaxDuration })}
+            </label>
+            <input
+              type="range"
+              min={TOUCH_RANGES.flickMaxDuration.min}
+              max={TOUCH_RANGES.flickMaxDuration.max}
+              step={TOUCH_RANGES.flickMaxDuration.step}
+              value={touchCondition.flickMaxDuration ?? TOUCH_DEFAULTS.flickMaxDuration}
+              onChange={(e) => onUpdate(index, { flickMaxDuration: parseFloat(e.target.value) })}
+              style={{ width: '100%' }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.purple[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>{TOUCH_RANGES.flickMaxDuration.min}ms</span>
+              <span>{TOUCH_RANGES.flickMaxDuration.max}ms</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Hold duration setting (when touchType is 'hold') */}
+      {touchCondition.touchType === 'hold' && (
+        <>
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.touchCondition.holdDurationLabel', { seconds: touchCondition.holdDuration || TOUCH_DEFAULTS.holdDuration })}
+            </label>
+            <input
+              type="range"
+              min={TOUCH_RANGES.holdDuration.min}
+              max={TOUCH_RANGES.holdDuration.max}
+              step={TOUCH_RANGES.holdDuration.step}
+              value={touchCondition.holdDuration || TOUCH_DEFAULTS.holdDuration}
+              onChange={(e) => onUpdate(index, { holdDuration: parseFloat(e.target.value) })}
+              style={{
+                width: '100%',
+                height: '8px',
+                backgroundColor: DESIGN_TOKENS.colors.purple[200],
+                borderRadius: DESIGN_TOKENS.borderRadius.full,
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.purple[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>{t('editor.touchCondition.seconds', { seconds: TOUCH_RANGES.holdDuration.min })}</span>
+              <span>{t('editor.touchCondition.seconds', { seconds: TOUCH_RANGES.holdDuration.max })}</span>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.purple[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              {t('editor.touchCondition.holdToleranceLabel', { tolerance: touchCondition.holdTolerance ?? TOUCH_DEFAULTS.holdTolerance })}
+            </label>
+            <input
+              type="range"
+              min={TOUCH_RANGES.holdTolerance.min}
+              max={TOUCH_RANGES.holdTolerance.max}
+              step={TOUCH_RANGES.holdTolerance.step}
+              value={touchCondition.holdTolerance ?? TOUCH_DEFAULTS.holdTolerance}
+              onChange={(e) => onUpdate(index, { holdTolerance: parseFloat(e.target.value) })}
+              style={{ width: '100%' }}
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.purple[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              <span>{TOUCH_RANGES.holdTolerance.min}px</span>
+              <span>{TOUCH_RANGES.holdTolerance.max}px</span>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: DESIGN_TOKENS.spacing[2],
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              color: DESIGN_TOKENS.colors.purple[800]
+            }}>
+              <input
+                type="checkbox"
+                checked={touchCondition.checkProgress ?? false}
+                onChange={(e) => onUpdate(index, { checkProgress: e.target.checked })}
+              />
+              {t('editor.touchCondition.checkProgressLabel')}
+            </label>
+          </div>
+
+          {touchCondition.checkProgress && (
+            <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+              <label style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                color: DESIGN_TOKENS.colors.purple[800],
+                marginBottom: DESIGN_TOKENS.spacing[2],
+                display: 'block'
+              }}>
+                {t('editor.touchCondition.progressThresholdLabel', { threshold: ((touchCondition.holdProgressThreshold ?? TOUCH_DEFAULTS.holdProgressThreshold) * 100).toFixed(0) })}
+              </label>
+              <input
+                type="range"
+                min={TOUCH_RANGES.holdProgressThreshold.min}
+                max={TOUCH_RANGES.holdProgressThreshold.max}
+                step={TOUCH_RANGES.holdProgressThreshold.step}
+                value={touchCondition.holdProgressThreshold ?? TOUCH_DEFAULTS.holdProgressThreshold}
+                onChange={(e) => onUpdate(index, { holdProgressThreshold: parseFloat(e.target.value) })}
+                style={{ width: '100%' }}
+              />
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                color: DESIGN_TOKENS.colors.purple[600],
+                marginTop: DESIGN_TOKENS.spacing[1]
+              }}>
+                <span>{(TOUCH_RANGES.holdProgressThreshold.min * 100).toFixed(0)}%</span>
+                <span>{(TOUCH_RANGES.holdProgressThreshold.max * 100).toFixed(0)}%</span>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Touch target selection */}
@@ -181,7 +717,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
               }}
             >
               <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
+              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}>
                 {option.label}
               </span>
             </ModernButton>
@@ -189,8 +725,8 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
         </div>
       </div>
 
-      {/* Stage region specification (only shown when target is 'stage') */}
-      {touchCondition.target === 'stage' && (
+      {/* Stage area settings (when target is 'stageArea') */}
+      {touchCondition.target === 'stageArea' && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -199,92 +735,89 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            {t('editor.touchCondition.touchRegionLabel')}
+            {t('editor.touchCondition.regionShapeLabel')}
           </label>
-
-          {/* Region shape selection */}
-          <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2], marginBottom: DESIGN_TOKENS.spacing[3] }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: DESIGN_TOKENS.spacing[2],
+            marginBottom: DESIGN_TOKENS.spacing[3]
+          }}>
             <ModernButton
-              variant={touchCondition.region?.shape === 'rect' || !touchCondition.region ? 'primary' : 'outline'}
+              variant={touchCondition.region?.shape === 'rect' ? 'primary' : 'outline'}
               size="sm"
-              onClick={() => onUpdate(index, {
-                region: {
-                  shape: 'rect',
-                  x: 0.3,
-                  y: 0.3,
-                  width: 0.4,
-                  height: 0.4
-                }
+              onClick={() => onUpdate(index, { 
+                region: { 
+                  shape: 'rect', 
+                  x: 0.5, 
+                  y: 0.5, 
+                  width: 0.4, 
+                  height: 0.4 
+                } 
               })}
               style={{
-                borderColor: DESIGN_TOKENS.colors.purple[200],
-                flex: 1
+                borderColor: touchCondition.region?.shape === 'rect' 
+                  ? DESIGN_TOKENS.colors.purple[500] 
+                  : DESIGN_TOKENS.colors.purple[200]
               }}
             >
-              🔲 {t('editor.touchCondition.shapeRect')}
+              <span>⬜ {t('editor.touchCondition.rectangle')}</span>
             </ModernButton>
             <ModernButton
               variant={touchCondition.region?.shape === 'circle' ? 'primary' : 'outline'}
               size="sm"
-              onClick={() => onUpdate(index, {
-                region: {
-                  shape: 'circle',
-                  x: 0.5,
-                  y: 0.5,
-                  radius: 0.2
-                }
+              onClick={() => onUpdate(index, { 
+                region: { 
+                  shape: 'circle', 
+                  x: 0.5, 
+                  y: 0.5, 
+                  radius: 0.2 
+                } 
               })}
               style={{
-                borderColor: DESIGN_TOKENS.colors.purple[200],
-                flex: 1
+                borderColor: touchCondition.region?.shape === 'circle' 
+                  ? DESIGN_TOKENS.colors.purple[500] 
+                  : DESIGN_TOKENS.colors.purple[200]
               }}
             >
-              ⭕ {t('editor.touchCondition.shapeCircle')}
+              <span>⚪ {t('editor.touchCondition.circle')}</span>
             </ModernButton>
           </div>
 
-          {/* Region parameter settings */}
           {touchCondition.region && (
-            <div style={{
-              backgroundColor: DESIGN_TOKENS.colors.neutral[50],
-              padding: DESIGN_TOKENS.spacing[3],
-              borderRadius: DESIGN_TOKENS.borderRadius.md,
-              display: 'grid',
-              gap: DESIGN_TOKENS.spacing[2]
-            }}>
-              <div>
+            <>
+              <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
                 <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  {t('editor.touchCondition.centerX', { percent: (touchCondition.region.x * 100).toFixed(0) })}
+                  {t('editor.touchCondition.xPosition', { percent: ((touchCondition.region.x || 0.5) * 100).toFixed(0) })}
                 </label>
                 <input
                   type="range"
                   min="0"
                   max="1"
                   step="0.05"
-                  value={touchCondition.region.x}
+                  value={touchCondition.region.x || 0.5}
                   onChange={(e) => onUpdate(index, {
                     region: { ...touchCondition.region!, x: parseFloat(e.target.value) }
                   })}
                   style={{ width: '100%' }}
                 />
               </div>
-              <div>
+              <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
                 <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  {t('editor.touchCondition.centerY', { percent: (touchCondition.region.y * 100).toFixed(0) })}
+                  {t('editor.touchCondition.yPosition', { percent: ((touchCondition.region.y || 0.5) * 100).toFixed(0) })}
                 </label>
                 <input
                   type="range"
                   min="0"
                   max="1"
                   step="0.05"
-                  value={touchCondition.region.y}
+                  value={touchCondition.region.y || 0.5}
                   onChange={(e) => onUpdate(index, {
                     region: { ...touchCondition.region!, y: parseFloat(e.target.value) }
                   })}
                   style={{ width: '100%' }}
                 />
               </div>
-
               {touchCondition.region.shape === 'rect' ? (
                 <>
                   <div>
@@ -338,11 +871,12 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
                   />
                 </div>
               )}
-            </div>
+            </>
           )}
         </div>
       )}
 
+      {/* Settings summary */}
       <div style={{
         padding: DESIGN_TOKENS.spacing[3],
         backgroundColor: DESIGN_TOKENS.colors.purple[100],
@@ -350,16 +884,8 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.purple[800]
       }}>
-        {t('editor.touchCondition.settingsSummaryTitle')} {TOUCH_TYPE_OPTIONS.find(t => t.value === touchCondition.touchType)?.description}
-        {touchCondition.touchType === 'hold' && t('editor.touchCondition.holdDurationSeconds', { seconds: touchCondition.holdDuration || 1 })}
-        {touchCondition.target === 'self' ? t('editor.touchCondition.touchToSelf') :
-         touchCondition.target === 'stage' ?
-           (touchCondition.region ?
-             t('editor.touchCondition.touchToStageRegion', {
-               shape: touchCondition.region.shape === 'rect' ? t('editor.touchCondition.shapeRect') : t('editor.touchCondition.shapeCircle')
-             }) :
-             t('editor.touchCondition.touchToStageWhole')) :
-         t('editor.touchCondition.touchToObject')}
+        {t('editor.touchCondition.settingsSummaryTitle')}
+        {TOUCH_TYPE_OPTIONS.find(t => t.value === touchCondition.touchType)?.description}
       </div>
     </ModernCard>
   );

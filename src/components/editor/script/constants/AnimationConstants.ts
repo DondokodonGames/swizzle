@@ -1,21 +1,27 @@
 // src/components/editor/script/constants/AnimationConstants.ts
-// Phase E Step 2: アニメーション条件詳細定義
-// CollisionConstants.ts成功パターン踏襲 - GameScript.ts型定義完全準拠
+// Phase H-1: アニメーション条件詳細定義（拡張版）
+// playing/stopped/frameRange の完全サポート
 
 import i18n from '../../../../i18n';
 
 /**
- * Phase E: アニメーション条件タイプ詳細定義（GameScript.ts準拠）
+ * Phase H-1: アニメーション条件タイプ詳細定義（拡張版）
+ * 新規追加: playing, stopped, frameRange
  */
 export const getAnimationConditions = () => [
+  // 既存条件
   { value: 'start', label: i18n.t('conditions.animation.start.label'), icon: '▶️', description: i18n.t('conditions.animation.start.description') },
   { value: 'end', label: i18n.t('conditions.animation.end.label'), icon: '🏁', description: i18n.t('conditions.animation.end.description') },
   { value: 'frame', label: i18n.t('conditions.animation.frame.label'), icon: '📹', description: i18n.t('conditions.animation.frame.description') },
-  { value: 'loop', label: i18n.t('conditions.animation.loop.label'), icon: '🔄', description: i18n.t('conditions.animation.loop.description') }
+  { value: 'loop', label: i18n.t('conditions.animation.loop.label'), icon: '🔄', description: i18n.t('conditions.animation.loop.description') },
+  // 🆕 Phase H-1: 新規追加
+  { value: 'playing', label: i18n.t('conditions.animation.playing.label'), icon: '▶️', description: i18n.t('conditions.animation.playing.description') },
+  { value: 'stopped', label: i18n.t('conditions.animation.stopped.label'), icon: '⏸️', description: i18n.t('conditions.animation.stopped.description') },
+  { value: 'frameRange', label: i18n.t('conditions.animation.frameRange.label'), icon: '📊', description: i18n.t('conditions.animation.frameRange.description') }
 ] as const;
 
 /**
- * Phase E: アニメーション対象選択オプション
+ * アニメーション対象選択オプション（既存）
  */
 export const getAnimationTargetOptions = () => [
   { value: 'background', label: i18n.t('conditions.targets.background.label'), icon: '🖼️', description: i18n.t('conditions.targets.background.description') },
@@ -52,13 +58,27 @@ export const getAnimationIndexOptions = () => [
 ] as const;
 
 /**
- * アニメーション判定のデフォルト値
+ * Phase H-1: アニメーション判定のデフォルト値（拡張版）
  */
 export const ANIMATION_DEFAULTS = {
   target: 'this' as const,
   condition: 'end' as const,
   frameNumber: 1,
-  animationIndex: 0
+  animationIndex: 0,
+  // 🆕 Phase H-1: 新規追加
+  frameRangeStart: 1,
+  frameRangeEnd: 4,
+  loopCount: 1
+} as const;
+
+/**
+ * Phase H-1: アニメーションパラメータの範囲設定（新規）
+ */
+export const ANIMATION_RANGES = {
+  frameNumber: { min: 1, max: 8, step: 1 },
+  frameRangeStart: { min: 1, max: 8, step: 1 },
+  frameRangeEnd: { min: 1, max: 8, step: 1 },
+  loopCount: { min: 1, max: 100, step: 1 }
 } as const;
 
 /**
@@ -70,14 +90,17 @@ export const FRAME_NUMBER_OPTIONS = getFrameNumberOptions();
 export const ANIMATION_INDEX_OPTIONS = getAnimationIndexOptions();
 
 /**
- * アニメーション定数の型定義（CollisionConstants.tsパターン踏襲）
+ * アニメーション定数の型定義
  */
 export type AnimationConditionOption = ReturnType<typeof getAnimationConditions>[number];
 export type AnimationTargetOption = ReturnType<typeof getAnimationTargetOptions>[number];
 export type FrameNumberOption = ReturnType<typeof getFrameNumberOptions>[number];
 export type AnimationIndexOption = ReturnType<typeof getAnimationIndexOptions>[number];
+
 export type AnimationConditionType = AnimationConditionOption['value'];
 export type AnimationTarget = AnimationTargetOption['value'];
 export type FrameNumber = FrameNumberOption['value'];
 export type AnimationIndex = AnimationIndexOption['value'];
+
 export type AnimationDefaults = typeof ANIMATION_DEFAULTS;
+export type AnimationRanges = typeof ANIMATION_RANGES;

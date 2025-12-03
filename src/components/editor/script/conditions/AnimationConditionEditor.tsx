@@ -1,6 +1,6 @@
 // src/components/editor/script/conditions/AnimationConditionEditor.tsx
-// Phase E Step 2: アニメーション条件詳細設定コンポーネント
-// CollisionConditionEditor.tsx成功パターン完全踏襲
+// 拡張版: playing/stopped/frameRange の完全実装
+// 新機能: アニメーション再生中判定、停止中判定、フレーム範囲判定
 
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,7 +13,9 @@ import {
   getAnimationConditions,
   getAnimationTargetOptions,
   getFrameNumberOptions,
-  getAnimationIndexOptions
+  getAnimationIndexOptions,
+  ANIMATION_DEFAULTS,
+  ANIMATION_RANGES
 } from '../constants/AnimationConstants';
 
 interface AnimationConditionEditorProps {
@@ -32,16 +34,16 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
   const { t } = useTranslation();
   const animationCondition = condition;
 
-  // Get localized options using getter functions that access i18n
+  // Get localized options
   const ANIMATION_CONDITIONS = useMemo(() => getAnimationConditions(), []);
   const ANIMATION_TARGET_OPTIONS = useMemo(() => getAnimationTargetOptions(), []);
   const FRAME_NUMBER_OPTIONS = useMemo(() => getFrameNumberOptions(), []);
   const ANIMATION_INDEX_OPTIONS = useMemo(() => getAnimationIndexOptions(), []);
 
-  // プロジェクト内オブジェクト取得
+  // Get project objects
   const projectObjects = project.assets?.objects || [];
 
-  // 選択されたオブジェクトのアニメーション情報取得
+  // Get selected object's animations
   const getSelectedObjectAnimations = () => {
     if (animationCondition.target === 'background') {
       return project.assets?.background?.frames || [];
@@ -79,7 +81,7 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
         {t('editor.animationCondition.title')}
       </h5>
 
-      {/* アニメーション対象選択 */}
+      {/* Animation target selection */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <label style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -112,7 +114,7 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
                   if (option.value === 'background') {
                     newTarget = 'background';
                   } else if (option.value === 'this') {
-                    newTarget = 'self'; // GameScript.ts準拠
+                    newTarget = 'self';
                   } else if (option.value === 'other' && projectObjects.length > 0) {
                     newTarget = projectObjects[0].id;
                   }
@@ -145,7 +147,7 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
         </div>
       </div>
 
-      {/* 他オブジェクト選択（otherの場合のみ表示） */}
+      {/* Other object selection (when target is 'other') */}
       {animationCondition.target !== 'background' && animationCondition.target !== 'self' && projectObjects.length > 0 && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
@@ -182,7 +184,7 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
         </div>
       )}
 
-      {/* アニメーション条件選択 */}
+      {/* Animation condition selection */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <label style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -214,15 +216,15 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
                 color: animationCondition.condition === option.value 
                   ? DESIGN_TOKENS.colors.neutral[0] 
                   : DESIGN_TOKENS.colors.purple[800],
-                padding: DESIGN_TOKENS.spacing[3],
+                padding: DESIGN_TOKENS.spacing[2],
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: DESIGN_TOKENS.spacing[1]
               }}
             >
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>{option.icon}</span>
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}>
+              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
+              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
                 {option.label}
               </span>
             </ModernButton>
@@ -230,8 +232,8 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
         </div>
       </div>
 
-      {/* フレーム番号指定（frameの場合のみ表示） */}
-      {animationCondition.condition === 'frame' && (
+      {/* Frame number selection (when condition is 'frame') */}
+      {animationCondition.condition === 'frame' && selectedObjectFrames.length > 0 && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -240,11 +242,11 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            {t('editor.animationCondition.targetFrameLabel', { max: maxFrameNumber })}
+            {t('editor.animationCondition.frameNumberLabel', { number: animationCondition.frameNumber || ANIMATION_DEFAULTS.frameNumber })}
           </label>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(60px, 1fr))',
             gap: DESIGN_TOKENS.spacing[2]
           }}>
             {availableFrameOptions.map((option) => (
@@ -280,8 +282,8 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
         </div>
       )}
 
-      {/* アニメーション番号指定（複数アニメーションがある場合） */}
-      {selectedObjectFrames.length > 1 && (
+      {/* Frame range selection (when condition is 'frameRange') */}
+      {animationCondition.condition === 'frameRange' && selectedObjectFrames.length > 0 && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -290,14 +292,79 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
             marginBottom: DESIGN_TOKENS.spacing[2],
             display: 'block'
           }}>
-            {t('editor.animationCondition.animationNumberLabel', { number: (animationCondition.animationIndex || 0) + 1 })}
+            {t('editor.animationCondition.frameRangeLabel')}
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: DESIGN_TOKENS.spacing[2] }}>
+            <div>
+              <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
+                {t('editor.animationCondition.startFrame', { frame: animationCondition.frameRangeStart ?? ANIMATION_DEFAULTS.frameRangeStart })}
+              </label>
+              <input
+                type="range"
+                min={ANIMATION_RANGES.frameRangeStart.min}
+                max={Math.min(ANIMATION_RANGES.frameRangeStart.max, maxFrameNumber)}
+                step={ANIMATION_RANGES.frameRangeStart.step}
+                value={animationCondition.frameRangeStart ?? ANIMATION_DEFAULTS.frameRangeStart}
+                onChange={(e) => onUpdate(index, { frameRangeStart: parseInt(e.target.value) })}
+                style={{ width: '100%' }}
+              />
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                color: DESIGN_TOKENS.colors.purple[600],
+                marginTop: DESIGN_TOKENS.spacing[1]
+              }}>
+                <span>1</span>
+                <span>{Math.min(ANIMATION_RANGES.frameRangeStart.max, maxFrameNumber)}</span>
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
+                {t('editor.animationCondition.endFrame', { frame: animationCondition.frameRangeEnd ?? ANIMATION_DEFAULTS.frameRangeEnd })}
+              </label>
+              <input
+                type="range"
+                min={ANIMATION_RANGES.frameRangeEnd.min}
+                max={Math.min(ANIMATION_RANGES.frameRangeEnd.max, maxFrameNumber)}
+                step={ANIMATION_RANGES.frameRangeEnd.step}
+                value={animationCondition.frameRangeEnd ?? ANIMATION_DEFAULTS.frameRangeEnd}
+                onChange={(e) => onUpdate(index, { frameRangeEnd: parseInt(e.target.value) })}
+                style={{ width: '100%' }}
+              />
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                color: DESIGN_TOKENS.colors.purple[600],
+                marginTop: DESIGN_TOKENS.spacing[1]
+              }}>
+                <span>1</span>
+                <span>{Math.min(ANIMATION_RANGES.frameRangeEnd.max, maxFrameNumber)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Animation index selection (when condition is 'playing', 'stopped' or 'loop') */}
+      {(animationCondition.condition === 'playing' || animationCondition.condition === 'stopped' || animationCondition.condition === 'loop') && selectedObjectFrames.length > 1 && (
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.purple[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            {t('editor.animationCondition.animationNumberLabel', { number: (animationCondition.animationIndex || ANIMATION_DEFAULTS.animationIndex) + 1 })}
           </label>
           <input
             type="range"
             min="0"
             max={Math.min(7, selectedObjectFrames.length - 1)}
             step="1"
-            value={animationCondition.animationIndex || 0}
+            value={animationCondition.animationIndex || ANIMATION_DEFAULTS.animationIndex}
             onChange={(e) => onUpdate(index, { animationIndex: parseInt(e.target.value) })}
             style={{
               width: '100%',
@@ -321,7 +388,48 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
         </div>
       )}
 
-      {/* 設定内容要約表示 */}
+      {/* Loop count (when condition is 'loop') */}
+      {animationCondition.condition === 'loop' && (
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.purple[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            {t('editor.animationCondition.loopCountLabel', { count: animationCondition.loopCount ?? ANIMATION_DEFAULTS.loopCount })}
+          </label>
+          <input
+            type="range"
+            min={ANIMATION_RANGES.loopCount.min}
+            max={ANIMATION_RANGES.loopCount.max}
+            step={ANIMATION_RANGES.loopCount.step}
+            value={animationCondition.loopCount ?? ANIMATION_DEFAULTS.loopCount}
+            onChange={(e) => onUpdate(index, { loopCount: parseInt(e.target.value) })}
+            style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: DESIGN_TOKENS.colors.purple[200],
+              borderRadius: DESIGN_TOKENS.borderRadius.full,
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          />
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+            color: DESIGN_TOKENS.colors.purple[600],
+            marginTop: DESIGN_TOKENS.spacing[1]
+          }}>
+            <span>{ANIMATION_RANGES.loopCount.min}</span>
+            <span>{ANIMATION_RANGES.loopCount.max}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Settings summary */}
       <div style={{
         padding: DESIGN_TOKENS.spacing[3],
         backgroundColor: DESIGN_TOKENS.colors.purple[100],
@@ -336,7 +444,11 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
         {animationCondition.target !== 'background' && animationCondition.target !== 'self' && t('editor.animationCondition.otherObjectAnimation', {
           name: projectObjects.find(obj => obj.id === animationCondition.target)?.name || animationCondition.target
         })}
-        {animationCondition.condition === 'frame' && t('editor.animationCondition.frameNumber', { number: animationCondition.frameNumber || 1 })}
+        {animationCondition.condition === 'frame' && t('editor.animationCondition.frameNumber', { number: animationCondition.frameNumber || ANIMATION_DEFAULTS.frameNumber })}
+        {animationCondition.condition === 'frameRange' && t('editor.animationCondition.frameRangeDisplay', { 
+          start: animationCondition.frameRangeStart ?? ANIMATION_DEFAULTS.frameRangeStart, 
+          end: animationCondition.frameRangeEnd ?? ANIMATION_DEFAULTS.frameRangeEnd 
+        })}
         {(animationCondition.animationIndex || 0) > 0 && t('editor.animationCondition.animationNumber', { number: (animationCondition.animationIndex || 0) + 1 })}
         {selectedObjectFrames.length > 0 && t('editor.animationCondition.framesAvailable', { count: selectedObjectFrames.length })}
       </div>
