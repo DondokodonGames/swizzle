@@ -4,10 +4,11 @@
 // 🔧 修正: 画面外チェック削除（オブジェクトが画面外に出られるように）
 // 🔧 修正: layoutObj の全プロパティを反映（position, scale, rotation, zIndex, animation）
 // 🔍 デバッグ: タッチイベント詳細ログ追加
+// 🆕 拡張（2025-12-03）: タッチ拡張、物理演算、エフェクト、アニメーション統合
 
 import { GameProject } from '../../types/editor/GameProject';
-import { GameRule, TriggerCondition, GameAction } from '../../types/editor/GameScript';
-import { createDefaultInitialState, syncInitialStateWithLayout } from '../../types/editor/GameScript';
+import { GameRule, TriggerCondition, GameAction, PhysicsProperties } from '../../types/editor/GameScript';
+import { createDefaultInitialState, syncInitialStateWithLayout, createDefaultPhysics } from '../../types/editor/GameScript';
 import { RuleEngine, RuleExecutionContext, ActionExecutionResult } from '../rule-engine/RuleEngine';
 
 // ゲーム実行結果
@@ -33,8 +34,22 @@ export interface GameExecutionResult {
   };
 }
 
+// 🆕 タッチ追跡情報
+interface TouchTracker {
+  targetId: string | null;
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+  startTime: number;
+  lastMoveTime: number;
+  isDragging: boolean;
+  isHolding: boolean;
+  holdProgress: number;
+}
+
 /**
- * EditorGameBridge - Phase 1+2 完全統合版 + 全プロパティ反映版
+ * EditorGameBridge - Phase 1+2 完全統合版 + 全プロパティ反映版 + 新機能統合版
  * RuleEngine.ts を使用してエディターで作成したゲームを実行
  */
 export class EditorGameBridge {
@@ -42,6 +57,9 @@ export class EditorGameBridge {
   private ruleEngine: RuleEngine | null = null;
   private animationFrameId: number | null = null;
   private currentContext: RuleExecutionContext | null = null;
+  
+  // 🆕 タッチ追跡
+  private touchTracker: TouchTracker | null = null;
   
   static getInstance(): EditorGameBridge {
     if (!this.instance) {
@@ -51,13 +69,13 @@ export class EditorGameBridge {
   }
 
   /**
-   * ゲーム実行（RuleEngine統合版）
+   * ゲーム実行（RuleEngine統合版 + 新機能統合版）
    */
   async executeGame(
     project: GameProject,
     canvasElement: HTMLCanvasElement
   ): Promise<GameExecutionResult> {
-    console.log('🎮 ゲーム実行開始 (RuleEngine統合版):', project.name || project.settings.name);
+    console.log('🎮 ゲーム実行開始 (RuleEngine統合版 + 新機能):', project.name || project.settings.name);
     
     const startTime = performance.now();
     let ruleExecutionCount = 0;
@@ -257,13 +275,17 @@ export class EditorGameBridge {
           const animationPlaying = layoutObj?.initialState?.autoStart ?? initialObj?.autoStart ?? false;
           const animationSpeed = layoutObj?.initialState?.animationSpeed ?? initialObj?.animationSpeed ?? 12;
           
+          // 🆕 物理プロパティの取得
+          const physics = layoutObj?.physics || createDefaultPhysics();
+          
           console.log(`🎬 オブジェクト "${asset.name}" その他:`, {
             rotation,
             zIndex,
             initialFrame,
             visible,
             animationPlaying,
-            animationSpeed
+            animationSpeed,
+            physics
           });
           
           const width = frame?.width || 50;
@@ -292,7 +314,10 @@ export class EditorGameBridge {
             vy: 0,
             frameCount: asset.frames?.length || 1,
             currentFrame: initialFrame, // ✅ 初期アニメーションフレームを反映
-            lastFrameUpdate: performance.now()
+            lastFrameUpdate: performance.now(),
+            
+            // 🆕 物理プロパティ追加
+            physics
           });
         });
       }
@@ -367,6 +392,21 @@ export class EditorGameBridge {
           gameState.timeElapsed += deltaTime / 1000;
           this.currentContext!.gameState.timeElapsed = gameState.timeElapsed;
 
+          // 🆕 物理演算更新（毎フレーム）
+          if (this.ruleEngine) {
+            this.ruleEngine.updatePhysics(this.currentContext!, deltaTime / 1000);
+          }
+
+          // 🆕 エフェクト更新（毎フレーム）
+          if (this.ruleEngine) {
+            this.ruleEngine.updateEffects(this.currentContext!, currentTime);
+          }
+
+          // 🆕 アニメーション更新（毎フレーム）
+          if (this.ruleEngine) {
+            this.ruleEngine.updateAnimations(this.currentContext!, currentTime);
+          }
+
           // 🔍 デバッグ: ルール評価前のイベント確認
           if (this.currentContext!.events.length > 0) {
             console.log('🔍 [GameLoop] ルール評価前 - context.events:', this.currentContext!.events.map(e => ({
@@ -432,7 +472,8 @@ export class EditorGameBridge {
           sortedObjects.forEach(([id, obj]) => {
             if (!obj.visible) return;
 
-            // ✅ アニメーションフレーム更新
+            // ✅ アニメーションフレーム更新（RuleEngineのupdateAnimationsで処理済み）
+            // このブロックは削除せず残す（RuleEngine未使用時の後方互換性のため）
             if (obj.animationPlaying && obj.frameCount > 1) {
               const frameInterval = 1000 / (obj.animationSpeed || 12); // fps to ms
               if (currentTime - obj.lastFrameUpdate >= frameInterval) {
@@ -441,7 +482,8 @@ export class EditorGameBridge {
               }
             }
 
-            // ✅ エフェクト更新
+            // ✅ エフェクト更新（RuleEngineのupdateEffectsで処理済み）
+            // このブロックは削除せず残す（RuleEngine未使用時の後方互換性のため）
             if (obj.effectStartTime !== undefined && obj.effectDuration !== undefined) {
               const elapsed = currentTime - obj.effectStartTime;
 
@@ -558,8 +600,8 @@ export class EditorGameBridge {
         }
       };
 
-      // 13. タッチ・クリックイベント
-      const handleInteraction = (event: MouseEvent | TouchEvent) => {
+      // 13. タッチ・クリックイベント（🆕 拡張版）
+      const handlePointerDown = (event: MouseEvent | TouchEvent) => {
         try {
           const rect = canvasElement.getBoundingClientRect();
           const clientX = 'touches' in event ? event.touches[0]?.clientX : event.clientX;
@@ -589,53 +631,258 @@ export class EditorGameBridge {
                 y >= obj.y && y <= obj.y + objHeight) {
               hitObject = id;
               objectsInteracted.push(id);
-              
-              // 🔧 修正: RuleEngineが期待する形式でイベント記録
-              const touchEvent = {
-                type: 'touch',
-                timestamp: Date.now(),
-                data: { 
-                  target: id,
-                  touchType: 'down',
-                  x, 
-                  y 
-                }
-              };
-              this.currentContext!.events.push(touchEvent);
-              
-              console.log(`👆 オブジェクトタッチ: ${id} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
-              console.log('🔍 [HandleInteraction] イベント追加後 - context.events:', this.currentContext!.events);
-              
               break; // 最前面のオブジェクトのみヒット
             }
           }
           
-          // ステージタッチの場合
-          if (!hitObject) {
-            // 🔧 修正: RuleEngineが期待する形式でイベント記録
-            const touchEvent = {
-              type: 'touch',
-              timestamp: Date.now(),
-              data: { 
-                target: 'stage',
-                touchType: 'down',
-                x, 
-                y 
-              }
-            };
-            this.currentContext!.events.push(touchEvent);
-            
-            console.log(`👆 ステージタッチ: at (${x.toFixed(0)}, ${y.toFixed(0)})`);
-            console.log('🔍 [HandleInteraction] イベント追加後 - context.events:', this.currentContext!.events);
-          }
+          // 🆕 タッチ追跡開始
+          this.touchTracker = {
+            targetId: hitObject || 'stage',
+            startX: x,
+            startY: y,
+            currentX: x,
+            currentY: y,
+            startTime: Date.now(),
+            lastMoveTime: Date.now(),
+            isDragging: false,
+            isHolding: true,
+            holdProgress: 0
+          };
+          
+          // down イベント記録
+          const touchDownEvent = {
+            type: 'touch',
+            timestamp: Date.now(),
+            data: { 
+              target: hitObject || 'stage',
+              touchType: 'down',
+              x, 
+              y 
+            }
+          };
+          this.currentContext!.events.push(touchDownEvent);
+          
+          console.log(`👆 ポインターダウン: ${hitObject || 'stage'} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
           
         } catch (error) {
-          console.warn('⚠️ インタラクション処理エラー:', error);
+          console.warn('⚠️ ポインターダウン処理エラー:', error);
         }
       };
 
-      canvasElement.addEventListener('click', handleInteraction);
-      canvasElement.addEventListener('touchstart', handleInteraction);
+      // 🆕 ポインター移動処理
+      const handlePointerMove = (event: MouseEvent | TouchEvent) => {
+        if (!this.touchTracker) return;
+        
+        try {
+          const rect = canvasElement.getBoundingClientRect();
+          const clientX = 'touches' in event ? event.touches[0]?.clientX : event.clientX;
+          const clientY = 'touches' in event ? event.touches[0]?.clientY : event.clientY;
+
+          if (clientX === undefined || clientY === undefined) return;
+
+          const scaleX = canvasElement.width / rect.width;
+          const scaleY = canvasElement.height / rect.height;
+          const x = (clientX - rect.left) * scaleX;
+          const y = (clientY - rect.top) * scaleY;
+
+          // 移動距離計算
+          const dx = x - this.touchTracker.startX;
+          const dy = y - this.touchTracker.startY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          // ドラッグ開始判定（5px以上移動）
+          if (!this.touchTracker.isDragging && distance > 5) {
+            this.touchTracker.isDragging = true;
+            
+            // drag start イベント
+            const dragStartEvent = {
+              type: 'touch',
+              timestamp: Date.now(),
+              data: {
+                target: this.touchTracker.targetId,
+                touchType: 'drag',
+                dragType: 'start',
+                x,
+                y,
+                startX: this.touchTracker.startX,
+                startY: this.touchTracker.startY
+              }
+            };
+            this.currentContext!.events.push(dragStartEvent);
+            console.log('🔀 ドラッグ開始');
+          }
+
+          // ドラッグ中
+          if (this.touchTracker.isDragging) {
+            const dragEvent = {
+              type: 'touch',
+              timestamp: Date.now(),
+              data: {
+                target: this.touchTracker.targetId,
+                touchType: 'drag',
+                dragType: 'dragging',
+                x,
+                y,
+                dx: x - this.touchTracker.currentX,
+                dy: y - this.touchTracker.currentY,
+                totalDx: dx,
+                totalDy: dy
+              }
+            };
+            this.currentContext!.events.push(dragEvent);
+            
+            // Hold状態解除
+            this.touchTracker.isHolding = false;
+          }
+
+          // 現在位置更新
+          this.touchTracker.currentX = x;
+          this.touchTracker.currentY = y;
+          this.touchTracker.lastMoveTime = Date.now();
+          
+        } catch (error) {
+          console.warn('⚠️ ポインター移動処理エラー:', error);
+        }
+      };
+
+      // 🆕 ポインターアップ処理
+      const handlePointerUp = (event: MouseEvent | TouchEvent) => {
+        if (!this.touchTracker) return;
+        
+        try {
+          const rect = canvasElement.getBoundingClientRect();
+          const clientX = 'changedTouches' in event ? event.changedTouches[0]?.clientX : event.clientX;
+          const clientY = 'changedTouches' in event ? event.changedTouches[0]?.clientY : event.clientY;
+
+          if (clientX === undefined || clientY === undefined) {
+            this.touchTracker = null;
+            return;
+          }
+
+          const scaleX = canvasElement.width / rect.width;
+          const scaleY = canvasElement.height / rect.height;
+          const x = (clientX - rect.left) * scaleX;
+          const y = (clientY - rect.top) * scaleY;
+
+          const endTime = Date.now();
+          const duration = endTime - this.touchTracker.startTime;
+          const dx = x - this.touchTracker.startX;
+          const dy = y - this.touchTracker.startY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const velocity = distance / (duration / 1000); // px/sec
+
+          // ドラッグ終了判定
+          if (this.touchTracker.isDragging) {
+            const dragEndEvent = {
+              type: 'touch',
+              timestamp: endTime,
+              data: {
+                target: this.touchTracker.targetId,
+                touchType: 'drag',
+                dragType: 'end',
+                x,
+                y,
+                totalDx: dx,
+                totalDy: dy,
+                duration
+              }
+            };
+            this.currentContext!.events.push(dragEndEvent);
+            console.log('🔀 ドラッグ終了');
+          }
+          // Flick判定（高速・短距離）
+          else if (distance > 30 && distance < 150 && duration < 200 && velocity > 1000) {
+            const angle = Math.atan2(dy, dx);
+            const direction = this.getSwipeDirection(angle);
+            
+            const flickEvent = {
+              type: 'touch',
+              timestamp: endTime,
+              data: {
+                target: this.touchTracker.targetId,
+                touchType: 'flick',
+                direction,
+                distance,
+                velocity,
+                duration,
+                x,
+                y
+              }
+            };
+            this.currentContext!.events.push(flickEvent);
+            console.log(`⚡ フリック検出: ${direction} (${velocity.toFixed(0)}px/sec)`);
+          }
+          // Swipe判定
+          else if (distance > 100 && duration < 500 && velocity > 500) {
+            const angle = Math.atan2(dy, dx);
+            const direction = this.getSwipeDirection(angle);
+            
+            const swipeEvent = {
+              type: 'touch',
+              timestamp: endTime,
+              data: {
+                target: this.touchTracker.targetId,
+                touchType: 'swipe',
+                direction,
+                distance,
+                velocity,
+                duration,
+                x,
+                y
+              }
+            };
+            this.currentContext!.events.push(swipeEvent);
+            console.log(`👉 スワイプ検出: ${direction} (${velocity.toFixed(0)}px/sec)`);
+          }
+          // Hold判定
+          else if (this.touchTracker.isHolding && duration > 500 && distance < 10) {
+            const holdEvent = {
+              type: 'touch',
+              timestamp: endTime,
+              data: {
+                target: this.touchTracker.targetId,
+                touchType: 'hold',
+                duration,
+                progress: Math.min(duration / 3000, 1.0), // 3秒で100%
+                x,
+                y
+              }
+            };
+            this.currentContext!.events.push(holdEvent);
+            console.log(`⏱️ ホールド検出: ${duration}ms`);
+          }
+          // 通常のup
+          else {
+            const upEvent = {
+              type: 'touch',
+              timestamp: endTime,
+              data: {
+                target: this.touchTracker.targetId,
+                touchType: 'up',
+                x,
+                y
+              }
+            };
+            this.currentContext!.events.push(upEvent);
+            console.log('👆 ポインターアップ');
+          }
+
+          // トラッカーリセット
+          this.touchTracker = null;
+          
+        } catch (error) {
+          console.warn('⚠️ ポインターアップ処理エラー:', error);
+          this.touchTracker = null;
+        }
+      };
+
+      // イベントリスナー登録
+      canvasElement.addEventListener('mousedown', handlePointerDown);
+      canvasElement.addEventListener('mousemove', handlePointerMove);
+      canvasElement.addEventListener('mouseup', handlePointerUp);
+      canvasElement.addEventListener('touchstart', handlePointerDown);
+      canvasElement.addEventListener('touchmove', handlePointerMove);
+      canvasElement.addEventListener('touchend', handlePointerUp);
 
       // 14. ゲーム開始
       console.log('🚀 ゲームループ開始');
@@ -658,8 +905,12 @@ export class EditorGameBridge {
         cancelAnimationFrame(this.animationFrameId);
         this.animationFrameId = null;
       }
-      canvasElement.removeEventListener('click', handleInteraction);
-      canvasElement.removeEventListener('touchstart', handleInteraction);
+      canvasElement.removeEventListener('mousedown', handlePointerDown);
+      canvasElement.removeEventListener('mousemove', handlePointerMove);
+      canvasElement.removeEventListener('mouseup', handlePointerUp);
+      canvasElement.removeEventListener('touchstart', handlePointerDown);
+      canvasElement.removeEventListener('touchmove', handlePointerMove);
+      canvasElement.removeEventListener('touchend', handlePointerUp);
 
       // 17. 結果計算
       const endTime = performance.now();
@@ -714,6 +965,23 @@ export class EditorGameBridge {
         }
       };
     }
+  }
+
+  /**
+   * 🆕 スワイプ方向判定ヘルパー
+   */
+  private getSwipeDirection(angle: number): 'up' | 'down' | 'left' | 'right' {
+    // ラジアンから度に変換
+    const degree = (angle * 180) / Math.PI;
+    
+    // -180～180度を0～360度に正規化
+    const normalized = degree < 0 ? degree + 360 : degree;
+    
+    // 8方向判定（45度刻み）
+    if (normalized >= 315 || normalized < 45) return 'right';
+    if (normalized >= 45 && normalized < 135) return 'down';
+    if (normalized >= 135 && normalized < 225) return 'left';
+    return 'up';
   }
 
   /**
@@ -880,6 +1148,7 @@ export class EditorGameBridge {
     }
     this.ruleEngine = null;
     this.currentContext = null;
+    this.touchTracker = null;
     console.log('🔄 EditorGameBridge リセット完了');
   }
 }

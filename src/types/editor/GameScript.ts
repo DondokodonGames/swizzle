@@ -2,6 +2,7 @@
  * ゲームスクリプト・ロジック型定義
  * Phase 6: ゲームエディター実装用 + 初期条件システム追加 + カウンターシステム追加 + ランダムシステム追加
  * 🔧 修正（2025-12-02）: MovementPatternに8方向移動用directionプロパティ追加
+ * 🆕 拡張（2025-12-03）: タッチ拡張、物理演算、エフェクト拡張、アニメーション強化
  */
 
 // TextStyleをインポート
@@ -25,6 +26,23 @@ export interface Position {
 export interface Scale {
   x: number; // 0.1-3.0
   y: number; // 0.1-3.0
+}
+
+// 🆕 物理演算プロパティ
+export interface PhysicsProperties {
+  enabled: boolean;                       // 物理演算ON/OFF
+  type: 'dynamic' | 'static' | 'kinematic';
+  
+  // 物理パラメータ
+  gravity: number;                        // 重力加速度（px/sec²）デフォルト: 980
+  mass: number;                           // 質量（kg）デフォルト: 1.0
+  friction: number;                       // 摩擦係数（0.0～1.0）デフォルト: 0.3
+  restitution: number;                    // 反発係数（0.0～1.0）デフォルト: 0.5
+  
+  // オプション
+  airResistance?: number;                 // 空気抵抗（0.0～1.0）デフォルト: 0.01
+  angularVelocity?: number;               // 角速度（rad/sec）
+  maxVelocity?: number;                   // 最大速度制限（px/sec）
 }
 
 // 🎲 新規追加: ランダムアクション選択肢
@@ -132,6 +150,9 @@ export interface GameLayout {
     rotation: number;           // 角度（degree、0-360）
     zIndex: number;             // 描画順序（0-100）
     
+    // 🆕 物理プロパティ追加
+    physics?: PhysicsProperties;
+    
     initialState: {
       visible: boolean;
       animation: number;        // 初期アニメーション（0-7）
@@ -166,21 +187,46 @@ export interface GameFlag {
   createdAt: string;
 }
 
-// 発動条件の詳細定義（カウンター条件 + ランダム条件追加）
+// 発動条件の詳細定義（カウンター条件 + ランダム条件 + タッチ拡張 + アニメーション拡張）
 export type TriggerCondition = 
-  // タッチ条件
+  // タッチ条件（🆕 拡張版）
   | {
       type: 'touch';
       target: 'self' | 'stage' | string; // オブジェクトID
-      touchType: 'down' | 'up' | 'hold'; // タッチの種類
+      touchType: 'down' | 'up' | 'hold' | 'drag' | 'swipe' | 'flick'; // 🆕 drag/swipe/flick追加
       holdDuration?: number;              // ホールド時間（秒）
-      region?: {                          // ステージ範囲指定（targetが'stage'の場合）
+      
+      // 🆕 drag専用パラメータ
+      dragType?: 'start' | 'dragging' | 'end';
+      constraint?: 'horizontal' | 'vertical' | 'none';
+      boundingBox?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
+      
+      // 🆕 swipe専用パラメータ
+      direction?: 'up' | 'down' | 'left' | 'right' | 'any';
+      minDistance?: number;             // 最小移動距離（px）
+      maxDuration?: number;             // 最大所要時間（ms）
+      minVelocity?: number;             // 最小速度（px/sec）
+      
+      // 🆕 flick専用パラメータ
+      maxDistance?: number;             // 最大距離（px）
+      
+      // 🆕 hold専用パラメータ
+      tolerance?: number;               // 許容移動距離（px）
+      checkProgress?: boolean;          // 進捗チェック
+      progressThreshold?: number;       // 進捗閾値（0.0～1.0）
+      
+      region?: {                        // ステージ範囲指定（targetが'stage'の場合）
         shape: 'rect' | 'circle';
         x: number;
         y: number;
-        width?: number;                   // 矩形の場合
-        height?: number;                  // 矩形の場合
-        radius?: number;                  // 円の場合
+        width?: number;                 // 矩形の場合
+        height?: number;                // 矩形の場合
+        radius?: number;                // 円の場合
       };
     }
   
@@ -200,13 +246,17 @@ export type TriggerCondition =
       };
     }
   
-  // アニメーション条件
+  // アニメーション条件（🆕 拡張版）
   | {
       type: 'animation';
       target: string;                     // オブジェクトID
-      condition: 'frame' | 'end' | 'start' | 'loop';
+      condition: 'frame' | 'end' | 'start' | 'loop' | 'playing' | 'stopped' | 'frameRange'; // 🆕 追加
       frameNumber?: number;               // 特定フレーム番号
       animationIndex?: number;            // 対象アニメーション
+      
+      // 🆕 フレーム範囲パラメータ
+      frameRange?: [number, number];      // フレーム範囲
+      loopCount?: number;                 // ループ回数
     }
   
   // 時間条件
@@ -298,7 +348,7 @@ export interface MovementPattern {
   };
 }
 
-// エフェクトパターン
+// エフェクトパターン（🆕 拡張版）
 export interface EffectPattern {
   type: 'flash' | 'shake' | 'scale' | 'rotate' | 'particles';
   duration: number;                       // エフェクト時間（秒）
@@ -311,11 +361,34 @@ export interface EffectPattern {
   rotationAmount?: number;                // rotate用（度数）
   particleCount?: number;                 // particles用（個数）
   
+  // 🆕 flash用パラメータ拡張
+  flashColor?: string;                    // 点滅色
+  flashIntensity?: number;                // 点滅強度（0.0～1.0）
+  flashFrequency?: number;                // 点滅周波数（Hz）
+  
+  // 🆕 shake用パラメータ拡張
+  shakeIntensity?: number;                // 震え強度（px）
+  shakeFrequency?: number;                // 震え周波数（Hz）
+  shakeDirection?: 'horizontal' | 'vertical' | 'both';
+  
+  // 🆕 rotate用パラメータ拡張
+  rotationSpeed?: number;                 // 回転速度（度/秒）
+  rotationDirection?: 'clockwise' | 'counterclockwise';
+  
+  // 🆕 particles用パラメータ拡張
+  particleType?: 'star' | 'confetti' | 'explosion' | 'splash' | 'hearts' | 'sparkle';
+  particleSize?: number;                  // サイズ（px）
+  particleColor?: string | string[];      // 色（hex）
+  particleSpread?: number;                // 拡散範囲（px）
+  particleSpeed?: number;                 // 速度（px/sec）
+  particleGravity?: boolean;              // 重力適用
+  
   // 同時実行設定
   overlay?: boolean;                      // 他エフェクトと重複実行
+  easing?: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
 }
 
-// アクションの詳細定義（カウンターアクション + ランダムアクション追加）
+// アクションの詳細定義（カウンターアクション + ランダムアクション + 新規アクション追加）
 export type GameAction =
   // ゲーム制御
   | { type: 'success'; score?: number; message?: string }
@@ -333,16 +406,30 @@ export type GameAction =
   | { type: 'setFlag'; flagId: string; value: boolean }
   | { type: 'toggleFlag'; flagId: string }
   
-  // オブジェクト制御
-  | { type: 'switchAnimation'; targetId: string; animationIndex: number; speed?: number }
+  // オブジェクト制御（🆕 拡張版）
+  | { type: 'switchAnimation'; targetId: string; animationIndex: number; speed?: number; autoPlay?: boolean; loop?: boolean; startFrame?: number; reverse?: boolean }
   | { type: 'show'; targetId: string; fadeIn?: boolean; duration?: number }
   | { type: 'hide'; targetId: string; fadeOut?: boolean; duration?: number }
+  
+  // 🆕 アニメーション制御アクション
+  | { type: 'playAnimation'; targetId: string; play: boolean }
+  | { type: 'setAnimationSpeed'; targetId: string; speed: number }
+  | { type: 'setAnimationFrame'; targetId: string; frame: number }
   
   // 移動制御
   | { type: 'move'; targetId: string; movement: MovementPattern }
   
+  // 🆕 ドラッグ追従アクション
+  | { type: 'followDrag'; targetId: string; offset?: { x: number; y: number }; constraint?: 'horizontal' | 'vertical' | 'none'; smooth?: boolean; smoothFactor?: number }
+  
   // エフェクト
   | { type: 'effect'; targetId: string; effect: EffectPattern }
+  
+  // 🆕 物理演算アクション
+  | { type: 'applyForce'; targetId: string; force: { x: number; y: number }; point?: { x: number; y: number }; duration?: number }
+  | { type: 'applyImpulse'; targetId: string; impulse: { x: number; y: number } }
+  | { type: 'setGravity'; targetId: string; gravity: number }
+  | { type: 'setPhysics'; targetId: string; physics: Partial<PhysicsProperties> }
   
   // スコア・UI
   | { type: 'addScore'; points: number }
@@ -629,6 +716,17 @@ export const syncInitialStateWithLayout = (
     }
   };
 };
+
+// 🆕 デフォルト物理プロパティ作成ヘルパー
+export const createDefaultPhysics = (): PhysicsProperties => ({
+  enabled: false,
+  type: 'dynamic',
+  gravity: 980,
+  mass: 1.0,
+  friction: 0.3,
+  restitution: 0.5,
+  airResistance: 0.01
+});
 
 // 🔢 カウンター関連ヘルパー関数（Phase G）
 
