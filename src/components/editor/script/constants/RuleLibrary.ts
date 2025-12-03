@@ -1,9 +1,9 @@
 // src/components/editor/script/constants/RuleLibrary.ts
-// Phase G-3完了版: ランダムシステム統合完了
+// Phase H完了版: ObjectState条件追加
 // 条件・アクションライブラリ統合管理
 
 /**
- * Phase G-3: 発動条件ライブラリ（ランダム条件追加）
+ * Phase H: 発動条件ライブラリ（ObjectState条件追加）
  */
 export const CONDITION_LIBRARY = [
   // 基本条件（Phase A・B・C保護）
@@ -15,6 +15,7 @@ export const CONDITION_LIBRARY = [
   // Phase D・E拡張条件
   { type: 'gameState', label: 'ゲーム状態', icon: '🎮', description: 'ゲームの状態（プレイ中・成功・失敗など）' },
   { type: 'animation', label: 'アニメ', icon: '🎬', description: 'アニメーションの状態（開始・終了・特定フレームなど）' },
+  { type: 'objectState', label: 'オブジェクト状態', icon: '👁️', description: 'オブジェクトの表示/非表示/アニメーション状態' },
   { type: 'flag', label: 'フラグ', icon: '🚩', description: 'カスタムフラグの状態' },
 
   // Phase G追加: カウンター条件
@@ -52,7 +53,10 @@ export const ACTION_LIBRARY = [
   { type: 'counter', label: 'カウンター操作', icon: '🔢', description: 'カウンター値の操作（増加・減少・設定等）' },
   
   // Phase G-3追加: ランダムアクション
-  { type: 'randomAction', label: 'ランダム実行', icon: '🎲', description: '複数アクションから重み付きランダム選択（エンドレス系・バリエーション生成）' }
+  { type: 'randomAction', label: 'ランダム実行', icon: '🎲', description: '複数アクションから重み付きランダム選択（エンドレス系・バリエーション生成）' },
+  
+  // スコア制御アクション（Phase A・B・C保護）
+  { type: 'addScore', label: 'スコア加算', icon: '➕', description: 'スコアを加算' }
 ] as const;
 
 /**
@@ -85,14 +89,14 @@ export const PRIORITY_ACTION_LIBRARY = PRIORITY_ACTIONS.map(type =>
 ).filter((action): action is NonNullable<typeof action> => action !== undefined);
 
 /**
- * Phase G-3: ルールライブラリ統計情報（ランダム追加・位置条件削除）
+ * Phase H: ルールライブラリ統計情報（ObjectState条件追加）
  */
 export const RULE_LIBRARY_STATS = {
-  conditionCount: CONDITION_LIBRARY.length,    // 8個の条件タイプ（位置条件削除）
-  actionCount: ACTION_LIBRARY.length,          // 13個のアクションタイプ（+1: randomAction）
+  conditionCount: CONDITION_LIBRARY.length,    // 9個の条件タイプ（objectState追加）
+  actionCount: ACTION_LIBRARY.length,          // 14個のアクションタイプ（addScore追加）
   priorityActionCount: PRIORITY_ACTIONS.length, // 6個の優先アクション
-  lastUpdate: '2025-11-13',                    // 位置条件削除日
-  version: 'G-3.1.0'                           // バージョン（位置条件削除）
+  lastUpdate: '2025-12-04',                    // ObjectState条件追加日
+  version: 'H.1.0'                             // バージョン（ObjectState追加）
 } as const;
 
 /**
@@ -110,14 +114,15 @@ export const findConditionByType = (type: ConditionType) => {
 };
 
 /**
- * Phase G-3: アクション使用統計（ランダム追加・使用頻度順）
+ * Phase H: アクション使用統計（ObjectState対応）
  */
 export const ACTION_USAGE_STATS = [
   { type: 'success', usage: 'high', category: 'game-control' },
   { type: 'failure', usage: 'high', category: 'game-control' },
-  { type: 'randomAction', usage: 'high', category: 'game-logic' },    // Phase G-3新機能・エンドレス系で高使用頻度
+  { type: 'randomAction', usage: 'high', category: 'game-logic' },
   { type: 'counter', usage: 'high', category: 'game-logic' },
   { type: 'playSound', usage: 'high', category: 'audio' },
+  { type: 'addScore', usage: 'high', category: 'game-logic' },
   { type: 'show', usage: 'medium', category: 'object-control' },
   { type: 'hide', usage: 'medium', category: 'object-control' },
   { type: 'switchAnimation', usage: 'medium', category: 'object-control' },
@@ -128,18 +133,18 @@ export const ACTION_USAGE_STATS = [
 ] as const;
 
 /**
- * Phase G-3: 条件使用統計（ランダム追加）
+ * Phase H: 条件使用統計（ObjectState追加）
  */
 export const CONDITION_USAGE_STATS = [
   { type: 'touch', usage: 'high', category: 'user-input' },
   { type: 'time', usage: 'high', category: 'timing' },
-  { type: 'random', usage: 'high', category: 'game-logic' },         // Phase G-3新機能・エンドレス系で高使用頻度
+  { type: 'random', usage: 'high', category: 'game-logic' },
   { type: 'counter', usage: 'high', category: 'game-logic' },
   { type: 'collision', usage: 'medium', category: 'physics' },
+  { type: 'objectState', usage: 'medium', category: 'object-control' },  // Phase H追加
   { type: 'gameState', usage: 'medium', category: 'game-control' },
   { type: 'flag', usage: 'medium', category: 'state' },
   { type: 'animation', usage: 'low', category: 'visual' }
-  // 位置条件削除: 衝突条件で代用可能
 ] as const;
 
 /**
@@ -160,11 +165,12 @@ export const getActionsByCategory = (category: string) => {
 };
 
 /**
- * Phase G-3: 新機能フラグ（ランダム機能有効化）
+ * Phase H: 新機能フラグ（ObjectState機能有効化）
  */
 export const FEATURE_FLAGS = {
   counterSystem: true,           // カウンターシステム有効
-  randomSystem: true,            // ランダムシステム有効（Phase G-3新機能）
+  randomSystem: true,            // ランダムシステム有効
+  objectStateSystem: true,       // オブジェクト状態システム有効（Phase H新機能）
   animationSystem: true,         // アニメーションシステム有効
   gameStateSystem: true,         // ゲーム状態システム有効
   advancedTiming: true,          // 高度タイミング機能有効
