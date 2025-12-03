@@ -1,6 +1,7 @@
 // src/components/editor/script/conditions/TouchConditionEditor.tsx
 // 拡張版: drag/swipe/flick/hold の完全実装
 // 新機能: ドラッグ追従、スワイプ検出、フリック検出、長押し拡張
+// 修正: GameScript.ts型定義に合わせてプロパティ名を修正
 
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -105,7 +106,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
               }}
             >
               <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
+              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}>
                 {option.label}
               </span>
             </ModernButton>
@@ -128,7 +129,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
             </label>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+              gridTemplateColumns: 'repeat(3, 1fr)',
               gap: DESIGN_TOKENS.spacing[2]
             }}>
               {DRAG_TYPE_OPTIONS.map((option) => (
@@ -167,23 +168,23 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
             </label>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+              gridTemplateColumns: 'repeat(3, 1fr)',
               gap: DESIGN_TOKENS.spacing[2]
             }}>
               {DRAG_CONSTRAINT_OPTIONS.map((option) => (
                 <ModernButton
                   key={option.value}
-                  variant={touchCondition.dragConstraint === option.value ? 'primary' : 'outline'}
+                  variant={touchCondition.constraint === option.value ? 'primary' : 'outline'}
                   size="sm"
-                  onClick={() => onUpdate(index, { dragConstraint: option.value as any })}
+                  onClick={() => onUpdate(index, { constraint: option.value as any })}
                   style={{
-                    borderColor: touchCondition.dragConstraint === option.value 
+                    borderColor: touchCondition.constraint === option.value 
                       ? DESIGN_TOKENS.colors.purple[500] 
                       : DESIGN_TOKENS.colors.purple[200],
-                    backgroundColor: touchCondition.dragConstraint === option.value 
+                    backgroundColor: touchCondition.constraint === option.value 
                       ? DESIGN_TOKENS.colors.purple[500] 
                       : 'transparent',
-                    color: touchCondition.dragConstraint === option.value 
+                    color: touchCondition.constraint === option.value 
                       ? DESIGN_TOKENS.colors.neutral[0] 
                       : DESIGN_TOKENS.colors.purple[800]
                   }}
@@ -208,64 +209,84 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: DESIGN_TOKENS.spacing[2] }}>
               <div>
                 <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  X最小: {((touchCondition.boundingBox?.minX ?? 0) * 100).toFixed(0)}%
+                  X位置: {((touchCondition.boundingBox?.x ?? 0) * 100).toFixed(0)}%
                 </label>
                 <input
                   type="range"
                   min="0"
                   max="1"
                   step="0.01"
-                  value={touchCondition.boundingBox?.minX ?? 0}
+                  value={touchCondition.boundingBox?.x ?? 0}
                   onChange={(e) => onUpdate(index, {
-                    boundingBox: { ...touchCondition.boundingBox, minX: parseFloat(e.target.value) }
+                    boundingBox: { 
+                      x: parseFloat(e.target.value),
+                      y: touchCondition.boundingBox?.y ?? 0,
+                      width: touchCondition.boundingBox?.width ?? 1,
+                      height: touchCondition.boundingBox?.height ?? 1
+                    }
                   })}
                   style={{ width: '100%' }}
                 />
               </div>
               <div>
                 <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  X最大: {((touchCondition.boundingBox?.maxX ?? 1) * 100).toFixed(0)}%
+                  Y位置: {((touchCondition.boundingBox?.y ?? 0) * 100).toFixed(0)}%
                 </label>
                 <input
                   type="range"
                   min="0"
                   max="1"
                   step="0.01"
-                  value={touchCondition.boundingBox?.maxX ?? 1}
+                  value={touchCondition.boundingBox?.y ?? 0}
                   onChange={(e) => onUpdate(index, {
-                    boundingBox: { ...touchCondition.boundingBox, maxX: parseFloat(e.target.value) }
+                    boundingBox: { 
+                      x: touchCondition.boundingBox?.x ?? 0,
+                      y: parseFloat(e.target.value),
+                      width: touchCondition.boundingBox?.width ?? 1,
+                      height: touchCondition.boundingBox?.height ?? 1
+                    }
                   })}
                   style={{ width: '100%' }}
                 />
               </div>
               <div>
                 <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  Y最小: {((touchCondition.boundingBox?.minY ?? 0) * 100).toFixed(0)}%
+                  幅: {((touchCondition.boundingBox?.width ?? 1) * 100).toFixed(0)}%
                 </label>
                 <input
                   type="range"
-                  min="0"
+                  min="0.1"
                   max="1"
                   step="0.01"
-                  value={touchCondition.boundingBox?.minY ?? 0}
+                  value={touchCondition.boundingBox?.width ?? 1}
                   onChange={(e) => onUpdate(index, {
-                    boundingBox: { ...touchCondition.boundingBox, minY: parseFloat(e.target.value) }
+                    boundingBox: { 
+                      x: touchCondition.boundingBox?.x ?? 0,
+                      y: touchCondition.boundingBox?.y ?? 0,
+                      width: parseFloat(e.target.value),
+                      height: touchCondition.boundingBox?.height ?? 1
+                    }
                   })}
                   style={{ width: '100%' }}
                 />
               </div>
               <div>
                 <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  Y最大: {((touchCondition.boundingBox?.maxY ?? 1) * 100).toFixed(0)}%
+                  高さ: {((touchCondition.boundingBox?.height ?? 1) * 100).toFixed(0)}%
                 </label>
                 <input
                   type="range"
-                  min="0"
+                  min="0.1"
                   max="1"
                   step="0.01"
-                  value={touchCondition.boundingBox?.maxY ?? 1}
+                  value={touchCondition.boundingBox?.height ?? 1}
                   onChange={(e) => onUpdate(index, {
-                    boundingBox: { ...touchCondition.boundingBox, maxY: parseFloat(e.target.value) }
+                    boundingBox: { 
+                      x: touchCondition.boundingBox?.x ?? 0,
+                      y: touchCondition.boundingBox?.y ?? 0,
+                      width: touchCondition.boundingBox?.width ?? 1,
+                      height: parseFloat(e.target.value)
+                    }
                   })}
                   style={{ width: '100%' }}
                 />
@@ -296,17 +317,17 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
               {SWIPE_DIRECTION_OPTIONS.map((option) => (
                 <ModernButton
                   key={option.value}
-                  variant={touchCondition.swipeDirection === option.value ? 'primary' : 'outline'}
+                  variant={touchCondition.direction === option.value ? 'primary' : 'outline'}
                   size="sm"
-                  onClick={() => onUpdate(index, { swipeDirection: option.value as any })}
+                  onClick={() => onUpdate(index, { direction: option.value as any })}
                   style={{
-                    borderColor: touchCondition.swipeDirection === option.value 
+                    borderColor: touchCondition.direction === option.value 
                       ? DESIGN_TOKENS.colors.purple[500] 
                       : DESIGN_TOKENS.colors.purple[200],
-                    backgroundColor: touchCondition.swipeDirection === option.value 
+                    backgroundColor: touchCondition.direction === option.value 
                       ? DESIGN_TOKENS.colors.purple[500] 
                       : 'transparent',
-                    color: touchCondition.swipeDirection === option.value 
+                    color: touchCondition.direction === option.value 
                       ? DESIGN_TOKENS.colors.neutral[0] 
                       : DESIGN_TOKENS.colors.purple[800],
                     padding: DESIGN_TOKENS.spacing[2]
@@ -327,15 +348,15 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              {t('editor.touchCondition.swipeMinDistanceLabel', { distance: touchCondition.swipeMinDistance ?? TOUCH_DEFAULTS.swipeMinDistance })}
+              {t('editor.touchCondition.swipeMinDistanceLabel', { distance: touchCondition.minDistance ?? TOUCH_DEFAULTS.swipeMinDistance })}
             </label>
             <input
               type="range"
               min={TOUCH_RANGES.swipeMinDistance.min}
               max={TOUCH_RANGES.swipeMinDistance.max}
               step={TOUCH_RANGES.swipeMinDistance.step}
-              value={touchCondition.swipeMinDistance ?? TOUCH_DEFAULTS.swipeMinDistance}
-              onChange={(e) => onUpdate(index, { swipeMinDistance: parseFloat(e.target.value) })}
+              value={touchCondition.minDistance ?? TOUCH_DEFAULTS.swipeMinDistance}
+              onChange={(e) => onUpdate(index, { minDistance: parseFloat(e.target.value) })}
               style={{ width: '100%' }}
             />
             <div style={{
@@ -358,15 +379,15 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              {t('editor.touchCondition.swipeMaxDurationLabel', { duration: touchCondition.swipeMaxDuration ?? TOUCH_DEFAULTS.swipeMaxDuration })}
+              {t('editor.touchCondition.swipeMaxDurationLabel', { duration: touchCondition.maxDuration ?? TOUCH_DEFAULTS.swipeMaxDuration })}
             </label>
             <input
               type="range"
               min={TOUCH_RANGES.swipeMaxDuration.min}
               max={TOUCH_RANGES.swipeMaxDuration.max}
               step={TOUCH_RANGES.swipeMaxDuration.step}
-              value={touchCondition.swipeMaxDuration ?? TOUCH_DEFAULTS.swipeMaxDuration}
-              onChange={(e) => onUpdate(index, { swipeMaxDuration: parseFloat(e.target.value) })}
+              value={touchCondition.maxDuration ?? TOUCH_DEFAULTS.swipeMaxDuration}
+              onChange={(e) => onUpdate(index, { maxDuration: parseFloat(e.target.value) })}
               style={{ width: '100%' }}
             />
             <div style={{
@@ -389,15 +410,15 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              {t('editor.touchCondition.swipeMinVelocityLabel', { velocity: touchCondition.swipeMinVelocity ?? TOUCH_DEFAULTS.swipeMinVelocity })}
+              {t('editor.touchCondition.swipeMinVelocityLabel', { velocity: touchCondition.minVelocity ?? TOUCH_DEFAULTS.swipeMinVelocity })}
             </label>
             <input
               type="range"
               min={TOUCH_RANGES.swipeMinVelocity.min}
               max={TOUCH_RANGES.swipeMinVelocity.max}
               step={TOUCH_RANGES.swipeMinVelocity.step}
-              value={touchCondition.swipeMinVelocity ?? TOUCH_DEFAULTS.swipeMinVelocity}
-              onChange={(e) => onUpdate(index, { swipeMinVelocity: parseFloat(e.target.value) })}
+              value={touchCondition.minVelocity ?? TOUCH_DEFAULTS.swipeMinVelocity}
+              onChange={(e) => onUpdate(index, { minVelocity: parseFloat(e.target.value) })}
               style={{ width: '100%' }}
             />
             <div style={{
@@ -435,17 +456,17 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
               {FLICK_DIRECTION_OPTIONS.map((option) => (
                 <ModernButton
                   key={option.value}
-                  variant={touchCondition.flickDirection === option.value ? 'primary' : 'outline'}
+                  variant={touchCondition.direction === option.value ? 'primary' : 'outline'}
                   size="sm"
-                  onClick={() => onUpdate(index, { flickDirection: option.value as any })}
+                  onClick={() => onUpdate(index, { direction: option.value as any })}
                   style={{
-                    borderColor: touchCondition.flickDirection === option.value 
+                    borderColor: touchCondition.direction === option.value 
                       ? DESIGN_TOKENS.colors.purple[500] 
                       : DESIGN_TOKENS.colors.purple[200],
-                    backgroundColor: touchCondition.flickDirection === option.value 
+                    backgroundColor: touchCondition.direction === option.value 
                       ? DESIGN_TOKENS.colors.purple[500] 
                       : 'transparent',
-                    color: touchCondition.flickDirection === option.value 
+                    color: touchCondition.direction === option.value 
                       ? DESIGN_TOKENS.colors.neutral[0] 
                       : DESIGN_TOKENS.colors.purple[800],
                     padding: DESIGN_TOKENS.spacing[2]
@@ -466,15 +487,15 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              {t('editor.touchCondition.flickMinVelocityLabel', { velocity: touchCondition.flickMinVelocity ?? TOUCH_DEFAULTS.flickMinVelocity })}
+              {t('editor.touchCondition.flickMinVelocityLabel', { velocity: touchCondition.minVelocity ?? TOUCH_DEFAULTS.flickMinVelocity })}
             </label>
             <input
               type="range"
               min={TOUCH_RANGES.flickMinVelocity.min}
               max={TOUCH_RANGES.flickMinVelocity.max}
               step={TOUCH_RANGES.flickMinVelocity.step}
-              value={touchCondition.flickMinVelocity ?? TOUCH_DEFAULTS.flickMinVelocity}
-              onChange={(e) => onUpdate(index, { flickMinVelocity: parseFloat(e.target.value) })}
+              value={touchCondition.minVelocity ?? TOUCH_DEFAULTS.flickMinVelocity}
+              onChange={(e) => onUpdate(index, { minVelocity: parseFloat(e.target.value) })}
               style={{ width: '100%' }}
             />
             <div style={{
@@ -497,15 +518,15 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              {t('editor.touchCondition.flickMaxDistanceLabel', { distance: touchCondition.flickMaxDistance ?? TOUCH_DEFAULTS.flickMaxDistance })}
+              {t('editor.touchCondition.flickMaxDistanceLabel', { distance: touchCondition.maxDistance ?? TOUCH_DEFAULTS.flickMaxDistance })}
             </label>
             <input
               type="range"
               min={TOUCH_RANGES.flickMaxDistance.min}
               max={TOUCH_RANGES.flickMaxDistance.max}
               step={TOUCH_RANGES.flickMaxDistance.step}
-              value={touchCondition.flickMaxDistance ?? TOUCH_DEFAULTS.flickMaxDistance}
-              onChange={(e) => onUpdate(index, { flickMaxDistance: parseFloat(e.target.value) })}
+              value={touchCondition.maxDistance ?? TOUCH_DEFAULTS.flickMaxDistance}
+              onChange={(e) => onUpdate(index, { maxDistance: parseFloat(e.target.value) })}
               style={{ width: '100%' }}
             />
             <div style={{
@@ -528,15 +549,15 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              {t('editor.touchCondition.flickMaxDurationLabel', { duration: touchCondition.flickMaxDuration ?? TOUCH_DEFAULTS.flickMaxDuration })}
+              {t('editor.touchCondition.flickMaxDurationLabel', { duration: touchCondition.maxDuration ?? TOUCH_DEFAULTS.flickMaxDuration })}
             </label>
             <input
               type="range"
               min={TOUCH_RANGES.flickMaxDuration.min}
               max={TOUCH_RANGES.flickMaxDuration.max}
               step={TOUCH_RANGES.flickMaxDuration.step}
-              value={touchCondition.flickMaxDuration ?? TOUCH_DEFAULTS.flickMaxDuration}
-              onChange={(e) => onUpdate(index, { flickMaxDuration: parseFloat(e.target.value) })}
+              value={touchCondition.maxDuration ?? TOUCH_DEFAULTS.flickMaxDuration}
+              onChange={(e) => onUpdate(index, { maxDuration: parseFloat(e.target.value) })}
               style={{ width: '100%' }}
             />
             <div style={{
@@ -602,15 +623,15 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              {t('editor.touchCondition.holdToleranceLabel', { tolerance: touchCondition.holdTolerance ?? TOUCH_DEFAULTS.holdTolerance })}
+              {t('editor.touchCondition.holdToleranceLabel', { tolerance: touchCondition.tolerance ?? TOUCH_DEFAULTS.holdTolerance })}
             </label>
             <input
               type="range"
               min={TOUCH_RANGES.holdTolerance.min}
               max={TOUCH_RANGES.holdTolerance.max}
               step={TOUCH_RANGES.holdTolerance.step}
-              value={touchCondition.holdTolerance ?? TOUCH_DEFAULTS.holdTolerance}
-              onChange={(e) => onUpdate(index, { holdTolerance: parseFloat(e.target.value) })}
+              value={touchCondition.tolerance ?? TOUCH_DEFAULTS.holdTolerance}
+              onChange={(e) => onUpdate(index, { tolerance: parseFloat(e.target.value) })}
               style={{ width: '100%' }}
             />
             <div style={{
@@ -651,15 +672,15 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
                 marginBottom: DESIGN_TOKENS.spacing[2],
                 display: 'block'
               }}>
-                {t('editor.touchCondition.progressThresholdLabel', { threshold: ((touchCondition.holdProgressThreshold ?? TOUCH_DEFAULTS.holdProgressThreshold) * 100).toFixed(0) })}
+                {t('editor.touchCondition.progressThresholdLabel', { threshold: ((touchCondition.progressThreshold ?? TOUCH_DEFAULTS.holdProgressThreshold) * 100).toFixed(0) })}
               </label>
               <input
                 type="range"
                 min={TOUCH_RANGES.holdProgressThreshold.min}
                 max={TOUCH_RANGES.holdProgressThreshold.max}
                 step={TOUCH_RANGES.holdProgressThreshold.step}
-                value={touchCondition.holdProgressThreshold ?? TOUCH_DEFAULTS.holdProgressThreshold}
-                onChange={(e) => onUpdate(index, { holdProgressThreshold: parseFloat(e.target.value) })}
+                value={touchCondition.progressThreshold ?? TOUCH_DEFAULTS.holdProgressThreshold}
+                onChange={(e) => onUpdate(index, { progressThreshold: parseFloat(e.target.value) })}
                 style={{ width: '100%' }}
               />
               <div style={{
@@ -780,44 +801,47 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
                   : DESIGN_TOKENS.colors.purple[200]
               }}
             >
-              <span>⚪ {t('editor.touchCondition.circle')}</span>
+              <span>⭕ {t('editor.touchCondition.circle')}</span>
             </ModernButton>
           </div>
 
           {touchCondition.region && (
             <>
-              <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
-                <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  {t('editor.touchCondition.xPosition', { percent: ((touchCondition.region.x || 0.5) * 100).toFixed(0) })}
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={touchCondition.region.x || 0.5}
-                  onChange={(e) => onUpdate(index, {
-                    region: { ...touchCondition.region!, x: parseFloat(e.target.value) }
-                  })}
-                  style={{ width: '100%' }}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: DESIGN_TOKENS.spacing[2], marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                <div>
+                  <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
+                    {t('editor.touchCondition.centerX', { percent: ((touchCondition.region.x || 0.5) * 100).toFixed(0) })}
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={touchCondition.region.x || 0.5}
+                    onChange={(e) => onUpdate(index, {
+                      region: { ...touchCondition.region!, x: parseFloat(e.target.value) }
+                    })}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
+                    {t('editor.touchCondition.centerY', { percent: ((touchCondition.region.y || 0.5) * 100).toFixed(0) })}
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={touchCondition.region.y || 0.5}
+                    onChange={(e) => onUpdate(index, {
+                      region: { ...touchCondition.region!, y: parseFloat(e.target.value) }
+                    })}
+                    style={{ width: '100%' }}
+                  />
+                </div>
               </div>
-              <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
-                <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  {t('editor.touchCondition.yPosition', { percent: ((touchCondition.region.y || 0.5) * 100).toFixed(0) })}
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={touchCondition.region.y || 0.5}
-                  onChange={(e) => onUpdate(index, {
-                    region: { ...touchCondition.region!, y: parseFloat(e.target.value) }
-                  })}
-                  style={{ width: '100%' }}
-                />
-              </div>
+
               {touchCondition.region.shape === 'rect' ? (
                 <>
                   <div>

@@ -1,6 +1,7 @@
 // src/components/editor/script/actions/MoveActionEditor.tsx
-// 拡張版: followDrag の完全実装
-// 新機能: ドラッグ追従移動、減衰係数、境界制約
+// 完全修正版: GameScript.tsの型定義に完全一致
+// 修正内容: followDragはGameActionとして別途存在するため、MovementPatternから削除
+//          damping, constrainToBounds, boundingBoxはMovementPatternに存在しないため削除
 
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,7 +11,6 @@ import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
 import { 
   getMovementTypeOptions,
-  getFollowDragOptions,
   MOVEMENT_DEFAULTS,
   MOVEMENT_RANGES
 } from '../constants/MovementConstants';
@@ -31,9 +31,10 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
   const { t } = useTranslation();
   const moveAction = action;
 
-  // Get localized options
-  const MOVEMENT_TYPE_OPTIONS = useMemo(() => getMovementTypeOptions(), []);
-  const FOLLOW_DRAG_OPTIONS = useMemo(() => getFollowDragOptions(), []);
+  // Get localized options - 修正: followDragを除外
+  const MOVEMENT_TYPE_OPTIONS = useMemo(() => 
+    getMovementTypeOptions().filter(opt => opt.value !== 'followDrag'), 
+  []);
   
   return (
     <ModernCard 
@@ -59,7 +60,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
         {t('editor.moveAction.title')}
       </h5>
 
-      {/* Movement type selection */}
+      {/* Movement type selection - 修正: followDragを除外 */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
         <label style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -75,64 +76,17 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
           gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
           gap: DESIGN_TOKENS.spacing[2]
         }}>
-          {MOVEMENT_TYPE_OPTIONS.slice(0, 5).map((option) => (
+          {MOVEMENT_TYPE_OPTIONS.map((option) => (
             <ModernButton
               key={option.value}
               variant={moveAction.movement?.type === option.value ? 'primary' : 'outline'}
               size="sm"
               onClick={() => onUpdate(index, { 
                 movement: { 
-                  ...moveAction.movement,
                   type: option.value as any,
                   target: option.value === 'stop' ? undefined : { x: 0.5, y: 0.5 },
                   speed: option.value === 'teleport' ? undefined : MOVEMENT_DEFAULTS.speed,
-                  duration: option.value === 'teleport' ? MOVEMENT_DEFAULTS.teleportDuration : MOVEMENT_DEFAULTS.duration
-                } 
-              })}
-              style={{
-                borderColor: moveAction.movement?.type === option.value 
-                  ? DESIGN_TOKENS.colors.success[500] 
-                  : DESIGN_TOKENS.colors.success[200],
-                backgroundColor: moveAction.movement?.type === option.value 
-                  ? DESIGN_TOKENS.colors.success[500] 
-                  : 'transparent',
-                color: moveAction.movement?.type === option.value 
-                  ? DESIGN_TOKENS.colors.neutral[0] 
-                  : DESIGN_TOKENS.colors.success[800],
-                padding: DESIGN_TOKENS.spacing[2],
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: DESIGN_TOKENS.spacing[1]
-              }}
-            >
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
-                {option.label}
-              </span>
-            </ModernButton>
-          ))}
-        </div>
-        
-        {/* Additional movement types (2nd row) */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-          gap: DESIGN_TOKENS.spacing[2],
-          marginTop: DESIGN_TOKENS.spacing[2]
-        }}>
-          {MOVEMENT_TYPE_OPTIONS.slice(5).map((option) => (
-            <ModernButton
-              key={option.value}
-              variant={moveAction.movement?.type === option.value ? 'primary' : 'outline'}
-              size="sm"
-              onClick={() => onUpdate(index, { 
-                movement: { 
-                  ...moveAction.movement,
-                  type: option.value as any,
-                  target: option.value === 'stop' ? undefined : { x: 0.5, y: 0.5 },
-                  speed: option.value === 'teleport' ? undefined : MOVEMENT_DEFAULTS.speed,
-                  duration: option.value === 'teleport' ? MOVEMENT_DEFAULTS.teleportDuration : MOVEMENT_DEFAULTS.duration
+                  duration: MOVEMENT_DEFAULTS.duration
                 } 
               })}
               style={{
@@ -161,218 +115,8 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
         </div>
       </div>
 
-      {/* FollowDrag settings (when movement type is 'followDrag') */}
-      {moveAction.movement?.type === 'followDrag' && (
-        <>
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.moveAction.followDragDampingLabel')}
-            </label>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
-              gap: DESIGN_TOKENS.spacing[2],
-              marginBottom: DESIGN_TOKENS.spacing[2]
-            }}>
-              {FOLLOW_DRAG_OPTIONS.map((option) => (
-                <ModernButton
-                  key={option.value}
-                  variant={moveAction.movement?.damping === option.value ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => onUpdate(index, { 
-                    movement: { 
-                      ...moveAction.movement,
-                      damping: option.value
-                    } 
-                  })}
-                  style={{
-                    borderColor: moveAction.movement?.damping === option.value 
-                      ? DESIGN_TOKENS.colors.success[500] 
-                      : DESIGN_TOKENS.colors.success[200],
-                    backgroundColor: moveAction.movement?.damping === option.value 
-                      ? DESIGN_TOKENS.colors.success[500] 
-                      : 'transparent',
-                    color: moveAction.movement?.damping === option.value 
-                      ? DESIGN_TOKENS.colors.neutral[0] 
-                      : DESIGN_TOKENS.colors.success[800]
-                  }}
-                >
-                  <span>{option.label}</span>
-                </ModernButton>
-              ))}
-            </div>
-
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.moveAction.dampingValueLabel', { damping: (moveAction.movement?.damping ?? MOVEMENT_DEFAULTS.damping).toFixed(1) })}
-            </label>
-            <input
-              type="range"
-              min={MOVEMENT_RANGES.damping.min}
-              max={MOVEMENT_RANGES.damping.max}
-              step={MOVEMENT_RANGES.damping.step}
-              value={moveAction.movement?.damping ?? MOVEMENT_DEFAULTS.damping}
-              onChange={(e) => onUpdate(index, {
-                movement: {
-                  ...moveAction.movement,
-                  damping: parseFloat(e.target.value)
-                }
-              })}
-              style={{ width: '100%' }}
-            />
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-              color: DESIGN_TOKENS.colors.success[600],
-              marginTop: DESIGN_TOKENS.spacing[1]
-            }}>
-              <span>{t('editor.moveAction.highDamping')}</span>
-              <span>{t('editor.moveAction.noDamping')}</span>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: DESIGN_TOKENS.spacing[2],
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              color: DESIGN_TOKENS.colors.success[800]
-            }}>
-              <input
-                type="checkbox"
-                checked={moveAction.movement?.constrainToBounds ?? false}
-                onChange={(e) => onUpdate(index, {
-                  movement: {
-                    ...moveAction.movement,
-                    constrainToBounds: e.target.checked
-                  }
-                })}
-              />
-              {t('editor.moveAction.constrainToBoundsLabel')}
-            </label>
-          </div>
-
-          {moveAction.movement?.constrainToBounds && (
-            <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-              <label style={{
-                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                color: DESIGN_TOKENS.colors.success[800],
-                marginBottom: DESIGN_TOKENS.spacing[2],
-                display: 'block'
-              }}>
-                {t('editor.moveAction.boundingBoxLabel')}
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: DESIGN_TOKENS.spacing[2] }}>
-                <div>
-                  <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.success[700] }}>
-                    X最小: {((moveAction.movement?.boundingBox?.minX ?? 0) * 100).toFixed(0)}%
-                  </label>
-                  <input
-                    type="range"
-                    min={MOVEMENT_RANGES.boundingBoxValue.min}
-                    max={MOVEMENT_RANGES.boundingBoxValue.max}
-                    step={MOVEMENT_RANGES.boundingBoxValue.step}
-                    value={moveAction.movement?.boundingBox?.minX ?? 0}
-                    onChange={(e) => onUpdate(index, {
-                      movement: {
-                        ...moveAction.movement,
-                        boundingBox: {
-                          ...moveAction.movement?.boundingBox,
-                          minX: parseFloat(e.target.value)
-                        }
-                      }
-                    })}
-                    style={{ width: '100%' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.success[700] }}>
-                    X最大: {((moveAction.movement?.boundingBox?.maxX ?? 1) * 100).toFixed(0)}%
-                  </label>
-                  <input
-                    type="range"
-                    min={MOVEMENT_RANGES.boundingBoxValue.min}
-                    max={MOVEMENT_RANGES.boundingBoxValue.max}
-                    step={MOVEMENT_RANGES.boundingBoxValue.step}
-                    value={moveAction.movement?.boundingBox?.maxX ?? 1}
-                    onChange={(e) => onUpdate(index, {
-                      movement: {
-                        ...moveAction.movement,
-                        boundingBox: {
-                          ...moveAction.movement?.boundingBox,
-                          maxX: parseFloat(e.target.value)
-                        }
-                      }
-                    })}
-                    style={{ width: '100%' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.success[700] }}>
-                    Y最小: {((moveAction.movement?.boundingBox?.minY ?? 0) * 100).toFixed(0)}%
-                  </label>
-                  <input
-                    type="range"
-                    min={MOVEMENT_RANGES.boundingBoxValue.min}
-                    max={MOVEMENT_RANGES.boundingBoxValue.max}
-                    step={MOVEMENT_RANGES.boundingBoxValue.step}
-                    value={moveAction.movement?.boundingBox?.minY ?? 0}
-                    onChange={(e) => onUpdate(index, {
-                      movement: {
-                        ...moveAction.movement,
-                        boundingBox: {
-                          ...moveAction.movement?.boundingBox,
-                          minY: parseFloat(e.target.value)
-                        }
-                      }
-                    })}
-                    style={{ width: '100%' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.success[700] }}>
-                    Y最大: {((moveAction.movement?.boundingBox?.maxY ?? 1) * 100).toFixed(0)}%
-                  </label>
-                  <input
-                    type="range"
-                    min={MOVEMENT_RANGES.boundingBoxValue.min}
-                    max={MOVEMENT_RANGES.boundingBoxValue.max}
-                    step={MOVEMENT_RANGES.boundingBoxValue.step}
-                    value={moveAction.movement?.boundingBox?.maxY ?? 1}
-                    onChange={(e) => onUpdate(index, {
-                      movement: {
-                        ...moveAction.movement,
-                        boundingBox: {
-                          ...moveAction.movement?.boundingBox,
-                          maxY: parseFloat(e.target.value)
-                        }
-                      }
-                    })}
-                    style={{ width: '100%' }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
       {/* Movement speed setting (for non-stop and non-teleport types) */}
-      {moveAction.movement?.type && !['stop', 'teleport', 'followDrag'].includes(moveAction.movement.type) && (
+      {moveAction.movement?.type && !['stop', 'teleport'].includes(moveAction.movement.type) && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -418,7 +162,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
       )}
 
       {/* Movement duration setting (for non-stop types) */}
-      {moveAction.movement?.type && !['stop', 'followDrag'].includes(moveAction.movement.type) && (
+      {moveAction.movement?.type && !['stop'].includes(moveAction.movement.type) && (
         <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
           <label style={{
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -457,8 +201,146 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.success[600],
             marginTop: DESIGN_TOKENS.spacing[1]
           }}>
-            <span>{t('editor.moveAction.seconds', { seconds: MOVEMENT_RANGES.duration.min })}</span>
-            <span>{t('editor.moveAction.seconds', { seconds: MOVEMENT_RANGES.duration.max })}</span>
+            <span>{t('editor.moveAction.seconds', { value: MOVEMENT_RANGES.duration.min })}</span>
+            <span>{t('editor.moveAction.seconds', { value: MOVEMENT_RANGES.duration.max })}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Wander radius (when movement type is 'wander') */}
+      {moveAction.movement?.type === 'wander' && (
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.success[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            {t('editor.moveAction.wanderRadiusLabel', { radius: moveAction.movement?.wanderRadius || 100 })}
+          </label>
+          <input
+            type="range"
+            min="20"
+            max="500"
+            step="10"
+            value={moveAction.movement?.wanderRadius || 100}
+            onChange={(e) => onUpdate(index, {
+              movement: {
+                ...moveAction.movement,
+                wanderRadius: parseInt(e.target.value)
+              }
+            })}
+            style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: DESIGN_TOKENS.colors.success[200],
+              borderRadius: DESIGN_TOKENS.borderRadius.full,
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          />
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+            color: DESIGN_TOKENS.colors.success[600],
+            marginTop: DESIGN_TOKENS.spacing[1]
+          }}>
+            <span>20px</span>
+            <span>500px</span>
+          </div>
+        </div>
+      )}
+
+      {/* Orbit radius (when movement type is 'orbit') */}
+      {moveAction.movement?.type === 'orbit' && (
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.success[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            {t('editor.moveAction.orbitRadiusLabel', { radius: moveAction.movement?.orbitRadius || 100 })}
+          </label>
+          <input
+            type="range"
+            min="20"
+            max="500"
+            step="10"
+            value={moveAction.movement?.orbitRadius || 100}
+            onChange={(e) => onUpdate(index, {
+              movement: {
+                ...moveAction.movement,
+                orbitRadius: parseInt(e.target.value)
+              }
+            })}
+            style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: DESIGN_TOKENS.colors.success[200],
+              borderRadius: DESIGN_TOKENS.borderRadius.full,
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          />
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+            color: DESIGN_TOKENS.colors.success[600],
+            marginTop: DESIGN_TOKENS.spacing[1]
+          }}>
+            <span>20px</span>
+            <span>500px</span>
+          </div>
+        </div>
+      )}
+
+      {/* Bounce strength (when movement type is 'bounce') */}
+      {moveAction.movement?.type === 'bounce' && (
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.success[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            {t('editor.moveAction.bounceStrengthLabel', { strength: moveAction.movement?.bounceStrength || 0.8 })}
+          </label>
+          <input
+            type="range"
+            min="0.1"
+            max="2.0"
+            step="0.1"
+            value={moveAction.movement?.bounceStrength || 0.8}
+            onChange={(e) => onUpdate(index, {
+              movement: {
+                ...moveAction.movement,
+                bounceStrength: parseFloat(e.target.value)
+              }
+            })}
+            style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: DESIGN_TOKENS.colors.success[200],
+              borderRadius: DESIGN_TOKENS.borderRadius.full,
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          />
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+            color: DESIGN_TOKENS.colors.success[600],
+            marginTop: DESIGN_TOKENS.spacing[1]
+          }}>
+            <span>0.1</span>
+            <span>2.0</span>
           </div>
         </div>
       )}
@@ -487,9 +369,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               </label>
               <input
                 type="range"
-                min={MOVEMENT_RANGES.coordinates.min}
-                max={MOVEMENT_RANGES.coordinates.max}
-                step={MOVEMENT_RANGES.coordinates.step}
+                min="0"
+                max="1"
+                step="0.01"
                 value={(moveAction.movement?.target as any)?.x || 0.5}
                 onChange={(e) => onUpdate(index, { 
                   movement: { 
@@ -521,9 +403,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               </label>
               <input
                 type="range"
-                min={MOVEMENT_RANGES.coordinates.min}
-                max={MOVEMENT_RANGES.coordinates.max}
-                step={MOVEMENT_RANGES.coordinates.step}
+                min="0"
+                max="1"
+                step="0.01"
                 value={(moveAction.movement?.target as any)?.y || 0.5}
                 onChange={(e) => onUpdate(index, { 
                   movement: { 
@@ -585,9 +467,26 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               type: MOVEMENT_TYPE_OPTIONS.find(m => m.value === moveAction.movement?.type)?.label || t('editor.moveAction.movementTypeLabel')
             })
           : t('editor.moveAction.selectMovementType')}
-        {moveAction.movement?.type && !['stop', 'teleport', 'followDrag'].includes(moveAction.movement.type) &&
+        {moveAction.movement?.type && !['stop', 'teleport'].includes(moveAction.movement.type) &&
           t('editor.moveAction.withSpeed', { speed: moveAction.movement?.speed || MOVEMENT_DEFAULTS.speed })}
         {moveAction.movement?.duration && t('editor.moveAction.forDuration', { seconds: moveAction.movement.duration })}
+      </div>
+
+      {/* ℹ️ Info: followDragについて */}
+      <div style={{
+        marginTop: DESIGN_TOKENS.spacing[4],
+        padding: DESIGN_TOKENS.spacing[3],
+        backgroundColor: DESIGN_TOKENS.colors.primary[50],
+        border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`,
+        borderRadius: DESIGN_TOKENS.borderRadius.lg,
+        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+        color: DESIGN_TOKENS.colors.primary[800]
+      }}>
+        <strong>ℹ️ ドラッグ追従機能について:</strong>
+        <div style={{ marginTop: DESIGN_TOKENS.spacing[2] }}>
+          ドラッグ追従機能は別のアクションタイプ「followDrag」として実装されています。
+          この機能を使用する場合は、「移動」アクションではなく、アクション一覧から「ドラッグ追従」を選択してください。
+        </div>
       </div>
     </ModernCard>
   );

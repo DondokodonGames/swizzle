@@ -1,6 +1,6 @@
 // src/components/editor/script/actions/EffectActionEditor.tsx
-// 拡張版: flash/rotate/particles/shake方向の完全実装
-// 新機能: フラッシュエフェクト、回転エフェクト、パーティクルエフェクト、シェイク方向
+// 完全修正版: GameScript.tsの型定義に完全一致
+// 修正内容: rotationDirectionから'alternate'を削除（型定義に存在しないため）
 
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,9 +35,17 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
   const effectAction = action;
 
   // Get localized options
-  const EFFECT_TYPE_OPTIONS = useMemo(() => getEffectTypeOptions(), []);
+  // 修正: GameScript.tsの型定義に存在するエフェクトタイプのみを使用
+  const EFFECT_TYPE_OPTIONS = useMemo(() => 
+  getEffectTypeOptions().filter(opt => 
+    ['flash', 'shake', 'scale', 'rotate', 'particles'].includes(opt.value)
+  ), 
+[]);
   const FLASH_COLOR_OPTIONS = useMemo(() => getFlashColorOptions(), []);
-  const ROTATION_DIRECTION_OPTIONS = useMemo(() => getRotationDirectionOptions(), []);
+  
+  // 修正: 'alternate'を除外したROTATION_DIRECTION_OPTIONSを使用
+  const ROTATION_DIRECTION_OPTIONS = useMemo(() => getRotationDirectionOptions().filter(opt => opt.value !== 'alternate'), []);
+  
   const SHAKE_DIRECTION_OPTIONS = useMemo(() => getShakeDirectionOptions(), []);
   const PARTICLE_TYPE_OPTIONS = useMemo(() => getParticleTypeOptions(), []);
 
@@ -89,7 +97,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
               onClick={() => onUpdate(index, { 
                 effect: { 
                   ...effectAction.effect,
-                  type: option.value as any,
+                  type: option.value,
                   duration: EFFECT_DEFAULTS.duration,
                   intensity: EFFECT_DEFAULTS.intensity
                 } 
@@ -112,7 +120,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
               }}
             >
               <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
+              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}>
                 {option.label}
               </span>
             </ModernButton>
@@ -120,7 +128,53 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
         </div>
       </div>
 
-      {/* Flash settings (when effect type is 'flash') */}
+      {/* Common settings: Duration */}
+      {effectAction.effect && (
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          <label style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+            color: DESIGN_TOKENS.colors.success[800],
+            marginBottom: DESIGN_TOKENS.spacing[2],
+            display: 'block'
+          }}>
+            {t('editor.effectAction.durationLabel', { duration: effectAction.effect?.duration || EFFECT_DEFAULTS.duration })}
+          </label>
+          <input
+            type="range"
+            min={EFFECT_RANGES.duration.min}
+            max={EFFECT_RANGES.duration.max}
+            step={EFFECT_RANGES.duration.step}
+            value={effectAction.effect?.duration || EFFECT_DEFAULTS.duration}
+            onChange={(e) => onUpdate(index, {
+              effect: {
+                ...effectAction.effect,
+                duration: parseFloat(e.target.value)
+              }
+            })}
+            style={{
+              width: '100%',
+              height: '8px',
+              backgroundColor: DESIGN_TOKENS.colors.success[200],
+              borderRadius: DESIGN_TOKENS.borderRadius.full,
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          />
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+            color: DESIGN_TOKENS.colors.success[600],
+            marginTop: DESIGN_TOKENS.spacing[1]
+          }}>
+            <span>{EFFECT_RANGES.duration.min}s</span>
+            <span>{EFFECT_RANGES.duration.max}s</span>
+          </div>
+        </div>
+      )}
+
+      {/* Flash settings */}
       {effectAction.effect?.type === 'flash' && (
         <>
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
@@ -154,14 +208,15 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                       ? DESIGN_TOKENS.colors.success[500] 
                       : DESIGN_TOKENS.colors.success[200],
                     backgroundColor: effectAction.effect?.flashColor === option.value 
-                      ? option.value 
+                      ? DESIGN_TOKENS.colors.success[500] 
                       : 'transparent',
                     color: effectAction.effect?.flashColor === option.value 
-                      ? (option.value === '#FFFFFF' || option.value === '#FFFF00' ? '#000' : '#FFF')
+                      ? DESIGN_TOKENS.colors.neutral[0] 
                       : DESIGN_TOKENS.colors.success[800]
                   }}
                 >
-                  <span>{option.label}</span>
+                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
+                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs }}>{option.label}</span>
                 </ModernButton>
               ))}
             </div>
@@ -175,7 +230,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              {t('editor.effectAction.flashIntensityLabel', { intensity: Math.round((effectAction.effect?.flashIntensity ?? EFFECT_DEFAULTS.flashIntensity) * 100) })}
+              {t('editor.effectAction.flashIntensityLabel', { intensity: ((effectAction.effect?.flashIntensity ?? EFFECT_DEFAULTS.flashIntensity) * 100).toFixed(0) })}
             </label>
             <input
               type="range"
@@ -191,16 +246,6 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
               })}
               style={{ width: '100%' }}
             />
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-              color: DESIGN_TOKENS.colors.success[600],
-              marginTop: DESIGN_TOKENS.spacing[1]
-            }}>
-              <span>{Math.round(EFFECT_RANGES.flashIntensity.min * 100)}%</span>
-              <span>{Math.round(EFFECT_RANGES.flashIntensity.max * 100)}%</span>
-            </div>
           </div>
 
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
@@ -227,21 +272,11 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
               })}
               style={{ width: '100%' }}
             />
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-              color: DESIGN_TOKENS.colors.success[600],
-              marginTop: DESIGN_TOKENS.spacing[1]
-            }}>
-              <span>{EFFECT_RANGES.flashFrequency.min} Hz</span>
-              <span>{EFFECT_RANGES.flashFrequency.max} Hz</span>
-            </div>
           </div>
         </>
       )}
 
-      {/* Shake settings (when effect type is 'shake') */}
+      {/* Shake settings */}
       {effectAction.effect?.type === 'shake' && (
         <>
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
@@ -282,7 +317,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                       : DESIGN_TOKENS.colors.success[800]
                   }}
                 >
-                  <span>{option.icon} {option.label}</span>
+                  <span>{option.label}</span>
                 </ModernButton>
               ))}
             </div>
@@ -312,57 +347,11 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
               })}
               style={{ width: '100%' }}
             />
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-              color: DESIGN_TOKENS.colors.success[600],
-              marginTop: DESIGN_TOKENS.spacing[1]
-            }}>
-              <span>{EFFECT_RANGES.shakeIntensity.min}px</span>
-              <span>{EFFECT_RANGES.shakeIntensity.max}px</span>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.shakeFrequencyLabel', { frequency: effectAction.effect?.shakeFrequency ?? EFFECT_DEFAULTS.shakeFrequency })}
-            </label>
-            <input
-              type="range"
-              min={EFFECT_RANGES.shakeFrequency.min}
-              max={EFFECT_RANGES.shakeFrequency.max}
-              step={EFFECT_RANGES.shakeFrequency.step}
-              value={effectAction.effect?.shakeFrequency ?? EFFECT_DEFAULTS.shakeFrequency}
-              onChange={(e) => onUpdate(index, {
-                effect: {
-                  ...effectAction.effect,
-                  shakeFrequency: parseFloat(e.target.value)
-                }
-              })}
-              style={{ width: '100%' }}
-            />
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-              color: DESIGN_TOKENS.colors.success[600],
-              marginTop: DESIGN_TOKENS.spacing[1]
-            }}>
-              <span>{EFFECT_RANGES.shakeFrequency.min} Hz</span>
-              <span>{EFFECT_RANGES.shakeFrequency.max} Hz</span>
-            </div>
           </div>
         </>
       )}
 
-      {/* Rotate settings (when effect type is 'rotate') */}
+      {/* Rotate settings */}
       {effectAction.effect?.type === 'rotate' && (
         <>
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
@@ -389,16 +378,6 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
               })}
               style={{ width: '100%' }}
             />
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-              color: DESIGN_TOKENS.colors.success[600],
-              marginTop: DESIGN_TOKENS.spacing[1]
-            }}>
-              <span>{EFFECT_RANGES.rotationAmount.min}°</span>
-              <span>{EFFECT_RANGES.rotationAmount.max}°</span>
-            </div>
           </div>
 
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
@@ -425,18 +404,9 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
               })}
               style={{ width: '100%' }}
             />
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-              color: DESIGN_TOKENS.colors.success[600],
-              marginTop: DESIGN_TOKENS.spacing[1]
-            }}>
-              <span>{EFFECT_RANGES.rotationSpeed.min}°/s</span>
-              <span>{EFFECT_RANGES.rotationSpeed.max}°/s</span>
-            </div>
           </div>
 
+          {/* 修正: 'alternate'を除外したROTATION_DIRECTION_OPTIONSを使用 */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -449,7 +419,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
             </label>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
+              gridTemplateColumns: 'repeat(2, 1fr)',
               gap: DESIGN_TOKENS.spacing[2]
             }}>
               {ROTATION_DIRECTION_OPTIONS.map((option) => (
@@ -475,7 +445,8 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                       : DESIGN_TOKENS.colors.success[800]
                   }}
                 >
-                  <span>{option.icon} {option.label}</span>
+                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
+                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs }}>{option.label}</span>
                 </ModernButton>
               ))}
             </div>
@@ -483,7 +454,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
         </>
       )}
 
-      {/* Particles settings (when effect type is 'particles') */}
+      {/* Particles settings */}
       {effectAction.effect?.type === 'particles' && (
         <>
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
@@ -498,7 +469,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
             </label>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
               gap: DESIGN_TOKENS.spacing[2]
             }}>
               {PARTICLE_TYPE_OPTIONS.map((option) => (
@@ -551,252 +522,13 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
               onChange={(e) => onUpdate(index, {
                 effect: {
                   ...effectAction.effect,
-                  particleCount: parseInt(e.target.value)
+                  particleCount: parseFloat(e.target.value)
                 }
               })}
               style={{ width: '100%' }}
             />
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-              color: DESIGN_TOKENS.colors.success[600],
-              marginTop: DESIGN_TOKENS.spacing[1]
-            }}>
-              <span>{EFFECT_RANGES.particleCount.min}</span>
-              <span>{EFFECT_RANGES.particleCount.max}</span>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.particleSizeLabel', { size: effectAction.effect?.particleSize ?? EFFECT_DEFAULTS.particleSize })}
-            </label>
-            <input
-              type="range"
-              min={EFFECT_RANGES.particleSize.min}
-              max={EFFECT_RANGES.particleSize.max}
-              step={EFFECT_RANGES.particleSize.step}
-              value={effectAction.effect?.particleSize ?? EFFECT_DEFAULTS.particleSize}
-              onChange={(e) => onUpdate(index, {
-                effect: {
-                  ...effectAction.effect,
-                  particleSize: parseInt(e.target.value)
-                }
-              })}
-              style={{ width: '100%' }}
-            />
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-              color: DESIGN_TOKENS.colors.success[600],
-              marginTop: DESIGN_TOKENS.spacing[1]
-            }}>
-              <span>{EFFECT_RANGES.particleSize.min}px</span>
-              <span>{EFFECT_RANGES.particleSize.max}px</span>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.particleColorLabel')}
-            </label>
-            <input
-              type="color"
-              value={effectAction.effect?.particleColor ?? EFFECT_DEFAULTS.particleColor}
-              onChange={(e) => onUpdate(index, {
-                effect: {
-                  ...effectAction.effect,
-                  particleColor: e.target.value
-                }
-              })}
-              style={{
-                width: '100%',
-                height: '40px',
-                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
-                borderRadius: DESIGN_TOKENS.borderRadius.lg,
-                cursor: 'pointer'
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.particleSpreadLabel', { spread: effectAction.effect?.particleSpread ?? EFFECT_DEFAULTS.particleSpread })}
-            </label>
-            <input
-              type="range"
-              min={EFFECT_RANGES.particleSpread.min}
-              max={EFFECT_RANGES.particleSpread.max}
-              step={EFFECT_RANGES.particleSpread.step}
-              value={effectAction.effect?.particleSpread ?? EFFECT_DEFAULTS.particleSpread}
-              onChange={(e) => onUpdate(index, {
-                effect: {
-                  ...effectAction.effect,
-                  particleSpread: parseInt(e.target.value)
-                }
-              })}
-              style={{ width: '100%' }}
-            />
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-              color: DESIGN_TOKENS.colors.success[600],
-              marginTop: DESIGN_TOKENS.spacing[1]
-            }}>
-              <span>{EFFECT_RANGES.particleSpread.min}°</span>
-              <span>{EFFECT_RANGES.particleSpread.max}°</span>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.particleSpeedLabel', { speed: effectAction.effect?.particleSpeed ?? EFFECT_DEFAULTS.particleSpeed })}
-            </label>
-            <input
-              type="range"
-              min={EFFECT_RANGES.particleSpeed.min}
-              max={EFFECT_RANGES.particleSpeed.max}
-              step={EFFECT_RANGES.particleSpeed.step}
-              value={effectAction.effect?.particleSpeed ?? EFFECT_DEFAULTS.particleSpeed}
-              onChange={(e) => onUpdate(index, {
-                effect: {
-                  ...effectAction.effect,
-                  particleSpeed: parseInt(e.target.value)
-                }
-              })}
-              style={{ width: '100%' }}
-            />
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-              color: DESIGN_TOKENS.colors.success[600],
-              marginTop: DESIGN_TOKENS.spacing[1]
-            }}>
-              <span>{EFFECT_RANGES.particleSpeed.min} px/s</span>
-              <span>{EFFECT_RANGES.particleSpeed.max} px/s</span>
-            </div>
           </div>
         </>
-      )}
-
-      {/* Effect intensity setting (for glow, confetti, monochrome) */}
-      {effectAction.effect?.type && ['glow', 'confetti', 'monochrome'].includes(effectAction.effect.type) && (
-        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-          <label style={{
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-            color: DESIGN_TOKENS.colors.success[800],
-            marginBottom: DESIGN_TOKENS.spacing[2],
-            display: 'block'
-          }}>
-            {t('editor.effectAction.intensityLabel', { intensity: Math.round((effectAction.effect?.intensity || EFFECT_DEFAULTS.intensity) * 100) })}
-          </label>
-          <input
-            type="range"
-            min={EFFECT_RANGES.intensity.min}
-            max={EFFECT_RANGES.intensity.max}
-            step={EFFECT_RANGES.intensity.step}
-            value={effectAction.effect?.intensity || EFFECT_DEFAULTS.intensity}
-            onChange={(e) => onUpdate(index, {
-              effect: {
-                ...effectAction.effect,
-                intensity: parseFloat(e.target.value)
-              }
-            })}
-            style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: DESIGN_TOKENS.colors.success[200],
-              borderRadius: DESIGN_TOKENS.borderRadius.full,
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-            color: DESIGN_TOKENS.colors.success[600],
-            marginTop: DESIGN_TOKENS.spacing[1]
-          }}>
-            <span>{t('editor.effectAction.intensityRange', { percent: Math.round(EFFECT_RANGES.intensity.min * 100) })}</span>
-            <span>{t('editor.effectAction.intensityRange', { percent: Math.round(EFFECT_RANGES.intensity.max * 100) })}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Effect duration setting */}
-      {effectAction.effect?.type && (
-        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-          <label style={{
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-            color: DESIGN_TOKENS.colors.success[800],
-            marginBottom: DESIGN_TOKENS.spacing[2],
-            display: 'block'
-          }}>
-            {t('editor.effectAction.durationLabel', { seconds: effectAction.effect?.duration || EFFECT_DEFAULTS.duration })}
-          </label>
-          <input
-            type="range"
-            min={EFFECT_RANGES.duration.min}
-            max={EFFECT_RANGES.duration.max}
-            step={EFFECT_RANGES.duration.step}
-            value={effectAction.effect?.duration || EFFECT_DEFAULTS.duration}
-            onChange={(e) => onUpdate(index, {
-              effect: {
-                ...effectAction.effect,
-                duration: parseFloat(e.target.value)
-              }
-            })}
-            style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: DESIGN_TOKENS.colors.success[200],
-              borderRadius: DESIGN_TOKENS.borderRadius.full,
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-            color: DESIGN_TOKENS.colors.success[600],
-            marginTop: DESIGN_TOKENS.spacing[1]
-          }}>
-            <span>{t('editor.effectAction.seconds', { seconds: EFFECT_RANGES.duration.min })}</span>
-            <span>{t('editor.effectAction.seconds', { seconds: EFFECT_RANGES.duration.max })}</span>
-          </div>
-        </div>
       )}
 
       {/* Effect preview button */}
@@ -836,7 +568,6 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
               type: EFFECT_TYPE_OPTIONS.find(e => e.value === effectAction.effect?.type)?.label || t('editor.effectAction.selectEffect')
             })
           : t('editor.effectAction.selectEffect')}
-        {effectAction.effect?.intensity && t('editor.effectAction.withIntensity', { intensity: Math.round(effectAction.effect.intensity * 100) })}
         {effectAction.effect?.duration && t('editor.effectAction.forDuration', { seconds: effectAction.effect.duration })}
       </div>
     </ModernCard>
