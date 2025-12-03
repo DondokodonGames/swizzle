@@ -1,10 +1,9 @@
 // src/services/rule-engine/RuleEngine.ts
-// IF-THENルールエンジン - 全機能拡張版
-// 🆕 追加機能:
-// - タッチ判定拡張（drag/swipe/flick/hold）
-// - 物理演算システム（gravity/friction/restitution）
-// - エフェクトシステム（flash/shake/rotate/particles）
-// - アニメーション制御強化（フレーム条件/詳細制御）
+// IF-THENルールエンジン - 完全統合版
+// 🎯 統合内容:
+// - bc9ae40f版の evaluateAndExecuteRules メソッド（ゲーム動作に必須）
+// - cb440773版の型改善・nullチェック強化
+// - 全機能拡張（タッチ・物理・エフェクト・アニメーション）
 
 import { GameRule, TriggerCondition, GameAction, GameFlag, PhysicsProperties } from '../../types/editor/GameScript';
 import { 
@@ -46,7 +45,7 @@ export interface RuleExecutionContext {
     animationLoop?: boolean;
     animationReverse?: boolean;
     
-    // 🆕 物理プロパティ
+    // 物理プロパティ
     physics?: PhysicsProperties;
     
     // エフェクト管理
@@ -59,19 +58,19 @@ export interface RuleExecutionContext {
     originalX?: number;
     originalY?: number;
     
-    // 🆕 Flash エフェクト
+    // Flash エフェクト
     baseOpacity?: number;
     flashColor?: string;
     flashIntensity?: number;
     flashFrequency?: number;
     flashValue?: number;
     
-    // 🆕 Shake エフェクト
+    // Shake エフェクト
     shakeIntensity?: number;
     shakeFrequency?: number;
     shakeDirection?: string;
     
-    // 🆕 Rotate エフェクト
+    // Rotate エフェクト
     baseRotation?: number;
     rotationAmount?: number;
     rotationDirection?: string;
@@ -95,7 +94,7 @@ export interface RuleExecutionContext {
     setVolume: (soundId: string, volume: number) => void;
   };
   
-  // 🆕 パーティクルシステム
+  // パーティクルシステム
   particleSystem?: {
     emit: (config: any) => void;
   };
@@ -151,7 +150,7 @@ const DIRECTION_VECTORS: Record<DirectionType, { vx: number; vy: number }> = {
 };
 
 /**
- * RuleEngine クラス - 全機能拡張版
+ * RuleEngine クラス - 完全統合版
  */
 export class RuleEngine {
   private rules: GameRule[] = [];
@@ -189,11 +188,11 @@ export class RuleEngine {
     loopCount: number;
   }> = new Map();
   
-  // GameState条件用の前回状態管理
-  private previousGameState?: string;  // ✅ string 型に変更
+  // ✅ cb440773改善: string型に変更
+  private previousGameState?: string;
 
   constructor() {
-    console.log('🎮 RuleEngine初期化（全機能拡張版）');
+    console.log('🎮 RuleEngine初期化（完全統合版）');
   }
 
   // ルール追加
@@ -258,6 +257,62 @@ export class RuleEngine {
     }
 
     return triggeredRules.sort((a, b) => b.priority - a.priority);
+  }
+
+  // ✅ bc9ae40f版の必須メソッド: evaluateAndExecuteRules（ゲーム動作に必要）
+  evaluateAndExecuteRules(context: RuleExecutionContext): ActionExecutionResult[] {
+    const results: ActionExecutionResult[] = [];
+    
+    // 古い消費済みtouchイベントをクリーンアップ
+    const now = Date.now();
+    const keysToDelete: string[] = [];
+    for (const key of this.consumedTouchEvents) {
+      const timestamp = parseInt(key.split('-')[0], 10);
+      if (now - timestamp > 500) {
+        keysToDelete.push(key);
+      }
+    }
+    for (const key of keysToDelete) {
+      this.consumedTouchEvents.delete(key);
+    }
+    
+    // 衝突判定キャッシュを更新（引数なし版）
+    const currentTime = Date.now();
+    if (currentTime - this.lastCollisionCheckTime > 16) {
+      this.updateCollisionCache();
+      this.lastCollisionCheckTime = currentTime;
+    }
+    
+    const sortedRules = [...this.rules]
+      .filter(rule => rule.enabled)
+      .sort((a, b) => b.priority - a.priority);
+      
+    for (const rule of sortedRules) {
+      try {
+        const canExecute = this.canExecuteRule(rule);
+        if (!canExecute) {
+          continue;
+        }
+        
+        const timeValid = this.isRuleTimeValid(rule, context.gameState.timeElapsed);
+        if (!timeValid) {
+          continue;
+        }
+        
+        const evaluation = this.evaluateRule(rule, context);
+        if (evaluation.shouldExecute) {
+          const result = this.executeActions(rule, context);
+          results.push(result);
+          
+          const currentCount = this.executionCounts.get(rule.id) || 0;
+          this.executionCounts.set(rule.id, currentCount + 1);
+        }
+      } catch (error) {
+        console.error(`❌ ルール実行エラー [${rule.name}]:`, error);
+      }
+    }
+    
+    return results;
   }
 
   // 個別ルール評価
@@ -330,7 +385,7 @@ export class RuleEngine {
     return result;
   }
 
-  // 🆕 タッチ条件評価（拡張版）
+  // タッチ条件評価（拡張版）
   private evaluateTouchCondition(
     condition: Extract<TriggerCondition, { type: 'touch' }>,
     context: RuleExecutionContext,
@@ -422,7 +477,7 @@ export class RuleEngine {
     }
   }
 
-  // 🆕 Drag条件評価
+  // Drag条件評価
   private evaluateDragCondition(
     condition: Extract<TriggerCondition, { type: 'touch' }>,
     touchEvent: any,
@@ -451,7 +506,7 @@ export class RuleEngine {
     }
   }
 
-  // 🆕 Swipe条件評価
+  // Swipe条件評価
   private evaluateSwipeCondition(
     condition: Extract<TriggerCondition, { type: 'touch' }>,
     touchEvent: any,
@@ -485,7 +540,7 @@ export class RuleEngine {
     return true;
   }
 
-  // 🆕 Flick条件評価
+  // Flick条件評価
   private evaluateFlickCondition(
     condition: Extract<TriggerCondition, { type: 'touch' }>,
     touchEvent: any,
@@ -519,7 +574,7 @@ export class RuleEngine {
     return true;
   }
 
-  // 🆕 Hold条件評価
+  // Hold条件評価
   private evaluateHoldCondition(
     condition: Extract<TriggerCondition, { type: 'touch' }>,
     touchEvent: any,
@@ -588,39 +643,39 @@ export class RuleEngine {
     }
   }
 
-  // 位置条件評価
+  // ✅ cb440773改善: nullチェック強化
   private evaluatePositionCondition(
-  condition: Extract<TriggerCondition, { type: 'position' }>,
-  context: RuleExecutionContext
-): boolean {
-  try {
-    const targetObj = context.objects.get(condition.target);
-    
-    if (!targetObj) {
+    condition: Extract<TriggerCondition, { type: 'position' }>,
+    context: RuleExecutionContext
+  ): boolean {
+    try {
+      const targetObj = context.objects.get(condition.target);
+      
+      if (!targetObj) {
+        return false;
+      }
+      
+      const { region } = condition;
+      const objCenterX = targetObj.x + targetObj.width / 2;
+      const objCenterY = targetObj.y + targetObj.height / 2;
+      
+      const regionX = region.x * context.canvas.width;
+      const regionY = region.y * context.canvas.height;
+      
+      // ✅ cb440773改善: undefined チェック追加
+      const regionWidth = (region.width ?? 0) * context.canvas.width;
+      const regionHeight = (region.height ?? 0) * context.canvas.height;
+      
+      const inside = objCenterX >= regionX && 
+                     objCenterX <= regionX + regionWidth &&
+                     objCenterY >= regionY && 
+                     objCenterY <= regionY + regionHeight;
+      
+      return condition.area === 'inside' ? inside : !inside;
+    } catch (error) {
       return false;
     }
-    
-    const { region } = condition;
-    const objCenterX = targetObj.x + targetObj.width / 2;
-    const objCenterY = targetObj.y + targetObj.height / 2;
-    
-    const regionX = region.x * context.canvas.width;
-    const regionY = region.y * context.canvas.height;
-    
-    // ✅ 修正: undefined チェック追加
-    const regionWidth = (region.width ?? 0) * context.canvas.width;
-    const regionHeight = (region.height ?? 0) * context.canvas.height;
-    
-    const inside = objCenterX >= regionX && 
-                   objCenterX <= regionX + regionWidth &&
-                   objCenterY >= regionY && 
-                   objCenterY <= regionY + regionHeight;
-    
-    return condition.area === 'inside' ? inside : !inside;
-  } catch (error) {
-    return false;
   }
-}
 
   // カウンター条件評価
   private evaluateCounterCondition(
@@ -712,44 +767,44 @@ export class RuleEngine {
     return x - Math.floor(x);
   }
 
-  // ゲーム状態条件評価
-private evaluateGameStateCondition(
-  condition: Extract<TriggerCondition, { type: 'gameState' }>,
-  context: RuleExecutionContext
-): boolean {
-  try {
-    // 現在のゲーム状態を判定
-    const currentState = context.gameState.isPlaying 
-      ? 'playing' 
-      : (context.gameState.isPaused ? 'paused' : 'failure');
-    
-    switch (condition.checkType) {
-      case 'is':
-        // 現在の状態が指定された状態と一致するか
-        return currentState === condition.state;
-        
-      case 'not':
-        // 現在の状態が指定された状態と一致しないか
-        return currentState !== condition.state;
-        
-      case 'became':
-        // 状態が変化して指定された状態になったか
-        const previousState = this.previousGameState;
-        const changed = previousState !== undefined && previousState !== currentState;
-        
-        // 前回の状態を保存（次回の比較用）
-        this.previousGameState = currentState;
-        
-        return changed && currentState === condition.state;
-        
-      default:
-        return false;
+  // ✅ cb440773改善: GameState条件の完全実装
+  private evaluateGameStateCondition(
+    condition: Extract<TriggerCondition, { type: 'gameState' }>,
+    context: RuleExecutionContext
+  ): boolean {
+    try {
+      // 現在のゲーム状態を判定
+      const currentState = context.gameState.isPlaying 
+        ? 'playing' 
+        : (context.gameState.isPaused ? 'paused' : 'failure');
+      
+      switch (condition.checkType) {
+        case 'is':
+          // 現在の状態が指定された状態と一致するか
+          return currentState === condition.state;
+          
+        case 'not':
+          // 現在の状態が指定された状態と一致しないか
+          return currentState !== condition.state;
+          
+        case 'became':
+          // 状態が変化して指定された状態になったか
+          const previousState = this.previousGameState;
+          const changed = previousState !== undefined && previousState !== currentState;
+          
+          // 前回の状態を保存（次回の比較用）
+          this.previousGameState = currentState;
+          
+          return changed && currentState === condition.state;
+          
+        default:
+          return false;
+      }
+    } catch (error) {
+      console.error('evaluateGameStateCondition error:', error);
+      return false;
     }
-  } catch (error) {
-    console.error('evaluateGameStateCondition error:', error);
-    return false;
   }
-}
 
   // 衝突条件評価
   private evaluateCollisionCondition(
@@ -826,59 +881,58 @@ private evaluateGameStateCondition(
            obj1.y + obj1.height * scale1 > obj2.y;
   }
 
-  // 🆕 アニメーション条件評価（拡張版）
+  // ✅ cb440773改善: Animation条件の修正（targetId→target, frame→frameNumber）
   private evaluateAnimationCondition(
-  condition: Extract<TriggerCondition, { type: 'animation' }>,
-  context: RuleExecutionContext
-): boolean {
-  try {
-    // ✅ 修正: targetId → target
-    const targetObj = context.objects.get(condition.target);
-    
-    if (!targetObj) {
+    condition: Extract<TriggerCondition, { type: 'animation' }>,
+    context: RuleExecutionContext
+  ): boolean {
+    try {
+      // ✅ cb440773改善: targetId → target
+      const targetObj = context.objects.get(condition.target);
+      
+      if (!targetObj) {
+        return false;
+      }
+      
+      switch (condition.condition) {
+        case 'playing':
+          return targetObj.animationPlaying === true;
+          
+        case 'stopped':
+          return targetObj.animationPlaying === false;
+          
+        case 'frame':
+          // ✅ cb440773改善: frame → frameNumber
+          if (condition.frameNumber === undefined) {
+            return false;
+          }
+          return targetObj.currentFrame === condition.frameNumber;
+          
+        case 'frameRange':
+          if (!condition.frameRange || condition.frameRange.length !== 2) {
+            return false;
+          }
+          const [start, end] = condition.frameRange;
+          return targetObj.currentFrame !== undefined &&
+                 targetObj.currentFrame >= start && 
+                 targetObj.currentFrame <= end;
+                 
+        case 'loop':
+          // ✅ cb440773改善: targetId → target
+          const state = this.animationStates.get(condition.target);
+          if (!state || condition.loopCount === undefined) {
+            return false;
+          }
+          return state.loopCount >= condition.loopCount;
+          
+        default:
+          return false;
+      }
+    } catch (error) {
+      console.error('evaluateAnimationCondition error:', error);
       return false;
     }
-    
-    switch (condition.condition) {
-      case 'playing':
-        return targetObj.animationPlaying === true;
-        
-      case 'stopped':
-        return targetObj.animationPlaying === false;
-        
-      case 'frame':
-        // ✅ 修正: frame → frameNumber
-        if (condition.frameNumber === undefined) {
-          return false;
-        }
-        // ✅ 修正: frame → frameNumber
-        return targetObj.currentFrame === condition.frameNumber;
-        
-      case 'frameRange':
-        if (!condition.frameRange || condition.frameRange.length !== 2) {
-          return false;
-        }
-        const [start, end] = condition.frameRange;
-        return targetObj.currentFrame !== undefined &&
-               targetObj.currentFrame >= start && 
-               targetObj.currentFrame <= end;
-               
-      case 'loop':
-        // ✅ 修正: targetId → target
-        const state = this.animationStates.get(condition.target);
-        if (!state || condition.loopCount === undefined) {
-          return false;
-        }
-        return state.loopCount >= condition.loopCount;
-        
-      default:
-        return false;
-    }
-  } catch (error) {
-    console.error('evaluateAnimationCondition error:', error);
-    return false;
   }
-}
 
   // アクション実行
   executeActions(
@@ -961,7 +1015,6 @@ private evaluateGameStateCondition(
             effectsApplied.push(`エフェクト: ${action.effect.type}`);
             break;
 
-          // 🆕 新規アクション
           case 'followDrag':
             this.executeFollowDragAction(action, context);
             effectsApplied.push(`ドラッグ追従: ${action.targetId}`);
@@ -1038,7 +1091,7 @@ private evaluateGameStateCondition(
     }
   }
 
-  // 🆕 SwitchAnimation アクション（拡張版）
+  // SwitchAnimation アクション（拡張版）
   private executeSwitchAnimationAction(
     action: Extract<GameAction, { type: 'switchAnimation' }>,
     context: RuleExecutionContext
@@ -1079,7 +1132,7 @@ private evaluateGameStateCondition(
     console.log(`🎬 アニメーション切替: ${action.targetId} → index ${action.animationIndex}`);
   }
 
-  // 🆕 新規アクション実装群
+  // 新規アクション実装群
   private executeFollowDragAction(
     action: Extract<GameAction, { type: 'followDrag' }>,
     context: RuleExecutionContext
@@ -1563,166 +1616,164 @@ private evaluateGameStateCondition(
     }
   }
 
-  // カウンター操作
-private executeCounterAction(
-  action: Extract<GameAction, { type: 'counter' }>,
-  context: RuleExecutionContext
-): CounterChangeEvent[] {
-  const counterDef = this.counterDefinitions.get(action.counterName);
-  if (!counterDef) {
-    console.warn(`Counter definition not found: ${action.counterName}`);
-    return [];
-  }
-
-  const oldValue = this.getCounter(action.counterName);
-  let newValue = oldValue;
-
-  switch (action.operation) {
-    case 'set':
-      // ✅ 修正: action.value が undefined の可能性
-      newValue = action.value ?? 0;
-      break;
-      
-    case 'add':
-    case 'increment':
-      // ✅ 修正: action.value が undefined の可能性
-      newValue = oldValue + (action.value ?? 1);
-      break;
-      
-    case 'subtract':
-    case 'decrement':
-      // ✅ 修正: action.value が undefined の可能性
-      newValue = oldValue - (action.value ?? 1);
-      break;
-      
-    case 'multiply':
-      // ✅ 修正: action.value が undefined の可能性、デフォルト値1
-      newValue = oldValue * (action.value ?? 1);
-      break;
-      
-    case 'divide':
-      // ✅ 修正: action.value が undefined の可能性、0除算チェック
-      const divisor = action.value ?? 1;
-      newValue = divisor !== 0 ? oldValue / divisor : oldValue;
-      break;
-      
-    case 'reset':
-      newValue = counterDef.initialValue;
-      break;
-      
-    default:
-      console.warn(`Unknown counter operation: ${action.operation}`);
-      break;
-  }
-
-  // ✅ 修正: clampCounterValue は2引数（value, GameCounter）
-  // counterDef.min/max を使用（minValue/maxValue ではない）
-  newValue = clampCounterValue(newValue, counterDef);
-
-  // カウンター値を更新
-  this.counterPreviousValues.set(action.counterName, oldValue);
-  this.counters.set(action.counterName, newValue);
-
-  // 変更イベントを作成
-  const changeEvent: CounterChangeEvent = {
-    counterName: action.counterName,
-    oldValue,
-    newValue,
-    operation: action.operation,
-    timestamp: Date.now()
-  };
-
-  this.counterHistory.push(changeEvent);
-
-  return [changeEvent];
-}
-
-private executeRandomAction(
-  action: Extract<GameAction, { type: 'randomAction' }>,
-  context: RuleExecutionContext,
-  ruleId?: string
-): ActionExecutionResult {
-  const effectsApplied: string[] = [];
-  const errors: string[] = [];
-  const counterChanges: CounterChangeEvent[] = [];
-
-  try {
-    const selectionMode = action.selectionMode || 'weighted';
-    let selectedAction: GameAction;
-
-    if (selectionMode === 'uniform') {
-      const index = Math.floor(Math.random() * action.actions.length);
-      selectedAction = action.actions[index].action;
-    } else if (selectionMode === 'probability') {
-      const random = Math.random();
-      let cumulative = 0;
-      selectedAction = action.actions[0].action;
-      
-      for (const option of action.actions) {
-        cumulative += option.probability || (1 / action.actions.length);
-        if (random <= cumulative) {
-          selectedAction = option.action;
-          break;
-        }
-      }
-    } else {
-      const weights = action.weights || action.actions.map(opt => opt.weight || 1);
-      const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-      const random = Math.random() * totalWeight;
-      let cumulative = 0;
-      let selectedIndex = 0;
-      
-      for (let i = 0; i < weights.length; i++) {
-        cumulative += weights[i];
-        if (random <= cumulative) {
-          selectedIndex = i;
-          break;
-        }
-      }
-      
-      selectedAction = action.actions[selectedIndex].action;
+  // ✅ cb440773改善: Counter操作のnullチェック強化 + increment/decrement対応
+  private executeCounterAction(
+    action: Extract<GameAction, { type: 'counter' }>,
+    context: RuleExecutionContext
+  ): CounterChangeEvent[] {
+    const counterDef = this.counterDefinitions.get(action.counterName);
+    if (!counterDef) {
+      console.warn(`Counter definition not found: ${action.counterName}`);
+      return [];
     }
 
-    // ✅ selectedAction に値が入った後に配列を作成
-    const selectedActions: GameAction[] = [selectedAction];
+    const oldValue = this.getCounter(action.counterName);
+    let newValue = oldValue;
 
-    // 選択されたアクションを実行
-    const now = new Date().toISOString();
-    
-    const dummyRule: GameRule = {
-      id: `random_action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: 'Random Action Selector',
-      enabled: true,
-      priority: 50,
-      targetObjectId: 'stage',
-      triggers: {
-        operator: 'AND',
-        conditions: []
-      },
-      actions: selectedActions,
-      createdAt: now,
-      lastModified: now
+    switch (action.operation) {
+      case 'set':
+        // ✅ cb440773改善: action.value が undefined の可能性
+        newValue = action.value ?? 0;
+        break;
+        
+      case 'add':
+      case 'increment':
+        // ✅ cb440773改善: action.value が undefined の可能性 + increment対応
+        newValue = oldValue + (action.value ?? 1);
+        break;
+        
+      case 'subtract':
+      case 'decrement':
+        // ✅ cb440773改善: action.value が undefined の可能性 + decrement対応
+        newValue = oldValue - (action.value ?? 1);
+        break;
+        
+      case 'multiply':
+        // ✅ cb440773改善: action.value が undefined の可能性、デフォルト値1
+        newValue = oldValue * (action.value ?? 1);
+        break;
+        
+      case 'divide':
+        // ✅ cb440773改善: action.value が undefined の可能性、0除算チェック
+        const divisor = action.value ?? 1;
+        newValue = divisor !== 0 ? oldValue / divisor : oldValue;
+        break;
+        
+      case 'reset':
+        newValue = counterDef.initialValue;
+        break;
+        
+      default:
+        console.warn(`Unknown counter operation: ${action.operation}`);
+        break;
+    }
+
+    // ✅ clampCounterValue は2引数（value, GameCounter）
+    newValue = clampCounterValue(newValue, counterDef);
+
+    // カウンター値を更新
+    this.counterPreviousValues.set(action.counterName, oldValue);
+    this.counters.set(action.counterName, newValue);
+
+    // 変更イベントを作成
+    const changeEvent: CounterChangeEvent = {
+      counterName: action.counterName,
+      oldValue,
+      newValue,
+      operation: action.operation,
+      timestamp: Date.now()
     };
 
-    const result = this.executeActions(dummyRule, context);
-    effectsApplied.push(...result.effectsApplied);
-    errors.push(...result.errors);
-    counterChanges.push(...result.counterChanges);
+    this.counterHistory.push(changeEvent);
 
-  } catch (error) {
-    errors.push(`ランダムアクション実行エラー: ${error}`);
+    return [changeEvent];
   }
 
-  return {
-    success: errors.length === 0,
-    effectsApplied,
-    newGameState: {},
-    errors,
-    counterChanges
-  };
-}
+  private executeRandomAction(
+    action: Extract<GameAction, { type: 'randomAction' }>,
+    context: RuleExecutionContext,
+    ruleId?: string
+  ): ActionExecutionResult {
+    const effectsApplied: string[] = [];
+    const errors: string[] = [];
+    const counterChanges: CounterChangeEvent[] = [];
 
-  // 🆕 物理演算更新
+    try {
+      const selectionMode = action.selectionMode || 'weighted';
+      let selectedAction: GameAction;
+
+      if (selectionMode === 'uniform') {
+        const index = Math.floor(Math.random() * action.actions.length);
+        selectedAction = action.actions[index].action;
+      } else if (selectionMode === 'probability') {
+        const random = Math.random();
+        let cumulative = 0;
+        selectedAction = action.actions[0].action;
+        
+        for (const option of action.actions) {
+          cumulative += option.probability || (1 / action.actions.length);
+          if (random <= cumulative) {
+            selectedAction = option.action;
+            break;
+          }
+        }
+      } else {
+        const weights = action.weights || action.actions.map(opt => opt.weight || 1);
+        const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+        const random = Math.random() * totalWeight;
+        let cumulative = 0;
+        let selectedIndex = 0;
+        
+        for (let i = 0; i < weights.length; i++) {
+          cumulative += weights[i];
+          if (random <= cumulative) {
+            selectedIndex = i;
+            break;
+          }
+        }
+        
+        selectedAction = action.actions[selectedIndex].action;
+      }
+
+      const selectedActions: GameAction[] = [selectedAction];
+
+      // 選択されたアクションを実行
+      const now = new Date().toISOString();
+      
+      const dummyRule: GameRule = {
+        id: `random_action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: 'Random Action Selector',
+        enabled: true,
+        priority: 50,
+        targetObjectId: 'stage',
+        triggers: {
+          operator: 'AND',
+          conditions: []
+        },
+        actions: selectedActions,
+        createdAt: now,
+        lastModified: now
+      };
+
+      const result = this.executeActions(dummyRule, context);
+      effectsApplied.push(...result.effectsApplied);
+      errors.push(...result.errors);
+      counterChanges.push(...result.counterChanges);
+
+    } catch (error) {
+      errors.push(`ランダムアクション実行エラー: ${error}`);
+    }
+
+    return {
+      success: errors.length === 0,
+      effectsApplied,
+      newGameState: {},
+      errors,
+      counterChanges
+    };
+  }
+
+  // 物理演算更新
   updatePhysics(context: RuleExecutionContext, deltaTime: number): void {
     context.objects.forEach((obj, id) => {
       if (!obj.physics || !obj.physics.enabled) {
@@ -1793,7 +1844,7 @@ private executeRandomAction(
     }
   }
 
-  // 🆕 エフェクト更新
+  // エフェクト更新
   updateEffects(context: RuleExecutionContext): void {
     const now = performance.now();
     
@@ -1899,7 +1950,7 @@ private executeRandomAction(
     obj.effectDuration = undefined;
   }
 
-  // 🆕 アニメーション更新
+  // アニメーション更新
   updateAnimations(context: RuleExecutionContext, deltaTime: number): void {
     const now = performance.now();
     
