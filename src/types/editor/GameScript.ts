@@ -959,3 +959,35 @@ export const createDirectionMoveAction = (
     }
   };
 };
+
+export type ActionType = 
+  // 既存のGameActionタイプ（後方互換性のため全て保持）
+  | 'success'
+  | 'failure'
+  | 'pause'
+  | 'restart'
+  | 'gameState'      
+  | 'objectState'
+  | 'playSound'
+  | 'stopSound'
+  | 'playBGM'
+  | 'stopBGM'
+  | 'setFlag'
+  | 'toggleFlag'
+  | 'switchAnimation'
+  | 'show'
+  | 'hide'
+  | 'playAnimation'
+  | 'setAnimationSpeed'
+  | 'setAnimationFrame'
+  | 'move'
+  | 'followDrag'
+  | 'effect'
+  | 'applyForce'
+  | 'applyImpulse'
+  | 'setGravity'
+  | 'setPhysics'
+  | 'addScore'
+  | 'showMessage'
+  | 'counter'
+  | 'randomAction'; 

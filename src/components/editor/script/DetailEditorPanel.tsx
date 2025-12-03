@@ -1,5 +1,6 @@
 // src/components/editor/script/DetailEditorPanel.tsx
 // 詳細設定エリア（広い・選択されたルールを編集）
+// Phase 1完全版: GameStateActionEditor, ObjectStateActionEditor統合（TypeScriptエラー修正版）
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,11 +24,12 @@ import { RandomConditionEditor } from './RandomRuleComponents';
 import { SoundActionEditor } from './actions/SoundActionEditor';
 import { MoveActionEditor } from './actions/MoveActionEditor';
 import { EffectActionEditor } from './actions/EffectActionEditor';
-import { ShowHideActionEditor } from './actions/ShowHideActionEditor';
 import { FlagActionEditor } from './actions/FlagActionEditor';
-import { AnimationActionEditor } from './actions/AnimationActionEditor';
 import { CounterActionEditor } from './CounterRuleComponents';
 import { RandomActionEditor } from './RandomRuleComponents';
+// Phase 1: 新規統合エディター追加
+import { GameStateActionEditor } from './actions/GameStateActionEditor';
+import { ObjectStateActionEditor } from './actions/ObjectStateActionEditor';
 
 interface DetailEditorPanelProps {
   selectedType: 'condition' | 'action' | null;
@@ -144,6 +146,35 @@ export const DetailEditorPanel: React.FC<DetailEditorPanelProps> = ({
     if (!selectedAction || selectedActionIndex === null) return null;
 
     switch (selectedAction.type) {
+      // ✅ Phase 1修正: 既存の型でGameStateActionEditorを呼び出す
+      case 'success':
+      case 'failure':
+      case 'pause':
+      case 'restart':
+        return (
+          <GameStateActionEditor
+            action={selectedAction}
+            index={selectedActionIndex}
+            onUpdate={onActionUpdate}
+            onShowNotification={onShowNotification}
+          />
+        );
+      
+      // ✅ Phase 1修正: 既存の型でObjectStateActionEditorを呼び出す
+      case 'show':
+      case 'hide':
+      case 'switchAnimation':
+        return (
+          <ObjectStateActionEditor
+            action={selectedAction}
+            project={project}
+            index={selectedActionIndex}
+            onUpdate={onActionUpdate}
+            onShowNotification={onShowNotification}
+          />
+        );
+
+      // 既存のエディター（そのまま保持）
       case 'playSound':
         return (
           <SoundActionEditor
@@ -172,16 +203,6 @@ export const DetailEditorPanel: React.FC<DetailEditorPanelProps> = ({
             onShowNotification={onShowNotification}
           />
         );
-      case 'show':
-      case 'hide':
-        return (
-          <ShowHideActionEditor
-            action={selectedAction}
-            index={selectedActionIndex}
-            onUpdate={onActionUpdate}
-            onShowNotification={onShowNotification}
-          />
-        );
       case 'setFlag':
       case 'toggleFlag':
         return (
@@ -189,16 +210,6 @@ export const DetailEditorPanel: React.FC<DetailEditorPanelProps> = ({
             action={selectedAction}
             index={selectedActionIndex}
             projectFlags={projectFlags}
-            onUpdate={onActionUpdate}
-            onShowNotification={onShowNotification}
-          />
-        );
-      case 'switchAnimation':
-        return (
-          <AnimationActionEditor
-            action={selectedAction}
-            index={selectedActionIndex}
-            project={project}
             onUpdate={onActionUpdate}
             onShowNotification={onShowNotification}
           />
@@ -245,7 +256,7 @@ export const DetailEditorPanel: React.FC<DetailEditorPanelProps> = ({
           minHeight: '400px',
           color: COLORS.neutral[500]
         }}>
-          <span style={{ fontSize: '64px', marginBottom: SPACING[4] }}>📝</span>
+          <span style={{ fontSize: '64px', marginBottom: SPACING[4] }}>🔍</span>
           <h3 style={{ 
             fontSize: '18px', 
             fontWeight: '600',

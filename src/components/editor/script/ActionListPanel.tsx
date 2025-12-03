@@ -1,5 +1,6 @@
 // src/components/editor/script/ActionListPanel.tsx
 // THEN実行選択パネル（コンパクト・固定高さ・スクロール可能）
+// Phase 1: 重複🎲ボタン削除
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -74,21 +75,7 @@ export const ActionListPanel: React.FC<ActionListPanelProps> = ({
             {actionType.icon}
           </ModernButton>
         ))}
-        {/* ランダムアクション */}
-        <ModernButton
-          variant="outline"
-          size="xs"
-          onClick={() => onAdd('randomAction')}
-          style={{
-            borderColor: COLORS.success[200],
-            color: COLORS.success[800],
-            fontSize: '20px',
-            padding: SPACING[2]
-          }}
-          title={t('editor.script.ruleModal.tooltips.randomAction')}
-        >
-          🎲
-        </ModernButton>
+        {/* Phase 1: 重複🎲ボタン削除 - PRIORITY_ACTION_LIBRARYにrandomActionが含まれるため不要 */}
       </div>
 
       {/* アクションリスト（固定高さ・スクロール） */}
