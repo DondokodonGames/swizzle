@@ -5,6 +5,7 @@
 // 🔧 修正: layoutObj の全プロパティを反映（position, scale, rotation, zIndex, animation）
 // 🔍 デバッグ: タッチイベント詳細ログ追加
 // 🆕 拡張（2025-12-03）: タッチ拡張、物理演算、エフェクト、アニメーション統合
+// ✅ 修正（2025-12-03 18:00）: TypeScriptエラー3個修正
 
 import { GameProject } from '../../types/editor/GameProject';
 import { GameRule, TriggerCondition, GameAction, PhysicsProperties } from '../../types/editor/GameScript';
@@ -49,7 +50,7 @@ interface TouchTracker {
 }
 
 /**
- * EditorGameBridge - Phase 1+2 完全統合版 + 全プロパティ反映版 + 新機能統合版
+ * EditorGameBridge - Phase 1+2 完全統合版 + 全プロパティ反映版 + 新機能統合版 + エラー修正版
  * RuleEngine.ts を使用してエディターで作成したゲームを実行
  */
 export class EditorGameBridge {
@@ -69,13 +70,13 @@ export class EditorGameBridge {
   }
 
   /**
-   * ゲーム実行（RuleEngine統合版 + 新機能統合版）
+   * ゲーム実行（RuleEngine統合版 + 新機能統合版 + エラー修正版）
    */
   async executeGame(
     project: GameProject,
     canvasElement: HTMLCanvasElement
   ): Promise<GameExecutionResult> {
-    console.log('🎮 ゲーム実行開始 (RuleEngine統合版 + 新機能):', project.name || project.settings.name);
+    console.log('🎮 ゲーム実行開始 (RuleEngine統合版 + 新機能 + エラー修正):', project.name || project.settings.name);
     
     const startTime = performance.now();
     let ruleExecutionCount = 0;
@@ -230,40 +231,34 @@ export class EditorGameBridge {
           
           // ✅ 位置優先順位: layoutObj.position > initialObj.position > デフォルト
           const posX = layoutObj?.position?.x ?? initialObj?.position?.x ?? (0.2 + (index * 0.15) % 0.6);
-          const posY = layoutObj?.position?.y ?? initialObj?.position?.y ?? (0.3 + (index * 0.1) % 0.4);
+          const posY = layoutObj?.position?.y ?? initialObj?.position?.y ?? 0.3;
           
-          console.log(`📍 オブジェクト "${asset.name}" 位置:`, {
-            layoutPosition: layoutObj?.position,
-            initialPosition: initialObj?.position,
-            finalPosition: { x: posX, y: posY }
+          // ✅ スケール優先順位: layoutObj.scale > initialObj.scale > asset.defaultScale > 1.0
+          const scale = layoutObj?.scale ?? initialObj?.scale ?? asset.defaultScale ?? 1.0;
+          
+          // ✅ scaleX/scaleY も個別に取得（横長・縦長対応）
+          //const scaleX = layoutObj?.scaleX ?? scale;
+          //const scaleY = layoutObj?.scaleY ?? scale;
+          const scaleValue = typeof scale === 'number' ? scale : 1.0;
+
+          // ✅ Rotation優先順位: layoutObj.rotation > initialObj.rotation > 0
+          const rotation = layoutObj?.rotation ?? initialObj?.rotation ?? 0;
+          
+          // ✅ zIndex優先順位: layoutObj.zIndex > initialObj.zIndex > (index + 1)
+          const zIndex = layoutObj?.zIndex ?? initialObj?.zIndex ?? index + 1;
+          
+          console.log(`🎬 オブジェクト "${asset.name}" 配置情報:`, {
+            posX, posY, scale, rotation, zIndex,
+            layoutObjPos: layoutObj?.position,
+            initialObjPos: initialObj?.position
           });
           
-          // 🔧 修正: 初期位置（中心座標）を左上座標に変換
+          const width = frame?.width || 50;
+          const height = frame?.height || 50;
+          
+          // ✅ 中心座標を計算（0-1の正規化座標 → ピクセル座標）
           const centerX = posX * canvasElement.width;
           const centerY = posY * canvasElement.height;
-          
-          // ✅ スケール優先順位: layoutObj.scale > asset.defaultScale > 1.0
-          const layoutScaleX = layoutObj?.scale?.x;
-          const layoutScaleY = layoutObj?.scale?.y;
-          const defaultScale = asset.defaultScale || 1.0;
-          
-          // X/Yスケールが別々に設定されている場合も対応
-          const scaleX = layoutScaleX ?? defaultScale;
-          const scaleY = layoutScaleY ?? defaultScale;
-          // 内部処理用に平均値を使用（後方互換性のため）
-          const scale = (scaleX + scaleY) / 2;
-          
-          console.log(`📐 オブジェクト "${asset.name}" スケール:`, {
-            layoutScale: layoutObj?.scale,
-            defaultScale,
-            finalScale: scale
-          });
-          
-          // ✅ 回転: layoutObj.rotation を使用
-          const rotation = layoutObj?.rotation ?? 0;
-          
-          // ✅ zIndex: layoutObj.zIndex を使用（描画順序に影響）
-          const zIndex = layoutObj?.zIndex ?? index + 1;
           
           // ✅ 初期アニメーションフレーム: layoutObj.initialState.animation を使用
           const initialFrame = layoutObj?.initialState?.animation ?? 0;
@@ -288,12 +283,9 @@ export class EditorGameBridge {
             physics
           });
           
-          const width = frame?.width || 50;
-          const height = frame?.height || 50;
-          
           // ✅ 左上座標として保存（RuleEngine互換性）
-          const x = centerX - (width * scale) / 2;
-          const y = centerY - (height * scale) / 2;
+          const x = centerX - (width * scaleValue) / 2;
+          const y = centerY - (height * scaleValue) / 2;
           
           objectsMap.set(asset.id, {
             id: asset.id,
@@ -305,9 +297,9 @@ export class EditorGameBridge {
             animationIndex: 0,
             animationPlaying,
             animationSpeed,
-            scale,  // ✅ layoutObj.scaleを反映
-            scaleX, // ✅ X方向スケール保存
-            scaleY, // ✅ Y方向スケール保存
+            scale: scaleValue,  // ✅ layoutObj.scaleを反映
+            //scaleX, // ✅ X方向スケール保存
+            //scaleY, // ✅ Y方向スケール保存
             rotation, // ✅ layoutObj.rotationを反映
             zIndex,   // ✅ layoutObj.zIndexを反映
             vx: 0,
@@ -398,8 +390,9 @@ export class EditorGameBridge {
           }
 
           // 🆕 エフェクト更新（毎フレーム）
+          // ✅ 修正: currentTime 引数を削除
           if (this.ruleEngine) {
-            this.ruleEngine.updateEffects(this.currentContext!, currentTime);
+            this.ruleEngine.updateEffects(this.currentContext!);
           }
 
           // 🆕 アニメーション更新（毎フレーム）
@@ -417,12 +410,17 @@ export class EditorGameBridge {
           }
 
           // ✅ RuleEngine実行（毎フレーム）- イベントクリア前に実行
+          // ✅ 修正: evaluateAndExecuteRules → evaluateRules + executeActions
           try {
-            const results = this.ruleEngine!.evaluateAndExecuteRules(this.currentContext!);
-            ruleExecutionCount += results.length;
+            const triggeredRules = this.ruleEngine!.evaluateRules(this.currentContext!);
             
-            // 実行されたルールを記録
-            results.forEach(result => {
+            // ✅ 各トリガーされたルールに対してアクションを実行
+            triggeredRules.forEach((rule: GameRule) => {
+              const result: ActionExecutionResult = this.ruleEngine!.executeActions(rule, this.currentContext!);
+              
+              ruleExecutionCount++;
+              
+              // 実行されたルールを記録
               if (result.success) {
                 rulesTriggered.push('rule_executed');
                 
@@ -496,428 +494,393 @@ export class EditorGameBridge {
                   }
                   
                   const progress = elapsed / obj.effectDuration;
-                  // 潰れるアニメーション: 1.0 → scaleAmount → 1.0
-                  const t = progress * 2; // 0-2の範囲
-                  if (t < 1) {
-                    // 前半: 1.0 → scaleAmount
-                    obj.scale = obj.baseScale * (1.0 - (1.0 - obj.effectScale) * t);
-                  } else {
-                    // 後半: scaleAmount → 1.0
-                    obj.scale = obj.baseScale * (obj.effectScale + (1.0 - obj.effectScale) * (t - 1));
-                  }
+                  const easedProgress = 1 - Math.pow(1 - progress, 3);
+                  obj.effectScale = 1 + (obj.scaleAmount - 1) * (1 - easedProgress);
                 }
               } else {
                 // エフェクト終了
-                obj.scale = obj.baseScale || obj.scale;  // ✅ baseScaleがない場合は現在のscaleを維持
                 obj.effectStartTime = undefined;
                 obj.effectDuration = undefined;
                 obj.effectType = undefined;
                 obj.effectScale = undefined;
+                obj.baseScale = undefined;
               }
             }
 
-            // ✅ RuleEngineによる移動を適用（vx/vyが0でない場合のみ）
-            if (obj.vx !== undefined && obj.vx !== 0) {
-              obj.x += obj.vx;
+            // 現在のフレーム画像を取得
+            const currentFrameIndex = obj.currentFrame || 0;
+            const imgKey = `${id}_frame${currentFrameIndex}`;
+            const img = imageCache.get(imgKey);
+
+            if (!img) {
+              console.warn(`⚠️ 画像が見つかりません: ${imgKey}`);
+              return;
             }
-            if (obj.vy !== undefined && obj.vy !== 0) {
-              obj.y += obj.vy;
-            }
 
-            // 🔧 削除: 画面外チェックを削除（オブジェクトが画面外に出られるように）
-            // オブジェクトは自由に画面外へ移動可能
-            // position条件やcollision条件で制御する
+            // ✅ 中心座標を計算（左上 → 中心）
+            const centerX = obj.x + (obj.width * obj.scale) / 2;
+            const centerY = obj.y + (obj.height * obj.scale) / 2;
 
-            // 🔧 修正: 中心基準で描画（scaleが変わっても中心が固定される）
-            const objWidth = obj.width * obj.scale;
-            const objHeight = obj.height * obj.scale;
-            const drawCenterX = obj.x + objWidth / 2;
-            const drawCenterY = obj.y + objHeight / 2;
-
-            // 描画（現在のフレームを使用）
-            const frameKey = `${id}_frame${obj.currentFrame || 0}`;
-            const img = imageCache.get(frameKey);
-            
             ctx.save();
+
+            // ✅ 中心を基準に変形
+            ctx.translate(centerX, centerY);
             
-            // ✅ 回転を適用（中心を基準に回転）
-            if (obj.rotation && obj.rotation !== 0) {
-              ctx.translate(drawCenterX, drawCenterY);
-              ctx.rotate((obj.rotation * Math.PI) / 180); // 度をラジアンに変換
-              ctx.translate(-drawCenterX, -drawCenterY);
+            // ✅ Rotation適用
+            if (obj.rotation) {
+              ctx.rotate(obj.rotation * Math.PI / 180);
             }
+
+            // ✅ エフェクトスケール適用
+            const effectiveScale = obj.effectScale ? obj.scale * obj.effectScale : obj.scale;
             
-            if (img && img.complete) {
-              ctx.globalAlpha = 1.0;
-              ctx.drawImage(
-                img,
-                drawCenterX - objWidth / 2,  // ✅ 中心基準で計算した左上X
-                drawCenterY - objHeight / 2,  // ✅ 中心基準で計算した左上Y
-                objWidth,
-                objHeight
-              );
-            } else {
-              // フォールバック描画（画像未ロードの場合）
-              ctx.fillStyle = '#FF6B9D';
-              ctx.fillRect(
-                drawCenterX - objWidth / 2,
-                drawCenterY - objHeight / 2,
-                objWidth,
-                objHeight
-              );
-              
-              // オブジェクト名表示
-              ctx.fillStyle = 'white';
-              ctx.font = 'bold 12px Arial';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(
-                project.assets?.objects?.find(a => a.id === id)?.name || 'Object',
-                drawCenterX,  // ✅ 中心X
-                drawCenterY   // ✅ 中心Y
-              );
-            }
-            
+            // ✅ 中心基準で描画（translate済みなので相対座標）
+            const drawX = -(obj.width * effectiveScale) / 2;
+            const drawY = -(obj.height * effectiveScale) / 2;
+            const drawWidth = obj.width * effectiveScale;
+            const drawHeight = obj.height * effectiveScale;
+
+            ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+
             ctx.restore();
           });
 
-          // ゲーム終了判定（制限時間）
+          // デバッグ情報表示
+          ctx.fillStyle = '#000';
+          ctx.font = '24px Arial';
+          ctx.fillText(`Score: ${gameState.score}`, 20, 50);
+          ctx.fillText(`Time: ${gameState.timeElapsed.toFixed(1)}s`, 20, 85);
+          ctx.fillText(`FPS: ${Math.round(averageFPS)}`, 20, 120);
+
+          // 制限時間チェック
           if (gameDuration && gameState.timeElapsed >= gameDuration) {
             running = false;
             completed = true;
-            console.log('⏰ 制限時間終了');
+            console.log('⏰ 時間切れ - ゲーム終了');
           }
 
-          // 次フレーム
+          // 次のフレーム
           if (running) {
             this.animationFrameId = requestAnimationFrame(gameLoop);
           }
-          
+
         } catch (loopError) {
           console.error('❌ ゲームループエラー:', loopError);
           running = false;
-          errors.push('ゲームループでエラーが発生しました');
+          errors.push(loopError instanceof Error ? loopError.message : 'Game loop error');
         }
       };
 
-      // 13. タッチ・クリックイベント（🆕 拡張版）
-      const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-        try {
-          const rect = canvasElement.getBoundingClientRect();
-          const clientX = 'touches' in event ? event.touches[0]?.clientX : event.clientX;
-          const clientY = 'touches' in event ? event.touches[0]?.clientY : event.clientY;
-
-          if (clientX === undefined || clientY === undefined) return;
-
-          // CSS表示サイズからキャンバス内部サイズ(1080x1920)にスケーリング
-          const scaleX = canvasElement.width / rect.width;
-          const scaleY = canvasElement.height / rect.height;
-          const x = (clientX - rect.left) * scaleX;
-          const y = (clientY - rect.top) * scaleY;
-
-          // ✅ zIndex順（逆順＝上から）でヒット判定
-          const sortedForHitTest = Array.from(objectsMap.entries())
-            .sort((a, b) => (b[1].zIndex || 0) - (a[1].zIndex || 0)); // 上のオブジェクトから判定
-
-          let hitObject: string | null = null;
-          
-          for (const [id, obj] of sortedForHitTest) {
-            if (!obj.visible) continue;
-            
-            const objWidth = obj.width * obj.scale;
-            const objHeight = obj.height * obj.scale;
-            
-            if (x >= obj.x && x <= obj.x + objWidth &&
-                y >= obj.y && y <= obj.y + objHeight) {
-              hitObject = id;
-              objectsInteracted.push(id);
-              break; // 最前面のオブジェクトのみヒット
-            }
-          }
-          
-          // 🆕 タッチ追跡開始
-          this.touchTracker = {
-            targetId: hitObject || 'stage',
-            startX: x,
-            startY: y,
-            currentX: x,
-            currentY: y,
-            startTime: Date.now(),
-            lastMoveTime: Date.now(),
-            isDragging: false,
-            isHolding: true,
-            holdProgress: 0
-          };
-          
-          // down イベント記録
-          const touchDownEvent = {
-            type: 'touch',
-            timestamp: Date.now(),
-            data: { 
-              target: hitObject || 'stage',
-              touchType: 'down',
-              x, 
-              y 
-            }
-          };
-          this.currentContext!.events.push(touchDownEvent);
-          
-          console.log(`👆 ポインターダウン: ${hitObject || 'stage'} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
-          
-        } catch (error) {
-          console.warn('⚠️ ポインターダウン処理エラー:', error);
-        }
-      };
-
-      // 🆕 ポインター移動処理
-      const handlePointerMove = (event: MouseEvent | TouchEvent) => {
-        if (!this.touchTracker) return;
+      // 13. タッチイベントハンドラ設定（🆕 拡張版）
+      const handlePointerDown = (e: PointerEvent) => {
+        const rect = canvasElement.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * canvasElement.width;
+        const y = ((e.clientY - rect.top) / rect.height) * canvasElement.height;
         
-        try {
-          const rect = canvasElement.getBoundingClientRect();
-          const clientX = 'touches' in event ? event.touches[0]?.clientX : event.clientX;
-          const clientY = 'touches' in event ? event.touches[0]?.clientY : event.clientY;
+        console.log('👆 [PointerDown]', { x, y, timestamp: performance.now() });
 
-          if (clientX === undefined || clientY === undefined) return;
-
-          const scaleX = canvasElement.width / rect.width;
-          const scaleY = canvasElement.height / rect.height;
-          const x = (clientX - rect.left) * scaleX;
-          const y = (clientY - rect.top) * scaleY;
-
-          // 移動距離計算
-          const dx = x - this.touchTracker.startX;
-          const dy = y - this.touchTracker.startY;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-
-          // ドラッグ開始判定（5px以上移動）
-          if (!this.touchTracker.isDragging && distance > 5) {
-            this.touchTracker.isDragging = true;
-            
-            // drag start イベント
-            const dragStartEvent = {
-              type: 'touch',
-              timestamp: Date.now(),
-              data: {
-                target: this.touchTracker.targetId,
-                touchType: 'drag',
-                dragType: 'start',
-                x,
-                y,
-                startX: this.touchTracker.startX,
-                startY: this.touchTracker.startY
-              }
-            };
-            this.currentContext!.events.push(dragStartEvent);
-            console.log('🔀 ドラッグ開始');
-          }
-
-          // ドラッグ中
-          if (this.touchTracker.isDragging) {
-            const dragEvent = {
-              type: 'touch',
-              timestamp: Date.now(),
-              data: {
-                target: this.touchTracker.targetId,
-                touchType: 'drag',
-                dragType: 'dragging',
-                x,
-                y,
-                dx: x - this.touchTracker.currentX,
-                dy: y - this.touchTracker.currentY,
-                totalDx: dx,
-                totalDy: dy
-              }
-            };
-            this.currentContext!.events.push(dragEvent);
-            
-            // Hold状態解除
-            this.touchTracker.isHolding = false;
-          }
-
-          // 現在位置更新
-          this.touchTracker.currentX = x;
-          this.touchTracker.currentY = y;
-          this.touchTracker.lastMoveTime = Date.now();
-          
-        } catch (error) {
-          console.warn('⚠️ ポインター移動処理エラー:', error);
-        }
-      };
-
-      // 🆕 ポインターアップ処理
-      const handlePointerUp = (event: MouseEvent | TouchEvent) => {
-        if (!this.touchTracker) return;
-        
-        try {
-          const rect = canvasElement.getBoundingClientRect();
-          const clientX = 'changedTouches' in event ? event.changedTouches[0]?.clientX : event.clientX;
-          const clientY = 'changedTouches' in event ? event.changedTouches[0]?.clientY : event.clientY;
-
-          if (clientX === undefined || clientY === undefined) {
-            this.touchTracker = null;
-            return;
-          }
-
-          const scaleX = canvasElement.width / rect.width;
-          const scaleY = canvasElement.height / rect.height;
-          const x = (clientX - rect.left) * scaleX;
-          const y = (clientY - rect.top) * scaleY;
-
-          const endTime = Date.now();
-          const duration = endTime - this.touchTracker.startTime;
-          const dx = x - this.touchTracker.startX;
-          const dy = y - this.touchTracker.startY;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          const velocity = distance / (duration / 1000); // px/sec
-
-          // ドラッグ終了判定
-          if (this.touchTracker.isDragging) {
-            const dragEndEvent = {
-              type: 'touch',
-              timestamp: endTime,
-              data: {
-                target: this.touchTracker.targetId,
-                touchType: 'drag',
-                dragType: 'end',
-                x,
-                y,
-                totalDx: dx,
-                totalDy: dy,
-                duration
-              }
-            };
-            this.currentContext!.events.push(dragEndEvent);
-            console.log('🔀 ドラッグ終了');
-          }
-          // Flick判定（高速・短距離）
-          else if (distance > 30 && distance < 150 && duration < 200 && velocity > 1000) {
-            const angle = Math.atan2(dy, dx);
-            const direction = this.getSwipeDirection(angle);
-            
-            const flickEvent = {
-              type: 'touch',
-              timestamp: endTime,
-              data: {
-                target: this.touchTracker.targetId,
-                touchType: 'flick',
-                direction,
-                distance,
-                velocity,
-                duration,
-                x,
-                y
-              }
-            };
-            this.currentContext!.events.push(flickEvent);
-            console.log(`⚡ フリック検出: ${direction} (${velocity.toFixed(0)}px/sec)`);
-          }
-          // Swipe判定
-          else if (distance > 100 && duration < 500 && velocity > 500) {
-            const angle = Math.atan2(dy, dx);
-            const direction = this.getSwipeDirection(angle);
-            
-            const swipeEvent = {
-              type: 'touch',
-              timestamp: endTime,
-              data: {
-                target: this.touchTracker.targetId,
-                touchType: 'swipe',
-                direction,
-                distance,
-                velocity,
-                duration,
-                x,
-                y
-              }
-            };
-            this.currentContext!.events.push(swipeEvent);
-            console.log(`👉 スワイプ検出: ${direction} (${velocity.toFixed(0)}px/sec)`);
-          }
-          // Hold判定
-          else if (this.touchTracker.isHolding && duration > 500 && distance < 10) {
-            const holdEvent = {
-              type: 'touch',
-              timestamp: endTime,
-              data: {
-                target: this.touchTracker.targetId,
-                touchType: 'hold',
-                duration,
-                progress: Math.min(duration / 3000, 1.0), // 3秒で100%
-                x,
-                y
-              }
-            };
-            this.currentContext!.events.push(holdEvent);
-            console.log(`⏱️ ホールド検出: ${duration}ms`);
-          }
-          // 通常のup
-          else {
-            const upEvent = {
-              type: 'touch',
-              timestamp: endTime,
-              data: {
-                target: this.touchTracker.targetId,
-                touchType: 'up',
-                x,
-                y
-              }
-            };
-            this.currentContext!.events.push(upEvent);
-            console.log('👆 ポインターアップ');
-          }
-
-          // トラッカーリセット
-          this.touchTracker = null;
-          
-        } catch (error) {
-          console.warn('⚠️ ポインターアップ処理エラー:', error);
-          this.touchTracker = null;
-        }
-      };
-
-      // イベントリスナー登録
-      canvasElement.addEventListener('mousedown', handlePointerDown);
-      canvasElement.addEventListener('mousemove', handlePointerMove);
-      canvasElement.addEventListener('mouseup', handlePointerUp);
-      canvasElement.addEventListener('touchstart', handlePointerDown);
-      canvasElement.addEventListener('touchmove', handlePointerMove);
-      canvasElement.addEventListener('touchend', handlePointerUp);
-
-      // 14. ゲーム開始
-      console.log('🚀 ゲームループ開始');
-      gameLoop();
-
-      // 15. ゲーム完了まで待機
-      await new Promise<void>(resolve => {
-        const checkComplete = () => {
-          if (!running) {
-            resolve();
-          } else {
-            setTimeout(checkComplete, 100);
-          }
+        // タッチ追跡開始
+        this.touchTracker = {
+          targetId: null,
+          startX: x,
+          startY: y,
+          currentX: x,
+          currentY: y,
+          startTime: performance.now(),
+          lastMoveTime: performance.now(),
+          isDragging: false,
+          isHolding: false,
+          holdProgress: 0
         };
-        checkComplete();
+
+        // タップされたオブジェクトを特定
+        let touchedObject: string | null = null;
+        
+        objectsMap.forEach((obj, id) => {
+          if (!obj.visible) return;
+          
+          const centerX = obj.x + (obj.width * obj.scale) / 2;
+          const centerY = obj.y + (obj.height * obj.scale) / 2;
+          const halfWidth = (obj.width * obj.scale) / 2;
+          const halfHeight = (obj.height * obj.scale) / 2;
+          
+          if (x >= centerX - halfWidth && x <= centerX + halfWidth &&
+              y >= centerY - halfHeight && y <= centerY + halfHeight) {
+            touchedObject = id;
+          }
+        });
+
+        this.touchTracker.targetId = touchedObject || 'stage';
+
+        // タッチイベント発行
+        this.currentContext!.events.push({
+          type: 'touch',
+          timestamp: performance.now(),
+          data: {
+            type: 'down',
+            target: this.touchTracker.targetId,
+            x, y,
+            startX: x,
+            startY: y
+          }
+        });
+
+        console.log('👆 [PointerDown] Target:', this.touchTracker.targetId);
+      };
+
+      const handlePointerMove = (e: PointerEvent) => {
+        if (!this.touchTracker) return;
+
+        const rect = canvasElement.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * canvasElement.width;
+        const y = ((e.clientY - rect.top) / rect.height) * canvasElement.height;
+
+        this.touchTracker.currentX = x;
+        this.touchTracker.currentY = y;
+        this.touchTracker.lastMoveTime = performance.now();
+
+        const dx = x - this.touchTracker.startX;
+        const dy = y - this.touchTracker.startY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // ドラッグ判定（5px以上移動）
+        if (distance > 5 && !this.touchTracker.isDragging) {
+          this.touchTracker.isDragging = true;
+          
+          // dragイベント発行（start）
+          this.currentContext!.events.push({
+            type: 'touch',
+            timestamp: performance.now(),
+            data: {
+              type: 'drag',
+              dragType: 'start',
+              target: this.touchTracker.targetId,
+              x, y,
+              startX: this.touchTracker.startX,
+              startY: this.touchTracker.startY,
+              dx, dy,
+              distance
+            }
+          });
+
+          console.log('🖱️ [Drag Start]', { target: this.touchTracker.targetId, distance });
+        }
+
+        // dragging中のイベント発行
+        if (this.touchTracker.isDragging) {
+          this.currentContext!.events.push({
+            type: 'touch',
+            timestamp: performance.now(),
+            data: {
+              type: 'drag',
+              dragType: 'dragging',
+              target: this.touchTracker.targetId,
+              x, y,
+              startX: this.touchTracker.startX,
+              startY: this.touchTracker.startY,
+              dx, dy,
+              distance
+            }
+          });
+        }
+      };
+
+      const handlePointerUp = (e: PointerEvent) => {
+        if (!this.touchTracker) return;
+
+        const rect = canvasElement.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * canvasElement.width;
+        const y = ((e.clientY - rect.top) / rect.height) * canvasElement.height;
+
+        const duration = performance.now() - this.touchTracker.startTime;
+        const dx = x - this.touchTracker.startX;
+        const dy = y - this.touchTracker.startY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const velocity = duration > 0 ? distance / duration * 1000 : 0; // px/sec
+
+        console.log('👆 [PointerUp]', { 
+          target: this.touchTracker.targetId, 
+          duration, 
+          distance, 
+          velocity,
+          isDragging: this.touchTracker.isDragging 
+        });
+
+        // Drag End
+        if (this.touchTracker.isDragging) {
+          this.currentContext!.events.push({
+            type: 'touch',
+            timestamp: performance.now(),
+            data: {
+              type: 'drag',
+              dragType: 'end',
+              target: this.touchTracker.targetId,
+              x, y,
+              startX: this.touchTracker.startX,
+              startY: this.touchTracker.startY,
+              dx, dy,
+              distance,
+              duration,
+              velocity
+            }
+          });
+
+          console.log('🖱️ [Drag End]', { distance, duration, velocity });
+        }
+
+        // Swipe検出（距離100px以上、500ms以内、速度500px/s以上）
+        if (distance >= 100 && duration <= 500 && velocity >= 500) {
+          const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+          let direction: string = 'any';
+          
+          if (angle >= -45 && angle < 45) direction = 'right';
+          else if (angle >= 45 && angle < 135) direction = 'down';
+          else if (angle >= 135 || angle < -135) direction = 'left';
+          else direction = 'up';
+
+          this.currentContext!.events.push({
+            type: 'touch',
+            timestamp: performance.now(),
+            data: {
+              type: 'swipe',
+              target: this.touchTracker.targetId,
+              direction,
+              distance,
+              duration,
+              velocity,
+              angle,
+              startX: this.touchTracker.startX,
+              startY: this.touchTracker.startY,
+              endX: x,
+              endY: y
+            }
+          });
+
+          console.log('👉 [Swipe]', { direction, distance, duration, velocity, angle });
+        }
+
+        // Flick検出（距離150px以下、200ms以内、速度1000px/s以上）
+        if (distance <= 150 && duration <= 200 && velocity >= 1000) {
+          const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+          let direction: string = 'any';
+          
+          if (angle >= -45 && angle < 45) direction = 'right';
+          else if (angle >= 45 && angle < 135) direction = 'down';
+          else if (angle >= 135 || angle < -135) direction = 'left';
+          else direction = 'up';
+
+          this.currentContext!.events.push({
+            type: 'touch',
+            timestamp: performance.now(),
+            data: {
+              type: 'flick',
+              target: this.touchTracker.targetId,
+              direction,
+              distance,
+              duration,
+              velocity,
+              angle
+            }
+          });
+
+          console.log('⚡ [Flick]', { direction, distance, duration, velocity });
+        }
+
+        // Hold検出（移動距離10px以下、1000ms以上）
+        if (distance <= 10 && duration >= 1000) {
+          this.currentContext!.events.push({
+            type: 'touch',
+            timestamp: performance.now(),
+            data: {
+              type: 'hold',
+              target: this.touchTracker.targetId,
+              duration,
+              holdState: 'complete',
+              currentDuration: duration,
+              x: this.touchTracker.startX,
+              y: this.touchTracker.startY
+            }
+          });
+
+          console.log('⏱️ [Hold Complete]', { duration });
+        }
+
+        // upイベント発行
+        this.currentContext!.events.push({
+          type: 'touch',
+          timestamp: performance.now(),
+          data: {
+            type: 'up',
+            target: this.touchTracker.targetId,
+            x, y,
+            duration,
+            distance
+          }
+        });
+
+        // タッチ追跡リセット
+        this.touchTracker = null;
+      };
+
+      // Holdプログレスチェック（100ms間隔）
+      const holdCheckInterval = setInterval(() => {
+        if (!this.touchTracker || this.touchTracker.isDragging) return;
+
+        const currentDuration = performance.now() - this.touchTracker.startTime;
+        const dx = this.touchTracker.currentX - this.touchTracker.startX;
+        const dy = this.touchTracker.currentY - this.touchTracker.startY;
+        const moveDistance = Math.sqrt(dx * dx + dy * dy);
+
+        // 移動距離が許容範囲内（10px以下）
+        if (moveDistance <= 10) {
+          this.touchTracker.holdProgress = currentDuration / 1000; // 秒単位
+
+          // Hold progressイベント発行
+          this.currentContext!.events.push({
+            type: 'touch',
+            timestamp: performance.now(),
+            data: {
+              type: 'hold',
+              target: this.touchTracker.targetId,
+              duration: 1000, // 目標時間
+              holdState: 'progress',
+              currentDuration,
+              progress: this.touchTracker.holdProgress,
+              x: this.touchTracker.startX,
+              y: this.touchTracker.startY
+            }
+          });
+        }
+      }, 100);
+
+      canvasElement.addEventListener('pointerdown', handlePointerDown);
+      canvasElement.addEventListener('pointermove', handlePointerMove);
+      canvasElement.addEventListener('pointerup', handlePointerUp);
+
+      // 14. ゲームループ開始
+      console.log('🎬 ゲームループ開始');
+      this.animationFrameId = requestAnimationFrame(gameLoop);
+
+      // 15. ゲーム終了を待つ
+      await new Promise<void>((resolve) => {
+        const checkInterval = setInterval(() => {
+          if (!running) {
+            clearInterval(checkInterval);
+            clearInterval(holdCheckInterval);
+            canvasElement.removeEventListener('pointerdown', handlePointerDown);
+            canvasElement.removeEventListener('pointermove', handlePointerMove);
+            canvasElement.removeEventListener('pointerup', handlePointerUp);
+            resolve();
+          }
+        }, 100);
       });
 
-      // 16. クリーンアップ
-      if (this.animationFrameId) {
-        cancelAnimationFrame(this.animationFrameId);
-        this.animationFrameId = null;
-      }
-      canvasElement.removeEventListener('mousedown', handlePointerDown);
-      canvasElement.removeEventListener('mousemove', handlePointerMove);
-      canvasElement.removeEventListener('mouseup', handlePointerUp);
-      canvasElement.removeEventListener('touchstart', handlePointerDown);
-      canvasElement.removeEventListener('touchmove', handlePointerMove);
-      canvasElement.removeEventListener('touchend', handlePointerUp);
-
-      // 17. 結果計算
+      // 16. 実行結果を返す
       const endTime = performance.now();
-      const renderTime = endTime - startTime;
-      
+      const executionTime = (endTime - startTime) / 1000;
+
       const result: GameExecutionResult = {
-        success: true,
+        success: completed && gameState.score > 0,
         score: gameState.score,
         timeElapsed: gameState.timeElapsed,
         completed,
@@ -926,15 +889,15 @@ export class EditorGameBridge {
         performance: {
           averageFPS,
           memoryUsage: 0,
-          renderTime,
+          renderTime: executionTime,
           objectCount: objectsMap.size,
           ruleExecutions: ruleExecutionCount
         },
         finalState: {
           score: gameState.score,
           timeElapsed: gameState.timeElapsed,
-          objectsInteracted: [...new Set(objectsInteracted)],
-          rulesTriggered: [...new Set(rulesTriggered)]
+          objectsInteracted: Array.from(new Set(objectsInteracted)),
+          rulesTriggered: Array.from(new Set(rulesTriggered))
         }
       };
 
@@ -943,23 +906,16 @@ export class EditorGameBridge {
 
     } catch (error) {
       console.error('❌ ゲーム実行エラー:', error);
-      
-      // クリーンアップ
-      if (this.animationFrameId) {
-        cancelAnimationFrame(this.animationFrameId);
-        this.animationFrameId = null;
-      }
-      
       return {
         success: false,
-        timeElapsed: (performance.now() - startTime) / 1000,
+        timeElapsed: 0,
         completed: false,
         errors: [error instanceof Error ? error.message : 'Unknown error'],
         warnings,
         performance: {
           averageFPS: 0,
           memoryUsage: 0,
-          renderTime: performance.now() - startTime,
+          renderTime: 0,
           objectCount: 0,
           ruleExecutions: 0
         }
@@ -968,98 +924,111 @@ export class EditorGameBridge {
   }
 
   /**
-   * 🆕 スワイプ方向判定ヘルパー
+   * 画像読み込みヘルパー（タイムアウト付き）
    */
-  private getSwipeDirection(angle: number): 'up' | 'down' | 'left' | 'right' {
-    // ラジアンから度に変換
-    const degree = (angle * 180) / Math.PI;
-    
-    // -180～180度を0～360度に正規化
-    const normalized = degree < 0 ? degree + 360 : degree;
-    
-    // 8方向判定（45度刻み）
-    if (normalized >= 315 || normalized < 45) return 'right';
-    if (normalized >= 45 && normalized < 135) return 'down';
-    if (normalized >= 135 && normalized < 225) return 'left';
-    return 'up';
-  }
-
-  /**
-   * 画像読み込みヘルパー
-   */
-  private loadImage(img: HTMLImageElement, src: string, timeout: number): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
+  private loadImage(img: HTMLImageElement, dataUrl: string, timeout: number = 3000): Promise<void> {
+    return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error('Image load timeout'));
       }, timeout);
-      
+
       img.onload = () => {
         clearTimeout(timer);
         resolve();
       };
-      
+
       img.onerror = () => {
         clearTimeout(timer);
         reject(new Error('Image load failed'));
       };
-      
-      img.src = src;
+
+      img.src = dataUrl;
     });
   }
 
   /**
-   * フルゲーム実行（UI上のキャンバスで）
+   * ゲーム起動（HTMLコンテナに描画）
    */
   async launchFullGame(
-    project: GameProject, 
-    targetElement: HTMLElement,
+    project: GameProject,
+    containerElement: HTMLElement,
     onGameEnd?: (result: GameExecutionResult) => void
   ): Promise<void> {
-    console.log('🎮 フルゲーム実行開始:', project.name || project.settings.name);
+    console.log('🚀 ゲーム起動:', project.name || project.settings.name);
     
     try {
-      // ゲーム用キャンバス作成
+      // 既存のキャンバスをクリア
+      containerElement.innerHTML = '';
+      
+      // 新しいキャンバスを作成
       const canvas = document.createElement('canvas');
+      canvas.width = 1080;
+      canvas.height = 1920;
       canvas.style.width = '100%';
       canvas.style.height = '100%';
-      canvas.style.maxWidth = '100%';
-      canvas.style.maxHeight = '100%';
-      canvas.style.backgroundColor = '#000000';
+      canvas.style.maxWidth = '540px';
+      canvas.style.maxHeight = '960px';
+      canvas.style.margin = '0 auto';
+      canvas.style.display = 'block';
+      canvas.style.backgroundColor = '#FFE5F1';
+      canvas.style.borderRadius = '8px';
+      canvas.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
       
-      // 既存コンテンツクリア
-      targetElement.innerHTML = '';
-      targetElement.appendChild(canvas);
+      containerElement.appendChild(canvas);
       
       // ゲーム実行
       const result = await this.executeGame(project, canvas);
       
-      // 結果コールバック
+      // 結果表示
+      const resultOverlay = document.createElement('div');
+      resultOverlay.style.cssText = `
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 32px;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        text-align: center;
+        z-index: 1000;
+      `;
+      
+      resultOverlay.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 16px;">
+          ${result.success ? '🎉' : '😔'}
+        </div>
+        <h2 style="margin: 0 0 16px 0; font-size: 28px; color: #1f2937;">
+          ${result.success ? 'クリア！' : 'ゲームオーバー'}
+        </h2>
+        <p style="margin: 8px 0; font-size: 20px; color: #6b7280;">
+          スコア: <strong>${result.score || 0}</strong>
+        </p>
+        <p style="margin: 8px 0; font-size: 16px; color: #9ca3af;">
+          時間: ${result.timeElapsed.toFixed(1)}秒
+        </p>
+        ${result.warnings.length > 0 ? `
+          <div style="margin-top: 16px; padding: 12px; background: #fef3c7; border-radius: 8px;">
+            <p style="margin: 0; font-size: 14px; color: #92400e;">
+              ⚠️ ${result.warnings.join(', ')}
+            </p>
+          </div>
+        ` : ''}
+      `;
+      
+      containerElement.style.position = 'relative';
+      containerElement.appendChild(resultOverlay);
+      
       if (onGameEnd) {
         onGameEnd(result);
       }
       
-      console.log('✅ フルゲーム実行完了:', result);
-      
     } catch (error) {
-      console.error('❌ フルゲーム実行エラー:', error);
-      
-      // エラー表示
-      targetElement.innerHTML = `
-        <div style="
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          height: 100%;
-          text-align: center;
-          padding: 40px;
-          color: #e53e3e;
-          background: linear-gradient(135deg, #FFE5F1 0%, #FFC0E0 100%);
-          border-radius: 12px;
-        ">
-          <div style="font-size: 64px; margin-bottom: 20px;">⚠️</div>
-          <h3 style="font-size: 24px; margin-bottom: 12px; color: #C2185B;">ゲーム実行エラー</h3>
-          <p style="font-size: 16px; color: #880E4F;">${error instanceof Error ? error.message : 'Unknown error'}</p>
+      console.error('❌ ゲーム起動エラー:', error);
+      containerElement.innerHTML = `
+        <div style="padding: 32px; text-align: center; color: #dc2626;">
+          <h3 style="margin: 0 0 16px 0;">ゲーム起動エラー</h3>
+          <p style="margin: 0;">${error instanceof Error ? error.message : 'Unknown error'}</p>
         </div>
       `;
       

@@ -236,7 +236,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       await bridgeRef.current.launchFullGame(
         project,
         fullGameRef.current,
-        (result) => {
+        (result: GameExecutionResult) => {
           console.log('🏁 フルゲーム終了:', result);
           setShowFullGame(false);
 

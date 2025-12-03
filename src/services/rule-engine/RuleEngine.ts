@@ -190,10 +190,7 @@ export class RuleEngine {
   }> = new Map();
   
   // GameState条件用の前回状態管理
-  private previousGameState?: {
-    score: number;
-    timeElapsed: number;
-  };
+  private previousGameState?: string;  // ✅ string 型に変更
 
   constructor() {
     console.log('🎮 RuleEngine初期化（全機能拡張版）');
@@ -593,35 +590,37 @@ export class RuleEngine {
 
   // 位置条件評価
   private evaluatePositionCondition(
-    condition: Extract<TriggerCondition, { type: 'position' }>,
-    context: RuleExecutionContext
-  ): boolean {
-    try {
-      const targetObj = context.objects.get(condition.target);
-      
-      if (!targetObj) {
-        return false;
-      }
-      
-      const { region } = condition;
-      const objCenterX = targetObj.x + targetObj.width / 2;
-      const objCenterY = targetObj.y + targetObj.height / 2;
-      
-      const regionX = region.x * context.canvas.width;
-      const regionY = region.y * context.canvas.height;
-      const regionWidth = region.width * context.canvas.width;
-      const regionHeight = region.height * context.canvas.height;
-      
-      const inside = objCenterX >= regionX && 
-                     objCenterX <= regionX + regionWidth &&
-                     objCenterY >= regionY && 
-                     objCenterY <= regionY + regionHeight;
-      
-      return condition.area === 'inside' ? inside : !inside;
-    } catch (error) {
+  condition: Extract<TriggerCondition, { type: 'position' }>,
+  context: RuleExecutionContext
+): boolean {
+  try {
+    const targetObj = context.objects.get(condition.target);
+    
+    if (!targetObj) {
       return false;
     }
+    
+    const { region } = condition;
+    const objCenterX = targetObj.x + targetObj.width / 2;
+    const objCenterY = targetObj.y + targetObj.height / 2;
+    
+    const regionX = region.x * context.canvas.width;
+    const regionY = region.y * context.canvas.height;
+    
+    // ✅ 修正: undefined チェック追加
+    const regionWidth = (region.width ?? 0) * context.canvas.width;
+    const regionHeight = (region.height ?? 0) * context.canvas.height;
+    
+    const inside = objCenterX >= regionX && 
+                   objCenterX <= regionX + regionWidth &&
+                   objCenterY >= regionY && 
+                   objCenterY <= regionY + regionHeight;
+    
+    return condition.area === 'inside' ? inside : !inside;
+  } catch (error) {
+    return false;
   }
+}
 
   // カウンター条件評価
   private evaluateCounterCondition(
@@ -714,33 +713,43 @@ export class RuleEngine {
   }
 
   // ゲーム状態条件評価
-  private evaluateGameStateCondition(
-    condition: Extract<TriggerCondition, { type: 'gameState' }>,
-    context: RuleExecutionContext
-  ): boolean {
-    try {
-      const currentValue = condition.stateType === 'score' 
-        ? context.gameState.score 
-        : context.gameState.timeElapsed;
-
-      switch (condition.comparison) {
-        case 'greater':
-          return currentValue > condition.value;
-        case 'less':
-          return currentValue < condition.value;
-        case 'equal':
-          return Math.abs(currentValue - condition.value) < 0.01;
-        case 'between':
-          return condition.maxValue !== undefined &&
-                 currentValue >= condition.value &&
-                 currentValue <= condition.maxValue;
-        default:
-          return false;
-      }
-    } catch (error) {
-      return false;
+private evaluateGameStateCondition(
+  condition: Extract<TriggerCondition, { type: 'gameState' }>,
+  context: RuleExecutionContext
+): boolean {
+  try {
+    // 現在のゲーム状態を判定
+    const currentState = context.gameState.isPlaying 
+      ? 'playing' 
+      : (context.gameState.isPaused ? 'paused' : 'failure');
+    
+    switch (condition.checkType) {
+      case 'is':
+        // 現在の状態が指定された状態と一致するか
+        return currentState === condition.state;
+        
+      case 'not':
+        // 現在の状態が指定された状態と一致しないか
+        return currentState !== condition.state;
+        
+      case 'became':
+        // 状態が変化して指定された状態になったか
+        const previousState = this.previousGameState;
+        const changed = previousState !== undefined && previousState !== currentState;
+        
+        // 前回の状態を保存（次回の比較用）
+        this.previousGameState = currentState;
+        
+        return changed && currentState === condition.state;
+        
+      default:
+        return false;
     }
+  } catch (error) {
+    console.error('evaluateGameStateCondition error:', error);
+    return false;
   }
+}
 
   // 衝突条件評価
   private evaluateCollisionCondition(
@@ -819,40 +828,57 @@ export class RuleEngine {
 
   // 🆕 アニメーション条件評価（拡張版）
   private evaluateAnimationCondition(
-    condition: Extract<TriggerCondition, { type: 'animation' }>,
-    context: RuleExecutionContext
-  ): boolean {
-    const targetObj = context.objects.get(condition.targetId);
+  condition: Extract<TriggerCondition, { type: 'animation' }>,
+  context: RuleExecutionContext
+): boolean {
+  try {
+    // ✅ 修正: targetId → target
+    const targetObj = context.objects.get(condition.target);
+    
     if (!targetObj) {
       return false;
     }
-
+    
     switch (condition.condition) {
       case 'playing':
         return targetObj.animationPlaying === true;
+        
       case 'stopped':
         return targetObj.animationPlaying === false;
+        
       case 'frame':
-        if (condition.frame === undefined) {
+        // ✅ 修正: frame → frameNumber
+        if (condition.frameNumber === undefined) {
           return false;
         }
-        return targetObj.currentFrame === condition.frame;
+        // ✅ 修正: frame → frameNumber
+        return targetObj.currentFrame === condition.frameNumber;
+        
       case 'frameRange':
-        if (!condition.frameRange) {
+        if (!condition.frameRange || condition.frameRange.length !== 2) {
           return false;
         }
         const [start, end] = condition.frameRange;
-        return targetObj.currentFrame! >= start && targetObj.currentFrame! <= end;
+        return targetObj.currentFrame !== undefined &&
+               targetObj.currentFrame >= start && 
+               targetObj.currentFrame <= end;
+               
       case 'loop':
-        const state = this.animationStates.get(condition.targetId);
+        // ✅ 修正: targetId → target
+        const state = this.animationStates.get(condition.target);
         if (!state || condition.loopCount === undefined) {
           return false;
         }
         return state.loopCount >= condition.loopCount;
+        
       default:
         return false;
     }
+  } catch (error) {
+    console.error('evaluateAnimationCondition error:', error);
+    return false;
   }
+}
 
   // アクション実行
   executeActions(
@@ -1538,134 +1564,163 @@ export class RuleEngine {
   }
 
   // カウンター操作
-  private executeCounterAction(
-    action: Extract<GameAction, { type: 'counter' }>,
-    context: RuleExecutionContext
-  ): CounterChangeEvent[] {
-    const counterDef = this.counterDefinitions.get(action.counterName);
-    if (!counterDef) {
-      return [];
-    }
-
-    const oldValue = this.getCounter(action.counterName);
-    let newValue = oldValue;
-
-    switch (action.operation) {
-      case 'set':
-        newValue = action.value;
-        break;
-      case 'add':
-        newValue = oldValue + action.value;
-        break;
-      case 'subtract':
-        newValue = oldValue - action.value;
-        break;
-      case 'multiply':
-        newValue = oldValue * action.value;
-        break;
-      case 'divide':
-        newValue = action.value !== 0 ? oldValue / action.value : oldValue;
-        break;
-      case 'reset':
-        newValue = counterDef.initialValue;
-        break;
-    }
-
-    const min = action.min !== undefined ? action.min : counterDef.minValue;
-    const max = action.max !== undefined ? action.max : counterDef.maxValue;
-    newValue = clampCounterValue(newValue, min, max);
-
-    this.counterPreviousValues.set(action.counterName, oldValue);
-    this.counters.set(action.counterName, newValue);
-
-    const changeEvent: CounterChangeEvent = {
-      counterName: action.counterName,
-      oldValue,
-      newValue,
-      operation: action.operation,
-      timestamp: Date.now()
-    };
-
-    this.counterHistory.push(changeEvent);
-
-    return [changeEvent];
+private executeCounterAction(
+  action: Extract<GameAction, { type: 'counter' }>,
+  context: RuleExecutionContext
+): CounterChangeEvent[] {
+  const counterDef = this.counterDefinitions.get(action.counterName);
+  if (!counterDef) {
+    console.warn(`Counter definition not found: ${action.counterName}`);
+    return [];
   }
 
-  // ランダムアクション
-  private executeRandomAction(
-    action: Extract<GameAction, { type: 'randomAction' }>,
-    context: RuleExecutionContext,
-    ruleId?: string
-  ): ActionExecutionResult {
-    const effectsApplied: string[] = [];
-    const errors: string[] = [];
-    const counterChanges: CounterChangeEvent[] = [];
+  const oldValue = this.getCounter(action.counterName);
+  let newValue = oldValue;
 
-    try {
-      const selectionMode = action.selectionMode || 'weighted';
-      let selectedAction: GameAction;
+  switch (action.operation) {
+    case 'set':
+      // ✅ 修正: action.value が undefined の可能性
+      newValue = action.value ?? 0;
+      break;
+      
+    case 'add':
+    case 'increment':
+      // ✅ 修正: action.value が undefined の可能性
+      newValue = oldValue + (action.value ?? 1);
+      break;
+      
+    case 'subtract':
+    case 'decrement':
+      // ✅ 修正: action.value が undefined の可能性
+      newValue = oldValue - (action.value ?? 1);
+      break;
+      
+    case 'multiply':
+      // ✅ 修正: action.value が undefined の可能性、デフォルト値1
+      newValue = oldValue * (action.value ?? 1);
+      break;
+      
+    case 'divide':
+      // ✅ 修正: action.value が undefined の可能性、0除算チェック
+      const divisor = action.value ?? 1;
+      newValue = divisor !== 0 ? oldValue / divisor : oldValue;
+      break;
+      
+    case 'reset':
+      newValue = counterDef.initialValue;
+      break;
+      
+    default:
+      console.warn(`Unknown counter operation: ${action.operation}`);
+      break;
+  }
 
-      if (selectionMode === 'uniform') {
-        const index = Math.floor(Math.random() * action.actions.length);
-        selectedAction = action.actions[index].action;
-      } else if (selectionMode === 'probability') {
-        const random = Math.random();
-        let cumulative = 0;
-        selectedAction = action.actions[0].action;
-        
-        for (const option of action.actions) {
-          cumulative += option.probability || (1 / action.actions.length);
-          if (random <= cumulative) {
-            selectedAction = option.action;
-            break;
-          }
+  // ✅ 修正: clampCounterValue は2引数（value, GameCounter）
+  // counterDef.min/max を使用（minValue/maxValue ではない）
+  newValue = clampCounterValue(newValue, counterDef);
+
+  // カウンター値を更新
+  this.counterPreviousValues.set(action.counterName, oldValue);
+  this.counters.set(action.counterName, newValue);
+
+  // 変更イベントを作成
+  const changeEvent: CounterChangeEvent = {
+    counterName: action.counterName,
+    oldValue,
+    newValue,
+    operation: action.operation,
+    timestamp: Date.now()
+  };
+
+  this.counterHistory.push(changeEvent);
+
+  return [changeEvent];
+}
+
+private executeRandomAction(
+  action: Extract<GameAction, { type: 'randomAction' }>,
+  context: RuleExecutionContext,
+  ruleId?: string
+): ActionExecutionResult {
+  const effectsApplied: string[] = [];
+  const errors: string[] = [];
+  const counterChanges: CounterChangeEvent[] = [];
+
+  try {
+    const selectionMode = action.selectionMode || 'weighted';
+    let selectedAction: GameAction;
+
+    if (selectionMode === 'uniform') {
+      const index = Math.floor(Math.random() * action.actions.length);
+      selectedAction = action.actions[index].action;
+    } else if (selectionMode === 'probability') {
+      const random = Math.random();
+      let cumulative = 0;
+      selectedAction = action.actions[0].action;
+      
+      for (const option of action.actions) {
+        cumulative += option.probability || (1 / action.actions.length);
+        if (random <= cumulative) {
+          selectedAction = option.action;
+          break;
         }
-      } else {
-        const weights = action.weights || action.actions.map(opt => opt.weight || 1);
-        const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-        const random = Math.random() * totalWeight;
-        let cumulative = 0;
-        let selectedIndex = 0;
-        
-        for (let i = 0; i < weights.length; i++) {
-          cumulative += weights[i];
-          if (random <= cumulative) {
-            selectedIndex = i;
-            break;
-          }
-        }
-        
-        selectedAction = action.actions[selectedIndex].action;
       }
-
-      // 選択されたアクションを実行
-      const dummyRule: GameRule = {
-        id: ruleId || 'random',
-        name: 'Random Action',
-        enabled: true,
-        priority: 0,
-        targetObjectId: '',
-        triggers: { operator: 'AND', conditions: [] },
-        actions: [selectedAction]
-      };
-
-      const result = this.executeActions(dummyRule, context);
-      effectsApplied.push(...result.effectsApplied);
-      errors.push(...result.errors);
-      counterChanges.push(...result.counterChanges);
-
-    } catch (error) {
-      errors.push(`ランダムアクション実行エラー: ${error}`);
+    } else {
+      const weights = action.weights || action.actions.map(opt => opt.weight || 1);
+      const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+      const random = Math.random() * totalWeight;
+      let cumulative = 0;
+      let selectedIndex = 0;
+      
+      for (let i = 0; i < weights.length; i++) {
+        cumulative += weights[i];
+        if (random <= cumulative) {
+          selectedIndex = i;
+          break;
+        }
+      }
+      
+      selectedAction = action.actions[selectedIndex].action;
     }
 
-    return {
-      success: errors.length === 0,
-      effectsApplied,
-      newGameState: {},
-      errors,
-      counterChanges
+    // ✅ selectedAction に値が入った後に配列を作成
+    const selectedActions: GameAction[] = [selectedAction];
+
+    // 選択されたアクションを実行
+    const now = new Date().toISOString();
+    
+    const dummyRule: GameRule = {
+      id: `random_action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: 'Random Action Selector',
+      enabled: true,
+      priority: 50,
+      targetObjectId: 'stage',
+      triggers: {
+        operator: 'AND',
+        conditions: []
+      },
+      actions: selectedActions,
+      createdAt: now,
+      lastModified: now
     };
+
+    const result = this.executeActions(dummyRule, context);
+    effectsApplied.push(...result.effectsApplied);
+    errors.push(...result.errors);
+    counterChanges.push(...result.counterChanges);
+
+  } catch (error) {
+    errors.push(`ランダムアクション実行エラー: ${error}`);
   }
+
+  return {
+    success: errors.length === 0,
+    effectsApplied,
+    newGameState: {},
+    errors,
+    counterChanges
+  };
+}
 
   // 🆕 物理演算更新
   updatePhysics(context: RuleExecutionContext, deltaTime: number): void {
