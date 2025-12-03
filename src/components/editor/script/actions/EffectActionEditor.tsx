@@ -97,7 +97,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
               onClick={() => onUpdate(index, { 
                 effect: { 
                   ...effectAction.effect,
-                  type: option.value,
+                  type: option.value as 'flash' | 'shake' | 'scale' | 'rotate' | 'particles',
                   duration: EFFECT_DEFAULTS.duration,
                   intensity: EFFECT_DEFAULTS.intensity
                 } 
