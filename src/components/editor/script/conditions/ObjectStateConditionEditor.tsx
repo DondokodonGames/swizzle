@@ -1,6 +1,7 @@
 // src/components/editor/script/conditions/ObjectStateConditionEditor.tsx
-// オブジェクト状態条件エディター（完全修正版）
-// DESIGN_TOKENS使用パターンを既存ファイルに完全一致
+// オブジェクト状態条件エディター（Phase 2拡張版）
+// AnimationConditionEditor の機能を完全統合
+// start/end/frame/playing/stopped/loop/frameRange 全対応
 
 import React, { useState, useMemo } from 'react';
 import { TriggerCondition } from '../../../../types/editor/GameScript';
@@ -19,6 +20,9 @@ interface ObjectStateConditionEditorProps {
 
 // 4つのステップ定義
 type EditorStep = 'stateType' | 'target' | 'detail' | 'confirm';
+
+// ✅ Phase 2: アニメーション条件タイプの定義（AnimationConditionEditorから統合）
+type AnimationConditionType = 'start' | 'end' | 'frame' | 'playing' | 'stopped' | 'loop' | 'frameRange';
 
 export const ObjectStateConditionEditor: React.FC<ObjectStateConditionEditorProps> = ({
   condition,
@@ -39,6 +43,12 @@ export const ObjectStateConditionEditor: React.FC<ObjectStateConditionEditorProp
     return objects.find((obj: ObjectAsset) => obj.id === condition.target) || null;
   }, [condition.target, objects]);
 
+  // ✅ Phase 2: 選択中のオブジェクトのフレーム数
+  const maxFrameNumber = useMemo(() => {
+    if (!selectedObject) return 1;
+    return Math.max(1, selectedObject.frames?.length || 1);
+  }, [selectedObject]);
+
   // ステップナビゲーション
   const steps = [
     { id: 'stateType', label: '状態タイプ選択', icon: '🎭' },
@@ -48,6 +58,17 @@ export const ObjectStateConditionEditor: React.FC<ObjectStateConditionEditorProp
   ];
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep);
+
+  // ✅ Phase 2: アニメーション条件オプション（AnimationConditionEditorから統合）
+  const ANIMATION_CONDITIONS = [
+    { value: 'start' as AnimationConditionType, label: '開始時', icon: '▶️', description: 'アニメーション開始時' },
+    { value: 'end' as AnimationConditionType, label: '終了時', icon: '⏹️', description: 'アニメーション終了時' },
+    { value: 'frame' as AnimationConditionType, label: 'フレーム到達', icon: '🎞️', description: '特定フレーム到達時' },
+    { value: 'playing' as AnimationConditionType, label: '再生中', icon: '▶️', description: 'アニメーション再生中' },
+    { value: 'stopped' as AnimationConditionType, label: '停止中', icon: '⏸️', description: 'アニメーション停止中' },
+    { value: 'loop' as AnimationConditionType, label: 'ループ回数', icon: '🔄', description: '指定回数ループ時' },
+    { value: 'frameRange' as AnimationConditionType, label: 'フレーム範囲', icon: '📏', description: 'フレーム範囲内' }
+  ];
 
   // ステップ1: 状態タイプ選択
   const renderStateTypeStep = () => (
@@ -305,9 +326,10 @@ export const ObjectStateConditionEditor: React.FC<ObjectStateConditionEditorProp
           </div>
         )}
 
-        {/* animation - 詳細設定あり */}
+        {/* ✅ Phase 2: animation - 拡張された詳細設定 */}
         {condition.stateType === 'animation' && (
           <div>
+            {/* アニメーション条件タイプ選択 */}
             <label style={{
               display: 'block',
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -315,195 +337,228 @@ export const ObjectStateConditionEditor: React.FC<ObjectStateConditionEditorProp
               color: DESIGN_TOKENS.colors.neutral[700],
               marginBottom: DESIGN_TOKENS.spacing[2]
             }}>
-              アニメーション状態
+              アニメーション条件タイプ
             </label>
             
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
               gap: DESIGN_TOKENS.spacing[2],
               marginBottom: DESIGN_TOKENS.spacing[4]
             }}>
-              <ModernButton
-                variant={condition.condition === 'playing' ? 'primary' : 'outline'}
-                size="md"
-                onClick={() => onUpdate(index, { condition: 'playing' })}
-                style={{
-                  backgroundColor: condition.condition === 'playing' 
-                    ? DESIGN_TOKENS.colors.primary[500] 
-                    : DESIGN_TOKENS.colors.neutral[0],
-                  borderColor: condition.condition === 'playing'
-                    ? DESIGN_TOKENS.colors.primary[500]
-                    : DESIGN_TOKENS.colors.neutral[300],
-                  color: condition.condition === 'playing'
-                    ? DESIGN_TOKENS.colors.neutral[0]
-                    : DESIGN_TOKENS.colors.neutral[800]
-                }}
-              >
-                ▶️ 再生中
-              </ModernButton>
-              
-              <ModernButton
-                variant={condition.condition === 'stopped' ? 'primary' : 'outline'}
-                size="md"
-                onClick={() => onUpdate(index, { condition: 'stopped' })}
-                style={{
-                  backgroundColor: condition.condition === 'stopped' 
-                    ? DESIGN_TOKENS.colors.primary[500] 
-                    : DESIGN_TOKENS.colors.neutral[0],
-                  borderColor: condition.condition === 'stopped'
-                    ? DESIGN_TOKENS.colors.primary[500]
-                    : DESIGN_TOKENS.colors.neutral[300],
-                  color: condition.condition === 'stopped'
-                    ? DESIGN_TOKENS.colors.neutral[0]
-                    : DESIGN_TOKENS.colors.neutral[800]
-                }}
-              >
-                ⏹️ 停止中
-              </ModernButton>
+              {ANIMATION_CONDITIONS.map((option) => (
+                <ModernButton
+                  key={option.value}
+                  variant={condition.condition === option.value ? 'primary' : 'outline'}
+                  size="sm"
+                  onClick={() => onUpdate(index, { condition: option.value })}
+                  style={{
+                    padding: DESIGN_TOKENS.spacing[2],
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: DESIGN_TOKENS.spacing[1],
+                    backgroundColor: condition.condition === option.value 
+                      ? DESIGN_TOKENS.colors.primary[500] 
+                      : DESIGN_TOKENS.colors.neutral[0],
+                    borderColor: condition.condition === option.value
+                      ? DESIGN_TOKENS.colors.primary[500]
+                      : DESIGN_TOKENS.colors.neutral[300],
+                    color: condition.condition === option.value
+                      ? DESIGN_TOKENS.colors.neutral[0]
+                      : DESIGN_TOKENS.colors.neutral[800]
+                  }}
+                  title={option.description}
+                >
+                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
+                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}>
+                    {option.label}
+                  </span>
+                </ModernButton>
+              ))}
             </div>
 
-            {/* フレーム指定オプション */}
-            <div style={{
-              padding: DESIGN_TOKENS.spacing[3],
-              backgroundColor: DESIGN_TOKENS.colors.neutral[50],
-              borderRadius: DESIGN_TOKENS.borderRadius.md,
-              marginBottom: DESIGN_TOKENS.spacing[3]
-            }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: DESIGN_TOKENS.spacing[2],
-                cursor: 'pointer',
-                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                color: DESIGN_TOKENS.colors.neutral[700]
+            {/* フレーム番号指定（frame条件の場合） */}
+            {condition.condition === 'frame' && selectedObject && (
+              <div style={{
+                padding: DESIGN_TOKENS.spacing[3],
+                backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+                borderRadius: DESIGN_TOKENS.borderRadius.md,
+                marginBottom: DESIGN_TOKENS.spacing[3]
               }}>
+                <label style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  display: 'block',
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  フレーム番号: {condition.frameNumber ?? 0}
+                </label>
                 <input
-                  type="checkbox"
-                  checked={!!condition.frameNumber || condition.frameNumber === 0}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      onUpdate(index, { frameNumber: 0 });
-                    } else {
-                      const updates = { ...condition };
-                      delete updates.frameNumber;
-                      onUpdate(index, updates);
-                    }
-                  }}
+                  type="range"
+                  min="0"
+                  max={maxFrameNumber - 1}
+                  value={condition.frameNumber ?? 0}
+                  onChange={(e) => onUpdate(index, { frameNumber: parseInt(e.target.value) })}
+                  style={{ width: '100%' }}
                 />
-                特定のフレームを指定
-              </label>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[500],
+                  marginTop: DESIGN_TOKENS.spacing[1]
+                }}>
+                  <span>0</span>
+                  <span>{maxFrameNumber - 1}</span>
+                </div>
+              </div>
+            )}
 
-              {(condition.frameNumber !== undefined) && selectedObject && (
-                <div style={{ marginTop: DESIGN_TOKENS.spacing[2] }}>
+            {/* フレーム範囲指定（frameRange条件の場合） */}
+            {condition.condition === 'frameRange' && selectedObject && (
+              <div style={{
+                padding: DESIGN_TOKENS.spacing[3],
+                backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+                borderRadius: DESIGN_TOKENS.borderRadius.md,
+                marginBottom: DESIGN_TOKENS.spacing[3]
+              }}>
+                <label style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  display: 'block',
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  フレーム範囲
+                </label>
+                
+                <div style={{ marginBottom: DESIGN_TOKENS.spacing[2] }}>
                   <label style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                     color: DESIGN_TOKENS.colors.neutral[600],
                     display: 'block',
                     marginBottom: DESIGN_TOKENS.spacing[1]
                   }}>
-                    フレーム番号: {condition.frameNumber}
+                    開始フレーム: {condition.frameRange?.[0] ?? 0}
                   </label>
                   <input
                     type="range"
                     min="0"
-                    max={Math.max(0, (selectedObject.frames?.length || 1) - 1)}
-                    value={condition.frameNumber}
-                    onChange={(e) => onUpdate(index, { frameNumber: parseInt(e.target.value) })}
+                    max={maxFrameNumber - 1}
+                    value={condition.frameRange?.[0] ?? 0}
+                    onChange={(e) => onUpdate(index, {
+                      frameRange: [parseInt(e.target.value), condition.frameRange?.[1] ?? 1] as [number, number]
+                    })}
                     style={{ width: '100%' }}
                   />
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
+                </div>
+                
+                <div>
+                  <label style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                    color: DESIGN_TOKENS.colors.neutral[500],
-                    marginTop: DESIGN_TOKENS.spacing[1]
+                    color: DESIGN_TOKENS.colors.neutral[600],
+                    display: 'block',
+                    marginBottom: DESIGN_TOKENS.spacing[1]
                   }}>
-                    <span>0</span>
-                    <span>{Math.max(0, (selectedObject.frames?.length || 1) - 1)}</span>
-                  </div>
+                    終了フレーム: {condition.frameRange?.[1] ?? 1}
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max={maxFrameNumber - 1}
+                    value={condition.frameRange?.[1] ?? 1}
+                    onChange={(e) => onUpdate(index, {
+                      frameRange: [condition.frameRange?.[0] ?? 0, parseInt(e.target.value)] as [number, number]
+                    })}
+                    style={{ width: '100%' }}
+                  />
                 </div>
-              )}
-            </div>
 
-            {/* フレーム範囲指定オプション */}
-            <div style={{
-              padding: DESIGN_TOKENS.spacing[3],
-              backgroundColor: DESIGN_TOKENS.colors.neutral[50],
-              borderRadius: DESIGN_TOKENS.borderRadius.md,
-              marginBottom: DESIGN_TOKENS.spacing[3]
-            }}>
-              <label style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: DESIGN_TOKENS.spacing[2],
-                cursor: 'pointer',
-                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                color: DESIGN_TOKENS.colors.neutral[700]
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[500],
+                  marginTop: DESIGN_TOKENS.spacing[1]
+                }}>
+                  <span>0</span>
+                  <span>{maxFrameNumber - 1}</span>
+                </div>
+              </div>
+            )}
+
+            {/* アニメーションインデックス（playing/stopped/loop条件の場合） */}
+            {(condition.condition === 'playing' || condition.condition === 'stopped' || condition.condition === 'loop') && selectedObject && selectedObject.frames && selectedObject.frames.length > 1 && (
+              <div style={{
+                padding: DESIGN_TOKENS.spacing[3],
+                backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+                borderRadius: DESIGN_TOKENS.borderRadius.md,
+                marginBottom: DESIGN_TOKENS.spacing[3]
               }}>
+                <label style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  display: 'block',
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  アニメーション番号: {(condition.animationIndex ?? 0) + 1}
+                </label>
                 <input
-                  type="checkbox"
-                  checked={!!condition.frameRange}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      onUpdate(index, { frameRange: [0, 1] });
-                    } else {
-                      const updates = { ...condition };
-                      delete updates.frameRange;
-                      onUpdate(index, updates);
-                    }
-                  }}
+                  type="range"
+                  min="0"
+                  max={Math.min(7, selectedObject.frames.length - 1)}
+                  value={condition.animationIndex ?? 0}
+                  onChange={(e) => onUpdate(index, { animationIndex: parseInt(e.target.value) })}
+                  style={{ width: '100%' }}
                 />
-                フレーム範囲を指定
-              </label>
-
-              {condition.frameRange && selectedObject && (
-                <div style={{ marginTop: DESIGN_TOKENS.spacing[2] }}>
-                  <div style={{ marginBottom: DESIGN_TOKENS.spacing[2] }}>
-                    <label style={{
-                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                      color: DESIGN_TOKENS.colors.neutral[600],
-                      display: 'block',
-                      marginBottom: DESIGN_TOKENS.spacing[1]
-                    }}>
-                      開始フレーム: {condition.frameRange[0]}
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max={Math.max(0, (selectedObject.frames?.length || 1) - 1)}
-                      value={condition.frameRange[0]}
-                      onChange={(e) => onUpdate(index, {
-                        frameRange: [parseInt(e.target.value), condition.frameRange![1]]
-                      })}
-                      style={{ width: '100%' }}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label style={{
-                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                      color: DESIGN_TOKENS.colors.neutral[600],
-                      display: 'block',
-                      marginBottom: DESIGN_TOKENS.spacing[1]
-                    }}>
-                      終了フレーム: {condition.frameRange[1]}
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max={Math.max(0, (selectedObject.frames?.length || 1) - 1)}
-                      value={condition.frameRange[1]}
-                      onChange={(e) => onUpdate(index, {
-                        frameRange: [condition.frameRange![0], parseInt(e.target.value)]
-                      })}
-                      style={{ width: '100%' }}
-                    />
-                  </div>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[500],
+                  marginTop: DESIGN_TOKENS.spacing[1]
+                }}>
+                  <span>1</span>
+                  <span>{Math.min(8, selectedObject.frames.length)}</span>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
+            {/* ループ回数（loop条件の場合） */}
+            {condition.condition === 'loop' && (
+              <div style={{
+                padding: DESIGN_TOKENS.spacing[3],
+                backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+                borderRadius: DESIGN_TOKENS.borderRadius.md,
+                marginBottom: DESIGN_TOKENS.spacing[3]
+              }}>
+                <label style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  display: 'block',
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  ループ回数: {condition.loopCount ?? 1}
+                </label>
+                <input
+                  type="range"
+                  min="1"
+                  max="10"
+                  value={condition.loopCount ?? 1}
+                  onChange={(e) => onUpdate(index, { loopCount: parseInt(e.target.value) })}
+                  style={{ width: '100%' }}
+                />
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[500],
+                  marginTop: DESIGN_TOKENS.spacing[1]
+                }}>
+                  <span>1回</span>
+                  <span>10回</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -538,6 +593,10 @@ export const ObjectStateConditionEditor: React.FC<ObjectStateConditionEditorProp
       condition.stateType === 'visible' ? '表示状態' :
       condition.stateType === 'hidden' ? '非表示状態' :
       condition.stateType === 'animation' ? 'アニメーション状態' : '';
+
+    const conditionLabel = condition.condition 
+      ? ANIMATION_CONDITIONS.find(c => c.value === condition.condition)?.label 
+      : '';
 
     return (
       <div>
@@ -593,20 +652,20 @@ export const ObjectStateConditionEditor: React.FC<ObjectStateConditionEditorProp
 
           {condition.stateType === 'animation' && (
             <>
-              {condition.condition && (
+              {conditionLabel && (
                 <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
                   <div style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                     color: DESIGN_TOKENS.colors.neutral[600],
                     marginBottom: DESIGN_TOKENS.spacing[1]
                   }}>
-                    アニメーション状態
+                    アニメーション条件
                   </div>
                   <div style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                     color: DESIGN_TOKENS.colors.neutral[700]
                   }}>
-                    {condition.condition === 'playing' ? '▶️ 再生中' : '⏹️ 停止中'}
+                    {conditionLabel}
                   </div>
                 </div>
               )}
@@ -646,6 +705,42 @@ export const ObjectStateConditionEditor: React.FC<ObjectStateConditionEditorProp
                   </div>
                 </div>
               )}
+
+              {(condition.animationIndex !== undefined) && (
+                <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                  <div style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                    color: DESIGN_TOKENS.colors.neutral[600],
+                    marginBottom: DESIGN_TOKENS.spacing[1]
+                  }}>
+                    アニメーション番号
+                  </div>
+                  <div style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                    color: DESIGN_TOKENS.colors.neutral[700]
+                  }}>
+                    アニメーション {condition.animationIndex + 1}
+                  </div>
+                </div>
+              )}
+
+              {(condition.loopCount !== undefined) && (
+                <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                  <div style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                    color: DESIGN_TOKENS.colors.neutral[600],
+                    marginBottom: DESIGN_TOKENS.spacing[1]
+                  }}>
+                    ループ回数
+                  </div>
+                  <div style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                    color: DESIGN_TOKENS.colors.neutral[700]
+                  }}>
+                    {condition.loopCount}回
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -665,7 +760,7 @@ export const ObjectStateConditionEditor: React.FC<ObjectStateConditionEditorProp
             variant="primary"
             size="md"
             onClick={() => {
-              // 設定完了 - 何もしない（親コンポーネントで管理）
+              // 設定完了
               alert('設定が完了しました！');
             }}
             style={{ flex: 1 }}

@@ -1,6 +1,6 @@
 // src/components/editor/script/DetailEditorPanel.tsx
 // 詳細設定エリア（広い・選択されたルールを編集）
-// Phase 1完全版: GameStateActionEditor, ObjectStateActionEditor統合（TypeScriptエラー修正版）
+// Phase 2完全版: 条件側に case 'objectState' 追加（AnimationConditionEditorの機能をObjectStateConditionEditorに統合）
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,6 +17,7 @@ import { FlagConditionEditor } from './conditions/FlagConditionEditor';
 import { CollisionConditionEditor } from './conditions/CollisionConditionEditor';
 import { GameStateConditionEditor } from './conditions/GameStateConditionEditor';
 import { AnimationConditionEditor } from './conditions/AnimationConditionEditor';
+import { ObjectStateConditionEditor } from './conditions/ObjectStateConditionEditor'; // ✅ Phase 2: 追加
 import { CounterConditionEditor } from './CounterRuleComponents';
 import { RandomConditionEditor } from './RandomRuleComponents';
 
@@ -101,6 +102,19 @@ export const DetailEditorPanel: React.FC<DetailEditorPanelProps> = ({
             onUpdate={onConditionUpdate}
           />
         );
+      
+      // ✅ Phase 2: objectState条件エディター追加
+      case 'objectState':
+        return (
+          <ObjectStateConditionEditor
+            condition={selectedCondition as TriggerCondition & { type: 'objectState' }}
+            project={project}
+            index={selectedConditionIndex}
+            onUpdate={onConditionUpdate}
+          />
+        );
+
+      // 既存のanimation条件エディター（後方互換性のため保持）
       case 'animation':
         return (
           <AnimationConditionEditor
@@ -110,6 +124,7 @@ export const DetailEditorPanel: React.FC<DetailEditorPanelProps> = ({
             onUpdate={onConditionUpdate}
           />
         );
+      
       case 'flag':
         return (
           <FlagConditionEditor
