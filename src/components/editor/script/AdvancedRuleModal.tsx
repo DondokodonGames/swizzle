@@ -196,6 +196,9 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
       case 'animation':
         newCondition = { type: 'animation', target: rule.targetObjectId, condition: 'end', animationIndex: 0 };
         break;
+      case 'objectState':
+      newCondition = { type: 'animation', target: rule.targetObjectId, condition: 'end', animationIndex: 0 };
+        break;
       case 'flag':
         newCondition = { type: 'flag', flagId: projectFlags[0]?.id || '', condition: 'ON' };
         break;
@@ -243,60 +246,66 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
 
   // アクション追加
   const addAction = (type: string) => {
-    let newAction: GameAction;
-    
-    switch (type) {
-      case 'success':
-        newAction = { type: 'success' };
-        break;
-      case 'failure':
-        newAction = { type: 'failure' };
-        break;
-      case 'playSound':
-        newAction = { type: 'playSound', soundId: project.assets.audio?.se?.[0]?.id || '', volume: 0.8 };
-        break;
-      case 'move':
-        newAction = {
-          type: 'move',
-          targetId: rule.targetObjectId,
-          movement: { type: 'straight', target: { x: 0.5, y: 0.5 }, speed: 300, duration: 2.0 }
-        };
-        break;
-      case 'effect':
-        newAction = { type: 'effect', targetId: rule.targetObjectId, effect: { type: 'flash', duration: 1.0, intensity: 0.8 } };
-        break;
-      case 'show':
-        newAction = { type: 'show', targetId: rule.targetObjectId, fadeIn: true, duration: 0.5 };
-        break;
-      case 'hide':
-        newAction = { type: 'hide', targetId: rule.targetObjectId, fadeOut: true, duration: 0.5 };
-        break;
-      case 'setFlag':
-        newAction = { type: 'setFlag', flagId: projectFlags[0]?.id || '', value: true };
-        break;
-      case 'toggleFlag':
-        newAction = { type: 'toggleFlag', flagId: projectFlags[0]?.id || '' };
-        break;
-      case 'switchAnimation':
-        newAction = { type: 'switchAnimation', targetId: rule.targetObjectId, animationIndex: 0 };
-        break;
-      case 'counter':
-        newAction = createDefaultCounterAction(projectCounters[0]?.name || '');
-        break;
-      case 'randomAction':
-        newAction = createDefaultRandomAction();
-        break;
-      default:
-        return;
-    }
-    
-    const newIndex = actions.length;
-    setActions([...actions, newAction]);
-    setSelectedType('action');
-    setSelectedActionIndex(newIndex);
-    setSelectedConditionIndex(null);
-    showNotification('success', t('editor.script.ruleModal.notifications.actionAdded'));
-  };
+  let newAction: GameAction;
+  
+  switch (type) {
+    case 'success':
+      newAction = { type: 'success' };
+      break;
+    case 'failure':
+      newAction = { type: 'failure' };
+      break;
+    case 'gameState':  // ← 追加
+      newAction = { type: 'success' };
+      break;
+    case 'playSound':
+      newAction = { type: 'playSound', soundId: project.assets.audio?.se?.[0]?.id || '', volume: 0.8 };
+      break;
+    case 'move':
+      newAction = {
+        type: 'move',
+        targetId: rule.targetObjectId,
+        movement: { type: 'straight', target: { x: 0.5, y: 0.5 }, speed: 300, duration: 2.0 }
+      };
+      break;
+    case 'effect':
+      newAction = { type: 'effect', targetId: rule.targetObjectId, effect: { type: 'flash', duration: 1.0, intensity: 0.8 } };
+      break;
+    case 'objectState':  // ← 追加
+      newAction = { type: 'show', targetId: rule.targetObjectId, fadeIn: true, duration: 0.5 };
+      break;
+    case 'show':
+      newAction = { type: 'show', targetId: rule.targetObjectId, fadeIn: true, duration: 0.5 };
+      break;
+    case 'hide':
+      newAction = { type: 'hide', targetId: rule.targetObjectId, fadeOut: true, duration: 0.5 };
+      break;
+    case 'setFlag':
+      newAction = { type: 'setFlag', flagId: projectFlags[0]?.id || '', value: true };
+      break;
+    case 'toggleFlag':
+      newAction = { type: 'toggleFlag', flagId: projectFlags[0]?.id || '' };
+      break;
+    case 'switchAnimation':
+      newAction = { type: 'switchAnimation', targetId: rule.targetObjectId, animationIndex: 0 };
+      break;
+    case 'counter':
+      newAction = createDefaultCounterAction(projectCounters[0]?.name || '');
+      break;
+    case 'randomAction':
+      newAction = createDefaultRandomAction();
+      break;
+    default:
+      return;
+  }
+  
+  const newIndex = actions.length;
+  setActions([...actions, newAction]);
+  setSelectedType('action');
+  setSelectedActionIndex(newIndex);
+  setSelectedConditionIndex(null);
+  showNotification('success', t('editor.script.ruleModal.notifications.actionAdded'));
+};
 
   // アクション削除
   const removeAction = (index: number) => {

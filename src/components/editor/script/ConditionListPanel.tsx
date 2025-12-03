@@ -5,7 +5,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { TriggerCondition } from '../../../types/editor/GameScript';
 import { ModernButton } from '../../ui/ModernButton';
-import { CONDITION_LIBRARY } from './constants/RuleLibrary';
+import { CONDITION_LIBRARY, PRIORITY_CONDITION_LIBRARY } from './constants/RuleLibrary';
 import { COLORS, SPACING, BORDER_RADIUS } from './ModalDesignConstants';
 
 interface ConditionListPanelProps {
@@ -81,7 +81,7 @@ export const ConditionListPanel: React.FC<ConditionListPanelProps> = ({
         gap: SPACING[1],
         marginBottom: SPACING[3]
       }}>
-        {CONDITION_LIBRARY.map((conditionType) => (
+        {PRIORITY_CONDITION_LIBRARY.map((conditionType) => (
           <ModernButton
             key={conditionType.type}
             variant="outline"
