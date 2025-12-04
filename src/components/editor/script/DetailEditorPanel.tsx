@@ -75,6 +75,7 @@ export const DetailEditorPanel: React.FC<DetailEditorPanelProps> = ({
           <TouchConditionEditor
             condition={selectedCondition}
             index={selectedConditionIndex}
+            project={project}  // ✅ この行を追加
             onUpdate={onConditionUpdate}
           />
         );

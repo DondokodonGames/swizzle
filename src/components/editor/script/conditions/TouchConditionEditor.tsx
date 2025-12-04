@@ -1,13 +1,15 @@
 // src/components/editor/script/conditions/TouchConditionEditor.tsx
-// Phase 3-1拡張版: フロー変更（種類→対象→詳細設定）
-// 長押し時間・許容移動距離は非表示、詳細設定はステージ範囲のみ
+// Phase 3-2-1最終版: BoundingBoxEditor統合 + 背景画像表示
+// ステージ範囲（矩形）をビジュアル設定可能に
 
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TriggerCondition } from '../../../../types/editor/GameScript';
+import { GameProject } from '../../../../types/editor/GameProject';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
+import { BoundingBoxEditor, BoundingBox } from '../../common/BoundingBoxEditor';
 import { 
   getTouchTypeOptions, 
   getTouchTargetOptions
@@ -16,6 +18,7 @@ import {
 interface TouchConditionEditorProps {
   condition: TriggerCondition & { type: 'touch' };
   index: number;
+  project: GameProject;  // 背景画像取得のため追加
   onUpdate: (index: number, updates: Partial<TriggerCondition>) => void;
 }
 
@@ -25,6 +28,7 @@ type EditorStep = 'touchType' | 'target' | 'detail' | 'confirm';
 export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
   condition,
   index,
+  project,
   onUpdate
 }) => {
   const { t } = useTranslation();
@@ -33,6 +37,15 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
   // Get localized options（drag/swipe/flickは除外済み）
   const TOUCH_TYPE_OPTIONS = useMemo(() => getTouchTypeOptions(), []);
   const TOUCH_TARGET_OPTIONS = useMemo(() => getTouchTargetOptions(), []);
+
+  // 背景画像URL取得
+  const backgroundUrl = useMemo(() => {
+    const background = project.assets.background;
+    if (!background || !background.frames || background.frames.length === 0) {
+      return undefined;
+    }
+    return background.frames[0].dataUrl;
+  }, [project.assets.background]);
 
   // ステップナビゲーション（順序変更）
   const steps = [
@@ -43,6 +56,37 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
   ];
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep);
+
+  // 🔄 座標変換: BoundingBox → region (rect)
+  const boundingBoxToRegion = (bbox: BoundingBox) => {
+    const centerX = (bbox.minX + bbox.maxX) / 2;
+    const centerY = (bbox.minY + bbox.maxY) / 2;
+    const width = bbox.maxX - bbox.minX;
+    const height = bbox.maxY - bbox.minY;
+
+    return {
+      shape: 'rect' as const,
+      x: centerX,
+      y: centerY,
+      width,
+      height
+    };
+  };
+
+  // 🔄 座標変換: region (rect) → BoundingBox
+  const regionToBoundingBox = (region: NonNullable<typeof condition.region>): BoundingBox => {
+    const halfWidth = (region.width || 0.4) / 2;
+    const halfHeight = (region.height || 0.4) / 2;
+    const centerX = region.x || 0.5;
+    const centerY = region.y || 0.5;
+
+    return {
+      minX: Math.max(0, centerX - halfWidth),
+      minY: Math.max(0, centerY - halfHeight),
+      maxX: Math.min(1, centerX + halfWidth),
+      maxY: Math.min(1, centerY + halfHeight)
+    };
+  };
 
   // ステップ1: タッチの種類を選択
   const renderTouchTypeStep = () => (
@@ -173,8 +217,17 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
     </div>
   );
 
-  // ステップ3: 詳細設定（ステージ範囲のみ）
+  // ステップ3: 詳細設定（ステージ範囲 - 矩形のみ、円形削除）
   const renderDetailStep = () => {
+    // regionが未設定の場合はデフォルト値を設定
+    const currentRegion = condition.region || {
+      shape: 'rect' as const,
+      x: 0.5,
+      y: 0.5,
+      width: 0.5,
+      height: 0.5
+    };
+
     return (
       <div>
         <h5 style={{
@@ -186,205 +239,16 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
           ステージ範囲を設定
         </h5>
 
-        {/* 範囲の形状選択 */}
-        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-          <label style={{
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-            color: DESIGN_TOKENS.colors.purple[800],
-            marginBottom: DESIGN_TOKENS.spacing[2],
-            display: 'block'
-          }}>
-            範囲の形状
-          </label>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: DESIGN_TOKENS.spacing[2],
-            marginBottom: DESIGN_TOKENS.spacing[3]
-          }}>
-            <ModernButton
-              variant={condition.region?.shape === 'rect' ? 'primary' : 'outline'}
-              size="md"
-              onClick={() => onUpdate(index, { 
-                region: { 
-                  shape: 'rect', 
-                  x: 0.5, 
-                  y: 0.5, 
-                  width: 0.4, 
-                  height: 0.4 
-                } 
-              })}
-              style={{
-                borderColor: condition.region?.shape === 'rect' 
-                  ? DESIGN_TOKENS.colors.purple[500] 
-                  : DESIGN_TOKENS.colors.purple[200],
-                backgroundColor: condition.region?.shape === 'rect' 
-                  ? DESIGN_TOKENS.colors.purple[500] 
-                  : 'transparent',
-                color: condition.region?.shape === 'rect' 
-                  ? DESIGN_TOKENS.colors.neutral[0] 
-                  : DESIGN_TOKENS.colors.purple[800]
-              }}
-            >
-              <span>⬜ 矩形</span>
-            </ModernButton>
-            <ModernButton
-              variant={condition.region?.shape === 'circle' ? 'primary' : 'outline'}
-              size="md"
-              onClick={() => onUpdate(index, { 
-                region: { 
-                  shape: 'circle', 
-                  x: 0.5, 
-                  y: 0.5, 
-                  radius: 0.2 
-                } 
-              })}
-              style={{
-                borderColor: condition.region?.shape === 'circle' 
-                  ? DESIGN_TOKENS.colors.purple[500] 
-                  : DESIGN_TOKENS.colors.purple[200],
-                backgroundColor: condition.region?.shape === 'circle' 
-                  ? DESIGN_TOKENS.colors.purple[500] 
-                  : 'transparent',
-                color: condition.region?.shape === 'circle' 
-                  ? DESIGN_TOKENS.colors.neutral[0] 
-                  : DESIGN_TOKENS.colors.purple[800]
-              }}
-            >
-              <span>⭕ 円形</span>
-            </ModernButton>
-          </div>
-        </div>
-
-        {/* 画面プレビュー（空の枠） */}
-        <div style={{
-          marginBottom: DESIGN_TOKENS.spacing[4],
-          padding: DESIGN_TOKENS.spacing[4],
-          backgroundColor: DESIGN_TOKENS.colors.neutral[100],
-          borderRadius: DESIGN_TOKENS.borderRadius.lg,
-          border: `2px dashed ${DESIGN_TOKENS.colors.purple[300]}`
-        }}>
-          <div style={{
-            aspectRatio: '9/16',
-            backgroundColor: DESIGN_TOKENS.colors.neutral[200],
-            borderRadius: DESIGN_TOKENS.borderRadius.md,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: DESIGN_TOKENS.colors.neutral[500],
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            position: 'relative'
-          }}>
-            {/* TODO: ここに画面プレビュー + 範囲選択UIを実装 */}
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '48px', marginBottom: DESIGN_TOKENS.spacing[2] }}>📱</div>
-              <div>画面プレビュー（実装予定）</div>
-              <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, marginTop: DESIGN_TOKENS.spacing[1] }}>
-                ここで範囲を視覚的に設定できるようになります
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 範囲パラメータ設定 */}
-        {condition.region && (
-          <div style={{
-            padding: DESIGN_TOKENS.spacing[3],
-            backgroundColor: DESIGN_TOKENS.colors.purple[50],
-            borderRadius: DESIGN_TOKENS.borderRadius.md,
-            marginBottom: DESIGN_TOKENS.spacing[4]
-          }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: DESIGN_TOKENS.spacing[2], marginBottom: DESIGN_TOKENS.spacing[3] }}>
-              <div>
-                <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  中心X: {((condition.region.x || 0.5) * 100).toFixed(0)}%
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={condition.region.x || 0.5}
-                  onChange={(e) => onUpdate(index, {
-                    region: { ...condition.region!, x: parseFloat(e.target.value) }
-                  })}
-                  style={{ width: '100%' }}
-                />
-              </div>
-              <div>
-                <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  中心Y: {((condition.region.y || 0.5) * 100).toFixed(0)}%
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={condition.region.y || 0.5}
-                  onChange={(e) => onUpdate(index, {
-                    region: { ...condition.region!, y: parseFloat(e.target.value) }
-                  })}
-                  style={{ width: '100%' }}
-                />
-              </div>
-            </div>
-
-            {condition.region.shape === 'rect' ? (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: DESIGN_TOKENS.spacing[2] }}>
-                <div>
-                  <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                    幅: {((condition.region.width || 0.4) * 100).toFixed(0)}%
-                  </label>
-                  <input
-                    type="range"
-                    min="0.1"
-                    max="1"
-                    step="0.05"
-                    value={condition.region.width || 0.4}
-                    onChange={(e) => onUpdate(index, {
-                      region: { ...condition.region!, width: parseFloat(e.target.value) }
-                    })}
-                    style={{ width: '100%' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                    高さ: {((condition.region.height || 0.4) * 100).toFixed(0)}%
-                  </label>
-                  <input
-                    type="range"
-                    min="0.1"
-                    max="1"
-                    step="0.05"
-                    value={condition.region.height || 0.4}
-                    onChange={(e) => onUpdate(index, {
-                      region: { ...condition.region!, height: parseFloat(e.target.value) }
-                    })}
-                    style={{ width: '100%' }}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div>
-                <label style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.purple[700] }}>
-                  半径: {((condition.region.radius || 0.2) * 100).toFixed(0)}%
-                </label>
-                <input
-                  type="range"
-                  min="0.05"
-                  max="0.5"
-                  step="0.05"
-                  value={condition.region.radius || 0.2}
-                  onChange={(e) => onUpdate(index, {
-                    region: { ...condition.region!, radius: parseFloat(e.target.value) }
-                  })}
-                  style={{ width: '100%' }}
-                />
-              </div>
-            )}
-          </div>
-        )}
+        {/* 矩形選択のみ（円形/矩形選択ボタン削除、円形スライダー削除） */}
+        {/* 背景画像URL渡す */}
+        <BoundingBoxEditor
+          value={regionToBoundingBox(currentRegion)}
+          onChange={(bbox) => {
+            const newRegion = boundingBoxToRegion(bbox);
+            onUpdate(index, { region: newRegion });
+          }}
+          previewBackgroundUrl={backgroundUrl}
+        />
 
         <div style={{ 
           display: 'flex', 
@@ -484,12 +348,9 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 color: DESIGN_TOKENS.colors.neutral[700]
               }}>
-                {condition.region.shape === 'rect' ? '⬜ 矩形' : '⭕ 円形'} / 
-                中心({((condition.region.x || 0.5) * 100).toFixed(0)}%, {((condition.region.y || 0.5) * 100).toFixed(0)}%)
-                {condition.region.shape === 'rect' 
-                  ? ` / サイズ(${((condition.region.width || 0.4) * 100).toFixed(0)}% × ${((condition.region.height || 0.4) * 100).toFixed(0)}%)`
-                  : ` / 半径(${((condition.region.radius || 0.2) * 100).toFixed(0)}%)`
-                }
+                ⬜ 矩形 / 
+                中心({((condition.region.x || 0.5) * 100).toFixed(0)}%, {((condition.region.y || 0.5) * 100).toFixed(0)}%) / 
+                サイズ({((condition.region.width || 0.5) * 100).toFixed(0)}% × {((condition.region.height || 0.5) * 100).toFixed(0)}%)
               </div>
             </div>
           )}
