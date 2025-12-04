@@ -1,5 +1,6 @@
 // src/components/editor/tabs/assets/sections/BackgroundSection.tsx
 // 🔧 Phase E-1: 背景管理セクション分離 + 画像差し替え機能追加
+// 🆕 Phase 4: 背景アニメーション設定UI追加
 import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../../../types/editor/GameProject';
@@ -197,6 +198,32 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
     replaceInputRef.current?.click();
   };
 
+  // 🆕 Phase 4: 背景アニメーション設定更新
+  const updateBackgroundAnimation = (updates: {
+    animationSpeed?: number;
+    autoStart?: boolean;
+    initialAnimation?: number;
+  }) => {
+    if (!project.script?.layout?.background) return;
+
+    const updatedScript = {
+      ...project.script,
+      layout: {
+        ...project.script.layout,
+        background: {
+          ...project.script.layout.background,
+          ...updates
+        }
+      }
+    };
+
+    onProjectUpdate({
+      ...project,
+      script: updatedScript,
+      lastModified: new Date().toISOString()
+    });
+  };
+
   return (
     <div>
       {/* 隠しファイル入力（差し替え用） */}
@@ -276,12 +303,20 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
               >
                 {formatFileSize(project.assets.background.totalSize || 0)}
               </p>
-              <div className="mt-2 flex items-center gap-2">
-                <span className={`text-xs px-2 py-1 rounded ${
-                  project.script?.layout?.background?.visible
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-red-100 text-red-700'
-                }`}>
+              <div style={{ marginTop: DESIGN_TOKENS.spacing[2], display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                <span
+                  style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                    padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                    borderRadius: DESIGN_TOKENS.borderRadius.sm,
+                    backgroundColor: project.script?.layout?.background?.visible
+                      ? DESIGN_TOKENS.colors.success[100]
+                      : DESIGN_TOKENS.colors.error[100],
+                    color: project.script?.layout?.background?.visible
+                      ? DESIGN_TOKENS.colors.success[700]
+                      : DESIGN_TOKENS.colors.error[700]
+                  }}
+                >
                   {project.script?.layout?.background?.visible ? t('editor.assets.backgroundVisible') : t('editor.assets.backgroundHidden')}
                 </span>
               </div>
@@ -329,6 +364,133 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                   }}
                 />
               </div>
+
+              {/* 🆕 Phase 4: 背景アニメーション設定 */}
+              {project.script?.layout?.background && (
+                <div style={{ 
+                  marginTop: DESIGN_TOKENS.spacing[4],
+                  paddingTop: DESIGN_TOKENS.spacing[3],
+                  borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`
+                }}>
+                  <h5
+                    style={{
+                      fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                      fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                      color: DESIGN_TOKENS.colors.primary[700],
+                      margin: `0 0 ${DESIGN_TOKENS.spacing[3]} 0`
+                    }}
+                  >
+                    🎬 {t('editor.assets.animationSettings')}
+                  </h5>
+
+                  {/* アニメーション速度設定 */}
+                  <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                        fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                        color: DESIGN_TOKENS.colors.neutral[700],
+                        marginBottom: DESIGN_TOKENS.spacing[1]
+                      }}
+                    >
+                      {t('editor.assets.speed')}: {project.script.layout.background.animationSpeed}fps
+                      {project.script.layout.background.animationSpeed === 0 && (
+                        <span style={{ color: DESIGN_TOKENS.colors.neutral[500] }}>
+                          {' '}({t('editor.assets.ruleControlOnly')})
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="30"
+                      value={project.script.layout.background.animationSpeed}
+                      onChange={(e) => updateBackgroundAnimation({ 
+                        animationSpeed: parseInt(e.target.value) 
+                      })}
+                      style={{
+                        width: '100%',
+                        height: '4px',
+                        borderRadius: DESIGN_TOKENS.borderRadius.full,
+                        background: DESIGN_TOKENS.colors.neutral[200],
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  </div>
+
+                  {/* 初期フレーム選択（将来の複数フレーム対応） */}
+                  <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                        fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                        color: DESIGN_TOKENS.colors.neutral[700],
+                        marginBottom: DESIGN_TOKENS.spacing[1]
+                      }}
+                    >
+                      {t('editor.assets.initialFrame')}: {project.script.layout.background.initialAnimation}
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="3"
+                      value={project.script.layout.background.initialAnimation}
+                      onChange={(e) => updateBackgroundAnimation({ 
+                        initialAnimation: parseInt(e.target.value) 
+                      })}
+                      style={{
+                        width: '100%',
+                        height: '4px',
+                        borderRadius: DESIGN_TOKENS.borderRadius.full,
+                        background: DESIGN_TOKENS.colors.neutral[200],
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  </div>
+
+                  {/* 自動再生開始チェックボックス */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                      <input
+                        type="checkbox"
+                        checked={project.script.layout.background.autoStart}
+                        onChange={(e) => updateBackgroundAnimation({ 
+                          autoStart: e.target.checked 
+                        })}
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      <span style={{ 
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs, 
+                        color: DESIGN_TOKENS.colors.neutral[700] 
+                      }}>
+                        ▶️ {t('editor.assets.autoStart')}
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* アニメーション設定の説明 */}
+                  <div style={{
+                    marginTop: DESIGN_TOKENS.spacing[3],
+                    padding: DESIGN_TOKENS.spacing[2],
+                    backgroundColor: DESIGN_TOKENS.colors.primary[50],
+                    borderRadius: DESIGN_TOKENS.borderRadius.md,
+                    fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                    color: DESIGN_TOKENS.colors.primary[700],
+                    lineHeight: DESIGN_TOKENS.typography.lineHeight.relaxed
+                  }}>
+                    💡 <strong>{t('editor.assets.animationNote')}:</strong><br />
+                    {t('editor.assets.animationNoteDesc')}
+                  </div>
+                </div>
+              )}
             </div>
             
             {/* ボタングループ */}
@@ -440,6 +602,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
           <li>{t('editor.assets.backgroundHints.maxSize', { size: formatFileSize(EDITOR_LIMITS.IMAGE.BACKGROUND_FRAME_MAX_SIZE) })}</li>
           <li>{t('editor.assets.backgroundHints.optimization')}</li>
           <li>{t('editor.assets.backgroundHints.autoShow')}</li>
+          <li><strong>🎬 {t('editor.assets.backgroundHints.animation')}</strong>: {t('editor.assets.backgroundHints.animationDesc')}</li>
           <li><strong>{t('editor.assets.backgroundHints.future')}</strong></li>
         </ul>
       </ModernCard>
