@@ -1,6 +1,7 @@
 // src/components/editor/tabs/assets/sections/BackgroundSection.tsx
 // 🔧 Phase E-1: 背景管理セクション分離 + 画像差し替え機能追加
 // 🆕 Phase 4: 背景アニメーション設定UI追加
+// 🐛 Fix: DESIGN_TOKENSカラーキー修正（error[100]→error[200], success[700]→success[600], error[700]→error[600]）
 import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../../../types/editor/GameProject';
@@ -311,10 +312,10 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                     borderRadius: DESIGN_TOKENS.borderRadius.sm,
                     backgroundColor: project.script?.layout?.background?.visible
                       ? DESIGN_TOKENS.colors.success[100]
-                      : DESIGN_TOKENS.colors.error[100],
+                      : DESIGN_TOKENS.colors.error[200],
                     color: project.script?.layout?.background?.visible
-                      ? DESIGN_TOKENS.colors.success[700]
-                      : DESIGN_TOKENS.colors.error[700]
+                      ? DESIGN_TOKENS.colors.success[600]
+                      : DESIGN_TOKENS.colors.error[600]
                   }}
                 >
                   {project.script?.layout?.background?.visible ? t('editor.assets.backgroundVisible') : t('editor.assets.backgroundHidden')}
