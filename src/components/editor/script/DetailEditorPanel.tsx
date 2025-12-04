@@ -1,6 +1,6 @@
 // src/components/editor/script/DetailEditorPanel.tsx
 // 詳細設定エリア（広い・選択されたルールを編集）
-// Phase 2完全版: 条件側に case 'objectState' 追加（AnimationConditionEditorの機能をObjectStateConditionEditorに統合）
+// Phase 3-1修正: CollisionConditionEditorにproject追加（項目6&7対応）
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -17,7 +17,7 @@ import { FlagConditionEditor } from './conditions/FlagConditionEditor';
 import { CollisionConditionEditor } from './conditions/CollisionConditionEditor';
 import { GameStateConditionEditor } from './conditions/GameStateConditionEditor';
 import { AnimationConditionEditor } from './conditions/AnimationConditionEditor';
-import { ObjectStateConditionEditor } from './conditions/ObjectStateConditionEditor'; // ✅ Phase 2: 追加
+import { ObjectStateConditionEditor } from './conditions/ObjectStateConditionEditor';
 import { CounterConditionEditor } from './CounterRuleComponents';
 import { RandomConditionEditor } from './RandomRuleComponents';
 
@@ -91,6 +91,7 @@ export const DetailEditorPanel: React.FC<DetailEditorPanelProps> = ({
           <CollisionConditionEditor
             condition={selectedCondition}
             index={selectedConditionIndex}
+            project={project}
             onUpdate={onConditionUpdate}
           />
         );

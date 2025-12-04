@@ -12,10 +12,10 @@ export const getTouchTypeOptions = () => [
   { value: 'down', label: i18n.t('conditions.touch.down.label'), icon: '👇', description: i18n.t('conditions.touch.down.description') },
   { value: 'up', label: i18n.t('conditions.touch.up.label'), icon: '👆', description: i18n.t('conditions.touch.up.description') },
   { value: 'hold', label: i18n.t('conditions.touch.hold.label'), icon: '⏱️', description: i18n.t('conditions.touch.hold.description') },
-  // 🆕 Phase H-1: 新規追加
-  { value: 'drag', label: i18n.t('conditions.touch.drag.label'), icon: '🖐️', description: i18n.t('conditions.touch.drag.description') },
-  { value: 'swipe', label: i18n.t('conditions.touch.swipe.label'), icon: '👉', description: i18n.t('conditions.touch.swipe.description') },
-  { value: 'flick', label: i18n.t('conditions.touch.flick.label'), icon: '💨', description: i18n.t('conditions.touch.flick.description') }
+  // 🆕 Phase H-1: 新規追加(使う機会あれば)
+  // { value: 'drag', label: i18n.t('conditions.touch.drag.label'), icon: '🖐️', description: i18n.t('conditions.touch.drag.description') },
+  // { value: 'swipe', label: i18n.t('conditions.touch.swipe.label'), icon: '👉', description: i18n.t('conditions.touch.swipe.description') },
+  // { value: 'flick', label: i18n.t('conditions.touch.flick.label'), icon: '💨', description: i18n.t('conditions.touch.flick.description') }
 ] as const;
 
 /**
@@ -81,7 +81,7 @@ export const TOUCH_DEFAULTS = {
   flickMaxDistance: 100,   // ピクセル
   flickMaxDuration: 200,   // ミリ秒
   // ホールド関連
-  holdDuration: 1.0,       // 秒
+  holdDuration: 1.2,       // 秒
   holdTolerance: 10,       // ピクセル
   holdProgressThreshold: 0.8  // 0-1
 } as const;

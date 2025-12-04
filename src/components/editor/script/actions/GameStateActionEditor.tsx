@@ -1,5 +1,6 @@
 // src/components/editor/script/actions/GameStateActionEditor.tsx
 // Phase 1: ゲーム状態変更エディター（success/failure/pause/resume統合）
+// Phase 3-1項目8: 成功/失敗時の入力欄削除、メッセージ・スコア表示も削除、完全簡素化
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -142,98 +143,11 @@ export const GameStateActionEditor: React.FC<GameStateActionEditorProps> = ({
         </div>
       </div>
 
-      {/* success用の詳細設定 */}
-      {currentType === 'success' && (
-        <div style={{ 
-          marginBottom: SPACING[4],
-          padding: SPACING[3],
-          backgroundColor: COLORS.success[100],
-          borderRadius: BORDER_RADIUS.lg
-        }}>
-          <div style={{ marginBottom: SPACING[3] }}>
-            <label style={{
-              fontSize: '14px',
-              fontWeight: '500',
-              color: COLORS.success[800],
-              marginBottom: SPACING[2],
-              display: 'block'
-            }}>
-              スコア
-            </label>
-            <input
-              type="number"
-              value={(action as Extract<GameAction, { type: 'success' }>).score || 100}
-              onChange={(e) => onUpdate(index, { score: parseInt(e.target.value) || 0 })}
-              style={{
-                width: '100%',
-                padding: SPACING[2],
-                border: `1px solid ${COLORS.success[200]}`,
-                borderRadius: BORDER_RADIUS.lg,
-                fontSize: '14px'
-              }}
-            />
-          </div>
-          <div>
-            <label style={{
-              fontSize: '14px',
-              fontWeight: '500',
-              color: COLORS.success[800],
-              marginBottom: SPACING[2],
-              display: 'block'
-            }}>
-              メッセージ
-            </label>
-            <input
-              type="text"
-              value={(action as Extract<GameAction, { type: 'success' }>).message || 'クリア！'}
-              onChange={(e) => onUpdate(index, { message: e.target.value })}
-              style={{
-                width: '100%',
-                padding: SPACING[2],
-                border: `1px solid ${COLORS.success[200]}`,
-                borderRadius: BORDER_RADIUS.lg,
-                fontSize: '14px'
-              }}
-              placeholder="クリアメッセージを入力"
-            />
-          </div>
-        </div>
-      )}
+      {/* ❌ Phase 3-1項目8: 成功/失敗時の入力欄を削除（デフォルト値を使用） */}
+      {/* 削除: success用のスコア・メッセージ入力欄 */}
+      {/* 削除: failure用のメッセージ入力欄 */}
 
-      {/* failure用の詳細設定 */}
-      {currentType === 'failure' && (
-        <div style={{ 
-          marginBottom: SPACING[4],
-          padding: SPACING[3],
-          backgroundColor: COLORS.neutral[50],
-          borderRadius: BORDER_RADIUS.lg
-        }}>
-          <label style={{
-            fontSize: '14px',
-            fontWeight: '500',
-            color: COLORS.error[800],
-            marginBottom: SPACING[2],
-            display: 'block'
-          }}>
-            メッセージ
-          </label>
-          <input
-            type="text"
-            value={(action as Extract<GameAction, { type: 'failure' }>).message || 'ゲームオーバー'}
-            onChange={(e) => onUpdate(index, { message: e.target.value })}
-            style={{
-              width: '100%',
-              padding: SPACING[2],
-              border: `1px solid ${COLORS.error[800]}`,
-              borderRadius: BORDER_RADIUS.lg,
-              fontSize: '14px'
-            }}
-            placeholder="失敗メッセージを入力"
-          />
-        </div>
-      )}
-
-      {/* pause用の詳細設定 */}
+      {/* pause用の詳細設定（ゲーム機能として必要なため保持） */}
       {currentType === 'pause' && (
         <div style={{ 
           marginBottom: SPACING[4],
@@ -248,7 +162,7 @@ export const GameStateActionEditor: React.FC<GameStateActionEditorProps> = ({
             marginBottom: SPACING[2],
             display: 'block'
           }}>
-            ポーズ時間（秒）
+            ⏱️ ポーズ時間（秒）
           </label>
           <input
             type="number"
@@ -259,7 +173,7 @@ export const GameStateActionEditor: React.FC<GameStateActionEditorProps> = ({
             style={{
               width: '100%',
               padding: SPACING[2],
-              border: `1px solid ${COLORS.neutral[200]}`,
+              border: `1px solid ${COLORS.warning[100]}`,
               borderRadius: BORDER_RADIUS.lg,
               fontSize: '14px'
             }}
@@ -269,12 +183,12 @@ export const GameStateActionEditor: React.FC<GameStateActionEditorProps> = ({
             color: COLORS.warning[800], 
             marginTop: SPACING[2] 
           }}>
-            0秒で無制限ポーズ（手動再開まで停止）
+            💡 0秒で無制限ポーズ（手動再開まで停止）
           </div>
         </div>
       )}
 
-      {/* 設定概要 */}
+      {/* 設定概要（完全簡素化：状態タイプ名のみ、ポーズ時のみ時間表示） */}
       <div style={{
         padding: SPACING[3],
         backgroundColor: COLORS.success[100],
@@ -282,8 +196,7 @@ export const GameStateActionEditor: React.FC<GameStateActionEditorProps> = ({
         fontSize: '13px',
         color: COLORS.success[800]
       }}>
-        <strong>現在の設定:</strong> {currentOption?.label || '未設定'}
-        {currentType === 'success' && ` / スコア: ${(action as Extract<GameAction, { type: 'success' }>).score || 100}点`}
+        <strong>✅ 現在の設定:</strong> {currentOption?.label || '未設定'}
         {currentType === 'pause' && ` / 時間: ${(action as Extract<GameAction, { type: 'pause' }>).duration || 3}秒`}
       </div>
     </ModernCard>

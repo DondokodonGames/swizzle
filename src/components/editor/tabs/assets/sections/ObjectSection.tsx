@@ -1,5 +1,5 @@
 // src/components/editor/tabs/assets/sections/ObjectSection.tsx
-// 🔧 Phase E-1: オブジェクト管理+アニメーション統合セクション + 画像差し替え機能追加
+// 🔧 Phase 3-1-9 v2: フレーム切り替えボタンをプレビュー画面左右に配置
 import React, { useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../../../types/editor/GameProject';
@@ -78,8 +78,9 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
   const [animationPreviewIndex, setAnimationPreviewIndex] = useState<number>(0);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState<boolean>(false);
   
-  // 🔄 差し替え用の状態と参照
+  // 🔄 差し替え用の状態と参照（Phase 3-1-9: フレームインデックス追加）
   const [replacingObjectId, setReplacingObjectId] = useState<string | null>(null);
+  const [replacingFrameIndex, setReplacingFrameIndex] = useState<number>(0);
   const replaceInputRef = useRef<HTMLInputElement>(null);
 
   // オブジェクト単独アップロード処理（複数フレーム対応）
@@ -206,7 +207,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
     }
   }, [project, onProjectUpdate, uploading, showSuccess, showError, t]);
 
-  // 🔄 オブジェクト画像差し替え処理
+  // 🔄 オブジェクト画像差し替え処理（Phase 3-1-9: 選択中フレームのみ差し替え）
   const handleObjectReplace = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !replacingObjectId) return;
@@ -246,23 +247,31 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
         const dataUrl = e.target?.result as string;
         
         const targetObject = updatedAssets.objects[objectIndex];
-        const oldSize = targetObject.frames[0]?.fileSize || 0;
+        
+        // 🎯 選択中フレームのみを差し替え（Phase 3-1-9）
+        const targetFrameIndex = replacingFrameIndex;
+        const oldSize = targetObject.frames[targetFrameIndex]?.fileSize || 0;
         const newSize = optimized.size;
 
-        // 既存のオブジェクト設定を維持しつつ、最初のフレームの画像のみ差し替え
-        // （アニメーションフレームが複数ある場合は最初のフレームのみ）
-        updatedAssets.objects[objectIndex] = {
-          ...targetObject,
-          frames: [
-            {
-              ...targetObject.frames[0],
+        // フレーム配列を新しく構築
+        const updatedFrames = targetObject.frames.map((frame, index) => {
+          if (index === targetFrameIndex) {
+            // 選択中フレームのみ差し替え
+            return {
+              ...frame,
               dataUrl,
               originalName: file.name,
               fileSize: newSize,
               uploadedAt: now
-            },
-            ...targetObject.frames.slice(1) // 2フレーム目以降は維持
-          ],
+            };
+          }
+          // 他のフレームはそのまま
+          return frame;
+        });
+
+        updatedAssets.objects[objectIndex] = {
+          ...targetObject,
+          frames: updatedFrames,
           totalSize: targetObject.totalSize - oldSize + newSize,
           lastModified: now
         };
@@ -306,15 +315,17 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
     if (replaceInputRef.current) {
       replaceInputRef.current.value = '';
     }
-  }, [project, onProjectUpdate, replacingObjectId, showSuccess, showError, t]);
+  }, [project, onProjectUpdate, replacingObjectId, replacingFrameIndex, showSuccess, showError, t]);
 
-  // 差し替えボタンクリック
+  // 差し替えボタンクリック（Phase 3-1-9: 現在のフレームインデックスを保存）
   const triggerReplaceInput = useCallback((objectId: string) => {
     setReplacingObjectId(objectId);
+    // 🎯 現在選択中のフレームインデックスを保存
+    setReplacingFrameIndex(editingObjectId === objectId ? animationPreviewIndex : 0);
     setTimeout(() => {
       replaceInputRef.current?.click();
     }, 0);
-  }, []);
+  }, [editingObjectId, animationPreviewIndex]);
 
   // オブジェクトにフレーム追加（アニメーション用）
   const addFrameToObject = useCallback(async (objectId: string, results: FileProcessingResult[]) => {
@@ -425,19 +436,53 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
     }
   }, [project, onProjectUpdate]);
 
-  // オブジェクト削除処理
+  // 🗑️ オブジェクト削除処理（Phase 3-1-9: 画像のみ削除、オブジェクトは残す）
   const handleObjectDelete = useCallback((objectId: string) => {
-    const result = deleteAsset('objects', objectId);
-    if (result.success) {
-      showSuccess(result.message);
-      // 編集中オブジェクトが削除された場合は編集モードを終了
-      if (editingObjectId === objectId) {
-        setEditingObjectId(null);
-      }
-    } else {
-      showError(result.message);
+    const updatedAssets = { ...project.assets };
+    const objectIndex = updatedAssets.objects.findIndex(obj => obj.id === objectId);
+    
+    if (objectIndex === -1) {
+      showError(t('errors.objectNotFound'));
+      return;
     }
-  }, [deleteAsset, editingObjectId, showSuccess, showError]);
+
+    const now = new Date().toISOString();
+    const targetObject = updatedAssets.objects[objectIndex];
+
+    // 🎯 画像のみ削除（framesを空配列にする）
+    updatedAssets.objects[objectIndex] = {
+      ...targetObject,
+      frames: [], // 画像を全削除
+      totalSize: 0,
+      lastModified: now
+    };
+
+    // 統計更新
+    const imageSize = updatedAssets.objects.reduce((sum, obj) => sum + obj.totalSize, 0) + 
+                     (updatedAssets.background?.totalSize || 0);
+    const audioSize = (updatedAssets.audio.bgm?.fileSize || 0) + 
+                     updatedAssets.audio.se.reduce((sum, se) => sum + se.fileSize, 0);
+
+    updatedAssets.statistics = {
+      ...updatedAssets.statistics,
+      totalImageSize: imageSize,
+      totalSize: imageSize + audioSize
+    };
+
+    onProjectUpdate({
+      ...project,
+      assets: updatedAssets,
+      totalSize: imageSize + audioSize,
+      lastModified: now
+    });
+
+    showSuccess(t('editor.assets.imagesDeleted'));
+    
+    // 編集中オブジェクトが削除された場合は編集モードを終了
+    if (editingObjectId === objectId) {
+      setEditingObjectId(null);
+    }
+  }, [project, onProjectUpdate, editingObjectId, showSuccess, showError, t]);
 
   // アニメーションプレビュー制御
   const toggleAnimationPreview = useCallback((objectId: string) => {
@@ -463,6 +508,20 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
 
     return () => clearInterval(interval);
   }, [isPreviewPlaying, editingObjectId, project.assets?.objects]);
+
+  // 🎯 フレーム切り替え関数（Phase 3-1-9: 左右ボタン用）
+  const changeFrame = useCallback((objectId: string, direction: 'prev' | 'next') => {
+    const editingObject = project.assets?.objects?.find(obj => obj.id === objectId);
+    if (!editingObject || editingObject.frames.length <= 1) return;
+
+    setAnimationPreviewIndex(prev => {
+      if (direction === 'prev') {
+        return prev === 0 ? editingObject.frames.length - 1 : prev - 1;
+      } else {
+        return (prev + 1) % editingObject.frames.length;
+      }
+    });
+  }, [project.assets?.objects]);
 
   return (
     <div>
@@ -531,20 +590,129 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
           const isEditing = editingObjectId === obj.id;
           const currentFrame = isEditing ? animationPreviewIndex : 0;
           
+          // 🎯 画像がない場合の処理（Phase 3-1-9）
+          const hasFrames = obj.frames.length > 0;
+          
           return (
             <ModernCard key={obj.id} variant="elevated" size="md">
               {/* オブジェクトプレビュー */}
               <div style={{ position: 'relative', marginBottom: DESIGN_TOKENS.spacing[3] }}>
-                <img
-                  src={obj.frames[currentFrame]?.dataUrl || obj.frames[0].dataUrl}
-                  alt={obj.name}
-                  style={{
-                    width: '100%',
-                    aspectRatio: '1',
-                    objectFit: 'cover',
-                    borderRadius: DESIGN_TOKENS.borderRadius.md
-                  }}
-                />
+                {hasFrames ? (
+                  <>
+                    <img
+                      src={obj.frames[currentFrame]?.dataUrl || obj.frames[0].dataUrl}
+                      alt={obj.name}
+                      style={{
+                        width: '100%',
+                        aspectRatio: '1',
+                        objectFit: 'cover',
+                        borderRadius: DESIGN_TOKENS.borderRadius.md
+                      }}
+                    />
+                    
+                    {/* 🎯 フレーム切り替えボタン（Phase 3-1-9 v2: プレビュー画面左右に配置） */}
+                    {isEditing && obj.frames.length > 1 && (
+                      <>
+                        {/* 左ボタン */}
+                        <button
+                          onClick={() => changeFrame(obj.id, 'prev')}
+                          disabled={isPreviewPlaying}
+                          style={{
+                            position: 'absolute',
+                            left: DESIGN_TOKENS.spacing[2],
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: DESIGN_TOKENS.borderRadius.full,
+                            width: '40px',
+                            height: '40px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '20px',
+                            cursor: isPreviewPlaying ? 'not-allowed' : 'pointer',
+                            opacity: isPreviewPlaying ? 0.4 : 1,
+                            transition: 'all 0.2s ease',
+                            zIndex: 10
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isPreviewPlaying) {
+                              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                              e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+                            e.currentTarget.style.transform = 'translateY(-50%)';
+                          }}
+                        >
+                          ◀
+                        </button>
+
+                        {/* 右ボタン */}
+                        <button
+                          onClick={() => changeFrame(obj.id, 'next')}
+                          disabled={isPreviewPlaying}
+                          style={{
+                            position: 'absolute',
+                            right: DESIGN_TOKENS.spacing[2],
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: DESIGN_TOKENS.borderRadius.full,
+                            width: '40px',
+                            height: '40px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '20px',
+                            cursor: isPreviewPlaying ? 'not-allowed' : 'pointer',
+                            opacity: isPreviewPlaying ? 0.4 : 1,
+                            transition: 'all 0.2s ease',
+                            zIndex: 10
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isPreviewPlaying) {
+                              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                              e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+                            e.currentTarget.style.transform = 'translateY(-50%)';
+                          }}
+                        >
+                          ▶
+                        </button>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  // 画像がない場合のプレースホルダー
+                  <div
+                    style={{
+                      width: '100%',
+                      aspectRatio: '1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: DESIGN_TOKENS.colors.neutral[100],
+                      borderRadius: DESIGN_TOKENS.borderRadius.md,
+                      border: `2px dashed ${DESIGN_TOKENS.colors.neutral[300]}`
+                    }}
+                  >
+                    <div style={{ textAlign: 'center', color: DESIGN_TOKENS.colors.neutral[500] }}>
+                      <div style={{ fontSize: '48px', marginBottom: DESIGN_TOKENS.spacing[2] }}>🖼️</div>
+                      <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>
+                        {t('editor.assets.noImage')}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* フレーム数表示 */}
                 {obj.frames.length > 1 && (
@@ -630,53 +798,45 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
 
               {/* コントロールボタン */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: DESIGN_TOKENS.spacing[2], marginBottom: DESIGN_TOKENS.spacing[3] }}>
-                {/* アニメーション編集ボタン */}
-                <ModernButton
-                  variant={isEditing ? "secondary" : "outline"}
-                  size="xs"
-                  icon="🎬"
-                  onClick={() => setEditingObjectId(isEditing ? null : obj.id)}
-                >
-                  {isEditing ? t('common.done') : t('editor.assets.animation')}
-                </ModernButton>
-
-                {/* プレビューボタン */}
-                {obj.frames.length > 1 && (
+                {/* アニメーション編集ボタン（画像がある場合のみ） */}
+                {hasFrames && (
                   <ModernButton
-                    variant={isPreviewPlaying && isEditing ? "primary" : "outline"}
+                    variant={isEditing ? "secondary" : "outline"}
                     size="xs"
-                    icon={isPreviewPlaying && isEditing ? '⏹️' : '▶️'}
-                    onClick={() => toggleAnimationPreview(obj.id)}
+                    icon="🎬"
+                    onClick={() => setEditingObjectId(isEditing ? null : obj.id)}
                   >
-                    {isPreviewPlaying && isEditing ? t('common.stop') : t('common.play')}
+                    {isEditing ? t('common.done') : t('editor.assets.animation')}
                   </ModernButton>
                 )}
 
-                {/* 🔄 差し替えボタン（新規追加） */}
+                {/* ❌ プレビューボタン削除（Phase 3-1-2完了） */}
+
+                {/* 🔄 差し替えボタン（画像がある場合） / 追加ボタン（画像がない場合） */}
                 <ModernButton
                   variant="secondary"
                   size="xs"
-                  icon="🔄"
+                  icon={hasFrames ? "🔄" : "➕"}
                   onClick={() => triggerReplaceInput(obj.id)}
                   disabled={uploading}
                 >
-                  {t('editor.assets.replaceImage')}
+                  {hasFrames ? t('editor.assets.replaceImage') : t('editor.assets.addImage')}
                 </ModernButton>
 
-                {/* 削除ボタン */}
+                {/* 削除ボタン（Phase 3-1-9: 画像のみ削除） */}
                 <ModernButton
                   variant="error"
                   size="xs"
                   icon="🗑️"
                   onClick={() => handleObjectDelete(obj.id)}
-                  disabled={uploading}
+                  disabled={uploading || !hasFrames}
                 >
-                  {t('common.delete')}
+                  {t('editor.assets.deleteImages')}
                 </ModernButton>
               </div>
 
               {/* アニメーション編集パネル */}
-              {isEditing && (
+              {isEditing && hasFrames && (
                 <div 
                   style={{
                     borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
@@ -711,7 +871,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                     </div>
                   )}
 
-                  {/* サイズ調整 */}
+                  {/* ✅ サイズ調整 - バー削除→数値入力のみ（Phase 3-1-1完了） */}
                   <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
                     <label
                       style={{
@@ -722,38 +882,41 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                         marginBottom: DESIGN_TOKENS.spacing[1]
                       }}
                     >
-                      {t('editor.assets.size')}: {((obj.defaultScale || 1.0) * 100).toFixed(0)}%
+                      {t('editor.assets.size')}:
                     </label>
-                    <input
-                      type="range"
-                      min="10"
-                      max="300"
-                      step="10"
-                      value={(obj.defaultScale || 1.0) * 100}
-                      onChange={(e) => {
-                        const scale = parseInt(e.target.value) / 100;
-                        const updatedAssets = { ...project.assets };
-                        const objectIndex = updatedAssets.objects.findIndex(o => o.id === obj.id);
-                        if (objectIndex !== -1) {
-                          updatedAssets.objects[objectIndex] = {
-                            ...updatedAssets.objects[objectIndex],
-                            defaultScale: scale
-                          };
-                          onProjectUpdate({
-                            ...project,
-                            assets: updatedAssets
-                          });
-                        }
-                      }}
-                      style={{
-                        width: '100%',
-                        height: '4px',
-                        borderRadius: DESIGN_TOKENS.borderRadius.full,
-                        background: DESIGN_TOKENS.colors.neutral[200],
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
-                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                      <input
+                        type="number"
+                        min="10"
+                        step="10"
+                        value={((obj.defaultScale || 1.0) * 100).toFixed(0)}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value);
+                          if (isNaN(value) || value < 10) return;
+                          const scale = value / 100;
+                          const updatedAssets = { ...project.assets };
+                          const objectIndex = updatedAssets.objects.findIndex(o => o.id === obj.id);
+                          if (objectIndex !== -1) {
+                            updatedAssets.objects[objectIndex] = {
+                              ...updatedAssets.objects[objectIndex],
+                              defaultScale: scale
+                            };
+                            onProjectUpdate({
+                              ...project,
+                              assets: updatedAssets
+                            });
+                          }
+                        }}
+                        style={{
+                          width: '100px',
+                          padding: DESIGN_TOKENS.spacing[2],
+                          border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                          borderRadius: DESIGN_TOKENS.borderRadius.md,
+                          fontSize: DESIGN_TOKENS.typography.fontSize.sm
+                        }}
+                      />
+                      <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm, color: DESIGN_TOKENS.colors.neutral[600] }}>%</span>
+                    </div>
                   </div>
 
                   {/* アニメーション速度設定 */}
@@ -767,23 +930,32 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                         marginBottom: DESIGN_TOKENS.spacing[1]
                       }}
                     >
-                      {t('editor.assets.speed')}: {obj.animationSettings.speed}fps {obj.animationSettings.speed === 0 && `(${t('editor.assets.ruleControlOnly')})`}
+                      {t('editor.assets.speed')}:
                     </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="30"
-                      value={obj.animationSettings.speed}
-                      onChange={(e) => updateAnimationSettings(obj.id, { speed: parseInt(e.target.value) })}
-                      style={{
-                        width: '100%',
-                        height: '4px',
-                        borderRadius: DESIGN_TOKENS.borderRadius.full,
-                        background: DESIGN_TOKENS.colors.neutral[200],
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
-                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                      <input
+                        type="number"
+                        min="0"
+                        max="60"
+                        step="1"
+                        value={obj.animationSettings.speed}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (isNaN(value) || value < 0) return;
+                          updateAnimationSettings(obj.id, { speed: value });
+                        }}
+                        style={{
+                          width: '80px',
+                          padding: DESIGN_TOKENS.spacing[2],
+                          border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                          borderRadius: DESIGN_TOKENS.borderRadius.md,
+                          fontSize: DESIGN_TOKENS.typography.fontSize.sm
+                        }}
+                      />
+                      <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm, color: DESIGN_TOKENS.colors.neutral[600] }}>
+                        fps {obj.animationSettings.speed === 0 && `(${t('editor.assets.ruleControlOnly')})`}
+                      </span>
+                    </div>
                   </div>
 
                   {/* アニメーション設定 */}

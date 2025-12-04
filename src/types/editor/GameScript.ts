@@ -4,6 +4,7 @@
  * 🔧 修正（2025-12-02）: MovementPatternに8方向移動用directionプロパティ追加
  * 🆕 拡張（2025-12-03）: タッチ拡張、物理演算、エフェクト拡張、アニメーション強化
  * 🆕 拡張（2025-12-04）: objectState条件型追加（Phase H統合）
+ * 🔧 修正（2025-12-04）: collision型にtargetObjectId追加（Phase 3-1項目6&7）
  */
 
 // TextStyleをインポート
@@ -231,13 +232,14 @@ export type TriggerCondition =
       };
     }
   
-  // 衝突条件
+  // 衝突条件（🔧 修正: targetObjectId追加）
   | {
       type: 'collision';
-      target: 'background' | 'stage' | string; // オブジェクトID
+      target: 'stageArea' | 'other' | string; // 'stageArea'=画面端、'other'=他オブジェクト、またはオブジェクトID（後方互換）
+      targetObjectId?: string;                // target='other'の場合に使用
       collisionType: 'enter' | 'stay' | 'exit'; // 衝突の種類
       checkMode: 'hitbox' | 'pixel';           // 判定方式
-      region?: {                                // ステージ範囲指定（targetが'stage'の場合）
+      region?: {                                // ステージ範囲指定（target='stageArea'の場合）
         shape: 'rect' | 'circle';
         x: number;
         y: number;
@@ -990,4 +992,4 @@ export type ActionType =
   | 'addScore'
   | 'showMessage'
   | 'counter'
-  | 'randomAction'; 
+  | 'randomAction';
