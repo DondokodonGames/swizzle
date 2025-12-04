@@ -197,7 +197,7 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
         newCondition = { type: 'animation', target: rule.targetObjectId, condition: 'end', animationIndex: 0 };
         break;
       case 'objectState':
-      newCondition = { type: 'animation', target: rule.targetObjectId, condition: 'end', animationIndex: 0 };
+        newCondition = { type: 'objectState', target: rule.targetObjectId, stateType: 'visible' };
         break;
       case 'flag':
         newCondition = { type: 'flag', flagId: projectFlags[0]?.id || '', condition: 'ON' };
