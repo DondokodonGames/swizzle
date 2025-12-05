@@ -603,7 +603,7 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
                 </div>
                 <div style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                  color: DESIGN_TOKENS.colors.neutral[700]
+                  color: DESIGN_TOKENS.colors.neutral[600]  // ✅ 修正2: success[700] → neutral[600]
                 }}>
                   フレーム {action.animationIndex || 0}
                 </div>
@@ -641,7 +641,7 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
                 </div>
                 <div style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                  color: DESIGN_TOKENS.colors.neutral[700]
+                  color: DESIGN_TOKENS.colors.neutral[600]  // ✅ 修正3: success[700] → neutral[600]
                 }}>
                   {action.speed || 12} FPS
                 </div>
@@ -684,7 +684,7 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
       size="md"
       style={{
         backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-        border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+        border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,  // ✅ 修正1: success[300] → success[200]
         marginTop: DESIGN_TOKENS.spacing[4]
       }}
     >
@@ -697,7 +697,7 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
         <h4 style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.xl,
           fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-          color: DESIGN_TOKENS.colors.success[700],
+          color: DESIGN_TOKENS.colors.success[600],  // ✅ 修正2: success[700] → success[600]
           margin: 0,
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'flex',
@@ -785,7 +785,7 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
                 ? DESIGN_TOKENS.typography.fontWeight.semibold 
                 : DESIGN_TOKENS.typography.fontWeight.normal,
               color: idx <= currentStepIndex 
-                ? DESIGN_TOKENS.colors.success[700] 
+                ? DESIGN_TOKENS.colors.success[600]  // ✅ 修正3: success[700] → success[600]
                 : DESIGN_TOKENS.colors.neutral[500],
               textAlign: 'center'
             }}>

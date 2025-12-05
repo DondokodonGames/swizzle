@@ -1,6 +1,7 @@
 // src/components/editor/tabs/assets/sections/BackgroundSection.tsx
 // 🔧 Phase 3-3 Item 2: 背景設定の仕様統一（完全版v2）
 // プレビュー3倍拡大（240×432px） + サイズ%表示
+// ✅ TypeScriptエラー修正: loop/pingpong プロパティ削除
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../../../types/editor/GameProject';
@@ -223,12 +224,11 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
     });
   };
 
+  // ✅ 修正: loop/pingpong を型定義から削除
   // 背景アニメーション設定更新
   const updateBackgroundAnimation = (updates: {
     animationSpeed?: number;
     autoStart?: boolean;
-    loop?: boolean;
-    pingpong?: boolean;
     initialAnimation?: number;
   }) => {
     if (!project.script?.layout?.background) return;
@@ -362,11 +362,10 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '0 12px',  // ← 固定値に変更（またはmarginをボタンに移動）
-                  //padding: `0 ${DESIGN_TOKENS.spacing[3]}`,
+                  padding: '0 12px',
                   backgroundColor: 'rgba(0, 0, 0, 0.3)',
                   borderRadius: DESIGN_TOKENS.borderRadius.md,
-                  boxSizing: 'border-box'  // ← 追加：paddingを幅に含める
+                  boxSizing: 'border-box'
                 }}>
                   {/* 前へボタン */}
                   <button
@@ -602,52 +601,11 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                       </span>
                     </label>
 
-                    {/* ループ */}
-                    <label style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
-                      <input
-                        type="checkbox"
-                        checked={project.script.layout.background.loop || false}
-                        onChange={(e) => updateBackgroundAnimation({ 
-                          loop: e.target.checked 
-                        })}
-                        style={{
-                          width: '16px',
-                          height: '16px',
-                          cursor: 'pointer'
-                        }}
-                      />
-                      <span style={{ 
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs, 
-                        color: DESIGN_TOKENS.colors.neutral[700] 
-                      }}>
-                        🔁 ループ再生（最後のフレームまで行ったら最初に戻る）
-                      </span>
-                    </label>
-
-                    {/* 往復 */}
-                    <label style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
-                      <input
-                        type="checkbox"
-                        checked={project.script.layout.background.pingpong || false}
-                        onChange={(e) => updateBackgroundAnimation({ 
-                          pingpong: e.target.checked 
-                        })}
-                        style={{
-                          width: '16px',
-                          height: '16px',
-                          cursor: 'pointer'
-                        }}
-                      />
-                      <span style={{ 
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs, 
-                        color: DESIGN_TOKENS.colors.neutral[700] 
-                      }}>
-                        ↔️ 往復再生（最後まで行ったら逆順に再生）
-                      </span>
-                    </label>
+                    {/* ✅ 削除: ループ再生チェックボックス（loop プロパティが存在しない） */}
+                    {/* ✅ 削除: 往復再生チェックボックス（pingpong プロパティが存在しない） */}
                   </div>
 
-                  {/* アニメーション設定の説明 */}
+                  {/* ✅ 修正: アニメーション設定の説明文からloop/pingpong関連を削除 */}
                   <div style={{
                     marginTop: DESIGN_TOKENS.spacing[3],
                     padding: DESIGN_TOKENS.spacing[2],
@@ -660,9 +618,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                     💡 <strong>アニメーション設定について</strong><br />
                     • フレーム選択: 画像にマウスを重ねると左右ボタンが表示されます<br />
                     • 速度0: ルールによる制御のみ（自動アニメーションなし）<br />
-                    • ループ: 0→1→2→3→0... の順に繰り返し<br />
-                    • 往復: 0→1→2→3→2→1→0... の順に往復<br />
-                    • ループと往復を両方ONにした場合、往復が優先されます
+                    • 自動再生: ゲーム開始時にアニメーションが自動的に開始されます
                   </div>
                 </div>
               )}
@@ -780,7 +736,6 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
           <li><strong>🎬 アニメーション</strong>: 画像にマウスを重ねると左右ボタンでフレーム切り替え</li>
           <li><strong>📏 サイズ設定</strong>: %表示で10～500%の範囲で設定（推奨: 100%）</li>
           <li><strong>⚡ アニメーション速度</strong>: 0～60fps（0=ルール制御のみ、推奨: 12fps）</li>
-          <li><strong>🔁 ループ/往復</strong>: アニメーションの再生方法を選択可能</li>
           <li><strong>{t('editor.assets.backgroundHints.future')}</strong></li>
         </ul>
       </ModernCard>

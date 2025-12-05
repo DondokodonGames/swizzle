@@ -1,9 +1,10 @@
 // src/components/editor/script/actions/EffectActionEditor.tsx
 // Phase 3-3 Item 7: 3ステップフロー版（数値入力方式）
 // 参考: ObjectStateConditionEditor.tsx
+// TypeScriptエラー修正版（全機能保持）
 
 import React, { useState, useMemo } from 'react';
-import { GameAction } from '../../../../types/editor/GameScript';
+import { GameAction, EffectPattern } from '../../../../types/editor/GameScript';
 import { GameProject } from '../../../../types/editor/GameProject';
 import { ObjectAsset } from '../../../../types/editor/ProjectAssets';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
@@ -23,6 +24,50 @@ type EditorStep = 'effectType' | 'parameters' | 'confirm';
 
 // エフェクトタイプ定義
 type EffectType = 'flash' | 'shake' | 'scale' | 'rotate' | 'particles';
+
+// エフェクトタイプ選択肢（コンポーネント外で定義 - 初期化順序エラー修正）
+const EFFECT_TYPE_OPTIONS = [
+  { 
+    value: 'flash' as EffectType,
+    label: 'フラッシュ', 
+    icon: '💫', 
+    description: '一瞬光る効果',
+    color: DESIGN_TOKENS.colors.warning[500],
+    defaultParams: { duration: 0.3, intensity: 1.0 }
+  },
+  { 
+    value: 'shake' as EffectType,
+    label: '振動', 
+    icon: '📳', 
+    description: 'ブルブル揺れる',
+    color: DESIGN_TOKENS.colors.error[500],
+    defaultParams: { duration: 0.5, intensity: 10 }
+  },
+  { 
+    value: 'scale' as EffectType,
+    label: '拡大縮小', 
+    icon: '🔍', 
+    description: 'サイズが変化',
+    color: DESIGN_TOKENS.colors.primary[500], // 修正: info[500] → primary[500]
+    defaultParams: { duration: 0.3, intensity: 0.5, scaleAmount: 1.5 }
+  },
+  { 
+    value: 'rotate' as EffectType,
+    label: '回転', 
+    icon: '🌀', 
+    description: 'クルクル回る',
+    color: DESIGN_TOKENS.colors.success[500],
+    defaultParams: { duration: 0.5, intensity: 0.5, rotationAmount: 360 } // 修正: angle → rotationAmount
+  },
+  { 
+    value: 'particles' as EffectType,
+    label: 'パーティクル', 
+    icon: '✨', 
+    description: 'キラキラ効果',
+    color: DESIGN_TOKENS.colors.purple[500],
+    defaultParams: { duration: 1.0, intensity: 0.5, particleCount: 20 } // 修正: count → particleCount
+  }
+];
 
 export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
   action,
@@ -50,6 +95,23 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
     ? action.effect.type as EffectType
     : 'flash';
 
+  // エフェクトタイプオプション
+  const currentEffectOption = useMemo(() => {
+    return EFFECT_TYPE_OPTIONS.find(opt => opt.value === currentEffectType);
+  }, [currentEffectType]);
+
+  // ヘルパー関数: 完全なEffectPatternを生成（TypeScriptエラー修正用）
+  const getCompleteEffect = (updates: Partial<EffectPattern> = {}): EffectPattern => {
+    return {
+      type: currentEffectType,
+      duration: 0.5,
+      intensity: 0.5,
+      ...((currentEffectOption?.defaultParams || {}) as Partial<EffectPattern>),
+      ...(action.type === 'effect' ? action.effect : {}),
+      ...updates
+    } as EffectPattern;
+  };
+
   // ステップナビゲーション
   const steps = [
     { id: 'effectType', label: 'エフェクト選択', icon: '✨' },
@@ -58,63 +120,6 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
   ];
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep);
-
-  // エフェクトタイプ選択肢
-  const EFFECT_TYPE_OPTIONS = [
-    { 
-      value: 'flash', 
-      label: 'フラッシュ', 
-      icon: '💫', 
-      description: '一瞬光る効果',
-      color: DESIGN_TOKENS.colors.warning[500]
-    },
-    { 
-      value: 'shake', 
-      label: '振動', 
-      icon: '📳', 
-      description: 'ブルブル揺れる',
-      color: DESIGN_TOKENS.colors.error[500]
-    },
-    { 
-      value: 'scale', 
-      label: '拡大縮小', 
-      icon: '🔍', 
-      description: 'サイズが変化',
-      color: DESIGN_TOKENS.colors.info[500]
-    },
-    { 
-      value: 'rotate', 
-      label: '回転', 
-      icon: '🌀', 
-      description: 'クルクル回る',
-      color: DESIGN_TOKENS.colors.success[500]
-    },
-    { 
-      value: 'particles', 
-      label: 'パーティクル', 
-      icon: '✨', 
-      description: 'キラキラ効果',
-      color: DESIGN_TOKENS.colors.purple[500]
-    }
-  ];
-
-  // デフォルト値の設定
-  const getDefaultParams = (effectType: EffectType) => {
-    switch (effectType) {
-      case 'flash':
-        return { duration: 0.3, intensity: 1.0 };
-      case 'shake':
-        return { duration: 0.5, intensity: 10 };
-      case 'scale':
-        return { duration: 0.3, scaleAmount: 1.5 };
-      case 'rotate':
-        return { duration: 0.5, angle: 360 };
-      case 'particles':
-        return { count: 20, duration: 1.0 };
-      default:
-        return {};
-    }
-  };
 
   // ステップ1: エフェクトタイプ選択
   const renderEffectTypeStep = () => (
@@ -142,14 +147,16 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
               variant={isSelected ? 'primary' : 'outline'}
               size="lg"
               onClick={() => {
-                const defaultParams = getDefaultParams(option.value as EffectType);
+                // 修正: getCompleteEffect()を使用
+                const newEffect = getCompleteEffect({
+                  type: option.value,
+                  ...option.defaultParams
+                });
+                
                 onUpdate(index, {
                   type: 'effect',
                   targetId: action.type === 'effect' ? action.targetId || 'this' : 'this',
-                  effect: {
-                    type: option.value,
-                    ...defaultParams
-                  }
+                  effect: newEffect
                 });
                 setCurrentStep('parameters');
                 if (onShowNotification) {
@@ -246,12 +253,9 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                   onChange={(e) => {
                     const value = parseFloat(e.target.value);
                     if (isNaN(value)) return;
-                    onUpdate(index, {
-                      effect: {
-                        ...(action.type === 'effect' ? action.effect : {}),
-                        duration: value
-                      }
-                    });
+                    // 修正: getCompleteEffect()を使用
+                    const newEffect = getCompleteEffect({ duration: value });
+                    onUpdate(index, { effect: newEffect });
                   }}
                   style={{
                     width: '100%',
@@ -290,12 +294,9 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                   onChange={(e) => {
                     const value = parseFloat(e.target.value);
                     if (isNaN(value)) return;
-                    onUpdate(index, {
-                      effect: {
-                        ...(action.type === 'effect' ? action.effect : {}),
-                        intensity: value
-                      }
-                    });
+                    // 修正: getCompleteEffect()を使用
+                    const newEffect = getCompleteEffect({ intensity: value });
+                    onUpdate(index, { effect: newEffect });
                   }}
                   style={{
                     width: '100%',
@@ -339,12 +340,9 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                   onChange={(e) => {
                     const value = parseFloat(e.target.value);
                     if (isNaN(value)) return;
-                    onUpdate(index, {
-                      effect: {
-                        ...(action.type === 'effect' ? action.effect : {}),
-                        duration: value
-                      }
-                    });
+                    // 修正: getCompleteEffect()を使用
+                    const newEffect = getCompleteEffect({ duration: value });
+                    onUpdate(index, { effect: newEffect });
                   }}
                   style={{
                     width: '100%',
@@ -383,12 +381,9 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                   onChange={(e) => {
                     const value = parseFloat(e.target.value);
                     if (isNaN(value)) return;
-                    onUpdate(index, {
-                      effect: {
-                        ...(action.type === 'effect' ? action.effect : {}),
-                        intensity: value
-                      }
-                    });
+                    // 修正: getCompleteEffect()を使用
+                    const newEffect = getCompleteEffect({ intensity: value });
+                    onUpdate(index, { effect: newEffect });
                   }}
                   style={{
                     width: '100%',
@@ -432,12 +427,9 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                   onChange={(e) => {
                     const value = parseFloat(e.target.value);
                     if (isNaN(value)) return;
-                    onUpdate(index, {
-                      effect: {
-                        ...(action.type === 'effect' ? action.effect : {}),
-                        duration: value
-                      }
-                    });
+                    // 修正: getCompleteEffect()を使用
+                    const newEffect = getCompleteEffect({ duration: value });
+                    onUpdate(index, { effect: newEffect });
                   }}
                   style={{
                     width: '100%',
@@ -476,12 +468,9 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                   onChange={(e) => {
                     const value = parseFloat(e.target.value);
                     if (isNaN(value)) return;
-                    onUpdate(index, {
-                      effect: {
-                        ...(action.type === 'effect' ? action.effect : {}),
-                        scaleAmount: value
-                      }
-                    });
+                    // 修正: getCompleteEffect()を使用
+                    const newEffect = getCompleteEffect({ scaleAmount: value });
+                    onUpdate(index, { effect: newEffect });
                   }}
                   style={{
                     width: '100%',
@@ -525,12 +514,9 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                   onChange={(e) => {
                     const value = parseFloat(e.target.value);
                     if (isNaN(value)) return;
-                    onUpdate(index, {
-                      effect: {
-                        ...(action.type === 'effect' ? action.effect : {}),
-                        duration: value
-                      }
-                    });
+                    // 修正: getCompleteEffect()を使用
+                    const newEffect = getCompleteEffect({ duration: value });
+                    onUpdate(index, { effect: newEffect });
                   }}
                   style={{
                     width: '100%',
@@ -565,16 +551,13 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                   min="-720"
                   max="720"
                   step="45"
-                  value={action.type === 'effect' ? action.effect?.angle || 360 : 360}
+                  value={action.type === 'effect' ? action.effect?.rotationAmount || 360 : 360}
                   onChange={(e) => {
                     const value = parseFloat(e.target.value);
                     if (isNaN(value)) return;
-                    onUpdate(index, {
-                      effect: {
-                        ...(action.type === 'effect' ? action.effect : {}),
-                        angle: value
-                      }
-                    });
+                    // 修正: getCompleteEffect()を使用、angle → rotationAmount
+                    const newEffect = getCompleteEffect({ rotationAmount: value });
+                    onUpdate(index, { effect: newEffect });
                   }}
                   style={{
                     width: '100%',
@@ -618,12 +601,9 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                   onChange={(e) => {
                     const value = parseFloat(e.target.value);
                     if (isNaN(value)) return;
-                    onUpdate(index, {
-                      effect: {
-                        ...(action.type === 'effect' ? action.effect : {}),
-                        duration: value
-                      }
-                    });
+                    // 修正: getCompleteEffect()を使用
+                    const newEffect = getCompleteEffect({ duration: value });
+                    onUpdate(index, { effect: newEffect });
                   }}
                   style={{
                     width: '100%',
@@ -658,16 +638,13 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                   min="5"
                   max="100"
                   step="5"
-                  value={action.type === 'effect' ? action.effect?.count || 20 : 20}
+                  value={action.type === 'effect' ? action.effect?.particleCount || 20 : 20}
                   onChange={(e) => {
                     const value = parseFloat(e.target.value);
                     if (isNaN(value)) return;
-                    onUpdate(index, {
-                      effect: {
-                        ...(action.type === 'effect' ? action.effect : {}),
-                        count: value
-                      }
-                    });
+                    // 修正: getCompleteEffect()を使用、count → particleCount
+                    const newEffect = getCompleteEffect({ particleCount: value });
+                    onUpdate(index, { effect: newEffect });
                   }}
                   style={{
                     width: '100%',
@@ -856,7 +833,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                   fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
                   color: DESIGN_TOKENS.colors.neutral[800]
                 }}>
-                  {effect?.angle || 0}度
+                  {effect?.rotationAmount || 0}度
                 </div>
               </div>
             )}
@@ -875,7 +852,7 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
                   fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
                   color: DESIGN_TOKENS.colors.neutral[800]
                 }}>
-                  {effect?.count || 0}個
+                  {effect?.particleCount || 0}個
                 </div>
               </div>
             )}
