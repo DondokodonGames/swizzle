@@ -1,5 +1,5 @@
 // src/components/editor/script/actions/MoveActionEditor.tsx
-// Phase 3-2-3 + 3-2-4最終版v2: swap対応、stop直行修正、全9種類対応
+// Phase 3-2-3 + 3-2-4最終版v4: 型アサーション追加
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,7 +45,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
     return background.frames[0].dataUrl;
   }, [project.assets.background]);
 
-  // 移動タイプオプション（全9種類）
+  // 移動タイプオプション（全8種類）
   const MOVEMENT_TYPE_OPTIONS = useMemo(() => getMovementTypeOptions(), []);
 
   // オブジェクト一覧（swap用）
@@ -139,9 +139,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               } else if (option.value === 'swap') {
                 // swap: 他のオブジェクトを選択
                 newMovement.targetObjectId = objectOptions[0]?.value || '';
-              } else if (option.value === 'followDrag') {
-                newMovement.damping = MOVEMENT_DEFAULTS.damping;
-                newMovement.constrainToBounds = false;
               }
 
               onUpdate(index, { movement: newMovement });
@@ -188,7 +185,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
   // ステップ2: パラメータ設定（座標+数値、統合版）
   const renderParameterStep = () => {
     const movementType = action.movement?.type;
-    const needsSpeed = movementType && !['stop', 'teleport', 'swap', 'followDrag'].includes(movementType);
 
     // straight/teleport/approach: 座標指定 + 速度/時間
     if (['straight', 'teleport', 'approach'].includes(movementType || '')) {
@@ -239,7 +235,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 style={{
                   width: '100%',
                   padding: DESIGN_TOKENS.spacing[2],
-                  border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+                  border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
                   borderRadius: DESIGN_TOKENS.borderRadius.lg,
                   fontSize: DESIGN_TOKENS.typography.fontSize.base
                 }}
@@ -273,7 +269,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               style={{
                 width: '100%',
                 padding: DESIGN_TOKENS.spacing[2],
-                border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
                 fontSize: DESIGN_TOKENS.typography.fontSize.base
               }}
@@ -322,6 +318,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
 
     // swap: 他のオブジェクト選択
     if (movementType === 'swap') {
+      // ✅ 型アサーション
+      const swapMovement = action.movement as any;
+      
       return (
         <div>
           <h5 style={{
@@ -344,17 +343,17 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               入れ替え対象のオブジェクト
             </label>
             <select
-              value={action.movement?.targetObjectId || ''}
+              value={swapMovement.targetObjectId || ''}
               onChange={(e) => onUpdate(index, {
                 movement: {
                   ...action.movement,
                   targetObjectId: e.target.value
-                }
+                } as any
               })}
               style={{
                 width: '100%',
                 padding: DESIGN_TOKENS.spacing[3],
-                border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
                 fontSize: DESIGN_TOKENS.typography.fontSize.base,
                 backgroundColor: DESIGN_TOKENS.colors.neutral[0]
@@ -383,17 +382,17 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               min={MOVEMENT_RANGES.duration.min}
               max={MOVEMENT_RANGES.duration.max}
               step={MOVEMENT_RANGES.duration.step}
-              value={action.movement?.duration || MOVEMENT_DEFAULTS.duration}
+              value={swapMovement.duration || MOVEMENT_DEFAULTS.duration}
               onChange={(e) => onUpdate(index, { 
                 movement: { 
                   ...action.movement,
                   duration: parseFloat(e.target.value) 
-                } 
+                } as any
               })}
               style={{
                 width: '100%',
                 padding: DESIGN_TOKENS.spacing[2],
-                border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
                 fontSize: DESIGN_TOKENS.typography.fontSize.base
               }}
@@ -411,8 +410,8 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
             <strong>📊 設定内容:</strong><br />
-            {action.movement?.targetObjectId 
-              ? `${objectOptions.find(o => o.value === action.movement?.targetObjectId)?.label || '未選択'}と位置を入れ替えます（${action.movement?.duration || MOVEMENT_DEFAULTS.duration}秒）`
+            {swapMovement.targetObjectId 
+              ? `${objectOptions.find(o => o.value === swapMovement.targetObjectId)?.label || '未選択'}と位置を入れ替えます（${swapMovement.duration || MOVEMENT_DEFAULTS.duration}秒）`
               : 'オブジェクトを選択してください'}
           </div>
 
@@ -431,7 +430,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               variant="primary"
               size="md"
               onClick={() => setCurrentStep('confirm')}
-              disabled={!action.movement?.targetObjectId}
+              disabled={!swapMovement.targetObjectId}
               style={{ flex: 1 }}
             >
               次へ →
@@ -480,7 +479,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               style={{
                 width: '100%',
                 padding: DESIGN_TOKENS.spacing[2],
-                border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
                 fontSize: DESIGN_TOKENS.typography.fontSize.base
               }}
@@ -513,7 +512,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               style={{
                 width: '100%',
                 padding: DESIGN_TOKENS.spacing[2],
-                border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
                 fontSize: DESIGN_TOKENS.typography.fontSize.base
               }}
@@ -546,7 +545,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               style={{
                 width: '100%',
                 padding: DESIGN_TOKENS.spacing[2],
-                border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
                 fontSize: DESIGN_TOKENS.typography.fontSize.base
               }}
@@ -630,7 +629,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               style={{
                 width: '100%',
                 padding: DESIGN_TOKENS.spacing[2],
-                border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
                 fontSize: DESIGN_TOKENS.typography.fontSize.base
               }}
@@ -655,7 +654,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               step={MOVEMENT_RANGES.speed.step}
               value={action.movement?.speed || MOVEMENT_DEFAULTS.speed}
               onChange={(e) => onUpdate(index, { 
-                movement: { 
+                  movement: { 
                   ...action.movement,
                   speed: parseInt(e.target.value) 
                 } 
@@ -663,7 +662,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               style={{
                 width: '100%',
                 padding: DESIGN_TOKENS.spacing[2],
-                border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
                 fontSize: DESIGN_TOKENS.typography.fontSize.base
               }}
@@ -696,7 +695,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               style={{
                 width: '100%',
                 padding: DESIGN_TOKENS.spacing[2],
-                border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
                 fontSize: DESIGN_TOKENS.typography.fontSize.base
               }}
@@ -780,7 +779,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               style={{
                 width: '100%',
                 padding: DESIGN_TOKENS.spacing[2],
-                border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
                 fontSize: DESIGN_TOKENS.typography.fontSize.base
               }}
@@ -813,7 +812,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               style={{
                 width: '100%',
                 padding: DESIGN_TOKENS.spacing[2],
-                border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
                 fontSize: DESIGN_TOKENS.typography.fontSize.base
               }}
@@ -846,7 +845,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               style={{
                 width: '100%',
                 padding: DESIGN_TOKENS.spacing[2],
-                border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
                 fontSize: DESIGN_TOKENS.typography.fontSize.base
               }}
@@ -891,122 +890,14 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
       );
     }
 
-    // followDrag: ドラッグ追従設定
-    if (movementType === 'followDrag') {
-      return (
-        <div>
-          <h5 style={{
-            fontSize: DESIGN_TOKENS.typography.fontSize.lg,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
-            color: DESIGN_TOKENS.colors.neutral[800],
-            marginBottom: DESIGN_TOKENS.spacing[4]
-          }}>
-            ドラッグ追従のパラメータを設定
-          </h5>
-
-          {/* 減衰係数 */}
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              減衰係数（0.0～1.0、大きいほど素早く追従）
-            </label>
-            <input
-              type="number"
-              min={MOVEMENT_RANGES.damping.min}
-              max={MOVEMENT_RANGES.damping.max}
-              step={MOVEMENT_RANGES.damping.step}
-              value={action.movement?.damping || MOVEMENT_DEFAULTS.damping}
-              onChange={(e) => onUpdate(index, {
-                movement: {
-                  ...action.movement,
-                  damping: parseFloat(e.target.value)
-                }
-              })}
-              style={{
-                width: '100%',
-                padding: DESIGN_TOKENS.spacing[2],
-                border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
-                borderRadius: DESIGN_TOKENS.borderRadius.lg,
-                fontSize: DESIGN_TOKENS.typography.fontSize.base
-              }}
-            />
-          </div>
-
-          {/* 境界制約 */}
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'flex',
-              alignItems: 'center',
-              gap: DESIGN_TOKENS.spacing[2]
-            }}>
-              <input
-                type="checkbox"
-                checked={action.movement?.constrainToBounds || false}
-                onChange={(e) => onUpdate(index, {
-                  movement: {
-                    ...action.movement,
-                    constrainToBounds: e.target.checked
-                  }
-                })}
-              />
-              画面内に制限する
-            </label>
-          </div>
-
-          {/* プレビュー説明 */}
-          <div style={{
-            padding: DESIGN_TOKENS.spacing[3],
-            backgroundColor: DESIGN_TOKENS.colors.primary[50],
-            border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`,
-            borderRadius: DESIGN_TOKENS.borderRadius.lg,
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            color: DESIGN_TOKENS.colors.primary[800],
-            marginBottom: DESIGN_TOKENS.spacing[4]
-          }}>
-            <strong>📊 設定内容:</strong><br />
-            減衰係数{action.movement?.damping || MOVEMENT_DEFAULTS.damping}で指をドラッグに追従します
-            {action.movement?.constrainToBounds && '（画面内に制限）'}
-          </div>
-
-          <div style={{ 
-            display: 'flex', 
-            gap: DESIGN_TOKENS.spacing[2] 
-          }}>
-            <ModernButton
-              variant="outline"
-              size="md"
-              onClick={() => setCurrentStep('movementType')}
-            >
-              ← 戻る
-            </ModernButton>
-            <ModernButton
-              variant="primary"
-              size="md"
-              onClick={() => setCurrentStep('confirm')}
-              style={{ flex: 1 }}
-            >
-              次へ →
-            </ModernButton>
-          </div>
-        </div>
-      );
-    }
-
     return null;
   };
 
   // ステップ3: 確認
   const renderConfirmStep = () => {
     const movementType = action.movement?.type;
+    // ✅ swap用の型アサーション
+    const swapMovement = movementType === 'swap' ? (action.movement as any) : null;
 
     return (
       <div>
@@ -1064,7 +955,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
           )}
 
           {/* swap対象オブジェクト */}
-          {movementType === 'swap' && (
+          {swapMovement && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.xs,
@@ -1077,7 +968,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 color: DESIGN_TOKENS.colors.neutral[700]
               }}>
-                {objectOptions.find(o => o.value === action.movement?.targetObjectId)?.label || '未選択'}
+                {objectOptions.find(o => o.value === swapMovement.targetObjectId)?.label || '未選択'}
               </div>
             </div>
           )}
@@ -1139,44 +1030,8 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </div>
           )}
 
-          {/* 減衰係数（followDragの場合） */}
-          {movementType === 'followDrag' && (
-            <>
-              <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
-                <div style={{
-                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                  color: DESIGN_TOKENS.colors.neutral[600],
-                  marginBottom: DESIGN_TOKENS.spacing[1]
-                }}>
-                  減衰係数
-                </div>
-                <div style={{
-                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                  color: DESIGN_TOKENS.colors.neutral[700]
-                }}>
-                  {action.movement?.damping || MOVEMENT_DEFAULTS.damping}
-                </div>
-              </div>
-              <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
-                <div style={{
-                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                  color: DESIGN_TOKENS.colors.neutral[600],
-                  marginBottom: DESIGN_TOKENS.spacing[1]
-                }}>
-                  境界制約
-                </div>
-                <div style={{
-                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                  color: DESIGN_TOKENS.colors.neutral[700]
-                }}>
-                  {action.movement?.constrainToBounds ? '画面内に制限' : '制限なし'}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* 速度（stop/teleport/swap/followDrag以外） */}
-          {movementType && !['stop', 'teleport', 'swap', 'followDrag'].includes(movementType) && (
+          {/* 速度（stop/teleport/swapの以外） */}
+          {movementType && !['stop', 'teleport', 'swap'].includes(movementType) && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.xs,
@@ -1194,8 +1049,8 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </div>
           )}
 
-          {/* 時間（stop/followDrag以外） */}
-          {movementType && !['stop', 'followDrag'].includes(movementType) && (
+          {/* 時間（stopの以外） */}
+          {movementType && movementType !== 'stop' && (
             <div>
               <div style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.xs,
@@ -1208,7 +1063,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 color: DESIGN_TOKENS.colors.neutral[700]
               }}>
-                {action.movement?.duration || MOVEMENT_DEFAULTS.duration}秒
+                {swapMovement?.duration || action.movement?.duration || MOVEMENT_DEFAULTS.duration}秒
               </div>
             </div>
           )}
@@ -1253,7 +1108,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
       size="md"
       style={{
         backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-        border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+        border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
         marginTop: DESIGN_TOKENS.spacing[4]
       }}
     >
@@ -1266,7 +1121,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
         <h4 style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.xl,
           fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-          color: DESIGN_TOKENS.colors.success[700],
+          color: DESIGN_TOKENS.colors.success[600],
           margin: 0,
           marginBottom: DESIGN_TOKENS.spacing[2],
           display: 'flex',
@@ -1354,7 +1209,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 ? DESIGN_TOKENS.typography.fontWeight.semibold 
                 : DESIGN_TOKENS.typography.fontWeight.normal,
               color: idx <= currentStepIndex 
-                ? DESIGN_TOKENS.colors.success[700] 
+                ? DESIGN_TOKENS.colors.success[600] 
                 : DESIGN_TOKENS.colors.neutral[500],
               textAlign: 'center'
             }}>
