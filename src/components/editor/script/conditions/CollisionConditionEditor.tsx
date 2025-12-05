@@ -1,14 +1,15 @@
 // src/components/editor/script/conditions/CollisionConditionEditor.tsx
-// Phase 3-1拡張版: 項目6&7統合 - 段階的選択フロー・ステージ範囲ビジュアル設定・他オブジェクト選択対応
-// フロー: 種類→対象→詳細設定→確認
+// Phase 3-2-2最終版: BoundingBoxEditor統合 - 矩形のみ・ビジュアル編集専用
+// フロー: 種類→対象→ビジュアル範囲選択→確認
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TriggerCondition } from '../../../../types/editor/GameScript';
 import { GameProject } from '../../../../types/editor/GameProject';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
+import { BoundingBoxEditor, BoundingBox } from '../../common/BoundingBoxEditor';
 
 interface CollisionConditionEditorProps {
   condition: TriggerCondition & { type: 'collision' };
@@ -28,6 +29,56 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
 }) => {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<EditorStep>('collisionType');
+
+  // ✅ Phase 3-2-2: 背景画像URL抽出
+  const backgroundUrl = useMemo(() => {
+    const background = project.assets.background;
+    if (!background || !background.frames || background.frames.length === 0) {
+      return undefined;
+    }
+    return background.frames[0].dataUrl;
+  }, [project.assets.background]);
+
+  // ✅ Phase 3-2-2: region → BoundingBox形式変換（矩形専用）
+  const boundingBox = useMemo((): BoundingBox => {
+    if (condition.region) {
+      const x = condition.region.x || 0.5;
+      const y = condition.region.y || 0.5;
+      const width = condition.region.width || 0.4;
+      const height = condition.region.height || 0.4;
+      return {
+        minX: Math.max(0, x - width / 2),
+        minY: Math.max(0, y - height / 2),
+        maxX: Math.min(1, x + width / 2),
+        maxY: Math.min(1, y + height / 2)
+      };
+    }
+    // デフォルト値（初期状態）
+    return {
+      minX: 0.3,
+      minY: 0.3,
+      maxX: 0.7,
+      maxY: 0.7
+    };
+  }, [condition.region]);
+
+  // ✅ Phase 3-2-2: BoundingBox → region形式変換（矩形専用）
+  const handleBoundingBoxChange = useCallback((newBox: BoundingBox) => {
+    const centerX = (newBox.minX + newBox.maxX) / 2;
+    const centerY = (newBox.minY + newBox.maxY) / 2;
+    const width = newBox.maxX - newBox.minX;
+    const height = newBox.maxY - newBox.minY;
+
+    onUpdate(index, {
+      region: {
+        shape: 'rect',
+        x: centerX,
+        y: centerY,
+        width: width,
+        height: height
+      }
+    });
+  }, [index, onUpdate]);
 
   // 衝突の種類オプション
   const COLLISION_TYPE_OPTIONS = [
@@ -178,8 +229,21 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
             variant={condition.target === option.value ? 'primary' : 'outline'}
             size="lg"
             onClick={() => {
-              onUpdate(index, { target: option.value });
-              // 詳細設定が必要な場合は次のステップへ
+              // ✅ stageArea選択時、自動的に矩形regionを設定
+              if (option.value === 'stageArea') {
+                onUpdate(index, { 
+                  target: option.value,
+                  region: {
+                    shape: 'rect',
+                    x: 0.5,
+                    y: 0.5,
+                    width: 0.4,
+                    height: 0.4
+                  }
+                });
+              } else {
+                onUpdate(index, { target: option.value });
+              }
               setCurrentStep('detail');
             }}
             style={{
@@ -225,7 +289,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
 
   // ステップ3: 詳細設定
   const renderDetailStep = () => {
-    // stageArea選択時: ステージ範囲設定
+    // stageArea選択時: ステージ範囲設定（矩形のみ・ビジュアル編集）
     if (condition.target === 'stageArea') {
       return (
         <div>
@@ -238,7 +302,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
             画面端の範囲を設定
           </h5>
 
-          {/* 範囲の形状選択 */}
+          {/* ✅ Phase 3-2-2: BoundingBoxEditorのみ表示（背景表示/非表示ボタン内蔵） */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -247,296 +311,14 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              範囲の形状
+              ビジュアル範囲選択（ドラッグで矩形範囲を指定）
             </label>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: DESIGN_TOKENS.spacing[2],
-              marginBottom: DESIGN_TOKENS.spacing[3]
-            }}>
-              <ModernButton
-                variant={condition.region?.shape === 'rect' ? 'primary' : 'outline'}
-                size="md"
-                onClick={() => onUpdate(index, { 
-                  region: { 
-                    shape: 'rect', 
-                    x: 0.5, 
-                    y: 0.5, 
-                    width: 0.4, 
-                    height: 0.4 
-                  } 
-                })}
-                style={{
-                  borderColor: condition.region?.shape === 'rect' 
-                    ? DESIGN_TOKENS.colors.purple[500] 
-                    : DESIGN_TOKENS.colors.purple[200],
-                  backgroundColor: condition.region?.shape === 'rect' 
-                    ? DESIGN_TOKENS.colors.purple[500] 
-                    : 'transparent',
-                  color: condition.region?.shape === 'rect' 
-                    ? DESIGN_TOKENS.colors.neutral[0] 
-                    : DESIGN_TOKENS.colors.purple[800]
-                }}
-              >
-                <span>⬜ 矩形</span>
-              </ModernButton>
-              <ModernButton
-                variant={condition.region?.shape === 'circle' ? 'primary' : 'outline'}
-                size="md"
-                onClick={() => onUpdate(index, { 
-                  region: { 
-                    shape: 'circle', 
-                    x: 0.5, 
-                    y: 0.5, 
-                    radius: 0.2 
-                  } 
-                })}
-                style={{
-                  borderColor: condition.region?.shape === 'circle' 
-                    ? DESIGN_TOKENS.colors.purple[500] 
-                    : DESIGN_TOKENS.colors.purple[200],
-                  backgroundColor: condition.region?.shape === 'circle' 
-                    ? DESIGN_TOKENS.colors.purple[500] 
-                    : 'transparent',
-                  color: condition.region?.shape === 'circle' 
-                    ? DESIGN_TOKENS.colors.neutral[0] 
-                    : DESIGN_TOKENS.colors.purple[800]
-                }}
-              >
-                <span>⭕ 円形</span>
-              </ModernButton>
-            </div>
+            <BoundingBoxEditor
+              value={boundingBox}
+              onChange={handleBoundingBoxChange}
+              previewBackgroundUrl={backgroundUrl}
+            />
           </div>
-
-          {/* ゲーム画面プレビュー枠（9:16アスペクト比） */}
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.purple[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              ゲーム画面プレビュー
-            </label>
-            <div style={{
-              width: '100%',
-              aspectRatio: '9 / 16',
-              backgroundColor: DESIGN_TOKENS.colors.neutral[100],
-              border: `2px dashed ${DESIGN_TOKENS.colors.neutral[300]}`,
-              borderRadius: DESIGN_TOKENS.borderRadius.lg,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: DESIGN_TOKENS.colors.neutral[400],
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              position: 'relative'
-            }}>
-              {/* TODO: ビジュアル範囲選択機能（将来実装） */}
-              <span>📱 9:16 ゲーム画面</span>
-              <div style={{
-                position: 'absolute',
-                bottom: DESIGN_TOKENS.spacing[2],
-                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                color: DESIGN_TOKENS.colors.neutral[400]
-              }}>
-                ビジュアル編集機能は準備中
-              </div>
-            </div>
-          </div>
-
-          {/* 範囲設定（数値入力） */}
-          {condition.region && (
-            <div style={{
-              padding: DESIGN_TOKENS.spacing[3],
-              backgroundColor: DESIGN_TOKENS.colors.purple[50],
-              border: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`,
-              borderRadius: DESIGN_TOKENS.borderRadius.lg,
-              marginBottom: DESIGN_TOKENS.spacing[4]
-            }}>
-              <h6 style={{
-                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-                fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
-                color: DESIGN_TOKENS.colors.purple[800],
-                marginBottom: DESIGN_TOKENS.spacing[3]
-              }}>
-                範囲の数値設定
-              </h6>
-
-              {/* 中心座標 */}
-              <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
-                <label style={{
-                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                  color: DESIGN_TOKENS.colors.purple[700],
-                  marginBottom: DESIGN_TOKENS.spacing[1],
-                  display: 'block'
-                }}>
-                  中心座標（画面比率 0.0〜1.0）
-                </label>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: '1fr 1fr', 
-                  gap: DESIGN_TOKENS.spacing[2] 
-                }}>
-                  <div>
-                    <label style={{ 
-                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                      color: DESIGN_TOKENS.colors.neutral[600]
-                    }}>
-                      X（横）
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={condition.region.x || 0.5}
-                      onChange={(e) => onUpdate(index, {
-                        region: { ...condition.region!, x: parseFloat(e.target.value) }
-                      })}
-                      style={{
-                        width: '100%',
-                        padding: DESIGN_TOKENS.spacing[2],
-                        border: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`,
-                        borderRadius: DESIGN_TOKENS.borderRadius.md,
-                        fontSize: DESIGN_TOKENS.typography.fontSize.sm
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ 
-                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                      color: DESIGN_TOKENS.colors.neutral[600]
-                    }}>
-                      Y（縦）
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={condition.region.y || 0.5}
-                      onChange={(e) => onUpdate(index, {
-                        region: { ...condition.region!, y: parseFloat(e.target.value) }
-                      })}
-                      style={{
-                        width: '100%',
-                        padding: DESIGN_TOKENS.spacing[2],
-                        border: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`,
-                        borderRadius: DESIGN_TOKENS.borderRadius.md,
-                        fontSize: DESIGN_TOKENS.typography.fontSize.sm
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* 矩形の場合: 幅と高さ */}
-              {condition.region.shape === 'rect' && (
-                <div>
-                  <label style={{
-                    fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                    fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                    color: DESIGN_TOKENS.colors.purple[700],
-                    marginBottom: DESIGN_TOKENS.spacing[1],
-                    display: 'block'
-                  }}>
-                    サイズ（画面比率 0.0〜1.0）
-                  </label>
-                  <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: '1fr 1fr', 
-                    gap: DESIGN_TOKENS.spacing[2] 
-                  }}>
-                    <div>
-                      <label style={{ 
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                        color: DESIGN_TOKENS.colors.neutral[600]
-                      }}>
-                        幅（Width）
-                      </label>
-                      <input
-                        type="number"
-                        min="0.1"
-                        max="1"
-                        step="0.05"
-                        value={condition.region.width || 0.4}
-                        onChange={(e) => onUpdate(index, {
-                          region: { ...condition.region!, width: parseFloat(e.target.value) }
-                        })}
-                        style={{
-                          width: '100%',
-                          padding: DESIGN_TOKENS.spacing[2],
-                          border: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`,
-                          borderRadius: DESIGN_TOKENS.borderRadius.md,
-                          fontSize: DESIGN_TOKENS.typography.fontSize.sm
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ 
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                        color: DESIGN_TOKENS.colors.neutral[600]
-                      }}>
-                        高さ（Height）
-                      </label>
-                      <input
-                        type="number"
-                        min="0.1"
-                        max="1"
-                        step="0.05"
-                        value={condition.region.height || 0.4}
-                        onChange={(e) => onUpdate(index, {
-                          region: { ...condition.region!, height: parseFloat(e.target.value) }
-                        })}
-                        style={{
-                          width: '100%',
-                          padding: DESIGN_TOKENS.spacing[2],
-                          border: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`,
-                          borderRadius: DESIGN_TOKENS.borderRadius.md,
-                          fontSize: DESIGN_TOKENS.typography.fontSize.sm
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 円形の場合: 半径 */}
-              {condition.region.shape === 'circle' && (
-                <div>
-                  <label style={{
-                    fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                    fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                    color: DESIGN_TOKENS.colors.purple[700],
-                    marginBottom: DESIGN_TOKENS.spacing[1],
-                    display: 'block'
-                  }}>
-                    半径（画面比率 0.0〜1.0）
-                  </label>
-                  <input
-                    type="number"
-                    min="0.05"
-                    max="1"
-                    step="0.05"
-                    value={condition.region.radius || 0.2}
-                    onChange={(e) => onUpdate(index, {
-                      region: { ...condition.region!, radius: parseFloat(e.target.value) }
-                    })}
-                    style={{
-                      width: '100%',
-                      padding: DESIGN_TOKENS.spacing[2],
-                      border: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`,
-                      borderRadius: DESIGN_TOKENS.borderRadius.md,
-                      fontSize: DESIGN_TOKENS.typography.fontSize.sm
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          )}
 
           <div style={{ 
             display: 'flex', 
@@ -733,12 +515,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 color: DESIGN_TOKENS.colors.neutral[700]
               }}>
-                {condition.region.shape === 'rect' ? '⬜ 矩形' : '⭕ 円形'} / 
-                中心({((condition.region.x || 0.5) * 100).toFixed(0)}%, {((condition.region.y || 0.5) * 100).toFixed(0)}%)
-                {condition.region.shape === 'rect' 
-                  ? ` / サイズ(${((condition.region.width || 0.4) * 100).toFixed(0)}% × ${((condition.region.height || 0.4) * 100).toFixed(0)}%)`
-                  : ` / 半径(${((condition.region.radius || 0.2) * 100).toFixed(0)}%)`
-                }
+                ⬜ 矩形範囲を設定済み
               </div>
             </div>
           )}

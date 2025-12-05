@@ -207,6 +207,7 @@ export const DetailEditorPanel: React.FC<DetailEditorPanelProps> = ({
           <MoveActionEditor
             action={selectedAction}
             index={selectedActionIndex}
+            project={project} 
             onUpdate={onActionUpdate}
             onShowNotification={onShowNotification}
           />

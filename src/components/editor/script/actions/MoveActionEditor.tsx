@@ -1,14 +1,15 @@
 // src/components/editor/script/actions/MoveActionEditor.tsx
-// 完全修正版: GameScript.tsの型定義に完全一致
-// 修正内容: followDragはGameActionとして別途存在するため、MovementPatternから削除
-//          damping, constrainToBounds, boundingBoxはMovementPatternに存在しないため削除
+// Phase 3-2-3 + 3-2-4最終版: 3ステップ、座標+数値統合、プレビュー表示
+// フロー: 移動タイプ→パラメータ設定（統合）→確認
 
-import React, { useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameAction } from '../../../../types/editor/GameScript';
+import { GameProject } from '../../../../types/editor/GameProject';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
+import { CoordinateEditor, Coordinate } from '../../common/CoordinateEditor';
 import { 
   getMovementTypeOptions,
   MOVEMENT_DEFAULTS,
@@ -18,475 +19,1058 @@ import {
 interface MoveActionEditorProps {
   action: GameAction & { type: 'move' };
   index: number;
+  project: GameProject;
   onUpdate: (index: number, updates: Partial<GameAction>) => void;
   onShowNotification: (type: 'success' | 'error' | 'info', message: string) => void;
 }
 
+// 3つのステップ定義
+type EditorStep = 'movementType' | 'parameter' | 'confirm';
+
 export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
   action,
   index,
+  project,
   onUpdate,
   onShowNotification
 }) => {
   const { t } = useTranslation();
-  const moveAction = action;
+  const [currentStep, setCurrentStep] = useState<EditorStep>('movementType');
 
-  // Get localized options - 修正: followDragを除外
+  // ✅ 背景画像URL抽出
+  const backgroundUrl = useMemo(() => {
+    const background = project.assets.background;
+    if (!background || !background.frames || background.frames.length === 0) {
+      return undefined;
+    }
+    return background.frames[0].dataUrl;
+  }, [project.assets.background]);
+
+  // 移動タイプオプション（followDrag除外）
   const MOVEMENT_TYPE_OPTIONS = useMemo(() => 
     getMovementTypeOptions().filter(opt => opt.value !== 'followDrag'), 
   []);
-  
-  return (
-    <ModernCard 
-      variant="outlined" 
-      size="md"
-      style={{ 
-        backgroundColor: DESIGN_TOKENS.colors.success[50],
-        border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
-        marginTop: DESIGN_TOKENS.spacing[3]
-      }}
-    >
-      <h5 style={{
-        fontSize: DESIGN_TOKENS.typography.fontSize.base,
-        fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
-        color: DESIGN_TOKENS.colors.success[800],
-        margin: 0,
-        marginBottom: DESIGN_TOKENS.spacing[4],
-        display: 'flex',
-        alignItems: 'center',
-        gap: DESIGN_TOKENS.spacing[2]
-      }}>
-        <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🏃</span>
-        {t('editor.moveAction.title')}
-      </h5>
 
-      {/* Movement type selection - 修正: followDragを除外 */}
-      <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-        <label style={{
-          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-          fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-          color: DESIGN_TOKENS.colors.success[800],
-          marginBottom: DESIGN_TOKENS.spacing[2],
-          display: 'block'
-        }}>
-          {t('editor.moveAction.movementTypeLabel')}
-        </label>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-          gap: DESIGN_TOKENS.spacing[2]
-        }}>
-          {MOVEMENT_TYPE_OPTIONS.map((option) => (
-            <ModernButton
-              key={option.value}
-              variant={moveAction.movement?.type === option.value ? 'primary' : 'outline'}
-              size="sm"
-              onClick={() => onUpdate(index, { 
+  // ✅ target座標をCoordinate形式で取得
+  const coordinate = useMemo((): Coordinate => {
+    const target = action.movement?.target as any;
+    if (target && typeof target === 'object') {
+      return {
+        x: target.x || 0.5,
+        y: target.y || 0.5
+      };
+    }
+    return { x: 0.5, y: 0.5 };
+  }, [action.movement?.target]);
+
+  // ✅ Coordinate → target座標変換
+  const handleCoordinateChange = useCallback((newCoord: Coordinate) => {
+    onUpdate(index, {
+      movement: {
+        ...action.movement,
+        target: {
+          x: newCoord.x,
+          y: newCoord.y
+        }
+      }
+    });
+  }, [index, action.movement, onUpdate]);
+
+  // ステップナビゲーション
+  const steps = [
+    { id: 'movementType', label: '移動タイプ', icon: '🏃' },
+    { id: 'parameter', label: 'パラメータ', icon: '🎯' },
+    { id: 'confirm', label: '確認', icon: '✅' }
+  ];
+
+  const currentStepIndex = steps.findIndex(s => s.id === currentStep);
+
+  // ラベル取得
+  const movementTypeLabel = MOVEMENT_TYPE_OPTIONS.find(
+    opt => opt.value === action.movement?.type
+  )?.label || '未設定';
+
+  // ステップ1: 移動タイプを選択
+  const renderMovementTypeStep = () => (
+    <div>
+      <h5 style={{
+        fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+        fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+        color: DESIGN_TOKENS.colors.neutral[800],
+        marginBottom: DESIGN_TOKENS.spacing[4]
+      }}>
+        どんな移動をしますか？
+      </h5>
+      
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+        gap: DESIGN_TOKENS.spacing[3]
+      }}>
+        {MOVEMENT_TYPE_OPTIONS.map((option) => (
+          <ModernButton
+            key={option.value}
+            variant={action.movement?.type === option.value ? 'primary' : 'outline'}
+            size="lg"
+            onClick={() => {
+              // 移動タイプに応じて初期値設定
+              const newMovement: any = { 
+                type: option.value,
+                duration: MOVEMENT_DEFAULTS.duration
+              };
+
+              if (['straight', 'teleport', 'approach'].includes(option.value)) {
+                newMovement.target = { x: 0.5, y: 0.5 };
+                newMovement.speed = option.value === 'teleport' ? undefined : MOVEMENT_DEFAULTS.speed;
+              } else if (option.value === 'wander') {
+                newMovement.wanderRadius = 100;
+                newMovement.speed = MOVEMENT_DEFAULTS.speed;
+              } else if (option.value === 'orbit') {
+                newMovement.orbitRadius = 100;
+                newMovement.speed = MOVEMENT_DEFAULTS.speed;
+              } else if (option.value === 'bounce') {
+                newMovement.bounceStrength = 0.8;
+                newMovement.speed = MOVEMENT_DEFAULTS.speed;
+              }
+
+              onUpdate(index, { movement: newMovement });
+
+              // stopの場合は確認画面へ直行
+              if (option.value === 'stop') {
+                setCurrentStep('confirm');
+              } else {
+                setCurrentStep('parameter');
+              }
+            }}
+            style={{
+              padding: DESIGN_TOKENS.spacing[4],
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: DESIGN_TOKENS.spacing[2],
+              backgroundColor: action.movement?.type === option.value 
+                ? DESIGN_TOKENS.colors.success[500] 
+                : DESIGN_TOKENS.colors.neutral[0],
+              borderColor: action.movement?.type === option.value
+                ? DESIGN_TOKENS.colors.success[500]
+                : DESIGN_TOKENS.colors.neutral[300],
+              color: action.movement?.type === option.value
+                ? DESIGN_TOKENS.colors.neutral[0]
+                : DESIGN_TOKENS.colors.neutral[800]
+            }}
+          >
+            <span style={{ fontSize: '40px' }}>{option.icon}</span>
+            <div>
+              <div style={{ fontWeight: DESIGN_TOKENS.typography.fontWeight.bold, fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>
+                {option.label}
+              </div>
+              <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, opacity: 0.8 }}>
+                {option.description}
+              </div>
+            </div>
+          </ModernButton>
+        ))}
+      </div>
+    </div>
+  );
+
+  // ステップ2: パラメータ設定（座標+数値、統合版）
+  const renderParameterStep = () => {
+    const movementType = action.movement?.type;
+    const needsSpeed = movementType && !['stop', 'teleport'].includes(movementType);
+
+    // straight/teleport/approach: 座標指定 + 速度/時間
+    if (['straight', 'teleport', 'approach'].includes(movementType || '')) {
+      return (
+        <div>
+          <h5 style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+            color: DESIGN_TOKENS.colors.neutral[800],
+            marginBottom: DESIGN_TOKENS.spacing[4]
+          }}>
+            移動先の座標とパラメータを設定
+          </h5>
+
+          {/* CoordinateEditor */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <CoordinateEditor
+              value={coordinate}
+              onChange={handleCoordinateChange}
+              previewBackgroundUrl={backgroundUrl}
+            />
+          </div>
+
+          {/* 速度設定（straightとapproachのみ） */}
+          {needsSpeed && (
+            <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+              <label style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                color: DESIGN_TOKENS.colors.success[800],
+                marginBottom: DESIGN_TOKENS.spacing[2],
+                display: 'block'
+              }}>
+                速度（ピクセル/秒）
+              </label>
+              <input
+                type="number"
+                min={MOVEMENT_RANGES.speed.min}
+                max={MOVEMENT_RANGES.speed.max}
+                step={MOVEMENT_RANGES.speed.step}
+                value={action.movement?.speed || MOVEMENT_DEFAULTS.speed}
+                onChange={(e) => onUpdate(index, { 
+                  movement: { 
+                    ...action.movement,
+                    speed: parseInt(e.target.value) 
+                  } 
+                })}
+                style={{
+                  width: '100%',
+                  padding: DESIGN_TOKENS.spacing[2],
+                  border: `2px solid ${DESIGN_TOKENS.colors.success[500]}`,
+                  borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                  fontSize: DESIGN_TOKENS.typography.fontSize.base
+                }}
+              />
+            </div>
+          )}
+
+          {/* 時間設定 */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              時間（秒）
+            </label>
+            <input
+              type="number"
+              min={MOVEMENT_RANGES.duration.min}
+              max={MOVEMENT_RANGES.duration.max}
+              step={MOVEMENT_RANGES.duration.step}
+              value={action.movement?.duration || MOVEMENT_DEFAULTS.duration}
+              onChange={(e) => onUpdate(index, { 
                 movement: { 
-                  type: option.value as any,
-                  target: option.value === 'stop' ? undefined : { x: 0.5, y: 0.5 },
-                  speed: option.value === 'teleport' ? undefined : MOVEMENT_DEFAULTS.speed,
-                  duration: MOVEMENT_DEFAULTS.duration
+                  ...action.movement,
+                  duration: parseFloat(e.target.value) 
                 } 
               })}
               style={{
-                borderColor: moveAction.movement?.type === option.value 
-                  ? DESIGN_TOKENS.colors.success[500] 
-                  : DESIGN_TOKENS.colors.success[200],
-                backgroundColor: moveAction.movement?.type === option.value 
-                  ? DESIGN_TOKENS.colors.success[500] 
-                  : 'transparent',
-                color: moveAction.movement?.type === option.value 
-                  ? DESIGN_TOKENS.colors.neutral[0] 
-                  : DESIGN_TOKENS.colors.success[800],
+                width: '100%',
                 padding: DESIGN_TOKENS.spacing[2],
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: DESIGN_TOKENS.spacing[1]
+                border: `2px solid ${DESIGN_TOKENS.colors.success[500]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base
               }}
+            />
+          </div>
+
+          {/* プレビュー説明 */}
+          <div style={{
+            padding: DESIGN_TOKENS.spacing[3],
+            backgroundColor: DESIGN_TOKENS.colors.primary[50],
+            border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`,
+            borderRadius: DESIGN_TOKENS.borderRadius.lg,
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            color: DESIGN_TOKENS.colors.primary[800],
+            marginBottom: DESIGN_TOKENS.spacing[4]
+          }}>
+            <strong>📊 設定内容:</strong><br />
+            座標 ({coordinate.x.toFixed(2)}, {coordinate.y.toFixed(2)}) へ
+            {needsSpeed && ` 速度${action.movement?.speed || MOVEMENT_DEFAULTS.speed}で`}
+            {` ${action.movement?.duration || MOVEMENT_DEFAULTS.duration}秒かけて移動します`}
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            gap: DESIGN_TOKENS.spacing[2] 
+          }}>
+            <ModernButton
+              variant="outline"
+              size="md"
+              onClick={() => setCurrentStep('movementType')}
             >
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
-                {option.label}
-              </span>
+              ← 戻る
             </ModernButton>
-          ))}
-        </div>
-      </div>
-
-      {/* Movement speed setting (for non-stop and non-teleport types) */}
-      {moveAction.movement?.type && !['stop', 'teleport'].includes(moveAction.movement.type) && (
-        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-          <label style={{
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-            color: DESIGN_TOKENS.colors.success[800],
-            marginBottom: DESIGN_TOKENS.spacing[2],
-            display: 'block'
-          }}>
-            {t('editor.moveAction.speedLabel', { speed: moveAction.movement?.speed || MOVEMENT_DEFAULTS.speed })}
-          </label>
-          <input
-            type="range"
-            min={MOVEMENT_RANGES.speed.min}
-            max={MOVEMENT_RANGES.speed.max}
-            step={MOVEMENT_RANGES.speed.step}
-            value={moveAction.movement?.speed || MOVEMENT_DEFAULTS.speed}
-            onChange={(e) => onUpdate(index, { 
-              movement: { 
-                ...moveAction.movement,
-                speed: parseInt(e.target.value) 
-              } 
-            })}
-            style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: DESIGN_TOKENS.colors.success[200],
-              borderRadius: DESIGN_TOKENS.borderRadius.full,
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-            color: DESIGN_TOKENS.colors.success[600],
-            marginTop: DESIGN_TOKENS.spacing[1]
-          }}>
-            <span>{t('editor.moveAction.speedUnit', { speed: MOVEMENT_RANGES.speed.min })}</span>
-            <span>{t('editor.moveAction.speedUnit', { speed: MOVEMENT_RANGES.speed.max })}</span>
+            <ModernButton
+              variant="primary"
+              size="md"
+              onClick={() => setCurrentStep('confirm')}
+              style={{ flex: 1 }}
+            >
+              次へ →
+            </ModernButton>
           </div>
         </div>
-      )}
+      );
+    }
 
-      {/* Movement duration setting (for non-stop types) */}
-      {moveAction.movement?.type && !['stop'].includes(moveAction.movement.type) && (
-        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-          <label style={{
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-            color: DESIGN_TOKENS.colors.success[800],
-            marginBottom: DESIGN_TOKENS.spacing[2],
-            display: 'block'
+    // wander: 徘徊半径 + 速度/時間
+    if (movementType === 'wander') {
+      return (
+        <div>
+          <h5 style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+            color: DESIGN_TOKENS.colors.neutral[800],
+            marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
-            {t('editor.moveAction.durationLabel', { seconds: moveAction.movement?.duration || MOVEMENT_DEFAULTS.duration })}
-          </label>
-          <input
-            type="range"
-            min={MOVEMENT_RANGES.duration.min}
-            max={MOVEMENT_RANGES.duration.max}
-            step={MOVEMENT_RANGES.duration.step}
-            value={moveAction.movement?.duration || MOVEMENT_DEFAULTS.duration}
-            onChange={(e) => onUpdate(index, { 
-              movement: { 
-                ...moveAction.movement,
-                duration: parseFloat(e.target.value) 
-              } 
-            })}
-            style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: DESIGN_TOKENS.colors.success[200],
-              borderRadius: DESIGN_TOKENS.borderRadius.full,
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
+            徘徊のパラメータを設定
+          </h5>
+
+          {/* 徘徊半径 */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              徘徊半径（ピクセル）
+            </label>
+            <input
+              type="number"
+              min="20"
+              max="500"
+              step="10"
+              value={action.movement?.wanderRadius || 100}
+              onChange={(e) => onUpdate(index, {
+                movement: {
+                  ...action.movement,
+                  wanderRadius: parseInt(e.target.value)
+                }
+              })}
+              style={{
+                width: '100%',
+                padding: DESIGN_TOKENS.spacing[2],
+                border: `2px solid ${DESIGN_TOKENS.colors.success[500]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base
+              }}
+            />
+          </div>
+
+          {/* 速度 */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              速度（ピクセル/秒）
+            </label>
+            <input
+              type="number"
+              min={MOVEMENT_RANGES.speed.min}
+              max={MOVEMENT_RANGES.speed.max}
+              step={MOVEMENT_RANGES.speed.step}
+              value={action.movement?.speed || MOVEMENT_DEFAULTS.speed}
+              onChange={(e) => onUpdate(index, { 
+                movement: { 
+                  ...action.movement,
+                  speed: parseInt(e.target.value) 
+                } 
+              })}
+              style={{
+                width: '100%',
+                padding: DESIGN_TOKENS.spacing[2],
+                border: `2px solid ${DESIGN_TOKENS.colors.success[500]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base
+              }}
+            />
+          </div>
+
+          {/* 時間 */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              時間（秒）
+            </label>
+            <input
+              type="number"
+              min={MOVEMENT_RANGES.duration.min}
+              max={MOVEMENT_RANGES.duration.max}
+              step={MOVEMENT_RANGES.duration.step}
+              value={action.movement?.duration || MOVEMENT_DEFAULTS.duration}
+              onChange={(e) => onUpdate(index, { 
+                movement: { 
+                  ...action.movement,
+                  duration: parseFloat(e.target.value) 
+                } 
+              })}
+              style={{
+                width: '100%',
+                padding: DESIGN_TOKENS.spacing[2],
+                border: `2px solid ${DESIGN_TOKENS.colors.success[500]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base
+              }}
+            />
+          </div>
+
+          {/* プレビュー説明 */}
           <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-            color: DESIGN_TOKENS.colors.success[600],
-            marginTop: DESIGN_TOKENS.spacing[1]
+            padding: DESIGN_TOKENS.spacing[3],
+            backgroundColor: DESIGN_TOKENS.colors.primary[50],
+            border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`,
+            borderRadius: DESIGN_TOKENS.borderRadius.lg,
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            color: DESIGN_TOKENS.colors.primary[800],
+            marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
-            <span>{t('editor.moveAction.seconds', { value: MOVEMENT_RANGES.duration.min })}</span>
-            <span>{t('editor.moveAction.seconds', { value: MOVEMENT_RANGES.duration.max })}</span>
+            <strong>📊 設定内容:</strong><br />
+            半径{action.movement?.wanderRadius || 100}px の範囲を、速度{action.movement?.speed || MOVEMENT_DEFAULTS.speed}で、{action.movement?.duration || MOVEMENT_DEFAULTS.duration}秒間徘徊します
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            gap: DESIGN_TOKENS.spacing[2] 
+          }}>
+            <ModernButton
+              variant="outline"
+              size="md"
+              onClick={() => setCurrentStep('movementType')}
+            >
+              ← 戻る
+            </ModernButton>
+            <ModernButton
+              variant="primary"
+              size="md"
+              onClick={() => setCurrentStep('confirm')}
+              style={{ flex: 1 }}
+            >
+              次へ →
+            </ModernButton>
           </div>
         </div>
-      )}
+      );
+    }
 
-      {/* Wander radius (when movement type is 'wander') */}
-      {moveAction.movement?.type === 'wander' && (
-        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-          <label style={{
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-            color: DESIGN_TOKENS.colors.success[800],
-            marginBottom: DESIGN_TOKENS.spacing[2],
-            display: 'block'
+    // orbit: 回転半径 + 速度/時間
+    if (movementType === 'orbit') {
+      return (
+        <div>
+          <h5 style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+            color: DESIGN_TOKENS.colors.neutral[800],
+            marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
-            {t('editor.moveAction.wanderRadiusLabel', { radius: moveAction.movement?.wanderRadius || 100 })}
-          </label>
-          <input
-            type="range"
-            min="20"
-            max="500"
-            step="10"
-            value={moveAction.movement?.wanderRadius || 100}
-            onChange={(e) => onUpdate(index, {
-              movement: {
-                ...moveAction.movement,
-                wanderRadius: parseInt(e.target.value)
-              }
-            })}
-            style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: DESIGN_TOKENS.colors.success[200],
-              borderRadius: DESIGN_TOKENS.borderRadius.full,
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
+            回転のパラメータを設定
+          </h5>
+
+          {/* 回転半径 */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              回転半径（ピクセル）
+            </label>
+            <input
+              type="number"
+              min="20"
+              max="500"
+              step="10"
+              value={action.movement?.orbitRadius || 100}
+              onChange={(e) => onUpdate(index, {
+                movement: {
+                  ...action.movement,
+                  orbitRadius: parseInt(e.target.value)
+                }
+              })}
+              style={{
+                width: '100%',
+                padding: DESIGN_TOKENS.spacing[2],
+                border: `2px solid ${DESIGN_TOKENS.colors.success[500]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base
+              }}
+            />
+          </div>
+
+          {/* 速度 */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              速度（ピクセル/秒）
+            </label>
+            <input
+              type="number"
+              min={MOVEMENT_RANGES.speed.min}
+              max={MOVEMENT_RANGES.speed.max}
+              step={MOVEMENT_RANGES.speed.step}
+              value={action.movement?.speed || MOVEMENT_DEFAULTS.speed}
+              onChange={(e) => onUpdate(index, { 
+                movement: { 
+                  ...action.movement,
+                  speed: parseInt(e.target.value) 
+                } 
+              })}
+              style={{
+                width: '100%',
+                padding: DESIGN_TOKENS.spacing[2],
+                border: `2px solid ${DESIGN_TOKENS.colors.success[500]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base
+              }}
+            />
+          </div>
+
+          {/* 時間 */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              時間（秒）
+            </label>
+            <input
+              type="number"
+              min={MOVEMENT_RANGES.duration.min}
+              max={MOVEMENT_RANGES.duration.max}
+              step={MOVEMENT_RANGES.duration.step}
+              value={action.movement?.duration || MOVEMENT_DEFAULTS.duration}
+              onChange={(e) => onUpdate(index, { 
+                movement: { 
+                  ...action.movement,
+                  duration: parseFloat(e.target.value) 
+                } 
+              })}
+              style={{
+                width: '100%',
+                padding: DESIGN_TOKENS.spacing[2],
+                border: `2px solid ${DESIGN_TOKENS.colors.success[500]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base
+              }}
+            />
+          </div>
+
+          {/* プレビュー説明 */}
           <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-            color: DESIGN_TOKENS.colors.success[600],
-            marginTop: DESIGN_TOKENS.spacing[1]
+            padding: DESIGN_TOKENS.spacing[3],
+            backgroundColor: DESIGN_TOKENS.colors.primary[50],
+            border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`,
+            borderRadius: DESIGN_TOKENS.borderRadius.lg,
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            color: DESIGN_TOKENS.colors.primary[800],
+            marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
-            <span>20px</span>
-            <span>500px</span>
+            <strong>📊 設定内容:</strong><br />
+            半径{action.movement?.orbitRadius || 100}px で、速度{action.movement?.speed || MOVEMENT_DEFAULTS.speed}で、{action.movement?.duration || MOVEMENT_DEFAULTS.duration}秒間回転します
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            gap: DESIGN_TOKENS.spacing[2] 
+          }}>
+            <ModernButton
+              variant="outline"
+              size="md"
+              onClick={() => setCurrentStep('movementType')}
+            >
+              ← 戻る
+            </ModernButton>
+            <ModernButton
+              variant="primary"
+              size="md"
+              onClick={() => setCurrentStep('confirm')}
+              style={{ flex: 1 }}
+            >
+              次へ →
+            </ModernButton>
           </div>
         </div>
-      )}
+      );
+    }
 
-      {/* Orbit radius (when movement type is 'orbit') */}
-      {moveAction.movement?.type === 'orbit' && (
-        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-          <label style={{
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-            color: DESIGN_TOKENS.colors.success[800],
-            marginBottom: DESIGN_TOKENS.spacing[2],
-            display: 'block'
+    // bounce: バウンス強度 + 速度/時間
+    if (movementType === 'bounce') {
+      return (
+        <div>
+          <h5 style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+            color: DESIGN_TOKENS.colors.neutral[800],
+            marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
-            {t('editor.moveAction.orbitRadiusLabel', { radius: moveAction.movement?.orbitRadius || 100 })}
-          </label>
-          <input
-            type="range"
-            min="20"
-            max="500"
-            step="10"
-            value={moveAction.movement?.orbitRadius || 100}
-            onChange={(e) => onUpdate(index, {
-              movement: {
-                ...moveAction.movement,
-                orbitRadius: parseInt(e.target.value)
-              }
-            })}
-            style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: DESIGN_TOKENS.colors.success[200],
-              borderRadius: DESIGN_TOKENS.borderRadius.full,
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
+            バウンスのパラメータを設定
+          </h5>
+
+          {/* バウンス強度 */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              バウンス強度（0.1～2.0）
+            </label>
+            <input
+              type="number"
+              min="0.1"
+              max="2.0"
+              step="0.1"
+              value={action.movement?.bounceStrength || 0.8}
+              onChange={(e) => onUpdate(index, {
+                movement: {
+                  ...action.movement,
+                  bounceStrength: parseFloat(e.target.value)
+                }
+              })}
+              style={{
+                width: '100%',
+                padding: DESIGN_TOKENS.spacing[2],
+                border: `2px solid ${DESIGN_TOKENS.colors.success[500]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base
+              }}
+            />
+          </div>
+
+          {/* 速度 */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              速度（ピクセル/秒）
+            </label>
+            <input
+              type="number"
+              min={MOVEMENT_RANGES.speed.min}
+              max={MOVEMENT_RANGES.speed.max}
+              step={MOVEMENT_RANGES.speed.step}
+              value={action.movement?.speed || MOVEMENT_DEFAULTS.speed}
+              onChange={(e) => onUpdate(index, { 
+                movement: { 
+                  ...action.movement,
+                  speed: parseInt(e.target.value) 
+                } 
+              })}
+              style={{
+                width: '100%',
+                padding: DESIGN_TOKENS.spacing[2],
+                border: `2px solid ${DESIGN_TOKENS.colors.success[500]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base
+              }}
+            />
+          </div>
+
+          {/* 時間 */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              時間（秒）
+            </label>
+            <input
+              type="number"
+              min={MOVEMENT_RANGES.duration.min}
+              max={MOVEMENT_RANGES.duration.max}
+              step={MOVEMENT_RANGES.duration.step}
+              value={action.movement?.duration || MOVEMENT_DEFAULTS.duration}
+              onChange={(e) => onUpdate(index, { 
+                movement: { 
+                  ...action.movement,
+                  duration: parseFloat(e.target.value) 
+                } 
+              })}
+              style={{
+                width: '100%',
+                padding: DESIGN_TOKENS.spacing[2],
+                border: `2px solid ${DESIGN_TOKENS.colors.success[500]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base
+              }}
+            />
+          </div>
+
+          {/* プレビュー説明 */}
           <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-            color: DESIGN_TOKENS.colors.success[600],
-            marginTop: DESIGN_TOKENS.spacing[1]
+            padding: DESIGN_TOKENS.spacing[3],
+            backgroundColor: DESIGN_TOKENS.colors.primary[50],
+            border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`,
+            borderRadius: DESIGN_TOKENS.borderRadius.lg,
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            color: DESIGN_TOKENS.colors.primary[800],
+            marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
-            <span>20px</span>
-            <span>500px</span>
+            <strong>📊 設定内容:</strong><br />
+            強度{action.movement?.bounceStrength || 0.8}で、速度{action.movement?.speed || MOVEMENT_DEFAULTS.speed}で、{action.movement?.duration || MOVEMENT_DEFAULTS.duration}秒間バウンドします
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            gap: DESIGN_TOKENS.spacing[2] 
+          }}>
+            <ModernButton
+              variant="outline"
+              size="md"
+              onClick={() => setCurrentStep('movementType')}
+            >
+              ← 戻る
+            </ModernButton>
+            <ModernButton
+              variant="primary"
+              size="md"
+              onClick={() => setCurrentStep('confirm')}
+              style={{ flex: 1 }}
+            >
+              次へ →
+            </ModernButton>
           </div>
         </div>
-      )}
+      );
+    }
 
-      {/* Bounce strength (when movement type is 'bounce') */}
-      {moveAction.movement?.type === 'bounce' && (
-        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-          <label style={{
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-            color: DESIGN_TOKENS.colors.success[800],
-            marginBottom: DESIGN_TOKENS.spacing[2],
-            display: 'block'
-          }}>
-            {t('editor.moveAction.bounceStrengthLabel', { strength: moveAction.movement?.bounceStrength || 0.8 })}
-          </label>
-          <input
-            type="range"
-            min="0.1"
-            max="2.0"
-            step="0.1"
-            value={moveAction.movement?.bounceStrength || 0.8}
-            onChange={(e) => onUpdate(index, {
-              movement: {
-                ...moveAction.movement,
-                bounceStrength: parseFloat(e.target.value)
-              }
-            })}
-            style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: DESIGN_TOKENS.colors.success[200],
-              borderRadius: DESIGN_TOKENS.borderRadius.full,
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-            color: DESIGN_TOKENS.colors.success[600],
-            marginTop: DESIGN_TOKENS.spacing[1]
-          }}>
-            <span>0.1</span>
-            <span>2.0</span>
-          </div>
-        </div>
-      )}
+    return null;
+  };
 
-      {/* Movement target coordinates (for types requiring coordinates) */}
-      {moveAction.movement?.type && ['straight', 'teleport', 'approach'].includes(moveAction.movement.type) && (
-        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-          <label style={{
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-            color: DESIGN_TOKENS.colors.success[800],
-            marginBottom: DESIGN_TOKENS.spacing[2],
-            display: 'block'
-          }}>
-            {t('editor.moveAction.targetCoordinatesLabel')}
-          </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: DESIGN_TOKENS.spacing[2] }}>
-            <div>
-              <label style={{
-                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                color: DESIGN_TOKENS.colors.success[800],
-                marginBottom: DESIGN_TOKENS.spacing[1],
-                display: 'block'
-              }}>
-                {t('editor.moveAction.xCoordinate', { value: ((moveAction.movement?.target as any)?.x || 0.5).toFixed(2) })}
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={(moveAction.movement?.target as any)?.x || 0.5}
-                onChange={(e) => onUpdate(index, { 
-                  movement: { 
-                    ...moveAction.movement,
-                    target: {
-                      x: parseFloat(e.target.value),
-                      y: (moveAction.movement?.target as any)?.y || 0.5
-                    }
-                  } 
-                })}
-                style={{
-                  width: '100%',
-                  height: '6px',
-                  backgroundColor: DESIGN_TOKENS.colors.success[200],
-                  borderRadius: DESIGN_TOKENS.borderRadius.full,
-                  outline: 'none',
-                  cursor: 'pointer'
-                }}
-              />
+  // ステップ3: 確認
+  const renderConfirmStep = () => {
+    const movementType = action.movement?.type;
+
+    return (
+      <div>
+        <h5 style={{
+          fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+          color: DESIGN_TOKENS.colors.neutral[800],
+          marginBottom: DESIGN_TOKENS.spacing[4]
+        }}>
+          設定内容の確認
+        </h5>
+
+        <div style={{
+          padding: DESIGN_TOKENS.spacing[4],
+          backgroundColor: DESIGN_TOKENS.colors.success[50],
+          border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
+          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+          marginBottom: DESIGN_TOKENS.spacing[4]
+        }}>
+          {/* 移動タイプ */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <div style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.neutral[600],
+              marginBottom: DESIGN_TOKENS.spacing[1]
+            }}>
+              移動タイプ
             </div>
-            <div>
-              <label style={{
-                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                color: DESIGN_TOKENS.colors.success[800],
-                marginBottom: DESIGN_TOKENS.spacing[1],
-                display: 'block'
-              }}>
-                {t('editor.moveAction.yCoordinate', { value: ((moveAction.movement?.target as any)?.y || 0.5).toFixed(2) })}
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={(moveAction.movement?.target as any)?.y || 0.5}
-                onChange={(e) => onUpdate(index, { 
-                  movement: { 
-                    ...moveAction.movement,
-                    target: {
-                      x: (moveAction.movement?.target as any)?.x || 0.5,
-                      y: parseFloat(e.target.value)
-                    }
-                  } 
-                })}
-                style={{
-                  width: '100%',
-                  height: '6px',
-                  backgroundColor: DESIGN_TOKENS.colors.success[200],
-                  borderRadius: DESIGN_TOKENS.borderRadius.full,
-                  outline: 'none',
-                  cursor: 'pointer'
-                }}
-              />
+            <div style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.base,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+              color: DESIGN_TOKENS.colors.neutral[800]
+            }}>
+              {movementTypeLabel}
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Movement preview button */}
-      <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-        <ModernButton
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            onShowNotification('info', t('editor.moveAction.previewNotice'));
-          }}
-          style={{
-            borderColor: DESIGN_TOKENS.colors.success[200],
-            color: DESIGN_TOKENS.colors.success[600],
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: DESIGN_TOKENS.spacing[2]
-          }}
-        >
-          <span>👁️</span>
-          <span>{t('editor.moveAction.previewButton')}</span>
-        </ModernButton>
+          {/* 座標（straight/teleport/approachの場合） */}
+          {movementType && ['straight', 'teleport', 'approach'].includes(movementType) && (
+            <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                color: DESIGN_TOKENS.colors.neutral[600],
+                marginBottom: DESIGN_TOKENS.spacing[1]
+              }}>
+                移動先座標
+              </div>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                color: DESIGN_TOKENS.colors.neutral[700]
+              }}>
+                ({coordinate.x.toFixed(2)}, {coordinate.y.toFixed(2)})
+              </div>
+            </div>
+          )}
+
+          {/* 徘徊半径（wanderの場合） */}
+          {movementType === 'wander' && (
+            <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                color: DESIGN_TOKENS.colors.neutral[600],
+                marginBottom: DESIGN_TOKENS.spacing[1]
+              }}>
+                徘徊半径
+              </div>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                color: DESIGN_TOKENS.colors.neutral[700]
+              }}>
+                {action.movement?.wanderRadius || 100}px
+              </div>
+            </div>
+          )}
+
+          {/* 回転半径（orbitの場合） */}
+          {movementType === 'orbit' && (
+            <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                color: DESIGN_TOKENS.colors.neutral[600],
+                marginBottom: DESIGN_TOKENS.spacing[1]
+              }}>
+                回転半径
+              </div>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                color: DESIGN_TOKENS.colors.neutral[700]
+              }}>
+                {action.movement?.orbitRadius || 100}px
+              </div>
+            </div>
+          )}
+
+          {/* バウンス強度（bounceの場合） */}
+          {movementType === 'bounce' && (
+            <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                color: DESIGN_TOKENS.colors.neutral[600],
+                marginBottom: DESIGN_TOKENS.spacing[1]
+              }}>
+                バウンス強度
+              </div>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                color: DESIGN_TOKENS.colors.neutral[700]
+              }}>
+                {action.movement?.bounceStrength || 0.8}
+              </div>
+            </div>
+          )}
+
+          {/* 速度（stop/teleport以外） */}
+          {movementType && !['stop', 'teleport'].includes(movementType) && (
+            <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                color: DESIGN_TOKENS.colors.neutral[600],
+                marginBottom: DESIGN_TOKENS.spacing[1]
+              }}>
+                速度
+              </div>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                color: DESIGN_TOKENS.colors.neutral[700]
+              }}>
+                {action.movement?.speed || MOVEMENT_DEFAULTS.speed} ピクセル/秒
+              </div>
+            </div>
+          )}
+
+          {/* 時間（stopの場合は表示しない） */}
+          {movementType !== 'stop' && (
+            <div>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                color: DESIGN_TOKENS.colors.neutral[600],
+                marginBottom: DESIGN_TOKENS.spacing[1]
+              }}>
+                時間
+              </div>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                color: DESIGN_TOKENS.colors.neutral[700]
+              }}>
+                {action.movement?.duration || MOVEMENT_DEFAULTS.duration}秒
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ 
+          display: 'flex', 
+          gap: DESIGN_TOKENS.spacing[2]
+        }}>
+          <ModernButton
+            variant="outline"
+            size="md"
+            onClick={() => {
+              // stopの場合はmovementTypeへ、それ以外はparameterへ
+              if (movementType === 'stop') {
+                setCurrentStep('movementType');
+              } else {
+                setCurrentStep('parameter');
+              }
+            }}
+          >
+            ← 戻る
+          </ModernButton>
+          <ModernButton
+            variant="primary"
+            size="md"
+            onClick={() => {
+              onShowNotification('success', '移動アクションを設定しました');
+            }}
+            style={{ flex: 1 }}
+          >
+            ✅ 完了
+          </ModernButton>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <ModernCard 
+      variant="outlined"
+      size="md"
+      style={{
+        backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+        border: `2px solid ${DESIGN_TOKENS.colors.success[500]}`,
+        marginTop: DESIGN_TOKENS.spacing[4]
+      }}
+    >
+      {/* ヘッダー */}
+      <div style={{
+        marginBottom: DESIGN_TOKENS.spacing[6],
+        paddingBottom: DESIGN_TOKENS.spacing[4],
+        borderBottom: `2px solid ${DESIGN_TOKENS.colors.neutral[200]}`
+      }}>
+        <h4 style={{
+          fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+          color: DESIGN_TOKENS.colors.success[800],
+          margin: 0,
+          marginBottom: DESIGN_TOKENS.spacing[2],
+          display: 'flex',
+          alignItems: 'center',
+          gap: DESIGN_TOKENS.spacing[2]
+        }}>
+          <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize['2xl'] }}>🏃</span>
+          移動アクション
+        </h4>
+        <p style={{
+          margin: 0,
+          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+          color: DESIGN_TOKENS.colors.neutral[600]
+        }}>
+          オブジェクトの移動方法を設定
+        </p>
       </div>
 
-      {/* Settings summary */}
+      {/* ステップインジケーター */}
       <div style={{
-        padding: DESIGN_TOKENS.spacing[3],
-        backgroundColor: DESIGN_TOKENS.colors.success[100],
-        borderRadius: DESIGN_TOKENS.borderRadius.lg,
-        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-        color: DESIGN_TOKENS.colors.success[800]
+        display: 'flex',
+        justifyContent: 'space-between',
+        marginBottom: DESIGN_TOKENS.spacing[6],
+        position: 'relative'
       }}>
-        {t('editor.moveAction.settingsSummaryTitle')}
-        {moveAction.movement?.type
-          ? t('editor.moveAction.movementType', {
-              type: MOVEMENT_TYPE_OPTIONS.find(m => m.value === moveAction.movement?.type)?.label || t('editor.moveAction.movementTypeLabel')
-            })
-          : t('editor.moveAction.selectMovementType')}
-        {moveAction.movement?.type && !['stop', 'teleport'].includes(moveAction.movement.type) &&
-          t('editor.moveAction.withSpeed', { speed: moveAction.movement?.speed || MOVEMENT_DEFAULTS.speed })}
-        {moveAction.movement?.duration && t('editor.moveAction.forDuration', { seconds: moveAction.movement.duration })}
+        {/* 進捗バー背景 */}
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          left: '5%',
+          right: '5%',
+          height: '4px',
+          backgroundColor: DESIGN_TOKENS.colors.neutral[200],
+          zIndex: 0
+        }} />
+        
+        {/* 進捗バー前景 */}
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          left: '5%',
+          width: `${(currentStepIndex / (steps.length - 1)) * 90}%`,
+          height: '4px',
+          backgroundColor: DESIGN_TOKENS.colors.success[500],
+          zIndex: 1,
+          transition: 'width 0.3s ease'
+        }} />
+
+        {steps.map((step, idx) => (
+          <div
+            key={step.id}
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: DESIGN_TOKENS.spacing[2],
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: DESIGN_TOKENS.borderRadius.full,
+              backgroundColor: idx <= currentStepIndex 
+                ? DESIGN_TOKENS.colors.success[500] 
+                : DESIGN_TOKENS.colors.neutral[200],
+              color: idx <= currentStepIndex 
+                ? DESIGN_TOKENS.colors.neutral[0] 
+                : DESIGN_TOKENS.colors.neutral[500],
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+              transition: 'all 0.3s ease',
+              border: `3px solid ${DESIGN_TOKENS.colors.neutral[0]}`
+            }}>
+              {step.icon}
+            </div>
+            <span style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              fontWeight: idx === currentStepIndex 
+                ? DESIGN_TOKENS.typography.fontWeight.semibold 
+                : DESIGN_TOKENS.typography.fontWeight.normal,
+              color: idx <= currentStepIndex 
+                ? DESIGN_TOKENS.colors.success[800] 
+                : DESIGN_TOKENS.colors.neutral[500],
+              textAlign: 'center'
+            }}>
+              {step.label}
+            </span>
+          </div>
+        ))}
       </div>
 
-      {/* ℹ️ Info: followDragについて */}
-      <div style={{
-        marginTop: DESIGN_TOKENS.spacing[4],
-        padding: DESIGN_TOKENS.spacing[3],
-        backgroundColor: DESIGN_TOKENS.colors.primary[50],
-        border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`,
-        borderRadius: DESIGN_TOKENS.borderRadius.lg,
-        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-        color: DESIGN_TOKENS.colors.primary[800]
-      }}>
-        <strong>ℹ️ ドラッグ追従機能について:</strong>
-        <div style={{ marginTop: DESIGN_TOKENS.spacing[2] }}>
-          ドラッグ追従機能は別のアクションタイプ「followDrag」として実装されています。
-          この機能を使用する場合は、「移動」アクションではなく、アクション一覧から「ドラッグ追従」を選択してください。
-        </div>
+      {/* ステップコンテンツ */}
+      <div>
+        {currentStep === 'movementType' && renderMovementTypeStep()}
+        {currentStep === 'parameter' && renderParameterStep()}
+        {currentStep === 'confirm' && renderConfirmStep()}
       </div>
     </ModernCard>
   );
