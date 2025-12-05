@@ -23,8 +23,24 @@ interface MoveActionEditorProps {
   onShowNotification: (type: 'success' | 'error' | 'info', message: string) => void;
 }
 
-// 3つのステップ定義
 type EditorStep = 'movementType' | 'parameter' | 'confirm';
+type MovementDirection = 'up' | 'down' | 'left' | 'right' | 'upLeft' | 'upRight' | 'downLeft' | 'downRight';
+
+const DIRECTION_OPTIONS: Array<{
+  value: MovementDirection;
+  label: string;
+  icon: string;
+  description: string;
+}> = [
+  { value: 'up', label: '上', icon: '⬆️', description: '上方向へ移動' },
+  { value: 'upRight', label: '右上', icon: '↗️', description: '右上方向へ移動' },
+  { value: 'right', label: '右', icon: '➡️', description: '右方向へ移動' },
+  { value: 'downRight', label: '右下', icon: '↘️', description: '右下方向へ移動' },
+  { value: 'down', label: '下', icon: '⬇️', description: '下方向へ移動' },
+  { value: 'downLeft', label: '左下', icon: '↙️', description: '左下方向へ移動' },
+  { value: 'left', label: '左', icon: '⬅️', description: '左方向へ移動' },
+  { value: 'upLeft', label: '左上', icon: '↖️', description: '左上方向へ移動' }
+];
 
 export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
   action,
@@ -36,7 +52,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<EditorStep>('movementType');
 
-  // ✅ 背景画像URL抽出
   const backgroundUrl = useMemo(() => {
     const background = project.assets.background;
     if (!background || !background.frames || background.frames.length === 0) {
@@ -45,10 +60,8 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
     return background.frames[0].dataUrl;
   }, [project.assets.background]);
 
-  // 移動タイプオプション（全8種類）
   const MOVEMENT_TYPE_OPTIONS = useMemo(() => getMovementTypeOptions(), []);
 
-  // オブジェクト一覧（swap用）
   const objectOptions = useMemo(() => 
     project.assets.objects.map(obj => ({
       value: obj.id,
@@ -56,19 +69,18 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
     })),
   [project.assets.objects]);
 
-  // ✅ target座標をCoordinate形式で取得
   const coordinate = useMemo((): Coordinate => {
-    const target = action.movement?.target as any;
+    const movement = action.movement as any;
+    const target = movement?.target;
     if (target && typeof target === 'object' && 'x' in target && 'y' in target) {
       return {
-        x: target.x || 0.5,
-        y: target.y || 0.5
+        x: typeof target.x === 'number' ? target.x : 0.5,
+        y: typeof target.y === 'number' ? target.y : 0.5
       };
     }
     return { x: 0.5, y: 0.5 };
-  }, [action.movement?.target]);
+  }, [action.movement]);
 
-  // ✅ Coordinate → target座標変換
   const handleCoordinateChange = useCallback((newCoord: Coordinate) => {
     onUpdate(index, {
       movement: {
@@ -77,11 +89,10 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
           x: newCoord.x,
           y: newCoord.y
         }
-      }
+      } as any
     });
   }, [index, action.movement, onUpdate]);
 
-  // ステップナビゲーション
   const steps = [
     { id: 'movementType', label: '移動タイプ', icon: '🏃' },
     { id: 'parameter', label: 'パラメータ', icon: '🎯' },
@@ -90,12 +101,10 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep);
 
-  // ラベル取得
   const movementTypeLabel = MOVEMENT_TYPE_OPTIONS.find(
     opt => opt.value === action.movement?.type
   )?.label || '未設定';
 
-  // ステップ1: 移動タイプを選択
   const renderMovementTypeStep = () => (
     <div>
       <h5 style={{
@@ -118,7 +127,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             variant={action.movement?.type === option.value ? 'primary' : 'outline'}
             size="lg"
             onClick={() => {
-              // 移動タイプに応じて初期値設定
               const newMovement: any = { 
                 type: option.value,
                 duration: MOVEMENT_DEFAULTS.duration
@@ -127,6 +135,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               if (['straight', 'teleport', 'approach'].includes(option.value)) {
                 newMovement.target = { x: 0.5, y: 0.5 };
                 newMovement.speed = option.value === 'teleport' ? undefined : MOVEMENT_DEFAULTS.speed;
+                if (option.value === 'straight') {
+                  newMovement.direction = 'down';
+                }
               } else if (option.value === 'wander') {
                 newMovement.wanderRadius = 100;
                 newMovement.speed = MOVEMENT_DEFAULTS.speed;
@@ -137,13 +148,14 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 newMovement.bounceStrength = 0.8;
                 newMovement.speed = MOVEMENT_DEFAULTS.speed;
               } else if (option.value === 'swap') {
-                // swap: 他のオブジェクトを選択
                 newMovement.targetObjectId = objectOptions[0]?.value || '';
+              } else if (option.value === 'followDrag') {
+                newMovement.damping = 0.1;
+                newMovement.constrainToBounds = true;
               }
 
               onUpdate(index, { movement: newMovement });
 
-              // ✅ stopの場合は確認画面へ直行
               if (option.value === 'stop') {
                 setCurrentStep('confirm');
                 onShowNotification('info', '停止アクションを設定しました');
@@ -169,10 +181,16 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
           >
             <span style={{ fontSize: '40px' }}>{option.icon}</span>
             <div>
-              <div style={{ fontWeight: DESIGN_TOKENS.typography.fontWeight.bold, fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>
+              <div style={{ 
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.bold, 
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm 
+              }}>
                 {option.label}
               </div>
-              <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, opacity: 0.8 }}>
+              <div style={{ 
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs, 
+                opacity: 0.8 
+              }}>
                 {option.description}
               </div>
             </div>
@@ -182,11 +200,10 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
     </div>
   );
 
-  // ステップ2: パラメータ設定（座標+数値、統合版）
   const renderParameterStep = () => {
     const movementType = action.movement?.type;
+    const movement = action.movement as any;
 
-    // straight/teleport/approach: 座標指定 + 速度/時間
     if (['straight', 'teleport', 'approach'].includes(movementType || '')) {
       return (
         <div>
@@ -199,7 +216,63 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             移動先の座標とパラメータを設定
           </h5>
 
-          {/* CoordinateEditor */}
+          {movementType === 'straight' && (
+            <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+              <label style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                color: DESIGN_TOKENS.colors.success[800],
+                marginBottom: DESIGN_TOKENS.spacing[2],
+                display: 'block'
+              }}>
+                移動方向を選択
+              </label>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: DESIGN_TOKENS.spacing[2]
+              }}>
+                {DIRECTION_OPTIONS.map((dir) => (
+                  <ModernButton
+                    key={dir.value}
+                    variant={movement?.direction === dir.value ? 'primary' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      onUpdate(index, {
+                        movement: {
+                          ...action.movement,
+                          direction: dir.value
+                        } as any
+                      });
+                      onShowNotification('success', `${dir.label}方向に設定しました`);
+                    }}
+                    style={{
+                      padding: DESIGN_TOKENS.spacing[3],
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: DESIGN_TOKENS.spacing[1],
+                      backgroundColor: movement?.direction === dir.value
+                        ? DESIGN_TOKENS.colors.success[500]
+                        : DESIGN_TOKENS.colors.neutral[0],
+                      borderColor: movement?.direction === dir.value
+                        ? DESIGN_TOKENS.colors.success[500]
+                        : DESIGN_TOKENS.colors.success[200],
+                      color: movement?.direction === dir.value
+                        ? DESIGN_TOKENS.colors.neutral[0]
+                        : DESIGN_TOKENS.colors.neutral[800]
+                    }}
+                    title={dir.description}
+                  >
+                    <span style={{ fontSize: '24px' }}>{dir.icon}</span>
+                    <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs }}>
+                      {dir.label}
+                    </span>
+                  </ModernButton>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
             <CoordinateEditor
               value={coordinate}
@@ -208,7 +281,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             />
           </div>
 
-          {/* 速度設定（straightとapproachのみ） */}
           {movementType !== 'teleport' && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <label style={{
@@ -225,12 +297,12 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 min={MOVEMENT_RANGES.speed.min}
                 max={MOVEMENT_RANGES.speed.max}
                 step={MOVEMENT_RANGES.speed.step}
-                value={action.movement?.speed || MOVEMENT_DEFAULTS.speed}
+                value={movement?.speed || MOVEMENT_DEFAULTS.speed}
                 onChange={(e) => onUpdate(index, { 
                   movement: { 
                     ...action.movement,
                     speed: parseInt(e.target.value) 
-                  } 
+                  } as any
                 })}
                 style={{
                   width: '100%',
@@ -243,7 +315,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </div>
           )}
 
-          {/* 時間設定 */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -259,12 +330,12 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               min={MOVEMENT_RANGES.duration.min}
               max={MOVEMENT_RANGES.duration.max}
               step={MOVEMENT_RANGES.duration.step}
-              value={action.movement?.duration || MOVEMENT_DEFAULTS.duration}
+              value={movement?.duration || MOVEMENT_DEFAULTS.duration}
               onChange={(e) => onUpdate(index, { 
                 movement: { 
                   ...action.movement,
                   duration: parseFloat(e.target.value) 
-                } 
+                } as any
               })}
               style={{
                 width: '100%',
@@ -276,7 +347,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             />
           </div>
 
-          {/* プレビュー説明 */}
           <div style={{
             padding: DESIGN_TOKENS.spacing[3],
             backgroundColor: DESIGN_TOKENS.colors.primary[50],
@@ -287,28 +357,19 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
             <strong>📊 設定内容:</strong><br />
+            {movementType === 'straight' && (
+              <>方向: {DIRECTION_OPTIONS.find(d => d.value === movement?.direction)?.label || '下'}<br /></>
+            )}
             座標 ({coordinate.x.toFixed(2)}, {coordinate.y.toFixed(2)}) へ
-            {movementType !== 'teleport' && ` 速度${action.movement?.speed || MOVEMENT_DEFAULTS.speed}で`}
-            {` ${action.movement?.duration || MOVEMENT_DEFAULTS.duration}秒かけて移動します`}
+            {movementType !== 'teleport' && ` 速度${movement?.speed || MOVEMENT_DEFAULTS.speed}で`}
+            {` ${movement?.duration || MOVEMENT_DEFAULTS.duration}秒かけて移動します`}
           </div>
 
-          <div style={{ 
-            display: 'flex', 
-            gap: DESIGN_TOKENS.spacing[2] 
-          }}>
-            <ModernButton
-              variant="outline"
-              size="md"
-              onClick={() => setCurrentStep('movementType')}
-            >
+          <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}>
+            <ModernButton variant="outline" size="md" onClick={() => setCurrentStep('movementType')}>
               ← 戻る
             </ModernButton>
-            <ModernButton
-              variant="primary"
-              size="md"
-              onClick={() => setCurrentStep('confirm')}
-              style={{ flex: 1 }}
-            >
+            <ModernButton variant="primary" size="md" onClick={() => setCurrentStep('confirm')} style={{ flex: 1 }}>
               次へ →
             </ModernButton>
           </div>
@@ -316,11 +377,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
       );
     }
 
-    // swap: 他のオブジェクト選択
     if (movementType === 'swap') {
-      // ✅ 型アサーション
-      const swapMovement = action.movement as any;
-      
       return (
         <div>
           <h5 style={{
@@ -343,12 +400,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               入れ替え対象のオブジェクト
             </label>
             <select
-              value={swapMovement.targetObjectId || ''}
+              value={movement?.targetObjectId || ''}
               onChange={(e) => onUpdate(index, {
-                movement: {
-                  ...action.movement,
-                  targetObjectId: e.target.value
-                } as any
+                movement: { ...action.movement, targetObjectId: e.target.value } as any
               })}
               style={{
                 width: '100%',
@@ -366,7 +420,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </select>
           </div>
 
-          {/* 時間設定 */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -382,12 +435,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               min={MOVEMENT_RANGES.duration.min}
               max={MOVEMENT_RANGES.duration.max}
               step={MOVEMENT_RANGES.duration.step}
-              value={swapMovement.duration || MOVEMENT_DEFAULTS.duration}
+              value={movement?.duration || MOVEMENT_DEFAULTS.duration}
               onChange={(e) => onUpdate(index, { 
-                movement: { 
-                  ...action.movement,
-                  duration: parseFloat(e.target.value) 
-                } as any
+                movement: { ...action.movement, duration: parseFloat(e.target.value) } as any
               })}
               style={{
                 width: '100%',
@@ -399,7 +449,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             />
           </div>
 
-          {/* プレビュー説明 */}
           <div style={{
             padding: DESIGN_TOKENS.spacing[3],
             backgroundColor: DESIGN_TOKENS.colors.primary[50],
@@ -410,27 +459,20 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
             <strong>📊 設定内容:</strong><br />
-            {swapMovement.targetObjectId 
-              ? `${objectOptions.find(o => o.value === swapMovement.targetObjectId)?.label || '未選択'}と位置を入れ替えます（${swapMovement.duration || MOVEMENT_DEFAULTS.duration}秒）`
+            {movement?.targetObjectId 
+              ? `${objectOptions.find(o => o.value === movement?.targetObjectId)?.label || '未選択'}と位置を入れ替えます（${movement?.duration || MOVEMENT_DEFAULTS.duration}秒）`
               : 'オブジェクトを選択してください'}
           </div>
 
-          <div style={{ 
-            display: 'flex', 
-            gap: DESIGN_TOKENS.spacing[2] 
-          }}>
-            <ModernButton
-              variant="outline"
-              size="md"
-              onClick={() => setCurrentStep('movementType')}
-            >
+          <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}>
+            <ModernButton variant="outline" size="md" onClick={() => setCurrentStep('movementType')}>
               ← 戻る
             </ModernButton>
-            <ModernButton
-              variant="primary"
-              size="md"
+            <ModernButton 
+              variant="primary" 
+              size="md" 
               onClick={() => setCurrentStep('confirm')}
-              disabled={!swapMovement.targetObjectId}
+              disabled={!movement?.targetObjectId}
               style={{ flex: 1 }}
             >
               次へ →
@@ -440,7 +482,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
       );
     }
 
-    // wander: 徘徊半径 + 速度/時間
     if (movementType === 'wander') {
       return (
         <div>
@@ -453,7 +494,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             徘徊のパラメータを設定
           </h5>
 
-          {/* 徘徊半径 */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -469,12 +509,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               min="20"
               max="500"
               step="10"
-              value={action.movement?.wanderRadius || 100}
+              value={movement?.wanderRadius || 100}
               onChange={(e) => onUpdate(index, {
-                movement: {
-                  ...action.movement,
-                  wanderRadius: parseInt(e.target.value)
-                }
+                movement: { ...action.movement, wanderRadius: parseInt(e.target.value) } as any
               })}
               style={{
                 width: '100%',
@@ -486,7 +523,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             />
           </div>
 
-          {/* 速度 */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -502,12 +538,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               min={MOVEMENT_RANGES.speed.min}
               max={MOVEMENT_RANGES.speed.max}
               step={MOVEMENT_RANGES.speed.step}
-              value={action.movement?.speed || MOVEMENT_DEFAULTS.speed}
+              value={movement?.speed || MOVEMENT_DEFAULTS.speed}
               onChange={(e) => onUpdate(index, { 
-                movement: { 
-                  ...action.movement,
-                  speed: parseInt(e.target.value) 
-                } 
+                movement: { ...action.movement, speed: parseInt(e.target.value) } as any
               })}
               style={{
                 width: '100%',
@@ -519,7 +552,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             />
           </div>
 
-          {/* 時間 */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -535,12 +567,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               min={MOVEMENT_RANGES.duration.min}
               max={MOVEMENT_RANGES.duration.max}
               step={MOVEMENT_RANGES.duration.step}
-              value={action.movement?.duration || MOVEMENT_DEFAULTS.duration}
+              value={movement?.duration || MOVEMENT_DEFAULTS.duration}
               onChange={(e) => onUpdate(index, { 
-                movement: { 
-                  ...action.movement,
-                  duration: parseFloat(e.target.value) 
-                } 
+                movement: { ...action.movement, duration: parseFloat(e.target.value) } as any
               })}
               style={{
                 width: '100%',
@@ -552,7 +581,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             />
           </div>
 
-          {/* プレビュー説明 */}
           <div style={{
             padding: DESIGN_TOKENS.spacing[3],
             backgroundColor: DESIGN_TOKENS.colors.primary[50],
@@ -563,26 +591,14 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
             <strong>📊 設定内容:</strong><br />
-            半径{action.movement?.wanderRadius || 100}px の範囲を、速度{action.movement?.speed || MOVEMENT_DEFAULTS.speed}で、{action.movement?.duration || MOVEMENT_DEFAULTS.duration}秒間徘徊します
+            半径{movement?.wanderRadius || 100}px の範囲を、速度{movement?.speed || MOVEMENT_DEFAULTS.speed}で、{movement?.duration || MOVEMENT_DEFAULTS.duration}秒間徘徊します
           </div>
 
-          <div style={{ 
-            display: 'flex', 
-            gap: DESIGN_TOKENS.spacing[2] 
-          }}>
-            <ModernButton
-              variant="outline"
-              size="md"
-              onClick={() => setCurrentStep('movementType')}
-            >
+          <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}>
+            <ModernButton variant="outline" size="md" onClick={() => setCurrentStep('movementType')}>
               ← 戻る
             </ModernButton>
-            <ModernButton
-              variant="primary"
-              size="md"
-              onClick={() => setCurrentStep('confirm')}
-              style={{ flex: 1 }}
-            >
+            <ModernButton variant="primary" size="md" onClick={() => setCurrentStep('confirm')} style={{ flex: 1 }}>
               次へ →
             </ModernButton>
           </div>
@@ -590,7 +606,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
       );
     }
 
-    // orbit: 回転半径 + 速度/時間
     if (movementType === 'orbit') {
       return (
         <div>
@@ -600,10 +615,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.neutral[800],
             marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
-            回転のパラメータを設定
+            周回のパラメータを設定
           </h5>
 
-          {/* 回転半径 */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -612,19 +626,16 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              回転半径（ピクセル）
+              周回半径（ピクセル）
             </label>
             <input
               type="number"
               min="20"
               max="500"
               step="10"
-              value={action.movement?.orbitRadius || 100}
+              value={movement?.orbitRadius || 100}
               onChange={(e) => onUpdate(index, {
-                movement: {
-                  ...action.movement,
-                  orbitRadius: parseInt(e.target.value)
-                }
+                movement: { ...action.movement, orbitRadius: parseInt(e.target.value) } as any
               })}
               style={{
                 width: '100%',
@@ -636,7 +647,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             />
           </div>
 
-          {/* 速度 */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -652,12 +662,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               min={MOVEMENT_RANGES.speed.min}
               max={MOVEMENT_RANGES.speed.max}
               step={MOVEMENT_RANGES.speed.step}
-              value={action.movement?.speed || MOVEMENT_DEFAULTS.speed}
+              value={movement?.speed || MOVEMENT_DEFAULTS.speed}
               onChange={(e) => onUpdate(index, { 
-                  movement: { 
-                  ...action.movement,
-                  speed: parseInt(e.target.value) 
-                } 
+                movement: { ...action.movement, speed: parseInt(e.target.value) } as any
               })}
               style={{
                 width: '100%',
@@ -669,7 +676,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             />
           </div>
 
-          {/* 時間 */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -685,12 +691,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               min={MOVEMENT_RANGES.duration.min}
               max={MOVEMENT_RANGES.duration.max}
               step={MOVEMENT_RANGES.duration.step}
-              value={action.movement?.duration || MOVEMENT_DEFAULTS.duration}
+              value={movement?.duration || MOVEMENT_DEFAULTS.duration}
               onChange={(e) => onUpdate(index, { 
-                movement: { 
-                  ...action.movement,
-                  duration: parseFloat(e.target.value) 
-                } 
+                movement: { ...action.movement, duration: parseFloat(e.target.value) } as any
               })}
               style={{
                 width: '100%',
@@ -702,7 +705,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             />
           </div>
 
-          {/* プレビュー説明 */}
           <div style={{
             padding: DESIGN_TOKENS.spacing[3],
             backgroundColor: DESIGN_TOKENS.colors.primary[50],
@@ -713,26 +715,14 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
             <strong>📊 設定内容:</strong><br />
-            半径{action.movement?.orbitRadius || 100}px で、速度{action.movement?.speed || MOVEMENT_DEFAULTS.speed}で、{action.movement?.duration || MOVEMENT_DEFAULTS.duration}秒間回転します
+            半径{movement?.orbitRadius || 100}px で、速度{movement?.speed || MOVEMENT_DEFAULTS.speed}で、{movement?.duration || MOVEMENT_DEFAULTS.duration}秒間周回します
           </div>
 
-          <div style={{ 
-            display: 'flex', 
-            gap: DESIGN_TOKENS.spacing[2] 
-          }}>
-            <ModernButton
-              variant="outline"
-              size="md"
-              onClick={() => setCurrentStep('movementType')}
-            >
+          <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}>
+            <ModernButton variant="outline" size="md" onClick={() => setCurrentStep('movementType')}>
               ← 戻る
             </ModernButton>
-            <ModernButton
-              variant="primary"
-              size="md"
-              onClick={() => setCurrentStep('confirm')}
-              style={{ flex: 1 }}
-            >
+            <ModernButton variant="primary" size="md" onClick={() => setCurrentStep('confirm')} style={{ flex: 1 }}>
               次へ →
             </ModernButton>
           </div>
@@ -740,7 +730,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
       );
     }
 
-    // bounce: バウンス強度 + 速度/時間
     if (movementType === 'bounce') {
       return (
         <div>
@@ -750,10 +739,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.neutral[800],
             marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
-            バウンスのパラメータを設定
+            バウンドのパラメータを設定
           </h5>
 
-          {/* バウンス強度 */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -762,19 +750,16 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               marginBottom: DESIGN_TOKENS.spacing[2],
               display: 'block'
             }}>
-              バウンス強度（0.1～2.0）
+              バウンス強度（0.0～1.0）
             </label>
             <input
               type="number"
-              min="0.1"
-              max="2.0"
+              min="0"
+              max="1"
               step="0.1"
-              value={action.movement?.bounceStrength || 0.8}
+              value={movement?.bounceStrength || 0.8}
               onChange={(e) => onUpdate(index, {
-                movement: {
-                  ...action.movement,
-                  bounceStrength: parseFloat(e.target.value)
-                }
+                movement: { ...action.movement, bounceStrength: parseFloat(e.target.value) } as any
               })}
               style={{
                 width: '100%',
@@ -786,7 +771,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             />
           </div>
 
-          {/* 速度 */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -802,12 +786,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               min={MOVEMENT_RANGES.speed.min}
               max={MOVEMENT_RANGES.speed.max}
               step={MOVEMENT_RANGES.speed.step}
-              value={action.movement?.speed || MOVEMENT_DEFAULTS.speed}
+              value={movement?.speed || MOVEMENT_DEFAULTS.speed}
               onChange={(e) => onUpdate(index, { 
-                movement: { 
-                  ...action.movement,
-                  speed: parseInt(e.target.value) 
-                } 
+                movement: { ...action.movement, speed: parseInt(e.target.value) } as any
               })}
               style={{
                 width: '100%',
@@ -819,7 +800,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             />
           </div>
 
-          {/* 時間 */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <label style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -835,12 +815,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               min={MOVEMENT_RANGES.duration.min}
               max={MOVEMENT_RANGES.duration.max}
               step={MOVEMENT_RANGES.duration.step}
-              value={action.movement?.duration || MOVEMENT_DEFAULTS.duration}
+              value={movement?.duration || MOVEMENT_DEFAULTS.duration}
               onChange={(e) => onUpdate(index, { 
-                movement: { 
-                  ...action.movement,
-                  duration: parseFloat(e.target.value) 
-                } 
+                movement: { ...action.movement, duration: parseFloat(e.target.value) } as any
               })}
               style={{
                 width: '100%',
@@ -852,7 +829,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             />
           </div>
 
-          {/* プレビュー説明 */}
           <div style={{
             padding: DESIGN_TOKENS.spacing[3],
             backgroundColor: DESIGN_TOKENS.colors.primary[50],
@@ -863,26 +839,116 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
             <strong>📊 設定内容:</strong><br />
-            強度{action.movement?.bounceStrength || 0.8}で、速度{action.movement?.speed || MOVEMENT_DEFAULTS.speed}で、{action.movement?.duration || MOVEMENT_DEFAULTS.duration}秒間バウンドします
+            バウンス強度{movement?.bounceStrength || 0.8}で、速度{movement?.speed || MOVEMENT_DEFAULTS.speed}で、{movement?.duration || MOVEMENT_DEFAULTS.duration}秒間バウンドします
           </div>
 
-          <div style={{ 
-            display: 'flex', 
-            gap: DESIGN_TOKENS.spacing[2] 
-          }}>
-            <ModernButton
-              variant="outline"
-              size="md"
-              onClick={() => setCurrentStep('movementType')}
-            >
+          <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}>
+            <ModernButton variant="outline" size="md" onClick={() => setCurrentStep('movementType')}>
               ← 戻る
             </ModernButton>
-            <ModernButton
-              variant="primary"
-              size="md"
-              onClick={() => setCurrentStep('confirm')}
-              style={{ flex: 1 }}
-            >
+            <ModernButton variant="primary" size="md" onClick={() => setCurrentStep('confirm')} style={{ flex: 1 }}>
+              次へ →
+            </ModernButton>
+          </div>
+        </div>
+      );
+    }
+
+    if (movementType === 'followDrag') {
+      return (
+        <div>
+          <h5 style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+            color: DESIGN_TOKENS.colors.neutral[800],
+            marginBottom: DESIGN_TOKENS.spacing[4]
+          }}>
+            ドラッグ追従のパラメータを設定
+          </h5>
+
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              減衰率（0.0～1.0）
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="1"
+              step="0.05"
+              value={movement?.damping || 0.1}
+              onChange={(e) => onUpdate(index, {
+                movement: { ...action.movement, damping: parseFloat(e.target.value) } as any
+              })}
+              style={{
+                width: '100%',
+                padding: DESIGN_TOKENS.spacing[2],
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base
+              }}
+            />
+            <div style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.neutral[600],
+              marginTop: DESIGN_TOKENS.spacing[1]
+            }}>
+              小さいほど滑らか、大きいほど素早く追従
+            </div>
+          </div>
+
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'flex',
+              alignItems: 'center',
+              gap: DESIGN_TOKENS.spacing[2]
+            }}>
+              <input
+                type="checkbox"
+                checked={movement?.constrainToBounds !== false}
+                onChange={(e) => onUpdate(index, {
+                  movement: { ...action.movement, constrainToBounds: e.target.checked } as any
+                })}
+              />
+              画面内に制限
+            </label>
+            <div style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.neutral[600],
+              marginLeft: DESIGN_TOKENS.spacing[6]
+            }}>
+              オンにすると画面外に出ません
+            </div>
+          </div>
+
+          <div style={{
+            padding: DESIGN_TOKENS.spacing[3],
+            backgroundColor: DESIGN_TOKENS.colors.primary[50],
+            border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`,
+            borderRadius: DESIGN_TOKENS.borderRadius.lg,
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            color: DESIGN_TOKENS.colors.primary[800],
+            marginBottom: DESIGN_TOKENS.spacing[4]
+          }}>
+            <strong>📊 設定内容:</strong><br />
+            減衰率{movement?.damping || 0.1}でドラッグ位置に追従します
+            {movement?.constrainToBounds !== false && '（画面内制限あり）'}
+          </div>
+
+          <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}>
+            <ModernButton variant="outline" size="md" onClick={() => setCurrentStep('movementType')}>
+              ← 戻る
+            </ModernButton>
+            <ModernButton variant="primary" size="md" onClick={() => setCurrentStep('confirm')} style={{ flex: 1 }}>
               次へ →
             </ModernButton>
           </div>
@@ -893,11 +959,9 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
     return null;
   };
 
-  // ステップ3: 確認
   const renderConfirmStep = () => {
     const movementType = action.movement?.type;
-    // ✅ swap用の型アサーション
-    const swapMovement = movementType === 'swap' ? (action.movement as any) : null;
+    const movement = action.movement as any;
 
     return (
       <div>
@@ -917,7 +981,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
           borderRadius: DESIGN_TOKENS.borderRadius.lg,
           marginBottom: DESIGN_TOKENS.spacing[4]
         }}>
-          {/* 移動タイプ */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
             <div style={{
               fontSize: DESIGN_TOKENS.typography.fontSize.xs,
@@ -935,8 +998,26 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </div>
           </div>
 
-          {/* 座標（straight/teleport/approachの場合） */}
-          {movementType && ['straight', 'teleport', 'approach'].includes(movementType) && (
+          {movementType === 'straight' && (
+            <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                color: DESIGN_TOKENS.colors.neutral[600],
+                marginBottom: DESIGN_TOKENS.spacing[1]
+              }}>
+                移動方向
+              </div>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                color: DESIGN_TOKENS.colors.neutral[700]
+              }}>
+                {DIRECTION_OPTIONS.find(d => d.value === movement?.direction)?.icon}{' '}
+                {DIRECTION_OPTIONS.find(d => d.value === movement?.direction)?.label || '下'}
+              </div>
+            </div>
+          )}
+
+          {['straight', 'teleport', 'approach'].includes(movementType || '') && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.xs,
@@ -954,8 +1035,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </div>
           )}
 
-          {/* swap対象オブジェクト */}
-          {swapMovement && (
+          {movementType === 'swap' && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.xs,
@@ -968,12 +1048,11 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 color: DESIGN_TOKENS.colors.neutral[700]
               }}>
-                {objectOptions.find(o => o.value === swapMovement.targetObjectId)?.label || '未選択'}
+                {objectOptions.find(o => o.value === movement?.targetObjectId)?.label || '未選択'}
               </div>
             </div>
           )}
 
-          {/* 徘徊半径（wanderの場合） */}
           {movementType === 'wander' && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
@@ -987,12 +1066,11 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 color: DESIGN_TOKENS.colors.neutral[700]
               }}>
-                {action.movement?.wanderRadius || 100}px
+                {movement?.wanderRadius || 100} ピクセル
               </div>
             </div>
           )}
 
-          {/* 回転半径（orbitの場合） */}
           {movementType === 'orbit' && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
@@ -1000,18 +1078,17 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 color: DESIGN_TOKENS.colors.neutral[600],
                 marginBottom: DESIGN_TOKENS.spacing[1]
               }}>
-                回転半径
+                周回半径
               </div>
               <div style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 color: DESIGN_TOKENS.colors.neutral[700]
               }}>
-                {action.movement?.orbitRadius || 100}px
+                {movement?.orbitRadius || 100} ピクセル
               </div>
             </div>
           )}
 
-          {/* バウンス強度（bounceの場合） */}
           {movementType === 'bounce' && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
@@ -1025,13 +1102,47 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 color: DESIGN_TOKENS.colors.neutral[700]
               }}>
-                {action.movement?.bounceStrength || 0.8}
+                {movement?.bounceStrength || 0.8}
               </div>
             </div>
           )}
 
-          {/* 速度（stop/teleport/swapの以外） */}
-          {movementType && !['stop', 'teleport', 'swap'].includes(movementType) && (
+          {movementType === 'followDrag' && (
+            <>
+              <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600],
+                  marginBottom: DESIGN_TOKENS.spacing[1]
+                }}>
+                  減衰率
+                </div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.neutral[700]
+                }}>
+                  {movement?.damping || 0.1}
+                </div>
+              </div>
+              <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600],
+                  marginBottom: DESIGN_TOKENS.spacing[1]
+                }}>
+                  画面内制限
+                </div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.neutral[700]
+                }}>
+                  {movement?.constrainToBounds !== false ? 'あり' : 'なし'}
+                </div>
+              </div>
+            </>
+          )}
+
+          {movementType !== 'stop' && movementType !== 'teleport' && movementType !== 'followDrag' && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.xs,
@@ -1044,14 +1155,13 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 color: DESIGN_TOKENS.colors.neutral[700]
               }}>
-                {action.movement?.speed || MOVEMENT_DEFAULTS.speed} ピクセル/秒
+                {movement?.speed || MOVEMENT_DEFAULTS.speed} ピクセル/秒
               </div>
             </div>
           )}
 
-          {/* 時間（stopの以外） */}
-          {movementType && movementType !== 'stop' && (
-            <div>
+          {movementType !== 'stop' && movementType !== 'followDrag' && (
+            <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.xs,
                 color: DESIGN_TOKENS.colors.neutral[600],
@@ -1063,21 +1173,17 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
                 color: DESIGN_TOKENS.colors.neutral[700]
               }}>
-                {swapMovement?.duration || action.movement?.duration || MOVEMENT_DEFAULTS.duration}秒
+                {movement?.duration || MOVEMENT_DEFAULTS.duration} 秒
               </div>
             </div>
           )}
         </div>
 
-        <div style={{ 
-          display: 'flex', 
-          gap: DESIGN_TOKENS.spacing[2]
-        }}>
+        <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}>
           <ModernButton
             variant="outline"
             size="md"
             onClick={() => {
-              // stopの場合はmovementTypeへ、それ以外はparameterへ
               if (movementType === 'stop') {
                 setCurrentStep('movementType');
               } else {
@@ -1112,7 +1218,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
         marginTop: DESIGN_TOKENS.spacing[4]
       }}
     >
-      {/* ヘッダー */}
       <div style={{
         marginBottom: DESIGN_TOKENS.spacing[6],
         paddingBottom: DESIGN_TOKENS.spacing[4],
@@ -1140,86 +1245,67 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
         </p>
       </div>
 
-      {/* ステップインジケーター */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: DESIGN_TOKENS.spacing[6],
-        position: 'relative'
+        padding: DESIGN_TOKENS.spacing[4],
+        backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+        borderRadius: DESIGN_TOKENS.borderRadius.lg
       }}>
-        {/* 進捗バー背景 */}
-        <div style={{
-          position: 'absolute',
-          top: '20px',
-          left: '5%',
-          right: '5%',
-          height: '4px',
-          backgroundColor: DESIGN_TOKENS.colors.neutral[200],
-          zIndex: 0
-        }} />
-        
-        {/* 進捗バー前景 */}
-        <div style={{
-          position: 'absolute',
-          top: '20px',
-          left: '5%',
-          width: `${(currentStepIndex / (steps.length - 1)) * 90}%`,
-          height: '4px',
-          backgroundColor: DESIGN_TOKENS.colors.success[500],
-          zIndex: 1,
-          transition: 'width 0.3s ease'
-        }} />
-
         {steps.map((step, idx) => (
-          <div
-            key={step.id}
-            style={{
-              flex: 1,
+          <React.Fragment key={step.id}>
+            <div style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               gap: DESIGN_TOKENS.spacing[2],
-              position: 'relative',
-              zIndex: 2
-            }}
-          >
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: DESIGN_TOKENS.borderRadius.full,
-              backgroundColor: idx <= currentStepIndex 
-                ? DESIGN_TOKENS.colors.success[500] 
-                : DESIGN_TOKENS.colors.neutral[200],
-              color: idx <= currentStepIndex 
-                ? DESIGN_TOKENS.colors.neutral[0] 
-                : DESIGN_TOKENS.colors.neutral[500],
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: DESIGN_TOKENS.typography.fontSize.lg,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-              transition: 'all 0.3s ease',
-              border: `3px solid ${DESIGN_TOKENS.colors.neutral[0]}`
+              flex: 1
             }}>
-              {step.icon}
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: idx <= currentStepIndex 
+                  ? DESIGN_TOKENS.colors.success[500] 
+                  : DESIGN_TOKENS.colors.neutral[300],
+                color: DESIGN_TOKENS.colors.neutral[0],
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                transition: 'all 0.3s ease'
+              }}>
+                {step.icon}
+              </div>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                fontWeight: idx === currentStepIndex 
+                  ? DESIGN_TOKENS.typography.fontWeight.semibold 
+                  : DESIGN_TOKENS.typography.fontWeight.normal,
+                color: idx === currentStepIndex 
+                  ? DESIGN_TOKENS.colors.success[600] 
+                  : DESIGN_TOKENS.colors.neutral[600]
+              }}>
+                {step.label}
+              </div>
             </div>
-            <span style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-              fontWeight: idx === currentStepIndex 
-                ? DESIGN_TOKENS.typography.fontWeight.semibold 
-                : DESIGN_TOKENS.typography.fontWeight.normal,
-              color: idx <= currentStepIndex 
-                ? DESIGN_TOKENS.colors.success[600] 
-                : DESIGN_TOKENS.colors.neutral[500],
-              textAlign: 'center'
-            }}>
-              {step.label}
-            </span>
-          </div>
+            {idx < steps.length - 1 && (
+              <div style={{
+                height: '2px',
+                flex: 1,
+                backgroundColor: idx < currentStepIndex 
+                  ? DESIGN_TOKENS.colors.success[500] 
+                  : DESIGN_TOKENS.colors.neutral[300],
+                transition: 'all 0.3s ease'
+              }} />
+            )}
+          </React.Fragment>
         ))}
       </div>
 
-      {/* ステップコンテンツ */}
       <div>
         {currentStep === 'movementType' && renderMovementTypeStep()}
         {currentStep === 'parameter' && renderParameterStep()}
