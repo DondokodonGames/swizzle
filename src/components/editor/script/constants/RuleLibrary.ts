@@ -243,12 +243,11 @@ export const ACTION_LIBRARY: ActionInfo[] = [
 // Phase 1: ボタン統合版
 export const PRIORITY_ACTIONS: ActionType[] = [
   'gameState',        // 🎮 ゲーム状態（success/failure/pause/restartを統合表示）
-  'counter',          // 🔢 カウンター操作
-  'randomAction',     // 🎲 ランダム実行
-  'playSound',        // 🔊 音再生
-  'objectState',      // 👁️ オブジェクト状態（switchAnimation/show/hideを統合表示）
   'move',             // 🏃 移動
+  'objectState',      // 👁️ オブジェクト状態（switchAnimation/show/hideを統合表示）
+  'playSound',        // 🔊 音再生
   'effect',           // ✨ エフェクト
+  'counter',          // 🔢 カウンター操作
   'setFlag'           // 🚩 フラグ操作（setFlag/toggleFlagを統合表示）
 ];
 
@@ -365,12 +364,12 @@ export const CONDITION_LIBRARY: ConditionInfo[] = [
 
 // ===== 優先表示条件（9個） =====
 export const PRIORITY_CONDITIONS: string[] = [  // ConditionType[] → string[]
-  'time',           // ⏰ 時間
   'touch',          // 👆 タッチ
   'collision',      // 💥 衝突
+  'objectState',    // 📦 オブジェクト状態
+  'time',           // ⏰ 時間
   'counter',        // 🔢 カウンター
   'flag',           // 🚩 フラグ
-  'objectState',    // 📦 オブジェクト状態
   'random',         // 🎲 ランダム
 ];
 

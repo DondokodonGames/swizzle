@@ -1,7 +1,7 @@
 // src/components/editor/script/actions/MoveActionEditor.tsx
-// Phase 3-2-3 + 3-2-4最終版v5: TypeScriptエラー完全修正
+// Phase 3-2-3 + 3-2-4最終版v6: 座標と方向の排他制御追加
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameAction } from '../../../../types/editor/GameScript';
 import { GameProject } from '../../../../types/editor/GameProject';
@@ -25,6 +25,7 @@ interface MoveActionEditorProps {
 
 type EditorStep = 'movementType' | 'parameter' | 'confirm';
 type MovementDirection = 'up' | 'down' | 'left' | 'right' | 'upLeft' | 'upRight' | 'downLeft' | 'downRight';
+type StraightMode = 'direction' | 'coordinate';
 
 const DIRECTION_OPTIONS: Array<{
   value: MovementDirection;
@@ -51,6 +52,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
 }) => {
   const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<EditorStep>('movementType');
+  const [straightMode, setStraightMode] = useState<StraightMode>('direction');
 
   const backgroundUrl = useMemo(() => {
     const background = project.assets.background;
@@ -81,6 +83,18 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
     return { x: 0.5, y: 0.5 };
   }, [action.movement]);
 
+  // straightモードの初期化（既存のactionから判定）
+  useEffect(() => {
+    const movement = action.movement as any;
+    if (movement?.type === 'straight') {
+      if (movement?.target && typeof movement.target === 'object') {
+        setStraightMode('coordinate');
+      } else if (movement?.direction) {
+        setStraightMode('direction');
+      }
+    }
+  }, [action.movement]);
+
   const handleCoordinateChange = useCallback((newCoord: Coordinate) => {
     onUpdate(index, {
       movement: {
@@ -88,10 +102,22 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
         target: {
           x: newCoord.x,
           y: newCoord.y
-        }
+        },
+        direction: undefined // 座標を使う場合は方向をクリア
       } as any
     });
   }, [index, action.movement, onUpdate]);
+
+  const handleDirectionChange = useCallback((direction: MovementDirection) => {
+    onUpdate(index, {
+      movement: {
+        ...action.movement,
+        direction: direction,
+        target: undefined // 方向を使う場合は座標をクリア
+      } as any
+    });
+    onShowNotification('success', `${DIRECTION_OPTIONS.find(d => d.value === direction)?.label}方向に設定しました`);
+  }, [index, action.movement, onUpdate, onShowNotification]);
 
   const steps = [
     { id: 'movementType', label: '移動タイプ', icon: '🏃' },
@@ -137,6 +163,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 newMovement.speed = option.value === 'teleport' ? undefined : MOVEMENT_DEFAULTS.speed;
                 if (option.value === 'straight') {
                   newMovement.direction = 'down';
+                  newMovement.target = undefined; // 初期状態は方向モード
                 }
               } else if (option.value === 'wander') {
                 newMovement.wanderRadius = 100;
@@ -201,11 +228,10 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
   );
 
   const renderParameterStep = () => {
-    // 🔧 TypeScriptエラー修正: string型として扱う
     const movementType = action.movement?.type as string;
     const movement = action.movement as any;
 
-    if (['straight', 'teleport', 'approach'].includes(movementType || '')) {
+    if (movementType === 'straight') {
       return (
         <div>
           <h5 style={{
@@ -214,10 +240,86 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             color: DESIGN_TOKENS.colors.neutral[800],
             marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
-            移動先の座標とパラメータを設定
+            直線移動のパラメータを設定
           </h5>
 
-          {movementType === 'straight' && (
+          {/* モード選択 */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              移動の指定方法
+            </label>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: DESIGN_TOKENS.spacing[2]
+            }}>
+              <ModernButton
+                variant={straightMode === 'direction' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setStraightMode('direction');
+                  onUpdate(index, {
+                    movement: {
+                      ...action.movement,
+                      direction: movement?.direction || 'down',
+                      target: undefined
+                    } as any
+                  });
+                }}
+                style={{
+                  padding: DESIGN_TOKENS.spacing[3],
+                  backgroundColor: straightMode === 'direction'
+                    ? DESIGN_TOKENS.colors.success[500]
+                    : DESIGN_TOKENS.colors.neutral[0],
+                  borderColor: straightMode === 'direction'
+                    ? DESIGN_TOKENS.colors.success[500]
+                    : DESIGN_TOKENS.colors.success[200],
+                  color: straightMode === 'direction'
+                    ? DESIGN_TOKENS.colors.neutral[0]
+                    : DESIGN_TOKENS.colors.neutral[800]
+                }}
+              >
+                🧭 方向で指定
+              </ModernButton>
+              <ModernButton
+                variant={straightMode === 'coordinate' ? 'primary' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setStraightMode('coordinate');
+                  onUpdate(index, {
+                    movement: {
+                      ...action.movement,
+                      target: { x: 0.5, y: 0.5 },
+                      direction: undefined
+                    } as any
+                  });
+                }}
+                style={{
+                  padding: DESIGN_TOKENS.spacing[3],
+                  backgroundColor: straightMode === 'coordinate'
+                    ? DESIGN_TOKENS.colors.success[500]
+                    : DESIGN_TOKENS.colors.neutral[0],
+                  borderColor: straightMode === 'coordinate'
+                    ? DESIGN_TOKENS.colors.success[500]
+                    : DESIGN_TOKENS.colors.success[200],
+                  color: straightMode === 'coordinate'
+                    ? DESIGN_TOKENS.colors.neutral[0]
+                    : DESIGN_TOKENS.colors.neutral[800]
+                }}
+              >
+                📍 座標で指定
+              </ModernButton>
+            </div>
+          </div>
+
+          {/* 方向モード */}
+          {straightMode === 'direction' && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
               <label style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -238,15 +340,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                     key={dir.value}
                     variant={movement?.direction === dir.value ? 'primary' : 'outline'}
                     size="sm"
-                    onClick={() => {
-                      onUpdate(index, {
-                        movement: {
-                          ...action.movement,
-                          direction: dir.value
-                        } as any
-                      });
-                      onShowNotification('success', `${dir.label}方向に設定しました`);
-                    }}
+                    onClick={() => handleDirectionChange(dir.value)}
                     style={{
                       padding: DESIGN_TOKENS.spacing[3],
                       flexDirection: 'column',
@@ -273,6 +367,126 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
               </div>
             </div>
           )}
+
+          {/* 座標モード */}
+          {straightMode === 'coordinate' && (
+            <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+              <CoordinateEditor
+                value={coordinate}
+                onChange={handleCoordinateChange}
+                previewBackgroundUrl={backgroundUrl}
+              />
+            </div>
+          )}
+
+          {/* 速度設定 */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              速度（ピクセル/秒）
+            </label>
+            <input
+              type="number"
+              min={MOVEMENT_RANGES.speed.min}
+              max={MOVEMENT_RANGES.speed.max}
+              step={MOVEMENT_RANGES.speed.step}
+              value={movement?.speed || MOVEMENT_DEFAULTS.speed}
+              onChange={(e) => onUpdate(index, { 
+                movement: { 
+                  ...action.movement,
+                  speed: parseInt(e.target.value) 
+                } as any
+              })}
+              style={{
+                width: '100%',
+                padding: DESIGN_TOKENS.spacing[2],
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base
+              }}
+            />
+          </div>
+
+          {/* 時間設定 */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <label style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+              color: DESIGN_TOKENS.colors.success[800],
+              marginBottom: DESIGN_TOKENS.spacing[2],
+              display: 'block'
+            }}>
+              時間（秒）
+            </label>
+            <input
+              type="number"
+              min={MOVEMENT_RANGES.duration.min}
+              max={MOVEMENT_RANGES.duration.max}
+              step={MOVEMENT_RANGES.duration.step}
+              value={movement?.duration || MOVEMENT_DEFAULTS.duration}
+              onChange={(e) => onUpdate(index, { 
+                movement: { 
+                  ...action.movement,
+                  duration: parseFloat(e.target.value) 
+                } as any
+              })}
+              style={{
+                width: '100%',
+                padding: DESIGN_TOKENS.spacing[2],
+                border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base
+              }}
+            />
+          </div>
+
+          {/* 設定概要 */}
+          <div style={{
+            padding: DESIGN_TOKENS.spacing[3],
+            backgroundColor: DESIGN_TOKENS.colors.primary[50],
+            border: `1px solid ${DESIGN_TOKENS.colors.primary[200]}`,
+            borderRadius: DESIGN_TOKENS.borderRadius.lg,
+            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+            color: DESIGN_TOKENS.colors.primary[800],
+            marginBottom: DESIGN_TOKENS.spacing[4]
+          }}>
+            <strong>📊 設定内容:</strong><br />
+            {straightMode === 'direction' ? (
+              <>方向: {DIRECTION_OPTIONS.find(d => d.value === movement?.direction)?.label || '下'} へ</>
+            ) : (
+              <>座標 ({coordinate.x.toFixed(2)}, {coordinate.y.toFixed(2)}) へ</>
+            )}
+            {` 速度${movement?.speed || MOVEMENT_DEFAULTS.speed}で ${movement?.duration || MOVEMENT_DEFAULTS.duration}秒かけて移動します`}
+          </div>
+
+          <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}>
+            <ModernButton variant="outline" size="md" onClick={() => setCurrentStep('movementType')}>
+              ← 戻る
+            </ModernButton>
+            <ModernButton variant="primary" size="md" onClick={() => setCurrentStep('confirm')} style={{ flex: 1 }}>
+              次へ →
+            </ModernButton>
+          </div>
+        </div>
+      );
+    }
+
+    if (['teleport', 'approach'].includes(movementType || '')) {
+      return (
+        <div>
+          <h5 style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+            fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+            color: DESIGN_TOKENS.colors.neutral[800],
+            marginBottom: DESIGN_TOKENS.spacing[4]
+          }}>
+            移動先の座標とパラメータを設定
+          </h5>
 
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
             <CoordinateEditor
@@ -358,9 +572,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             marginBottom: DESIGN_TOKENS.spacing[4]
           }}>
             <strong>📊 設定内容:</strong><br />
-            {movementType === 'straight' && (
-              <>方向: {DIRECTION_OPTIONS.find(d => d.value === movement?.direction)?.label || '下'}<br /></>
-            )}
             座標 ({coordinate.x.toFixed(2)}, {coordinate.y.toFixed(2)}) へ
             {movementType !== 'teleport' && ` 速度${movement?.speed || MOVEMENT_DEFAULTS.speed}で`}
             {` ${movement?.duration || MOVEMENT_DEFAULTS.duration}秒かけて移動します`}
@@ -855,7 +1066,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
       );
     }
 
-    // 🔧 TypeScriptエラー修正: 文字列比較として扱う
     if (movementType === 'followDrag') {
       return (
         <div>
@@ -962,7 +1172,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
   };
 
   const renderConfirmStep = () => {
-    // 🔧 TypeScriptエラー修正: string型として扱う
     const movementType = action.movement?.type as string;
     const movement = action.movement as any;
 
@@ -1001,7 +1210,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </div>
           </div>
 
-          {movementType === 'straight' && (
+          {movementType === 'straight' && movement?.direction && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.xs,
@@ -1020,7 +1229,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </div>
           )}
 
-          {['straight', 'teleport', 'approach'].includes(movementType || '') && (
+          {(movementType === 'straight' && movement?.target) || ['teleport', 'approach'].includes(movementType || '') ? (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
                 fontSize: DESIGN_TOKENS.typography.fontSize.xs,
@@ -1036,7 +1245,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
                 ({coordinate.x.toFixed(2)}, {coordinate.y.toFixed(2)})
               </div>
             </div>
-          )}
+          ) : null}
 
           {movementType === 'swap' && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
@@ -1110,7 +1319,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </div>
           )}
 
-          {/* 🔧 TypeScriptエラー修正: 文字列比較として扱う */}
           {movementType === 'followDrag' && (
             <>
               <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
@@ -1146,7 +1354,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </>
           )}
 
-          {/* 🔧 TypeScriptエラー修正: 文字列比較として扱う */}
           {movementType !== 'stop' && movementType !== 'teleport' && movementType !== 'followDrag' && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
@@ -1165,7 +1372,6 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </div>
           )}
 
-          {/* 🔧 TypeScriptエラー修正: 文字列比較として扱う */}
           {movementType !== 'stop' && movementType !== 'followDrag' && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{

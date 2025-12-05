@@ -1,8 +1,7 @@
 // src/components/editor/tabs/assets/sections/BackgroundSection.tsx
-// 🔧 Phase E-1: 背景管理セクション分離 + 画像差し替え機能追加
-// 🆕 Phase 4: 背景アニメーション設定UI追加
-// 🐛 Fix: DESIGN_TOKENSカラーキー修正（error[100]→error[200], success[700]→success[600], error[700]→error[600]）
-import React, { useRef } from 'react';
+// 🔧 Phase 3-3 Item 2: 背景設定の仕様統一（完全版v2）
+// プレビュー3倍拡大（240×432px） + サイズ%表示
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../../../types/editor/GameProject';
 import { EDITOR_LIMITS } from '../../../../../constants/EditorLimits';
@@ -76,6 +75,9 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
   
   // 差し替え用の隠しinput参照
   const replaceInputRef = useRef<HTMLInputElement>(null);
+  
+  // フレーム選択UIの表示状態
+  const [showFrameSelector, setShowFrameSelector] = useState(false);
 
   // 背景ファイルアップロード処理
   const handleBackgroundUpload = async (results: FileProcessingResult[]) => {
@@ -103,7 +105,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
     }
   };
 
-  // 🔄 背景画像差し替え処理
+  // 背景画像差し替え処理
   const handleBackgroundReplace = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -199,10 +201,34 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
     replaceInputRef.current?.click();
   };
 
-  // 🆕 Phase 4: 背景アニメーション設定更新
+  // 🆕 背景defaultScale更新（%表示対応）
+  const updateBackgroundScale = (value: string) => {
+    const percent = parseFloat(value);
+    if (isNaN(percent) || percent < 10 || percent > 500) return;
+    
+    // %を倍率に変換（100% = 1.0倍）
+    const scale = percent / 100;
+
+    const updatedAssets = {
+      ...project.assets,
+      background: {
+        ...project.assets.background!,
+        defaultScale: scale
+      }
+    };
+    onProjectUpdate({
+      ...project,
+      assets: updatedAssets,
+      lastModified: new Date().toISOString()
+    });
+  };
+
+  // 背景アニメーション設定更新
   const updateBackgroundAnimation = (updates: {
     animationSpeed?: number;
     autoStart?: boolean;
+    loop?: boolean;
+    pingpong?: boolean;
     initialAnimation?: number;
   }) => {
     if (!project.script?.layout?.background) return;
@@ -223,6 +249,29 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
       script: updatedScript,
       lastModified: new Date().toISOString()
     });
+  };
+
+  // アニメーション速度更新
+  const handleAnimationSpeedChange = (value: string) => {
+    const speed = parseInt(value);
+    if (isNaN(speed) || speed < 0 || speed > 60) return;
+    updateBackgroundAnimation({ animationSpeed: speed });
+  };
+
+  // フレーム変更（前へ/次へ）
+  const changeFrame = (direction: 'prev' | 'next') => {
+    const currentFrame = project.script?.layout?.background?.initialAnimation || 0;
+    const maxFrame = 3; // 0～3の4フレーム
+    
+    let newFrame: number;
+    if (direction === 'prev') {
+      newFrame = currentFrame > 0 ? currentFrame - 1 : maxFrame;
+    } else {
+      newFrame = currentFrame < maxFrame ? currentFrame + 1 : 0;
+    }
+    
+    updateBackgroundAnimation({ initialAnimation: newFrame });
+    showSuccess(`フレーム ${newFrame} に変更しました`);
   };
 
   return (
@@ -263,18 +312,125 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
 
       {project.assets.background && 'frames' in project.assets.background && project.assets.background.frames ? (
         <ModernCard variant="elevated" size="md" style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
-            <img
-              src={project.assets.background.frames[0]?.dataUrl}
-              alt={t('editor.assets.backgroundImage')}
-              style={{
-                width: '80px',
-                height: '144px',
-                objectFit: 'cover',
-                borderRadius: DESIGN_TOKENS.borderRadius.md,
-                border: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: DESIGN_TOKENS.spacing[4] }}>
+            {/* 🆕 画像プレビュー 3倍拡大（240×432px） + フレーム選択オーバーレイ */}
+            <div 
+              style={{ 
+                position: 'relative',
+                width: '360px',
+                height: '640px',
+                flexShrink: 0
               }}
-            />
+              onMouseEnter={() => setShowFrameSelector(true)}
+              onMouseLeave={() => setShowFrameSelector(false)}
+            >
+              <img
+                src={project.assets.background.frames[0]?.dataUrl}
+                alt={t('editor.assets.backgroundImage')}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  borderRadius: DESIGN_TOKENS.borderRadius.md,
+                  border: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`
+                }}
+              />
+              
+              {/* フレーム番号表示 */}
+              <div style={{
+                position: 'absolute',
+                top: DESIGN_TOKENS.spacing[2],
+                right: DESIGN_TOKENS.spacing[2],
+                backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                color: 'white',
+                padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                borderRadius: DESIGN_TOKENS.borderRadius.sm,
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.bold
+              }}>
+                フレーム {project.script?.layout?.background?.initialAnimation || 0}
+              </div>
+
+              {/* 左右ボタンオーバーレイ */}
+              {showFrameSelector && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '0 12px',  // ← 固定値に変更（またはmarginをボタンに移動）
+                  //padding: `0 ${DESIGN_TOKENS.spacing[3]}`,
+                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                  borderRadius: DESIGN_TOKENS.borderRadius.md,
+                  boxSizing: 'border-box'  // ← 追加：paddingを幅に含める
+                }}>
+                  {/* 前へボタン */}
+                  <button
+                    onClick={() => changeFrame('prev')}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                    title="前のフレーム"
+                  >
+                    ◀
+                  </button>
+
+                  {/* 次へボタン */}
+                  <button
+                    onClick={() => changeFrame('next')}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
+                      boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                      e.currentTarget.style.transform = 'scale(1.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+                      e.currentTarget.style.transform = 'scale(1)';
+                    }}
+                    title="次のフレーム"
+                  >
+                    ▶
+                  </button>
+                </div>
+              )}
+            </div>
+
             <div style={{ flex: 1 }}>
               <h4
                 style={{
@@ -322,7 +478,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                 </span>
               </div>
 
-              {/* サイズ調整スライダー */}
+              {/* 🆕 サイズ調整（%表示） */}
               <div style={{ marginTop: DESIGN_TOKENS.spacing[3] }}>
                 <label
                   style={{
@@ -333,40 +489,35 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                     marginBottom: DESIGN_TOKENS.spacing[1]
                   }}
                 >
-                  {t('editor.assets.size')}: {((project.assets.background.defaultScale || 1.0) * 100).toFixed(0)}%
+                  📏 {t('editor.assets.size')}
                 </label>
-                <input
-                  type="range"
-                  min="10"
-                  max="300"
-                  step="10"
-                  value={(project.assets.background.defaultScale || 1.0) * 100}
-                  onChange={(e) => {
-                    const scale = parseInt(e.target.value) / 100;
-                    const updatedAssets = {
-                      ...project.assets,
-                      background: {
-                        ...project.assets.background!,
-                        defaultScale: scale
-                      }
-                    };
-                    onProjectUpdate({
-                      ...project,
-                      assets: updatedAssets
-                    });
-                  }}
-                  style={{
-                    width: '100%',
-                    height: '4px',
-                    borderRadius: DESIGN_TOKENS.borderRadius.full,
-                    background: DESIGN_TOKENS.colors.neutral[200],
-                    outline: 'none',
-                    cursor: 'pointer'
-                  }}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                  <input
+                    type="number"
+                    min="10"
+                    max="500"
+                    step="10"
+                    value={Math.round((project.assets.background.defaultScale || 1.0) * 100)}
+                    onChange={(e) => updateBackgroundScale(e.target.value)}
+                    style={{
+                      width: '80px',
+                      padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                      border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                      borderRadius: DESIGN_TOKENS.borderRadius.md,
+                      fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                      textAlign: 'center'
+                    }}
+                  />
+                  <span style={{ 
+                    fontSize: DESIGN_TOKENS.typography.fontSize.xs, 
+                    color: DESIGN_TOKENS.colors.neutral[500] 
+                  }}>
+                    % (10～500%, 推奨: 100%)
+                  </span>
+                </div>
               </div>
 
-              {/* 🆕 Phase 4: 背景アニメーション設定 */}
+              {/* 背景アニメーション設定 */}
               {project.script?.layout?.background && (
                 <div style={{ 
                   marginTop: DESIGN_TOKENS.spacing[4],
@@ -395,70 +546,45 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                         marginBottom: DESIGN_TOKENS.spacing[1]
                       }}
                     >
-                      {t('editor.assets.speed')}: {project.script.layout.background.animationSpeed}fps
-                      {project.script.layout.background.animationSpeed === 0 && (
-                        <span style={{ color: DESIGN_TOKENS.colors.neutral[500] }}>
-                          {' '}({t('editor.assets.ruleControlOnly')})
-                        </span>
-                      )}
+                      ⚡ {t('editor.assets.speed')}
                     </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="30"
-                      value={project.script.layout.background.animationSpeed}
-                      onChange={(e) => updateBackgroundAnimation({ 
-                        animationSpeed: parseInt(e.target.value) 
-                      })}
-                      style={{
-                        width: '100%',
-                        height: '4px',
-                        borderRadius: DESIGN_TOKENS.borderRadius.full,
-                        background: DESIGN_TOKENS.colors.neutral[200],
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
-                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                      <input
+                        type="number"
+                        min="0"
+                        max="60"
+                        value={project.script.layout.background.animationSpeed}
+                        onChange={(e) => handleAnimationSpeedChange(e.target.value)}
+                        style={{
+                          width: '80px',
+                          padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[2]}`,
+                          border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                          borderRadius: DESIGN_TOKENS.borderRadius.md,
+                          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                          textAlign: 'center'
+                        }}
+                      />
+                      <span style={{ 
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs, 
+                        color: DESIGN_TOKENS.colors.neutral[500] 
+                      }}>
+                        fps (0=ルール制御のみ, 推奨: 12)
+                      </span>
+                    </div>
                   </div>
 
-                  {/* 初期フレーム選択（将来の複数フレーム対応） */}
-                  <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                        fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                        color: DESIGN_TOKENS.colors.neutral[700],
-                        marginBottom: DESIGN_TOKENS.spacing[1]
-                      }}
-                    >
-                      {t('editor.assets.initialFrame')}: {project.script.layout.background.initialAnimation}
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="3"
-                      value={project.script.layout.background.initialAnimation}
-                      onChange={(e) => updateBackgroundAnimation({ 
-                        initialAnimation: parseInt(e.target.value) 
-                      })}
-                      style={{
-                        width: '100%',
-                        height: '4px',
-                        borderRadius: DESIGN_TOKENS.borderRadius.full,
-                        background: DESIGN_TOKENS.colors.neutral[200],
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
-                    />
-                  </div>
-
-                  {/* 自動再生開始チェックボックス */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
+                  {/* アニメーション制御チェックボックス */}
+                  <div style={{ 
+                    marginBottom: DESIGN_TOKENS.spacing[3],
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: DESIGN_TOKENS.spacing[2]
+                  }}>
+                    {/* 自動再生 */}
                     <label style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
                       <input
                         type="checkbox"
-                        checked={project.script.layout.background.autoStart}
+                        checked={project.script.layout.background.autoStart || false}
                         onChange={(e) => updateBackgroundAnimation({ 
                           autoStart: e.target.checked 
                         })}
@@ -472,7 +598,51 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                         fontSize: DESIGN_TOKENS.typography.fontSize.xs, 
                         color: DESIGN_TOKENS.colors.neutral[700] 
                       }}>
-                        ▶️ {t('editor.assets.autoStart')}
+                        ▶️ 自動再生（ゲーム開始時に自動でアニメーション開始）
+                      </span>
+                    </label>
+
+                    {/* ループ */}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                      <input
+                        type="checkbox"
+                        checked={project.script.layout.background.loop || false}
+                        onChange={(e) => updateBackgroundAnimation({ 
+                          loop: e.target.checked 
+                        })}
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      <span style={{ 
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs, 
+                        color: DESIGN_TOKENS.colors.neutral[700] 
+                      }}>
+                        🔁 ループ再生（最後のフレームまで行ったら最初に戻る）
+                      </span>
+                    </label>
+
+                    {/* 往復 */}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
+                      <input
+                        type="checkbox"
+                        checked={project.script.layout.background.pingpong || false}
+                        onChange={(e) => updateBackgroundAnimation({ 
+                          pingpong: e.target.checked 
+                        })}
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      <span style={{ 
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs, 
+                        color: DESIGN_TOKENS.colors.neutral[700] 
+                      }}>
+                        ↔️ 往復再生（最後まで行ったら逆順に再生）
                       </span>
                     </label>
                   </div>
@@ -487,16 +657,20 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                     color: DESIGN_TOKENS.colors.primary[700],
                     lineHeight: DESIGN_TOKENS.typography.lineHeight.relaxed
                   }}>
-                    💡 <strong>{t('editor.assets.animationNote')}:</strong><br />
-                    {t('editor.assets.animationNoteDesc')}
+                    💡 <strong>アニメーション設定について</strong><br />
+                    • フレーム選択: 画像にマウスを重ねると左右ボタンが表示されます<br />
+                    • 速度0: ルールによる制御のみ（自動アニメーションなし）<br />
+                    • ループ: 0→1→2→3→0... の順に繰り返し<br />
+                    • 往復: 0→1→2→3→2→1→0... の順に往復<br />
+                    • ループと往復を両方ONにした場合、往復が優先されます
                   </div>
                 </div>
               )}
             </div>
             
             {/* ボタングループ */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2] }}>
-              {/* 🔄 差し替えボタン */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[2], flexShrink: 0 }}>
+              {/* 差し替えボタン */}
               <ModernButton
                 variant="secondary"
                 size="sm"
@@ -525,8 +699,8 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
             <div
               style={{
-                width: '80px',
-                height: '144px',
+                width: '360px',
+                height: '640px',
                 backgroundColor: (project.assets.background as unknown as ColorBackground).value,
                 borderRadius: DESIGN_TOKENS.borderRadius.md,
                 border: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`
@@ -603,7 +777,10 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
           <li>{t('editor.assets.backgroundHints.maxSize', { size: formatFileSize(EDITOR_LIMITS.IMAGE.BACKGROUND_FRAME_MAX_SIZE) })}</li>
           <li>{t('editor.assets.backgroundHints.optimization')}</li>
           <li>{t('editor.assets.backgroundHints.autoShow')}</li>
-          <li><strong>🎬 {t('editor.assets.backgroundHints.animation')}</strong>: {t('editor.assets.backgroundHints.animationDesc')}</li>
+          <li><strong>🎬 アニメーション</strong>: 画像にマウスを重ねると左右ボタンでフレーム切り替え</li>
+          <li><strong>📏 サイズ設定</strong>: %表示で10～500%の範囲で設定（推奨: 100%）</li>
+          <li><strong>⚡ アニメーション速度</strong>: 0～60fps（0=ルール制御のみ、推奨: 12fps）</li>
+          <li><strong>🔁 ループ/往復</strong>: アニメーションの再生方法を選択可能</li>
           <li><strong>{t('editor.assets.backgroundHints.future')}</strong></li>
         </ul>
       </ModernCard>
