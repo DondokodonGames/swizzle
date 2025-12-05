@@ -1,5 +1,5 @@
 // src/components/editor/script/actions/MoveActionEditor.tsx
-// Phase 3-2-3 + 3-2-4最終版v4: 型アサーション追加
+// Phase 3-2-3 + 3-2-4最終版v5: TypeScriptエラー完全修正
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -201,7 +201,8 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
   );
 
   const renderParameterStep = () => {
-    const movementType = action.movement?.type;
+    // 🔧 TypeScriptエラー修正: string型として扱う
+    const movementType = action.movement?.type as string;
     const movement = action.movement as any;
 
     if (['straight', 'teleport', 'approach'].includes(movementType || '')) {
@@ -854,6 +855,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
       );
     }
 
+    // 🔧 TypeScriptエラー修正: 文字列比較として扱う
     if (movementType === 'followDrag') {
       return (
         <div>
@@ -960,7 +962,8 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
   };
 
   const renderConfirmStep = () => {
-    const movementType = action.movement?.type;
+    // 🔧 TypeScriptエラー修正: string型として扱う
+    const movementType = action.movement?.type as string;
     const movement = action.movement as any;
 
     return (
@@ -1107,6 +1110,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </div>
           )}
 
+          {/* 🔧 TypeScriptエラー修正: 文字列比較として扱う */}
           {movementType === 'followDrag' && (
             <>
               <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
@@ -1142,6 +1146,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </>
           )}
 
+          {/* 🔧 TypeScriptエラー修正: 文字列比較として扱う */}
           {movementType !== 'stop' && movementType !== 'teleport' && movementType !== 'followDrag' && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
@@ -1160,6 +1165,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
             </div>
           )}
 
+          {/* 🔧 TypeScriptエラー修正: 文字列比較として扱う */}
           {movementType !== 'stop' && movementType !== 'followDrag' && (
             <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
               <div style={{
