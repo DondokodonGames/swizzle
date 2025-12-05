@@ -1,8 +1,8 @@
 // src/components/editor/script/actions/ObjectStateActionEditor.tsx
-// Phase 1: オブジェクト状態変更エディター（1画面形式）
-// 既存の良いUIを活かしつつ、ステップバイステップではなく1画面で全設定
+// Phase 3-3 Item 7: 3ステップフロー版
+// 参考: ObjectStateConditionEditor.tsx
 
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { GameAction } from '../../../../types/editor/GameScript';
 import { GameProject } from '../../../../types/editor/GameProject';
 import { ObjectAsset } from '../../../../types/editor/ProjectAssets';
@@ -18,6 +18,9 @@ interface ObjectStateActionEditorProps {
   onShowNotification?: (type: 'success' | 'error' | 'info', message: string) => void;
 }
 
+// 3つのステップ定義
+type EditorStep = 'actionType' | 'targetAndDetail' | 'confirm';
+
 export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = ({
   action,
   project,
@@ -25,12 +28,14 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
   onUpdate,
   onShowNotification
 }) => {
+  const [currentStep, setCurrentStep] = useState<EditorStep>('actionType');
+
   // オブジェクトリスト取得
   const objects = useMemo(() => {
     return project.assets.objects || [];
   }, [project.assets.objects]);
 
-  // 選択中のオブジェクト取得
+  // 選択中のオブジェクト
   const selectedObject = useMemo(() => {
     if (action.type !== 'show' && action.type !== 'hide' && action.type !== 'switchAnimation') {
       return null;
@@ -52,433 +57,272 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
 
   const currentTargetType = getCurrentTargetType();
 
-  // ターゲットタイプ変更ハンドラー
-  const handleTargetTypeChange = (newTargetType: 'background' | 'this' | 'other') => {
-    let targetId: string = newTargetType;  // ← 型を string に指定
-    
-    if (newTargetType === 'other' && objects.length > 0) {
-      targetId = objects[0].id;
-    }
+  // ステップナビゲーション
+  const steps = [
+    { id: 'actionType', label: 'アクション選択', icon: '🎬' },
+    { id: 'targetAndDetail', label: 'ターゲット・詳細', icon: '🎯' },
+    { id: 'confirm', label: '確認', icon: '✅' }
+  ];
 
-    onUpdate(index, { targetId });
-    if (onShowNotification) {
-      const label = newTargetType === 'background' ? '背景' : 
-                    newTargetType === 'this' ? 'このオブジェクト' : '他のオブジェクト';
-      onShowNotification('success', `ターゲットを「${label}」に変更しました`);
-    }
-  };
+  const currentStepIndex = steps.findIndex(s => s.id === currentStep);
 
-  // オブジェクト選択ハンドラー
-  const handleObjectSelect = (objectId: string) => {
-    onUpdate(index, { targetId: objectId });
-    const obj = objects.find(o => o.id === objectId);
-    if (onShowNotification && obj) {
-      onShowNotification('success', `「${obj.name}」を選択しました`);
-    }
-  };
+  // アクションタイプ選択肢
+  const ACTION_TYPE_OPTIONS = [
+    { value: 'show', label: '表示する', icon: '👁️', description: 'オブジェクトを表示' },
+    { value: 'hide', label: '非表示にする', icon: '🙈', description: 'オブジェクトを非表示' },
+    { value: 'switchAnimation', label: 'アニメーション', icon: '🎬', description: 'アニメーション切替' }
+  ];
 
-  // アクションタイプ変更ハンドラー
-  const handleActionTypeChange = (newType: 'show' | 'hide' | 'switchAnimation') => {
-    const currentTargetId = action.type === 'show' || action.type === 'hide' || action.type === 'switchAnimation' 
-      ? action.targetId || 'this'
-      : 'this';
+  // ターゲットタイプ選択肢
+  const TARGET_TYPE_OPTIONS = [
+    { value: 'background', label: '背景', icon: '🖼️' },
+    { value: 'this', label: 'このオブジェクト', icon: '📦' },
+    { value: 'other', label: '他のオブジェクト', icon: '🎯' }
+  ];
 
-    if (newType === 'switchAnimation') {
-      onUpdate(index, {
-        type: 'switchAnimation',
-        targetId: currentTargetId,
-        animationIndex: 0,
-        autoPlay: false,
-        loop: false,
-        speed: 12
-      });
-    } else {
-      onUpdate(index, {
-        type: newType,
-        targetId: currentTargetId
-      });
-    }
-
-    if (onShowNotification) {
-      const label = newType === 'show' ? '表示' : newType === 'hide' ? '非表示' : 'アニメーション設定';
-      onShowNotification('success', `「${label}」に変更しました`);
-    }
-  };
-
-  return (
-    <ModernCard 
-      variant="outlined"
-      size="md"
-      style={{
-        backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-        border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
-        marginTop: DESIGN_TOKENS.spacing[4]
-      }}
-    >
-      {/* ヘッダー */}
-      <div style={{
-        marginBottom: DESIGN_TOKENS.spacing[6],
-        paddingBottom: DESIGN_TOKENS.spacing[4],
-        borderBottom: `2px solid ${DESIGN_TOKENS.colors.neutral[200]}`
+  // ステップ1: アクションタイプ選択
+  const renderActionTypeStep = () => (
+    <div>
+      <h5 style={{
+        fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+        fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+        color: DESIGN_TOKENS.colors.neutral[800],
+        marginBottom: DESIGN_TOKENS.spacing[4]
       }}>
-        <h4 style={{
-          fontSize: DESIGN_TOKENS.typography.fontSize.xl,
-          fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-          color: DESIGN_TOKENS.colors.success[600],
-          margin: 0,
-          marginBottom: DESIGN_TOKENS.spacing[2],
-          display: 'flex',
-          alignItems: 'center',
-          gap: DESIGN_TOKENS.spacing[2]
-        }}>
-          <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize['2xl'] }}>👁️</span>
-          オブジェクト状態の変更
-        </h4>
-        <p style={{
-          margin: 0,
-          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-          color: DESIGN_TOKENS.colors.neutral[600]
-        }}>
-          オブジェクトの表示/非表示やアニメーションを制御します
-        </p>
+        どの操作を実行しますか？
+      </h5>
+      
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: DESIGN_TOKENS.spacing[3]
+      }}>
+        {ACTION_TYPE_OPTIONS.map((option) => (
+          <ModernButton
+            key={option.value}
+            variant={action.type === option.value ? 'primary' : 'outline'}
+            size="lg"
+            onClick={() => {
+              const currentTargetId = action.type === 'show' || action.type === 'hide' || action.type === 'switchAnimation' 
+                ? action.targetId || 'this'
+                : 'this';
+
+              if (option.value === 'switchAnimation') {
+                onUpdate(index, {
+                  type: 'switchAnimation',
+                  targetId: currentTargetId,
+                  animationIndex: 0,
+                  autoPlay: false,
+                  loop: false,
+                  speed: 12
+                });
+              } else {
+                onUpdate(index, {
+                  type: option.value as 'show' | 'hide',
+                  targetId: currentTargetId
+                });
+              }
+              setCurrentStep('targetAndDetail');
+              if (onShowNotification) {
+                onShowNotification('success', `「${option.label}」を選択しました`);
+              }
+            }}
+            style={{
+              padding: DESIGN_TOKENS.spacing[4],
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: DESIGN_TOKENS.spacing[2],
+              backgroundColor: action.type === option.value 
+                ? DESIGN_TOKENS.colors.success[500] 
+                : DESIGN_TOKENS.colors.neutral[0],
+              borderColor: action.type === option.value
+                ? DESIGN_TOKENS.colors.success[500]
+                : DESIGN_TOKENS.colors.neutral[300],
+              color: action.type === option.value
+                ? DESIGN_TOKENS.colors.neutral[0]
+                : DESIGN_TOKENS.colors.neutral[800]
+            }}
+          >
+            <span style={{ fontSize: '48px' }}>{option.icon}</span>
+            <div>
+              <div style={{ fontWeight: DESIGN_TOKENS.typography.fontWeight.bold }}>{option.label}</div>
+              <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, opacity: 0.8 }}>
+                {option.description}
+              </div>
+            </div>
+          </ModernButton>
+        ))}
+      </div>
+    </div>
+  );
+
+  // ステップ2: ターゲット選択 + 詳細設定
+  const renderTargetAndDetailStep = () => (
+    <div>
+      <h5 style={{
+        fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+        fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+        color: DESIGN_TOKENS.colors.neutral[800],
+        marginBottom: DESIGN_TOKENS.spacing[4]
+      }}>
+        どのオブジェクトに適用しますか？
+      </h5>
+
+      {/* ターゲットタイプ選択 */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: DESIGN_TOKENS.spacing[2],
+        marginBottom: DESIGN_TOKENS.spacing[4]
+      }}>
+        {TARGET_TYPE_OPTIONS.map((option) => (
+          <ModernButton
+            key={option.value}
+            variant={currentTargetType === option.value ? 'primary' : 'outline'}
+            size="md"
+            onClick={() => {
+              let targetId: string = option.value;
+              if (option.value === 'other' && objects.length > 0) {
+                targetId = objects[0].id;
+              }
+              onUpdate(index, { targetId });
+              if (onShowNotification) {
+                onShowNotification('success', `ターゲットを「${option.label}」に変更しました`);
+              }
+            }}
+            style={{
+              borderColor: currentTargetType === option.value
+                ? DESIGN_TOKENS.colors.success[500]
+                : DESIGN_TOKENS.colors.neutral[300],
+              backgroundColor: currentTargetType === option.value 
+                ? DESIGN_TOKENS.colors.success[500] 
+                : DESIGN_TOKENS.colors.neutral[0],
+              color: currentTargetType === option.value
+                ? DESIGN_TOKENS.colors.neutral[0]
+                : DESIGN_TOKENS.colors.neutral[800],
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: DESIGN_TOKENS.spacing[1],
+              padding: DESIGN_TOKENS.spacing[3]
+            }}
+          >
+            <span style={{ fontSize: '24px' }}>{option.icon}</span>
+            <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>{option.label}</span>
+          </ModernButton>
+        ))}
       </div>
 
-      {/* セクション1: アクションタイプ選択 */}
-      <div style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
-        <h5 style={{
-          fontSize: DESIGN_TOKENS.typography.fontSize.lg,
-          fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
-          color: DESIGN_TOKENS.colors.neutral[800],
-          marginBottom: DESIGN_TOKENS.spacing[3],
-          display: 'flex',
-          alignItems: 'center',
-          gap: DESIGN_TOKENS.spacing[2]
-        }}>
-          <span style={{ 
-            width: '24px',
-            height: '24px',
-            borderRadius: DESIGN_TOKENS.borderRadius.full,
-            backgroundColor: DESIGN_TOKENS.colors.success[500],
-            color: DESIGN_TOKENS.colors.neutral[0],
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.bold
-          }}>
-            1
-          </span>
-          どの状態を変更しますか？
-        </h5>
-        
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-          gap: DESIGN_TOKENS.spacing[3]
-        }}>
-          {/* showアクション */}
-          <ModernButton
-            variant={action.type === 'show' ? 'primary' : 'outline'}
-            size="lg"
-            onClick={() => handleActionTypeChange('show')}
-            style={{
-              padding: DESIGN_TOKENS.spacing[4],
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: DESIGN_TOKENS.spacing[2],
-              backgroundColor: action.type === 'show' 
-                ? DESIGN_TOKENS.colors.success[500] 
-                : DESIGN_TOKENS.colors.neutral[0],
-              borderColor: action.type === 'show'
-                ? DESIGN_TOKENS.colors.success[500]
-                : DESIGN_TOKENS.colors.neutral[300],
-              color: action.type === 'show'
-                ? DESIGN_TOKENS.colors.neutral[0]
-                : DESIGN_TOKENS.colors.neutral[800]
-            }}
-          >
-            <span style={{ fontSize: '40px' }}>👁️</span>
-            <div>
-              <div style={{ fontWeight: DESIGN_TOKENS.typography.fontWeight.bold }}>表示する</div>
-              <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, opacity: 0.8 }}>
-                オブジェクトを表示
-              </div>
+      {/* 他のオブジェクト選択時のオブジェクト一覧 */}
+      {currentTargetType === 'other' && (
+        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+          {objects.length === 0 ? (
+            <div style={{
+              padding: DESIGN_TOKENS.spacing[6],
+              textAlign: 'center',
+              color: DESIGN_TOKENS.colors.neutral[500],
+              backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+              borderRadius: DESIGN_TOKENS.borderRadius.lg
+            }}>
+              オブジェクトが登録されていません
             </div>
-          </ModernButton>
-
-          {/* hideアクション */}
-          <ModernButton
-            variant={action.type === 'hide' ? 'primary' : 'outline'}
-            size="lg"
-            onClick={() => handleActionTypeChange('hide')}
-            style={{
-              padding: DESIGN_TOKENS.spacing[4],
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: DESIGN_TOKENS.spacing[2],
-              backgroundColor: action.type === 'hide' 
-                ? DESIGN_TOKENS.colors.success[500] 
-                : DESIGN_TOKENS.colors.neutral[0],
-              borderColor: action.type === 'hide'
-                ? DESIGN_TOKENS.colors.success[500]
-                : DESIGN_TOKENS.colors.neutral[300],
-              color: action.type === 'hide'
-                ? DESIGN_TOKENS.colors.neutral[0]
-                : DESIGN_TOKENS.colors.neutral[800]
-            }}
-          >
-            <span style={{ fontSize: '40px' }}>🙈</span>
-            <div>
-              <div style={{ fontWeight: DESIGN_TOKENS.typography.fontWeight.bold }}>非表示にする</div>
-              <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, opacity: 0.8 }}>
-                オブジェクトを非表示
-              </div>
-            </div>
-          </ModernButton>
-
-          {/* switchAnimationアクション */}
-          <ModernButton
-            variant={action.type === 'switchAnimation' ? 'primary' : 'outline'}
-            size="lg"
-            onClick={() => handleActionTypeChange('switchAnimation')}
-            style={{
-              padding: DESIGN_TOKENS.spacing[4],
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: DESIGN_TOKENS.spacing[2],
-              backgroundColor: action.type === 'switchAnimation' 
-                ? DESIGN_TOKENS.colors.success[500] 
-                : DESIGN_TOKENS.colors.neutral[0],
-              borderColor: action.type === 'switchAnimation'
-                ? DESIGN_TOKENS.colors.success[500]
-                : DESIGN_TOKENS.colors.neutral[300],
-              color: action.type === 'switchAnimation'
-                ? DESIGN_TOKENS.colors.neutral[0]
-                : DESIGN_TOKENS.colors.neutral[800]
-            }}
-          >
-            <span style={{ fontSize: '40px' }}>🎬</span>
-            <div>
-              <div style={{ fontWeight: DESIGN_TOKENS.typography.fontWeight.bold }}>アニメーション</div>
-              <div style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, opacity: 0.8 }}>
-                アニメーション切替
-              </div>
-            </div>
-          </ModernButton>
-        </div>
-      </div>
-
-      {/* セクション2: ターゲット選択 */}
-      <div style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
-        <h5 style={{
-          fontSize: DESIGN_TOKENS.typography.fontSize.lg,
-          fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
-          color: DESIGN_TOKENS.colors.neutral[800],
-          marginBottom: DESIGN_TOKENS.spacing[3],
-          display: 'flex',
-          alignItems: 'center',
-          gap: DESIGN_TOKENS.spacing[2]
-        }}>
-          <span style={{ 
-            width: '24px',
-            height: '24px',
-            borderRadius: DESIGN_TOKENS.borderRadius.full,
-            backgroundColor: DESIGN_TOKENS.colors.success[500],
-            color: DESIGN_TOKENS.colors.neutral[0],
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.bold
-          }}>
-            2
-          </span>
-          どのオブジェクトに適用しますか？
-        </h5>
-
-        {/* ターゲットタイプ選択 */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: DESIGN_TOKENS.spacing[2],
-          marginBottom: DESIGN_TOKENS.spacing[4]
-        }}>
-          <ModernButton
-            variant={currentTargetType === 'background' ? 'primary' : 'outline'}
-            size="md"
-            onClick={() => handleTargetTypeChange('background')}
-            style={{
-              borderColor: currentTargetType === 'background'
-                ? DESIGN_TOKENS.colors.success[500]
-                : DESIGN_TOKENS.colors.neutral[300],
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: DESIGN_TOKENS.spacing[1],
-              padding: DESIGN_TOKENS.spacing[3]
-            }}
-          >
-            <span style={{ fontSize: '24px' }}>🖼️</span>
-            <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>背景</span>
-          </ModernButton>
-
-          <ModernButton
-            variant={currentTargetType === 'this' ? 'primary' : 'outline'}
-            size="md"
-            onClick={() => handleTargetTypeChange('this')}
-            style={{
-              borderColor: currentTargetType === 'this'
-                ? DESIGN_TOKENS.colors.success[500]
-                : DESIGN_TOKENS.colors.neutral[300],
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: DESIGN_TOKENS.spacing[1],
-              padding: DESIGN_TOKENS.spacing[3]
-            }}
-          >
-            <span style={{ fontSize: '24px' }}>📦</span>
-            <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>このオブジェクト</span>
-          </ModernButton>
-
-          <ModernButton
-            variant={currentTargetType === 'other' ? 'primary' : 'outline'}
-            size="md"
-            onClick={() => handleTargetTypeChange('other')}
-            style={{
-              borderColor: currentTargetType === 'other'
-                ? DESIGN_TOKENS.colors.success[500]
-                : DESIGN_TOKENS.colors.neutral[300],
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: DESIGN_TOKENS.spacing[1],
-              padding: DESIGN_TOKENS.spacing[3]
-            }}
-          >
-            <span style={{ fontSize: '24px' }}>🎯</span>
-            <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm }}>他のオブジェクト</span>
-          </ModernButton>
-        </div>
-
-        {/* 他のオブジェクト選択時のオブジェクト一覧 */}
-        {currentTargetType === 'other' && (
-          <div>
-            {objects.length === 0 ? (
-              <div style={{
-                padding: DESIGN_TOKENS.spacing[6],
-                textAlign: 'center',
-                color: DESIGN_TOKENS.colors.neutral[500],
-                backgroundColor: DESIGN_TOKENS.colors.neutral[50],
-                borderRadius: DESIGN_TOKENS.borderRadius.lg
-              }}>
-                オブジェクトが登録されていません
-              </div>
-            ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-                gap: DESIGN_TOKENS.spacing[3]
-              }}>
-                {objects.map((obj: ObjectAsset) => {
-                  const isSelected = action.type === 'show' || action.type === 'hide' || action.type === 'switchAnimation'
-                    ? action.targetId === obj.id
-                    : false;
-                  
-                  return (
-                    <ModernButton
-                      key={obj.id}
-                      variant={isSelected ? 'primary' : 'outline'}
-                      size="md"
-                      onClick={() => handleObjectSelect(obj.id)}
-                      style={{
-                        padding: DESIGN_TOKENS.spacing[3],
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: DESIGN_TOKENS.spacing[2],
-                        backgroundColor: isSelected
-                          ? DESIGN_TOKENS.colors.success[500] 
-                          : DESIGN_TOKENS.colors.neutral[0],
-                        borderColor: isSelected
-                          ? DESIGN_TOKENS.colors.success[500]
-                          : DESIGN_TOKENS.colors.neutral[300],
-                        color: isSelected
-                          ? DESIGN_TOKENS.colors.neutral[0]
-                          : DESIGN_TOKENS.colors.neutral[800]
-                      }}
-                    >
-                      {obj.frames && obj.frames[0]?.dataUrl ? (
-                        <img 
-                          src={obj.frames[0].dataUrl} 
-                          alt={obj.name}
-                          style={{
-                            width: '48px',
-                            height: '48px',
-                            objectFit: 'contain',
-                            borderRadius: DESIGN_TOKENS.borderRadius.md
-                          }}
-                        />
-                      ) : (
-                        <div style={{
+          ) : (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+              gap: DESIGN_TOKENS.spacing[3]
+            }}>
+              {objects.map((obj: ObjectAsset) => {
+                const isSelected = action.type === 'show' || action.type === 'hide' || action.type === 'switchAnimation'
+                  ? action.targetId === obj.id
+                  : false;
+                
+                return (
+                  <ModernButton
+                    key={obj.id}
+                    variant={isSelected ? 'primary' : 'outline'}
+                    size="md"
+                    onClick={() => {
+                      onUpdate(index, { targetId: obj.id });
+                      if (onShowNotification) {
+                        onShowNotification('success', `「${obj.name}」を選択しました`);
+                      }
+                    }}
+                    style={{
+                      padding: DESIGN_TOKENS.spacing[3],
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: DESIGN_TOKENS.spacing[2],
+                      backgroundColor: isSelected
+                        ? DESIGN_TOKENS.colors.success[500] 
+                        : DESIGN_TOKENS.colors.neutral[0],
+                      borderColor: isSelected
+                        ? DESIGN_TOKENS.colors.success[500]
+                        : DESIGN_TOKENS.colors.neutral[300],
+                      color: isSelected
+                        ? DESIGN_TOKENS.colors.neutral[0]
+                        : DESIGN_TOKENS.colors.neutral[800]
+                    }}
+                  >
+                    {obj.frames && obj.frames[0]?.dataUrl ? (
+                      <img 
+                        src={obj.frames[0].dataUrl} 
+                        alt={obj.name}
+                        style={{
                           width: '48px',
                           height: '48px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: isSelected 
-                            ? DESIGN_TOKENS.colors.success[500]
-                            : DESIGN_TOKENS.colors.neutral[100],
-                          borderRadius: DESIGN_TOKENS.borderRadius.md,
-                          fontSize: DESIGN_TOKENS.typography.fontSize.xl
-                        }}>
-                          🎨
-                        </div>
-                      )}
-                      <span style={{ 
-                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                        fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-                        textAlign: 'center',
-                        wordBreak: 'break-word'
+                          objectFit: 'contain',
+                          borderRadius: DESIGN_TOKENS.borderRadius.md
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: '48px',
+                        height: '48px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: isSelected 
+                          ? DESIGN_TOKENS.colors.success[500]
+                          : DESIGN_TOKENS.colors.neutral[100],
+                        borderRadius: DESIGN_TOKENS.borderRadius.md,
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xl
                       }}>
-                        {obj.name}
-                      </span>
-                    </ModernButton>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+                        🎨
+                      </div>
+                    )}
+                    <span style={{ 
+                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                      fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                      textAlign: 'center',
+                      wordBreak: 'break-word'
+                    }}>
+                      {obj.name}
+                    </span>
+                  </ModernButton>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* セクション3: 詳細設定（switchAnimationの場合のみ） */}
+      {/* アニメーション詳細設定（switchAnimationの場合のみ） */}
       {action.type === 'switchAnimation' && (
-        <div style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
-          <h5 style={{
-            fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+        <div style={{
+          padding: DESIGN_TOKENS.spacing[4],
+          backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+          marginBottom: DESIGN_TOKENS.spacing[4]
+        }}>
+          <h6 style={{
+            fontSize: DESIGN_TOKENS.typography.fontSize.base,
             fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
             color: DESIGN_TOKENS.colors.neutral[800],
-            marginBottom: DESIGN_TOKENS.spacing[3],
-            display: 'flex',
-            alignItems: 'center',
-            gap: DESIGN_TOKENS.spacing[2]
+            marginBottom: DESIGN_TOKENS.spacing[3]
           }}>
-            <span style={{ 
-              width: '24px',
-              height: '24px',
-              borderRadius: DESIGN_TOKENS.borderRadius.full,
-              backgroundColor: DESIGN_TOKENS.colors.success[500],
-              color: DESIGN_TOKENS.colors.neutral[0],
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.bold
-            }}>
-              3
-            </span>
             アニメーション詳細設定
-          </h5>
+          </h6>
 
           {selectedObject && selectedObject.frames && selectedObject.frames.length > 0 ? (
             <>
@@ -529,7 +373,7 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
                   <div style={{
                     marginTop: DESIGN_TOKENS.spacing[3],
                     padding: DESIGN_TOKENS.spacing[4],
-                    backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+                    backgroundColor: DESIGN_TOKENS.colors.neutral[100],
                     borderRadius: DESIGN_TOKENS.borderRadius.md,
                     display: 'flex',
                     justifyContent: 'center'
@@ -550,7 +394,7 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
               {/* 自動再生設定 */}
               <div style={{
                 padding: DESIGN_TOKENS.spacing[3],
-                backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+                backgroundColor: DESIGN_TOKENS.colors.neutral[100],
                 borderRadius: DESIGN_TOKENS.borderRadius.md,
                 marginBottom: DESIGN_TOKENS.spacing[3]
               }}>
@@ -582,7 +426,7 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
               {/* ループ設定 */}
               <div style={{
                 padding: DESIGN_TOKENS.spacing[3],
-                backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+                backgroundColor: DESIGN_TOKENS.colors.neutral[100],
                 borderRadius: DESIGN_TOKENS.borderRadius.md,
                 marginBottom: DESIGN_TOKENS.spacing[3]
               }}>
@@ -612,7 +456,7 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
               </div>
 
               {/* 再生速度設定 */}
-              <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+              <div>
                 <label style={{
                   display: 'block',
                   fontSize: DESIGN_TOKENS.typography.fontSize.sm,
@@ -667,63 +511,295 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
         </div>
       )}
 
-      {/* 設定概要 */}
-      <div style={{
-        padding: DESIGN_TOKENS.spacing[4],
-        backgroundColor: DESIGN_TOKENS.colors.success[50],
-        border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
-        borderRadius: DESIGN_TOKENS.borderRadius.lg
+      <div style={{ 
+        display: 'flex', 
+        gap: DESIGN_TOKENS.spacing[2]
       }}>
-        <h6 style={{
-          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-          fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-          color: DESIGN_TOKENS.colors.success[800],
-          margin: 0,
-          marginBottom: DESIGN_TOKENS.spacing[2]
+        <ModernButton
+          variant="outline"
+          size="md"
+          onClick={() => setCurrentStep('actionType')}
+        >
+          ← 戻る
+        </ModernButton>
+        <ModernButton
+          variant="primary"
+          size="md"
+          onClick={() => setCurrentStep('confirm')}
+          style={{ flex: 1 }}
+        >
+          次へ →
+        </ModernButton>
+      </div>
+    </div>
+  );
+
+  // ステップ3: 確認
+  const renderConfirmStep = () => {
+    const actionTypeLabel = ACTION_TYPE_OPTIONS.find(opt => opt.value === action.type)?.label || '';
+    const targetTypeLabel = TARGET_TYPE_OPTIONS.find(opt => opt.value === currentTargetType)?.label || '';
+
+    return (
+      <div>
+        <h5 style={{
+          fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+          color: DESIGN_TOKENS.colors.neutral[800],
+          marginBottom: DESIGN_TOKENS.spacing[4]
         }}>
-          📋 現在の設定
-        </h6>
+          設定内容の確認
+        </h5>
 
         <div style={{
-          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-          color: DESIGN_TOKENS.colors.neutral[700],
-          lineHeight: '1.6'
+          padding: DESIGN_TOKENS.spacing[4],
+          backgroundColor: DESIGN_TOKENS.colors.success[50],
+          border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
+          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+          marginBottom: DESIGN_TOKENS.spacing[4]
         }}>
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[1] }}>
-            <strong>アクション:</strong>{' '}
-            {action.type === 'show' ? '表示する' :
-             action.type === 'hide' ? '非表示にする' :
-             action.type === 'switchAnimation' ? 'アニメーション切替' : '未設定'}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <div style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.neutral[600],
+              marginBottom: DESIGN_TOKENS.spacing[1]
+            }}>
+              実行するアクション
+            </div>
+            <div style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.base,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+              color: DESIGN_TOKENS.colors.neutral[800]
+            }}>
+              {actionTypeLabel}
+            </div>
           </div>
-          
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[1] }}>
-            <strong>ターゲット:</strong>{' '}
-            {currentTargetType === 'background' ? '背景' :
-             currentTargetType === 'this' ? 'このオブジェクト' :
-             selectedObject?.name || '未選択'}
+
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+            <div style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              color: DESIGN_TOKENS.colors.neutral[600],
+              marginBottom: DESIGN_TOKENS.spacing[1]
+            }}>
+              適用先
+            </div>
+            <div style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.base,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+              color: DESIGN_TOKENS.colors.neutral[800]
+            }}>
+              {currentTargetType === 'other' ? selectedObject?.name || '未選択' : targetTypeLabel}
+            </div>
           </div>
 
           {action.type === 'switchAnimation' && (
             <>
-              <div style={{ marginBottom: DESIGN_TOKENS.spacing[1] }}>
-                <strong>フレーム:</strong> {action.animationIndex || 0}
+              <div style={{ marginBottom: DESIGN_TOKENS.spacing[3] }}>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600],
+                  marginBottom: DESIGN_TOKENS.spacing[1]
+                }}>
+                  フレーム番号
+                </div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.neutral[700]
+                }}>
+                  フレーム {action.animationIndex || 0}
+                </div>
               </div>
+
               {action.autoPlay && (
-                <div style={{ marginBottom: DESIGN_TOKENS.spacing[1], color: DESIGN_TOKENS.colors.success[600] }}>
-                  ▶️ 自動再生ON
+                <div style={{ marginBottom: DESIGN_TOKENS.spacing[2] }}>
+                  <span style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                    color: DESIGN_TOKENS.colors.success[600]
+                  }}>
+                    ▶️ 自動再生ON
+                  </span>
                 </div>
               )}
+
               {action.loop && (
-                <div style={{ marginBottom: DESIGN_TOKENS.spacing[1], color: DESIGN_TOKENS.colors.success[600] }}>
-                  🔄 ループ再生ON
+                <div style={{ marginBottom: DESIGN_TOKENS.spacing[2] }}>
+                  <span style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                    color: DESIGN_TOKENS.colors.success[600]
+                  }}>
+                    🔄 ループ再生ON
+                  </span>
                 </div>
               )}
+
               <div>
-                <strong>速度:</strong> {action.speed || 12} FPS
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600],
+                  marginBottom: DESIGN_TOKENS.spacing[1]
+                }}>
+                  再生速度
+                </div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.neutral[700]
+                }}>
+                  {action.speed || 12} FPS
+                </div>
               </div>
             </>
           )}
         </div>
+
+        <div style={{ 
+          display: 'flex', 
+          gap: DESIGN_TOKENS.spacing[2]
+        }}>
+          <ModernButton
+            variant="outline"
+            size="md"
+            onClick={() => setCurrentStep('targetAndDetail')}
+          >
+            ← 戻る
+          </ModernButton>
+          <ModernButton
+            variant="primary"
+            size="md"
+            onClick={() => {
+              if (onShowNotification) {
+                onShowNotification('success', '設定が完了しました！');
+              }
+            }}
+            style={{ flex: 1 }}
+          >
+            ✅ 完了
+          </ModernButton>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <ModernCard 
+      variant="outlined"
+      size="md"
+      style={{
+        backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+        border: `2px solid ${DESIGN_TOKENS.colors.success[300]}`,
+        marginTop: DESIGN_TOKENS.spacing[4]
+      }}
+    >
+      {/* ヘッダー */}
+      <div style={{
+        marginBottom: DESIGN_TOKENS.spacing[6],
+        paddingBottom: DESIGN_TOKENS.spacing[4],
+        borderBottom: `2px solid ${DESIGN_TOKENS.colors.neutral[200]}`
+      }}>
+        <h4 style={{
+          fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+          color: DESIGN_TOKENS.colors.success[700],
+          margin: 0,
+          marginBottom: DESIGN_TOKENS.spacing[2],
+          display: 'flex',
+          alignItems: 'center',
+          gap: DESIGN_TOKENS.spacing[2]
+        }}>
+          <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize['2xl'] }}>👁️</span>
+          オブジェクト状態の変更
+        </h4>
+        <p style={{
+          margin: 0,
+          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+          color: DESIGN_TOKENS.colors.neutral[600]
+        }}>
+          オブジェクトの表示/非表示やアニメーションを制御します
+        </p>
+      </div>
+
+      {/* ステップインジケーター */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        marginBottom: DESIGN_TOKENS.spacing[6],
+        position: 'relative'
+      }}>
+        {/* 進捗バー背景 */}
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          left: '5%',
+          right: '5%',
+          height: '4px',
+          backgroundColor: DESIGN_TOKENS.colors.neutral[200],
+          zIndex: 0
+        }} />
+        
+        {/* 進捗バー前景 */}
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          left: '5%',
+          width: `${(currentStepIndex / (steps.length - 1)) * 90}%`,
+          height: '4px',
+          backgroundColor: DESIGN_TOKENS.colors.success[500],
+          zIndex: 1,
+          transition: 'width 0.3s ease'
+        }} />
+
+        {steps.map((step, idx) => (
+          <div
+            key={step.id}
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: DESIGN_TOKENS.spacing[2],
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: DESIGN_TOKENS.borderRadius.full,
+              backgroundColor: idx <= currentStepIndex 
+                ? DESIGN_TOKENS.colors.success[500] 
+                : DESIGN_TOKENS.colors.neutral[200],
+              color: idx <= currentStepIndex 
+                ? DESIGN_TOKENS.colors.neutral[0] 
+                : DESIGN_TOKENS.colors.neutral[500],
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+              transition: 'all 0.3s ease',
+              border: `3px solid ${DESIGN_TOKENS.colors.neutral[0]}`
+            }}>
+              {step.icon}
+            </div>
+            <span style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              fontWeight: idx === currentStepIndex 
+                ? DESIGN_TOKENS.typography.fontWeight.semibold 
+                : DESIGN_TOKENS.typography.fontWeight.normal,
+              color: idx <= currentStepIndex 
+                ? DESIGN_TOKENS.colors.success[700] 
+                : DESIGN_TOKENS.colors.neutral[500],
+              textAlign: 'center'
+            }}>
+              {step.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* ステップコンテンツ */}
+      <div>
+        {currentStep === 'actionType' && renderActionTypeStep()}
+        {currentStep === 'targetAndDetail' && renderTargetAndDetailStep()}
+        {currentStep === 'confirm' && renderConfirmStep()}
       </div>
     </ModernCard>
   );

@@ -1,574 +1,1037 @@
 // src/components/editor/script/actions/EffectActionEditor.tsx
-// 完全修正版: GameScript.tsの型定義に完全一致
-// 修正内容: rotationDirectionから'alternate'を削除（型定義に存在しないため）
+// Phase 3-3 Item 7: 3ステップフロー版（数値入力方式）
+// 参考: ObjectStateConditionEditor.tsx
 
-import React, { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useState, useMemo } from 'react';
 import { GameAction } from '../../../../types/editor/GameScript';
+import { GameProject } from '../../../../types/editor/GameProject';
+import { ObjectAsset } from '../../../../types/editor/ProjectAssets';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
-import { 
-  getEffectTypeOptions,
-  getFlashColorOptions,
-  getRotationDirectionOptions,
-  getShakeDirectionOptions,
-  getParticleTypeOptions,
-  EFFECT_DEFAULTS,
-  EFFECT_RANGES
-} from '../constants/EffectConstants';
 
 interface EffectActionEditorProps {
-  action: GameAction & { type: 'effect' };
+  action: GameAction;
+  project: GameProject;
   index: number;
   onUpdate: (index: number, updates: Partial<GameAction>) => void;
-  onShowNotification: (type: 'success' | 'error' | 'info', message: string) => void;
+  onShowNotification?: (type: 'success' | 'error' | 'info', message: string) => void;
 }
+
+// 3つのステップ定義
+type EditorStep = 'effectType' | 'parameters' | 'confirm';
+
+// エフェクトタイプ定義
+type EffectType = 'flash' | 'shake' | 'scale' | 'rotate' | 'particles';
 
 export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
   action,
+  project,
   index,
   onUpdate,
   onShowNotification
 }) => {
-  const { t } = useTranslation();
-  const effectAction = action;
+  const [currentStep, setCurrentStep] = useState<EditorStep>('effectType');
 
-  // Get localized options
-  // 修正: GameScript.tsの型定義に存在するエフェクトタイプのみを使用
-  const EFFECT_TYPE_OPTIONS = useMemo(() => 
-  getEffectTypeOptions().filter(opt => 
-    ['flash', 'shake', 'scale', 'rotate', 'particles'].includes(opt.value)
-  ), 
-[]);
-  const FLASH_COLOR_OPTIONS = useMemo(() => getFlashColorOptions(), []);
-  
-  // 修正: 'alternate'を除外したROTATION_DIRECTION_OPTIONSを使用
-  const ROTATION_DIRECTION_OPTIONS = useMemo(() => getRotationDirectionOptions().filter(opt => opt.value !== 'alternate'), []);
-  
-  const SHAKE_DIRECTION_OPTIONS = useMemo(() => getShakeDirectionOptions(), []);
-  const PARTICLE_TYPE_OPTIONS = useMemo(() => getParticleTypeOptions(), []);
+  // オブジェクトリスト取得
+  const objects = useMemo(() => {
+    return project.assets.objects || [];
+  }, [project.assets.objects]);
+
+  // 選択中のオブジェクト
+  const selectedObject = useMemo(() => {
+    if (action.type !== 'effect') return null;
+    if (!action.targetId) return null;
+    return objects.find((obj: ObjectAsset) => obj.id === action.targetId) || null;
+  }, [action, objects, objects.length]);
+
+  // 現在のエフェクトタイプ
+  const currentEffectType: EffectType = action.type === 'effect' && action.effect?.type
+    ? action.effect.type as EffectType
+    : 'flash';
+
+  // ステップナビゲーション
+  const steps = [
+    { id: 'effectType', label: 'エフェクト選択', icon: '✨' },
+    { id: 'parameters', label: 'パラメータ設定', icon: '🎛️' },
+    { id: 'confirm', label: '確認', icon: '✅' }
+  ];
+
+  const currentStepIndex = steps.findIndex(s => s.id === currentStep);
+
+  // エフェクトタイプ選択肢
+  const EFFECT_TYPE_OPTIONS = [
+    { 
+      value: 'flash', 
+      label: 'フラッシュ', 
+      icon: '💫', 
+      description: '一瞬光る効果',
+      color: DESIGN_TOKENS.colors.warning[500]
+    },
+    { 
+      value: 'shake', 
+      label: '振動', 
+      icon: '📳', 
+      description: 'ブルブル揺れる',
+      color: DESIGN_TOKENS.colors.error[500]
+    },
+    { 
+      value: 'scale', 
+      label: '拡大縮小', 
+      icon: '🔍', 
+      description: 'サイズが変化',
+      color: DESIGN_TOKENS.colors.info[500]
+    },
+    { 
+      value: 'rotate', 
+      label: '回転', 
+      icon: '🌀', 
+      description: 'クルクル回る',
+      color: DESIGN_TOKENS.colors.success[500]
+    },
+    { 
+      value: 'particles', 
+      label: 'パーティクル', 
+      icon: '✨', 
+      description: 'キラキラ効果',
+      color: DESIGN_TOKENS.colors.purple[500]
+    }
+  ];
+
+  // デフォルト値の設定
+  const getDefaultParams = (effectType: EffectType) => {
+    switch (effectType) {
+      case 'flash':
+        return { duration: 0.3, intensity: 1.0 };
+      case 'shake':
+        return { duration: 0.5, intensity: 10 };
+      case 'scale':
+        return { duration: 0.3, scaleAmount: 1.5 };
+      case 'rotate':
+        return { duration: 0.5, angle: 360 };
+      case 'particles':
+        return { count: 20, duration: 1.0 };
+      default:
+        return {};
+    }
+  };
+
+  // ステップ1: エフェクトタイプ選択
+  const renderEffectTypeStep = () => (
+    <div>
+      <h5 style={{
+        fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+        fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+        color: DESIGN_TOKENS.colors.neutral[800],
+        marginBottom: DESIGN_TOKENS.spacing[4]
+      }}>
+        どのエフェクトを実行しますか？
+      </h5>
+      
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+        gap: DESIGN_TOKENS.spacing[3]
+      }}>
+        {EFFECT_TYPE_OPTIONS.map((option) => {
+          const isSelected = currentEffectType === option.value;
+          
+          return (
+            <ModernButton
+              key={option.value}
+              variant={isSelected ? 'primary' : 'outline'}
+              size="lg"
+              onClick={() => {
+                const defaultParams = getDefaultParams(option.value as EffectType);
+                onUpdate(index, {
+                  type: 'effect',
+                  targetId: action.type === 'effect' ? action.targetId || 'this' : 'this',
+                  effect: {
+                    type: option.value,
+                    ...defaultParams
+                  }
+                });
+                setCurrentStep('parameters');
+                if (onShowNotification) {
+                  onShowNotification('success', `「${option.label}」を選択しました`);
+                }
+              }}
+              style={{
+                padding: DESIGN_TOKENS.spacing[4],
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: DESIGN_TOKENS.spacing[2],
+                backgroundColor: isSelected 
+                  ? option.color
+                  : DESIGN_TOKENS.colors.neutral[0],
+                borderColor: isSelected
+                  ? option.color
+                  : DESIGN_TOKENS.colors.neutral[300],
+                color: isSelected
+                  ? DESIGN_TOKENS.colors.neutral[0]
+                  : DESIGN_TOKENS.colors.neutral[800],
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <span style={{ fontSize: '48px' }}>{option.icon}</span>
+              <div>
+                <div style={{ 
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                  marginBottom: DESIGN_TOKENS.spacing[1]
+                }}>
+                  {option.label}
+                </div>
+                <div style={{ 
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs, 
+                  opacity: isSelected ? 0.9 : 0.7
+                }}>
+                  {option.description}
+                </div>
+              </div>
+            </ModernButton>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // ステップ2: パラメータ設定
+  const renderParametersStep = () => {
+    const effectOption = EFFECT_TYPE_OPTIONS.find(opt => opt.value === currentEffectType);
+    
+    return (
+      <div>
+        <h5 style={{
+          fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+          color: DESIGN_TOKENS.colors.neutral[800],
+          marginBottom: DESIGN_TOKENS.spacing[2]
+        }}>
+          {effectOption?.label}のパラメータ設定
+        </h5>
+        <p style={{
+          margin: 0,
+          marginBottom: DESIGN_TOKENS.spacing[4],
+          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+          color: DESIGN_TOKENS.colors.neutral[600]
+        }}>
+          {effectOption?.description}
+        </p>
+
+        <div style={{
+          padding: DESIGN_TOKENS.spacing[4],
+          backgroundColor: DESIGN_TOKENS.colors.neutral[50],
+          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+          marginBottom: DESIGN_TOKENS.spacing[4]
+        }}>
+          {/* Flash エフェクト */}
+          {currentEffectType === 'flash' && (
+            <>
+              <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  継続時間（秒）
+                </label>
+                <input
+                  type="number"
+                  min="0.1"
+                  max="3"
+                  step="0.1"
+                  value={action.type === 'effect' ? action.effect?.duration || 0.3 : 0.3}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value)) return;
+                    onUpdate(index, {
+                      effect: {
+                        ...(action.type === 'effect' ? action.effect : {}),
+                        duration: value
+                      }
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: DESIGN_TOKENS.spacing[3],
+                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                    border: `2px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                    borderRadius: DESIGN_TOKENS.borderRadius.md
+                  }}
+                />
+                <p style={{
+                  margin: 0,
+                  marginTop: DESIGN_TOKENS.spacing[2],
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600]
+                }}>
+                  推奨: 0.1〜1.0秒
+                </p>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  明るさ（0.0〜2.0）
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  value={action.type === 'effect' ? action.effect?.intensity || 1.0 : 1.0}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value)) return;
+                    onUpdate(index, {
+                      effect: {
+                        ...(action.type === 'effect' ? action.effect : {}),
+                        intensity: value
+                      }
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: DESIGN_TOKENS.spacing[3],
+                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                    border: `2px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                    borderRadius: DESIGN_TOKENS.borderRadius.md
+                  }}
+                />
+                <p style={{
+                  margin: 0,
+                  marginTop: DESIGN_TOKENS.spacing[2],
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600]
+                }}>
+                  1.0 = 標準、2.0 = 最大
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Shake エフェクト */}
+          {currentEffectType === 'shake' && (
+            <>
+              <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  継続時間（秒）
+                </label>
+                <input
+                  type="number"
+                  min="0.1"
+                  max="3"
+                  step="0.1"
+                  value={action.type === 'effect' ? action.effect?.duration || 0.5 : 0.5}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value)) return;
+                    onUpdate(index, {
+                      effect: {
+                        ...(action.type === 'effect' ? action.effect : {}),
+                        duration: value
+                      }
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: DESIGN_TOKENS.spacing[3],
+                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                    border: `2px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                    borderRadius: DESIGN_TOKENS.borderRadius.md
+                  }}
+                />
+                <p style={{
+                  margin: 0,
+                  marginTop: DESIGN_TOKENS.spacing[2],
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600]
+                }}>
+                  推奨: 0.2〜1.0秒
+                </p>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  振動の強さ（px）
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  step="1"
+                  value={action.type === 'effect' ? action.effect?.intensity || 10 : 10}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value)) return;
+                    onUpdate(index, {
+                      effect: {
+                        ...(action.type === 'effect' ? action.effect : {}),
+                        intensity: value
+                      }
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: DESIGN_TOKENS.spacing[3],
+                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                    border: `2px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                    borderRadius: DESIGN_TOKENS.borderRadius.md
+                  }}
+                />
+                <p style={{
+                  margin: 0,
+                  marginTop: DESIGN_TOKENS.spacing[2],
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600]
+                }}>
+                  5px = 弱い、20px = 強い
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Scale エフェクト */}
+          {currentEffectType === 'scale' && (
+            <>
+              <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  継続時間（秒）
+                </label>
+                <input
+                  type="number"
+                  min="0.1"
+                  max="3"
+                  step="0.1"
+                  value={action.type === 'effect' ? action.effect?.duration || 0.3 : 0.3}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value)) return;
+                    onUpdate(index, {
+                      effect: {
+                        ...(action.type === 'effect' ? action.effect : {}),
+                        duration: value
+                      }
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: DESIGN_TOKENS.spacing[3],
+                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                    border: `2px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                    borderRadius: DESIGN_TOKENS.borderRadius.md
+                  }}
+                />
+                <p style={{
+                  margin: 0,
+                  marginTop: DESIGN_TOKENS.spacing[2],
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600]
+                }}>
+                  推奨: 0.2〜1.0秒
+                </p>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  拡大率（倍）
+                </label>
+                <input
+                  type="number"
+                  min="0.1"
+                  max="5"
+                  step="0.1"
+                  value={action.type === 'effect' ? action.effect?.scaleAmount || 1.5 : 1.5}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value)) return;
+                    onUpdate(index, {
+                      effect: {
+                        ...(action.type === 'effect' ? action.effect : {}),
+                        scaleAmount: value
+                      }
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: DESIGN_TOKENS.spacing[3],
+                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                    border: `2px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                    borderRadius: DESIGN_TOKENS.borderRadius.md
+                  }}
+                />
+                <p style={{
+                  margin: 0,
+                  marginTop: DESIGN_TOKENS.spacing[2],
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600]
+                }}>
+                  1.0 = 元のサイズ、2.0 = 2倍
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Rotate エフェクト */}
+          {currentEffectType === 'rotate' && (
+            <>
+              <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  継続時間（秒）
+                </label>
+                <input
+                  type="number"
+                  min="0.1"
+                  max="3"
+                  step="0.1"
+                  value={action.type === 'effect' ? action.effect?.duration || 0.5 : 0.5}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value)) return;
+                    onUpdate(index, {
+                      effect: {
+                        ...(action.type === 'effect' ? action.effect : {}),
+                        duration: value
+                      }
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: DESIGN_TOKENS.spacing[3],
+                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                    border: `2px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                    borderRadius: DESIGN_TOKENS.borderRadius.md
+                  }}
+                />
+                <p style={{
+                  margin: 0,
+                  marginTop: DESIGN_TOKENS.spacing[2],
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600]
+                }}>
+                  推奨: 0.3〜1.0秒
+                </p>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  回転角度（度）
+                </label>
+                <input
+                  type="number"
+                  min="-720"
+                  max="720"
+                  step="45"
+                  value={action.type === 'effect' ? action.effect?.angle || 360 : 360}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value)) return;
+                    onUpdate(index, {
+                      effect: {
+                        ...(action.type === 'effect' ? action.effect : {}),
+                        angle: value
+                      }
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: DESIGN_TOKENS.spacing[3],
+                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                    border: `2px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                    borderRadius: DESIGN_TOKENS.borderRadius.md
+                  }}
+                />
+                <p style={{
+                  margin: 0,
+                  marginTop: DESIGN_TOKENS.spacing[2],
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600]
+                }}>
+                  360度 = 1回転、負の値で逆回転
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* Particles エフェクト */}
+          {currentEffectType === 'particles' && (
+            <>
+              <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  継続時間（秒）
+                </label>
+                <input
+                  type="number"
+                  min="0.1"
+                  max="3"
+                  step="0.1"
+                  value={action.type === 'effect' ? action.effect?.duration || 1.0 : 1.0}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value)) return;
+                    onUpdate(index, {
+                      effect: {
+                        ...(action.type === 'effect' ? action.effect : {}),
+                        duration: value
+                      }
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: DESIGN_TOKENS.spacing[3],
+                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                    border: `2px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                    borderRadius: DESIGN_TOKENS.borderRadius.md
+                  }}
+                />
+                <p style={{
+                  margin: 0,
+                  marginTop: DESIGN_TOKENS.spacing[2],
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600]
+                }}>
+                  推奨: 0.5〜2.0秒
+                </p>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  marginBottom: DESIGN_TOKENS.spacing[2]
+                }}>
+                  パーティクル数
+                </label>
+                <input
+                  type="number"
+                  min="5"
+                  max="100"
+                  step="5"
+                  value={action.type === 'effect' ? action.effect?.count || 20 : 20}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value);
+                    if (isNaN(value)) return;
+                    onUpdate(index, {
+                      effect: {
+                        ...(action.type === 'effect' ? action.effect : {}),
+                        count: value
+                      }
+                    });
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: DESIGN_TOKENS.spacing[3],
+                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                    border: `2px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                    borderRadius: DESIGN_TOKENS.borderRadius.md
+                  }}
+                />
+                <p style={{
+                  margin: 0,
+                  marginTop: DESIGN_TOKENS.spacing[2],
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600]
+                }}>
+                  10個 = 控えめ、50個 = 派手
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div style={{ 
+          display: 'flex', 
+          gap: DESIGN_TOKENS.spacing[2]
+        }}>
+          <ModernButton
+            variant="outline"
+            size="md"
+            onClick={() => setCurrentStep('effectType')}
+          >
+            ← 戻る
+          </ModernButton>
+          <ModernButton
+            variant="primary"
+            size="md"
+            onClick={() => setCurrentStep('confirm')}
+            style={{ flex: 1 }}
+          >
+            次へ →
+          </ModernButton>
+        </div>
+      </div>
+    );
+  };
+
+  // ステップ3: 確認
+  const renderConfirmStep = () => {
+    const effectOption = EFFECT_TYPE_OPTIONS.find(opt => opt.value === currentEffectType);
+    const effect = action.type === 'effect' ? action.effect : null;
+
+    return (
+      <div>
+        <h5 style={{
+          fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+          color: DESIGN_TOKENS.colors.neutral[800],
+          marginBottom: DESIGN_TOKENS.spacing[4]
+        }}>
+          設定内容の確認
+        </h5>
+
+        <div style={{
+          padding: DESIGN_TOKENS.spacing[4],
+          backgroundColor: effectOption?.color ? `${effectOption.color}15` : DESIGN_TOKENS.colors.neutral[50],
+          border: `2px solid ${effectOption?.color || DESIGN_TOKENS.colors.neutral[300]}`,
+          borderRadius: DESIGN_TOKENS.borderRadius.lg,
+          marginBottom: DESIGN_TOKENS.spacing[4]
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: DESIGN_TOKENS.spacing[3],
+            marginBottom: DESIGN_TOKENS.spacing[4],
+            paddingBottom: DESIGN_TOKENS.spacing[3],
+            borderBottom: `1px solid ${effectOption?.color || DESIGN_TOKENS.colors.neutral[300]}`
+          }}>
+            <span style={{ fontSize: '48px' }}>{effectOption?.icon}</span>
+            <div>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                color: DESIGN_TOKENS.colors.neutral[800]
+              }}>
+                {effectOption?.label}
+              </div>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                color: DESIGN_TOKENS.colors.neutral[600]
+              }}>
+                {effectOption?.description}
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: DESIGN_TOKENS.spacing[3]
+          }}>
+            <div>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                color: DESIGN_TOKENS.colors.neutral[600],
+                marginBottom: DESIGN_TOKENS.spacing[1]
+              }}>
+                継続時間
+              </div>
+              <div style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                color: DESIGN_TOKENS.colors.neutral[800]
+              }}>
+                {effect?.duration || 0}秒
+              </div>
+            </div>
+
+            {currentEffectType === 'flash' && (
+              <div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600],
+                  marginBottom: DESIGN_TOKENS.spacing[1]
+                }}>
+                  明るさ
+                </div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                  color: DESIGN_TOKENS.colors.neutral[800]
+                }}>
+                  {effect?.intensity || 0}
+                </div>
+              </div>
+            )}
+
+            {currentEffectType === 'shake' && (
+              <div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600],
+                  marginBottom: DESIGN_TOKENS.spacing[1]
+                }}>
+                  振動の強さ
+                </div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                  color: DESIGN_TOKENS.colors.neutral[800]
+                }}>
+                  {effect?.intensity || 0}px
+                </div>
+              </div>
+            )}
+
+            {currentEffectType === 'scale' && (
+              <div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600],
+                  marginBottom: DESIGN_TOKENS.spacing[1]
+                }}>
+                  拡大率
+                </div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                  color: DESIGN_TOKENS.colors.neutral[800]
+                }}>
+                  {effect?.scaleAmount || 0}倍
+                </div>
+              </div>
+            )}
+
+            {currentEffectType === 'rotate' && (
+              <div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600],
+                  marginBottom: DESIGN_TOKENS.spacing[1]
+                }}>
+                  回転角度
+                </div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                  color: DESIGN_TOKENS.colors.neutral[800]
+                }}>
+                  {effect?.angle || 0}度
+                </div>
+              </div>
+            )}
+
+            {currentEffectType === 'particles' && (
+              <div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                  color: DESIGN_TOKENS.colors.neutral[600],
+                  marginBottom: DESIGN_TOKENS.spacing[1]
+                }}>
+                  パーティクル数
+                </div>
+                <div style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                  color: DESIGN_TOKENS.colors.neutral[800]
+                }}>
+                  {effect?.count || 0}個
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ 
+          display: 'flex', 
+          gap: DESIGN_TOKENS.spacing[2]
+        }}>
+          <ModernButton
+            variant="outline"
+            size="md"
+            onClick={() => setCurrentStep('parameters')}
+          >
+            ← 戻る
+          </ModernButton>
+          <ModernButton
+            variant="primary"
+            size="md"
+            onClick={() => {
+              if (onShowNotification) {
+                onShowNotification('success', 'エフェクト設定が完了しました！');
+              }
+            }}
+            style={{ flex: 1 }}
+          >
+            ✅ 完了
+          </ModernButton>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <ModernCard 
-      variant="outlined" 
+      variant="outlined"
       size="md"
-      style={{ 
-        backgroundColor: DESIGN_TOKENS.colors.success[50],
-        border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
-        marginTop: DESIGN_TOKENS.spacing[3]
+      style={{
+        backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+        border: `2px solid ${DESIGN_TOKENS.colors.purple[300]}`,
+        marginTop: DESIGN_TOKENS.spacing[4]
       }}
     >
-      <h5 style={{
-        fontSize: DESIGN_TOKENS.typography.fontSize.base,
-        fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
-        color: DESIGN_TOKENS.colors.success[800],
-        margin: 0,
-        marginBottom: DESIGN_TOKENS.spacing[4],
-        display: 'flex',
-        alignItems: 'center',
-        gap: DESIGN_TOKENS.spacing[2]
+      {/* ヘッダー */}
+      <div style={{
+        marginBottom: DESIGN_TOKENS.spacing[6],
+        paddingBottom: DESIGN_TOKENS.spacing[4],
+        borderBottom: `2px solid ${DESIGN_TOKENS.colors.neutral[200]}`
       }}>
-        <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>✨</span>
-        {t('editor.effectAction.title')}
-      </h5>
-
-      {/* Effect type selection */}
-      <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-        <label style={{
-          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-          fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-          color: DESIGN_TOKENS.colors.success[800],
+        <h4 style={{
+          fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+          color: DESIGN_TOKENS.colors.purple[700],
+          margin: 0,
           marginBottom: DESIGN_TOKENS.spacing[2],
-          display: 'block'
-        }}>
-          {t('editor.effectAction.effectTypeLabel')}
-        </label>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+          display: 'flex',
+          alignItems: 'center',
           gap: DESIGN_TOKENS.spacing[2]
         }}>
-          {EFFECT_TYPE_OPTIONS.map((option) => (
-            <ModernButton
-              key={option.value}
-              variant={effectAction.effect?.type === option.value ? 'primary' : 'outline'}
-              size="sm"
-              onClick={() => onUpdate(index, { 
-                effect: { 
-                  ...effectAction.effect,
-                  type: option.value as 'flash' | 'shake' | 'scale' | 'rotate' | 'particles',
-                  duration: EFFECT_DEFAULTS.duration,
-                  intensity: EFFECT_DEFAULTS.intensity
-                } 
-              })}
-              style={{
-                borderColor: effectAction.effect?.type === option.value 
-                  ? DESIGN_TOKENS.colors.success[500] 
-                  : DESIGN_TOKENS.colors.success[200],
-                backgroundColor: effectAction.effect?.type === option.value 
-                  ? DESIGN_TOKENS.colors.success[500] 
-                  : 'transparent',
-                color: effectAction.effect?.type === option.value 
-                  ? DESIGN_TOKENS.colors.neutral[0] 
-                  : DESIGN_TOKENS.colors.success[800],
-                padding: DESIGN_TOKENS.spacing[2],
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: DESIGN_TOKENS.spacing[1]
-              }}
-            >
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}>
-                {option.label}
-              </span>
-            </ModernButton>
-          ))}
-        </div>
+          <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize['2xl'] }}>✨</span>
+          エフェクトの実行
+        </h4>
+        <p style={{
+          margin: 0,
+          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+          color: DESIGN_TOKENS.colors.neutral[600]
+        }}>
+          オブジェクトに視覚的なエフェクトを適用します
+        </p>
       </div>
 
-      {/* Common settings: Duration */}
-      {effectAction.effect && (
-        <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-          <label style={{
-            fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-            fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-            color: DESIGN_TOKENS.colors.success[800],
-            marginBottom: DESIGN_TOKENS.spacing[2],
-            display: 'block'
-          }}>
-            {t('editor.effectAction.durationLabel', { duration: effectAction.effect?.duration || EFFECT_DEFAULTS.duration })}
-          </label>
-          <input
-            type="range"
-            min={EFFECT_RANGES.duration.min}
-            max={EFFECT_RANGES.duration.max}
-            step={EFFECT_RANGES.duration.step}
-            value={effectAction.effect?.duration || EFFECT_DEFAULTS.duration}
-            onChange={(e) => onUpdate(index, {
-              effect: {
-                ...effectAction.effect,
-                duration: parseFloat(e.target.value)
-              }
-            })}
-            style={{
-              width: '100%',
-              height: '8px',
-              backgroundColor: DESIGN_TOKENS.colors.success[200],
-              borderRadius: DESIGN_TOKENS.borderRadius.full,
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-            color: DESIGN_TOKENS.colors.success[600],
-            marginTop: DESIGN_TOKENS.spacing[1]
-          }}>
-            <span>{EFFECT_RANGES.duration.min}s</span>
-            <span>{EFFECT_RANGES.duration.max}s</span>
-          </div>
-        </div>
-      )}
-
-      {/* Flash settings */}
-      {effectAction.effect?.type === 'flash' && (
-        <>
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.flashColorLabel')}
-            </label>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
-              gap: DESIGN_TOKENS.spacing[2]
-            }}>
-              {FLASH_COLOR_OPTIONS.map((option) => (
-                <ModernButton
-                  key={option.value}
-                  variant={effectAction.effect?.flashColor === option.value ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => onUpdate(index, { 
-                    effect: { 
-                      ...effectAction.effect,
-                      flashColor: option.value
-                    } 
-                  })}
-                  style={{
-                    borderColor: effectAction.effect?.flashColor === option.value 
-                      ? DESIGN_TOKENS.colors.success[500] 
-                      : DESIGN_TOKENS.colors.success[200],
-                    backgroundColor: effectAction.effect?.flashColor === option.value 
-                      ? DESIGN_TOKENS.colors.success[500] 
-                      : 'transparent',
-                    color: effectAction.effect?.flashColor === option.value 
-                      ? DESIGN_TOKENS.colors.neutral[0] 
-                      : DESIGN_TOKENS.colors.success[800]
-                  }}
-                >
-                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
-                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs }}>{option.label}</span>
-                </ModernButton>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.flashIntensityLabel', { intensity: ((effectAction.effect?.flashIntensity ?? EFFECT_DEFAULTS.flashIntensity) * 100).toFixed(0) })}
-            </label>
-            <input
-              type="range"
-              min={EFFECT_RANGES.flashIntensity.min}
-              max={EFFECT_RANGES.flashIntensity.max}
-              step={EFFECT_RANGES.flashIntensity.step}
-              value={effectAction.effect?.flashIntensity ?? EFFECT_DEFAULTS.flashIntensity}
-              onChange={(e) => onUpdate(index, {
-                effect: {
-                  ...effectAction.effect,
-                  flashIntensity: parseFloat(e.target.value)
-                }
-              })}
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.flashFrequencyLabel', { frequency: effectAction.effect?.flashFrequency ?? EFFECT_DEFAULTS.flashFrequency })}
-            </label>
-            <input
-              type="range"
-              min={EFFECT_RANGES.flashFrequency.min}
-              max={EFFECT_RANGES.flashFrequency.max}
-              step={EFFECT_RANGES.flashFrequency.step}
-              value={effectAction.effect?.flashFrequency ?? EFFECT_DEFAULTS.flashFrequency}
-              onChange={(e) => onUpdate(index, {
-                effect: {
-                  ...effectAction.effect,
-                  flashFrequency: parseFloat(e.target.value)
-                }
-              })}
-              style={{ width: '100%' }}
-            />
-          </div>
-        </>
-      )}
-
-      {/* Shake settings */}
-      {effectAction.effect?.type === 'shake' && (
-        <>
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.shakeDirectionLabel')}
-            </label>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: DESIGN_TOKENS.spacing[2]
-            }}>
-              {SHAKE_DIRECTION_OPTIONS.map((option) => (
-                <ModernButton
-                  key={option.value}
-                  variant={effectAction.effect?.shakeDirection === option.value ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => onUpdate(index, { 
-                    effect: { 
-                      ...effectAction.effect,
-                      shakeDirection: option.value
-                    } 
-                  })}
-                  style={{
-                    borderColor: effectAction.effect?.shakeDirection === option.value 
-                      ? DESIGN_TOKENS.colors.success[500] 
-                      : DESIGN_TOKENS.colors.success[200],
-                    backgroundColor: effectAction.effect?.shakeDirection === option.value 
-                      ? DESIGN_TOKENS.colors.success[500] 
-                      : 'transparent',
-                    color: effectAction.effect?.shakeDirection === option.value 
-                      ? DESIGN_TOKENS.colors.neutral[0] 
-                      : DESIGN_TOKENS.colors.success[800]
-                  }}
-                >
-                  <span>{option.label}</span>
-                </ModernButton>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.shakeIntensityLabel', { intensity: effectAction.effect?.shakeIntensity ?? EFFECT_DEFAULTS.shakeIntensity })}
-            </label>
-            <input
-              type="range"
-              min={EFFECT_RANGES.shakeIntensity.min}
-              max={EFFECT_RANGES.shakeIntensity.max}
-              step={EFFECT_RANGES.shakeIntensity.step}
-              value={effectAction.effect?.shakeIntensity ?? EFFECT_DEFAULTS.shakeIntensity}
-              onChange={(e) => onUpdate(index, {
-                effect: {
-                  ...effectAction.effect,
-                  shakeIntensity: parseFloat(e.target.value)
-                }
-              })}
-              style={{ width: '100%' }}
-            />
-          </div>
-        </>
-      )}
-
-      {/* Rotate settings */}
-      {effectAction.effect?.type === 'rotate' && (
-        <>
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.rotationAmountLabel', { amount: effectAction.effect?.rotationAmount ?? EFFECT_DEFAULTS.rotationAmount })}
-            </label>
-            <input
-              type="range"
-              min={EFFECT_RANGES.rotationAmount.min}
-              max={EFFECT_RANGES.rotationAmount.max}
-              step={EFFECT_RANGES.rotationAmount.step}
-              value={effectAction.effect?.rotationAmount ?? EFFECT_DEFAULTS.rotationAmount}
-              onChange={(e) => onUpdate(index, {
-                effect: {
-                  ...effectAction.effect,
-                  rotationAmount: parseFloat(e.target.value)
-                }
-              })}
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.rotationSpeedLabel', { speed: effectAction.effect?.rotationSpeed ?? EFFECT_DEFAULTS.rotationSpeed })}
-            </label>
-            <input
-              type="range"
-              min={EFFECT_RANGES.rotationSpeed.min}
-              max={EFFECT_RANGES.rotationSpeed.max}
-              step={EFFECT_RANGES.rotationSpeed.step}
-              value={effectAction.effect?.rotationSpeed ?? EFFECT_DEFAULTS.rotationSpeed}
-              onChange={(e) => onUpdate(index, {
-                effect: {
-                  ...effectAction.effect,
-                  rotationSpeed: parseFloat(e.target.value)
-                }
-              })}
-              style={{ width: '100%' }}
-            />
-          </div>
-
-          {/* 修正: 'alternate'を除外したROTATION_DIRECTION_OPTIONSを使用 */}
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.rotationDirectionLabel')}
-            </label>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: DESIGN_TOKENS.spacing[2]
-            }}>
-              {ROTATION_DIRECTION_OPTIONS.map((option) => (
-                <ModernButton
-                  key={option.value}
-                  variant={effectAction.effect?.rotationDirection === option.value ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => onUpdate(index, { 
-                    effect: { 
-                      ...effectAction.effect,
-                      rotationDirection: option.value
-                    } 
-                  })}
-                  style={{
-                    borderColor: effectAction.effect?.rotationDirection === option.value 
-                      ? DESIGN_TOKENS.colors.success[500] 
-                      : DESIGN_TOKENS.colors.success[200],
-                    backgroundColor: effectAction.effect?.rotationDirection === option.value 
-                      ? DESIGN_TOKENS.colors.success[500] 
-                      : 'transparent',
-                    color: effectAction.effect?.rotationDirection === option.value 
-                      ? DESIGN_TOKENS.colors.neutral[0] 
-                      : DESIGN_TOKENS.colors.success[800]
-                  }}
-                >
-                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
-                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs }}>{option.label}</span>
-                </ModernButton>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Particles settings */}
-      {effectAction.effect?.type === 'particles' && (
-        <>
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.particleTypeLabel')}
-            </label>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
-              gap: DESIGN_TOKENS.spacing[2]
-            }}>
-              {PARTICLE_TYPE_OPTIONS.map((option) => (
-                <ModernButton
-                  key={option.value}
-                  variant={effectAction.effect?.particleType === option.value ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={() => onUpdate(index, { 
-                    effect: { 
-                      ...effectAction.effect,
-                      particleType: option.value
-                    } 
-                  })}
-                  style={{
-                    borderColor: effectAction.effect?.particleType === option.value 
-                      ? DESIGN_TOKENS.colors.success[500] 
-                      : DESIGN_TOKENS.colors.success[200],
-                    backgroundColor: effectAction.effect?.particleType === option.value 
-                      ? DESIGN_TOKENS.colors.success[500] 
-                      : 'transparent',
-                    color: effectAction.effect?.particleType === option.value 
-                      ? DESIGN_TOKENS.colors.neutral[0] 
-                      : DESIGN_TOKENS.colors.success[800],
-                    padding: DESIGN_TOKENS.spacing[2]
-                  }}
-                >
-                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
-                  <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs }}>{option.label}</span>
-                </ModernButton>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-            <label style={{
-              fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-              color: DESIGN_TOKENS.colors.success[800],
-              marginBottom: DESIGN_TOKENS.spacing[2],
-              display: 'block'
-            }}>
-              {t('editor.effectAction.particleCountLabel', { count: effectAction.effect?.particleCount ?? EFFECT_DEFAULTS.particleCount })}
-            </label>
-            <input
-              type="range"
-              min={EFFECT_RANGES.particleCount.min}
-              max={EFFECT_RANGES.particleCount.max}
-              step={EFFECT_RANGES.particleCount.step}
-              value={effectAction.effect?.particleCount ?? EFFECT_DEFAULTS.particleCount}
-              onChange={(e) => onUpdate(index, {
-                effect: {
-                  ...effectAction.effect,
-                  particleCount: parseFloat(e.target.value)
-                }
-              })}
-              style={{ width: '100%' }}
-            />
-          </div>
-        </>
-      )}
-
-      {/* Effect preview button */}
-      <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-        <ModernButton
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            onShowNotification('info', t('editor.effectAction.previewNotice'));
-          }}
-          style={{
-            borderColor: DESIGN_TOKENS.colors.success[200],
-            color: DESIGN_TOKENS.colors.success[600],
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: DESIGN_TOKENS.spacing[2]
-          }}
-        >
-          <span>👁️</span>
-          <span>{t('editor.effectAction.previewButton')}</span>
-        </ModernButton>
-      </div>
-
-      {/* Settings summary */}
+      {/* ステップインジケーター */}
       <div style={{
-        padding: DESIGN_TOKENS.spacing[3],
-        backgroundColor: DESIGN_TOKENS.colors.success[100],
-        borderRadius: DESIGN_TOKENS.borderRadius.lg,
-        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-        color: DESIGN_TOKENS.colors.success[800]
+        display: 'flex',
+        justifyContent: 'space-between',
+        marginBottom: DESIGN_TOKENS.spacing[6],
+        position: 'relative'
       }}>
-        {t('editor.effectAction.settingsSummaryTitle')}
-        {effectAction.effect?.type
-          ? t('editor.effectAction.effectType', {
-              type: EFFECT_TYPE_OPTIONS.find(e => e.value === effectAction.effect?.type)?.label || t('editor.effectAction.selectEffect')
-            })
-          : t('editor.effectAction.selectEffect')}
-        {effectAction.effect?.duration && t('editor.effectAction.forDuration', { seconds: effectAction.effect.duration })}
+        {/* 進捗バー背景 */}
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          left: '5%',
+          right: '5%',
+          height: '4px',
+          backgroundColor: DESIGN_TOKENS.colors.neutral[200],
+          zIndex: 0
+        }} />
+        
+        {/* 進捗バー前景 */}
+        <div style={{
+          position: 'absolute',
+          top: '20px',
+          left: '5%',
+          width: `${(currentStepIndex / (steps.length - 1)) * 90}%`,
+          height: '4px',
+          backgroundColor: DESIGN_TOKENS.colors.purple[500],
+          zIndex: 1,
+          transition: 'width 0.3s ease'
+        }} />
+
+        {steps.map((step, idx) => (
+          <div
+            key={step.id}
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: DESIGN_TOKENS.spacing[2],
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: DESIGN_TOKENS.borderRadius.full,
+              backgroundColor: idx <= currentStepIndex 
+                ? DESIGN_TOKENS.colors.purple[500] 
+                : DESIGN_TOKENS.colors.neutral[200],
+              color: idx <= currentStepIndex 
+                ? DESIGN_TOKENS.colors.neutral[0] 
+                : DESIGN_TOKENS.colors.neutral[500],
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+              fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+              transition: 'all 0.3s ease',
+              border: `3px solid ${DESIGN_TOKENS.colors.neutral[0]}`
+            }}>
+              {step.icon}
+            </div>
+            <span style={{
+              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+              fontWeight: idx === currentStepIndex 
+                ? DESIGN_TOKENS.typography.fontWeight.semibold 
+                : DESIGN_TOKENS.typography.fontWeight.normal,
+              color: idx <= currentStepIndex 
+                ? DESIGN_TOKENS.colors.purple[700] 
+                : DESIGN_TOKENS.colors.neutral[500],
+              textAlign: 'center'
+            }}>
+              {step.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* ステップコンテンツ */}
+      <div>
+        {currentStep === 'effectType' && renderEffectTypeStep()}
+        {currentStep === 'parameters' && renderParametersStep()}
+        {currentStep === 'confirm' && renderConfirmStep()}
       </div>
     </ModernCard>
   );
