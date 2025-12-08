@@ -155,6 +155,7 @@ const DIRECTION_VECTORS: Record<DirectionType, { vx: number; vy: number }> = {
 export class RuleEngine {
   private rules: GameRule[] = [];
   private flags: Map<string, boolean> = new Map();
+  private previousFlags: Map<string, boolean> = new Map();
   private executionCounts: Map<string, number> = new Map();
   
   // カウンター管理
@@ -210,9 +211,10 @@ export class RuleEngine {
 
   // フラグ定義追加
   addFlagDefinition(flagId: string, initialValue: boolean): void {
-    this.flagDefinitions.set(flagId, initialValue);
-    this.flags.set(flagId, initialValue);
-  }
+  this.flagDefinitions.set(flagId, initialValue);
+  this.flags.set(flagId, initialValue);
+  this.previousFlags.set(flagId, initialValue); // ← 追加
+}
 
   // フラグ取得/設定
   getFlag(flagId: string): boolean {
@@ -220,6 +222,8 @@ export class RuleEngine {
   }
 
   setFlag(flagId: string, value: boolean): void {
+    const oldValue = this.flags.get(flagId) ?? false;
+    this.previousFlags.set(flagId, oldValue); // ← 追加
     this.flags.set(flagId, value);
   }
 
@@ -630,14 +634,27 @@ export class RuleEngine {
     condition: Extract<TriggerCondition, { type: 'flag' }>
   ): boolean {
     const currentValue = this.getFlag(condition.flagId);
+    const previousValue = this.previousFlags.get(condition.flagId) ?? false;
     
     switch (condition.condition) {
       case 'ON':
         return currentValue === true;
+        
       case 'OFF':
         return currentValue === false;
+        
       case 'CHANGED':
-        return false;
+        // 値が変化した（true→false または false→true）
+        return currentValue !== previousValue;
+        
+      case 'OFF_TO_ON':
+        // 前回OFFで今回ON
+        return previousValue === false && currentValue === true;
+        
+      case 'ON_TO_OFF':
+        // 前回ONで今回OFF
+        return previousValue === true && currentValue === false;
+        
       default:
         return false;
     }
@@ -2130,6 +2147,7 @@ export class RuleEngine {
   reset(): void {
     this.executionCounts.clear();
     this.flags.clear();
+    this.previousFlags.clear();
     this.counters.clear();
     this.counterHistory = [];
     this.counterPreviousValues.clear();
@@ -2141,6 +2159,7 @@ export class RuleEngine {
 
     this.flagDefinitions.forEach((initialValue, flagId) => {
       this.flags.set(flagId, initialValue);
+      this.previousFlags.set(flagId, initialValue);
     });
 
     this.counterDefinitions.forEach((counterDef, name) => {
