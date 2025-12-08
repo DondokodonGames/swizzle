@@ -486,7 +486,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       fontSize: DESIGN_TOKENS.typography.fontSize['6xl'],
       marginBottom: DESIGN_TOKENS.spacing[4]
     },
-    // 🔧 完全レスポンシブ対応: 固定サイズ削除、100%表示
+    // 🔧 PC: 9:16比率維持、スマホ: 全画面表示
     gameContainer: {
       position: 'fixed' as const,
       top: 0,
@@ -502,12 +502,15 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       alignItems: 'center',
       justifyContent: 'center'
     } as React.CSSProperties,
-    // 🔧 完全レスポンシブ対応: シンプルな100%表示
+    // 🔧 PC: 9:16比率維持、スマホ: 全画面表示
     aspectRatioContainer: {
       position: 'relative' as const,
       backgroundColor: DESIGN_TOKENS.colors.neutral[0],
       width: '100%',
-      height: '100%'
+      height: '100%',
+      maxWidth: '1080px', // PCで最大幅を制限
+      maxHeight: '1920px', // PCで最大高さを制限
+      aspectRatio: '9 / 16', // PC用：9:16比率を維持
     } as React.CSSProperties,
     canvas: {
       position: 'absolute' as const,
@@ -653,7 +656,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   return (
     <div style={styles.gameContainer} className="game-sequence-container">
       {/* 🔧 完全レスポンシブ対応: シンプルな100%コンテナ */}
-      <div style={styles.aspectRatioContainer}>
+      <div style={styles.aspectRatioContainer} className="aspect-ratio-container">
         {/* ゲームキャンバス */}
         <div ref={canvasRef} style={styles.canvas} />
 
@@ -794,6 +797,15 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
+        }
+        
+        /* 🔧 スマホ: aspect-ratioを無効化して全画面表示 */
+        @media (max-width: 768px) {
+          .aspect-ratio-container {
+            aspect-ratio: unset !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+          }
         }
       `}</style>
     </div>
