@@ -205,27 +205,15 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
   const remainingPercentage = (timeLeft / 10) * 100;
 
-  // 🔧 問題1修正: コンテナスタイルを改善（スマホ対応）
-  const containerStyle: React.CSSProperties = inline ? {
-    position: 'absolute',
+  // 🔧 完全レスポンシブ対応: 固定サイズ削除、100%表示
+  const containerStyle: React.CSSProperties = {
+    position: inline ? 'absolute' as const : 'fixed' as const,
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
     width: '100%',
     height: '100%',
-    background: 'linear-gradient(180deg, #581c87 0%, #000000 100%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 50,
-    overflow: 'hidden',
-  } : {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
     background: 'linear-gradient(180deg, #581c87 0%, #000000 100%)',
     display: 'flex',
     alignItems: 'center',
@@ -234,20 +222,11 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     overflow: 'hidden',
   };
 
-  // 🔧 問題1修正: メインボックスを相対配置に変更
-  const mainBoxStyle: React.CSSProperties = inline ? {
+  // 🔧 完全レスポンシブ対応: 固定サイズ削除
+  const mainBoxStyle: React.CSSProperties = {
     position: 'relative',
     width: '100%',
     height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-  } : {
-    position: 'relative',
-    width: '1080px',
-    height: '1920px',
-    maxWidth: '100vw',
-    maxHeight: '100vh',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
@@ -327,13 +306,14 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   return (
     <div style={containerStyle}>
       <div style={mainBoxStyle}>
-        {/* 🔧 問題1修正: スクロール可能なコンテンツエリア */}
+        {/* 🔧 完全レスポンシブ対応: スクロール可能なコンテンツエリア */}
         <div style={{
           flex: 1,
           overflowY: 'auto',
           overflowX: 'hidden',
           padding: '20px',
           paddingBottom: '140px', // ボタンエリア + 残り時間バーの高さ分の余白
+          WebkitOverflowScrolling: 'touch', // スマホでのスムーズスクロール
         }}>
           {/* 結果アイコン */}
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
@@ -362,7 +342,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 cursor: profileClickEnabled ? 'pointer' : 'default',
                 opacity: profileClickEnabled ? 1 : 0.5,
                 transition: 'opacity 0.3s ease',
-                // タッチデバイスでのハイライト無効化（クールダウン中）
                 WebkitTapHighlightColor: profileClickEnabled ? undefined : 'transparent',
                 pointerEvents: profileClickEnabled ? 'auto' : 'none',
               }}
@@ -448,12 +427,12 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           </div>
         </div>
 
-        {/* 🔧 問題1修正: ボタンエリアを画面下部に固定 */}
+        {/* 🔧 完全レスポンシブ対応: ボタンエリアを画面下部に固定 */}
         <div style={{
           position: 'absolute',
           left: 0,
           right: 0,
-          bottom: '8px', // 残り時間バーの高さ分上に
+          bottom: '8px',
           padding: '0 20px 12px 20px',
           background: 'linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, transparent 100%)',
         }}>
