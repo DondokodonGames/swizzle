@@ -205,7 +205,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
   const remainingPercentage = (timeLeft / 10) * 100;
 
-  // 🔧 完全レスポンシブ対応: 固定サイズ削除、100%表示
+  // 🔧 PC: 9:16比率維持、スマホ: 全画面表示
   const containerStyle: React.CSSProperties = {
     position: inline ? 'absolute' as const : 'fixed' as const,
     top: 0,
@@ -222,11 +222,14 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     overflow: 'hidden',
   };
 
-  // 🔧 完全レスポンシブ対応: 固定サイズ削除
+  // 🔧 PC: 9:16比率維持、スマホ: 全画面表示
   const mainBoxStyle: React.CSSProperties = {
     position: 'relative',
     width: '100%',
     height: '100%',
+    maxWidth: '1080px', // PCで最大幅を制限
+    maxHeight: '1920px', // PCで最大高さを制限
+    aspectRatio: '9 / 16', // PC用：9:16比率を維持
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
@@ -305,7 +308,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
   return (
     <div style={containerStyle}>
-      <div style={mainBoxStyle}>
+      <div style={mainBoxStyle} className="bridge-main-box">
         {/* 🔧 完全レスポンシブ対応: スクロール可能なコンテンツエリア */}
         <div style={{
           flex: 1,
@@ -650,6 +653,17 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           </div>
         </div>
       )}
+      
+      {/* 🔧 スマホ用メディアクエリ */}
+      <style>{`
+        @media (max-width: 768px) {
+          .bridge-main-box {
+            aspect-ratio: unset !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
