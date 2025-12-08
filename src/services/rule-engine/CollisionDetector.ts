@@ -1,5 +1,5 @@
 // src/services/rule-engine/CollisionDetector.ts
-// 衝突判定システム
+// 衝突判定システム（修正版）
 
 import { TriggerCondition } from '../../types/editor/GameScript';
 import { RuleExecutionContext, GameObject } from './types';
@@ -44,9 +44,20 @@ export class CollisionDetector {
       }
 
       // オブジェクト間衝突判定
+      // 🔧 修正: target='other'の場合にtargetObjectIdを使用
       const targetId = condition.target === 'self' ? targetObjectId : 
                        condition.target === 'background' ? 'background' :
+                       (condition.target === 'other' && condition.targetObjectId) ? condition.targetObjectId :
                        condition.target;
+
+      // デバッグログ
+      console.log('🔍 衝突判定評価:', {
+        sourceId,
+        condition_target: condition.target,
+        condition_targetObjectId: condition.targetObjectId,
+        resolved_targetId: targetId,
+        collisionType: condition.collisionType
+      });
 
       if (sourceId === targetId) {
         return false;
@@ -58,6 +69,7 @@ export class CollisionDetector {
 
       const targetObj = context.objects.get(targetId);
       if (!targetObj) {
+        console.warn(`⚠️ ターゲットオブジェクトが見つかりません: ${targetId}`);
         return false;
       }
 
@@ -65,6 +77,19 @@ export class CollisionDetector {
       const previousCollisions = this.previousCollisions.get(sourceId) || new Set();
 
       const isColliding = this.checkCollision(sourceObj, targetObj);
+
+      // デバッグログ: 衝突状態
+      if (sourceId === 'obj_moving_bar' && targetId === 'obj_green_zone') {
+        console.log('🎯 Perfect Stop 衝突判定:', {
+          sourceId,
+          targetId,
+          isColliding,
+          wasColliding: previousCollisions.has(targetId),
+          collisionType: condition.collisionType,
+          sourceBounds: this.getObjectBounds(sourceObj),
+          targetBounds: this.getObjectBounds(targetObj)
+        });
+      }
 
       const collisionType = condition.collisionType || 'enter';
 
@@ -84,6 +109,15 @@ export class CollisionDetector {
       }
 
       this.collisionCache.set(sourceId, currentCollisions);
+
+      // デバッグログ: 判定結果
+      if (sourceId === 'obj_moving_bar' && targetId === 'obj_green_zone') {
+        console.log('📊 判定結果:', {
+          collisionType,
+          result,
+          reason: result ? '条件満たす' : '条件満たさない'
+        });
+      }
 
       return result;
     } catch (error) {
@@ -190,6 +224,21 @@ export class CollisionDetector {
            obj1.x + obj1.width * scale1 > obj2.x &&
            obj1.y < obj2.y + obj2.height * scale2 &&
            obj1.y + obj1.height * scale1 > obj2.y;
+  }
+
+  /**
+   * オブジェクトのbounds情報を取得（デバッグ用）
+   */
+  private getObjectBounds(obj: GameObject): any {
+    const scale = obj.scale || 1;
+    return {
+      x: obj.x.toFixed(2),
+      y: obj.y.toFixed(2),
+      width: (obj.width * scale).toFixed(2),
+      height: (obj.height * scale).toFixed(2),
+      right: (obj.x + obj.width * scale).toFixed(2),
+      bottom: (obj.y + obj.height * scale).toFixed(2)
+    };
   }
 
   /**
