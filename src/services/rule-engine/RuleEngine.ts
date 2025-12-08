@@ -814,20 +814,23 @@ export class RuleEngine {
   ): boolean {
     try {
       const sourceId = targetObjectId;
-      const targetId = condition.target === 'self' ? targetObjectId : 
-                       condition.target === 'background' ? 'background' :
-                       condition.target === 'stage' ? 'stage' : condition.target;
-
-      if (sourceId === targetId) {
-        return false;
-      }
-
       const sourceObj = context.objects.get(sourceId);
+      
       if (!sourceObj) {
         return false;
       }
 
-      if (targetId === 'background' || targetId === 'stage') {
+      // ✅ stageArea判定の実装
+      if (condition.target === 'stageArea' || condition.target === 'stage') {
+        return this.evaluateStageAreaCollision(condition, sourceObj, context);
+      }
+
+      // 既存のオブジェクト間衝突判定
+      const targetId = condition.target === 'self' ? targetObjectId : 
+                       condition.target === 'other' ? (condition.targetObjectId || '') :
+                       condition.target;
+
+      if (sourceId === targetId) {
         return false;
       }
 
@@ -863,8 +866,82 @@ export class RuleEngine {
 
       return result;
     } catch (error) {
+      console.error('evaluateCollisionCondition error:', error);
       return false;
     }
+  }
+  private evaluateStageAreaCollision(
+    condition: Extract<TriggerCondition, { type: 'collision' }>,
+    sourceObj: any,
+    context: RuleExecutionContext
+  ): boolean {
+    if (!condition.region) {
+      // regionが指定されていない場合は画面全体
+      return false;
+    }
+
+    const region = condition.region;
+    const collisionType = condition.collisionType || 'enter';
+    
+    // オブジェクトの境界ボックス
+    const objScale = sourceObj.scale || 1;
+    const objLeft = sourceObj.x;
+    const objRight = sourceObj.x + sourceObj.width * objScale;
+    const objTop = sourceObj.y;
+    const objBottom = sourceObj.y + sourceObj.height * objScale;
+    
+    // stageAreaの境界ボックス（正規化座標 → ピクセル座標）
+    const regionLeft = region.x * context.canvas.width;
+    const regionTop = region.y * context.canvas.height;
+    const regionRight = regionLeft + (region.width || 0) * context.canvas.width;
+    const regionBottom = regionTop + (region.height || 0) * context.canvas.height;
+    
+    // 衝突判定（AABB）
+    const isColliding = !(
+      objRight < regionLeft ||
+      objLeft > regionRight ||
+      objBottom < regionTop ||
+      objTop > regionBottom
+    );
+    
+    // 衝突履歴管理
+    const stageAreaKey = `stageArea_${region.x}_${region.y}`;
+    const previousCollisions = this.previousCollisions.get(sourceObj.id) || new Set();
+    const wasColliding = previousCollisions.has(stageAreaKey);
+    
+    // 現在の衝突状態を更新
+    const currentCollisions = this.collisionCache.get(sourceObj.id) || new Set();
+    if (isColliding) {
+      currentCollisions.add(stageAreaKey);
+    } else {
+      currentCollisions.delete(stageAreaKey);
+    }
+    this.collisionCache.set(sourceObj.id, currentCollisions);
+    
+    // collisionTypeに応じた判定
+    let result = false;
+    switch (collisionType) {
+      case 'enter':
+        // 前回は衝突していなかったが、今回衝突した
+        result = isColliding && !wasColliding;
+        break;
+      case 'stay':
+        // 前回も今回も衝突している
+        result = isColliding && wasColliding;
+        break;
+      case 'exit':
+        // 前回は衝突していたが、今回は衝突していない
+        result = !isColliding && wasColliding;
+        break;
+      default:
+        result = false;
+    }
+    
+    if (result) {
+      console.log(`🎯 stageArea衝突判定: ${collisionType} - region(${region.x}, ${region.y}) - result: ${result}`);
+    }
+    
+    return result;
   }
 
   private checkCollision(obj1: any, obj2: any): boolean {
