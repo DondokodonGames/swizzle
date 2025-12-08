@@ -332,12 +332,48 @@ export class ProjectStorageManager {
     return duplicatedProject;
   }
 
-  // ✅ プロジェクトエクスポート
-  public async exportProject(id: string): Promise<Blob> {
-    // 🔧 注意: loadProjectにはuserIdが必要だが、エクスポート時には不要
-    // useGameProject.tsで事前にプロジェクトを取得してから呼び出すことを想定
-    throw new Error('exportProject requires userId. Use storage.loadProject() first.');
+// ✅ プロジェクトエクスポート（ProjectExportData形式）
+public async exportProject(id: string, userId?: string): Promise<Blob> {
+  try {
+    console.log('[ExportProject-Manager] Starting export...', { id, userId: userId || 'none' });
+
+    if (!userId) {
+      throw new Error('ユーザーIDが必要です');
+    }
+
+    const project = await this.loadProject(id, userId);
+
+    if (!project) {
+      throw new Error('プロジェクトが見つかりません');
+    }
+
+    // ✅ ProjectExportData形式で出力
+    const exportData = {
+      project: project,
+      metadata: {
+        id: project.id,
+        name: project.name,
+        lastModified: project.lastModified,
+        status: project.status,
+        size: project.totalSize,
+        version: project.version
+      },
+      exportedAt: new Date().toISOString(),
+      version: '1.0.0'
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: 'application/json'
+    });
+
+    console.log('[ExportProject-Manager] ✅ Export completed successfully');
+    return blob;
+
+  } catch (error) {
+    console.error('[ExportProject-Manager] Failed to export project:', error);
+    throw new Error(`プロジェクトのエクスポートに失敗しました: ${(error as any).message}`);
   }
+}
 
   // ✅ プロジェクトインポート（Supabaseに保存）
   public async importProject(file: File, userId?: string): Promise<GameProject> {

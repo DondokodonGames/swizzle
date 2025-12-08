@@ -205,7 +205,7 @@ export class CollisionDetector {
     return result;
   }
 
-  /**
+   /**
    * オブジェクト間の衝突判定（AABB）
    * 
    * @param obj1 - オブジェクト1
@@ -220,10 +220,29 @@ export class CollisionDetector {
     const scale1 = obj1.scale || 1;
     const scale2 = obj2.scale || 1;
 
-    return obj1.x < obj2.x + obj2.width * scale2 &&
+    const result = obj1.x < obj2.x + obj2.width * scale2 &&
            obj1.x + obj1.width * scale1 > obj2.x &&
            obj1.y < obj2.y + obj2.height * scale2 &&
            obj1.y + obj1.height * scale1 > obj2.y;
+
+    // デバッグログ追加（Perfect Stop専用）
+    if (obj1.id === 'obj_moving_bar' && obj2.id === 'obj_green_zone') {
+      console.log('🧮 衝突計算詳細:', {
+        obj1_left: obj1.x.toFixed(2),
+        obj1_right: (obj1.x + obj1.width * scale1).toFixed(2),
+        obj1_width_scaled: (obj1.width * scale1).toFixed(2),
+        obj2_left: obj2.x.toFixed(2),
+        obj2_right: (obj2.x + obj2.width * scale2).toFixed(2),
+        obj2_width_scaled: (obj2.width * scale2).toFixed(2),
+        overlap_x: (obj1.x < obj2.x + obj2.width * scale2) && 
+                   (obj1.x + obj1.width * scale1 > obj2.x),
+        overlap_y: (obj1.y < obj2.y + obj2.height * scale2) && 
+                   (obj1.y + obj1.height * scale1 > obj2.y),
+        result
+      });
+    }
+
+    return result;
   }
 
   /**

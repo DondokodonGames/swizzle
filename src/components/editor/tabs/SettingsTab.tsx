@@ -484,43 +484,40 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     }
   }, [project, updateProject, t]);
 
-  // エクスポート機能
-  const handleExport = useCallback(async () => {
-    try {
-      console.log('エクスポート開始');
-      
-      const exportData = {
-        ...project,
-        exportedAt: new Date().toISOString(),
-        exportSettings: {
-          format: 'json',
-          version: '1.0.0',
-          platform: 'web'
-        }
-      };
-      
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
-        type: 'application/json' 
-      });
-      
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${project.settings.name || 'my-game'}.json`;
-      
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+// エクスポート機能（ProjectExportData形式対応）
+const handleExport = useCallback(async () => {
+  try {
+    console.log('エクスポート開始');
+    
+    // ✅ ProjectExportData形式で出力
+    const exportData = {
+      project: project,
+      exportedAt: new Date().toISOString(),
+      version: '1.0.0'
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
+      type: 'application/json' 
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${project.settings.name || 'my-game'}.json`;
+    
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
-      console.log('エクスポート完了');
-      alert(t('editor.app.projectExported'));
+    console.log('エクスポート完了');
+    alert(t('editor.app.projectExported'));
 
-    } catch (error) {
-      console.error('エクスポートエラー:', error);
-      alert(`${t('errors.exportFailed')}:\n${error instanceof Error ? error.message : t('errors.exportFailed')}`);
-    }
-  }, [project, t]);
+  } catch (error) {
+    console.error('エクスポートエラー:', error);
+    alert(`${t('errors.exportFailed')}:\n${error instanceof Error ? error.message : t('errors.exportFailed')}`);
+  }
+}, [project, t]);
 
   return (
     <div style={{ 
