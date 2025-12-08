@@ -806,7 +806,7 @@ export class RuleEngine {
     }
   }
 
-  // 衝突条件評価
+// 衝突条件評価（stageArea完全対応版）
   private evaluateCollisionCondition(
     condition: Extract<TriggerCondition, { type: 'collision' }>,
     context: RuleExecutionContext,
@@ -822,15 +822,19 @@ export class RuleEngine {
 
       // ✅ stageArea判定の実装
       if (condition.target === 'stageArea' || condition.target === 'stage') {
-        return this.evaluateStageAreaCollision(condition, sourceObj, context);
+        return this.evaluateStageAreaCollision(condition, sourceObj, sourceId, context);
       }
 
       // 既存のオブジェクト間衝突判定
       const targetId = condition.target === 'self' ? targetObjectId : 
-                       condition.target === 'other' ? (condition.targetObjectId || '') :
+                       condition.target === 'background' ? 'background' :
                        condition.target;
 
       if (sourceId === targetId) {
+        return false;
+      }
+
+      if (targetId === 'background') {
         return false;
       }
 
@@ -839,7 +843,6 @@ export class RuleEngine {
         return false;
       }
 
-      const collisionKey = `${sourceId}-${targetId}`;
       const currentCollisions = this.collisionCache.get(sourceId) || new Set();
       const previousCollisions = this.previousCollisions.get(sourceId) || new Set();
 
@@ -866,17 +869,18 @@ export class RuleEngine {
 
       return result;
     } catch (error) {
-      console.error('evaluateCollisionCondition error:', error);
       return false;
     }
   }
+
+  // ✅ 新規追加: stageArea衝突判定メソッド
   private evaluateStageAreaCollision(
     condition: Extract<TriggerCondition, { type: 'collision' }>,
     sourceObj: any,
+    sourceId: string,
     context: RuleExecutionContext
   ): boolean {
     if (!condition.region) {
-      // regionが指定されていない場合は画面全体
       return false;
     }
 
@@ -896,7 +900,7 @@ export class RuleEngine {
     const regionRight = regionLeft + (region.width || 0) * context.canvas.width;
     const regionBottom = regionTop + (region.height || 0) * context.canvas.height;
     
-    // 衝突判定（AABB）
+    // 衝突判定（AABB - Axis-Aligned Bounding Box）
     const isColliding = !(
       objRight < regionLeft ||
       objLeft > regionRight ||
@@ -905,18 +909,18 @@ export class RuleEngine {
     );
     
     // 衝突履歴管理
-    const stageAreaKey = `stageArea_${region.x}_${region.y}`;
-    const previousCollisions = this.previousCollisions.get(sourceObj.id) || new Set();
+    const stageAreaKey = `stageArea_${region.x}_${region.y}_${region.width}_${region.height}`;
+    const previousCollisions = this.previousCollisions.get(sourceId) || new Set();
     const wasColliding = previousCollisions.has(stageAreaKey);
     
     // 現在の衝突状態を更新
-    const currentCollisions = this.collisionCache.get(sourceObj.id) || new Set();
+    const currentCollisions = this.collisionCache.get(sourceId) || new Set();
     if (isColliding) {
       currentCollisions.add(stageAreaKey);
     } else {
       currentCollisions.delete(stageAreaKey);
     }
-    this.collisionCache.set(sourceObj.id, currentCollisions);
+    this.collisionCache.set(sourceId, currentCollisions);
     
     // collisionTypeに応じた判定
     let result = false;
@@ -935,10 +939,6 @@ export class RuleEngine {
         break;
       default:
         result = false;
-    }
-    
-    if (result) {
-      console.log(`🎯 stageArea衝突判定: ${collisionType} - region(${region.x}, ${region.y}) - result: ${result}`);
     }
     
     return result;
