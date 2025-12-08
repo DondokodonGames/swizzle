@@ -9,14 +9,14 @@ import ProfileModal from './ProfileModal';
 import { DESIGN_TOKENS } from '../constants/DesignSystem';
 
 /**
- * GameSequence.tsx - Phase H-3&H-4統合版（インラインスタイル版）
+ * GameSequence.tsx - 完全レスポンシブ版（スマホ対応）
  * 
  * 機能:
  * - Supabaseから公開ゲームを取得
  * - ゲームとブリッジ画面の分離
  * - ソーシャル機能統合（いいね、フィード、プロフィール）
  * - 残り時間バー表示（ゲーム中+ブリッジ中）
- * - 1080x1920画面サイズ
+ * - 🔧 完全レスポンシブ: PC・スマホ両対応
  * - 非ログイン対応
  * - ホームボタン → /about ページへ遷移
  */
@@ -139,8 +139,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         console.log('📥 最初の1件を高速取得中...');
 
         // Step 1: ランダムな1件だけ取得して即座に開始
-        // ページをランダムにして異なるゲームが選ばれるようにする
-        const randomPage = Math.floor(Math.random() * 10) + 1; // 1-10のランダムページ
+        const randomPage = Math.floor(Math.random() * 10) + 1;
         const initialResult = await socialService.getPublicGames(
           {
             sortBy: 'latest',
@@ -156,7 +155,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         if (initialResult.games.length > 0 && initialResult.games[0].projectData) {
           initialGame = initialResult.games[0];
         } else {
-          // フォールバック: 1ページ目から取得
           const fallbackResult = await socialService.getPublicGames(
             {
               sortBy: 'latest',
@@ -186,7 +184,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         setCurrentIndex(0);
         setGameState('playing');
 
-        // Step 2: バックグラウンドで残りのゲームを取得（ゲームプレイ中に実行）
+        // Step 2: バックグラウンドで残りのゲームを取得
         console.log('🔄 バックグラウンドで残りのゲームを取得中...');
 
         const fullResult = await socialService.getPublicGames(
@@ -216,17 +214,15 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     fetchInitialGame();
   }, [socialService]);
 
-  // ==================== 次のゲームをプリロード（キャッシュから即座に選択） ====================
+  // ==================== 次のゲームをプリロード ====================
   const preloadNextGame = useCallback(() => {
     if (allValidGames.length <= 1) return;
 
-    // 未使用のゲームからランダムに選択
     const currentGameId = publicGames[currentIndex]?.id;
     const availableGames = allValidGames.filter(game =>
       game.id !== currentGameId && !usedGameIds.has(game.id)
     );
 
-    // 全ゲーム使用済みの場合はリセット（現在のゲーム以外）
     const gamesToChooseFrom = availableGames.length > 0
       ? availableGames
       : allValidGames.filter(game => game.id !== currentGameId);
@@ -250,12 +246,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // ==================== ブリッジタイマー ====================
   useEffect(() => {
     if (gameState === 'bridge') {
-      // ゲーム状態がbridgeに変わった時だけ初期値をセット
-      if (!paused) {
-        // pausedでない場合のみタイマーをセット（初回のみ20秒にリセット）
-      }
-
-      // 一時停止中はタイマーを動かさない
       if (paused) {
         if (bridgeTimerRef.current) {
           clearInterval(bridgeTimerRef.current);
@@ -264,11 +254,9 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         return;
       }
 
-      // 1秒ごとにカウントダウン
       bridgeTimerRef.current = setInterval(() => {
         setBridgeTimeLeft(prev => {
           if (prev <= 0.1) {
-            // タイマー終了 → 次のゲームへ
             handleNextGame();
             return 0;
           }
@@ -284,7 +272,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     }
   }, [gameState, paused]);
 
-  // bridgeTimeLeftの初期化（gameStateがbridgeになったときのみ）
+  // bridgeTimeLeftの初期化
   useEffect(() => {
     if (gameState === 'bridge') {
       setBridgeTimeLeft(10);
@@ -297,7 +285,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       const timer = setInterval(() => {
         const elapsed = (Date.now() - gameStartTime) / 1000;
         setGameTimeElapsed(elapsed);
-      }, 100); // 100msごとに更新
+      }, 100);
 
       return () => clearInterval(timer);
     }
@@ -363,7 +351,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         console.error(`❌ ゲーム実行エラー: "${currentGame.title}"`, err);
         currentGameRef.current = null;
         
-        // エラー時も次のゲームへスキップ（2秒後）
         setTimeout(() => {
           handleNextGame();
         }, 2000);
@@ -377,22 +364,18 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   const handleNextGame = useCallback(() => {
     console.log('⏭️ 次のゲームへ');
 
-    // ブリッジタイマークリア
     if (bridgeTimerRef.current) {
       clearInterval(bridgeTimerRef.current);
       bridgeTimerRef.current = null;
     }
 
-    // プリロードされた次のゲームを使用
     if (nextGame) {
       setPublicGames([nextGame]);
       setCurrentIndex(0);
-      // 使用済みとしてマーク
       setUsedGameIds(prev => new Set([...prev, nextGame.id]));
       setNextGame(null);
       console.log(`🎮 プリロードしたゲームを開始: "${nextGame.title}"`);
     } else if (publicGames.length > 0) {
-      // フォールバック: 現在のゲームを再利用（プリロードがない場合）
       setCurrentIndex(0);
       console.log('🔄 プリロードなし、現在のゲームを再実行');
     }
@@ -402,20 +385,18 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   }, [nextGame, publicGames.length]);
 
   const handlePreviousGame = useCallback(() => {
-    // 最適化版では前のゲームには戻れないので、次のゲームと同じ挙動にする
     handleNextGame();
   }, [handleNextGame]);
 
   const handleReplayGame = useCallback(() => {
     console.log('🔄 もう一度遊ぶ');
     
-    // ブリッジタイマークリア
     if (bridgeTimerRef.current) {
       clearInterval(bridgeTimerRef.current);
       bridgeTimerRef.current = null;
     }
     
-    currentGameRef.current = null; // 同じゲームを再実行できるようにする
+    currentGameRef.current = null;
     setGameState('playing');
     setCurrentScore(null);
   }, []);
@@ -423,7 +404,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   const handleSkipToBridge = useCallback(() => {
     console.log('⏭️ スキップ → ブリッジ画面へ');
     
-    // ゲーム強制終了
     setCurrentScore({
       points: 0,
       time: 0,
@@ -433,7 +413,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     setGameState('bridge');
   }, []);
 
-  // ==================== スタイル定義 ====================
+  // ==================== スタイル定義（🔧 完全レスポンシブ対応） ====================
   const styles = {
     fullScreenContainer: {
       position: 'fixed' as const,
@@ -441,11 +421,14 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       left: 0,
       right: 0,
       bottom: 0,
+      width: '100%',
+      height: '100%',
       backgroundColor: DESIGN_TOKENS.colors.neutral[50],
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 50
+      zIndex: 50,
+      overflow: 'hidden'
     },
     centerContent: {
       textAlign: 'center' as const
@@ -503,28 +486,29 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       fontSize: DESIGN_TOKENS.typography.fontSize['6xl'],
       marginBottom: DESIGN_TOKENS.spacing[4]
     },
+    // 🔧 完全レスポンシブ対応: 固定サイズ削除、100%表示
     gameContainer: {
       position: 'fixed' as const,
       top: 0,
       left: 0,
       right: 0,
       bottom: 0,
+      width: '100%',
+      height: '100%',
       backgroundColor: DESIGN_TOKENS.colors.neutral[100],
       zIndex: 50,
       overflow: 'hidden',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center'
-    },
+    } as React.CSSProperties,
+    // 🔧 完全レスポンシブ対応: シンプルな100%表示
     aspectRatioContainer: {
       position: 'relative' as const,
       backgroundColor: DESIGN_TOKENS.colors.neutral[0],
       width: '100%',
-      height: '100%',
-      maxWidth: 'calc(100vh * 9 / 16)',
-      maxHeight: 'calc(100vw * 16 / 9)',
-      aspectRatio: '9 / 16'
-    },
+      height: '100%'
+    } as React.CSSProperties,
     canvas: {
       position: 'absolute' as const,
       top: 0,
@@ -532,7 +516,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       width: '100%',
       height: '100%',
       touchAction: 'none'
-    },
+    } as React.CSSProperties,
     topBar: {
       position: 'absolute' as const,
       top: 0,
@@ -543,7 +527,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       pointerEvents: 'none' as const,
       display: 'flex',
       alignItems: 'stretch'
-    },
+    } as React.CSSProperties,
     topBarButton: (bgColor: string, isHover: boolean) => ({
       pointerEvents: 'auto' as const,
       flex: 1,
@@ -559,14 +543,14 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       transition: `opacity ${DESIGN_TOKENS.animation.duration.normal}`,
       opacity: isHover ? 0.8 : 1,
       padding: DESIGN_TOKENS.spacing[2]
-    }),
+    } as React.CSSProperties),
     avatar: {
       width: '34px',
       height: '34px',
       borderRadius: DESIGN_TOKENS.borderRadius.full,
       objectFit: 'cover' as const,
       border: `2px solid ${DESIGN_TOKENS.colors.neutral[0]}`
-    },
+    } as React.CSSProperties,
     avatarPlaceholder: {
       width: '34px',
       height: '34px',
@@ -578,7 +562,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       fontSize: DESIGN_TOKENS.typography.fontSize.lg,
       fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
       border: `2px solid ${DESIGN_TOKENS.colors.neutral[0]}`
-    },
+    } as React.CSSProperties,
     progressBarContainer: {
       position: 'absolute' as const,
       left: 0,
@@ -588,7 +572,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       backgroundColor: 'rgba(0, 0, 0, 0.3)',
       overflow: 'hidden',
       zIndex: 1000
-    },
+    } as React.CSSProperties,
     progressBar: (percent: number) => ({
       height: '100%',
       width: `${percent}%`,
@@ -598,7 +582,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         return DESIGN_TOKENS.colors.error[500];
       })(),
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-    })
+    } as React.CSSProperties)
   };
 
   // ==================== レンダリング ====================
@@ -606,7 +590,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // ローディング画面
   if (gameState === 'loading' && !error) {
     return (
-      <div style={styles.fullScreenContainer}>
+      <div style={styles.fullScreenContainer} className="game-sequence-container">
         <div style={styles.centerContent}>
           <div style={styles.spinner}></div>
           <p style={styles.loadingText}>公開ゲームを読み込み中...</p>
@@ -618,7 +602,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // エラー画面
   if (error) {
     return (
-      <div style={styles.fullScreenContainer}>
+      <div style={styles.fullScreenContainer} className="game-sequence-container">
         <div style={styles.errorContainer}>
           <div style={styles.errorIcon}>⚠️</div>
           <h2 style={styles.errorTitle}>エラー</h2>
@@ -641,7 +625,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // ゲームがない場合
   if (publicGames.length === 0) {
     return (
-      <div style={styles.fullScreenContainer}>
+      <div style={styles.fullScreenContainer} className="game-sequence-container">
         <div style={styles.errorContainer}>
           <div style={styles.noGamesIcon}>🎮</div>
           <h2 style={styles.errorTitle}>公開ゲームがありません</h2>
@@ -667,8 +651,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
   // ==================== ゲーム画面 + ブリッジ画面統合 ====================
   return (
-    <div style={styles.gameContainer}>
-      {/* メインコンテナ（9:16比率を維持しながらビューポートに収める） */}
+    <div style={styles.gameContainer} className="game-sequence-container">
+      {/* 🔧 完全レスポンシブ対応: シンプルな100%コンテナ */}
       <div style={styles.aspectRatioContainer}>
         {/* ゲームキャンバス */}
         <div ref={canvasRef} style={styles.canvas} />
@@ -711,7 +695,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             )}
           </button>
 
-          {/* About Us (ホームボタン → /about へ遷移) */}
+          {/* About Us */}
           <button
             onClick={() => {
               navigate('/about');
