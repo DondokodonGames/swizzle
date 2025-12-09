@@ -502,15 +502,15 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       alignItems: 'center',
       justifyContent: 'center'
     } as React.CSSProperties,
-    // 🔧 PC: 9:16比率維持、スマホ: 全画面表示
+    // 🔧 修正版: widthのみ指定、heightは削除、maxHeight追加
     aspectRatioContainer: {
       position: 'relative' as const,
       backgroundColor: DESIGN_TOKENS.colors.neutral[0],
       width: '100%',
-      height: '100%',
-      maxWidth: '1080px', // PCで最大幅を制限
-      maxHeight: '1920px', // PCで最大高さを制限
-      aspectRatio: '9 / 16', // PC用：9:16比率を維持
+      maxWidth: '1080px',      // PC画面での最大幅
+      maxHeight: '100vh',      // 🔧 追加: 画面の高さを超えない
+      aspectRatio: '9 / 16',   // 🔧 これで高さが自動計算される
+      margin: '0 auto',        // 🔧 追加: 中央揃え
     } as React.CSSProperties,
     canvas: {
       position: 'absolute' as const,
@@ -655,7 +655,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // ==================== ゲーム画面 + ブリッジ画面統合 ====================
   return (
     <div style={styles.gameContainer} className="game-sequence-container">
-      {/* 🔧 完全レスポンシブ対応: シンプルな100%コンテナ */}
+      {/* 🔧 完全レスポンシブ対応: 画面高さを超えない9:16表示 */}
       <div style={styles.aspectRatioContainer} className="aspect-ratio-container">
         {/* ゲームキャンバス */}
         <div ref={canvasRef} style={styles.canvas} />

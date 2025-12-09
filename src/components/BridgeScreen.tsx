@@ -53,7 +53,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   const [selectedReaction, setSelectedReaction] = useState<string | null>(null);
   const [animationStage, setAnimationStage] = useState(0);
 
-  // 🔧 問題3修正: プロフィールボタンのクールダウン（1秒間無効化）
   const [profileClickEnabled, setProfileClickEnabled] = useState(false);
 
   useEffect(() => {
@@ -65,14 +64,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     return () => timers.forEach(clearTimeout);
   }, []);
 
-  // 🔧 問題3修正: 1秒後にプロフィールクリックを有効化
   useEffect(() => {
-    setProfileClickEnabled(false); // リセット
+    setProfileClickEnabled(false);
     const timer = setTimeout(() => {
       setProfileClickEnabled(true);
     }, 1000);
     return () => clearTimeout(timer);
-  }, [currentGame.id]); // ゲームが変わるたびにリセット
+  }, [currentGame.id]);
 
   const socialService = useMemo(() => SocialService.getInstance(), []);
 
@@ -191,7 +189,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     window.location.href = '/feed';
   };
 
-  // 🔧 問題3修正: クールダウン中はプロフィール遷移を無効化
   const handleGoToProfile = () => {
     if (!profileClickEnabled) {
       console.log('⏳ プロフィールクリックはクールダウン中です');
@@ -205,7 +202,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
   const remainingPercentage = (timeLeft / 10) * 100;
 
-  // 🔧 PC: 9:16比率維持、スマホ: 全画面表示
   const containerStyle: React.CSSProperties = {
     position: inline ? 'absolute' as const : 'fixed' as const,
     top: 0,
@@ -222,14 +218,14 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     overflow: 'hidden',
   };
 
-  // 🔧 PC: 9:16比率維持、スマホ: 全画面表示
+  // 🔧 修正版: widthのみ指定、heightは削除、maxHeight追加
   const mainBoxStyle: React.CSSProperties = {
     position: 'relative',
     width: '100%',
-    height: '100%',
-    maxWidth: '1080px', // PCで最大幅を制限
-    maxHeight: '1920px', // PCで最大高さを制限
-    aspectRatio: '9 / 16', // PC用：9:16比率を維持
+    maxWidth: '1080px',      // PC画面での最大幅
+    maxHeight: '100vh',      // 🔧 追加: 画面の高さを超えない
+    aspectRatio: '9 / 16',   // 🔧 これで高さが自動計算される
+    margin: '0 auto',        // 🔧 追加: 中央揃え
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
@@ -309,14 +305,14 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   return (
     <div style={containerStyle}>
       <div style={mainBoxStyle} className="bridge-main-box">
-        {/* 🔧 完全レスポンシブ対応: スクロール可能なコンテンツエリア */}
+        {/* スクロール可能なコンテンツエリア */}
         <div style={{
           flex: 1,
           overflowY: 'auto',
           overflowX: 'hidden',
           padding: '20px',
-          paddingBottom: '140px', // ボタンエリア + 残り時間バーの高さ分の余白
-          WebkitOverflowScrolling: 'touch', // スマホでのスムーズスクロール
+          paddingBottom: '140px',
+          WebkitOverflowScrolling: 'touch',
         }}>
           {/* 結果アイコン */}
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
@@ -325,7 +321,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
             </div>
           </div>
 
-          {/* 🔧 問題3修正: 作成者情報（クールダウン対応） */}
+          {/* 作成者情報 */}
           <div style={{
             background: 'rgba(255, 255, 255, 0.1)',
             borderRadius: '20px',
@@ -387,7 +383,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   {currentGame.title}
                 </p>
               </div>
-              {/* クールダウン中のインジケーター */}
               {!profileClickEnabled && (
                 <div style={{
                   fontSize: '12px',
@@ -430,7 +425,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           </div>
         </div>
 
-        {/* 🔧 完全レスポンシブ対応: ボタンエリアを画面下部に固定 */}
+        {/* ボタンエリア（画面下部固定） */}
         <div style={{
           position: 'absolute',
           left: 0,
@@ -558,7 +553,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           </div>
         </div>
 
-        {/* 残り時間バー（画面最下部に固定） */}
+        {/* 残り時間バー */}
         <div style={{
           position: 'absolute',
           left: 0,
@@ -654,7 +649,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         </div>
       )}
       
-      {/* 🔧 スマホ用メディアクエリ */}
+      {/* スマホ用メディアクエリ */}
       <style>{`
         @media (max-width: 768px) {
           .bridge-main-box {
