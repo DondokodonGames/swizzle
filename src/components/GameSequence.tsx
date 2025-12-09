@@ -17,6 +17,7 @@ import { DESIGN_TOKENS } from '../constants/DesignSystem';
  * - ソーシャル機能統合（いいね、フィード、プロフィール）
  * - 残り時間バー表示（ゲーム中+ブリッジ中）
  * - 🔧 完全レスポンシブ: PC・スマホ両対応
+ * - 🔧 高さベースの9:16比率（太って見えない）
  * - 非ログイン対応
  * - ホームボタン → /about ページへ遷移
  */
@@ -502,15 +503,15 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       alignItems: 'center',
       justifyContent: 'center'
     } as React.CSSProperties,
-    // 🔧 修正版: widthのみ指定、heightは削除、maxHeight追加
+    // 🔧 修正版: 高さベースで幅を自動計算（太って見えない）
     aspectRatioContainer: {
       position: 'relative' as const,
       backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-      width: '100%',
+      height: '100vh',         // 🔧 高さを優先
+      width: 'auto',           // 🔧 幅を自動計算
       maxWidth: '1080px',      // PC画面での最大幅
-      maxHeight: '100vh',      // 🔧 追加: 画面の高さを超えない
-      aspectRatio: '9 / 16',   // 🔧 これで高さが自動計算される
-      margin: '0 auto',        // 🔧 追加: 中央揃え
+      aspectRatio: '9 / 16',   // 🔧 9:16比率維持
+      margin: '0 auto',        // 🔧 中央揃え
     } as React.CSSProperties,
     canvas: {
       position: 'absolute' as const,
@@ -655,7 +656,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // ==================== ゲーム画面 + ブリッジ画面統合 ====================
   return (
     <div style={styles.gameContainer} className="game-sequence-container">
-      {/* 🔧 完全レスポンシブ対応: 画面高さを超えない9:16表示 */}
+      {/* 🔧 完全レスポンシブ対応: 高さベースで幅を自動計算（太って見えない） */}
       <div style={styles.aspectRatioContainer} className="aspect-ratio-container">
         {/* ゲームキャンバス */}
         <div ref={canvasRef} style={styles.canvas} />
@@ -803,8 +804,9 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         @media (max-width: 768px) {
           .aspect-ratio-container {
             aspect-ratio: unset !important;
+            width: 100% !important;
+            height: 100% !important;
             max-width: 100% !important;
-            max-height: 100% !important;
           }
         }
       `}</style>

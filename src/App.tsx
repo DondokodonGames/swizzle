@@ -300,6 +300,20 @@ function MainApp() {
   const [globalAuthModalOpen, setGlobalAuthModalOpen] = useState(false);
   const [globalAuthModalMode, setGlobalAuthModalMode] = useState<'signin' | 'signup'>('signin');
 
+  // ✅ 修正: useEffect を条件分岐の外に移動
+  // ゲームプレイ時のスクロール固定
+  useEffect(() => {
+    if (mode === 'sequence') {
+      document.body.classList.add('game-playing');
+      console.log('✅ ゲームプレイモード: スクロール固定');
+      
+      return () => {
+        document.body.classList.remove('game-playing');
+        console.log('✅ ゲームプレイモード終了: スクロール復元');
+      };
+    }
+  }, [mode]);
+
   // コピー完了時のエディター自動起動チェック
   useEffect(() => {
     const shouldOpenEditor = localStorage.getItem('shouldOpenEditor');

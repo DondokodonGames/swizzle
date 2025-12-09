@@ -8,29 +8,37 @@
 html,
 body {
   width: 100%;
-  height: 100%;
+  min-height: 100%;  /* ✅ 修正: height → min-height */
   margin: 0;
   padding: 0;
   font-family: Arial, sans-serif;
   
-  /* 🔧 スマホ対応: スクロール完全防止 */
-  overflow: hidden;
-  position: fixed;
+  /* ✅ 修正: デフォルトはスクロール可能 */
+  overflow-y: auto;
+  position: relative;
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
 }
 
-/* ゲーム画面以外のページ用（エディター等）は個別にoverflowを設定 */
-body:not(:has(.game-sequence-container)) {
-  overflow-y: auto;
-  position: relative;
+/* ✅ 修正: ゲームプレイ時のみスクロール完全防止 */
+body.game-playing {
+  overflow: hidden;
+  position: fixed;
+  height: 100%;
+  width: 100%;
 }
 
 #root {
   width: 100%;
-  height: 100%;
+  min-height: 100%;  /* ✅ 修正: height → min-height */
+  /* ✅ 修正: overflow削除、スクロール可能に */
+}
+
+/* ✅ 修正: ゲームプレイ時のみ固定 */
+body.game-playing #root {
   overflow: hidden;
   position: fixed;
+  height: 100%;
   top: 0;
   left: 0;
 }
