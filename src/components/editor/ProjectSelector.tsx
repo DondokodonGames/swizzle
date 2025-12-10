@@ -1,15 +1,14 @@
 // src/components/editor/ProjectSelector.tsx
-// 🚀 完全修正版: 軽量化 + 全エラー修正
-import React, { useState, useEffect, useCallback } from 'react';
+// 🚀 完全修正版: 軽量化 + インポートボタン追加 + File渡し修正
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { useGameProject, ProjectMetadata } from '../../hooks/editor/useGameProject';
 import { ModernButton } from '../ui/ModernButton';
 import { ModernCard } from '../ui/ModernCard';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 
-// ✅ 修正1: プロパティ名を EditorApp.tsx に合わせる
 export interface ProjectSelectorProps {
-  onProjectSelect: (project: GameProject) => Promise<void>;  // ✅ onSelect → onProjectSelect
+  onProjectSelect: (project: GameProject) => Promise<void>;
   onCreateNew: (name: string) => Promise<void>;
   onDelete: (projectId: string) => Promise<void>;
   onDuplicate: (projectId: string) => Promise<void>;
@@ -20,13 +19,12 @@ type ViewMode = 'grid' | 'list';
 type SortBy = 'lastModified' | 'name' | 'size';
 
 export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
-  onProjectSelect,  // ✅ 修正
+  onProjectSelect,
   onCreateNew,
   onDelete,
   onDuplicate,
   onExport
 }) => {
-  // ✅ 軽量版メタデータ使用
   const [projectMetadataList, setProjectMetadataList] = useState<ProjectMetadata[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<ProjectMetadata[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -37,9 +35,12 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
   const [newProjectName, setNewProjectName] = useState('');
   
-  const { listProjectMetadata, loadFullProject } = useGameProject();
+  // ✅ インポート用のRef追加
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const { listProjectMetadata, loadFullProject, importProject } = useGameProject();
 
-  // ✅ 初期ロード: 軽量版メタデータのみ
+  // 初期ロード: 軽量版メタデータのみ
   useEffect(() => {
     const loadProjects = async () => {
       console.log('[ProjectSelector] 🚀 Loading lightweight project metadata...');
@@ -63,7 +64,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   useEffect(() => {
     let filtered = [...projectMetadataList];
 
-    // 検索クエリでフィルター
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(p =>
@@ -72,7 +72,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       );
     }
 
-    // ソート
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
@@ -88,14 +87,14 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     setFilteredProjects(filtered);
   }, [projectMetadataList, searchQuery, sortBy]);
 
-  // ✅ プロジェクト選択時: 詳細データ取得
+  // プロジェクト選択時: 詳細データ取得
   const handleProjectSelect = async (projectId: string) => {
     console.log(`[ProjectSelector] 📂 Loading full project data for: ${projectId}`);
     setLoadingProjectId(projectId);
     try {
-      const fullProject = await loadFullProject(projectId);  // ✅ GameProject返却
+      const fullProject = await loadFullProject(projectId);
       console.log(`[ProjectSelector] ✅ Full project loaded: ${fullProject.name}`);
-      await onProjectSelect(fullProject);  // ✅ 修正
+      await onProjectSelect(fullProject);
     } catch (error) {
       console.error(`[ProjectSelector] ❌ Failed to load project:`, error);
     } finally {
@@ -111,13 +110,49 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       await onCreateNew(newProjectName.trim());
       setNewProjectName('');
       
-      // プロジェクト一覧を再読み込み
       const metadataList = await listProjectMetadata();
       setProjectMetadataList(metadataList);
     } catch (error) {
       console.error('Failed to create project:', error);
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  // ✅ インポートボタンクリックハンドラー
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // ✅ ファイルインポートハンドラー（修正版）
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      console.log('[ProjectSelector] 📥 Importing JSON file:', file.name);
+      
+      // ✅ 修正: File オブジェクトをそのまま渡す
+      if (importProject) {
+        await importProject(file);
+        console.log('[ProjectSelector] ✅ Project imported successfully');
+        
+        // プロジェクト一覧を再読み込み
+        const metadataList = await listProjectMetadata();
+        setProjectMetadataList(metadataList);
+        
+        alert('✅ プロジェクトをインポートしました！');
+      } else {
+        throw new Error('Import function not available');
+      }
+    } catch (err) {
+      console.error('[ProjectSelector] ❌ Import failed:', err);
+      alert('❌ ファイルのインポートに失敗しました。JSONファイルの形式を確認してください。');
+    } finally {
+      // ファイル入力をリセット
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -128,8 +163,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
     try {
       await onDelete(projectId);
-      
-      // プロジェクト一覧から削除
       setProjectMetadataList(prev => prev.filter(p => p.id !== projectId));
     } catch (error) {
       console.error('Failed to delete project:', error);
@@ -139,8 +172,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   const handleDuplicate = async (projectId: string) => {
     try {
       await onDuplicate(projectId);
-      
-      // プロジェクト一覧を再読み込み
       const metadataList = await listProjectMetadata();
       setProjectMetadataList(metadataList);
     } catch (error) {
@@ -207,7 +238,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
             </h1>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3] }}>
-              {/* ソート */}
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortBy)}
@@ -225,18 +255,17 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 <option value="size">サイズ順</option>
               </select>
 
-              {/* 表示切り替え */}
               <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[1] }}>
                 <ModernButton
                   variant={viewMode === 'grid' ? 'primary' : 'secondary'}
-                  size="md"  // ✅ 修正2: "medium" → "md"
+                  size="md"
                   onClick={() => setViewMode('grid')}
                 >
                   ⊞
                 </ModernButton>
                 <ModernButton
                   variant={viewMode === 'list' ? 'primary' : 'secondary'}
-                  size="md"  // ✅ 修正2: "medium" → "md"
+                  size="md"
                   onClick={() => setViewMode('list')}
                 >
                   ☰
@@ -283,49 +312,105 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           padding: DESIGN_TOKENS.spacing[6]
         }}
       >
-        {/* 新規作成カード */}
+        {/* ✅ 新規作成とインポートボタン */}
         <ModernCard variant="elevated" size="md" style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
+          {/* 非表示のファイル入力 */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            style={{ display: 'none' }}
+            onChange={handleFileImport}
+          />
+
+          {/* 新規作成セクション */}
+          <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                  backgroundColor: DESIGN_TOKENS.colors.primary[100],
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px'
+                }}
+              >
+                ✨
+              </div>
+              <div style={{ flex: 1 }}>
+                <input
+                  type="text"
+                  placeholder="新しいゲームの名前を入力..."
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleCreateNew()}
+                  disabled={isCreating}
+                  style={{
+                    width: '100%',
+                    padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+                    fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                    borderRadius: DESIGN_TOKENS.borderRadius.md,
+                    border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                    backgroundColor: DESIGN_TOKENS.colors.neutral[0]
+                  }}
+                />
+              </div>
+              <ModernButton
+                variant="primary"
+                size="md"
+                onClick={handleCreateNew}
+                disabled={!newProjectName.trim() || isCreating}
+                loading={isCreating}
+              >
+                {isCreating ? '作成中...' : '新規作成'}
+              </ModernButton>
+            </div>
+          </div>
+
+          {/* 区切り線 */}
+          <div
+            style={{
+              borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+              marginBottom: DESIGN_TOKENS.spacing[4]
+            }}
+          />
+
+          {/* インポートセクション */}
           <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
             <div
               style={{
                 width: '48px',
                 height: '48px',
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
-                backgroundColor: DESIGN_TOKENS.colors.primary[100],
+                backgroundColor: DESIGN_TOKENS.colors.secondary[100],
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '24px'
               }}
             >
-              ✨
+              📥
             </div>
             <div style={{ flex: 1 }}>
-              <input
-                type="text"
-                placeholder="新しいゲームの名前を入力..."
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleCreateNew()}
-                disabled={isCreating}
+              <p
                 style={{
-                  width: '100%',
-                  padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
-                  fontSize: DESIGN_TOKENS.typography.fontSize.base,
-                  borderRadius: DESIGN_TOKENS.borderRadius.md,
-                  border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
-                  backgroundColor: DESIGN_TOKENS.colors.neutral[0]
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.neutral[600],
+                  margin: 0
                 }}
-              />
+              >
+                ゲームJSONファイルをインポート
+              </p>
             </div>
             <ModernButton
-              variant="primary"
-              size="md"  // ✅ 修正2
-              onClick={handleCreateNew}
-              disabled={!newProjectName.trim() || isCreating}
-              loading={isCreating}
+              variant="outline"
+              size="md"
+              onClick={handleImportClick}
             >
-              {isCreating ? '作成中...' : '新規作成'}
+              JSONインポート
             </ModernButton>
           </div>
         </ModernCard>
@@ -414,7 +499,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   </div>
                 )}
 
-                {/* サムネイル */}
                 <div
                   style={{
                     width: '100%',
@@ -434,7 +518,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   {!project.thumbnailDataUrl && '🎮'}
                 </div>
 
-                {/* プロジェクト情報 */}
                 <h3
                   style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.lg,
@@ -466,7 +549,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   </p>
                 )}
 
-                {/* メタ情報 */}
                 <div
                   style={{
                     display: 'flex',
@@ -481,7 +563,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   <span>💾 {formatSize(project.size)}</span>
                 </div>
 
-                {/* アクションボタン */}
                 <div
                   style={{
                     display: 'flex',
@@ -514,7 +595,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                     出力
                   </ModernButton>
                   <ModernButton
-                    variant="error"  // ✅ 修正2: "danger" → "error"
+                    variant="error"
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -544,7 +625,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
-                  {/* サムネイル（小） */}
                   <div
                     style={{
                       width: '80px',
@@ -564,7 +644,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                     {!project.thumbnailDataUrl && '🎮'}
                   </div>
 
-                  {/* プロジェクト情報 */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <h3
                       style={{
@@ -613,7 +692,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                     </div>
                   </div>
 
-                  {/* アクションボタン */}
                   <div
                     style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}
                     onClick={(e) => e.stopPropagation()}
@@ -639,7 +717,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                       出力
                     </ModernButton>
                     <ModernButton
-                      variant="error"  // ✅ 修正2
+                      variant="error"
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
