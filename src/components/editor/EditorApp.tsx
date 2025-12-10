@@ -1,4 +1,5 @@
 // src/components/editor/EditorApp.tsx
+// 🔧 修正版: ボタン重複解消（作業ボタンはGameEditorに統一）
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../types/editor/GameProject';
@@ -116,7 +117,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
 
       showNotification('success', t('editor.app.projectSaved'));
 
-      // 🔧 修正: 安全なアクセスでsaveCountを更新
       const currentStatistics = currentProject.metadata?.statistics || {};
       updateProject({
         metadata: {
@@ -157,30 +157,25 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     showNotification('info', t('editor.settings.testPlay.testing'));
 
     try {
-      // まずモード切り替え
       setMode('testplay');
       
-      // DOM要素が作成されるまで待機
       await new Promise<void>((resolve) => {
         const checkElement = () => {
           if (testPlayContainerRef.current) {
             resolve();
           } else {
-            // requestAnimationFrame で次のレンダリングサイクルを待つ
             requestAnimationFrame(checkElement);
           }
         };
         checkElement();
       });
 
-      // 再度確認（安全措置）
       if (!testPlayContainerRef.current) {
         throw new Error(t('editor.app.testPlayScreenFailed'));
       }
 
       console.log('✅ テストプレイ画面準備完了、ゲーム実行開始');
 
-      // EditorGameBridge経由でテストプレイ実行
       await gameBridge.current.launchFullGame(
         currentProject,
         testPlayContainerRef.current,
@@ -194,7 +189,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
             showNotification('error', t('editor.app.testPlayError', { error: result.errors.join(', ') }));
           }
 
-          // 🔧 修正: 安全なアクセスでtestPlayCountとperformanceを更新
           const currentStatistics = currentProject.metadata?.statistics || {};
           const currentPerformance = currentProject.metadata?.performance || {};
           
@@ -223,7 +217,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
   }, [currentProject, getValidationErrors, updateProject, showNotification]);
 
-  // テストプレイ終了
   const handleTestPlayEnd = useCallback(() => {
     setMode('editor');
     setTestPlayResult(null);
@@ -231,116 +224,105 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     showNotification('info', t('editor.app.returnedToEditor'));
   }, [showNotification, t]);
 
-  // 🔧 完全修正: プロジェクト公開処理にSupabase連携追加
-const handlePublish = useCallback(async () => {
-  if (!currentProject) return;
+  const handlePublish = useCallback(async () => {
+    if (!currentProject) return;
 
-  // Phase M: クレジット制限チェック
-  if (!canCreateGame) {
-    openPaywall();
-    return;
-  }
-
-  if (!user) {
-    showNotification('error', t('editor.app.publishRequiresLogin'));
-    return;
-  }
-
-  const errors = getValidationErrors();
-  if (errors.length > 0) {
-    showNotification('error', t('editor.app.publishCannotWithErrors', { error: errors[0] }));
-    return;
-  }
-
-  try {
-    showNotification('info', t('editor.app.publishingStarted'));
-
-    // 1. 公開前に自動保存（ローカル）
-    await saveProject();
-
-    // 🔧 修正: 安全なアクセスでpublishCountを更新
-    const currentStatistics = currentProject.metadata?.statistics || {};
-
-    // 2. 🔧 修正: 公開状態に更新されたプロジェクトデータを明示的に作成
-    const publishedProject: GameProject = {
-      ...currentProject,
-      status: 'published',
-      settings: {
-        ...currentProject.settings,
-        publishing: {
-          ...currentProject.settings.publishing,
-          isPublished: true,
-          publishedAt: new Date().toISOString()
-        }
-      },
-      metadata: {
-        ...currentProject.metadata,
-        statistics: {
-          ...currentStatistics,
-          publishCount: (currentStatistics.publishCount || 0) + 1
-        },
-        lastSyncedAt: new Date().toISOString()
-      }
-    };
-
-    // 3. 🔧 修正: 更新されたプロジェクトデータをReact状態に反映
-    updateProject({
-      status: 'published',
-      settings: publishedProject.settings,
-      metadata: publishedProject.metadata
-    });
-
-    // 4. 🔧 修正: 明示的に更新されたプロジェクトデータをSupabaseに保存
-    const storageManager = ProjectStorageManager.getInstance();
-    await storageManager.saveProject(publishedProject, {
-      saveToDatabase: true,
-      userId: user.id
-    });
-
-    // 5. ローカル保存も再実行（データベースIDなど更新された情報を保存）
-    await saveProject();
-
-    showNotification('success', t('editor.app.projectPublishedSuccess'));
-    
-    console.log('✅ Game published successfully:', {
-      projectId: publishedProject.id,
-      projectName: publishedProject.settings?.name || publishedProject.name,
-      userId: user.id,
-      publishedAt: publishedProject.settings.publishing.publishedAt,
-      isPublished: publishedProject.status === 'published'
-    });
-
-  } catch (error: any) {
-    console.error('Publish failed:', error);
-
-    // エラーの種類に応じた詳細メッセージ
-    let errorMessage = t('editor.app.publishFailed');
-
-    if (error.message?.includes('データベース保存に失敗')) {
-      errorMessage = t('editor.app.publishFailedNetwork');
-    } else if (error.message?.includes('認証')) {
-      errorMessage = t('editor.app.publishFailedAuth');
-    } else if (error.message) {
-      errorMessage = t('editor.app.publishFailedWithError', { error: error.message });
+    if (!canCreateGame) {
+      openPaywall();
+      return;
     }
 
-    showNotification('error', errorMessage);
-    
-    // 公開状態をロールバック
-    updateProject({
-      status: 'draft',
-      settings: {
-        ...currentProject.settings,
-        publishing: {
-          ...currentProject.settings.publishing,
-          isPublished: false
-        }
-      }
-    });
-  }
-}, [currentProject, user, getValidationErrors, saveProject, updateProject, showNotification]);
+    if (!user) {
+      showNotification('error', t('editor.app.publishRequiresLogin'));
+      return;
+    }
 
-  // エディターから戻る処理
+    const errors = getValidationErrors();
+    if (errors.length > 0) {
+      showNotification('error', t('editor.app.publishCannotWithErrors', { error: errors[0] }));
+      return;
+    }
+
+    try {
+      showNotification('info', t('editor.app.publishingStarted'));
+
+      await saveProject();
+
+      const currentStatistics = currentProject.metadata?.statistics || {};
+
+      const publishedProject: GameProject = {
+        ...currentProject,
+        status: 'published',
+        settings: {
+          ...currentProject.settings,
+          publishing: {
+            ...currentProject.settings.publishing,
+            isPublished: true,
+            publishedAt: new Date().toISOString()
+          }
+        },
+        metadata: {
+          ...currentProject.metadata,
+          statistics: {
+            ...currentStatistics,
+            publishCount: (currentStatistics.publishCount || 0) + 1
+          },
+          lastSyncedAt: new Date().toISOString()
+        }
+      };
+
+      updateProject({
+        status: 'published',
+        settings: publishedProject.settings,
+        metadata: publishedProject.metadata
+      });
+
+      const storageManager = ProjectStorageManager.getInstance();
+      await storageManager.saveProject(publishedProject, {
+        saveToDatabase: true,
+        userId: user.id
+      });
+
+      await saveProject();
+
+      showNotification('success', t('editor.app.projectPublishedSuccess'));
+      
+      console.log('✅ Game published successfully:', {
+        projectId: publishedProject.id,
+        projectName: publishedProject.settings?.name || publishedProject.name,
+        userId: user.id,
+        publishedAt: publishedProject.settings.publishing.publishedAt,
+        isPublished: publishedProject.status === 'published'
+      });
+
+    } catch (error: any) {
+      console.error('Publish failed:', error);
+
+      let errorMessage = t('editor.app.publishFailed');
+
+      if (error.message?.includes('データベース保存に失敗')) {
+        errorMessage = t('editor.app.publishFailedNetwork');
+      } else if (error.message?.includes('認証')) {
+        errorMessage = t('editor.app.publishFailedAuth');
+      } else if (error.message) {
+        errorMessage = t('editor.app.publishFailedWithError', { error: error.message });
+      }
+
+      showNotification('error', errorMessage);
+      
+      updateProject({
+        status: 'draft',
+        settings: {
+          ...currentProject.settings,
+          publishing: {
+            ...currentProject.settings.publishing,
+            isPublished: false
+          }
+        }
+      });
+    }
+  }, [currentProject, user, getValidationErrors, saveProject, updateProject, showNotification]);
+
   const handleBackToSelector = useCallback(async () => {
     if (hasUnsavedChanges) {
       const shouldSave = window.confirm(t('editor.app.confirmSaveAndLeave'));
@@ -360,7 +342,6 @@ const handlePublish = useCallback(async () => {
     showNotification('info', t('editor.app.returnedToList'));
   }, [hasUnsavedChanges, handleSave, showNotification, t]);
 
-  // アプリ全体を閉じる処理
   const handleExitToMain = useCallback(async () => {
     if (hasUnsavedChanges) {
       const shouldSave = window.confirm(t('editor.app.confirmSaveAndExit'));
@@ -391,7 +372,6 @@ const handlePublish = useCallback(async () => {
     }
   }, [hasUnsavedChanges, handleSave, showNotification, onClose]);
 
-  // プロジェクト削除
   const handleProjectDelete = useCallback(async (projectId: string) => {
     try {
       await deleteProject(projectId);
@@ -401,7 +381,6 @@ const handlePublish = useCallback(async () => {
     }
   }, [deleteProject, showNotification]);
 
-  // プロジェクト複製
   const handleProjectDuplicate = useCallback(async (projectId: string) => {
     try {
       const originalProject = currentProject || { name: t('editor.app.copy') } as GameProject;
@@ -413,11 +392,9 @@ const handlePublish = useCallback(async () => {
     }
   }, [currentProject, duplicateProject, showNotification]);
 
-  // エクスポート処理
   const handleExport = useCallback(async (projectId: string) => {
     try {
       if (currentProject) {
-        // 実際のエクスポート処理
         const exportData = {
           ...currentProject,
           exportedAt: new Date().toISOString(),
@@ -450,10 +427,8 @@ const handlePublish = useCallback(async () => {
     }
   }, [currentProject, showNotification]);
 
-  // キーボードショートカット
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Ctrl+S で保存
       if ((event.ctrlKey || event.metaKey) && event.key === 's') {
         event.preventDefault();
         if ((mode === 'editor' || mode === 'testplay') && currentProject) {
@@ -461,7 +436,6 @@ const handlePublish = useCallback(async () => {
         }
       }
       
-      // Esc でプロジェクトセレクターに戻る（エディター時のみ）
       if (event.key === 'Escape') {
         if (mode === 'testplay') {
           handleTestPlayEnd();
@@ -470,13 +444,11 @@ const handlePublish = useCallback(async () => {
         }
       }
 
-      // Ctrl+Q でメイン画面に戻る
       if ((event.ctrlKey || event.metaKey) && event.key === 'q') {
         event.preventDefault();
         handleExitToMain();
       }
 
-      // Ctrl+T でテストプレイ（エディター時のみ）
       if ((event.ctrlKey || event.metaKey) && event.key === 't') {
         event.preventDefault();
         if (mode === 'editor' && currentProject && !isTestPlaying) {
@@ -489,7 +461,6 @@ const handlePublish = useCallback(async () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [mode, currentProject, isTestPlaying, handleSave, handleBackToSelector, handleExitToMain, handleTestPlay, handleTestPlayEnd]);
 
-  // ウィンドウ閉じる前の確認
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (hasUnsavedChanges) {
@@ -511,7 +482,6 @@ const handlePublish = useCallback(async () => {
         fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')
       }}
     >
-            {/* Phase M: Paywall Modal 追加（ローディング完了後のみ表示） */}
       {isMonetizationReady && (
         <PaywallModal
           isOpen={shouldShowPaywall}
@@ -520,7 +490,6 @@ const handlePublish = useCallback(async () => {
         />
       )}
 
-      {/* ローディング表示（認証とクレジット情報の両方） */}
       {(loading || authLoading || creditsLoading) && (
         <div
           style={{
@@ -562,7 +531,6 @@ const handlePublish = useCallback(async () => {
         </div>
       )}
 
-      {/* 通知表示 */}
       {notification && (
         <div 
           style={{
@@ -607,7 +575,6 @@ const handlePublish = useCallback(async () => {
         </div>
       )}
 
-      {/* エラー表示 */}
       {error && (
         <div 
           style={{
@@ -647,9 +614,7 @@ const handlePublish = useCallback(async () => {
         </div>
       )}
 
-      {/* メインコンテンツ */}
       {!authLoading && !user ? (
-        // 未ログイン時：登録/ログインを促す画面
         <div
           style={{
             minHeight: '100vh',
@@ -662,7 +627,6 @@ const handlePublish = useCallback(async () => {
         >
           <ModernCard variant="elevated" size="xl">
             <div style={{ textAlign: 'center', maxWidth: '500px' }}>
-              {/* アイコン */}
               <div
                 style={{
                   width: '80px',
@@ -691,7 +655,6 @@ const handlePublish = useCallback(async () => {
                 </svg>
               </div>
 
-              {/* タイトル */}
               <h2
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize['3xl'],
@@ -703,7 +666,6 @@ const handlePublish = useCallback(async () => {
                 {t('editor.app.loginRequiredTitle')}
               </h2>
 
-              {/* 説明 */}
               <p
                 style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.lg,
@@ -717,7 +679,6 @@ const handlePublish = useCallback(async () => {
                 {t('editor.app.loginPrompt')}
               </p>
 
-              {/* 機能リスト */}
               <div
                 style={{
                   backgroundColor: DESIGN_TOKENS.colors.neutral[50],
@@ -775,7 +736,6 @@ const handlePublish = useCallback(async () => {
                 </ul>
               </div>
 
-              {/* ボタン */}
               <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[3] }}>
                 <ModernButton
                   variant="primary"
@@ -803,7 +763,6 @@ const handlePublish = useCallback(async () => {
                 </ModernButton>
               </div>
 
-              {/* 戻るボタン */}
               {onClose && (
                 <div style={{ marginTop: DESIGN_TOKENS.spacing[4] }}>
                   <ModernButton
@@ -827,9 +786,7 @@ const handlePublish = useCallback(async () => {
           onExport={handleExport}
         />
       ) : mode === 'testplay' ? (
-        // テストプレイ画面
         <div style={{ minHeight: '100vh', backgroundColor: DESIGN_TOKENS.colors.neutral[900] }}>
-          {/* テストプレイヘッダー */}
           <header 
             style={{
               backgroundColor: DESIGN_TOKENS.colors.neutral[800],
@@ -919,7 +876,6 @@ const handlePublish = useCallback(async () => {
             </div>
           </header>
 
-          {/* テストプレイコンテンツ */}
           <div 
             style={{
               display: 'flex',
@@ -953,7 +909,6 @@ const handlePublish = useCallback(async () => {
             </div>
           </div>
 
-          {/* テストプレイ結果表示 */}
           {testPlayResult && (
             <div 
               style={{
@@ -1098,7 +1053,7 @@ const handlePublish = useCallback(async () => {
         </div>
       ) : currentProject ? (
         <div style={{ minHeight: '100vh', backgroundColor: DESIGN_TOKENS.colors.neutral[0] }}>
-          {/* エディターヘッダー */}
+          {/* 🔧 修正: エディターヘッダー（ナビゲーションのみ） */}
           <header 
             style={{
               backgroundColor: DESIGN_TOKENS.colors.neutral[0],
@@ -1155,7 +1110,7 @@ const handlePublish = useCallback(async () => {
                   </ModernButton>
                 </div>
 
-                {/* 中央: プロジェクト情報 */}
+                {/* 中央: プロジェクト名とステータス */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
                   <div>
                     <h1 
@@ -1172,7 +1127,6 @@ const handlePublish = useCallback(async () => {
 
                   {/* ステータス表示 */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
-                    {/* 🔧 修正: user を使用 */}
                     {!user && (
                       <div 
                         style={{
@@ -1253,56 +1207,20 @@ const handlePublish = useCallback(async () => {
                   </div>
                 </div>
 
-                {/* 右側: アクション */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
-                  {/* 容量表示 */}
-                  <div 
-                    style={{
-                      fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                      color: DESIGN_TOKENS.colors.neutral[600],
-                      marginRight: DESIGN_TOKENS.spacing[2]
-                    }}
-                  >
-                    {(getTotalSize() / 1024 / 1024).toFixed(1)}MB
-                  </div>
-
-                  {/* アクションボタン */}
-                  <ModernButton
-                    variant="secondary"
-                    size="sm"
-                    icon="💾"
-                    onClick={handleSave}
-                    disabled={!hasUnsavedChanges}
-                  >
-                    {t('editor.app.buttons.save')}
-                  </ModernButton>
-                  
-                  <ModernButton
-                    variant="outline"
-                    size="sm"
-                    icon="▶️"
-                    onClick={handleTestPlay}
-                    disabled={isTestPlaying}
-                  >
-                    {t('editor.app.buttons.test')}
-                  </ModernButton>
-                  
-                  <ModernButton
-                    variant="primary"
-                    size="sm"
-                    icon="🚀"
-                    onClick={handlePublish}
-                    disabled={!user} // 🔧 修正: user を使用
-                    title={!user ? t('editor.app.loginRequired') : ''}
-                  >
-                    {t('editor.app.buttons.publish')}
-                  </ModernButton>
+                {/* 右側: 容量表示のみ */}
+                <div 
+                  style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                    color: DESIGN_TOKENS.colors.neutral[600]
+                  }}
+                >
+                  {(getTotalSize() / 1024 / 1024).toFixed(1)}MB
                 </div>
               </div>
             </div>
           </header>
           
-          {/* エディター本体 */}
+          {/* エディター本体（作業ボタンはGameEditor内） */}
           <GameEditor
             project={currentProject}
             onProjectUpdate={updateProject}
@@ -1365,7 +1283,6 @@ const handlePublish = useCallback(async () => {
         </div>
       )}
 
-      {/* キーボードショートカットヘルプ */}
       <div 
         style={{
           position: 'fixed',
@@ -1376,7 +1293,7 @@ const handlePublish = useCallback(async () => {
           zIndex: DESIGN_TOKENS.zIndex[10]
         }}
       >
-        <div>Game Editor v1.0.0 - Supabase連携対応版</div>
+        <div>Game Editor v1.1.0 - ボタン統一版</div>
         <div>💡 Ctrl+S: 保存 | Ctrl+T: テストプレイ | Esc: 戻る | Ctrl+Q: メイン画面</div>
       </div>
     </div>
