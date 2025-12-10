@@ -5,19 +5,17 @@ import { GameProject } from '../types/editor/GameProject';
 import { database, supabase } from '../lib/supabase';
 
 // 🔧 軽量版プロジェクトメタデータ（一覧表示用）
+// ✅ useGameProject.tsと完全一致
 export interface ProjectMetadata {
-  id: string;                    // プロジェクトID（loadProjectで使用）
-  databaseId?: string;           // データベースID（削除時に使用）
+  id: string;
   name: string;
-  description?: string;
+  description: string | undefined;  // ✅ 完全一致
   lastModified: string;
-  status: 'draft' | 'published';
+  status: 'draft' | 'published' | 'archived';  // ✅ archived追加
   size: number;
   version: string;
-  
-  // 一覧表示用の追加情報
-  thumbnailDataUrl?: string;     // サムネイル画像のみ
-  stats: {
+  thumbnailDataUrl?: string;
+  stats?: {  // ✅ optional
     objectsCount: number;
     soundsCount: number;
     rulesCount: number;
@@ -80,19 +78,14 @@ export class ProjectStorageManager {
         // 🔧 軽量版メタデータ生成（詳細データは含まない）
         const metadata: ProjectMetadata = {
           id: projectData.id,
-          databaseId: game.id,
           name: game.title || projectData.name || projectData.settings?.name || 'Untitled',
-          description: projectData.description || projectData.settings?.description || '',
+          description: projectData.description || projectData.settings?.description || undefined,  // ✅ undefined
           lastModified: game.updated_at,
-          status: game.is_published ? 'published' : 'draft',
+          status: (projectData.status as 'draft' | 'published' | 'archived') || (game.is_published ? 'published' : 'draft'),  // ✅ archived対応
           size: projectData.totalSize || 0,
           version: projectData.version || '1.0.0',
-          
-          // サムネイルのみ（他のBase64画像は含まない）
           thumbnailDataUrl: projectData.thumbnailDataUrl || projectData.settings?.preview?.thumbnailDataUrl,
-          
-          // 統計情報（配列lengthのみ取得、中身は読まない）
-          stats: {
+          stats: {  // ✅ optionalだが、常に生成
             objectsCount: projectData.assets?.objects?.length || 0,
             soundsCount: (projectData.assets?.audio?.bgm ? 1 : 0) + (projectData.assets?.audio?.se?.length || 0),
             rulesCount: projectData.script?.rules?.length || 0
