@@ -1,10 +1,27 @@
 // src/hooks/editor/useGameProject.ts
-// 🔧 フリーズ修正版: キャッシュ10分・エディター作業中の認証チェック削減
+// 🔧 フリーズ修正版 + 軽量化対応版: ProjectMetadata対応
 
 import { useState, useCallback, useEffect } from 'react';
 import { GameProject, createDefaultGameProject } from '../../types/editor/GameProject';
 import { ProjectStorageManager } from '../../services/ProjectStorageManager';
 import { supabase } from '../../lib/supabase';
+
+// ✅ ProjectMetadata型定義（ProjectStorageManager.tsと同じ）
+export interface ProjectMetadata {
+  id: string;
+  name: string;
+  description: string;
+  lastModified: string;
+  status: 'draft' | 'published' | 'archived';
+  size: number;
+  version: string;
+  thumbnailDataUrl?: string;
+  stats?: {
+    objectsCount: number;
+    soundsCount: number;
+    rulesCount: number;
+  };
+}
 
 interface UseGameProjectReturn {
   projects: GameProject[];
@@ -13,9 +30,11 @@ interface UseGameProjectReturn {
   error: string | null;
   
   // 基本操作
-  listProjects: () => Promise<GameProject[]>;
+  listProjects: () => Promise<GameProject[]>; // 🔧 後方互換性のため維持（非推奨）
+  listProjectMetadata: () => Promise<ProjectMetadata[]>; // ✅ 新規: 軽量版
+  loadFullProject: (id: string) => Promise<GameProject>; // ✅ 新規: 詳細取得
   createProject: (name: string) => Promise<GameProject>;
-  loadProject: (id: string) => Promise<void>;
+  loadProject: (id: string) => Promise<void>; // 既存: エディター開く用
   saveProject: () => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   duplicateProject: (id: string, newName: string) => Promise<GameProject>;
@@ -33,7 +52,7 @@ interface UseGameProjectReturn {
 // ✅ ユーザー情報キャッシュ（モジュールレベル）
 let cachedUser: any = null;
 let cacheTimestamp: number = 0;
-const CACHE_DURATION = 600000; // 🔧 修正: 10分間キャッシュ（60秒→600秒）
+const CACHE_DURATION = 600000; // 10分間キャッシュ
 
 // ✅ 並列実行防止フラグ
 let fetchingUser: Promise<any> | null = null;
@@ -41,23 +60,20 @@ let fetchingUser: Promise<any> | null = null;
 // ✅ セッション有効性チェック用フラグ
 let sessionValid: boolean = false;
 
-// ✅ 修正: ユーザー情報を取得（並列実行防止・キャッシュ延長）
+// ✅ ユーザー情報を取得（並列実行防止・キャッシュ延長）
 async function getCachedUser(forceRefresh: boolean = false): Promise<any> {
   const now = Date.now();
   
-  // 🔧 修正: セッション有効かつキャッシュ有効な場合は即座に返す
   if (!forceRefresh && sessionValid && cachedUser && (now - cacheTimestamp) < CACHE_DURATION) {
     console.log('[useGameProject] ✅ キャッシュからユーザー取得:', cachedUser.id);
     return cachedUser;
   }
   
-  // ✅ 既に実行中の場合は、その結果を待つ
   if (fetchingUser) {
     console.log('[useGameProject] ⏳ 実行中のユーザー取得を待機中...');
     return fetchingUser;
   }
   
-  // ✅ 新規取得を開始（Promiseを保存）
   console.log('[useGameProject] 🔄 ユーザー情報を新規取得中...');
   
   fetchingUser = (async () => {
@@ -75,7 +91,7 @@ async function getCachedUser(forceRefresh: boolean = false): Promise<any> {
       if (user) {
         cachedUser = user;
         cacheTimestamp = now;
-        sessionValid = true; // 🔧 修正: セッション有効フラグをセット
+        sessionValid = true;
         console.log('[useGameProject] ✅ ユーザー情報をキャッシュ:', user.id, '(10分間有効)');
       } else {
         cachedUser = null;
@@ -92,7 +108,6 @@ async function getCachedUser(forceRefresh: boolean = false): Promise<any> {
       sessionValid = false;
       return null;
     } finally {
-      // ✅ 実行完了フラグをクリア
       fetchingUser = null;
     }
   })();
@@ -118,7 +133,7 @@ export const useGameProject = (): UseGameProjectReturn => {
 
   const storage = ProjectStorageManager.getInstance();
 
-  // 🔧 修正: Supabaseセッション監視（初回のみ）
+  // Supabaseセッション監視（初回のみ）
   useEffect(() => {
     let isMounted = true;
     
@@ -135,7 +150,6 @@ export const useGameProject = (): UseGameProjectReturn => {
     
     initUser();
     
-    // 🔧 修正: セッション変更監視（ログイン・ログアウト時のみ）
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[useGameProject] 🔐 セッション変更:', event);
       
@@ -156,13 +170,73 @@ export const useGameProject = (): UseGameProjectReturn => {
     };
   }, []);
 
+  // ✅ 新規メソッド: 軽量版プロジェクト一覧取得
+  const listProjectMetadata = useCallback(async (): Promise<ProjectMetadata[]> => {
+    console.log('[ListProjectMetadata] 🚀 軽量版プロジェクト一覧取得開始...');
+    setLoading(true);
+    setError(null);
+
+    try {
+      const user = await getCachedUser(false);
+      
+      if (!user) {
+        console.warn('[ListProjectMetadata] ユーザーが見つかりません。空の配列を返します。');
+        return [];
+      }
+
+      console.log('[ListProjectMetadata] ユーザーID:', user.id);
+
+      // ✅ ProjectStorageManager.listProjects()がProjectMetadata[]を返す前提
+      const metadataList = await storage.listProjects(user.id);
+      console.log('[ListProjectMetadata] ✅ メタデータ取得完了:', metadataList.length, '件');
+
+      return metadataList;
+
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '不明なエラー';
+      console.error('[ListProjectMetadata] ❌ エラー:', err);
+      setError(`プロジェクト一覧の取得に失敗しました: ${message}`);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ✅ 新規メソッド: プロジェクト詳細取得
+  const loadFullProject = useCallback(async (id: string): Promise<GameProject> => {
+    console.log('[LoadFullProject] 📂 プロジェクト詳細取得開始:', id);
+
+    try {
+      const user = await getCachedUser(false);
+      
+      if (!user) {
+        throw new Error('プロジェクトをロードするにはログインが必要です');
+      }
+
+      const project = await storage.loadProject(id, user.id);
+
+      if (!project) {
+        throw new Error('プロジェクトが見つかりません');
+      }
+
+      console.log('[LoadFullProject] ✅ プロジェクト詳細取得完了:', project.id);
+      return project;
+
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '不明なエラー';
+      console.error('[LoadFullProject] ❌ エラー:', err);
+      throw new Error(`プロジェクト詳細の取得に失敗しました: ${message}`);
+    }
+  }, []);
+
+  // 🔧 既存メソッド: 重い（後方互換性のため維持、非推奨）
   const listProjects = useCallback(async (): Promise<GameProject[]> => {
+    console.log('[ListProjects] ⚠️ 非推奨メソッド使用（重い）。listProjectMetadata()を推奨。');
     console.log('[ListProjects] プロジェクト一覧取得開始...');
     setLoading(true);
     setError(null);
 
     try {
-      // 🔧 修正: セッション有効な場合はキャッシュからユーザー取得
       const user = await getCachedUser(false);
       
       if (!user) {
@@ -215,7 +289,6 @@ export const useGameProject = (): UseGameProjectReturn => {
     setError(null);
 
     try {
-      // 🔧 修正: セッション有効な場合はキャッシュからユーザー取得
       const user = await getCachedUser(false);
       
       if (!user) {
@@ -230,6 +303,8 @@ export const useGameProject = (): UseGameProjectReturn => {
 
       setCurrentProject(project);
       setHasUnsavedChanges(false);
+      
+      // ✅ 軽量版メソッド使用を推奨（ただし後方互換性のためlistProjects()も実行）
       await listProjects();
 
       return project;
@@ -243,13 +318,13 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [listProjects]);
 
+  // ✅ 既存メソッド: エディターを開く（変更なし）
   const loadProject = useCallback(async (id: string): Promise<void> => {
-    console.log('[LoadProject] プロジェクトロード開始:', id);
+    console.log('[LoadProject] プロジェクトロード開始（エディター開く）:', id);
     setLoading(true);
     setError(null);
 
     try {
-      // 🔧 修正: セッション有効な場合はキャッシュからユーザー取得
       const user = await getCachedUser(false);
       
       if (!user) {
@@ -286,7 +361,6 @@ export const useGameProject = (): UseGameProjectReturn => {
     setError(null);
 
     try {
-      // 🔧 修正: セッション有効な場合はキャッシュからユーザー取得
       const user = await getCachedUser(false);
       
       if (!user) {
@@ -309,7 +383,6 @@ export const useGameProject = (): UseGameProjectReturn => {
     }
   }, [currentProject, listProjects]);
 
-  // 🔧 修正: updateProjectはローカル状態のみ更新（認証不要）
   const updateProject = useCallback(async (updates?: Partial<GameProject>): Promise<void> => {
     if (!currentProject) {
       console.error('[UpdateProject] currentProjectが存在しません');
@@ -331,7 +404,6 @@ export const useGameProject = (): UseGameProjectReturn => {
     setError(null);
 
     try {
-      // 🔧 修正: セッション有効な場合はキャッシュからユーザー取得
       const user = await getCachedUser(false);
       
       if (!user) {
@@ -364,7 +436,6 @@ export const useGameProject = (): UseGameProjectReturn => {
     setError(null);
 
     try {
-      // 🔧 修正: セッション有効な場合はキャッシュからユーザー取得
       const user = await getCachedUser(false);
       
       if (!user) {
@@ -408,7 +479,6 @@ export const useGameProject = (): UseGameProjectReturn => {
     setError(null);
 
     try {
-      // 🔧 修正: セッション有効な場合はキャッシュからユーザー取得
       const user = await getCachedUser(false);
       
       if (!user) {
@@ -458,7 +528,6 @@ export const useGameProject = (): UseGameProjectReturn => {
     setError(null);
 
     try {
-      // 🔧 修正: セッション有効な場合はキャッシュからユーザー取得
       const user = await getCachedUser(false);
       
       if (!user) {
@@ -524,7 +593,9 @@ export const useGameProject = (): UseGameProjectReturn => {
     currentProject,
     loading,
     error,
-    listProjects,
+    listProjects, // 既存（後方互換性）
+    listProjectMetadata, // ✅ 新規: 軽量版
+    loadFullProject, // ✅ 新規: 詳細取得
     createProject,
     loadProject,
     saveProject,
