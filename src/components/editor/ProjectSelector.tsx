@@ -1,5 +1,5 @@
 // src/components/editor/ProjectSelector.tsx
-// 修正版: 無限ループ修正 - useEffect依存配列からlistProjects削除
+// 🚀 軽量化版: ProjectMetadata[]使用、詳細データは選択時にロード
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,24 @@ import { ModernButton } from '../ui/ModernButton';
 import { ModernCard, ProjectCard } from '../ui/ModernCard';
 import { useCredits } from '../../hooks/monetization/useCredits';
 import { PaywallModal } from '../monetization/PaywallModal';
+
+// 🔧 軽量版プロジェクトメタデータ（ProjectStorageManager.tsと一致）
+interface ProjectMetadata {
+  id: string;
+  databaseId?: string;
+  name: string;
+  description?: string;
+  lastModified: string;
+  status: 'draft' | 'published';
+  size: number;
+  version: string;
+  thumbnailDataUrl?: string;
+  stats: {
+    objectsCount: number;
+    soundsCount: number;
+    rulesCount: number;
+  };
+}
 
 interface ProjectSelectorProps {
   onProjectSelect: (project: GameProject) => void;
@@ -28,7 +46,9 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   onExport
 }) => {
   const { t } = useTranslation();
-  const [projects, setProjects] = useState<GameProject[]>([]);
+  
+  // ✅ 修正: ProjectMetadata[]として管理
+  const [projects, setProjects] = useState<ProjectMetadata[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -40,10 +60,8 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   } | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
 
-  // インポート機能用のref
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ✅ 修正: useGameProject統合
   const {
     loading,
     error,
@@ -52,78 +70,82 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     duplicateProject,
     exportProject,
     listProjects,
+    loadProject,  // ✅ 追加: 詳細データ取得用
     importProject
   } = useGameProject();
 
-  // 🔧 追加: Paywall機能統合
   const { usage, canCreateGame: canCreate, refetch: refetchCredits } = useCredits();
 
-  // 通知表示ヘルパー
   const showNotification = useCallback((type: 'success' | 'error' | 'info', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 5000);
   }, []);
 
-  // 🔧 修正: プロジェクト一覧の読み込み（無限ループ修正）
+  // ✅ 修正: 軽量メタデータのみ取得
   useEffect(() => {
     let isMounted = true;
 
-    const loadProjects = async () => {
+    const loadProjectMetadata = async () => {
       try {
-        const loadedProjects = await listProjects();
+        console.log('[ProjectSelector] 🚀 Loading lightweight project metadata...');
+        
+        // ✅ listProjects()は軽量メタデータのみ返却
+        const metadataList = await listProjects();
         
         if (!isMounted) return;
 
-        // 重複IDを除去（最新の方を残す）
-        const uniqueProjects = loadedProjects.reduce((acc, project) => {
-          const existing = acc.find(p => p.id === project.id);
+        console.log('[ProjectSelector] ✅ Loaded', metadataList.length, 'project metadata');
+        console.log('[ProjectSelector] 💾 Estimated total size:', 
+          metadataList.reduce((sum, m) => sum + (m.stats.objectsCount * 5 * 1024), 0) / 1024, 'KB (metadata only)');
+
+        // 重複ID除去（最新の方を残す）
+        const uniqueProjects = metadataList.reduce((acc, meta) => {
+          const existing = acc.find(m => m.id === meta.id);
           if (!existing) {
-            acc.push(project);
-          } else if (new Date(project.lastModified) > new Date(existing.lastModified)) {
-            // より新しい方で上書き
+            acc.push(meta);
+          } else if (new Date(meta.lastModified) > new Date(existing.lastModified)) {
             const index = acc.indexOf(existing);
-            acc[index] = project;
+            acc[index] = meta;
           }
           return acc;
-        }, [] as GameProject[]);
+        }, [] as ProjectMetadata[]);
         
         setProjects(uniqueProjects);
       } catch (error) {
         if (!isMounted) return;
-        console.error('プロジェクト一覧の読み込みに失敗:', error);
+        console.error('[ProjectSelector] ❌ Failed to load project metadata:', error);
         showNotification('error', t('errors.projectLoadFailed'));
       }
     };
 
-    loadProjects();
+    loadProjectMetadata();
 
     return () => {
       isMounted = false;
     };
-    // ✅ 修正: 依存配列を空にして初回マウント時のみ実行
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // listProjects を依存配列から削除 - 無限ループ防止
+  }, [listProjects, showNotification, t]);
 
-  // 🔧 修正: プロジェクトリロード用の関数（明示的な再読み込み）
+  // ✅ 修正: 軽量メタデータのみ再読み込み
   const reloadProjects = useCallback(async () => {
     try {
-      const loadedProjects = await listProjects();
+      console.log('[ProjectSelector] 🔄 Reloading project metadata...');
+      const metadataList = await listProjects();
       
-      // 重複IDを除去
-      const uniqueProjects = loadedProjects.reduce((acc, project) => {
-        const existing = acc.find(p => p.id === project.id);
+      const uniqueProjects = metadataList.reduce((acc, meta) => {
+        const existing = acc.find(m => m.id === meta.id);
         if (!existing) {
-          acc.push(project);
-        } else if (new Date(project.lastModified) > new Date(existing.lastModified)) {
+          acc.push(meta);
+        } else if (new Date(meta.lastModified) > new Date(existing.lastModified)) {
           const index = acc.indexOf(existing);
-          acc[index] = project;
+          acc[index] = meta;
         }
         return acc;
-      }, [] as GameProject[]);
+      }, [] as ProjectMetadata[]);
       
       setProjects(uniqueProjects);
+      console.log('[ProjectSelector] ✅ Reloaded', uniqueProjects.length, 'project metadata');
     } catch (error) {
-      console.error('プロジェクト一覧の再読み込みに失敗:', error);
+      console.error('[ProjectSelector] ❌ Failed to reload project metadata:', error);
       showNotification('error', t('errors.projectLoadFailed'));
     }
   }, [listProjects, showNotification, t]);
@@ -135,7 +157,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       (project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
     );
 
-    // ソート
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
@@ -152,7 +173,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     return filtered;
   }, [projects, searchQuery, sortBy]);
 
-  // 🔧 修正: 新規プロジェクト作成（Paywallチェック追加 + 再読み込み）
+  // 新規プロジェクト作成
   const handleCreateNew = useCallback(async () => {
     if (!newProjectName.trim()) return;
 
@@ -164,24 +185,22 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
     try {
       const newProject = await createProject(newProjectName.trim());
-      await reloadProjects(); // ✅ 明示的に再読み込み
+      await reloadProjects();
       onCreateNew(newProjectName.trim());
       setShowNewProjectModal(false);
       setNewProjectName('');
       showNotification('success', t('editor.app.projectCreated', { name: newProject.name }));
-
-      // クレジット情報を更新
       await refetchCredits();
     } catch (error: any) {
       showNotification('error', `${t('errors.projectSaveFailed')}: ${error.message}`);
     }
   }, [createProject, newProjectName, onCreateNew, showNotification, canCreate, refetchCredits, t, reloadProjects]);
 
-  // 🔧 修正: プロジェクト削除（再読み込み追加）
+  // プロジェクト削除
   const handleDeleteProject = useCallback(async (projectId: string) => {
     try {
       await deleteProject(projectId);
-      await reloadProjects(); // ✅ 明示的に再読み込み
+      await reloadProjects();
       if (onDelete) onDelete(projectId);
       showNotification('success', t('editor.app.projectDeleted'));
     } catch (error: any) {
@@ -189,15 +208,15 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     }
   }, [deleteProject, onDelete, showNotification, t, reloadProjects]);
 
-  // 🔧 修正: プロジェクト複製（再読み込み追加）
+  // ✅ 修正: プロジェクト複製（メタデータから名前取得）
   const handleDuplicateProject = useCallback(async (projectId: string) => {
     try {
-      const originalProject = projects.find(p => p.id === projectId);
-      if (!originalProject) return;
+      const projectMeta = projects.find(m => m.id === projectId);
+      if (!projectMeta) return;
 
-      const newName = `${originalProject.name} (Copy)`;
+      const newName = `${projectMeta.name} (Copy)`;
       const duplicated = await duplicateProject(projectId, newName);
-      await reloadProjects(); // ✅ 明示的に再読み込み
+      await reloadProjects();
       if (onDuplicate) onDuplicate(projectId);
       showNotification('success', t('editor.app.projectDuplicated', { name: duplicated.name }));
     } catch (error: any) {
@@ -208,16 +227,15 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   // プロジェクトエクスポート
   const handleExportProject = useCallback(async (projectId: string) => {
     try {
-      const project = projects.find(p => p.id === projectId);
-      if (!project) return;
+      const projectMeta = projects.find(m => m.id === projectId);
+      if (!projectMeta) return;
 
       const blob = await exportProject(projectId);
 
-      // ダウンロード
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${project.name}_export.json`;
+      a.download = `${projectMeta.name}_export.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -230,16 +248,38 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     }
   }, [projects, exportProject, onExport, showNotification, t]);
 
-  // 🔧 修正: ファイルインポート処理（再読み込み追加）
+  // ファイルインポート
   const handleFileImport = useCallback(async (file: File) => {
     try {
       const importedProject = await importProject(file);
-      await reloadProjects(); // ✅ 明示的に再読み込み
+      await reloadProjects();
       showNotification('success', t('editor.app.projectCreated', { name: importedProject.name }));
     } catch (error: any) {
       showNotification('error', `${t('errors.fileUploadFailed')}: ${error.message}`);
     }
   }, [importProject, showNotification, t, reloadProjects]);
+
+  // ✅ 追加: プロジェクト選択時の処理（詳細データ取得）
+  const handleProjectSelect = useCallback(async (projectId: string) => {
+    try {
+      console.log('[ProjectSelector] 📂 Loading full project data for:', projectId);
+      
+      // ✅ 詳細データを取得（loadProjectで全GameProjectデータ取得）
+      const fullProject = await loadProject(projectId);
+      
+      if (!fullProject) {
+        throw new Error('プロジェクトの読み込みに失敗しました');
+      }
+      
+      console.log('[ProjectSelector] ✅ Full project loaded:', fullProject.name);
+      
+      // ✅ 詳細データをコールバックで渡す
+      onProjectSelect(fullProject);
+    } catch (error: any) {
+      console.error('[ProjectSelector] ❌ Failed to load full project:', error);
+      showNotification('error', `プロジェクトの読み込みに失敗: ${error.message}`);
+    }
+  }, [loadProject, onProjectSelect, showNotification]);
 
   return (
     <div 
@@ -424,7 +464,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                     marginBottom: DESIGN_TOKENS.spacing[1]
                   }}
                 >
-                  {projects.filter(p => p.status === 'published').length}
+                  {projects.filter(m => m.status === 'published').length}
                 </div>
                 <div
                   style={{
@@ -447,7 +487,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                     marginBottom: DESIGN_TOKENS.spacing[1]
                   }}
                 >
-                  {(projects.reduce((sum, p) => sum + p.totalSize, 0) / 1024 / 1024).toFixed(1)}MB
+                  {(projects.reduce((sum, m) => sum + m.size, 0) / 1024 / 1024).toFixed(1)}MB
                 </div>
                 <div
                   style={{
@@ -591,7 +631,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
             {/* アクションボタン */}
             <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[3] }}>
-              {/* インポートボタン */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -618,7 +657,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 {t('editor.selector.import')}
               </ModernButton>
 
-              {/* 新規作成ボタン */}
               <ModernButton
                 variant="primary"
                 size="md"
@@ -721,11 +759,11 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 status={project.status}
                 lastModified={project.lastModified}
                 stats={{
-                  objects: project.assets?.objects?.length || 0,
-                  sounds: ((project.assets?.audio?.bgm ? 1 : 0) + (project.assets?.audio?.se?.length || 0)),
-                  rules: project.script?.rules?.length || 0
+                  objects: project.stats.objectsCount,
+                  sounds: project.stats.soundsCount,
+                  rules: project.stats.rulesCount
                 }}
-                onCardClick={() => onProjectSelect(project)}
+                onCardClick={() => handleProjectSelect(project.id)}
               >
                 {/* アクションボタン */}
                 <div 
@@ -893,7 +931,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
               </ModernButton>
             </div>
 
-            {/* テンプレート選択（将来実装） */}
             <div
               style={{
                 marginTop: DESIGN_TOKENS.spacing[6],
