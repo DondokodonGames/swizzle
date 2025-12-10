@@ -140,7 +140,7 @@ export const BackgroundControl: React.FC<BackgroundControlProps> = ({
           </div>
 
           <div style={infoTextStyle}>
-            {project.assets.background ? (
+            {project.assets.background && project.assets.background.frames ? (
               <>
                 📁 {project.assets.background.name}<br/>
                 📏 {project.assets.background.frames[0]?.width}×{project.assets.background.frames[0]?.height}px<br/>
