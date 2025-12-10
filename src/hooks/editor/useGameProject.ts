@@ -6,11 +6,11 @@ import { GameProject, createDefaultGameProject } from '../../types/editor/GamePr
 import { ProjectStorageManager } from '../../services/ProjectStorageManager';
 import { supabase } from '../../lib/supabase';
 
-// ✅ ProjectMetadata型定義（ProjectStorageManager.tsと同じ）
+// ✅ ProjectMetadata型定義（ProjectStorageManager.tsと完全一致）
 export interface ProjectMetadata {
   id: string;
   name: string;
-  description: string;
+  description: string | undefined;  // ✅ 完全一致
   lastModified: string;
   status: 'draft' | 'published' | 'archived';
   size: number;
