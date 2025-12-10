@@ -1,749 +1,660 @@
 // src/components/editor/ProjectSelector.tsx
-// ✅ 軽量化完全対応版: listProjectMetadata() + loadFullProject()使用
-
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+// 🚀 完全修正版: 軽量化 + 全エラー修正
+import React, { useState, useEffect, useCallback } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { useGameProject, ProjectMetadata } from '../../hooks/editor/useGameProject';
 import { ModernButton } from '../ui/ModernButton';
+import { ModernCard } from '../ui/ModernCard';
+import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 
-interface ProjectSelectorProps {
-  onSelect: (project: GameProject) => void;
-  onClose?: () => void;
+// ✅ 修正1: プロパティ名を EditorApp.tsx に合わせる
+export interface ProjectSelectorProps {
+  onProjectSelect: (project: GameProject) => Promise<void>;  // ✅ onSelect → onProjectSelect
+  onCreateNew: (name: string) => Promise<void>;
+  onDelete: (projectId: string) => Promise<void>;
+  onDuplicate: (projectId: string) => Promise<void>;
+  onExport: (projectId: string) => Promise<void>;
 }
 
-export const ProjectSelector: React.FC<ProjectSelectorProps> = ({ onSelect, onClose }) => {
-  const { t } = useTranslation();
-  const { 
-    listProjectMetadata, // ✅ 新しいメソッド（軽量）
-    loadFullProject, // ✅ 新しいメソッド（詳細取得）
-    createProject, 
-    deleteProject, 
-    duplicateProject,
-    loading, 
-    error 
-  } = useGameProject();
+type ViewMode = 'grid' | 'list';
+type SortBy = 'lastModified' | 'name' | 'size';
 
-  const [projectMetadataList, setProjectMetadataList] = useState<ProjectMetadata[]>([]); // ✅ 軽量版リスト
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
+  onProjectSelect,  // ✅ 修正
+  onCreateNew,
+  onDelete,
+  onDuplicate,
+  onExport
+}) => {
+  // ✅ 軽量版メタデータ使用
+  const [projectMetadataList, setProjectMetadataList] = useState<ProjectMetadata[]>([]);
+  const [filteredProjects, setFilteredProjects] = useState<ProjectMetadata[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'draft' | 'published'>('all');
-  const [sortBy, setSortBy] = useState<'name' | 'modified' | 'size'>('modified');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [sortBy, setSortBy] = useState<SortBy>('lastModified');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
   const [newProjectName, setNewProjectName] = useState('');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null); // ✅ 詳細ロード中のプロジェクト
+  
+  const { listProjectMetadata, loadFullProject } = useGameProject();
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const isMounted = useRef(true);
-
-  // ✅ 初期ロード: 軽量版メタデータ取得
+  // ✅ 初期ロード: 軽量版メタデータのみ
   useEffect(() => {
     const loadProjects = async () => {
       console.log('[ProjectSelector] 🚀 Loading lightweight project metadata...');
+      setIsLoading(true);
       try {
         const metadataList = await listProjectMetadata();
-        if (isMounted.current) {
-          console.log('[ProjectSelector] ✅ Loaded', metadataList.length, 'project metadata');
-          setProjectMetadataList(metadataList);
-        }
-      } catch (err) {
-        console.error('[ProjectSelector] ❌ Error loading projects:', err);
+        console.log(`[ProjectSelector] ✅ Loaded ${metadataList.length} project metadata`);
+        setProjectMetadataList(metadataList);
+        setFilteredProjects(metadataList);
+      } catch (error) {
+        console.error('[ProjectSelector] ❌ Failed to load project metadata:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     loadProjects();
-
-    return () => {
-      isMounted.current = false;
-    };
   }, [listProjectMetadata]);
 
-  // ✅ プロジェクト選択時: 詳細データ取得
-  const handleProjectSelect = useCallback(async (projectId: string) => {
-    console.log('[ProjectSelector] 📂 Loading full project data for:', projectId);
-    setLoadingProjectId(projectId);
-
-    try {
-      const fullProject = await loadFullProject(projectId);
-      console.log('[ProjectSelector] ✅ Full project loaded:', fullProject.id);
-      onSelect(fullProject);
-    } catch (err) {
-      console.error('[ProjectSelector] ❌ Error loading full project:', err);
-      alert('プロジェクトの読み込みに失敗しました');
-    } finally {
-      setLoadingProjectId(null);
-    }
-  }, [loadFullProject, onSelect]);
-
-  // プロジェクト作成
-  const handleCreateProject = useCallback(async () => {
-    if (!newProjectName.trim()) {
-      alert('プロジェクト名を入力してください');
-      return;
-    }
-
-    try {
-      const project = await createProject(newProjectName);
-      setShowCreateModal(false);
-      setNewProjectName('');
-      
-      // ✅ リスト更新（軽量版）
-      const metadataList = await listProjectMetadata();
-      setProjectMetadataList(metadataList);
-      
-      // 作成したプロジェクトを選択
-      onSelect(project);
-    } catch (err) {
-      console.error('[ProjectSelector] Error creating project:', err);
-      alert('プロジェクトの作成に失敗しました');
-    }
-  }, [newProjectName, createProject, listProjectMetadata, onSelect]);
-
-  // プロジェクト削除
-  const handleDeleteProject = useCallback(async (projectId: string) => {
-    try {
-      await deleteProject(projectId);
-      setShowDeleteConfirm(null);
-      
-      // ✅ リスト更新（軽量版）
-      const metadataList = await listProjectMetadata();
-      setProjectMetadataList(metadataList);
-    } catch (err) {
-      console.error('[ProjectSelector] Error deleting project:', err);
-      alert('プロジェクトの削除に失敗しました');
-    }
-  }, [deleteProject, listProjectMetadata]);
-
-  // プロジェクト複製
-  const handleDuplicateProject = useCallback(async (projectId: string, name: string) => {
-    try {
-      await duplicateProject(projectId, `${name} (コピー)`);
-      
-      // ✅ リスト更新（軽量版）
-      const metadataList = await listProjectMetadata();
-      setProjectMetadataList(metadataList);
-    } catch (err) {
-      console.error('[ProjectSelector] Error duplicating project:', err);
-      alert('プロジェクトの複製に失敗しました');
-    }
-  }, [duplicateProject, listProjectMetadata]);
-
-  // フィルタリング・ソート
-  const filteredAndSortedProjects = React.useMemo(() => {
+  // 検索・フィルター
+  useEffect(() => {
     let filtered = [...projectMetadataList];
 
-    // 検索フィルター
+    // 検索クエリでフィルター
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(p =>
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+        p.name.toLowerCase().includes(query) ||
+        p.description?.toLowerCase().includes(query)
       );
-    }
-
-    // ステータスフィルター
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(p => p.status === filterStatus);
     }
 
     // ソート
     filtered.sort((a, b) => {
-      let compareValue = 0;
-
       switch (sortBy) {
         case 'name':
-          compareValue = a.name.localeCompare(b.name);
-          break;
-        case 'modified':
-          compareValue = new Date(a.lastModified).getTime() - new Date(b.lastModified).getTime();
-          break;
+          return a.name.localeCompare(b.name);
         case 'size':
-          compareValue = (a.size || 0) - (b.size || 0);
-          break;
+          return b.size - a.size;
+        case 'lastModified':
+        default:
+          return new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime();
       }
-
-      return sortOrder === 'asc' ? compareValue : -compareValue;
     });
 
-    return filtered;
-  }, [projectMetadataList, searchQuery, filterStatus, sortBy, sortOrder]);
+    setFilteredProjects(filtered);
+  }, [projectMetadataList, searchQuery, sortBy]);
 
-  // サイズをフォーマット
-  const formatSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  // ✅ プロジェクト選択時: 詳細データ取得
+  const handleProjectSelect = async (projectId: string) => {
+    console.log(`[ProjectSelector] 📂 Loading full project data for: ${projectId}`);
+    setLoadingProjectId(projectId);
+    try {
+      const fullProject = await loadFullProject(projectId);  // ✅ GameProject返却
+      console.log(`[ProjectSelector] ✅ Full project loaded: ${fullProject.name}`);
+      await onProjectSelect(fullProject);  // ✅ 修正
+    } catch (error) {
+      console.error(`[ProjectSelector] ❌ Failed to load project:`, error);
+    } finally {
+      setLoadingProjectId(null);
+    }
   };
 
-  // 日付をフォーマット
-  const formatDate = (dateString: string): string => {
+  const handleCreateNew = async () => {
+    if (!newProjectName.trim()) return;
+    
+    setIsCreating(true);
+    try {
+      await onCreateNew(newProjectName.trim());
+      setNewProjectName('');
+      
+      // プロジェクト一覧を再読み込み
+      const metadataList = await listProjectMetadata();
+      setProjectMetadataList(metadataList);
+    } catch (error) {
+      console.error('Failed to create project:', error);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleDelete = async (projectId: string, projectName: string) => {
+    if (!window.confirm(`本当に「${projectName}」を削除しますか？この操作は取り消せません。`)) {
+      return;
+    }
+
+    try {
+      await onDelete(projectId);
+      
+      // プロジェクト一覧から削除
+      setProjectMetadataList(prev => prev.filter(p => p.id !== projectId));
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+    }
+  };
+
+  const handleDuplicate = async (projectId: string) => {
+    try {
+      await onDuplicate(projectId);
+      
+      // プロジェクト一覧を再読み込み
+      const metadataList = await listProjectMetadata();
+      setProjectMetadataList(metadataList);
+    } catch (error) {
+      console.error('Failed to duplicate project:', error);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
 
-    if (days === 0) return '今日';
-    if (days === 1) return '昨日';
-    if (days < 7) return `${days}日前`;
-    if (days < 30) return `${Math.floor(days / 7)}週間前`;
-    if (days < 365) return `${Math.floor(days / 30)}ヶ月前`;
-    return `${Math.floor(days / 365)}年前`;
+    if (diffMins < 1) return 'たった今';
+    if (diffMins < 60) return `${diffMins}分前`;
+    if (diffHours < 24) return `${diffHours}時間前`;
+    if (diffDays < 7) return `${diffDays}日前`;
+    
+    return date.toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes}B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 9999,
-      padding: '20px'
-    }}>
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '12px',
-        width: '100%',
-        maxWidth: '1200px',
-        maxHeight: '90vh',
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
-      }}>
-        {/* ヘッダー */}
-        <div style={{
-          padding: '24px',
-          borderBottom: '1px solid #e0e0e0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <h2 style={{
-            margin: 0,
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: '#333'
-          }}>
-            プロジェクトを選択
-          </h2>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <ModernButton
-              onClick={() => setShowCreateModal(true)}
-              variant="primary"
-              size="medium"
+    <div style={{ minHeight: '100vh', backgroundColor: DESIGN_TOKENS.colors.neutral[50] }}>
+      {/* ヘッダー */}
+      <header
+        style={{
+          backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+          borderBottom: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+          boxShadow: DESIGN_TOKENS.shadows.sm,
+          position: 'sticky',
+          top: 0,
+          zIndex: DESIGN_TOKENS.zIndex.sticky
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1280px',
+            margin: '0 auto',
+            padding: `${DESIGN_TOKENS.spacing[4]} ${DESIGN_TOKENS.spacing[6]}`
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h1
+              style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                color: DESIGN_TOKENS.colors.neutral[900],
+                margin: 0
+              }}
             >
-              ➕ 新規作成
-            </ModernButton>
-            {onClose && (
-              <ModernButton
-                onClick={onClose}
-                variant="ghost"
-                size="medium"
+              📂 マイプロジェクト
+            </h1>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3] }}>
+              {/* ソート */}
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortBy)}
+                style={{
+                  padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+                  borderRadius: DESIGN_TOKENS.borderRadius.md,
+                  border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                  cursor: 'pointer'
+                }}
               >
-                ✖️ 閉じる
-              </ModernButton>
-            )}
+                <option value="lastModified">更新日時順</option>
+                <option value="name">名前順</option>
+                <option value="size">サイズ順</option>
+              </select>
+
+              {/* 表示切り替え */}
+              <div style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[1] }}>
+                <ModernButton
+                  variant={viewMode === 'grid' ? 'primary' : 'secondary'}
+                  size="md"  // ✅ 修正2: "medium" → "md"
+                  onClick={() => setViewMode('grid')}
+                >
+                  ⊞
+                </ModernButton>
+                <ModernButton
+                  variant={viewMode === 'list' ? 'primary' : 'secondary'}
+                  size="md"  // ✅ 修正2: "medium" → "md"
+                  onClick={() => setViewMode('list')}
+                >
+                  ☰
+                </ModernButton>
+              </div>
+            </div>
+          </div>
+
+          {/* 検索バー */}
+          <div style={{ marginTop: DESIGN_TOKENS.spacing[4] }}>
+            <input
+              type="text"
+              placeholder="プロジェクトを検索..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%',
+                padding: `${DESIGN_TOKENS.spacing[3]} ${DESIGN_TOKENS.spacing[4]}`,
+                fontSize: DESIGN_TOKENS.typography.fontSize.md,
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                border: `2px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                backgroundColor: DESIGN_TOKENS.colors.neutral[0],
+                outline: 'none',
+                transition: 'all 0.2s'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = DESIGN_TOKENS.colors.primary[500];
+                e.target.style.boxShadow = `0 0 0 3px ${DESIGN_TOKENS.colors.primary[100]}`;
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = DESIGN_TOKENS.colors.neutral[300];
+                e.target.style.boxShadow = 'none';
+              }}
+            />
           </div>
         </div>
+      </header>
 
-        {/* 検索・フィルター */}
-        <div style={{
-          padding: '20px 24px',
-          borderBottom: '1px solid #e0e0e0',
-          display: 'flex',
-          gap: '12px',
-          flexWrap: 'wrap'
-        }}>
-          <input
-            type="text"
-            placeholder="🔍 プロジェクトを検索..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              flex: '1 1 300px',
-              padding: '10px 16px',
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none'
-            }}
-          />
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as any)}
-            style={{
-              padding: '10px 16px',
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              fontSize: '14px',
-              backgroundColor: '#fff',
-              cursor: 'pointer'
-            }}
-          >
-            <option value="all">すべて</option>
-            <option value="draft">下書き</option>
-            <option value="published">公開済み</option>
-          </select>
-          <select
-            value={`${sortBy}-${sortOrder}`}
-            onChange={(e) => {
-              const [newSortBy, newSortOrder] = e.target.value.split('-');
-              setSortBy(newSortBy as any);
-              setSortOrder(newSortOrder as any);
-            }}
-            style={{
-              padding: '10px 16px',
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              fontSize: '14px',
-              backgroundColor: '#fff',
-              cursor: 'pointer'
-            }}
-          >
-            <option value="modified-desc">最終更新日（新しい順）</option>
-            <option value="modified-asc">最終更新日（古い順）</option>
-            <option value="name-asc">名前（A-Z）</option>
-            <option value="name-desc">名前（Z-A）</option>
-            <option value="size-desc">サイズ（大きい順）</option>
-            <option value="size-asc">サイズ（小さい順）</option>
-          </select>
-        </div>
+      {/* メインコンテンツ */}
+      <main
+        style={{
+          maxWidth: '1280px',
+          margin: '0 auto',
+          padding: DESIGN_TOKENS.spacing[6]
+        }}
+      >
+        {/* 新規作成カード */}
+        <ModernCard variant="elevated" size="md" style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
+            <div
+              style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: DESIGN_TOKENS.borderRadius.lg,
+                backgroundColor: DESIGN_TOKENS.colors.primary[100],
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px'
+              }}
+            >
+              ✨
+            </div>
+            <div style={{ flex: 1 }}>
+              <input
+                type="text"
+                placeholder="新しいゲームの名前を入力..."
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleCreateNew()}
+                disabled={isCreating}
+                style={{
+                  width: '100%',
+                  padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
+                  fontSize: DESIGN_TOKENS.typography.fontSize.md,
+                  borderRadius: DESIGN_TOKENS.borderRadius.md,
+                  border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
+                  backgroundColor: DESIGN_TOKENS.colors.neutral[0]
+                }}
+              />
+            </div>
+            <ModernButton
+              variant="primary"
+              size="md"  // ✅ 修正2
+              onClick={handleCreateNew}
+              disabled={!newProjectName.trim() || isCreating}
+              loading={isCreating}
+            >
+              {isCreating ? '作成中...' : '新規作成'}
+            </ModernButton>
+          </div>
+        </ModernCard>
+
+        {/* ローディング */}
+        {isLoading && (
+          <div style={{ textAlign: 'center', padding: DESIGN_TOKENS.spacing[8] }}>
+            <div
+              style={{
+                width: '48px',
+                height: '48px',
+                border: '4px solid transparent',
+                borderTop: `4px solid ${DESIGN_TOKENS.colors.primary[500]}`,
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                margin: '0 auto'
+              }}
+            />
+            <p style={{ marginTop: DESIGN_TOKENS.spacing[4], color: DESIGN_TOKENS.colors.neutral[600] }}>
+              プロジェクトを読み込み中...
+            </p>
+          </div>
+        )}
 
         {/* プロジェクト一覧 */}
-        <div style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '24px'
-        }}>
-          {loading && (
-            <div style={{
-              textAlign: 'center',
-              padding: '60px',
-              color: '#666'
-            }}>
-              <div style={{
-                fontSize: '48px',
-                marginBottom: '16px',
-                animation: 'spin 1s linear infinite'
-              }}>
-                ⏳
-              </div>
-              プロジェクトを読み込んでいます...
-            </div>
-          )}
+        {!isLoading && filteredProjects.length === 0 && (
+          <div style={{ textAlign: 'center', padding: DESIGN_TOKENS.spacing[8] }}>
+            <div style={{ fontSize: '64px', marginBottom: DESIGN_TOKENS.spacing[4] }}>📂</div>
+            <h3
+              style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+                fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                color: DESIGN_TOKENS.colors.neutral[700],
+                marginBottom: DESIGN_TOKENS.spacing[2]
+              }}
+            >
+              {searchQuery ? '検索結果が見つかりません' : 'プロジェクトがありません'}
+            </h3>
+            <p style={{ color: DESIGN_TOKENS.colors.neutral[600] }}>
+              {searchQuery ? '別のキーワードで検索してみてください' : '「新規作成」からゲームを作り始めましょう！'}
+            </p>
+          </div>
+        )}
 
-          {error && (
-            <div style={{
-              padding: '20px',
-              backgroundColor: '#fee',
-              border: '1px solid #fcc',
-              borderRadius: '8px',
-              color: '#c33',
-              marginBottom: '20px'
-            }}>
-              ⚠️ {error}
-            </div>
-          )}
-
-          {!loading && filteredAndSortedProjects.length === 0 && (
-            <div style={{
-              textAlign: 'center',
-              padding: '60px',
-              color: '#999'
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📂</div>
-              <p style={{ fontSize: '16px', marginBottom: '8px' }}>
-                {searchQuery || filterStatus !== 'all'
-                  ? '該当するプロジェクトが見つかりません'
-                  : 'プロジェクトがまだありません'}
-              </p>
-              <p style={{ fontSize: '14px', color: '#bbb' }}>
-                「新規作成」ボタンから最初のプロジェクトを作成しましょう
-              </p>
-            </div>
-          )}
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '20px'
-          }}>
-            {filteredAndSortedProjects.map(project => (
-              <div
+        {/* グリッド表示 */}
+        {!isLoading && viewMode === 'grid' && filteredProjects.length > 0 && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: DESIGN_TOKENS.spacing[4]
+            }}
+          >
+            {filteredProjects.map((project) => (
+              <ModernCard
                 key={project.id}
-                onClick={() => {
-                  if (loadingProjectId !== project.id) {
-                    handleProjectSelect(project.id);
-                  }
-                }}
+                variant="interactive"
+                size="md"
+                onClick={() => handleProjectSelect(project.id)}
                 style={{
-                  border: selectedProjectId === project.id ? '2px solid #4CAF50' : '1px solid #ddd',
-                  borderRadius: '12px',
-                  padding: '16px',
                   cursor: loadingProjectId === project.id ? 'wait' : 'pointer',
-                  transition: 'all 0.2s',
-                  backgroundColor: '#fff',
-                  position: 'relative',
-                  opacity: loadingProjectId === project.id ? 0.6 : 1
-                }}
-                onMouseEnter={(e) => {
-                  if (loadingProjectId !== project.id) {
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = 'none';
-                  e.currentTarget.style.transform = 'translateY(0)';
+                  opacity: loadingProjectId === project.id ? 0.6 : 1,
+                  position: 'relative'
                 }}
               >
-                {/* サムネイル */}
-                <div style={{
-                  width: '100%',
-                  height: '120px',
-                  backgroundColor: '#f5f5f5',
-                  borderRadius: '8px',
-                  marginBottom: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden'
-                }}>
-                  {project.thumbnailDataUrl ? (
-                    <img
-                      src={project.thumbnailDataUrl}
-                      alt={project.name}
+                {loadingProjectId === project.id && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      zIndex: 10
+                    }}
+                  >
+                    <div
                       style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover'
+                        width: '32px',
+                        height: '32px',
+                        border: '3px solid transparent',
+                        borderTop: `3px solid ${DESIGN_TOKENS.colors.primary[500]}`,
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
                       }}
                     />
-                  ) : (
-                    <div style={{ fontSize: '48px', color: '#ccc' }}>🎮</div>
-                  )}
-                </div>
-
-                {/* ローディング表示 */}
-                {loadingProjectId === project.id && (
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                    borderRadius: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '32px',
-                    animation: 'spin 1s linear infinite'
-                  }}>
-                    ⏳
                   </div>
                 )}
 
+                {/* サムネイル */}
+                <div
+                  style={{
+                    width: '100%',
+                    height: '160px',
+                    backgroundColor: DESIGN_TOKENS.colors.neutral[100],
+                    borderRadius: DESIGN_TOKENS.borderRadius.md,
+                    marginBottom: DESIGN_TOKENS.spacing[3],
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '48px',
+                    backgroundImage: project.thumbnailDataUrl ? `url(${project.thumbnailDataUrl})` : undefined,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                >
+                  {!project.thumbnailDataUrl && '🎮'}
+                </div>
+
                 {/* プロジェクト情報 */}
-                <h3 style={{
-                  margin: '0 0 8px 0',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  color: '#333',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}>
+                <h3
+                  style={{
+                    fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                    fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                    color: DESIGN_TOKENS.colors.neutral[900],
+                    marginBottom: DESIGN_TOKENS.spacing[2],
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
                   {project.name}
                 </h3>
 
                 {project.description && (
-                  <p style={{
-                    margin: '0 0 12px 0',
-                    fontSize: '13px',
-                    color: '#666',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical'
-                  }}>
+                  <p
+                    style={{
+                      fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                      color: DESIGN_TOKENS.colors.neutral[600],
+                      marginBottom: DESIGN_TOKENS.spacing[3],
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical'
+                    }}
+                  >
                     {project.description}
                   </p>
                 )}
 
-                {/* 統計情報 */}
-                {project.stats && (
-                  <div style={{
-                    display: 'flex',
-                    gap: '12px',
-                    marginBottom: '12px',
-                    fontSize: '12px',
-                    color: '#888'
-                  }}>
-                    <span>🖼️ {project.stats.objectsCount}</span>
-                    <span>🔊 {project.stats.soundsCount}</span>
-                    <span>📜 {project.stats.rulesCount}</span>
-                  </div>
-                )}
-
                 {/* メタ情報 */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  fontSize: '12px',
-                  color: '#999',
-                  marginBottom: '12px'
-                }}>
-                  <span>{formatDate(project.lastModified)}</span>
-                  <span>{formatSize(project.size || 0)}</span>
-                </div>
-
-                {/* ステータスバッジ */}
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  marginBottom: '12px'
-                }}>
-                  <span style={{
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    backgroundColor: project.status === 'published' ? '#e8f5e9' : '#fff3e0',
-                    color: project.status === 'published' ? '#2e7d32' : '#e65100'
-                  }}>
-                    {project.status === 'published' ? '公開済み' : '下書き'}
-                  </span>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                    color: DESIGN_TOKENS.colors.neutral[500],
+                    marginBottom: DESIGN_TOKENS.spacing[3]
+                  }}
+                >
+                  <span>🕐 {formatDate(project.lastModified)}</span>
+                  <span>💾 {formatSize(project.size)}</span>
                 </div>
 
                 {/* アクションボタン */}
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  marginTop: '12px'
-                }}
-                onClick={(e) => e.stopPropagation()}
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: DESIGN_TOKENS.spacing[2],
+                    borderTop: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+                    paddingTop: DESIGN_TOKENS.spacing[3]
+                  }}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <button
-                    onClick={() => handleDuplicateProject(project.id, project.name)}
-                    disabled={loading || loadingProjectId === project.id}
-                    style={{
-                      flex: 1,
-                      padding: '6px 12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      backgroundColor: '#fff',
-                      color: '#666',
-                      fontSize: '12px',
-                      cursor: loading || loadingProjectId === project.id ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s'
+                  <ModernButton
+                    variant="secondary"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDuplicate(project.id);
                     }}
-                    onMouseEnter={(e) => {
-                      if (!loading && loadingProjectId !== project.id) {
-                        e.currentTarget.style.backgroundColor = '#f5f5f5';
-                      }
+                    style={{ flex: 1 }}
+                  >
+                    複製
+                  </ModernButton>
+                  <ModernButton
+                    variant="secondary"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onExport(project.id);
                     }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#fff';
+                    style={{ flex: 1 }}
+                  >
+                    出力
+                  </ModernButton>
+                  <ModernButton
+                    variant="error"  // ✅ 修正2: "danger" → "error"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(project.id, project.name);
                     }}
                   >
-                    📋 複製
-                  </button>
-                  <button
-                    onClick={() => setShowDeleteConfirm(project.id)}
-                    disabled={loading || loadingProjectId === project.id}
-                    style={{
-                      flex: 1,
-                      padding: '6px 12px',
-                      border: '1px solid #ffcdd2',
-                      borderRadius: '6px',
-                      backgroundColor: '#fff',
-                      color: '#d32f2f',
-                      fontSize: '12px',
-                      cursor: loading || loadingProjectId === project.id ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!loading && loadingProjectId !== project.id) {
-                        e.currentTarget.style.backgroundColor = '#ffebee';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = '#fff';
-                    }}
-                  >
-                    🗑️ 削除
-                  </button>
+                    削除
+                  </ModernButton>
                 </div>
-              </div>
+              </ModernCard>
             ))}
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* 新規作成モーダル */}
-      {showCreateModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000
-        }}
-        onClick={() => setShowCreateModal(false)}
-        >
-          <div
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: '12px',
-              padding: '32px',
-              width: '90%',
-              maxWidth: '500px',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{
-              margin: '0 0 20px 0',
-              fontSize: '20px',
-              fontWeight: 'bold'
-            }}>
-              新規プロジェクト作成
-            </h3>
-            <input
-              type="text"
-              placeholder="プロジェクト名を入力"
-              value={newProjectName}
-              onChange={(e) => setNewProjectName(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleCreateProject();
-                }
-              }}
-              autoFocus
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                fontSize: '14px',
-                marginBottom: '20px',
-                outline: 'none'
-              }}
-            />
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'flex-end'
-            }}>
-              <ModernButton
-                onClick={() => setShowCreateModal(false)}
-                variant="ghost"
-                size="medium"
-                disabled={loading}
+        {/* リスト表示 */}
+        {!isLoading && viewMode === 'list' && filteredProjects.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: DESIGN_TOKENS.spacing[3] }}>
+            {filteredProjects.map((project) => (
+              <ModernCard
+                key={project.id}
+                variant="interactive"
+                size="sm"
+                onClick={() => handleProjectSelect(project.id)}
+                style={{
+                  cursor: loadingProjectId === project.id ? 'wait' : 'pointer',
+                  opacity: loadingProjectId === project.id ? 0.6 : 1
+                }}
               >
-                キャンセル
-              </ModernButton>
-              <ModernButton
-                onClick={handleCreateProject}
-                variant="primary"
-                size="medium"
-                disabled={loading || !newProjectName.trim()}
-              >
-                作成
-              </ModernButton>
-            </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
+                  {/* サムネイル（小） */}
+                  <div
+                    style={{
+                      width: '80px',
+                      height: '80px',
+                      backgroundColor: DESIGN_TOKENS.colors.neutral[100],
+                      borderRadius: DESIGN_TOKENS.borderRadius.md,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '32px',
+                      flexShrink: 0,
+                      backgroundImage: project.thumbnailDataUrl ? `url(${project.thumbnailDataUrl})` : undefined,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center'
+                    }}
+                  >
+                    {!project.thumbnailDataUrl && '🎮'}
+                  </div>
+
+                  {/* プロジェクト情報 */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h3
+                      style={{
+                        fontSize: DESIGN_TOKENS.typography.fontSize.lg,
+                        fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
+                        color: DESIGN_TOKENS.colors.neutral[900],
+                        marginBottom: DESIGN_TOKENS.spacing[1],
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {project.name}
+                    </h3>
+                    {project.description && (
+                      <p
+                        style={{
+                          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                          color: DESIGN_TOKENS.colors.neutral[600],
+                          marginBottom: DESIGN_TOKENS.spacing[2],
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {project.description}
+                      </p>
+                    )}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: DESIGN_TOKENS.spacing[4],
+                        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                        color: DESIGN_TOKENS.colors.neutral[500]
+                      }}
+                    >
+                      <span>🕐 {formatDate(project.lastModified)}</span>
+                      <span>💾 {formatSize(project.size)}</span>
+                      {project.stats && (
+                        <>
+                          <span>📦 {project.stats.objectsCount}個のオブジェクト</span>
+                          <span>📜 {project.stats.rulesCount}個のルール</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* アクションボタン */}
+                  <div
+                    style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ModernButton
+                      variant="secondary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDuplicate(project.id);
+                      }}
+                    >
+                      複製
+                    </ModernButton>
+                    <ModernButton
+                      variant="secondary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onExport(project.id);
+                      }}
+                    >
+                      出力
+                    </ModernButton>
+                    <ModernButton
+                      variant="error"  // ✅ 修正2
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(project.id, project.name);
+                      }}
+                    >
+                      削除
+                    </ModernButton>
+                  </div>
+                </div>
+              </ModernCard>
+            ))}
           </div>
-        </div>
-      )}
-
-      {/* 削除確認モーダル */}
-      {showDeleteConfirm && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 10000
-        }}
-        onClick={() => setShowDeleteConfirm(null)}
-        >
-          <div
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: '12px',
-              padding: '32px',
-              width: '90%',
-              maxWidth: '500px',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{
-              margin: '0 0 16px 0',
-              fontSize: '20px',
-              fontWeight: 'bold',
-              color: '#d32f2f'
-            }}>
-              ⚠️ プロジェクトを削除
-            </h3>
-            <p style={{
-              margin: '0 0 24px 0',
-              fontSize: '14px',
-              color: '#666'
-            }}>
-              このプロジェクトを削除してもよろしいですか？<br />
-              この操作は取り消せません。
-            </p>
-            <div style={{
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'flex-end'
-            }}>
-              <ModernButton
-                onClick={() => setShowDeleteConfirm(null)}
-                variant="ghost"
-                size="medium"
-                disabled={loading}
-              >
-                キャンセル
-              </ModernButton>
-              <ModernButton
-                onClick={() => handleDeleteProject(showDeleteConfirm)}
-                variant="danger"
-                size="medium"
-                disabled={loading}
-              >
-                削除
-              </ModernButton>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+        )}
+      </main>
     </div>
   );
 };
