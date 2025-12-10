@@ -506,7 +506,7 @@ export class ConditionEvaluator {
       }
       
       const now = context.gameState.timeElapsed * 1000;
-      const interval = condition.interval || 1000;
+      const interval = condition.interval || 0;
       
       if (now - state.lastCheckTime < interval) {
         return false;
