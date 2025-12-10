@@ -255,7 +255,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
               style={{
                 width: '100%',
                 padding: `${DESIGN_TOKENS.spacing[3]} ${DESIGN_TOKENS.spacing[4]}`,
-                fontSize: DESIGN_TOKENS.typography.fontSize.md,
+                fontSize: DESIGN_TOKENS.typography.fontSize.base,
                 borderRadius: DESIGN_TOKENS.borderRadius.lg,
                 border: `2px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
                 backgroundColor: DESIGN_TOKENS.colors.neutral[0],
@@ -311,7 +311,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 style={{
                   width: '100%',
                   padding: `${DESIGN_TOKENS.spacing[2]} ${DESIGN_TOKENS.spacing[3]}`,
-                  fontSize: DESIGN_TOKENS.typography.fontSize.md,
+                  fontSize: DESIGN_TOKENS.typography.fontSize.base,
                   borderRadius: DESIGN_TOKENS.borderRadius.md,
                   border: `1px solid ${DESIGN_TOKENS.colors.neutral[300]}`,
                   backgroundColor: DESIGN_TOKENS.colors.neutral[0]
