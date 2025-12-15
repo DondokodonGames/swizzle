@@ -48,13 +48,21 @@ FOR SELECT
 TO authenticated
 USING (user_id = auth.uid());
 
--- ユーザーは自分のクレジット情報のみ更新可能
-CREATE POLICY "Users can update their own credits"
-ON user_credits
-FOR UPDATE
-TO authenticated
-USING (user_id = auth.uid())
-WITH CHECK (user_id = auth.uid());
+-- セキュリティ強化: ユーザーによる直接更新を禁止
+-- games_created_this_month の改ざんを防止するため
+-- 更新は SECURITY DEFINER 関数（increment_game_count）経由のみ許可
+-- ユーザーが直接 UPDATE できないようにポリシーを設定しない
+--
+-- 以前のポリシー（削除済み）:
+-- CREATE POLICY "Users can update their own credits"
+-- ON user_credits
+-- FOR UPDATE
+-- TO authenticated
+-- USING (user_id = auth.uid())
+-- WITH CHECK (user_id = auth.uid());
+--
+-- 注意: INSERT/UPDATE は SECURITY DEFINER 関数から行われるため
+-- 通常のユーザーロールでの直接更新は RLS により拒否される
 
 -- ========================================
 -- トリガー: updated_at 自動更新

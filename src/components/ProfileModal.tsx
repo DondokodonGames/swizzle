@@ -8,6 +8,21 @@ import { supabase } from '../lib/supabase';
 import { SubscriptionManager } from './monetization/SubscriptionManager';
 import { DESIGN_TOKENS } from '../constants/DesignSystem';
 
+/**
+ * URLが安全なプロトコルを使用しているか検証
+ * javascript:, data:, vbscript: などの危険なスキームを拒否
+ */
+function isValidWebsiteUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    // http/https のみ許可
+    return ['http:', 'https:'].includes(parsed.protocol);
+  } catch {
+    // URLパースに失敗した場合は無効
+    return false;
+  }
+}
+
 interface ProfileModalProps {
   userId: string;
   onClose: () => void;
@@ -616,7 +631,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
             {profile.location && (
               <span>📍 {profile.location}</span>
             )}
-            {profile.website && (
+            {profile.website && isValidWebsiteUrl(profile.website) && (
               <a
                 href={profile.website}
                 target="_blank"

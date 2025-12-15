@@ -17,6 +17,20 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { createStripeClient, corsHeaders } from '../_shared/stripe.ts';
 
+/**
+ * URLが許可されたオリジンからのものかを検証（オープンリダイレクト対策）
+ */
+function isValidRedirectUrl(url: string, allowedOrigin: string): boolean {
+  try {
+    const parsedUrl = new URL(url);
+    const allowedUrl = new URL(allowedOrigin);
+    // 同一オリジンのみ許可
+    return parsedUrl.origin === allowedUrl.origin;
+  } catch {
+    return false;
+  }
+}
+
 serve(async (req) => {
   // CORS対応
   if (req.method === 'OPTIONS') {
@@ -30,6 +44,16 @@ serve(async (req) => {
     // バリデーション
     if (!returnUrl) {
       throw new Error('Missing returnUrl parameter');
+    }
+
+    // セキュリティ: リダイレクトURLの検証（オープンリダイレクト攻撃対策）
+    const allowedOrigin = Deno.env.get('APP_URL') || Deno.env.get('SITE_URL');
+    if (!allowedOrigin) {
+      throw new Error('APP_URL environment variable not configured');
+    }
+
+    if (!isValidRedirectUrl(returnUrl, allowedOrigin)) {
+      throw new Error('Invalid returnUrl: must be from the same origin');
     }
 
     // 認証チェック
