@@ -1,21 +1,20 @@
 // src/services/ProjectStorageManager.ts
-// 🚀 軽量化版: listProjects()はメタデータのみ返却（詳細はloadProject()で取得）
+// ✅ キャッシュシステム追加版（フリーズ解消・決定版）
 
 import { GameProject } from '../types/editor/GameProject';
 import { database, supabase } from '../lib/supabase';
 
 // 🔧 軽量版プロジェクトメタデータ（一覧表示用）
-// ✅ useGameProject.tsと完全一致
 export interface ProjectMetadata {
   id: string;
   name: string;
-  description: string | undefined;  // ✅ 完全一致
+  description: string | undefined;
   lastModified: string;
-  status: 'draft' | 'published' | 'archived';  // ✅ archived追加
+  status: 'draft' | 'published' | 'archived';
   size: number;
   version: string;
   thumbnailDataUrl?: string;
-  stats?: {  // ✅ optional
+  stats?: {
     objectsCount: number;
     soundsCount: number;
     rulesCount: number;
@@ -30,8 +29,19 @@ interface ProjectExportData {
   version?: string;
 }
 
+// ✅ キャッシュ型定義
+interface UserGamesCache {
+  userId: string;
+  games: any[];
+  timestamp: number;
+  expiresIn: number; // ミリ秒
+}
+
 export class ProjectStorageManager {
   private static instance: ProjectStorageManager | null = null;
+  
+  // ✅ キャッシュ（シングルトンパターンで共有）
+  private userGamesCache: UserGamesCache | null = null;
 
   private constructor() {}
 
@@ -40,6 +50,69 @@ export class ProjectStorageManager {
       ProjectStorageManager.instance = new ProjectStorageManager();
     }
     return ProjectStorageManager.instance;
+  }
+
+  // ✅ キャッシュチェック
+  private isCacheValid(userId: string): boolean {
+    if (!this.userGamesCache) {
+      console.log('[Cache-Manager] ❌ キャッシュが存在しません');
+      return false;
+    }
+
+    if (this.userGamesCache.userId !== userId) {
+      console.log('[Cache-Manager] ❌ ユーザーIDが異なります');
+      return false;
+    }
+
+    const now = Date.now();
+    const age = now - this.userGamesCache.timestamp;
+    const isValid = age < this.userGamesCache.expiresIn;
+
+    console.log('[Cache-Manager] チェック:', {
+      age: `${(age / 1000).toFixed(1)}秒`,
+      expiresIn: `${(this.userGamesCache.expiresIn / 1000).toFixed(1)}秒`,
+      isValid
+    });
+
+    return isValid;
+  }
+
+  // ✅ キャッシュ取得または新規取得
+  private async getUserGames(userId: string): Promise<any[]> {
+    // キャッシュチェック
+    if (this.isCacheValid(userId)) {
+      console.log('[Cache-Manager] ✅ キャッシュから返却:', this.userGamesCache!.games.length, '件');
+      return this.userGamesCache!.games;
+    }
+
+    // Supabaseから取得
+    console.log('[Cache-Manager] 🔄 Supabaseから取得中...');
+    const { data, error } = await database.userGames.getUserGames(userId);
+
+    if (error) {
+      console.error('[Cache-Manager] ❌ 取得エラー:', error);
+      throw error;
+    }
+
+    const games = data || [];
+    console.log('[Cache-Manager] ✅ 取得完了:', games.length, '件');
+
+    // キャッシュ更新
+    this.userGamesCache = {
+      userId,
+      games,
+      timestamp: Date.now(),
+      expiresIn: 5 * 60 * 1000 // 5分間有効
+    };
+    console.log('[Cache-Manager] ✅ キャッシュ更新');
+
+    return games;
+  }
+
+  // ✅ キャッシュクリア
+  private clearCache() {
+    this.userGamesCache = null;
+    console.log('[Cache-Manager] 🗑️ キャッシュクリア');
   }
 
   // 🚀 軽量化: プロジェクト一覧取得（メタデータのみ）
@@ -52,9 +125,12 @@ export class ProjectStorageManager {
         return [];
       }
 
-      console.log('[ListProjects-Manager] 🔍 Fetching from Supabase...');
-      const userGames = await database.userGames.getUserGames(userId);
-      console.log('[ListProjects-Manager] ✅ Supabase games:', userGames?.length || 0);
+      console.log('[ListProjects-Manager] 🔍 Fetching from Supabase/Cache...');
+      
+      // ✅ キャッシュ優先で取得
+      const userGames = await this.getUserGames(userId);
+      
+      console.log('[ListProjects-Manager] ✅ Games:', userGames?.length || 0);
 
       // 重複IDを除去しつつメタデータ生成
       const projectMap = new Map<string, ProjectMetadata>();
@@ -79,13 +155,13 @@ export class ProjectStorageManager {
         const metadata: ProjectMetadata = {
           id: projectData.id,
           name: game.title || projectData.name || projectData.settings?.name || 'Untitled',
-          description: projectData.description || projectData.settings?.description || undefined,  // ✅ undefined
+          description: projectData.description || projectData.settings?.description || undefined,
           lastModified: game.updated_at,
-          status: (projectData.status as 'draft' | 'published' | 'archived') || (game.is_published ? 'published' : 'draft'),  // ✅ archived対応
+          status: (projectData.status as 'draft' | 'published' | 'archived') || (game.is_published ? 'published' : 'draft'),
           size: projectData.totalSize || 0,
           version: projectData.version || '1.0.0',
           thumbnailDataUrl: projectData.thumbnailDataUrl || projectData.settings?.preview?.thumbnailDataUrl,
-          stats: {  // ✅ optionalだが、常に生成
+          stats: {
             objectsCount: projectData.assets?.objects?.length || 0,
             soundsCount: (projectData.assets?.audio?.bgm ? 1 : 0) + (projectData.assets?.audio?.se?.length || 0),
             rulesCount: projectData.script?.rules?.length || 0
@@ -111,7 +187,7 @@ export class ProjectStorageManager {
     }
   }
 
-  // ✅ プロジェクト読み込み（詳細データ取得）
+  // ✅ プロジェクト読み込み（詳細データ取得・キャッシュ優先）
   public async loadProject(id: string, userId?: string): Promise<GameProject | null> {
     try {
       console.log('[LoadProject-Manager] 📂 Loading full project...', { id, userId: userId || 'none' });
@@ -121,8 +197,11 @@ export class ProjectStorageManager {
         return null;
       }
 
-      const userGames = await database.userGames.getUserGames(userId);
-      console.log('[LoadProject-Manager] 🔍 Total games found:', userGames.length);
+      // ✅ キャッシュ優先で取得
+      console.log('[LoadProject-Manager] 🔍 キャッシュから検索中...');
+      const userGames = await this.getUserGames(userId);
+      
+      console.log('[LoadProject-Manager] 🔍 Total games:', userGames.length);
 
       // project_data.idでマッチング
       const game = userGames.find(g => {
@@ -195,8 +274,8 @@ export class ProjectStorageManager {
 
       console.log('[SaveDB-Manager] ✅ Credit check passed, saving to user_games...');
 
-      // 既存ゲームを検索（project.idでマッチング）
-      const userGames = await database.userGames.getUserGames(userId);
+      // ✅ キャッシュから検索（Supabaseクエリ回避）
+      const userGames = await this.getUserGames(userId);
       const existingGame = userGames.find(g => {
         const projectData = g.project_data as any as GameProject;
         return projectData && projectData.id === project.id;
@@ -226,6 +305,9 @@ export class ProjectStorageManager {
       }
       
       console.log('[SaveDB-Manager] ✅ Successfully saved to database:', result);
+      
+      // ✅ キャッシュクリア（保存後は再取得が必要）
+      this.clearCache();
       
       // プレミアムユーザーはカウンター更新をスキップ
       if (!credits.is_premium && !existingGame) {
@@ -283,8 +365,8 @@ export class ProjectStorageManager {
         throw new Error('ユーザーIDが必要です');
       }
 
-      // プロジェクトを読み込んでdatabaseIdを取得
-      const userGames = await database.userGames.getUserGames(userId);
+      // ✅ キャッシュから検索
+      const userGames = await this.getUserGames(userId);
       const game = userGames.find(g => {
         const projectData = g.project_data as any as GameProject;
         return projectData && projectData.id === id;
@@ -294,6 +376,9 @@ export class ProjectStorageManager {
         console.log('[DeleteProject-Manager] 🗑️ Deleting from Supabase...', { databaseId: game.id });
         await database.userGames.delete(game.id);
         console.log('[DeleteProject-Manager] ✅ Deleted from Supabase successfully');
+        
+        // ✅ キャッシュクリア
+        this.clearCache();
       } else {
         console.warn('[DeleteProject-Manager] ⚠️ Project not found in Supabase:', id);
       }

@@ -1,5 +1,5 @@
 // src/components/editor/EditorApp.tsx
-// 🔧 修正版: ボタン重複解消（作業ボタンはGameEditorに統一）
+// 🔧 フリーズ修正版: setCurrentProjectDirectly使用（二重ロード防止）
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../types/editor/GameProject';
@@ -61,7 +61,8 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     deleteProject,
     duplicateProject,
     getTotalSize,
-    getValidationErrors
+    getValidationErrors,
+    setCurrentProjectDirectly // ✅ 新規メソッド追加
   } = useGameProject();
 
   // 初期化処理
@@ -79,15 +80,20 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }, 5000);
   }, []);
 
+  // ✅ 修正: 受け取ったprojectをそのまま使用（二重ロード防止）
   const handleProjectSelect = useCallback(async (project: GameProject) => {
     try {
-      await loadProject(project.id);
+      console.log('[EditorApp] 📂 プロジェクト選択:', project.id, project.name);
+      
+      // ✅ 受け取ったプロジェクトをそのまま設定（loadProject()は呼ばない）
+      setCurrentProjectDirectly(project);
+      
       setMode('editor');
       showNotification('success', t('editor.app.projectOpened', { name: project.name }));
     } catch (error: any) {
       showNotification('error', `${t('errors.projectLoadFailed')}: ${error.message}`);
     }
-  }, [loadProject, showNotification, t]);
+  }, [setCurrentProjectDirectly, showNotification, t]);
 
   const handleCreateNew = useCallback(async (name: string) => {
     if (!canCreateGame) {
@@ -1053,7 +1059,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         </div>
       ) : currentProject ? (
         <div style={{ minHeight: '100vh', backgroundColor: DESIGN_TOKENS.colors.neutral[0] }}>
-          {/* 🔧 修正: エディターヘッダー（ナビゲーションのみ） */}
+          {/* エディターヘッダー（ナビゲーションのみ） */}
           <header 
             style={{
               backgroundColor: DESIGN_TOKENS.colors.neutral[0],
@@ -1293,7 +1299,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           zIndex: DESIGN_TOKENS.zIndex[10]
         }}
       >
-        <div>Game Editor v1.1.0 - ボタン統一版</div>
+        <div>Game Editor v1.2.0 - フリーズ修正版</div>
         <div>💡 Ctrl+S: 保存 | Ctrl+T: テストプレイ | Esc: 戻る | Ctrl+Q: メイン画面</div>
       </div>
     </div>
