@@ -17,11 +17,13 @@ import type { AIGenerationConfig } from './types/GenerationTypes';
  * 環境変数から設定を読み込み
  */
 function loadConfig(): AIGenerationConfig {
-  // 環境変数チェック
+  // 環境変数チェック（マスター認証情報を必須に）
   const requiredVars = [
     'ANTHROPIC_API_KEY',
     'VITE_SUPABASE_URL',
-    'SUPABASE_SERVICE_KEY'
+    'SUPABASE_SERVICE_KEY',
+    'MASTER_EMAIL',
+    'MASTER_PASSWORD'
   ];
   
   const missing = requiredVars.filter(varName => !process.env[varName]);
@@ -48,8 +50,8 @@ function loadConfig(): AIGenerationConfig {
     supabase: {
       url: process.env.VITE_SUPABASE_URL!,
       serviceKey: process.env.SUPABASE_SERVICE_KEY!,
-      masterEmail: process.env.MASTER_EMAIL || 'master@swizzle.app',
-      masterPassword: process.env.MASTER_PASSWORD || 'changeme'
+      masterEmail: process.env.MASTER_EMAIL!,
+      masterPassword: process.env.MASTER_PASSWORD!
     },
     
     // Twitter設定（オプション）

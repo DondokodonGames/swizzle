@@ -4,9 +4,17 @@
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js'
 import type { Database } from './database.types'
 
-// 環境変数を直接ハードコード（型エラー完全回避）
-const supabaseUrl = 'https://rqzehjsygvkkvntswqbs.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJxemVoanN5Z3Zra3ZudHN3cWJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzOTA4MjEsImV4cCI6MjA3MTk2NjgyMX0.e6jBgtNNr1bPlP0L8XYqoMyZmWOjJaojgRrHvRhUU_0'
+// 環境変数から取得（セキュリティ対策）
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+// 環境変数の存在チェック
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error(
+    'Missing Supabase environment variables. ' +
+    'Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.'
+  )
+}
 
 // シンプルなSupabaseクライアント作成（型制約なし）
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
@@ -455,17 +463,42 @@ export const storage = {
 
   deleteAvatar: async (avatarUrl: string): Promise<void> => {
     try {
-      // URLからファイルパスを抽出
+      // URLからファイルパスを抽出（パストラバーサル対策）
       const url = new URL(avatarUrl)
-      const path = url.pathname.split('/storage/v1/object/public/avatars/')[1]
 
-      if (path) {
-        const { error } = await supabase.storage
-          .from('avatars')
-          .remove([path])
-
-        if (error) throw new SupabaseError(error.message)
+      // Supabaseドメインからのリクエストのみ許可
+      const expectedHost = new URL(supabaseUrl).host
+      if (!url.host.endsWith('.supabase.co') && url.host !== expectedHost) {
+        console.warn('Invalid avatar URL host:', url.host)
+        return
       }
+
+      const pathSegments = url.pathname.split('/storage/v1/object/public/avatars/')
+      if (pathSegments.length !== 2) {
+        console.warn('Invalid avatar URL path format')
+        return
+      }
+
+      const path = pathSegments[1]
+
+      // パストラバーサル攻撃の防止
+      if (!path || path.includes('..') || path.includes('//') || path.startsWith('/')) {
+        console.warn('Invalid avatar path detected:', path)
+        return
+      }
+
+      // ファイル名のみを抽出（追加の安全策）
+      const fileName = path.split('/').pop()
+      if (!fileName || fileName !== path) {
+        console.warn('Avatar path contains directory traversal')
+        return
+      }
+
+      const { error } = await supabase.storage
+        .from('avatars')
+        .remove([fileName])
+
+      if (error) throw new SupabaseError(error.message)
     } catch (error: any) {
       console.error('Delete avatar error:', error)
       // エラーを無視（ファイルが存在しない場合など）

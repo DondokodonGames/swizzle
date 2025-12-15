@@ -37,10 +37,35 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // 許可された拡張子のホワイトリスト
+  const ALLOWED_EXTENSIONS: Record<string, string[]> = {
+    'image/*': ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'],
+    'audio/*': ['mp3', 'wav', 'ogg', 'aac', 'm4a', 'flac'],
+  };
+
+  // ファイル拡張子を取得
+  const getFileExtension = (filename: string): string => {
+    const parts = filename.toLowerCase().split('.');
+    return parts.length > 1 ? parts.pop() || '' : '';
+  };
+
+  // ファイル名の安全性チェック
+  const isValidFileName = (filename: string): boolean => {
+    // 空のファイル名を拒否
+    if (!filename || filename.trim().length === 0) return false;
+    // パストラバーサル攻撃の防止
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) return false;
+    // 隠しファイルを拒否
+    if (filename.startsWith('.')) return false;
+    // 制御文字を含むファイル名を拒否
+    if (/[\x00-\x1f\x7f]/.test(filename)) return false;
+    return true;
+  };
+
   // ファイル検証
   const validateFiles = useCallback((files: FileList): boolean => {
     if (files.length === 0) return false;
-    
+
     if (files.length > maxFiles) {
       alert(`最大${maxFiles}ファイルまで選択できます`);
       return false;
@@ -48,20 +73,43 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      
-      // ファイルタイプチェック
+
+      // ファイル名の安全性チェック
+      if (!isValidFileName(file.name)) {
+        alert(`無効なファイル名です: ${file.name}`);
+        return false;
+      }
+
+      // ファイルタイプチェック（MIMEタイプ）
       if (!file.type.match(accept.replace('*', '.*'))) {
         alert(`対応していないファイル形式です: ${file.name}`);
         return false;
       }
-      
+
+      // 拡張子ベースのバリデーション（追加のセキュリティ層）
+      const extension = getFileExtension(file.name);
+      const allowedExtensions = ALLOWED_EXTENSIONS[accept] || [];
+
+      if (allowedExtensions.length > 0 && !allowedExtensions.includes(extension)) {
+        alert(`対応していないファイル拡張子です: .${extension}\n許可された拡張子: ${allowedExtensions.join(', ')}`);
+        return false;
+      }
+
+      // MIMEタイプと拡張子の一貫性チェック
+      const mimeTypeCategory = file.type.split('/')[0];
+      const acceptCategory = accept.split('/')[0];
+      if (mimeTypeCategory !== acceptCategory) {
+        alert(`ファイル形式が一致しません: ${file.name}`);
+        return false;
+      }
+
       // ファイルサイズチェック
       if (file.size > maxSize) {
         alert(`ファイルサイズが大きすぎます: ${file.name}\n最大${formatFileSize(maxSize)}まで対応しています`);
         return false;
       }
     }
-    
+
     return true;
   }, [accept, maxSize, maxFiles]);
 

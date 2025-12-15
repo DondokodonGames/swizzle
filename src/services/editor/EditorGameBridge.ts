@@ -791,26 +791,40 @@ export class EditorGameBridge {
       
     } catch (error) {
       console.error('❌ フルゲーム実行エラー:', error);
-      
-      // エラー表示
-      targetElement.innerHTML = `
-        <div style="
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          height: 100%;
-          text-align: center;
-          padding: 40px;
-          color: #e53e3e;
-          background: linear-gradient(135deg, #FFE5F1 0%, #FFC0E0 100%);
-          border-radius: 12px;
-        ">
-          <div style="font-size: 64px; margin-bottom: 20px;">⚠️</div>
-          <h3 style="font-size: 24px; margin-bottom: 12px; color: #C2185B;">ゲーム実行エラー</h3>
-          <p style="font-size: 16px; color: #880E4F;">${error instanceof Error ? error.message : 'Unknown error'}</p>
-        </div>
+
+      // エラー表示（XSS対策: textContentを使用）
+      const errorContainer = document.createElement('div');
+      errorContainer.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        text-align: center;
+        padding: 40px;
+        color: #e53e3e;
+        background: linear-gradient(135deg, #FFE5F1 0%, #FFC0E0 100%);
+        border-radius: 12px;
       `;
+
+      const iconDiv = document.createElement('div');
+      iconDiv.style.cssText = 'font-size: 64px; margin-bottom: 20px;';
+      iconDiv.textContent = '⚠️';
+
+      const titleH3 = document.createElement('h3');
+      titleH3.style.cssText = 'font-size: 24px; margin-bottom: 12px; color: #C2185B;';
+      titleH3.textContent = 'ゲーム実行エラー';
+
+      const messageP = document.createElement('p');
+      messageP.style.cssText = 'font-size: 16px; color: #880E4F;';
+      messageP.textContent = error instanceof Error ? error.message : 'Unknown error';
+
+      errorContainer.appendChild(iconDiv);
+      errorContainer.appendChild(titleH3);
+      errorContainer.appendChild(messageP);
+
+      targetElement.innerHTML = '';
+      targetElement.appendChild(errorContainer);
       
       if (onGameEnd) {
         onGameEnd({
