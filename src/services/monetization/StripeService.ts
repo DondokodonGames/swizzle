@@ -109,10 +109,11 @@ export async function redirectToCheckout(
 ): Promise<void> {
   try {
     // Checkout Session作成
+    // セキュリティ: Session IDをURLフラグメントに配置（ログ・キャッシュへの漏洩防止）
     const session = await createCheckoutSession({
       plan,
       billingCycle,
-      successUrl: `${window.location.origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+      successUrl: `${window.location.origin}/subscription/success#session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${window.location.origin}/pricing?canceled=true`,
     });
 

@@ -6,8 +6,8 @@
  * - Tailwind CSSクラス → 完全インラインスタイル + DESIGN_TOKENS
  */
 
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSubscription } from '../../hooks/monetization/useSubscription';
 import { PremiumBadge } from '../../components/monetization/PremiumBadge';
@@ -16,11 +16,20 @@ import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 export function SubscriptionSuccess() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { subscription, loading, refetch } = useSubscription();
   const [isRefreshing, setIsRefreshing] = useState(true);
 
-  const sessionId = searchParams.get('session_id');
+  // セキュリティ: Session IDをURLフラグメントから取得（ログ・キャッシュへの漏洩防止）
+  const sessionId = useMemo(() => {
+    const hash = location.hash;
+    if (hash.startsWith('#session_id=')) {
+      return hash.replace('#session_id=', '');
+    }
+    // 後方互換性: クエリパラメータからも取得
+    const params = new URLSearchParams(location.search);
+    return params.get('session_id');
+  }, [location]);
 
   /**
    * サブスクリプション情報を更新

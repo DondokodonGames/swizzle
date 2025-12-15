@@ -43,6 +43,44 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     'audio/*': ['mp3', 'wav', 'ogg', 'aac', 'm4a', 'flac'],
   };
 
+  // Magic Number（ファイルシグネチャ）の定義
+  const MAGIC_NUMBERS: Record<string, number[][]> = {
+    'image/*': [
+      [0x89, 0x50, 0x4E, 0x47], // PNG
+      [0xFF, 0xD8, 0xFF],       // JPEG
+      [0x47, 0x49, 0x46, 0x38], // GIF
+      [0x52, 0x49, 0x46, 0x46], // WEBP (RIFF header)
+      [0x42, 0x4D],             // BMP
+    ],
+    'audio/*': [
+      [0x49, 0x44, 0x33],       // MP3 (ID3)
+      [0xFF, 0xFB],             // MP3 (frame sync)
+      [0xFF, 0xFA],             // MP3 (frame sync)
+      [0x52, 0x49, 0x46, 0x46], // WAV (RIFF header)
+      [0x4F, 0x67, 0x67, 0x53], // OGG
+      [0x66, 0x4C, 0x61, 0x43], // FLAC
+    ],
+  };
+
+  // Magic Number検証（ファイル偽装検出）
+  const validateMagicNumber = async (file: File, acceptType: string): Promise<boolean> => {
+    const signatures = MAGIC_NUMBERS[acceptType];
+    if (!signatures || signatures.length === 0) {
+      return true; // 定義がない場合はスキップ
+    }
+
+    try {
+      const buffer = await file.slice(0, 12).arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+
+      return signatures.some(signature =>
+        signature.every((byte, index) => bytes[index] === byte)
+      );
+    } catch {
+      return false;
+    }
+  };
+
   // ファイル拡張子を取得
   const getFileExtension = (filename: string): string => {
     const parts = filename.toLowerCase().split('.');
@@ -113,11 +151,22 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     return true;
   }, [accept, maxSize, maxFiles]);
 
-  // ファイル処理
-  const handleFiles = useCallback((files: FileList) => {
+  // ファイル処理（Magic Number検証を含む）
+  const handleFiles = useCallback(async (files: FileList) => {
     if (disabled || !validateFiles(files)) return;
+
+    // Magic Number検証（ファイル偽装検出）
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const isValidMagic = await validateMagicNumber(file, accept);
+      if (!isValidMagic) {
+        alert(`ファイルの内容が拡張子と一致しません: ${file.name}\nファイルが破損しているか、偽装されている可能性があります。`);
+        return;
+      }
+    }
+
     onUpload(files);
-  }, [disabled, validateFiles, onUpload]);
+  }, [disabled, validateFiles, onUpload, accept]);
 
   // ドラッグ&ドロップイベント
   const handleDragOver = (e: React.DragEvent) => {

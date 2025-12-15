@@ -81,8 +81,16 @@ const AuthModal: React.FC<AuthModalProps> = ({
     if (mode !== 'reset') {
       if (!formData.password.trim()) {
         errors.password = 'パスワードを入力'
-      } else if (formData.password.length < 6) {
-        errors.password = '6文字以上必要'
+      } else if (formData.password.length < 8) {
+        errors.password = '8文字以上必要'
+      } else if (mode === 'signup') {
+        // 新規登録時は強力なパスワードを要求
+        const hasUpperCase = /[A-Z]/.test(formData.password)
+        const hasLowerCase = /[a-z]/.test(formData.password)
+        const hasNumber = /[0-9]/.test(formData.password)
+        if (!hasUpperCase || !hasLowerCase || !hasNumber) {
+          errors.password = '大文字・小文字・数字を含めてください'
+        }
       }
     }
 
