@@ -16,6 +16,27 @@ import type {
 // Stripeクライアントのシングルトンインスタンス
 let stripePromise: Promise<Stripe | null> | null = null;
 
+// 許可されたStripeドメインのリスト（オープンリダイレクト攻撃対策）
+const ALLOWED_STRIPE_DOMAINS = [
+  'checkout.stripe.com',
+  'billing.stripe.com',
+  'connect.stripe.com',
+];
+
+/**
+ * URLがStripeの正規ドメインかどうかを検証
+ */
+function isValidStripeUrl(url: string): boolean {
+  try {
+    const parsedUrl = new URL(url);
+    return ALLOWED_STRIPE_DOMAINS.some(domain =>
+      parsedUrl.hostname === domain || parsedUrl.hostname.endsWith(`.${domain}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Stripeクライアントを取得（シングルトン）
  */
@@ -101,6 +122,11 @@ export async function redirectToCheckout(
 
     // Stripe.js v2025: URLに直接リダイレクト（修正）
     if (session.url) {
+      // セキュリティ: Stripeドメインの検証（オープンリダイレクト攻撃対策）
+      if (!isValidStripeUrl(session.url)) {
+        console.error('Invalid Stripe checkout URL:', session.url);
+        throw new Error('Invalid checkout URL received');
+      }
       console.log('✅ Redirecting to Stripe Checkout:', session.url);
       window.location.href = session.url;
     } else {
@@ -151,6 +177,11 @@ export async function redirectToCustomerPortal(): Promise<void> {
     const data: CreatePortalSessionResponse = await response.json();
 
     // Customer Portalにリダイレクト
+    // セキュリティ: Stripeドメインの検証（オープンリダイレクト攻撃対策）
+    if (!isValidStripeUrl(data.url)) {
+      console.error('Invalid Stripe portal URL:', data.url);
+      throw new Error('Invalid portal URL received');
+    }
     console.log('✅ Redirecting to Stripe Customer Portal:', data.url);
     window.location.href = data.url;
   } catch (error) {
