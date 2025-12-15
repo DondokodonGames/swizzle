@@ -1,7 +1,7 @@
 // src/hooks/editor/useGameProject.ts
-// ✅ キャッシュシステム追加版（フリーズ解消）
+// ✅ キャッシュシステム追加版（元のインターフェース維持・フリーズ解消）
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { ProjectStorageManager } from '../../services/ProjectStorageManager';
 import { supabase } from '../../lib/supabase';
@@ -33,7 +33,7 @@ interface ProjectsCache {
 }
 
 export const useGameProject = () => {
-  const [projects, setProjects] = useState<GameProject[]>([]);
+  const [projects, setProjects] = useState<ProjectMetadata[]>([]);
   const [currentProject, setCurrentProject] = useState<GameProject | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,7 +130,7 @@ export const useGameProject = () => {
   }, []);
 
   // 既存メソッド: listProjects（後方互換性）
-  const listProjects = useCallback(async (): Promise<GameProject[]> => {
+  const listProjects = useCallback(async (): Promise<ProjectMetadata[]> => {
     setLoading(true);
     setError(null);
 
@@ -174,7 +174,7 @@ export const useGameProject = () => {
           name: p.name,
           description: p.description || undefined,
           lastModified: p.lastModified,
-          status: p.status,
+          status: p.status as 'draft' | 'published' | 'archived',
           size: p.totalSize || 0,
           version: p.version,
           thumbnailDataUrl: p.thumbnailDataUrl,
@@ -478,8 +478,12 @@ export const useGameProject = () => {
     setHasUnsavedChanges(false);
   }, []);
 
-  // 既存メソッド: saveProject
-  const saveProject = useCallback(async (project: GameProject): Promise<void> => {
+  // ✅ 修正: saveProject（引数なし、currentProjectを使用）
+  const saveProject = useCallback(async (): Promise<void> => {
+    if (!currentProject) {
+      throw new Error('保存するプロジェクトが選択されていません');
+    }
+
     setLoading(true);
     setError(null);
 
@@ -491,8 +495,15 @@ export const useGameProject = () => {
       }
 
       const updatedProject = {
-        ...project,
-        lastModified: new Date().toISOString()
+        ...currentProject,
+        lastModified: new Date().toISOString(),
+        metadata: {
+          ...currentProject.metadata,
+          statistics: {
+            ...currentProject.metadata.statistics,
+            saveCount: (currentProject.metadata.statistics?.saveCount || 0) + 1
+          }
+        }
       };
 
       await storage.saveProject(updatedProject, {
@@ -513,7 +524,7 @@ export const useGameProject = () => {
     } finally {
       setLoading(false);
     }
-  }, [storage, getCachedUser, clearCache]);
+  }, [currentProject, storage, getCachedUser, clearCache]);
 
   // 既存メソッド: deleteProject
   const deleteProject = useCallback(async (id: string): Promise<void> => {
@@ -547,8 +558,8 @@ export const useGameProject = () => {
     }
   }, [storage, currentProject, getCachedUser, clearCache]);
 
-  // 既存メソッド: duplicateProject
-  const duplicateProject = useCallback(async (id: string): Promise<GameProject> => {
+  // ✅ 修正: duplicateProject（2引数に戻す）
+  const duplicateProject = useCallback(async (id: string, newName: string): Promise<GameProject> => {
     setLoading(true);
     setError(null);
 
@@ -558,9 +569,6 @@ export const useGameProject = () => {
       if (!user) {
         throw new Error('プロジェクトを複製するにはログインが必要です');
       }
-
-      const originalName = projects.find(p => p.id === id)?.name || 'Untitled';
-      const newName = `${originalName} (Copy)`;
 
       const duplicated = await storage.duplicateProject(id, newName, user.id);
 
@@ -575,7 +583,7 @@ export const useGameProject = () => {
     } finally {
       setLoading(false);
     }
-  }, [storage, projects, getCachedUser, clearCache]);
+  }, [storage, getCachedUser, clearCache]);
 
   // 既存メソッド: exportProject
   const exportProject = useCallback(async (id: string): Promise<void> => {
@@ -636,6 +644,7 @@ export const useGameProject = () => {
     setError(null);
   }, []);
 
+  // ✅ updateProject（元のまま：updater関数を受け取る）
   const updateProject = useCallback((updater: (project: GameProject) => GameProject) => {
     if (!currentProject) return;
     
@@ -644,23 +653,28 @@ export const useGameProject = () => {
     setHasUnsavedChanges(true);
   }, [currentProject]);
 
-  const getTotalSize = useCallback((project: GameProject): number => {
-    return project.totalSize || 0;
-  }, []);
+  // ✅ 修正: getTotalSize（引数なし、currentProjectを使用）
+  const getTotalSize = useCallback((): number => {
+    if (!currentProject) return 0;
+    return currentProject.totalSize || 0;
+  }, [currentProject]);
 
-  const getValidationErrors = useCallback((project: GameProject): string[] => {
+  // ✅ 修正: getValidationErrors（引数なし、currentProjectを使用）
+  const getValidationErrors = useCallback((): string[] => {
+    if (!currentProject) return ['プロジェクトが選択されていません'];
+
     const errors: string[] = [];
 
-    if (!project.name || project.name.trim() === '') {
+    if (!currentProject.name || currentProject.name.trim() === '') {
       errors.push('プロジェクト名が設定されていません');
     }
 
-    if (project.totalSize > 10 * 1024 * 1024) {
+    if (currentProject.totalSize > 10 * 1024 * 1024) {
       errors.push('プロジェクトサイズが10MBを超えています');
     }
 
     return errors;
-  }, []);
+  }, [currentProject]);
 
   return {
     projects,

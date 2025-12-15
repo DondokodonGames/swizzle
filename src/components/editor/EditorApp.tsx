@@ -1,5 +1,5 @@
 // src/components/editor/EditorApp.tsx
-// 🔧 フリーズ修正版: setCurrentProjectDirectly使用（二重ロード防止）
+// 🔧 フリーズ修正版 + updateProject 修正版
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../types/editor/GameProject';
@@ -62,7 +62,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     duplicateProject,
     getTotalSize,
     getValidationErrors,
-    setCurrentProjectDirectly // ✅ 新規メソッド追加
+    setCurrentProjectDirectly
   } = useGameProject();
 
   // 初期化処理
@@ -80,14 +80,11 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }, 5000);
   }, []);
 
-  // ✅ 修正: 受け取ったprojectをそのまま使用（二重ロード防止）
+  // ✅ プロジェクト選択（受け取ったprojectをそのまま使用）
   const handleProjectSelect = useCallback(async (project: GameProject) => {
     try {
       console.log('[EditorApp] 📂 プロジェクト選択:', project.id, project.name);
-      
-      // ✅ 受け取ったプロジェクトをそのまま設定（loadProject()は呼ばない）
       setCurrentProjectDirectly(project);
-      
       setMode('editor');
       showNotification('success', t('editor.app.projectOpened', { name: project.name }));
     } catch (error: any) {
@@ -123,16 +120,17 @@ export const EditorApp: React.FC<EditorAppProps> = ({
 
       showNotification('success', t('editor.app.projectSaved'));
 
-      const currentStatistics = currentProject.metadata?.statistics || {};
-      updateProject({
+      // ✅ 修正: updater関数を使用
+      updateProject(prev => ({
+        ...prev,
         metadata: {
-          ...currentProject.metadata,
+          ...prev.metadata,
           statistics: {
-            ...currentStatistics,
-            saveCount: (currentStatistics.saveCount || 0) + 1
+            ...(prev.metadata?.statistics || {}),
+            saveCount: ((prev.metadata?.statistics?.saveCount || 0) + 1)
           }
         }
-      });
+      }));
 
     } catch (error: any) {
       console.error('Save failed:', error);
@@ -195,24 +193,23 @@ export const EditorApp: React.FC<EditorAppProps> = ({
             showNotification('error', t('editor.app.testPlayError', { error: result.errors.join(', ') }));
           }
 
-          const currentStatistics = currentProject.metadata?.statistics || {};
-          const currentPerformance = currentProject.metadata?.performance || {};
-          
-          updateProject({
+          // ✅ 修正: updater関数を使用
+          updateProject(prev => ({
+            ...prev,
             metadata: {
-              ...currentProject.metadata,
+              ...prev.metadata,
               statistics: {
-                ...currentStatistics,
-                testPlayCount: (currentStatistics.testPlayCount || 0) + 1
+                ...(prev.metadata?.statistics || {}),
+                testPlayCount: ((prev.metadata?.statistics?.testPlayCount || 0) + 1)
               },
               performance: {
-                ...currentPerformance,
+                ...(prev.metadata?.performance || {}),
                 lastBuildTime: result.performance.renderTime,
                 averageFPS: result.performance.averageFPS,
                 memoryUsage: result.performance.memoryUsage
               }
             }
-          });
+          }));
         }
       );
     } catch (error: any) {
@@ -254,8 +251,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
 
       await saveProject();
 
-      const currentStatistics = currentProject.metadata?.statistics || {};
-
       const publishedProject: GameProject = {
         ...currentProject,
         status: 'published',
@@ -270,18 +265,20 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         metadata: {
           ...currentProject.metadata,
           statistics: {
-            ...currentStatistics,
-            publishCount: (currentStatistics.publishCount || 0) + 1
+            ...(currentProject.metadata?.statistics || {}),
+            publishCount: ((currentProject.metadata?.statistics?.publishCount || 0) + 1)
           },
           lastSyncedAt: new Date().toISOString()
         }
       };
 
-      updateProject({
+      // ✅ 修正: updater関数を使用
+      updateProject(prev => ({
+        ...prev,
         status: 'published',
         settings: publishedProject.settings,
         metadata: publishedProject.metadata
-      });
+      }));
 
       const storageManager = ProjectStorageManager.getInstance();
       await storageManager.saveProject(publishedProject, {
@@ -316,18 +313,25 @@ export const EditorApp: React.FC<EditorAppProps> = ({
 
       showNotification('error', errorMessage);
       
-      updateProject({
+      // ✅ 修正: updater関数を使用
+      updateProject(prev => ({
+        ...prev,
         status: 'draft',
         settings: {
-          ...currentProject.settings,
+          ...prev.settings,
           publishing: {
-            ...currentProject.settings.publishing,
+            ...prev.settings.publishing,
             isPublished: false
           }
         }
-      });
+      }));
     }
   }, [currentProject, user, getValidationErrors, saveProject, updateProject, showNotification]);
+
+  // ✅ GameEditor.tsx用のラッパー関数（GameProject → updater関数に変換）
+  const handleGameEditorUpdate = useCallback((updatedProject: GameProject) => {
+    updateProject(() => updatedProject);
+  }, [updateProject]);
 
   const handleBackToSelector = useCallback(async () => {
     if (hasUnsavedChanges) {
@@ -1059,7 +1063,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         </div>
       ) : currentProject ? (
         <div style={{ minHeight: '100vh', backgroundColor: DESIGN_TOKENS.colors.neutral[0] }}>
-          {/* エディターヘッダー（ナビゲーションのみ） */}
           <header 
             style={{
               backgroundColor: DESIGN_TOKENS.colors.neutral[0],
@@ -1085,7 +1088,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
                   height: '64px'
                 }}
               >
-                {/* 左側: ナビゲーション */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3] }}>
                   <ModernButton
                     variant="ghost"
@@ -1116,7 +1118,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
                   </ModernButton>
                 </div>
 
-                {/* 中央: プロジェクト名とステータス */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[4] }}>
                   <div>
                     <h1 
@@ -1131,7 +1132,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
                     </h1>
                   </div>
 
-                  {/* ステータス表示 */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[2] }}>
                     {!user && (
                       <div 
@@ -1213,7 +1213,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
                   </div>
                 </div>
 
-                {/* 右側: 容量表示のみ */}
                 <div 
                   style={{
                     fontSize: DESIGN_TOKENS.typography.fontSize.xs,
@@ -1226,10 +1225,9 @@ export const EditorApp: React.FC<EditorAppProps> = ({
             </div>
           </header>
           
-          {/* エディター本体（作業ボタンはGameEditor内） */}
           <GameEditor
             project={currentProject}
-            onProjectUpdate={updateProject}
+            onProjectUpdate={handleGameEditorUpdate}
             onSave={handleSave}
             onPublish={handlePublish}
             onTestPlay={handleTestPlay}
@@ -1299,7 +1297,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           zIndex: DESIGN_TOKENS.zIndex[10]
         }}
       >
-        <div>Game Editor v1.2.0 - フリーズ修正版</div>
+        <div>Game Editor v1.2.1 - updateProject修正版</div>
         <div>💡 Ctrl+S: 保存 | Ctrl+T: テストプレイ | Esc: 戻る | Ctrl+Q: メイン画面</div>
       </div>
     </div>

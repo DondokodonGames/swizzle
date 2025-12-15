@@ -1,5 +1,5 @@
 // src/components/editor/ProjectSelector.tsx
-// 🚀 完全修正版: 軽量化 + インポートボタン追加 + File渡し修正
+// ✅ 無限ループ修正版: 依存配列を空にする
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { useGameProject, ProjectMetadata } from '../../hooks/editor/useGameProject';
@@ -35,12 +35,11 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
   const [newProjectName, setNewProjectName] = useState('');
   
-  // ✅ インポート用のRef追加
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { listProjectMetadata, loadFullProject, importProject } = useGameProject();
 
-  // 初期ロード: 軽量版メタデータのみ
+  // ✅ 修正: 依存配列を空にして初回のみ実行
   useEffect(() => {
     const loadProjects = async () => {
       console.log('[ProjectSelector] 🚀 Loading lightweight project metadata...');
@@ -58,6 +57,22 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     };
 
     loadProjects();
+  }, []); // ✅ 空の依存配列 - 初回マウント時のみ実行
+
+  // ✅ プロジェクト一覧を再読み込みする関数（公開用）
+  const reloadProjects = useCallback(async () => {
+    console.log('[ProjectSelector] 🔄 Reloading project list...');
+    setIsLoading(true);
+    try {
+      const metadataList = await listProjectMetadata();
+      console.log(`[ProjectSelector] ✅ Reloaded ${metadataList.length} project metadata`);
+      setProjectMetadataList(metadataList);
+      setFilteredProjects(metadataList);
+    } catch (error) {
+      console.error('[ProjectSelector] ❌ Failed to reload project metadata:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [listProjectMetadata]);
 
   // 検索・フィルター
@@ -110,8 +125,8 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       await onCreateNew(newProjectName.trim());
       setNewProjectName('');
       
-      const metadataList = await listProjectMetadata();
-      setProjectMetadataList(metadataList);
+      // ✅ reloadProjects関数を使用
+      await reloadProjects();
     } catch (error) {
       console.error('Failed to create project:', error);
     } finally {
@@ -119,12 +134,10 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     }
   };
 
-  // ✅ インポートボタンクリックハンドラー
   const handleImportClick = () => {
     fileInputRef.current?.click();
   };
 
-  // ✅ ファイルインポートハンドラー（修正版）
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -132,14 +145,12 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     try {
       console.log('[ProjectSelector] 📥 Importing JSON file:', file.name);
       
-      // ✅ 修正: File オブジェクトをそのまま渡す
       if (importProject) {
         await importProject(file);
         console.log('[ProjectSelector] ✅ Project imported successfully');
         
-        // プロジェクト一覧を再読み込み
-        const metadataList = await listProjectMetadata();
-        setProjectMetadataList(metadataList);
+        // ✅ reloadProjects関数を使用
+        await reloadProjects();
         
         alert('✅ プロジェクトをインポートしました！');
       } else {
@@ -149,7 +160,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       console.error('[ProjectSelector] ❌ Import failed:', err);
       alert('❌ ファイルのインポートに失敗しました。JSONファイルの形式を確認してください。');
     } finally {
-      // ファイル入力をリセット
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -172,8 +182,8 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   const handleDuplicate = async (projectId: string) => {
     try {
       await onDuplicate(projectId);
-      const metadataList = await listProjectMetadata();
-      setProjectMetadataList(metadataList);
+      // ✅ reloadProjects関数を使用
+      await reloadProjects();
     } catch (error) {
       console.error('Failed to duplicate project:', error);
     }
@@ -312,9 +322,8 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           padding: DESIGN_TOKENS.spacing[6]
         }}
       >
-        {/* ✅ 新規作成とインポートボタン */}
+        {/* 新規作成とインポートボタン */}
         <ModernCard variant="elevated" size="md" style={{ marginBottom: DESIGN_TOKENS.spacing[6] }}>
-          {/* 非表示のファイル入力 */}
           <input
             ref={fileInputRef}
             type="file"

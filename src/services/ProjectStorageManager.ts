@@ -1,5 +1,5 @@
 // src/services/ProjectStorageManager.ts
-// ✅ キャッシュシステム追加版（フリーズ解消・決定版）
+// ✅ キャッシュシステム追加版（フリーズ解消・getUserGames修正版）
 
 import { GameProject } from '../types/editor/GameProject';
 import { database, supabase } from '../lib/supabase';
@@ -85,16 +85,10 @@ export class ProjectStorageManager {
       return this.userGamesCache!.games;
     }
 
-    // Supabaseから取得
+    // Supabaseから取得（✅ 修正：直接配列を返す）
     console.log('[Cache-Manager] 🔄 Supabaseから取得中...');
-    const { data, error } = await database.userGames.getUserGames(userId);
+    const games = await database.userGames.getUserGames(userId);
 
-    if (error) {
-      console.error('[Cache-Manager] ❌ 取得エラー:', error);
-      throw error;
-    }
-
-    const games = data || [];
     console.log('[Cache-Manager] ✅ 取得完了:', games.length, '件');
 
     // キャッシュ更新
