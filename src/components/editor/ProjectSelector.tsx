@@ -13,6 +13,7 @@ export interface ProjectSelectorProps {
   onDelete: (projectId: string) => Promise<void>;
   onDuplicate: (projectId: string) => Promise<void>;
   onExport: (projectId: string) => Promise<void>;
+  onBackToMain?: () => void;  // ✅ 追加: メイン画面に戻る
 }
 
 type ViewMode = 'grid' | 'list';
@@ -23,7 +24,8 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   onCreateNew,
   onDelete,
   onDuplicate,
-  onExport
+  onExport,
+  onBackToMain  // ✅ 追加
 }) => {
   const [projectMetadataList, setProjectMetadataList] = useState<ProjectMetadata[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<ProjectMetadata[]>([]);
@@ -236,16 +238,39 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h1
-              style={{
-                fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
-                fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                color: DESIGN_TOKENS.colors.neutral[900],
-                margin: 0
-              }}
-            >
-              📂 マイプロジェクト
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3] }}>
+              {/* ✅ メイン画面に戻るボタン */}
+              {onBackToMain && (
+                <>
+                  <ModernButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={onBackToMain}
+                    style={{ fontWeight: DESIGN_TOKENS.typography.fontWeight.medium }}
+                  >
+                    ← メイン画面
+                  </ModernButton>
+                  <div 
+                    style={{
+                      width: '1px',
+                      height: '24px',
+                      backgroundColor: DESIGN_TOKENS.colors.neutral[300]
+                    }}
+                  />
+                </>
+              )}
+              
+              <h1
+                style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
+                  fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                  color: DESIGN_TOKENS.colors.neutral[900],
+                  margin: 0
+                }}
+              >
+                📂 マイプロジェクト
+              </h1>
+            </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: DESIGN_TOKENS.spacing[3] }}>
               <select

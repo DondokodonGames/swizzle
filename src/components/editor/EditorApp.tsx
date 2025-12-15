@@ -794,6 +794,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           onDelete={handleProjectDelete}
           onDuplicate={handleProjectDuplicate}
           onExport={handleExport}
+          onBackToMain={onClose}  // ✅ 追加: メイン画面に戻る
         />
       ) : mode === 'testplay' ? (
         <div style={{ minHeight: '100vh', backgroundColor: DESIGN_TOKENS.colors.neutral[900] }}>
