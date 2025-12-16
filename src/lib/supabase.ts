@@ -229,6 +229,10 @@ export const database = {
       let lastError: Error | null = null;
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        // AbortControllerでタイムアウト制御
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
         try {
           const queryStartTime = Date.now();
 
@@ -236,7 +240,8 @@ export const database = {
             .from('user_games')
             .select('*')
             .eq('is_published', true)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .abortSignal(controller.signal);
 
           // フィルター適用
           if (options.templateType) {
@@ -254,12 +259,8 @@ export const database = {
 
           console.log(`🔍 [Step 1] クエリ実行中... (試行 ${attempt}/${maxRetries}, タイムアウト: ${timeoutMs/1000}秒)`);
 
-          // タイムアウト処理付きでクエリ実行
-          const timeoutPromise = new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error(`タイムアウト (${timeoutMs/1000}秒)`)), timeoutMs)
-          );
-
-          const { data, error } = await Promise.race([query, timeoutPromise]);
+          const { data, error } = await query;
+          clearTimeout(timeoutId);
 
           if (error) {
             throw new Error(error.message);
@@ -306,9 +307,15 @@ export const database = {
 
           return gamesWithProfiles;
 
-        } catch (error) {
-          lastError = error instanceof Error ? error : new Error(String(error));
-          console.warn(`⚠️ [試行 ${attempt}/${maxRetries}] 失敗: ${lastError.message}`);
+        } catch (error: any) {
+          clearTimeout(timeoutId);
+
+          // AbortErrorの場合はタイムアウトとして扱う
+          const isAborted = error?.name === 'AbortError' || controller.signal.aborted;
+          const errorMessage = isAborted ? `タイムアウト (${timeoutMs/1000}秒)` : (error?.message || String(error));
+
+          lastError = new Error(errorMessage);
+          console.warn(`⚠️ [試行 ${attempt}/${maxRetries}] 失敗: ${errorMessage}`);
 
           if (attempt < maxRetries) {
             console.log(`🔄 ${attempt + 1}回目のリトライを実行...`);
