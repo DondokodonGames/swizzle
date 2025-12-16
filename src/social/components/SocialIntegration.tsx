@@ -392,7 +392,19 @@ export const SocialIntegrationProvider: React.FC<SocialIntegrationProviderProps>
 
     const { data: { subscription } } = auth.onAuthStateChange(async (event, session) => {
       console.log('Supabase auth state changed:', event, session?.user?.id);
-      
+
+      // TOKEN_REFRESHED はトークン更新のみなので、DBクエリをスキップ
+      if (event === 'TOKEN_REFRESHED') {
+        if (session?.user) {
+          setState(prev => ({
+            ...prev,
+            user: session.user,
+            // profile は既存のものを維持（DB呼び出し不要）
+          }));
+        }
+        return;
+      }
+
       if (session?.user) {
         await syncAuthState(session.user);
       } else {

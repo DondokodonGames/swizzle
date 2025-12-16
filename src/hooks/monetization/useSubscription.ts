@@ -78,7 +78,8 @@ export function useSubscription(): UseSubscriptionResult {
     const {
       data: { subscription: authSubscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      // SIGNED_IN時のみ取得（TOKEN_REFRESHEDはトークン更新のみなのでスキップ）
+      if (event === 'SIGNED_IN') {
         fetchSubscription();
       } else if (event === 'SIGNED_OUT') {
         setSubscription(null);
