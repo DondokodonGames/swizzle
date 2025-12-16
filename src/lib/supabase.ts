@@ -46,10 +46,16 @@ export const warmupConnection = async (): Promise<boolean> => {
     return true;
   }
 
-  // ウォームアップ中の場合は待機
+  // ウォームアップ中の場合は待機（最大10秒）
   if (warmupPromise) {
     console.log('🔥 [Warmup] ウォームアップ中...待機');
-    return warmupPromise;
+    const timeoutPromise = new Promise<boolean>((resolve) =>
+      setTimeout(() => {
+        console.warn('⚠️ [Warmup] 待機タイムアウト、スキップして続行');
+        resolve(true);
+      }, 10000)
+    );
+    return Promise.race([warmupPromise, timeoutPromise]);
   }
 
   // ウォームアップ開始
@@ -58,11 +64,18 @@ export const warmupConnection = async (): Promise<boolean> => {
     const startTime = Date.now();
 
     try {
+      // タイムアウト付きクエリ（10秒）
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Warmup timeout')), 10000)
+      );
+
       // 軽量なクエリで接続を確立（1件のみ取得）
-      const { data, error } = await supabase
+      const queryPromise = supabase
         .from('user_games')
         .select('id')
         .limit(1);
+
+      const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
 
       const elapsed = Date.now() - startTime;
 
@@ -76,8 +89,10 @@ export const warmupConnection = async (): Promise<boolean> => {
       return true;
     } catch (error) {
       const elapsed = Date.now() - startTime;
-      console.error(`❌ [Warmup] 失敗 (${elapsed}ms):`, error);
-      return false;
+      console.warn(`⚠️ [Warmup] タイムアウトまたはエラー (${elapsed}ms)、スキップして続行`);
+      // タイムアウトでもtrueを返してアプリを続行させる
+      isWarmedUp = true;
+      return true;
     } finally {
       warmupPromise = null;
     }
