@@ -223,132 +223,103 @@ export const database = {
       // ウォームアップをバックグラウンドで開始（ブロックしない）
       warmupConnection().catch(() => {});
 
-      try {
-        // Step 1: 基本クエリでゲーム取得
-        const queryStartTime = Date.now();
-        
-        let query = supabase
-          .from('user_games')
-          .select('*')
-          .eq('is_published', true)
-          .order('created_at', { ascending: false });
+      // リトライ設定
+      const maxRetries = 3;
+      const timeoutMs = 10000; // 10秒
+      let lastError: Error | null = null;
 
-        console.log('🔍 [Step 1] 基本クエリ構築完了');
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const queryStartTime = Date.now();
 
-        // フィルター適用
-        if (options.templateType) {
-          query = query.eq('template_id', options.templateType);
-          console.log('🔍 [Step 1] templateType フィルター:', options.templateType);
+          let query = supabase
+            .from('user_games')
+            .select('*')
+            .eq('is_published', true)
+            .order('created_at', { ascending: false });
+
+          // フィルター適用
+          if (options.templateType) {
+            query = query.eq('template_id', options.templateType);
+          }
+          if (options.searchQuery) {
+            query = query.ilike('title', `%${options.searchQuery}%`);
+          }
+          if (options.limit) {
+            query = query.limit(options.limit);
+          }
+          if (options.offset) {
+            query = query.range(options.offset, options.offset + (options.limit || 20) - 1);
+          }
+
+          console.log(`🔍 [Step 1] クエリ実行中... (試行 ${attempt}/${maxRetries}, タイムアウト: ${timeoutMs/1000}秒)`);
+
+          // タイムアウト処理付きでクエリ実行
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`タイムアウト (${timeoutMs/1000}秒)`)), timeoutMs)
+          );
+
+          const { data, error } = await Promise.race([query, timeoutPromise]);
+
+          if (error) {
+            throw new Error(error.message);
+          }
+
+          const queryElapsed = Date.now() - queryStartTime;
+          console.log(`✅ [Step 1] ゲーム取得成功: ${data?.length || 0}件 (${queryElapsed}ms)`);
+
+          // データがない場合は空配列を返す
+          if (!data || data.length === 0) {
+            return [];
+          }
+
+          // Step 2: プロフィール情報を一括取得
+          const creatorIds = [...new Set(data.map((game: any) => game.creator_id))];
+
+          const profileTimeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('プロフィール取得タイムアウト')), 10000)
+          );
+
+          const profileQuery = supabase
+            .from('profiles')
+            .select('id, username, display_name, avatar_url')
+            .in('id', creatorIds);
+
+          let profilesMap: Record<string, any> = {};
+          try {
+            const { data: profileData, error: profileError } = await Promise.race([profileQuery, profileTimeoutPromise]);
+            if (!profileError && profileData) {
+              profilesMap = profileData.reduce((acc: any, profile: any) => {
+                acc[profile.id] = profile;
+                return acc;
+              }, {});
+            }
+          } catch {
+            console.warn('⚠️ プロフィール取得失敗、スキップして続行');
+          }
+
+          // Step 3: ゲームとプロフィールを結合
+          const gamesWithProfiles = data.map((game: any) => ({
+            ...game,
+            profiles: profilesMap[game.creator_id] || null
+          }));
+
+          return gamesWithProfiles;
+
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          console.warn(`⚠️ [試行 ${attempt}/${maxRetries}] 失敗: ${lastError.message}`);
+
+          if (attempt < maxRetries) {
+            console.log(`🔄 ${attempt + 1}回目のリトライを実行...`);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 1秒待機
+          }
         }
-
-        if (options.searchQuery) {
-          query = query.ilike('title', `%${options.searchQuery}%`);
-          console.log('🔍 [Step 1] searchQuery フィルター:', options.searchQuery);
-        }
-
-        if (options.limit) {
-          query = query.limit(options.limit);
-          console.log('🔍 [Step 1] limit:', options.limit);
-        }
-
-        if (options.offset) {
-          query = query.range(options.offset, options.offset + (options.limit || 20) - 1);
-          console.log('🔍 [Step 1] offset:', options.offset);
-        }
-
-        console.log('🔍 [Step 1] クエリ実行中... (タイムアウト: 30秒)');
-
-        // タイムアウト処理付きでクエリ実行（30秒）
-        const timeoutPromise1 = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('ゲーム取得がタイムアウトしました（30秒）')), 30000)
-        );
-
-        const { data, error } = await Promise.race([
-          query,
-          timeoutPromise1
-        ]) as any;
-
-        const queryElapsed = Date.now() - queryStartTime;
-        console.log(`⏱️ [Step 1] クエリ実行時間: ${queryElapsed}ms`);
-
-        if (error) {
-          console.error('❌ [Step 1] クエリエラー:', error);
-          throw new SupabaseError(error.message);
-        }
-
-        console.log('✅ [Step 1] ゲーム取得成功:', data?.length || 0, '件');
-
-        // データがない場合は空配列を返す
-        if (!data || data.length === 0) {
-          console.log('✅ [完了] データなし、空配列を返します');
-          return [];
-        }
-
-        // Step 2: プロフィール情報を一括取得
-        console.log('🔍 [Step 2] プロフィール情報を一括取得中...');
-        const profileStartTime = Date.now();
-
-        // creator_idのリストを抽出（重複排除）
-        const creatorIds = [...new Set(data.map((game: any) => game.creator_id))];
-        console.log('🔍 [Step 2] 取得するプロフィール数:', creatorIds.length);
-
-        // タイムアウト処理付きでプロフィール一括取得（15秒）
-        const timeoutPromise2 = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('プロフィール取得がタイムアウトしました（15秒）')), 15000)
-        );
-
-        const profileQuery = supabase
-          .from('profiles')
-          .select('id, username, display_name, avatar_url')
-          .in('id', creatorIds);
-
-        const profileResult = await Promise.race([
-          profileQuery,
-          timeoutPromise2
-        ]) as any;
-
-        const profileElapsed = Date.now() - profileStartTime;
-        console.log(`⏱️ [Step 2] プロフィール取得時間: ${profileElapsed}ms`);
-
-        let profilesMap: Record<string, any> = {};
-
-        if (profileResult.error) {
-          console.warn('⚠️ [Step 2] プロフィール取得エラー:', profileResult.error);
-          console.warn('⚠️ [Step 2] プロフィールなしで続行します');
-        } else if (profileResult.data) {
-          console.log('✅ [Step 2] プロフィール取得成功:', profileResult.data.length, '件');
-          // プロフィールをMapに変換（高速検索用）
-          profilesMap = profileResult.data.reduce((acc: any, profile: any) => {
-            acc[profile.id] = profile;
-            return acc;
-          }, {});
-        }
-
-        // Step 3: ゲームとプロフィールを結合
-        console.log('🔍 [Step 3] ゲームとプロフィールを結合中...');
-
-        const gamesWithProfiles = data.map((game: any) => ({
-          ...game,
-          profiles: profilesMap[game.creator_id] || null
-        }));
-
-        const totalElapsed = Date.now() - queryStartTime;
-        console.log(`✅ [完了] 全処理完了: ${gamesWithProfiles.length}件 (合計時間: ${totalElapsed}ms)`);
-        
-        return gamesWithProfiles;
-
-      } catch (error) {
-        console.error('❌ [エラー] getPublished で予期しないエラー:', error);
-        
-        if (error instanceof Error) {
-          console.error('❌ エラーメッセージ:', error.message);
-          console.error('❌ エラースタック:', error.stack);
-        }
-        
-        // エラーを再スローせず、空配列を返す（サイトが表示されるようにする）
-        console.warn('⚠️ エラーが発生しましたが、空配列を返して続行します');
-        return [];
       }
+
+      // 全リトライ失敗
+      console.error('❌ 全リトライ失敗:', lastError?.message);
+      return [];
     },
 
     getUserGames: async (userId: string) => {
