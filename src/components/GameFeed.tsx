@@ -89,118 +89,126 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
     fetchedRef.current = true;
 
     const fetchFeedData = async () => {
-      console.log('🎮 GameFeed: フィードデータ取得開始');
+      console.log('🎮 GameFeed: フィードデータ取得開始（並列実行）');
 
-      // トレンドゲーム（週間、12件に制限）
-      try {
-        console.log('📊 トレンドゲーム取得中...');
-        const trendingGames = await withTimeout(
-          socialService.getTrendingGames('week', 'trending', 12),
-          8000
-        );
-        console.log('✅ トレンドゲーム取得成功:', trendingGames?.length || 0);
-        updateSection('trending', trendingGames || [], false);
-      } catch (err) {
-        console.error('❌ トレンドゲーム取得エラー:', err);
+      // フォロー中ゲーム取得関数
+      const fetchFollowingGames = async (): Promise<PublicGame[]> => {
+        if (!currentUser) {
+          console.log('ℹ️ ゲストユーザー - フォロー中スキップ');
+          return [];
+        }
+
+        console.log('👥 フォロー中ゲーム取得中...');
+        const followsQuery = supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', currentUser.id);
+
+        const followsResult = await withTimeout(followsQuery, 8000);
+        const followingData = followsResult?.data;
+
+        if (!followingData || followingData.length === 0) {
+          console.log('ℹ️ フォロー中のユーザーなし');
+          return [];
+        }
+
+        const followingIds = followingData.map((f: any) => f.following_id);
+
+        const gamesQuery = supabase
+          .from('user_games')
+          .select(`
+            id, title, description, thumbnail_url, user_id, created_at, updated_at,
+            profiles!user_games_user_id_fkey (id, username, avatar_url)
+          `)
+          .in('user_id', followingIds)
+          .eq('status', 'published')
+          .order('created_at', { ascending: false })
+          .limit(12);
+
+        const gamesResult = await withTimeout(gamesQuery, 8000);
+        const followingGames = gamesResult?.data;
+
+        if (!followingGames) return [];
+
+        return followingGames.map((game: any) => ({
+          id: game.id,
+          title: game.title || 'Untitled',
+          description: game.description || '',
+          thumbnail: game.thumbnail_url || '',
+          author: {
+            id: game.profiles?.id || game.user_id,
+            name: game.profiles?.username || 'Unknown',
+            avatar: game.profiles?.avatar_url || ''
+          },
+          stats: { likes: 0, shares: 0, bookmarks: 0, views: 0 },
+          tags: [],
+          category: '',
+          createdAt: game.created_at,
+          updatedAt: game.updated_at
+        }));
+      };
+
+      // 全セクションを並列実行（最大8秒で全て完了）
+      const [trendingResult, followingResult, tagsResult, randomResult] = await Promise.allSettled([
+        // トレンドゲーム
+        withTimeout(socialService.getTrendingGames('week', 'trending', 12), 8000)
+          .then(games => {
+            console.log('✅ トレンドゲーム取得成功:', games?.length || 0);
+            return games || [];
+          }),
+        // フォロー中
+        fetchFollowingGames()
+          .then(games => {
+            console.log('✅ フォロー中ゲーム取得成功:', games.length);
+            return games;
+          }),
+        // おすすめ
+        withTimeout(socialService.getTrendingGames('week', 'popular', 12), 8000)
+          .then(games => {
+            console.log('✅ おすすめゲーム取得成功:', games?.length || 0);
+            return games || [];
+          }),
+        // ランダム
+        withTimeout(socialService.getRandomGames(12), 8000)
+          .then(games => {
+            console.log('✅ ランダムゲーム取得成功:', games?.length || 0);
+            return games || [];
+          }),
+      ]);
+
+      // 結果を各セクションに反映
+      if (trendingResult.status === 'fulfilled') {
+        updateSection('trending', trendingResult.value, false);
+      } else {
+        console.error('❌ トレンドゲーム取得エラー:', trendingResult.reason);
         updateSection('trending', [], false, 'Failed to load trending games');
       }
 
-      // フォロー中（ログインユーザーのみ、12件に制限）
-      if (currentUser) {
-        try {
-          console.log('👥 フォロー中ゲーム取得中...');
-          const followsQuery = supabase
-            .from('follows')
-            .select('following_id')
-            .eq('follower_id', currentUser.id);
-
-          const followsResult = await withTimeout(followsQuery, 8000);
-          const followingData = followsResult?.data;
-
-          if (followingData && followingData.length > 0) {
-            const followingIds = followingData.map((f: any) => f.following_id);
-            
-            const gamesQuery = supabase
-              .from('user_games')
-              .select(`
-                id, title, description, thumbnail_url, user_id, created_at, updated_at,
-                profiles!user_games_user_id_fkey (id, username, avatar_url)
-              `)
-              .in('user_id', followingIds)
-              .eq('status', 'published')
-              .order('created_at', { ascending: false })
-              .limit(12);
-
-            const gamesResult = await withTimeout(gamesQuery, 8000);
-            const followingGames = gamesResult?.data;
-
-            if (followingGames) {
-              const formattedGames: PublicGame[] = followingGames.map((game: any) => ({
-                id: game.id,
-                title: game.title || 'Untitled',
-                description: game.description || '',
-                thumbnail: game.thumbnail_url || '',
-                author: {
-                  id: game.profiles?.id || game.user_id,
-                  name: game.profiles?.username || 'Unknown',
-                  avatar: game.profiles?.avatar_url || ''
-                },
-                stats: { likes: 0, shares: 0, bookmarks: 0, views: 0 },
-                tags: [],
-                category: '',
-                createdAt: game.created_at,
-                updatedAt: game.updated_at
-              }));
-              console.log('✅ フォロー中ゲーム取得成功:', formattedGames.length);
-              updateSection('following', formattedGames, false);
-            } else {
-              updateSection('following', [], false);
-            }
-          } else {
-            console.log('ℹ️ フォロー中のユーザーなし');
-            updateSection('following', [], false);
-          }
-        } catch (err) {
-          console.error('❌ フォロー中ゲーム取得エラー:', err);
-          updateSection('following', [], false, 'Failed to load following games');
-        }
+      if (followingResult.status === 'fulfilled') {
+        updateSection('following', followingResult.value, false);
       } else {
-        console.log('ℹ️ ゲストユーザー - フォロー中スキップ');
-        updateSection('following', [], false);
+        console.error('❌ フォロー中ゲーム取得エラー:', followingResult.reason);
+        updateSection('following', [], false, 'Failed to load following games');
       }
 
-      // おすすめ（12件に制限）
-      try {
-        console.log('✨ おすすめゲーム取得中...');
-        const tagGames = await withTimeout(
-          socialService.getTrendingGames('week', 'popular', 12),
-          8000
-        );
-        console.log('✅ おすすめゲーム取得成功:', tagGames?.length || 0);
-        updateSection('tags', tagGames || [], false);
-      } catch (err) {
-        console.error('❌ おすすめゲーム取得エラー:', err);
+      if (tagsResult.status === 'fulfilled') {
+        updateSection('tags', tagsResult.value, false);
+      } else {
+        console.error('❌ おすすめゲーム取得エラー:', tagsResult.reason);
         updateSection('tags', [], false, 'Failed to load recommended games');
       }
 
-      // ランダム（12件に制限）
-      try {
-        console.log('🎲 ランダムゲーム取得中...');
-        const randomGames = await withTimeout(
-          socialService.getRandomGames(12),
-          8000
-        );
-        console.log('✅ ランダムゲーム取得成功:', randomGames?.length || 0);
-        updateSection('random', randomGames || [], false);
-      } catch (err) {
-        console.error('❌ ランダムゲーム取得エラー:', err);
+      if (randomResult.status === 'fulfilled') {
+        updateSection('random', randomResult.value, false);
+      } else {
+        console.error('❌ ランダムゲーム取得エラー:', randomResult.reason);
         updateSection('random', [], false, 'Failed to load random games');
       }
 
       // プレミアム（Coming Soon）
       updateSection('premium', [], false);
 
-      console.log('🎮 GameFeed: フィードデータ取得完了');
+      console.log('🎮 GameFeed: フィードデータ取得完了（並列実行）');
     };
 
     fetchFeedData();
