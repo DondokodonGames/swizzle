@@ -46,14 +46,14 @@ export const warmupConnection = async (): Promise<boolean> => {
     return true;
   }
 
-  // ウォームアップ中の場合は待機（最大10秒）
+  // ウォームアップ中の場合は待機（最大5秒）
   if (warmupPromise) {
     console.log('🔥 [Warmup] ウォームアップ中...待機');
     const timeoutPromise = new Promise<boolean>((resolve) =>
       setTimeout(() => {
         console.warn('⚠️ [Warmup] 待機タイムアウト、スキップして続行');
         resolve(true);
-      }, 10000)
+      }, 5000)
     );
     return Promise.race([warmupPromise, timeoutPromise]);
   }
@@ -64,9 +64,9 @@ export const warmupConnection = async (): Promise<boolean> => {
     const startTime = Date.now();
 
     try {
-      // タイムアウト付きクエリ（10秒）
+      // タイムアウト付きクエリ（5秒）
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Warmup timeout')), 10000)
+        setTimeout(() => reject(new Error('Warmup timeout')), 5000)
       );
 
       // 軽量なクエリで接続を確立（1件のみ取得）
@@ -219,10 +219,10 @@ export const database = {
   userGames: {
     getPublished: async (options: any = {}) => {
       console.log('🔍 [database.userGames.getPublished] 開始:', options);
-      
-      // ウォームアップ完了を待機
-      await warmupConnection();
-      
+
+      // ウォームアップをバックグラウンドで開始（ブロックしない）
+      warmupConnection().catch(() => {});
+
       try {
         // Step 1: 基本クエリでゲーム取得
         const queryStartTime = Date.now();
