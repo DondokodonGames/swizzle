@@ -2,9 +2,28 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
-// Import translations
-import en from './locales/en.json';
-import ja from './locales/ja.json';
+/**
+ * Swizzle Localization System
+ *
+ * Structure (for en/ja):
+ * src/i18n/locales/{lang}/
+ * ├── index.ts          # Merges all JSON files
+ * ├── common.json       # common, errors, success
+ * ├── auth.json         # auth
+ * ├── editor.json       # editor (large section)
+ * ├── gameLogic.json    # conditions, actions, movements, effects, positions, speeds, durations, difficulties
+ * ├── social.json       # gameFeed, profile
+ * ├── monetization.json # monetization, pricing
+ * └── game.json         # game, bridge
+ *
+ * Other languages use legacy single JSON files until fully migrated.
+ */
+
+// Import translations - en/ja use new split structure
+import en from './locales/en';
+import ja from './locales/ja';
+
+// Other languages use legacy single JSON files
 import fr from './locales/fr.json';
 import it from './locales/it.json';
 import de from './locales/de.json';
@@ -30,7 +49,7 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    lng: 'en', // ✅ デフォルト言語を英語に明示的に指定（海外コミュニティ先行戦略）
+    lng: 'en', // Default language (international community strategy)
     fallbackLng: 'en',
     debug: false,
 
@@ -39,7 +58,7 @@ i18n
     },
 
     detection: {
-      // ✅ localStorageに保存されている言語を最優先、なければ英語
+      // Prioritize localStorage, fallback to English
       order: ['localStorage', 'querystring', 'cookie'],
       caches: ['localStorage'],
       lookupLocalStorage: 'swizzle-language',
@@ -61,4 +80,4 @@ export const supportedLanguages = [
   { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
 ] as const;
 
-export type SupportedLanguage = typeof supportedLanguages[number]['code'];
+export type SupportedLanguage = (typeof supportedLanguages)[number]['code'];

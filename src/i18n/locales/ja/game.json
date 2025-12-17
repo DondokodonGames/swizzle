@@ -1,0 +1,31 @@
+{
+  "game": {
+    "start": "スタート",
+    "pause": "ポーズ",
+    "resume": "再開",
+    "restart": "リスタート",
+    "quit": "やめる",
+    "success": "クリア！",
+    "failure": "ゲームオーバー",
+    "score": "スコア",
+    "time": "時間",
+    "bestScore": "ハイスコア"
+  },
+  "bridge": {
+    "copyButton": "パクる",
+    "nextButton": "次へ",
+    "againButton": "もう一度",
+    "skipButton": "スキップ",
+    "copySuccessTitle": "パクリ完了！",
+    "copySuccessMessage": "ゲームのルールをコピーしました。エディターで画像を差し替えて、自分だけのゲームを作りましょう！",
+    "openEditorButton": "エディターを開く",
+    "editLaterButton": "後で編集する",
+    "errors": {
+      "gameDataFetchFailed": "ゲームデータの取得に失敗しました",
+      "cannotCopy": "このゲームはコピーできません",
+      "noRulesToCopy": "このゲームにはルールが設定されていないため、コピーできません。",
+      "copyFailed": "ゲームのコピーに失敗しました",
+      "unknownError": "不明なエラー"
+    }
+  }
+}

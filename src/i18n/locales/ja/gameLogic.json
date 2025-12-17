@@ -1,0 +1,471 @@
+{
+  "conditions": {
+    "touch": {
+      "label": "タッチしたとき",
+      "description": "オブジェクトをタップしたら発動",
+      "down": {
+        "label": "タップ",
+        "description": "タッチした瞬間に発動"
+      },
+      "up": {
+        "label": "リリース",
+        "description": "指を離した瞬間に発動"
+      },
+      "hold": {
+        "label": "長押し",
+        "description": "指定時間タッチし続けたら発動"
+      },
+      "targets": {
+        "self": {
+          "label": "このオブジェクト",
+          "description": "このオブジェクトへのタッチ"
+        },
+        "stage": {
+          "label": "ステージ全体",
+          "description": "ステージ全体へのタッチ"
+        },
+        "stageArea": {
+          "label": "ステージ範囲",
+          "description": "ステージの指定範囲へのタッチ"
+        }
+      }
+    },
+    "time": {
+      "label": "時間経過",
+      "description": "指定時間後に自動発動",
+      "exact": {
+        "label": "指定時刻",
+        "description": "指定した正確な時刻に1回発動"
+      },
+      "range": {
+        "label": "時間範囲",
+        "description": "指定した時間範囲内で継続的に発動"
+      },
+      "interval": {
+        "label": "繰り返し",
+        "description": "指定した時間間隔で繰り返し発動"
+      }
+    },
+    "position": {
+      "label": "位置にいるとき",
+      "description": "指定エリアに入った・出た時"
+    },
+    "collision": {
+      "label": "ぶつかったとき",
+      "description": "他のオブジェクトと衝突時",
+      "types": {
+        "enter": {
+          "label": "衝突開始",
+          "description": "衝突した瞬間に発動"
+        },
+        "stay": {
+          "label": "衝突中",
+          "description": "衝突している間ずっと発動"
+        },
+        "exit": {
+          "label": "衝突終了",
+          "description": "衝突が終わった瞬間に発動"
+        }
+      },
+      "targets": {
+        "background": {
+          "label": "背景",
+          "description": "背景との衝突を判定"
+        },
+        "stage": {
+          "label": "ステージ範囲",
+          "description": "ステージの指定範囲内への侵入を判定"
+        },
+        "object": {
+          "label": "他のオブジェクト",
+          "description": "他のオブジェクトとの衝突を判定"
+        }
+      },
+      "checkModes": {
+        "hitbox": {
+          "label": "当たり判定（高速）",
+          "description": "矩形の当たり判定で高速に衝突検知"
+        },
+        "pixel": {
+          "label": "ピクセル判定（精密）",
+          "description": "ピクセル単位で精密に衝突検知"
+        }
+      }
+    },
+    "animation": {
+      "label": "アニメ終了時",
+      "description": "アニメーションが終了した時",
+      "start": {
+        "label": "開始時",
+        "description": "アニメーション開始した時"
+      },
+      "end": {
+        "label": "終了時",
+        "description": "アニメーション終了した時"
+      },
+      "frame": {
+        "label": "特定フレーム",
+        "description": "特定のフレームに達した時"
+      },
+      "loop": {
+        "label": "ループ時",
+        "description": "アニメーションがループした時"
+      }
+    },
+    "targets": {
+      "background": {
+        "label": "背景",
+        "description": "背景アニメーション"
+      },
+      "this": {
+        "label": "このオブジェクト",
+        "description": "このオブジェクトのアニメーション"
+      },
+      "other": {
+        "label": "他のオブジェクト",
+        "description": "他のオブジェクトのアニメーション"
+      }
+    },
+    "flag": {
+      "label": "フラグがONのとき",
+      "description": "カスタムフラグの状態確認",
+      "on": {
+        "label": "ONのとき",
+        "description": "フラグがONの状態で発動"
+      },
+      "off": {
+        "label": "OFFのとき",
+        "description": "フラグがOFFの状態で発動"
+      },
+      "offToOn": {
+        "label": "OFF→ON",
+        "description": "フラグがOFFからONに変化した瞬間に発動"
+      },
+      "onToOff": {
+        "label": "ON→OFF",
+        "description": "フラグがONからOFFに変化した瞬間に発動"
+      }
+    },
+    "gameState": {
+      "label": "ゲーム状態",
+      "description": "ゲーム全体の状態確認",
+      "success": {
+        "label": "成功状態",
+        "description": "ゲームクリア状態",
+        "detail": "プレイヤーが勝利条件を達成し、ゲームをクリアした状態",
+        "examples": [
+          "全てのアイテムを集めた",
+          "ゴールに到達した",
+          "スコアが目標値に達した"
+        ]
+      },
+      "failure": {
+        "label": "失敗状態",
+        "description": "ゲームオーバー状態",
+        "detail": "プレイヤーが敗北条件を満たし、ゲームオーバーになった状態",
+        "examples": [
+          "ライフが0になった",
+          "時間切れになった",
+          "障害物に当たった"
+        ]
+      },
+      "playing": {
+        "label": "プレイ中",
+        "description": "通常のプレイ状態",
+        "detail": "ゲームが開始され、プレイヤーが操作可能な通常のプレイ状態",
+        "examples": [
+          "ゲーム開始直後",
+          "通常の操作中",
+          "アクション実行中"
+        ]
+      },
+      "paused": {
+        "label": "一時停止中",
+        "description": "ポーズ状態",
+        "detail": "ゲームが一時停止され、時間が停止している状態",
+        "examples": [
+          "ポーズボタン押下時",
+          "メニュー表示中",
+          "設定画面表示中"
+        ]
+      },
+      "checkTypes": {
+        "is": {
+          "label": "である間",
+          "description": "指定状態である間、継続的に発動"
+        },
+        "not": {
+          "label": "でない間",
+          "description": "指定状態でない間、継続的に発動"
+        },
+        "became": {
+          "label": "になった瞬間",
+          "description": "状態変化の瞬間のみ1回発動"
+        }
+      }
+    },
+    "score": {
+      "label": "スコア条件",
+      "description": "スコアが特定値に達した時"
+    }
+  },
+  "actions": {
+    "success": {
+      "label": "ゲームクリア！",
+      "description": "成功でゲーム終了"
+    },
+    "failure": {
+      "label": "ゲームオーバー",
+      "description": "失敗でゲーム終了"
+    },
+    "pause": {
+      "label": "ポーズ",
+      "description": "ゲームを一時停止"
+    },
+    "restart": {
+      "label": "リスタート",
+      "description": "ゲームを最初から"
+    },
+    "playSound": {
+      "label": "音を鳴らす",
+      "description": "効果音を再生"
+    },
+    "playBGM": {
+      "label": "BGM再生",
+      "description": "バックグラウンドミュージック再生"
+    },
+    "stopSound": {
+      "label": "音停止",
+      "description": "音声再生を停止"
+    },
+    "move": {
+      "label": "移動する",
+      "description": "指定位置に移動"
+    },
+    "show": {
+      "label": "表示する",
+      "description": "オブジェクトを表示"
+    },
+    "hide": {
+      "label": "隠す",
+      "description": "オブジェクトを非表示"
+    },
+    "switchAnimation": {
+      "label": "アニメ変更",
+      "description": "アニメーションを切り替え"
+    },
+    "effect": {
+      "label": "エフェクト",
+      "description": "フラッシュ・シェイク等"
+    },
+    "particles": {
+      "label": "パーティクル",
+      "description": "パーティクルエフェクト"
+    },
+    "setFlag": {
+      "label": "フラグ設定",
+      "description": "カスタムフラグをON/OFF"
+    },
+    "flags": {
+      "setFlag": {
+        "label": "フラグ設定",
+        "description": "フラグを指定状態（ON/OFF）に設定"
+      },
+      "toggleFlag": {
+        "label": "フラグ反転",
+        "description": "フラグの状態を反転（ON⇔OFF）"
+      },
+      "values": {
+        "on": {
+          "label": "ON",
+          "description": "フラグをON状態に設定"
+        },
+        "off": {
+          "label": "OFF",
+          "description": "フラグをOFF状態に設定"
+        }
+      },
+      "effects": {
+        "setOn": "フラグをON状態に設定",
+        "setOff": "フラグをOFF状態に設定",
+        "toggle": "現在の状態から反転（ON⇔OFF）"
+      }
+    },
+    "showHide": {
+      "show": {
+        "label": "表示",
+        "description": "オブジェクトを表示する"
+      },
+      "hide": {
+        "label": "非表示",
+        "description": "オブジェクトを非表示にする"
+      },
+      "fade": {
+        "enabled": {
+          "label": "フェード有効",
+          "description": "滑らかに表示/非表示を切り替え"
+        },
+        "disabled": {
+          "label": "即座に切替",
+          "description": "瞬時に表示/非表示を切り替え"
+        }
+      },
+      "duration": {
+        "instant": {
+          "label": "瞬時",
+          "description": "0.1秒"
+        },
+        "fast": {
+          "label": "速い",
+          "description": "0.3秒"
+        },
+        "normal": {
+          "label": "標準",
+          "description": "0.5秒"
+        },
+        "slow": {
+          "label": "遅い",
+          "description": "1.0秒"
+        },
+        "verySlow": {
+          "label": "とても遅い",
+          "description": "2.0秒"
+        }
+      }
+    },
+    "randomAction": {
+      "label": "ランダムアクション",
+      "description": "複数のアクションからランダムに実行"
+    }
+  },
+  "movements": {
+    "straight": {
+      "label": "まっすぐ移動",
+      "description": "指定位置へ直線移動"
+    },
+    "teleport": {
+      "label": "瞬間移動",
+      "description": "即座に位置変更"
+    },
+    "wander": {
+      "label": "ふらふら移動",
+      "description": "ランダムな方向に移動"
+    },
+    "bounce": {
+      "label": "ぴょんぴょん",
+      "description": "跳ねるような移動"
+    },
+    "orbit": {
+      "label": "回転移動",
+      "description": "円形軌道で移動"
+    },
+    "approach": {
+      "label": "追跡移動",
+      "description": "他のオブジェクトに近づく"
+    },
+    "stop": {
+      "label": "停止",
+      "description": "その場で停止"
+    },
+    "swap": {
+      "label": "入れ替わり",
+      "description": "目標と位置を入れ替える"
+    }
+  },
+  "effects": {
+    "flash": {
+      "label": "フラッシュ",
+      "description": "画面・オブジェクトを光らせる"
+    },
+    "glow": {
+      "label": "発光",
+      "description": "オブジェクトを光らせる"
+    },
+    "shake": {
+      "label": "シェイク",
+      "description": "振動・揺れエフェクト"
+    },
+    "scale": {
+      "label": "拡大縮小",
+      "description": "サイズ変更エフェクト"
+    },
+    "rotate": {
+      "label": "回転",
+      "description": "回転エフェクト"
+    },
+    "fade": {
+      "label": "フェード",
+      "description": "フェードイン・アウト"
+    },
+    "confetti": {
+      "label": "紙吹雪",
+      "description": "お祝い用パーティクル"
+    },
+    "monochrome": {
+      "label": "モノクロ",
+      "description": "白黒フィルター効果"
+    },
+    "particles": {
+      "label": "パーティクル",
+      "description": "パーティクル放出"
+    }
+  },
+  "positions": {
+    "center": "中央エリア",
+    "top": "上部エリア",
+    "bottom": "下部エリア",
+    "left": "左側エリア",
+    "right": "右側エリア",
+    "corners": "四隅"
+  },
+  "speeds": {
+    "slow": {
+      "label": "ゆっくり",
+      "description": "100px/秒"
+    },
+    "normal": {
+      "label": "普通",
+      "description": "300px/秒"
+    },
+    "fast": {
+      "label": "早い",
+      "description": "600px/秒"
+    },
+    "instant": {
+      "label": "瞬間",
+      "description": "即座移動"
+    }
+  },
+  "durations": {
+    "5": {
+      "label": "5秒",
+      "description": "サクッと"
+    },
+    "10": {
+      "label": "10秒",
+      "description": "ちょうどいい"
+    },
+    "15": {
+      "label": "15秒",
+      "description": "じっくり"
+    },
+    "30": {
+      "label": "30秒",
+      "description": "たっぷり"
+    }
+  },
+  "difficulties": {
+    "easy": {
+      "label": "やさしい",
+      "description": "誰でも楽しめる"
+    },
+    "normal": {
+      "label": "ふつう",
+      "description": "ちょうどいい挑戦"
+    },
+    "hard": {
+      "label": "むずかしい",
+      "description": "上級者向け"
+    }
+  }
+}

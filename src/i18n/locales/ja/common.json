@@ -1,0 +1,123 @@
+{
+  "common": {
+    "loading": "読み込み中...",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "create": "作成",
+    "confirm": "確認",
+    "close": "閉じる",
+    "back": "戻る",
+    "next": "次へ",
+    "done": "完了",
+    "retry": "再試行",
+    "search": "検索",
+    "settings": "設定",
+    "help": "ヘルプ",
+    "logout": "ログアウト",
+    "login": "ログイン",
+    "signup": "新規登録",
+    "backToHome": "ホームに戻る",
+    "processing": "処理中...",
+    "selectFile": "ファイルを選択",
+    "on": "ON",
+    "off": "OFF",
+    "frames": {
+      "frame1": {
+        "label": "フレーム1",
+        "description": "1番目のフレーム"
+      },
+      "frame2": {
+        "label": "フレーム2",
+        "description": "2番目のフレーム"
+      },
+      "frame3": {
+        "label": "フレーム3",
+        "description": "3番目のフレーム"
+      },
+      "frame4": {
+        "label": "フレーム4",
+        "description": "4番目のフレーム"
+      },
+      "frame5": {
+        "label": "フレーム5",
+        "description": "5番目のフレーム"
+      },
+      "frame6": {
+        "label": "フレーム6",
+        "description": "6番目のフレーム"
+      },
+      "frame7": {
+        "label": "フレーム7",
+        "description": "7番目のフレーム"
+      },
+      "frame8": {
+        "label": "フレーム8",
+        "description": "8番目のフレーム"
+      }
+    },
+    "animations": {
+      "animation1": {
+        "label": "アニメ1",
+        "description": "1番目のアニメーション"
+      },
+      "animation2": {
+        "label": "アニメ2",
+        "description": "2番目のアニメーション"
+      },
+      "animation3": {
+        "label": "アニメ3",
+        "description": "3番目のアニメーション"
+      },
+      "animation4": {
+        "label": "アニメ4",
+        "description": "4番目のアニメーション"
+      },
+      "animation5": {
+        "label": "アニメ5",
+        "description": "5番目のアニメーション"
+      },
+      "animation6": {
+        "label": "アニメ6",
+        "description": "6番目のアニメーション"
+      },
+      "animation7": {
+        "label": "アニメ7",
+        "description": "7番目のアニメーション"
+      },
+      "animation8": {
+        "label": "アニメ8",
+        "description": "8番目のアニメーション"
+      }
+    }
+  },
+  "errors": {
+    "generic": "予期しないエラーが発生しました",
+    "network": "ネットワークエラーが発生しました",
+    "projectNotFound": "プロジェクトが見つかりません",
+    "projectLoadFailed": "プロジェクトの読み込みに失敗しました",
+    "projectSaveFailed": "プロジェクトの保存に失敗しました",
+    "fileTooLarge": "ファイルサイズが上限を超えています",
+    "invalidFileType": "サポートされていないファイル形式です",
+    "fileUploadFailed": "ファイルのアップロードに失敗しました",
+    "gameNameRequired": "ゲーム名を入力してください",
+    "gameNameTooLong": "ゲーム名は50文字以内で入力してください",
+    "descriptionTooLong": "説明文は200文字以内で入力してください",
+    "noAssets": "最低1つのオブジェクトまたは背景を追加してください",
+    "noRules": "ゲームルールまたは成功条件を設定してください",
+    "publishFailed": "ゲームの公開に失敗しました",
+    "exportFailed": "エクスポートに失敗しました",
+    "testPlayFailed": "テストプレイに失敗しました",
+    "projectSizeExceeded": "プロジェクトサイズが上限を超えています",
+    "assetLimitExceeded": "アセット数が上限を超えています"
+  },
+  "success": {
+    "projectSaved": "プロジェクトを保存しました",
+    "projectPublished": "ゲームを公開しました",
+    "projectExported": "プロジェクトをエクスポートしました",
+    "fileUploaded": "ファイルをアップロードしました",
+    "testPlaySuccess": "テストプレイが成功しました",
+    "thumbnailGenerated": "サムネイルを生成しました"
+  }
+}

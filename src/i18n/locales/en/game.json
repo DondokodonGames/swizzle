@@ -1,0 +1,31 @@
+{
+  "game": {
+    "start": "Start",
+    "pause": "Pause",
+    "resume": "Resume",
+    "restart": "Restart",
+    "quit": "Quit",
+    "success": "Clear!",
+    "failure": "Game Over",
+    "score": "Score",
+    "time": "Time",
+    "bestScore": "Best Score"
+  },
+  "bridge": {
+    "copyButton": "Copy",
+    "nextButton": "Next",
+    "againButton": "Again",
+    "skipButton": "Skip",
+    "copySuccessTitle": "Copy Complete!",
+    "copySuccessMessage": "Game rules copied. Swap images in the editor to create your own unique game!",
+    "openEditorButton": "Open Editor",
+    "editLaterButton": "Edit Later",
+    "errors": {
+      "gameDataFetchFailed": "Failed to fetch game data",
+      "cannotCopy": "This game cannot be copied",
+      "noRulesToCopy": "Cannot copy this game as it has no rules set.",
+      "copyFailed": "Failed to copy game",
+      "unknownError": "Unknown error"
+    }
+  }
+}

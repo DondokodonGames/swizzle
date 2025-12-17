@@ -1,0 +1,471 @@
+{
+  "conditions": {
+    "touch": {
+      "label": "On Touch",
+      "description": "Triggers when object is tapped",
+      "down": {
+        "label": "Tap",
+        "description": "Triggers at the moment of touch"
+      },
+      "up": {
+        "label": "Release",
+        "description": "Triggers when finger is released"
+      },
+      "hold": {
+        "label": "Hold",
+        "description": "Triggers after holding for specified duration"
+      },
+      "targets": {
+        "self": {
+          "label": "This Object",
+          "description": "Touch on this object"
+        },
+        "stage": {
+          "label": "Entire Stage",
+          "description": "Touch anywhere on stage"
+        },
+        "stageArea": {
+          "label": "Stage Region",
+          "description": "Touch on specified stage region"
+        }
+      }
+    },
+    "time": {
+      "label": "Time Elapsed",
+      "description": "Auto triggers after specified time",
+      "exact": {
+        "label": "Exact Time",
+        "description": "Triggers once at exact specified time"
+      },
+      "range": {
+        "label": "Time Range",
+        "description": "Triggers continuously within specified time range"
+      },
+      "interval": {
+        "label": "Repeat",
+        "description": "Triggers repeatedly at specified interval"
+      }
+    },
+    "position": {
+      "label": "At Position",
+      "description": "When entering/leaving specified area"
+    },
+    "collision": {
+      "label": "On Collision",
+      "description": "When colliding with another object",
+      "types": {
+        "enter": {
+          "label": "Collision Enter",
+          "description": "Triggers at the moment of collision"
+        },
+        "stay": {
+          "label": "Collision Stay",
+          "description": "Triggers continuously while colliding"
+        },
+        "exit": {
+          "label": "Collision Exit",
+          "description": "Triggers when collision ends"
+        }
+      },
+      "targets": {
+        "background": {
+          "label": "Background",
+          "description": "Detect collision with background"
+        },
+        "stage": {
+          "label": "Stage Region",
+          "description": "Detect entry into specified stage region"
+        },
+        "object": {
+          "label": "Other Objects",
+          "description": "Detect collision with other objects"
+        }
+      },
+      "checkModes": {
+        "hitbox": {
+          "label": "Hitbox (Fast)",
+          "description": "Fast collision detection using rectangular hitbox"
+        },
+        "pixel": {
+          "label": "Pixel Perfect (Precise)",
+          "description": "Precise collision detection at pixel level"
+        }
+      }
+    },
+    "animation": {
+      "label": "Animation End",
+      "description": "When animation completes",
+      "start": {
+        "label": "Start",
+        "description": "When animation starts"
+      },
+      "end": {
+        "label": "End",
+        "description": "When animation ends"
+      },
+      "frame": {
+        "label": "Specific Frame",
+        "description": "When reaching specific frame"
+      },
+      "loop": {
+        "label": "Loop",
+        "description": "When animation loops"
+      }
+    },
+    "targets": {
+      "background": {
+        "label": "Background",
+        "description": "Background animation"
+      },
+      "this": {
+        "label": "This Object",
+        "description": "This object's animation"
+      },
+      "other": {
+        "label": "Other Object",
+        "description": "Other object's animation"
+      }
+    },
+    "flag": {
+      "label": "Flag is ON",
+      "description": "Check custom flag state",
+      "on": {
+        "label": "When ON",
+        "description": "Triggers when flag is ON"
+      },
+      "off": {
+        "label": "When OFF",
+        "description": "Triggers when flag is OFF"
+      },
+      "offToOn": {
+        "label": "OFF→ON",
+        "description": "Triggers when flag changes from OFF to ON"
+      },
+      "onToOff": {
+        "label": "ON→OFF",
+        "description": "Triggers when flag changes from ON to OFF"
+      }
+    },
+    "gameState": {
+      "label": "Game State",
+      "description": "Check overall game state",
+      "success": {
+        "label": "Success State",
+        "description": "Game cleared state",
+        "detail": "State when player has achieved victory conditions and cleared the game",
+        "examples": [
+          "Collected all items",
+          "Reached the goal",
+          "Score reached target value"
+        ]
+      },
+      "failure": {
+        "label": "Failure State",
+        "description": "Game over state",
+        "detail": "State when player has met defeat conditions and game is over",
+        "examples": [
+          "Life reached 0",
+          "Time ran out",
+          "Hit an obstacle"
+        ]
+      },
+      "playing": {
+        "label": "Playing",
+        "description": "Normal play state",
+        "detail": "Normal play state when game has started and player can operate",
+        "examples": [
+          "Right after game start",
+          "During normal operation",
+          "During action execution"
+        ]
+      },
+      "paused": {
+        "label": "Paused",
+        "description": "Pause state",
+        "detail": "State when game is paused and time is stopped",
+        "examples": [
+          "When pause button pressed",
+          "During menu display",
+          "During settings screen"
+        ]
+      },
+      "checkTypes": {
+        "is": {
+          "label": "While in state",
+          "description": "Triggers continuously while in specified state"
+        },
+        "not": {
+          "label": "While not in state",
+          "description": "Triggers continuously while not in specified state"
+        },
+        "became": {
+          "label": "Moment of change",
+          "description": "Triggers once only at moment of state change"
+        }
+      }
+    },
+    "score": {
+      "label": "Score Condition",
+      "description": "When score reaches specific value"
+    }
+  },
+  "actions": {
+    "success": {
+      "label": "Game Clear!",
+      "description": "End game with success"
+    },
+    "failure": {
+      "label": "Game Over",
+      "description": "End game with failure"
+    },
+    "pause": {
+      "label": "Pause",
+      "description": "Pause the game"
+    },
+    "restart": {
+      "label": "Restart",
+      "description": "Restart the game"
+    },
+    "playSound": {
+      "label": "Play Sound",
+      "description": "Play sound effect"
+    },
+    "playBGM": {
+      "label": "Play BGM",
+      "description": "Play background music"
+    },
+    "stopSound": {
+      "label": "Stop Sound",
+      "description": "Stop audio playback"
+    },
+    "move": {
+      "label": "Move",
+      "description": "Move to specified position"
+    },
+    "show": {
+      "label": "Show",
+      "description": "Show object"
+    },
+    "hide": {
+      "label": "Hide",
+      "description": "Hide object"
+    },
+    "switchAnimation": {
+      "label": "Change Animation",
+      "description": "Switch animation"
+    },
+    "effect": {
+      "label": "Effect",
+      "description": "Flash, shake, etc."
+    },
+    "particles": {
+      "label": "Particles",
+      "description": "Particle effect"
+    },
+    "setFlag": {
+      "label": "Set Flag",
+      "description": "Set custom flag ON/OFF"
+    },
+    "flags": {
+      "setFlag": {
+        "label": "Set Flag",
+        "description": "Set flag to specified state (ON/OFF)"
+      },
+      "toggleFlag": {
+        "label": "Toggle Flag",
+        "description": "Flip flag state (ON⇔OFF)"
+      },
+      "values": {
+        "on": {
+          "label": "ON",
+          "description": "Set flag to ON state"
+        },
+        "off": {
+          "label": "OFF",
+          "description": "Set flag to OFF state"
+        }
+      },
+      "effects": {
+        "setOn": "Set flag to ON state",
+        "setOff": "Set flag to OFF state",
+        "toggle": "Flip from current state (ON⇔OFF)"
+      }
+    },
+    "showHide": {
+      "show": {
+        "label": "Show",
+        "description": "Show the object"
+      },
+      "hide": {
+        "label": "Hide",
+        "description": "Hide the object"
+      },
+      "fade": {
+        "enabled": {
+          "label": "Fade Enabled",
+          "description": "Smoothly show/hide"
+        },
+        "disabled": {
+          "label": "Instant Switch",
+          "description": "Instantly show/hide"
+        }
+      },
+      "duration": {
+        "instant": {
+          "label": "Instant",
+          "description": "0.1s"
+        },
+        "fast": {
+          "label": "Fast",
+          "description": "0.3s"
+        },
+        "normal": {
+          "label": "Normal",
+          "description": "0.5s"
+        },
+        "slow": {
+          "label": "Slow",
+          "description": "1.0s"
+        },
+        "verySlow": {
+          "label": "Very Slow",
+          "description": "2.0s"
+        }
+      }
+    },
+    "randomAction": {
+      "label": "Random Action",
+      "description": "Execute random action from multiple options"
+    }
+  },
+  "movements": {
+    "straight": {
+      "label": "Straight",
+      "description": "Move in straight line to position"
+    },
+    "teleport": {
+      "label": "Teleport",
+      "description": "Instant position change"
+    },
+    "wander": {
+      "label": "Wander",
+      "description": "Move in random direction"
+    },
+    "bounce": {
+      "label": "Bounce",
+      "description": "Bouncing movement"
+    },
+    "orbit": {
+      "label": "Orbit",
+      "description": "Move in circular path"
+    },
+    "approach": {
+      "label": "Chase",
+      "description": "Approach another object"
+    },
+    "stop": {
+      "label": "Stop",
+      "description": "Stop in place"
+    },
+    "swap": {
+      "label": "Swap",
+      "description": "Swap position with target"
+    }
+  },
+  "effects": {
+    "flash": {
+      "label": "Flash",
+      "description": "Flash screen/object"
+    },
+    "glow": {
+      "label": "Glow",
+      "description": "Make object glow"
+    },
+    "shake": {
+      "label": "Shake",
+      "description": "Vibration effect"
+    },
+    "scale": {
+      "label": "Scale",
+      "description": "Size change effect"
+    },
+    "rotate": {
+      "label": "Rotate",
+      "description": "Rotation effect"
+    },
+    "fade": {
+      "label": "Fade",
+      "description": "Fade in/out"
+    },
+    "confetti": {
+      "label": "Confetti",
+      "description": "Celebration particles"
+    },
+    "monochrome": {
+      "label": "Monochrome",
+      "description": "Black and white filter"
+    },
+    "particles": {
+      "label": "Particles",
+      "description": "Emit particles"
+    }
+  },
+  "positions": {
+    "center": "Center",
+    "top": "Top",
+    "bottom": "Bottom",
+    "left": "Left",
+    "right": "Right",
+    "corners": "Corners"
+  },
+  "speeds": {
+    "slow": {
+      "label": "Slow",
+      "description": "100px/sec"
+    },
+    "normal": {
+      "label": "Normal",
+      "description": "300px/sec"
+    },
+    "fast": {
+      "label": "Fast",
+      "description": "600px/sec"
+    },
+    "instant": {
+      "label": "Instant",
+      "description": "Immediate"
+    }
+  },
+  "durations": {
+    "5": {
+      "label": "5 sec",
+      "description": "Quick"
+    },
+    "10": {
+      "label": "10 sec",
+      "description": "Standard"
+    },
+    "15": {
+      "label": "15 sec",
+      "description": "Extended"
+    },
+    "30": {
+      "label": "30 sec",
+      "description": "Long"
+    }
+  },
+  "difficulties": {
+    "easy": {
+      "label": "Easy",
+      "description": "Fun for everyone"
+    },
+    "normal": {
+      "label": "Normal",
+      "description": "Balanced challenge"
+    },
+    "hard": {
+      "label": "Hard",
+      "description": "For experts"
+    }
+  }
+}
