@@ -546,6 +546,128 @@
           "selectInterval": "間隔時間を選択してください"
         }
       },
+      "rulePreview": {
+        "title": "ルールプレビュー",
+        "conditionTypes": {
+          "touch": "タッチ",
+          "time": "時間",
+          "collision": "衝突",
+          "animation": "アニメ",
+          "flag": "フラグ"
+        },
+        "actionTypes": {
+          "success": "ゲームクリア",
+          "failure": "ゲームオーバー",
+          "playSound": "音再生",
+          "move": "移動",
+          "effect": "エフェクト",
+          "show": "表示",
+          "hide": "非表示",
+          "setFlag": "フラグ設定",
+          "switchAnimation": "アニメ変更"
+        },
+        "touchTypes": {
+          "down": "タップ",
+          "up": "リリース",
+          "hold": "長押し"
+        },
+        "targets": {
+          "self": "このオブジェクト",
+          "stage": "ステージ",
+          "background": "背景"
+        },
+        "regions": {
+          "rect": "矩形",
+          "circle": "円形"
+        },
+        "collisionTypes": {
+          "enter": "衝突開始時",
+          "stay": "衝突中",
+          "exit": "衝突終了時"
+        },
+        "checkModes": {
+          "hitbox": "当たり判定",
+          "pixel": "ピクセル"
+        },
+        "animationConditions": {
+          "end": "アニメ終了時",
+          "frame": "フレーム時"
+        },
+        "gameStates": {
+          "playing": "プレイ中",
+          "success": "クリア",
+          "failure": "ゲームオーバー"
+        },
+        "moveTypes": {
+          "straight": "直線",
+          "bounce": "バウンド",
+          "teleport": "テレポート",
+          "wander": "ランダム",
+          "stop": "停止",
+          "swap": "位置交換",
+          "approach": "接近",
+          "orbit": "周回"
+        },
+        "effectTypes": {
+          "flash": "点滅",
+          "shake": "振動",
+          "rotate": "回転"
+        },
+        "details": {
+          "type": "種類",
+          "time": "時間",
+          "target": "対象",
+          "range": "範囲",
+          "center": "中心",
+          "judgment": "判定",
+          "flag": "フラグ",
+          "condition": "条件",
+          "state": "状態",
+          "sound": "音声",
+          "volume": "音量",
+          "speed": "速度",
+          "duration": "時間",
+          "intensity": "強度",
+          "value": "値",
+          "invert": "反転",
+          "onAnimationEnd": "アニメ終了時",
+          "secondsLater": "秒後",
+          "to": "〜",
+          "between": "間",
+          "secondsHold": "秒長押し",
+          "and": "と",
+          "notSelected": "未選択",
+          "gameClear": "ゲームをクリアにする",
+          "gameOver": "ゲームオーバーにする",
+          "showObject": "オブジェクトを表示",
+          "fadeIn": "フェードイン",
+          "hideObject": "オブジェクトを非表示",
+          "fadeOut": "フェードアウト",
+          "on": "ON",
+          "off": "OFF",
+          "switchToAnimation": "アニメに切り替え"
+        },
+        "flow": {
+          "allConditions": "🔥 すべての条件が満たされた時 → ⚡ アクションを順番に実行",
+          "anyCondition": "🔥 いずれかの条件が満たされた時 → ⚡ アクションを順番に実行",
+          "singleCondition": "🔥 条件が満たされた時 → ⚡ アクションを順番に実行"
+        },
+        "triggerConditions": "発動条件",
+        "executeActions": "実行アクション",
+        "conditionCount": "({{count}}条件)",
+        "actionCount": "({{count}}アクション)",
+        "all": "すべて",
+        "any": "いずれか",
+        "condition": "条件",
+        "action": "アクション",
+        "enabled": "✅ 有効",
+        "disabled": "⏸️ 無効",
+        "objectHasRules": "📋 このオブジェクトには{{count}}個のルールが設定されています",
+        "rule": "ルール",
+        "noRules": "ルール未設定",
+        "createRule": "ルールを設定するとプレビューが表示されます",
+        "emptyMessage": "ルールが設定されていません"
+      },
       "gamePreview": {
         "title": "ゲーム画面 (9:16)",
         "screenSize": "画面サイズ",
@@ -569,6 +691,84 @@
           "noRule": "ルール未設定",
           "clickToRule": "クリック → ルール設定",
           "dragToMove": "ドラッグ → 移動"
+        }
+      },
+      "randomRule": {
+        "conditionTitle": "ランダム条件設定",
+        "conditionDescription": "{{probability}}%の確率、{{interval}}ms間隔でトリガー",
+        "conditionDescriptionEveryFrame": "{{probability}}%の確率、毎フレームでトリガー",
+        "presets": "プリセット",
+        "presetsOptions": {
+          "lowProbability": {
+            "label": "低確率",
+            "description": "10%確率、2秒間隔"
+          },
+          "mediumProbability": {
+            "label": "中確率",
+            "description": "30%確率、1秒間隔"
+          },
+          "highProbability": {
+            "label": "高確率",
+            "description": "70%確率、0.5秒間隔"
+          },
+          "endless": {
+            "label": "エンドレス",
+            "description": "Flappy Bird風"
+          },
+          "runner": {
+            "label": "ランナー",
+            "description": "Temple Run風"
+          }
+        },
+        "triggerProbability": "トリガー確率",
+        "checkInterval": "チェック間隔",
+        "milliseconds": "ミリ秒",
+        "advancedSettings": "詳細設定",
+        "seedValue": "シード値（デバッグ用）",
+        "seedPlaceholder": "例: test123",
+        "seedDescription": "同じシード値で同じランダム結果を再現",
+        "forEndlessGames": "エンドレス型ゲーム向け",
+        "actionTitle": "ランダムアクション設定",
+        "actionDescription": "{{count}}個の選択肢からランダム選択（{{probabilities}}%）",
+        "actionPresetsOptions": {
+          "endlessObstacles": {
+            "label": "エンドレス障害物",
+            "description": "障害物とアイテムのランダム生成"
+          },
+          "bonusEffects": {
+            "label": "ボーナスエフェクト",
+            "description": "ランダムなボーナス効果"
+          },
+          "difficultyAdjustment": {
+            "label": "難易度調整",
+            "description": "自動難易度調整"
+          }
+        },
+        "selectionOptions": "選択オプション",
+        "addOption": "➕ 追加",
+        "weight": "重み",
+        "selectionMode": "選択モード",
+        "selectionModes": {
+          "weighted": "重み付け（推奨）",
+          "uniform": "均等選択",
+          "probability": "個別確率"
+        },
+        "executionLimit": "実行制限設定",
+        "maxExecutions": "最大実行回数",
+        "unlimited": "無制限",
+        "cooldownTime": "クールダウン時間",
+        "debugMode": "デバッグモード（選択結果をログ）",
+        "forAutoGeneration": "エンドレス/自動生成ゲーム向け",
+        "remove": "✕ 削除",
+        "actionTypes": {
+          "success": "✅ 成功",
+          "failure": "❌ 失敗",
+          "playSound": "🔊 音を再生",
+          "show": "👁️ 表示",
+          "hide": "🚫 非表示",
+          "counter": "🔢 カウンター",
+          "effect": "✨ エフェクト",
+          "move": "🏃 移動"
         }
       }
     },

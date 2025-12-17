@@ -902,6 +902,8 @@
       "presetCounterAdded": "Added preset counter \"{{name}}\"",
       "counterCreated": "Created counter \"{{name}}\"",
       "counterUpdated": "Updated counter \"{{name}}\"",
+      "counterDeleted": "Deleted counter \"{{name}}\"",
+      "nameAlreadyUsed": "Counter name \"{{name}}\" is already in use",
       "presetCreationFailed": "Failed to create preset counter",
       "counterNameRequired": "Please enter a counter name",
       "minMaxValidation": "Minimum value must be less than or equal to maximum value",
