@@ -2,6 +2,7 @@
 // Supabase接続診断・修正ツール
 
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { testConnection, healthCheck } from '../../lib/supabase'
 
 interface ConnectionTest {
@@ -24,6 +25,7 @@ interface HealthCheck {
 }
 
 const SupabaseConnectionTest: React.FC = () => {
+  const { t } = useTranslation()
   const [testing, setTesting] = useState(false)
   const [results, setResults] = useState<HealthCheck | null>(null)
   const [manualUrl, setManualUrl] = useState('https://rqzehjsygvkkvntswqbs.supabase.co')
@@ -75,7 +77,7 @@ const SupabaseConnectionTest: React.FC = () => {
   // 手動URL/Keyテスト
   const testManualConnection = async () => {
     if (!manualUrl || !manualKey) {
-      alert('URLとAPIキーを入力してください')
+      alert(t('errors.enterUrlAndApiKey'))
       return
     }
 
@@ -92,7 +94,7 @@ const SupabaseConnectionTest: React.FC = () => {
       console.log('🔧 手動テスト結果:', response.status, response.statusText)
       
       if (response.ok) {
-        alert('✅ 手動設定での接続成功！この設定を使用してください。')
+        alert('✅ ' + t('errors.manualConfigSuccess'))
       } else {
         alert(`❌ 手動設定エラー: ${response.status} ${response.statusText}`)
       }

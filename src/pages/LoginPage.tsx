@@ -3,9 +3,11 @@
 
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../hooks/useAuth'
 
 export const LoginPage: React.FC = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { signIn, loading, error, clearError, isAuthenticated } = useAuth()
 
@@ -261,7 +263,7 @@ export const LoginPage: React.FC = () => {
           <button
             onClick={() => {
               // TODO: パスワードリセット機能を実装
-              alert('パスワードリセット機能は近日実装予定です')
+              alert(t('auth.passwordResetComingSoon'))
             }}
             style={{
               background: 'none',

@@ -2,6 +2,7 @@
 // ログイン・サインアップモーダルUI（インラインスタイル版）
 
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 
 interface AuthModalProps {
@@ -17,6 +18,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   defaultMode = 'signin'
 }) => {
+  const { t } = useTranslation()
   const { signIn, signUp, resetPassword, loading, error, clearError } = useAuth()
 
   const [mode, setMode] = useState<AuthMode>(defaultMode)
@@ -138,7 +140,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
         setShowSignupSuccess(true)
       } else if (mode === 'reset') {
         await resetPassword(formData.email)
-        alert('パスワードリセットメールを送信しました。')
+        alert(t('auth.passwordResetEmailSent'))
         setMode('signin')
       }
     } catch (error) {

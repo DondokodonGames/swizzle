@@ -1,6 +1,7 @@
 // src/components/editor/ProjectSelector.tsx
 // ✅ 無限ループ修正版: 依存配列を空にする
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../types/editor/GameProject';
 import { useGameProject, ProjectMetadata } from '../../hooks/editor/useGameProject';
 import { ModernButton } from '../ui/ModernButton';
@@ -27,6 +28,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   onExport,
   onBackToMain  // ✅ 追加
 }) => {
+  const { t } = useTranslation();
   const [projectMetadataList, setProjectMetadataList] = useState<ProjectMetadata[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<ProjectMetadata[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -154,13 +156,13 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
         // ✅ reloadProjects関数を使用
         await reloadProjects();
         
-        alert('✅ プロジェクトをインポートしました！');
+        alert('✅ ' + t('success.projectImported'));
       } else {
         throw new Error('Import function not available');
       }
     } catch (err) {
       console.error('[ProjectSelector] ❌ Import failed:', err);
-      alert('❌ ファイルのインポートに失敗しました。JSONファイルの形式を確認してください。');
+      alert('❌ ' + t('errors.projectImportFailed'));
     } finally {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';

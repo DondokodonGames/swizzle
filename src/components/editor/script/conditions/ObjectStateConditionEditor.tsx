@@ -4,6 +4,7 @@
 // start/end/frame/playing/stopped/loop/frameRange 全対応
 
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TriggerCondition } from '../../../../types/editor/GameScript';
 import { GameProject } from '../../../../types/editor/GameProject';
 import { ObjectAsset } from '../../../../types/editor/ProjectAssets';
@@ -30,6 +31,7 @@ export const ObjectStateConditionEditor: React.FC<ObjectStateConditionEditorProp
   index,
   onUpdate
 }) => {
+  const { t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<EditorStep>('stateType');
 
   // オブジェクトリスト取得
@@ -761,7 +763,7 @@ export const ObjectStateConditionEditor: React.FC<ObjectStateConditionEditorProp
             size="md"
             onClick={() => {
               // 設定完了
-              alert('設定が完了しました！');
+              alert(t('errors.settingsComplete'));
             }}
             style={{ flex: 1 }}
           >

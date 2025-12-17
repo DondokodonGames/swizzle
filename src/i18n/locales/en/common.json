@@ -75,7 +75,13 @@
     "objectNotFound": "Object not found",
     "objectUploadFailed": "Failed to upload object",
     "onlyImagesAllowed": "Only image files are allowed",
-    "fileNotAccepted": "File type not accepted"
+    "fileNotAccepted": "File type not accepted",
+    "checkInternetConnection": "Please check your internet connection",
+    "subscriptionPageFailed": "Failed to open subscription management page. Please try again.",
+    "projectImportFailed": "Failed to import file. Please check the JSON file format.",
+    "enterUrlAndApiKey": "Please enter URL and API key",
+    "manualConfigSuccess": "Manual configuration successful! Please use these settings.",
+    "settingsComplete": "Settings complete!"
   },
   "success": {
     "projectSaved": "Project saved",
@@ -85,6 +91,7 @@
     "testPlaySuccess": "Test play successful",
     "thumbnailGenerated": "Thumbnail generated",
     "framesAdded": "Frames added",
-    "objectsUploaded": "Objects uploaded"
+    "objectsUploaded": "Objects uploaded",
+    "projectImported": "Project imported successfully!"
   }
 }

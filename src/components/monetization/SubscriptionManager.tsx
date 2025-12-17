@@ -10,6 +10,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSubscription } from '../../hooks/monetization/useSubscription';
 import { useCredits } from '../../hooks/monetization/useCredits';
 import { redirectToCustomerPortal } from '../../services/monetization/StripeService';
@@ -22,6 +23,7 @@ import { DESIGN_TOKENS } from '../../constants/DesignSystem';
  * Subscription Manager コンポーネント
  */
 export function SubscriptionManager() {
+  const { t } = useTranslation();
   const { subscription, loading, isPremium, isFree, period } = useSubscription();
   const { usage } = useCredits();
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +49,7 @@ export function SubscriptionManager() {
       await redirectToCustomerPortal();
     } catch (error) {
       console.error('Error opening customer portal:', error);
-      alert('サブスクリプション管理ページを開けませんでした。もう一度お試しください。');
+      alert(t('errors.subscriptionPageFailed'));
     } finally {
       setIsLoading(false);
     }
