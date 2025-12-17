@@ -22,7 +22,29 @@
     "processing": "Verarbeitung...",
     "selectFile": "Datei auswählen",
     "on": "EIN",
-    "off": "AUS"
+    "off": "AUS",
+    "play": "Abspielen",
+    "stop": "Stopp",
+    "frames": {
+      "frame1": { "label": "Bild 1", "description": "Erstes Bild" },
+      "frame2": { "label": "Bild 2", "description": "Zweites Bild" },
+      "frame3": { "label": "Bild 3", "description": "Drittes Bild" },
+      "frame4": { "label": "Bild 4", "description": "Viertes Bild" },
+      "frame5": { "label": "Bild 5", "description": "Fünftes Bild" },
+      "frame6": { "label": "Bild 6", "description": "Sechstes Bild" },
+      "frame7": { "label": "Bild 7", "description": "Siebtes Bild" },
+      "frame8": { "label": "Bild 8", "description": "Achtes Bild" }
+    },
+    "animations": {
+      "animation1": { "label": "Anim 1", "description": "Erste Animation" },
+      "animation2": { "label": "Anim 2", "description": "Zweite Animation" },
+      "animation3": { "label": "Anim 3", "description": "Dritte Animation" },
+      "animation4": { "label": "Anim 4", "description": "Vierte Animation" },
+      "animation5": { "label": "Anim 5", "description": "Fünfte Animation" },
+      "animation6": { "label": "Anim 6", "description": "Sechste Animation" },
+      "animation7": { "label": "Anim 7", "description": "Siebte Animation" },
+      "animation8": { "label": "Anim 8", "description": "Achte Animation" }
+    }
   },
   "errors": {
     "generic": "Ein unerwarteter Fehler ist aufgetreten",
@@ -42,7 +64,24 @@
     "exportFailed": "Export fehlgeschlagen",
     "testPlayFailed": "Test fehlgeschlagen",
     "projectSizeExceeded": "Projektgröße überschreitet das Limit",
-    "assetLimitExceeded": "Asset-Anzahl überschreitet das Limit"
+    "assetLimitExceeded": "Asset-Anzahl überschreitet das Limit",
+    "audioPlaybackFailed": "Audiowiedergabe fehlgeschlagen",
+    "fileNotSelected": "Keine Datei ausgewählt",
+    "fileReadFailed": "Datei konnte nicht gelesen werden",
+    "fileSizeTooLarge": "Dateigröße ist zu groß",
+    "frameAddFailed": "Bild konnte nicht hinzugefügt werden",
+    "maxFramesReached": "Maximale Bildanzahl erreicht",
+    "maxObjectsReached": "Maximale Objektanzahl erreicht",
+    "objectNotFound": "Objekt nicht gefunden",
+    "objectUploadFailed": "Objekt konnte nicht hochgeladen werden",
+    "onlyImagesAllowed": "Nur Bilddateien erlaubt",
+    "fileNotAccepted": "Dateityp nicht akzeptiert",
+    "checkInternetConnection": "Bitte überprüfen Sie Ihre Internetverbindung",
+    "subscriptionPageFailed": "Abonnement-Verwaltungsseite konnte nicht geöffnet werden. Bitte versuchen Sie es erneut.",
+    "projectImportFailed": "Import fehlgeschlagen. Bitte überprüfen Sie das JSON-Dateiformat.",
+    "enterUrlAndApiKey": "Bitte geben Sie URL und API-Schlüssel ein",
+    "manualConfigSuccess": "Manuelle Konfiguration erfolgreich! Bitte verwenden Sie diese Einstellungen.",
+    "settingsComplete": "Einstellungen abgeschlossen!"
   },
   "success": {
     "projectSaved": "Projekt gespeichert",
@@ -50,7 +89,10 @@
     "projectExported": "Projekt exportiert",
     "fileUploaded": "Datei hochgeladen",
     "testPlaySuccess": "Test erfolgreich",
-    "thumbnailGenerated": "Vorschaubild generiert"
+    "thumbnailGenerated": "Vorschaubild generiert",
+    "framesAdded": "Bilder hinzugefügt",
+    "objectsUploaded": "Objekte hochgeladen",
+    "projectImported": "Projekt erfolgreich importiert!"
   },
   "auth": {
     "email": "E-Mail",
@@ -69,7 +111,9 @@
     "invalidEmail": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
     "accountCreated": "Konto erstellt",
     "loginSuccess": "Erfolgreich angemeldet",
-    "logoutSuccess": "Erfolgreich abgemeldet"
+    "logoutSuccess": "Erfolgreich abgemeldet",
+    "passwordResetComingSoon": "Passwort-Zurücksetzung kommt bald",
+    "passwordResetEmailSent": "E-Mail zum Zurücksetzen des Passworts gesendet"
   },
   "editor": {
     "tabs": {
@@ -751,11 +795,43 @@
   "conditions": {
     "touch": {
       "label": "Bei Berührung",
-      "description": "Wird ausgelöst wenn Objekt berührt wird"
+      "description": "Wird ausgelöst wenn Objekt berührt wird",
+      "types": {
+        "this": { "label": "Dieses Objekt", "description": "Berühren dieses Objekts" },
+        "stage": { "label": "Gesamte Bühne", "description": "Berührung irgendwo auf der Bühne" },
+        "stageArea": { "label": "Bühnenbereich", "description": "Berührung eines bestimmten Bühnenbereichs" }
+      },
+      "drag": {
+        "label": "Ziehen",
+        "description": "Wird bei Ziehbewegung ausgelöst",
+        "types": {
+          "start": { "label": "Ziehen Start", "description": "Wird beim Beginn des Ziehens ausgelöst" },
+          "dragging": { "label": "Wird gezogen", "description": "Wird kontinuierlich beim Ziehen ausgelöst" },
+          "end": { "label": "Ziehen Ende", "description": "Wird beim Ende des Ziehens ausgelöst" }
+        },
+        "constraints": {
+          "none": { "label": "Frei", "description": "Freie Bewegung in jede Richtung" },
+          "horizontal": { "label": "Horizontal", "description": "Nur horizontale Bewegung" },
+          "vertical": { "label": "Vertikal", "description": "Nur vertikale Bewegung" }
+        }
+      },
+      "flick": { "label": "Wischen", "description": "Schnelle Wischgeste" },
+      "swipe": {
+        "label": "Streichen",
+        "description": "Gerichtete Streichgeste",
+        "directions": {
+          "up": "Nach oben", "down": "Nach unten", "left": "Nach links", "right": "Nach rechts",
+          "upLeft": "Nach oben links", "upRight": "Nach oben rechts",
+          "downLeft": "Nach unten links", "downRight": "Nach unten rechts"
+        }
+      }
     },
     "time": {
       "label": "Zeit abgelaufen",
-      "description": "Wird nach angegebener Zeit ausgelöst"
+      "description": "Wird nach angegebener Zeit ausgelöst",
+      "exact": { "label": "Genaue Zeit", "description": "Wird einmal zu einem bestimmten Zeitpunkt ausgelöst" },
+      "range": { "label": "Zeitbereich", "description": "Wird im angegebenen Zeitbereich ausgelöst" },
+      "interval": { "label": "Intervall", "description": "Wird in regelmäßigen Abständen wiederholt" }
     },
     "position": {
       "label": "An Position",
@@ -767,7 +843,17 @@
     },
     "animation": {
       "label": "Animation Ende",
-      "description": "Wenn Animation endet"
+      "description": "Wenn Animation endet",
+      "end": { "label": "Animation Ende", "description": "Wenn Animation endet" },
+      "frame": { "label": "Bestimmtes Bild", "description": "Bei Erreichen eines bestimmten Bildes" },
+      "loop": { "label": "Schleife", "description": "Wenn Animation wiederholt" },
+      "frameRange": { "label": "Bildbereich", "description": "Innerhalb eines bestimmten Bildbereichs" },
+      "playing": { "label": "Wird abgespielt", "description": "Wenn Animation abgespielt wird" },
+      "stopped": { "label": "Gestoppt", "description": "Wenn Animation gestoppt ist" },
+      "targets": {
+        "background": { "label": "Hintergrund", "description": "Hintergrund-Animation" },
+        "this": { "label": "Dieses Objekt", "description": "Animation dieses Objekts" }
+      }
     },
     "flag": {
       "label": "Flag ist AN",
@@ -783,6 +869,10 @@
     }
   },
   "actions": {
+    "addScore": { "label": "Punkte hinzufügen", "description": "Punkte zum Punktestand hinzufügen" },
+    "stopBGM": { "label": "BGM stoppen", "description": "Hintergrundmusik stoppen" },
+    "toggleFlag": { "label": "Flag umschalten", "description": "Flag-Status umschalten (AN⇔AUS)" },
+    "showMessage": { "label": "Nachricht anzeigen", "description": "Nachricht auf dem Bildschirm anzeigen" },
     "success": {
       "label": "Gewonnen!",
       "description": "Spiel mit Erfolg beenden"
@@ -813,7 +903,27 @@
     },
     "move": {
       "label": "Bewegen",
-      "description": "Zur angegebenen Position bewegen"
+      "description": "Zur angegebenen Position bewegen",
+      "types": {
+        "straight": { "label": "Geradeaus", "description": "Geradeaus zur Position bewegen" },
+        "bounce": { "label": "Hüpfen", "description": "Hüpfende Bewegung" },
+        "teleport": { "label": "Teleportieren", "description": "Sofortige Positionsänderung" },
+        "wander": { "label": "Wandern", "description": "In zufällige Richtung bewegen" },
+        "stop": { "label": "Stoppen", "description": "An Ort und Stelle stoppen" },
+        "swap": { "label": "Tauschen", "description": "Position mit Ziel tauschen" },
+        "approach": { "label": "Verfolgen", "description": "Anderem Objekt nähern" },
+        "orbit": { "label": "Umkreisen", "description": "Im Kreis bewegen" },
+        "followDrag": { "label": "Ziehen folgen", "description": "Berührungsziehung folgen" }
+      },
+      "followDrag": {
+        "damping": {
+          "none": { "label": "Keine", "description": "Keine Dämpfung, sofortige Reaktion" },
+          "veryLow": { "label": "Sehr niedrig", "description": "Minimale Glättung" },
+          "low": { "label": "Niedrig", "description": "Leichte Glättung" },
+          "medium": { "label": "Mittel", "description": "Moderate Glättung" },
+          "high": { "label": "Hoch", "description": "Starke Glättung" }
+        }
+      }
     },
     "show": {
       "label": "Anzeigen",
@@ -838,7 +948,8 @@
     "setFlag": {
       "label": "Flag setzen",
       "description": "Benutzerdefinierten Flag AN/AUS setzen"
-    }
+    },
+    "swap": { "label": "Tauschen", "description": "Position mit Ziel tauschen" }
   },
   "movements": {
     "straight": {
@@ -869,11 +980,21 @@
   "effects": {
     "flash": {
       "label": "Blitz",
-      "description": "Bildschirm/Objekt aufblitzen"
+      "description": "Bildschirm/Objekt aufblitzen",
+      "colors": {
+        "white": "Weiß", "red": "Rot", "blue": "Blau",
+        "green": "Grün", "yellow": "Gelb", "magenta": "Magenta"
+      }
     },
+    "glow": { "label": "Leuchten", "description": "Objekt zum Leuchten bringen" },
     "shake": {
       "label": "Schütteln",
-      "description": "Vibrationseffekt"
+      "description": "Vibrationseffekt",
+      "directions": {
+        "horizontal": { "label": "Horizontal", "description": "Links und rechts schütteln" },
+        "vertical": { "label": "Vertikal", "description": "Auf und ab schütteln" },
+        "both": { "label": "Beide", "description": "In alle Richtungen schütteln" }
+      }
     },
     "scale": {
       "label": "Skalieren",
@@ -881,15 +1002,30 @@
     },
     "rotate": {
       "label": "Drehen",
-      "description": "Dreheffekt"
+      "description": "Dreheffekt",
+      "directions": {
+        "clockwise": { "label": "Im Uhrzeigersinn", "description": "Im Uhrzeigersinn drehen" },
+        "counterclockwise": { "label": "Gegen Uhrzeigersinn", "description": "Gegen den Uhrzeigersinn drehen" },
+        "alternate": { "label": "Alternierend", "description": "Drehrichtung wechseln" }
+      }
     },
     "fade": {
       "label": "Einblenden",
       "description": "Ein-/Ausblenden"
     },
+    "confetti": { "label": "Konfetti", "description": "Feierpartikel" },
+    "monochrome": { "label": "Monochrom", "description": "Schwarz-Weiß-Filter" },
     "particles": {
       "label": "Partikel",
-      "description": "Partikel aussenden"
+      "description": "Partikel aussenden",
+      "types": {
+        "sparkle": { "label": "Glitzer", "description": "Glitzernde Partikel" },
+        "explosion": { "label": "Explosion", "description": "Explosionseffekt" },
+        "confetti": { "label": "Konfetti", "description": "Feierkonfetti" },
+        "hearts": { "label": "Herzen", "description": "Herzpartikel" },
+        "star": { "label": "Stern", "description": "Sternpartikel" },
+        "splash": { "label": "Spritzer", "description": "Spritzeffekt" }
+      }
     }
   },
   "positions": {
@@ -1106,5 +1242,23 @@
     "continueWithFree": "Mit kostenlosem Plan fortfahren →",
     "anyQuestions": "Wenn Sie Fragen haben",
     "happyToHelp": "Wir helfen Ihnen gerne!"
+  },
+  "directions": {
+    "up": "Oben",
+    "down": "Unten",
+    "left": "Links",
+    "right": "Rechts",
+    "upLeft": "Oben links",
+    "upRight": "Oben rechts",
+    "downLeft": "Unten links",
+    "downRight": "Unten rechts"
+  },
+  "colors": {
+    "white": "Weiß",
+    "red": "Rot",
+    "blue": "Blau",
+    "green": "Grün",
+    "yellow": "Gelb",
+    "magenta": "Magenta"
   }
 }

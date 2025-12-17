@@ -23,6 +23,8 @@
     "selectFile": "파일 선택",
     "on": "켜기",
     "off": "끄기",
+    "play": "재생",
+    "stop": "정지",
     "frames": {
       "frame1": {
         "label": "프레임 1",
@@ -110,7 +112,24 @@
     "exportFailed": "내보내기 실패",
     "testPlayFailed": "테스트 실패",
     "projectSizeExceeded": "프로젝트 크기가 제한을 초과했습니다",
-    "assetLimitExceeded": "에셋 수가 제한을 초과했습니다"
+    "assetLimitExceeded": "에셋 수가 제한을 초과했습니다",
+    "audioPlaybackFailed": "오디오 재생 실패",
+    "fileNotSelected": "파일이 선택되지 않았습니다",
+    "fileReadFailed": "파일 읽기 실패",
+    "fileSizeTooLarge": "파일 크기가 너무 큽니다",
+    "frameAddFailed": "프레임 추가 실패",
+    "maxFramesReached": "최대 프레임 수에 도달했습니다",
+    "maxObjectsReached": "최대 오브젝트 수에 도달했습니다",
+    "objectNotFound": "오브젝트를 찾을 수 없습니다",
+    "objectUploadFailed": "오브젝트 업로드 실패",
+    "onlyImagesAllowed": "이미지 파일만 허용됩니다",
+    "fileNotAccepted": "파일 형식이 허용되지 않습니다",
+    "checkInternetConnection": "인터넷 연결을 확인해주세요",
+    "subscriptionPageFailed": "구독 관리 페이지를 여는 데 실패했습니다. 다시 시도해주세요.",
+    "projectImportFailed": "파일 가져오기 실패. JSON 파일 형식을 확인해주세요.",
+    "enterUrlAndApiKey": "URL과 API 키를 입력해주세요",
+    "manualConfigSuccess": "수동 설정 성공! 이 설정을 사용하세요.",
+    "settingsComplete": "설정 완료!"
   },
   "success": {
     "projectSaved": "프로젝트가 저장되었습니다",
@@ -118,7 +137,10 @@
     "projectExported": "프로젝트가 내보내기 되었습니다",
     "fileUploaded": "파일이 업로드되었습니다",
     "testPlaySuccess": "테스트 성공",
-    "thumbnailGenerated": "썸네일이 생성되었습니다"
+    "thumbnailGenerated": "썸네일이 생성되었습니다",
+    "framesAdded": "프레임이 추가되었습니다",
+    "objectsUploaded": "오브젝트가 업로드되었습니다",
+    "projectImported": "프로젝트를 성공적으로 가져왔습니다!"
   },
   "auth": {
     "email": "이메일",
@@ -137,7 +159,9 @@
     "invalidEmail": "유효한 이메일 주소를 입력해주세요",
     "accountCreated": "계정이 생성되었습니다",
     "loginSuccess": "로그인 성공",
-    "logoutSuccess": "로그아웃 성공"
+    "logoutSuccess": "로그아웃 성공",
+    "passwordResetComingSoon": "비밀번호 재설정 기능 곧 출시 예정",
+    "passwordResetEmailSent": "비밀번호 재설정 이메일이 전송되었습니다"
   },
   "editor": {
     "tabs": {
@@ -819,11 +843,99 @@
   "conditions": {
     "touch": {
       "label": "터치할 때",
-      "description": "오브젝트를 탭하면 발동"
+      "description": "오브젝트를 탭하면 발동",
+      "down": {
+        "label": "탭",
+        "description": "터치 순간에 발동"
+      },
+      "up": {
+        "label": "릴리스",
+        "description": "손가락을 떼면 발동"
+      },
+      "hold": {
+        "label": "홀드",
+        "description": "지정 시간 동안 누르면 발동"
+      },
+      "targets": {
+        "self": {
+          "label": "이 오브젝트",
+          "description": "이 오브젝트 터치"
+        },
+        "stage": {
+          "label": "전체 스테이지",
+          "description": "스테이지 어디든 터치"
+        },
+        "stageArea": {
+          "label": "스테이지 영역",
+          "description": "지정 스테이지 영역 터치"
+        }
+      },
+      "drag": {
+        "label": "드래그",
+        "description": "드래그 동작에 발동",
+        "types": {
+          "start": {
+            "label": "드래그 시작",
+            "description": "드래그 시작 시 발동"
+          },
+          "dragging": {
+            "label": "드래그 중",
+            "description": "드래그 중 계속 발동"
+          },
+          "end": {
+            "label": "드래그 종료",
+            "description": "드래그 종료 시 발동"
+          }
+        },
+        "constraints": {
+          "none": {
+            "label": "자유",
+            "description": "어느 방향으로든 자유롭게 이동"
+          },
+          "horizontal": {
+            "label": "가로",
+            "description": "가로 이동만"
+          },
+          "vertical": {
+            "label": "세로",
+            "description": "세로 이동만"
+          }
+        }
+      },
+      "flick": {
+        "label": "플릭",
+        "description": "빠른 스와이프 제스처"
+      },
+      "swipe": {
+        "label": "스와이프",
+        "description": "방향성 스와이프 제스처",
+        "directions": {
+          "up": "위",
+          "down": "아래",
+          "left": "왼쪽",
+          "right": "오른쪽",
+          "upLeft": "왼쪽 위",
+          "upRight": "오른쪽 위",
+          "downLeft": "왼쪽 아래",
+          "downRight": "오른쪽 아래"
+        }
+      }
     },
     "time": {
       "label": "시간 경과",
-      "description": "지정 시간 후 자동 발동"
+      "description": "지정 시간 후 자동 발동",
+      "exact": {
+        "label": "정확한 시간",
+        "description": "정확히 지정된 시간에 한 번 발동"
+      },
+      "range": {
+        "label": "시간 범위",
+        "description": "지정 시간 범위 내에서 계속 발동"
+      },
+      "interval": {
+        "label": "반복",
+        "description": "지정 간격으로 반복 발동"
+      }
     },
     "position": {
       "label": "위치에 있을 때",
@@ -831,19 +943,149 @@
     },
     "collision": {
       "label": "충돌할 때",
-      "description": "다른 오브젝트와 충돌할 때"
+      "description": "다른 오브젝트와 충돌할 때",
+      "types": {
+        "enter": {
+          "label": "충돌 시작",
+          "description": "충돌 순간에 발동"
+        },
+        "stay": {
+          "label": "충돌 중",
+          "description": "충돌 중 계속 발동"
+        },
+        "exit": {
+          "label": "충돌 종료",
+          "description": "충돌이 끝날 때 발동"
+        }
+      },
+      "targets": {
+        "background": {
+          "label": "배경",
+          "description": "배경과의 충돌 감지"
+        },
+        "stage": {
+          "label": "스테이지 영역",
+          "description": "지정 스테이지 영역 진입 감지"
+        },
+        "object": {
+          "label": "다른 오브젝트",
+          "description": "다른 오브젝트와의 충돌 감지"
+        }
+      },
+      "checkModes": {
+        "hitbox": {
+          "label": "히트박스 (빠름)",
+          "description": "사각형 히트박스를 사용한 빠른 충돌 감지"
+        },
+        "pixel": {
+          "label": "픽셀 퍼펙트 (정밀)",
+          "description": "픽셀 수준의 정밀한 충돌 감지"
+        }
+      }
     },
     "animation": {
       "label": "애니메이션 종료",
-      "description": "애니메이션이 완료될 때"
+      "description": "애니메이션이 완료될 때",
+      "start": {
+        "label": "시작",
+        "description": "애니메이션 시작 시"
+      },
+      "end": {
+        "label": "종료",
+        "description": "애니메이션 종료 시"
+      },
+      "frame": {
+        "label": "특정 프레임",
+        "description": "특정 프레임 도달 시"
+      },
+      "loop": {
+        "label": "루프",
+        "description": "애니메이션 루프 시"
+      },
+      "frameRange": {
+        "label": "프레임 범위",
+        "description": "특정 프레임 범위 내일 때"
+      },
+      "playing": {
+        "label": "재생 중",
+        "description": "애니메이션 재생 중일 때"
+      },
+      "stopped": {
+        "label": "정지됨",
+        "description": "애니메이션이 정지되었을 때"
+      }
+    },
+    "targets": {
+      "background": {
+        "label": "배경",
+        "description": "배경 애니메이션"
+      },
+      "this": {
+        "label": "이 오브젝트",
+        "description": "이 오브젝트의 애니메이션"
+      },
+      "other": {
+        "label": "다른 오브젝트",
+        "description": "다른 오브젝트의 애니메이션"
+      }
     },
     "flag": {
       "label": "플래그가 ON일 때",
-      "description": "커스텀 플래그 상태 확인"
+      "description": "커스텀 플래그 상태 확인",
+      "on": {
+        "label": "ON일 때",
+        "description": "플래그가 ON일 때 발동"
+      },
+      "off": {
+        "label": "OFF일 때",
+        "description": "플래그가 OFF일 때 발동"
+      },
+      "offToOn": {
+        "label": "OFF→ON",
+        "description": "플래그가 OFF에서 ON으로 바뀔 때 발동"
+      },
+      "onToOff": {
+        "label": "ON→OFF",
+        "description": "플래그가 ON에서 OFF로 바뀔 때 발동"
+      }
     },
     "gameState": {
       "label": "게임 상태",
-      "description": "전체 게임 상태 확인"
+      "description": "전체 게임 상태 확인",
+      "success": {
+        "label": "성공 상태",
+        "description": "게임 클리어 상태",
+        "detail": "플레이어가 승리 조건을 달성한 상태"
+      },
+      "failure": {
+        "label": "실패 상태",
+        "description": "게임 오버 상태",
+        "detail": "플레이어가 패배 조건을 만족한 상태"
+      },
+      "playing": {
+        "label": "플레이 중",
+        "description": "일반 플레이 상태",
+        "detail": "게임이 시작되어 플레이어가 조작할 수 있는 상태"
+      },
+      "paused": {
+        "label": "일시정지",
+        "description": "일시정지 상태",
+        "detail": "게임이 일시정지된 상태"
+      },
+      "checkTypes": {
+        "is": {
+          "label": "상태일 때",
+          "description": "지정 상태일 때 계속 발동"
+        },
+        "not": {
+          "label": "상태가 아닐 때",
+          "description": "지정 상태가 아닐 때 계속 발동"
+        },
+        "became": {
+          "label": "변경 순간",
+          "description": "상태 변경 순간에만 한 번 발동"
+        }
+      }
     },
     "score": {
       "label": "점수 조건",
@@ -851,6 +1093,22 @@
     }
   },
   "actions": {
+    "addScore": {
+      "label": "점수 추가",
+      "description": "점수에 포인트 추가"
+    },
+    "stopBGM": {
+      "label": "BGM 정지",
+      "description": "배경음악 정지"
+    },
+    "toggleFlag": {
+      "label": "플래그 전환",
+      "description": "플래그 상태 전환 (ON⇔OFF)"
+    },
+    "showMessage": {
+      "label": "메시지 표시",
+      "description": "화면에 메시지 표시"
+    },
     "success": {
       "label": "게임 클리어!",
       "description": "성공으로 게임 종료"
@@ -881,7 +1139,69 @@
     },
     "move": {
       "label": "이동",
-      "description": "지정 위치로 이동"
+      "description": "지정 위치로 이동",
+      "types": {
+        "straight": {
+          "label": "직선",
+          "description": "위치로 직선 이동"
+        },
+        "bounce": {
+          "label": "바운스",
+          "description": "튀는 움직임"
+        },
+        "teleport": {
+          "label": "순간 이동",
+          "description": "즉시 위치 변경"
+        },
+        "wander": {
+          "label": "배회",
+          "description": "랜덤 방향으로 이동"
+        },
+        "stop": {
+          "label": "정지",
+          "description": "제자리에 정지"
+        },
+        "swap": {
+          "label": "교환",
+          "description": "타겟과 위치 교환"
+        },
+        "approach": {
+          "label": "추적",
+          "description": "다른 오브젝트에 접근"
+        },
+        "orbit": {
+          "label": "공전",
+          "description": "원형 경로로 이동"
+        },
+        "followDrag": {
+          "label": "드래그 따라가기",
+          "description": "터치 드래그 움직임을 따라감"
+        }
+      },
+      "followDrag": {
+        "damping": {
+          "none": {
+            "label": "없음",
+            "description": "댐핑 없음, 즉시 반응"
+          },
+          "veryLow": {
+            "label": "매우 낮음",
+            "description": "최소 스무딩"
+          },
+          "low": {
+            "label": "낮음",
+            "description": "가벼운 스무딩"
+          },
+          "medium": {
+            "label": "중간",
+            "description": "보통 스무딩"
+          },
+          "high": {
+            "label": "높음",
+            "description": "강한 스무딩"
+          }
+        }
+      }
     },
     "show": {
       "label": "표시",
@@ -906,6 +1226,77 @@
     "setFlag": {
       "label": "플래그 설정",
       "description": "커스텀 플래그 ON/OFF"
+    },
+    "flags": {
+      "setFlag": {
+        "label": "플래그 설정",
+        "description": "플래그를 지정 상태로 설정 (ON/OFF)"
+      },
+      "toggleFlag": {
+        "label": "플래그 전환",
+        "description": "플래그 상태 반전 (ON⇔OFF)"
+      },
+      "values": {
+        "on": {
+          "label": "ON",
+          "description": "플래그를 ON 상태로 설정"
+        },
+        "off": {
+          "label": "OFF",
+          "description": "플래그를 OFF 상태로 설정"
+        }
+      },
+      "effects": {
+        "setOn": "플래그를 ON 상태로 설정",
+        "setOff": "플래그를 OFF 상태로 설정",
+        "toggle": "현재 상태에서 반전 (ON⇔OFF)"
+      }
+    },
+    "showHide": {
+      "show": {
+        "label": "표시",
+        "description": "오브젝트 표시"
+      },
+      "hide": {
+        "label": "숨기기",
+        "description": "오브젝트 숨기기"
+      },
+      "fade": {
+        "enabled": {
+          "label": "페이드 활성화",
+          "description": "부드럽게 표시/숨기기"
+        },
+        "disabled": {
+          "label": "즉시 전환",
+          "description": "즉시 표시/숨기기"
+        }
+      },
+      "duration": {
+        "instant": {
+          "label": "즉시",
+          "description": "0.1초"
+        },
+        "fast": {
+          "label": "빠름",
+          "description": "0.3초"
+        },
+        "normal": {
+          "label": "보통",
+          "description": "0.5초"
+        },
+        "slow": {
+          "label": "느림",
+          "description": "1.0초"
+        },
+        "verySlow": {
+          "label": "매우 느림",
+          "description": "2.0초"
+        }
+      }
+    },
+    "randomAction": {
+      "label": "랜덤 액션",
+      "description": "여러 옵션 중 랜덤 액션 실행"
     }
   },
   "movements": {
@@ -932,16 +1323,50 @@
     "approach": {
       "label": "추적",
       "description": "다른 오브젝트에 접근"
+    },
+    "stop": {
+      "label": "정지",
+      "description": "제자리에 정지"
+    },
+    "swap": {
+      "label": "교환",
+      "description": "타겟과 위치 교환"
     }
   },
   "effects": {
     "flash": {
       "label": "플래시",
-      "description": "화면/오브젝트 깜빡임"
+      "description": "화면/오브젝트 깜빡임",
+      "colors": {
+        "white": "흰색",
+        "red": "빨간색",
+        "blue": "파란색",
+        "green": "녹색",
+        "yellow": "노란색",
+        "magenta": "마젠타"
+      }
+    },
+    "glow": {
+      "label": "발광",
+      "description": "오브젝트를 발광시킴"
     },
     "shake": {
       "label": "흔들림",
-      "description": "진동 효과"
+      "description": "진동 효과",
+      "directions": {
+        "horizontal": {
+          "label": "가로",
+          "description": "좌우로 흔들림"
+        },
+        "vertical": {
+          "label": "세로",
+          "description": "상하로 흔들림"
+        },
+        "both": {
+          "label": "양방향",
+          "description": "모든 방향으로 흔들림"
+        }
+      }
     },
     "scale": {
       "label": "크기 조절",
@@ -949,15 +1374,63 @@
     },
     "rotate": {
       "label": "회전",
-      "description": "회전 효과"
+      "description": "회전 효과",
+      "directions": {
+        "clockwise": {
+          "label": "시계 방향",
+          "description": "시계 방향으로 회전"
+        },
+        "counterclockwise": {
+          "label": "반시계 방향",
+          "description": "반시계 방향으로 회전"
+        },
+        "alternate": {
+          "label": "교대",
+          "description": "회전 방향 교대"
+        }
+      }
     },
     "fade": {
       "label": "페이드",
       "description": "페이드 인/아웃"
     },
+    "confetti": {
+      "label": "색종이",
+      "description": "축하 파티클"
+    },
+    "monochrome": {
+      "label": "흑백",
+      "description": "흑백 필터"
+    },
     "particles": {
       "label": "파티클",
-      "description": "파티클 방출"
+      "description": "파티클 방출",
+      "types": {
+        "sparkle": {
+          "label": "반짝임",
+          "description": "반짝이는 파티클"
+        },
+        "explosion": {
+          "label": "폭발",
+          "description": "폭발적인 버스트"
+        },
+        "confetti": {
+          "label": "색종이",
+          "description": "축하 색종이"
+        },
+        "hearts": {
+          "label": "하트",
+          "description": "하트 파티클"
+        },
+        "star": {
+          "label": "별",
+          "description": "별 파티클"
+        },
+        "splash": {
+          "label": "스플래시",
+          "description": "스플래시 효과"
+        }
+      }
     }
   },
   "positions": {
@@ -1017,6 +1490,24 @@
       "label": "어려움",
       "description": "전문가용"
     }
+  },
+  "directions": {
+    "up": "위",
+    "down": "아래",
+    "left": "왼쪽",
+    "right": "오른쪽",
+    "upLeft": "왼쪽 위",
+    "upRight": "오른쪽 위",
+    "downLeft": "왼쪽 아래",
+    "downRight": "오른쪽 아래"
+  },
+  "colors": {
+    "white": "흰색",
+    "red": "빨간색",
+    "blue": "파란색",
+    "green": "녹색",
+    "yellow": "노란색",
+    "magenta": "마젠타"
   },
   "gameFeed": {
     "trending": "트렌드",

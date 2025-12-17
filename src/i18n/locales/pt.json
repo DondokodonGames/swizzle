@@ -22,7 +22,29 @@
     "processing": "Processando...",
     "selectFile": "Selecionar arquivo",
     "on": "LIGADO",
-    "off": "DESLIGADO"
+    "off": "DESLIGADO",
+    "play": "Reproduzir",
+    "stop": "Parar",
+    "frames": {
+      "frame1": { "label": "Quadro 1", "description": "Primeiro quadro" },
+      "frame2": { "label": "Quadro 2", "description": "Segundo quadro" },
+      "frame3": { "label": "Quadro 3", "description": "Terceiro quadro" },
+      "frame4": { "label": "Quadro 4", "description": "Quarto quadro" },
+      "frame5": { "label": "Quadro 5", "description": "Quinto quadro" },
+      "frame6": { "label": "Quadro 6", "description": "Sexto quadro" },
+      "frame7": { "label": "Quadro 7", "description": "Sétimo quadro" },
+      "frame8": { "label": "Quadro 8", "description": "Oitavo quadro" }
+    },
+    "animations": {
+      "animation1": { "label": "Anim 1", "description": "Primeira animação" },
+      "animation2": { "label": "Anim 2", "description": "Segunda animação" },
+      "animation3": { "label": "Anim 3", "description": "Terceira animação" },
+      "animation4": { "label": "Anim 4", "description": "Quarta animação" },
+      "animation5": { "label": "Anim 5", "description": "Quinta animação" },
+      "animation6": { "label": "Anim 6", "description": "Sexta animação" },
+      "animation7": { "label": "Anim 7", "description": "Sétima animação" },
+      "animation8": { "label": "Anim 8", "description": "Oitava animação" }
+    }
   },
   "errors": {
     "generic": "Ocorreu um erro inesperado",
@@ -42,7 +64,24 @@
     "exportFailed": "Falha ao exportar",
     "testPlayFailed": "Teste falhou",
     "projectSizeExceeded": "Tamanho do projeto excede o limite",
-    "assetLimitExceeded": "Número de assets excede o limite"
+    "assetLimitExceeded": "Número de assets excede o limite",
+    "audioPlaybackFailed": "Falha na reprodução de áudio",
+    "fileNotSelected": "Nenhum arquivo selecionado",
+    "fileReadFailed": "Falha ao ler arquivo",
+    "fileSizeTooLarge": "Tamanho do arquivo muito grande",
+    "frameAddFailed": "Falha ao adicionar quadro",
+    "maxFramesReached": "Número máximo de quadros atingido",
+    "maxObjectsReached": "Número máximo de objetos atingido",
+    "objectNotFound": "Objeto não encontrado",
+    "objectUploadFailed": "Falha ao enviar objeto",
+    "onlyImagesAllowed": "Apenas arquivos de imagem são permitidos",
+    "fileNotAccepted": "Tipo de arquivo não aceito",
+    "checkInternetConnection": "Por favor, verifique sua conexão com a internet",
+    "subscriptionPageFailed": "Falha ao abrir página de gerenciamento de assinatura. Tente novamente.",
+    "projectImportFailed": "Falha ao importar. Verifique o formato do arquivo JSON.",
+    "enterUrlAndApiKey": "Por favor, insira URL e chave API",
+    "manualConfigSuccess": "Configuração manual bem-sucedida! Use estas configurações.",
+    "settingsComplete": "Configuração concluída!"
   },
   "success": {
     "projectSaved": "Projeto salvo",
@@ -50,7 +89,10 @@
     "projectExported": "Projeto exportado",
     "fileUploaded": "Arquivo enviado",
     "testPlaySuccess": "Teste bem-sucedido",
-    "thumbnailGenerated": "Miniatura gerada"
+    "thumbnailGenerated": "Miniatura gerada",
+    "framesAdded": "Quadros adicionados",
+    "objectsUploaded": "Objetos enviados",
+    "projectImported": "Projeto importado com sucesso!"
   },
   "auth": {
     "email": "Email",
@@ -69,7 +111,9 @@
     "invalidEmail": "Por favor, insira um endereço de email válido",
     "accountCreated": "Conta criada",
     "loginSuccess": "Login bem-sucedido",
-    "logoutSuccess": "Logout bem-sucedido"
+    "logoutSuccess": "Logout bem-sucedido",
+    "passwordResetComingSoon": "Recurso de redefinição de senha em breve",
+    "passwordResetEmailSent": "Email de redefinição de senha enviado"
   },
   "editor": {
     "tabs": {
@@ -751,11 +795,99 @@
   "conditions": {
     "touch": {
       "label": "Ao tocar",
-      "description": "Dispara quando o objeto é tocado"
+      "description": "Dispara quando o objeto é tocado",
+      "down": {
+        "label": "Toque",
+        "description": "Dispara no momento do toque"
+      },
+      "up": {
+        "label": "Soltar",
+        "description": "Dispara quando o dedo é levantado"
+      },
+      "hold": {
+        "label": "Segurar",
+        "description": "Dispara após segurar por tempo especificado"
+      },
+      "targets": {
+        "self": {
+          "label": "Este Objeto",
+          "description": "Toque neste objeto"
+        },
+        "stage": {
+          "label": "Palco Inteiro",
+          "description": "Toque em qualquer lugar do palco"
+        },
+        "stageArea": {
+          "label": "Região do Palco",
+          "description": "Toque em região específica do palco"
+        }
+      },
+      "drag": {
+        "label": "Arrastar",
+        "description": "Dispara no movimento de arrastar",
+        "types": {
+          "start": {
+            "label": "Início do Arrasto",
+            "description": "Dispara quando o arrasto começa"
+          },
+          "dragging": {
+            "label": "Arrastando",
+            "description": "Dispara continuamente durante o arrasto"
+          },
+          "end": {
+            "label": "Fim do Arrasto",
+            "description": "Dispara quando o arrasto termina"
+          }
+        },
+        "constraints": {
+          "none": {
+            "label": "Livre",
+            "description": "Mover livremente em qualquer direção"
+          },
+          "horizontal": {
+            "label": "Horizontal",
+            "description": "Apenas movimento horizontal"
+          },
+          "vertical": {
+            "label": "Vertical",
+            "description": "Apenas movimento vertical"
+          }
+        }
+      },
+      "flick": {
+        "label": "Peteleco",
+        "description": "Gesto de deslize rápido"
+      },
+      "swipe": {
+        "label": "Deslizar",
+        "description": "Gesto de deslize direcional",
+        "directions": {
+          "up": "Cima",
+          "down": "Baixo",
+          "left": "Esquerda",
+          "right": "Direita",
+          "upLeft": "Cima Esquerda",
+          "upRight": "Cima Direita",
+          "downLeft": "Baixo Esquerda",
+          "downRight": "Baixo Direita"
+        }
+      }
     },
     "time": {
       "label": "Tempo decorrido",
-      "description": "Dispara automaticamente após tempo especificado"
+      "description": "Dispara automaticamente após tempo especificado",
+      "exact": {
+        "label": "Tempo Exato",
+        "description": "Dispara uma vez no tempo exato especificado"
+      },
+      "range": {
+        "label": "Intervalo de Tempo",
+        "description": "Dispara continuamente dentro do intervalo de tempo"
+      },
+      "interval": {
+        "label": "Repetir",
+        "description": "Dispara repetidamente no intervalo especificado"
+      }
     },
     "position": {
       "label": "Na posição",
@@ -763,19 +895,149 @@
     },
     "collision": {
       "label": "Na colisão",
-      "description": "Ao colidir com outro objeto"
+      "description": "Ao colidir com outro objeto",
+      "types": {
+        "enter": {
+          "label": "Início da Colisão",
+          "description": "Dispara no momento da colisão"
+        },
+        "stay": {
+          "label": "Durante Colisão",
+          "description": "Dispara continuamente durante a colisão"
+        },
+        "exit": {
+          "label": "Fim da Colisão",
+          "description": "Dispara quando a colisão termina"
+        }
+      },
+      "targets": {
+        "background": {
+          "label": "Fundo",
+          "description": "Detectar colisão com o fundo"
+        },
+        "stage": {
+          "label": "Região do Palco",
+          "description": "Detectar entrada em região específica do palco"
+        },
+        "object": {
+          "label": "Outros Objetos",
+          "description": "Detectar colisão com outros objetos"
+        }
+      },
+      "checkModes": {
+        "hitbox": {
+          "label": "Hitbox (Rápido)",
+          "description": "Detecção rápida usando hitbox retangular"
+        },
+        "pixel": {
+          "label": "Pixel Perfeito (Preciso)",
+          "description": "Detecção precisa a nível de pixel"
+        }
+      }
     },
     "animation": {
       "label": "Fim da animação",
-      "description": "Quando a animação termina"
+      "description": "Quando a animação termina",
+      "start": {
+        "label": "Início",
+        "description": "Quando a animação começa"
+      },
+      "end": {
+        "label": "Fim",
+        "description": "Quando a animação termina"
+      },
+      "frame": {
+        "label": "Quadro Específico",
+        "description": "Ao atingir quadro específico"
+      },
+      "loop": {
+        "label": "Loop",
+        "description": "Quando a animação reinicia"
+      },
+      "frameRange": {
+        "label": "Intervalo de Quadros",
+        "description": "Dentro de intervalo específico de quadros"
+      },
+      "playing": {
+        "label": "Reproduzindo",
+        "description": "Quando a animação está tocando"
+      },
+      "stopped": {
+        "label": "Parado",
+        "description": "Quando a animação está parada"
+      }
+    },
+    "targets": {
+      "background": {
+        "label": "Fundo",
+        "description": "Animação do fundo"
+      },
+      "this": {
+        "label": "Este Objeto",
+        "description": "Animação deste objeto"
+      },
+      "other": {
+        "label": "Outro Objeto",
+        "description": "Animação de outro objeto"
+      }
     },
     "flag": {
       "label": "Flag ativada",
-      "description": "Verificar estado da flag personalizada"
+      "description": "Verificar estado da flag personalizada",
+      "on": {
+        "label": "Quando ON",
+        "description": "Dispara quando a flag está ON"
+      },
+      "off": {
+        "label": "Quando OFF",
+        "description": "Dispara quando a flag está OFF"
+      },
+      "offToOn": {
+        "label": "OFF→ON",
+        "description": "Dispara quando a flag muda de OFF para ON"
+      },
+      "onToOff": {
+        "label": "ON→OFF",
+        "description": "Dispara quando a flag muda de ON para OFF"
+      }
     },
     "gameState": {
       "label": "Estado do jogo",
-      "description": "Verificar estado geral do jogo"
+      "description": "Verificar estado geral do jogo",
+      "success": {
+        "label": "Estado de Sucesso",
+        "description": "Estado de jogo limpo",
+        "detail": "Estado quando o jogador atingiu as condições de vitória"
+      },
+      "failure": {
+        "label": "Estado de Falha",
+        "description": "Estado de game over",
+        "detail": "Estado quando o jogador atingiu as condições de derrota"
+      },
+      "playing": {
+        "label": "Jogando",
+        "description": "Estado normal de jogo",
+        "detail": "Estado normal de jogo quando o jogador pode operar"
+      },
+      "paused": {
+        "label": "Pausado",
+        "description": "Estado de pausa",
+        "detail": "Estado quando o jogo está pausado"
+      },
+      "checkTypes": {
+        "is": {
+          "label": "Enquanto no estado",
+          "description": "Dispara continuamente enquanto no estado especificado"
+        },
+        "not": {
+          "label": "Enquanto não no estado",
+          "description": "Dispara continuamente enquanto não no estado especificado"
+        },
+        "became": {
+          "label": "Momento da mudança",
+          "description": "Dispara uma vez no momento da mudança de estado"
+        }
+      }
     },
     "score": {
       "label": "Condição de pontuação",
@@ -783,6 +1045,22 @@
     }
   },
   "actions": {
+    "addScore": {
+      "label": "Adicionar Pontos",
+      "description": "Adicionar pontos à pontuação"
+    },
+    "stopBGM": {
+      "label": "Parar BGM",
+      "description": "Parar música de fundo"
+    },
+    "toggleFlag": {
+      "label": "Alternar Flag",
+      "description": "Alternar estado da flag (ON⇔OFF)"
+    },
+    "showMessage": {
+      "label": "Mostrar Mensagem",
+      "description": "Exibir mensagem na tela"
+    },
     "success": {
       "label": "Vitória!",
       "description": "Terminar jogo com sucesso"
@@ -813,7 +1091,69 @@
     },
     "move": {
       "label": "Mover",
-      "description": "Mover para posição especificada"
+      "description": "Mover para posição especificada",
+      "types": {
+        "straight": {
+          "label": "Reto",
+          "description": "Mover em linha reta para a posição"
+        },
+        "bounce": {
+          "label": "Quicar",
+          "description": "Movimento de quique"
+        },
+        "teleport": {
+          "label": "Teletransportar",
+          "description": "Mudança de posição instantânea"
+        },
+        "wander": {
+          "label": "Vagar",
+          "description": "Mover em direção aleatória"
+        },
+        "stop": {
+          "label": "Parar",
+          "description": "Parar no lugar"
+        },
+        "swap": {
+          "label": "Trocar",
+          "description": "Trocar posição com o alvo"
+        },
+        "approach": {
+          "label": "Perseguir",
+          "description": "Aproximar de outro objeto"
+        },
+        "orbit": {
+          "label": "Orbitar",
+          "description": "Mover em caminho circular"
+        },
+        "followDrag": {
+          "label": "Seguir Arrasto",
+          "description": "Seguir o movimento de arrastar"
+        }
+      },
+      "followDrag": {
+        "damping": {
+          "none": {
+            "label": "Nenhum",
+            "description": "Sem amortecimento, resposta instantânea"
+          },
+          "veryLow": {
+            "label": "Muito Baixo",
+            "description": "Suavização mínima"
+          },
+          "low": {
+            "label": "Baixo",
+            "description": "Suavização leve"
+          },
+          "medium": {
+            "label": "Médio",
+            "description": "Suavização moderada"
+          },
+          "high": {
+            "label": "Alto",
+            "description": "Suavização forte"
+          }
+        }
+      }
     },
     "show": {
       "label": "Mostrar",
@@ -838,6 +1178,77 @@
     "setFlag": {
       "label": "Definir flag",
       "description": "Ativar/Desativar flag personalizada"
+    },
+    "flags": {
+      "setFlag": {
+        "label": "Definir Flag",
+        "description": "Definir flag para estado especificado (ON/OFF)"
+      },
+      "toggleFlag": {
+        "label": "Alternar Flag",
+        "description": "Inverter estado da flag (ON⇔OFF)"
+      },
+      "values": {
+        "on": {
+          "label": "ON",
+          "description": "Definir flag para estado ON"
+        },
+        "off": {
+          "label": "OFF",
+          "description": "Definir flag para estado OFF"
+        }
+      },
+      "effects": {
+        "setOn": "Definir flag para estado ON",
+        "setOff": "Definir flag para estado OFF",
+        "toggle": "Inverter do estado atual (ON⇔OFF)"
+      }
+    },
+    "showHide": {
+      "show": {
+        "label": "Mostrar",
+        "description": "Mostrar o objeto"
+      },
+      "hide": {
+        "label": "Esconder",
+        "description": "Esconder o objeto"
+      },
+      "fade": {
+        "enabled": {
+          "label": "Fade Ativado",
+          "description": "Mostrar/esconder suavemente"
+        },
+        "disabled": {
+          "label": "Troca Instantânea",
+          "description": "Mostrar/esconder instantaneamente"
+        }
+      },
+      "duration": {
+        "instant": {
+          "label": "Instantâneo",
+          "description": "0.1s"
+        },
+        "fast": {
+          "label": "Rápido",
+          "description": "0.3s"
+        },
+        "normal": {
+          "label": "Normal",
+          "description": "0.5s"
+        },
+        "slow": {
+          "label": "Lento",
+          "description": "1.0s"
+        },
+        "verySlow": {
+          "label": "Muito Lento",
+          "description": "2.0s"
+        }
+      }
+    },
+    "randomAction": {
+      "label": "Ação Aleatória",
+      "description": "Executar ação aleatória de múltiplas opções"
     }
   },
   "movements": {
@@ -864,16 +1275,50 @@
     "approach": {
       "label": "Perseguir",
       "description": "Aproximar de outro objeto"
+    },
+    "stop": {
+      "label": "Parar",
+      "description": "Parar no lugar"
+    },
+    "swap": {
+      "label": "Trocar",
+      "description": "Trocar posição com o alvo"
     }
   },
   "effects": {
     "flash": {
       "label": "Flash",
-      "description": "Piscar tela/objeto"
+      "description": "Piscar tela/objeto",
+      "colors": {
+        "white": "Branco",
+        "red": "Vermelho",
+        "blue": "Azul",
+        "green": "Verde",
+        "yellow": "Amarelo",
+        "magenta": "Magenta"
+      }
+    },
+    "glow": {
+      "label": "Brilho",
+      "description": "Fazer objeto brilhar"
     },
     "shake": {
       "label": "Tremor",
-      "description": "Efeito de vibração"
+      "description": "Efeito de vibração",
+      "directions": {
+        "horizontal": {
+          "label": "Horizontal",
+          "description": "Tremer para esquerda e direita"
+        },
+        "vertical": {
+          "label": "Vertical",
+          "description": "Tremer para cima e baixo"
+        },
+        "both": {
+          "label": "Ambos",
+          "description": "Tremer em todas as direções"
+        }
+      }
     },
     "scale": {
       "label": "Escala",
@@ -881,15 +1326,63 @@
     },
     "rotate": {
       "label": "Rotação",
-      "description": "Efeito de rotação"
+      "description": "Efeito de rotação",
+      "directions": {
+        "clockwise": {
+          "label": "Horário",
+          "description": "Girar no sentido horário"
+        },
+        "counterclockwise": {
+          "label": "Anti-horário",
+          "description": "Girar no sentido anti-horário"
+        },
+        "alternate": {
+          "label": "Alternar",
+          "description": "Alternar direção de rotação"
+        }
+      }
     },
     "fade": {
       "label": "Fade",
       "description": "Fade in/out"
     },
+    "confetti": {
+      "label": "Confete",
+      "description": "Partículas de celebração"
+    },
+    "monochrome": {
+      "label": "Monocromático",
+      "description": "Filtro preto e branco"
+    },
     "particles": {
       "label": "Partículas",
-      "description": "Emitir partículas"
+      "description": "Emitir partículas",
+      "types": {
+        "sparkle": {
+          "label": "Brilho",
+          "description": "Partículas brilhantes"
+        },
+        "explosion": {
+          "label": "Explosão",
+          "description": "Explosão de partículas"
+        },
+        "confetti": {
+          "label": "Confete",
+          "description": "Confete de celebração"
+        },
+        "hearts": {
+          "label": "Corações",
+          "description": "Partículas de coração"
+        },
+        "star": {
+          "label": "Estrela",
+          "description": "Partículas de estrela"
+        },
+        "splash": {
+          "label": "Respingo",
+          "description": "Efeito de respingo"
+        }
+      }
     }
   },
   "positions": {
@@ -949,6 +1442,24 @@
       "label": "Difícil",
       "description": "Para especialistas"
     }
+  },
+  "directions": {
+    "up": "Cima",
+    "down": "Baixo",
+    "left": "Esquerda",
+    "right": "Direita",
+    "upLeft": "Cima Esquerda",
+    "upRight": "Cima Direita",
+    "downLeft": "Baixo Esquerda",
+    "downRight": "Baixo Direita"
+  },
+  "colors": {
+    "white": "Branco",
+    "red": "Vermelho",
+    "blue": "Azul",
+    "green": "Verde",
+    "yellow": "Amarelo",
+    "magenta": "Magenta"
   },
   "gameFeed": {
     "trending": "Em alta",
