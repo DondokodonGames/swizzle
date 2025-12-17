@@ -110,7 +110,17 @@
     "exportFailed": "エクスポートに失敗しました",
     "testPlayFailed": "テストプレイに失敗しました",
     "projectSizeExceeded": "プロジェクトサイズが上限を超えています",
-    "assetLimitExceeded": "アセット数が上限を超えています"
+    "assetLimitExceeded": "アセット数が上限を超えています",
+    "audioPlaybackFailed": "音声の再生に失敗しました",
+    "fileNotSelected": "ファイルが選択されていません",
+    "fileReadFailed": "ファイルの読み込みに失敗しました",
+    "fileSizeTooLarge": "ファイルサイズが大きすぎます",
+    "frameAddFailed": "フレームの追加に失敗しました",
+    "maxFramesReached": "フレーム数の上限に達しました",
+    "maxObjectsReached": "オブジェクト数の上限に達しました",
+    "objectNotFound": "オブジェクトが見つかりません",
+    "objectUploadFailed": "オブジェクトのアップロードに失敗しました",
+    "onlyImagesAllowed": "画像ファイルのみ許可されています"
   },
   "success": {
     "projectSaved": "プロジェクトを保存しました",
@@ -118,6 +128,8 @@
     "projectExported": "プロジェクトをエクスポートしました",
     "fileUploaded": "ファイルをアップロードしました",
     "testPlaySuccess": "テストプレイが成功しました",
-    "thumbnailGenerated": "サムネイルを生成しました"
+    "thumbnailGenerated": "サムネイルを生成しました",
+    "framesAdded": "フレームを追加しました",
+    "objectsUploaded": "オブジェクトをアップロードしました"
   }
 }

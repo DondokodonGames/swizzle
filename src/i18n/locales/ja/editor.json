@@ -263,6 +263,9 @@
       "replaceImage": "差し替え",
       "backgroundReplaced": "背景画像を差し替えました",
       "objectReplaced": "オブジェクト画像を差し替えました",
+      "deleteImages": "画像を削除",
+      "imagesDeleted": "画像を削除しました",
+      "noImage": "画像なし",
       "errors": {
         "backgroundNotFound": "背景が見つかりません",
         "backgroundReplaceFailed": "背景の差し替えに失敗しました",
@@ -273,6 +276,45 @@
       "title": "スクリプト設定",
       "subtitle": "オブジェクト配置・複数ルール対応・高度なゲームロジック設定",
       "layout": "レイアウト",
+      "addAction": "アクションを追加",
+      "addActionFromButtons": "下のボタンからアクションを追加",
+      "addCondition": "条件を追加",
+      "addConditionFromButtons": "下のボタンから条件を追加",
+      "allConditions": "すべての条件",
+      "anyCondition": "いずれかの条件",
+      "basicSettings": "基本設定",
+      "conditionCombination": "条件の組み合わせ",
+      "displayDuration": "表示時間",
+      "exactTime": "指定時間",
+      "flag": "フラグ",
+      "gameOverall": "ゲーム全体",
+      "ifConditions": "もし（条件）",
+      "interval": "間隔",
+      "message": "メッセージ",
+      "onHold": "長押し時",
+      "onPress": "タップ時",
+      "onRelease": "離した時",
+      "pleaseAddAction": "アクションを追加してください",
+      "pleaseAddCondition": "条件を追加してください",
+      "pleaseEnterRuleName": "ルール名を入力してください",
+      "points": "ポイント",
+      "priority": "優先度",
+      "ruleEditorHelp": "ルールエディターのヘルプ",
+      "ruleName": "ルール名",
+      "ruleNamePlaceholder": "ルール名を入力",
+      "ruleSetting": "ルール設定",
+      "screen": "画面",
+      "seconds": "秒",
+      "self": "自分",
+      "target": "対象",
+      "targetObject": "対象オブジェクト",
+      "thenActions": "なら（アクション）",
+      "timeRange": "時間範囲",
+      "timeType": "時間タイプ",
+      "touchType": "タッチタイプ",
+      "whenChanged": "変更時",
+      "whenOff": "OFFの時",
+      "whenOn": "ONの時",
       "rules": "ルール",
       "addRule": "ルールを追加",
       "editRule": "ルールを編集",
@@ -325,7 +367,8 @@
           "place": "📍配置 → レイアウト画面に追加",
           "rules": "⚙️ルール → ゲームロジック設定",
           "remove": "🗑️削除 → レイアウトから除去",
-          "dragAndDrop": "ドラッグ&ドロップでも配置可能"
+          "dragAndDrop": "ドラッグ&ドロップでも配置可能",
+          "resize": "角をドラッグでサイズ変更"
         }
       },
       "placedObjects": {
@@ -394,7 +437,19 @@
           "ruleName": "例: 中央エリアタッチで移動",
           "flagName": "フラグ名を入力",
           "counterName": "カウンター名を入力",
-          "initialValue": "初期値"
+          "initialValue": "初期値",
+          "addAction": "クリックしてアクションを追加",
+          "addCondition": "クリックして条件を追加",
+          "selectRule": "編集するルールを選択",
+          "selectRuleDescription": "既存のルールから選択するか、新しく作成"
+        },
+        "titles": {
+          "actionDetail": "アクション詳細",
+          "conditionDetail": "条件詳細"
+        },
+        "descriptions": {
+          "actionDetail": "アクションの設定を行います",
+          "conditionDetail": "条件の設定を行います"
         },
         "buttons": {
           "save": "保存",
@@ -1161,7 +1216,13 @@
       "otherObjectAnimation": " - 「{{name}}」のアニメーション",
       "frameNumber": " (フレーム{{number}})",
       "animationNumber": " - アニメ{{number}}",
-      "framesAvailable": " ({{count}}フレーム利用可能)"
+      "framesAvailable": " ({{count}}フレーム利用可能)",
+      "conditionTypeLabel": "条件タイプ",
+      "endFrame": "終了フレーム",
+      "frameNumberLabel": "フレーム番号",
+      "frameRangeLabel": "フレーム範囲",
+      "loopCountLabel": "ループ回数",
+      "startFrame": "開始フレーム"
     },
     "gameStateCondition": {
       "title": "ゲーム状態条件詳細設定",

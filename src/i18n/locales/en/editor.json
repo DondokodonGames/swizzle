@@ -263,6 +263,9 @@
       "replaceImage": "Replace",
       "backgroundReplaced": "Background image replaced",
       "objectReplaced": "Object image replaced",
+      "deleteImages": "Delete Images",
+      "imagesDeleted": "Images deleted",
+      "noImage": "No image",
       "errors": {
         "backgroundNotFound": "Background not found",
         "backgroundReplaceFailed": "Failed to replace background",
@@ -280,6 +283,45 @@
       "action": "Action",
       "when": "When",
       "then": "Then",
+      "addAction": "Add Action",
+      "addActionFromButtons": "Add action from buttons below",
+      "addCondition": "Add Condition",
+      "addConditionFromButtons": "Add condition from buttons below",
+      "allConditions": "All conditions",
+      "anyCondition": "Any condition",
+      "basicSettings": "Basic Settings",
+      "conditionCombination": "Condition Combination",
+      "displayDuration": "Display Duration",
+      "exactTime": "Exact Time",
+      "flag": "Flag",
+      "gameOverall": "Game Overall",
+      "ifConditions": "If (Conditions)",
+      "interval": "Interval",
+      "message": "Message",
+      "onHold": "On Hold",
+      "onPress": "On Press",
+      "onRelease": "On Release",
+      "pleaseAddAction": "Please add an action",
+      "pleaseAddCondition": "Please add a condition",
+      "pleaseEnterRuleName": "Please enter a rule name",
+      "points": "Points",
+      "priority": "Priority",
+      "ruleEditorHelp": "Rule Editor Help",
+      "ruleName": "Rule Name",
+      "ruleNamePlaceholder": "Enter rule name",
+      "ruleSetting": "Rule Setting",
+      "screen": "Screen",
+      "seconds": "seconds",
+      "self": "Self",
+      "target": "Target",
+      "targetObject": "Target Object",
+      "thenActions": "Then (Actions)",
+      "timeRange": "Time Range",
+      "timeType": "Time Type",
+      "touchType": "Touch Type",
+      "whenChanged": "When Changed",
+      "whenOff": "When OFF",
+      "whenOn": "When ON",
       "gameTime": {
         "title": "Game Time Setting",
         "presets": {
@@ -325,7 +367,8 @@
           "place": "Place → Add to layout screen",
           "rules": "Rules → Set game logic",
           "remove": "Remove → Delete from layout",
-          "dragAndDrop": "Drag & drop also works"
+          "dragAndDrop": "Drag & drop also works",
+          "resize": "Drag corners to resize"
         }
       },
       "placedObjects": {
@@ -394,7 +437,19 @@
           "ruleName": "e.g., Move on center area touch",
           "flagName": "Enter flag name",
           "counterName": "Enter counter name",
-          "initialValue": "Initial value"
+          "initialValue": "Initial value",
+          "addAction": "Click to add an action",
+          "addCondition": "Click to add a condition",
+          "selectRule": "Select a rule to edit",
+          "selectRuleDescription": "Choose from existing rules or create a new one"
+        },
+        "titles": {
+          "actionDetail": "Action Detail",
+          "conditionDetail": "Condition Detail"
+        },
+        "descriptions": {
+          "actionDetail": "Configure the action settings",
+          "conditionDetail": "Configure the condition settings"
         },
         "buttons": {
           "save": "Save",
@@ -1359,7 +1414,13 @@
       "otherObjectAnimation": " - \"{{name}}\"'s animation",
       "frameNumber": " (Frame {{number}})",
       "animationNumber": " - Anim {{number}}",
-      "framesAvailable": " ({{count}} frames available)"
+      "framesAvailable": " ({{count}} frames available)",
+      "conditionTypeLabel": "Condition Type",
+      "endFrame": "End Frame",
+      "frameNumberLabel": "Frame Number",
+      "frameRangeLabel": "Frame Range",
+      "loopCountLabel": "Loop Count",
+      "startFrame": "Start Frame"
     },
     "gameStateCondition": {
       "title": "Game State Condition Settings",

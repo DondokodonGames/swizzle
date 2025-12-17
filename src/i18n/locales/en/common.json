@@ -62,7 +62,17 @@
     "exportFailed": "Failed to export",
     "testPlayFailed": "Test play failed",
     "projectSizeExceeded": "Project size exceeds the limit",
-    "assetLimitExceeded": "Asset count exceeds the limit"
+    "assetLimitExceeded": "Asset count exceeds the limit",
+    "audioPlaybackFailed": "Failed to play audio",
+    "fileNotSelected": "No file selected",
+    "fileReadFailed": "Failed to read file",
+    "fileSizeTooLarge": "File size is too large",
+    "frameAddFailed": "Failed to add frame",
+    "maxFramesReached": "Maximum number of frames reached",
+    "maxObjectsReached": "Maximum number of objects reached",
+    "objectNotFound": "Object not found",
+    "objectUploadFailed": "Failed to upload object",
+    "onlyImagesAllowed": "Only image files are allowed"
   },
   "success": {
     "projectSaved": "Project saved",
@@ -70,6 +80,8 @@
     "projectExported": "Project exported",
     "fileUploaded": "File uploaded",
     "testPlaySuccess": "Test play successful",
-    "thumbnailGenerated": "Thumbnail generated"
+    "thumbnailGenerated": "Thumbnail generated",
+    "framesAdded": "Frames added",
+    "objectsUploaded": "Objects uploaded"
   }
 }
