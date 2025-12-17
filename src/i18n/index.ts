@@ -5,13 +5,13 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 /**
  * Swizzle Localization System
  *
- * Structure (for en/ja):
+ * Structure (for en/ja/de):
  * src/i18n/locales/{lang}/
  * ├── index.ts          # Merges all JSON files
  * ├── common.json       # common, errors, success
  * ├── auth.json         # auth
  * ├── editor.json       # editor (large section)
- * ├── gameLogic.json    # conditions, actions, movements, effects, positions, speeds, durations, difficulties
+ * ├── gameLogic.json    # conditions, actions, movements, effects, positions, speeds, durations, difficulties, directions, colors
  * ├── social.json       # gameFeed, profile
  * ├── monetization.json # monetization, pricing
  * └── game.json         # game, bridge
@@ -19,14 +19,14 @@ import LanguageDetector from 'i18next-browser-languagedetector';
  * Other languages use legacy single JSON files until fully migrated.
  */
 
-// Import translations - en/ja use new split structure
+// Import translations - en/ja/de use new split structure
 import en from './locales/en';
 import ja from './locales/ja';
+import de from './locales/de';
 
 // Other languages use legacy single JSON files
 import fr from './locales/fr.json';
 import it from './locales/it.json';
-import de from './locales/de.json';
 import es from './locales/es.json';
 import zh from './locales/zh.json';
 import ko from './locales/ko.json';
