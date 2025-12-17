@@ -59,13 +59,13 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
   // 条件タイプの名前を取得
   const getConditionTypeName = (type: keyof typeof CONDITION_TYPES): string => {
     const typeMap: Record<keyof typeof CONDITION_TYPES, string> = {
-      touch: t('conditions.touch'),
-      time: t('conditions.time'),
-      collision: t('conditions.collision'),
-      flag: t('conditions.flag'),
-      animation: t('conditions.animation'),
-      position: t('conditions.position'),
-      gameState: t('conditions.gameState')
+      touch: t('conditions.touch.label'),
+      time: t('conditions.time.label'),
+      collision: t('conditions.collision.label'),
+      flag: t('conditions.flag.label'),
+      animation: t('conditions.animation.label'),
+      position: t('conditions.position.label'),
+      gameState: t('conditions.gameState.label')
     };
     return typeMap[type];
   };
@@ -73,23 +73,23 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
   // アクションタイプの名前を取得
   const getActionTypeName = (type: keyof typeof ACTION_TYPES): string => {
     const typeMap: Record<keyof typeof ACTION_TYPES, string> = {
-      addScore: t('actions.addScore'),
-      success: t('actions.success'),
-      failure: t('actions.failure'),
-      setFlag: t('actions.setFlag'),
-      playSound: t('actions.playSound'),
-      showMessage: t('actions.showMessage'),
-      hide: t('actions.hide'),
-      show: t('actions.show'),
-      move: t('actions.move'),
-      pause: t('actions.pause'),
-      restart: t('actions.restart'),
-      stopSound: t('actions.stopSound'),
-      playBGM: t('actions.playBGM'),
-      stopBGM: t('actions.stopBGM'),
-      toggleFlag: t('actions.toggleFlag'),
-      switchAnimation: t('actions.switchAnimation'),
-      effect: t('actions.effect')
+      addScore: t('actions.addScore.label'),
+      success: t('actions.success.label'),
+      failure: t('actions.failure.label'),
+      setFlag: t('actions.setFlag.label'),
+      playSound: t('actions.playSound.label'),
+      showMessage: t('actions.showMessage.label'),
+      hide: t('actions.hide.label'),
+      show: t('actions.show.label'),
+      move: t('actions.move.label'),
+      pause: t('actions.pause.label'),
+      restart: t('actions.restart.label'),
+      stopSound: t('actions.stopSound.label'),
+      playBGM: t('actions.playBGM.label'),
+      stopBGM: t('actions.stopBGM.label'),
+      toggleFlag: t('actions.toggleFlag.label'),
+      switchAnimation: t('actions.switchAnimation.label'),
+      effect: t('actions.effect.label')
     };
     return typeMap[type];
   };

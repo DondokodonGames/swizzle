@@ -261,6 +261,7 @@
       "optimizationDesc": "画像を自動圧縮してファイルサイズを削減",
       "speed": "速度",
       "replaceImage": "差し替え",
+      "addImage": "追加",
       "backgroundReplaced": "背景画像を差し替えました",
       "objectReplaced": "オブジェクト画像を差し替えました",
       "deleteImages": "画像を削除",
@@ -312,6 +313,22 @@
       "timeRange": "時間範囲",
       "timeType": "時間タイプ",
       "touchType": "タッチタイプ",
+      "conditions": {
+        "touch": {
+          "down": "タップ時",
+          "up": "リリース時",
+          "hold": "長押し時",
+          "self": "このオブジェクト",
+          "stage": "ステージ全体"
+        }
+      },
+      "congratulations": "おめでとう！",
+      "greatJob": "よくできました！",
+      "tooBad": "残念...",
+      "tryAgain": "もう一度！",
+      "messageText": "こんにちは！",
+      "create": "作成",
+      "edit": "編集",
       "whenChanged": "変更時",
       "whenOff": "OFFの時",
       "whenOn": "ONの時",
@@ -1421,6 +1438,7 @@
       "endFrame": "終了フレーム",
       "frameNumberLabel": "フレーム番号",
       "frameRangeLabel": "フレーム範囲",
+      "frameRangeDisplay": "フレーム {{start}} ～ {{end}}",
       "loopCountLabel": "ループ回数",
       "startFrame": "開始フレーム"
     },

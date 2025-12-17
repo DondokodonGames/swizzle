@@ -23,6 +23,8 @@
     "selectFile": "ファイルを選択",
     "on": "ON",
     "off": "OFF",
+    "play": "再生",
+    "stop": "停止",
     "frames": {
       "frame1": {
         "label": "フレーム1",
@@ -120,7 +122,8 @@
     "maxObjectsReached": "オブジェクト数の上限に達しました",
     "objectNotFound": "オブジェクトが見つかりません",
     "objectUploadFailed": "オブジェクトのアップロードに失敗しました",
-    "onlyImagesAllowed": "画像ファイルのみ許可されています"
+    "onlyImagesAllowed": "画像ファイルのみ許可されています",
+    "fileNotAccepted": "このファイル形式は受け付けられません"
   },
   "success": {
     "projectSaved": "プロジェクトを保存しました",

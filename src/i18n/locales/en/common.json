@@ -23,6 +23,8 @@
     "selectFile": "Select File",
     "on": "ON",
     "off": "OFF",
+    "play": "Play",
+    "stop": "Stop",
     "frames": {
       "frame1": { "label": "Frame 1", "description": "First frame" },
       "frame2": { "label": "Frame 2", "description": "Second frame" },
@@ -72,7 +74,8 @@
     "maxObjectsReached": "Maximum number of objects reached",
     "objectNotFound": "Object not found",
     "objectUploadFailed": "Failed to upload object",
-    "onlyImagesAllowed": "Only image files are allowed"
+    "onlyImagesAllowed": "Only image files are allowed",
+    "fileNotAccepted": "File type not accepted"
   },
   "success": {
     "projectSaved": "Project saved",

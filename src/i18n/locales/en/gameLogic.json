@@ -28,6 +28,56 @@
           "label": "Stage Region",
           "description": "Touch on specified stage region"
         }
+      },
+      "drag": {
+        "label": "Drag",
+        "description": "Triggers on drag movement",
+        "types": {
+          "start": {
+            "label": "Drag Start",
+            "description": "Triggers when drag begins"
+          },
+          "dragging": {
+            "label": "Dragging",
+            "description": "Triggers continuously during drag"
+          },
+          "end": {
+            "label": "Drag End",
+            "description": "Triggers when drag ends"
+          }
+        },
+        "constraints": {
+          "none": {
+            "label": "Free",
+            "description": "Move freely in any direction"
+          },
+          "horizontal": {
+            "label": "Horizontal",
+            "description": "Only horizontal movement"
+          },
+          "vertical": {
+            "label": "Vertical",
+            "description": "Only vertical movement"
+          }
+        }
+      },
+      "flick": {
+        "label": "Flick",
+        "description": "Quick swipe gesture"
+      },
+      "swipe": {
+        "label": "Swipe",
+        "description": "Directional swipe gesture",
+        "directions": {
+          "up": "Up",
+          "down": "Down",
+          "left": "Left",
+          "right": "Right",
+          "upLeft": "Up Left",
+          "upRight": "Up Right",
+          "downLeft": "Down Left",
+          "downRight": "Down Right"
+        }
       }
     },
     "time": {
@@ -110,6 +160,18 @@
       "loop": {
         "label": "Loop",
         "description": "When animation loops"
+      },
+      "frameRange": {
+        "label": "Frame Range",
+        "description": "When within specific frame range"
+      },
+      "playing": {
+        "label": "Playing",
+        "description": "When animation is playing"
+      },
+      "stopped": {
+        "label": "Stopped",
+        "description": "When animation is stopped"
       }
     },
     "targets": {
@@ -210,6 +272,22 @@
     }
   },
   "actions": {
+    "addScore": {
+      "label": "Add Score",
+      "description": "Add points to score"
+    },
+    "stopBGM": {
+      "label": "Stop BGM",
+      "description": "Stop background music"
+    },
+    "toggleFlag": {
+      "label": "Toggle Flag",
+      "description": "Toggle flag state (ON⇔OFF)"
+    },
+    "showMessage": {
+      "label": "Show Message",
+      "description": "Display message on screen"
+    },
     "success": {
       "label": "Game Clear!",
       "description": "End game with success"
@@ -240,7 +318,69 @@
     },
     "move": {
       "label": "Move",
-      "description": "Move to specified position"
+      "description": "Move to specified position",
+      "types": {
+        "straight": {
+          "label": "Straight",
+          "description": "Move in straight line to position"
+        },
+        "bounce": {
+          "label": "Bounce",
+          "description": "Bouncing movement"
+        },
+        "teleport": {
+          "label": "Teleport",
+          "description": "Instant position change"
+        },
+        "wander": {
+          "label": "Wander",
+          "description": "Move in random direction"
+        },
+        "stop": {
+          "label": "Stop",
+          "description": "Stop in place"
+        },
+        "swap": {
+          "label": "Swap",
+          "description": "Swap position with target"
+        },
+        "approach": {
+          "label": "Chase",
+          "description": "Approach another object"
+        },
+        "orbit": {
+          "label": "Orbit",
+          "description": "Move in circular path"
+        },
+        "followDrag": {
+          "label": "Follow Drag",
+          "description": "Follow touch drag movement"
+        }
+      },
+      "followDrag": {
+        "damping": {
+          "none": {
+            "label": "None",
+            "description": "No damping, instant response"
+          },
+          "veryLow": {
+            "label": "Very Low",
+            "description": "Minimal smoothing"
+          },
+          "low": {
+            "label": "Low",
+            "description": "Light smoothing"
+          },
+          "medium": {
+            "label": "Medium",
+            "description": "Moderate smoothing"
+          },
+          "high": {
+            "label": "High",
+            "description": "Heavy smoothing"
+          }
+        }
+      }
     },
     "show": {
       "label": "Show",
@@ -375,7 +515,15 @@
   "effects": {
     "flash": {
       "label": "Flash",
-      "description": "Flash screen/object"
+      "description": "Flash screen/object",
+      "colors": {
+        "white": "White",
+        "red": "Red",
+        "blue": "Blue",
+        "green": "Green",
+        "yellow": "Yellow",
+        "magenta": "Magenta"
+      }
     },
     "glow": {
       "label": "Glow",
@@ -383,7 +531,21 @@
     },
     "shake": {
       "label": "Shake",
-      "description": "Vibration effect"
+      "description": "Vibration effect",
+      "directions": {
+        "horizontal": {
+          "label": "Horizontal",
+          "description": "Shake left and right"
+        },
+        "vertical": {
+          "label": "Vertical",
+          "description": "Shake up and down"
+        },
+        "both": {
+          "label": "Both",
+          "description": "Shake in all directions"
+        }
+      }
     },
     "scale": {
       "label": "Scale",
@@ -391,7 +553,21 @@
     },
     "rotate": {
       "label": "Rotate",
-      "description": "Rotation effect"
+      "description": "Rotation effect",
+      "directions": {
+        "clockwise": {
+          "label": "Clockwise",
+          "description": "Rotate clockwise"
+        },
+        "counterclockwise": {
+          "label": "Counter-Clockwise",
+          "description": "Rotate counter-clockwise"
+        },
+        "alternate": {
+          "label": "Alternate",
+          "description": "Alternate rotation direction"
+        }
+      }
     },
     "fade": {
       "label": "Fade",
@@ -407,7 +583,33 @@
     },
     "particles": {
       "label": "Particles",
-      "description": "Emit particles"
+      "description": "Emit particles",
+      "types": {
+        "sparkle": {
+          "label": "Sparkle",
+          "description": "Sparkling particles"
+        },
+        "explosion": {
+          "label": "Explosion",
+          "description": "Explosive burst"
+        },
+        "confetti": {
+          "label": "Confetti",
+          "description": "Celebration confetti"
+        },
+        "hearts": {
+          "label": "Hearts",
+          "description": "Heart particles"
+        },
+        "star": {
+          "label": "Star",
+          "description": "Star particles"
+        },
+        "splash": {
+          "label": "Splash",
+          "description": "Splash effect"
+        }
+      }
     }
   },
   "positions": {
@@ -467,5 +669,23 @@
       "label": "Hard",
       "description": "For experts"
     }
+  },
+  "directions": {
+    "up": "Up",
+    "down": "Down",
+    "left": "Left",
+    "right": "Right",
+    "upLeft": "Up Left",
+    "upRight": "Up Right",
+    "downLeft": "Down Left",
+    "downRight": "Down Right"
+  },
+  "colors": {
+    "white": "White",
+    "red": "Red",
+    "blue": "Blue",
+    "green": "Green",
+    "yellow": "Yellow",
+    "magenta": "Magenta"
   }
 }

@@ -28,6 +28,56 @@
           "label": "ステージ範囲",
           "description": "ステージの指定範囲へのタッチ"
         }
+      },
+      "drag": {
+        "label": "ドラッグ",
+        "description": "ドラッグ操作で発動",
+        "types": {
+          "start": {
+            "label": "ドラッグ開始",
+            "description": "ドラッグが始まった瞬間に発動"
+          },
+          "dragging": {
+            "label": "ドラッグ中",
+            "description": "ドラッグ中ずっと発動"
+          },
+          "end": {
+            "label": "ドラッグ終了",
+            "description": "ドラッグが終わった瞬間に発動"
+          }
+        },
+        "constraints": {
+          "none": {
+            "label": "自由",
+            "description": "どの方向にも移動可能"
+          },
+          "horizontal": {
+            "label": "水平のみ",
+            "description": "水平方向のみ移動"
+          },
+          "vertical": {
+            "label": "垂直のみ",
+            "description": "垂直方向のみ移動"
+          }
+        }
+      },
+      "flick": {
+        "label": "フリック",
+        "description": "素早くスワイプするジェスチャー"
+      },
+      "swipe": {
+        "label": "スワイプ",
+        "description": "方向へのスワイプジェスチャー",
+        "directions": {
+          "up": "上",
+          "down": "下",
+          "left": "左",
+          "right": "右",
+          "upLeft": "左上",
+          "upRight": "右上",
+          "downLeft": "左下",
+          "downRight": "右下"
+        }
       }
     },
     "time": {
@@ -110,6 +160,18 @@
       "loop": {
         "label": "ループ時",
         "description": "アニメーションがループした時"
+      },
+      "frameRange": {
+        "label": "フレーム範囲",
+        "description": "特定のフレーム範囲内にある時"
+      },
+      "playing": {
+        "label": "再生中",
+        "description": "アニメーション再生中の時"
+      },
+      "stopped": {
+        "label": "停止中",
+        "description": "アニメーションが停止している時"
       }
     },
     "targets": {
@@ -210,6 +272,22 @@
     }
   },
   "actions": {
+    "addScore": {
+      "label": "スコア追加",
+      "description": "スコアにポイントを追加"
+    },
+    "stopBGM": {
+      "label": "BGM停止",
+      "description": "バックグラウンドミュージックを停止"
+    },
+    "toggleFlag": {
+      "label": "フラグ反転",
+      "description": "フラグの状態を反転（ON⇔OFF）"
+    },
+    "showMessage": {
+      "label": "メッセージ表示",
+      "description": "画面にメッセージを表示"
+    },
     "success": {
       "label": "ゲームクリア！",
       "description": "成功でゲーム終了"
@@ -240,7 +318,69 @@
     },
     "move": {
       "label": "移動する",
-      "description": "指定位置に移動"
+      "description": "指定位置に移動",
+      "types": {
+        "straight": {
+          "label": "まっすぐ移動",
+          "description": "指定位置へ直線移動"
+        },
+        "bounce": {
+          "label": "ぴょんぴょん",
+          "description": "跳ねるような移動"
+        },
+        "teleport": {
+          "label": "瞬間移動",
+          "description": "即座に位置変更"
+        },
+        "wander": {
+          "label": "ふらふら移動",
+          "description": "ランダムな方向に移動"
+        },
+        "stop": {
+          "label": "停止",
+          "description": "その場で停止"
+        },
+        "swap": {
+          "label": "入れ替わり",
+          "description": "目標と位置を入れ替える"
+        },
+        "approach": {
+          "label": "追跡移動",
+          "description": "他のオブジェクトに近づく"
+        },
+        "orbit": {
+          "label": "回転移動",
+          "description": "円形軌道で移動"
+        },
+        "followDrag": {
+          "label": "ドラッグ追従",
+          "description": "タッチドラッグに追従して移動"
+        }
+      },
+      "followDrag": {
+        "damping": {
+          "none": {
+            "label": "なし",
+            "description": "減衰なし、即座に反応"
+          },
+          "veryLow": {
+            "label": "極めて低い",
+            "description": "わずかなスムージング"
+          },
+          "low": {
+            "label": "低い",
+            "description": "軽いスムージング"
+          },
+          "medium": {
+            "label": "中程度",
+            "description": "適度なスムージング"
+          },
+          "high": {
+            "label": "高い",
+            "description": "強いスムージング"
+          }
+        }
+      }
     },
     "show": {
       "label": "表示する",
@@ -375,7 +515,15 @@
   "effects": {
     "flash": {
       "label": "フラッシュ",
-      "description": "画面・オブジェクトを光らせる"
+      "description": "画面・オブジェクトを光らせる",
+      "colors": {
+        "white": "白",
+        "red": "赤",
+        "blue": "青",
+        "green": "緑",
+        "yellow": "黄",
+        "magenta": "マゼンタ"
+      }
     },
     "glow": {
       "label": "発光",
@@ -383,7 +531,21 @@
     },
     "shake": {
       "label": "シェイク",
-      "description": "振動・揺れエフェクト"
+      "description": "振動・揺れエフェクト",
+      "directions": {
+        "horizontal": {
+          "label": "水平",
+          "description": "左右に揺れる"
+        },
+        "vertical": {
+          "label": "垂直",
+          "description": "上下に揺れる"
+        },
+        "both": {
+          "label": "両方",
+          "description": "全方向に揺れる"
+        }
+      }
     },
     "scale": {
       "label": "拡大縮小",
@@ -391,7 +553,21 @@
     },
     "rotate": {
       "label": "回転",
-      "description": "回転エフェクト"
+      "description": "回転エフェクト",
+      "directions": {
+        "clockwise": {
+          "label": "時計回り",
+          "description": "時計回りに回転"
+        },
+        "counterclockwise": {
+          "label": "反時計回り",
+          "description": "反時計回りに回転"
+        },
+        "alternate": {
+          "label": "交互",
+          "description": "回転方向を交互に"
+        }
+      }
     },
     "fade": {
       "label": "フェード",
@@ -407,7 +583,33 @@
     },
     "particles": {
       "label": "パーティクル",
-      "description": "パーティクル放出"
+      "description": "パーティクル放出",
+      "types": {
+        "sparkle": {
+          "label": "キラキラ",
+          "description": "きらめくパーティクル"
+        },
+        "explosion": {
+          "label": "爆発",
+          "description": "爆発的な放出"
+        },
+        "confetti": {
+          "label": "紙吹雪",
+          "description": "お祝いの紙吹雪"
+        },
+        "hearts": {
+          "label": "ハート",
+          "description": "ハートのパーティクル"
+        },
+        "star": {
+          "label": "星",
+          "description": "星のパーティクル"
+        },
+        "splash": {
+          "label": "スプラッシュ",
+          "description": "はねるエフェクト"
+        }
+      }
     }
   },
   "positions": {
@@ -467,5 +669,23 @@
       "label": "むずかしい",
       "description": "上級者向け"
     }
+  },
+  "directions": {
+    "up": "上",
+    "down": "下",
+    "left": "左",
+    "right": "右",
+    "upLeft": "左上",
+    "upRight": "右上",
+    "downLeft": "左下",
+    "downRight": "右下"
+  },
+  "colors": {
+    "white": "白",
+    "red": "赤",
+    "blue": "青",
+    "green": "緑",
+    "yellow": "黄",
+    "magenta": "マゼンタ"
   }
 }

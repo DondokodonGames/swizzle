@@ -261,6 +261,7 @@
       "optimizationDesc": "Automatically compress images to reduce file size",
       "speed": "Speed",
       "replaceImage": "Replace",
+      "addImage": "Add",
       "backgroundReplaced": "Background image replaced",
       "objectReplaced": "Object image replaced",
       "deleteImages": "Delete Images",
@@ -319,6 +320,22 @@
       "timeRange": "Time Range",
       "timeType": "Time Type",
       "touchType": "Touch Type",
+      "conditions": {
+        "touch": {
+          "down": "On tap",
+          "up": "On release",
+          "hold": "On hold",
+          "self": "This object",
+          "stage": "Entire stage"
+        }
+      },
+      "congratulations": "Congratulations!",
+      "greatJob": "Great job!",
+      "tooBad": "Too bad...",
+      "tryAgain": "Try again!",
+      "messageText": "Hello!",
+      "create": "Create",
+      "edit": "Edit",
       "whenChanged": "When Changed",
       "whenOff": "When OFF",
       "whenOn": "When ON",
@@ -1421,6 +1438,7 @@
       "endFrame": "End Frame",
       "frameNumberLabel": "Frame Number",
       "frameRangeLabel": "Frame Range",
+      "frameRangeDisplay": "Frames {{start}} ~ {{end}}",
       "loopCountLabel": "Loop Count",
       "startFrame": "Start Frame"
     },
