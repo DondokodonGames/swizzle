@@ -218,12 +218,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     overflow: 'hidden',
   };
 
-  // 🔧 修正版: 高さベースで幅を自動計算（太って見えない）
+  // 🔧 修正版: 高さベースで幅を自動計算（太って見えない）+ 画面幅制限
   const mainBoxStyle: React.CSSProperties = {
     position: 'relative',
-    height: '100vh',         // 🔧 高さを優先
-    width: 'auto',           // 🔧 幅を自動計算
-    maxWidth: '1080px',      // PC画面での最大幅
+    height: '100%',          // 🔧 親要素に合わせる
+    width: '100%',           // 🔧 幅も親に合わせる
+    maxWidth: 'min(1080px, 100%)', // 🔧 PC最大幅 or 画面幅
+    maxHeight: '100vh',      // 🔧 画面高さを超えない
     aspectRatio: '9 / 16',   // 🔧 9:16比率維持
     margin: '0 auto',        // 🔧 中央揃え
     display: 'flex',
@@ -652,12 +653,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
       
       {/* スマホ用メディアクエリ */}
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 768px), (max-aspect-ratio: 9/16) {
           .bridge-main-box {
             aspect-ratio: unset !important;
             width: 100% !important;
             height: 100% !important;
             max-width: 100% !important;
+            max-height: 100% !important;
           }
           .bridge-bottom-buttons {
             padding: 0 12px 8px 12px !important;

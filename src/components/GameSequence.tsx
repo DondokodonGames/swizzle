@@ -503,15 +503,17 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       alignItems: 'center',
       justifyContent: 'center'
     } as React.CSSProperties,
-    // 🔧 修正版: 高さベースで幅を自動計算（太って見えない）
+    // 🔧 修正版: 高さベースで幅を自動計算（太って見えない）+ 画面幅制限
     aspectRatioContainer: {
       position: 'relative' as const,
       backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-      height: '100vh',         // 🔧 高さを優先
-      width: 'auto',           // 🔧 幅を自動計算
-      maxWidth: '1080px',      // PC画面での最大幅
+      height: '100%',          // 🔧 親要素に合わせる
+      width: '100%',           // 🔧 幅も親に合わせる
+      maxWidth: 'min(1080px, 100%)', // 🔧 PC最大幅 or 画面幅
+      maxHeight: '100vh',      // 🔧 画面高さを超えない
       aspectRatio: '9 / 16',   // 🔧 9:16比率維持
       margin: '0 auto',        // 🔧 中央揃え
+      overflow: 'hidden',      // 🔧 はみ出し防止
     } as React.CSSProperties,
     canvas: {
       position: 'absolute' as const,
@@ -802,12 +804,13 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         }
 
         /* 🔧 スマホ: aspect-ratioを無効化して全画面表示 */
-        @media (max-width: 768px) {
+        @media (max-width: 768px), (max-aspect-ratio: 9/16) {
           .aspect-ratio-container {
             aspect-ratio: unset !important;
             width: 100% !important;
             height: 100% !important;
             max-width: 100% !important;
+            max-height: 100% !important;
           }
         }
 
