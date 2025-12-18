@@ -1,0 +1,31 @@
+{
+  "game": {
+    "start": "Iniciar",
+    "pause": "Pausar",
+    "resume": "Retomar",
+    "restart": "Reiniciar",
+    "quit": "Sair",
+    "success": "Vitória!",
+    "failure": "Game Over",
+    "score": "Pontuação",
+    "time": "Tempo",
+    "bestScore": "Melhor pontuação"
+  },
+  "bridge": {
+    "copyButton": "Copiar",
+    "nextButton": "Próximo",
+    "againButton": "Novamente",
+    "skipButton": "Pular",
+    "copySuccessTitle": "Cópia concluída!",
+    "copySuccessMessage": "Regras do jogo copiadas. Troque as imagens no editor para criar seu próprio jogo único!",
+    "openEditorButton": "Abrir editor",
+    "editLaterButton": "Editar mais tarde",
+    "errors": {
+      "gameDataFetchFailed": "Não foi possível recuperar os dados do jogo",
+      "cannotCopy": "Este jogo não pode ser copiado",
+      "noRulesToCopy": "Não é possível copiar este jogo porque não tem regras definidas.",
+      "copyFailed": "Falha ao copiar o jogo",
+      "unknownError": "Erro desconhecido"
+    }
+  }
+}
