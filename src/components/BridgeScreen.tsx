@@ -426,7 +426,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         </div>
 
         {/* ボタンエリア（画面下部固定） */}
-        <div style={{
+        <div className="bridge-bottom-buttons" style={{
           position: 'absolute',
           left: 0,
           right: 0,
@@ -461,8 +461,8 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
               onMouseEnter={(e) => !isCopying && (e.currentTarget.style.opacity = '0.8')}
               onMouseLeave={(e) => !isCopying && (e.currentTarget.style.opacity = '1')}
             >
-              <div style={{ fontSize: '28px' }}>📋</div>
-              <div style={{ fontSize: '12px' }}>{t('bridge.copyButton')}</div>
+              <div className="btn-icon" style={{ fontSize: '28px' }}>📋</div>
+              <div className="btn-label" style={{ fontSize: '12px' }}>{t('bridge.copyButton')}</div>
             </button>
 
             <button
@@ -489,6 +489,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 <img
                   src={nextGame.thumbnail}
                   alt={nextGame.title}
+                  className="btn-icon"
                   style={{
                     width: '28px',
                     height: '28px',
@@ -497,9 +498,9 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   }}
                 />
               ) : (
-                <div style={{ fontSize: '28px' }}>🎮</div>
+                <div className="btn-icon" style={{ fontSize: '28px' }}>🎮</div>
               )}
-              <div style={{ fontSize: '12px' }}>{t('bridge.nextButton')}</div>
+              <div className="btn-label" style={{ fontSize: '12px' }}>{t('bridge.nextButton')}</div>
             </button>
 
             <button
@@ -522,8 +523,8 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
               onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
               onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             >
-              <div style={{ fontSize: '28px' }}>🔄</div>
-              <div style={{ fontSize: '12px' }}>{t('bridge.againButton')}</div>
+              <div className="btn-icon" style={{ fontSize: '28px' }}>🔄</div>
+              <div className="btn-label" style={{ fontSize: '12px' }}>{t('bridge.againButton')}</div>
             </button>
 
             <button
@@ -547,8 +548,8 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
               onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
               onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             >
-              <div style={{ fontSize: '28px' }}>⏭️</div>
-              <div style={{ fontSize: '12px' }}>{t('bridge.skipButton')}</div>
+              <div className="btn-icon" style={{ fontSize: '28px' }}>⏭️</div>
+              <div className="btn-label" style={{ fontSize: '12px' }}>{t('bridge.skipButton')}</div>
             </button>
           </div>
         </div>
@@ -657,6 +658,36 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
             width: 100% !important;
             height: 100% !important;
             max-width: 100% !important;
+          }
+          .bridge-bottom-buttons {
+            padding: 0 12px 8px 12px !important;
+          }
+          .bridge-bottom-buttons button {
+            padding: 12px 0 !important;
+            font-size: 16px !important;
+          }
+          .bridge-bottom-buttons .btn-icon {
+            font-size: 22px !important;
+          }
+          .bridge-bottom-buttons .btn-label {
+            font-size: 10px !important;
+          }
+        }
+
+        /* より小さな画面用 (480px以下) */
+        @media (max-width: 480px) {
+          .bridge-bottom-buttons {
+            padding: 0 8px 6px 8px !important;
+          }
+          .bridge-bottom-buttons button {
+            padding: 10px 0 !important;
+            font-size: 14px !important;
+          }
+          .bridge-bottom-buttons .btn-icon {
+            font-size: 20px !important;
+          }
+          .bridge-bottom-buttons .btn-label {
+            font-size: 9px !important;
           }
         }
       `}</style>

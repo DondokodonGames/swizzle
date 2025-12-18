@@ -467,10 +467,10 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
   };
 
   return (
-    <div style={styles.container}>
+    <div style={styles.container} className="game-feed-container">
       {/* ヘッダー */}
-      <header style={styles.header}>
-        <div style={styles.headerContent}>
+      <header style={styles.header} className="game-feed-header">
+        <div style={styles.headerContent} className="game-feed-header-content">
           <button onClick={onBack} style={styles.backButton}>
             ← {t('common.back')}
           </button>
@@ -489,8 +489,8 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       </header>
 
       {/* タブ */}
-      <div style={styles.tabs}>
-        <div style={styles.tabsInner}>
+      <div style={styles.tabs} className="game-feed-tabs">
+        <div style={styles.tabsInner} className="game-feed-tabs-inner">
           {sections.map((section) => (
             <button
               key={section.id}
@@ -557,7 +557,7 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
                   </p>
                 </div>
               ) : (
-                <div style={styles.grid}>
+                <div style={styles.grid} className="game-feed-grid">
                   {currentSection.games.map((game) => (
                     <div
                       key={game.id}
@@ -611,6 +611,70 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
           )}
         </div>
       </div>
+
+      {/* モバイル用レスポンシブスタイル */}
+      <style>{`
+        /* モバイル向け調整 (768px以下) */
+        @media (max-width: 768px) {
+          .game-feed-header {
+            padding: 12px 16px !important;
+          }
+          .game-feed-header-content {
+            gap: 8px;
+          }
+          .game-feed-header-content h1 {
+            font-size: 16px !important;
+          }
+          .game-feed-header-content button {
+            padding: 6px 10px !important;
+            font-size: 12px !important;
+          }
+          .game-feed-tabs {
+            padding: 8px 12px !important;
+          }
+          .game-feed-tabs-inner {
+            gap: 6px !important;
+          }
+          .game-feed-tabs-inner button {
+            padding: 8px 12px !important;
+            font-size: 12px !important;
+            border-radius: 10px !important;
+          }
+          .game-feed-grid {
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important;
+            gap: 12px !important;
+          }
+          .game-feed-container > div:last-of-type {
+            padding: 12px !important;
+          }
+        }
+
+        /* より小さな画面用 (480px以下) */
+        @media (max-width: 480px) {
+          .game-feed-header {
+            padding: 10px 12px !important;
+          }
+          .game-feed-header-content h1 {
+            font-size: 14px !important;
+          }
+          .game-feed-header-content button {
+            padding: 5px 8px !important;
+            font-size: 11px !important;
+          }
+          .game-feed-tabs {
+            padding: 6px 8px !important;
+          }
+          .game-feed-tabs-inner button {
+            padding: 6px 10px !important;
+            font-size: 11px !important;
+            border-radius: 8px !important;
+          }
+          .game-feed-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

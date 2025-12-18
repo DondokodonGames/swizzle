@@ -662,7 +662,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         <div ref={canvasRef} style={styles.canvas} />
 
         {/* トップバー - 6つのアイコン */}
-        <div style={styles.topBar}>
+        <div style={styles.topBar} className="game-top-bar">
           {/* ログイン/新規登録またはユーザー情報 */}
           <button
             onClick={() => {
@@ -688,9 +688,10 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                   src={userProfile.avatar_url}
                   alt="Avatar"
                   style={styles.avatar}
+                  className="avatar-img"
                 />
               ) : (
-                <div style={styles.avatarPlaceholder}>
+                <div style={styles.avatarPlaceholder} className="avatar-placeholder">
                   {(userProfile.display_name?.charAt(0).toUpperCase() || userProfile.username?.charAt(0).toUpperCase() || '?')}
                 </div>
               )
@@ -799,7 +800,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        
+
         /* 🔧 スマホ: aspect-ratioを無効化して全画面表示 */
         @media (max-width: 768px) {
           .aspect-ratio-container {
@@ -807,6 +808,41 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             width: 100% !important;
             height: 100% !important;
             max-width: 100% !important;
+          }
+        }
+
+        /* 🔧 モバイル用トップバー調整 */
+        @media (max-width: 768px) {
+          .game-top-bar {
+            height: 44px !important;
+          }
+          .game-top-bar button {
+            font-size: 18px !important;
+            padding: 6px !important;
+            min-width: 0 !important;
+          }
+          .game-top-bar .avatar-img,
+          .game-top-bar .avatar-placeholder {
+            width: 28px !important;
+            height: 28px !important;
+            font-size: 12px !important;
+          }
+        }
+
+        /* より小さな画面用 (480px以下) */
+        @media (max-width: 480px) {
+          .game-top-bar {
+            height: 40px !important;
+          }
+          .game-top-bar button {
+            font-size: 16px !important;
+            padding: 4px !important;
+          }
+          .game-top-bar .avatar-img,
+          .game-top-bar .avatar-placeholder {
+            width: 24px !important;
+            height: 24px !important;
+            font-size: 10px !important;
           }
         }
       `}</style>
