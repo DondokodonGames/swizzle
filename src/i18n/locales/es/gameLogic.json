@@ -1,0 +1,691 @@
+{
+  "conditions": {
+    "touch": {
+      "label": "Al tocar",
+      "description": "Se activa cuando se toca el objeto",
+      "down": {
+        "label": "Tocar",
+        "description": "Se activa al momento de tocar"
+      },
+      "up": {
+        "label": "Soltar",
+        "description": "Se activa al soltar el dedo"
+      },
+      "hold": {
+        "label": "Mantener",
+        "description": "Se activa después de mantener durante un tiempo especificado"
+      },
+      "targets": {
+        "self": {
+          "label": "Este objeto",
+          "description": "Tocar este objeto"
+        },
+        "stage": {
+          "label": "Escenario completo",
+          "description": "Tocar cualquier parte del escenario"
+        },
+        "stageArea": {
+          "label": "Área del escenario",
+          "description": "Tocar área específica del escenario"
+        }
+      },
+      "drag": {
+        "label": "Arrastrar",
+        "description": "Se activa al arrastrar",
+        "types": {
+          "start": {
+            "label": "Inicio de arrastre",
+            "description": "Se activa cuando comienza el arrastre"
+          },
+          "dragging": {
+            "label": "Arrastrando",
+            "description": "Se activa continuamente durante el arrastre"
+          },
+          "end": {
+            "label": "Fin de arrastre",
+            "description": "Se activa cuando termina el arrastre"
+          }
+        },
+        "constraints": {
+          "none": {
+            "label": "Libre",
+            "description": "Movimiento libre en cualquier dirección"
+          },
+          "horizontal": {
+            "label": "Horizontal",
+            "description": "Solo movimiento horizontal"
+          },
+          "vertical": {
+            "label": "Vertical",
+            "description": "Solo movimiento vertical"
+          }
+        }
+      },
+      "flick": {
+        "label": "Deslizar rápido",
+        "description": "Gesto de deslizamiento rápido"
+      },
+      "swipe": {
+        "label": "Deslizar",
+        "description": "Gesto de deslizamiento direccional",
+        "directions": {
+          "up": "Arriba",
+          "down": "Abajo",
+          "left": "Izquierda",
+          "right": "Derecha",
+          "upLeft": "Arriba izquierda",
+          "upRight": "Arriba derecha",
+          "downLeft": "Abajo izquierda",
+          "downRight": "Abajo derecha"
+        }
+      }
+    },
+    "time": {
+      "label": "Tiempo transcurrido",
+      "description": "Se activa automáticamente después del tiempo especificado",
+      "exact": {
+        "label": "Tiempo exacto",
+        "description": "Se activa una vez en el tiempo especificado"
+      },
+      "range": {
+        "label": "Rango de tiempo",
+        "description": "Se activa continuamente dentro del rango de tiempo especificado"
+      },
+      "interval": {
+        "label": "Intervalo",
+        "description": "Se repite a intervalos regulares"
+      }
+    },
+    "position": {
+      "label": "En posición",
+      "description": "Al entrar/salir del área especificada"
+    },
+    "collision": {
+      "label": "Al colisionar",
+      "description": "Al colisionar con otro objeto",
+      "types": {
+        "enter": {
+          "label": "Inicio de colisión",
+          "description": "Se activa al momento de la colisión"
+        },
+        "stay": {
+          "label": "Durante colisión",
+          "description": "Se activa continuamente durante la colisión"
+        },
+        "exit": {
+          "label": "Fin de colisión",
+          "description": "Se activa al finalizar la colisión"
+        }
+      },
+      "targets": {
+        "background": {
+          "label": "Fondo",
+          "description": "Detectar colisión con el fondo"
+        },
+        "stage": {
+          "label": "Área del escenario",
+          "description": "Detectar entrada en área especificada del escenario"
+        },
+        "object": {
+          "label": "Otros objetos",
+          "description": "Detectar colisión con otros objetos"
+        }
+      },
+      "checkModes": {
+        "hitbox": {
+          "label": "Hitbox (Rápido)",
+          "description": "Detección de colisión rápida usando hitbox rectangular"
+        },
+        "pixel": {
+          "label": "Píxel perfecto (Preciso)",
+          "description": "Detección de colisión precisa a nivel de píxel"
+        }
+      }
+    },
+    "animation": {
+      "label": "Fin de animación",
+      "description": "Cuando termina la animación",
+      "start": {
+        "label": "Inicio",
+        "description": "Cuando comienza la animación"
+      },
+      "end": {
+        "label": "Fin",
+        "description": "Cuando termina la animación"
+      },
+      "frame": {
+        "label": "Cuadro específico",
+        "description": "Al alcanzar un cuadro específico"
+      },
+      "loop": {
+        "label": "Bucle",
+        "description": "Cuando la animación se repite"
+      },
+      "frameRange": {
+        "label": "Rango de cuadros",
+        "description": "Dentro de un rango de cuadros específico"
+      },
+      "playing": {
+        "label": "Reproduciendo",
+        "description": "Cuando la animación se está reproduciendo"
+      },
+      "stopped": {
+        "label": "Detenida",
+        "description": "Cuando la animación está detenida"
+      }
+    },
+    "targets": {
+      "background": {
+        "label": "Fondo",
+        "description": "Animación de fondo"
+      },
+      "this": {
+        "label": "Este objeto",
+        "description": "Animación de este objeto"
+      },
+      "other": {
+        "label": "Otro objeto",
+        "description": "Animación de otro objeto"
+      }
+    },
+    "flag": {
+      "label": "Bandera activada",
+      "description": "Verificar estado de bandera personalizada",
+      "on": {
+        "label": "Cuando ON",
+        "description": "Se activa cuando la bandera está ON"
+      },
+      "off": {
+        "label": "Cuando OFF",
+        "description": "Se activa cuando la bandera está OFF"
+      },
+      "offToOn": {
+        "label": "OFF→ON",
+        "description": "Se activa cuando la bandera cambia de OFF a ON"
+      },
+      "onToOff": {
+        "label": "ON→OFF",
+        "description": "Se activa cuando la bandera cambia de ON a OFF"
+      }
+    },
+    "gameState": {
+      "label": "Estado del juego",
+      "description": "Verificar estado general del juego",
+      "success": {
+        "label": "Estado de éxito",
+        "description": "Estado de victoria",
+        "detail": "Estado cuando el jugador alcanzó las condiciones de victoria y completó el juego",
+        "examples": [
+          "Todos los objetos recolectados",
+          "Objetivo alcanzado",
+          "Puntuación objetivo alcanzada"
+        ]
+      },
+      "failure": {
+        "label": "Estado de fallo",
+        "description": "Estado de game over",
+        "detail": "Estado cuando el jugador encontró condiciones de derrota y el juego terminó",
+        "examples": [
+          "Vida a 0",
+          "Tiempo agotado",
+          "Colisión con obstáculo"
+        ]
+      },
+      "playing": {
+        "label": "Jugando",
+        "description": "Estado de juego normal",
+        "detail": "Estado de juego normal cuando el juego ha comenzado y el jugador puede jugar",
+        "examples": [
+          "Justo después de iniciar el juego",
+          "Durante operaciones normales",
+          "Durante la ejecución de acciones"
+        ]
+      },
+      "paused": {
+        "label": "Pausado",
+        "description": "Estado de pausa",
+        "detail": "Estado cuando el juego está pausado y el tiempo está detenido",
+        "examples": [
+          "Cuando se presiona el botón de pausa",
+          "Durante la visualización del menú",
+          "Durante la pantalla de configuración"
+        ]
+      },
+      "checkTypes": {
+        "is": {
+          "label": "Durante el estado",
+          "description": "Se activa continuamente durante el estado especificado"
+        },
+        "not": {
+          "label": "No en el estado",
+          "description": "Se activa continuamente cuando no está en el estado especificado"
+        },
+        "became": {
+          "label": "Momento del cambio",
+          "description": "Se activa una sola vez al momento del cambio de estado"
+        }
+      }
+    },
+    "score": {
+      "label": "Condición de puntuación",
+      "description": "Cuando la puntuación alcanza un valor específico"
+    }
+  },
+  "actions": {
+    "addScore": {
+      "label": "Agregar puntos",
+      "description": "Agregar puntos a la puntuación"
+    },
+    "stopBGM": {
+      "label": "Detener BGM",
+      "description": "Detener música de fondo"
+    },
+    "toggleFlag": {
+      "label": "Alternar bandera",
+      "description": "Alternar estado de bandera (ON⇔OFF)"
+    },
+    "showMessage": {
+      "label": "Mostrar mensaje",
+      "description": "Mostrar mensaje en pantalla"
+    },
+    "success": {
+      "label": "¡Victoria!",
+      "description": "Terminar juego con éxito"
+    },
+    "failure": {
+      "label": "Game Over",
+      "description": "Terminar juego con fracaso"
+    },
+    "pause": {
+      "label": "Pausa",
+      "description": "Pausar el juego"
+    },
+    "restart": {
+      "label": "Reiniciar",
+      "description": "Reiniciar el juego"
+    },
+    "playSound": {
+      "label": "Reproducir sonido",
+      "description": "Reproducir efecto de sonido"
+    },
+    "playBGM": {
+      "label": "Reproducir música",
+      "description": "Reproducir música de fondo"
+    },
+    "stopSound": {
+      "label": "Detener sonido",
+      "description": "Detener reproducción de audio"
+    },
+    "move": {
+      "label": "Mover",
+      "description": "Mover a posición especificada",
+      "types": {
+        "straight": {
+          "label": "Directo",
+          "description": "Mover en línea recta hacia la posición"
+        },
+        "bounce": {
+          "label": "Rebotar",
+          "description": "Movimiento con rebote"
+        },
+        "teleport": {
+          "label": "Teletransportar",
+          "description": "Cambio de posición instantáneo"
+        },
+        "wander": {
+          "label": "Vagar",
+          "description": "Mover en dirección aleatoria"
+        },
+        "stop": {
+          "label": "Detener",
+          "description": "Detenerse en el lugar"
+        },
+        "swap": {
+          "label": "Intercambiar",
+          "description": "Intercambiar posición con objetivo"
+        },
+        "approach": {
+          "label": "Perseguir",
+          "description": "Acercarse a otro objeto"
+        },
+        "orbit": {
+          "label": "Orbitar",
+          "description": "Mover en trayectoria circular"
+        },
+        "followDrag": {
+          "label": "Seguir arrastre",
+          "description": "Seguir movimiento de arrastre táctil"
+        }
+      },
+      "followDrag": {
+        "damping": {
+          "none": {
+            "label": "Ninguno",
+            "description": "Sin amortiguación, respuesta instantánea"
+          },
+          "veryLow": {
+            "label": "Muy bajo",
+            "description": "Suavizado mínimo"
+          },
+          "low": {
+            "label": "Bajo",
+            "description": "Suavizado ligero"
+          },
+          "medium": {
+            "label": "Medio",
+            "description": "Suavizado moderado"
+          },
+          "high": {
+            "label": "Alto",
+            "description": "Suavizado fuerte"
+          }
+        }
+      }
+    },
+    "show": {
+      "label": "Mostrar",
+      "description": "Mostrar objeto"
+    },
+    "hide": {
+      "label": "Ocultar",
+      "description": "Ocultar objeto"
+    },
+    "switchAnimation": {
+      "label": "Cambiar animación",
+      "description": "Cambiar animación"
+    },
+    "effect": {
+      "label": "Efecto",
+      "description": "Flash, sacudida, etc."
+    },
+    "particles": {
+      "label": "Partículas",
+      "description": "Efecto de partículas"
+    },
+    "setFlag": {
+      "label": "Establecer bandera",
+      "description": "Activar/Desactivar bandera personalizada"
+    },
+    "flags": {
+      "setFlag": {
+        "label": "Establecer bandera",
+        "description": "Establecer bandera al estado especificado (ON/OFF)"
+      },
+      "toggleFlag": {
+        "label": "Alternar bandera",
+        "description": "Invertir estado de bandera (ON⇔OFF)"
+      },
+      "values": {
+        "on": {
+          "label": "ON",
+          "description": "Establecer bandera a estado ON"
+        },
+        "off": {
+          "label": "OFF",
+          "description": "Establecer bandera a estado OFF"
+        }
+      },
+      "effects": {
+        "setOn": "Establecer bandera a estado ON",
+        "setOff": "Establecer bandera a estado OFF",
+        "toggle": "Invertir desde estado actual (ON⇔OFF)"
+      }
+    },
+    "showHide": {
+      "show": {
+        "label": "Mostrar",
+        "description": "Mostrar objeto"
+      },
+      "hide": {
+        "label": "Ocultar",
+        "description": "Ocultar objeto"
+      },
+      "fade": {
+        "enabled": {
+          "label": "Fundido activado",
+          "description": "Mostrar/ocultar suavemente"
+        },
+        "disabled": {
+          "label": "Cambio instantáneo",
+          "description": "Mostrar/ocultar instantáneamente"
+        }
+      },
+      "duration": {
+        "instant": {
+          "label": "Instantáneo",
+          "description": "0.1s"
+        },
+        "fast": {
+          "label": "Rápido",
+          "description": "0.3s"
+        },
+        "normal": {
+          "label": "Normal",
+          "description": "0.5s"
+        },
+        "slow": {
+          "label": "Lento",
+          "description": "1.0s"
+        },
+        "verySlow": {
+          "label": "Muy lento",
+          "description": "2.0s"
+        }
+      }
+    },
+    "randomAction": {
+      "label": "Acción aleatoria",
+      "description": "Ejecutar una acción aleatoria entre varias opciones"
+    }
+  },
+  "movements": {
+    "straight": {
+      "label": "Línea recta",
+      "description": "Mover en línea recta hacia la posición"
+    },
+    "teleport": {
+      "label": "Teletransporte",
+      "description": "Cambio de posición instantáneo"
+    },
+    "wander": {
+      "label": "Vagar",
+      "description": "Mover en dirección aleatoria"
+    },
+    "bounce": {
+      "label": "Rebotar",
+      "description": "Movimiento de rebote"
+    },
+    "orbit": {
+      "label": "Orbitar",
+      "description": "Mover en círculo"
+    },
+    "approach": {
+      "label": "Perseguir",
+      "description": "Acercarse a otro objeto"
+    },
+    "stop": {
+      "label": "Detener",
+      "description": "Detenerse en el lugar"
+    },
+    "swap": {
+      "label": "Intercambiar",
+      "description": "Intercambiar posición con objetivo"
+    }
+  },
+  "effects": {
+    "flash": {
+      "label": "Flash",
+      "description": "Hacer parpadear pantalla/objeto",
+      "colors": {
+        "white": "Blanco",
+        "red": "Rojo",
+        "blue": "Azul",
+        "green": "Verde",
+        "yellow": "Amarillo",
+        "magenta": "Magenta"
+      }
+    },
+    "glow": {
+      "label": "Brillo",
+      "description": "Hacer brillar el objeto"
+    },
+    "shake": {
+      "label": "Sacudida",
+      "description": "Efecto de vibración",
+      "directions": {
+        "horizontal": {
+          "label": "Horizontal",
+          "description": "Sacudir izquierda y derecha"
+        },
+        "vertical": {
+          "label": "Vertical",
+          "description": "Sacudir arriba y abajo"
+        },
+        "both": {
+          "label": "Ambos",
+          "description": "Sacudir en todas direcciones"
+        }
+      }
+    },
+    "scale": {
+      "label": "Escala",
+      "description": "Efecto de cambio de tamaño"
+    },
+    "rotate": {
+      "label": "Rotación",
+      "description": "Efecto de rotación",
+      "directions": {
+        "clockwise": {
+          "label": "Sentido horario",
+          "description": "Rotar en sentido horario"
+        },
+        "counterclockwise": {
+          "label": "Sentido antihorario",
+          "description": "Rotar en sentido antihorario"
+        },
+        "alternate": {
+          "label": "Alternado",
+          "description": "Alternar dirección de rotación"
+        }
+      }
+    },
+    "fade": {
+      "label": "Fundido",
+      "description": "Fundido de entrada/salida"
+    },
+    "confetti": {
+      "label": "Confeti",
+      "description": "Partículas de celebración"
+    },
+    "monochrome": {
+      "label": "Monocromático",
+      "description": "Filtro blanco y negro"
+    },
+    "particles": {
+      "label": "Partículas",
+      "description": "Emitir partículas",
+      "types": {
+        "sparkle": {
+          "label": "Brillos",
+          "description": "Partículas brillantes"
+        },
+        "explosion": {
+          "label": "Explosión",
+          "description": "Efecto de explosión"
+        },
+        "confetti": {
+          "label": "Confeti",
+          "description": "Confeti de celebración"
+        },
+        "hearts": {
+          "label": "Corazones",
+          "description": "Partículas de corazón"
+        },
+        "star": {
+          "label": "Estrellas",
+          "description": "Partículas de estrella"
+        },
+        "splash": {
+          "label": "Salpicadura",
+          "description": "Efecto de salpicadura"
+        }
+      }
+    }
+  },
+  "positions": {
+    "center": "Centro",
+    "top": "Arriba",
+    "bottom": "Abajo",
+    "left": "Izquierda",
+    "right": "Derecha",
+    "corners": "Esquinas"
+  },
+  "speeds": {
+    "slow": {
+      "label": "Lento",
+      "description": "100px/seg"
+    },
+    "normal": {
+      "label": "Normal",
+      "description": "300px/seg"
+    },
+    "fast": {
+      "label": "Rápido",
+      "description": "600px/seg"
+    },
+    "instant": {
+      "label": "Instantáneo",
+      "description": "Inmediato"
+    }
+  },
+  "durations": {
+    "5": {
+      "label": "5 seg",
+      "description": "Rápido"
+    },
+    "10": {
+      "label": "10 seg",
+      "description": "Estándar"
+    },
+    "15": {
+      "label": "15 seg",
+      "description": "Extendido"
+    },
+    "30": {
+      "label": "30 seg",
+      "description": "Largo"
+    }
+  },
+  "difficulties": {
+    "easy": {
+      "label": "Fácil",
+      "description": "Diversión para todos"
+    },
+    "normal": {
+      "label": "Normal",
+      "description": "Desafío equilibrado"
+    },
+    "hard": {
+      "label": "Difícil",
+      "description": "Para expertos"
+    }
+  },
+  "directions": {
+    "up": "Arriba",
+    "down": "Abajo",
+    "left": "Izquierda",
+    "right": "Derecha",
+    "upLeft": "Arriba izquierda",
+    "upRight": "Arriba derecha",
+    "downLeft": "Abajo izquierda",
+    "downRight": "Abajo derecha"
+  },
+  "colors": {
+    "white": "Blanco",
+    "red": "Rojo",
+    "blue": "Azul",
+    "green": "Verde",
+    "yellow": "Amarillo",
+    "magenta": "Magenta"
+  }
+}
