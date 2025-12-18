@@ -218,13 +218,12 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     overflow: 'hidden',
   };
 
-  // 🔧 修正版: 高さベースで幅を自動計算（太って見えない）+ 画面幅制限
+  // 🔧 修正版: PCでは9:16比率維持、スマホでは全画面
   const mainBoxStyle: React.CSSProperties = {
     position: 'relative',
-    height: '100%',          // 🔧 親要素に合わせる
-    width: '100%',           // 🔧 幅も親に合わせる
-    maxWidth: 'min(1080px, 100%)', // 🔧 PC最大幅 or 画面幅
-    maxHeight: '100vh',      // 🔧 画面高さを超えない
+    height: '100vh',         // 🔧 高さを画面いっぱいに
+    width: 'auto',           // 🔧 幅はアスペクト比から自動計算
+    maxWidth: '100%',        // 🔧 画面幅を超えない
     aspectRatio: '9 / 16',   // 🔧 9:16比率維持
     margin: '0 auto',        // 🔧 中央揃え
     display: 'flex',
