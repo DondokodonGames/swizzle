@@ -5,7 +5,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 /**
  * Swizzle Localization System
  *
- * Structure (for en/ja):
+ * Structure:
  * src/i18n/locales/{lang}/
  * ├── index.ts          # Merges all JSON files
  * ├── common.json       # common, errors, success
@@ -15,22 +15,20 @@ import LanguageDetector from 'i18next-browser-languagedetector';
  * ├── social.json       # gameFeed, profile
  * ├── monetization.json # monetization, pricing
  * └── game.json         # game, bridge
- *
- * Other languages use legacy single JSON files until fully migrated.
  */
 
-// Import translations - en/ja use new split structure
+// Import translations - all languages use split structure
 import en from './locales/en';
 import ja from './locales/ja';
+import fr from './locales/fr';
+import it from './locales/it';
+import es from './locales/es';
+import zh from './locales/zh';
+import ko from './locales/ko';
+import pt from './locales/pt';
 
-// Other languages use legacy single JSON files
-import fr from './locales/fr.json';
-import it from './locales/it.json';
+// German still uses legacy single JSON file (not yet migrated)
 import de from './locales/de.json';
-import es from './locales/es.json';
-import zh from './locales/zh.json';
-import ko from './locales/ko.json';
-import pt from './locales/pt.json';
 
 const resources = {
   en: { translation: en },
