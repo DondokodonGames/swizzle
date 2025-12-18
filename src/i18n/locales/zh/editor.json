@@ -1,0 +1,1536 @@
+{
+  "editor": {
+    "tabs": {
+      "assets": "资源",
+      "script": "规则",
+      "settings": "发布",
+      "assetsDescription": "图片、音频、文本管理",
+      "scriptDescription": "游戏逻辑和条件",
+      "settingsDescription": "测试游玩和发布"
+    },
+    "validation": {
+      "warnings": {
+        "addBackgroundOrObjects": "建议添加背景或对象",
+        "addAudioRecommended": "添加音频会让游戏更有趣",
+        "setGameRules": "请设置游戏规则",
+        "setSuccessConditions": "请设置成功条件"
+      },
+      "errors": {
+        "gameNameRequired": "游戏名称为必填项",
+        "atLeastOneAsset": "发布至少需要一个资源"
+      }
+    },
+    "app": {
+      "loginRequired": "需要登录",
+      "loginRequiredMessage": "您需要注册或登录才能使用游戏编辑器。",
+      "loginPrompt": "创建免费账号并立即开始制作游戏！",
+      "freeSignup": "免费注册",
+      "alreadyHaveAccount": "已有账号？",
+      "features": {
+        "createProjects": "创建并保存游戏项目",
+        "cloudStorage": "自动云存储",
+        "publishGames": "发布并分享游戏",
+        "joinCommunity": "加入社区"
+      },
+      "authenticating": "验证中...",
+      "loadingAccount": "加载账号信息...",
+      "loading": "加载中...",
+      "projectOpened": "已打开\"{{name}}\"",
+      "projectCreated": "已创建\"{{name}}\"",
+      "projectSaved": "项目已保存",
+      "projectPublished": "游戏已发布！将显示在社交动态中",
+      "projectDeleted": "项目已删除",
+      "projectDuplicated": "已创建\"{{name}}\"",
+      "projectExported": "项目已导出",
+      "unsavedChanges": "您有未保存的更改。要在离开前保存吗？",
+      "confirmSaveAndLeave": "确定 → 保存并离开\n取消 → 不保存离开",
+      "confirmSaveAndExit": "您有未保存的更改。退出前是否要保存？\n\n确定 → 保存并退出\n取消 → 不保存退出",
+      "savedComplete": "已保存",
+      "returnedToList": "返回项目列表",
+      "returnedToEditor": "返回编辑器",
+      "testPlayComplete": "测试完成！得分: {{score}}",
+      "testPlayError": "测试错误: {{error}}",
+      "testPlayFailed": "测试失败: {{error}}",
+      "testPlayScreenFailed": "准备测试屏幕失败",
+      "publishingStarted": "开始发布流程...",
+      "publishFailed": "发布失败",
+      "publishFailedNetwork": "游戏发布失败。请检查网络连接并重试。",
+      "publishFailedAuth": "发生身份验证错误。请重新登录并重试。",
+      "publishFailedWithError": "发布失败: {{error}}",
+      "publishRequiresLogin": "需要登录。请先登录以发布。",
+      "publishCannotWithErrors": "无法发布: {{error}}",
+      "backToList": "返回列表",
+      "mainScreen": "主屏幕",
+      "noProjectSelected": "未选择项目",
+      "backToProjectList": "返回项目列表",
+      "backToMain": "返回主页",
+      "versionInfo": "游戏编辑器 v1.0.0 - Supabase 集成",
+      "shortcuts": "Ctrl+S：保存 | Ctrl+T：测试 | Esc：返回 | Ctrl+Q：主页",
+      "status": {
+        "notLoggedIn": "未登录",
+        "unsaved": "未保存",
+        "published": "已发布"
+      },
+      "capacity": "{{used}}MB",
+      "buttons": {
+        "save": "保存",
+        "test": "测试",
+        "publish": "发布",
+        "update": "更新"
+      },
+      "testPlay": "测试游玩",
+      "running": "运行中",
+      "rerun": "重新运行",
+      "returnToEditor": "返回编辑器",
+      "preparingGame": "准备游戏中...",
+      "testPlaySuccess": "测试成功！",
+      "testPlayFailure": "测试失败",
+      "myGame": "我的游戏",
+      "returnToMainLoading": "返回主屏幕中...",
+      "copy": "复制",
+      "copyOf": " 副本",
+      "deleteFailed": "删除失败: {{error}}",
+      "duplicateFailed": "复制失败: {{error}}",
+      "exportFailedWithError": "导出失败: {{error}}",
+      "backToMainArrow": "← 返回主页",
+      "loginRequiredTitle": "需要登录",
+      "projectPublishedSuccess": "🚀 游戏已发布！将显示在社交动态中",
+      "publishedEmoji": "🚀"
+    },
+    "selector": {
+      "title": "游戏编辑器",
+      "subtitle": "轻松创建游戏并与所有人分享！",
+      "stats": {
+        "projectCount": "项目",
+        "publishedCount": "已发布",
+        "totalCapacity": "总容量"
+      },
+      "search": "搜索项目...",
+      "sort": {
+        "latest": "最新",
+        "name": "名称",
+        "status": "状态"
+      },
+      "view": {
+        "grid": "网格",
+        "list": "列表"
+      },
+      "import": "导入",
+      "createNew": "创建新游戏",
+      "loadingProjects": "加载项目中...",
+      "noProjects": "还没有项目",
+      "noProjectsMessage": "创建您的第一个游戏！",
+      "noResults": "未找到项目",
+      "noResultsMessage": "尝试使用不同的关键词搜索",
+      "newProject": {
+        "title": "创建新游戏",
+        "subtitle": "为您的游戏选择一个名称",
+        "placeholder": "输入游戏名称",
+        "charCount": "{{count}}/50 个字符",
+        "templateHint": "您也可以从模板开始（即将推出）",
+        "create": "创建"
+      },
+      "projectCard": {
+        "status": {
+          "published": "已发布",
+          "testing": "测试中",
+          "draft": "草稿"
+        },
+        "new": "新",
+        "completion": "完成 {{percent}}%",
+        "duplicate": "复制",
+        "export": "导出",
+        "confirmDelete": "删除\"{{name}}\"？此操作无法撤消。",
+        "lastModified": "最后修改",
+        "editButton": "编辑",
+        "stats": {
+          "objects": "对象",
+          "sounds": "声音",
+          "rules": "规则",
+          "capacity": "容量"
+        },
+        "errors": {
+          "thumbnailError": "缩略图加载错误",
+          "noThumbnail": "无缩略图"
+        }
+      },
+      "help": "帮助",
+      "versionInfo": "游戏编辑器 v1.0.0 - 现代界面",
+      "shortcuts": "Ctrl+Q：主屏幕"
+    },
+    "assets": {
+      "title": "资源管理",
+      "background": "背景",
+      "objects": "对象",
+      "audio": "音频",
+      "text": "文本",
+      "addBackground": "添加背景",
+      "addObject": "添加对象",
+      "addAudio": "添加音频",
+      "addText": "添加文本",
+      "bgm": "背景音乐",
+      "se": "音效",
+      "usedCapacity": "已用容量（图片+音频）",
+      "capacityWarning": "容量不足。请删除不必要的资源。",
+      "sound": "音频",
+      "processingAudio": "处理音频中...",
+      "audioCapacity": "音频容量",
+      "masterVolume": "主音量",
+      "bgmUpTo1": "(最多1首)",
+      "stop": "停止",
+      "play": "播放",
+      "settings": "设置",
+      "playbackTime": "播放时间:",
+      "volume": "音量",
+      "loopPlayback": "循环播放",
+      "uploadBGM": "上传BGM",
+      "dragDropOrClick": "拖放音频文件或点击选择",
+      "maxDurationSize": "最长{{duration}}秒 • 最大{{size}}",
+      "addSoundEffect": "添加音效",
+      "dragDropAudio": "拖放音频文件",
+      "soundEffectName": "音效名称",
+      "audioHints": "音频提示",
+      "hint1": "BGM自动循环，音效播放一次",
+      "hint2": "BGM最长{{bgmDuration}}秒，音效最长{{seDuration}}秒",
+      "hint3": "支持格式: MP3, WAV, OGG",
+      "hint4": "音量可从0%调整到100%",
+      "errorSelectAudioFile": "请选择音频文件",
+      "errorAudioTooLong": "音频太长。最长{{duration}}秒。",
+      "errorMaxSoundEffects": "最多可添加{{max}}个音效",
+      "errorUploadFailed": "上传音频文件失败",
+      "errorPlaybackFailed": "播放音频失败",
+      "errorLoadFailed": "加载音频文件失败",
+      "backgroundLimit": "(最多1张)",
+      "backgroundImage": "背景图片",
+      "backgroundVisible": "✅ 可见",
+      "backgroundHidden": "❌ 隐藏",
+      "size": "大小",
+      "backgroundColor": "背景颜色",
+      "uploadBackground": "上传背景图片",
+      "dragDropImage": "拖放图片或点击选择",
+      "backgroundHints": {
+        "title": "背景提示",
+        "ratio": "推荐9:16（纵向）比例",
+        "maxSize": "最大支持{{size}}",
+        "optimization": "大文件将自动优化",
+        "autoShow": "添加时自动设置为可见",
+        "future": "🎬 即将推出：多帧动画背景"
+      },
+      "addFrame": "添加帧",
+      "animation": "动画",
+      "animationSettings": "动画设置",
+      "animationSettingsDesc": "帧率和循环设置",
+      "animationTipsTitle": "动画技巧",
+      "autoLoop": "自动循环",
+      "autoPlayFromStart": "游戏开始时自动播放",
+      "autoPlayOnStart": "自动播放",
+      "autoStart": "自动开始",
+      "bgmHints": "最多1首BGM。支持mp3/wav。用作整个游戏的背景音乐。",
+      "bgmMaxDurationSize": "最长{{duration}}秒，{{size}}",
+      "bgmSettings": "BGM设置",
+      "canAddFrames": "最多可添加8帧",
+      "dragDropAudioMax": "拖放音频文件（最多{{max}}个）",
+      "dragDropOrClickAudio": "拖放或点击选择音频文件",
+      "frameCount": "{{count}}帧",
+      "gameIntegration": "游戏集成",
+      "gameIntegrationDesc": "在Script标签中设置规则",
+      "multiFileUploadSupport": "支持多文件上传",
+      "multipleFrames": "多帧",
+      "multipleFramesDesc": "最多8帧动画",
+      "notPlaced": "未放置",
+      "nowPlaying": "正在播放",
+      "pingPongPlayback": "往返播放",
+      "placed": "已放置",
+      "previewFeature": "预览功能",
+      "previewFeatureDesc": "检查动画行为",
+      "ruleControlOnly": "仅规则控制",
+      "seMaxDurationSize": "每个文件最长{{duration}}秒，{{size}}",
+      "selectFile": "选择文件",
+      "setPlayConditionsInScript": "在Script标签中配置规则时设置播放条件",
+      "singlePlayNoLoop": "单次播放（无循环）",
+      "soundEffectHints": "最多8个音效。支持mp3/wav。",
+      "soundEffectMaxLimit": "最多可添加{{max}}个音效",
+      "soundEffectNameEditable": "音效名称（可编辑）",
+      "soundEffectSettings": "音效设置",
+      "soundEffects": "音效",
+      "soundTitle": "音频",
+      "supportedFormats": "支持格式：{{formats}}",
+      "uploadObjectImage": "上传对象图片",
+      "objectName": "对象名称",
+      "optimization": "优化",
+      "optimizationDesc": "自动压缩图片以减小文件大小",
+      "speed": "速度",
+      "replaceImage": "替换",
+      "addImage": "添加",
+      "backgroundReplaced": "背景图片已替换",
+      "objectReplaced": "对象图片已替换",
+      "deleteImages": "删除图片",
+      "imagesDeleted": "图片已删除",
+      "noImage": "无图片",
+      "errors": {
+        "backgroundNotFound": "未找到背景",
+        "backgroundReplaceFailed": "替换背景失败",
+        "objectReplaceFailed": "替换对象失败"
+      }
+    },
+    "script": {
+      "title": "规则设置",
+      "subtitle": "对象布局、多规则支持、高级游戏逻辑",
+      "layout": "布局",
+      "rules": "规则",
+      "addRule": "添加规则",
+      "editRule": "编辑规则",
+      "condition": "条件",
+      "action": "动作",
+      "when": "当",
+      "then": "则",
+      "addAction": "添加动作",
+      "addActionFromButtons": "从下方按钮添加动作",
+      "addCondition": "添加条件",
+      "addConditionFromButtons": "从下方按钮添加条件",
+      "allConditions": "所有条件",
+      "anyCondition": "任一条件",
+      "basicSettings": "基本设置",
+      "conditionCombination": "条件组合",
+      "displayDuration": "显示时长",
+      "exactTime": "精确时间",
+      "flag": "标志",
+      "gameOverall": "游戏全局",
+      "ifConditions": "如果（条件）",
+      "interval": "间隔",
+      "message": "消息",
+      "onHold": "长按时",
+      "onPress": "按下时",
+      "onRelease": "释放时",
+      "pleaseAddAction": "请添加动作",
+      "pleaseAddCondition": "请添加条件",
+      "pleaseEnterRuleName": "请输入规则名称",
+      "points": "点数",
+      "priority": "优先级",
+      "ruleEditorHelp": "规则编辑器帮助",
+      "ruleName": "规则名称",
+      "ruleNamePlaceholder": "输入规则名称",
+      "ruleSetting": "规则设置",
+      "screen": "屏幕",
+      "seconds": "秒",
+      "self": "自身",
+      "target": "目标",
+      "targetObject": "目标对象",
+      "thenActions": "则（动作）",
+      "timeRange": "时间范围",
+      "timeType": "时间类型",
+      "touchType": "触摸类型",
+      "conditions": {
+        "touch": {
+          "down": "点击时",
+          "up": "释放时",
+          "hold": "长按时",
+          "self": "此对象",
+          "stage": "整个舞台"
+        }
+      },
+      "congratulations": "恭喜！",
+      "greatJob": "做得好！",
+      "tooBad": "太遗憾了...",
+      "tryAgain": "再试一次！",
+      "messageText": "你好！",
+      "create": "创建",
+      "edit": "编辑",
+      "whenChanged": "变化时",
+      "whenOff": "关闭时",
+      "whenOn": "开启时",
+      "gameTime": {
+        "title": "游戏时间设置",
+        "presets": {
+          "5": {
+            "label": "5秒",
+            "description": "快速",
+            "emoji": "⚡"
+          },
+          "10": {
+            "label": "10秒",
+            "description": "刚好",
+            "emoji": "⏰"
+          },
+          "15": {
+            "label": "15秒",
+            "description": "延长",
+            "emoji": "🎯"
+          },
+          "30": {
+            "label": "30秒",
+            "description": "长时间",
+            "emoji": "🏃"
+          },
+          "unlimited": {
+            "label": "无限制",
+            "description": "自由游玩",
+            "emoji": "∞"
+          }
+        },
+        "current": "当前设置：{{duration}}"
+      },
+      "objectPlacement": {
+        "title": "对象放置",
+        "placed": "布局：已放置 {{placed}}/{{total}}",
+        "addToLayout": "放置",
+        "removeFromLayout": "移除",
+        "editRule": "规则",
+        "alreadyPlaced": "已放置",
+        "notPlaced": "未放置",
+        "ruleCount": "{{count}} 条规则",
+        "hints": {
+          "title": "使用方法：",
+          "place": "放置 → 添加到布局屏幕",
+          "rules": "规则 → 设置游戏逻辑",
+          "remove": "移除 → 从布局中删除",
+          "dragAndDrop": "拖放也可使用",
+          "resize": "拖动角落调整大小"
+        }
+      },
+      "placedObjects": {
+        "title": "已放置对象",
+        "hint": "您可以为布局标签中放置的对象设置规则"
+      },
+      "projectFlags": {
+        "title": "项目标志",
+        "subtitle": "游戏状态管理",
+        "on": "开启",
+        "off": "关闭"
+      },
+      "ruleList": {
+        "empty": {
+          "title": "创建规则！",
+          "description": "使用 IF-THEN 规则创建有趣的游戏\n在布局模式下点击对象以设置规则",
+          "features": {
+            "conditions": "触发条件",
+            "conditionsDesc": "触摸、时间、位置、碰撞",
+            "actions": "执行动作",
+            "actionsDesc": "移动、效果、声音、成功",
+            "flags": "标志管理",
+            "flagsDesc": "游戏状态、变量管理"
+          },
+          "backToLayout": "返回布局模式"
+        },
+        "enabled": "已启用",
+        "disabled": "已禁用",
+        "target": "目标：{{target}}",
+        "conditionsCount": "{{count}} 个条件",
+        "actionsCount": "{{count}} 个动作",
+        "edit": "编辑",
+        "delete": "删除",
+        "confirmDelete": "删除\"{{name}}\"？",
+        "deleted": "规则已删除",
+        "gameOverall": "游戏全局",
+        "objectNotFound": "⚠ {{id}}",
+        "untitled": "未命名规则"
+      },
+      "ruleModal": {
+        "title": "规则设置（高级）",
+        "subtitle": "1 个条件 → 1 个动作 | {{conditions}} 种条件类型 × {{actions}} 种动作类型",
+        "ruleName": "规则名称",
+        "ruleNamePlaceholder": "例如：触摸中心区域移动",
+        "triggerCondition": "触发条件",
+        "executeAction": "执行动作",
+        "preview": {
+          "title": "规则预览",
+          "seconds": "（{{seconds}}秒）",
+          "area": "（{{area}}区域）"
+        },
+        "errors": {
+          "nameRequired": "请输入规则名称",
+          "conditionRequired": "请选择条件",
+          "actionRequired": "请选择动作"
+        },
+        "saved": "规则已保存",
+        "sections": {
+          "ruleName": "规则名称",
+          "conditions": "触发条件",
+          "actions": "动作",
+          "flags": "标志管理",
+          "counters": "计数器管理"
+        },
+        "placeholders": {
+          "ruleName": "例如：触摸中心区域移动",
+          "flagName": "输入标志名称",
+          "counterName": "输入计数器名称",
+          "initialValue": "初始值",
+          "addAction": "点击添加动作",
+          "addCondition": "点击添加条件",
+          "selectRule": "选择要编辑的规则",
+          "selectRuleDescription": "从现有规则中选择或创建新规则"
+        },
+        "titles": {
+          "actionDetail": "动作详情",
+          "conditionDetail": "条件详情"
+        },
+        "descriptions": {
+          "actionDetail": "配置动作设置",
+          "conditionDetail": "配置条件设置"
+        },
+        "buttons": {
+          "save": "保存",
+          "cancel": "取消"
+        },
+        "operators": {
+          "and": "与（所有条件）",
+          "or": "或（任一条件）"
+        },
+        "status": {
+          "conditions": "{{count}} 个条件",
+          "actions": "{{count}} 个动作",
+          "flags": "{{count}} 个标志",
+          "counters": "{{count}} 个计数器"
+        },
+        "more": {
+          "flags": "管理标志",
+          "counters": "管理计数器",
+          "actions": "添加动作"
+        },
+        "tooltips": {
+          "randomAction": "随机动作：从多个选项中随机执行一个动作"
+        },
+        "notifications": {
+          "ruleSaved": "规则已保存",
+          "conditionAdded": "条件已添加",
+          "conditionRemoved": "条件已移除",
+          "actionAdded": "动作已添加",
+          "actionRemoved": "动作已移除",
+          "flagAdded": "标志\"{{name}}\"已添加",
+          "flagDeleted": "标志已删除",
+          "confirmDeleteFlag": "删除标志\"{{name}}\"？",
+          "counterAdded": "计数器\"{{name}}\"已添加",
+          "counterDeleted": "计数器已删除",
+          "counterExists": "计数器\"{{name}}\"已存在",
+          "confirmDeleteCounter": "删除计数器\"{{name}}\"？",
+          "errorRuleName": "请输入规则名称",
+          "errorMinConditions": "请至少添加一个条件",
+          "errorMinActions": "请至少添加一个动作"
+        }
+      },
+      "ruleSelection": {
+        "title": "选择规则 - {{object}}",
+        "subtitle": "选择要编辑的规则（{{current}}/{{max}}）",
+        "ruleNumber": "规则 {{number}}：{{name}}",
+        "createNew": "创建新规则",
+        "limitReached": "已达到规则限制（32）"
+      },
+      "backgroundControl": {
+        "title": "背景控制",
+        "visibility": "可见性",
+        "frames": "帧",
+        "noBackground": "❌ 无背景数据（在Assets选项卡中添加）",
+        "hints": {
+          "title": "使用方法",
+          "addAssets": "在Assets选项卡中添加对象",
+          "dragDrop": "拖放到游戏屏幕上放置",
+          "clickRule": "点击对象设置规则",
+          "colorBorder": "通过彩色边框检查状态"
+        }
+      },
+      "timeBarSelector": {
+        "seconds": "秒",
+        "minutes": "分",
+        "title": "时间条件设置",
+        "typeLabel": "时间条件类型",
+        "types": {
+          "exact": {
+            "label": "精确时间",
+            "description": "在特定时间触发"
+          },
+          "range": {
+            "label": "时间范围",
+            "description": "在时间范围内触发"
+          },
+          "interval": {
+            "label": "间隔",
+            "description": "以间隔重复"
+          }
+        },
+        "gameDuration": "游戏总时长",
+        "timeBar": "时间选择条",
+        "exactTime": "精确时间（秒）",
+        "startTime": "开始时间（秒）",
+        "endTime": "结束时间（秒）",
+        "intervalTime": "间隔时间（秒）",
+        "setting": "设置",
+        "description": {
+          "exact": "游戏开始{{time}}后触发",
+          "range": "{{start}}到{{end}}之间触发",
+          "interval": "每{{time}}触发",
+          "selectTime": "请选择时间",
+          "selectRange": "请选择时间范围",
+          "selectInterval": "请选择间隔时间"
+        }
+      },
+      "randomRule": {
+        "conditionTitle": "随机条件设置",
+        "conditionDescription": "{{probability}}% 概率，{{interval}}ms 间隔触发",
+        "conditionDescriptionEveryFrame": "{{probability}}% 概率，每帧触发",
+        "presets": "预设",
+        "presetsOptions": {
+          "lowProbability": {
+            "label": "低概率",
+            "description": "10% 概率，2秒间隔"
+          },
+          "mediumProbability": {
+            "label": "中概率",
+            "description": "30% 概率，1秒间隔"
+          },
+          "highProbability": {
+            "label": "高概率",
+            "description": "70% 概率，0.5秒间隔"
+          },
+          "endless": {
+            "label": "无尽",
+            "description": "Flappy Bird 风格"
+          },
+          "runner": {
+            "label": "跑酷",
+            "description": "Temple Run 风格"
+          }
+        },
+        "triggerProbability": "触发概率",
+        "checkInterval": "检查间隔",
+        "milliseconds": "毫秒",
+        "advancedSettings": "高级设置",
+        "seedValue": "种子值（用于调试）",
+        "seedPlaceholder": "例如：test123",
+        "seedDescription": "使用相同种子值可重现相同的随机结果",
+        "forEndlessGames": "用于无尽类游戏",
+        "actionTitle": "随机动作设置",
+        "actionDescription": "从 {{count}} 个选项中随机选择（{{probabilities}}%）",
+        "actionPresetsOptions": {
+          "endlessObstacles": {
+            "label": "无尽障碍",
+            "description": "随机生成障碍物和道具"
+          },
+          "bonusEffects": {
+            "label": "奖励效果",
+            "description": "随机奖励效果"
+          },
+          "difficultyAdjustment": {
+            "label": "难度调整",
+            "description": "自动难度调整"
+          }
+        },
+        "selectionOptions": "选择选项",
+        "addOption": "➕ 添加",
+        "weight": "权重",
+        "selectionMode": "选择模式",
+        "selectionModes": {
+          "weighted": "加权（推荐）",
+          "uniform": "均匀选择",
+          "probability": "独立概率"
+        },
+        "executionLimit": "执行限制设置",
+        "maxExecutions": "最大执行次数",
+        "unlimited": "无限",
+        "cooldownTime": "冷却时间",
+        "debugMode": "调试模式（记录选择结果）",
+        "forAutoGeneration": "用于无尽/自动生成游戏",
+        "remove": "✕ 移除",
+        "actionTypes": {
+          "success": "✅ 成功",
+          "failure": "❌ 失败",
+          "playSound": "🔊 播放音效",
+          "show": "👁️ 显示",
+          "hide": "🚫 隐藏",
+          "counter": "🔢 计数器",
+          "effect": "✨ 效果",
+          "move": "🏃 移动"
+        }
+      },
+      "rulePreview": {
+        "title": "规则预览",
+        "conditionTypes": {
+          "touch": "触摸",
+          "time": "时间",
+          "collision": "碰撞",
+          "animation": "动画",
+          "flag": "标志"
+        },
+        "actionTypes": {
+          "success": "游戏通关",
+          "failure": "游戏结束",
+          "playSound": "播放音效",
+          "move": "移动",
+          "effect": "效果",
+          "show": "显示",
+          "hide": "隐藏",
+          "setFlag": "设置标志",
+          "switchAnimation": "切换动画"
+        },
+        "touchTypes": {
+          "down": "点击",
+          "up": "释放",
+          "hold": "长按"
+        },
+        "targets": {
+          "self": "此对象",
+          "stage": "舞台",
+          "background": "背景"
+        },
+        "regions": {
+          "rect": "矩形",
+          "circle": "圆形"
+        },
+        "collisionTypes": {
+          "enter": "碰撞开始时",
+          "stay": "碰撞期间",
+          "exit": "碰撞结束时"
+        },
+        "checkModes": {
+          "hitbox": "碰撞盒",
+          "pixel": "像素"
+        },
+        "animationConditions": {
+          "end": "动画结束时",
+          "frame": "帧时"
+        },
+        "gameStates": {
+          "playing": "游玩中",
+          "success": "通关",
+          "failure": "游戏结束"
+        },
+        "moveTypes": {
+          "straight": "直线",
+          "bounce": "弹跳",
+          "teleport": "瞬移",
+          "wander": "漫游",
+          "stop": "停止",
+          "swap": "交换位置",
+          "approach": "追踪",
+          "orbit": "环绕"
+        },
+        "effectTypes": {
+          "flash": "闪烁",
+          "shake": "震动",
+          "rotate": "旋转"
+        },
+        "details": {
+          "type": "类型",
+          "time": "时间",
+          "target": "目标",
+          "range": "范围",
+          "center": "中心",
+          "judgment": "判定",
+          "flag": "标志",
+          "condition": "条件",
+          "state": "状态",
+          "sound": "音效",
+          "volume": "音量",
+          "speed": "速度",
+          "duration": "时长",
+          "intensity": "强度",
+          "value": "值",
+          "invert": "反转",
+          "onAnimationEnd": "动画结束时",
+          "secondsLater": "秒后",
+          "to": "到",
+          "between": "之间",
+          "secondsHold": "秒长按",
+          "and": "和",
+          "notSelected": "未选择",
+          "gameClear": "游戏通关",
+          "gameOver": "游戏结束",
+          "showObject": "显示对象",
+          "fadeIn": "淡入",
+          "hideObject": "隐藏对象",
+          "fadeOut": "淡出",
+          "on": "开",
+          "off": "关",
+          "switchToAnimation": "切换到动画"
+        },
+        "flow": {
+          "allConditions": "🔥 当所有条件满足时 → ⚡ 按顺序执行动作",
+          "anyCondition": "🔥 当任一条件满足时 → ⚡ 按顺序执行动作",
+          "singleCondition": "🔥 当条件满足时 → ⚡ 按顺序执行动作"
+        },
+        "triggerConditions": "触发条件",
+        "executeActions": "执行动作",
+        "conditionCount": "（{{count}} 个条件）",
+        "actionCount": "（{{count}} 个动作）",
+        "all": "全部",
+        "any": "任一",
+        "condition": "条件",
+        "action": "动作",
+        "enabled": "✅ 已启用",
+        "disabled": "⏸️ 已禁用",
+        "objectHasRules": "📋 此对象设置了 {{count}} 条规则",
+        "rule": "规则",
+        "noRules": "未设置规则",
+        "createRule": "设置规则以查看预览",
+        "emptyMessage": "未设置规则"
+      },
+      "gamePreview": {
+        "title": "游戏屏幕（9:16）",
+        "screenSize": "屏幕大小",
+        "background": "背景",
+        "visible": "可见",
+        "hidden": "隐藏",
+        "objectCount": "对象",
+        "objects": "",
+        "noObjects": {
+          "title": "添加对象",
+          "description": "请在Assets选项卡中添加对象"
+        },
+        "noPlaced": {
+          "title": "放置对象",
+          "description": "将对象从Assets选项卡拖放到此屏幕上进行放置"
+        },
+        "hints": {
+          "title": "提示",
+          "selected": "已选中",
+          "hasRule": "有规则",
+          "noRule": "无规则",
+          "clickToRule": "点击 → 设置规则",
+          "dragToMove": "拖动 → 移动"
+        }
+      }
+    },
+    "settings": {
+      "title": "发布设置",
+      "gameName": "游戏名称",
+      "gameNameRequired": "游戏名称为必填项",
+      "gameNamePlaceholder": "输入精彩的游戏名称",
+      "description": "描述",
+      "descriptionPlaceholder": "描述这个游戏的有趣之处",
+      "duration": "时间限制",
+      "difficulty": "难度",
+      "visibility": "可见性",
+      "public": "公开",
+      "unlisted": "不公开",
+      "private": "私密",
+      "publish": "发布",
+      "testPlay": {
+        "title": "测试游戏",
+        "start": "测试游戏",
+        "startDescription": "您可以检查创建的游戏是否正常运行",
+        "testing": "测试中...",
+        "testingDescription": "检查游戏运行",
+        "startButton": "测试",
+        "success": "测试成功！",
+        "failure": "测试发现问题",
+        "stats": {
+          "score": "得分",
+          "playTime": "游戏时间",
+          "interactions": "交互",
+          "rulesTriggered": "执行的规则"
+        },
+        "tryAgain": "再次测试",
+        "errors": "错误：",
+        "warnings": "警告：",
+        "gameSpeed": {
+          "title": "游戏速度（挑战级别）",
+          "slow": {
+            "label": "慢速",
+            "description": "悠闲享受"
+          },
+          "normal": {
+            "label": "正常",
+            "description": "刚好的速度"
+          },
+          "fast": {
+            "label": "快速",
+            "description": "挑战性速度"
+          },
+          "superFast": {
+            "label": "超快速",
+            "description": "专家级"
+          },
+          "current": "当前设置：{{speed}} 速度"
+        },
+        "fullGame": {
+          "title": "游戏运行中",
+          "end": "结束"
+        }
+      },
+      "gameInfo": {
+        "title": "游戏信息",
+        "genre": "类型",
+        "genrePlaceholder": "选择类型",
+        "genres": {
+          "action": "动作",
+          "puzzle": "益智",
+          "adventure": "冒险",
+          "rpg": "角色扮演",
+          "shooting": "射击",
+          "racing": "竞速",
+          "sports": "体育",
+          "simulation": "模拟",
+          "casual": "休闲",
+          "educational": "教育",
+          "music": "音乐",
+          "other": "其他"
+        },
+        "tags": "标签",
+        "tagsPlaceholder": "例如：横向滚动、2D、简单（用逗号分隔）",
+        "tagsHint": "用逗号（,）分隔标签"
+      },
+      "thumbnail": {
+        "title": "缩略图",
+        "subtitle": "设置能展现游戏魅力的缩略图",
+        "generate": "自动生成",
+        "upload": "上传",
+        "noThumbnail": "无缩略图"
+      },
+      "publishing": {
+        "title": "发布设置",
+        "noRemix": "禁止复制（禁用混音）",
+        "noRemixDescription": "禁止其他用户复制和修改此游戏。选中后，任何人都无法复制和修改此游戏。",
+        "noRemixHint": "提示：如果不选中，其他用户可以基于您的游戏创建新游戏（类似于知识共享）"
+      },
+      "stats": {
+        "title": "游戏统计",
+        "objects": "对象",
+        "rules": "规则",
+        "texts": "文本",
+        "capacity": "总容量",
+        "testPlayCount": "测试次数",
+        "health": {
+          "initialState": "初始状态",
+          "placedObjects": "已放置",
+          "successConditions": "成功条件",
+          "complexity": "复杂度"
+        }
+      },
+      "actions": {
+        "save": "保存",
+        "test": "测试",
+        "publish": "发布",
+        "update": "更新",
+        "export": "导出（JSON）",
+        "published": "已发布",
+        "publishedAt": "于 {{date}}"
+      }
+    },
+    "preview": "预览",
+    "counter": {
+      "title": "计数器管理",
+      "presetAdd": "添加预设",
+      "customCreate": "创建自定义",
+      "newCounter": "新计数器",
+      "editCounter": "编辑计数器",
+      "createCounter": "创建新计数器",
+      "noCounters": "暂无计数器",
+      "getStarted": "首先添加预设或创建自定义计数器",
+      "range": "范围：{{min}} ～ {{max}}",
+      "presetCounterAdded": "已添加预设计数器\"{{name}}\"",
+      "counterCreated": "已创建计数器\"{{name}}\"",
+      "counterUpdated": "已更新计数器\"{{name}}\"",
+      "counterDeleted": "已删除计数器\"{{name}}\"",
+      "nameAlreadyUsed": "计数器名称\"{{name}}\"已被使用",
+      "presetCreationFailed": "创建预设计数器失败",
+      "counterNameRequired": "请输入计数器名称",
+      "minMaxValidation": "最小值必须小于或等于最大值",
+      "counterName": "计数器名称",
+      "initialValue": "初始值",
+      "minimumValue": "最小值",
+      "maximumValue": "最大值",
+      "noLimit": "无限制",
+      "description": "描述",
+      "descriptionPlaceholder": "输入计数器描述或用途...",
+      "delete": "删除",
+      "cancel": "取消",
+      "create": "创建",
+      "update": "更新",
+      "selectPreset": "选择预设计数器",
+      "ruleComponents": {
+        "conditionTitle": "计数器条件",
+        "actionTitle": "计数器动作",
+        "deleteButton": "删除",
+        "targetCounter": "目标计数器",
+        "selectCounterPlaceholder": "选择计数器",
+        "initialValueLabel": "初始",
+        "currentValueLabel": "当前",
+        "noCountersWarning": "未配置计数器。请在设置选项卡中创建计数器。",
+        "conditionLabel": "条件",
+        "comparisonValue": "比较值",
+        "minimumValue": "最小值",
+        "maximumValue": "最大值",
+        "conditionPreview": "条件预览：",
+        "operationLabel": "操作",
+        "valueLabel": "值",
+        "notificationCheckbox": "变化时显示通知",
+        "notificationPlaceholder": "通知消息（留空自动生成）",
+        "actionPreview": "动作预览：",
+        "notificationEnabled": "通知已启用",
+        "noCountersTitle": "未配置计数器",
+        "noCountersMessage": "请在设置选项卡中创建计数器后再设置规则",
+        "counterRuleTitle": "计数器规则",
+        "countersAvailable": "{{count}} 个可用计数器",
+        "addConditionButton": "添加计数器条件",
+        "addActionButton": "添加计数器动作",
+        "hint": "提示：您可以设置计数器条件如\"分数 >= 100\"和动作如\"生命值减1\"",
+        "comparisonOptions": {
+          "equals": {
+            "label": "等于 (==)",
+            "description": "精确匹配"
+          },
+          "notEquals": {
+            "label": "不等于 (!=)",
+            "description": "不相等"
+          },
+          "greater": {
+            "label": "大于 (>)",
+            "description": "大于指定值"
+          },
+          "greaterOrEqual": {
+            "label": "大于等于 (>=)",
+            "description": "大于或等于指定值"
+          },
+          "less": {
+            "label": "小于 (<)",
+            "description": "小于指定值"
+          },
+          "lessOrEqual": {
+            "label": "小于等于 (<=)",
+            "description": "小于或等于指定值"
+          },
+          "between": {
+            "label": "在范围内",
+            "description": "在范围内"
+          },
+          "notBetween": {
+            "label": "不在范围内",
+            "description": "在范围外"
+          },
+          "changed": {
+            "label": "已变化",
+            "description": "值从之前变化"
+          }
+        },
+        "operationOptions": {
+          "increment": {
+            "label": "增加 (+)",
+            "description": "增加指定值"
+          },
+          "decrement": {
+            "label": "减少 (-)",
+            "description": "减少指定值"
+          },
+          "set": {
+            "label": "设置 (=)",
+            "description": "设置为指定值"
+          },
+          "reset": {
+            "label": "重置",
+            "description": "重置为初始值"
+          },
+          "add": {
+            "label": "加 (+)",
+            "description": "同增加"
+          },
+          "subtract": {
+            "label": "减 (-)",
+            "description": "同减少"
+          },
+          "multiply": {
+            "label": "乘 (×)",
+            "description": "乘以指定值"
+          },
+          "divide": {
+            "label": "除 (÷)",
+            "description": "除以指定值"
+          }
+        }
+      }
+    },
+    "rulePreview": {
+      "title": "规则预览",
+      "conditionLabels": {
+        "touch": "触摸",
+        "time": "时间",
+        "collision": "碰撞",
+        "animation": "动画",
+        "flag": "标志",
+        "gameState": "游戏状态",
+        "counter": "计数器",
+        "random": "随机"
+      },
+      "actionLabels": {
+        "success": "游戏通关",
+        "failure": "游戏结束",
+        "playSound": "播放音效",
+        "move": "移动",
+        "effect": "效果",
+        "show": "显示",
+        "hide": "隐藏",
+        "setFlag": "设置标志",
+        "switchAnimation": "切换动画",
+        "counterAction": "计数器操作"
+      },
+      "timeDetails": {
+        "secondsAfter": "{{seconds}}秒后",
+        "timeRange": "时间范围",
+        "exactTime": "{{seconds}}秒经过后",
+        "rangeTime": "{{min}}秒到{{max}}秒之间"
+      },
+      "touchDetails": {
+        "tap": "点击",
+        "release": "释放",
+        "hold": "长按",
+        "holdDuration": "时长：{{duration}}秒",
+        "holdSecond": "长按{{duration}}秒",
+        "targetThis": "目标：此对象",
+        "targetStage": "目标：舞台",
+        "target": "目标：{{target}}",
+        "shapeRect": "矩形",
+        "shapeCircle": "圆形",
+        "range": "范围：{{shape}}（中心：{{x}}%，{{y}}%）",
+        "type": "类型：{{type}}"
+      },
+      "collisionDetails": {
+        "enter": "碰撞开始时",
+        "stay": "碰撞期间",
+        "exit": "碰撞结束时",
+        "detectionHitbox": "碰撞盒检测",
+        "detectionPixel": "像素检测",
+        "targetBackground": "目标：背景",
+        "targetStageRange": "目标：舞台范围",
+        "target": "目标：{{target}}",
+        "shapeRect": "矩形",
+        "shapeCircle": "圆形",
+        "range": "范围：{{shape}}（中心：{{x}}%，{{y}}%）",
+        "type": "类型：{{type}}",
+        "detection": "检测：{{mode}}",
+        "collisionWith": "{{target}}与{{collisionType}}"
+      },
+      "animationDetails": {
+        "animationEnd": "动画结束时",
+        "frameReached": "到达时"
+      },
+      "flagDetails": {
+        "flag": "标志：{{name}}",
+        "notSelected": "未选择",
+        "condition": "条件：{{condition}}",
+        "flagCondition": "{{name}} {{condition}}"
+      },
+      "gameStateDetails": {
+        "playing": "游玩中",
+        "clear": "通关",
+        "gameOver": "游戏结束",
+        "unknown": "未知",
+        "state": "状态：{{state}}"
+      },
+      "soundDetails": {
+        "sound": "音效：{{name}}",
+        "notSelected": "未选择",
+        "selectSound": "选择音效",
+        "volume": "音量：{{volume}}%"
+      },
+      "resultDetails": {
+        "gameClear": "设置游戏为通关状态",
+        "gameOver": "设置游戏为结束状态"
+      },
+      "moveDetails": {
+        "straight": "直线",
+        "bounce": "弹跳",
+        "teleport": "传送",
+        "random": "随机",
+        "wander": "随机",
+        "stop": "停止",
+        "swap": "交换位置",
+        "approach": "接近",
+        "orbit": "环绕",
+        "unknown": "未知",
+        "type": "类型：{{type}}",
+        "speed": "速度：{{speed}}像素/秒",
+        "duration": "持续时间：{{duration}}秒",
+        "moveType": "{{type}}移动"
+      },
+      "effectDetails": {
+        "blink": "闪烁",
+        "flash": "闪光",
+        "shake": "震动",
+        "rotate": "旋转",
+        "unknown": "未知",
+        "type": "类型：{{type}}",
+        "duration": "持续时间：{{duration}}秒",
+        "intensity": "强度：{{intensity}}%"
+      },
+      "showHideDetails": {
+        "show": "显示对象",
+        "hide": "隐藏对象",
+        "fadeIn": "淡入：{{duration}}秒",
+        "fadeOut": "淡出：{{duration}}秒"
+      },
+      "flagActionDetails": {
+        "setFlag": "标志：{{name}}",
+        "toggleFlag": "标志：{{name}}",
+        "toggleValue": "值：切换",
+        "value": "值：{{value}}",
+        "flagValue": "{{name}} {{value}}"
+      },
+      "animationActionDetails": {
+        "switchTo": "切换到：{{name}}",
+        "animationNumber": "动画{{number}}",
+        "switchToAnimation": "切换到动画{{number}}"
+      },
+      "multipleRules": {
+        "header": "📋 此对象配置了{{count}}个规则",
+        "ruleNumber": "规则{{number}}",
+        "enabled": "✅ 已启用",
+        "disabled": "⏸️ 已禁用"
+      },
+      "singleRule": {
+        "flowAll": "🔥 当所有条件满足时 → ⚡ 按顺序执行动作",
+        "flowAny": "🔥 当任一条件满足时 → ⚡ 按顺序执行动作",
+        "flowSingle": "🔥 当条件满足时 → ⚡ 按顺序执行动作",
+        "conditionsTitle": "触发条件",
+        "conditionsCount": "触发条件（{{count}}个）",
+        "actionsTitle": "动作",
+        "actionsCount": "动作（{{count}}个）",
+        "conditionNumber": "条件{{number}}：{{label}}",
+        "actionNumber": "动作{{number}}：{{label}}"
+      },
+      "general": {
+        "noCondition": "无条件",
+        "noAction": "无动作",
+        "allConditions": "全部",
+        "anyCondition": "任一",
+        "noRules": "设置规则以查看预览",
+        "noRulesSet": "未设置规则",
+        "frameNumber": "帧{{number}}",
+        "animationEnd": "结束时"
+      }
+    },
+    "random": {
+      "conditionTitle": "随机条件设置",
+      "actionTitle": "随机动作设置",
+      "probabilityWith": "{{percentage}}% 概率，{{interval}} 触发",
+      "everyFrame": "每帧",
+      "interval": "{{interval}}ms 间隔",
+      "choices": "从 {{count}} 个选项中随机选择（{{probabilities}}%）",
+      "presetLabel": "预设：",
+      "probabilityLabel": "触发概率：{{percentage}}%",
+      "intervalLabel": "检查间隔：{{interval}}ms",
+      "milliseconds": "毫秒",
+      "advancedSettings": "高级设置",
+      "seedLabel": "种子值（用于调试）：",
+      "seedPlaceholder": "例如：test123",
+      "seedDescription": "使用相同种子值可重现相同的随机结果",
+      "forEndlessGames": "用于无尽类游戏",
+      "deleteButton": "删除",
+      "choicesLabel": "选择动作：",
+      "addButton": "添加",
+      "weightLabel": "权重：",
+      "selectionModeLabel": "选择模式：",
+      "weighted": "加权（推荐）",
+      "uniform": "均匀",
+      "probability": "独立概率",
+      "executionLimitSettings": "执行限制设置",
+      "maxExecutionsLabel": "最大执行次数：",
+      "maxExecutionsPlaceholder": "无限",
+      "cooldownLabel": "冷却时间：",
+      "cooldownPlaceholder": "0",
+      "debugMode": "调试模式（记录选择结果）",
+      "forEndlessAndAutogen": "用于无尽类和自动生成游戏",
+      "conditionDisplayName": "{{interval}}{{percentage}}% 概率条件满足",
+      "actionDisplayName": "从 {{count}} 个选项中随机选择（{{probabilities}}%）",
+      "presets": {
+        "condition": {
+          "lowProbability": {
+            "label": "低概率",
+            "description": "10% 概率，2秒间隔"
+          },
+          "mediumProbability": {
+            "label": "中概率",
+            "description": "30% 概率，1秒间隔"
+          },
+          "highProbability": {
+            "label": "高概率",
+            "description": "70% 概率，0.5秒间隔"
+          },
+          "endless": {
+            "label": "无尽",
+            "description": "Flappy Bird 风格"
+          },
+          "runner": {
+            "label": "跑酷",
+            "description": "Temple Run 风格"
+          }
+        },
+        "action": {
+          "endlessObstacles": {
+            "label": "无尽障碍",
+            "description": "随机障碍物和道具生成"
+          },
+          "bonusEffects": {
+            "label": "奖励效果",
+            "description": "随机奖励效果"
+          },
+          "difficultyAdjustment": {
+            "label": "难度调整",
+            "description": "自动难度调整"
+          }
+        }
+      },
+      "actionTypes": {
+        "success": "成功",
+        "failure": "失败",
+        "playSound": "播放音效",
+        "show": "显示",
+        "hide": "隐藏",
+        "counter": "计数器",
+        "effect": "效果",
+        "move": "移动"
+      }
+    },
+    "animationAction": {
+      "title": "动画切换设置",
+      "targetObjectLabel": "目标对象",
+      "selectObjectPlaceholder": "选择对象",
+      "animationsCount": "{{count}} 个动画",
+      "selectedPrefix": "已选择：",
+      "animationsAvailable": "{{count}} 个可用动画",
+      "switchToAnimationLabel": "切换到动画：",
+      "animationLabel": "动画 {{number}}",
+      "speedLabel": "动画速度：{{speed}} fps",
+      "fpsUnit": "fps",
+      "lowSpeed": "{{fps}} fps（慢）",
+      "highSpeed": "{{fps}} fps（快）",
+      "speedPresets": {
+        "slow": "慢",
+        "normal": "正常",
+        "fast": "快",
+        "veryFast": "非常快"
+      },
+      "futureOptionsTitle": "未来选项（计划中）：",
+      "futureOptionsLoop": "循环控制（loop）",
+      "futureOptionsAutoStart": "自动开始（autoStart）",
+      "futureOptionsStartFrame": "开始帧（startFrame）",
+      "futureOptionsNote": "当前支持：对象、动画索引、速度控制",
+      "previewNotice": "动画切换预览功能即将推出",
+      "previewButton": "预览动画切换",
+      "settingsSummaryTitle": "设置：",
+      "switchToAnimation": "\n切换到动画 {{index}}",
+      "withSpeed": "（{{speed}}fps）",
+      "pleaseSelectObject": "请选择目标对象",
+      "objectSelected": "已选择\"{{name}}\""
+    },
+    "collisionCondition": {
+      "title": "碰撞条件设置",
+      "collisionTypeLabel": "碰撞类型",
+      "collisionTargetLabel": "碰撞目标",
+      "detectionMethodLabel": "检测方法",
+      "regionLabel": "碰撞检测区域",
+      "shapeRect": "矩形",
+      "shapeCircle": "圆形",
+      "centerX": "中心 X：{{percent}}%",
+      "centerY": "中心 Y：{{percent}}%",
+      "width": "宽度：{{percent}}%",
+      "height": "高度：{{percent}}%",
+      "radius": "半径：{{percent}}%",
+      "targetObjectLabel": "目标对象",
+      "selectObjectPlaceholder": "选择对象",
+      "objectOptions": {
+        "character": "角色",
+        "item": "道具",
+        "obstacle": "障碍物"
+      },
+      "settingsSummaryTitle": "💡 设置：",
+      "collisionWithBackground": " - 与背景碰撞",
+      "collisionWithStageEdge": " - 与舞台边缘碰撞",
+      "collisionWithStageRegion": " - 与舞台区域碰撞（{{shape}}）",
+      "collisionWithObject": " - 与\"{{target}}\"碰撞",
+      "usingDetection": " - 使用{{method}}"
+    },
+    "flagAction": {
+      "title": "标志动作设置",
+      "operationTypeLabel": "操作类型",
+      "targetFlagLabel": "目标标志",
+      "selectFlagPlaceholder": "选择标志",
+      "flagState": "{{name}}（{{state}}）",
+      "on": "开",
+      "off": "关",
+      "noFlagsWarning": "未创建标志。请从右下角的标志管理器创建标志。",
+      "setValueLabel": "设置值",
+      "stateChangePredictionLabel": "状态变化预测",
+      "currentState": "当前：{{state}}",
+      "afterExecution": "执行后：{{state}}",
+      "previewButton": "标志操作预览",
+      "previewNotice": "标志操作预览功能即将推出",
+      "settingsSummaryTitle": "💡 设置：",
+      "selectFlag": "请选择标志",
+      "flagSelected": "标志\"{{name}}\"将被 ",
+      "setState": "设置为{{state}}状态",
+      "toggleState": "从当前状态反转（开⇔关）"
+    },
+    "touchCondition": {
+      "title": "触摸条件设置",
+      "touchTypeLabel": "触摸类型",
+      "holdDuration": "长按时长：{{seconds}}秒",
+      "seconds": "{{seconds}}秒",
+      "touchTargetLabel": "触摸目标",
+      "touchRegionLabel": "触摸区域",
+      "shapeRect": "矩形",
+      "shapeCircle": "圆形",
+      "centerX": "中心 X：{{percent}}%",
+      "centerY": "中心 Y：{{percent}}%",
+      "width": "宽度：{{percent}}%",
+      "height": "高度：{{percent}}%",
+      "radius": "半径：{{percent}}%",
+      "settingsSummaryTitle": "💡 设置：",
+      "holdDurationSeconds": "（{{seconds}}秒）",
+      "touchToSelf": " - 触摸此对象",
+      "touchToStageWhole": " - 触摸整个舞台",
+      "touchToStageRegion": " - 触摸舞台区域（{{shape}}）",
+      "touchToObject": " - 触摸指定对象"
+    },
+    "showHideAction": {
+      "title": "显示/隐藏动作设置",
+      "actionTypeLabel": "动作类型",
+      "fadeEffectLabel": "淡入淡出效果",
+      "fadeDuration": "淡入淡出时长：{{seconds}}秒",
+      "seconds": "{{seconds}}秒",
+      "targetObjectLabel": "目标对象",
+      "targetObjectDefault": "目标对象",
+      "previewButton": "显示/隐藏预览",
+      "previewNotice": "显示/隐藏预览功能即将推出",
+      "settingsSummaryTitle": "💡 设置：",
+      "object": "\"{{target}}\"将被 ",
+      "show": "显示",
+      "hide": "隐藏",
+      "to": "",
+      "fadeInOut": "（{{fadeType}} {{seconds}}秒）",
+      "fadeIn": "淡入",
+      "fadeOut": "淡出",
+      "instant": "（立即）"
+    },
+    "moveAction": {
+      "title": "移动动作设置",
+      "movementTypeLabel": "移动类型",
+      "speedLabel": "移动速度：{{speed}}px/s",
+      "speedUnit": "{{speed}}px/s",
+      "durationLabel": "移动时长：{{seconds}}秒",
+      "seconds": "{{seconds}}秒",
+      "targetCoordinatesLabel": "目标坐标",
+      "xCoordinate": "X 坐标：{{value}}",
+      "yCoordinate": "Y 坐标：{{value}}",
+      "previewButton": "移动预览",
+      "previewNotice": "移动预览功能即将推出",
+      "settingsSummaryTitle": "💡 设置：",
+      "selectMovementType": "请选择移动类型",
+      "movementType": "\"{{type}}\"",
+      "withSpeed": " - 速度 {{speed}}px/s",
+      "forDuration": " - 持续 {{seconds}}秒"
+    },
+    "animationCondition": {
+      "title": "动画条件设置",
+      "targetLabel": "目标",
+      "targetObjectLabel": "目标对象",
+      "objectFrames": "{{name}}（{{count}}帧）",
+      "objectWithId": "对象{{id}}",
+      "triggerTimingLabel": "触发时机",
+      "targetFrameLabel": "目标帧号（最多{{max}}帧）",
+      "animationNumberLabel": "动画编号：{{number}}",
+      "animation": "动画 {{number}}",
+      "settingsSummaryTitle": "💡 设置：",
+      "backgroundAnimation": " - 背景动画",
+      "thisObjectAnimation": " - 此对象的动画",
+      "otherObjectAnimation": " - \"{{name}}\"的动画",
+      "frameNumber": "（帧 {{number}}）",
+      "animationNumber": " - 动画 {{number}}",
+      "framesAvailable": "（{{count}}帧可用）",
+      "conditionTypeLabel": "条件类型",
+      "endFrame": "结束帧",
+      "frameNumberLabel": "帧号",
+      "frameRangeLabel": "帧范围",
+      "frameRangeDisplay": "帧 {{start}} ~ {{end}}",
+      "loopCountLabel": "循环次数",
+      "startFrame": "开始帧"
+    },
+    "gameStateCondition": {
+      "title": "游戏状态条件设置",
+      "gameStateLabel": "游戏状态",
+      "checkTypeLabel": "检查类型",
+      "stateDetailLabel": "状态详情",
+      "exampleLabel": "示例：",
+      "becameNoticeTitle": "瞬间触发：",
+      "becameNoticeDetail": "仅在状态变更瞬间触发一次。",
+      "becameNoticeExample": "（例如：游戏开始瞬间、通关瞬间、游戏结束瞬间）",
+      "usagePatternsLabel": "使用模式",
+      "pattern1Title": "游戏开始效果：",
+      "pattern1Detail": "进入游玩状态瞬间 → 播放BGM、显示UI",
+      "pattern2Title": "通关效果：",
+      "pattern2Detail": "进入成功状态瞬间 → 彩纸效果、胜利音效",
+      "pattern3Title": "暂停功能：",
+      "pattern3Detail": "处于暂停状态时 → 禁用控制、半透明显示",
+      "settingsSummaryTitle": "💡 设置：",
+      "gameIs": "当游戏处于 ",
+      "during": "（处于状态时）",
+      "notDuring": "（不处于状态时）",
+      "moment": "（变更瞬间）",
+      "trigger": "，触发",
+      "stateLabel": "状态"
+    },
+    "timeCondition": {
+      "title": "时间条件设置",
+      "conditionTypeLabel": "时间条件类型",
+      "triggerTimeLabel": "触发时间：开始后{{seconds}}秒",
+      "startTimeLabel": "开始时间：开始后{{seconds}}秒",
+      "endTimeLabel": "结束时间：开始后{{seconds}}秒",
+      "intervalLabel": "间隔：每{{interval}}秒",
+      "intervalHelp": "由于逐帧处理，实际间隔可能略有不同",
+      "seconds": "{{seconds}}秒",
+      "exactDescription": "在精确指定时间触发一次",
+      "rangeDescription": "在时间范围内持续触发",
+      "intervalDescription": "按指定间隔重复触发",
+      "usagePatternsLabel": "使用模式",
+      "pattern1Title": "游戏开始效果：",
+      "pattern1Detail": "0秒时触发 → 显示标题、播放BGM",
+      "pattern2Title": "时间限制：",
+      "pattern2Detail": "60秒时触发 → 游戏结束、分数统计",
+      "pattern3Title": "周期事件：",
+      "pattern3Detail": "每5秒触发 → 生成敌人、生成道具",
+      "settingsSummaryTitle": "💡 设置：",
+      "exactTrigger": "游戏开始{{seconds}}秒后触发一次",
+      "rangeTrigger": "从{{start}}秒到{{end}}秒持续触发",
+      "intervalTrigger": "每{{interval}}秒重复触发",
+      "notSet": "未设置时间条件"
+    },
+    "effectAction": {
+      "title": "效果设置",
+      "effectTypeLabel": "效果类型",
+      "intensityLabel": "效果强度：{{intensity}}%",
+      "durationLabel": "持续时间：{{seconds}}秒",
+      "seconds": "{{seconds}}秒",
+      "intensityRange": "{{percent}}%",
+      "previewButton": "预览效果",
+      "previewNotice": "效果预览功能即将推出",
+      "settingsSummaryTitle": "💡 设置：",
+      "effectType": "\"{{type}}\"",
+      "selectEffect": "请选择效果类型",
+      "withIntensity": " - 强度 {{intensity}}%",
+      "forDuration": " - 持续 {{seconds}}秒"
+    },
+    "soundAction": {
+      "title": "音效播放设置",
+      "soundSelectLabel": "音效选择",
+      "selectSound": "选择音效",
+      "volumeLabel": "音量：{{volume}}%",
+      "volumeLevelLabel": "音量等级：",
+      "volumePercent": "{{volume}}%",
+      "minVolume": "0%",
+      "maxVolume": "100%",
+      "previewButton": "预览播放",
+      "previewNotice": "预览播放功能即将推出",
+      "settingsSummaryTitle": "💡 设置：",
+      "playSound": "以{{volume}}%音量播放\"{{name}}\"",
+      "selectSoundPrompt": "请选择音效"
+    },
+    "flagCondition": {
+      "title": "标志条件设置",
+      "targetFlagLabel": "目标标志",
+      "selectFlag": "选择标志",
+      "flagWithInitial": "{{name}}（初始：{{status}}）",
+      "initialOn": "开",
+      "initialOff": "关",
+      "conditionTypeLabel": "条件类型",
+      "settingsSummaryTitle": "💡 设置：",
+      "withFlag": " - \"{{name}}\"标志"
+    }
+  }
+}

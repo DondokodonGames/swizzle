@@ -1,0 +1,31 @@
+{
+  "game": {
+    "start": "开始",
+    "pause": "暂停",
+    "resume": "继续",
+    "restart": "重新开始",
+    "quit": "退出",
+    "success": "通关！",
+    "failure": "游戏结束",
+    "score": "分数",
+    "time": "时间",
+    "bestScore": "最高分"
+  },
+  "bridge": {
+    "copyButton": "复制",
+    "nextButton": "下一步",
+    "againButton": "再来一次",
+    "skipButton": "跳过",
+    "copySuccessTitle": "复制完成！",
+    "copySuccessMessage": "游戏规则已复制。在编辑器中替换图片，创建您自己的独特游戏！",
+    "openEditorButton": "打开编辑器",
+    "editLaterButton": "稍后编辑",
+    "errors": {
+      "gameDataFetchFailed": "无法获取游戏数据",
+      "cannotCopy": "此游戏无法复制",
+      "noRulesToCopy": "无法复制此游戏，因为它没有设置规则。",
+      "copyFailed": "复制游戏失败",
+      "unknownError": "未知错误"
+    }
+  }
+}

@@ -1,0 +1,691 @@
+{
+  "conditions": {
+    "touch": {
+      "label": "触摸时",
+      "description": "当对象被点击时触发",
+      "down": {
+        "label": "点击",
+        "description": "触摸瞬间触发"
+      },
+      "up": {
+        "label": "释放",
+        "description": "手指抬起时触发"
+      },
+      "hold": {
+        "label": "长按",
+        "description": "按住指定时间后触发"
+      },
+      "targets": {
+        "self": {
+          "label": "此对象",
+          "description": "触摸此对象"
+        },
+        "stage": {
+          "label": "整个舞台",
+          "description": "触摸舞台任意位置"
+        },
+        "stageArea": {
+          "label": "舞台区域",
+          "description": "触摸指定舞台区域"
+        }
+      },
+      "drag": {
+        "label": "拖动",
+        "description": "拖动动作时触发",
+        "types": {
+          "start": {
+            "label": "拖动开始",
+            "description": "拖动开始时触发"
+          },
+          "dragging": {
+            "label": "拖动中",
+            "description": "拖动过程中持续触发"
+          },
+          "end": {
+            "label": "拖动结束",
+            "description": "拖动结束时触发"
+          }
+        },
+        "constraints": {
+          "none": {
+            "label": "自由",
+            "description": "任意方向自由移动"
+          },
+          "horizontal": {
+            "label": "水平",
+            "description": "仅水平移动"
+          },
+          "vertical": {
+            "label": "垂直",
+            "description": "仅垂直移动"
+          }
+        }
+      },
+      "flick": {
+        "label": "轻弹",
+        "description": "快速滑动手势"
+      },
+      "swipe": {
+        "label": "滑动",
+        "description": "方向性滑动手势",
+        "directions": {
+          "up": "上",
+          "down": "下",
+          "left": "左",
+          "right": "右",
+          "upLeft": "左上",
+          "upRight": "右上",
+          "downLeft": "左下",
+          "downRight": "右下"
+        }
+      }
+    },
+    "time": {
+      "label": "时间经过",
+      "description": "指定时间后自动触发",
+      "exact": {
+        "label": "精确时间",
+        "description": "在精确指定时间触发一次"
+      },
+      "range": {
+        "label": "时间范围",
+        "description": "在指定时间范围内持续触发"
+      },
+      "interval": {
+        "label": "重复",
+        "description": "按指定间隔重复触发"
+      }
+    },
+    "position": {
+      "label": "在位置时",
+      "description": "进入/离开指定区域时"
+    },
+    "collision": {
+      "label": "碰撞时",
+      "description": "与其他对象碰撞时",
+      "types": {
+        "enter": {
+          "label": "碰撞开始",
+          "description": "碰撞瞬间触发"
+        },
+        "stay": {
+          "label": "碰撞中",
+          "description": "碰撞期间持续触发"
+        },
+        "exit": {
+          "label": "碰撞结束",
+          "description": "碰撞结束时触发"
+        }
+      },
+      "targets": {
+        "background": {
+          "label": "背景",
+          "description": "检测与背景的碰撞"
+        },
+        "stage": {
+          "label": "舞台区域",
+          "description": "检测进入指定舞台区域"
+        },
+        "object": {
+          "label": "其他对象",
+          "description": "检测与其他对象的碰撞"
+        }
+      },
+      "checkModes": {
+        "hitbox": {
+          "label": "碰撞盒（快速）",
+          "description": "使用矩形碰撞盒的快速碰撞检测"
+        },
+        "pixel": {
+          "label": "像素完美（精确）",
+          "description": "像素级精确碰撞检测"
+        }
+      }
+    },
+    "animation": {
+      "label": "动画结束",
+      "description": "动画完成时",
+      "start": {
+        "label": "开始",
+        "description": "动画开始时"
+      },
+      "end": {
+        "label": "结束",
+        "description": "动画结束时"
+      },
+      "frame": {
+        "label": "特定帧",
+        "description": "到达特定帧时"
+      },
+      "loop": {
+        "label": "循环",
+        "description": "动画循环时"
+      },
+      "frameRange": {
+        "label": "帧范围",
+        "description": "在特定帧范围内时"
+      },
+      "playing": {
+        "label": "播放中",
+        "description": "动画播放时"
+      },
+      "stopped": {
+        "label": "已停止",
+        "description": "动画停止时"
+      }
+    },
+    "targets": {
+      "background": {
+        "label": "背景",
+        "description": "背景动画"
+      },
+      "this": {
+        "label": "此对象",
+        "description": "此对象的动画"
+      },
+      "other": {
+        "label": "其他对象",
+        "description": "其他对象的动画"
+      }
+    },
+    "flag": {
+      "label": "标志开启时",
+      "description": "检查自定义标志状态",
+      "on": {
+        "label": "当开启时",
+        "description": "标志开启时触发"
+      },
+      "off": {
+        "label": "当关闭时",
+        "description": "标志关闭时触发"
+      },
+      "offToOn": {
+        "label": "关→开",
+        "description": "标志从关闭变为开启时触发"
+      },
+      "onToOff": {
+        "label": "开→关",
+        "description": "标志从开启变为关闭时触发"
+      }
+    },
+    "gameState": {
+      "label": "游戏状态",
+      "description": "检查整体游戏状态",
+      "success": {
+        "label": "成功状态",
+        "description": "游戏通关状态",
+        "detail": "玩家达成胜利条件时的状态",
+        "examples": [
+          "收集了所有物品",
+          "到达终点",
+          "分数达到目标值"
+        ]
+      },
+      "failure": {
+        "label": "失败状态",
+        "description": "游戏结束状态",
+        "detail": "玩家满足失败条件时的状态",
+        "examples": [
+          "生命值归零",
+          "时间用尽",
+          "碰到障碍物"
+        ]
+      },
+      "playing": {
+        "label": "游玩中",
+        "description": "正常游玩状态",
+        "detail": "游戏开始后玩家可操作的状态",
+        "examples": [
+          "游戏刚开始时",
+          "正常操作中",
+          "动作执行中"
+        ]
+      },
+      "paused": {
+        "label": "暂停",
+        "description": "暂停状态",
+        "detail": "游戏暂停时的状态",
+        "examples": [
+          "按下暂停按钮时",
+          "菜单显示中",
+          "设置画面中"
+        ]
+      },
+      "checkTypes": {
+        "is": {
+          "label": "处于状态时",
+          "description": "处于指定状态时持续触发"
+        },
+        "not": {
+          "label": "不处于状态时",
+          "description": "不处于指定状态时持续触发"
+        },
+        "became": {
+          "label": "变更瞬间",
+          "description": "状态变更瞬间仅触发一次"
+        }
+      }
+    },
+    "score": {
+      "label": "分数条件",
+      "description": "当分数达到特定值时"
+    }
+  },
+  "actions": {
+    "addScore": {
+      "label": "增加分数",
+      "description": "向分数添加点数"
+    },
+    "stopBGM": {
+      "label": "停止BGM",
+      "description": "停止背景音乐"
+    },
+    "toggleFlag": {
+      "label": "切换标志",
+      "description": "切换标志状态（开⇔关）"
+    },
+    "showMessage": {
+      "label": "显示消息",
+      "description": "在屏幕上显示消息"
+    },
+    "success": {
+      "label": "游戏通关！",
+      "description": "成功结束游戏"
+    },
+    "failure": {
+      "label": "游戏结束",
+      "description": "失败结束游戏"
+    },
+    "pause": {
+      "label": "暂停",
+      "description": "暂停游戏"
+    },
+    "restart": {
+      "label": "重新开始",
+      "description": "重新开始游戏"
+    },
+    "playSound": {
+      "label": "播放音效",
+      "description": "播放音效"
+    },
+    "playBGM": {
+      "label": "播放背景音乐",
+      "description": "播放背景音乐"
+    },
+    "stopSound": {
+      "label": "停止音频",
+      "description": "停止音频播放"
+    },
+    "move": {
+      "label": "移动",
+      "description": "移动到指定位置",
+      "types": {
+        "straight": {
+          "label": "直线",
+          "description": "直线移动到位置"
+        },
+        "bounce": {
+          "label": "弹跳",
+          "description": "弹跳移动"
+        },
+        "teleport": {
+          "label": "瞬移",
+          "description": "瞬间位置变化"
+        },
+        "wander": {
+          "label": "漫游",
+          "description": "随机方向移动"
+        },
+        "stop": {
+          "label": "停止",
+          "description": "原地停止"
+        },
+        "swap": {
+          "label": "交换",
+          "description": "与目标交换位置"
+        },
+        "approach": {
+          "label": "追踪",
+          "description": "接近另一个对象"
+        },
+        "orbit": {
+          "label": "环绕",
+          "description": "沿圆形路径移动"
+        },
+        "followDrag": {
+          "label": "跟随拖动",
+          "description": "跟随触摸拖动移动"
+        }
+      },
+      "followDrag": {
+        "damping": {
+          "none": {
+            "label": "无",
+            "description": "无阻尼，即时响应"
+          },
+          "veryLow": {
+            "label": "极低",
+            "description": "最小平滑"
+          },
+          "low": {
+            "label": "低",
+            "description": "轻微平滑"
+          },
+          "medium": {
+            "label": "中等",
+            "description": "适度平滑"
+          },
+          "high": {
+            "label": "高",
+            "description": "强烈平滑"
+          }
+        }
+      }
+    },
+    "show": {
+      "label": "显示",
+      "description": "显示对象"
+    },
+    "hide": {
+      "label": "隐藏",
+      "description": "隐藏对象"
+    },
+    "switchAnimation": {
+      "label": "切换动画",
+      "description": "切换动画"
+    },
+    "effect": {
+      "label": "效果",
+      "description": "闪烁、震动等"
+    },
+    "particles": {
+      "label": "粒子",
+      "description": "粒子效果"
+    },
+    "setFlag": {
+      "label": "设置标志",
+      "description": "开启/关闭自定义标志"
+    },
+    "flags": {
+      "setFlag": {
+        "label": "设置标志",
+        "description": "将标志设置为指定状态（开/关）"
+      },
+      "toggleFlag": {
+        "label": "切换标志",
+        "description": "反转标志状态（开⇔关）"
+      },
+      "values": {
+        "on": {
+          "label": "开",
+          "description": "将标志设置为开启状态"
+        },
+        "off": {
+          "label": "关",
+          "description": "将标志设置为关闭状态"
+        }
+      },
+      "effects": {
+        "setOn": "将标志设置为开启状态",
+        "setOff": "将标志设置为关闭状态",
+        "toggle": "从当前状态反转（开⇔关）"
+      }
+    },
+    "showHide": {
+      "show": {
+        "label": "显示",
+        "description": "显示对象"
+      },
+      "hide": {
+        "label": "隐藏",
+        "description": "隐藏对象"
+      },
+      "fade": {
+        "enabled": {
+          "label": "渐变启用",
+          "description": "平滑显示/隐藏"
+        },
+        "disabled": {
+          "label": "即时切换",
+          "description": "即时显示/隐藏"
+        }
+      },
+      "duration": {
+        "instant": {
+          "label": "即时",
+          "description": "0.1秒"
+        },
+        "fast": {
+          "label": "快",
+          "description": "0.3秒"
+        },
+        "normal": {
+          "label": "正常",
+          "description": "0.5秒"
+        },
+        "slow": {
+          "label": "慢",
+          "description": "1.0秒"
+        },
+        "verySlow": {
+          "label": "非常慢",
+          "description": "2.0秒"
+        }
+      }
+    },
+    "randomAction": {
+      "label": "随机动作",
+      "description": "从多个选项中执行随机动作"
+    }
+  },
+  "movements": {
+    "straight": {
+      "label": "直线移动",
+      "description": "直线移动到位置"
+    },
+    "teleport": {
+      "label": "瞬间移动",
+      "description": "立即改变位置"
+    },
+    "wander": {
+      "label": "漫游",
+      "description": "随机方向移动"
+    },
+    "bounce": {
+      "label": "弹跳",
+      "description": "弹跳移动"
+    },
+    "orbit": {
+      "label": "环绕",
+      "description": "圆形路径移动"
+    },
+    "approach": {
+      "label": "追踪",
+      "description": "靠近另一个对象"
+    },
+    "stop": {
+      "label": "停止",
+      "description": "原地停止"
+    },
+    "swap": {
+      "label": "交换",
+      "description": "与目标交换位置"
+    }
+  },
+  "effects": {
+    "flash": {
+      "label": "闪烁",
+      "description": "闪烁屏幕/对象",
+      "colors": {
+        "white": "白色",
+        "red": "红色",
+        "blue": "蓝色",
+        "green": "绿色",
+        "yellow": "黄色",
+        "magenta": "品红色"
+      }
+    },
+    "glow": {
+      "label": "发光",
+      "description": "使对象发光"
+    },
+    "shake": {
+      "label": "震动",
+      "description": "震动效果",
+      "directions": {
+        "horizontal": {
+          "label": "水平",
+          "description": "左右震动"
+        },
+        "vertical": {
+          "label": "垂直",
+          "description": "上下震动"
+        },
+        "both": {
+          "label": "全方向",
+          "description": "全方向震动"
+        }
+      }
+    },
+    "scale": {
+      "label": "缩放",
+      "description": "大小变化效果"
+    },
+    "rotate": {
+      "label": "旋转",
+      "description": "旋转效果",
+      "directions": {
+        "clockwise": {
+          "label": "顺时针",
+          "description": "顺时针旋转"
+        },
+        "counterclockwise": {
+          "label": "逆时针",
+          "description": "逆时针旋转"
+        },
+        "alternate": {
+          "label": "交替",
+          "description": "交替旋转方向"
+        }
+      }
+    },
+    "fade": {
+      "label": "淡入淡出",
+      "description": "淡入/淡出"
+    },
+    "confetti": {
+      "label": "彩纸",
+      "description": "庆祝粒子"
+    },
+    "monochrome": {
+      "label": "黑白",
+      "description": "黑白滤镜"
+    },
+    "particles": {
+      "label": "粒子",
+      "description": "发射粒子",
+      "types": {
+        "sparkle": {
+          "label": "闪耀",
+          "description": "闪耀粒子"
+        },
+        "explosion": {
+          "label": "爆炸",
+          "description": "爆炸效果"
+        },
+        "confetti": {
+          "label": "彩纸",
+          "description": "庆祝彩纸"
+        },
+        "hearts": {
+          "label": "爱心",
+          "description": "爱心粒子"
+        },
+        "star": {
+          "label": "星星",
+          "description": "星星粒子"
+        },
+        "splash": {
+          "label": "飞溅",
+          "description": "飞溅效果"
+        }
+      }
+    }
+  },
+  "positions": {
+    "center": "中央",
+    "top": "顶部",
+    "bottom": "底部",
+    "left": "左侧",
+    "right": "右侧",
+    "corners": "角落"
+  },
+  "speeds": {
+    "slow": {
+      "label": "慢速",
+      "description": "100像素/秒"
+    },
+    "normal": {
+      "label": "正常",
+      "description": "300像素/秒"
+    },
+    "fast": {
+      "label": "快速",
+      "description": "600像素/秒"
+    },
+    "instant": {
+      "label": "瞬间",
+      "description": "立即"
+    }
+  },
+  "durations": {
+    "5": {
+      "label": "5秒",
+      "description": "快速"
+    },
+    "10": {
+      "label": "10秒",
+      "description": "标准"
+    },
+    "15": {
+      "label": "15秒",
+      "description": "延长"
+    },
+    "30": {
+      "label": "30秒",
+      "description": "长时间"
+    }
+  },
+  "difficulties": {
+    "easy": {
+      "label": "简单",
+      "description": "适合所有人"
+    },
+    "normal": {
+      "label": "普通",
+      "description": "平衡挑战"
+    },
+    "hard": {
+      "label": "困难",
+      "description": "专家级"
+    }
+  },
+  "directions": {
+    "up": "上",
+    "down": "下",
+    "left": "左",
+    "right": "右",
+    "upLeft": "左上",
+    "upRight": "右上",
+    "downLeft": "左下",
+    "downRight": "右下"
+  },
+  "colors": {
+    "white": "白色",
+    "red": "红色",
+    "blue": "蓝色",
+    "green": "绿色",
+    "yellow": "黄色",
+    "magenta": "品红色"
+  }
+}
