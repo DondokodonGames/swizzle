@@ -126,10 +126,10 @@ export class EditorGameBridge {
           name: r.name,
           enabled: r.enabled,
           targetObjectId: r.targetObjectId,
-          conditionCount: r.triggers.conditions.length,
-          actionCount: r.actions.length,
-          conditions: r.triggers.conditions.map(c => c.type),
-          actions: r.actions.map(a => a.type)
+          conditionCount: r.triggers?.conditions?.length ?? 0,
+          actionCount: r.actions?.length ?? 0,
+          conditions: r.triggers?.conditions?.map(c => c.type) ?? [],
+          actions: r.actions?.map(a => a.type) ?? []
         })));
 
         const enabledRules = project.script.rules.filter(rule => rule.enabled !== false);
@@ -138,8 +138,8 @@ export class EditorGameBridge {
         enabledRules.forEach((rule, index) => {
           console.log(`📝 ルール登録 #${index + 1}: "${rule.name}" (id=${rule.id})`);
           console.log(`   - 対象: ${rule.targetObjectId}`);
-          console.log(`   - 条件: ${rule.triggers.conditions.map(c => c.type).join(', ')}`);
-          console.log(`   - アクション: ${rule.actions.map(a => a.type).join(', ')}`);
+          console.log(`   - 条件: ${rule.triggers?.conditions?.map(c => c.type).join(', ') ?? 'なし'}`);
+          console.log(`   - アクション: ${rule.actions?.map(a => a.type).join(', ') ?? 'なし'}`);
           this.ruleEngine!.addRule(rule);
         });
         console.log(`✅ ルール登録完了: ${enabledRules.length}個`);
