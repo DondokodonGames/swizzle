@@ -618,12 +618,37 @@ ${req.actions.map(a => `- ${a}`).join('\n')}
     }
 
     if (gameScript.rules) {
-      gameScript.rules.forEach((rule, index) => {
+      gameScript.rules.forEach((rule: any, index) => {
         if (!rule.id) rule.id = `rule_${String(index + 1).padStart(3, '0')}`;
         if (!rule.createdAt) rule.createdAt = now;
         if (!rule.lastModified) rule.lastModified = now;
         if (rule.enabled === undefined) rule.enabled = true;
         if (!rule.priority) rule.priority = 10;
+
+        // 🔧 ルール構造の自動修正: conditions → triggers.conditions
+        if (rule.conditions && !rule.triggers) {
+          console.warn(`   ⚠️ ルール構造を修正: ${rule.id} (conditions → triggers.conditions)`);
+          rule.triggers = {
+            operator: 'AND',
+            conditions: rule.conditions
+          };
+          delete rule.conditions;
+        }
+
+        // triggers.operatorがない場合は追加
+        if (rule.triggers && !rule.triggers.operator) {
+          rule.triggers.operator = 'AND';
+        }
+
+        // targetObjectIdがない場合はデフォルト設定
+        if (!rule.targetObjectId) {
+          rule.targetObjectId = 'stage';
+        }
+
+        // nameがない場合はidを使用
+        if (!rule.name) {
+          rule.name = rule.id;
+        }
       });
     }
 
