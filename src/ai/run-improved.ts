@@ -62,7 +62,8 @@ function buildConfig(): Partial<OrchestratorConfig> {
     dryRun: process.env.VITE_AI_DRY_RUN === 'true',
     privateMode: process.env.PRIVATE_MODE !== 'false', // デフォルトはtrue（レビュー用）
     imageGeneration: {
-      provider: 'mock' // 画像生成はモック（別途実装予定）
+      provider: process.env.OPENAI_API_KEY ? 'openai' : 'mock',
+      apiKey: process.env.OPENAI_API_KEY
     }
   };
 }

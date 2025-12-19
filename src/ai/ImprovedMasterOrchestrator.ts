@@ -329,9 +329,9 @@ export class ImprovedMasterOrchestrator {
       console.log('      ⚠️ Background generation failed:', (error as Error).message);
     }
 
-    // オブジェクト生成
+    // オブジェクト生成（idea.objectCountに基づく、仕様上限15個）
     const objects: any[] = [];
-    for (let i = 0; i < Math.min(assetRefs.objectIds.length, 5); i++) {
+    for (let i = 0; i < assetRefs.objectIds.length; i++) {
       try {
         const objFrames = await this.imageGenerator.generateObject({
           prompt: `${idea.theme} game object ${i + 1}, ${idea.visualStyle} style, simple icon`,
