@@ -373,10 +373,31 @@ ${pattern}
     {"id":"score","name":"スコア","initialValue":0,"minValue":0,"maxValue":999}
   ],
   "flags": [],
-  "rules": [...],
+  "rules": [
+    {
+      "id": "rule_001",
+      "name": "ルール名",
+      "targetObjectId": "対象オブジェクトID",
+      "triggers": {
+        "operator": "AND",
+        "conditions": [
+          {"type":"touch","target":"self","touchType":"down"}
+        ]
+      },
+      "actions": [
+        {"type":"hide","targetId":"obj1"}
+      ],
+      "enabled": true,
+      "priority": 10,
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "lastModified": "2025-01-01T00:00:00.000Z"
+    }
+  ],
   "successConditions": [],
   "version": "1.0.0"
-}`;
+}
+
+⚠️ 重要: rulesの各ルールは必ず triggers.conditions の構造を使用すること。conditionsを直接ルールに置かないこと。`;
   }
 
   /**
