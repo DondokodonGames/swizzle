@@ -17,6 +17,8 @@ import { SpecificationComplianceChecker, ComplianceResult } from './checkers/Spe
 import { FunEvaluator } from './checkers/FunEvaluator';
 import { SupabaseUploader } from './publishers/SupabaseUploader';
 import { GameProject } from '../types/editor/GameProject';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // 設定
 export interface OrchestratorConfig {
@@ -164,6 +166,9 @@ export class ImprovedMasterOrchestrator {
           passed++;
           console.log(`   ✅ Passed: ${result.idea.title} (score: ${result.compliance.score})`);
 
+          // ローカル保存（常に実行）
+          this.saveGameLocally(result);
+
           // 公開処理（ドライランでなければ）
           if (!this.config.dryRun) {
             await this.publishGame(result);
@@ -303,6 +308,50 @@ export class ImprovedMasterOrchestrator {
       console.log(`      Published: ${autoPublish}`);
     } else {
       console.error(`   ❌ Upload failed: ${uploadResult.error}`);
+    }
+  }
+
+  /**
+   * ゲームをローカルに保存
+   */
+  private saveGameLocally(result: GeneratedGameResult): void {
+    try {
+      // 保存ディレクトリ
+      const outputDir = path.resolve(process.cwd(), 'public/generated-games');
+
+      // ディレクトリがなければ作成
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+        console.log(`   📁 Created directory: ${outputDir}`);
+      }
+
+      // ファイル名を生成（タイトルをサニタイズ）
+      const safeTitle = result.idea.titleEn
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_|_$/g, '');
+      const filename = `${result.id}_${safeTitle}.json`;
+      const filepath = path.join(outputDir, filename);
+
+      // ゲームデータを構築
+      const gameData = {
+        id: result.id,
+        idea: result.idea,
+        project: result.project,
+        sounds: result.sounds,
+        compliance: result.compliance,
+        funScore: result.funScore,
+        passed: result.passed,
+        generationTime: result.generationTime,
+        estimatedCost: result.estimatedCost,
+        generatedAt: new Date().toISOString()
+      };
+
+      // JSON保存
+      fs.writeFileSync(filepath, JSON.stringify(gameData, null, 2), 'utf-8');
+      console.log(`   💾 Saved locally: ${filename}`);
+    } catch (error) {
+      console.error(`   ❌ Failed to save locally: ${(error as Error).message}`);
     }
   }
 

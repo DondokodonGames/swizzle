@@ -3,3 +3,6 @@ dist
 .env.local
 .DS_Store
 *.log
+
+# AI generated games (local development)
+public/generated-games/
