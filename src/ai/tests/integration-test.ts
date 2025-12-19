@@ -154,15 +154,25 @@ function createMockGameProject() {
     lastModified: new Date().toISOString()
   } as any;
 
-  // アセット追加
+  // アセット追加（テスト用モック）
   project.assets = {
+    background: null,
     objects: [
       { id: 'balloon_red', name: '赤い風船', frames: [{ dataUrl: 'data:image/svg+xml,...' }] },
       { id: 'balloon_blue', name: '青い風船', frames: [{ dataUrl: 'data:image/svg+xml,...' }] },
       { id: 'balloon_green', name: '緑の風船', frames: [{ dataUrl: 'data:image/svg+xml,...' }] }
-    ] as any,
-    audios: []
-  };
+    ],
+    texts: [],
+    audio: { bgm: null, se: [] },
+    statistics: {
+      totalImageSize: 0,
+      totalAudioSize: 0,
+      totalSize: 0,
+      usedSlots: { background: 0, objects: 3, texts: 0, bgm: 0, se: 0 },
+      limitations: { isOverSize: false, isOverSlot: false, warnings: [] }
+    },
+    lastModified: new Date().toISOString()
+  } as any;
 
   return project;
 }

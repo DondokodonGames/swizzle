@@ -2,8 +2,8 @@
  * AI Execution - エクスポートモジュール
  */
 
-export {
-  ParallelGameGenerator,
+export { ParallelGameGenerator } from './ParallelGameGenerator';
+export type {
   ParallelGeneratorConfig,
   GenerationProgress,
   GenerationResult,

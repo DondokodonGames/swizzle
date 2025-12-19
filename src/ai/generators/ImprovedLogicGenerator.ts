@@ -152,23 +152,23 @@ export class ImprovedLogicGenerator {
   ): LogicGenerationResult {
     const now = new Date().toISOString();
 
-    // モックGameScriptを生成
-    const mockScript: GameScript = {
+    // モックGameScriptを生成（ドライランテスト用の最小限データ）
+    const mockScript = {
       layout: {
-        background: { visible: true },
+        background: { visible: true, initialAnimation: 0, animationSpeed: 0, autoStart: false },
         objects: assets.objectIds.map((id, index) => ({
           objectId: id,
           position: { x: 0.2 + (index * 0.2), y: 0.5 },
           scale: { x: 1.0, y: 1.0 },
           rotation: 0,
           zIndex: 10 + index,
-          initialState: { visible: true, animation: 0 }
+          initialState: { visible: true, animation: 0, animationSpeed: 0, autoStart: false }
         })),
         texts: [],
         stage: { backgroundColor: '#87CEEB' }
       },
       counters: [
-        { id: 'score', name: 'スコア', initialValue: 0, minValue: 0, maxValue: 999 }
+        { id: 'score', name: 'スコア', initialValue: 0, currentValue: 0, min: 0, max: 999, persistence: 'game', createdAt: now, lastModified: now }
       ],
       flags: [],
       rules: [
@@ -177,12 +177,13 @@ export class ImprovedLogicGenerator {
           name: 'タップで得点',
           targetObjectId: assets.objectIds[0] || 'obj1',
           triggers: {
+            operator: 'AND',
             conditions: [
               { type: 'touch', target: 'self', touchType: 'down' }
             ]
           },
           actions: [
-            { type: 'effect', targetId: assets.objectIds[0], effect: { type: 'scale', scaleAmount: 1.2, duration: 0.15 } },
+            { type: 'effect', targetId: assets.objectIds[0], effect: { type: 'scale', scaleAmount: 1.2, duration: 0.15, intensity: 1.0 } },
             { type: 'hide', targetId: assets.objectIds[0] },
             { type: 'counter', counterName: 'score', operation: 'add', value: 1 },
             { type: 'playSound', soundId: 'se_tap', volume: 0.8 }
@@ -195,7 +196,9 @@ export class ImprovedLogicGenerator {
         {
           id: 'rule_002',
           name: 'クリア判定',
+          targetObjectId: 'stage',
           triggers: {
+            operator: 'AND',
             conditions: [
               { type: 'counter', counterName: 'score', comparison: 'greaterOrEqual', value: 3 }
             ]
@@ -214,7 +217,7 @@ export class ImprovedLogicGenerator {
       lastModified: now
     };
 
-    const project = this.buildGameProject(idea, mockScript, assets);
+    const project = this.buildGameProject(idea, mockScript as unknown as GameScript, assets);
     const generationTime = Date.now() - startTime;
 
     console.log(`✅ Mock logic generated in ${generationTime}ms`);
@@ -698,13 +701,19 @@ ${req.actions.map(a => `- ${a}`).join('\n')}
   ): GameProject {
     const baseProject = createDefaultGameProject(idea.title);
 
+    // durationを有効な値に変換（5, 10, 15, 20, 30のいずれか）
+    const validDurations = [5, 10, 15, 20, 30] as const;
+    const closestDuration = validDurations.reduce((prev, curr) =>
+      Math.abs(curr - idea.duration) < Math.abs(prev - idea.duration) ? curr : prev
+    );
+
     baseProject.settings = {
       ...baseProject.settings,
       name: idea.title,
       description: idea.description,
       duration: {
         type: 'fixed',
-        seconds: idea.duration
+        seconds: closestDuration
       },
       difficulty: idea.difficulty,
       publishing: {

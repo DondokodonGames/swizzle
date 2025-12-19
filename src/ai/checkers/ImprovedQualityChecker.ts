@@ -34,6 +34,7 @@ interface TechnicalBreakdown {
   assetValidity: number;        // アセット妥当性（0-10）
   ruleLogic: number;            // ルールロジック（0-10）
   engineCompatibility: number;  // エンジン互換性（0-5）
+  [key: string]: number;        // インデックスシグネチャ
 }
 
 // 多様性内訳
@@ -41,6 +42,7 @@ interface DiversityBreakdown {
   mechanicUniqueness: number;   // メカニクス独自性（0-5）
   themeVariety: number;         // テーマ多様性（0-5）
   visualDistinctness: number;   // ビジュアル独自性（0-5）
+  [key: string]: number;        // インデックスシグネチャ
 }
 
 /**
