@@ -58,6 +58,7 @@ export interface GameIdeaGeneratorConfig {
   model?: string;
   maxRetries?: number;
   minFunScore?: number;
+  dryRun?: boolean;
 }
 
 export class GameIdeaGenerator {
@@ -67,19 +68,24 @@ export class GameIdeaGenerator {
   private generatedIdeas: Set<string> = new Set();
   private usedThemes: Set<string> = new Set();
   private usedMechanics: Set<string> = new Set();
+  private mockCounter: number = 0;
 
   constructor(config: GameIdeaGeneratorConfig) {
     this.config = {
       provider: config.provider,
       model: config.model || (config.provider === 'anthropic' ? 'claude-3-5-haiku-latest' : 'gpt-4o-mini'),
       maxRetries: config.maxRetries || 3,
-      minFunScore: config.minFunScore || 7
+      minFunScore: config.minFunScore || 7,
+      dryRun: config.dryRun || false
     };
 
-    if (config.provider === 'anthropic') {
-      this.anthropic = new Anthropic();
-    } else {
-      this.openai = new OpenAI();
+    // ドライランモードではAPIクライアントを初期化しない
+    if (!this.config.dryRun) {
+      if (config.provider === 'anthropic') {
+        this.anthropic = new Anthropic();
+      } else {
+        this.openai = new OpenAI();
+      }
     }
   }
 
@@ -139,6 +145,11 @@ export class GameIdeaGenerator {
    * 内部: アイデア生成
    */
   private async generateIdea(existingMechanics?: string[], existingThemes?: string[]): Promise<GameIdea> {
+    // ドライランモードの場合はモックデータを返す
+    if (this.config.dryRun) {
+      return this.generateMockIdea();
+    }
+
     const prompt = this.buildPrompt(existingMechanics, existingThemes);
 
     let responseText: string;
@@ -162,6 +173,46 @@ export class GameIdeaGenerator {
     }
 
     return this.parseResponse(responseText);
+  }
+
+  /**
+   * モックアイデア生成（ドライランテスト用）
+   */
+  private generateMockIdea(): GameIdea {
+    this.mockCounter++;
+
+    const mechanics: GameMechanic[] = [
+      'tap-target', 'tap-avoid', 'collect-items', 'catch-falling', 'dodge-moving',
+      'tap-sequence', 'timing-action', 'reaction-test', 'match-pattern', 'find-different'
+    ];
+    const mechanic = mechanics[this.mockCounter % mechanics.length];
+
+    const themes = [
+      '宇宙探検', 'お菓子の国', '忍者修行', 'ゾンビアポカリプス', '海底王国',
+      '時計塔', '雲の上の世界', 'おもちゃ箱', '氷の洞窟', '火山の島'
+    ];
+    const theme = themes[this.mockCounter % themes.length];
+
+    return {
+      id: `mock_idea_${Date.now()}_${this.mockCounter}`,
+      title: `テスト${this.mockCounter}`,
+      titleEn: `Test Game ${this.mockCounter}`,
+      description: `テスト用のゲーム説明${this.mockCounter}`,
+      theme: theme,
+      visualStyle: 'ポップ・カラフル',
+      mainMechanic: mechanic,
+      subMechanics: [],
+      winCondition: '全てのターゲットを集める',
+      loseCondition: '時間切れ',
+      duration: 10,
+      difficulty: 'normal',
+      objectCount: 5,
+      estimatedRuleCount: 7,
+      funScore: 8,
+      uniqueness: 'テスト用モックゲーム',
+      targetAudience: '全年齢',
+      emotionalHook: '達成感'
+    };
   }
 
   /**

@@ -23,6 +23,12 @@ import { ImprovedMasterOrchestrator, OrchestratorConfig } from './ImprovedMaster
  * 環境変数チェック
  */
 function checkEnvironment(): void {
+  // ドライランの場合はAPIキー不要
+  if (process.env.VITE_AI_DRY_RUN === 'true') {
+    console.log('🧪 Dry run mode - skipping API key check');
+    return;
+  }
+
   const required = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY'];
   const missing = required.filter(key => !process.env[key]);
 

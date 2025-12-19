@@ -91,11 +91,13 @@ export class ImprovedMasterOrchestrator {
     // ジェネレーター初期化
     this.ideaGenerator = new GameIdeaGenerator({
       provider: 'openai',
-      minFunScore: 7
+      minFunScore: 7,
+      dryRun: this.config.dryRun
     });
 
     this.logicGenerator = new ImprovedLogicGenerator({
-      model: 'claude-3-5-haiku-latest'
+      model: 'claude-3-5-haiku-latest',
+      dryRun: this.config.dryRun
     });
 
     this.soundGenerator = new ImprovedSoundGenerator();

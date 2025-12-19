@@ -71,7 +71,7 @@ export class FunEvaluator {
 
     // 移動アクションの存在（最大8点）
     const hasMoveAction = script.rules.some(rule =>
-      rule.actions.some(action => action.type === 'move')
+      rule.actions?.some(action => action.type === 'move')
     );
     if (hasMoveAction) {
       score += 8;
@@ -81,7 +81,7 @@ export class FunEvaluator {
 
     // time条件による連続動作（最大6点）
     const hasTimeInterval = script.rules.some(rule =>
-      rule.triggers.conditions.some(c =>
+      rule.triggers?.conditions?.some(c =>
         c.type === 'time' && c.timeType === 'interval'
       )
     );
@@ -91,8 +91,8 @@ export class FunEvaluator {
 
     // ランダム要素（最大4点）
     const hasRandom = script.rules.some(rule =>
-      rule.triggers.conditions.some(c => c.type === 'random') ||
-      rule.actions.some(a => a.type === 'randomAction')
+      rule.triggers?.conditions?.some(c => c.type === 'random') ||
+      rule.actions?.some(a => a.type === 'randomAction')
     );
     if (hasRandom) {
       score += 4;
@@ -100,7 +100,7 @@ export class FunEvaluator {
 
     // show/hide による動的表示（最大2点）
     const hasShowHide = script.rules.some(rule =>
-      rule.actions.some(a => a.type === 'show' || a.type === 'hide')
+      rule.actions?.some(a => a.type === 'show' || a.type === 'hide')
     );
     if (hasShowHide) {
       score += 2;
@@ -118,7 +118,7 @@ export class FunEvaluator {
 
     // タッチ条件の存在（基本点 8点）
     const touchConditions = script.rules.flatMap(rule =>
-      rule.triggers.conditions.filter(c => c.type === 'touch')
+      (rule.triggers?.conditions || []).filter(c => c.type === 'touch')
     );
 
     if (touchConditions.length > 0) {
@@ -140,7 +140,7 @@ export class FunEvaluator {
 
     // 衝突条件（追加の操作感 最大4点）
     const hasCollision = script.rules.some(rule =>
-      rule.triggers.conditions.some(c => c.type === 'collision')
+      rule.triggers?.conditions?.some(c => c.type === 'collision')
     );
     if (hasCollision) {
       score += 4;
@@ -158,7 +158,7 @@ export class FunEvaluator {
 
     // エフェクトアクション（最大8点）
     const effectActions = script.rules.flatMap(rule =>
-      rule.actions.filter(a => a.type === 'effect')
+      (rule.actions || []).filter(a => a.type === 'effect')
     );
     if (effectActions.length > 0) {
       score += Math.min(8, effectActions.length * 2);
@@ -166,7 +166,7 @@ export class FunEvaluator {
 
     // サウンドアクション（最大6点）
     const soundActions = script.rules.flatMap(rule =>
-      rule.actions.filter(a => a.type === 'playSound')
+      (rule.actions || []).filter(a => a.type === 'playSound')
     );
     if (soundActions.length > 0) {
       score += Math.min(6, soundActions.length * 2);
@@ -174,7 +174,7 @@ export class FunEvaluator {
 
     // スコア/カウンター表示（進捗フィードバック 最大4点）
     const hasScoreAction = script.rules.some(rule =>
-      rule.actions.some(a => a.type === 'addScore' || a.type === 'counter')
+      rule.actions?.some(a => a.type === 'addScore' || a.type === 'counter')
     );
     if (hasScoreAction) {
       score += 4;
@@ -182,7 +182,7 @@ export class FunEvaluator {
 
     // 成功/失敗時のフィードバック（最大2点）
     const hasSuccessWithMessage = script.rules.some(rule =>
-      rule.actions.some(a =>
+      rule.actions?.some(a =>
         (a.type === 'success' && a.message) ||
         (a.type === 'failure' && a.message)
       )
@@ -214,7 +214,7 @@ export class FunEvaluator {
 
     // 失敗条件の存在（緊張感）
     const hasFailure = script.rules.some(rule =>
-      rule.actions.some(a => a.type === 'failure')
+      rule.actions?.some(a => a.type === 'failure')
     );
     if (hasFailure) {
       score += 4; // 失敗の可能性がゲームを面白くする
@@ -240,7 +240,7 @@ export class FunEvaluator {
 
     // 成功条件の存在（基本点 10点）
     const hasSuccess = script.rules.some(rule =>
-      rule.actions.some(a => a.type === 'success')
+      rule.actions?.some(a => a.type === 'success')
     );
     if (hasSuccess) {
       score += 10;
@@ -253,8 +253,8 @@ export class FunEvaluator {
 
       // カウンター条件での成功判定（明確なゴール）
       const hasCounterWin = script.rules.some(rule =>
-        rule.triggers.conditions.some(c => c.type === 'counter') &&
-        rule.actions.some(a => a.type === 'success')
+        rule.triggers?.conditions?.some(c => c.type === 'counter') &&
+        rule.actions?.some(a => a.type === 'success')
       );
       if (hasCounterWin) {
         score += 4; // 「N個集めたらクリア」のような明確さ

@@ -35,23 +35,30 @@ export interface ImprovedLogicGeneratorConfig {
   model?: 'claude-sonnet-4-20250514' | 'claude-3-5-haiku-latest';
   maxRetries?: number;
   temperature?: number;
+  dryRun?: boolean;
 }
 
 /**
  * ImprovedLogicGenerator
  */
 export class ImprovedLogicGenerator {
-  private anthropic: Anthropic;
+  private anthropic?: Anthropic;
   private config: Required<ImprovedLogicGeneratorConfig>;
 
   constructor(config?: ImprovedLogicGeneratorConfig) {
-    this.anthropic = new Anthropic();
     this.config = {
       model: config?.model || 'claude-3-5-haiku-latest', // コスト最適化
       maxRetries: config?.maxRetries || 2,
-      temperature: config?.temperature || 0.7
+      temperature: config?.temperature || 0.7,
+      dryRun: config?.dryRun || false
     };
-    console.log(`🧠 ImprovedLogicGenerator initialized with ${this.config.model}`);
+
+    // ドライランモードではAPIクライアントを初期化しない
+    if (!this.config.dryRun) {
+      this.anthropic = new Anthropic();
+    }
+
+    console.log(`🧠 ImprovedLogicGenerator initialized with ${this.config.model}${this.config.dryRun ? ' (dry run)' : ''}`);
   }
 
   /**
@@ -62,16 +69,26 @@ export class ImprovedLogicGenerator {
     assets: AssetReferences
   ): Promise<LogicGenerationResult> {
     const startTime = Date.now();
-    const warnings: string[] = [];
-    let tokensUsed = 0;
 
     console.log(`🎮 Generating logic for: ${idea.title}`);
+
+    // ドライランモードの場合はモックデータを返す
+    if (this.config.dryRun) {
+      return this.generateMockResult(idea, assets, startTime);
+    }
+
+    const warnings: string[] = [];
+    let tokensUsed = 0;
 
     let attempts = 0;
     let lastError: Error | null = null;
 
     while (attempts < this.config.maxRetries) {
       try {
+        if (!this.anthropic) {
+          throw new Error('Anthropic client not initialized');
+        }
+
         // プロンプト構築
         const systemPrompt = this.buildSystemPrompt();
         const userPrompt = this.buildUserPrompt(idea, assets);
@@ -123,6 +140,91 @@ export class ImprovedLogicGenerator {
     }
 
     throw new Error(`Failed to generate logic after ${this.config.maxRetries} attempts: ${lastError?.message}`);
+  }
+
+  /**
+   * モック結果生成（ドライランテスト用）
+   */
+  private generateMockResult(
+    idea: GameIdea,
+    assets: AssetReferences,
+    startTime: number
+  ): LogicGenerationResult {
+    const now = new Date().toISOString();
+
+    // モックGameScriptを生成
+    const mockScript: GameScript = {
+      layout: {
+        background: { visible: true },
+        objects: assets.objectIds.map((id, index) => ({
+          objectId: id,
+          position: { x: 0.2 + (index * 0.2), y: 0.5 },
+          scale: { x: 1.0, y: 1.0 },
+          rotation: 0,
+          zIndex: 10 + index,
+          initialState: { visible: true, animation: 0 }
+        })),
+        texts: [],
+        stage: { backgroundColor: '#87CEEB' }
+      },
+      counters: [
+        { id: 'score', name: 'スコア', initialValue: 0, minValue: 0, maxValue: 999 }
+      ],
+      flags: [],
+      rules: [
+        {
+          id: 'rule_001',
+          name: 'タップで得点',
+          targetObjectId: assets.objectIds[0] || 'obj1',
+          triggers: {
+            conditions: [
+              { type: 'touch', target: 'self', touchType: 'down' }
+            ]
+          },
+          actions: [
+            { type: 'effect', targetId: assets.objectIds[0], effect: { type: 'scale', scaleAmount: 1.2, duration: 0.15 } },
+            { type: 'hide', targetId: assets.objectIds[0] },
+            { type: 'counter', counterName: 'score', operation: 'add', value: 1 },
+            { type: 'playSound', soundId: 'se_tap', volume: 0.8 }
+          ],
+          enabled: true,
+          priority: 10,
+          createdAt: now,
+          lastModified: now
+        },
+        {
+          id: 'rule_002',
+          name: 'クリア判定',
+          triggers: {
+            conditions: [
+              { type: 'counter', counterName: 'score', comparison: 'greaterOrEqual', value: 3 }
+            ]
+          },
+          actions: [
+            { type: 'success', score: 100, message: 'クリア！' }
+          ],
+          enabled: true,
+          priority: 5,
+          createdAt: now,
+          lastModified: now
+        }
+      ],
+      successConditions: [],
+      version: '1.0.0',
+      lastModified: now
+    };
+
+    const project = this.buildGameProject(idea, mockScript, assets);
+    const generationTime = Date.now() - startTime;
+
+    console.log(`✅ Mock logic generated in ${generationTime}ms`);
+
+    return {
+      project,
+      tokensUsed: 0,
+      generationTime,
+      warnings: ['Dry run mode - mock data generated']
+    };
   }
 
   /**
