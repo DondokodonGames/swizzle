@@ -10,7 +10,11 @@
     "preview": "vite preview",
     "ai:generate": "tsx src/ai/index.ts",
     "ai:generate:dry": "VITE_AI_DRY_RUN=true tsx src/ai/index.ts",
-    "ai:generate:test": "TARGET_GAMES_COUNT=10 VITE_AI_DRY_RUN=true tsx src/ai/index.ts"
+    "ai:generate:test": "TARGET_GAMES_COUNT=10 VITE_AI_DRY_RUN=true tsx src/ai/index.ts",
+    "ai:improved": "tsx src/ai/run-improved.ts",
+    "ai:improved:dry": "VITE_AI_DRY_RUN=true tsx src/ai/run-improved.ts",
+    "ai:improved:10": "TARGET_GAMES=10 tsx src/ai/run-improved.ts",
+    "ai:improved:100": "TARGET_GAMES=100 tsx src/ai/run-improved.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",

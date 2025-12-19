@@ -15,6 +15,7 @@ import { ImprovedSoundGenerator, SoundAssets } from './generators/ImprovedSoundG
 import { ImageGenerator } from './generators/ImageGenerator';
 import { SpecificationComplianceChecker, ComplianceResult } from './checkers/SpecificationComplianceChecker';
 import { FunEvaluator } from './checkers/FunEvaluator';
+import { SupabaseUploader } from './publishers/SupabaseUploader';
 import { GameProject } from '../types/editor/GameProject';
 
 // 設定
@@ -79,6 +80,7 @@ export class ImprovedMasterOrchestrator {
   private imageGenerator?: ImageGenerator;
   private complianceChecker: SpecificationComplianceChecker;
   private funEvaluator: FunEvaluator;
+  private uploader?: SupabaseUploader;
 
   private isRunning: boolean = false;
   private shouldStop: boolean = false;
@@ -109,6 +111,16 @@ export class ImprovedMasterOrchestrator {
     // チェッカー初期化
     this.complianceChecker = new SpecificationComplianceChecker();
     this.funEvaluator = new FunEvaluator();
+
+    // Supabaseアップローダー初期化（dryRunでなければ）
+    if (!this.config.dryRun) {
+      try {
+        this.uploader = new SupabaseUploader();
+        console.log('   ✓ SupabaseUploader initialized');
+      } catch (error) {
+        console.warn('   ⚠️ SupabaseUploader not available:', (error as Error).message);
+      }
+    }
 
     console.log('🚀 ImprovedMasterOrchestrator initialized');
     console.log(`   Target: ${this.config.targetGamesPerRun} games`);
@@ -264,15 +276,29 @@ export class ImprovedMasterOrchestrator {
    * ゲーム公開（Supabaseへアップロード）
    */
   private async publishGame(result: GeneratedGameResult): Promise<void> {
-    // TODO: Supabaseへのアップロード実装
-    // プライベートモードの場合は公開フラグをfalseに
-    console.log(`   📤 Publishing: ${result.idea.title} (private: ${this.config.privateMode})`);
+    if (!this.uploader) {
+      console.log(`   ⚠️ Uploader not available, skipping publish`);
+      return;
+    }
 
-    // 実装予定:
-    // 1. GameProjectをJSONに変換
-    // 2. Supabase Storageに保存
-    // 3. gamesテーブルにレコード作成
-    // 4. privateMode時は is_published = false
+    console.log(`   📤 Uploading: ${result.idea.title}`);
+
+    // プライベートモードの場合は is_published = false
+    const autoPublish = !this.config.privateMode;
+
+    const uploadResult = await this.uploader.uploadGame(
+      result.project,
+      result.compliance.score,
+      autoPublish
+    );
+
+    if (uploadResult.success) {
+      console.log(`   ✅ Uploaded: ${uploadResult.gameId}`);
+      console.log(`      URL: ${uploadResult.url}`);
+      console.log(`      Published: ${autoPublish}`);
+    } else {
+      console.error(`   ❌ Upload failed: ${uploadResult.error}`);
+    }
   }
 
   /**
