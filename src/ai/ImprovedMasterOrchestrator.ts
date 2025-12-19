@@ -104,13 +104,11 @@ export class ImprovedMasterOrchestrator {
 
     this.soundGenerator = new ImprovedSoundGenerator();
 
-    // 画像生成（オプション）
-    if (this.config.imageGeneration.provider !== 'mock' && this.config.imageGeneration.apiKey) {
-      this.imageGenerator = new ImageGenerator({
-        provider: this.config.imageGeneration.provider as 'openai',
-        openaiApiKey: this.config.imageGeneration.apiKey
-      });
-    }
+    // 画像生成（常に初期化 - APIキーがなければダミー画像を生成）
+    this.imageGenerator = new ImageGenerator({
+      provider: this.config.imageGeneration.provider as 'openai' | 'replicate' | undefined,
+      openaiApiKey: this.config.imageGeneration.apiKey
+    });
 
     // チェッカー初期化
     this.complianceChecker = new SpecificationComplianceChecker();
@@ -226,25 +224,54 @@ export class ImprovedMasterOrchestrator {
     const idea = await this.ideaGenerator.generate();
     console.log(`      Title: ${idea.title} (${idea.mainMechanic})`);
 
-    // 2. モックアセット作成（画像生成は別途実装）
-    const assets = this.createMockAssets(idea);
+    // 2. アセットID作成
+    const assetRefs = this.createMockAssets(idea);
 
-    // 3. ロジック生成
-    console.log('   🧠 Generating logic...');
-    const logicResult = await this.logicGenerator.generateFromIdea(idea, assets);
+    // 3. 画像アセット生成
+    console.log('   🎨 Generating images...');
+    const imageAssets = await this.generateImageAssets(idea, assetRefs);
 
     // 4. サウンド生成
     console.log('   🔊 Generating sounds...');
     const sounds = await this.soundGenerator.generateForGame(idea);
 
-    // 5. 仕様適合チェック
+    // 5. ロジック生成
+    console.log('   🧠 Generating logic...');
+    const logicResult = await this.logicGenerator.generateFromIdea(idea, assetRefs);
+
+    // 6. アセットをプロジェクトに統合
+    logicResult.project.assets = {
+      background: imageAssets.background,
+      objects: imageAssets.objects,
+      texts: [],
+      audio: {
+        bgm: sounds.bgm,
+        se: sounds.effects
+      },
+      statistics: {
+        totalImageSize: 0,
+        totalAudioSize: 0,
+        totalSize: 0,
+        usedSlots: {
+          background: imageAssets.background ? 1 : 0,
+          objects: imageAssets.objects.length,
+          texts: 0,
+          bgm: sounds.bgm ? 1 : 0,
+          se: sounds.effects.length
+        },
+        limitations: { isNearImageLimit: false, isNearAudioLimit: false, isNearTotalLimit: false, hasViolations: false }
+      },
+      lastModified: new Date().toISOString()
+    };
+
+    // 7. 仕様適合チェック
     console.log('   📋 Checking compliance...');
     const compliance = this.complianceChecker.check(idea, logicResult.project);
 
-    // 6. 面白さ評価
+    // 8. 面白さ評価
     const funResult = this.funEvaluator.evaluate(logicResult.project, idea);
 
-    // 7. 合格判定
+    // 9. 合格判定
     const passed = compliance.passed &&
                    compliance.score >= this.config.qualityThreshold &&
                    funResult.funScore >= 50;
@@ -263,6 +290,71 @@ export class ImprovedMasterOrchestrator {
       generationTime,
       estimatedCost
     };
+  }
+
+  /**
+   * 画像アセット生成
+   */
+  private async generateImageAssets(idea: GameIdea, assetRefs: AssetReferences): Promise<{
+    background: any;
+    objects: any[];
+  }> {
+    if (!this.imageGenerator) {
+      console.log('      ⚠️ ImageGenerator not available, using placeholders');
+      return { background: null, objects: [] };
+    }
+
+    const now = new Date().toISOString();
+
+    // 背景生成
+    let background = null;
+    try {
+      const bgFrames = await this.imageGenerator.generateBackground({
+        prompt: `${idea.theme} game background, ${idea.visualStyle} style`,
+        style: 'cute' as const, // デフォルトスタイル
+        type: 'background',
+        frameCount: 1,
+        dimensions: { width: 1080, height: 1920 },
+        colorPalette: ['#87CEEB', '#98FB98', '#FFB6C1', '#DDA0DD']
+      });
+      background = {
+        id: assetRefs.backgroundId || 'bg_main',
+        name: `${idea.theme} 背景`,
+        frames: bgFrames,
+        createdAt: now,
+        lastModified: now
+      };
+      console.log('      ✅ Background generated');
+    } catch (error) {
+      console.log('      ⚠️ Background generation failed:', (error as Error).message);
+    }
+
+    // オブジェクト生成
+    const objects: any[] = [];
+    for (let i = 0; i < Math.min(assetRefs.objectIds.length, 5); i++) {
+      try {
+        const objFrames = await this.imageGenerator.generateObject({
+          prompt: `${idea.theme} game object ${i + 1}, ${idea.visualStyle} style, simple icon`,
+          style: 'cute' as const, // デフォルトスタイル
+          type: 'object',
+          frameCount: 1,
+          dimensions: { width: 256, height: 256 },
+          colorPalette: ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181']
+        });
+        objects.push({
+          id: assetRefs.objectIds[i],
+          name: `オブジェクト ${i + 1}`,
+          frames: objFrames,
+          createdAt: now,
+          lastModified: now
+        });
+      } catch (error) {
+        console.log(`      ⚠️ Object ${i + 1} generation failed:`, (error as Error).message);
+      }
+    }
+    console.log(`      ✅ ${objects.length} objects generated`);
+
+    return { background, objects };
   }
 
   /**
