@@ -318,6 +318,8 @@ export class ImprovedLogicGenerator {
   private buildUserPrompt(idea: GameIdea, assets: AssetReferences): string {
     // メカニクスに応じたパターン提案
     const pattern = this.getPatternForMechanic(idea.mainMechanic);
+    // メカニクスに必須の条件/アクション
+    const requirements = this.getMechanicRequirements(idea.mainMechanic);
 
     return `# ゲーム仕様
 
@@ -338,10 +340,14 @@ export class ImprovedLogicGenerator {
 効果音: ${assets.seIds.join(', ')}
 背景: ${assets.backgroundId || 'なし'}
 
-## 推奨パターン
+## 🔴 必須条件・アクション（${idea.mainMechanic}）
+このメカニクスでは以下を必ずルール内に含めてください：
+${requirements}
+
+## 実装パターン
 ${pattern}
 
-## 必須要件
+## その他の必須要件
 1. objectId は上記アセットのみ使用可能
 2. 座標は0.0-1.0の範囲
 3. speedは1.0-8.0の範囲
@@ -454,6 +460,119 @@ ${pattern}
     };
 
     return patterns[mechanic] || patterns['tap-target'];
+  }
+
+  /**
+   * メカニクス別の必須要件を取得
+   */
+  private getMechanicRequirements(mechanic: GameMechanic): string {
+    const requirements: Record<string, { conditions: string[]; actions: string[]; description: string }> = {
+      'tap-target': {
+        conditions: ['touch（タップ検出）'],
+        actions: ['hide（消去）', 'success（クリア判定）'],
+        description: 'オブジェクトをタップして消すゲーム'
+      },
+      'tap-avoid': {
+        conditions: ['touch（タップ検出）'],
+        actions: ['failure（不正解判定）'],
+        description: '正しいオブジェクトだけをタップ、間違いはペナルティ'
+      },
+      'tap-sequence': {
+        conditions: ['touch（タップ検出）', 'counter（順番管理）'],
+        actions: ['counter（カウント更新）', 'success（クリア判定）'],
+        description: '正しい順番でタップするゲーム'
+      },
+      'tap-rhythm': {
+        conditions: ['touch（タップ検出）', 'time（タイミング判定）'],
+        actions: ['success（成功判定）', 'failure（失敗判定）'],
+        description: 'リズムに合わせてタップするゲーム'
+      },
+      'swipe-direction': {
+        conditions: ['touch（スワイプ検出）'],
+        actions: ['move（移動）'],
+        description: 'スワイプで方向を操作するゲーム'
+      },
+      'drag-drop': {
+        conditions: ['touch（ドラッグ検出）'],
+        actions: ['move（移動）'],
+        description: 'ドラッグ&ドロップで配置するゲーム'
+      },
+      'hold-release': {
+        conditions: ['touch（長押し検出）'],
+        actions: ['success（成功判定）'],
+        description: '長押しして離すタイミングを競うゲーム'
+      },
+      'catch-falling': {
+        conditions: ['time（落下制御）', 'collision（衝突判定）'],
+        actions: ['move（落下移動）', 'hide（キャッチ時消去）'],
+        description: '落下物をキャッチするゲーム'
+      },
+      'dodge-moving': {
+        conditions: ['time（移動制御）', 'collision（衝突判定）'],
+        actions: ['move（障害物移動）', 'failure（衝突時失敗）'],
+        description: '動く障害物を避けるゲーム'
+      },
+      'match-pattern': {
+        conditions: ['touch（選択検出）'],
+        actions: ['success（正解判定）', 'failure（不正解判定）'],
+        description: 'パターンをマッチさせるゲーム'
+      },
+      'count-objects': {
+        conditions: ['touch（回答選択）'],
+        actions: ['success（正解判定）', 'failure（不正解判定）'],
+        description: 'オブジェクトを数えて答えるゲーム'
+      },
+      'find-different': {
+        conditions: ['touch（選択検出）'],
+        actions: ['success（正解判定）', 'failure（不正解判定）'],
+        description: '仲間はずれを探すゲーム'
+      },
+      'memory-match': {
+        conditions: ['touch（選択検出）', 'flag（記憶状態管理）'],
+        actions: ['show（表示）', 'hide（非表示）', 'success（クリア判定）'],
+        description: '記憶マッチングゲーム'
+      },
+      'timing-action': {
+        conditions: ['touch（タイミング検出）', 'time（移動制御）'],
+        actions: ['success（成功判定）', 'failure（失敗判定）'],
+        description: 'タイミングを合わせてアクションするゲーム'
+      },
+      'chase-target': {
+        conditions: ['time（移動制御）', 'collision（接触判定）'],
+        actions: ['move（追跡移動）', 'success（捕獲成功）'],
+        description: 'ターゲットを追いかけるゲーム'
+      },
+      'collect-items': {
+        conditions: ['touch（収集検出）', 'counter（収集カウント）'],
+        actions: ['hide（収集時消去）', 'counter（カウント更新）', 'success（全収集でクリア）'],
+        description: 'アイテムを集めるゲーム'
+      },
+      'protect-target': {
+        conditions: ['collision（衝突判定）'],
+        actions: ['failure（ターゲット被弾時失敗）', 'success（生存でクリア）'],
+        description: 'ターゲットを守るゲーム'
+      },
+      'balance-game': {
+        conditions: ['touch（バランス調整）', 'time（継続判定）'],
+        actions: ['move（バランス移動）', 'success（維持成功）', 'failure（バランス崩壊）'],
+        description: 'バランスを保つゲーム'
+      },
+      'reaction-test': {
+        conditions: ['touch（反応検出）', 'time（タイミング制御）'],
+        actions: ['success（素早い反応で成功）', 'failure（遅い反応で失敗）'],
+        description: '反射神経を試すゲーム'
+      }
+    };
+
+    const req = requirements[mechanic] || requirements['tap-target'];
+
+    return `**必須条件（triggers.conditions）:**
+${req.conditions.map(c => `- ${c}`).join('\n')}
+
+**必須アクション（actions）:**
+${req.actions.map(a => `- ${a}`).join('\n')}
+
+※これらが1つでも欠けると不合格になります。`;
   }
 
   /**
