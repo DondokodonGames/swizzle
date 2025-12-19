@@ -114,14 +114,17 @@ export class ImprovedMasterOrchestrator {
     this.complianceChecker = new SpecificationComplianceChecker();
     this.funEvaluator = new FunEvaluator();
 
-    // Supabaseアップローダー初期化（dryRunでなければ）
-    if (!this.config.dryRun) {
+    // Supabaseアップローダー初期化（dryRunでなければ、SKIP_UPLOADでなければ）
+    const skipUpload = process.env.SKIP_UPLOAD === 'true';
+    if (!this.config.dryRun && !skipUpload) {
       try {
         this.uploader = new SupabaseUploader();
         console.log('   ✓ SupabaseUploader initialized');
       } catch (error) {
         console.warn('   ⚠️ SupabaseUploader not available:', (error as Error).message);
       }
+    } else if (skipUpload) {
+      console.log('   ⏭️ Upload skipped (SKIP_UPLOAD=true)');
     }
 
     console.log('🚀 ImprovedMasterOrchestrator initialized');
