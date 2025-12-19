@@ -51,20 +51,7 @@ export type GameMechanic =
   | 'balance-game'    // バランスゲーム
   | 'reaction-test';  // 反射神経テスト
 
-// ゲームテーマの候補
-const GAME_THEMES = [
-  '宇宙・惑星', '森・自然', '海・水中', '空・雲', '都市・建物',
-  '食べ物・料理', '動物・ペット', '昆虫', 'スポーツ', '音楽・楽器',
-  '季節（春夏秋冬）', 'ファンタジー', 'サイエンス', 'お祭り', '学校',
-  'おもちゃ', 'キャンディ・スイーツ', '忍者・侍', 'ロボット', '恐竜'
-];
-
-// ビジュアルスタイル
-const VISUAL_STYLES = [
-  'かわいい・ポップ', 'クール・スタイリッシュ', 'ミニマル・シンプル',
-  '手描き風', 'ドット絵風', 'パステルカラー', 'ビビッドカラー',
-  '和風', '北欧風', 'レトロ'
-];
+// 注: テーマは静的リストを使用せず、AIが動的に生成する
 
 export interface GameIdeaGeneratorConfig {
   provider: 'anthropic' | 'openai';
@@ -78,6 +65,8 @@ export class GameIdeaGenerator {
   private openai?: OpenAI;
   private config: Required<GameIdeaGeneratorConfig>;
   private generatedIdeas: Set<string> = new Set();
+  private usedThemes: Set<string> = new Set();
+  private usedMechanics: Set<string> = new Set();
 
   constructor(config: GameIdeaGeneratorConfig) {
     this.config = {
@@ -96,14 +85,24 @@ export class GameIdeaGenerator {
 
   /**
    * ゲームアイデアを生成
+   * @param additionalMechanicsToAvoid 追加で避けるべきメカニクス（外部から指定）
    */
-  async generate(existingMechanics?: string[]): Promise<GameIdea> {
+  async generate(additionalMechanicsToAvoid?: string[]): Promise<GameIdea> {
     let attempts = 0;
     let lastError: Error | null = null;
 
+    // 避けるべきメカニクスを統合
+    const mechanicsToAvoid = [
+      ...Array.from(this.usedMechanics),
+      ...(additionalMechanicsToAvoid || [])
+    ];
+
+    // 避けるべきテーマ
+    const themesToAvoid = Array.from(this.usedThemes);
+
     while (attempts < this.config.maxRetries) {
       try {
-        const idea = await this.generateIdea(existingMechanics);
+        const idea = await this.generateIdea(mechanicsToAvoid, themesToAvoid);
 
         // 重複チェック
         const ideaHash = this.hashIdea(idea);
@@ -120,8 +119,11 @@ export class GameIdeaGenerator {
           continue;
         }
 
-        // 成功
+        // 成功 - 使用済みとして記録
         this.generatedIdeas.add(ideaHash);
+        this.usedThemes.add(idea.theme);
+        this.usedMechanics.add(idea.mainMechanic);
+
         return idea;
       } catch (error) {
         lastError = error as Error;
@@ -136,12 +138,8 @@ export class GameIdeaGenerator {
   /**
    * 内部: アイデア生成
    */
-  private async generateIdea(existingMechanics?: string[]): Promise<GameIdea> {
-    // ランダムなテーマとスタイルを提案
-    const suggestedTheme = GAME_THEMES[Math.floor(Math.random() * GAME_THEMES.length)];
-    const suggestedStyle = VISUAL_STYLES[Math.floor(Math.random() * VISUAL_STYLES.length)];
-
-    const prompt = this.buildPrompt(suggestedTheme, suggestedStyle, existingMechanics);
+  private async generateIdea(existingMechanics?: string[], existingThemes?: string[]): Promise<GameIdea> {
+    const prompt = this.buildPrompt(existingMechanics, existingThemes);
 
     let responseText: string;
 
@@ -169,65 +167,70 @@ export class GameIdeaGenerator {
   /**
    * プロンプト構築
    */
-  private buildPrompt(theme: string, style: string, existingMechanics?: string[]): string {
-    const avoidMechanics = existingMechanics?.join(', ') || 'なし';
+  private buildPrompt(existingMechanics?: string[], existingThemes?: string[]): string {
+    const avoidMechanics = existingMechanics?.length ? existingMechanics.join(', ') : 'なし';
+    const avoidThemes = existingThemes?.length ? existingThemes.join(', ') : 'なし';
 
     return `あなたはスマホ向け10秒ゲームのプロデューサーです。
-子供から大人まで楽しめる、シンプルで面白いゲームを考案してください。
+誰も見たことがない、ユニークで面白いゲームを自由に考案してください。
 
 # 基本要件
-- 制限時間: 10秒（または成功条件達成まで）
-- 画面: スマホ縦画面 (1080×1920px)
-- 操作: タッチのみ（タップ、スワイプ、ドラッグ）
-- 対象: 子供から大人まで誰でも
+- 制限時間: 5-15秒（成功条件達成まで）
+- 画面: スマホ縦画面
+- 操作: タッチのみ（タップ、スワイプ、ドラッグ、長押し）
 
-# 提案テーマ（参考）
-テーマ: ${theme}
-スタイル: ${style}
-※ 上記は参考です。より面白いアイデアがあれば変更してOKです。
+# テーマ・世界観について
+**あなたの創造力で自由に決めてください。** 制限はありません。
+- 現実的なものでも抽象的なものでもOK
+- 日常的なものでもファンタジーでもOK
+- 真面目でもシュールでもOK
+- 既存のカテゴリに縛られる必要なし
 
-# 避けるべきメカニクス（既存ゲームと被らないように）
+ただし、以下のテーマは既に使用済みなので避けてください:
+${avoidThemes}
+
+# 避けるべきメカニクス（既に使用済み）
 ${avoidMechanics}
 
 # 面白いゲームの条件
 1. 目標が一目でわかる（説明不要）
-2. 操作が直感的（1-2種類の操作のみ）
-3. 達成感がある（成功時に「やった！」と思える）
+2. 操作が直感的（1-2種類のみ）
+3. 達成感がある（成功時に「やった！」）
 4. 適度な緊張感（失敗もありえる）
-5. 動きがある（静的なものは避ける）
+5. 動きがある（静的は×）
 6. 繰り返し遊びたくなる
 
 # 禁止パターン
-- 動かないオブジェクトをただタップするだけ
-- 答えが1つの単純なクイズ
-- 完全な運ゲー（プレイヤースキルが関係ない）
-- 文字を読まないと理解できないゲーム
+- 動かないものをタップするだけ
+- 単純な1問クイズ
+- 完全な運ゲー
+- 文字を読まないとわからない
 
 # 出力形式（JSON）
 \`\`\`json
 {
   "title": "ゲーム名（日本語、8文字以内）",
-  "titleEn": "英語タイトル",
+  "titleEn": "English Title",
   "description": "説明（20文字以内）",
-  "theme": "世界観・テーマ",
-  "visualStyle": "ビジュアルスタイル",
-  "mainMechanic": "メイン操作（以下から1つ選択: tap-target, tap-avoid, tap-sequence, tap-rhythm, swipe-direction, drag-drop, hold-release, catch-falling, dodge-moving, match-pattern, count-objects, find-different, memory-match, timing-action, chase-target, collect-items, protect-target, balance-game, reaction-test）",
-  "subMechanics": ["サブ操作（0-2個）"],
-  "winCondition": "勝利条件（具体的に）",
-  "loseCondition": "失敗条件（具体的に）",
+  "theme": "あなたが考えた独自のテーマ・世界観",
+  "visualStyle": "あなたが考えた独自のビジュアルスタイル",
+  "mainMechanic": "tap-target | tap-avoid | tap-sequence | tap-rhythm | swipe-direction | drag-drop | hold-release | catch-falling | dodge-moving | match-pattern | count-objects | find-different | memory-match | timing-action | chase-target | collect-items | protect-target | balance-game | reaction-test",
+  "subMechanics": [],
+  "winCondition": "具体的な勝利条件",
+  "loseCondition": "具体的な失敗条件",
   "duration": 10,
-  "difficulty": "easy",
+  "difficulty": "easy | normal | hard",
   "objectCount": 3,
   "estimatedRuleCount": 7,
   "funScore": 8,
-  "uniqueness": "このゲームが面白い理由・ユニークなポイント",
+  "uniqueness": "このゲームが面白い理由・他にないポイント",
   "targetAudience": "想定プレイヤー層",
-  "emotionalHook": "プレイヤーが感じる感情（ワクワク、ドキドキ、達成感など）"
+  "emotionalHook": "プレイヤーが感じる感情"
 }
 \`\`\`
 
-funScoreは1-10で自己評価してください。7未満のアイデアは採用しません。
-7点以上になるまでアイデアを練り直してから出力してください。`;
+重要: funScoreは1-10で正直に自己評価してください。
+7未満のアイデアは採用しません。7点以上になるまで練り直してから出力を。`;
   }
 
   /**
@@ -302,6 +305,22 @@ funScoreは1-10で自己評価してください。7未満のアイデアは採�
    */
   clearCache(): void {
     this.generatedIdeas.clear();
+    this.usedThemes.clear();
+    this.usedMechanics.clear();
+  }
+
+  /**
+   * 使用済みテーマを取得
+   */
+  getUsedThemes(): string[] {
+    return Array.from(this.usedThemes);
+  }
+
+  /**
+   * 使用済みメカニクスを取得
+   */
+  getUsedMechanics(): string[] {
+    return Array.from(this.usedMechanics);
   }
 
   /**
@@ -312,6 +331,8 @@ funScoreは1-10で自己評価してください。7未満のアイデアは採�
       provider: this.config.provider,
       model: this.config.model,
       generatedCount: this.generatedIdeas.size,
+      usedThemesCount: this.usedThemes.size,
+      usedMechanicsCount: this.usedMechanics.size,
       minFunScore: this.config.minFunScore
     };
   }
