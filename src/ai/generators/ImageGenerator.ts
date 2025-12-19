@@ -235,43 +235,104 @@ export class ImageGenerator {
   
   /**
    * ダミーフレーム生成（テスト用）
+   * Node.js環境でも動作する色付きプレースホルダー画像を生成
    */
   private generateDummyFrames(request: ImageGenerationRequest): AssetFrame[] {
     const frames: AssetFrame[] = [];
     const { width, height } = request.dimensions;
-    
+
+    // タイプに応じたプレースホルダー色を決定
+    const placeholderColors = request.type === 'background'
+      ? ['#4A90D9', '#5BA55B', '#D97B4A', '#9B59B6'] // 背景用の落ち着いた色
+      : ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181', '#AA96DA', '#FCBAD3', '#A8D8EA']; // オブジェクト用の明るい色
+
     for (let i = 0; i < request.frameCount; i++) {
-      // シンプルなカラーブロックをbase64で生成
-      const canvas = this.createDummyCanvas(width, height, request.colorPalette[i % request.colorPalette.length]);
-      
+      const color = request.colorPalette[i % request.colorPalette.length]
+        || placeholderColors[i % placeholderColors.length];
+
+      // SVGでプレースホルダー画像を生成（Node.js互換）
+      const svgDataUrl = this.createPlaceholderSVG(width, height, color, request.type, i);
+
       frames.push({
         id: `frame_${Date.now()}_${i}`,
-        dataUrl: canvas.toDataURL(),
-        originalName: `${request.type}_frame_${i}.png`,
+        dataUrl: svgDataUrl,
+        originalName: `${request.type}_frame_${i}.svg`,
         width: width,
         height: height,
-        fileSize: 50000, // 仮のサイズ
+        fileSize: svgDataUrl.length,
         uploadedAt: new Date().toISOString()
       });
     }
-    
-    console.log(`  ✅ Generated ${frames.length} dummy frames`);
+
+    console.log(`  ✅ Generated ${frames.length} placeholder frames (SVG)`);
     return frames;
   }
-  
+
   /**
-   * ダミーキャンバス作成
+   * SVGプレースホルダー画像を生成（Node.js互換）
    */
-  private createDummyCanvas(width: number, height: number, color: string): HTMLCanvasElement {
-    // Node.js環境では動作しないため、実際の実装時には要調整
-    // ブラウザ環境またはnode-canvasライブラリを使用
-    
-    // 仮実装: 空のbase64を返す
-    const dummyCanvas = {
-      toDataURL: () => `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==`
-    };
-    
-    return dummyCanvas as any;
+  private createPlaceholderSVG(
+    width: number,
+    height: number,
+    color: string,
+    type: string,
+    index: number
+  ): string {
+    // 背景用SVG（グラデーション付き）
+    if (type === 'background') {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+        <defs>
+          <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:${this.lightenColor(color, 30)};stop-opacity:1" />
+            <stop offset="100%" style="stop-color:${color};stop-opacity:1" />
+          </linearGradient>
+        </defs>
+        <rect width="${width}" height="${height}" fill="url(#bg)"/>
+        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
+              fill="white" font-size="48" font-family="Arial" opacity="0.5">
+          🎮 Background
+        </text>
+      </svg>`;
+      return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+    }
+
+    // オブジェクト用SVG（丸い形状）
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+      <defs>
+        <radialGradient id="obj${index}" cx="30%" cy="30%" r="70%">
+          <stop offset="0%" style="stop-color:${this.lightenColor(color, 40)};stop-opacity:1" />
+          <stop offset="100%" style="stop-color:${color};stop-opacity:1" />
+        </radialGradient>
+        <filter id="shadow${index}" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="4" dy="4" stdDeviation="8" flood-opacity="0.3"/>
+        </filter>
+      </defs>
+      <circle cx="${width/2}" cy="${height/2}" r="${Math.min(width, height) * 0.4}"
+              fill="url(#obj${index})" filter="url(#shadow${index})"/>
+      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
+            fill="white" font-size="40" font-family="Arial">
+        ${index + 1}
+      </text>
+    </svg>`;
+    return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+  }
+
+  /**
+   * 色を明るくする
+   */
+  private lightenColor(color: string, percent: number): string {
+    // HEXカラーを解析
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+
+    // 明るくする
+    const newR = Math.min(255, Math.floor(r + (255 - r) * (percent / 100)));
+    const newG = Math.min(255, Math.floor(g + (255 - g) * (percent / 100)));
+    const newB = Math.min(255, Math.floor(b + (255 - b) * (percent / 100)));
+
+    return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
   }
   
   /**

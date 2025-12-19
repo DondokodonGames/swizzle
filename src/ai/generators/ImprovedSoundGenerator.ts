@@ -35,54 +35,50 @@ export interface SoundAssets {
   effects: AudioAsset[];
 }
 
+// 波形タイプ（ブラウザのOscillatorTypeと互換）
+type WaveType = 'sine' | 'square' | 'sawtooth' | 'triangle';
+
 /**
- * Web Audio APIで効果音を生成するユーティリティ
+ * Node.js互換の効果音シンセサイザー
+ * Web Audio APIなしでWAVデータを直接生成
  */
 class SoundSynthesizer {
-  private audioContext: AudioContext | null = null;
-
-  private getContext(): AudioContext {
-    if (!this.audioContext) {
-      this.audioContext = new AudioContext();
-    }
-    return this.audioContext;
-  }
+  private sampleRate = 44100; // CD品質
 
   /**
-   * 基本的なトーンを生成
+   * 基本的なトーンを生成してBase64 WAVを返す
    */
   async generateTone(
     frequency: number,
     duration: number,
-    waveType: OscillatorType = 'sine',
+    waveType: WaveType = 'sine',
     envelope: { attack: number; decay: number; sustain: number; release: number }
-  ): Promise<AudioBuffer> {
-    const ctx = this.getContext();
-    const sampleRate = ctx.sampleRate;
-    const totalSamples = Math.floor(sampleRate * duration);
-    const buffer = ctx.createBuffer(1, totalSamples, sampleRate);
-    const data = buffer.getChannelData(0);
+  ): Promise<string> {
+    const totalSamples = Math.floor(this.sampleRate * duration);
+    const samples = new Float32Array(totalSamples);
 
     const { attack, decay, sustain, release } = envelope;
-    const attackSamples = Math.floor(sampleRate * attack);
-    const decaySamples = Math.floor(sampleRate * decay);
-    const releaseSamples = Math.floor(sampleRate * release);
-    const sustainSamples = totalSamples - attackSamples - decaySamples - releaseSamples;
+    const attackSamples = Math.floor(this.sampleRate * attack);
+    const decaySamples = Math.floor(this.sampleRate * decay);
+    const releaseSamples = Math.floor(this.sampleRate * release);
+    const sustainSamples = Math.max(0, totalSamples - attackSamples - decaySamples - releaseSamples);
 
     for (let i = 0; i < totalSamples; i++) {
-      const t = i / sampleRate;
+      const t = i / this.sampleRate;
       let amplitude = 0;
 
-      // エンベロープ計算
+      // エンベロープ計算（ADSR）
       if (i < attackSamples) {
-        amplitude = i / attackSamples;
+        amplitude = attackSamples > 0 ? i / attackSamples : 1;
       } else if (i < attackSamples + decaySamples) {
-        const decayProgress = (i - attackSamples) / decaySamples;
+        const decayProgress = decaySamples > 0 ? (i - attackSamples) / decaySamples : 1;
         amplitude = 1 - decayProgress * (1 - sustain);
       } else if (i < attackSamples + decaySamples + sustainSamples) {
         amplitude = sustain;
       } else {
-        const releaseProgress = (i - attackSamples - decaySamples - sustainSamples) / releaseSamples;
+        const releaseProgress = releaseSamples > 0
+          ? (i - attackSamples - decaySamples - sustainSamples) / releaseSamples
+          : 1;
         amplitude = sustain * (1 - releaseProgress);
       }
 
@@ -103,28 +99,27 @@ class SoundSynthesizer {
           break;
       }
 
-      data[i] = wave * amplitude * 0.5;
+      samples[i] = wave * amplitude * 0.5;
     }
 
-    return buffer;
+    // WAVフォーマットに変換
+    return this.samplesToWavBase64(samples);
   }
 
   /**
-   * AudioBufferをBase64に変換
+   * Float32Arrayサンプルデータを WAV Base64に変換
    */
-  async bufferToBase64(buffer: AudioBuffer): Promise<string> {
-    // WAVフォーマットでエンコード
-    const numOfChan = buffer.numberOfChannels;
-    const length = buffer.length * numOfChan * 2;
-    const sampleRate = buffer.sampleRate;
+  private samplesToWavBase64(samples: Float32Array): string {
+    const numOfChan = 1;
+    const length = samples.length * numOfChan * 2;
 
     const wavBuffer = new ArrayBuffer(44 + length);
     const view = new DataView(wavBuffer);
 
-    // WAVヘッダー
-    const writeString = (offset: number, string: string) => {
-      for (let i = 0; i < string.length; i++) {
-        view.setUint8(offset + i, string.charCodeAt(i));
+    // WAVヘッダー書き込み
+    const writeString = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(offset + i, str.charCodeAt(i));
       }
     };
 
@@ -132,33 +127,37 @@ class SoundSynthesizer {
     view.setUint32(4, 36 + length, true);
     writeString(8, 'WAVE');
     writeString(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, numOfChan, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * numOfChan * 2, true);
-    view.setUint16(32, numOfChan * 2, true);
-    view.setUint16(34, 16, true);
+    view.setUint32(16, 16, true);           // Subchunk1Size (16 for PCM)
+    view.setUint16(20, 1, true);            // AudioFormat (1 = PCM)
+    view.setUint16(22, numOfChan, true);    // NumChannels
+    view.setUint32(24, this.sampleRate, true); // SampleRate
+    view.setUint32(28, this.sampleRate * numOfChan * 2, true); // ByteRate
+    view.setUint16(32, numOfChan * 2, true); // BlockAlign
+    view.setUint16(34, 16, true);           // BitsPerSample
     writeString(36, 'data');
-    view.setUint32(40, length, true);
+    view.setUint32(40, length, true);       // Subchunk2Size
 
-    // オーディオデータ
+    // オーディオデータ書き込み
     let offset = 44;
-    for (let i = 0; i < buffer.length; i++) {
-      for (let channel = 0; channel < numOfChan; channel++) {
-        const sample = buffer.getChannelData(channel)[i];
-        const intSample = Math.max(-1, Math.min(1, sample)) * 32767;
-        view.setInt16(offset, intSample, true);
-        offset += 2;
-      }
+    for (let i = 0; i < samples.length; i++) {
+      const sample = Math.max(-1, Math.min(1, samples[i]));
+      const intSample = Math.floor(sample * 32767);
+      view.setInt16(offset, intSample, true);
+      offset += 2;
     }
 
-    // Base64エンコード
+    // Base64エンコード（Node.js互換）
     const bytes = new Uint8Array(wavBuffer);
     let binary = '';
     for (let i = 0; i < bytes.byteLength; i++) {
       binary += String.fromCharCode(bytes[i]);
     }
+
+    // Node.js環境ではBuffer.from().toString('base64')を使用
+    if (typeof Buffer !== 'undefined') {
+      return 'data:audio/wav;base64,' + Buffer.from(wavBuffer).toString('base64');
+    }
+    // ブラウザ環境ではbtoa()を使用
     return 'data:audio/wav;base64,' + btoa(binary);
   }
 }
@@ -173,7 +172,7 @@ export class ImprovedSoundGenerator {
   private readonly EFFECT_PRESETS: Record<SoundEffectType, {
     frequency: number;
     duration: number;
-    waveType: OscillatorType;
+    waveType: WaveType;
     envelope: { attack: number; decay: number; sustain: number; release: number };
   }> = {
     tap: {
@@ -310,14 +309,16 @@ export class ImprovedSoundGenerator {
     const preset = this.EFFECT_PRESETS[type];
 
     try {
-      const buffer = await this.synthesizer.generateTone(
+      // 新しいシンセサイザーは直接Base64 WAVを返す
+      const dataUrl = await this.synthesizer.generateTone(
         preset.frequency,
         preset.duration,
         preset.waveType,
         preset.envelope
       );
 
-      const dataUrl = await this.synthesizer.bufferToBase64(buffer);
+      // ファイルサイズを計算（WAVヘッダー44バイト + サンプルデータ）
+      const fileSize = 44 + Math.floor(preset.duration * 44100 * 2);
 
       return {
         id: `se_${type}_${Date.now()}`,
@@ -325,7 +326,7 @@ export class ImprovedSoundGenerator {
         dataUrl,
         originalName: `${type}.wav`,
         duration: preset.duration,
-        fileSize: Math.floor(preset.duration * 44100 * 2), // 概算
+        fileSize,
         format: 'wav',
         uploadedAt: new Date().toISOString(),
         volume: 1.0,
