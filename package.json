@@ -16,7 +16,12 @@
     "ai:improved:1": "TARGET_GAMES=1 tsx src/ai/run-improved.ts",
     "ai:improved:1:local": "TARGET_GAMES=1 SKIP_UPLOAD=true tsx src/ai/run-improved.ts",
     "ai:improved:10": "TARGET_GAMES=10 tsx src/ai/run-improved.ts",
-    "ai:improved:100": "TARGET_GAMES=100 tsx src/ai/run-improved.ts"
+    "ai:improved:100": "TARGET_GAMES=100 tsx src/ai/run-improved.ts",
+    "ai:v2": "tsx src/ai/v2/run.ts",
+    "ai:v2:1": "tsx src/ai/v2/run.ts 1",
+    "ai:v2:10": "tsx src/ai/v2/run.ts 10",
+    "ai:v2:dry": "DRY_RUN=true tsx src/ai/v2/run.ts 1",
+    "ai:v2:local": "SKIP_UPLOAD=true tsx src/ai/v2/run.ts 1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
