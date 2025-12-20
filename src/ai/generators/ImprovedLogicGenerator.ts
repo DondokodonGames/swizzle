@@ -328,15 +328,17 @@ export class ImprovedLogicGenerator {
 
 ## 基本情報
 タイトル: ${idea.title}
-テーマ: ${idea.theme}
 メカニクス: ${idea.mainMechanic}
 難易度: ${idea.difficulty}
-時間: ${idea.duration}秒
+制限時間: ${idea.duration}秒
 
-## ゲームプレイ
+## 🎯 プレイヤー体験（最重要）
+プレイヤーの目標: ${idea.playerGoal || idea.winCondition}
+プレイヤーの操作: ${idea.playerAction || 'タップ'}
+
+## 成功・失敗条件
 勝利条件: ${idea.winCondition}
 敗北条件: ${idea.loseCondition}
-説明: ${idea.description}
 
 ## 利用可能アセット
 オブジェクト: ${assets.objectIds.join(', ')}
@@ -344,18 +346,22 @@ export class ImprovedLogicGenerator {
 背景: ${assets.backgroundId || 'なし'}
 
 ## 🔴 必須条件・アクション（${idea.mainMechanic}）
-このメカニクスでは以下を必ずルール内に含めてください：
 ${requirements}
 
 ## 実装パターン
 ${pattern}
 
-## その他の必須要件
-1. objectId は上記アセットのみ使用可能
-2. 座標は0.0-1.0の範囲
-3. speedは1.0-8.0の範囲
-4. 少なくとも1つのsuccessアクションを含むルール
-5. counterで進捗を管理
+## ❌ 絶対に避けるべきパターン
+1. **即成功**: ゲーム開始時点でクリア条件を満たしている（例: score >= 0 でクリア）
+2. **操作不要**: プレイヤーが何もしなくてもクリアできる
+3. **失敗不可能**: loseConditionがない、または条件が発生しない
+4. **目標が不明瞭**: 何をすればいいかわからない配置
+
+## ✅ 必須チェックリスト
+- [ ] クリア条件の数値は「プレイヤーが複数回操作した結果」達成される（例: 5回タップ、3個キャッチ）
+- [ ] 失敗条件が実際に発動しうる（例: 3回ミス、敵に当たる）
+- [ ] オブジェクトが画面上に適切に配置されている（y=0.5付近に集中しない）
+- [ ] 初期状態ではクリア条件を満たしていない（counterの初期値 < 目標値）
 
 ## 出力
 以下の構造でGameScript JSONを出力:
@@ -364,13 +370,14 @@ ${pattern}
   "layout": {
     "background": {"visible":true},
     "objects": [
-      {"objectId":"${assets.objectIds[0] || 'obj1'}", "position":{"x":0.5,"y":0.5}, "scale":{"x":1.0,"y":1.0}, "rotation":0, "zIndex":10, "initialState":{"visible":true,"animation":0}}
+      {"objectId":"${assets.objectIds[0] || 'obj1'}", "position":{"x":0.5,"y":0.3}, "scale":{"x":1.0,"y":1.0}, "rotation":0, "zIndex":10, "initialState":{"visible":true,"animation":0}}
     ],
     "texts": [],
     "stage": {"backgroundColor":"#87CEEB"}
   },
   "counters": [
-    {"id":"score","name":"スコア","initialValue":0,"minValue":0,"maxValue":999}
+    {"id":"score","name":"スコア","initialValue":0,"minValue":0,"maxValue":999},
+    {"id":"miss","name":"ミス","initialValue":0,"minValue":0,"maxValue":10}
   ],
   "flags": [],
   "rules": [
@@ -385,7 +392,8 @@ ${pattern}
         ]
       },
       "actions": [
-        {"type":"hide","targetId":"obj1"}
+        {"type":"hide","targetId":"obj1"},
+        {"type":"counter","counterName":"score","operation":"add","value":1}
       ],
       "enabled": true,
       "priority": 10,
@@ -397,7 +405,10 @@ ${pattern}
   "version": "1.0.0"
 }
 
-⚠️ 重要: rulesの各ルールは必ず triggers.conditions の構造を使用すること。conditionsを直接ルールに置かないこと。`;
+⚠️ 重要:
+- rulesの各ルールは必ず triggers.conditions の構造を使用
+- score の目標値は 3以上（簡単すぎる1や2は禁止）
+- 失敗条件も必ず実装すること（miss >= 3 など）`;
   }
 
   /**

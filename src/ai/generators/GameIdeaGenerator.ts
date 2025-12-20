@@ -18,6 +18,9 @@ export interface GameIdea {
   visualStyle: string;
   mainMechanic: GameMechanic;
   subMechanics: GameMechanic[];
+  // 遊び重視の新フィールド
+  playerGoal: string;      // プレイヤーが思うこと（例: 「あの敵を倒さなきゃ！」）
+  playerAction: string;    // プレイヤーがする操作（例: 「敵をタップして攻撃」）
   winCondition: string;
   loseCondition: string;
   duration: number;
@@ -199,11 +202,13 @@ export class GameIdeaGenerator {
       titleEn: `Test Game ${this.mockCounter}`,
       description: `テスト用のゲーム説明${this.mockCounter}`,
       theme: theme,
-      visualStyle: 'ポップ・カラフル',
+      visualStyle: 'simple',
       mainMechanic: mechanic,
       subMechanics: [],
-      winCondition: '全てのターゲットを集める',
-      loseCondition: '時間切れ',
+      playerGoal: 'ターゲットを全部集めなきゃ！',
+      playerAction: 'ターゲットをタップして収集',
+      winCondition: '5個のターゲットを集める',
+      loseCondition: '3回ミスするか時間切れ',
       duration: 10,
       difficulty: 'normal',
       objectCount: 5,
@@ -222,66 +227,79 @@ export class GameIdeaGenerator {
     const avoidMechanics = existingMechanics?.length ? existingMechanics.join(', ') : 'なし';
     const avoidThemes = existingThemes?.length ? existingThemes.join(', ') : 'なし';
 
-    return `あなたはスマホ向け10秒ゲームのプロデューサーです。
-誰も見たことがない、ユニークで面白いゲームを自由に考案してください。
+    return `あなたはスマホ向け10秒ゲームのゲームデザイナーです。
+「遊び」を最優先に考えた、面白いゲームを設計してください。
+
+# 🎯 最重要: 遊びの設計
+
+ゲームは以下の3要素で成り立ちます。見た目より先にこれを決めてください：
+
+## 1. プレイヤーに何をさせたいか？（目標）
+- 画面を見た瞬間に「〇〇しなきゃ！」とわかる
+- 例: 「落ちてくる！キャッチしなきゃ！」「逃げてる！捕まえなきゃ！」
+
+## 2. プレイヤーは具体的に何をするか？（操作）
+- タップ: どこを？何回？タイミングは？
+- スワイプ: どの方向に？何を動かす？
+- 長押し: いつまで？離すタイミングは？
+
+## 3. 成功と失敗はどう決まるか？（判定）
+- 成功: 具体的な達成条件（例: 5個キャッチ、敵に3回当てる、10秒生き残る）
+- 失敗: 具体的な失敗条件（例: 3回落とす、敵に当たる、時間切れ）
+- **失敗する可能性がないゲームは面白くない**
 
 # 基本要件
-- 制限時間: 5-15秒（成功条件達成まで）
+- 制限時間: 5-15秒
 - 画面: スマホ縦画面
 - 操作: タッチのみ（タップ、スワイプ、ドラッグ、長押し）
 
-# テーマ・世界観について
-**あなたの創造力で自由に決めてください。** 制限はありません。
-- 現実的なものでも抽象的なものでもOK
-- 日常的なものでもファンタジーでもOK
-- 真面目でもシュールでもOK
-- 既存のカテゴリに縛られる必要なし
-
-ただし、以下のテーマは既に使用済みなので避けてください:
+# 避けるべきテーマ（使用済み）
 ${avoidThemes}
 
-# 避けるべきメカニクス（既に使用済み）
+# 避けるべきメカニクス（使用済み）
 ${avoidMechanics}
 
-# 面白いゲームの条件
-1. 目標が一目でわかる（説明不要）
-2. 操作が直感的（1-2種類のみ）
-3. 達成感がある（成功時に「やった！」）
-4. 適度な緊張感（失敗もありえる）
-5. 動きがある（静的は×）
-6. 繰り返し遊びたくなる
+# ❌ 絶対に作ってはいけないゲーム
+1. **即成功ゲーム**: 何かタップすれば即クリア
+2. **操作不要ゲーム**: 見てるだけでクリア
+3. **目的不明ゲーム**: 何すればいいかわからない
+4. **失敗不可能ゲーム**: どうやっても成功する
+5. **運だけゲーム**: スキルが関係ない
 
-# 禁止パターン
-- 動かないものをタップするだけ
-- 単純な1問クイズ
-- 完全な運ゲー
-- 文字を読まないとわからない
+# ✅ 良いゲームの例
+- 「落ちてくるリンゴを5個キャッチ。3個落としたら失敗」
+- 「逃げる泥棒をタップで3回捕まえる。10秒以内に」
+- 「爆弾を避けながら宝石だけをタップ。爆弾タップで即失敗」
 
 # 出力形式（JSON）
 \`\`\`json
 {
   "title": "ゲーム名（日本語、8文字以内）",
   "titleEn": "English Title",
-  "description": "説明（20文字以内）",
-  "theme": "あなたが考えた独自のテーマ・世界観",
-  "visualStyle": "あなたが考えた独自のビジュアルスタイル",
+  "description": "何をするゲームか（20文字以内）",
+  "theme": "世界観（シンプルに）",
+  "visualStyle": "simple",
   "mainMechanic": "tap-target | tap-avoid | tap-sequence | tap-rhythm | swipe-direction | drag-drop | hold-release | catch-falling | dodge-moving | match-pattern | count-objects | find-different | memory-match | timing-action | chase-target | collect-items | protect-target | balance-game | reaction-test",
   "subMechanics": [],
-  "winCondition": "具体的な勝利条件",
-  "loseCondition": "具体的な失敗条件",
+  "playerGoal": "プレイヤーが画面を見て思うこと（例: あの敵を倒さなきゃ！）",
+  "playerAction": "プレイヤーが実際にする操作（例: 敵をタップして攻撃）",
+  "winCondition": "具体的な成功条件（数値を含む）",
+  "loseCondition": "具体的な失敗条件（数値を含む）",
   "duration": 10,
   "difficulty": "easy | normal | hard",
   "objectCount": 3,
   "estimatedRuleCount": 7,
   "funScore": 8,
-  "uniqueness": "このゲームが面白い理由・他にないポイント",
+  "uniqueness": "このゲームが面白い理由",
   "targetAudience": "想定プレイヤー層",
-  "emotionalHook": "プレイヤーが感じる感情"
+  "emotionalHook": "プレイヤーが感じる感情（焦り、達成感など）"
 }
 \`\`\`
 
-重要: funScoreは1-10で正直に自己評価してください。
-7未満のアイデアは採用しません。7点以上になるまで練り直してから出力を。`;
+重要:
+- visualStyleは「simple」固定でOK。見た目は後で自動生成します
+- funScoreは1-10で正直に自己評価。7未満は不採用
+- playerGoal, playerAction, winCondition, loseConditionが最重要`;
   }
 
   /**
@@ -321,9 +339,11 @@ ${avoidMechanics}
       titleEn: parsed.titleEn || 'Untitled',
       description: parsed.description || '',
       theme: parsed.theme || '一般',
-      visualStyle: parsed.visualStyle || 'ポップ',
+      visualStyle: parsed.visualStyle || 'simple',
       mainMechanic: parsed.mainMechanic as GameMechanic,
       subMechanics: parsed.subMechanics || [],
+      playerGoal: parsed.playerGoal || parsed.winCondition || '',
+      playerAction: parsed.playerAction || '',
       winCondition: parsed.winCondition,
       loseCondition: parsed.loseCondition || '時間切れ',
       duration: parsed.duration || 10,

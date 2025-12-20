@@ -14,8 +14,19 @@ export interface FunEvaluationResult {
   funScore: number;           // 総合面白さスコア（0-100）
   passed: boolean;            // 合格（50以上）
   breakdown: FunBreakdown;    // 内訳
+  playabilityCheck: PlayabilityCheckResult; // プレイアビリティチェック
   issues: string[];           // 問題点
   recommendations: string[];  // 改善提案
+}
+
+// プレイアビリティチェック結果
+export interface PlayabilityCheckResult {
+  isPlayable: boolean;        // プレイ可能か
+  hasInstantWin: boolean;     // 即成功（開始時点でクリア条件達成）
+  requiresAction: boolean;    // 操作が必要か
+  canFail: boolean;           // 失敗可能か
+  hasClearGoal: boolean;      // 明確なゴールがあるか
+  criticalIssues: string[];   // 致命的問題
 }
 
 // 面白さ内訳
@@ -47,18 +58,231 @@ export class FunEvaluator {
       progressionClarity: this.evaluateProgressionClarity(project.script)
     };
 
-    const funScore = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
-    const passed = funScore >= 50;
+    // プレイアビリティチェック（致命的問題の検出）
+    const playabilityCheck = this.checkPlayability(project.script);
 
-    const { issues, recommendations } = this.generateFeedback(breakdown, idea);
+    // 致命的問題がある場合はスコアを大幅減点
+    let funScore = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
+    if (!playabilityCheck.isPlayable) {
+      funScore = Math.min(funScore, 30); // 最大30点に制限
+    }
+
+    const passed = funScore >= 50 && playabilityCheck.isPlayable;
+
+    const { issues, recommendations } = this.generateFeedback(breakdown, idea, playabilityCheck);
 
     return {
       funScore,
       passed,
       breakdown,
+      playabilityCheck,
       issues,
       recommendations
     };
+  }
+
+  /**
+   * プレイアビリティチェック
+   * 致命的な問題（即成功、操作不要、失敗不可能など）を検出
+   */
+  private checkPlayability(script: GameScript): PlayabilityCheckResult {
+    const criticalIssues: string[] = [];
+
+    // 1. 即成功チェック: 初期状態でクリア条件を満たしていないか
+    const hasInstantWin = this.detectInstantWin(script);
+    if (hasInstantWin) {
+      criticalIssues.push('INSTANT_WIN: ゲーム開始時点でクリア条件を満たしている可能性');
+    }
+
+    // 2. 操作必須チェック: タッチ条件がクリアに必要か
+    const requiresAction = this.detectRequiresAction(script);
+    if (!requiresAction) {
+      criticalIssues.push('NO_ACTION_REQUIRED: プレイヤー操作なしでクリアできる可能性');
+    }
+
+    // 3. 失敗可能チェック: 失敗条件が存在し発動しうるか
+    const canFail = this.detectCanFail(script);
+    if (!canFail) {
+      criticalIssues.push('CANNOT_FAIL: 失敗条件がない、または発動しない可能性');
+    }
+
+    // 4. 明確なゴールチェック
+    const hasClearGoal = this.detectClearGoal(script);
+    if (!hasClearGoal) {
+      criticalIssues.push('NO_CLEAR_GOAL: 成功条件が不明確');
+    }
+
+    const isPlayable = criticalIssues.length === 0;
+
+    return {
+      isPlayable,
+      hasInstantWin,
+      requiresAction,
+      canFail,
+      hasClearGoal,
+      criticalIssues
+    };
+  }
+
+  /**
+   * 即成功の検出
+   */
+  private detectInstantWin(script: GameScript): boolean {
+    // 成功条件を持つルールを探す
+    const successRules = script.rules.filter(rule =>
+      rule.actions?.some(a => a.type === 'success')
+    );
+
+    for (const rule of successRules) {
+      const conditions = rule.triggers?.conditions || [];
+
+      // counter条件でクリア判定している場合
+      const counterCondition = conditions.find(c => c.type === 'counter');
+      if (counterCondition) {
+        const targetCounter = script.counters?.find(c => c.id === counterCondition.counterName);
+        const initialValue = targetCounter?.initialValue ?? 0;
+        const targetValue = counterCondition.value ?? 0;
+        const comparison = counterCondition.comparison;
+
+        // 初期値が既に条件を満たしているか確認
+        if (comparison === 'greaterOrEqual' && initialValue >= targetValue) {
+          return true;
+        }
+        if (comparison === 'equals' && initialValue === targetValue) {
+          return true;
+        }
+        // 目標値が0または1の場合も即成功の可能性
+        if (targetValue <= 1 && comparison === 'greaterOrEqual') {
+          return true;
+        }
+      }
+
+      // 条件なしでsuccessがある場合
+      if (conditions.length === 0) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * 操作必須の検出
+   */
+  private detectRequiresAction(script: GameScript): boolean {
+    // 成功に至るパスにタッチ条件が含まれているか確認
+    const successRules = script.rules.filter(rule =>
+      rule.actions?.some(a => a.type === 'success')
+    );
+
+    // 直接successに至るルールにタッチ条件があるか
+    for (const rule of successRules) {
+      const conditions = rule.triggers?.conditions || [];
+      const hasTouchCondition = conditions.some(c => c.type === 'touch');
+
+      if (hasTouchCondition) {
+        return true;
+      }
+
+      // counter条件の場合、そのカウンターを増やすルールにタッチ条件があるか
+      const counterCondition = conditions.find(c => c.type === 'counter');
+      if (counterCondition) {
+        const counterIncrementRules = script.rules.filter(r =>
+          r.actions?.some(a =>
+            a.type === 'counter' &&
+            a.counterName === counterCondition.counterName &&
+            a.operation === 'add'
+          )
+        );
+
+        for (const incrementRule of counterIncrementRules) {
+          const incrementConditions = incrementRule.triggers?.conditions || [];
+          if (incrementConditions.some(c => c.type === 'touch')) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * 失敗可能性の検出
+   */
+  private detectCanFail(script: GameScript): boolean {
+    // failureアクションを持つルールがあるか
+    const hasFailureRule = script.rules.some(rule =>
+      rule.actions?.some(a => a.type === 'failure')
+    );
+
+    if (!hasFailureRule) {
+      return false;
+    }
+
+    // 失敗ルールの条件が発動しうるか確認
+    const failureRules = script.rules.filter(rule =>
+      rule.actions?.some(a => a.type === 'failure')
+    );
+
+    for (const rule of failureRules) {
+      const conditions = rule.triggers?.conditions || [];
+
+      // タッチで失敗（間違いタップ）
+      if (conditions.some(c => c.type === 'touch')) {
+        return true;
+      }
+
+      // 衝突で失敗
+      if (conditions.some(c => c.type === 'collision')) {
+        return true;
+      }
+
+      // カウンター条件で失敗（ミス回数など）
+      const counterCondition = conditions.find(c => c.type === 'counter');
+      if (counterCondition) {
+        // ミスカウンターが増加するルールがあるか
+        const missIncrementRules = script.rules.filter(r =>
+          r.actions?.some(a =>
+            a.type === 'counter' &&
+            a.counterName === counterCondition.counterName &&
+            a.operation === 'add'
+          )
+        );
+        if (missIncrementRules.length > 0) {
+          return true;
+        }
+      }
+
+      // 時間条件で失敗（タイムアウト）- これは常に発動しうる
+      if (conditions.some(c => c.type === 'time' && c.timeType === 'exact')) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * 明確なゴールの検出
+   */
+  private detectClearGoal(script: GameScript): boolean {
+    // successアクションがあるか
+    const hasSuccess = script.rules.some(rule =>
+      rule.actions?.some(a => a.type === 'success')
+    );
+
+    if (!hasSuccess) {
+      return false;
+    }
+
+    // counter条件での成功判定があれば明確
+    const hasCounterWin = script.rules.some(rule =>
+      rule.triggers?.conditions?.some(c => c.type === 'counter') &&
+      rule.actions?.some(a => a.type === 'success')
+    );
+
+    return hasCounterWin;
   }
 
   /**
@@ -269,10 +493,32 @@ export class FunEvaluator {
    */
   private generateFeedback(
     breakdown: FunBreakdown,
-    idea?: GameIdea
+    idea?: GameIdea,
+    playabilityCheck?: PlayabilityCheckResult
   ): { issues: string[]; recommendations: string[] } {
     const issues: string[] = [];
     const recommendations: string[] = [];
+
+    // プレイアビリティの致命的問題を最優先で表示
+    if (playabilityCheck && !playabilityCheck.isPlayable) {
+      issues.push('🚨 CRITICAL: Game is not playable');
+      playabilityCheck.criticalIssues.forEach(issue => {
+        issues.push(`  - ${issue}`);
+      });
+
+      if (playabilityCheck.hasInstantWin) {
+        recommendations.push('Increase win condition target value (use score >= 5 instead of score >= 1)');
+      }
+      if (!playabilityCheck.requiresAction) {
+        recommendations.push('Ensure touch conditions are required to increment score');
+      }
+      if (!playabilityCheck.canFail) {
+        recommendations.push('Add failure conditions (e.g., miss counter >= 3, or collision with enemy)');
+      }
+      if (!playabilityCheck.hasClearGoal) {
+        recommendations.push('Add counter-based success conditions for clear goals');
+      }
+    }
 
     // 動的要素が低い
     if (breakdown.dynamicElements < 8) {
