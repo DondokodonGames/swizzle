@@ -211,16 +211,25 @@ export class ProjectStorageManager {
       console.log('[LoadProject-Manager] ✅ Project found:', game.title);
 
       const projectData = game.project_data as any as GameProject;
-      
-      // metadataにdatabaseIdを追加
-      return {
+
+      // DBのtitle/descriptionをproject_dataにマージ（metadata-only saveで更新された場合に対応）
+      const mergedProject: GameProject = {
         ...projectData,
+        name: game.title || projectData.name,  // DBのtitleを優先
+        description: game.description || projectData.description,
+        settings: {
+          ...projectData.settings,
+          name: game.title || projectData.settings?.name,  // settingsにも反映
+          description: game.description || projectData.settings?.description
+        },
         metadata: {
           ...projectData.metadata,
           databaseId: game.id,
           lastSyncedAt: new Date().toISOString()
         }
       };
+
+      return mergedProject;
 
     } catch (error) {
       console.error('[LoadProject-Manager] ❌ Failed to load project:', error);
