@@ -20,6 +20,9 @@
     "ai:v2": "tsx src/ai/v2/run.ts",
     "ai:v2:1": "tsx src/ai/v2/run.ts 1",
     "ai:v2:10": "tsx src/ai/v2/run.ts 10",
+    "ai:v2:100": "tsx src/ai/v2/run.ts 100",
+    "ai:v2:500": "tsx src/ai/v2/run.ts 500",
+    "ai:v2:1000": "tsx src/ai/v2/run.ts 1000",
     "ai:v2:dry": "DRY_RUN=true tsx src/ai/v2/run.ts 1",
     "ai:v2:local": "SKIP_UPLOAD=true tsx src/ai/v2/run.ts 1"
   },

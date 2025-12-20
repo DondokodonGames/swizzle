@@ -8,6 +8,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import { GameConcept } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// ESモジュールで__dirnameを取得
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // テーマをJSONファイルから読み込み
 const themesPath = path.join(__dirname, 'themes.json');
