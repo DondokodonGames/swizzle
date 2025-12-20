@@ -74,8 +74,8 @@ export class SupabaseUploader {
       // 1. ゲームデータを準備（実際のスキーマに合わせる）
       const gameData = {
         creator_id: this.masterUserId,           // ✅ user_id → creator_id
-        title: project.settings.name,
-        description: project.settings.description || 'AI-generated game',
+        title: project.name || project.settings?.name || 'Untitled Game',
+        description: project.description || project.settings?.description || 'AI-generated game',
         template_id: 'ai_generated',             // ✅ 必須カラム追加
         game_data: project,                      // GameProject全体をJSONBで保存
         project_data: project,                   // ✅ project_dataにも保存
