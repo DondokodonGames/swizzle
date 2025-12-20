@@ -363,6 +363,27 @@ export const database = {
       return data
     },
 
+    // 軽量なメタデータ更新（タイトル、説明のみ）
+    updateMetadata: async (gameId: string, metadata: {
+      title?: string;
+      description?: string;
+      is_published?: boolean;
+      thumbnail_url?: string | null;
+    }) => {
+      const { data, error } = await supabase
+        .from('user_games')
+        .update({
+          ...metadata,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', gameId)
+        .select('id, title, description, updated_at')
+        .single()
+
+      if (error) throw new SupabaseError(error.message)
+      return data
+    },
+
     delete: async (gameId: string) => {
       const { error } = await supabase
         .from('user_games')

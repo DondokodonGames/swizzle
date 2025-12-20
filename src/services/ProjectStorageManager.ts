@@ -334,19 +334,62 @@ export class ProjectStorageManager {
   }
 
   // ✅ プロジェクト保存（Supabaseに保存）
-  public async saveProject(project: GameProject, options?: { 
+  public async saveProject(project: GameProject, options?: {
     saveToDatabase?: boolean;
     userId?: string;
+    metadataOnly?: boolean;  // メタデータのみ更新（高速）
   }): Promise<void> {
     try {
       if (!options?.userId) {
         throw new Error('ユーザーIDが必要です');
       }
 
-      await this.saveToDatabase(project, options.userId);
+      // メタデータのみ更新モード（タイトル・説明変更時など）
+      if (options.metadataOnly) {
+        await this.updateMetadataOnly(project, options.userId);
+      } else {
+        await this.saveToDatabase(project, options.userId);
+      }
     } catch (error) {
       console.error('[SaveProject-Manager] ❌ Failed to save project:', error);
       throw error;
+    }
+  }
+
+  // ✅ メタデータのみ更新（高速・軽量）
+  public async updateMetadataOnly(project: GameProject, userId: string): Promise<void> {
+    try {
+      console.log('[SaveDB-Manager] ⚡ Fast metadata update:', {
+        projectId: project.id,
+        title: project.settings?.name || project.name
+      });
+
+      // キャッシュから既存ゲームを検索
+      const userGames = await this.getUserGames(userId);
+      const existingGame = userGames.find(g => {
+        const projectData = g.project_data as any as GameProject;
+        return projectData && projectData.id === project.id;
+      });
+
+      if (!existingGame) {
+        console.log('[SaveDB-Manager] ⚠️ Game not found, falling back to full save');
+        await this.saveToDatabase(project, userId);
+        return;
+      }
+
+      // メタデータのみ更新
+      await database.userGames.updateMetadata(existingGame.id, {
+        title: project.settings?.name || project.name || 'Untitled Game',
+        description: project.settings?.description || '',
+        is_published: project.status === 'published',
+        thumbnail_url: project.metadata?.thumbnailUrl || null,
+      });
+
+      console.log('[SaveDB-Manager] ✅ Metadata updated successfully');
+      this.clearCache();
+    } catch (error: any) {
+      console.error('[SaveDB-Manager] ❌ Metadata update failed:', error);
+      throw new Error(`メタデータ更新に失敗: ${error.message || 'Unknown error'}`);
     }
   }
 

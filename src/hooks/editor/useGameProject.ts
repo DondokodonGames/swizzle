@@ -479,7 +479,7 @@ export const useGameProject = () => {
   }, []);
 
   // ✅ 修正: saveProject（引数なし、currentProjectを使用）
-  const saveProject = useCallback(async (): Promise<void> => {
+  const saveProject = useCallback(async (options?: { metadataOnly?: boolean }): Promise<void> => {
     if (!currentProject) {
       throw new Error('保存するプロジェクトが選択されていません');
     }
@@ -489,7 +489,7 @@ export const useGameProject = () => {
 
     try {
       const user = await getCachedUser(false);
-      
+
       if (!user) {
         throw new Error('プロジェクトを保存するにはログインが必要です');
       }
@@ -508,7 +508,8 @@ export const useGameProject = () => {
 
       await storage.saveProject(updatedProject, {
         saveToDatabase: true,
-        userId: user.id
+        userId: user.id,
+        metadataOnly: options?.metadataOnly  // 軽量更新オプション
       });
 
       setCurrentProject(updatedProject);
@@ -525,6 +526,11 @@ export const useGameProject = () => {
       setLoading(false);
     }
   }, [currentProject, storage, getCachedUser, clearCache]);
+
+  // ✅ 新規: メタデータのみ保存（タイトル・説明変更時の高速保存）
+  const saveMetadataOnly = useCallback(async (): Promise<void> => {
+    return saveProject({ metadataOnly: true });
+  }, [saveProject]);
 
   // 既存メソッド: deleteProject
   const deleteProject = useCallback(async (id: string): Promise<void> => {
@@ -687,6 +693,7 @@ export const useGameProject = () => {
     createProject,
     loadProject,
     saveProject,
+    saveMetadataOnly,
     deleteProject,
     duplicateProject,
     exportProject,

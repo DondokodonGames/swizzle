@@ -57,6 +57,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     createProject,
     loadProject,
     saveProject,
+    saveMetadataOnly,
     updateProject,
     deleteProject,
     duplicateProject,
@@ -107,7 +108,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
   }, [createProject, showNotification, t, canCreateGame, openPaywall]);
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (options?: { metadataOnly?: boolean }) => {
     if (!currentProject) return;
 
     try {
@@ -116,7 +117,19 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         console.warn('Validation warnings on save:', errors);
       }
 
-      await saveProject();
+      // プロジェクトサイズをチェック（5MB以上で警告、軽量更新を優先）
+      const projectSize = JSON.stringify(currentProject).length;
+      const isLargeProject = projectSize > 5 * 1024 * 1024; // 5MB
+
+      if (isLargeProject && !options?.metadataOnly) {
+        console.log('[EditorApp] ⚠️ Large project detected:', (projectSize / 1024 / 1024).toFixed(1), 'MB');
+        console.log('[EditorApp] 🚀 Using metadata-only save for faster performance');
+        await saveMetadataOnly();
+      } else if (options?.metadataOnly) {
+        await saveMetadataOnly();
+      } else {
+        await saveProject();
+      }
 
       showNotification('success', t('editor.app.projectSaved'));
 
@@ -136,7 +149,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       console.error('Save failed:', error);
       showNotification('error', `${t('errors.projectSaveFailed')}: ${error.message}`);
     }
-  }, [currentProject, saveProject, getValidationErrors, updateProject, showNotification, t]);
+  }, [currentProject, saveProject, saveMetadataOnly, getValidationErrors, updateProject, showNotification, t]);
 
   const handleTestPlay = useCallback(async () => {
     if (!currentProject) return;
