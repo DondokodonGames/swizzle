@@ -55,24 +55,36 @@ export interface GameStatistics {
 export class SupabaseUploader {
   private supabase: SupabaseClient;
   private masterUserId: string;
-  
+
   constructor() {
-    // Supabaseクライアント初期化
-    this.supabase = createClient(
-      process.env.VITE_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!
-    );
-    
+    const supabaseUrl = process.env.VITE_SUPABASE_URL!;
+    const serviceKey = process.env.SUPABASE_SERVICE_KEY!;
     this.masterUserId = process.env.MASTER_USER_ID!;
-    
+
     // 環境変数チェック
-    if (!process.env.VITE_SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+    if (!supabaseUrl || !serviceKey) {
       throw new Error('Supabase環境変数が設定されていません');
     }
-    
+
     if (!this.masterUserId) {
       throw new Error('MASTER_USER_IDが設定されていません');
     }
+
+    // デバッグ: キーの種類を確認
+    const keyPrefix = serviceKey.substring(0, 20);
+    const isServiceKey = serviceKey.includes('service_role');
+    console.log(`   🔑 Supabase URL: ${supabaseUrl.substring(0, 30)}...`);
+    console.log(`   🔑 Key prefix: ${keyPrefix}...`);
+    console.log(`   🔑 Is service key: ${isServiceKey}`);
+    console.log(`   👤 Master User ID: ${this.masterUserId.substring(0, 8)}...`);
+
+    // Supabaseクライアント初期化（service_roleキーでRLSバイパス）
+    this.supabase = createClient(supabaseUrl, serviceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
   }
   
   /**
