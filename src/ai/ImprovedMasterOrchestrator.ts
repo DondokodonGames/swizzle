@@ -315,11 +315,11 @@ export class ImprovedMasterOrchestrator {
     try {
       const bgFrames = await this.imageGenerator.generateBackground({
         prompt: prompts.background,
-        style: 'cute' as const,
+        style: (idea.visualStyle || 'minimal') as any,
         type: 'background',
         frameCount: 1,
         dimensions: { width: 1080, height: 1920 },
-        colorPalette: ['#87CEEB', '#98FB98', '#FFB6C1', '#DDA0DD']
+        colorPalette: []
       });
       background = {
         id: assetRefs.backgroundId || 'bg_main',
@@ -340,11 +340,11 @@ export class ImprovedMasterOrchestrator {
         const objectPrompt = prompts.objects[i] || prompts.objects[0];
         const objFrames = await this.imageGenerator.generateObject({
           prompt: objectPrompt,
-          style: 'cute' as const,
+          style: (idea.visualStyle || 'minimal') as any,
           type: 'object',
           frameCount: 1,
           dimensions: { width: 256, height: 256 },
-          colorPalette: ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181']
+          colorPalette: []
         });
         objects.push({
           id: assetRefs.objectIds[i],
@@ -363,221 +363,28 @@ export class ImprovedMasterOrchestrator {
   }
 
   /**
-   * メカニクスに基づいた英語画像プロンプトを生成
-   * DALL-E 3の安全システムに引っかからないよう、英語で明確なゲームアセット指示
+   * アイデアに基づいた英語画像プロンプトを生成
+   * テーマと説明から動的に生成（特定のスタイルに偏らない）
    */
   private generateImagePrompts(idea: GameIdea): { background: string; objects: string[] } {
-    // メカニクス別のオブジェクト役割マッピング
-    const mechanicPrompts: Record<string, { bg: string; objects: string[] }> = {
-      'tap-target': {
-        bg: 'simple colorful game background, bright sky, cheerful atmosphere',
-        objects: [
-          'cute round target icon, friendly face, game collectible',
-          'star shaped bonus item, golden sparkle',
-          'heart shaped power-up, glowing effect',
-          'diamond gem icon, shiny crystal',
-          'coin icon, gold medal reward'
-        ]
-      },
-      'tap-avoid': {
-        bg: 'game arena background, safe zone, clean design',
-        objects: [
-          'friendly character icon, cute mascot, round shape',
-          'red warning circle, danger symbol, simple',
-          'green safe zone marker, checkmark',
-          'bonus star, golden reward icon',
-          'shield icon, protection symbol'
-        ]
-      },
-      'catch-falling': {
-        bg: 'vertical game background, sky theme, clouds',
-        objects: [
-          'cute basket or net, catching tool',
-          'falling apple fruit, red and shiny',
-          'falling star, golden sparkle',
-          'falling candy, colorful sweet',
-          'falling coin, gold treasure'
-        ]
-      },
-      'dodge-moving': {
-        bg: 'obstacle course background, clean path',
-        objects: [
-          'player character, cute hero, round shape',
-          'moving obstacle, simple geometric shape',
-          'safe platform, green zone',
-          'danger zone marker, red warning',
-          'goal flag, finish line'
-        ]
-      },
-      'timing-action': {
-        bg: 'target practice background, bulls-eye theme',
-        objects: [
-          'moving target indicator, arrow marker',
-          'success zone, green highlight area',
-          'timing bar, progress indicator',
-          'score multiplier, bonus icon',
-          'perfect hit marker, star burst'
-        ]
-      },
-      'collect-items': {
-        bg: 'treasure hunt background, adventure theme',
-        objects: [
-          'treasure chest, golden box',
-          'gem stone, colorful jewel',
-          'golden key icon, unlock symbol',
-          'magic potion bottle, glowing',
-          'lucky clover, green fortune'
-        ]
-      },
-      'chase-target': {
-        bg: 'chase game background, open field',
-        objects: [
-          'runner character, fast motion',
-          'chasing target, escaping icon',
-          'speed boost, lightning symbol',
-          'trap icon, slow down marker',
-          'finish goal, destination marker'
-        ]
-      },
-      'match-pattern': {
-        bg: 'puzzle game background, grid pattern',
-        objects: [
-          'matching card, face down mystery',
-          'matched pair indicator, check mark',
-          'hint icon, light bulb symbol',
-          'timer icon, clock symbol',
-          'score star, achievement'
-        ]
-      },
-      'reaction-test': {
-        bg: 'reaction game background, focus zone',
-        objects: [
-          'reaction target, sudden appear icon',
-          'ready signal, countdown marker',
-          'go signal, green light',
-          'stop signal, red light',
-          'fast reaction star, quick reward'
-        ]
-      },
-      'tap-sequence': {
-        bg: 'sequence puzzle background, numbered zones',
-        objects: [
-          'number 1 button, first in sequence',
-          'number 2 button, second in sequence',
-          'number 3 button, third in sequence',
-          'wrong order indicator, X mark',
-          'sequence complete star'
-        ]
-      },
-      'tap-rhythm': {
-        bg: 'music rhythm background, beat pattern',
-        objects: [
-          'rhythm note, music beat marker',
-          'perfect hit zone, timing target',
-          'good hit indicator, green flash',
-          'miss indicator, red flash',
-          'combo counter star'
-        ]
-      },
-      'swipe-direction': {
-        bg: 'direction game background, arrow theme',
-        objects: [
-          'swipe arrow, direction indicator',
-          'left arrow, swipe left marker',
-          'right arrow, swipe right marker',
-          'up arrow, swipe up marker',
-          'down arrow, swipe down marker'
-        ]
-      },
-      'drag-drop': {
-        bg: 'puzzle sorting background, target zones',
-        objects: [
-          'draggable item, movable object',
-          'drop target zone, destination area',
-          'correct placement indicator, checkmark',
-          'wrong placement marker, X sign',
-          'completion star'
-        ]
-      },
-      'hold-release': {
-        bg: 'power charging background, energy theme',
-        objects: [
-          'power meter, charging bar',
-          'hold button, press and hold target',
-          'release zone, sweet spot indicator',
-          'overcharge warning, danger zone',
-          'perfect release star'
-        ]
-      },
-      'count-objects': {
-        bg: 'counting game background, clean display',
-        objects: [
-          'countable item, simple shape',
-          'another countable, different color',
-          'answer button 1, number choice',
-          'answer button 2, number choice',
-          'correct answer star'
-        ]
-      },
-      'find-different': {
-        bg: 'spot difference background, comparison theme',
-        objects: [
-          'normal item, common object',
-          'different item, odd one out',
-          'hint highlight, attention marker',
-          'found indicator, checkmark',
-          'time bonus star'
-        ]
-      },
-      'memory-match': {
-        bg: 'memory game background, card grid',
-        objects: [
-          'card back, face down card',
-          'card front A, matching pair',
-          'card front B, matching pair',
-          'matched indicator, completed pair',
-          'memory star, bonus reward'
-        ]
-      },
-      'protect-target': {
-        bg: 'defense game background, fortress theme',
-        objects: [
-          'protected target, valuable item',
-          'incoming threat, danger object',
-          'shield icon, defense tool',
-          'damage indicator, hit marker',
-          'survive bonus star'
-        ]
-      },
-      'balance-game': {
-        bg: 'balance game background, scale theme',
-        objects: [
-          'balance beam, tilting platform',
-          'weight object, balance item',
-          'center indicator, balance zone',
-          'tilt warning, danger angle',
-          'stability star'
-        ]
-      }
-    };
+    // アイデアのテーマと説明をベースに動的生成
+    const theme = idea.theme || 'game';
+    const titleEn = idea.titleEn || 'Game';
 
-    // デフォルトプロンプト
-    const defaultPrompts = {
-      bg: 'mobile game background, cheerful colors, simple clean design',
-      objects: [
-        'cute game character icon, friendly mascot',
-        'target icon, tap here marker',
-        'bonus item, reward star',
-        'score indicator, points symbol',
-        'game power-up, special ability'
-      ]
-    };
+    // 背景プロンプト: テーマベース
+    const bgPrompt = `${theme} themed game background, ${titleEn} style`;
 
-    const prompts = mechanicPrompts[idea.mainMechanic] || defaultPrompts;
+    // オブジェクトプロンプト: 説明とメカニクスから推測
+    const objectCount = idea.objectCount || 5;
+    const objects: string[] = [];
+
+    for (let i = 0; i < objectCount; i++) {
+      objects.push(`game object for ${theme}, ${titleEn}, object ${i + 1}`);
+    }
 
     return {
-      background: prompts.bg + ', mobile game asset, high quality illustration',
-      objects: prompts.objects.map(obj => obj + ', game sprite, transparent background, simple icon style')
+      background: bgPrompt + ', mobile game asset, high quality illustration',
+      objects: objects.map(obj => obj + ', game sprite, transparent background, simple icon style')
     };
   }
 

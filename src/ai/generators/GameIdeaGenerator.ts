@@ -266,23 +266,18 @@ ${avoidMechanics}
 4. **失敗不可能ゲーム**: どうやっても成功する
 5. **運だけゲーム**: スキルが関係ない
 
-# ✅ 良いゲームの例
-- 「落ちてくるリンゴを5個キャッチ。3個落としたら失敗」
-- 「逃げる泥棒をタップで3回捕まえる。10秒以内に」
-- 「爆弾を避けながら宝石だけをタップ。爆弾タップで即失敗」
-
 # 出力形式（JSON）
 \`\`\`json
 {
   "title": "ゲーム名（日本語、8文字以内）",
   "titleEn": "English Title",
   "description": "何をするゲームか（20文字以内）",
-  "theme": "世界観（シンプルに）",
-  "visualStyle": "simple",
+  "theme": "世界観",
+  "visualStyle": "minimal | cute | retro | neon | nature | space | underwater | abstract | geometric | pixel",
   "mainMechanic": "tap-target | tap-avoid | tap-sequence | tap-rhythm | swipe-direction | drag-drop | hold-release | catch-falling | dodge-moving | match-pattern | count-objects | find-different | memory-match | timing-action | chase-target | collect-items | protect-target | balance-game | reaction-test",
   "subMechanics": [],
-  "playerGoal": "プレイヤーが画面を見て思うこと（例: あの敵を倒さなきゃ！）",
-  "playerAction": "プレイヤーが実際にする操作（例: 敵をタップして攻撃）",
+  "playerGoal": "プレイヤーが画面を見て思うこと",
+  "playerAction": "プレイヤーが実際にする操作",
   "winCondition": "具体的な成功条件（数値を含む）",
   "loseCondition": "具体的な失敗条件（数値を含む）",
   "duration": 10,
@@ -292,12 +287,11 @@ ${avoidMechanics}
   "funScore": 8,
   "uniqueness": "このゲームが面白い理由",
   "targetAudience": "想定プレイヤー層",
-  "emotionalHook": "プレイヤーが感じる感情（焦り、達成感など）"
+  "emotionalHook": "プレイヤーが感じる感情"
 }
 \`\`\`
 
 重要:
-- visualStyleは「simple」固定でOK。見た目は後で自動生成します
 - funScoreは1-10で正直に自己評価。7未満は不採用
 - playerGoal, playerAction, winCondition, loseConditionが最重要`;
   }
