@@ -258,22 +258,26 @@ export class FinalAssembler {
       }
     } as unknown as GameProject;
 
+    // エラー（致命的）と警告（許容可能）を分離
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
     // 3. JSON.stringify可能か確認
     try {
       JSON.stringify(project);
     } catch (e) {
-      issues.push(`JSON serialization failed: ${e}`);
+      errors.push(`JSON serialization failed: ${e}`);
     }
 
     // 4. 必須フィールドの存在確認
     if (!project.assets) {
-      issues.push('Missing assets');
+      errors.push('Missing assets');
     }
     if (!project.script?.rules || project.script.rules.length === 0) {
-      issues.push('No rules defined');
+      errors.push('No rules defined');
     }
     if (!project.settings?.duration) {
-      issues.push('Missing duration setting');
+      errors.push('Missing duration setting');
     }
 
     // 5. ルールの整合性確認
@@ -281,26 +285,34 @@ export class FinalAssembler {
       if (!rule.triggers?.conditions || rule.triggers.conditions.length === 0) {
         // 条件なしルールは警告
         if (rule.actions?.some(a => a.type === 'success' || a.type === 'failure')) {
-          issues.push(`Rule "${rule.id}" has success/failure without conditions`);
+          warnings.push(`Rule "${rule.id}" has success/failure without conditions`);
         }
       }
       if (!rule.actions || rule.actions.length === 0) {
-        issues.push(`Rule "${rule.id}" has no actions`);
+        warnings.push(`Rule "${rule.id}" has no actions`);
       }
     }
 
     // 6. オブジェクト数のチェック
     if (project.assets.objects.length === 0) {
-      issues.push('No game objects');
+      errors.push('No game objects');
     }
-    if (project.assets.objects.length > 15) {
-      issues.push(`Too many objects (${project.assets.objects.length}), max recommended is 15`);
+    if (project.assets.objects.length > 25) {
+      // 25以上はエラー（パフォーマンス問題の可能性）
+      errors.push(`Too many objects (${project.assets.objects.length}), max is 25`);
+    } else if (project.assets.objects.length > 15) {
+      // 15-25は警告（推奨を超えているが許容可能）
+      warnings.push(`Many objects (${project.assets.objects.length}), recommended max is 15`);
     }
+
+    // 既存のissues配列（早期チェック分）もエラーとして扱う
+    const allErrors = [...issues, ...errors];  // 早期チェック分 + 後半エラー
+    const allIssues = [...allErrors, ...warnings];
 
     return {
       project,
-      valid: issues.length === 0,
-      issues
+      valid: allErrors.length === 0,  // 致命的エラーがなければOK
+      issues: allIssues
     };
   }
 

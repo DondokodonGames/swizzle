@@ -253,7 +253,9 @@ export class Orchestrator {
     const assemblyResult = this.finalAssembler.assemble(concept, logicOutput, assets);
 
     if (!assemblyResult.valid) {
-      console.log(`      ⚠️ Assembly issues: ${assemblyResult.issues.join(', ')}`);
+      console.log(`      ❌ Assembly errors: ${assemblyResult.issues.join(', ')}`);
+    } else if (assemblyResult.issues.length > 0) {
+      console.log(`      ✅ Game assembled (warnings: ${assemblyResult.issues.join(', ')})`);
     } else {
       console.log('      ✅ Game assembled');
     }
