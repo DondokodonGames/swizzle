@@ -38,7 +38,10 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const [loadingProjectId, setLoadingProjectId] = useState<string | null>(null);
   const [newProjectName, setNewProjectName] = useState('');
-  
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importFileName, setImportFileName] = useState('');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { listProjectMetadata, loadFullProject, importProject } = useGameProject();
@@ -147,15 +150,55 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     if (!file) return;
 
     try {
-      console.log('[ProjectSelector] 📥 Importing JSON file:', file.name);
-      
+      console.log('[ProjectSelector] 📥 Importing JSON file:', file.name, 'Size:', (file.size / 1024).toFixed(1), 'KB');
+
+      // インポート開始
+      setIsImporting(true);
+      setImportProgress(0);
+      setImportFileName(file.name);
+
+      // ファイル読み込みプログレスをシミュレート（FileReaderのonprogressを使用）
+      const readFileWithProgress = (): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+
+          reader.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const progress = Math.round((e.loaded / e.total) * 50); // 読み込みは0-50%
+              setImportProgress(progress);
+            }
+          };
+
+          reader.onload = (e) => {
+            setImportProgress(50); // 読み込み完了
+            resolve(e.target?.result as string);
+          };
+
+          reader.onerror = () => reject(new Error('ファイル読み込み失敗'));
+
+          reader.readAsText(file);
+        });
+      };
+
+      // ファイルを読み込み
+      await readFileWithProgress();
+      setImportProgress(60); // パース開始
+
       if (importProject) {
+        // 処理中の進捗をシミュレート
+        setImportProgress(70);
         await importProject(file);
+        setImportProgress(90);
+
         console.log('[ProjectSelector] ✅ Project imported successfully');
-        
+
         // ✅ reloadProjects関数を使用
         await reloadProjects();
-        
+        setImportProgress(100);
+
+        // 少し待ってから完了表示
+        await new Promise(resolve => setTimeout(resolve, 300));
+
         alert('✅ ' + t('success.projectImported'));
       } else {
         throw new Error('Import function not available');
@@ -164,6 +207,9 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       console.error('[ProjectSelector] ❌ Import failed:', err);
       alert('❌ ' + t('errors.projectImportFailed'));
     } finally {
+      setIsImporting(false);
+      setImportProgress(0);
+      setImportFileName('');
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -445,10 +491,63 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
               variant="outline"
               size="md"
               onClick={handleImportClick}
+              disabled={isImporting}
             >
               JSONインポート
             </ModernButton>
           </div>
+
+          {/* インポートプログレスバー */}
+          {isImporting && (
+            <div style={{ marginTop: DESIGN_TOKENS.spacing[4] }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: DESIGN_TOKENS.spacing[2]
+              }}>
+                <span style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.neutral[700],
+                  fontWeight: 500
+                }}>
+                  📥 インポート中: {importFileName}
+                </span>
+                <span style={{
+                  fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+                  color: DESIGN_TOKENS.colors.primary[600],
+                  fontWeight: 600
+                }}>
+                  {importProgress}%
+                </span>
+              </div>
+              <div style={{
+                height: '8px',
+                backgroundColor: DESIGN_TOKENS.colors.neutral[200],
+                borderRadius: DESIGN_TOKENS.borderRadius.full,
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: `${importProgress}%`,
+                  backgroundColor: DESIGN_TOKENS.colors.primary[500],
+                  borderRadius: DESIGN_TOKENS.borderRadius.full,
+                  transition: 'width 0.3s ease-out'
+                }} />
+              </div>
+              <p style={{
+                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                color: DESIGN_TOKENS.colors.neutral[500],
+                marginTop: DESIGN_TOKENS.spacing[2],
+                textAlign: 'center'
+              }}>
+                {importProgress < 50 ? 'ファイルを読み込み中...' :
+                  importProgress < 70 ? 'JSONをパース中...' :
+                    importProgress < 90 ? 'プロジェクトを保存中...' :
+                      '完了!'}
+              </p>
+            </div>
+          )}
         </ModernCard>
 
         {/* ローディング */}

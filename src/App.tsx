@@ -6,6 +6,7 @@ import './styles/arcade-theme.css';
 
 import { useSubscription } from './hooks/monetization/useSubscription';
 import { PremiumBadge } from './components/monetization/PremiumBadge';
+import { EditorGameBridge } from './services/editor/EditorGameBridge';
 
 // ゲーム関連コンポーネントの遅延読み込み（問題30・31対応）
 const GameSequence = React.lazy(() => import('./components/GameSequence'));
@@ -376,10 +377,12 @@ function MainApp() {
   };
 
   const handleSwitchToFeed = () => {
+    EditorGameBridge.getInstance().stopGame();
     setMode('feed');
   };
 
   const handleSwitchToEditor = () => {
+    EditorGameBridge.getInstance().stopGame();
     setMode('editor');
     setEditorProjectId(undefined);
   };
@@ -401,6 +404,7 @@ function MainApp() {
 
   // 料金プランページへ遷移
   const handleGoToPricing = () => {
+    EditorGameBridge.getInstance().stopGame();
     navigate('/pricing');
   };
 

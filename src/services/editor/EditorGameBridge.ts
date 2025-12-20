@@ -41,12 +41,49 @@ export class EditorGameBridge {
   private ruleEngine: RuleEngine | null = null;
   private animationFrameId: number | null = null;
   private currentContext: RuleExecutionContext | null = null;
-  
+  private shouldStopGame: boolean = false;
+  private currentCanvas: HTMLCanvasElement | null = null;
+  private currentHandleInteraction: ((event: MouseEvent | TouchEvent) => void) | null = null;
+
   static getInstance(): EditorGameBridge {
     if (!this.instance) {
       this.instance = new EditorGameBridge();
     }
     return this.instance;
+  }
+
+  /**
+   * 実行中のゲームを強制停止
+   */
+  stopGame(): void {
+    console.log('🛑 ゲーム強制停止リクエスト');
+    this.shouldStopGame = true;
+
+    // アニメーションフレームをキャンセル
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+
+    // イベントリスナーを削除
+    if (this.currentCanvas && this.currentHandleInteraction) {
+      this.currentCanvas.removeEventListener('click', this.currentHandleInteraction);
+      this.currentCanvas.removeEventListener('touchstart', this.currentHandleInteraction);
+    }
+
+    // コンテキストをクリア
+    this.currentContext = null;
+    this.currentCanvas = null;
+    this.currentHandleInteraction = null;
+
+    console.log('✅ ゲーム停止完了');
+  }
+
+  /**
+   * ゲームが実行中かどうかを確認
+   */
+  isGameRunning(): boolean {
+    return this.animationFrameId !== null;
   }
 
   /**
@@ -57,14 +94,18 @@ export class EditorGameBridge {
     canvasElement: HTMLCanvasElement
   ): Promise<GameExecutionResult> {
     console.log('🎮 ゲーム実行開始 (Phase H統合版):', project.name || project.settings.name);
-    
+
+    // ゲーム停止フラグをリセット
+    this.shouldStopGame = false;
+    this.currentCanvas = canvasElement;
+
     const startTime = performance.now();
     let ruleExecutionCount = 0;
     const warnings: string[] = [];
     const errors: string[] = [];
     const objectsInteracted: string[] = [];
     const rulesTriggered: string[] = [];
-    
+
     try {
       // 1. Canvas初期化
       const ctx = canvasElement.getContext('2d');
@@ -402,11 +443,13 @@ export class EditorGameBridge {
 
       // 12. ゲームループ
       const gameLoop = () => {
-        if (!running) {
+        // ゲーム停止チェック（外部からの停止リクエストまたはゲーム終了）
+        if (!running || this.shouldStopGame) {
           if (this.animationFrameId) {
             cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
           }
+          running = false;  // 外部停止時もrunningをfalseに
           return;
         }
 
@@ -708,6 +751,9 @@ export class EditorGameBridge {
 
       canvasElement.addEventListener('click', handleInteraction);
       canvasElement.addEventListener('touchstart', handleInteraction);
+
+      // 外部停止用にハンドラ参照を保存
+      this.currentHandleInteraction = handleInteraction;
 
       // 14. ゲーム開始
       console.log('🚀 ゲームループ開始');
