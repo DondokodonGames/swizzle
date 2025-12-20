@@ -11,6 +11,7 @@
  *   DRY_RUN - Set to 'true' for dry run mode
  */
 
+import 'dotenv/config';
 import { Orchestrator } from './Orchestrator';
 
 async function main() {
