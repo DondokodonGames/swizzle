@@ -70,13 +70,26 @@ export class SupabaseUploader {
       throw new Error('MASTER_USER_IDが設定されていません');
     }
 
-    // デバッグ: キーの種類を確認
-    const keyPrefix = serviceKey.substring(0, 20);
-    const isServiceKey = serviceKey.includes('service_role');
+    // デバッグ: JWTをデコードしてroleを確認
+    let keyRole = 'unknown';
+    try {
+      const parts = serviceKey.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+        keyRole = payload.role || 'no role field';
+      }
+    } catch (e) {
+      keyRole = 'decode error';
+    }
+
     console.log(`   🔑 Supabase URL: ${supabaseUrl.substring(0, 30)}...`);
-    console.log(`   🔑 Key prefix: ${keyPrefix}...`);
-    console.log(`   🔑 Is service key: ${isServiceKey}`);
+    console.log(`   🔑 JWT Role: ${keyRole}`);
     console.log(`   👤 Master User ID: ${this.masterUserId.substring(0, 8)}...`);
+
+    if (keyRole !== 'service_role') {
+      console.warn(`   ⚠️ 警告: service_roleキーではありません！ (role: ${keyRole})`);
+      console.warn(`   ⚠️ RLSをバイパスできないため、アップロードが失敗する可能性があります`);
+    }
 
     // Supabaseクライアント初期化（service_roleキーでRLSバイパス）
     this.supabase = createClient(supabaseUrl, serviceKey, {
