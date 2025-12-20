@@ -196,13 +196,8 @@ export class LogicGenerator {
       throw new Error('Unexpected response type');
     }
 
-    // JSONを抽出
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No JSON found in response');
-    }
-
-    const output = JSON.parse(jsonMatch[0]) as LogicGeneratorOutput;
+    // JSONを抽出してパース
+    const output = this.extractAndParseJSON(content.text);
 
     // 基本的な構造チェック
     if (!output.script?.rules || output.script.rules.length === 0) {
@@ -319,6 +314,140 @@ export class LogicGenerator {
         onlyVerifiedFeaturesUsed: true
       }
     };
+  }
+
+  /**
+   * JSONを抽出してパース（エラー回復機能付き）
+   */
+  private extractAndParseJSON(text: string): LogicGeneratorOutput {
+    // 1. JSONブロックを抽出
+    let jsonStr = text;
+
+    // ```json ... ``` ブロックを探す
+    const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (codeBlockMatch) {
+      jsonStr = codeBlockMatch[1].trim();
+    } else {
+      // { から始まる最も外側のJSONオブジェクトを抽出
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[0];
+      }
+    }
+
+    if (!jsonStr || !jsonStr.startsWith('{')) {
+      throw new Error('No JSON found in response');
+    }
+
+    // 2. まず直接パースを試みる
+    try {
+      return JSON.parse(jsonStr) as LogicGeneratorOutput;
+    } catch (firstError) {
+      console.log('      ⚠️ Initial JSON parse failed, attempting repair...');
+
+      // 3. よくある問題を修正
+      let repaired = jsonStr;
+
+      // 末尾のカンマを削除
+      repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
+
+      // コメントを削除
+      repaired = repaired.replace(/\/\/[^\n]*/g, '');
+      repaired = repaired.replace(/\/\*[\s\S]*?\*\//g, '');
+
+      // 制御文字を削除
+      repaired = repaired.replace(/[\x00-\x1F\x7F]/g, (match) => {
+        if (match === '\n' || match === '\r' || match === '\t') {
+          return match;
+        }
+        return '';
+      });
+
+      // エスケープされていないクオートを修正（文字列値内）
+      // これは複雑なので単純なケースのみ対応
+
+      try {
+        return JSON.parse(repaired) as LogicGeneratorOutput;
+      } catch (secondError) {
+        console.log('      ⚠️ JSON repair failed, attempting bracket balancing...');
+
+        // 4. ブラケットのバランスを確認して修正
+        repaired = this.balanceBrackets(repaired);
+
+        try {
+          return JSON.parse(repaired) as LogicGeneratorOutput;
+        } catch (thirdError) {
+          // 5. 最後の手段：最初のエラー位置を特定して切り詰め
+          const errorMatch = String(thirdError).match(/position (\d+)/);
+          if (errorMatch) {
+            const position = parseInt(errorMatch[1]);
+            console.log(`      ⚠️ Error at position ${position}, attempting truncation...`);
+
+            // エラー位置の前で閉じる
+            const truncated = this.truncateAtValidPoint(repaired, position);
+            try {
+              return JSON.parse(truncated) as LogicGeneratorOutput;
+            } catch (finalError) {
+              throw new Error(`JSON parse failed after all recovery attempts: ${firstError}`);
+            }
+          }
+
+          throw new Error(`JSON parse failed: ${firstError}`);
+        }
+      }
+    }
+  }
+
+  /**
+   * ブラケットのバランスを修正
+   */
+  private balanceBrackets(json: string): string {
+    let openBraces = 0;
+    let openBrackets = 0;
+
+    for (const char of json) {
+      if (char === '{') openBraces++;
+      if (char === '}') openBraces--;
+      if (char === '[') openBrackets++;
+      if (char === ']') openBrackets--;
+    }
+
+    // 閉じ括弧を追加
+    let result = json;
+    while (openBrackets > 0) {
+      result += ']';
+      openBrackets--;
+    }
+    while (openBraces > 0) {
+      result += '}';
+      openBraces--;
+    }
+
+    return result;
+  }
+
+  /**
+   * 有効なポイントで切り詰める
+   */
+  private truncateAtValidPoint(json: string, errorPosition: number): string {
+    // エラー位置の少し前を見て、有効なJSONになる位置を探す
+    let truncatePos = errorPosition;
+
+    // 最後の完全なプロパティまで戻る
+    for (let i = errorPosition - 1; i > 0; i--) {
+      if (json[i] === '}' || json[i] === ']' || json[i] === '"') {
+        truncatePos = i + 1;
+        break;
+      }
+    }
+
+    let truncated = json.substring(0, truncatePos);
+
+    // 末尾のカンマを削除
+    truncated = truncated.replace(/,\s*$/, '');
+
+    // ブラケットのバランスを取る
+    return this.balanceBrackets(truncated);
   }
 
   /**

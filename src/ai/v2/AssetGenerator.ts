@@ -79,7 +79,12 @@ export class AssetGenerator {
           response_format: 'b64_json'
         });
 
-        const dataUrl = `data:image/png;base64,${response.data[0].b64_json}`;
+        const imageData = response.data?.[0]?.b64_json;
+        if (!imageData) {
+          console.log('      ⚠️ Background generation returned no data');
+          return this.createPlaceholderBackground(concept);
+        }
+        const dataUrl = `data:image/png;base64,${imageData}`;
         console.log('      ✅ Background generated');
 
         return {
@@ -118,7 +123,13 @@ export class AssetGenerator {
             response_format: 'b64_json'
           });
 
-          const dataUrl = `data:image/png;base64,${response.data[0].b64_json}`;
+          const imageData = response.data?.[0]?.b64_json;
+          if (!imageData) {
+            console.log(`      ⚠️ Object ${plan.id} generation returned no data`);
+            objects.push(this.createPlaceholderObject(plan));
+            continue;
+          }
+          const dataUrl = `data:image/png;base64,${imageData}`;
 
           objects.push({
             id: plan.id,

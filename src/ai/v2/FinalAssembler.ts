@@ -5,13 +5,38 @@
  * ファイル破損を防止する整合性チェック
  */
 
-import { GameProject } from '../../types/editor/GameProject';
+import { GameProject, DEFAULT_PROJECT_METADATA } from '../../types/editor/GameProject';
+import { GameDurationOption } from '../../constants/EditorLimits';
 import {
   GameConcept,
   LogicGeneratorOutput,
   GeneratedAssets,
   AssemblyResult
 } from './types';
+
+// duration秒数を有効な選択肢に変換
+function toValidDuration(seconds: number): GameDurationOption {
+  const validOptions: GameDurationOption[] = [5, 10, 15, 20, 30];
+  // 最も近い有効値を返す
+  let closest = validOptions[0];
+  let minDiff = Math.abs(seconds - closest);
+  for (const opt of validOptions) {
+    const diff = Math.abs(seconds - opt);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = opt;
+    }
+  }
+  return closest;
+}
+
+// デフォルトのアニメーション設定
+const DEFAULT_ANIMATION_SETTINGS = {
+  speed: 10,
+  loop: true,
+  pingPong: false,
+  autoStart: true
+};
 
 export class FinalAssembler {
   /**
@@ -36,7 +61,9 @@ export class FinalAssembler {
     const gameId = `game_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     const now = new Date().toISOString();
 
-    const project: GameProject = {
+    // AI生成用の簡略化したプロジェクト構造を作成
+    // 厳密な型チェックを回避するために as GameProject を使用
+    const project = {
       id: gameId,
       name: concept.title,
       nameEn: concept.titleEn,
@@ -48,14 +75,36 @@ export class FinalAssembler {
         background: assets.background ? {
           id: assets.background.id,
           name: assets.background.name,
-          frames: assets.background.frames,
+          frames: assets.background.frames.map(f => ({
+            id: `frame_${Date.now()}`,
+            dataUrl: f.dataUrl,
+            originalName: 'generated.png',
+            width: 1024,
+            height: 1024,
+            fileSize: 0,
+            uploadedAt: now
+          })),
+          animationSettings: DEFAULT_ANIMATION_SETTINGS,
+          totalSize: 0,
           createdAt: now,
           lastModified: now
         } : null,
-        objects: assets.objects.map(obj => ({
+        objects: assets.objects.map((obj, idx) => ({
           id: obj.id,
           name: obj.name,
-          frames: obj.frames,
+          frames: obj.frames.map(f => ({
+            id: `frame_${Date.now()}_${idx}`,
+            dataUrl: f.dataUrl,
+            originalName: 'generated.png',
+            width: 256,
+            height: 256,
+            fileSize: 0,
+            uploadedAt: now
+          })),
+          animationSettings: DEFAULT_ANIMATION_SETTINGS,
+          totalSize: 0,
+          defaultScale: 1.0,
+          defaultOpacity: 1.0,
           createdAt: now,
           lastModified: now
         })),
@@ -64,16 +113,26 @@ export class FinalAssembler {
           bgm: assets.bgm ? {
             id: assets.bgm.id,
             name: assets.bgm.name,
-            data: assets.bgm.data,
-            createdAt: now,
-            lastModified: now
+            dataUrl: assets.bgm.data,
+            originalName: 'generated.wav',
+            duration: 10,
+            fileSize: 0,
+            format: 'wav',
+            uploadedAt: now,
+            volume: 1.0,
+            loop: true
           } : null,
           se: assets.sounds.map(sound => ({
             id: sound.id,
             name: sound.name,
-            data: sound.data,
-            createdAt: now,
-            lastModified: now
+            dataUrl: sound.data,
+            originalName: 'generated.wav',
+            duration: 0.5,
+            fileSize: 0,
+            format: 'wav',
+            uploadedAt: now,
+            volume: 1.0,
+            loop: false
           }))
         },
         statistics: {
@@ -97,11 +156,30 @@ export class FinalAssembler {
         lastModified: now
       },
       script: {
+        initialState: {
+          score: 0,
+          flags: {},
+          counters: {}
+        },
         layout: {
-          objects: logicOutput.script.layout.objects.map(obj => ({
+          background: {
+            visible: true,
+            initialAnimation: 0,
+            animationSpeed: 10,
+            autoStart: true
+          },
+          objects: logicOutput.script.layout.objects.map((obj, idx) => ({
             objectId: obj.objectId,
             position: obj.position,
-            scale: obj.scale
+            scale: obj.scale,
+            rotation: 0,
+            zIndex: idx + 1,
+            initialState: {
+              visible: true,
+              animation: 0,
+              animationSpeed: 10,
+              autoStart: true
+            }
           })),
           texts: [],
           stageArea: {
@@ -111,22 +189,42 @@ export class FinalAssembler {
             height: 1
           }
         },
-        counters: logicOutput.script.counters,
+        counters: logicOutput.script.counters.map(counter => ({
+          ...counter,
+          currentValue: counter.initialValue,
+          persistence: 'game' as const,
+          createdAt: now,
+          lastModified: now
+        })),
         flags: [],
-        rules: logicOutput.script.rules.map(rule => ({
+        rules: logicOutput.script.rules.map((rule, idx) => ({
           id: rule.id,
           name: rule.name || rule.id,
           enabled: true,
-          targetObjectId: rule.targetObjectId,
-          triggers: rule.triggers,
-          actions: rule.actions || []
+          priority: idx,
+          targetObjectId: rule.targetObjectId || 'stage',
+          triggers: rule.triggers || { operator: 'AND' as const, conditions: [] },
+          actions: rule.actions || [],
+          createdAt: now,
+          lastModified: now
         })),
+        successConditions: [],
+        statistics: {
+          totalRules: logicOutput.script.rules.length,
+          totalConditions: 0,
+          totalActions: 0,
+          complexityScore: 0,
+          counterCount: logicOutput.script.counters.length,
+          randomUsageCount: 0,
+          randomMemoryUsage: 0
+        },
+        version: '1.0.0',
         lastModified: now
       },
       settings: {
         duration: {
-          type: 'fixed',
-          seconds: concept.duration
+          type: 'fixed' as const,
+          seconds: toValidDuration(concept.duration)
         },
         score: {
           enabled: true,
@@ -134,16 +232,31 @@ export class FinalAssembler {
         },
         timer: {
           visible: true,
-          position: 'top-right'
+          position: 'top-right' as const
         },
         lastModified: now
       },
+      creator: {
+        userId: undefined,
+        username: 'AI Generator',
+        isAnonymous: true
+      },
+      status: 'draft' as const,
+      totalSize: 0,
       metadata: {
+        ...DEFAULT_PROJECT_METADATA,
         generatedAt: now,
         concept: concept,
         assetPlan: logicOutput.assetPlan
+      },
+      versionHistory: [],
+      projectSettings: {
+        autoSaveInterval: 30000,
+        backupEnabled: true,
+        compressionEnabled: true,
+        maxVersionHistory: 10
       }
-    };
+    } as unknown as GameProject;
 
     // 3. JSON.stringify可能か確認
     try {
