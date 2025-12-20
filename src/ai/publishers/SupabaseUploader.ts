@@ -1,7 +1,7 @@
 /**
  * SupabaseUploader
  * Supabase自動アップロード処理（スキーマ完全対応版）
- * 
+ *
  * Phase H Day 5完了版: 実際のuser_gamesテーブルスキーマに対応
  * - creator_id (user_idではない)
  * - is_published (is_publicではない)
@@ -10,6 +10,20 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { GameProject } from '../../types/editor/GameProject';
+
+/**
+ * リトライ設定
+ */
+const RETRY_CONFIG = {
+  maxRetries: 3,
+  baseDelayMs: 2000,  // 2秒
+  maxDelayMs: 16000   // 16秒
+};
+
+/**
+ * 指定時間待機
+ */
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * アップロード結果
@@ -62,66 +76,94 @@ export class SupabaseUploader {
   }
   
   /**
-   * ゲームをSupabaseにアップロード
+   * ゲームをSupabaseにアップロード（リトライ機能付き）
    */
   async uploadGame(
     project: GameProject,
     qualityScore: number,
     autoPublish: boolean = true
   ): Promise<UploadResult> {
-    
-    try {
-      // 1. ゲームデータを準備（実際のスキーマに合わせる）
-      const gameData = {
-        creator_id: this.masterUserId,           // ✅ user_id → creator_id
-        title: project.name || project.settings?.name || 'Untitled Game',
-        description: project.description || project.settings?.description || 'AI-generated game',
-        template_id: 'ai_generated',             // ✅ 必須カラム追加
-        game_data: project,                      // GameProject全体をJSONBで保存
-        project_data: project,                   // ✅ project_dataにも保存
-        thumbnail_url: null,                     // ✅ 追加
-        is_published: autoPublish,               // ✅ is_public → is_published
-        is_featured: false,                      // ✅ 追加
-        play_count: 0,
-        like_count: 0,
-        ai_generated: true,
-        ai_quality_score: qualityScore,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      // 2. user_gamesテーブルに挿入
-      const { data, error } = await this.supabase
-        .from('user_games')
-        .insert(gameData)
-        .select()
-        .single();
-      
-      if (error) {
-        throw new Error(`Supabase insert error: ${error.message}`);
+    // 1. ゲームデータを準備（実際のスキーマに合わせる）
+    const gameData = {
+      creator_id: this.masterUserId,           // ✅ user_id → creator_id
+      title: project.name || project.settings?.name || 'Untitled Game',
+      description: project.description || project.settings?.description || 'AI-generated game',
+      template_id: 'ai_generated',             // ✅ 必須カラム追加
+      game_data: project,                      // GameProject全体をJSONBで保存
+      project_data: project,                   // ✅ project_dataにも保存
+      thumbnail_url: null,                     // ✅ 追加
+      is_published: autoPublish,               // ✅ is_public → is_published
+      is_featured: false,                      // ✅ 追加
+      play_count: 0,
+      like_count: 0,
+      ai_generated: true,
+      ai_quality_score: qualityScore,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    let lastError: Error | null = null;
+
+    // リトライループ
+    for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          const delayMs = Math.min(
+            RETRY_CONFIG.baseDelayMs * Math.pow(2, attempt - 1),
+            RETRY_CONFIG.maxDelayMs
+          );
+          console.log(`   ⏳ リトライ ${attempt}/${RETRY_CONFIG.maxRetries} (${delayMs / 1000}秒後)...`);
+          await sleep(delayMs);
+        }
+
+        // 2. user_gamesテーブルに挿入
+        const { data, error } = await this.supabase
+          .from('user_games')
+          .insert(gameData)
+          .select()
+          .single();
+
+        if (error) {
+          throw new Error(`Supabase insert error: ${error.message}`);
+        }
+
+        if (!data || !data.id) {
+          throw new Error('Game ID not returned from Supabase');
+        }
+
+        // 3. ゲームURLを生成
+        const gameUrl = this.generateGameUrl(data.id);
+
+        if (attempt > 0) {
+          console.log(`   ✅ リトライ成功`);
+        }
+
+        return {
+          success: true,
+          gameId: data.id,
+          url: gameUrl
+        };
+
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        const isNetworkError = lastError.message.includes('fetch failed') ||
+          lastError.message.includes('network') ||
+          lastError.message.includes('ECONNREFUSED') ||
+          lastError.message.includes('timeout');
+
+        if (!isNetworkError || attempt === RETRY_CONFIG.maxRetries) {
+          console.error('Supabase upload error:', lastError);
+          break;
+        }
+
+        console.warn(`   ⚠️ ネットワークエラー: ${lastError.message}`);
       }
-      
-      if (!data || !data.id) {
-        throw new Error('Game ID not returned from Supabase');
-      }
-      
-      // 3. ゲームURLを生成
-      const gameUrl = this.generateGameUrl(data.id);
-      
-      return {
-        success: true,
-        gameId: data.id,
-        url: gameUrl
-      };
-      
-    } catch (error) {
-      console.error('Supabase upload error:', error);
-      
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
     }
+
+    return {
+      success: false,
+      error: lastError?.message || 'Unknown error'
+    };
   }
   
   /**
