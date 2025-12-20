@@ -2,6 +2,7 @@
  * Step 4: LogicValidator
  *
  * 100%成功が前提。エディター仕様との完全整合性を検証
+ * 全てのパラメータを同等にチェック
  */
 
 import {
@@ -14,6 +15,10 @@ import {
   VerifiedConditionType,
   VerifiedActionType
 } from './types';
+
+// ==========================================
+// エディター仕様定義
+// ==========================================
 
 // 使用禁止の条件タイプ
 const FORBIDDEN_CONDITIONS = ['position', 'animation', 'random'];
@@ -28,6 +33,21 @@ const VALID_CONDITIONS: VerifiedConditionType[] = ['touch', 'time', 'counter', '
 const VALID_ACTIONS: VerifiedActionType[] = [
   'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag'
 ];
+
+// 各パラメータの有効値
+const VALID_TOUCH_TYPES = ['down', 'up', 'hold', 'drag', 'swipe', 'flick'];
+const VALID_TOUCH_TARGETS = ['self', 'stage']; // + objectId
+const VALID_TIME_TYPES = ['exact', 'range', 'interval'];
+const VALID_COMPARISONS = ['equals', 'greaterOrEqual', 'greater', 'less', 'lessOrEqual'];
+const VALID_COLLISION_TYPES = ['enter', 'stay', 'exit'];
+const VALID_CHECK_MODES = ['hitbox', 'pixel'];
+const VALID_COUNTER_OPERATIONS = ['increment', 'decrement', 'set', 'add', 'subtract'];
+const VALID_MOVEMENT_TYPES = ['straight', 'teleport', 'wander', 'stop'];
+const VALID_EFFECT_TYPES = ['flash', 'shake', 'scale', 'rotate', 'particles'];
+
+// 速度の推奨範囲
+const SPEED_MIN = 0.5;
+const SPEED_MAX = 15.0;
 
 export class LogicValidator {
   /**
@@ -54,10 +74,16 @@ export class LogicValidator {
     // 6. 使用禁止機能チェック
     this.checkForbiddenFeatures(output, errors);
 
-    // 7. 成功パスにプレイヤー操作が必要
+    // 7. 条件パラメータの妥当性チェック
+    this.checkConditionParameters(output, errors);
+
+    // 8. アクションパラメータの妥当性チェック
+    this.checkActionParameters(output, errors);
+
+    // 9. 成功パスにプレイヤー操作が必要
     this.checkPlayerActionOnSuccessPath(output, errors);
 
-    // 8. successとfailureアクションの存在チェック
+    // 10. successとfailureアクションの存在チェック
     this.checkSuccessFailureExists(output, errors);
 
     return {
@@ -155,7 +181,6 @@ export class LogicValidator {
     );
 
     for (const rule of successRules) {
-      // 条件がないsuccessルール
       if (!rule.triggers?.conditions || rule.triggers.conditions.length === 0) {
         errors.push({
           type: 'critical',
@@ -166,7 +191,6 @@ export class LogicValidator {
         continue;
       }
 
-      // カウンター条件のチェック
       const counterCondition = rule.triggers.conditions.find(c => c.type === 'counter');
       if (counterCondition && counterCondition.counterName && counterCondition.value !== undefined) {
         const counter = output.script.counters.find(c => c.id === counterCondition.counterName);
@@ -212,7 +236,6 @@ export class LogicValidator {
     );
 
     for (const rule of failureRules) {
-      // 条件がないfailureルール
       if (!rule.triggers?.conditions || rule.triggers.conditions.length === 0) {
         errors.push({
           type: 'critical',
@@ -223,7 +246,6 @@ export class LogicValidator {
         continue;
       }
 
-      // カウンター条件のチェック
       const counterCondition = rule.triggers.conditions.find(c => c.type === 'counter');
       if (counterCondition && counterCondition.counterName && counterCondition.value !== undefined) {
         const counter = output.script.counters.find(c => c.id === counterCondition.counterName);
@@ -277,7 +299,6 @@ export class LogicValidator {
       }
     }
 
-    // アセット計画の初期位置もチェック
     for (const obj of output.assetPlan.objects) {
       if (obj.initialPosition.x < 0 || obj.initialPosition.x > 1 ||
           obj.initialPosition.y < 0 || obj.initialPosition.y > 1) {
@@ -296,7 +317,6 @@ export class LogicValidator {
    */
   private checkForbiddenFeatures(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
     for (const rule of output.script.rules) {
-      // 条件チェック
       for (const condition of rule.triggers?.conditions || []) {
         if (FORBIDDEN_CONDITIONS.includes(condition.type)) {
           errors.push({
@@ -317,7 +337,6 @@ export class LogicValidator {
         }
       }
 
-      // アクションチェック
       for (const action of rule.actions || []) {
         if (FORBIDDEN_ACTIONS.includes(action.type)) {
           errors.push({
@@ -341,6 +360,315 @@ export class LogicValidator {
   }
 
   /**
+   * 条件パラメータの妥当性チェック
+   */
+  private checkConditionParameters(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
+    const definedObjectIds = new Set(output.assetPlan.objects.map(o => o.id));
+
+    for (const rule of output.script.rules) {
+      for (const condition of rule.triggers?.conditions || []) {
+        const ruleId = rule.id;
+
+        switch (condition.type) {
+          case 'touch':
+            // touchTypeチェック
+            if (condition.touchType && !VALID_TOUCH_TYPES.includes(condition.touchType)) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_TOUCH_TYPE',
+                message: `ルール "${ruleId}": 無効なtouchType "${condition.touchType}"`,
+                fix: `有効な値: ${VALID_TOUCH_TYPES.join(', ')}`
+              });
+            }
+            // targetチェック
+            if (condition.target) {
+              const isValidTarget = VALID_TOUCH_TARGETS.includes(condition.target) ||
+                                    definedObjectIds.has(condition.target);
+              if (!isValidTarget) {
+                errors.push({
+                  type: 'critical',
+                  code: 'INVALID_TOUCH_TARGET',
+                  message: `ルール "${ruleId}": 無効なtouch target "${condition.target}"`,
+                  fix: `'self', 'stage', または定義済みのobjectIdを使用してください`
+                });
+              }
+            }
+            break;
+
+          case 'time':
+            // timeTypeチェック
+            if (condition.timeType && !VALID_TIME_TYPES.includes(condition.timeType)) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_TIME_TYPE',
+                message: `ルール "${ruleId}": 無効なtimeType "${condition.timeType}"`,
+                fix: `有効な値: ${VALID_TIME_TYPES.join(', ')}`
+              });
+            }
+            // secondsチェック
+            if (condition.seconds !== undefined && (condition.seconds < 0 || condition.seconds > 60)) {
+              errors.push({
+                type: 'warning',
+                code: 'INVALID_TIME_SECONDS',
+                message: `ルール "${ruleId}": seconds(${condition.seconds})が異常な値`,
+                fix: `0〜60の範囲を推奨`
+              });
+            }
+            // intervalチェック
+            if (condition.interval !== undefined && (condition.interval <= 0 || condition.interval > 10)) {
+              errors.push({
+                type: 'warning',
+                code: 'INVALID_TIME_INTERVAL',
+                message: `ルール "${ruleId}": interval(${condition.interval})が異常な値`,
+                fix: `0より大きく10以下を推奨`
+              });
+            }
+            break;
+
+          case 'counter':
+            // comparisonチェック
+            if (condition.comparison && !VALID_COMPARISONS.includes(condition.comparison)) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_COMPARISON',
+                message: `ルール "${ruleId}": 無効なcomparison "${condition.comparison}"`,
+                fix: `有効な値: ${VALID_COMPARISONS.join(', ')}`
+              });
+            }
+            // valueチェック
+            if (condition.value === undefined) {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_COUNTER_VALUE',
+                message: `ルール "${ruleId}": counter条件にvalueがありません`,
+                fix: `比較対象の数値を指定してください`
+              });
+            }
+            break;
+
+          case 'collision':
+            // collisionTypeチェック
+            if (condition.collisionType && !VALID_COLLISION_TYPES.includes(condition.collisionType)) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_COLLISION_TYPE',
+                message: `ルール "${ruleId}": 無効なcollisionType "${condition.collisionType}"`,
+                fix: `有効な値: ${VALID_COLLISION_TYPES.join(', ')}`
+              });
+            }
+            // checkModeチェック
+            if (condition.checkMode && !VALID_CHECK_MODES.includes(condition.checkMode)) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_CHECK_MODE',
+                message: `ルール "${ruleId}": 無効なcheckMode "${condition.checkMode}"`,
+                fix: `有効な値: ${VALID_CHECK_MODES.join(', ')}`
+              });
+            }
+            // targetチェック（objectId）
+            if (condition.target && !definedObjectIds.has(condition.target) &&
+                condition.target !== 'stageArea' && condition.target !== 'other') {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_COLLISION_TARGET',
+                message: `ルール "${ruleId}": collision target "${condition.target}" が未定義`,
+                fix: `定義済みのobjectIdを使用してください`
+              });
+            }
+            break;
+
+          case 'flag':
+            // flagIdチェック（空でないか）
+            if (!condition.flagId || condition.flagId.trim() === '') {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_FLAG_ID',
+                message: `ルール "${ruleId}": flag条件にflagIdがありません`,
+                fix: `フラグIDを指定してください`
+              });
+            }
+            break;
+        }
+      }
+    }
+  }
+
+  /**
+   * アクションパラメータの妥当性チェック
+   */
+  private checkActionParameters(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
+    const definedObjectIds = new Set(output.assetPlan.objects.map(o => o.id));
+
+    for (const rule of output.script.rules) {
+      for (const action of rule.actions || []) {
+        const ruleId = rule.id;
+
+        switch (action.type) {
+          case 'counter':
+            // operationチェック
+            if (action.operation && !VALID_COUNTER_OPERATIONS.includes(action.operation)) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_COUNTER_OPERATION',
+                message: `ルール "${ruleId}": 無効なoperation "${action.operation}"`,
+                fix: `有効な値: ${VALID_COUNTER_OPERATIONS.join(', ')}`
+              });
+            }
+            // valueチェック（add/subtract/setの場合）
+            if (['add', 'subtract', 'set'].includes(action.operation || '') && action.value === undefined) {
+              errors.push({
+                type: 'warning',
+                code: 'MISSING_COUNTER_VALUE',
+                message: `ルール "${ruleId}": counterアクション(${action.operation})にvalueがありません`,
+                fix: `操作する値を指定してください（デフォルト: 1）`
+              });
+            }
+            break;
+
+          case 'move':
+            if (action.movement) {
+              // movement.typeチェック
+              if (action.movement.type && !VALID_MOVEMENT_TYPES.includes(action.movement.type)) {
+                errors.push({
+                  type: 'critical',
+                  code: 'INVALID_MOVEMENT_TYPE',
+                  message: `ルール "${ruleId}": 無効なmovement.type "${action.movement.type}"`,
+                  fix: `有効な値: ${VALID_MOVEMENT_TYPES.join(', ')}`
+                });
+              }
+              // speedチェック
+              if (action.movement.speed !== undefined) {
+                if (action.movement.speed <= 0) {
+                  errors.push({
+                    type: 'critical',
+                    code: 'INVALID_SPEED',
+                    message: `ルール "${ruleId}": speed(${action.movement.speed})は正の値である必要があります`,
+                    fix: `${SPEED_MIN}〜${SPEED_MAX}の範囲を推奨`
+                  });
+                } else if (action.movement.speed < SPEED_MIN || action.movement.speed > SPEED_MAX) {
+                  errors.push({
+                    type: 'warning',
+                    code: 'UNUSUAL_SPEED',
+                    message: `ルール "${ruleId}": speed(${action.movement.speed})が推奨範囲外`,
+                    fix: `${SPEED_MIN}〜${SPEED_MAX}の範囲を推奨`
+                  });
+                }
+              }
+              // targetの座標チェック
+              if (action.movement.target && typeof action.movement.target === 'object') {
+                const target = action.movement.target as { x: number; y: number };
+                if (target.x < 0 || target.x > 1 || target.y < 0 || target.y > 1) {
+                  errors.push({
+                    type: 'critical',
+                    code: 'INVALID_MOVE_TARGET',
+                    message: `ルール "${ruleId}": movement.target座標(${target.x}, ${target.y})が0.0〜1.0の範囲外`,
+                    fix: `座標を0.0〜1.0の範囲に修正してください`
+                  });
+                }
+              }
+            }
+            break;
+
+          case 'effect':
+            if (action.effect) {
+              // effect.typeチェック
+              if (action.effect.type && !VALID_EFFECT_TYPES.includes(action.effect.type)) {
+                errors.push({
+                  type: 'critical',
+                  code: 'INVALID_EFFECT_TYPE',
+                  message: `ルール "${ruleId}": 無効なeffect.type "${action.effect.type}"`,
+                  fix: `有効な値: ${VALID_EFFECT_TYPES.join(', ')}`
+                });
+              }
+              // durationチェック
+              if (action.effect.duration !== undefined) {
+                if (action.effect.duration <= 0) {
+                  errors.push({
+                    type: 'critical',
+                    code: 'INVALID_EFFECT_DURATION',
+                    message: `ルール "${ruleId}": effect.duration(${action.effect.duration})は正の値である必要があります`,
+                    fix: `0より大きい値を指定してください`
+                  });
+                } else if (action.effect.duration > 5) {
+                  errors.push({
+                    type: 'warning',
+                    code: 'LONG_EFFECT_DURATION',
+                    message: `ルール "${ruleId}": effect.duration(${action.effect.duration})が長すぎる可能性があります`,
+                    fix: `5秒以下を推奨`
+                  });
+                }
+              }
+              // scaleAmountチェック
+              if (action.effect.scaleAmount !== undefined) {
+                if (action.effect.scaleAmount <= 0) {
+                  errors.push({
+                    type: 'critical',
+                    code: 'INVALID_SCALE_AMOUNT',
+                    message: `ルール "${ruleId}": scaleAmount(${action.effect.scaleAmount})は正の値である必要があります`,
+                    fix: `0より大きい値を指定してください`
+                  });
+                } else if (action.effect.scaleAmount > 5) {
+                  errors.push({
+                    type: 'warning',
+                    code: 'LARGE_SCALE_AMOUNT',
+                    message: `ルール "${ruleId}": scaleAmount(${action.effect.scaleAmount})が大きすぎる可能性があります`,
+                    fix: `0.5〜3.0の範囲を推奨`
+                  });
+                }
+              }
+            }
+            break;
+
+          case 'addScore':
+            // pointsチェック
+            if (action.points === undefined) {
+              errors.push({
+                type: 'warning',
+                code: 'MISSING_POINTS',
+                message: `ルール "${ruleId}": addScoreにpointsがありません`,
+                fix: `追加するポイント数を指定してください`
+              });
+            } else if (action.points < 0) {
+              errors.push({
+                type: 'warning',
+                code: 'NEGATIVE_POINTS',
+                message: `ルール "${ruleId}": points(${action.points})が負の値`,
+                fix: `通常は正の値を使用します`
+              });
+            }
+            break;
+
+          case 'hide':
+          case 'show':
+            // targetIdが必須
+            if (!action.targetId) {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_TARGET_ID',
+                message: `ルール "${ruleId}": ${action.type}アクションにtargetIdがありません`,
+                fix: `対象のobjectIdを指定してください`
+              });
+            }
+            break;
+
+          case 'setFlag':
+          case 'toggleFlag':
+            // flagIdチェック
+            if (!action.flagId || action.flagId.trim() === '') {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_FLAG_ID',
+                message: `ルール "${ruleId}": ${action.type}アクションにflagIdがありません`,
+                fix: `フラグIDを指定してください`
+              });
+            }
+            break;
+        }
+      }
+    }
+  }
+
+  /**
    * 成功パスにプレイヤー操作が必要
    */
   private checkPlayerActionOnSuccessPath(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
@@ -348,18 +676,15 @@ export class LogicValidator {
       r.actions?.some(a => a.type === 'success')
     );
 
-    // 直接touch条件でsuccessするルールがあるか
     let hasDirectTouchSuccess = successRules.some(r =>
       r.triggers?.conditions?.some(c => c.type === 'touch')
     );
 
     if (hasDirectTouchSuccess) return;
 
-    // カウンター経由でsuccessする場合、そのカウンターを増やすルールにtouchがあるか
     for (const successRule of successRules) {
       const counterCondition = successRule.triggers?.conditions?.find(c => c.type === 'counter');
       if (counterCondition?.counterName) {
-        // このカウンターを操作するルールを探す
         const counterModifyingRules = output.script.rules.filter(r =>
           r.actions?.some(a => a.type === 'counter' && a.counterName === counterCondition.counterName)
         );
