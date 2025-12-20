@@ -21,11 +21,15 @@ import {
 // ==========================================
 
 // 使用可能な条件タイプ
-const VALID_CONDITIONS: VerifiedConditionType[] = ['touch', 'time', 'counter', 'collision', 'flag', 'gameState'];
+const VALID_CONDITIONS: VerifiedConditionType[] = [
+  'touch', 'time', 'counter', 'collision', 'flag', 'gameState',
+  'position', 'animation', 'random'
+];
 
 // 使用可能なアクションタイプ
 const VALID_ACTIONS: VerifiedActionType[] = [
-  'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag'
+  'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag',
+  'playSound', 'switchAnimation', 'applyForce', 'applyImpulse', 'randomAction'
 ];
 
 // 各パラメータの有効値
@@ -38,6 +42,10 @@ const VALID_CHECK_MODES = ['hitbox', 'pixel'];
 const VALID_COUNTER_OPERATIONS = ['increment', 'decrement', 'set', 'add', 'subtract'];
 const VALID_MOVEMENT_TYPES = ['straight', 'teleport', 'wander', 'stop'];
 const VALID_EFFECT_TYPES = ['flash', 'shake', 'scale', 'rotate', 'particles'];
+// 新規追加
+const VALID_POSITION_AREAS = ['inside', 'outside'];  // 'crossing' は未対応
+const VALID_ANIMATION_CONDITIONS = ['playing', 'stopped', 'frame', 'frameRange', 'loop'];  // 'start','end' は未実装
+const VALID_RANDOM_SELECTION_MODES = ['uniform', 'probability', 'weighted'];
 
 // 速度の推奨範囲
 const SPEED_MIN = 0.5;
@@ -464,6 +472,123 @@ export class LogicValidator {
               });
             }
             break;
+
+          case 'position':
+            // areaチェック（inside/outsideのみ対応）
+            if (condition.area && !VALID_POSITION_AREAS.includes(condition.area)) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_POSITION_AREA',
+                message: `ルール "${ruleId}": 無効なposition area "${condition.area}"`,
+                fix: `有効な値: ${VALID_POSITION_AREAS.join(', ')} ('crossing'は未対応)`
+              });
+            }
+            // targetチェック
+            if (condition.target && !definedObjectIds.has(condition.target)) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_POSITION_TARGET',
+                message: `ルール "${ruleId}": position target "${condition.target}" が未定義`,
+                fix: `定義済みのobjectIdを使用してください`
+              });
+            }
+            // regionチェック（座標範囲）
+            if (condition.region) {
+              const { x, y, width, height } = condition.region;
+              if (x !== undefined && (x < 0 || x > 1)) {
+                errors.push({
+                  type: 'warning',
+                  code: 'INVALID_REGION_X',
+                  message: `ルール "${ruleId}": region.x(${x})が0-1の範囲外`,
+                  fix: `正規化座標(0.0-1.0)を使用してください`
+                });
+              }
+              if (y !== undefined && (y < 0 || y > 1)) {
+                errors.push({
+                  type: 'warning',
+                  code: 'INVALID_REGION_Y',
+                  message: `ルール "${ruleId}": region.y(${y})が0-1の範囲外`,
+                  fix: `正規化座標(0.0-1.0)を使用してください`
+                });
+              }
+            }
+            break;
+
+          case 'animation':
+            // conditionチェック（動作確認済みのもののみ）
+            if (condition.condition && !VALID_ANIMATION_CONDITIONS.includes(condition.condition)) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_ANIMATION_CONDITION',
+                message: `ルール "${ruleId}": 無効なanimation condition "${condition.condition}"`,
+                fix: `有効な値: ${VALID_ANIMATION_CONDITIONS.join(', ')} ('start','end'は未実装)`
+              });
+            }
+            // targetチェック
+            if (condition.target && !definedObjectIds.has(condition.target)) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_ANIMATION_TARGET',
+                message: `ルール "${ruleId}": animation target "${condition.target}" が未定義`,
+                fix: `定義済みのobjectIdを使用してください`
+              });
+            }
+            // frame条件の場合frameNumberが必要
+            if (condition.condition === 'frame' && condition.frameNumber === undefined) {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_FRAME_NUMBER',
+                message: `ルール "${ruleId}": animation frame条件にframeNumberがありません`,
+                fix: `チェックするフレーム番号を指定してください`
+              });
+            }
+            // frameRange条件の場合frameRangeが必要
+            if (condition.condition === 'frameRange' && (!condition.frameRange || condition.frameRange.length !== 2)) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_FRAME_RANGE',
+                message: `ルール "${ruleId}": animation frameRange条件にframeRangeがありません`,
+                fix: `[開始フレーム, 終了フレーム]の形式で指定してください`
+              });
+            }
+            // loop条件の場合loopCountが必要
+            if (condition.condition === 'loop' && condition.loopCount === undefined) {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_LOOP_COUNT',
+                message: `ルール "${ruleId}": animation loop条件にloopCountがありません`,
+                fix: `ループ回数を指定してください`
+              });
+            }
+            break;
+
+          case 'random':
+            // probabilityチェック（0-1の範囲）
+            if (condition.probability === undefined) {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_PROBABILITY',
+                message: `ルール "${ruleId}": random条件にprobabilityがありません`,
+                fix: `0.0-1.0の確率値を指定してください`
+              });
+            } else if (condition.probability < 0 || condition.probability > 1) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_PROBABILITY',
+                message: `ルール "${ruleId}": probability(${condition.probability})が0-1の範囲外`,
+                fix: `0.0-1.0の範囲で指定してください`
+              });
+            }
+            // intervalチェック（正の値）
+            if (condition.interval !== undefined && condition.interval < 0) {
+              errors.push({
+                type: 'warning',
+                code: 'INVALID_RANDOM_INTERVAL',
+                message: `ルール "${ruleId}": random interval(${condition.interval})が負の値`,
+                fix: `0以上のミリ秒値を指定してください`
+              });
+            }
+            break;
         }
       }
     }
@@ -636,6 +761,143 @@ export class LogicValidator {
                 code: 'MISSING_FLAG_ID',
                 message: `ルール "${ruleId}": ${action.type}アクションにflagIdがありません`,
                 fix: `フラグIDを指定してください`
+              });
+            }
+            break;
+
+          case 'playSound':
+            // soundIdチェック
+            if (!action.soundId || action.soundId.trim() === '') {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_SOUND_ID',
+                message: `ルール "${ruleId}": playSoundアクションにsoundIdがありません`,
+                fix: `再生する音声のIDを指定してください`
+              });
+            }
+            // volumeチェック
+            if (action.volume !== undefined && (action.volume < 0 || action.volume > 1)) {
+              errors.push({
+                type: 'warning',
+                code: 'INVALID_VOLUME',
+                message: `ルール "${ruleId}": volume(${action.volume})が0-1の範囲外`,
+                fix: `0.0-1.0の範囲で指定してください`
+              });
+            }
+            break;
+
+          case 'switchAnimation':
+            // targetIdチェック
+            if (!action.targetId) {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_TARGET_ID',
+                message: `ルール "${ruleId}": switchAnimationアクションにtargetIdがありません`,
+                fix: `対象のobjectIdを指定してください`
+              });
+            } else if (!definedObjectIds.has(action.targetId)) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_TARGET_ID',
+                message: `ルール "${ruleId}": switchAnimation target "${action.targetId}" が未定義`,
+                fix: `定義済みのobjectIdを使用してください`
+              });
+            }
+            // animationIndexチェック
+            if (action.animationIndex === undefined) {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_ANIMATION_INDEX',
+                message: `ルール "${ruleId}": switchAnimationにanimationIndexがありません`,
+                fix: `切り替え先のアニメーションインデックスを指定してください`
+              });
+            } else if (action.animationIndex < 0) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_ANIMATION_INDEX',
+                message: `ルール "${ruleId}": animationIndex(${action.animationIndex})が負の値`,
+                fix: `0以上の値を指定してください`
+              });
+            }
+            break;
+
+          case 'applyForce':
+            // targetIdチェック
+            if (!action.targetId) {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_TARGET_ID',
+                message: `ルール "${ruleId}": applyForceアクションにtargetIdがありません`,
+                fix: `対象のobjectIdを指定してください`
+              });
+            }
+            // forceチェック
+            if (!action.force) {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_FORCE',
+                message: `ルール "${ruleId}": applyForceにforceがありません`,
+                fix: `{x: number, y: number}形式で力を指定してください`
+              });
+            } else {
+              if (action.force.x === undefined || action.force.y === undefined) {
+                errors.push({
+                  type: 'critical',
+                  code: 'INVALID_FORCE',
+                  message: `ルール "${ruleId}": force.xまたはforce.yがありません`,
+                  fix: `{x: number, y: number}形式で力を指定してください`
+                });
+              }
+            }
+            break;
+
+          case 'applyImpulse':
+            // targetIdチェック
+            if (!action.targetId) {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_TARGET_ID',
+                message: `ルール "${ruleId}": applyImpulseアクションにtargetIdがありません`,
+                fix: `対象のobjectIdを指定してください`
+              });
+            }
+            // impulseチェック
+            if (!action.impulse) {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_IMPULSE',
+                message: `ルール "${ruleId}": applyImpulseにimpulseがありません`,
+                fix: `{x: number, y: number}形式で衝撃を指定してください`
+              });
+            } else {
+              if (action.impulse.x === undefined || action.impulse.y === undefined) {
+                errors.push({
+                  type: 'critical',
+                  code: 'INVALID_IMPULSE',
+                  message: `ルール "${ruleId}": impulse.xまたはimpulse.yがありません`,
+                  fix: `{x: number, y: number}形式で衝撃を指定してください`
+                });
+              }
+            }
+            break;
+
+          case 'randomAction':
+            // actionsチェック
+            if (!action.actions || action.actions.length === 0) {
+              errors.push({
+                type: 'critical',
+                code: 'MISSING_ACTIONS',
+                message: `ルール "${ruleId}": randomActionにactionsがありません`,
+                fix: `選択肢となるアクションの配列を指定してください`
+              });
+            }
+            // selectionModeチェック
+            if (action.selectionMode && !VALID_RANDOM_SELECTION_MODES.includes(action.selectionMode)) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_SELECTION_MODE',
+                message: `ルール "${ruleId}": 無効なselectionMode "${action.selectionMode}"`,
+                fix: `有効な値: ${VALID_RANDOM_SELECTION_MODES.join(', ')}`
               });
             }
             break;

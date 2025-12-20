@@ -196,6 +196,60 @@ export class EditorGameBridge {
         }
       }
 
+      // 7.5. 音声リソース読み込み
+      const audioCache = new Map<string, HTMLAudioElement>();
+
+      // BGM読み込み
+      if (project.assets?.audio?.bgm?.dataUrl) {
+        try {
+          const bgmAudio = new Audio(project.assets.audio.bgm.dataUrl);
+          bgmAudio.loop = true;
+          audioCache.set('bgm', bgmAudio);
+          console.log('✅ BGM読み込み完了');
+        } catch (error) {
+          warnings.push('BGMの読み込みに失敗しました');
+        }
+      }
+
+      // SE読み込み
+      if (project.assets?.audio?.se) {
+        for (const se of project.assets.audio.se) {
+          if (!se.dataUrl) continue;
+          try {
+            const seAudio = new Audio(se.dataUrl);
+            audioCache.set(se.id, seAudio);
+            console.log(`✅ SE読み込み完了: ${se.name}`);
+          } catch (error) {
+            warnings.push(`SE "${se.name}" の読み込みに失敗しました`);
+          }
+        }
+      }
+
+      // AudioSystem作成
+      const audioSystem = {
+        playSound: async (soundId: string, volume?: number) => {
+          const audio = audioCache.get(soundId);
+          if (audio) {
+            audio.volume = volume ?? 1.0;
+            audio.currentTime = 0;
+            await audio.play().catch(e => console.warn('Audio play failed:', e));
+          }
+        },
+        stopSound: (soundId: string) => {
+          const audio = audioCache.get(soundId);
+          if (audio) {
+            audio.pause();
+            audio.currentTime = 0;
+          }
+        },
+        setVolume: (soundId: string, volume: number) => {
+          const audio = audioCache.get(soundId);
+          if (audio) {
+            audio.volume = Math.max(0, Math.min(1, volume));
+          }
+        }
+      };
+
       // 8. RuleExecutionContext初期化
       const objectsMap = new Map();
       
@@ -322,7 +376,8 @@ export class EditorGameBridge {
           width: canvasElement.width,
           height: canvasElement.height,
           context: ctx
-        }
+        },
+        audioSystem
       };
 
       console.log('✅ ゲーム初期化完了:', {

@@ -56,6 +56,12 @@ export interface ConceptValidationResult {
 
 /**
  * エディター仕様準拠の条件タイプ（動作確認済みのみ）
+ *
+ * 注意事項:
+ * - position: 'inside'/'outside' のみ動作確認済み（'crossing' は未対応）
+ * - animation: 'playing','stopped','frame','frameRange','loop' のみ動作確認済み
+ *   ('start','end' は未実装)
+ * - random: 完全動作（probability, interval, seed 対応）
  */
 export type VerifiedConditionType =
   | 'touch'
@@ -63,10 +69,19 @@ export type VerifiedConditionType =
   | 'counter'
   | 'collision'
   | 'flag'
-  | 'gameState';
+  | 'gameState'
+  | 'position'
+  | 'animation'
+  | 'random';
 
 /**
  * エディター仕様準拠のアクションタイプ（動作確認済みのみ）
+ *
+ * 注意事項:
+ * - playSound: 音声アセットが必要
+ * - switchAnimation: 複数フレームアセットが必要
+ * - applyForce/applyImpulse: 物理演算設定が必要（physicsプロパティ）
+ * - randomAction: アクション配列から確率的に選択実行
  */
 export type VerifiedActionType =
   | 'success'
@@ -78,7 +93,12 @@ export type VerifiedActionType =
   | 'addScore'
   | 'effect'
   | 'setFlag'
-  | 'toggleFlag';
+  | 'toggleFlag'
+  | 'playSound'
+  | 'switchAnimation'
+  | 'applyForce'
+  | 'applyImpulse'
+  | 'randomAction';
 
 /**
  * オブジェクト計画
@@ -171,6 +191,21 @@ export interface TriggerCondition {
   checkMode?: 'hitbox' | 'pixel';
   // flag
   flagId?: string;
+  // position
+  area?: 'inside' | 'outside';
+  region?: { x: number; y: number; width?: number; height?: number };
+  // animation
+  condition?: 'playing' | 'stopped' | 'frame' | 'frameRange' | 'loop';
+  frameNumber?: number;
+  frameRange?: [number, number];
+  loopCount?: number;
+  // random
+  probability?: number;
+  seed?: string;
+  conditions?: {
+    onSuccess?: TriggerCondition[];
+    onFailure?: TriggerCondition[];
+  };
 }
 
 /**
@@ -196,6 +231,7 @@ export interface GameAction {
   // counter
   counterName?: string;
   operation?: 'increment' | 'decrement' | 'set' | 'add' | 'subtract';
+  value?: number;  // counter操作の値
   // addScore
   points?: number;
   // effect
@@ -207,6 +243,28 @@ export interface GameAction {
   };
   // flag
   flagId?: string;
+  // playSound
+  soundId?: string;
+  volume?: number;
+  // switchAnimation
+  animationIndex?: number;
+  startFrame?: number;
+  autoPlay?: boolean;
+  loop?: boolean;
+  speed?: number;
+  reverse?: boolean;
+  // applyForce
+  force?: { x: number; y: number };
+  // applyImpulse
+  impulse?: { x: number; y: number };
+  // randomAction
+  actions?: Array<{
+    action: GameAction;
+    weight?: number;
+    probability?: number;
+  }>;
+  selectionMode?: 'uniform' | 'probability' | 'weighted';
+  weights?: number[];
 }
 
 /**
