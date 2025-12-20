@@ -73,15 +73,18 @@ export interface ConceptGeneratorConfig {
   model?: string;
   minScore?: number;
   dryRun?: boolean;
+  apiKey?: string;
 }
 
 export class GameConceptGenerator {
   private client: Anthropic;
-  private config: Required<ConceptGeneratorConfig>;
+  private config: Required<Omit<ConceptGeneratorConfig, 'apiKey'>>;
   private usedThemes: Set<string> = new Set();
 
   constructor(config?: ConceptGeneratorConfig) {
-    this.client = new Anthropic();
+    this.client = new Anthropic({
+      apiKey: config?.apiKey || process.env.ANTHROPIC_API_KEY
+    });
     this.config = {
       model: config?.model || 'claude-sonnet-4-20250514',
       minScore: config?.minScore || 7,

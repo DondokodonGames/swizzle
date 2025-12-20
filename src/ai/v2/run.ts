@@ -11,18 +11,35 @@
  *   DRY_RUN - Set to 'true' for dry run mode
  */
 
-import 'dotenv/config';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 import { Orchestrator } from './Orchestrator';
+
+// .envと.env.localの両方を読み込む
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 async function main() {
   console.log('🎮 V2 AI Game Generator');
   console.log('========================\n');
 
+  // 環境変数のデバッグ出力
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  const dryRun = process.env.DRY_RUN === 'true';
+
+  console.log(`🔑 ANTHROPIC_API_KEY: ${anthropicKey ? `設定済み (${anthropicKey.substring(0, 15)}...)` : '❌ 未設定'}`);
+  console.log(`🔑 OPENAI_API_KEY: ${openaiApiKey ? `設定済み` : '未設定 (mockを使用)'}`);
+
+  if (!anthropicKey && !dryRun) {
+    console.error('❌ エラー: ANTHROPIC_API_KEY が設定されていません');
+    console.error('   .env または .env.local に ANTHROPIC_API_KEY=sk-ant-... を設定してください');
+    process.exit(1);
+  }
+
   // Parse arguments
   const args = process.argv.slice(2);
   const count = parseInt(args[0]) || 1;
-  const dryRun = process.env.DRY_RUN === 'true';
-  const openaiApiKey = process.env.OPENAI_API_KEY;
 
   console.log(`Target: ${count} games`);
   console.log(`Dry run: ${dryRun}`);
@@ -34,6 +51,7 @@ async function main() {
     targetGamesPerRun: count,
     maxRetries: 3,
     dryRun,
+    anthropicApiKey: anthropicKey,
     imageGeneration: {
       provider: openaiApiKey ? 'openai' : 'mock',
       apiKey: openaiApiKey

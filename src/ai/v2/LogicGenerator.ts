@@ -150,15 +150,18 @@ JSONのみを出力してください。`;
 export interface LogicGeneratorConfig {
   model?: string;
   dryRun?: boolean;
+  apiKey?: string;
 }
 
 export class LogicGenerator {
   private client: Anthropic;
-  private config: Required<LogicGeneratorConfig>;
+  private config: Required<Omit<LogicGeneratorConfig, 'apiKey'>>;
   private tokensUsed: number = 0;
 
   constructor(config?: LogicGeneratorConfig) {
-    this.client = new Anthropic();
+    this.client = new Anthropic({
+      apiKey: config?.apiKey || process.env.ANTHROPIC_API_KEY
+    });
     this.config = {
       model: config?.model || 'claude-sonnet-4-20250514',
       dryRun: config?.dryRun || false

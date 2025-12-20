@@ -395,6 +395,7 @@ export interface OrchestratorConfig {
   targetGamesPerRun: number;
   maxRetries: number;
   dryRun: boolean;
+  anthropicApiKey?: string;
   imageGeneration: {
     provider: 'openai' | 'mock';
     apiKey?: string;

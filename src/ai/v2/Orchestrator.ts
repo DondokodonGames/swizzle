@@ -63,11 +63,13 @@ export class Orchestrator {
 
     // Initialize all components
     this.conceptGenerator = new GameConceptGenerator({
-      dryRun: this.config.dryRun
+      dryRun: this.config.dryRun,
+      apiKey: this.config.anthropicApiKey
     });
     this.conceptValidator = new ConceptValidator();
     this.logicGenerator = new LogicGenerator({
-      dryRun: this.config.dryRun
+      dryRun: this.config.dryRun,
+      apiKey: this.config.anthropicApiKey
     });
     this.logicValidator = new LogicValidator();
     this.assetGenerator = new AssetGenerator({
