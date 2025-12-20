@@ -185,11 +185,16 @@ export class LogicGenerator {
 
     const response = await this.client.messages.create({
       model: this.config.model,
-      max_tokens: 4096,
+      max_tokens: 8192,  // Increased to prevent truncation
       messages: [{ role: 'user', content: prompt }]
     });
 
     this.tokensUsed = (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
+
+    // Check for truncation
+    if (response.stop_reason === 'max_tokens') {
+      console.log('      ⚠️ Response was truncated due to max_tokens limit');
+    }
 
     const content = response.content[0];
     if (content.type !== 'text') {
@@ -201,9 +206,11 @@ export class LogicGenerator {
 
     // 基本的な構造チェック
     if (!output.script?.rules || output.script.rules.length === 0) {
+      console.log('      ❌ Parsed output missing rules:', JSON.stringify(output.script, null, 2).substring(0, 500));
       throw new Error('No rules generated');
     }
     if (!output.assetPlan?.objects || output.assetPlan.objects.length === 0) {
+      console.log('      ❌ Parsed output missing assetPlan.objects:', JSON.stringify(output.assetPlan, null, 2).substring(0, 500));
       throw new Error('No objects in asset plan');
     }
 
@@ -367,7 +374,9 @@ export class LogicGenerator {
       // これは複雑なので単純なケースのみ対応
 
       try {
-        return JSON.parse(repaired) as LogicGeneratorOutput;
+        const result = JSON.parse(repaired) as LogicGeneratorOutput;
+        console.log('      ✓ JSON repaired successfully');
+        return result;
       } catch (secondError) {
         console.log('      ⚠️ JSON repair failed, attempting bracket balancing...');
 
@@ -375,23 +384,30 @@ export class LogicGenerator {
         repaired = this.balanceBrackets(repaired);
 
         try {
-          return JSON.parse(repaired) as LogicGeneratorOutput;
+          const result = JSON.parse(repaired) as LogicGeneratorOutput;
+          console.log('      ✓ JSON balanced successfully, keys:', Object.keys(result));
+          return result;
         } catch (thirdError) {
           // 5. 最後の手段：最初のエラー位置を特定して切り詰め
           const errorMatch = String(thirdError).match(/position (\d+)/);
           if (errorMatch) {
             const position = parseInt(errorMatch[1]);
             console.log(`      ⚠️ Error at position ${position}, attempting truncation...`);
+            console.log(`      ⚠️ JSON length: ${repaired.length}, truncating at: ${position}`);
 
             // エラー位置の前で閉じる
             const truncated = this.truncateAtValidPoint(repaired, position);
             try {
-              return JSON.parse(truncated) as LogicGeneratorOutput;
+              const result = JSON.parse(truncated) as LogicGeneratorOutput;
+              console.log('      ✓ JSON truncated successfully, keys:', Object.keys(result));
+              return result;
             } catch (finalError) {
+              console.log('      ❌ Final JSON (first 500 chars):', truncated.substring(0, 500));
               throw new Error(`JSON parse failed after all recovery attempts: ${firstError}`);
             }
           }
 
+          console.log('      ❌ JSON (first 500 chars):', repaired.substring(0, 500));
           throw new Error(`JSON parse failed: ${firstError}`);
         }
       }
