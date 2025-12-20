@@ -185,7 +185,7 @@ export class LogicGenerator {
 
     const response = await this.client.messages.create({
       model: this.config.model,
-      max_tokens: 8192,  // Increased to prevent truncation
+      max_tokens: 16384,  // Further increased for complex game logic
       messages: [{ role: 'user', content: prompt }]
     });
 

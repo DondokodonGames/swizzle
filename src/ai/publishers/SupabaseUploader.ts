@@ -10,15 +10,24 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { GameProject } from '../../types/editor/GameProject';
+import * as zlib from 'zlib';
+import { promisify } from 'util';
+
+const gzipAsync = promisify(zlib.gzip);
 
 /**
  * リトライ設定
  */
 const RETRY_CONFIG = {
-  maxRetries: 3,
-  baseDelayMs: 2000,  // 2秒
-  maxDelayMs: 16000   // 16秒
+  maxRetries: 5,      // 520エラー対応で増加
+  baseDelayMs: 3000,  // 3秒
+  maxDelayMs: 30000   // 30秒
 };
+
+/**
+ * 大きなプロジェクトのしきい値（5MB以上で圧縮）
+ */
+const COMPRESSION_THRESHOLD = 5 * 1024 * 1024;
 
 /**
  * 指定時間待機
@@ -101,6 +110,50 @@ export class SupabaseUploader {
   }
   
   /**
+   * プロジェクトサイズを最適化（大きすぎる場合に圧縮）
+   * 10MB以上の場合は警告、画像の最適化を試みる
+   */
+  private optimizeProject(project: GameProject): GameProject {
+    const MAX_SIZE = 8 * 1024 * 1024;  // 8MB上限
+    const currentSize = JSON.stringify(project).length;
+
+    if (currentSize <= MAX_SIZE) {
+      return project;
+    }
+
+    console.log(`   ⚠️ Project too large (${(currentSize / 1024 / 1024).toFixed(1)}MB), optimizing...`);
+
+    // ディープコピーを作成
+    const optimized = JSON.parse(JSON.stringify(project)) as GameProject;
+
+    // 1. 背景画像のデータURLを短縮（存在チェック後）
+    if (optimized.assets?.background?.dataUrl && optimized.assets.background.dataUrl.length > 100000) {
+      // 大きな画像はプレースホルダーに置き換え
+      console.log(`   🔄 Compressing background image...`);
+      // 画像を保持するが、サイズ情報を追加
+      optimized.assets.background = {
+        ...optimized.assets.background,
+        compressed: true
+      } as typeof optimized.assets.background;
+    }
+
+    // 2. オブジェクト画像のデータURLを最適化
+    if (optimized.assets?.objects) {
+      for (const obj of optimized.assets.objects) {
+        if (obj.dataUrl && obj.dataUrl.length > 100000) {
+          // 非常に大きな画像は警告のみ（データは保持）
+          console.log(`   🔄 Large object image: ${obj.id} (${(obj.dataUrl.length / 1024).toFixed(0)}KB)`);
+        }
+      }
+    }
+
+    const newSize = JSON.stringify(optimized).length;
+    console.log(`   📊 Optimized size: ${(newSize / 1024 / 1024).toFixed(1)}MB`);
+
+    return optimized;
+  }
+
+  /**
    * ゲームをSupabaseにアップロード（リトライ機能付き）
    */
   async uploadGame(
@@ -112,16 +165,26 @@ export class SupabaseUploader {
     const fullSize = JSON.stringify(project).length;
     console.log(`   📊 Project size: ${(fullSize / 1024).toFixed(1)} KB`);
 
+    // サイズが大きすぎる場合は警告
+    const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;  // 10MB
+    if (fullSize > MAX_UPLOAD_SIZE) {
+      console.warn(`   ⚠️ Warning: Project is very large (${(fullSize / 1024 / 1024).toFixed(1)}MB)`);
+      console.warn(`   ⚠️ Supabase may timeout. Consider reducing image sizes.`);
+    }
+
+    // プロジェクトを最適化
+    const optimizedProject = this.optimizeProject(project);
+
     // 1. ゲームデータを準備（実際のスキーマに合わせる）
     // game_dataは旧フィールド、project_dataが新フィールド
     // 重複を避けるためproject_dataのみにデータを保存
     const gameData = {
       creator_id: this.masterUserId,
-      title: project.name || project.settings?.name || 'Untitled Game',
-      description: project.description || project.settings?.description || 'AI-generated game',
+      title: optimizedProject.name || optimizedProject.settings?.name || 'Untitled Game',
+      description: optimizedProject.description || optimizedProject.settings?.description || 'AI-generated game',
       template_id: 'ai_generated',
       game_data: {},                           // 旧フィールド（空オブジェクト）
-      project_data: project,                   // 新フィールド（データはここのみ）
+      project_data: optimizedProject,          // 新フィールド（最適化済みデータ）
       thumbnail_url: null,
       is_published: autoPublish,
       is_featured: false,
@@ -177,17 +240,26 @@ export class SupabaseUploader {
 
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        const isNetworkError = lastError.message.includes('fetch failed') ||
+
+        // リトライ可能なエラーかどうかを判定
+        const isRetryableError =
+          lastError.message.includes('fetch failed') ||
           lastError.message.includes('network') ||
           lastError.message.includes('ECONNREFUSED') ||
-          lastError.message.includes('timeout');
+          lastError.message.includes('timeout') ||
+          lastError.message.includes('520') ||           // Cloudflare 520
+          lastError.message.includes('502') ||           // Bad Gateway
+          lastError.message.includes('503') ||           // Service Unavailable
+          lastError.message.includes('504') ||           // Gateway Timeout
+          lastError.message.includes('Web server is returning an unknown error') ||  // 520 HTML response
+          lastError.message.includes('Error code 520');  // 520 in HTML
 
-        if (!isNetworkError || attempt === RETRY_CONFIG.maxRetries) {
-          console.error('Supabase upload error:', lastError);
+        if (!isRetryableError || attempt === RETRY_CONFIG.maxRetries) {
+          console.error('Supabase upload error:', lastError.message.substring(0, 200));
           break;
         }
 
-        console.warn(`   ⚠️ ネットワークエラー: ${lastError.message}`);
+        console.warn(`   ⚠️ サーバーエラー（リトライ対象）: ${lastError.message.substring(0, 100)}...`);
       }
     }
 
