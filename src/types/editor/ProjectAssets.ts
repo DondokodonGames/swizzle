@@ -7,7 +7,8 @@
 // 基本アセットフレーム
 export interface AssetFrame {
   id: string;
-  dataUrl: string;        // base64画像データ
+  dataUrl: string;        // base64画像データ（ローカル・エディター用）
+  storageUrl?: string;    // Supabase Storage URL（公開・大容量対応）
   originalName: string;   // アップロード時のファイル名
   width: number;
   height: number;
@@ -95,7 +96,8 @@ export interface TextAsset {
 export interface AudioAsset {
   id: string;
   name: string;           // ユーザー設定名
-  dataUrl: string;        // base64音声データ
+  dataUrl: string;        // base64音声データ（ローカル・エディター用）
+  storageUrl?: string;    // Supabase Storage URL（公開・大容量対応）
   originalName: string;   // アップロード時のファイル名
   duration: number;       // 秒
   fileSize: number;       // バイト数

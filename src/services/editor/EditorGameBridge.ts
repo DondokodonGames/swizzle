@@ -8,6 +8,7 @@ import { GameProject } from '../../types/editor/GameProject';
 import { GameRule, TriggerCondition, GameAction, PhysicsProperties } from '../../types/editor/GameScript';
 import { createDefaultInitialState, syncInitialStateWithLayout, createDefaultPhysics } from '../../types/editor/GameScript';
 import { RuleEngine, RuleExecutionContext, ActionExecutionResult } from '../rule-engine/RuleEngine';
+import { getBackgroundUrl, getObjectUrl, getAudioAssetUrl, getAssetFrameUrl } from '../../utils/assetUrl';
 
 // ゲーム実行結果
 export interface GameExecutionResult {
@@ -196,20 +197,23 @@ export class EditorGameBridge {
       // 7. 画像リソース読み込み
       const imageCache = new Map<string, HTMLImageElement>();
       
-      // 背景画像読み込み
-      if (project.assets?.background?.frames?.[0]) {
-        const bgFrame = project.assets.background.frames[0];
-        try {
-          const bgImg = new Image();
-          await this.loadImage(bgImg, bgFrame.dataUrl, 3000);
-          imageCache.set('background', bgImg);
-          console.log('✅ 背景画像読み込み完了');
-        } catch (error) {
-          warnings.push('背景画像の読み込みに失敗しました');
+      // 背景画像読み込み（storageUrl / dataUrl両対応）
+      if (project.assets?.background) {
+        const bgUrl = getBackgroundUrl(project.assets.background);
+        if (bgUrl) {
+          try {
+            const bgImg = new Image();
+            bgImg.crossOrigin = 'anonymous'; // CORS対応
+            await this.loadImage(bgImg, bgUrl, 3000);
+            imageCache.set('background', bgImg);
+            console.log('✅ 背景画像読み込み完了');
+          } catch (error) {
+            warnings.push('背景画像の読み込みに失敗しました');
+          }
         }
       }
 
-      // オブジェクト画像読み込み（全フレーム対応）
+      // オブジェクト画像読み込み（全フレーム対応・storageUrl / dataUrl両対応）
       if (project.assets?.objects) {
         for (const asset of project.assets.objects) {
           if (!asset.frames || asset.frames.length === 0) {
@@ -220,14 +224,16 @@ export class EditorGameBridge {
           // 全フレームを読み込み
           for (let frameIndex = 0; frameIndex < asset.frames.length; frameIndex++) {
             const frame = asset.frames[frameIndex];
-            if (!frame?.dataUrl) {
+            const frameUrl = getAssetFrameUrl(frame);
+            if (!frameUrl) {
               warnings.push(`オブジェクト "${asset.name}" のフレーム${frameIndex}の画像データがありません`);
               continue;
             }
 
             try {
               const img = new Image();
-              await this.loadImage(img, frame.dataUrl, 2000);
+              img.crossOrigin = 'anonymous'; // CORS対応
+              await this.loadImage(img, frameUrl, 2000);
               imageCache.set(`${asset.id}_frame${frameIndex}`, img);
               console.log(`✅ オブジェクト画像読み込み完了: ${asset.name} (frame ${frameIndex})`);
             } catch (error) {
@@ -240,24 +246,30 @@ export class EditorGameBridge {
       // 7.5. 音声リソース読み込み
       const audioCache = new Map<string, HTMLAudioElement>();
 
-      // BGM読み込み
-      if (project.assets?.audio?.bgm?.dataUrl) {
-        try {
-          const bgmAudio = new Audio(project.assets.audio.bgm.dataUrl);
-          bgmAudio.loop = true;
-          audioCache.set('bgm', bgmAudio);
-          console.log('✅ BGM読み込み完了');
-        } catch (error) {
-          warnings.push('BGMの読み込みに失敗しました');
+      // BGM読み込み（storageUrl / dataUrl両対応）
+      if (project.assets?.audio?.bgm) {
+        const bgmUrl = getAudioAssetUrl(project.assets.audio.bgm);
+        if (bgmUrl) {
+          try {
+            const bgmAudio = new Audio(bgmUrl);
+            bgmAudio.crossOrigin = 'anonymous'; // CORS対応
+            bgmAudio.loop = true;
+            audioCache.set('bgm', bgmAudio);
+            console.log('✅ BGM読み込み完了');
+          } catch (error) {
+            warnings.push('BGMの読み込みに失敗しました');
+          }
         }
       }
 
-      // SE読み込み
+      // SE読み込み（storageUrl / dataUrl両対応）
       if (project.assets?.audio?.se) {
         for (const se of project.assets.audio.se) {
-          if (!se.dataUrl) continue;
+          const seUrl = getAudioAssetUrl(se);
+          if (!seUrl) continue;
           try {
-            const seAudio = new Audio(se.dataUrl);
+            const seAudio = new Audio(seUrl);
+            seAudio.crossOrigin = 'anonymous'; // CORS対応
             audioCache.set(se.id, seAudio);
             console.log(`✅ SE読み込み完了: ${se.name}`);
           } catch (error) {

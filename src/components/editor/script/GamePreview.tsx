@@ -5,6 +5,7 @@ import React, { useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
 import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
+import { getBackgroundUrl, getObjectUrl } from '../../../utils/assetUrl';
 
 interface GamePreviewProps {
   project: GameProject;
@@ -49,12 +50,12 @@ export const GamePreview: React.FC<GamePreviewProps> = ({
     startScale: { x: number; y: number };
   } | null>(null);
 
-  // 背景画像URL取得
+  // 背景画像URL取得（storageUrl / dataUrl両対応）
   const getBackgroundImageUrl = () => {
     if (!project.assets.background || !project.script.layout.background.visible) {
       return null;
     }
-    return project.assets.background.frames?.[0]?.dataUrl || null;
+    return getBackgroundUrl(project.assets.background);
   };
 
   // リサイズ開始ハンドラ
@@ -346,20 +347,23 @@ export const GamePreview: React.FC<GamePreviewProps> = ({
                 e.dataTransfer.effectAllowed = 'move';
               }}
             >
-              {/* サムネイル画像表示 */}
-              {asset?.frames?.[0]?.dataUrl ? (
-                <img
-                  src={asset.frames[0].dataUrl}
-                  alt={asset.name}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
-                    pointerEvents: 'none'
-                  }}
-                  draggable={false}
-                />
-              ) : (
+              {/* サムネイル画像表示（storageUrl / dataUrl両対応） */}
+              {(() => {
+                const assetUrl = getObjectUrl(asset);
+                return assetUrl ? (
+                  <img
+                    src={assetUrl}
+                    alt={asset?.name || 'Object'}
+                    crossOrigin="anonymous"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'contain',
+                      pointerEvents: 'none'
+                    }}
+                    draggable={false}
+                  />
+                ) : (
                 <div
                   style={{
                     display: 'flex',
@@ -375,8 +379,8 @@ export const GamePreview: React.FC<GamePreviewProps> = ({
                 >
                   {index < 9 ? (index + 1).toString() : '★'}
                 </div>
-              )}
-              
+              )})()}
+
               {/* 状態インジケーター */}
               <div
                 style={{

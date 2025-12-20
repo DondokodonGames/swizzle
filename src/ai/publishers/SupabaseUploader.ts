@@ -6,14 +6,16 @@
  * - creator_id (user_idではない)
  * - is_published (is_publicではない)
  * - template_id (必須カラム)
+ *
+ * Storage対応版: 大容量ゲーム（50MB+）をサポート
+ * - 画像・音声はSupabase Storageにアップロード
+ * - DBにはメタデータ（storageUrl）のみ保存
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { GameProject } from '../../types/editor/GameProject';
-import * as zlib from 'zlib';
-import { promisify } from 'util';
-
-const gzipAsync = promisify(zlib.gzip);
+import { StorageUploader } from './StorageUploader';
+import { randomUUID } from 'crypto';
 
 /**
  * リトライ設定
@@ -25,9 +27,9 @@ const RETRY_CONFIG = {
 };
 
 /**
- * 大きなプロジェクトのしきい値（5MB以上で圧縮）
+ * Storage使用の閾値（1MB以上でStorage使用）
  */
-const COMPRESSION_THRESHOLD = 5 * 1024 * 1024;
+const STORAGE_THRESHOLD = 1 * 1024 * 1024;
 
 /**
  * 指定時間待機
@@ -64,11 +66,13 @@ export interface GameStatistics {
 export class SupabaseUploader {
   private supabase: SupabaseClient;
   private masterUserId: string;
+  private storageUploader: StorageUploader;
 
   constructor() {
     const supabaseUrl = process.env.VITE_SUPABASE_URL!;
     const serviceKey = process.env.SUPABASE_SERVICE_KEY!;
     this.masterUserId = process.env.MASTER_USER_ID!;
+    this.storageUploader = new StorageUploader();
 
     // 環境変数チェック
     if (!supabaseUrl || !serviceKey) {
@@ -110,81 +114,83 @@ export class SupabaseUploader {
   }
   
   /**
-   * プロジェクトサイズを最適化（大きすぎる場合に圧縮）
-   * 10MB以上の場合は警告、画像の最適化を試みる
+   * プロジェクトのサイズを計算
    */
-  private optimizeProject(project: GameProject): GameProject {
-    const MAX_SIZE = 8 * 1024 * 1024;  // 8MB上限
-    const currentSize = JSON.stringify(project).length;
-
-    if (currentSize <= MAX_SIZE) {
-      return project;
-    }
-
-    console.log(`   ⚠️ Project too large (${(currentSize / 1024 / 1024).toFixed(1)}MB), optimizing...`);
-
-    // ディープコピーを作成
-    const optimized = JSON.parse(JSON.stringify(project)) as GameProject;
-
-    // 1. 背景画像のデータURLを短縮（存在チェック後）
-    if (optimized.assets?.background?.dataUrl && optimized.assets.background.dataUrl.length > 100000) {
-      // 大きな画像はプレースホルダーに置き換え
-      console.log(`   🔄 Compressing background image...`);
-      // 画像を保持するが、サイズ情報を追加
-      optimized.assets.background = {
-        ...optimized.assets.background,
-        compressed: true
-      } as typeof optimized.assets.background;
-    }
-
-    // 2. オブジェクト画像のデータURLを最適化
-    if (optimized.assets?.objects) {
-      for (const obj of optimized.assets.objects) {
-        if (obj.dataUrl && obj.dataUrl.length > 100000) {
-          // 非常に大きな画像は警告のみ（データは保持）
-          console.log(`   🔄 Large object image: ${obj.id} (${(obj.dataUrl.length / 1024).toFixed(0)}KB)`);
-        }
-      }
-    }
-
-    const newSize = JSON.stringify(optimized).length;
-    console.log(`   📊 Optimized size: ${(newSize / 1024 / 1024).toFixed(1)}MB`);
-
-    return optimized;
+  private calculateProjectSize(project: GameProject): number {
+    return JSON.stringify(project).length;
   }
 
   /**
-   * ゲームをSupabaseにアップロード（リトライ機能付き）
+   * ゲームをSupabaseにアップロード（Storage対応版）
+   *
+   * 1. ゲームIDを生成
+   * 2. アセット（画像・音声）をSupabase Storageにアップロード
+   * 3. dataUrlをstorageUrlに置換
+   * 4. 軽量化されたプロジェクトをDBに保存
    */
   async uploadGame(
     project: GameProject,
     qualityScore: number,
     autoPublish: boolean = true
   ): Promise<UploadResult> {
-    // データサイズを計算して表示
-    const fullSize = JSON.stringify(project).length;
+    const fullSize = this.calculateProjectSize(project);
     console.log(`   📊 Project size: ${(fullSize / 1024).toFixed(1)} KB`);
 
-    // サイズが大きすぎる場合は警告
-    const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;  // 10MB
-    if (fullSize > MAX_UPLOAD_SIZE) {
-      console.warn(`   ⚠️ Warning: Project is very large (${(fullSize / 1024 / 1024).toFixed(1)}MB)`);
-      console.warn(`   ⚠️ Supabase may timeout. Consider reducing image sizes.`);
+    // ゲームIDを事前生成（Storageパスに必要）
+    const gameId = randomUUID();
+    console.log(`   🆔 Generated game ID: ${gameId.substring(0, 8)}...`);
+
+    let projectToSave = project;
+
+    // 大容量プロジェクトはStorageを使用
+    if (fullSize > STORAGE_THRESHOLD) {
+      console.log(`   📤 Using Storage for assets (size > ${STORAGE_THRESHOLD / 1024}KB)`);
+
+      try {
+        // アセットをStorageにアップロード
+        const uploadResult = await this.storageUploader.uploadGameAssets(
+          project,
+          gameId,
+          (current, total) => {
+            if (current % 5 === 0 || current === total) {
+              console.log(`   📤 Uploading assets: ${current}/${total}`);
+            }
+          }
+        );
+
+        if (uploadResult.failedCount > 0) {
+          console.warn(`   ⚠️ ${uploadResult.failedCount}件のアセットアップロード失敗`);
+        }
+
+        if (uploadResult.uploadedCount > 0) {
+          console.log(`   ✅ ${uploadResult.uploadedCount}件のアセットをStorageにアップロード完了`);
+          console.log(`   📊 Total uploaded: ${(uploadResult.totalSize / 1024 / 1024).toFixed(2)} MB`);
+
+          // dataUrlをstorageUrlに置換
+          projectToSave = this.storageUploader.replaceDataUrlsWithStorageUrls(
+            project,
+            uploadResult.results
+          ) as GameProject;
+
+          const newSize = this.calculateProjectSize(projectToSave);
+          console.log(`   📊 Optimized project size: ${(newSize / 1024).toFixed(1)} KB (${((1 - newSize / fullSize) * 100).toFixed(0)}% reduced)`);
+        }
+      } catch (storageError) {
+        console.error('   ❌ Storage upload failed:', storageError);
+        // Storageアップロード失敗時は元のプロジェクトで続行を試みる
+        console.log('   ⚠️ Falling back to direct DB upload...');
+      }
     }
 
-    // プロジェクトを最適化
-    const optimizedProject = this.optimizeProject(project);
-
-    // 1. ゲームデータを準備（実際のスキーマに合わせる）
-    // game_dataは旧フィールド、project_dataが新フィールド
-    // 重複を避けるためproject_dataのみにデータを保存
+    // ゲームデータを準備（実際のスキーマに合わせる）
     const gameData = {
+      id: gameId,  // 事前生成したIDを使用
       creator_id: this.masterUserId,
-      title: optimizedProject.name || optimizedProject.settings?.name || 'Untitled Game',
-      description: optimizedProject.description || optimizedProject.settings?.description || 'AI-generated game',
+      title: projectToSave.name || projectToSave.settings?.name || 'Untitled Game',
+      description: projectToSave.description || projectToSave.settings?.description || 'AI-generated game',
       template_id: 'ai_generated',
       game_data: {},                           // 旧フィールド（空オブジェクト）
-      project_data: optimizedProject,          // 新フィールド（最適化済みデータ）
+      project_data: projectToSave,             // 新フィールド（Storage URL使用）
       thumbnail_url: null,
       is_published: autoPublish,
       is_featured: false,
@@ -210,7 +216,7 @@ export class SupabaseUploader {
           await sleep(delayMs);
         }
 
-        // 2. user_gamesテーブルに挿入
+        // user_gamesテーブルに挿入
         const { data, error } = await this.supabase
           .from('user_games')
           .insert(gameData)
@@ -225,7 +231,7 @@ export class SupabaseUploader {
           throw new Error('Game ID not returned from Supabase');
         }
 
-        // 3. ゲームURLを生成
+        // ゲームURLを生成
         const gameUrl = this.generateGameUrl(data.id);
 
         if (attempt > 0) {
@@ -256,6 +262,8 @@ export class SupabaseUploader {
 
         if (!isRetryableError || attempt === RETRY_CONFIG.maxRetries) {
           console.error('Supabase upload error:', lastError.message.substring(0, 200));
+          // アップロード失敗時はStorageのアセットを削除
+          await this.storageUploader.deleteGameAssets(gameId).catch(() => {});
           break;
         }
 
