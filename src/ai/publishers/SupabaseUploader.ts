@@ -83,17 +83,23 @@ export class SupabaseUploader {
     qualityScore: number,
     autoPublish: boolean = true
   ): Promise<UploadResult> {
+    // データサイズを計算して表示
+    const fullSize = JSON.stringify(project).length;
+    console.log(`   📊 Project size: ${(fullSize / 1024).toFixed(1)} KB`);
+
     // 1. ゲームデータを準備（実際のスキーマに合わせる）
+    // game_dataは旧フィールド、project_dataが新フィールド
+    // 重複を避けるためproject_dataのみにデータを保存
     const gameData = {
-      creator_id: this.masterUserId,           // ✅ user_id → creator_id
+      creator_id: this.masterUserId,
       title: project.name || project.settings?.name || 'Untitled Game',
       description: project.description || project.settings?.description || 'AI-generated game',
-      template_id: 'ai_generated',             // ✅ 必須カラム追加
-      game_data: project,                      // GameProject全体をJSONBで保存
-      project_data: project,                   // ✅ project_dataにも保存
-      thumbnail_url: null,                     // ✅ 追加
-      is_published: autoPublish,               // ✅ is_public → is_published
-      is_featured: false,                      // ✅ 追加
+      template_id: 'ai_generated',
+      game_data: {},                           // 旧フィールド（空オブジェクト）
+      project_data: project,                   // 新フィールド（データはここのみ）
+      thumbnail_url: null,
+      is_published: autoPublish,
+      is_featured: false,
       play_count: 0,
       like_count: 0,
       ai_generated: true,
@@ -264,20 +270,20 @@ export class SupabaseUploader {
    * ゲーム情報の取得
    */
   async getGame(gameId: string): Promise<GameProject | null> {
-    
+
     try {
       const { data, error } = await this.supabase
         .from('user_games')
-        .select('game_data')
+        .select('project_data')
         .eq('id', gameId)
         .single();
-      
+
       if (error || !data) {
         throw new Error(`Game not found: ${gameId}`);
       }
-      
-      return data.game_data as GameProject;
-      
+
+      return data.project_data as GameProject;
+
     } catch (error) {
       console.error('Get game error:', error);
       return null;
