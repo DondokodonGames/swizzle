@@ -293,16 +293,9 @@ export class FinalAssembler {
       }
     }
 
-    // 6. オブジェクト数のチェック
+    // 6. オブジェクト数のチェック（0個のみエラー）
     if (project.assets.objects.length === 0) {
       errors.push('No game objects');
-    }
-    if (project.assets.objects.length > 25) {
-      // 25以上はエラー（パフォーマンス問題の可能性）
-      errors.push(`Too many objects (${project.assets.objects.length}), max is 25`);
-    } else if (project.assets.objects.length > 15) {
-      // 15-25は警告（推奨を超えているが許容可能）
-      warnings.push(`Many objects (${project.assets.objects.length}), recommended max is 15`);
     }
 
     // 既存のissues配列（早期チェック分）もエラーとして扱う
