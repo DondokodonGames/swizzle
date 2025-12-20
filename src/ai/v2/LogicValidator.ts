@@ -17,14 +17,8 @@ import {
 } from './types';
 
 // ==========================================
-// エディター仕様定義
+// エディター仕様定義（動作確認済みのみ）
 // ==========================================
-
-// 使用禁止の条件タイプ
-const FORBIDDEN_CONDITIONS = ['position', 'animation', 'random'];
-
-// 使用禁止のアクションタイプ
-const FORBIDDEN_ACTIONS = ['playSound', 'switchAnimation', 'applyForce', 'applyImpulse', 'randomAction'];
 
 // 使用可能な条件タイプ
 const VALID_CONDITIONS: VerifiedConditionType[] = ['touch', 'time', 'counter', 'collision', 'flag', 'gameState'];
@@ -71,8 +65,8 @@ export class LogicValidator {
     // 5. 座標範囲チェック
     this.checkCoordinateRange(output, errors);
 
-    // 6. 使用禁止機能チェック
-    this.checkForbiddenFeatures(output, errors);
+    // 6. 使用可能な条件・アクションタイプのチェック
+    this.checkValidFeatures(output, errors);
 
     // 7. 条件パラメータの妥当性チェック
     this.checkConditionParameters(output, errors);
@@ -313,46 +307,28 @@ export class LogicValidator {
   }
 
   /**
-   * 使用禁止機能チェック
+   * 使用可能な条件・アクションタイプのチェック
    */
-  private checkForbiddenFeatures(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
+  private checkValidFeatures(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
     for (const rule of output.script.rules) {
       for (const condition of rule.triggers?.conditions || []) {
-        if (FORBIDDEN_CONDITIONS.includes(condition.type)) {
+        if (!VALID_CONDITIONS.includes(condition.type as VerifiedConditionType)) {
           errors.push({
             type: 'critical',
-            code: 'FORBIDDEN_CONDITION',
-            message: `使用禁止の条件タイプ: ${condition.type}`,
-            fix: `動作確認済みの条件タイプ(${VALID_CONDITIONS.join(', ')})に置き換えてください`
-          });
-        }
-        if (!VALID_CONDITIONS.includes(condition.type as VerifiedConditionType) &&
-            !FORBIDDEN_CONDITIONS.includes(condition.type)) {
-          errors.push({
-            type: 'critical',
-            code: 'UNKNOWN_CONDITION',
-            message: `未知の条件タイプ: ${condition.type}`,
-            fix: `動作確認済みの条件タイプ(${VALID_CONDITIONS.join(', ')})を使用してください`
+            code: 'INVALID_CONDITION_TYPE',
+            message: `ルール "${rule.id}": 使用できない条件タイプ "${condition.type}"`,
+            fix: `使用可能: ${VALID_CONDITIONS.join(', ')}`
           });
         }
       }
 
       for (const action of rule.actions || []) {
-        if (FORBIDDEN_ACTIONS.includes(action.type)) {
+        if (!VALID_ACTIONS.includes(action.type as VerifiedActionType)) {
           errors.push({
             type: 'critical',
-            code: 'FORBIDDEN_ACTION',
-            message: `使用禁止のアクションタイプ: ${action.type}`,
-            fix: `動作確認済みのアクションタイプ(${VALID_ACTIONS.join(', ')})に置き換えてください`
-          });
-        }
-        if (!VALID_ACTIONS.includes(action.type as VerifiedActionType) &&
-            !FORBIDDEN_ACTIONS.includes(action.type)) {
-          errors.push({
-            type: 'critical',
-            code: 'UNKNOWN_ACTION',
-            message: `未知のアクションタイプ: ${action.type}`,
-            fix: `動作確認済みのアクションタイプ(${VALID_ACTIONS.join(', ')})を使用してください`
+            code: 'INVALID_ACTION_TYPE',
+            message: `ルール "${rule.id}": 使用できないアクションタイプ "${action.type}"`,
+            fix: `使用可能: ${VALID_ACTIONS.join(', ')}`
           });
         }
       }
