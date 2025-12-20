@@ -14,6 +14,7 @@
 DROP POLICY IF EXISTS "Users can view their own games" ON user_games;
 DROP POLICY IF EXISTS "Public games are viewable by everyone" ON user_games;
 DROP POLICY IF EXISTS "Users can create their own games" ON user_games;
+DROP POLICY IF EXISTS "Service role can insert games" ON user_games;
 DROP POLICY IF EXISTS "Users can update their own games" ON user_games;
 DROP POLICY IF EXISTS "Users can delete their own games" ON user_games;
 
@@ -40,6 +41,13 @@ ON user_games
 FOR INSERT
 TO authenticated
 WITH CHECK (creator_id = auth.uid());
+
+-- 4b. サービスロールは任意のゲームを作成可能（AI生成システム用）
+CREATE POLICY "Service role can insert games"
+ON user_games
+FOR INSERT
+TO service_role
+WITH CHECK (true);
 
 -- 5. ユーザーは自分のゲームのみ更新可能（UPDATE）
 CREATE POLICY "Users can update their own games"
