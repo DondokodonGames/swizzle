@@ -1,692 +1,277 @@
-# 品質問題の根本原因と改善計画
+# AI ゲーム生成・評価プロセス
 
-**作成日**: 2025-12-19
-**Phase**: 2-1, 2-2
-**目的**: 250本破棄の原因特定と高品質生成フローの設計
+**最終更新**: 2025-12-20
 
 ---
 
-## 1. 250本破棄の原因分析
-
-### 1.1 推定される主要原因
-
-Phase 1の分析結果から、以下が250本破棄の主要原因と推定されます:
-
-| 原因 | 確信度 | 影響度 | 説明 |
-|------|--------|--------|------|
-| **GameSpec生成の仮実装** | 95% | 致命的 | ランダム組み合わせで面白いゲームが生まれない |
-| **面白さ基準の欠如** | 90% | 重大 | 「動くか」は検証できるが「面白いか」は判定できない |
-| **音声生成の未実装** | 85% | 重大 | 無音ゲームは体験が不完全 |
-| **ビジュアル品質不足** | 80% | 中程度 | 単色SVGでは魅力に欠ける |
-| **ルール生成の失敗** | 70% | 中程度 | 不正なJSONや動作しないルール |
-
-### 1.2 各原因の詳細
-
-#### 原因1: GameSpec生成の仮実装（確信度95%）
-
-**現状のコード（MasterOrchestrator.ts）**:
-```typescript
-// TODO: 本実装ではClaude APIでゲーム仕様を生成
-// 現在はランダムに組み合わせを生成
-const genres: GameGenre[] = ['action', 'puzzle', 'timing', ...];
-const mechanics: GameMechanic[] = ['tap', 'swipe', 'drag', ...];
-```
-
-**問題点**:
-- ジャンルとメカニクスをランダム選択するだけ
-- ゲームコンセプトや世界観がない
-- 「面白さ」を考慮した設計がない
-
-**影響**:
-- 生成されるGameSpecが「何が面白いのか」不明確
-- LogicGeneratorがまともなルールを生成できない
-- 結果として動くけど面白くないゲームが量産
-
-#### 原因2: 面白さ基準の欠如（確信度90%）
-
-**現状のDynamicQualityChecker**:
-```typescript
-// 相対評価（50点）: 多様性・密度・ギャップ・バランス
-// 絶対評価（45点）: 基本品質・プレイアビリティ・満足度予測
-```
-
-**問題点**:
-- 「多様性」は面白さではない
-- 「プレイアビリティ」はクリア可能性であり面白さではない
-- 「満足度予測」は曖昧で実装がルールベース
-
-**影響**:
-- 動作するが面白くないゲームが合格してしまう
-- 面白いゲームと面白くないゲームの区別ができない
-
-#### 原因3: 音声生成の未実装（確信度85%）
-
-**現状のSoundGenerator**:
-```typescript
-// TODO: 実装
-return { bgm: null, sounds: [] };
-```
-
-**問題点**:
-- 全てのゲームが無音
-- タップ時のフィードバックがない
-- 達成感や失敗の演出が弱い
-
-**影響**:
-- ゲーム体験が大幅に低下
-- 「面白くない」という印象の一因
-
----
-
-## 2. 根本原因の構造
+## 1. 生成フロー概要
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│           根本原因: 「面白さ」の定義と評価がない           │
-└─────────────────────────────────────────────────────────┘
-                           │
-        ┌──────────────────┼──────────────────┐
-        ▼                  ▼                  ▼
-┌───────────────┐  ┌───────────────┐  ┌───────────────┐
-│ GameSpec生成  │  │  品質チェック  │  │ アセット生成  │
-│ が貧弱       │  │ に面白さ基準  │  │ が貧弱       │
-│              │  │ がない        │  │              │
-└───────────────┘  └───────────────┘  └───────────────┘
-        │                  │                  │
-        ▼                  ▼                  ▼
-┌─────────────────────────────────────────────────────────┐
-│       動くけど面白くないゲームが量産される                 │
-└─────────────────────────────────────────────────────────┘
+GameIdeaGenerator → ImageGenerator → SoundGenerator → LogicGenerator → ComplianceChecker → FunEvaluator → 合否判定
 ```
 
 ---
 
-## 3. 改善方針
+## 2. Step 1: GameIdeaGenerator
 
-### 3.1 設計原則
+**ファイル**: `src/ai/generators/GameIdeaGenerator.ts`
+**API**: Claude / GPT-4o-mini
 
-1. **面白さファースト**: 動作よりも面白さを優先
-2. **検証可能な品質**: 数値化・自動判定できる品質基準
-3. **多様性の確保**: 1000本が全て異なるゲームであること
-4. **並列処理**: 速度のために並列生成必須
-5. **ハードコードOK**: Swizzle JSONに固執しない
+### 入力
+- 使用済みテーマリスト（重複回避用）
+- 使用済みメカニクスリスト（重複回避用）
 
-### 3.2 改善アーキテクチャ
+### プロンプト内容
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│           新: GameIdeaGenerator（GPT-4/Claude）          │
-│  面白いゲームアイデアを生成し、自己評価で7点以上を確保      │
-└─────────────────────────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│           新: FunValidator（Claude）                     │
-│  生成されたアイデアの面白さを客観的に評価                  │
-└─────────────────────────────────────────────────────────┘
-                           │
-        ┌──────────────────┼──────────────────┐
-        ▼                  ▼                  ▼
-┌───────────────┐  ┌───────────────┐  ┌───────────────┐
-│ 改善:         │  │ 改善:         │  │ 新:           │
-│ ImageGenerator│  │ LogicGenerator│  │ SoundGenerator│
-│ (高品質指示)  │  │ (パターン参照)│  │ (実装する)    │
-└───────────────┘  └───────────────┘  └───────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│           改善: QualityChecker                          │
-│  面白さスコア + 動作確認 + 多様性チェック                 │
-└─────────────────────────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│           並列実行: ParallelExecutor                    │
-│  50並列で1000本を20分で生成                              │
-└─────────────────────────────────────────────────────────┘
+あなたはスマホ向け10秒ゲームのゲームデザイナーです。
+「遊び」を最優先に考えた、面白いゲームを設計してください。
+
+# 🎯 最重要: 遊びの設計
+1. プレイヤーに何をさせたいか？（目標）
+2. プレイヤーは具体的に何をするか？（操作）
+3. 成功と失敗はどう決まるか？（判定）
+
+# 基本要件
+- 制限時間: 5-15秒
+- 画面: スマホ縦画面
+- 操作: タッチのみ
+
+# ❌ 絶対に作ってはいけないゲーム
+1. 即成功ゲーム: 何かタップすれば即クリア
+2. 操作不要ゲーム: 見てるだけでクリア
+3. 目的不明ゲーム: 何すればいいかわからない
+4. 失敗不可能ゲーム: どうやっても成功する
+5. 運だけゲーム: スキルが関係ない
 ```
+
+### 出力（GameIdea）
+
+| フィールド | 説明 |
+|-----------|------|
+| title | ゲーム名（日本語、8文字以内） |
+| titleEn | 英語タイトル |
+| description | 何をするゲームか（20文字以内） |
+| theme | 世界観 |
+| visualStyle | minimal/cute/retro/neon/nature/space/underwater/abstract/geometric/pixel |
+| mainMechanic | tap-target/tap-avoid/catch-falling など19種類 |
+| playerGoal | プレイヤーが画面を見て思うこと |
+| playerAction | プレイヤーが実際にする操作 |
+| winCondition | 具体的な成功条件（数値を含む） |
+| loseCondition | 具体的な失敗条件（数値を含む） |
+| duration | 制限時間（5-15秒） |
+| funScore | 自己評価（1-10） |
+
+### チェック
+- `funScore >= 7` でなければ再生成（最大3回）
+- 重複テーマ/メカニクスは避ける
 
 ---
 
-## 4. 新コンポーネント設計
+## 3. Step 2: ImageGenerator
 
-### 4.1 GameIdeaGenerator
+**ファイル**: `src/ai/ImprovedMasterOrchestrator.ts` → `generateImagePrompts()`
+**API**: DALL-E 3
 
-**役割**: 面白いゲームアイデアを生成
+### 入力
+- idea.theme
+- idea.titleEn
+- idea.visualStyle
+- idea.objectCount
 
-**入力**: なし（完全ユニーク生成）
-
-**出力**: GameIdea
+### プロンプト生成（動的）
 
 ```typescript
-interface GameIdea {
-  title: string;
-  description: string;
-  theme: string;           // 世界観（宇宙、森、海など）
-  mainMechanic: string;    // メインの操作（タップ連打、タイミング、etc）
-  subMechanics: string[];  // サブの操作
-  winCondition: string;    // 勝利条件
-  loseCondition: string;   // 敗北条件
-  duration: number;        // ゲーム時間（秒）
-  difficulty: 'easy' | 'normal' | 'hard';
-  funScore: number;        // 自己評価（1-10）
-  uniqueness: string;      // 他ゲームとの差別化ポイント
-  visualStyle: string;     // ビジュアルスタイル
+// 背景
+`${theme} themed game background, ${titleEn} style, mobile game asset, high quality illustration`
+
+// オブジェクト
+`game object for ${theme}, ${titleEn}, object ${i}, game sprite, transparent background, simple icon style`
+```
+
+### 出力
+- 背景画像 1枚
+- オブジェクト画像 N枚（objectCount分）
+
+### コスト
+- $0.04/枚 × (1 + objectCount)
+- 例: 5オブジェクト → $0.24
+
+---
+
+## 4. Step 3: SoundGenerator
+
+**ファイル**: `src/ai/generators/ImprovedSoundGenerator.ts`
+**API**: Web Audio API（ローカル生成）
+
+### 出力
+- BGM 1曲
+- 効果音（tap, success, failure, collect）
+
+---
+
+## 5. Step 4: ImprovedLogicGenerator
+
+**ファイル**: `src/ai/generators/ImprovedLogicGenerator.ts`
+**API**: Claude (claude-3-5-haiku)
+
+### 入力
+- GameIdea
+- AssetReferences（オブジェクトID、効果音IDなど）
+
+### システムプロンプト内容
+
+**技術仕様**:
+- 座標系: 正規化座標 0.0〜1.0
+- 速度: 遅い(1-2) / 普通(2-4) / 速い(4-8) px/frame
+
+**利用可能な条件タイプ**:
+- touch, time, counter, collision, flag, random
+
+**利用可能なアクションタイプ**:
+- success, failure, hide, show, move, counter, addScore, effect, playSound, setFlag
+
+**ルール設計の原則（プロンプトに記載）**:
+- ルール数: 5-10個
+- 条件数: 1ルールあたり1-2個
+- アクション数: 1ルールあたり2-4個
+
+### ユーザープロンプト内容
+
+```
+## ❌ 絶対に避けるべきパターン
+1. 即成功: ゲーム開始時点でクリア条件を満たしている
+2. 操作不要: プレイヤーが何もしなくてもクリアできる
+3. 失敗不可能: loseConditionがない
+4. 目標が不明瞭: 何をすればいいかわからない
+
+## ✅ 必須チェックリスト
+- クリア条件の数値は複数回操作で達成される
+- 失敗条件が実際に発動しうる
+- 初期状態ではクリア条件を満たしていない
+```
+
+### 出力（GameScript）
+- layout（オブジェクト配置）
+- counters（スコア、ミスなど）
+- flags
+- rules（ゲームロジック）
+
+### コスト
+- 約$0.006/ゲーム（Haiku使用時）
+
+---
+
+## 6. Step 5: SpecificationComplianceChecker
+
+**ファイル**: `src/ai/checkers/SpecificationComplianceChecker.ts`
+**現在の役割**: アドバイザリーのみ（合否に影響しない）
+
+### チェック内容（100点満点）
+
+| 項目 | 点数 | 内容 |
+|------|------|------|
+| メカニクス適合 | 0-30 | メカニクスに必須の条件/アクションがあるか |
+| 勝利条件一致 | 0-25 | successアクションがあるか |
+| 敗北条件一致 | 0-15 | failureアクションがあるか |
+| 時間設定一致 | 0-10 | duration ±50%以内か |
+| オブジェクト数一致 | 0-10 | objectCount ±3個以内か |
+| ルール数一致 | 0-10 | estimatedRuleCount ±5個以内か |
+
+### 合格条件（参考）
+- score >= 60 かつ critical違反なし
+
+---
+
+## 7. Step 6: FunEvaluator【★ 合否判定 ★】
+
+**ファイル**: `src/ai/checkers/FunEvaluator.ts`
+
+### A. Playability Check（致命的問題検出）
+
+| チェック | 検出内容 | 判定方法 |
+|----------|----------|----------|
+| hasInstantWin | 即成功 | counter初期値 >= 目標値、または条件なしでsuccess |
+| requiresAction | 操作必須 | 成功パスにtouch条件があるか |
+| canFail | 失敗可能 | failureアクションが発動しうるか |
+| hasClearGoal | 明確なゴール | counter条件でのsuccessがあるか |
+
+→ **1つでも問題あれば `isPlayable = false`**
+
+### B. Fun Score（100点満点）
+
+| 項目 | 点数 | 評価内容 |
+|------|------|----------|
+| dynamicElements | 0-20 | move/time/randomアクションの有無 |
+| interactionQuality | 0-20 | タッチ条件の多様性、ターゲットの種類 |
+| feedbackRichness | 0-20 | effect/playSoundの有無と数 |
+| challengeBalance | 0-20 | duration設定の有無 |
+| progressionClarity | 0-20 | counter/success/failureの有無 |
+
+### スコア計算
+
+```typescript
+let funScore = dynamicElements + interactionQuality + feedbackRichness + challengeBalance + progressionClarity;
+
+// 致命的問題がある場合
+if (!playabilityCheck.isPlayable) {
+  funScore = Math.min(funScore, 30); // 最大30点に制限
 }
 ```
 
-**プロンプト設計**:
-```
-あなたは10秒ゲームのプロデューサーです。
-
-# 要件
-- 10秒で完結する面白いゲームを考案
-- スマホ縦画面（1080×1920px）
-- タッチ操作のみ
-- 既存の{existingGames}とは異なるゲーム
-
-# 面白さの基準
-1. 目標が明確（何をすればいいか一目でわかる）
-2. 操作が簡単（タップ/スワイプのみ）
-3. 達成感がある（成功時に爽快）
-4. 適度な緊張感（失敗もありえる）
-5. リプレイ価値（もう一度やりたい）
-
-# 禁止パターン
-- 静的なオブジェクトをただタップするだけ
-- 答えが1つしかないクイズ
-- ランダム運ゲー
-
-# 出力形式
-JSON形式で出力してください。
-funScoreは1-10で自己評価し、7未満の場合は再考してください。
-```
-
-### 4.2 FunValidator
-
-**役割**: アイデアの面白さを客観評価
-
-**入力**: GameIdea
-
-**出力**: FunValidationResult
+### 合格条件
 
 ```typescript
-interface FunValidationResult {
-  overallScore: number;     // 総合スコア（1-10）
-  clarity: number;          // 目標の明確さ（1-10）
-  engagement: number;       // 没入感（1-10）
-  replayValue: number;      // リプレイ価値（1-10）
-  uniqueness: number;       // ユニークさ（1-10）
-  feasibility: number;      // 実装可能性（1-10）
-  feedback: string;         // 改善フィードバック
-  approved: boolean;        // 合格判定（7点以上）
-}
+passed = funScore >= 50 && playabilityCheck.isPlayable
 ```
 
-### 4.3 ImprovedLogicGenerator
+---
 
-**改善点**:
-1. Phase 1-2の仕様書を参照
-2. 動作確認済みパターンのみ使用
-3. サンプルゲームを参考例として提示
-4. 速度パラメータの推奨値を明示
+## 8. Step 7: 合格判定
 
-**プロンプト追加内容**:
-```
-# 動作確認済みパターン
-以下のパターンは動作確認済みです。これらを組み合わせて使用してください：
+**ファイル**: `src/ai/ImprovedMasterOrchestrator.ts:278`
 
-## パターン1: タップカウント
-{パターン1のコード}
-
-## パターン2: 移動 + タップ
-{パターン2のコード}
-
-## パターン3: 衝突判定
-{パターン3のコード}
-
-# 速度パラメータ
-- 遅い: 1.0-2.0
-- 普通: 2.0-4.0
-- 速い: 4.0-8.0
-
-# 禁止事項
-- 未検証の条件タイプを使用しない
-- 10ルール以上にしない
-- 物理演算を多用しない
-```
-
-### 4.4 ImprovedSoundGenerator
-
-**新規実装**:
-- Web Audio API + Tone.jsを活用
-- 最低限の効果音セット:
-  - タップ音
-  - 成功音
-  - 失敗音
-  - BGM（オプション）
-
-**実装方針**:
 ```typescript
-class ImprovedSoundGenerator {
-  // 効果音テンプレート（Base64）
-  private readonly SOUND_TEMPLATES = {
-    tap: 'data:audio/wav;base64,...',
-    success: 'data:audio/wav;base64,...',
-    failure: 'data:audio/wav;base64,...',
-    bgm_happy: 'data:audio/wav;base64,...',
-    bgm_exciting: 'data:audio/wav;base64,...',
-  };
-
-  async generate(idea: GameIdea): Promise<SoundAssets> {
-    // テーマに基づいてBGMを選択
-    const bgm = this.selectBGM(idea.theme);
-
-    // 基本効果音セット
-    const sounds = [
-      { id: 'tap', data: this.SOUND_TEMPLATES.tap },
-      { id: 'success', data: this.SOUND_TEMPLATES.success },
-      { id: 'failure', data: this.SOUND_TEMPLATES.failure },
-    ];
-
-    return { bgm, sounds };
-  }
-}
+const passed = funResult.funScore >= 50;
 ```
 
-### 4.5 ImprovedQualityChecker
+### 合格時
+- Supabaseにアップロード
+- privateMode = true の場合は `is_published = false`
 
-**改善点**:
-1. 面白さスコアの追加
-2. 動作テストの強化
-3. 多様性チェックの高速化
-
-**新しい評価基準**:
-```typescript
-interface QualityScore {
-  // 面白さ（40点）
-  funScore: {
-    clarity: number;       // 0-10: 目標の明確さ
-    engagement: number;    // 0-10: 没入感
-    dynamics: number;      // 0-10: 動的要素
-    feedback: number;      // 0-10: フィードバック（演出）
-  };
-
-  // 動作確認（30点）
-  functionality: {
-    rulesWork: number;     // 0-10: ルールが動作する
-    winnable: number;      // 0-10: クリア可能
-    balanced: number;      // 0-10: バランスが取れている
-  };
-
-  // 多様性（30点）
-  diversity: {
-    uniqueMechanic: number; // 0-10: メカニクスのユニークさ
-    uniqueVisual: number;   // 0-10: ビジュアルのユニークさ
-    uniqueTheme: number;    // 0-10: テーマのユニークさ
-  };
-
-  total: number;  // 100点満点
-  approved: boolean;  // 70点以上で合格
-}
-```
+### 不合格時
+- ログ出力のみ
+- ゲームは破棄
 
 ---
 
-## 5. 生成フロー（改善版）
-
-### 5.1 フロー図
-
-```
-開始
-  │
-  ▼
-┌─────────────────────────────────────────────────────────┐
-│ Step 1: GameIdeaGenerator                               │
-│ - GPT-4/Claudeでアイデア生成                            │
-│ - 自己評価7点以上を要求                                 │
-│ - 既存ゲームとの重複チェック                            │
-└─────────────────────────────────────────────────────────┘
-  │ 7点未満 → 再生成（最大3回）
-  ▼
-┌─────────────────────────────────────────────────────────┐
-│ Step 2: FunValidator                                    │
-│ - 別AIで面白さを客観評価                                │
-│ - 7点以上で通過                                         │
-└─────────────────────────────────────────────────────────┘
-  │ 7点未満 → 破棄、Step 1に戻る
-  ▼
-┌─────────────────────────────────────────────────────────┐
-│ Step 3: 並列アセット生成                                │
-│ - ImageGenerator: 背景 + オブジェクト                   │
-│ - SoundGenerator: BGM + 効果音                          │
-└─────────────────────────────────────────────────────────┘
-  │
-  ▼
-┌─────────────────────────────────────────────────────────┐
-│ Step 4: LogicGenerator                                  │
-│ - 仕様書参照でルール生成                                │
-│ - 動作確認済みパターン使用                              │
-└─────────────────────────────────────────────────────────┘
-  │
-  ▼
-┌─────────────────────────────────────────────────────────┐
-│ Step 5: QualityChecker                                  │
-│ - 面白さ + 動作 + 多様性 = 100点                        │
-│ - 70点以上で合格                                        │
-└─────────────────────────────────────────────────────────┘
-  │ 70点未満 → Step 1に戻る
-  ▼
-┌─────────────────────────────────────────────────────────┐
-│ Step 6: 保存・公開                                      │
-└─────────────────────────────────────────────────────────┘
-  │
-  ▼
-完了
-```
-
-### 5.2 期待される改善効果
-
-| 指標 | 現状 | 改善後 |
-|------|------|--------|
-| 合格率 | ~5% | ~50% |
-| 面白いゲーム率 | ~2% | ~35% |
-| 生成速度 | 5分/本 | 1分/本 |
-| 1000本生成時間 | 83時間 | 40分 |
-| 1000本コスト | $2000 | $500-700 |
-
----
-
-## 6. 実装優先順位
-
-### Phase 3-1: 最優先改善（1-2時間）
-
-1. **GameIdeaGenerator新規実装**
-   - GPT-4/Claude APIで面白いアイデア生成
-   - 自己評価機能
-
-2. **SoundGenerator実装**
-   - 最低限の効果音テンプレート
-   - Base64埋め込み
-
-### Phase 3-2: 品質向上（2-3時間）
-
-3. **LogicGenerator改善**
-   - 仕様書参照の追加
-   - パターン集の組み込み
-
-4. **QualityChecker改善**
-   - 面白さスコア追加
-   - 評価基準の明確化
-
-### Phase 3-3: 速度向上（1-2時間）
-
-5. **ParallelExecutor新規実装**
-   - 50並列実行
-   - エラーハンドリング
-
-6. **統合テスト**
-   - 10本生成テスト
-   - 品質確認
-
----
-
-## 7. 次のステップ
-
-Phase 2-3（コスト・速度最適化）に進み、以下を設計します：
-
-1. API呼び出しの最適化
-2. キャッシュ戦略
-3. 並列度の調整
-4. コスト削減策
-
----
-
-## 8. 制限・チェック項目の棚卸し（2025-12-20 更新）
-
-### 8.1 現在の生成フロー（詳細）
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ Step 1: GameIdeaGenerator.generate()                                        │
-│ ────────────────────────────────────                                        │
-│ 入力: 使用済みテーマ/メカニクスリスト                                         │
-│ 処理: Claude/GPT-4o-miniでゲームアイデア生成                                 │
-│ 出力: GameIdea {                                                            │
-│         title, titleEn, description, theme, visualStyle,                    │
-│         mainMechanic, subMechanics, playerGoal, playerAction,               │
-│         winCondition, loseCondition, duration, difficulty,                  │
-│         objectCount, estimatedRuleCount, funScore, uniqueness,              │
-│         targetAudience, emotionalHook                                       │
-│       }                                                                     │
-│ チェック: funScore >= 7 でなければ再生成（最大3回）                           │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ Step 2: createMockAssets()                                                  │
-│ ────────────────────────────                                                │
-│ 処理: アセットIDを事前生成（obj_xxx, se_xxx など）                           │
-│ 出力: AssetReferences { backgroundId, objectIds[], textIds[], seIds[] }     │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ Step 3: ImageGenerator.generateBackground/Object()                          │
-│ ──────────────────────────────────────────────────                          │
-│ 入力: idea.theme, idea.titleEn, idea.visualStyle                            │
-│ 処理: DALL-E 3で背景1枚 + オブジェクトN枚を生成                              │
-│ プロンプト: "${theme} themed game background, ${titleEn} style"             │
-│ 出力: { background: ImageAsset, objects: ImageAsset[] }                     │
-│ コスト: $0.04/枚 × (1 + objectCount) = 約$0.20〜$0.44                       │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ Step 4: SoundGenerator.generateForGame()                                    │
-│ ────────────────────────────────────────                                    │
-│ 入力: idea                                                                  │
-│ 処理: Web Audio APIで効果音/BGM生成                                         │
-│ 出力: { bgm: AudioAsset, effects: AudioAsset[] }                            │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ Step 5: ImprovedLogicGenerator.generateFromIdea()                           │
-│ ─────────────────────────────────────────────────                           │
-│ 入力: idea, assetRefs                                                       │
-│ 処理: Claude (claude-3-5-haiku)でGameScript JSON生成                        │
-│ プロンプト内容:                                                              │
-│   - 座標系/速度の技術仕様                                                    │
-│   - 利用可能な条件タイプ(touch, time, counter, collision, flag, random)      │
-│   - 利用可能なアクションタイプ(success, failure, hide, show, move, etc.)     │
-│   - 禁止パターン（即成功、操作不要、失敗不可能、目標不明瞭）                  │
-│   - 必須チェックリスト                                                       │
-│   ⚠️ 制限: 「ルール5-10個」「条件1-2個/ルール」← 削除推奨                    │
-│ 出力: GameProject（layout, counters, flags, rules）                         │
-│ コスト: 約$0.006（haiku使用時）                                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ Step 6: アセット統合                                                         │
-│ ──────────────────                                                          │
-│ 処理: 画像・音声をGameProjectに統合                                          │
-│ 出力: 完成したGameProject                                                    │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ Step 7: SpecificationComplianceChecker.check() 【アドバイザリーのみ】        │
-│ ─────────────────────────────────────────────────────────────────────────   │
-│ 入力: idea, project                                                         │
-│ チェック内容（100点満点）:                                                   │
-│   - メカニクス適合 (0-30): 必須条件/アクションの有無                         │
-│   - 勝利条件一致 (0-25): successアクションの有無                             │
-│   - 敗北条件一致 (0-15): failureアクションの有無                             │
-│   - 時間設定一致 (0-10): duration ±50% ← ❌ 削除推奨                        │
-│   - オブジェクト数一致 (0-10): ±3個 ← ❌ 削除推奨                           │
-│   - ルール数一致 (0-10): ±5個 ← ❌ 削除推奨                                 │
-│ 出力: ComplianceResult { passed, score, violations[] }                      │
-│ ⚠️ 注意: 合否判定には使用しない（参考情報のみ）                              │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ Step 8: FunEvaluator.evaluate() 【★ 現在の合否判定 ★】                      │
-│ ────────────────────────────────────────────────────                        │
-│ 入力: project, idea                                                         │
-│                                                                             │
-│ A. Playability Check（致命的問題検出）:                                      │
-│    ┌──────────────────┬────────────────────────────────────────────────┐    │
-│    │ hasInstantWin    │ 初期状態でクリア条件達成しているか               │    │
-│    │ requiresAction   │ タッチ操作が成功に必要か                        │    │
-│    │ canFail          │ 失敗条件が発動しうるか                          │    │
-│    │ hasClearGoal     │ counter条件でのsuccessがあるか ← ⚠️ 改善必要   │    │
-│    └──────────────────┴────────────────────────────────────────────────┘    │
-│    → 1つでも問題あれば isPlayable = false                                   │
-│                                                                             │
-│ B. Fun Score（100点満点）:                                                   │
-│    ┌──────────────────────┬────────┬──────────────────────────────────┐    │
-│    │ dynamicElements      │ 0-20   │ move/time/randomアクションの有無  │    │
-│    │ interactionQuality   │ 0-20   │ タッチ条件の多様性               │    │
-│    │ feedbackRichness     │ 0-20   │ effect/playSoundの有無           │    │
-│    │ challengeBalance     │ 0-20   │ duration設定の有無               │    │
-│    │ progressionClarity   │ 0-20   │ counter/success/failureの有無    │    │
-│    └──────────────────────┴────────┴──────────────────────────────────┘    │
-│    → isPlayable = false の場合、スコアは最大30点に制限                      │
-│                                                                             │
-│ 出力: FunEvaluationResult { funScore, passed, playabilityCheck, issues[] }  │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ Step 9: 合格判定                                                             │
-│ ────────────────                                                            │
-│ 現在のロジック:                                                              │
-│   passed = funResult.funScore >= 50                                         │
-│                                                                             │
-│ 提案するロジック:                                                            │
-│   passed = hasSuccessAction && hasFailureAction &&                          │
-│            !hasInstantWin && requiresPlayerAction                           │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                        ┌───────────┴───────────┐
-                        ▼                       ▼
-                   [passed=true]           [passed=false]
-                        │                       │
-                        ▼                       ▼
-              ┌─────────────────┐      ┌─────────────────┐
-              │ Supabaseに保存  │      │ 破棄（ログのみ）│
-              │ 公開処理        │      │                 │
-              └─────────────────┘      └─────────────────┘
-```
-
-### 8.1.1 コスト内訳（1ゲームあたり）
+## 9. コスト内訳（1ゲームあたり）
 
 | ステップ | API | コスト |
 |----------|-----|--------|
-| Step 1 | Claude/GPT-4o-mini | ~$0.002 |
-| Step 3 | DALL-E 3 (5枚想定) | ~$0.20 |
-| Step 5 | Claude Haiku | ~$0.006 |
+| GameIdeaGenerator | Claude/GPT-4o-mini | ~$0.002 |
+| ImageGenerator | DALL-E 3 (5枚) | ~$0.20 |
+| LogicGenerator | Claude Haiku | ~$0.006 |
 | **合計** | | **~$0.21** |
 
-### 8.2 各コンポーネントの制限一覧
+---
 
-#### A. GameIdeaGenerator
+## 10. 現在の問題点と改善提案
 
-| 項目 | 現状 | 判定 | 理由 |
-|------|------|------|------|
-| funScore >= 7 | AI自己評価 | ✅ 維持 | 最低限の品質担保 |
-| タイトル8文字以内 | 指示のみ | ⚠️ 要検討 | 長くても問題ない場合あり |
-| duration 5-15秒 | 指示のみ | ✅ 維持 | 短時間ゲームの前提 |
-| テーマ重複回避 | 使用済みリスト | ✅ 維持 | 多様性確保 |
-| メカニクス重複回避 | 使用済みリスト | ✅ 維持 | 多様性確保 |
-| visualStyle選択 | 10種類から選択 | ✅ 維持（修正済み） | cute固定を廃止 |
-| 良いゲームの例 | 削除済み | ✅ 削除済み | 特定思想への偏り排除 |
+### 問題点
 
-#### B. ImprovedLogicGenerator
+| 箇所 | 問題 |
+|------|------|
+| LogicGenerator | 「ルール5-10個」「条件1-2個」の制限が不要 |
+| ComplianceChecker | オブジェクト数/ルール数/duration一致チェックが無意味 |
+| FunEvaluator | dynamicElements/feedbackRichnessが静的ゲームに不利 |
+| FunEvaluator | hasClearGoalがcounter条件のみを評価 |
 
-| 項目 | 現状 | 判定 | 理由 |
-|------|------|------|------|
-| ルール数: 5-10個 | プロンプトで推奨 | ❌ 削除推奨 | 複雑なゲームも許容すべき |
-| 条件数: 1-2個/ルール | プロンプトで推奨 | ❌ 削除推奨 | 制限不要 |
-| 座標系説明 | 技術仕様 | ✅ 維持 | 正確な実装に必要 |
-| 速度パラメータ表 | 技術仕様 | ✅ 維持 | 正確な実装に必要 |
-| 禁止パターン（即成功等）| プロンプトで明示 | ✅ 維持 | 品質確保に必須 |
-| 必須チェックリスト | プロンプトで明示 | ✅ 維持 | 品質確保に必須 |
+### 改善提案
 
-#### C. ImageGenerator
-
-| 項目 | 現状 | 判定 | 理由 |
-|------|------|------|------|
-| style固定 | idea.visualStyleを使用 | ✅ 修正済み | cute固定を廃止 |
-| mechanicPrompts | テーマベース動的生成 | ✅ 修正済み | 固定プロンプト廃止 |
-| colorPalette固定 | 空配列 | ✅ 修正済み | 固定値廃止 |
-
-#### D. SpecificationComplianceChecker（アドバイザリーのみ）
-
-| 項目 | 点数 | 判定 | 理由 |
-|------|------|------|------|
-| メカニクス適合 | 0-30 | ⚠️ 緩和検討 | 厳格すぎる場合あり |
-| 勝利条件一致 | 0-25 | ⚠️ 改善必要 | successアクション有無のみ |
-| 敗北条件一致 | 0-15 | ⚠️ 改善必要 | failureアクション有無のみ |
-| 時間設定一致 | 0-10 | ❌ 削除推奨 | ±50%許容に意味なし |
-| オブジェクト数一致 | 0-10 | ❌ 削除推奨 | アイデア段階の数に意味なし |
-| ルール数一致 | 0-10 | ❌ 削除推奨 | 多い方が良い場合もある |
-
-**注**: 現在はアドバイザリーのみで合否に影響しない
-
-#### E. FunEvaluator【現在の合否判定】
-
-##### E-1. Playability Check（致命的問題検出）
-
-| 項目 | 内容 | 判定 | 理由 |
-|------|------|------|------|
-| hasInstantWin | 初期状態でクリア条件達成 | ✅ 維持 | 致命的問題 |
-| requiresAction | タッチ操作が必要か | ✅ 維持 | 致命的問題 |
-| canFail | 失敗条件が発動しうるか | ✅ 維持 | 致命的問題 |
-| hasClearGoal | counter条件でのsuccessがあるか | ⚠️ 改善必要 | touch条件も明確なゴール |
-
-##### E-2. Fun Score（0-100点）
-
-| 項目 | 点数 | 判定 | 理由 |
-|------|------|------|------|
-| dynamicElements | 0-20 | ⚠️ 要検討 | 静的ゲームも面白い可能性 |
-| interactionQuality | 0-20 | ⚠️ 要検討 | シンプルでも面白い |
-| feedbackRichness | 0-20 | ⚠️ 要検討 | effect/soundは必須ではない |
-| challengeBalance | 0-20 | ⚠️ 曖昧 | 評価基準が不明確 |
-| progressionClarity | 0-20 | ✅ 維持 | counter/success/failureの有無 |
-
-### 8.3 問題点まとめ
-
-#### 🔴 削除すべき制限
-
-1. **LogicGenerator「ルール5-10個」** - 複雑でも良い
-2. **LogicGenerator「条件1-2個/ルール」** - 複雑でも良い
-3. **ComplianceChecker「オブジェクト数一致」** - 意味なし
-4. **ComplianceChecker「ルール数一致」** - 意味なし
-5. **ComplianceChecker「duration ±50%」** - 意味なし
-
-#### 🟡 改善が必要
-
-1. **hasClearGoal** - counter条件以外も明確なゴールになり得る
-2. **dynamicElements評価** - 動きがないゲームも面白い可能性
-3. **feedbackRichness評価** - effect/soundは必須ではない
-4. **勝利/敗北条件チェック** - 「存在する」だけでなく「機能する」かを確認すべき
-
-#### 🟢 維持すべき制限
-
-1. **hasInstantWin検出** - 即成功は致命的
-2. **requiresAction検出** - 操作不要は致命的
-3. **canFail検出** - 失敗できないのは致命的
-4. **禁止パターン明示** - プロンプトで明確に禁止
-5. **技術仕様（座標系・速度）** - 正確な実装に必要
-
-### 8.4 提案: シンプルな合否判定
+**合否判定のシンプル化**:
 
 ```typescript
-// 必須条件のみチェック
 const passed =
   hasSuccessAction &&      // 成功条件がある
   hasFailureAction &&      // 失敗条件がある
@@ -694,12 +279,4 @@ const passed =
   requiresPlayerAction;    // 操作が必要
 ```
 
-その他のスコアリングは参考情報として残すが、合否には影響させない。
-
-### 8.5 次のアクション
-
-- [ ] LogicGeneratorの「ルール5-10個」「条件1-2個」制限を削除
-- [ ] ComplianceCheckerの不要チェック（オブジェクト数、ルール数、duration）を削除
-- [ ] FunEvaluatorの合否条件をシンプル化（上記4条件のみ）
-- [ ] hasClearGoalをtouch条件でも明確なゴールと判定するよう修正
-- [ ] 「成功/失敗条件が実際に機能するか」のチェック強化
+Fun Scoreは参考情報として残すが、合否には影響させない。
