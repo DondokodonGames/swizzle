@@ -43,8 +43,8 @@ const VALID_COUNTER_OPERATIONS = ['increment', 'decrement', 'set', 'add', 'subtr
 const VALID_MOVEMENT_TYPES = ['straight', 'teleport', 'wander', 'stop'];
 const VALID_EFFECT_TYPES = ['flash', 'shake', 'scale', 'rotate', 'particles'];
 // 新規追加
-const VALID_POSITION_AREAS = ['inside', 'outside'];  // 'crossing' は未対応
-const VALID_ANIMATION_CONDITIONS = ['playing', 'stopped', 'frame', 'frameRange', 'loop'];  // 'start','end' は未実装
+const VALID_POSITION_AREAS = ['inside', 'outside', 'crossing'];
+const VALID_ANIMATION_CONDITIONS = ['playing', 'stopped', 'frame', 'frameRange', 'loop', 'start', 'end'];
 const VALID_RANDOM_SELECTION_MODES = ['uniform', 'probability', 'weighted'];
 
 // 速度の推奨範囲
@@ -474,13 +474,13 @@ export class LogicValidator {
             break;
 
           case 'position':
-            // areaチェック（inside/outsideのみ対応）
+            // areaチェック
             if (condition.area && !VALID_POSITION_AREAS.includes(condition.area)) {
               errors.push({
                 type: 'critical',
                 code: 'INVALID_POSITION_AREA',
                 message: `ルール "${ruleId}": 無効なposition area "${condition.area}"`,
-                fix: `有効な値: ${VALID_POSITION_AREAS.join(', ')} ('crossing'は未対応)`
+                fix: `有効な値: ${VALID_POSITION_AREAS.join(', ')}`
               });
             }
             // targetチェック
@@ -515,13 +515,13 @@ export class LogicValidator {
             break;
 
           case 'animation':
-            // conditionチェック（動作確認済みのもののみ）
+            // conditionチェック
             if (condition.condition && !VALID_ANIMATION_CONDITIONS.includes(condition.condition)) {
               errors.push({
                 type: 'critical',
                 code: 'INVALID_ANIMATION_CONDITION',
                 message: `ルール "${ruleId}": 無効なanimation condition "${condition.condition}"`,
-                fix: `有効な値: ${VALID_ANIMATION_CONDITIONS.join(', ')} ('start','end'は未実装)`
+                fix: `有効な値: ${VALID_ANIMATION_CONDITIONS.join(', ')}`
               });
             }
             // targetチェック

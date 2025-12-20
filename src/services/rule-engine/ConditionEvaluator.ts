@@ -2,7 +2,7 @@
 // 条件評価システム
 
 import { TriggerCondition } from '../../types/editor/GameScript';
-import { RuleExecutionContext, GameObject, AnimationState, RandomState } from './types';
+import { RuleExecutionContext, GameObject, AnimationState, RandomState, PositionState } from './types';
 import { FlagManager } from './FlagManager';
 import { CounterManager } from './CounterManager';
 import { CollisionDetector } from './CollisionDetector';
@@ -15,6 +15,7 @@ export class ConditionEvaluator {
   private consumedTouchEvents: Set<string> = new Set();
   private randomStates: Map<string, RandomState> = new Map();
   private animationStates: Map<string, AnimationState> = new Map();
+  private positionStates: Map<string, PositionState> = new Map();
   private previousGameState?: string;
 
   constructor(
@@ -406,26 +407,49 @@ export class ConditionEvaluator {
   ): boolean {
     try {
       const targetObj = context.objects.get(condition.target);
-      
+
       if (!targetObj) {
         return false;
       }
-      
+
       const { region } = condition;
       const objCenterX = targetObj.x + targetObj.width / 2;
       const objCenterY = targetObj.y + targetObj.height / 2;
-      
+
       const regionX = region.x * context.canvas.width;
       const regionY = region.y * context.canvas.height;
-      
+
       const regionWidth = (region.width ?? 0) * context.canvas.width;
       const regionHeight = (region.height ?? 0) * context.canvas.height;
-      
-      const inside = objCenterX >= regionX && 
+
+      const inside = objCenterX >= regionX &&
                      objCenterX <= regionX + regionWidth &&
-                     objCenterY >= regionY && 
+                     objCenterY >= regionY &&
                      objCenterY <= regionY + regionHeight;
-      
+
+      // crossing検出用の状態キー
+      const stateKey = `${condition.target}_${region.x}_${region.y}_${region.width}_${region.height}`;
+
+      if (condition.area === 'crossing') {
+        // crossing: 領域境界を越えた瞬間を検出
+        let state = this.positionStates.get(stateKey);
+
+        if (!state) {
+          // 初回は現在の状態を記録して false を返す
+          state = { wasInside: inside, justCrossed: false };
+          this.positionStates.set(stateKey, state);
+          return false;
+        }
+
+        // 前フレームと今フレームで inside/outside が変わったかチェック
+        const crossed = state.wasInside !== inside;
+        state.wasInside = inside;
+        state.justCrossed = crossed;
+
+        return crossed;
+      }
+
+      // inside/outside の場合は従来通り
       return condition.area === 'inside' ? inside : !inside;
     } catch (error) {
       console.error('evaluatePositionCondition error:', error);
@@ -442,40 +466,76 @@ export class ConditionEvaluator {
   ): boolean {
     try {
       const targetObj = context.objects.get(condition.target);
-      
+
       if (!targetObj) {
         return false;
       }
-      
+
+      // 状態を取得または初期化
+      let state = this.animationStates.get(condition.target);
+      const isPlaying = targetObj.animationPlaying === true;
+      const currentFrame = targetObj.currentFrame ?? 0;
+      const frameCount = targetObj.frameCount ?? 1;
+
+      if (!state) {
+        state = {
+          lastFrame: currentFrame,
+          frameChangeTime: Date.now(),
+          loopCount: 0,
+          wasPlaying: isPlaying,
+          justStarted: false,
+          justEnded: false
+        };
+        this.animationStates.set(condition.target, state);
+      }
+
+      // start/end 検出用: 再生状態の変化をチェック
+      const justStarted = isPlaying && !state.wasPlaying;
+      const justEnded = !isPlaying && state.wasPlaying;
+
+      // 最終フレームに到達したかチェック（ループしない場合の end 検出）
+      const reachedLastFrame = currentFrame === frameCount - 1 && state.lastFrame !== currentFrame;
+
+      // 状態を更新
+      state.wasPlaying = isPlaying;
+      state.justStarted = justStarted;
+      state.justEnded = justEnded || reachedLastFrame;
+      state.lastFrame = currentFrame;
+
       switch (condition.condition) {
         case 'playing':
-          return targetObj.animationPlaying === true;
-          
+          return isPlaying;
+
         case 'stopped':
-          return targetObj.animationPlaying === false;
-          
+          return !isPlaying;
+
+        case 'start':
+          // アニメーションが開始された瞬間
+          return justStarted;
+
+        case 'end':
+          // アニメーションが終了した瞬間（停止または最終フレーム到達）
+          return justEnded || reachedLastFrame;
+
         case 'frame':
           if (condition.frameNumber === undefined) {
             return false;
           }
-          return targetObj.currentFrame === condition.frameNumber;
-          
+          return currentFrame === condition.frameNumber;
+
         case 'frameRange':
           if (!condition.frameRange || condition.frameRange.length !== 2) {
             return false;
           }
-          const [start, end] = condition.frameRange;
-          return targetObj.currentFrame !== undefined &&
-                 targetObj.currentFrame >= start && 
-                 targetObj.currentFrame <= end;
-                 
+          const [rangeStart, rangeEnd] = condition.frameRange;
+          return currentFrame >= rangeStart && currentFrame <= rangeEnd;
+
         case 'loop':
-          const state = this.animationStates.get(condition.target);
-          if (!state || condition.loopCount === undefined) {
+          if (condition.loopCount === undefined) {
             return false;
           }
           return state.loopCount >= condition.loopCount;
-          
+
         default:
           return false;
       }

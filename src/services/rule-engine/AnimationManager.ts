@@ -46,7 +46,10 @@ export class AnimationManager {
         state = {
           lastFrame: obj.currentFrame || 0,
           frameChangeTime: now,
-          loopCount: 0
+          loopCount: 0,
+          wasPlaying: obj.animationPlaying || false,
+          justStarted: false,
+          justEnded: false
         };
         this.animationStates.set(id, state);
       }

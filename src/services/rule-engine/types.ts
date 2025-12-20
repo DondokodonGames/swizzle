@@ -168,6 +168,17 @@ export interface AnimationState {
   lastFrame: number;
   frameChangeTime: number;
   loopCount: number;
+  wasPlaying: boolean;        // 前フレームで再生中だったか
+  justStarted: boolean;       // このフレームで開始したか
+  justEnded: boolean;         // このフレームで終了したか
+}
+
+/**
+ * 位置条件の状態（crossing検出用）
+ */
+export interface PositionState {
+  wasInside: boolean;         // 前フレームで領域内だったか
+  justCrossed: boolean;       // このフレームで境界を越えたか
 }
 
 /**

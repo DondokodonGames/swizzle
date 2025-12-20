@@ -58,9 +58,8 @@ export interface ConceptValidationResult {
  * エディター仕様準拠の条件タイプ（動作確認済みのみ）
  *
  * 注意事項:
- * - position: 'inside'/'outside' のみ動作確認済み（'crossing' は未対応）
- * - animation: 'playing','stopped','frame','frameRange','loop' のみ動作確認済み
- *   ('start','end' は未実装)
+ * - position: 'inside'/'outside'/'crossing' 全て対応
+ * - animation: 'playing','stopped','frame','frameRange','loop','start','end' 全て対応
  * - random: 完全動作（probability, interval, seed 対応）
  */
 export type VerifiedConditionType =
@@ -192,10 +191,10 @@ export interface TriggerCondition {
   // flag
   flagId?: string;
   // position
-  area?: 'inside' | 'outside';
+  area?: 'inside' | 'outside' | 'crossing';
   region?: { x: number; y: number; width?: number; height?: number };
   // animation
-  condition?: 'playing' | 'stopped' | 'frame' | 'frameRange' | 'loop';
+  condition?: 'playing' | 'stopped' | 'frame' | 'frameRange' | 'loop' | 'start' | 'end';
   frameNumber?: number;
   frameRange?: [number, number];
   loopCount?: number;
