@@ -936,10 +936,10 @@ export class LogicValidator {
     }
 
     errors.push({
-      type: 'critical',
+      type: 'warning',
       code: 'NO_PLAYER_ACTION',
-      message: '成功へのパスにプレイヤー操作（touch条件）が含まれていません',
-      fix: 'タップでカウンターを増やし、そのカウンターで成功判定するルールを追加してください'
+      message: '成功へのパスにプレイヤー操作（touch条件）が含まれていない可能性があります',
+      fix: 'ゲームコンセプトの操作方法に合わせてルールを確認してください'
     });
   }
 

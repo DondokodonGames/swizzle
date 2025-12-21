@@ -16,7 +16,9 @@ const __dirname = path.dirname(__filename);
 
 // テーマをJSONファイルから読み込み
 const themesPath = path.join(__dirname, 'themes.json');
+const tagsPath = path.join(__dirname, 'tags.json');
 let LOADED_THEMES: string[] = [];
+let LOADED_TAGS: any = {};
 
 try {
   const themesData = JSON.parse(fs.readFileSync(themesPath, 'utf-8'));
@@ -28,6 +30,19 @@ try {
 } catch (e) {
   console.warn('   ⚠️ Failed to load themes.json, using fallback themes');
   LOADED_THEMES = ['星', '月', '猫', '犬', '花', '鳥', '魚', '虫', '雲', '雨'];
+}
+
+try {
+  LOADED_TAGS = JSON.parse(fs.readFileSync(tagsPath, 'utf-8'));
+  const totalTags = (LOADED_TAGS.genres?.length || 0) +
+    (LOADED_TAGS.moods?.length || 0) +
+    (LOADED_TAGS.visualStyles?.length || 0) +
+    (LOADED_TAGS.tags?.length || 0) +
+    Object.values(LOADED_TAGS.themes || {}).reduce((sum: number, arr: any) => sum + (arr?.length || 0), 0);
+  console.log(`   🏷️ Loaded ${totalTags}+ tags from tags.json`);
+} catch (e) {
+  console.warn('   ⚠️ Failed to load tags.json');
+  LOADED_TAGS = { genres: [], tags: [], themes: {} };
 }
 
 const CONCEPT_PROMPT = `あなたはスマホ向け10秒ミニゲームのゲームデザイナーです。
@@ -294,6 +309,46 @@ export class GameConceptGenerator {
   }
 
   /**
+   * ランダムにジャンルを選択
+   */
+  private selectRandomGenre(): string {
+    const genres = LOADED_TAGS.genres || [
+      'アクション', 'パズル', 'リズム', 'シューティング', '収集', 'タイミング', '記憶', '反射神経'
+    ];
+    return genres[Math.floor(Math.random() * genres.length)];
+  }
+
+  /**
+   * ランダムにタグを選択（3〜5個）
+   */
+  private selectRandomTags(): string[] {
+    const allTags: string[] = [];
+
+    // moods, visualStyles, tagsから収集
+    if (LOADED_TAGS.moods) allTags.push(...LOADED_TAGS.moods);
+    if (LOADED_TAGS.visualStyles) allTags.push(...LOADED_TAGS.visualStyles);
+    if (LOADED_TAGS.tags) allTags.push(...LOADED_TAGS.tags);
+
+    // themesの各カテゴリから収集
+    if (LOADED_TAGS.themes) {
+      for (const category of Object.values(LOADED_TAGS.themes)) {
+        if (Array.isArray(category)) {
+          allTags.push(...category);
+        }
+      }
+    }
+
+    // prefixesとsuffixesも追加
+    if (LOADED_TAGS.combinations?.prefixes) allTags.push(...LOADED_TAGS.combinations.prefixes);
+    if (LOADED_TAGS.combinations?.suffixes) allTags.push(...LOADED_TAGS.combinations.suffixes);
+
+    // 3〜5個をランダムに選択
+    const count = 3 + Math.floor(Math.random() * 3);
+    const shuffled = allTags.sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
+  }
+
+  /**
    * ゲームコンセプトを生成
    */
   async generate(feedback?: string): Promise<GameConcept> {
@@ -301,14 +356,24 @@ export class GameConceptGenerator {
       return this.generateMockConcept();
     }
 
-    // コード側でテーマをランダム選択（AIの偏りを防ぐ）
+    // コード側でテーマ、ジャンル、タグをランダム選択（AIの偏りを防ぐ）
     const forcedTheme = this.selectRandomTheme();
+    const suggestedGenre = this.selectRandomGenre();
+    const suggestedTags = this.selectRandomTags();
     console.log(`      🎲 Selected theme: ${forcedTheme}`);
+    console.log(`      🎮 Suggested genre: ${suggestedGenre}`);
+    console.log(`      🏷️ Suggested tags: ${suggestedTags.join(', ')}`);
 
     let prompt = CONCEPT_PROMPT;
 
-    // 強制テーマを追加
-    prompt += `\n\n# 今回のテーマ（必ずこのテーマを使用してください）\nテーマ: 「${forcedTheme}」\n\nこのテーマに基づいたゲームを考えてください。テーマを変更しないでください。`;
+    // 強制テーマと提案ジャンル/タグを追加
+    prompt += `\n\n# 今回のテーマ（必ずこのテーマを使用してください）
+テーマ: 「${forcedTheme}」
+推奨ジャンル: ${suggestedGenre}（参考程度、変更可能）
+参考タグ: ${suggestedTags.join(', ')}（参考程度、自由に追加・変更可能）
+
+このテーマに基づいたゲームを考えてください。テーマは変更しないでください。
+ジャンルとタグはテーマに合わせて自由に調整してください。`;
 
     // 既存テーマを避けるための追加指示
     if (this.usedThemes.size > 0) {
