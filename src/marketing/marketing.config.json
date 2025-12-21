@@ -1,0 +1,58 @@
+{
+  "$schema": "./marketing.config.schema.json",
+  "enabled": true,
+  "dryRun": false,
+  "platforms": {
+    "twitter": {
+      "enabled": true,
+      "postsPerDay": 4,
+      "schedule": ["09:00", "12:00", "18:00", "21:00"]
+    },
+    "instagram": {
+      "enabled": true,
+      "postsPerDay": 2,
+      "schedule": ["12:00", "20:00"]
+    },
+    "discord": {
+      "enabled": true,
+      "announcements": {
+        "newGames": "09:00",
+        "dailyChallenge": "12:00"
+      }
+    },
+    "tiktok": {
+      "enabled": false,
+      "postsPerDay": 3,
+      "note": "API承認待ち"
+    }
+  },
+  "content": {
+    "hashtags": {
+      "default": ["#Swizzle", "#IndieGame", "#WebGame", "#Gaming"],
+      "japanese": ["#インディーゲーム", "#ブラウザゲーム", "#ゲーム"],
+      "trending": []
+    },
+    "templates": {
+      "newGame": {
+        "twitter": "🎮 新作ゲーム「{title}」が公開されました！\n\n{description}\n\n🔗 今すぐプレイ: {url}\n\n{hashtags}",
+        "instagram": "🎮 NEW GAME ALERT! 🎮\n\n「{title}」\n\n{description}\n\n🔗 Link in bio!\n\n{hashtags}"
+      },
+      "dailyChallenge": {
+        "twitter": "🏆 今日のデイリーチャレンジ！\n\n「{title}」でハイスコアを目指そう！\n\n🎯 現在の最高スコア: {highScore}\n🔗 挑戦する: {url}\n\n{hashtags}",
+        "instagram": "🏆 DAILY CHALLENGE 🏆\n\n今日の挑戦ゲームは「{title}」！\n\nハイスコアを更新できるかな？\n\n🔗 Link in bio!\n\n{hashtags}"
+      }
+    }
+  },
+  "analytics": {
+    "trackEngagement": true,
+    "reportInterval": "weekly",
+    "metrics": ["impressions", "clicks", "conversions"]
+  },
+  "moderation": {
+    "autoReply": true,
+    "replyDelay": 60,
+    "blockedWords": [],
+    "maxRepliesPerHour": 10
+  },
+  "timezone": "Asia/Tokyo"
+}
