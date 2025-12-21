@@ -48,11 +48,17 @@ const EDITOR_SPEC = `
 ## 使用可能な条件（これ以外は使用禁止）
 | タイプ | パラメータ |
 |--------|-----------|
-| touch | target: 'self'/'stage'/objectId, touchType: 'down'/'up'/'hold' |
+| touch | target: 'self'/'stage'/objectId, touchType: 'down'/'up'/'hold'【★最重要★】|
 | time | timeType: 'exact'/'interval', seconds?, interval? |
 | counter | counterName, comparison: 'equals'/'greaterOrEqual'/'greater'/'less', value |
-| collision | target: objectId, collisionType: 'enter'/'stay'/'exit', checkMode: 'hitbox' |
+| collision | target: objectId, collisionType: 'enter'/'stay'/'exit', checkMode: 'hitbox'【非推奨】|
 | flag | flagId, value: boolean |
+
+★★★ 重要: ゲームルールの基本構造 ★★★
+成功への道は必ず「タッチ → カウンター増加 → 成功」の流れにする。
+- 各オブジェクトに「タップしたらカウンターを増やす」ルールを設定
+- カウンターが目標値に達したら成功
+- collisionのみで成功に至るゲームは禁止（タッチ条件が必須）
 
 ## 使用可能なアクション（これ以外は使用禁止）
 | タイプ | パラメータ |
@@ -64,7 +70,7 @@ const EDITOR_SPEC = `
 | move | targetId, movement: { type: 'straight'/'teleport', target: {x,y}, speed? } |
 | counter | counterName, operation: 'add'/'subtract'/'set', value |
 | addScore | points |
-| effect | targetId, effect: { type: 'scale'/'shake', duration, scaleAmount? } |
+| effect | targetId, effect: { type: 'scale'/'shake', duration（秒数: 0.1〜2.0推奨）, scaleAmount? } |
 | setFlag | flagId, value |
 | playSound | soundId（assetPlanで定義したse_xxxを使用） |
 
@@ -82,9 +88,11 @@ ${EDITOR_SPEC}
 
 # 絶対厳守事項
 
-## 1. 即成功を出さない
+## 1. 即成功を出さない（最重要）
 - カウンター初期値は必ず目標値より小さくする（例: 目標5なら初期値0）
 - 成功条件には必ずプレイヤー操作（touch条件）を経由するパスが必要
+- ゲームは「タップ → カウンター増加 → 成功」の流れを必ず含む
+- collisionやtime条件のみで成功に至るゲームは禁止
 
 ## 2. 即失敗を出さない
 - ゲーム開始直後に失敗条件を満たさない
@@ -97,7 +105,7 @@ ${EDITOR_SPEC}
 
 ## 4. 使用可能な機能のみ使う
 - 上記の仕様書に記載された条件・アクションのみ使用
-- position条件、playSound、randomActionなどは使用禁止
+- position条件、randomActionなどは使用禁止（playSoundは使用可能）
 
 ## 5. ゲームロジックの一貫性（重要）
 ゲームの因果関係を明確に設計：

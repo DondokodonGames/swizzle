@@ -23,6 +23,8 @@ export interface GameConcept {
   duration: number;  // 5-15秒
   theme: string;     // 完全自由
   visualStyle: string;  // 完全自由
+  genre?: string;       // アクション/パズル/リズム等
+  tags?: string[];      // タグ配列
 
   // 4つの明確性
   playerGoal: string;       // 何をすべきか
