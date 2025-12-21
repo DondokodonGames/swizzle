@@ -174,18 +174,53 @@ export class AssetGenerator {
 
   /**
    * 背景プロンプト生成
+   *
+   * ゲーム用背景は以下の要件を満たす必要がある:
+   * - オブジェクトが上に配置されるため、シンプルで邪魔にならない
+   * - キャラクターやゲーム要素を含まない
+   * - 均一な領域があり、オブジェクトの視認性が確保される
    */
   private buildBackgroundPrompt(concept: GameConcept, bgPlan: AssetPlan['background']): string {
-    return `${bgPlan.description}, ${bgPlan.mood} mood, ${concept.visualStyle} style, game background for mobile game, high quality digital illustration, no text, no UI elements`;
+    return `Mobile game background for "${concept.theme}":
+Scene: ${bgPlan.description}
+Mood: ${bgPlan.mood}
+Style: ${concept.visualStyle}
+
+CRITICAL REQUIREMENTS:
+- Abstract, minimal background with soft gradients and subtle patterns
+- NO characters, NO game objects, NO icons, NO UI elements, NO text
+- Central area must be clear and uniform for game objects to be placed on top
+- Use muted, desaturated colors that won't compete with foreground sprites
+- Vertical mobile format composition (portrait orientation)
+- Simple, clean digital illustration style
+- Depth through subtle atmospheric perspective, not detailed elements`;
   }
 
   /**
    * オブジェクトプロンプト生成
+   *
+   * ゲームオブジェクトの要件:
+   * - 透明背景で、他の要素と重ねやすい
+   * - はっきりしたシルエットで視認性が高い
+   * - ゲームスプライトとして機能する
    */
   private buildObjectPrompt(concept: GameConcept, objPlan: AssetPlan['objects'][0]): string {
-    const sizeDesc = objPlan.size === 'small' ? 'small icon' :
-                     objPlan.size === 'large' ? 'large prominent' : 'medium sized';
-    return `${objPlan.visualDescription}, ${sizeDesc}, ${concept.visualStyle} style, game sprite, transparent background, simple clean design, no text`;
+    const sizeDesc = objPlan.size === 'small' ? 'small compact icon (64px style)' :
+                     objPlan.size === 'large' ? 'large prominent sprite (192px style)' :
+                     'medium sized sprite (128px style)';
+    return `Game sprite object: ${objPlan.visualDescription}
+Purpose: ${objPlan.purpose}
+Size: ${sizeDesc}
+Style: ${concept.visualStyle}
+
+CRITICAL REQUIREMENTS:
+- MUST have fully transparent background (PNG with alpha channel)
+- Clear, distinct silhouette that's easily recognizable
+- Bold colors and strong contrast for visibility
+- Simple, clean design suitable for mobile game
+- NO background elements, NO shadows on ground, NO text
+- Single isolated object, centered in frame
+- Cartoon/game art style, not photorealistic`;
   }
 
   /**
@@ -215,14 +250,14 @@ export class AssetGenerator {
 
   /**
    * プレースホルダーオブジェクト生成
+   * 透明な画像を生成（後で実画像に差し替え可能）
    */
   private createPlaceholderObject(plan: AssetPlan['objects'][0]): GeneratedObject {
     const size = plan.size === 'small' ? 64 : plan.size === 'large' ? 192 : 128;
-    const color = this.getColorFromName(plan.name);
 
+    // 完全に透明なSVG（後で画像差し替え用）
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-      <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 4}" fill="${color}" stroke="#333" stroke-width="2"/>
-      <text x="${size/2}" y="${size/2 + 5}" text-anchor="middle" fill="white" font-size="14" font-family="sans-serif">${plan.name.slice(0, 2)}</text>
+      <rect width="${size}" height="${size}" fill="transparent" opacity="0"/>
     </svg>`;
 
     const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;

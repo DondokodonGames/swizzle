@@ -16,6 +16,28 @@ const EDITOR_SPEC = `
 - x: 0.0=左端, 1.0=右端
 - y: 0.0=上端, 1.0=下端
 - 中央 = (0.5, 0.5)
+- 安全エリア: x=0.1〜0.9, y=0.15〜0.85（端に置かない）
+
+## オブジェクト配置パターン（重要）
+ゲームテーマに応じて適切な配置パターンを使用：
+
+### 円形配置（時計、ルーレット、花など）
+- 中心: (0.5, 0.5)
+- 半径: 0.25〜0.35が適切
+- 計算式: x = 0.5 + radius * cos(angle), y = 0.5 + radius * sin(angle)
+- 例: 12個を円形に配置
+  - 12時: (0.5, 0.15), 3時: (0.85, 0.5), 6時: (0.5, 0.85), 9時: (0.15, 0.5)
+
+### グリッド配置（パズル、記憶ゲーム）
+- 3x3グリッド: 間隔0.25, 開始点(0.25, 0.25)
+- 4x4グリッド: 間隔0.2, 開始点(0.2, 0.2)
+
+### 縦並び配置（選択肢、メニュー）
+- x=0.5で固定、yは0.25間隔
+
+### ランダム散布（避けゲー、収集ゲー）
+- 画面全体に適度に分散
+- オブジェクト間の距離を0.15以上確保
 
 ## 速度（px/frame, 60FPS）
 - 非常に遅い: 0.5-1.0
@@ -44,6 +66,14 @@ const EDITOR_SPEC = `
 | addScore | points |
 | effect | targetId, effect: { type: 'scale'/'shake', duration, scaleAmount? } |
 | setFlag | flagId, value |
+| playSound | soundId（assetPlanで定義したse_xxxを使用） |
+
+## 効果音の使用（推奨）
+ゲームの体験を向上させるため、適切な場面で効果音を再生：
+- タップ時: { "type": "playSound", "soundId": "se_tap" }
+- 成功時: { "type": "playSound", "soundId": "se_success" }
+- 失敗時: { "type": "playSound", "soundId": "se_failure" }
+- 収集時: { "type": "playSound", "soundId": "se_collect" }
 `;
 
 const LOGIC_PROMPT = `あなたはSwizzleゲームエンジンのGameScriptを生成するエキスパートです。
@@ -68,6 +98,28 @@ ${EDITOR_SPEC}
 ## 4. 使用可能な機能のみ使う
 - 上記の仕様書に記載された条件・アクションのみ使用
 - position条件、playSound、randomActionなどは使用禁止
+
+## 5. ゲームロジックの一貫性（重要）
+ゲームの因果関係を明確に設計：
+
+### 正しいゲームフローの例
+1. プレイヤーがオブジェクトをタップ → 2. オブジェクトが反応（hide/effect） → 3. カウンターが更新 → 4. 条件達成で成功/失敗
+
+### 各オブジェクトの役割を明確に
+- 「タップ対象」: プレイヤーが直接操作
+- 「障害物」: 触れると失敗/ダメージ
+- 「収集物」: 集めるとスコア増加
+- 「装飾」: 動きはあるが判定なし
+
+### 成功までの道筋
+- 必要なアクション数を明示（例: 5個タップで成功）
+- 各アクションが確実にカウンターを更新
+- カウンター条件で成功判定
+
+### 失敗条件のバランス
+- 時間制限: ゲーム設定のtimeLimitで対応（ルールでは不要）
+- ミス回数: ミスカウンターが3以上で失敗など
+- 失敗条件は成功より厳しくない設定に
 
 # ゲームコンセプト
 {{CONCEPT}}
@@ -97,7 +149,8 @@ ${EDITOR_SPEC}
         },
         "actions": [
           { "type": "hide", "targetId": "obj_1" },
-          { "type": "counter", "counterName": "score", "operation": "add", "value": 1 }
+          { "type": "counter", "counterName": "score", "operation": "add", "value": 1 },
+          { "type": "playSound", "soundId": "se_tap" }
         ]
       },
       {
@@ -110,6 +163,7 @@ ${EDITOR_SPEC}
           ]
         },
         "actions": [
+          { "type": "playSound", "soundId": "se_success" },
           { "type": "success", "message": "クリア！" }
         ]
       }

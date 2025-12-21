@@ -186,6 +186,17 @@ export class SupabaseUploader {
       }
     }
 
+    // サムネイルURLを取得（背景画像のstorageUrlまたは最初のオブジェクト画像）
+    let thumbnailUrl: string | null = null;
+    if (projectToSave.assets?.background?.frames?.[0]) {
+      const bgFrame = projectToSave.assets.background.frames[0];
+      thumbnailUrl = (bgFrame as any).storageUrl || null;
+    }
+    if (!thumbnailUrl && projectToSave.assets?.objects?.[0]?.frames?.[0]) {
+      const objFrame = projectToSave.assets.objects[0].frames[0];
+      thumbnailUrl = (objFrame as any).storageUrl || null;
+    }
+
     // ゲームデータを準備（実際のスキーマに合わせる）
     const gameData = {
       id: gameId,  // 事前生成したIDを使用
@@ -195,7 +206,7 @@ export class SupabaseUploader {
       template_id: 'ai_generated',
       game_data: {},                           // 旧フィールド（空オブジェクト）
       project_data: projectToSave,             // 新フィールド（Storage URL使用）
-      thumbnail_url: null,
+      thumbnail_url: thumbnailUrl,
       is_published: autoPublish,
       is_featured: false,
       play_count: 0,
