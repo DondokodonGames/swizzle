@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS user_credits (
   month_year TEXT NOT NULL, -- 'YYYY-MM'形式
 
   -- プラン制限
-  monthly_limit INTEGER NOT NULL DEFAULT 3, -- -1 = 無制限（Premium）
+  monthly_limit INTEGER NOT NULL DEFAULT 3, -- 999999 = 実質無制限（Premium）
 
   -- タイムスタンプ
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -137,8 +137,8 @@ BEGIN
     RETURNING * INTO user_credit;
   END IF;
 
-  -- 制限チェック
-  IF user_credit.monthly_limit = -1 THEN
+  -- 制限チェック（999999 = 実質無制限）
+  IF user_credit.monthly_limit >= 999999 THEN
     -- 無制限
     RETURN TRUE;
   ELSIF user_credit.games_created_this_month < user_credit.monthly_limit THEN
@@ -192,7 +192,7 @@ BEGIN
     user_plan := 'free';
     plan_limit := 3; -- Freeプランは月3ゲームまで
   ELSIF user_plan = 'premium' THEN
-    plan_limit := -1; -- Premiumは無制限
+    plan_limit := 999999; -- Premiumは実質無制限
   ELSE
     plan_limit := 3; -- デフォルトはFreeプラン
   END IF;
