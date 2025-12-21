@@ -80,7 +80,11 @@ export class StorageUploader {
     this.supabase = createClient(this.supabaseUrl, serviceKey, {
       auth: {
         autoRefreshToken: false,
-        persistSession: false
+        persistSession: false,
+        detectSessionInUrl: false
+      },
+      db: {
+        schema: 'public'
       }
     });
   }

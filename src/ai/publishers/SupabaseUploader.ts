@@ -108,7 +108,11 @@ export class SupabaseUploader {
     this.supabase = createClient(supabaseUrl, serviceKey, {
       auth: {
         autoRefreshToken: false,
-        persistSession: false
+        persistSession: false,
+        detectSessionInUrl: false
+      },
+      db: {
+        schema: 'public'
       }
     });
   }

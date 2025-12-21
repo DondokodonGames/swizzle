@@ -158,23 +158,22 @@ $$;
 -- 既存の関数を削除（存在する場合）
 -- CASCADE: この関数に依存するトリガーなども一緒に削除
 DROP FUNCTION IF EXISTS increment_game_count() CASCADE;
+DROP FUNCTION IF EXISTS increment_game_count_for_user(UUID) CASCADE;
 
-CREATE OR REPLACE FUNCTION increment_game_count()
+-- 新しい関数: ユーザーIDを引数で受け取る（service_role対応）
+CREATE OR REPLACE FUNCTION increment_game_count_for_user(target_user_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  current_user_id UUID;
   current_month TEXT;
   user_plan TEXT;
   plan_limit INTEGER;
 BEGIN
-  -- 現在のユーザーIDを取得
-  current_user_id := auth.uid();
-
-  IF current_user_id IS NULL THEN
-    RAISE EXCEPTION 'User not authenticated';
+  -- ユーザーIDがNULLの場合はスキップ（AI生成システムの場合など）
+  IF target_user_id IS NULL THEN
+    RETURN;
   END IF;
 
   -- 現在の年月を取得（'YYYY-MM'形式）
@@ -183,7 +182,7 @@ BEGIN
   -- ユーザーのプランを取得
   SELECT plan_type INTO user_plan
   FROM subscriptions
-  WHERE user_id = current_user_id
+  WHERE user_id = target_user_id
     AND status IN ('active', 'trialing')
   ORDER BY created_at DESC
   LIMIT 1;
@@ -200,11 +199,23 @@ BEGIN
 
   -- user_creditsレコードをINSERT OR UPDATE
   INSERT INTO user_credits (user_id, month_year, games_created_this_month, monthly_limit)
-  VALUES (current_user_id, current_month, 1, plan_limit)
+  VALUES (target_user_id, current_month, 1, plan_limit)
   ON CONFLICT (user_id, month_year)
   DO UPDATE SET
     games_created_this_month = user_credits.games_created_this_month + 1,
     updated_at = NOW();
+END;
+$$;
+
+-- 後方互換性のためのラッパー関数（既存のコードとの互換性）
+CREATE OR REPLACE FUNCTION increment_game_count()
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  -- auth.uid()を使用（通常のユーザーセッション用）
+  PERFORM increment_game_count_for_user(auth.uid());
 END;
 $$;
 
@@ -223,7 +234,8 @@ SECURITY DEFINER
 AS $$
 BEGIN
   -- ゲームが作成されたときにカウントをインクリメント
-  PERFORM increment_game_count();
+  -- NEW.creator_id を使用（service_role対応）
+  PERFORM increment_game_count_for_user(NEW.creator_id);
   RETURN NEW;
 END;
 $$;
