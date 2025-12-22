@@ -42,20 +42,12 @@ export class SupabaseError extends Error {
 export const warmupConnection = async (): Promise<boolean> => {
   // 既にウォームアップ済みの場合はスキップ
   if (isWarmedUp) {
-    console.log('🔥 [Warmup] 既にウォームアップ済み');
     return true;
   }
 
-  // ウォームアップ中の場合は待機（最大5秒）
+  // ウォームアップ中の場合は待機せずに即座にtrueを返す
   if (warmupPromise) {
-    console.log('🔥 [Warmup] ウォームアップ中...待機');
-    const timeoutPromise = new Promise<boolean>((resolve) =>
-      setTimeout(() => {
-        console.warn('⚠️ [Warmup] 待機タイムアウト、スキップして続行');
-        resolve(true);
-      }, 5000)
-    );
-    return Promise.race([warmupPromise, timeoutPromise]);
+    return true;
   }
 
   // ウォームアップ開始
@@ -220,12 +212,12 @@ export const database = {
     getPublished: async (options: any = {}) => {
       console.log('🔍 [database.userGames.getPublished] 開始:', options);
 
-      // ウォームアップをバックグラウンドで開始（ブロックしない）
+      // ウォームアップはバックグラウンドで実行（待機しない）
       warmupConnection().catch(() => {});
 
-      // リトライ設定
-      const maxRetries = 3;
-      const timeoutMs = 10000; // 10秒
+      // リトライ設定（短縮）
+      const maxRetries = 2;
+      const timeoutMs = 8000; // 8秒
       let lastError: Error | null = null;
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {

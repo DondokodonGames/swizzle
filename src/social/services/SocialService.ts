@@ -49,7 +49,7 @@ export class SocialService {
   ): Promise<{ games: PublicGame[]; hasMore: boolean }> {
     try {
       const offset = (page - 1) * limit;
-      
+
       const gamesData = await database.userGames.getPublished({
         templateType: filters.category !== 'all' ? filters.category : undefined,
         searchQuery: filters.search,
@@ -60,32 +60,48 @@ export class SocialService {
       const hasMore = gamesData.length > limit;
       const games = hasMore ? gamesData.slice(0, limit) : gamesData;
 
+      // ゲームがない場合は即返却
+      if (games.length === 0) {
+        return { games: [], hasMore: false };
+      }
+
       let currentUserId: string | undefined;
       const { data: { user } } = await supabase.auth.getUser();
       currentUserId = user?.id;
 
-      const publicGames: PublicGame[] = await Promise.all(
-        games.map(async (game: any) => {
-          let isLiked = false;
-          let isBookmarked = false;
+      // いいね・お気に入り情報を一括取得（N+1問題解決）
+      let likedGameIds: Set<string> = new Set();
+      let bookmarkedGameIds: Set<string> = new Set();
 
-          if (currentUserId) {
-            const likeCheck = await supabase
-              .from('likes')
-              .select('user_id')
-              .eq('user_id', currentUserId)
-              .eq('game_id', game.id)
-              .maybeSingle();
+      if (currentUserId) {
+        const gameIds = games.map((g: any) => g.id);
 
-            isLiked = !!likeCheck.data;
+        // いいね情報を一括取得
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('game_id')
+          .eq('user_id', currentUserId)
+          .in('game_id', gameIds);
 
-            const favorites = await database.favorites.list(currentUserId);
-            isBookmarked = favorites.some((fav: any) => fav.id === game.id);
-          }
+        if (likesData) {
+          likedGameIds = new Set(likesData.map(l => l.game_id));
+        }
 
-          return this.convertToPublicGame(game, isLiked, isBookmarked);
-        })
-      );
+        // お気に入り情報を一括取得（1回だけ）
+        try {
+          const favorites = await database.favorites.list(currentUserId);
+          bookmarkedGameIds = new Set(favorites.map((fav: any) => fav.id));
+        } catch {
+          // お気に入り取得失敗は無視
+        }
+      }
+
+      // ゲームを変換（DBクエリなし）
+      const publicGames: PublicGame[] = games.map((game: any) => {
+        const isLiked = likedGameIds.has(game.id);
+        const isBookmarked = bookmarkedGameIds.has(game.id);
+        return this.convertToPublicGame(game, isLiked, isBookmarked);
+      });
 
       if (filters.sortBy) {
         publicGames.sort((a, b) => {
