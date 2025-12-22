@@ -53,7 +53,6 @@ const EDITOR_SPEC = `
 | applyForce | 継続的な力 | targetId, force: {x, y} |
 | applyImpulse | 瞬間的な力 | targetId, impulse: {x, y} |
 | randomAction | ランダム実行 | actions: [{action, weight}] |
-| showMessage | メッセージ表示 | text, duration |
 
 ## movement.typeの種類
 - straight: 直線移動（target座標またはdirection方向へ）
@@ -83,7 +82,8 @@ ${EDITOR_SPEC}
 
 ## 2. 即成功/即失敗を防ぐ
 - ゲーム開始直後に成功/失敗しない
-- time条件で成功する場合は最低3秒以上必要
+- 成功条件にはプレイヤー操作（touch/collision/counter等）を必ず含める
+- time条件のみで成功させない（プレイヤーが理解する前に終わる）
 - カウンター初期値は目標値より小さく設定
 
 ## 3. ID整合性を保つ
