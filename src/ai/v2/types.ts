@@ -57,12 +57,7 @@ export interface ConceptValidationResult {
 // ==========================================
 
 /**
- * エディター仕様準拠の条件タイプ（動作確認済みのみ）
- *
- * 注意事項:
- * - position: 'inside'/'outside'/'crossing' 全て対応
- * - animation: 'playing','stopped','frame','frameRange','loop','start','end' 全て対応
- * - random: 完全動作（probability, interval, seed 対応）
+ * エディター仕様準拠の条件タイプ（すべて使用可能）
  */
 export type VerifiedConditionType =
   | 'touch'
@@ -73,16 +68,11 @@ export type VerifiedConditionType =
   | 'gameState'
   | 'position'
   | 'animation'
-  | 'random';
+  | 'random'
+  | 'objectState';
 
 /**
- * エディター仕様準拠のアクションタイプ（動作確認済みのみ）
- *
- * 注意事項:
- * - playSound: 音声アセットが必要
- * - switchAnimation: 複数フレームアセットが必要
- * - applyForce/applyImpulse: 物理演算設定が必要（physicsプロパティ）
- * - randomAction: アクション配列から確率的に選択実行
+ * エディター仕様準拠のアクションタイプ（すべて使用可能）
  */
 export type VerifiedActionType =
   | 'success'
@@ -96,10 +86,22 @@ export type VerifiedActionType =
   | 'setFlag'
   | 'toggleFlag'
   | 'playSound'
+  | 'stopSound'
+  | 'playBGM'
+  | 'stopBGM'
   | 'switchAnimation'
+  | 'playAnimation'
+  | 'setAnimationSpeed'
+  | 'setAnimationFrame'
+  | 'followDrag'
   | 'applyForce'
   | 'applyImpulse'
-  | 'randomAction';
+  | 'setGravity'
+  | 'setPhysics'
+  | 'randomAction'
+  | 'showMessage'
+  | 'pause'
+  | 'restart';
 
 /**
  * オブジェクト計画

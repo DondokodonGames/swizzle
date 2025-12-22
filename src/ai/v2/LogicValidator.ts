@@ -20,17 +20,22 @@ import {
 // エディター仕様定義（動作確認済みのみ）
 // ==========================================
 
-// 使用可能な条件タイプ
+// 使用可能な条件タイプ（すべて使用可能）
 const VALID_CONDITIONS: VerifiedConditionType[] = [
   'touch', 'time', 'counter', 'collision', 'flag', 'gameState',
-  'position', 'animation', 'random'
+  'position', 'animation', 'random', 'objectState'
 ];
 
-// 使用可能なアクションタイプ
+// 使用可能なアクションタイプ（すべて使用可能）
 const VALID_ACTIONS: VerifiedActionType[] = [
   'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag',
-  'playSound', 'switchAnimation', 'applyForce', 'applyImpulse', 'randomAction'
+  'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'setAnimationSpeed',
+  'setAnimationFrame', 'followDrag', 'applyForce', 'applyImpulse', 'setGravity', 'setPhysics',
+  'randomAction', 'showMessage', 'pause', 'restart'
 ];
+
+// 成功に必要な最小時間（秒）
+const MIN_SUCCESS_TIME = 3;
 
 // 各パラメータの有効値
 const VALID_TOUCH_TYPES = ['down', 'up', 'hold', 'drag', 'swipe', 'flick'];
@@ -66,6 +71,9 @@ export class LogicValidator {
 
     // 3. 即成功チェック
     this.checkInstantWin(output, errors);
+
+    // 3.5 早すぎる成功チェック（time条件が3秒未満）
+    this.checkTooQuickSuccess(output, errors);
 
     // 4. 即失敗チェック
     this.checkInstantLose(output, errors);
@@ -224,6 +232,38 @@ export class LogicValidator {
               fix: `initialValueを修正してください（目標値: ${counterCondition.value}）`
             });
           }
+        }
+      }
+    }
+  }
+
+  /**
+   * 早すぎる成功チェック（time条件が最小時間未満）
+   */
+  private checkTooQuickSuccess(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
+    const successRules = output.script.rules.filter(r =>
+      r.actions?.some(a => a.type === 'success')
+    );
+
+    for (const rule of successRules) {
+      // time条件のみで成功する場合をチェック
+      const conditions = rule.triggers?.conditions || [];
+
+      // time条件を探す
+      const timeCondition = conditions.find(c => c.type === 'time');
+      if (timeCondition && timeCondition.seconds !== undefined) {
+        // 他にプレイヤー操作を必要とする条件がない場合
+        const hasPlayerAction = conditions.some(c =>
+          c.type === 'touch' || c.type === 'collision' || c.type === 'counter'
+        );
+
+        if (!hasPlayerAction && timeCondition.seconds < MIN_SUCCESS_TIME) {
+          errors.push({
+            type: 'critical',
+            code: 'TOO_QUICK_SUCCESS',
+            message: `早すぎる成功: ルール "${rule.id}" は${timeCondition.seconds}秒で成功します（最低${MIN_SUCCESS_TIME}秒必要）`,
+            fix: `time条件のsecondsを${MIN_SUCCESS_TIME}秒以上に設定するか、プレイヤー操作を必要とする条件を追加してください`
+          });
         }
       }
     }

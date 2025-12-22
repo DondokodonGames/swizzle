@@ -9,195 +9,152 @@ import Anthropic from '@anthropic-ai/sdk';
 import { GameConcept, LogicGeneratorOutput, AssetPlan } from './types';
 
 const EDITOR_SPEC = `
-# Swizzle ゲームエンジン仕様（厳守）
+# Swizzle ゲームエンジン仕様
 
 ## 座標系
 - 正規化座標: 0.0〜1.0
 - x: 0.0=左端, 1.0=右端
 - y: 0.0=上端, 1.0=下端
 - 中央 = (0.5, 0.5)
-- 安全エリア: x=0.1〜0.9, y=0.15〜0.85（端に置かない）
-
-## オブジェクト配置パターン（重要）
-ゲームテーマに応じて適切な配置パターンを使用：
-
-### 円形配置（時計、ルーレット、花など）
-- 中心: (0.5, 0.5)
-- 半径: 0.25〜0.35が適切
-- 計算式: x = 0.5 + radius * cos(angle), y = 0.5 + radius * sin(angle)
-- 例: 12個を円形に配置
-  - 12時: (0.5, 0.15), 3時: (0.85, 0.5), 6時: (0.5, 0.85), 9時: (0.15, 0.5)
-
-### グリッド配置（パズル、記憶ゲーム）
-- 3x3グリッド: 間隔0.25, 開始点(0.25, 0.25)
-- 4x4グリッド: 間隔0.2, 開始点(0.2, 0.2)
-
-### 縦並び配置（選択肢、メニュー）
-- x=0.5で固定、yは0.25間隔
-
-### ランダム散布（避けゲー、収集ゲー）
-- 画面全体に適度に分散
-- オブジェクト間の距離を0.15以上確保
 
 ## 速度（px/frame, 60FPS）
-- 非常に遅い: 0.5-1.0
-- 遅い: 1.0-2.0
-- 普通: 2.0-4.0
-- 速い: 4.0-8.0
+- 遅い: 1.0-2.0、普通: 2.0-4.0、速い: 4.0-8.0
 
-## 使用可能な条件（これ以外は使用禁止）
-| タイプ | パラメータ |
-|--------|-----------|
-| touch | target: 'self'/'stage'/objectId, touchType: 'down'/'up'/'hold' |
-| time | timeType: 'exact'/'interval', seconds?, interval? |
-| counter | counterName, comparison: 'equals'/'greaterOrEqual'/'greater'/'less', value |
-| collision | target: objectId, collisionType: 'enter'/'stay'/'exit', checkMode: 'hitbox' |
-| flag | flagId, value: boolean |
+## 使用可能な条件タイプ
+| タイプ | 説明 | 主なパラメータ |
+|--------|------|---------------|
+| touch | タップ/スワイプ/ドラッグ検出 | target, touchType: 'down'/'up'/'hold'/'drag'/'swipe'/'flick' |
+| time | 時間経過 | timeType: 'exact'/'interval', seconds, interval |
+| counter | カウンター値判定 | counterName, comparison, value |
+| collision | 衝突検出 | target, collisionType: 'enter'/'stay'/'exit' |
+| flag | フラグ状態 | flagId, condition: 'ON'/'OFF' |
+| position | エリア判定 | target, area: 'inside'/'outside'/'crossing', region |
+| animation | アニメ状態 | target, condition: 'playing'/'stopped'/'frame'/'end' |
+| random | 確率判定 | probability: 0.0-1.0, interval |
+| gameState | ゲーム状態 | state: 'playing'/'paused' |
+| objectState | オブジェクト状態 | target, stateType: 'visible'/'hidden'/'animation' |
 
-## 使用可能なアクション（これ以外は使用禁止）
-| タイプ | パラメータ |
-|--------|-----------|
-| success | score?, message? |
-| failure | message? |
-| hide | targetId |
-| show | targetId |
-| move | targetId, movement: { type: 'straight'/'teleport', target: {x,y}, speed? } |
-| counter | counterName, operation: 'add'/'subtract'/'set', value |
-| addScore | points |
-| effect | targetId, effect: { type: 'scale'/'shake', duration（秒数: 0.1〜2.0推奨）, scaleAmount? } |
-| setFlag | flagId, value |
-| playSound | soundId（assetPlanで定義したse_xxxを使用） |
+## 使用可能なアクションタイプ
+| タイプ | 説明 | 主なパラメータ |
+|--------|------|---------------|
+| success | ゲームクリア | score?, message? |
+| failure | ゲームオーバー | message? |
+| hide | オブジェクト非表示 | targetId |
+| show | オブジェクト表示 | targetId |
+| move | オブジェクト移動 | targetId, movement: { type, target/direction, speed } |
+| followDrag | ドラッグ追従 | targetId, constraint?, smooth? |
+| counter | カウンター操作 | counterName, operation, value |
+| addScore | スコア加算 | points |
+| effect | 視覚エフェクト | targetId, effect: { type: 'flash'/'shake'/'scale'/'rotate'/'particles' } |
+| setFlag | フラグ設定 | flagId, value |
+| toggleFlag | フラグ切替 | flagId |
+| playSound | 効果音再生 | soundId |
+| switchAnimation | アニメ切替 | targetId, animationIndex |
+| applyForce | 継続的な力 | targetId, force: {x, y} |
+| applyImpulse | 瞬間的な力 | targetId, impulse: {x, y} |
+| randomAction | ランダム実行 | actions: [{action, weight}] |
+| showMessage | メッセージ表示 | text, duration |
 
-## 効果音の使用（推奨）
-ゲームの体験を向上させるため、適切な場面で効果音を再生：
-- タップ時: { "type": "playSound", "soundId": "se_tap" }
-- 成功時: { "type": "playSound", "soundId": "se_success" }
-- 失敗時: { "type": "playSound", "soundId": "se_failure" }
-- 収集時: { "type": "playSound", "soundId": "se_collect" }
+## movement.typeの種類
+- straight: 直線移動（target座標またはdirection方向へ）
+- teleport: 瞬間移動
+- wander: ランダム徘徊
+- bounce: 壁で反射
+- approach: 対象に接近
+- orbit: 対象を周回
+
+## movement.directionの種類
+- 'up', 'down', 'left', 'right'
+- 'up-left', 'up-right', 'down-left', 'down-right'
 `;
 
 const LOGIC_PROMPT = `あなたはSwizzleゲームエンジンのGameScriptを生成するエキスパートです。
+ゲームコンセプトを読み、そのコンセプトを忠実に実装するゲームロジックを生成してください。
 
 ${EDITOR_SPEC}
 
-# 絶対厳守事項
+# 必須要件
 
-## 1. 即成功を出さない
-- カウンター初期値は必ず目標値より小さくする（例: 目標5なら初期値0）
-- プレイヤーが何らかのアクションを行わないと成功できない設計にする
+## 1. コンセプトを忠実に実装する（最重要）
+- playerGoal: プレイヤーの目標を達成できる仕組みを実装
+- playerOperation: 指定された操作方法を実際に機能させる
+- successCondition: 成功条件が正しく判定される
+- failureCondition: 失敗条件が正しく判定される
 
-## 2. 即失敗を出さない
-- ゲーム開始直後に失敗条件を満たさない
-- 失敗カウンターの初期値は必ず閾値より小さくする
+## 2. 即成功/即失敗を防ぐ
+- ゲーム開始直後に成功/失敗しない
+- time条件で成功する場合は最低3秒以上必要
+- カウンター初期値は目標値より小さく設定
 
-## 3. 型エラーを出さない
-- objectIdはアセット計画に定義したものを正確に使用
-- counterNameはcountersに定義したものを正確に使用
+## 3. ID整合性を保つ
+- objectIdはassetPlanに定義したものを正確に使用
+- counterNameはcountersに定義したものを使用
 - 座標は0.0〜1.0の範囲内
 
-## 4. 使用可能な機能のみ使う
-- 上記の仕様書に記載された条件・アクションのみ使用
-- position条件、randomActionなどは使用禁止（playSoundは使用可能）
-
-## 5. コンセプトとの一貫性（最重要）
-ゲームコンセプトで定義された内容を忠実に実装：
-
-### 4つの面白さ基準を満たす
-1. **目標明確性**: playerGoalで定義された目標が達成できる仕組み
-2. **操作明確性**: playerOperationで定義された操作が実際に機能する
-3. **判定明確性**: successCondition/failureConditionが正しく判定される
-4. **納得感**: プレイヤーの行動が結果に直結する
-
-### コンセプトの操作方法を反映
-- コンセプトが「タップ」なら touch 条件を使用
-- コンセプトが「スワイプ/ドラッグ」なら followDrag を使用
-- コンセプトが「避ける」なら collision を使用
-- コンセプトが「集める」なら collision + counter を使用
-
-### 動きのあるゲームを作る
-- オブジェクトには適切な move アクションを設定
-- 静止したゲームにならないよう、time条件で動きを追加
-- effect（scale/shake）で視覚的フィードバックを付与
+## 4. ゲームに動きを持たせる
+コンセプトに応じてオブジェクトに動きを付ける：
+- move アクションで移動（straight/wander/bounce など）
+- time条件 + interval で定期的なイベント
+- collision条件 で衝突判定
+- effect で視覚フィードバック
 
 # ゲームコンセプト
 {{CONCEPT}}
 
-# 出力形式（JSON）
+# 出力形式
+以下のJSON構造のみを出力。説明文は不要。
 
 {
   "script": {
     "layout": {
       "objects": [
-        { "objectId": "obj_1", "position": { "x": 0.5, "y": 0.5 }, "scale": { "x": 1.0, "y": 1.0 } }
+        { "objectId": "string", "position": { "x": 0.0-1.0, "y": 0.0-1.0 }, "scale": { "x": 1.0, "y": 1.0 } }
       ]
     },
     "counters": [
-      { "id": "score", "name": "スコア", "initialValue": 0 }
+      { "id": "string", "name": "string", "initialValue": number }
     ],
     "rules": [
       {
-        "id": "rule_1",
-        "name": "タップでカウント",
-        "targetObjectId": "obj_1",
+        "id": "string",
+        "name": "string",
+        "targetObjectId": "string (optional)",
         "triggers": {
-          "operator": "AND",
-          "conditions": [
-            { "type": "touch", "target": "self", "touchType": "down" }
-          ]
+          "operator": "AND" | "OR",
+          "conditions": [ /* TriggerCondition[] */ ]
         },
-        "actions": [
-          { "type": "hide", "targetId": "obj_1" },
-          { "type": "counter", "counterName": "score", "operation": "add", "value": 1 },
-          { "type": "playSound", "soundId": "se_tap" }
-        ]
-      },
-      {
-        "id": "rule_win",
-        "name": "勝利判定",
-        "triggers": {
-          "operator": "AND",
-          "conditions": [
-            { "type": "counter", "counterName": "score", "comparison": "greaterOrEqual", "value": 5 }
-          ]
-        },
-        "actions": [
-          { "type": "playSound", "soundId": "se_success" },
-          { "type": "success", "message": "クリア！" }
-        ]
+        "actions": [ /* GameAction[] */ ]
       }
     ]
   },
   "assetPlan": {
     "objects": [
       {
-        "id": "obj_1",
-        "name": "ターゲット",
-        "purpose": "プレイヤーがタップする対象",
-        "visualDescription": "赤い丸いターゲット",
-        "initialPosition": { "x": 0.5, "y": 0.5 },
-        "size": "medium"
+        "id": "string",
+        "name": "string",
+        "purpose": "ゲーム内での役割",
+        "visualDescription": "外見の詳細な説明",
+        "initialPosition": { "x": 0.0-1.0, "y": 0.0-1.0 },
+        "size": "small" | "medium" | "large"
       }
     ],
     "background": {
-      "description": "シンプルな背景",
-      "mood": "明るい"
+      "description": "背景の詳細な説明",
+      "mood": "雰囲気"
     },
     "sounds": [
-      { "id": "se_tap", "trigger": "タップ時", "type": "tap" },
-      { "id": "se_success", "trigger": "成功時", "type": "success" }
+      { "id": "se_xxx", "trigger": "いつ再生するか", "type": "tap"|"success"|"failure"|"collect"|"pop"|"whoosh"|"bounce" }
     ]
   },
   "selfCheck": {
-    "hasPlayerActionOnSuccessPath": true,
-    "counterInitialValuesSafe": true,
-    "allObjectIdsValid": true,
-    "allCounterNamesValid": true,
-    "coordinatesInRange": true,
-    "onlyVerifiedFeaturesUsed": true
+    "hasPlayerActionOnSuccessPath": boolean,
+    "counterInitialValuesSafe": boolean,
+    "allObjectIdsValid": boolean,
+    "allCounterNamesValid": boolean,
+    "coordinatesInRange": boolean,
+    "onlyVerifiedFeaturesUsed": boolean
   }
-}
-
-JSONのみを出力してください。`;
+}`;
 
 export interface LogicGeneratorConfig {
   model?: string;
