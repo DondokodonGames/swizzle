@@ -329,40 +329,55 @@ export class SocialService {
         throw new Error(`アクティビティ取得エラー: ${error.message}`);
       }
 
-      // ターゲット情報を取得
-      const activitiesWithTargets = await Promise.all(
-        (data || []).map(async (activity: any) => {
-          let target_game = null;
-          let target_user = null;
+      // ターゲット情報を一括取得（N+1問題解決）
+      const activities = data || [];
 
-          if (activity.target_type === 'game' && activity.target_id) {
-            const { data: gameData } = await supabase
+      if (activities.length === 0) {
+        return { activities: [], hasMore: false };
+      }
+
+      // ゲームとユーザーのIDを収集
+      const gameIds = activities
+        .filter((a: any) => a.target_type === 'game' && a.target_id)
+        .map((a: any) => a.target_id);
+      const userIds = activities
+        .filter((a: any) => a.target_type === 'user' && a.target_id)
+        .map((a: any) => a.target_id);
+
+      // 一括取得
+      const [gamesResult, usersResult] = await Promise.all([
+        gameIds.length > 0
+          ? supabase
               .from('user_games')
               .select('id, title, thumbnail_url')
-              .eq('id', activity.target_id)
-              .single();
-            target_game = gameData;
-          } else if (activity.target_type === 'user' && activity.target_id) {
-            const { data: userData } = await supabase
+              .in('id', gameIds)
+          : Promise.resolve({ data: [] }),
+        userIds.length > 0
+          ? supabase
               .from('profiles')
               .select('id, username, display_name, avatar_url')
-              .eq('id', activity.target_id)
-              .single();
-            target_user = userData;
-          }
+              .in('id', userIds)
+          : Promise.resolve({ data: [] })
+      ]);
 
-          return {
-            ...activity,
-            target_game,
-            target_user
-          };
-        })
-      );
+      // マップを作成
+      const gamesMap: Record<string, any> = {};
+      (gamesResult.data || []).forEach((g: any) => { gamesMap[g.id] = g; });
 
-      const hasMore = activitiesWithTargets && activitiesWithTargets.length === limit + 1;
-      const activities = hasMore ? activitiesWithTargets.slice(0, limit) : activitiesWithTargets || [];
+      const usersMap: Record<string, any> = {};
+      (usersResult.data || []).forEach((u: any) => { usersMap[u.id] = u; });
 
-      return { activities, hasMore };
+      // アクティビティにターゲット情報を付加
+      const activitiesWithTargets = activities.map((activity: any) => ({
+        ...activity,
+        target_game: activity.target_type === 'game' ? gamesMap[activity.target_id] || null : null,
+        target_user: activity.target_type === 'user' ? usersMap[activity.target_id] || null : null
+      }));
+
+      const hasMore = activitiesWithTargets.length === limit + 1;
+      const finalActivities = hasMore ? activitiesWithTargets.slice(0, limit) : activitiesWithTargets;
+
+      return { activities: finalActivities, hasMore };
 
     } catch (error) {
       console.error('Error fetching activities:', error);
@@ -515,10 +530,14 @@ export class SocialService {
           throw new Error(`いいね追加エラー: ${insertError.message}`);
         }
 
-        const gamesData = await database.userGames.getPublished({ limit: 1000 });
-        const game = gamesData.find((g: any) => g.id === gameId);
-        
-        if (game) {
+        // ゲーム情報を直接取得（N+1問題解決）
+        const { data: gameData } = await supabase
+          .from('user_games')
+          .select('id, title, creator_id')
+          .eq('id', gameId)
+          .single();
+
+        if (gameData) {
           // アクティビティ記録追加
           await this.createActivity(
             userId,
@@ -526,18 +545,18 @@ export class SocialService {
             'game',
             gameId,
             `ゲームにいいねしました`,
-            { game_title: game.title },
+            { game_title: gameData.title },
             true
           );
 
-          if (game.creator_id !== userId) {
+          if (gameData.creator_id !== userId) {
             const userProfile = await database.profiles.get(userId);
-            
+
             if (userProfile) {
               await this.notificationService.notifyGameLike(
                 gameId,
-                game.title,
-                game.creator_id,
+                gameData.title,
+                gameData.creator_id,
                 userId,
                 userProfile.display_name || userProfile.username
               );
@@ -833,59 +852,62 @@ export class SocialService {
       // 期間フィルター計算
       const now = new Date();
       let startDate: Date;
-      
+
       switch (period) {
         case 'today':
-          startDate = new Date(now.setHours(0, 0, 0, 0));
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           break;
         case 'week':
-          startDate = new Date(now.setDate(now.getDate() - 7));
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
           break;
         case 'month':
-          startDate = new Date(now.setMonth(now.getMonth() - 1));
+          startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           break;
         case 'all':
         default:
           startDate = new Date(0);
       }
 
-      // ゲーム取得
-      const gamesData = await database.userGames.getPublished({ limit: limit * 3 });
-      
+      // ゲーム取得（limit * 2で十分、1000は過剰）
+      const gamesData = await database.userGames.getPublished({ limit: Math.min(limit * 2, 50) });
+
       // 期間フィルター適用
-      const filteredGames = gamesData.filter((game: any) => 
+      const filteredGames = gamesData.filter((game: any) =>
         new Date(game.created_at) >= startDate
       );
 
-      // 各ゲームのいいね・ブックマーク数を取得
-      const gamesWithStats = await Promise.all(
-        filteredGames.map(async (game: any) => {
-          const publicGame = this.convertToPublicGame(game);
-          const trendScore = this.calculateTrendScore(publicGame);
-          
-          return {
-            ...publicGame,
-            trendScore,
-            rankChange: Math.floor(Math.random() * 10) - 5, // モック（実装時は前回ランクと比較）
-            growthRate: Math.random() * 200 - 50, // モック（実装時は成長率計算）
-            peakTime: this.calculatePeakTime(game.created_at)
-          };
-        })
-      );
+      // ゲームがない場合は即返却
+      if (filteredGames.length === 0) {
+        return [];
+      }
+
+      // 同期的にゲームを変換（Promise.all不要）
+      const gamesWithStats: TrendingGame[] = filteredGames.map((game: any) => {
+        const publicGame = this.convertToPublicGame(game);
+        const trendScore = this.calculateTrendScore(publicGame);
+
+        return {
+          ...publicGame,
+          trendScore,
+          rankChange: Math.floor(Math.random() * 10) - 5,
+          growthRate: Math.random() * 200 - 50,
+          peakTime: this.calculatePeakTime(game.created_at)
+        };
+      });
 
       // ランキングタイプ別ソート
-      let sortedGames: TrendingGame[] = [];
+      let sortedGames: TrendingGame[];
       switch (rankingType) {
         case 'popular':
           sortedGames = gamesWithStats.sort((a, b) => b.stats.likes - a.stats.likes);
           break;
         case 'newest':
-          sortedGames = gamesWithStats.sort((a, b) => 
+          sortedGames = gamesWithStats.sort((a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           );
           break;
         case 'played':
-          sortedGames = gamesWithStats.sort((a, b) => 
+          sortedGames = gamesWithStats.sort((a, b) =>
             (b.stats.views || 0) - (a.stats.views || 0)
           );
           break;
@@ -1149,12 +1171,16 @@ export class SocialService {
 
   async incrementViews(gameId: string): Promise<number> {
     try {
-      const gamesData = await database.userGames.getPublished({ limit: 1000 });
-      const game = gamesData.find((g: any) => g.id === gameId);
-      
-      if (game) {
-        const newPlayCount = (game.play_count || 0) + 1;
-        
+      // ゲーム情報を直接取得（N+1問題解決）
+      const { data: gameData } = await supabase
+        .from('user_games')
+        .select('id, play_count')
+        .eq('id', gameId)
+        .single();
+
+      if (gameData) {
+        const newPlayCount = (gameData.play_count || 0) + 1;
+
         await database.userGames.update(gameId, {
           play_count: newPlayCount
         });
@@ -1162,7 +1188,7 @@ export class SocialService {
         console.log(`Views incremented for game ${gameId}: ${newPlayCount}`);
         return newPlayCount;
       }
-      
+
       return 0;
 
     } catch (error) {
@@ -1199,18 +1225,21 @@ export class SocialService {
         // エラーでも既存のシェア数を返す
       }
 
-      // アクティビティ記録追加
-      const gamesData = await database.userGames.getPublished({ limit: 1000 });
-      const game = gamesData.find((g: any) => g.id === gameId);
-      
-      if (game) {
+      // アクティビティ記録追加（ゲーム情報を直接取得）
+      const { data: gameData } = await supabase
+        .from('user_games')
+        .select('id, title')
+        .eq('id', gameId)
+        .single();
+
+      if (gameData) {
         await this.createActivity(
           currentUserId,
           'game_shared',
           'game',
           gameId,
           `ゲームを${platform}でシェアしました`,
-          { platform },
+          { platform, game_title: gameData.title },
           true
         );
       }
@@ -1243,8 +1272,8 @@ export class SocialService {
    */
   async getRandomGames(limit: number = 10): Promise<PublicGame[]> {
     try {
-      // 公開済みゲームを全て取得
-      const gamesData = await database.userGames.getPublished({ limit: 1000 });
+      // 公開済みゲームを取得（100件で十分）
+      const gamesData = await database.userGames.getPublished({ limit: 100 });
 
       // ランダムにシャッフル
       const shuffled = [...gamesData].sort(() => Math.random() - 0.5);
@@ -1252,32 +1281,48 @@ export class SocialService {
       // 指定数だけ取得
       const randomGames = shuffled.slice(0, limit);
 
+      // ゲームがない場合は即返却
+      if (randomGames.length === 0) {
+        return [];
+      }
+
       let currentUserId: string | undefined;
       const { data: { user } } = await supabase.auth.getUser();
       currentUserId = user?.id;
 
-      const publicGames: PublicGame[] = await Promise.all(
-        randomGames.map(async (game: any) => {
-          let isLiked = false;
-          let isBookmarked = false;
+      // いいね・お気に入り情報を一括取得（N+1問題解決）
+      let likedGameIds: Set<string> = new Set();
+      let bookmarkedGameIds: Set<string> = new Set();
 
-          if (currentUserId) {
-            const likeCheck = await supabase
-              .from('likes')
-              .select('user_id')
-              .eq('user_id', currentUserId)
-              .eq('game_id', game.id)
-              .maybeSingle();
+      if (currentUserId) {
+        const gameIds = randomGames.map((g: any) => g.id);
 
-            isLiked = !!likeCheck.data;
+        // いいね情報を一括取得
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('game_id')
+          .eq('user_id', currentUserId)
+          .in('game_id', gameIds);
 
-            const favorites = await database.favorites.list(currentUserId);
-            isBookmarked = favorites.some((fav: any) => fav.id === game.id);
-          }
+        if (likesData) {
+          likedGameIds = new Set(likesData.map(l => l.game_id));
+        }
 
-          return this.convertToPublicGame(game, isLiked, isBookmarked);
-        })
-      );
+        // お気に入り情報を一括取得（1回だけ）
+        try {
+          const favorites = await database.favorites.list(currentUserId);
+          bookmarkedGameIds = new Set(favorites.map((fav: any) => fav.id));
+        } catch {
+          // お気に入り取得失敗は無視
+        }
+      }
+
+      // ゲームを変換（DBクエリなし）
+      const publicGames: PublicGame[] = randomGames.map((game: any) => {
+        const isLiked = likedGameIds.has(game.id);
+        const isBookmarked = bookmarkedGameIds.has(game.id);
+        return this.convertToPublicGame(game, isLiked, isBookmarked);
+      });
 
       return publicGames;
 
