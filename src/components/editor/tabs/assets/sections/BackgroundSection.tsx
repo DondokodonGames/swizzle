@@ -325,7 +325,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
               onMouseLeave={() => setShowFrameSelector(false)}
             >
               <img
-                src={project.assets.background.frames[0]?.dataUrl}
+                src={project.assets.background.frames[0]?.storageUrl || project.assets.background.frames[0]?.dataUrl}
                 alt={t('editor.assets.backgroundImage')}
                 style={{
                   width: '100%',

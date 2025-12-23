@@ -264,9 +264,9 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
                         : DESIGN_TOKENS.colors.neutral[800]
                     }}
                   >
-                    {obj.frames && obj.frames[0]?.dataUrl ? (
-                      <img 
-                        src={obj.frames[0].dataUrl} 
+                    {obj.frames && (obj.frames[0]?.storageUrl || obj.frames[0]?.dataUrl) ? (
+                      <img
+                        src={obj.frames[0]?.storageUrl || obj.frames[0]?.dataUrl}
                         alt={obj.name}
                         style={{
                           width: '48px',
@@ -379,7 +379,7 @@ export const ObjectStateActionEditor: React.FC<ObjectStateActionEditorProps> = (
                     justifyContent: 'center'
                   }}>
                     <img
-                      src={selectedObject.frames[action.animationIndex || 0].dataUrl}
+                      src={selectedObject.frames[action.animationIndex || 0]?.storageUrl || selectedObject.frames[action.animationIndex || 0]?.dataUrl}
                       alt={`Frame ${action.animationIndex || 0}`}
                       style={{
                         maxWidth: '128px',

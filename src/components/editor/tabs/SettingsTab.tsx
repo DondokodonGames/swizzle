@@ -313,12 +313,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       }
       
       // 背景描画（白基調グラデーション）
-      if (project.assets.background?.frames?.[0]?.dataUrl) {
+      const bgSrc = project.assets.background?.frames?.[0]?.storageUrl || project.assets.background?.frames?.[0]?.dataUrl;
+      if (bgSrc) {
         const bgImg = new Image();
+        bgImg.crossOrigin = 'anonymous';
         await new Promise((resolve, reject) => {
           bgImg.onload = resolve;
           bgImg.onerror = reject;
-          bgImg.src = project.assets.background!.frames[0].dataUrl;
+          bgImg.src = bgSrc;
         });
         ctx.drawImage(bgImg, 0, 0, 300, 400);
       } else {

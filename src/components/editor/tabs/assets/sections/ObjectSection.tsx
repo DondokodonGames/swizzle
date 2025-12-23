@@ -600,7 +600,7 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
                 {hasFrames ? (
                   <>
                     <img
-                      src={obj.frames[currentFrame]?.dataUrl || obj.frames[0].dataUrl}
+                      src={obj.frames[currentFrame]?.storageUrl || obj.frames[currentFrame]?.dataUrl || obj.frames[0]?.storageUrl || obj.frames[0]?.dataUrl}
                       alt={obj.name}
                       style={{
                         width: '100%',

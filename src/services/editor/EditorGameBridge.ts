@@ -194,34 +194,102 @@ export class EditorGameBridge {
         warnings.push('ルールが1つも設定されていません');
       }
 
-      // 7. 画像リソース読み込み
+      // 7. 画像リソース読み込み（ローディング画面表示）
       const imageCache = new Map<string, HTMLImageElement>();
-      
+
+      // ローディング画面を表示
+      const showLoadingScreen = (progress: number, message: string) => {
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+
+        // プログレスバー背景
+        const barWidth = 600;
+        const barHeight = 20;
+        const barX = (canvasElement.width - barWidth) / 2;
+        const barY = canvasElement.height / 2;
+
+        ctx.fillStyle = '#333';
+        ctx.fillRect(barX, barY, barWidth, barHeight);
+
+        // プログレスバー
+        ctx.fillStyle = '#a855f7';
+        ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+
+        // テキスト
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '40px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🎮 Loading...', canvasElement.width / 2, barY - 60);
+        ctx.font = '28px sans-serif';
+        ctx.fillText(message, canvasElement.width / 2, barY + 80);
+        ctx.fillText(`${Math.floor(progress * 100)}%`, canvasElement.width / 2, barY + 130);
+      };
+
+      // 読み込むべき画像の総数をカウント
+      let totalImages = 0;
+      let loadedImages = 0;
+
+      if (project.assets?.background && getBackgroundUrl(project.assets.background)) {
+        totalImages++;
+      }
+      if (project.assets?.objects) {
+        for (const asset of project.assets.objects) {
+          totalImages += asset.frames?.length || 0;
+        }
+      }
+
+      // 初期ローディング画面表示
+      showLoadingScreen(0, '画像を読み込んでいます...');
+
+      // 画像読み込みヘルパー（リトライ付き）
+      const loadImageWithRetry = async (src: string, retries: number = 3): Promise<HTMLImageElement> => {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+          try {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            await this.loadImage(img, src, 8000); // タイムアウトを8秒に延長
+            return img;
+          } catch (error) {
+            if (attempt === retries) {
+              throw error;
+            }
+            console.log(`⏳ 画像読み込みリトライ (${attempt}/${retries}): ${src.substring(0, 50)}...`);
+            await new Promise(r => setTimeout(r, 500 * attempt)); // 待機してリトライ
+          }
+        }
+        throw new Error('Image load failed after retries');
+      };
+
       // 背景画像読み込み（storageUrl / dataUrl両対応）
       if (project.assets?.background) {
         const bgUrl = getBackgroundUrl(project.assets.background);
         if (bgUrl) {
           try {
-            const bgImg = new Image();
-            bgImg.crossOrigin = 'anonymous'; // CORS対応
-            await this.loadImage(bgImg, bgUrl, 3000);
+            const bgImg = await loadImageWithRetry(bgUrl);
             imageCache.set('background', bgImg);
+            loadedImages++;
+            showLoadingScreen(loadedImages / Math.max(totalImages, 1), '背景画像読み込み完了');
             console.log('✅ 背景画像読み込み完了');
           } catch (error) {
             warnings.push('背景画像の読み込みに失敗しました');
+            loadedImages++;
+            showLoadingScreen(loadedImages / Math.max(totalImages, 1), '背景画像読み込み失敗');
           }
         }
       }
 
       // オブジェクト画像読み込み（全フレーム対応・storageUrl / dataUrl両対応）
       if (project.assets?.objects) {
+        // 全画像を並列で読み込み（高速化）
+        const loadPromises: Promise<void>[] = [];
+
         for (const asset of project.assets.objects) {
           if (!asset.frames || asset.frames.length === 0) {
             warnings.push(`オブジェクト "${asset.name}" の画像データがありません`);
             continue;
           }
 
-          // 全フレームを読み込み
+          // 全フレームを並列読み込み
           for (let frameIndex = 0; frameIndex < asset.frames.length; frameIndex++) {
             const frame = asset.frames[frameIndex];
             const frameUrl = getAssetFrameUrl(frame);
@@ -230,18 +298,30 @@ export class EditorGameBridge {
               continue;
             }
 
-            try {
-              const img = new Image();
-              img.crossOrigin = 'anonymous'; // CORS対応
-              await this.loadImage(img, frameUrl, 2000);
-              imageCache.set(`${asset.id}_frame${frameIndex}`, img);
-              console.log(`✅ オブジェクト画像読み込み完了: ${asset.name} (frame ${frameIndex})`);
-            } catch (error) {
-              warnings.push(`オブジェクト画像 "${asset.name}" フレーム${frameIndex}の読み込みに失敗しました`);
-            }
+            const loadPromise = loadImageWithRetry(frameUrl)
+              .then(img => {
+                imageCache.set(`${asset.id}_frame${frameIndex}`, img);
+                loadedImages++;
+                showLoadingScreen(loadedImages / Math.max(totalImages, 1), `${asset.name} 読み込み中...`);
+                console.log(`✅ オブジェクト画像読み込み完了: ${asset.name} (frame ${frameIndex})`);
+              })
+              .catch(error => {
+                warnings.push(`オブジェクト画像 "${asset.name}" フレーム${frameIndex}の読み込みに失敗しました`);
+                loadedImages++;
+                showLoadingScreen(loadedImages / Math.max(totalImages, 1), `${asset.name} 読み込み失敗`);
+              });
+
+            loadPromises.push(loadPromise);
           }
         }
+
+        // 全ての画像読み込みを待機
+        await Promise.all(loadPromises);
       }
+
+      // ローディング完了画面
+      showLoadingScreen(1, 'ゲーム開始準備完了！');
+      await new Promise(r => setTimeout(r, 300)); // 少し待機してユーザーに見せる
 
       // 7.5. 音声リソース読み込み
       const audioCache = new Map<string, HTMLAudioElement>();

@@ -651,9 +651,9 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
                                 backgroundColor: DESIGN_TOKENS.colors.neutral[100],
                                 border: `1px solid ${DESIGN_TOKENS.colors.neutral[200]}`
                               }}>
-                                {asset.frames[0]?.dataUrl ? (
-                                  <img 
-                                    src={asset.frames[0].dataUrl}
+                                {(asset.frames[0]?.storageUrl || asset.frames[0]?.dataUrl) ? (
+                                  <img
+                                    src={asset.frames[0]?.storageUrl || asset.frames[0]?.dataUrl}
                                     alt={asset.name}
                                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                   />

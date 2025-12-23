@@ -245,9 +245,9 @@ export const ObjectStateConditionEditor: React.FC<ObjectStateConditionEditorProp
                   : DESIGN_TOKENS.colors.neutral[800]
               }}
             >
-              {obj.frames && obj.frames[0]?.dataUrl ? (
-                <img 
-                  src={obj.frames[0].dataUrl} 
+              {obj.frames && (obj.frames[0]?.storageUrl || obj.frames[0]?.dataUrl) ? (
+                <img
+                  src={obj.frames[0]?.storageUrl || obj.frames[0]?.dataUrl}
                   alt={obj.name}
                   style={{
                     width: '64px',

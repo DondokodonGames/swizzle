@@ -44,7 +44,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
     if (!background || !background.frames || background.frames.length === 0) {
       return undefined;
     }
-    return background.frames[0].dataUrl;
+    return background.frames[0].storageUrl || background.frames[0].dataUrl;
   }, [project.assets.background]);
 
   // ステップナビゲーション（順序変更）
