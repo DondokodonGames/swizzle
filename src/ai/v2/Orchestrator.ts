@@ -24,6 +24,7 @@ import { AssetPlanner, EnhancedAssetPlan } from './AssetPlanner';
 import { SpecificationGenerator, GameSpecification } from './SpecificationGenerator';
 import { EditorMapper, EditorMapperOutput } from './EditorMapper';
 import { LogicValidator } from './LogicValidator';
+import { LogicRepairer } from './LogicRepairer';
 import { ProjectValidator } from './ProjectValidator';
 import { AssetGenerator } from './AssetGenerator';
 import { FinalAssembler } from './FinalAssembler';
@@ -61,6 +62,7 @@ export class Orchestrator {
   private specificationGenerator: SpecificationGenerator;
   private editorMapper: EditorMapper;
   private logicValidator: LogicValidator;
+  private logicRepairer: LogicRepairer;         // ★NEW エラー修復
   private projectValidator: ProjectValidator;   // ★NEW Step 6.5
   private assetGenerator: AssetGenerator;
   private finalAssembler: FinalAssembler;
@@ -113,6 +115,12 @@ export class Orchestrator {
 
     this.logicValidator = new LogicValidator();
 
+    // ★NEW エラー修復
+    this.logicRepairer = new LogicRepairer({
+      dryRun: this.config.dryRun,
+      apiKey: this.config.anthropicApiKey
+    }, this.logger);
+
     // ★NEW Step 6.5
     this.projectValidator = new ProjectValidator(this.logger);
 
@@ -144,7 +152,7 @@ export class Orchestrator {
     console.log(`   Image provider: ${this.config.imageGeneration.provider}`);
     console.log(`   Dry run: ${this.config.dryRun}`);
     console.log(`   Logging: ${process.env.GENERATION_LOGGING !== 'false' ? 'enabled' : 'disabled'}`);
-    console.log(`   New steps: AssetPlanner, ProjectValidator, DryRunSimulator`);
+    console.log(`   New steps: AssetPlanner, ProjectValidator, DryRunSimulator, LogicRepairer`);
   }
 
   /**
@@ -316,23 +324,24 @@ export class Orchestrator {
       let logicOutput: LogicGeneratorOutput;
       let logicRetries = 0;
 
+      // 初回マッピング
+      try {
+        mapperOutput = await this.editorMapper.map(concept, spec);
+        logicOutput = mapperOutput.logicOutput;
+
+        // Log mapping table
+        this.logger.log('EditorMapper', 'output', 'Mapping table generated', {
+          mappedObjects: mapperOutput.mappingTable.summary.totalObjects,
+          mappedCounters: mapperOutput.mappingTable.summary.totalCounters,
+          mappedRules: mapperOutput.mappingTable.summary.totalRules
+        });
+      } catch (error) {
+        this.logger.logError('EditorMapper', error as Error);
+        throw error;
+      }
+
+      // Step 6: LogicValidator + LogicRepairer ループ
       while (true) {
-        try {
-          mapperOutput = await this.editorMapper.map(concept, spec);
-          logicOutput = mapperOutput.logicOutput;
-
-          // Log mapping table
-          this.logger.log('EditorMapper', 'output', 'Mapping table generated', {
-            mappedObjects: mapperOutput.mappingTable.summary.totalObjects,
-            mappedCounters: mapperOutput.mappingTable.summary.totalCounters,
-            mappedRules: mapperOutput.mappingTable.summary.totalRules
-          });
-        } catch (error) {
-          this.logger.logError('EditorMapper', error as Error);
-          throw error;
-        }
-
-        // Step 6: LogicValidator
         console.log('   ✓ Step 6: Validating logic...');
         const logicValidation = this.logicValidator.validate(logicOutput);
         this.logger.logLogicValidation(logicValidation.valid, logicValidation.errors);
@@ -352,12 +361,55 @@ export class Orchestrator {
         }
 
         console.log(`      ⚠️ Issues: ${logicValidation.errors.length} errors`);
-        console.log(`      🔄 Retrying (${logicRetries}/${this.config.maxRetries})...`);
+        console.log(`      🔧 Step 6.1: Attempting repair (${logicRetries}/${this.config.maxRetries})...`);
 
-        // Re-generate specification with feedback
-        this.logger.logDecision('SpecificationGenerator', 'Regenerating',
-          `Validation failed: ${logicValidation.errors.map(e => e.message).join(', ')}`);
-        spec = await this.specificationGenerator.generate(concept, design, assetPlan);
+        // LogicRepairerで修復を試みる
+        const repairResult = await this.logicRepairer.repair(
+          logicOutput,
+          logicValidation,
+          concept,
+          spec
+        );
+
+        if (repairResult.repairsApplied.length > 0) {
+          console.log(`      ✅ Applied ${repairResult.repairsApplied.length} repairs`);
+          for (const repair of repairResult.repairsApplied) {
+            console.log(`         - ${repair.action}: ${repair.target}`);
+          }
+          logicOutput = repairResult.repairedOutput;
+        }
+
+        // 全体再生成が必要な場合
+        if (repairResult.requiresFullRegeneration) {
+          console.log(`      🔄 Step 6.2: Full regeneration required...`);
+          console.log(`      Feedback: ${repairResult.regenerationFeedback?.substring(0, 100)}...`);
+
+          this.logger.logDecision('SpecificationGenerator', 'Regenerating',
+            `Structural issues: ${repairResult.regenerationFeedback}`);
+
+          // フィードバック付きで仕様を再生成
+          spec = await this.specificationGenerator.generate(concept, design, assetPlan);
+
+          // 再マッピング
+          try {
+            mapperOutput = await this.editorMapper.map(concept, spec);
+            logicOutput = mapperOutput.logicOutput;
+
+            this.logger.log('EditorMapper', 'output', 'Re-mapped after regeneration', {
+              mappedObjects: mapperOutput.mappingTable.summary.totalObjects,
+              mappedRules: mapperOutput.mappingTable.summary.totalRules
+            });
+          } catch (error) {
+            this.logger.logError('EditorMapper', error as Error);
+            throw error;
+          }
+        } else if (repairResult.success) {
+          // 修復成功、再検証へ
+          console.log(`      ✅ Repair successful, re-validating...`);
+        } else if (repairResult.remainingErrors.length > 0) {
+          // 部分的な修復のみ、残存エラーあり
+          console.log(`      ⚠️ Partial repair: ${repairResult.remainingErrors.length} errors remain`);
+        }
       }
 
       // ★NEW Step 6.5: ProjectValidator

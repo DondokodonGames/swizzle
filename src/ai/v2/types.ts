@@ -32,6 +32,7 @@ export type {
 export type { ProjectValidationResult, ProjectValidationError } from './ProjectValidator';
 export type { ReachabilityReport, SimulationPath, SimulationStep, ConflictReport, SimulationIssue } from './DryRunSimulator';
 export type { EditorMapperOutput, MappingTable, ObjectMapping, CounterMapping, SoundMapping, RuleMapping } from './EditorMapper';
+export type { RepairResult } from './LogicRepairer';
 
 // ==========================================
 // Step 1: GameConcept
