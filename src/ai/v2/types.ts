@@ -4,9 +4,24 @@
  * 設計思想:
  * - ゲームアイデア: 完全自由
  * - エディター仕様: 厳密遵守
+ *
+ * パイプライン:
+ * Step 1: GameConceptGenerator → GameConcept
+ * Step 2: GameDesignGenerator → GameDesign (別ファイル)
+ * Step 3: SpecificationGenerator → GameSpecification (別ファイル)
+ * Step 4: EditorMapper → LogicGeneratorOutput
+ * Step 5: LogicValidator → LogicValidationResult
+ * Step 6: AssetGenerator → GeneratedAssets
+ * Step 7: FinalAssembler → AssemblyResult
+ * Step 8: QualityScorer → QualityScore
  */
 
 import { GameProject } from '../../types/editor/GameProject';
+
+// Re-export types from other modules for convenience
+export type { GameDesign, GameDesignObject, Interaction, DesignDecision } from './GameDesignGenerator';
+export type { GameSpecification, ObjectSpecification, RuleSpecification, StateManagement, AudioSpecification, SpecDecision } from './SpecificationGenerator';
+export type { GenerationSession, LogEntry } from './GenerationLogger';
 
 // ==========================================
 // Step 1: GameConcept

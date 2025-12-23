@@ -5,20 +5,25 @@
  *
  * Step 1: GameConceptGenerator（4つの評価基準を前提に自由発想）
  * Step 2: ConceptValidator（ダブルチェック）
- * Step 3: LogicGenerator（エディター仕様厳密、アセット計画出力）
- * Step 4: LogicValidator（100%成功前提のダブルチェック）
- * Step 5: AssetGenerator（計画に基づく生成）
- * Step 6: FinalAssembler（JSON整合性チェック）
- * Step 7: QualityScorer（参考情報）
+ * Step 3: GameDesignGenerator（ゲームデザイン生成）
+ * Step 4: SpecificationGenerator（詳細仕様生成）
+ * Step 5: EditorMapper（エディター形式へ変換）
+ * Step 6: LogicValidator（100%成功前提のダブルチェック）
+ * Step 7: AssetGenerator（計画に基づく生成）
+ * Step 8: FinalAssembler（JSON整合性チェック）
+ * Step 9: QualityScorer（参考情報）
  */
 
 import { GameConceptGenerator } from './GameConceptGenerator';
 import { ConceptValidator } from './ConceptValidator';
-import { LogicGenerator } from './LogicGenerator';
+import { GameDesignGenerator, GameDesign } from './GameDesignGenerator';
+import { SpecificationGenerator, GameSpecification } from './SpecificationGenerator';
+import { EditorMapper } from './EditorMapper';
 import { LogicValidator } from './LogicValidator';
 import { AssetGenerator } from './AssetGenerator';
 import { FinalAssembler } from './FinalAssembler';
 import { QualityScorer } from './QualityScorer';
+import { GenerationLogger } from './GenerationLogger';
 import { SupabaseUploader } from '../publishers/SupabaseUploader';
 import {
   GameConcept,
@@ -42,14 +47,19 @@ const DEFAULT_CONFIG: OrchestratorConfig = {
 export class Orchestrator {
   private config: OrchestratorConfig;
 
-  // Generators
+  // Generators (new pipeline)
   private conceptGenerator: GameConceptGenerator;
   private conceptValidator: ConceptValidator;
-  private logicGenerator: LogicGenerator;
+  private gameDesignGenerator: GameDesignGenerator;
+  private specificationGenerator: SpecificationGenerator;
+  private editorMapper: EditorMapper;
   private logicValidator: LogicValidator;
   private assetGenerator: AssetGenerator;
   private finalAssembler: FinalAssembler;
   private qualityScorer: QualityScorer;
+
+  // Logging
+  private logger: GenerationLogger;
 
   // Optional
   private uploader?: SupabaseUploader;
@@ -61,16 +71,30 @@ export class Orchestrator {
   constructor(config?: Partial<OrchestratorConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
 
-    // Initialize all components
+    // Initialize logger
+    this.logger = new GenerationLogger();
+
+    // Initialize all components with logger
     this.conceptGenerator = new GameConceptGenerator({
       dryRun: this.config.dryRun,
       apiKey: this.config.anthropicApiKey
     });
     this.conceptValidator = new ConceptValidator();
-    this.logicGenerator = new LogicGenerator({
+
+    // New pipeline components
+    this.gameDesignGenerator = new GameDesignGenerator({
       dryRun: this.config.dryRun,
       apiKey: this.config.anthropicApiKey
-    });
+    }, this.logger);
+    this.specificationGenerator = new SpecificationGenerator({
+      dryRun: this.config.dryRun,
+      apiKey: this.config.anthropicApiKey
+    }, this.logger);
+    this.editorMapper = new EditorMapper({
+      dryRun: this.config.dryRun,
+      apiKey: this.config.anthropicApiKey
+    }, this.logger);
+
     this.logicValidator = new LogicValidator();
     this.assetGenerator = new AssetGenerator({
       imageProvider: this.config.imageGeneration.provider,
@@ -90,11 +114,12 @@ export class Orchestrator {
       }
     }
 
-    console.log('🚀 V2 Orchestrator initialized');
+    console.log('🚀 V2 Orchestrator initialized (new pipeline)');
     console.log(`   Target: ${this.config.targetGamesPerRun} games`);
     console.log(`   Max retries: ${this.config.maxRetries}`);
     console.log(`   Image provider: ${this.config.imageGeneration.provider}`);
     console.log(`   Dry run: ${this.config.dryRun}`);
+    console.log(`   Logging: ${process.env.GENERATION_LOGGING !== 'false' ? 'enabled' : 'disabled'}`);
   }
 
   /**
@@ -177,107 +202,159 @@ export class Orchestrator {
     const startTime = Date.now();
     let validationPassedFirstTry = true;
 
-    // Step 1: GameConceptGenerator
-    console.log('   📋 Step 1: Generating concept...');
-    let concept: GameConcept;
-    let conceptRetries = 0;
+    // Start logging session
+    const sessionId = this.logger.startSession();
 
-    while (true) {
-      concept = await this.conceptGenerator.generate(
-        conceptRetries > 0 ? 'Previous concept had issues, please improve' : undefined
-      );
-      console.log(`      Title: ${concept.title}`);
+    try {
+      // Step 1: GameConceptGenerator
+      console.log('   📋 Step 1: Generating concept...');
+      let concept: GameConcept;
+      let conceptRetries = 0;
 
-      // Step 2: ConceptValidator
-      console.log('   ✓ Step 2: Validating concept...');
-      const conceptValidation = this.conceptValidator.validate(concept);
+      while (true) {
+        concept = await this.conceptGenerator.generate(
+          conceptRetries > 0 ? 'Previous concept had issues, please improve' : undefined
+        );
+        console.log(`      Title: ${concept.title}`);
 
-      if (conceptValidation.passed) {
-        console.log('      ✅ Concept validated');
-        break;
+        // Log concept
+        this.logger.logConceptGeneration(concept);
+
+        // Step 2: ConceptValidator
+        console.log('   ✓ Step 2: Validating concept...');
+        const conceptValidation = this.conceptValidator.validate(concept);
+        this.logger.logConceptValidation(conceptValidation.passed, conceptValidation.issues);
+
+        if (conceptValidation.passed) {
+          console.log('      ✅ Concept validated');
+          break;
+        }
+
+        conceptRetries++;
+        if (conceptRetries >= this.config.maxRetries) {
+          console.log(`      ⚠️ Concept validation failed after ${conceptRetries} retries, proceeding anyway`);
+          validationPassedFirstTry = false;
+          break;
+        }
+
+        console.log(`      ⚠️ Issues: ${conceptValidation.issues.join(', ')}`);
+        console.log(`      🔄 Retrying (${conceptRetries}/${this.config.maxRetries})...`);
       }
 
-      conceptRetries++;
-      if (conceptRetries >= this.config.maxRetries) {
-        console.log(`      ⚠️ Concept validation failed after ${conceptRetries} retries, proceeding anyway`);
+      // Update session with concept title
+      this.logger.log('session', 'decision', `Concept: ${concept.title}`);
+
+      // Step 3: GameDesignGenerator
+      console.log('   🎯 Step 3: Generating game design...');
+      let design: GameDesign;
+      try {
+        design = await this.gameDesignGenerator.generate(concept);
+        console.log(`      Core loop: ${design.coreLoop.description}`);
+        console.log(`      Objects: ${design.objects.length}`);
+        console.log(`      Interactions: ${design.interactions.length}`);
+      } catch (error) {
+        this.logger.logError('GameDesignGenerator', error as Error);
+        throw error;
+      }
+
+      // Step 4: SpecificationGenerator
+      console.log('   📝 Step 4: Generating specifications...');
+      let spec: GameSpecification;
+      try {
+        spec = await this.specificationGenerator.generate(concept, design);
+        console.log(`      Rules: ${spec.rules.length}`);
+        console.log(`      Counters: ${spec.stateManagement.counters.length}`);
+        console.log(`      Success path: ${spec.successPath.steps.length} steps`);
+      } catch (error) {
+        this.logger.logError('SpecificationGenerator', error as Error);
+        throw error;
+      }
+
+      // Step 5: EditorMapper
+      console.log('   🔄 Step 5: Mapping to editor format...');
+      let logicOutput: LogicGeneratorOutput;
+      let logicRetries = 0;
+
+      while (true) {
+        try {
+          logicOutput = await this.editorMapper.map(concept, spec);
+        } catch (error) {
+          this.logger.logError('EditorMapper', error as Error);
+          throw error;
+        }
+
+        // Step 6: LogicValidator
+        console.log('   ✓ Step 6: Validating logic...');
+        const logicValidation = this.logicValidator.validate(logicOutput);
+        this.logger.logLogicValidation(logicValidation.valid, logicValidation.errors);
+
+        if (logicValidation.valid) {
+          console.log('      ✅ Logic validated');
+          break;
+        }
+
+        logicRetries++;
         validationPassedFirstTry = false;
-        break;
+
+        if (logicRetries >= this.config.maxRetries) {
+          console.log(`      ⚠️ Logic validation failed after ${logicRetries} retries`);
+          console.log(`      Errors: ${logicValidation.errors.map(e => e.message).join(', ')}`);
+          // Continue anyway - the game might still work
+          break;
+        }
+
+        console.log(`      ⚠️ Issues: ${logicValidation.errors.length} errors`);
+        console.log(`      🔄 Retrying (${logicRetries}/${this.config.maxRetries})...`);
+
+        // Re-generate specification with feedback
+        this.logger.logDecision('SpecificationGenerator', 'Regenerating',
+          `Validation failed: ${logicValidation.errors.map(e => e.message).join(', ')}`);
+        spec = await this.specificationGenerator.generate(concept, design);
       }
 
-      console.log(`      ⚠️ Issues: ${conceptValidation.issues.join(', ')}`);
-      console.log(`      🔄 Retrying (${conceptRetries}/${this.config.maxRetries})...`);
-    }
+      // Step 7: AssetGenerator
+      console.log('   🎨 Step 7: Generating assets...');
+      const assets = await this.assetGenerator.generate(concept, logicOutput.assetPlan);
 
-    // Step 3: LogicGenerator
-    console.log('   🧠 Step 3: Generating logic...');
-    let logicOutput: LogicGeneratorOutput;
-    let logicRetries = 0;
+      // Step 8: FinalAssembler
+      console.log('   🔧 Step 8: Assembling game...');
+      const assemblyResult = this.finalAssembler.assemble(concept, logicOutput, assets);
 
-    while (true) {
-      logicOutput = await this.logicGenerator.generate(
+      if (!assemblyResult.valid) {
+        console.log(`      ❌ Assembly errors: ${assemblyResult.issues.join(', ')}`);
+        this.logger.logError('FinalAssembler', assemblyResult.issues.join(', '));
+      } else if (assemblyResult.issues.length > 0) {
+        console.log(`      ✅ Game assembled (warnings: ${assemblyResult.issues.join(', ')})`);
+      } else {
+        console.log('      ✅ Game assembled');
+      }
+
+      // Step 9: QualityScorer
+      console.log('   📊 Step 9: Scoring quality...');
+      const qualityScore = this.qualityScorer.score(concept, assemblyResult.project, validationPassedFirstTry);
+      const overallScore = this.qualityScorer.calculateOverallScore(qualityScore);
+      console.log(`      Score: ${overallScore}/100 (${this.qualityScorer.getLabel(overallScore)})`);
+
+      const generationTime = Date.now() - startTime;
+      const estimatedCost = this.estimateCost();
+
+      // End logging session
+      this.logger.endSession(assemblyResult.valid);
+
+      return {
+        id: assemblyResult.project.id,
         concept,
-        logicRetries > 0 ? this.logicValidator.formatFeedback(
-          this.logicValidator.validate(logicOutput!)
-        ) : undefined
-      );
-
-      // Step 4: LogicValidator
-      console.log('   ✓ Step 4: Validating logic...');
-      const logicValidation = this.logicValidator.validate(logicOutput);
-
-      if (logicValidation.valid) {
-        console.log('      ✅ Logic validated');
-        break;
-      }
-
-      logicRetries++;
-      validationPassedFirstTry = false;
-
-      if (logicRetries >= this.config.maxRetries) {
-        console.log(`      ⚠️ Logic validation failed after ${logicRetries} retries`);
-        console.log(`      Errors: ${logicValidation.errors.map(e => e.message).join(', ')}`);
-        // Continue anyway - the game might still work
-        break;
-      }
-
-      console.log(`      ⚠️ Issues: ${logicValidation.errors.length} errors`);
-      console.log(`      🔄 Retrying (${logicRetries}/${this.config.maxRetries})...`);
+        project: assemblyResult.project,
+        qualityScore,
+        passed: assemblyResult.valid,
+        generationTime,
+        estimatedCost
+      };
+    } catch (error) {
+      this.logger.logError('Orchestrator', error as Error);
+      this.logger.endSession(false);
+      throw error;
     }
-
-    // Step 5: AssetGenerator
-    console.log('   🎨 Step 5: Generating assets...');
-    const assets = await this.assetGenerator.generate(concept, logicOutput.assetPlan);
-
-    // Step 6: FinalAssembler
-    console.log('   🔧 Step 6: Assembling game...');
-    const assemblyResult = this.finalAssembler.assemble(concept, logicOutput, assets);
-
-    if (!assemblyResult.valid) {
-      console.log(`      ❌ Assembly errors: ${assemblyResult.issues.join(', ')}`);
-    } else if (assemblyResult.issues.length > 0) {
-      console.log(`      ✅ Game assembled (warnings: ${assemblyResult.issues.join(', ')})`);
-    } else {
-      console.log('      ✅ Game assembled');
-    }
-
-    // Step 7: QualityScorer
-    console.log('   📊 Step 7: Scoring quality...');
-    const qualityScore = this.qualityScorer.score(concept, assemblyResult.project, validationPassedFirstTry);
-    const overallScore = this.qualityScorer.calculateOverallScore(qualityScore);
-    console.log(`      Score: ${overallScore}/100 (${this.qualityScorer.getLabel(overallScore)})`);
-
-    const generationTime = Date.now() - startTime;
-    const estimatedCost = this.estimateCost();
-
-    return {
-      id: assemblyResult.project.id,
-      concept,
-      project: assemblyResult.project,
-      qualityScore,
-      passed: assemblyResult.valid,
-      generationTime,
-      estimatedCost
-    };
   }
 
   /**
@@ -344,7 +421,11 @@ export class Orchestrator {
    * コスト見積もり
    */
   private estimateCost(): number {
-    const tokensUsed = this.logicGenerator.getTokensUsed();
+    // Sum tokens from all generators
+    const tokensUsed =
+      this.gameDesignGenerator.getTokensUsed() +
+      this.specificationGenerator.getTokensUsed() +
+      this.editorMapper.getTokensUsed();
     // Claude: ~$0.003/1K tokens average
     // DALL-E 3: ~$0.04/image
     const imageCost = this.config.imageGeneration.provider === 'openai' ? 0.2 : 0;
@@ -403,7 +484,10 @@ export class Orchestrator {
       config: this.config,
       isRunning: this.isRunning,
       conceptGenerator: this.conceptGenerator.getDebugInfo(),
-      logicGenerator: this.logicGenerator.getDebugInfo()
+      gameDesignGenerator: this.gameDesignGenerator.getDebugInfo(),
+      specificationGenerator: this.specificationGenerator.getDebugInfo(),
+      editorMapper: this.editorMapper.getDebugInfo(),
+      recentLogSessions: this.logger.getRecentSessions(5)
     };
   }
 }
