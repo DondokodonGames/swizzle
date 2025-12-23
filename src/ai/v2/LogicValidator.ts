@@ -1236,8 +1236,8 @@ export class LogicValidator {
 
   /**
    * 成功条件到達可能性チェック
-   * - 成功条件がカウンターに依存している場合、そのカウンターを操作するルールが存在するか
-   * - カウンターの目標値に到達可能か（十分な操作機会があるか）
+   * - 成功条件に到達するためのルールが存在するか
+   * - プレイヤー操作で到達可能か
    */
   private checkSuccessPathReachability(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
     const successRules = output.script.rules.filter(r =>
@@ -1248,89 +1248,119 @@ export class LogicValidator {
       return; // checkSuccessFailureExists で既にチェック済み
     }
 
-    // 各成功ルールをチェック
+    // 成功ルールの条件タイプを分析
     for (const successRule of successRules) {
       const conditions = successRule.triggers?.conditions || [];
 
+      // 条件が空の場合は別のチェックで検出される
+      if (conditions.length === 0) continue;
+
+      // 各条件タイプごとにチェック
       for (const condition of conditions) {
-        if (condition.type === 'counter' && condition.counterName && condition.value !== undefined) {
-          // このカウンターを操作するルールを探す
-          const modifyingRules = output.script.rules.filter(r =>
+        // カウンター条件: 操作ルールが存在するか
+        if (condition.type === 'counter' && condition.counterName) {
+          const hasModifyingRule = output.script.rules.some(r =>
             r.actions?.some(a =>
               a.type === 'counter' &&
-              a.counterName === condition.counterName &&
-              (a.operation === 'increment' || a.operation === 'add')
+              a.counterName === condition.counterName
             )
           );
 
-          if (modifyingRules.length === 0) {
-            const counter = output.script.counters.find(c => c.id === condition.counterName);
+          if (!hasModifyingRule) {
             errors.push({
               type: 'critical',
               code: 'UNREACHABLE_SUCCESS',
-              message: `成功条件に到達不可: カウンター "${condition.counterName}" を増加させるルールがありません（目標: ${condition.value}、初期値: ${counter?.initialValue || 0}）`,
-              fix: `カウンター "${condition.counterName}" を増加させるルール（タッチ時にincrement等）を追加してください`
+              message: `成功条件到達不可: カウンター "${condition.counterName}" を操作するルールがありません`,
+              fix: `カウンター "${condition.counterName}" を操作するルールを追加してください`
             });
-          } else {
-            // カウンターを操作するルールの条件をチェック
-            // プレイヤー操作（touch, collision等）に依存しているか
-            const hasPlayerActionPath = modifyingRules.some(r => {
-              const conds = r.triggers?.conditions || [];
-              return conds.some(c =>
-                c.type === 'touch' ||
-                c.type === 'collision'
-              );
-            });
-
-            if (!hasPlayerActionPath) {
-              // カウンター操作がプレイヤー操作なしで発生する可能性
-              const modifyingRuleIds = modifyingRules.map(r => r.id).join(', ');
-              errors.push({
-                type: 'warning',
-                code: 'SUCCESS_NO_PLAYER_ACTION',
-                message: `成功パス確認要: カウンター "${condition.counterName}" を操作するルール（${modifyingRuleIds}）がプレイヤー操作を必要としていません`,
-                fix: `touch条件などプレイヤー操作を条件に追加することを検討してください`
-              });
-            }
-
-            // 目標値に到達可能かチェック（オブジェクト数と目標値の比較）
-            const counter = output.script.counters.find(c => c.id === condition.counterName);
-            const initialValue = counter?.initialValue || 0;
-            const targetValue = condition.value;
-            const comparison = condition.comparison || 'greaterOrEqual';
-
-            // 増加が必要な場合
-            if (['greaterOrEqual', 'greater', 'equals'].includes(comparison) && targetValue > initialValue) {
-              const neededIncrements = targetValue - initialValue;
-
-              // タッチ可能なオブジェクト数をカウント
-              const touchableObjects = new Set<string>();
-              for (const r of modifyingRules) {
-                if (r.targetObjectId) {
-                  touchableObjects.add(r.targetObjectId);
-                }
-                for (const cond of r.triggers?.conditions || []) {
-                  if (cond.type === 'touch' && cond.target && cond.target !== 'self' && cond.target !== 'stage') {
-                    touchableObjects.add(cond.target);
-                  }
-                }
-              }
-
-              // 同じオブジェクトを複数回タッチできない場合（hideされる場合）
-              const hidingRules = modifyingRules.filter(r =>
-                r.actions?.some(a => a.type === 'hide')
-              );
-
-              if (hidingRules.length > 0 && touchableObjects.size < neededIncrements) {
-                errors.push({
-                  type: 'critical',
-                  code: 'INSUFFICIENT_OBJECTS_FOR_SUCCESS',
-                  message: `成功条件到達不可: カウンター "${condition.counterName}" を${neededIncrements}回増加させる必要がありますが、タッチ可能なオブジェクトは${touchableObjects.size}個しかありません（タッチ後hideされます）`,
-                  fix: `オブジェクト数を増やすか、目標値を下げてください`
-                });
-              }
-            }
           }
+        }
+
+        // objectState条件: 該当オブジェクトの状態を変更するルールがあるか
+        if (condition.type === 'objectState' && condition.target) {
+          const targetId = condition.target;
+          const hasStateChangingRule = output.script.rules.some(r =>
+            r.actions?.some(a =>
+              (a.type === 'hide' || a.type === 'show') &&
+              a.targetId === targetId
+            )
+          );
+
+          if (!hasStateChangingRule) {
+            errors.push({
+              type: 'warning',
+              code: 'SUCCESS_STATE_CHECK',
+              message: `成功条件確認要: オブジェクト "${targetId}" の状態チェックがありますが、状態を変更するルールが見つかりません`,
+              fix: `hide/showアクションを追加するか、条件を確認してください`
+            });
+          }
+        }
+
+        // flag条件: フラグを設定するルールがあるか
+        if (condition.type === 'flag' && condition.flagId) {
+          const hasSetFlagRule = output.script.rules.some(r =>
+            r.actions?.some(a =>
+              (a.type === 'setFlag' || a.type === 'toggleFlag') &&
+              a.flagId === condition.flagId
+            )
+          );
+
+          if (!hasSetFlagRule) {
+            errors.push({
+              type: 'critical',
+              code: 'UNREACHABLE_SUCCESS',
+              message: `成功条件到達不可: フラグ "${condition.flagId}" を設定するルールがありません`,
+              fix: `setFlag/toggleFlagアクションを追加してください`
+            });
+          }
+        }
+      }
+
+      // 全体的なプレイヤー操作パスチェック
+      // 成功条件に到達するまでのどこかにプレイヤー操作があるか
+      const hasDirectTouch = conditions.some(c => c.type === 'touch' || c.type === 'collision');
+
+      if (!hasDirectTouch) {
+        // 間接的にでもプレイヤー操作が関係しているか確認
+        // (カウンターやフラグを経由する場合)
+        let hasIndirectPlayerAction = false;
+
+        for (const condition of conditions) {
+          if (condition.type === 'counter' && condition.counterName) {
+            // このカウンターを操作するルールにプレイヤー操作があるか
+            hasIndirectPlayerAction = output.script.rules.some(r => {
+              const hasCounterAction = r.actions?.some(a =>
+                a.type === 'counter' && a.counterName === condition.counterName
+              );
+              const hasTouchCondition = r.triggers?.conditions?.some(c =>
+                c.type === 'touch' || c.type === 'collision'
+              );
+              return hasCounterAction && hasTouchCondition;
+            });
+            if (hasIndirectPlayerAction) break;
+          }
+
+          if (condition.type === 'flag' && condition.flagId) {
+            hasIndirectPlayerAction = output.script.rules.some(r => {
+              const hasFlagAction = r.actions?.some(a =>
+                (a.type === 'setFlag' || a.type === 'toggleFlag') && a.flagId === condition.flagId
+              );
+              const hasTouchCondition = r.triggers?.conditions?.some(c =>
+                c.type === 'touch' || c.type === 'collision'
+              );
+              return hasFlagAction && hasTouchCondition;
+            });
+            if (hasIndirectPlayerAction) break;
+          }
+        }
+
+        if (!hasIndirectPlayerAction) {
+          errors.push({
+            type: 'warning',
+            code: 'SUCCESS_NO_PLAYER_ACTION',
+            message: `成功パス確認要: ルール "${successRule.id}" の成功条件がプレイヤー操作に依存していない可能性があります`,
+            fix: `touch/collision条件を含むルールチェーンを確認してください`
+          });
         }
       }
     }
