@@ -366,12 +366,12 @@ export class SpecificationGenerator {
 
     const spec = this.extractAndParseJSON(content.text);
 
-    // ログに記録
+    // ログに記録（nullチェック付き）
     this.logger?.logSpecificationGeneration({
-      objects: spec.objects.map(o => ({ id: o.id, behavior: o.touchable ? 'interactive' : 'static' })),
-      rules: spec.rules.map(r => ({ trigger: r.trigger.description, action: r.actions.map(a => a.type).join(', ') })),
-      successPath: spec.successPath.steps.join(' → '),
-      decisions: spec.specDecisions.map(d => `${d.aspect}: ${d.decision}`)
+      objects: (spec.objects || []).map(o => ({ id: o.id, behavior: o.touchable ? 'interactive' : 'static' })),
+      rules: (spec.rules || []).map(r => ({ trigger: r.trigger?.description || 'unknown', action: (r.actions || []).map(a => a.type).join(', ') })),
+      successPath: (spec.successPath?.steps || []).join(' → '),
+      decisions: (spec.specDecisions || []).map(d => `${d.aspect}: ${d.decision}`)
     });
 
     return spec;
@@ -385,7 +385,8 @@ export class SpecificationGenerator {
     design: GameDesign,
     _assetPlan?: EnhancedAssetPlan
   ): GameSpecification {
-    const objects: ObjectSpecification[] = design.objects.map((obj, i) => ({
+    const designObjects = design.objects || [];
+    const objects: ObjectSpecification[] = designObjects.map((obj, i) => ({
       id: obj.id,
       name: obj.name,
       visualDescription: obj.appearance,
