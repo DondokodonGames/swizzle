@@ -96,7 +96,7 @@ export class SocialService {
             .in('game_id', gameIds);
 
           if (likesData) {
-            likedGameIds = new Set(likesData.map(l => l.game_id));
+            likedGameIds = new Set(likesData.map((l: { game_id: string }) => l.game_id));
           }
 
           // お気に入り情報を一括取得（1回だけ）
@@ -152,10 +152,10 @@ export class SocialService {
       }
 
       const userGames = await database.userGames.getUserGames(userId);
-      const publishedGames = userGames.filter(game => game.is_published);
+      const publishedGames = userGames.filter((game: { is_published?: boolean }) => game.is_published);
 
-      const totalPlays = userGames.reduce((sum, game) => sum + (game.play_count || 0), 0);
-      const totalLikes = userGames.reduce((sum, game) => sum + (game.like_count || 0), 0);
+      const totalPlays = userGames.reduce((sum: number, game: { play_count?: number }) => sum + (game.play_count || 0), 0);
+      const totalLikes = userGames.reduce((sum: number, game: { like_count?: number }) => sum + (game.like_count || 0), 0);
 
       let followerCount = 0;
       let followingCount = 0;
@@ -226,7 +226,7 @@ export class SocialService {
 
       let filteredGames = gamesData;
       if (status && status !== 'all') {
-        filteredGames = gamesData.filter(game => {
+        filteredGames = gamesData.filter((game: { is_published?: boolean }) => {
           if (status === 'published') return game.is_published;
           if (status === 'draft') return !game.is_published;
           if (status === 'private') return !game.is_published;
@@ -234,7 +234,7 @@ export class SocialService {
         });
       }
 
-      const userGames: UserGame[] = filteredGames.map(game => ({
+      const userGames: UserGame[] = filteredGames.map((game: any) => ({
         id: game.id,
         title: game.title,
         thumbnail: game.thumbnail_url || `https://picsum.photos/300/200?random=${game.id}`,
@@ -323,7 +323,7 @@ export class SocialService {
           .eq('follower_id', userId);
 
         if (followingData && followingData.length > 0) {
-          const followingIds = followingData.map(f => f.following_id);
+          const followingIds = followingData.map((f: { following_id: string }) => f.following_id);
           query = query.in('user_id', followingIds);
         } else {
           // フォロー中のユーザーがいない場合は空配列を返す
@@ -825,12 +825,12 @@ export class SocialService {
       const stats: ReactionStats = {};
 
       // リアクションタイプごとに集計
-      (reactions || []).forEach(reaction => {
+      (reactions || []).forEach((reaction: { reaction_type: string; user_id: string }) => {
         if (!stats[reaction.reaction_type]) {
           stats[reaction.reaction_type] = { count: 0, userReacted: false };
         }
         stats[reaction.reaction_type].count++;
-        
+
         // ユーザーのリアクション状態を記録
         if (userId && reaction.user_id === userId) {
           stats[reaction.reaction_type].userReacted = true;
@@ -1153,7 +1153,7 @@ export class SocialService {
   async toggleGameStatus(gameId: string, userId: string): Promise<string> {
     try {
       const gamesData = await database.userGames.getUserGames(userId);
-      const game = gamesData.find(g => g.id === gameId);
+      const game = gamesData.find((g: { id: string }) => g.id === gameId);
       
       if (!game) {
         throw new Error('ゲームが見つかりません');
@@ -1327,7 +1327,7 @@ export class SocialService {
             .in('game_id', gameIds);
 
           if (likesData) {
-            likedGameIds = new Set(likesData.map(l => l.game_id));
+            likedGameIds = new Set(likesData.map((l: { game_id: string }) => l.game_id));
           }
 
           // お気に入り情報を一括取得（1回だけ）

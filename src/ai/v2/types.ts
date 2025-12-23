@@ -133,12 +133,22 @@ export interface SoundPlan {
 }
 
 /**
+ * BGM計画
+ */
+export interface BgmPlan {
+  id: string;
+  description: string;
+  mood: 'upbeat' | 'calm' | 'tense' | 'happy' | 'mysterious' | 'energetic';
+}
+
+/**
  * アセット計画
  */
 export interface AssetPlan {
   objects: ObjectPlan[];
   background: BackgroundPlan;
   sounds: SoundPlan[];
+  bgm?: BgmPlan;
 }
 
 /**
@@ -294,6 +304,8 @@ export interface LogicGeneratorOutput {
     allCounterNamesValid: boolean;
     coordinatesInRange: boolean;
     onlyVerifiedFeaturesUsed: boolean;
+    noRuleConflicts?: boolean;
+    counterCountReasonable?: boolean;
   };
 }
 

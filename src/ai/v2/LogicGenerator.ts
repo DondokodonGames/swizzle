@@ -68,35 +68,50 @@ const EDITOR_SPEC = `
 `;
 
 const LOGIC_PROMPT = `あなたはSwizzleゲームエンジンのGameScriptを生成するエキスパートです。
-ゲームコンセプトを読み、そのコンセプトを忠実に実装するゲームロジックを生成してください。
+ゲームコンセプトを読み、そのコンセプトを**忠実に**実装するゲームロジックを生成してください。
 
 ${EDITOR_SPEC}
 
+# 最重要: コンセプトに忠実に実装する
+
+**アイデアを勝手に変更しないでください。**
+- playerGoal に書かれた目標をそのまま実装
+- playerOperation に書かれた操作方法をそのまま実装
+- 「岩を壊す」なら岩を壊すゲーム、「順番にタッチ」なら順番ゲーム
+- 勝手にゲームを複雑にしたり、別のゲームに変えたりしない
+
 # 必須要件
 
-## 1. コンセプトを忠実に実装する（最重要）
-- playerGoal: プレイヤーの目標を達成できる仕組みを実装
-- playerOperation: 指定された操作方法を実際に機能させる
-- successCondition: 成功条件が正しく判定される
-- failureCondition: 失敗条件が正しく判定される
+## 1. シンプルに作る（5-10秒のゲーム）
+- オブジェクト数: 1〜5個で十分
+- カウンター: 0〜2個まで（多くても3個が限界）
+- ルール数: 3〜8個程度
+- 複雑なロジックは不要。1対1の対応で良い
+  - 例: タッチ→非表示+スコア、それを3回で成功
 
-## 2. 即成功/即失敗を防ぐ
+## 2. ルールのコンフリクトを防ぐ
+- 同じオブジェクトに対して矛盾するアクションを同時に発動させない
+  - ❌ 同じ条件でshow + hide
+  - ❌ 同じ条件でsuccess + failure
+  - ❌ 同じ条件でcounter add + subtract
+- 同じオブジェクトに複数のルールがある場合、条件を明確に分ける
+
+## 3. 即成功/即失敗を防ぐ
 - ゲーム開始直後に成功/失敗しない
-- 成功条件にはプレイヤー操作（touch/collision/counter等）を必ず含める
-- time条件のみで成功させない（プレイヤーが理解する前に終わる）
+- 成功条件にはプレイヤー操作（touch/collision等）を必ず含める
+- time条件のみで成功させない
 - カウンター初期値は目標値より小さく設定
 
-## 3. ID整合性を保つ
+## 4. ID整合性を保つ
 - objectIdはassetPlanに定義したものを正確に使用
 - counterNameはcountersに定義したものを使用
+- soundIdはassetPlan.soundsに定義したものを使用（se_xxx形式）
 - 座標は0.0〜1.0の範囲内
 
-## 4. ゲームに動きを持たせる
-コンセプトに応じてオブジェクトに動きを付ける：
-- move アクションで移動（straight/wander/bounce など）
-- time条件 + interval で定期的なイベント
-- collision条件 で衝突判定
-- effect で視覚フィードバック
+## 5. 音声を必ず生成
+- sounds配列にはSEを3〜5個定義
+- bgm配列にはBGMを1個定義
+- 必須SE: タップ時(se_tap)、成功時(se_success)、失敗時(se_failure)
 
 # ゲームコンセプト
 {{CONCEPT}}
@@ -143,8 +158,16 @@ ${EDITOR_SPEC}
       "mood": "雰囲気"
     },
     "sounds": [
-      { "id": "se_xxx", "trigger": "いつ再生するか", "type": "tap"|"success"|"failure"|"collect"|"pop"|"whoosh"|"bounce" }
-    ]
+      { "id": "se_tap", "trigger": "タップ時", "type": "tap" },
+      { "id": "se_success", "trigger": "成功時", "type": "success" },
+      { "id": "se_failure", "trigger": "失敗時", "type": "failure" },
+      { "id": "se_xxx", "trigger": "ゲーム固有のイベント時", "type": "collect/pop/bounce/ding等" }
+    ],
+    "bgm": {
+      "id": "bgm_main",
+      "description": "BGMの雰囲気説明",
+      "mood": "upbeat/calm/tense/happy/mysterious/energetic のいずれか"
+    }
   },
   "selfCheck": {
     "hasPlayerActionOnSuccessPath": boolean,
@@ -152,7 +175,9 @@ ${EDITOR_SPEC}
     "allObjectIdsValid": boolean,
     "allCounterNamesValid": boolean,
     "coordinatesInRange": boolean,
-    "onlyVerifiedFeaturesUsed": boolean
+    "onlyVerifiedFeaturesUsed": boolean,
+    "noRuleConflicts": boolean,
+    "counterCountReasonable": boolean
   }
 }`;
 
@@ -318,8 +343,14 @@ export class LogicGenerator {
         sounds: [
           { id: 'se_tap', trigger: 'タップ時', type: 'tap' },
           { id: 'se_success', trigger: '成功時', type: 'success' },
-          { id: 'se_failure', trigger: '失敗時', type: 'failure' }
-        ]
+          { id: 'se_failure', trigger: '失敗時', type: 'failure' },
+          { id: 'se_collect', trigger: 'アイテム取得時', type: 'collect' }
+        ],
+        bgm: {
+          id: 'bgm_main',
+          description: `${concept.theme}に合った明るいBGM`,
+          mood: 'upbeat' as const
+        }
       },
       selfCheck: {
         hasPlayerActionOnSuccessPath: true,
@@ -327,7 +358,9 @@ export class LogicGenerator {
         allObjectIdsValid: true,
         allCounterNamesValid: true,
         coordinatesInRange: true,
-        onlyVerifiedFeaturesUsed: true
+        onlyVerifiedFeaturesUsed: true,
+        noRuleConflicts: true,
+        counterCountReasonable: true
       }
     };
   }

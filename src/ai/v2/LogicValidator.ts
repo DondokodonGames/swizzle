@@ -95,6 +95,15 @@ export class LogicValidator {
     // 10. successとfailureアクションの存在チェック
     this.checkSuccessFailureExists(output, errors);
 
+    // 11. ルールコンフリクト検出
+    this.checkRuleConflicts(output, errors);
+
+    // 12. カウンター過剰使用チェック
+    this.checkExcessiveCounters(output, errors);
+
+    // 13. サウンド/BGM整合性チェック
+    this.checkSoundAndBgm(output, errors);
+
     return {
       valid: errors.filter(e => e.type === 'critical').length === 0,
       errors
@@ -1005,6 +1014,257 @@ export class LogicValidator {
         message: 'failureアクションが存在しません（時間切れのみで失敗となります）',
         fix: '明示的な失敗条件とfailureアクションを追加することを推奨します'
       });
+    }
+  }
+
+  /**
+   * ルールコンフリクト検出
+   * - 同一オブジェクトに対してshow + hide
+   * - 同一条件でsuccess + failure
+   * - 同一カウンターに対してincrement + decrement
+   */
+  private checkRuleConflicts(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
+    // 条件のシグネチャを生成（同一条件の検出用）
+    const getConditionSignature = (conditions: TriggerCondition[] | undefined): string => {
+      if (!conditions || conditions.length === 0) return '';
+      return conditions
+        .map(c => {
+          const parts: string[] = [c.type];
+          if (c.target) parts.push(`target:${c.target}`);
+          if (c.counterName) parts.push(`counter:${c.counterName}`);
+          if (c.touchType) parts.push(`touch:${c.touchType}`);
+          if (c.timeType) parts.push(`time:${c.timeType}`);
+          if (c.seconds !== undefined) parts.push(`sec:${c.seconds}`);
+          return parts.join('_');
+        })
+        .sort()
+        .join('|');
+    };
+
+    // 1. success + failure コンフリクト検出
+    const successRules = output.script.rules.filter(r =>
+      r.actions?.some(a => a.type === 'success')
+    );
+    const failureRules = output.script.rules.filter(r =>
+      r.actions?.some(a => a.type === 'failure')
+    );
+
+    for (const successRule of successRules) {
+      const successSig = getConditionSignature(successRule.triggers?.conditions);
+      for (const failureRule of failureRules) {
+        const failureSig = getConditionSignature(failureRule.triggers?.conditions);
+        if (successSig && failureSig && successSig === failureSig) {
+          errors.push({
+            type: 'critical',
+            code: 'SUCCESS_FAILURE_CONFLICT',
+            message: `コンフリクト: ルール "${successRule.id}" と "${failureRule.id}" が同一条件で success/failure を発動`,
+            fix: `条件を変更するか、どちらか一方を削除してください`
+          });
+        }
+      }
+    }
+
+    // 2. show + hide コンフリクト検出（同一オブジェクト）
+    const showActions: { ruleId: string; targetId: string; sig: string }[] = [];
+    const hideActions: { ruleId: string; targetId: string; sig: string }[] = [];
+
+    for (const rule of output.script.rules) {
+      const sig = getConditionSignature(rule.triggers?.conditions);
+      for (const action of rule.actions || []) {
+        if (action.type === 'show' && action.targetId) {
+          showActions.push({ ruleId: rule.id, targetId: action.targetId, sig });
+        }
+        if (action.type === 'hide' && action.targetId) {
+          hideActions.push({ ruleId: rule.id, targetId: action.targetId, sig });
+        }
+      }
+    }
+
+    for (const show of showActions) {
+      for (const hide of hideActions) {
+        if (show.targetId === hide.targetId && show.sig === hide.sig && show.sig !== '') {
+          errors.push({
+            type: 'critical',
+            code: 'SHOW_HIDE_CONFLICT',
+            message: `コンフリクト: オブジェクト "${show.targetId}" が同一条件で show/hide される（ルール: ${show.ruleId}, ${hide.ruleId}）`,
+            fix: `条件を変更するか、どちらか一方を削除してください`
+          });
+        }
+      }
+    }
+
+    // 3. カウンター increment + decrement コンフリクト検出
+    const counterIncrements: { ruleId: string; counterName: string; sig: string }[] = [];
+    const counterDecrements: { ruleId: string; counterName: string; sig: string }[] = [];
+
+    for (const rule of output.script.rules) {
+      const sig = getConditionSignature(rule.triggers?.conditions);
+      for (const action of rule.actions || []) {
+        if (action.type === 'counter' && action.counterName) {
+          if (action.operation === 'increment' || action.operation === 'add') {
+            counterIncrements.push({ ruleId: rule.id, counterName: action.counterName, sig });
+          }
+          if (action.operation === 'decrement' || action.operation === 'subtract') {
+            counterDecrements.push({ ruleId: rule.id, counterName: action.counterName, sig });
+          }
+        }
+      }
+    }
+
+    for (const inc of counterIncrements) {
+      for (const dec of counterDecrements) {
+        if (inc.counterName === dec.counterName && inc.sig === dec.sig && inc.sig !== '') {
+          errors.push({
+            type: 'critical',
+            code: 'COUNTER_CONFLICT',
+            message: `コンフリクト: カウンター "${inc.counterName}" が同一条件で increment/decrement される（ルール: ${inc.ruleId}, ${dec.ruleId}）`,
+            fix: `条件を変更するか、どちらか一方を削除してください`
+          });
+        }
+      }
+    }
+
+    // 4. 同一ルール内でのコンフリクト検出
+    for (const rule of output.script.rules) {
+      const actions = rule.actions || [];
+      const hasSuccess = actions.some(a => a.type === 'success');
+      const hasFailure = actions.some(a => a.type === 'failure');
+      if (hasSuccess && hasFailure) {
+        errors.push({
+          type: 'critical',
+          code: 'SAME_RULE_SUCCESS_FAILURE',
+          message: `コンフリクト: ルール "${rule.id}" が同時に success と failure を発動`,
+          fix: `success と failure は別々のルールに分離してください`
+        });
+      }
+
+      // 同一ルール内で同一オブジェクトにshow/hide
+      const showTargets = actions.filter(a => a.type === 'show').map(a => a.targetId);
+      const hideTargets = actions.filter(a => a.type === 'hide').map(a => a.targetId);
+      for (const target of showTargets) {
+        if (target && hideTargets.includes(target)) {
+          errors.push({
+            type: 'critical',
+            code: 'SAME_RULE_SHOW_HIDE',
+            message: `コンフリクト: ルール "${rule.id}" が同一オブジェクト "${target}" に show/hide を同時実行`,
+            fix: `show と hide は別々のルールに分離してください`
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * カウンター過剰使用チェック
+   */
+  private checkExcessiveCounters(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
+    const counterCount = output.script.counters.length;
+
+    if (counterCount > 3) {
+      errors.push({
+        type: 'warning',
+        code: 'EXCESSIVE_COUNTERS',
+        message: `カウンター数が多すぎます（${counterCount}個）。シンプルなゲームでは0〜2個が推奨です`,
+        fix: `カウンター数を減らしてシンプルな設計にしてください`
+      });
+    }
+
+    if (counterCount > 5) {
+      errors.push({
+        type: 'critical',
+        code: 'TOO_MANY_COUNTERS',
+        message: `カウンター数が過剰です（${counterCount}個）。最大3個までを強く推奨します`,
+        fix: `カウンターを統合するか削除してください`
+      });
+    }
+  }
+
+  /**
+   * サウンド/BGM整合性チェック
+   */
+  private checkSoundAndBgm(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
+    const sounds = output.assetPlan.sounds || [];
+    const bgm = output.assetPlan.bgm;
+
+    // 有効なサウンドタイプ
+    const validSoundTypes = ['tap', 'success', 'failure', 'collect', 'pop', 'whoosh', 'bounce', 'ding', 'buzz', 'splash'];
+
+    // 必須SEの確認
+    const soundIds = sounds.map(s => s.id);
+    const requiredSounds = ['se_tap', 'se_success', 'se_failure'];
+    for (const required of requiredSounds) {
+      if (!soundIds.includes(required)) {
+        errors.push({
+          type: 'warning',
+          code: 'MISSING_REQUIRED_SOUND',
+          message: `必須効果音 "${required}" がありません`,
+          fix: `sounds配列に ${required} を追加してください`
+        });
+      }
+    }
+
+    // サウンドタイプの検証
+    for (const sound of sounds) {
+      if (!sound.id || typeof sound.id !== 'string') {
+        errors.push({
+          type: 'critical',
+          code: 'INVALID_SOUND_ID',
+          message: `無効なsound.id: ${sound.id}`,
+          fix: `sound.idは文字列である必要があります`
+        });
+      }
+      if (!sound.type || !validSoundTypes.includes(sound.type)) {
+        errors.push({
+          type: 'warning',
+          code: 'INVALID_SOUND_TYPE',
+          message: `無効なsound.type "${sound.type}" (id: ${sound.id})`,
+          fix: `有効な値: ${validSoundTypes.join(', ')}`
+        });
+      }
+    }
+
+    // BGMの検証
+    if (bgm) {
+      const validBgmMoods = ['upbeat', 'calm', 'tense', 'happy', 'mysterious', 'energetic'];
+      if (!bgm.id || typeof bgm.id !== 'string') {
+        errors.push({
+          type: 'warning',
+          code: 'INVALID_BGM_ID',
+          message: `無効なbgm.id: ${bgm.id}`,
+          fix: `bgm.idは文字列である必要があります`
+        });
+      }
+      if (!bgm.mood || !validBgmMoods.includes(bgm.mood)) {
+        errors.push({
+          type: 'warning',
+          code: 'INVALID_BGM_MOOD',
+          message: `無効なbgm.mood "${bgm.mood}"`,
+          fix: `有効な値: ${validBgmMoods.join(', ')}`
+        });
+      }
+    } else {
+      errors.push({
+        type: 'warning',
+        code: 'MISSING_BGM',
+        message: 'BGMが定義されていません',
+        fix: 'assetPlanにbgmを追加してください'
+      });
+    }
+
+    // playSoundアクションで参照されるsoundIdの整合性
+    for (const rule of output.script.rules) {
+      for (const action of rule.actions || []) {
+        if (action.type === 'playSound' && action.soundId) {
+          if (!soundIds.includes(action.soundId)) {
+            errors.push({
+              type: 'critical',
+              code: 'UNDEFINED_SOUND_ID',
+              message: `ルール "${rule.id}": soundId "${action.soundId}" がsoundsに定義されていません`,
+              fix: `sounds配列に "${action.soundId}" を追加するか、正しいsoundIdに修正してください`
+            });
+          }
+        }
+      }
     }
   }
 

@@ -457,7 +457,7 @@ export class SupabaseUploader {
         .not('ai_quality_score', 'is', null);
       
       const averageQuality = qualityData && qualityData.length > 0
-        ? qualityData.reduce((sum, game) => sum + (game.ai_quality_score || 0), 0) / qualityData.length
+        ? qualityData.reduce((sum: number, game: { ai_quality_score?: number }) => sum + (game.ai_quality_score || 0), 0) / qualityData.length
         : 0;
       
       // 公開・非公開ゲーム数

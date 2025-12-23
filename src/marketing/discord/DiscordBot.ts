@@ -468,14 +468,14 @@ export class SwizzleDiscordBot {
       .select('play_count')
       .eq('is_published', true);
 
-    const totalPlays = (playData || []).reduce((sum, g) => sum + (g.play_count || 0), 0);
+    const totalPlays = (playData || []).reduce((sum: number, g: { play_count?: number }) => sum + (g.play_count || 0), 0);
 
     const { data: creators } = await this.supabase
       .from('user_games')
       .select('creator_id')
       .eq('is_published', true);
 
-    const uniqueCreators = new Set((creators || []).map(c => c.creator_id));
+    const uniqueCreators = new Set((creators || []).map((c: { creator_id: string }) => c.creator_id));
 
     return {
       totalGames: totalGames || 0,
@@ -503,7 +503,7 @@ export class SwizzleDiscordBot {
       .select('play_count')
       .eq('is_published', true);
 
-    const totalPlays = (playData || []).reduce((sum, g) => sum + (g.play_count || 0), 0);
+    const totalPlays = (playData || []).reduce((sum: number, g: { play_count?: number }) => sum + (g.play_count || 0), 0);
 
     const topGames = await this.getTopGames(3);
 

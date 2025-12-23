@@ -5,7 +5,17 @@
  */
 
 import OpenAI from 'openai';
-import { GameConcept, AssetPlan, GeneratedAssets, GeneratedObject, GeneratedSound } from './types';
+import { GameConcept, AssetPlan, GeneratedAssets, GeneratedObject, GeneratedSound, BgmPlan } from './types';
+
+// BGMプリセット（各ムードに対応した音楽パラメータ）
+const BGM_PRESETS: Record<string, { baseFreq: number; tempo: number; pattern: string }> = {
+  upbeat: { baseFreq: 440, tempo: 140, pattern: 'bounce' },
+  calm: { baseFreq: 330, tempo: 80, pattern: 'smooth' },
+  tense: { baseFreq: 220, tempo: 120, pattern: 'pulse' },
+  happy: { baseFreq: 523, tempo: 130, pattern: 'bounce' },
+  mysterious: { baseFreq: 277, tempo: 90, pattern: 'drift' },
+  energetic: { baseFreq: 392, tempo: 160, pattern: 'pulse' }
+};
 
 // 効果音プリセット（Web Audio API用）
 const SOUND_PRESETS: Record<string, { frequency: number; duration: number; type: OscillatorType; envelope: string }> = {
@@ -53,10 +63,14 @@ export class AssetGenerator {
     // 効果音生成
     const sounds = this.generateSounds(assetPlan.sounds);
 
+    // BGM生成
+    const bgm = assetPlan.bgm ? this.generateBGM(assetPlan.bgm) : undefined;
+
     return {
       background,
       objects,
-      sounds
+      sounds,
+      bgm
     };
   }
 
@@ -170,6 +184,96 @@ export class AssetGenerator {
 
     console.log(`      ✅ ${sounds.length} sounds generated`);
     return sounds;
+  }
+
+  /**
+   * BGM生成
+   */
+  private generateBGM(bgmPlan: BgmPlan): GeneratedAssets['bgm'] {
+    const preset = BGM_PRESETS[bgmPlan.mood] || BGM_PRESETS.upbeat;
+    const wavData = this.synthesizeBGM(preset, 10); // 10秒のループBGM
+
+    console.log(`      ✅ BGM generated (mood: ${bgmPlan.mood})`);
+
+    return {
+      id: bgmPlan.id,
+      name: bgmPlan.description || 'Background Music',
+      data: wavData
+    };
+  }
+
+  /**
+   * BGM合成（シンプルなループ音楽を生成）
+   */
+  private synthesizeBGM(
+    preset: { baseFreq: number; tempo: number; pattern: string },
+    durationSeconds: number
+  ): string {
+    const sampleRate = 44100;
+    const numSamples = Math.floor(sampleRate * durationSeconds);
+    const buffer = new Float32Array(numSamples);
+
+    const beatsPerSecond = preset.tempo / 60;
+    const samplesPerBeat = sampleRate / beatsPerSecond;
+
+    // 和音の周波数比（メジャーコード）
+    const chordRatios = [1, 1.25, 1.5]; // ルート、3度、5度
+
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sampleRate;
+      const beatPosition = (i % samplesPerBeat) / samplesPerBeat;
+      const measurePosition = ((i / samplesPerBeat) % 4) / 4;
+
+      let sample = 0;
+
+      // ベースライン
+      const bassFreq = preset.baseFreq / 2;
+      sample += Math.sin(2 * Math.PI * bassFreq * t) * 0.2;
+
+      // コード（パターンに応じて）
+      for (const ratio of chordRatios) {
+        const chordFreq = preset.baseFreq * ratio;
+        let chordVolume = 0.1;
+
+        switch (preset.pattern) {
+          case 'bounce':
+            chordVolume = 0.1 * (1 - beatPosition * 0.5);
+            break;
+          case 'smooth':
+            chordVolume = 0.08;
+            break;
+          case 'pulse':
+            chordVolume = beatPosition < 0.25 ? 0.12 : 0.05;
+            break;
+          case 'drift':
+            chordVolume = 0.08 * (0.5 + 0.5 * Math.sin(measurePosition * Math.PI * 2));
+            break;
+        }
+
+        sample += Math.sin(2 * Math.PI * chordFreq * t) * chordVolume;
+      }
+
+      // メロディライン（シンプルなアルペジオ）
+      const melodyIndex = Math.floor((i / samplesPerBeat) % 4);
+      const melodyRatios = [1, 1.5, 2, 1.5];
+      const melodyFreq = preset.baseFreq * melodyRatios[melodyIndex];
+      const melodyEnvelope = Math.exp(-beatPosition * 3);
+      sample += Math.sin(2 * Math.PI * melodyFreq * t) * 0.08 * melodyEnvelope;
+
+      // フェードイン/フェードアウト
+      const fadeInSamples = sampleRate * 0.5;
+      const fadeOutSamples = sampleRate * 0.5;
+      let fadeMultiplier = 1;
+      if (i < fadeInSamples) {
+        fadeMultiplier = i / fadeInSamples;
+      } else if (i > numSamples - fadeOutSamples) {
+        fadeMultiplier = (numSamples - i) / fadeOutSamples;
+      }
+
+      buffer[i] = sample * fadeMultiplier * 0.6; // 全体音量調整
+    }
+
+    return this.floatArrayToWavBase64(buffer, sampleRate);
   }
 
   /**

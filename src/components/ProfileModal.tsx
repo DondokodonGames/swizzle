@@ -98,8 +98,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
           .eq('creator_id', userId);
 
         const totalGames = games?.length || 0;
-        const totalPlays = games?.reduce((sum, game) => sum + (game.play_count || 0), 0) || 0;
-        const totalLikes = games?.reduce((sum, game) => sum + (game.like_count || 0), 0) || 0;
+        const totalPlays = games?.reduce((sum: number, game: { play_count?: number }) => sum + (game.play_count || 0), 0) || 0;
+        const totalLikes = games?.reduce((sum: number, game: { like_count?: number }) => sum + (game.like_count || 0), 0) || 0;
 
         const { count: followersCount } = await supabase
           .from('follows')

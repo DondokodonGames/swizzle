@@ -318,7 +318,7 @@ export const database = {
 
       if (error) throw new SupabaseError(error.message)
 
-      return data?.map(fav => fav.user_games).filter(game => game !== null) || []
+      return data?.map((fav: { user_games: unknown }) => fav.user_games).filter((game: unknown) => game !== null) || []
     }
   }
 }
