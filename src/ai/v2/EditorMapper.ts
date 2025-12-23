@@ -1,17 +1,80 @@
 /**
- * Step 4: EditorMapper
+ * Step 5: EditorMapper (強化版)
  *
  * 仕様をSwizzleエディター形式に変換
  * 創造的判断は前ステップで完了しているため、機械的な変換のみ行う
  *
  * 入力: GameSpecification（何がどう動くか）
- * 出力: LogicGeneratorOutput（エディター用JSON）
+ * 出力: EditorMapperOutput（LogicGeneratorOutput + MappingTable）
  */
 
 import Anthropic from '@anthropic-ai/sdk';
 import { GameConcept, LogicGeneratorOutput, AssetPlan, TriggerCondition, GameAction, GameRule } from './types';
 import { GameSpecification } from './SpecificationGenerator';
 import { GenerationLogger } from './GenerationLogger';
+
+// ==========================================
+// MappingTable Types (デバッグ・追跡用)
+// ==========================================
+
+/**
+ * マッピングテーブル - 仕様からエディター形式への変換記録
+ */
+export interface MappingTable {
+  // オブジェクトマッピング
+  objects: ObjectMapping[];
+
+  // カウンターマッピング
+  counters: CounterMapping[];
+
+  // サウンドマッピング
+  sounds: SoundMapping[];
+
+  // ルールマッピング
+  rules: RuleMapping[];
+
+  // 変換サマリー
+  summary: {
+    totalObjects: number;
+    totalCounters: number;
+    totalSounds: number;
+    totalRules: number;
+    mappingTimestamp: string;
+  };
+}
+
+export interface ObjectMapping {
+  specName: string;       // 仕様での名前
+  editorId: string;       // エディターでのID
+  purpose: string;        // 役割
+}
+
+export interface CounterMapping {
+  specName: string;
+  editorId: string;
+  editorName: string;
+}
+
+export interface SoundMapping {
+  specId: string;
+  editorId: string;
+  trigger: string;
+}
+
+export interface RuleMapping {
+  specId: string;
+  specName: string;
+  editorId: string;
+  purpose: string;
+}
+
+/**
+ * EditorMapper出力（強化版）
+ */
+export interface EditorMapperOutput {
+  logicOutput: LogicGeneratorOutput;
+  mappingTable: MappingTable;
+}
 
 const EDITOR_SPEC = `
 # Swizzle エディター仕様
@@ -192,7 +255,7 @@ export class EditorMapper {
   /**
    * 仕様をエディター形式に変換
    */
-  async map(concept: GameConcept, spec: GameSpecification): Promise<LogicGeneratorOutput> {
+  async map(concept: GameConcept, spec: GameSpecification): Promise<EditorMapperOutput> {
     this.logger?.logInput('EditorMapper', 'specification', {
       objectCount: spec.objects.length,
       counterCount: spec.stateManagement.counters.length,
@@ -220,27 +283,86 @@ export class EditorMapper {
       throw new Error('Unexpected response type');
     }
 
-    const output = this.extractAndParseJSON(content.text);
+    const logicOutput = this.extractAndParseJSON(content.text);
+
+    // マッピングテーブルを生成
+    const mappingTable = this.createMappingTable(spec, logicOutput);
 
     // ログに記録
     this.logger?.logEditorMapping({
-      objectIds: output.assetPlan.objects.map(o => o.id),
-      counterIds: output.script.counters.map(c => c.id),
-      ruleCount: output.script.rules.length,
+      objectIds: logicOutput.assetPlan.objects.map(o => o.id),
+      counterIds: logicOutput.script.counters.map(c => c.id),
+      ruleCount: logicOutput.script.rules.length,
       mappingDecisions: [
-        `Objects: ${output.assetPlan.objects.length}`,
-        `Counters: ${output.script.counters.length}`,
-        `Rules: ${output.script.rules.length}`
+        `Objects: ${logicOutput.assetPlan.objects.length}`,
+        `Counters: ${logicOutput.script.counters.length}`,
+        `Rules: ${logicOutput.script.rules.length}`
       ]
     });
 
-    return output;
+    return { logicOutput, mappingTable };
+  }
+
+  /**
+   * マッピングテーブルを生成
+   */
+  private createMappingTable(spec: GameSpecification, output: LogicGeneratorOutput): MappingTable {
+    const objectMappings: ObjectMapping[] = spec.objects.map(specObj => {
+      const editorObj = output.assetPlan.objects.find(o => o.id === specObj.id);
+      return {
+        specName: specObj.name,
+        editorId: editorObj?.id || specObj.id,
+        purpose: editorObj?.purpose || 'unknown'
+      };
+    });
+
+    const counterMappings: CounterMapping[] = spec.stateManagement.counters.map(specCounter => {
+      const editorCounter = output.script.counters.find(c => c.id === specCounter.id || c.name === specCounter.name);
+      return {
+        specName: specCounter.name,
+        editorId: editorCounter?.id || specCounter.id,
+        editorName: editorCounter?.name || specCounter.name
+      };
+    });
+
+    const soundMappings: SoundMapping[] = spec.audio.sounds.map(specSound => {
+      const editorSound = output.assetPlan.sounds.find(s => s.id === specSound.id);
+      return {
+        specId: specSound.id,
+        editorId: editorSound?.id || specSound.id,
+        trigger: specSound.trigger
+      };
+    });
+
+    const ruleMappings: RuleMapping[] = spec.rules.map(specRule => {
+      const editorRule = output.script.rules.find(r => r.id === specRule.id);
+      return {
+        specId: specRule.id,
+        specName: specRule.name,
+        editorId: editorRule?.id || specRule.id,
+        purpose: specRule.purpose
+      };
+    });
+
+    return {
+      objects: objectMappings,
+      counters: counterMappings,
+      sounds: soundMappings,
+      rules: ruleMappings,
+      summary: {
+        totalObjects: objectMappings.length,
+        totalCounters: counterMappings.length,
+        totalSounds: soundMappings.length,
+        totalRules: ruleMappings.length,
+        mappingTimestamp: new Date().toISOString()
+      }
+    };
   }
 
   /**
    * モックマッピング（ドライラン用）
    */
-  private mapMock(concept: GameConcept, spec: GameSpecification): LogicGeneratorOutput {
+  private mapMock(concept: GameConcept, spec: GameSpecification): EditorMapperOutput {
     // オブジェクトをマッピング
     const objects: AssetPlan['objects'] = spec.objects.map(obj => ({
       id: obj.id,
@@ -289,7 +411,7 @@ export class EditorMapper {
       type: s.type
     }));
 
-    return {
+    const logicOutput: LogicGeneratorOutput = {
       script: {
         layout: { objects: layoutObjects },
         counters,
@@ -315,6 +437,11 @@ export class EditorMapper {
         counterCountReasonable: true
       }
     };
+
+    // マッピングテーブルを生成
+    const mappingTable = this.createMappingTable(spec, logicOutput);
+
+    return { logicOutput, mappingTable };
   }
 
   /**

@@ -1,27 +1,33 @@
 /**
- * V2 Orchestrator
+ * V2 Orchestrator (強化版パイプライン)
  *
  * 新設計に基づくゲーム生成オーケストレーター
  *
  * Step 1: GameConceptGenerator（4つの評価基準を前提に自由発想）
  * Step 2: ConceptValidator（ダブルチェック）
  * Step 3: GameDesignGenerator（ゲームデザイン生成）
+ * Step 3.5: AssetPlanner（必要アセット計画）★NEW
  * Step 4: SpecificationGenerator（詳細仕様生成）
  * Step 5: EditorMapper（エディター形式へ変換）
  * Step 6: LogicValidator（100%成功前提のダブルチェック）
+ * Step 6.5: ProjectValidator（全体整合チェック）★NEW
  * Step 7: AssetGenerator（計画に基づく生成）
  * Step 8: FinalAssembler（JSON整合性チェック）
+ * Step 8.5: DryRunSimulator（成功パス検証）★NEW
  * Step 9: QualityScorer（参考情報）
  */
 
 import { GameConceptGenerator } from './GameConceptGenerator';
 import { ConceptValidator } from './ConceptValidator';
 import { GameDesignGenerator, GameDesign } from './GameDesignGenerator';
+import { AssetPlanner, EnhancedAssetPlan } from './AssetPlanner';
 import { SpecificationGenerator, GameSpecification } from './SpecificationGenerator';
-import { EditorMapper } from './EditorMapper';
+import { EditorMapper, EditorMapperOutput } from './EditorMapper';
 import { LogicValidator } from './LogicValidator';
+import { ProjectValidator } from './ProjectValidator';
 import { AssetGenerator } from './AssetGenerator';
 import { FinalAssembler } from './FinalAssembler';
+import { DryRunSimulator } from './DryRunSimulator';
 import { QualityScorer } from './QualityScorer';
 import { GenerationLogger } from './GenerationLogger';
 import { SupabaseUploader } from '../publishers/SupabaseUploader';
@@ -47,15 +53,18 @@ const DEFAULT_CONFIG: OrchestratorConfig = {
 export class Orchestrator {
   private config: OrchestratorConfig;
 
-  // Generators (new pipeline)
+  // Generators (enhanced pipeline)
   private conceptGenerator: GameConceptGenerator;
   private conceptValidator: ConceptValidator;
   private gameDesignGenerator: GameDesignGenerator;
+  private assetPlanner: AssetPlanner;           // ★NEW Step 3.5
   private specificationGenerator: SpecificationGenerator;
   private editorMapper: EditorMapper;
   private logicValidator: LogicValidator;
+  private projectValidator: ProjectValidator;   // ★NEW Step 6.5
   private assetGenerator: AssetGenerator;
   private finalAssembler: FinalAssembler;
+  private dryRunSimulator: DryRunSimulator;     // ★NEW Step 8.5
   private qualityScorer: QualityScorer;
 
   // Logging
@@ -81,11 +90,18 @@ export class Orchestrator {
     });
     this.conceptValidator = new ConceptValidator();
 
-    // New pipeline components
+    // Enhanced pipeline components
     this.gameDesignGenerator = new GameDesignGenerator({
       dryRun: this.config.dryRun,
       apiKey: this.config.anthropicApiKey
     }, this.logger);
+
+    // ★NEW Step 3.5
+    this.assetPlanner = new AssetPlanner({
+      dryRun: this.config.dryRun,
+      apiKey: this.config.anthropicApiKey
+    }, this.logger);
+
     this.specificationGenerator = new SpecificationGenerator({
       dryRun: this.config.dryRun,
       apiKey: this.config.anthropicApiKey
@@ -96,11 +112,19 @@ export class Orchestrator {
     }, this.logger);
 
     this.logicValidator = new LogicValidator();
+
+    // ★NEW Step 6.5
+    this.projectValidator = new ProjectValidator(this.logger);
+
     this.assetGenerator = new AssetGenerator({
       imageProvider: this.config.imageGeneration.provider,
       openaiApiKey: this.config.imageGeneration.apiKey
     });
     this.finalAssembler = new FinalAssembler();
+
+    // ★NEW Step 8.5
+    this.dryRunSimulator = new DryRunSimulator(this.logger);
+
     this.qualityScorer = new QualityScorer();
 
     // Initialize uploader if not dry run
@@ -114,12 +138,13 @@ export class Orchestrator {
       }
     }
 
-    console.log('🚀 V2 Orchestrator initialized (new pipeline)');
+    console.log('🚀 V2 Orchestrator initialized (enhanced pipeline)');
     console.log(`   Target: ${this.config.targetGamesPerRun} games`);
     console.log(`   Max retries: ${this.config.maxRetries}`);
     console.log(`   Image provider: ${this.config.imageGeneration.provider}`);
     console.log(`   Dry run: ${this.config.dryRun}`);
     console.log(`   Logging: ${process.env.GENERATION_LOGGING !== 'false' ? 'enabled' : 'disabled'}`);
+    console.log(`   New steps: AssetPlanner, ProjectValidator, DryRunSimulator`);
   }
 
   /**
@@ -196,14 +221,14 @@ export class Orchestrator {
   }
 
   /**
-   * 単一ゲーム生成
+   * 単一ゲーム生成（強化版パイプライン）
    */
   private async generateSingleGame(): Promise<GenerationResult> {
     const startTime = Date.now();
     let validationPassedFirstTry = true;
 
     // Start logging session
-    const sessionId = this.logger.startSession();
+    this.logger.startSession();
 
     try {
       // Step 1: GameConceptGenerator
@@ -257,14 +282,29 @@ export class Orchestrator {
         throw error;
       }
 
-      // Step 4: SpecificationGenerator
+      // ★NEW Step 3.5: AssetPlanner
+      console.log('   🎨 Step 3.5: Planning assets...');
+      let assetPlan: EnhancedAssetPlan;
+      try {
+        assetPlan = await this.assetPlanner.plan(concept, design);
+        console.log(`      Objects: ${assetPlan.objects.length}`);
+        console.log(`      Sounds: ${assetPlan.audio.sounds.length}`);
+        console.log(`      Effects: ${assetPlan.effects.length}`);
+        console.log(`      Policy: ${assetPlan.assetPolicy.imageFormat}`);
+      } catch (error) {
+        this.logger.logError('AssetPlanner', error as Error);
+        throw error;
+      }
+
+      // Step 4: SpecificationGenerator (with AssetPlan)
       console.log('   📝 Step 4: Generating specifications...');
       let spec: GameSpecification;
       try {
-        spec = await this.specificationGenerator.generate(concept, design);
+        spec = await this.specificationGenerator.generate(concept, design, assetPlan);
         console.log(`      Rules: ${spec.rules.length}`);
         console.log(`      Counters: ${spec.stateManagement.counters.length}`);
         console.log(`      Success path: ${spec.successPath.steps.length} steps`);
+        console.log(`      Feedbacks: ${spec.feedbackSpec.triggers.length}`);
       } catch (error) {
         this.logger.logError('SpecificationGenerator', error as Error);
         throw error;
@@ -272,12 +312,21 @@ export class Orchestrator {
 
       // Step 5: EditorMapper
       console.log('   🔄 Step 5: Mapping to editor format...');
+      let mapperOutput: EditorMapperOutput;
       let logicOutput: LogicGeneratorOutput;
       let logicRetries = 0;
 
       while (true) {
         try {
-          logicOutput = await this.editorMapper.map(concept, spec);
+          mapperOutput = await this.editorMapper.map(concept, spec);
+          logicOutput = mapperOutput.logicOutput;
+
+          // Log mapping table
+          this.logger.log('EditorMapper', 'output', 'Mapping table generated', {
+            mappedObjects: mapperOutput.mappingTable.summary.totalObjects,
+            mappedCounters: mapperOutput.mappingTable.summary.totalCounters,
+            mappedRules: mapperOutput.mappingTable.summary.totalRules
+          });
         } catch (error) {
           this.logger.logError('EditorMapper', error as Error);
           throw error;
@@ -299,7 +348,6 @@ export class Orchestrator {
         if (logicRetries >= this.config.maxRetries) {
           console.log(`      ⚠️ Logic validation failed after ${logicRetries} retries`);
           console.log(`      Errors: ${logicValidation.errors.map(e => e.message).join(', ')}`);
-          // Continue anyway - the game might still work
           break;
         }
 
@@ -309,7 +357,21 @@ export class Orchestrator {
         // Re-generate specification with feedback
         this.logger.logDecision('SpecificationGenerator', 'Regenerating',
           `Validation failed: ${logicValidation.errors.map(e => e.message).join(', ')}`);
-        spec = await this.specificationGenerator.generate(concept, design);
+        spec = await this.specificationGenerator.generate(concept, design, assetPlan);
+      }
+
+      // ★NEW Step 6.5: ProjectValidator
+      console.log('   🔍 Step 6.5: Validating project integrity...');
+      const projectValidation = this.projectValidator.validate(logicOutput, assetPlan, spec);
+      if (projectValidation.valid) {
+        console.log(`      ✅ Project validated (${projectValidation.summary.totalChecks} checks)`);
+      } else {
+        console.log(`      ⚠️ Project issues: ${projectValidation.summary.failed} errors, ${projectValidation.summary.warnings} warnings`);
+        validationPassedFirstTry = false;
+        // Log critical errors
+        projectValidation.errors.forEach(e => {
+          console.log(`         ❌ [${e.code}] ${e.message}`);
+        });
       }
 
       // Step 7: AssetGenerator
@@ -329,6 +391,21 @@ export class Orchestrator {
         console.log('      ✅ Game assembled');
       }
 
+      // ★NEW Step 8.5: DryRunSimulator
+      console.log('   🎮 Step 8.5: Simulating gameplay...');
+      const simulation = this.dryRunSimulator.simulate(logicOutput, spec);
+      if (simulation.summary.playable) {
+        console.log(`      ✅ Game playable (confidence: ${simulation.summary.confidence})`);
+        console.log(`      📊 Success path: ${simulation.success.requiredTaps} taps, ~${simulation.success.estimatedSeconds.toFixed(1)}s`);
+      } else {
+        console.log(`      ⚠️ Playability issues detected`);
+        console.log(`      📊 ${simulation.summary.reasoning}`);
+        simulation.issues.forEach(i => {
+          console.log(`         ${i.severity === 'error' ? '❌' : '⚠️'} [${i.code}] ${i.message}`);
+        });
+        validationPassedFirstTry = false;
+      }
+
       // Step 9: QualityScorer
       console.log('   📊 Step 9: Scoring quality...');
       const qualityScore = this.qualityScorer.score(concept, assemblyResult.project, validationPassedFirstTry);
@@ -338,15 +415,18 @@ export class Orchestrator {
       const generationTime = Date.now() - startTime;
       const estimatedCost = this.estimateCost();
 
+      // Determine if game passed based on all validations
+      const passed = assemblyResult.valid && projectValidation.valid && simulation.summary.playable;
+
       // End logging session
-      this.logger.endSession(assemblyResult.valid);
+      this.logger.endSession(passed);
 
       return {
         id: assemblyResult.project.id,
         concept,
         project: assemblyResult.project,
         qualityScore,
-        passed: assemblyResult.valid,
+        passed,
         generationTime,
         estimatedCost
       };

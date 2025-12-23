@@ -20,8 +20,18 @@ import { GameProject } from '../../types/editor/GameProject';
 
 // Re-export types from other modules for convenience
 export type { GameDesign, GameDesignObject, Interaction, DesignDecision } from './GameDesignGenerator';
-export type { GameSpecification, ObjectSpecification, RuleSpecification, StateManagement, AudioSpecification, SpecDecision } from './SpecificationGenerator';
+export type {
+  GameSpecification, ObjectSpecification, RuleSpecification, StateManagement, AudioSpecification, SpecDecision,
+  UIVisibilitySpec, FeedbackSpec, FeedbackTrigger, EndingSpec, PriorityDesign, RulePrioritySpec
+} from './SpecificationGenerator';
 export type { GenerationSession, LogEntry } from './GenerationLogger';
+export type {
+  EnhancedAssetPlan, ObjectAssetPlan, ObjectState, BackgroundAssetPlan, AudioAssetPlan, SoundAssetPlan,
+  BgmAssetPlan, EffectAssetPlan, AssetPolicy, AssetPlanDecision
+} from './AssetPlanner';
+export type { ProjectValidationResult, ProjectValidationError } from './ProjectValidator';
+export type { ReachabilityReport, SimulationPath, SimulationStep, ConflictReport, SimulationIssue } from './DryRunSimulator';
+export type { EditorMapperOutput, MappingTable, ObjectMapping, CounterMapping, SoundMapping, RuleMapping } from './EditorMapper';
 
 // ==========================================
 // Step 1: GameConcept
