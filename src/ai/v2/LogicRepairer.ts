@@ -197,6 +197,8 @@ export class LogicRepairer {
       case 'MISSING_ANIMATION_INDEX':
       case 'UNUSED_COUNTER':
       case 'COUNTER_NEVER_CHECKED':
+      case 'NO_PLAYER_ACTION':    // warningなので部分再生成（collisionなど他の操作も有効）
+      case 'NO_FAILURE':          // warningなので部分再生成（時間切れのみで失敗も有効）
         return 'partial_regen';
 
       // 全体再生成が必要
@@ -204,14 +206,12 @@ export class LogicRepairer {
       case 'INSTANT_LOSE':
       case 'AUTO_SUCCESS':
       case 'NO_SUCCESS':
-      case 'NO_FAILURE':
       case 'SUCCESS_FAILURE_CONFLICT':
       case 'SHOW_HIDE_CONFLICT':
       case 'COUNTER_CONFLICT':
       case 'SAME_RULE_SUCCESS_FAILURE':
       case 'UNREACHABLE_SUCCESS':
       case 'COUNTER_NEVER_MODIFIED':
-      case 'NO_PLAYER_ACTION':
         return 'full_regen';
 
       default:

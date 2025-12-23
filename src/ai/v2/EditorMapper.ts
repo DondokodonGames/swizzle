@@ -257,9 +257,9 @@ export class EditorMapper {
    */
   async map(concept: GameConcept, spec: GameSpecification): Promise<EditorMapperOutput> {
     this.logger?.logInput('EditorMapper', 'specification', {
-      objectCount: spec.objects.length,
-      counterCount: spec.stateManagement.counters.length,
-      ruleCount: spec.rules.length
+      objectCount: spec.objects?.length || 0,
+      counterCount: spec.stateManagement?.counters?.length || 0,
+      ruleCount: spec.rules?.length || 0
     });
 
     if (this.config.dryRun) {
@@ -289,14 +289,17 @@ export class EditorMapper {
     const mappingTable = this.createMappingTable(spec, logicOutput);
 
     // ログに記録
+    const outputObjects = logicOutput.assetPlan?.objects || [];
+    const outputCounters = logicOutput.script?.counters || [];
+    const outputRules = logicOutput.script?.rules || [];
     this.logger?.logEditorMapping({
-      objectIds: logicOutput.assetPlan.objects.map(o => o.id),
-      counterIds: logicOutput.script.counters.map(c => c.id),
-      ruleCount: logicOutput.script.rules.length,
+      objectIds: outputObjects.map(o => o.id),
+      counterIds: outputCounters.map(c => c.id),
+      ruleCount: outputRules.length,
       mappingDecisions: [
-        `Objects: ${logicOutput.assetPlan.objects.length}`,
-        `Counters: ${logicOutput.script.counters.length}`,
-        `Rules: ${logicOutput.script.rules.length}`
+        `Objects: ${outputObjects.length}`,
+        `Counters: ${outputCounters.length}`,
+        `Rules: ${outputRules.length}`
       ]
     });
 
@@ -307,8 +310,18 @@ export class EditorMapper {
    * マッピングテーブルを生成
    */
   private createMappingTable(spec: GameSpecification, output: LogicGeneratorOutput): MappingTable {
-    const objectMappings: ObjectMapping[] = spec.objects.map(specObj => {
-      const editorObj = output.assetPlan.objects.find(o => o.id === specObj.id);
+    // 安全にアクセス（undefinedの場合は空配列）
+    const specObjects = spec.objects || [];
+    const specCounters = spec.stateManagement?.counters || [];
+    const specSounds = spec.audio?.sounds || [];
+    const specRules = spec.rules || [];
+    const outputObjects = output.assetPlan?.objects || [];
+    const outputCounters = output.script?.counters || [];
+    const outputSounds = output.assetPlan?.sounds || [];
+    const outputRules = output.script?.rules || [];
+
+    const objectMappings: ObjectMapping[] = specObjects.map(specObj => {
+      const editorObj = outputObjects.find(o => o.id === specObj.id);
       return {
         specName: specObj.name,
         editorId: editorObj?.id || specObj.id,
@@ -316,8 +329,8 @@ export class EditorMapper {
       };
     });
 
-    const counterMappings: CounterMapping[] = spec.stateManagement.counters.map(specCounter => {
-      const editorCounter = output.script.counters.find(c => c.id === specCounter.id || c.name === specCounter.name);
+    const counterMappings: CounterMapping[] = specCounters.map(specCounter => {
+      const editorCounter = outputCounters.find(c => c.id === specCounter.id || c.name === specCounter.name);
       return {
         specName: specCounter.name,
         editorId: editorCounter?.id || specCounter.id,
@@ -325,8 +338,8 @@ export class EditorMapper {
       };
     });
 
-    const soundMappings: SoundMapping[] = spec.audio.sounds.map(specSound => {
-      const editorSound = output.assetPlan.sounds.find(s => s.id === specSound.id);
+    const soundMappings: SoundMapping[] = specSounds.map(specSound => {
+      const editorSound = outputSounds.find(s => s.id === specSound.id);
       return {
         specId: specSound.id,
         editorId: editorSound?.id || specSound.id,
@@ -334,8 +347,8 @@ export class EditorMapper {
       };
     });
 
-    const ruleMappings: RuleMapping[] = spec.rules.map(specRule => {
-      const editorRule = output.script.rules.find(r => r.id === specRule.id);
+    const ruleMappings: RuleMapping[] = specRules.map(specRule => {
+      const editorRule = outputRules.find(r => r.id === specRule.id);
       return {
         specId: specRule.id,
         specName: specRule.name,
@@ -363,34 +376,40 @@ export class EditorMapper {
    * モックマッピング（ドライラン用）
    */
   private mapMock(concept: GameConcept, spec: GameSpecification): EditorMapperOutput {
+    // 安全にアクセス（undefinedの場合は空配列）
+    const specObjects = spec.objects || [];
+    const specCounters = spec.stateManagement?.counters || [];
+    const specRules = spec.rules || [];
+    const specSounds = spec.audio?.sounds || [];
+
     // オブジェクトをマッピング
-    const objects: AssetPlan['objects'] = spec.objects.map(obj => ({
+    const objects: AssetPlan['objects'] = specObjects.map(obj => ({
       id: obj.id,
       name: obj.name,
       purpose: obj.touchable ? 'タップ対象' : '装飾',
       visualDescription: obj.visualDescription,
-      initialPosition: obj.initialPosition,
-      size: obj.size
+      initialPosition: obj.initialPosition || { x: 0.5, y: 0.5 },
+      size: obj.size || 'medium'
     }));
 
     // レイアウトをマッピング
-    const layoutObjects = spec.objects.map(obj => ({
+    const layoutObjects = specObjects.map(obj => ({
       objectId: obj.id,
-      position: obj.initialPosition,
+      position: obj.initialPosition || { x: 0.5, y: 0.5 },
       scale: { x: 1.0, y: 1.0 }
     }));
 
     // カウンターをマッピング
-    const counters = spec.stateManagement.counters.map(c => ({
+    const counters = specCounters.map(c => ({
       id: c.id,
       name: c.name,
       initialValue: c.initialValue
     }));
 
     // ルールをマッピング
-    const rules: GameRule[] = spec.rules.map(rule => {
+    const rules: GameRule[] = specRules.map(rule => {
       const conditions = this.mapTriggerToConditions(rule.trigger);
-      const actions = rule.actions.map(a => this.mapActionToEditorAction(a));
+      const actions = (rule.actions || []).map(a => this.mapActionToEditorAction(a));
 
       return {
         id: rule.id,
@@ -405,7 +424,7 @@ export class EditorMapper {
     });
 
     // 音声をマッピング
-    const sounds = spec.audio.sounds.map(s => ({
+    const sounds = specSounds.map(s => ({
       id: s.id,
       trigger: s.trigger,
       type: s.type
