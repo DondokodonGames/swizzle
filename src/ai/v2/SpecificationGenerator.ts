@@ -336,9 +336,9 @@ export class SpecificationGenerator {
     assetPlan?: EnhancedAssetPlan
   ): Promise<GameSpecification> {
     this.logger?.logInput('SpecificationGenerator', 'design', {
-      coreLoop: design.coreLoop.description,
-      objectCount: design.objects.length,
-      interactionCount: design.interactions.length,
+      coreLoop: design.coreLoop?.description || 'unknown',
+      objectCount: design.objects?.length || 0,
+      interactionCount: design.interactions?.length || 0,
       hasAssetPlan: !!assetPlan
     });
 
