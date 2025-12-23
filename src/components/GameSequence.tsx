@@ -136,27 +136,23 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       setGameState('loading');
       setError(null);
 
+      // タイムアウト付きでゲーム取得
+      const timeoutPromise = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
+        return Promise.race([
+          promise,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error('タイムアウト: サーバー応答なし')), ms)
+          )
+        ]);
+      };
+
       try {
         console.log('📥 最初の1件を高速取得中...');
 
-        // Step 1: ランダムな1件だけ取得して即座に開始
+        // Step 1: ランダムな1件だけ取得して即座に開始（10秒タイムアウト）
         const randomPage = Math.floor(Math.random() * 10) + 1;
-        const initialResult = await socialService.getPublicGames(
-          {
-            sortBy: 'latest',
-            category: 'all',
-            search: undefined
-          },
-          1,
-          1
-        );
-
-        // ゲームが見つからない場合は1ページ目から取得
-        let initialGame: PublicGame | null = null;
-        if (initialResult.games.length > 0 && initialResult.games[0].projectData) {
-          initialGame = initialResult.games[0];
-        } else {
-          const fallbackResult = await socialService.getPublicGames(
+        const initialResult = await timeoutPromise(
+          socialService.getPublicGames(
             {
               sortBy: 'latest',
               category: 'all',
@@ -164,6 +160,27 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             },
             1,
             1
+          ),
+          10000
+        );
+
+        // ゲームが見つからない場合は1ページ目から取得
+        let initialGame: PublicGame | null = null;
+        if (initialResult.games.length > 0 && initialResult.games[0].projectData) {
+          initialGame = initialResult.games[0];
+        } else {
+          console.log('⏳ フォールバック取得中...');
+          const fallbackResult = await timeoutPromise(
+            socialService.getPublicGames(
+              {
+                sortBy: 'latest',
+                category: 'all',
+                search: undefined
+              },
+              1,
+              1
+            ),
+            10000
           );
           if (fallbackResult.games.length > 0 && fallbackResult.games[0].projectData) {
             initialGame = fallbackResult.games[0];
@@ -185,29 +202,37 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         setCurrentIndex(0);
         setGameState('playing');
 
-        // Step 2: バックグラウンドで残りのゲームを取得
+        // Step 2: バックグラウンドで残りのゲームを取得（失敗しても無視）
         console.log('🔄 バックグラウンドで残りのゲームを取得中...');
 
-        const fullResult = await socialService.getPublicGames(
-          {
-            sortBy: 'latest',
-            category: 'all',
-            search: undefined
-          },
-          1,
-          100
-        );
+        try {
+          const fullResult = await timeoutPromise(
+            socialService.getPublicGames(
+              {
+                sortBy: 'latest',
+                category: 'all',
+                search: undefined
+              },
+              1,
+              100
+            ),
+            15000
+          );
 
-        const allValidGames = fullResult.games.filter(game => game.projectData);
+          const validGames = fullResult.games.filter(game => game.projectData);
 
-        if (allValidGames.length > 0) {
-          setAllValidGames(allValidGames);
-          console.log(`✅ バックグラウンド取得完了: ${allValidGames.length}件のゲームをキャッシュ`);
+          if (validGames.length > 0) {
+            setAllValidGames(validGames);
+            console.log(`✅ バックグラウンド取得完了: ${validGames.length}件のゲームをキャッシュ`);
+          }
+        } catch (bgErr) {
+          // バックグラウンド取得失敗は無視（初期ゲームは既に開始済み）
+          console.warn('⚠️ バックグラウンド取得失敗（無視）:', bgErr);
         }
 
       } catch (err) {
         console.error('❌ 公開ゲーム取得エラー:', err);
-        setError('公開ゲームの取得に失敗しました。');
+        setError(err instanceof Error ? err.message : '公開ゲームの取得に失敗しました。');
         setGameState('loading');
       }
     };

@@ -65,34 +65,45 @@ export class SocialService {
         return { games: [], hasMore: false };
       }
 
+      // ユーザー情報取得（タイムアウト保護・失敗しても続行）
       let currentUserId: string | undefined;
-      const { data: { user } } = await supabase.auth.getUser();
-      currentUserId = user?.id;
+      try {
+        const userPromise = supabase.auth.getUser();
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Auth timeout')), 3000)
+        );
+        const { data: { user } } = await Promise.race([userPromise, timeoutPromise]) as any;
+        currentUserId = user?.id;
+      } catch {
+        // 認証タイムアウトまたはエラー時はゲストとして続行
+        console.warn('⚠️ 認証情報取得失敗（ゲストとして続行）');
+        currentUserId = undefined;
+      }
 
       // いいね・お気に入り情報を一括取得（N+1問題解決）
       let likedGameIds: Set<string> = new Set();
       let bookmarkedGameIds: Set<string> = new Set();
 
       if (currentUserId) {
-        const gameIds = games.map((g: any) => g.id);
-
-        // いいね情報を一括取得
-        const { data: likesData } = await supabase
-          .from('likes')
-          .select('game_id')
-          .eq('user_id', currentUserId)
-          .in('game_id', gameIds);
-
-        if (likesData) {
-          likedGameIds = new Set(likesData.map(l => l.game_id));
-        }
-
-        // お気に入り情報を一括取得（1回だけ）
         try {
+          const gameIds = games.map((g: any) => g.id);
+
+          // いいね情報を一括取得
+          const { data: likesData } = await supabase
+            .from('likes')
+            .select('game_id')
+            .eq('user_id', currentUserId)
+            .in('game_id', gameIds);
+
+          if (likesData) {
+            likedGameIds = new Set(likesData.map(l => l.game_id));
+          }
+
+          // お気に入り情報を一括取得（1回だけ）
           const favorites = await database.favorites.list(currentUserId);
           bookmarkedGameIds = new Set(favorites.map((fav: any) => fav.id));
         } catch {
-          // お気に入り取得失敗は無視
+          // いいね・お気に入り取得失敗は無視
         }
       }
 
@@ -1286,34 +1297,44 @@ export class SocialService {
         return [];
       }
 
+      // ユーザー情報取得（タイムアウト保護・失敗しても続行）
       let currentUserId: string | undefined;
-      const { data: { user } } = await supabase.auth.getUser();
-      currentUserId = user?.id;
+      try {
+        const userPromise = supabase.auth.getUser();
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Auth timeout')), 3000)
+        );
+        const { data: { user } } = await Promise.race([userPromise, timeoutPromise]) as any;
+        currentUserId = user?.id;
+      } catch {
+        console.warn('⚠️ 認証情報取得失敗（ゲストとして続行）');
+        currentUserId = undefined;
+      }
 
       // いいね・お気に入り情報を一括取得（N+1問題解決）
       let likedGameIds: Set<string> = new Set();
       let bookmarkedGameIds: Set<string> = new Set();
 
       if (currentUserId) {
-        const gameIds = randomGames.map((g: any) => g.id);
-
-        // いいね情報を一括取得
-        const { data: likesData } = await supabase
-          .from('likes')
-          .select('game_id')
-          .eq('user_id', currentUserId)
-          .in('game_id', gameIds);
-
-        if (likesData) {
-          likedGameIds = new Set(likesData.map(l => l.game_id));
-        }
-
-        // お気に入り情報を一括取得（1回だけ）
         try {
+          const gameIds = randomGames.map((g: any) => g.id);
+
+          // いいね情報を一括取得
+          const { data: likesData } = await supabase
+            .from('likes')
+            .select('game_id')
+            .eq('user_id', currentUserId)
+            .in('game_id', gameIds);
+
+          if (likesData) {
+            likedGameIds = new Set(likesData.map(l => l.game_id));
+          }
+
+          // お気に入り情報を一括取得（1回だけ）
           const favorites = await database.favorites.list(currentUserId);
           bookmarkedGameIds = new Set(favorites.map((fav: any) => fav.id));
         } catch {
-          // お気に入り取得失敗は無視
+          // いいね・お気に入り取得失敗は無視
         }
       }
 
