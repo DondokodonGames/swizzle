@@ -199,6 +199,13 @@ export class LogicRepairer {
       case 'COUNTER_NEVER_CHECKED':
       case 'NO_PLAYER_ACTION':    // warningなので部分再生成（collisionなど他の操作も有効）
       case 'NO_FAILURE':          // warningなので部分再生成（時間切れのみで失敗も有効）
+      // ProjectValidatorからのエラー
+      case 'ACTION_UNDEFINED_COUNTER':
+      case 'CONDITION_UNDEFINED_COUNTER':
+      case 'ACTION_UNDEFINED_OBJECT':
+      case 'CONDITION_UNDEFINED_OBJECT':
+      case 'ACTION_UNDEFINED_SOUND':
+      case 'LAYOUT_UNDEFINED_OBJECT':
         return 'partial_regen';
 
       // 全体再生成が必要
@@ -593,7 +600,7 @@ export class LogicRepairer {
 
     const repairs: RepairAction[] = [];
 
-    // 欠損カウンターを追加
+    // 欠損カウンターを追加（LogicValidator形式）
     for (const error of errors.filter(e => e.code === 'INVALID_COUNTER_NAME')) {
       const match = error.message.match(/counterName "(\w+)"/);
       if (match) {
@@ -615,7 +622,32 @@ export class LogicRepairer {
       }
     }
 
-    // 欠損サウンドを追加
+    // 欠損カウンターを追加（ProjectValidator形式）
+    for (const error of errors.filter(e =>
+      e.code === 'ACTION_UNDEFINED_COUNTER' || e.code === 'CONDITION_UNDEFINED_COUNTER'
+    )) {
+      // "references undefined counter: counter_name" からカウンター名を抽出
+      const match = error.message.match(/undefined counter: (\w+)/);
+      if (match) {
+        const counterName = match[1];
+        if (!output.script.counters.find(c => c.id === counterName)) {
+          output.script.counters.push({
+            id: counterName,
+            name: counterName,
+            initialValue: 0
+          });
+          repairs.push({
+            errorCode: error.code,
+            action: 'Added missing counter (from ProjectValidator)',
+            target: `counters.${counterName}`,
+            before: undefined,
+            after: { id: counterName, name: counterName, initialValue: 0 }
+          });
+        }
+      }
+    }
+
+    // 欠損サウンドを追加（LogicValidator形式）
     for (const error of errors.filter(e => e.code === 'UNDEFINED_SOUND_ID')) {
       const match = error.message.match(/soundId "(\w+)"/);
       if (match) {
@@ -629,6 +661,28 @@ export class LogicRepairer {
           repairs.push({
             errorCode: error.code,
             action: 'Added missing sound',
+            target: `sounds.${soundId}`,
+            before: undefined,
+            after: { id: soundId, trigger: 'touch', type: 'tap' }
+          });
+        }
+      }
+    }
+
+    // 欠損サウンドを追加（ProjectValidator形式）
+    for (const error of errors.filter(e => e.code === 'ACTION_UNDEFINED_SOUND')) {
+      const match = error.message.match(/undefined sound: (\w+)/);
+      if (match) {
+        const soundId = match[1];
+        if (!output.assetPlan.sounds.find(s => s.id === soundId)) {
+          output.assetPlan.sounds.push({
+            id: soundId,
+            trigger: 'touch',
+            type: 'tap'
+          });
+          repairs.push({
+            errorCode: error.code,
+            action: 'Added missing sound (from ProjectValidator)',
             target: `sounds.${soundId}`,
             before: undefined,
             after: { id: soundId, trigger: 'touch', type: 'tap' }

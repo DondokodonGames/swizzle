@@ -340,14 +340,44 @@ export class Orchestrator {
         throw error;
       }
 
-      // Step 6: LogicValidator + LogicRepairer ループ
+      // Step 6: LogicValidator + ProjectValidator + LogicRepairer ループ
+      let projectValidation = this.projectValidator.validate(logicOutput, assetPlan, spec);
+
       while (true) {
         console.log('   ✓ Step 6: Validating logic...');
         const logicValidation = this.logicValidator.validate(logicOutput);
         this.logger.logLogicValidation(logicValidation.valid, logicValidation.errors);
 
+        // LogicValidator通過後、ProjectValidatorもチェック
+        let allValid = logicValidation.valid;
+        let combinedErrors = [...logicValidation.errors];
+
         if (logicValidation.valid) {
           console.log('      ✅ Logic validated');
+
+          // ProjectValidatorでも検証
+          console.log('   🔍 Step 6.5: Validating project integrity...');
+          projectValidation = this.projectValidator.validate(logicOutput, assetPlan, spec);
+
+          if (projectValidation.valid) {
+            console.log(`      ✅ Project validated (${projectValidation.summary.totalChecks} checks)`);
+            break; // 両方通過
+          } else {
+            console.log(`      ⚠️ Project issues: ${projectValidation.summary.failed} errors, ${projectValidation.summary.warnings} warnings`);
+            allValid = false;
+            // ProjectValidatorのエラーをLogicValidationError形式に変換
+            for (const err of projectValidation.errors) {
+              combinedErrors.push({
+                type: 'critical',
+                code: err.code,
+                message: err.message,
+                fix: err.fix
+              });
+            }
+          }
+        }
+
+        if (allValid) {
           break;
         }
 
@@ -355,18 +385,18 @@ export class Orchestrator {
         validationPassedFirstTry = false;
 
         if (logicRetries >= this.config.maxRetries) {
-          console.log(`      ⚠️ Logic validation failed after ${logicRetries} retries`);
-          console.log(`      Errors: ${logicValidation.errors.map(e => e.message).join(', ')}`);
+          console.log(`      ⚠️ Validation failed after ${logicRetries} retries`);
+          console.log(`      Errors: ${combinedErrors.slice(0, 5).map(e => e.message).join(', ')}${combinedErrors.length > 5 ? '...' : ''}`);
           break;
         }
 
-        console.log(`      ⚠️ Issues: ${logicValidation.errors.length} errors`);
+        console.log(`      ⚠️ Issues: ${combinedErrors.length} errors`);
         console.log(`      🔧 Step 6.1: Attempting repair (${logicRetries}/${this.config.maxRetries})...`);
 
-        // LogicRepairerで修復を試みる
+        // LogicRepairerで修復を試みる（結合エラーを使用）
         const repairResult = await this.logicRepairer.repair(
           logicOutput,
-          logicValidation,
+          { valid: false, errors: combinedErrors },
           concept,
           spec
         );
@@ -410,20 +440,6 @@ export class Orchestrator {
           // 部分的な修復のみ、残存エラーあり
           console.log(`      ⚠️ Partial repair: ${repairResult.remainingErrors.length} errors remain`);
         }
-      }
-
-      // ★NEW Step 6.5: ProjectValidator
-      console.log('   🔍 Step 6.5: Validating project integrity...');
-      const projectValidation = this.projectValidator.validate(logicOutput, assetPlan, spec);
-      if (projectValidation.valid) {
-        console.log(`      ✅ Project validated (${projectValidation.summary.totalChecks} checks)`);
-      } else {
-        console.log(`      ⚠️ Project issues: ${projectValidation.summary.failed} errors, ${projectValidation.summary.warnings} warnings`);
-        validationPassedFirstTry = false;
-        // Log critical errors
-        projectValidation.errors.forEach(e => {
-          console.log(`         ❌ [${e.code}] ${e.message}`);
-        });
       }
 
       // Step 7: AssetGenerator
