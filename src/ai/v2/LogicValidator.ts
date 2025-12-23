@@ -98,8 +98,11 @@ export class LogicValidator {
     // 11. ルールコンフリクト検出
     this.checkRuleConflicts(output, errors);
 
-    // 12. カウンター過剰使用チェック
+    // 12. カウンター使用状況チェック（未使用カウンター検出）
     this.checkExcessiveCounters(output, errors);
+
+    // 14. 成功条件到達可能性チェック
+    this.checkSuccessPathReachability(output, errors);
 
     // 13. サウンド/BGM整合性チェック
     this.checkSoundAndBgm(output, errors);
@@ -1155,27 +1158,181 @@ export class LogicValidator {
   }
 
   /**
-   * カウンター過剰使用チェック
+   * カウンター使用状況チェック（未使用カウンター検出）
    */
   private checkExcessiveCounters(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
-    const counterCount = output.script.counters.length;
+    const definedCounters = output.script.counters.map(c => c.id);
 
-    if (counterCount > 3) {
-      errors.push({
-        type: 'warning',
-        code: 'EXCESSIVE_COUNTERS',
-        message: `カウンター数が多すぎます（${counterCount}個）。シンプルなゲームでは0〜2個が推奨です`,
-        fix: `カウンター数を減らしてシンプルな設計にしてください`
-      });
+    // 各カウンターの使用状況を追跡
+    const counterUsage: Record<string, {
+      modified: boolean;  // increment/decrement/add/subtract/set されているか
+      checked: boolean;   // 条件でチェックされているか
+      modifyingRules: string[];
+      checkingRules: string[];
+    }> = {};
+
+    for (const counterId of definedCounters) {
+      counterUsage[counterId] = {
+        modified: false,
+        checked: false,
+        modifyingRules: [],
+        checkingRules: []
+      };
     }
 
-    if (counterCount > 5) {
-      errors.push({
-        type: 'critical',
-        code: 'TOO_MANY_COUNTERS',
-        message: `カウンター数が過剰です（${counterCount}個）。最大3個までを強く推奨します`,
-        fix: `カウンターを統合するか削除してください`
-      });
+    // ルールを走査してカウンター使用状況を収集
+    for (const rule of output.script.rules) {
+      // 条件でのカウンターチェック
+      for (const condition of rule.triggers?.conditions || []) {
+        if (condition.type === 'counter' && condition.counterName) {
+          if (counterUsage[condition.counterName]) {
+            counterUsage[condition.counterName].checked = true;
+            counterUsage[condition.counterName].checkingRules.push(rule.id);
+          }
+        }
+      }
+
+      // アクションでのカウンター操作
+      for (const action of rule.actions || []) {
+        if (action.type === 'counter' && action.counterName) {
+          if (counterUsage[action.counterName]) {
+            counterUsage[action.counterName].modified = true;
+            counterUsage[action.counterName].modifyingRules.push(rule.id);
+          }
+        }
+      }
+    }
+
+    // 問題のあるカウンターを検出
+    for (const [counterId, usage] of Object.entries(counterUsage)) {
+      if (!usage.modified && !usage.checked) {
+        // 完全に未使用
+        errors.push({
+          type: 'warning',
+          code: 'UNUSED_COUNTER',
+          message: `カウンター "${counterId}" は定義されていますが、どこでも使用されていません`,
+          fix: `不要なカウンターを削除するか、ルールで使用してください`
+        });
+      } else if (usage.modified && !usage.checked) {
+        // 操作されているがチェックされていない（無意味な操作）
+        errors.push({
+          type: 'warning',
+          code: 'COUNTER_NEVER_CHECKED',
+          message: `カウンター "${counterId}" は操作されていますが、条件でチェックされていません（操作ルール: ${usage.modifyingRules.join(', ')}）`,
+          fix: `カウンターを成功/失敗条件で使用するか、削除してください`
+        });
+      } else if (!usage.modified && usage.checked) {
+        // チェックされているが操作されていない（初期値のまま）
+        const counter = output.script.counters.find(c => c.id === counterId);
+        errors.push({
+          type: 'critical',
+          code: 'COUNTER_NEVER_MODIFIED',
+          message: `カウンター "${counterId}" は条件でチェックされていますが、どのルールでも操作されていません（初期値: ${counter?.initialValue}）`,
+          fix: `カウンターを操作するルールを追加してください`
+        });
+      }
+    }
+  }
+
+  /**
+   * 成功条件到達可能性チェック
+   * - 成功条件がカウンターに依存している場合、そのカウンターを操作するルールが存在するか
+   * - カウンターの目標値に到達可能か（十分な操作機会があるか）
+   */
+  private checkSuccessPathReachability(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
+    const successRules = output.script.rules.filter(r =>
+      r.actions?.some(a => a.type === 'success')
+    );
+
+    if (successRules.length === 0) {
+      return; // checkSuccessFailureExists で既にチェック済み
+    }
+
+    // 各成功ルールをチェック
+    for (const successRule of successRules) {
+      const conditions = successRule.triggers?.conditions || [];
+
+      for (const condition of conditions) {
+        if (condition.type === 'counter' && condition.counterName && condition.value !== undefined) {
+          // このカウンターを操作するルールを探す
+          const modifyingRules = output.script.rules.filter(r =>
+            r.actions?.some(a =>
+              a.type === 'counter' &&
+              a.counterName === condition.counterName &&
+              (a.operation === 'increment' || a.operation === 'add')
+            )
+          );
+
+          if (modifyingRules.length === 0) {
+            const counter = output.script.counters.find(c => c.id === condition.counterName);
+            errors.push({
+              type: 'critical',
+              code: 'UNREACHABLE_SUCCESS',
+              message: `成功条件に到達不可: カウンター "${condition.counterName}" を増加させるルールがありません（目標: ${condition.value}、初期値: ${counter?.initialValue || 0}）`,
+              fix: `カウンター "${condition.counterName}" を増加させるルール（タッチ時にincrement等）を追加してください`
+            });
+          } else {
+            // カウンターを操作するルールの条件をチェック
+            // プレイヤー操作（touch, collision等）に依存しているか
+            const hasPlayerActionPath = modifyingRules.some(r => {
+              const conds = r.triggers?.conditions || [];
+              return conds.some(c =>
+                c.type === 'touch' ||
+                c.type === 'collision'
+              );
+            });
+
+            if (!hasPlayerActionPath) {
+              // カウンター操作がプレイヤー操作なしで発生する可能性
+              const modifyingRuleIds = modifyingRules.map(r => r.id).join(', ');
+              errors.push({
+                type: 'warning',
+                code: 'SUCCESS_NO_PLAYER_ACTION',
+                message: `成功パス確認要: カウンター "${condition.counterName}" を操作するルール（${modifyingRuleIds}）がプレイヤー操作を必要としていません`,
+                fix: `touch条件などプレイヤー操作を条件に追加することを検討してください`
+              });
+            }
+
+            // 目標値に到達可能かチェック（オブジェクト数と目標値の比較）
+            const counter = output.script.counters.find(c => c.id === condition.counterName);
+            const initialValue = counter?.initialValue || 0;
+            const targetValue = condition.value;
+            const comparison = condition.comparison || 'greaterOrEqual';
+
+            // 増加が必要な場合
+            if (['greaterOrEqual', 'greater', 'equals'].includes(comparison) && targetValue > initialValue) {
+              const neededIncrements = targetValue - initialValue;
+
+              // タッチ可能なオブジェクト数をカウント
+              const touchableObjects = new Set<string>();
+              for (const r of modifyingRules) {
+                if (r.targetObjectId) {
+                  touchableObjects.add(r.targetObjectId);
+                }
+                for (const cond of r.triggers?.conditions || []) {
+                  if (cond.type === 'touch' && cond.target && cond.target !== 'self' && cond.target !== 'stage') {
+                    touchableObjects.add(cond.target);
+                  }
+                }
+              }
+
+              // 同じオブジェクトを複数回タッチできない場合（hideされる場合）
+              const hidingRules = modifyingRules.filter(r =>
+                r.actions?.some(a => a.type === 'hide')
+              );
+
+              if (hidingRules.length > 0 && touchableObjects.size < neededIncrements) {
+                errors.push({
+                  type: 'critical',
+                  code: 'INSUFFICIENT_OBJECTS_FOR_SUCCESS',
+                  message: `成功条件到達不可: カウンター "${condition.counterName}" を${neededIncrements}回増加させる必要がありますが、タッチ可能なオブジェクトは${touchableObjects.size}個しかありません（タッチ後hideされます）`,
+                  fix: `オブジェクト数を増やすか、目標値を下げてください`
+                });
+              }
+            }
+          }
+        }
+      }
     }
   }
 
