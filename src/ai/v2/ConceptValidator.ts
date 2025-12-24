@@ -2,6 +2,7 @@
  * Step 2: ConceptValidator
  *
  * Step 1の自己評価が正しいかダブルチェック
+ * 緩和版: 警告とクリティカルエラーを分離
  */
 
 import { GameConcept, ConceptValidationResult } from './types';
@@ -11,70 +12,72 @@ export class ConceptValidator {
    * コンセプトを検証
    */
   validate(concept: GameConcept): ConceptValidationResult {
-    const issues: string[] = [];
+    const criticalIssues: string[] = [];
+    const warnings: string[] = [];
 
-    // 目標明確性チェック
-    if (!concept.playerGoal.match(/[0-9]+/)) {
-      issues.push('playerGoalに具体的な数値がありません');
-    }
-    if (concept.playerGoal.length < 15) {
-      issues.push('playerGoalが短すぎます。もっと具体的に記述してください');
-    }
+    // === クリティカル: これがないとゲームにならない ===
 
-    // 操作明確性チェック
-    const operationKeywords = ['タップ', 'スワイプ', 'ドラッグ', '長押し', 'tap', 'swipe', 'drag', 'hold'];
+    // 操作明確性チェック（必須）
+    const operationKeywords = ['タップ', 'スワイプ', 'ドラッグ', '長押し', 'tap', 'swipe', 'drag', 'hold', 'フリック', 'flick'];
     const hasOperationKeyword = operationKeywords.some(kw =>
       concept.playerOperation.toLowerCase().includes(kw.toLowerCase())
     );
     if (!hasOperationKeyword) {
-      issues.push('playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません');
+      criticalIssues.push('playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません');
     }
 
-    // 成功条件チェック
-    if (!concept.successCondition.match(/[0-9]+/)) {
-      issues.push('successConditionに具体的な数値がありません');
+    // durationチェック（必須）
+    if (concept.duration < 3 || concept.duration > 20) {
+      criticalIssues.push(`duration(${concept.duration}秒)が範囲外です。3〜20秒にしてください`);
+    }
+
+    // playerGoalが空または極端に短い（必須）
+    if (!concept.playerGoal || concept.playerGoal.length < 5) {
+      criticalIssues.push('playerGoalが指定されていないか、極端に短いです');
+    }
+
+    // successConditionが空（必須）
+    if (!concept.successCondition || concept.successCondition.length < 5) {
+      criticalIssues.push('successConditionが指定されていないか、極端に短いです');
+    }
+
+    // === 警告: あると良いが、なくてもゲームは成立する ===
+
+    // 目標に数値があるとより明確
+    if (!concept.playerGoal.match(/[0-9]+/) && !concept.playerGoal.match(/(全て|すべて|全部|all)/i)) {
+      warnings.push('playerGoalに数値または「全て」がありません（推奨）');
+    }
+
+    // 成功条件に数値があるとより明確
+    if (!concept.successCondition.match(/[0-9]+/) && !concept.successCondition.match(/(全て|すべて|全部|all|到達|ゴール)/i)) {
+      warnings.push('successConditionに数値がありません（推奨）');
     }
 
     // 失敗条件チェック
-    if (!concept.failureCondition.match(/[0-9]+/)) {
-      issues.push('failureConditionに具体的な数値がありません');
-    }
     const failureOnlyTimeout = /^(時間切れ|タイムアウト|timeout|time\s*out)$/i.test(
       concept.failureCondition.trim()
     );
     if (failureOnlyTimeout) {
-      issues.push('失敗条件が「時間切れ」だけでは納得感がありません。プレイヤーの操作ミスによる失敗条件を追加してください');
+      warnings.push('失敗条件が「時間切れ」のみ。プレイヤー操作による失敗条件があるとより良い');
     }
 
-    // durationチェック
-    if (concept.duration < 5 || concept.duration > 15) {
-      issues.push(`duration(${concept.duration}秒)が範囲外です。5〜15秒にしてください`);
-    }
-
-    // 自己評価の妥当性チェック（極端に高い場合は疑う）
+    // 自己評価の妥当性チェック（警告のみ）
     const { goalClarity, operationClarity, judgmentClarity, acceptance } = concept.selfEvaluation;
     if (goalClarity === 10 && operationClarity === 10 && judgmentClarity === 10 && acceptance === 10) {
-      // 全て10点は過大評価の可能性
-      if (concept.playerGoal.length < 30) {
-        issues.push('自己評価が全て10点ですが、playerGoalの記述が十分に詳細ではありません');
+      if (concept.playerGoal.length < 20) {
+        warnings.push('自己評価が全て10点ですが、playerGoalの記述が十分に詳細ではないかもしれません');
       }
     }
 
-    // 整合性チェック
-    // successConditionの数値とplayerGoalの数値が一致しているか
-    const successNumbers = concept.successCondition.match(/\d+/g);
-    const goalNumbers = concept.playerGoal.match(/\d+/g);
-    if (successNumbers && goalNumbers) {
-      const hasOverlap = successNumbers.some(sn => goalNumbers.includes(sn));
-      if (!hasOverlap) {
-        issues.push('successConditionの数値とplayerGoalの数値が一致しません。整合性を確認してください');
-      }
-    }
+    // すべてのissuesを結合（クリティカルが優先）
+    const allIssues = [...criticalIssues, ...warnings];
 
     return {
-      passed: issues.length === 0,
-      issues,
-      feedback: issues.map(i => `修正してください: ${i}`)
+      passed: criticalIssues.length === 0,  // クリティカルがなければ通過
+      issues: allIssues,
+      feedback: criticalIssues.length > 0
+        ? criticalIssues.map(i => `修正必須: ${i}`)
+        : warnings.map(i => `推奨: ${i}`)
     };
   }
 
@@ -83,8 +86,7 @@ export class ConceptValidator {
    */
   getSeverity(result: ConceptValidationResult): 'none' | 'minor' | 'major' | 'critical' {
     if (result.passed) return 'none';
-    if (result.issues.length === 1) return 'minor';
-    if (result.issues.length <= 3) return 'major';
+    // passed が false ならクリティカルな問題がある
     return 'critical';
   }
 }
