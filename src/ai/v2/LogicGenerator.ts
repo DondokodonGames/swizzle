@@ -86,13 +86,27 @@ ${EDITOR_SPEC}
 - オブジェクト数: コンセプトに必要な分だけ
 - 複雑なロジックは不要。条件→アクションの1対1対応で良い
 
-## 2. カウンターは本当に必要な時だけ使う
-**判断基準**: 「回数を数える必要があるか？」
-- 回数を数える必要がない → カウンター不要（直接success/failureを発動）
-- 回数を数える必要がある → カウンターを使う
+## 2. カウンターの一貫性を保つ
+**定義したカウンターは必ず完全に実装する**
 
-カウンターを使う場合は、必ず「操作するルール」と「チェックするルール」の両方を作る。
-片方だけのカウンターは無意味なので作らない。
+カウンターを使う場面（積極的に使う）:
+- 複数のオブジェクトをタップして達成 → tapped_count で数える
+- 〇回成功で達成 → success_count で数える
+- 残り〇回でゲームオーバー → miss_count で数える
+
+カウンターを使わない場面（直接判定する）:
+- 特定のオブジェクトをタップしたら成功 → collision/touch条件で直接success
+- ゴールエリアに到達したら成功 → position/collision条件で直接success
+
+**重要: カウンターの完全性チェック**
+カウンターを定義したら、必ず以下の2つのルールを作成:
+1. 操作ルール: counterアクションでカウンターを変更（increment/decrement/set）
+2. 判定ルール: counter条件でカウンターをチェックしてsuccess/failureを発動
+
+例: tapped_countカウンターを定義した場合
+- ✅ タップ時にincrement → tapped_count >= 5 で success（両方ある = OK）
+- ❌ タップ時にincrement → 成功条件でチェックしていない（操作のみ = NG）
+- ❌ tapped_count >= 5 で success → どこでもincrementしていない（チェックのみ = NG）
 
 ## 3. ルールのコンフリクトを防ぐ
 同一条件で矛盾するアクションを発動させない:
@@ -181,7 +195,7 @@ ${EDITOR_SPEC}
     "coordinatesInRange": boolean,
     "onlyVerifiedFeaturesUsed": boolean,
     "noRuleConflicts": boolean,
-    "counterCountReasonable": boolean
+    "allCountersFullyImplemented": boolean  // すべてのカウンターが操作と判定の両方を持つ
   }
 }`;
 
@@ -364,7 +378,7 @@ export class LogicGenerator {
         coordinatesInRange: true,
         onlyVerifiedFeaturesUsed: true,
         noRuleConflicts: true,
-        counterCountReasonable: true
+        allCountersFullyImplemented: true
       }
     };
   }

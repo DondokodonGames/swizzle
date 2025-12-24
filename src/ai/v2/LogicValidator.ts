@@ -955,17 +955,41 @@ export class LogicValidator {
 
   /**
    * 成功パスにプレイヤー操作が必要
+   *
+   * プレイヤー操作とみなす条件/アクション:
+   * - touch条件: タッチ操作
+   * - collision条件: オブジェクト衝突（ドラッグ中のオブジェクトを含む）
+   * - position条件: 位置条件（ドラッグ移動後の位置判定に使用される）
+   * - followDragアクション: ドラッグ追従
    */
   private checkPlayerActionOnSuccessPath(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
     const successRules = output.script.rules.filter(r =>
       r.actions?.some(a => a.type === 'success')
     );
 
-    let hasDirectTouchSuccess = successRules.some(r =>
-      r.triggers?.conditions?.some(c => c.type === 'touch')
+    // プレイヤー操作に関連する条件タイプ
+    const playerActionConditionTypes = ['touch', 'collision', 'position'];
+
+    // followDragを持つルールが存在する場合、それに関連するオブジェクトの
+    // collision/positionは自動的にプレイヤー操作とみなす
+    const hasDraggableObject = output.script.rules.some(r =>
+      r.actions?.some(a => a.type === 'followDrag')
     );
 
-    if (hasDirectTouchSuccess) return;
+    // 直接プレイヤー操作条件を持つ成功ルール
+    let hasDirectPlayerAction = successRules.some(r =>
+      r.triggers?.conditions?.some(c => playerActionConditionTypes.includes(c.type))
+    );
+
+    if (hasDirectPlayerAction) return;
+
+    // followDragがある場合、collision/positionベースの成功はプレイヤー操作とみなす
+    if (hasDraggableObject) {
+      const hasCollisionOrPositionSuccess = successRules.some(r =>
+        r.triggers?.conditions?.some(c => c.type === 'collision' || c.type === 'position')
+      );
+      if (hasCollisionOrPositionSuccess) return;
+    }
 
     for (const successRule of successRules) {
       const counterCondition = successRule.triggers?.conditions?.find(c => c.type === 'counter');
@@ -974,18 +998,27 @@ export class LogicValidator {
           r.actions?.some(a => a.type === 'counter' && a.counterName === counterCondition.counterName)
         );
 
-        const hasTouchOnPath = counterModifyingRules.some(r =>
-          r.triggers?.conditions?.some(c => c.type === 'touch')
+        // カウンター操作にプレイヤー操作条件があるか
+        const hasPlayerActionOnPath = counterModifyingRules.some(r =>
+          r.triggers?.conditions?.some(c => playerActionConditionTypes.includes(c.type))
         );
 
-        if (hasTouchOnPath) return;
+        if (hasPlayerActionOnPath) return;
+
+        // followDragがある場合、collision/positionベースのカウンター操作はプレイヤー操作とみなす
+        if (hasDraggableObject) {
+          const hasCollisionOrPositionOnPath = counterModifyingRules.some(r =>
+            r.triggers?.conditions?.some(c => c.type === 'collision' || c.type === 'position')
+          );
+          if (hasCollisionOrPositionOnPath) return;
+        }
       }
     }
 
     errors.push({
       type: 'warning',
       code: 'NO_PLAYER_ACTION',
-      message: '成功へのパスにプレイヤー操作（touch条件）が含まれていない可能性があります',
+      message: '成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります',
       fix: 'ゲームコンセプトの操作方法に合わせてルールを確認してください'
     });
   }
@@ -1038,6 +1071,8 @@ export class LogicValidator {
           if (c.touchType) parts.push(`touch:${c.touchType}`);
           if (c.timeType) parts.push(`time:${c.timeType}`);
           if (c.seconds !== undefined) parts.push(`sec:${c.seconds}`);
+          // collisionType を含めることで enter/exit/stay を区別
+          if (c.collisionType) parts.push(`collisionType:${c.collisionType}`);
           return parts.join('_');
         })
         .sort()
@@ -1318,9 +1353,16 @@ export class LogicValidator {
 
       // 全体的なプレイヤー操作パスチェック
       // 成功条件に到達するまでのどこかにプレイヤー操作があるか
-      const hasDirectTouch = conditions.some(c => c.type === 'touch' || c.type === 'collision');
+      // プレイヤー操作: touch, collision, position (followDragと連携)
+      const playerActionConditionTypes = ['touch', 'collision', 'position'];
+      const hasDirectPlayerAction = conditions.some(c => playerActionConditionTypes.includes(c.type));
 
-      if (!hasDirectTouch) {
+      // followDragを持つルールが存在する場合、collision/positionはプレイヤー操作とみなす
+      const hasDraggableObject = output.script.rules.some(r =>
+        r.actions?.some(a => a.type === 'followDrag')
+      );
+
+      if (!hasDirectPlayerAction) {
         // 間接的にでもプレイヤー操作が関係しているか確認
         // (カウンターやフラグを経由する場合)
         let hasIndirectPlayerAction = false;
@@ -1332,10 +1374,14 @@ export class LogicValidator {
               const hasCounterAction = r.actions?.some(a =>
                 a.type === 'counter' && a.counterName === condition.counterName
               );
-              const hasTouchCondition = r.triggers?.conditions?.some(c =>
-                c.type === 'touch' || c.type === 'collision'
+              const hasPlayerActionCondition = r.triggers?.conditions?.some(c =>
+                playerActionConditionTypes.includes(c.type)
               );
-              return hasCounterAction && hasTouchCondition;
+              // followDragがある場合、collision/positionもプレイヤー操作とみなす
+              const hasCollisionOrPosition = hasDraggableObject && r.triggers?.conditions?.some(c =>
+                c.type === 'collision' || c.type === 'position'
+              );
+              return hasCounterAction && (hasPlayerActionCondition || hasCollisionOrPosition);
             });
             if (hasIndirectPlayerAction) break;
           }
@@ -1345,10 +1391,14 @@ export class LogicValidator {
               const hasFlagAction = r.actions?.some(a =>
                 (a.type === 'setFlag' || a.type === 'toggleFlag') && a.flagId === condition.flagId
               );
-              const hasTouchCondition = r.triggers?.conditions?.some(c =>
-                c.type === 'touch' || c.type === 'collision'
+              const hasPlayerActionCondition = r.triggers?.conditions?.some(c =>
+                playerActionConditionTypes.includes(c.type)
               );
-              return hasFlagAction && hasTouchCondition;
+              // followDragがある場合、collision/positionもプレイヤー操作とみなす
+              const hasCollisionOrPosition = hasDraggableObject && r.triggers?.conditions?.some(c =>
+                c.type === 'collision' || c.type === 'position'
+              );
+              return hasFlagAction && (hasPlayerActionCondition || hasCollisionOrPosition);
             });
             if (hasIndirectPlayerAction) break;
           }
@@ -1359,7 +1409,7 @@ export class LogicValidator {
             type: 'warning',
             code: 'SUCCESS_NO_PLAYER_ACTION',
             message: `成功パス確認要: ルール "${successRule.id}" の成功条件がプレイヤー操作に依存していない可能性があります`,
-            fix: `touch/collision条件を含むルールチェーンを確認してください`
+            fix: `touch/collision/position条件を含むルールチェーンを確認してください`
           });
         }
       }

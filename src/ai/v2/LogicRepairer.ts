@@ -182,6 +182,7 @@ export class LogicRepairer {
       case 'LONG_EFFECT_DURATION':
       case 'LARGE_SCALE_AMOUNT':
       case 'MISSING_POINTS':
+      case 'COUNTER_NEVER_MODIFIED':  // 未使用カウンターを削除することで自動修復可能
         return 'auto_fixable';
 
       // 部分再生成
@@ -218,7 +219,6 @@ export class LogicRepairer {
       case 'COUNTER_CONFLICT':
       case 'SAME_RULE_SUCCESS_FAILURE':
       case 'UNREACHABLE_SUCCESS':
-      case 'COUNTER_NEVER_MODIFIED':
         return 'full_regen';
 
       default:
@@ -261,6 +261,9 @@ export class LogicRepairer {
 
       case 'MISSING_POINTS':
         return this.repairMissingPoints(output, error);
+
+      case 'COUNTER_NEVER_MODIFIED':
+        return this.repairNeverModifiedCounter(output, error);
 
       default:
         return null;
@@ -580,6 +583,71 @@ export class LogicRepairer {
           };
         }
       }
+    }
+
+    return null;
+  }
+
+  /**
+   * 未変更カウンターを修復
+   *
+   * カウンターがチェックされているが変更されていない場合:
+   * - カウンターの定義を削除
+   * - そのカウンターを参照する条件を持つルールから該当条件を削除
+   * - 条件が空になったルールは削除
+   */
+  private repairNeverModifiedCounter(output: LogicGeneratorOutput, error: LogicValidationError): RepairAction | null {
+    const match = error.message.match(/カウンター "(\w+)"/);
+    if (!match) return null;
+
+    const counterName = match[1];
+    const removedItems: string[] = [];
+
+    // 1. カウンター定義を削除
+    const counterIndex = output.script.counters.findIndex(c => c.id === counterName);
+    if (counterIndex !== -1) {
+      output.script.counters.splice(counterIndex, 1);
+      removedItems.push(`counter:${counterName}`);
+    }
+
+    // 2. このカウンターを参照する条件を削除
+    for (const rule of output.script.rules) {
+      if (rule.triggers?.conditions) {
+        const originalLength = rule.triggers.conditions.length;
+        rule.triggers.conditions = rule.triggers.conditions.filter(
+          c => !(c.type === 'counter' && c.counterName === counterName)
+        );
+        if (rule.triggers.conditions.length < originalLength) {
+          removedItems.push(`condition in rule:${rule.id}`);
+        }
+      }
+    }
+
+    // 3. 条件が空になったルールを削除（空条件はINSTANT_WIN/INSTANT_LOSEの原因になる）
+    const rulesToRemove: string[] = [];
+    for (const rule of output.script.rules) {
+      if (rule.triggers?.conditions?.length === 0) {
+        // successやfailureアクションを持つルールを削除すると問題になる可能性があるが、
+        // 条件が空のsuccessはINSTANT_WINとして検出されるため、削除してよい
+        rulesToRemove.push(rule.id);
+      }
+    }
+
+    if (rulesToRemove.length > 0) {
+      output.script.rules = output.script.rules.filter(r => !rulesToRemove.includes(r.id));
+      for (const ruleId of rulesToRemove) {
+        removedItems.push(`rule:${ruleId}`);
+      }
+    }
+
+    if (removedItems.length > 0) {
+      return {
+        errorCode: error.code,
+        action: 'Removed never-modified counter and its references',
+        target: counterName,
+        before: removedItems,
+        after: undefined
+      };
     }
 
     return null;

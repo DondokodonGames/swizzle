@@ -225,7 +225,7 @@ ${EDITOR_SPEC}
     "coordinatesInRange": true,
     "onlyVerifiedFeaturesUsed": true,
     "noRuleConflicts": true,
-    "counterCountReasonable": true
+    "allCountersFullyImplemented": true
   }
 }`;
 
@@ -453,7 +453,7 @@ export class EditorMapper {
         coordinatesInRange: true,
         onlyVerifiedFeaturesUsed: true,
         noRuleConflicts: true,
-        counterCountReasonable: true
+        allCountersFullyImplemented: true
       }
     };
 
