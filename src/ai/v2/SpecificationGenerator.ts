@@ -198,12 +198,40 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 - デザイン: ゲームの設計
 - アセットプラン: 利用可能なアセット（任意）
 
+# 絶対に守るべき制約
+
+## 座標の制約 ★必須
+- すべての座標は 0.0〜1.0 の範囲内
+- 負の値は禁止（-0.1 などは NG）
+- 1.0を超える値も禁止（1.2 などは NG）
+- 中央 = (0.5, 0.5)、左上 = (0.0, 0.0)、右下 = (1.0, 1.0)
+
+## カウンターの一貫性 ★必須
+カウンターを定義する場合、必ず以下の両方が必要:
+1. **変更するルール**: counterアクションでカウンターを操作
+2. **チェックするルール**: counter条件でカウンターを判定
+
+例:
+- ✅ tapped_count: タップで+1、5以上で成功 → 両方ある
+- ❌ game_time: 失敗条件でチェックするが、どこでも操作しない → NG
+- ❌ wind_timer: 定義したが使わない → NG（定義しない）
+
+**カウンターが不要な場合は定義しない**
+- 「特定オブジェクトをタップしたら成功」→ touch条件で直接success
+- 「ゴールに到達したら成功」→ collision/position条件で直接success
+
+## 必須サウンド ★必須
+以下の3つは必ず含める:
+- se_tap: タップ時の効果音
+- se_success: 成功時の効果音
+- se_failure: 失敗時の効果音
+
 # 出力する仕様
 
 ## 1. オブジェクト仕様
 各オブジェクトの詳細を定義:
 - ID（英数字、スネークケース）
-- 位置（0.0-1.0の正規化座標、中央=(0.5, 0.5)）
+- 位置（0.0-1.0の正規化座標、中央=(0.5, 0.5)）★範囲外禁止
 - サイズ（small/medium/large）
 - 初期表示状態
 - タッチ可能かどうか
@@ -212,6 +240,7 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 カウンターとフラグを定義:
 - **カウンターを使う判断基準**: 「何かを数える必要があるか？」
 - 各カウンターには「変更するルール」と「チェックするルール」の両方が必要
+- modifiedBy と checkedBy フィールドに具体的なルールIDを記載
 
 ## 3. ルール仕様
 各インタラクションをルールとして定義
@@ -257,10 +286,40 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 
 # 出力形式（JSON）
 {
-  "objects": [...],
-  "stateManagement": { "counters": [...], "flags": [...] },
+  "objects": [
+    {
+      "id": "target_1",
+      "name": "ターゲット1",
+      "visualDescription": "...",
+      "initialPosition": { "x": 0.3, "y": 0.4 },  // ★必ず0.0-1.0の範囲
+      "size": "medium",
+      "initiallyVisible": true,
+      "physicsEnabled": false,
+      "touchable": true
+    }
+  ],
+  "stateManagement": {
+    "counters": [
+      {
+        "id": "tapped_count",
+        "name": "タップ数",
+        "initialValue": 0,
+        "purpose": "タップした数を数える",
+        "modifiedBy": ["tap_target_1", "tap_target_2"],  // ★操作するルール
+        "checkedBy": ["check_win"]                       // ★チェックするルール
+      }
+    ],
+    "flags": []
+  },
   "rules": [...],
-  "audio": { "sounds": [...], "bgm": {...} },
+  "audio": {
+    "sounds": [
+      { "id": "se_tap", "trigger": "タップ時", "type": "tap" },       // ★必須
+      { "id": "se_success", "trigger": "成功時", "type": "success" }, // ★必須
+      { "id": "se_failure", "trigger": "失敗時", "type": "failure" }  // ★必須
+    ],
+    "bgm": { "id": "bgm_main", "description": "...", "mood": "upbeat" }
+  },
   "uiVisibility": {
     "touchTargetMinSize": "medium",
     "contrastRequirement": "high",

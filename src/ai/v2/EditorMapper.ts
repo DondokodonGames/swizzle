@@ -124,10 +124,30 @@ const MAPPING_PROMPT = `あなたはSwizzleエディターの仕様マッパー�
 
 ${EDITOR_SPEC}
 
+# 絶対に守るべき制約
+
+## 座標の制約 ★必須
+- すべての座標は 0.0〜1.0 の範囲内
+- 負の値は禁止（-0.1 などは NG → 0.0 に修正）
+- 1.0を超える値も禁止（1.2 などは NG → 1.0 に修正）
+
+## 必須サウンド ★必須
+以下の3つは必ずsoundsに含める:
+- { "id": "se_tap", "trigger": "タップ時", "type": "tap" }
+- { "id": "se_success", "trigger": "成功時", "type": "success" }
+- { "id": "se_failure", "trigger": "失敗時", "type": "failure" }
+
+## カウンターの一貫性 ★必須
+定義するカウンターは必ず:
+1. どこかのルールで操作される（counterアクション）
+2. どこかのルールでチェックされる（counter条件）
+両方を満たさないカウンターは定義しない。
+
 # 重要: 機械的な変換のみ行う
 - 仕様に書かれていないことは追加しない
 - 仕様の内容を勝手に変更しない
 - IDや名前は仕様のものをそのまま使用
+- ただし座標が範囲外の場合は 0.0-1.0 に収める
 
 # 変換ルール
 
@@ -283,7 +303,10 @@ export class EditorMapper {
       throw new Error('Unexpected response type');
     }
 
-    const logicOutput = this.extractAndParseJSON(content.text);
+    let logicOutput = this.extractAndParseJSON(content.text);
+
+    // ポスト処理: AIが指示に従わなくても安全にする
+    logicOutput = this.postProcess(logicOutput);
 
     // マッピングテーブルを生成
     const mappingTable = this.createMappingTable(spec, logicOutput);
@@ -304,6 +327,82 @@ export class EditorMapper {
     });
 
     return { logicOutput, mappingTable };
+  }
+
+  /**
+   * ポスト処理: 座標のクランプ、必須サウンドの追加など
+   */
+  private postProcess(output: LogicGeneratorOutput): LogicGeneratorOutput {
+    // 1. 座標をクランプ (0.0-1.0)
+    if (output.script?.layout?.objects) {
+      for (const obj of output.script.layout.objects) {
+        if (obj.position) {
+          obj.position.x = Math.max(0, Math.min(1, obj.position.x));
+          obj.position.y = Math.max(0, Math.min(1, obj.position.y));
+        }
+      }
+    }
+
+    if (output.assetPlan?.objects) {
+      for (const obj of output.assetPlan.objects) {
+        if (obj.initialPosition) {
+          obj.initialPosition.x = Math.max(0, Math.min(1, obj.initialPosition.x));
+          obj.initialPosition.y = Math.max(0, Math.min(1, obj.initialPosition.y));
+        }
+      }
+    }
+
+    // 2. 必須サウンドを確保
+    if (!output.assetPlan) {
+      output.assetPlan = { objects: [], background: { description: '', mood: '' }, sounds: [] };
+    }
+    if (!output.assetPlan.sounds) {
+      output.assetPlan.sounds = [];
+    }
+
+    const requiredSounds = [
+      { id: 'se_tap', trigger: 'タップ時', type: 'tap' as const },
+      { id: 'se_success', trigger: '成功時', type: 'success' as const },
+      { id: 'se_failure', trigger: '失敗時', type: 'failure' as const }
+    ];
+
+    for (const required of requiredSounds) {
+      const exists = output.assetPlan.sounds.some(s => s.id === required.id);
+      if (!exists) {
+        output.assetPlan.sounds.push(required);
+        console.log(`      [PostProcess] Added missing sound: ${required.id}`);
+      }
+    }
+
+    // 3. 未使用カウンターの削除
+    if (output.script?.counters && output.script?.rules) {
+      const usedCounterNames = new Set<string>();
+
+      // カウンターアクションで使用されているもの
+      for (const rule of output.script.rules) {
+        for (const action of rule.actions || []) {
+          if (action.type === 'counter' && action.counterName) {
+            usedCounterNames.add(action.counterName);
+          }
+        }
+        // カウンター条件で使用されているもの
+        for (const condition of rule.triggers?.conditions || []) {
+          if (condition.type === 'counter' && condition.counterName) {
+            usedCounterNames.add(condition.counterName);
+          }
+        }
+      }
+
+      // 使用されていないカウンターを削除
+      const originalCount = output.script.counters.length;
+      output.script.counters = output.script.counters.filter(c => usedCounterNames.has(c.id));
+      const removedCount = originalCount - output.script.counters.length;
+      if (removedCount > 0) {
+        console.log(`      [PostProcess] Removed ${removedCount} unused counters`);
+      }
+    }
+
+    return output;
   }
 
   /**
