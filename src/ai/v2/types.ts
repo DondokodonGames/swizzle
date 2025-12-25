@@ -46,7 +46,7 @@ export interface GameConcept {
   title: string;
   titleEn: string;
   description: string;
-  duration: number;  // 5-15秒
+  duration: number;  // 5-30秒（標準: 5-10秒）
   theme: string;     // 完全自由
   visualStyle: string;  // 完全自由
   genre?: string;       // アクション/パズル/リズム等
