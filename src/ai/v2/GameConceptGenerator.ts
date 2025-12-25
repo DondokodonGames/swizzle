@@ -6,6 +6,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { GameConcept } from './types';
+import { GamePatternAnalyzer } from './GamePatternAnalyzer';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -251,6 +252,7 @@ export class GameConceptGenerator {
   private client: Anthropic;
   private config: Required<Omit<ConceptGeneratorConfig, 'apiKey'>>;
   private usedThemes: Set<string> = new Set();
+  private patternAnalyzer: GamePatternAnalyzer;
 
   constructor(config?: ConceptGeneratorConfig) {
     this.client = new Anthropic({
@@ -261,6 +263,7 @@ export class GameConceptGenerator {
       minScore: config?.minScore || 7,
       dryRun: config?.dryRun || false
     };
+    this.patternAnalyzer = new GamePatternAnalyzer();
   }
 
   // ========================================
@@ -423,7 +426,23 @@ export class GameConceptGenerator {
     const forcedTheme = this.selectRandomTheme();
     console.log(`      🎲 Selected theme: ${forcedTheme}`);
 
+    // 動的パターン分析コンテキストを取得（Supabaseから既存ゲームを分析）
+    let dynamicContext = '';
+    try {
+      dynamicContext = await this.patternAnalyzer.generatePromptContext();
+      if (dynamicContext) {
+        console.log(`      📊 Loaded dynamic pattern context from existing games`);
+      }
+    } catch (error) {
+      console.warn(`      ⚠️ Failed to load pattern context: ${error}`);
+    }
+
     let prompt = CONCEPT_PROMPT;
+
+    // 動的コンテキストを追加（既存ゲームパターンの分析結果）
+    if (dynamicContext) {
+      prompt += `\n\n# 既存ゲームの分析結果（重要: 以下の情報を参考に多様性を確保してください）\n${dynamicContext}`;
+    }
 
     // 強制テーマを追加（ジャンル・タグはAIが決定）
     prompt += `\n\n# 今回のテーマ（必ずこのテーマを使用してください）
@@ -506,6 +525,14 @@ export class GameConceptGenerator {
    */
   clearCache(): void {
     this.usedThemes.clear();
+    this.patternAnalyzer.clearCache();
+  }
+
+  /**
+   * パターン分析器を取得（外部からの類似度チェック用）
+   */
+  getPatternAnalyzer(): GamePatternAnalyzer {
+    return this.patternAnalyzer;
   }
 
   /**
@@ -514,7 +541,8 @@ export class GameConceptGenerator {
   getDebugInfo(): object {
     return {
       config: this.config,
-      usedThemesCount: this.usedThemes.size
+      usedThemesCount: this.usedThemes.size,
+      patternAnalyzer: this.patternAnalyzer.getDebugInfo()
     };
   }
 }
