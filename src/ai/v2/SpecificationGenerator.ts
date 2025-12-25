@@ -233,33 +233,50 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 - その操作に対する適切な条件とアクションを設計
 - 成功時に「気持ちいい瞬間」を演出するフィードバック
 
-## ★★★ 推奨: カウンター不要のシンプルパターン ★★★
+## ★★★ 推奨: シンプルゲームパターン集 ★★★
 
-**カウンターはエラーの原因になりやすい！以下のパターンを優先：**
+**カウンターはエラーの原因になりやすい！以下のパターンを参考に：**
 
-### パターン1: 正解オブジェクトをタップ（最も安全）
-- オブジェクト: target_correct（正解）, target_wrong_1〜3（不正解）
-- ルール:
-  - target_correct タップ → success
-  - target_wrong_1 タップ → failure
-  - target_wrong_2 タップ → failure
+### パターン1: 正解を選ぶ（クイズ・間違い探し）
+- target_correct タップ → success
+- target_wrong タップ → failure
 - **カウンター不要！**
 
-### パターン2: 特定オブジェクトに到達
-- オブジェクト: player（ドラッグ可能）, goal（ゴール）
-- ルール:
-  - player ドラッグ → followDrag
-  - player と goal 衝突 → success
+### パターン2: ゴールに運ぶ（パズル・迷路）
+- player ドラッグ → followDrag
+- player と goal 衝突 → success
 - **カウンター不要！**
 
-### パターン3: 複数オブジェクトを順番にタップ（カウンター使用例）
-- オブジェクト: target_1, target_2, target_3
-- カウンター: { id: "tapped", initialValue: 0 }  ← **必ず定義**
-- ルール:
-  - target_1 タップ → hide + counter "tapped" increment
-  - target_2 タップ → hide + counter "tapped" increment
-  - target_3 タップ → hide + counter "tapped" increment
-  - counter "tapped" >= 3 → success  ← **同じ名前で参照**
+### パターン3: 正しい方向にスワイプ（フリック・スワイプ）
+- stage スワイプ(direction: "right") → success
+- stage スワイプ(direction: "left") → failure
+- **カウンター不要！**
+
+### パターン4: 障害物を避けてタップ（タイミング）
+- target タップ → success（動いている正解をタップ）
+- obstacle タップ → failure
+- **カウンター不要！**
+
+### パターン5: 長押しで溜める（ホールド）
+- button 長押し(holdDuration: 1.0) → success
+- **カウンター不要！**
+
+### パターン6: ドラッグで合わせる（マッチング・パズル）
+- piece ドラッグ → followDrag
+- piece と slot 衝突 → success
+- **カウンター不要！**
+
+### パターン7: 出現したらすぐタップ（反射神経）
+- target 表示 → show
+- target タップ → success
+- time 3秒経過 → failure
+- **カウンター不要！**
+
+### パターン8: 複数タップで完了（カウンター使用例）
+- カウンター: { id: "done", initialValue: 0 }
+- target_1 タップ → hide + counter "done" increment
+- target_2 タップ → hide + counter "done" increment
+- counter "done" >= 2 → success
 
 **複雑なタイマーや複数カウンターは避ける！**
 
