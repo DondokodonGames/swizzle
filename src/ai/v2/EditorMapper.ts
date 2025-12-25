@@ -85,38 +85,144 @@ const EDITOR_SPEC = `
 - y: 0.0=上端, 1.0=下端
 
 ## 条件タイプ
-| タイプ | パラメータ |
-|--------|------------|
-| touch | target: 'self'/'stage'/objectId, touchType: 'down'/'up'/'hold'/'drag' |
-| time | timeType: 'exact'/'interval', seconds, interval |
-| counter | counterName, comparison: 'equals'/'greaterOrEqual'/'greater'/'less'/'lessOrEqual', value |
-| collision | target, collisionType: 'enter'/'stay'/'exit' |
-| flag | flagId |
-| position | target, area: 'inside'/'outside', region: {x,y,width,height} |
+
+### touch（タッチ条件）★よく使う
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| target | 'self'/'stage'/objectId | タッチ対象 |
+| touchType | 'down'/'up'/'hold'/'drag'/'swipe'/'flick' | タッチの種類 |
+| region? | {shape:'rect'/'circle', x, y, width?, height?, radius?} | 領域指定（stage時） |
+| dragType? | 'start'/'dragging'/'end' | ドラッグ詳細（drag時） |
+| direction? | 'up'/'down'/'left'/'right' | 方向（swipe/flick時） |
+| holdDuration? | number | 長押し時間（hold時、秒） |
+
+### time（時間条件）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| timeType | 'exact'/'interval'/'after' | 判定タイプ |
+| seconds | number | 秒数（exact/after時） |
+| interval? | number | 間隔（interval時） |
+
+### counter（カウンター条件）★よく使う
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| counterName | string | カウンター名 |
+| comparison | 'equals'/'greaterOrEqual'/'greater'/'less'/'lessOrEqual' | 比較方法 |
+| value | number | 比較値 |
+
+### collision（衝突条件）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| target | 'any'/objectId | 衝突対象 |
+| collisionType | 'enter'/'stay'/'exit' | 衝突タイプ |
+
+### flag（フラグ条件）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| flagId | string | フラグID |
+| value? | boolean | 期待値（省略時true） |
+
+### position（位置条件）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| target | objectId | 対象オブジェクト |
+| area | 'inside'/'outside' | 領域内/外 |
+| region | {x, y, width, height} | 判定領域 |
+
+### animation（アニメーション条件）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| condition | 'frame'/'end'/'start'/'loop'/'playing'/'stopped' | 判定タイプ |
+| frame? | number | フレーム番号（frame時） |
+| frameRange? | [number, number] | フレーム範囲 |
+| loopCount? | number | ループ回数 |
+
+### gameState（ゲーム状態条件）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| state | 'playing'/'paused'/'success'/'failure' | ゲーム状態 |
+| became? | boolean | 状態変化時のみ発火 |
+
+### random（確率条件）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| probability | number | 確率（0.0-1.0） |
 
 ## アクションタイプ
-| タイプ | パラメータ |
-|--------|------------|
-| success | score?, message? |
-| failure | message? |
-| hide | targetId, fadeOut?, duration? |
-| show | targetId |
-| move | targetId, movement: {type, target?, direction?, speed?, duration?} |
-| counter | counterName, operation: 'increment'/'decrement'/'set'/'add'/'subtract', value? |
-| addScore | points |
-| effect | targetId, effect: {type: 'flash'/'shake'/'scale'/'rotate'/'particles', duration, intensity?} |
-| setFlag | flagId, value |
-| playSound | soundId, volume? |
-| switchAnimation | targetId, animationIndex |
-| applyForce | targetId, force: {x,y} |
-| applyImpulse | targetId, impulse: {x,y} |
 
-## movement.type
-- straight: 直線移動（target座標またはdirection方向へ）
-- teleport: 瞬間移動
-- wander: ランダム徘徊
-- bounce: 壁で反射
-- stop: 停止
+### success/failure（ゲーム終了）★よく使う
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| score? | number | スコア加算 |
+| message? | string | 表示メッセージ |
+
+### hide/show（表示切替）★よく使う
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| targetId | string | 対象オブジェクトID |
+| fadeOut?/fadeIn? | boolean | フェード効果 |
+| duration? | number | フェード時間 |
+
+### move（移動）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| targetId | string | 対象オブジェクトID |
+| movement.type | 'straight'/'teleport'/'wander'/'bounce'/'stop'/'swap'/'approach'/'orbit' | 移動タイプ |
+| movement.target? | {x, y} | 目標座標 |
+| movement.direction? | 'up'/'down'/'left'/'right'/'upLeft'/'upRight'/'downLeft'/'downRight' | 方向 |
+| movement.speed? | number | 速度 |
+| movement.duration? | number | 移動時間（秒） |
+| movement.easing? | 'linear'/'ease-in'/'ease-out'/'bounce' | イージング |
+
+### counter（カウンター操作）★よく使う
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| counterName | string | カウンター名 |
+| operation | 'increment'/'decrement'/'set'/'add'/'subtract' | 操作 |
+| value? | number | 値（set/add/subtract時） |
+
+### effect（エフェクト）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| targetId | string | 対象オブジェクトID |
+| effect.type | 'flash'/'shake'/'scale'/'rotate'/'particles' | エフェクト種類 |
+| effect.duration | number | 持続時間（秒） |
+| effect.intensity? | number | 強度 |
+
+### playSound（効果音）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| soundId | string | 音声ID |
+| volume? | number | 音量（0.0-1.0） |
+
+### setFlag/toggleFlag（フラグ操作）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| flagId | string | フラグID |
+| value? | boolean | 値（setFlag時） |
+
+### addScore（スコア加算）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| points | number | 加算ポイント |
+
+### switchAnimation（アニメーション切替）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| targetId | string | 対象オブジェクトID |
+| animationIndex | number | アニメーション番号 |
+
+### followDrag（ドラッグ追従）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| targetId | string | 対象オブジェクトID |
+| enabled | boolean | 追従有効/無効 |
+
+### applyForce/applyImpulse（物理演算）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| targetId | string | 対象オブジェクトID |
+| force/impulse | {x, y} | 力/衝撃の方向と大きさ |
 `;
 
 const MAPPING_PROMPT = `あなたはSwizzleエディターの仕様マッパーです。
@@ -625,11 +731,51 @@ export class EditorMapper {
       case 'flag':
         return [{
           type: 'flag' as const,
-          flagId: params.flagId as string
+          flagId: params.flagId as string,
+          ...(params.value !== undefined && { value: params.value as boolean })
+        }];
+
+      case 'position':
+        return [{
+          type: 'position' as const,
+          target: params.target as string,
+          area: (params.area as 'inside' | 'outside') || 'inside',
+          region: params.region as { x: number; y: number; width: number; height: number }
+        }];
+
+      case 'animation':
+        return [{
+          type: 'animation' as const,
+          condition: (params.condition as string) || 'end',
+          ...(params.frame !== undefined && { frame: params.frame as number }),
+          ...(params.frameRange && { frameRange: params.frameRange as [number, number] }),
+          ...(params.loopCount !== undefined && { loopCount: params.loopCount as number })
+        }];
+
+      case 'gameState':
+        return [{
+          type: 'gameState' as const,
+          state: (params.state as string) || 'playing',
+          ...(params.became !== undefined && { became: params.became as boolean })
+        }];
+
+      case 'random':
+        return [{
+          type: 'random' as const,
+          probability: (params.probability as number) || 0.5
+        }];
+
+      case 'always':
+        return [{
+          type: 'always' as const
         }];
 
       default:
-        return [];
+        // 未知のタイプはそのまま渡す
+        return [{
+          type: trigger.type as any,
+          ...params
+        }];
     }
   }
 
@@ -683,12 +829,50 @@ export class EditorMapper {
       case 'setFlag':
         return {
           type: 'setFlag' as const,
+          flagId: params.flagId as string,
+          ...(params.value !== undefined && { value: params.value as boolean })
+        };
+
+      case 'toggleFlag':
+        return {
+          type: 'toggleFlag' as const,
           flagId: params.flagId as string
         };
 
+      case 'switchAnimation':
+        return {
+          type: 'switchAnimation' as const,
+          targetId: params.targetId as string,
+          animationIndex: (params.animationIndex as number) || 0
+        };
+
+      case 'followDrag':
+        return {
+          type: 'followDrag' as const,
+          targetId: params.targetId as string,
+          enabled: (params.enabled as boolean) ?? true
+        };
+
+      case 'applyForce':
+        return {
+          type: 'applyForce' as const,
+          targetId: params.targetId as string,
+          force: params.force as { x: number; y: number }
+        };
+
+      case 'applyImpulse':
+        return {
+          type: 'applyImpulse' as const,
+          targetId: params.targetId as string,
+          impulse: params.impulse as { x: number; y: number }
+        };
+
       default:
-        // Fallback for unhandled action types
-        return { type: action.type as GameAction['type'] };
+        // Fallback: 未知のアクションタイプはそのまま渡す
+        return {
+          type: action.type as GameAction['type'],
+          ...params
+        } as GameAction;
     }
   }
 
