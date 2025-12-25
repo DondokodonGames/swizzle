@@ -295,7 +295,29 @@ const ASSET_PLAN_PROMPT = `あなたはゲームアセットプランナーで�
 注意: zPriority は background/default/foreground/overlay から選択
 注意: sizeHint は small/medium/large から選択
 注意: type(effect) は particle/overlay/flash/shake/scale から選択
-注意: mood(bgm) は upbeat/calm/tense/happy/mysterious/energetic から選択`;
+注意: mood(bgm) は upbeat/calm/tense/happy/mysterious/energetic から選択
+
+## サウンドアセットの重要なルール ★★★
+
+### 1. 必須サウンド（削除禁止）
+以下の3つは必ず含める:
+- se_tap: タップ時の効果音 (type: "tap")
+- se_success: 成功時の効果音 (type: "success")
+- se_failure: 失敗時の効果音 (type: "failure")
+
+### 2. サウンドタイプの制限
+sound.type は以下のみ使用可能:
+✅ 有効: tap, success, failure, collect, hit, pop, whoosh, bounce, ding, buzz, countdown, warning
+❌ 無効: indicator, voice, ambient など（エラーになります）
+
+### 3. サウンドIDの命名規則
+- se_xxx: 効果音（例: se_tap, se_collect）
+- bgm_xxx: BGM（例: bgm_main）
+- この命名規則を守らないとLogicOutputで正しく生成されません
+
+### 4. 追加サウンドを定義したら必ず使う
+ここで定義したサウンドはSpecificationGeneratorで参照されます。
+使わないサウンドは定義しないでください。`;
 
 export interface AssetPlannerConfig {
   model?: string;

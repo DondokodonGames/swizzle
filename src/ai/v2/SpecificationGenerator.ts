@@ -260,6 +260,43 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 - 「特定オブジェクトをタップしたら成功」→ touch条件で直接success
 - 「ゴールに到達したら成功」→ collision/position条件で直接success
 
+### カウンター参照エラー防止 ★★★
+ルール内でカウンターを参照する場合、**必ず先にcountersで定義**すること:
+❌ 間違い: ルールで "branches_cut" を参照するが、countersに定義がない
+✅ 正しい: countersに { id: "branches_cut", ... } を定義してからルールで参照
+
+**チェックリスト:**
+1. counter条件で使う全てのcounterNameがcountersに存在するか？
+2. counterアクションで使う全てのcounterNameがcountersに存在するか？
+3. 定義したカウンターは実際にどこかで操作されているか？
+
+## 成功・失敗条件の排他制御 ★必須
+成功と失敗が同時に発動する可能性を防ぐ:
+
+**危険パターン ❌**
+- 扉A〜Dがあり、Aタップで成功、B〜Dタップで失敗
+  → 条件が同じ「タッチ」なので問題はないが、同一フレームの発火順に依存
+
+**安全パターン ✅**
+- 正解オブジェクトと不正解オブジェクトを明確に分離
+- 正解: target_correct をタップ → success
+- 不正解: target_wrong_1〜3 をタップ → failure
+- 各ルールのtargetObjectを正しく設定して区別
+
+**カウンター条件の排他制御 ✅**
+- 失敗: score < 3 かつ time == 0
+- 成功: score >= 3
+→ 条件値で明確に分離
+
+## タイマー設定の注意点 ★必須
+タイマー用カウンターを作る場合:
+1. initialValue は失敗閾値より大きく設定
+   - ✅ initialValue: 500, 失敗条件: <= 0
+   - ❌ initialValue: 0, 失敗条件: <= 0 → 即失敗
+2. timeType は "countdown" または "countup" のみ
+   - ❌ "after" は無効
+3. decrementルールを必ず作成（time条件で毎フレーム減算）
+
 ## 必須サウンド ★必須
 以下の3つは必ず含める:
 - se_tap: タップ時の効果音

@@ -265,6 +265,31 @@ ${EDITOR_SPEC}
 2. どこかのルールでチェックされる（counter条件）
 両方を満たさないカウンターは定義しない。
 
+## カウンター値の妥当性 ★必須（即座に成功/失敗を防ぐ）
+タイマー/カウンターの初期値と判定条件を確認:
+
+### 即失敗を防ぐ
+❌ 間違い: initialValue=0, 失敗条件: lessOrEqual 0 → ゲーム開始直後に失敗
+✅ 正しい: initialValue=500, 失敗条件: lessOrEqual 0 → 時間経過で失敗
+
+### 即成功を防ぐ
+❌ 間違い: initialValue=5, 成功条件: greaterOrEqual 3 → ゲーム開始直後に成功
+✅ 正しい: initialValue=0, 成功条件: greaterOrEqual 3 → 操作で成功
+
+## サウンドタイプの制限 ★必須
+sound.type は以下のみ使用可能:
+✅ 有効: 'effect', 'bgm'
+❌ 無効: 'indicator', 'warning', 'voice', 'ambient' など
+
+例:
+- { "id": "se_tap", "type": "effect", ... }
+- { "id": "bgm_main", "type": "bgm", ... }
+
+## 時間条件のtimeType制限 ★必須
+timeType は以下のみ使用可能:
+✅ 有効: 'exact', 'interval', 'countdown', 'countup'
+❌ 無効: 'after'（'after'は使わずに'exact'を使用）
+
 # 重要: 機械的な変換のみ行う
 - 仕様に書かれていないことは追加しない
 - 仕様の内容を勝手に変更しない
