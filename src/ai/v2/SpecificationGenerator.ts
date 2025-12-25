@@ -260,15 +260,30 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 - 「特定オブジェクトをタップしたら成功」→ touch条件で直接success
 - 「ゴールに到達したら成功」→ collision/position条件で直接success
 
-### カウンター参照エラー防止 ★★★
-ルール内でカウンターを参照する場合、**必ず先にcountersで定義**すること:
-❌ 間違い: ルールで "branches_cut" を参照するが、countersに定義がない
-✅ 正しい: countersに { id: "branches_cut", ... } を定義してからルールで参照
+### カウンター参照エラー防止 ★★★ 最重要 ★★★
 
-**チェックリスト:**
-1. counter条件で使う全てのcounterNameがcountersに存在するか？
-2. counterアクションで使う全てのcounterNameがcountersに存在するか？
-3. 定義したカウンターは実際にどこかで操作されているか？
+**これが最も頻出するエラーです！ルールを書く前に必ずカウンターを定義！**
+
+❌ よくある間違い（エラーになる）:
+- ルールで "wind_strength" を使うが counters に定義がない
+- ルールで "breath_power" をincrementするが counters に定義がない
+- counters に定義した "game_timer" がどのルールでも操作されない
+
+✅ 正しい手順:
+1. まずcountersセクションで全カウンターを定義
+2. その後、定義したカウンター名を正確にルールで参照
+3. 名前のtypo（wind_strength vs wind_power）に注意！
+
+**出力前チェックリスト（必ず確認）:**
+□ rulesのcounter条件で使う全counterNameがcountersに存在？
+□ rulesのcounterアクションで使う全counterNameがcountersに存在？
+□ countersに定義した全カウンターがどこかで操作されている？
+□ countersに定義した全カウンターがどこかでチェックされている？
+
+**複雑なゲームは避ける**
+タイマーや複数カウンターは管理が難しい。シンプルに:
+- 「タップ→成功」の直接パターンを優先
+- カウンターは「タップ数を数える」程度に留める
 
 ## 成功・失敗条件の排他制御 ★必須
 成功と失敗が同時に発動する可能性を防ぐ:
@@ -346,7 +361,21 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 }
 
 ## 4. 音声仕様
-必須: タップ音(se_tap)、成功音(se_success)、失敗音(se_failure)
+
+### 必須サウンド（3つ必ず含める）
+- se_tap: タップ時の効果音 (type: "tap")
+- se_success: 成功時の効果音 (type: "success")
+- se_failure: 失敗時の効果音 (type: "failure")
+
+### サウンドタイプ ★★★
+sound.type は以下のみ使用可能（英語のみ）:
+✅ 有効: tap, success, failure, collect, pop, whoosh, bounce, ding, buzz, splash
+❌ 無効: effect, bgm, se, hit, countdown, warning
+
+### BGM mood ★★★
+bgm.mood は以下の英語のみ使用可能:
+✅ 有効: upbeat, calm, tense, happy, mysterious, energetic
+❌ 無効: 日本語（「緊張感」等）, undefined, その他の英語
 
 ## 5. UI/視認性仕様 ★重要
 操作対象が一目で分かるようにする:

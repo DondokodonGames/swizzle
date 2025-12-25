@@ -306,16 +306,26 @@ const ASSET_PLAN_PROMPT = `あなたはゲームアセットプランナーで�
 - se_failure: 失敗時の効果音 (type: "failure")
 
 ### 2. サウンドタイプの制限
-sound.type は以下のみ使用可能:
-✅ 有効: tap, success, failure, collect, hit, pop, whoosh, bounce, ding, buzz, countdown, warning
-❌ 無効: indicator, voice, ambient など（エラーになります）
+sound.type は効果音のカテゴリを表す以下のみ使用可能:
+✅ 有効: tap, success, failure, collect, pop, whoosh, bounce, ding, buzz, splash
+❌ 無効: effect, bgm, se, hit, countdown, warning, indicator, voice, ambient など（エラーになります）
 
-### 3. サウンドIDの命名規則
+### 3. BGM mood の制限 ★★★
+bgm.mood は必ず以下の英語のみ使用:
+✅ 有効: upbeat, calm, tense, happy, mysterious, energetic
+❌ 無効: undefined, 日本語（「緊張感」「楽しい」等）, その他の英語
+
+例:
+- ✅ { "mood": "upbeat" }
+- ❌ { "mood": "緊張感" }  → エラー
+- ❌ { "mood": undefined } → エラー
+
+### 4. サウンドIDの命名規則
 - se_xxx: 効果音（例: se_tap, se_collect）
 - bgm_xxx: BGM（例: bgm_main）
 - この命名規則を守らないとLogicOutputで正しく生成されません
 
-### 4. 追加サウンドを定義したら必ず使う
+### 5. 追加サウンドを定義したら必ず使う
 ここで定義したサウンドはSpecificationGeneratorで参照されます。
 使わないサウンドは定義しないでください。`;
 

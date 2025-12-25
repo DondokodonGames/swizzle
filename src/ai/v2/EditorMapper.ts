@@ -277,13 +277,14 @@ ${EDITOR_SPEC}
 ✅ 正しい: initialValue=0, 成功条件: greaterOrEqual 3 → 操作で成功
 
 ## サウンドタイプの制限 ★必須
-sound.type は以下のみ使用可能:
-✅ 有効: 'effect', 'bgm'
-❌ 無効: 'indicator', 'warning', 'voice', 'ambient' など
+sound.type は効果音のカテゴリを表す以下のみ使用可能:
+✅ 有効: 'tap', 'success', 'failure', 'collect', 'pop', 'whoosh', 'bounce', 'ding', 'buzz', 'splash'
+❌ 無効: 'effect', 'bgm', 'se', 'indicator', 'warning', 'voice', 'ambient'
 
 例:
-- { "id": "se_tap", "type": "effect", ... }
-- { "id": "bgm_main", "type": "bgm", ... }
+- { "id": "se_tap", "type": "tap", ... }
+- { "id": "se_success", "type": "success", ... }
+- { "id": "se_failure", "type": "failure", ... }
 
 ## 時間条件のtimeType制限 ★必須
 timeType は以下のみ使用可能:
