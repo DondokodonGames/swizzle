@@ -286,29 +286,27 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 各インタラクションをルールとして定義
 
 ### タッチ条件の書き方 ★重要
-タッチ条件では必ず `target` と `touchType` を指定:
-- **target**: タッチ対象
-  - `"self"`: このルールがtargetObjectに設定されたオブジェクト自身
-  - `"stage"`: 画面全体（どこをタッチしても発火）
+タッチ条件では必ず target と touchType を指定:
+- target: タッチ対象
+  - "self": このルールがtargetObjectに設定されたオブジェクト自身
+  - "stage": 画面全体（どこをタッチしても発火）
   - オブジェクトID: 特定のオブジェクトをタッチしたとき
-- **touchType**: タッチの種類
-  - `"down"`: タップ開始
-  - `"up"`: タップ終了
-  - `"drag"`: ドラッグ中
-  - `"hold"`: 長押し
+- touchType: タッチの種類
+  - "down": タップ開始
+  - "up": タップ終了
+  - "drag": ドラッグ中
+  - "hold": 長押し
 
 **例:**
-```json
 {
   "trigger": {
     "type": "touch",
     "parameters": {
-      "target": "self",  // ★必須: タッチ対象を指定
+      "target": "self",
       "touchType": "down"
     }
   }
 }
-```
 
 ## 4. 音声仕様
 必須: タップ音(se_tap)、成功音(se_success)、失敗音(se_failure)
