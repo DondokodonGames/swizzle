@@ -586,10 +586,17 @@ export class EditorMapper {
 
     switch (trigger.type) {
       case 'touch':
+        // targetの正規化: 'stageArea' → 'stage' に変換
+        let touchTarget = (params.target as string) || 'self';
+        if (touchTarget === 'stageArea') {
+          touchTarget = 'stage';
+        }
         return [{
           type: 'touch' as const,
-          target: (params.target as string) || 'self',
-          touchType: (params.touchType as TriggerCondition['touchType']) || 'down'
+          target: touchTarget,
+          touchType: (params.touchType as TriggerCondition['touchType']) || 'down',
+          // regionがある場合は保持
+          ...(params.region && { region: params.region as TriggerCondition['region'] })
         }];
 
       case 'time':

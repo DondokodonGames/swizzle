@@ -285,6 +285,31 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 ## 3. ルール仕様
 各インタラクションをルールとして定義
 
+### タッチ条件の書き方 ★重要
+タッチ条件では必ず `target` と `touchType` を指定:
+- **target**: タッチ対象
+  - `"self"`: このルールがtargetObjectに設定されたオブジェクト自身
+  - `"stage"`: 画面全体（どこをタッチしても発火）
+  - オブジェクトID: 特定のオブジェクトをタッチしたとき
+- **touchType**: タッチの種類
+  - `"down"`: タップ開始
+  - `"up"`: タップ終了
+  - `"drag"`: ドラッグ中
+  - `"hold"`: 長押し
+
+**例:**
+```json
+{
+  "trigger": {
+    "type": "touch",
+    "parameters": {
+      "target": "self",  // ★必須: タッチ対象を指定
+      "touchType": "down"
+    }
+  }
+}
+```
+
 ## 4. 音声仕様
 必須: タップ音(se_tap)、成功音(se_success)、失敗音(se_failure)
 
@@ -351,7 +376,47 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
     ],
     "flags": []
   },
-  "rules": [...],
+  "rules": [
+    {
+      "id": "tap_target_1",
+      "name": "ターゲット1タップ",
+      "description": "ターゲット1をタップしたら消える",
+      "targetObject": "target_1",
+      "trigger": {
+        "type": "touch",
+        "description": "ターゲット1をタップ",
+        "parameters": {
+          "target": "self",
+          "touchType": "down"
+        }
+      },
+      "actions": [
+        { "type": "hide", "description": "消す", "parameters": { "targetId": "target_1" } },
+        { "type": "playSound", "description": "効果音", "parameters": { "soundId": "se_tap" } },
+        { "type": "counter", "description": "カウント+1", "parameters": { "counterName": "tapped_count", "operation": "increment" } }
+      ],
+      "purpose": "core-mechanic"
+    },
+    {
+      "id": "check_win",
+      "name": "勝利判定",
+      "description": "タップ数が目標に達したら成功",
+      "trigger": {
+        "type": "counter",
+        "description": "タップ数が2以上",
+        "parameters": {
+          "counterName": "tapped_count",
+          "comparison": "greaterOrEqual",
+          "value": 2
+        }
+      },
+      "actions": [
+        { "type": "success", "description": "ゲームクリア", "parameters": {} },
+        { "type": "playSound", "description": "成功音", "parameters": { "soundId": "se_success" } }
+      ],
+      "purpose": "win-condition"
+    }
+  ],
   "audio": {
     "sounds": [
       { "id": "se_tap", "trigger": "タップ時", "type": "tap" },       // ★必須
@@ -524,7 +589,7 @@ export class SpecificationGenerator {
         trigger: {
           type: 'touch',
           description: `${obj.name}をタップ`,
-          parameters: { touchType: 'down' }
+          parameters: { target: 'self', touchType: 'down' }
         },
         actions: [
           { type: 'hide', description: 'オブジェクトを消す', parameters: { targetId: obj.id } },
