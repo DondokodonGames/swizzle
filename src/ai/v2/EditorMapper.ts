@@ -259,11 +259,24 @@ ${EDITOR_SPEC}
 - { "id": "se_success", "trigger": "成功時", "type": "success" }
 - { "id": "se_failure", "trigger": "失敗時", "type": "failure" }
 
-## カウンターの一貫性 ★必須
-定義するカウンターは必ず:
-1. どこかのルールで操作される（counterアクション）
-2. どこかのルールでチェックされる（counter条件）
-両方を満たさないカウンターは定義しない。
+## カウンターの一貫性 ★★★最重要★★★
+
+**カウンター参照エラーが最も多いエラーです！**
+
+### 変換前に必ず確認
+仕様(Specification)のカウンターをそのまま使用:
+1. 仕様のcountersに定義されているカウンター名を確認
+2. script.countersに同じID・名前で定義
+3. rulesで参照するcounterNameは必ずcountersのidと完全一致
+
+### よくあるミス ❌
+- 仕様にない "game_timer" をrulesで勝手に参照
+- 仕様の "tapped_count" を "tapped" と略して参照
+- countersを空にしたのにrulesでcounter条件を使用
+
+### 安全な変換 ✅
+仕様にカウンターがない場合 → counters: [] で空にする
+仕様にカウンターがある場合 → 名前を一字一句正確にコピー
 
 ## カウンター値の妥当性 ★必須（即座に成功/失敗を防ぐ）
 タイマー/カウンターの初期値と判定条件を確認:

@@ -233,6 +233,36 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 - その操作に対する適切な条件とアクションを設計
 - 成功時に「気持ちいい瞬間」を演出するフィードバック
 
+## ★★★ 推奨: カウンター不要のシンプルパターン ★★★
+
+**カウンターはエラーの原因になりやすい！以下のパターンを優先：**
+
+### パターン1: 正解オブジェクトをタップ（最も安全）
+- オブジェクト: target_correct（正解）, target_wrong_1〜3（不正解）
+- ルール:
+  - target_correct タップ → success
+  - target_wrong_1 タップ → failure
+  - target_wrong_2 タップ → failure
+- **カウンター不要！**
+
+### パターン2: 特定オブジェクトに到達
+- オブジェクト: player（ドラッグ可能）, goal（ゴール）
+- ルール:
+  - player ドラッグ → followDrag
+  - player と goal 衝突 → success
+- **カウンター不要！**
+
+### パターン3: 複数オブジェクトを順番にタップ（カウンター使用例）
+- オブジェクト: target_1, target_2, target_3
+- カウンター: { id: "tapped", initialValue: 0 }  ← **必ず定義**
+- ルール:
+  - target_1 タップ → hide + counter "tapped" increment
+  - target_2 タップ → hide + counter "tapped" increment
+  - target_3 タップ → hide + counter "tapped" increment
+  - counter "tapped" >= 3 → success  ← **同じ名前で参照**
+
+**複雑なタイマーや複数カウンターは避ける！**
+
 # 入力
 - コンセプト: ゲームの概要（★これがゲームの「正解」）
 - デザイン: ゲームの設計
