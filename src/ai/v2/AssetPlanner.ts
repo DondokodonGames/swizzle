@@ -93,9 +93,23 @@ export interface AssetPolicy {
 }
 
 /**
+ * 画面構成（アセットが画面全体でどう機能するか）
+ */
+export interface ScreenComposition {
+  layout: string;                   // 画面レイアウトの説明
+  focalPoint: string;               // 視線の中心となる要素
+  visualHierarchy: string[];        // 視覚的優先順位（前景→背景）
+  colorScheme: string;              // 色の統一感
+  overallMood: string;              // 全体の雰囲気
+}
+
+/**
  * AssetPlan (強化版)
  */
 export interface EnhancedAssetPlan {
+  // ★ 画面構成（アセット間の関係性）
+  screenComposition: ScreenComposition;
+
   objects: ObjectAssetPlan[];
   background: BackgroundAssetPlan;
   audio: AudioAssetPlan;
@@ -120,28 +134,50 @@ export interface AssetPlanDecision {
 const ASSET_PLAN_PROMPT = `あなたはゲームアセットプランナーです。
 ゲームデザインを分析し、必要なアセットを漏れなく列挙してください。
 
-# ★★★ 最重要: ゲームコンセプトを視覚化する ★★★
+# ★★★ 最重要: 「画面構成」としてアセットを設計する ★★★
 
-**コンセプトに登場する具体的なモノをアセットとして定義してください。**
+個々のアセットを独立に考えるのではなく、**ゲーム画面全体で見たときにどう機能するか**を考えてください。
+
+## 画面構成の考え方
+
+**例: 「錠前を回して開ける」ゲーム**
+画面に必要な要素:
+- 中央: 錠前本体（鍵穴が見える、プレイヤーが回転操作する対象）
+- 錠前の上: 鍵穴マーク（正解の位置を示す目印）
+- 背景: 古びた扉や宝箱（テーマを伝える）
+→ これらが**一枚の絵として成立**するようにデザイン
+
+**例: 「金魚をすくう」ゲーム**
+画面に必要な要素:
+- 下部: 水面（金魚が泳ぐ領域）
+- 水中: 金魚たち（すくう対象）
+- プレイヤー手元: ポイ（操作するツール）
+- 背景: 屋台の雰囲気
+→ 縁日の金魚すくいの**一場面**として成立
+
+## アセット設計の原則
+
+### 1. 役割と配置を同時に考える
+各アセットが画面のどこに配置され、何のために存在するかを明確に:
+- 「このアセットはプレイヤーの操作対象？それとも背景の一部？」
+- 「画面のどのあたりに配置される？」
+- 「他のアセットとの位置関係は？」
+
+### 2. 視覚的階層を意識する
+- **前景（操作対象）**: 目立つ色、大きめ、輪郭明確
+- **中景（環境要素）**: 操作対象を邪魔しない
+- **背景**: 雰囲気を伝えるが主張しすぎない
+
+### 3. 統一感のある見た目
+同じ画面に出るアセットは統一されたスタイルで:
+- 色味（暖色系で統一、寒色系で統一など）
+- 線の太さ・質感
+- デフォルメの度合い
+
+## コンセプト固有のアセット
 汎用的なアセットではなく、このゲーム固有のアセットを作ります。
-
-## 例: コンセプトの実現
-コンセプト「3匹の金魚をすくう」の場合:
-- ✅ 正しい: goldfish_1, goldfish_2, goldfish_3（金魚のイラスト3体）
-- ✅ 正しい: poi（金魚すくいのポイ）
-- ✅ 正しい: background（金魚すくいの水槽）
-- ❌ 間違い: target_1, target_2, target_3（汎用ターゲット）
-
-コンセプト「隠れた猫を見つける」の場合:
-- ✅ 正しい: hidden_cat（隠れている猫）
-- ✅ 正しい: hiding_spot_1, hiding_spot_2（隠れ場所：箱、カーテンなど）
-- ✅ 正しい: background（部屋の背景）
-- ❌ 間違い: target（汎用ターゲット）
-
-## アセット命名規則
-- ゲームのテーマに合った具体的な名前を使う
-- 汎用的な「target」「item」ではなく「cat」「star」「goldfish」などを使う
-- 数量がある場合は連番（star_1, star_2, star_3）
+- ✅ 正しい: lock_body, keyhole, key（錠前ゲーム用）
+- ❌ 間違い: target_1, circle_1（汎用すぎる）
 
 # 重要な原則
 
@@ -187,6 +223,13 @@ const ASSET_PLAN_PROMPT = `あなたはゲームアセットプランナーで�
 以下のJSON構造のみを出力。説明コメントは含めないでください。
 
 {
+  "screenComposition": {
+    "layout": "画面レイアウトの説明（例：中央に錠前、上部に鍵穴マーク、背景に宝箱）",
+    "focalPoint": "視線の中心（例：錠前の鍵穴部分）",
+    "visualHierarchy": ["操作対象（最前面）", "UI要素", "環境要素", "背景"],
+    "colorScheme": "色の統一感（例：ゴールドと茶色のアンティーク調）",
+    "overallMood": "全体の雰囲気（例：神秘的で少し緊張感のある宝探し）"
+  },
   "objects": [
     {
       "id": "door_1",
@@ -382,6 +425,13 @@ export class AssetPlanner {
     }));
 
     return {
+      screenComposition: {
+        layout: `${concept.theme}をテーマにした画面構成`,
+        focalPoint: objects[0]?.name || 'メインオブジェクト',
+        visualHierarchy: ['操作対象', 'UI要素', '背景'],
+        colorScheme: `${concept.visualStyle}に合った配色`,
+        overallMood: concept.visualStyle
+      },
       objects,
       background: {
         type: 'image',
