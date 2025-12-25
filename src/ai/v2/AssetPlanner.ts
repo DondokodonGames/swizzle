@@ -184,27 +184,27 @@ const ASSET_PLAN_PROMPT = `あなたはゲームアセットプランナーで�
 {{DESIGN}}
 
 # 出力形式
-以下のJSON構造のみを出力。
+以下のJSON構造のみを出力。説明コメントは含めないでください。
 
 {
   "objects": [
     {
-      "id": "object_id",
-      "name": "表示名",
-      "role": "target/obstacle/collectible/ui/effect/decoration/indicator",
+      "id": "door_1",
+      "name": "次元の扉1",
+      "role": "target",
       "states": [
         { "name": "normal", "description": "通常状態の見た目", "isDefault": true },
-        { "name": "hit", "description": "タップされた時の見た目", "isDefault": false }
+        { "name": "active", "description": "光っている状態", "isDefault": false }
       ],
-      "hitboxType": "rect/circle/pixel/none",
-      "touchable": true/false,
-      "zPriority": "background/default/foreground/overlay",
-      "sizeHint": "small/medium/large",
-      "visualDescription": "詳細な見た目の説明"
+      "hitboxType": "rect",
+      "touchable": true,
+      "zPriority": "foreground",
+      "sizeHint": "medium",
+      "visualDescription": "紫色に輝く異次元への扉、中央に渦巻き模様"
     }
   ],
   "background": {
-    "type": "image/color/none",
+    "type": "image",
     "description": "背景の説明",
     "mood": "雰囲気",
     "scrollable": false
@@ -218,7 +218,7 @@ const ASSET_PLAN_PROMPT = `あなたはゲームアセットプランナーで�
     "bgm": {
       "id": "bgm_main",
       "description": "BGMの説明",
-      "mood": "upbeat/calm/tense/happy/mysterious/energetic",
+      "mood": "mysterious",
       "loopable": true
     }
   },
@@ -226,13 +226,13 @@ const ASSET_PLAN_PROMPT = `あなたはゲームアセットプランナーで�
     {
       "id": "effect_success",
       "trigger": "success",
-      "type": "particle/overlay/flash/shake/scale",
+      "type": "particle",
       "description": "演出の説明",
       "duration": 1.0
     }
   ],
   "assetPolicy": {
-    "imageFormat": "svg/png/any",
+    "imageFormat": "png",
     "maxImageSize": { "width": 512, "height": 512 },
     "requireTransparency": true,
     "styleGuide": "スタイルの説明（例：フラットデザイン、丸みを帯びた形状）"
@@ -240,12 +240,19 @@ const ASSET_PLAN_PROMPT = `あなたはゲームアセットプランナーで�
   "totalAssetCount": 10,
   "planDecisions": [
     {
-      "category": "object/audio/effect/policy",
+      "category": "object",
       "decision": "何を決めたか",
       "reasoning": "なぜ"
     }
   ]
-}`;
+}
+
+注意: role は target/obstacle/collectible/ui/effect/decoration/indicator から選択
+注意: hitboxType は rect/circle/pixel/none から選択
+注意: zPriority は background/default/foreground/overlay から選択
+注意: sizeHint は small/medium/large から選択
+注意: type(effect) は particle/overlay/flash/shake/scale から選択
+注意: mood(bgm) は upbeat/calm/tense/happy/mysterious/energetic から選択`;
 
 export interface AssetPlannerConfig {
   model?: string;
