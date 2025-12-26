@@ -259,35 +259,60 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 
 ## ⚠️⚠️⚠️ 緊急警告: CONFLICTING_TERMINATION エラー防止 ⚠️⚠️⚠️
 
-**Run 19で6件発生した最頻発エラー！ゲームが即座に無効になる致命的問題！**
+**Run 19-20で計11件発生した最頻発エラー！ゲームが即座に無効になる致命的問題！**
 
-### 問題: success と failure が同時に発火可能な構造
+### 問題1: touch条件で success と failure が同時に発火可能
 \`\`\`
 // ❌ NG: 両方のルールで target が同じ（または "self"）
-{ "id": "tap_correct", "trigger": { "parameters": { "target": "self" } }, "actions": [{ "type": "success" }] }
-{ "id": "tap_wrong", "trigger": { "parameters": { "target": "self" } }, "actions": [{ "type": "failure" }] }
+{ "id": "tap_correct", "trigger": { "type": "touch", "parameters": { "target": "self" } }, "actions": [{ "type": "success" }] }
+{ "id": "tap_wrong", "trigger": { "type": "touch", "parameters": { "target": "self" } }, "actions": [{ "type": "failure" }] }
 // → 両方 "self" なので「同一条件」と判定されCONFLICTエラー！
 \`\`\`
 
-### 解決策: 各ルールの target に異なるオブジェクトIDを指定
+### 問題2: counter/flag条件で「勝利判定」「敗北判定」を分けようとする ★Run20で多発！
 \`\`\`
-// ✅ OK: 各ルールで異なるオブジェクトIDを target に指定
-{ "id": "tap_correct", "trigger": { "parameters": { "target": "card_correct" } }, "actions": [{ "type": "success" }] }
-{ "id": "tap_wrong_1", "trigger": { "parameters": { "target": "card_wrong_1" } }, "actions": [{ "type": "failure" }] }
-{ "id": "tap_wrong_2", "trigger": { "parameters": { "target": "card_wrong_2" } }, "actions": [{ "type": "failure" }] }
+// ❌ NG: counter条件で勝敗を分けようとする
+{ "id": "check_win", "trigger": { "type": "counter", "parameters": { "counterName": "score", "comparison": "greaterOrEqual", "value": 3 } }, "actions": [{ "type": "success" }] }
+{ "id": "check_lose", "trigger": { "type": "counter", "parameters": { "counterName": "score", "comparison": "lessOrEqual", "value": 0 } }, "actions": [{ "type": "failure" }] }
+// → 両方ともcounter条件で同じカウンターを参照しているためCONFLICTの可能性！
+\`\`\`
+
+### 問題3: position条件で「勝利エリア」「敗北エリア」を分けようとする
+\`\`\`
+// ❌ NG: position条件で勝敗を分ける
+{ "id": "reach_goal", "trigger": { "type": "position", "parameters": { "target": "player", "region": {...} } }, "actions": [{ "type": "success" }] }
+{ "id": "fall_off", "trigger": { "type": "position", "parameters": { "target": "player", "region": {...} } }, "actions": [{ "type": "failure" }] }
+// → 同じオブジェクト(player)のposition条件なのでCONFLICTの可能性！
+\`\`\`
+
+### ★★★ 解決策: シンプルなパターンを使う ★★★
+
+**カウンター・フラグ・ポジション条件で勝敗を分けるのは避ける！**
+**代わりに「タップで即座に勝敗が決まる」シンプルなパターンを使う：**
+
+\`\`\`
+// ✅ OK: 各ルールで異なるオブジェクトIDを touch の target に指定
+{ "id": "tap_correct", "trigger": { "type": "touch", "parameters": { "target": "card_correct" } }, "actions": [{ "type": "success" }] }
+{ "id": "tap_wrong_1", "trigger": { "type": "touch", "parameters": { "target": "card_wrong_1" } }, "actions": [{ "type": "failure" }] }
+{ "id": "tap_wrong_2", "trigger": { "type": "touch", "parameters": { "target": "card_wrong_2" } }, "actions": [{ "type": "failure" }] }
 // → それぞれ異なるオブジェクトIDなのでCONFLICTしない！
 \`\`\`
 
-### ★★★ 絶対ルール ★★★
-1. **複数オブジェクトで success/failure を分ける場合 → target に "self" を使わない**
-2. **target には必ず実際のオブジェクトID（objects配列で定義したID）を使う**
-3. **各ルールの target が重複しないことを確認**
+### ★★★ 絶対禁止パターン ★★★
+1. **「勝利条件の確認」「敗北条件の確認」という名前のルール** → シンプルにタップで決める！
+2. **counter/flag条件でsuccess/failureを発火** → タップで直接success/failureを発火！
+3. **position条件で「ゴールエリア」「落下エリア」を分ける** → collision条件で異なるオブジェクトに衝突したら判定！
+
+### ★★★ 推奨パターン ★★★
+1. **正解オブジェクトをタップ → success**
+2. **不正解オブジェクトをタップ → failure**
+3. **時間切れ → failure**（time条件）
 
 ---
 
 ## ★★★ 推奨: シンプルゲームパターン集（50種類） ★★★
 
-**カウンターはエラーの原因になりやすい！以下のパターンを参考に：**
+**カウンターはエラーの原因！使わないこと！以下のパターンを参考に：**
 
 ---
 ### 【タップ系】正解をタップするだけ
@@ -643,12 +668,18 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 - 1.0を超える値も禁止（1.2, 5, 4.9 などは NG）
 - 中央 = (0.5, 0.5)、左上 = (0.0, 0.0)、右下 = (1.0, 1.0)
 
-### よくある間違い ❌
+### よくある間違い ❌ ★Run20で発生！
 \`\`\`json
-// NG: region.yが5（範囲外）
+// NG: region.yが-1.5（負の値）★Run20で発生したエラー！
+{ "type": "position", "parameters": { "region": { "x": 0.5, "y": -1.5, "width": 0.2, "height": 0.2 } } }
+
+// NG: region.yが-0.5（負の値）★Run20で発生したエラー！
+{ "type": "position", "parameters": { "region": { "x": 0.3, "y": -0.5, "width": 0.4, "height": 0.1 } } }
+
+// NG: region.yが5（1.0を超えている）
 { "type": "position", "parameters": { "region": { "x": 0.5, "y": 5, "width": 0.2, "height": 0.2 } } }
 
-// NG: region.yが4.9（範囲外）
+// NG: region.yが4.9（1.0を超えている）
 { "type": "position", "parameters": { "region": { "x": 0.3, "y": 4.9, "width": 0.4, "height": 0.1 } } }
 \`\`\`
 
@@ -656,26 +687,34 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 \`\`\`json
 // OK: すべて0.0-1.0の範囲内
 { "type": "position", "parameters": { "region": { "x": 0.3, "y": 0.7, "width": 0.4, "height": 0.2 } } }
+
+// OK: 画面上部 (y=0.0〜0.2)
+{ "type": "position", "parameters": { "region": { "x": 0.0, "y": 0.0, "width": 1.0, "height": 0.2 } } }
+
+// OK: 画面下部 (y=0.8〜1.0)
+{ "type": "position", "parameters": { "region": { "x": 0.0, "y": 0.8, "width": 1.0, "height": 0.2 } } }
 \`\`\`
 
-## カウンターの一貫性 ★必須
-カウンターを定義する場合、必ず以下の両方が必要:
-1. **変更するルール**: counterアクションでカウンターを操作
-2. **チェックするルール**: counter条件でカウンターを判定
+## ⚠️ カウンターは使用禁止 ⚠️ ★Run20でもエラー多発！
 
-例:
-- ✅ tapped_count: タップで+1、5以上で成功 → 両方ある
-- ❌ game_time: 失敗条件でチェックするが、どこでも操作しない → NG
-- ❌ wind_timer: 定義したが使わない → NG（定義しない）
+**Run 20でカウンター未定義エラーが4件発生！**
+**カウンターを使うとほぼ確実にエラーになります！**
 
-**カウンターが不要な場合は定義しない**
-- 「特定オブジェクトをタップしたら成功」→ touch条件で直接success
-- 「ゴールに到達したら成功」→ collision/position条件で直接success
+### ★★★ 99%のゲームはカウンター不要 ★★★
 
-### ★★★ カウンターは原則使用禁止 ★★★
+カウンターを使わずに実装する方法:
+- 「正解をタップしたら成功」→ touch条件で直接success（カウンター不要）
+- 「ゴールに到達したら成功」→ collision条件で直接success（カウンター不要）
+- 「5秒生き残ったら成功」→ time条件で直接success（カウンター不要）
+- 「3回タップしたら成功」→ 3つのオブジェクトを用意し、すべてタップでsuccess（カウンター不要）
 
-**カウンター未定義エラーが最も多いエラーです！**
-**95%のゲームはカウンター不要で実装可能です！**
+### stateManagement.counters は空配列にする
+\`\`\`json
+"stateManagement": {
+  "counters": [],  // ★空配列！カウンターは使わない！
+  "flags": []
+}
+\`\`\`
 
 #### まず検討: カウンターなしで実装できないか？
 - 「正解をタップしたら成功」→ touch + success（カウンター不要）
