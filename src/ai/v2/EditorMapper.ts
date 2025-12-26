@@ -588,6 +588,24 @@ export class EditorMapper {
    * ポスト処理: 座標のクランプ、必須サウンドの追加など
    */
   private postProcess(output: LogicGeneratorOutput): LogicGeneratorOutput {
+    // 0. 防御的初期化: script と assetPlan が存在することを保証
+    if (!output.script) {
+      console.warn('      [PostProcess] Missing script, creating empty structure');
+      output.script = { layout: { objects: [] }, counters: [], rules: [] };
+    }
+    if (!output.script.counters) {
+      output.script.counters = [];
+    }
+    if (!output.script.rules) {
+      output.script.rules = [];
+    }
+    if (!output.script.layout) {
+      output.script.layout = { objects: [] };
+    }
+    if (!output.script.layout.objects) {
+      output.script.layout.objects = [];
+    }
+
     // 1. 座標をクランプ (0.0-1.0)
     if (output.script?.layout?.objects) {
       for (const obj of output.script.layout.objects) {
@@ -610,6 +628,9 @@ export class EditorMapper {
     // 2. 必須サウンドを確保
     if (!output.assetPlan) {
       output.assetPlan = { objects: [], background: { description: '', mood: '' }, sounds: [] };
+    }
+    if (!output.assetPlan.objects) {
+      output.assetPlan.objects = [];
     }
     if (!output.assetPlan.sounds) {
       output.assetPlan.sounds = [];
