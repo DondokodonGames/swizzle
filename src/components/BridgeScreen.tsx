@@ -266,6 +266,66 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     recordShare('line');
   }, [currentGame.title, gameUrl, score, t]);
 
+  const handleShareWhatsApp = useCallback(() => {
+    const text = score
+      ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
+      : t('bridge.share.playText', { title: currentGame.title });
+    const url = `https://wa.me/?text=${encodeURIComponent(text + '\n' + gameUrl)}`;
+    window.open(url, '_blank');
+    recordShare('whatsapp');
+  }, [currentGame.title, gameUrl, score, t]);
+
+  const handleShareFacebook = useCallback(() => {
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(gameUrl)}`;
+    window.open(url, '_blank', 'width=550,height=420');
+    recordShare('facebook');
+  }, [gameUrl]);
+
+  const handleShareReddit = useCallback(() => {
+    const title = score
+      ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
+      : t('bridge.share.playText', { title: currentGame.title });
+    const url = `https://www.reddit.com/submit?url=${encodeURIComponent(gameUrl)}&title=${encodeURIComponent(title)}`;
+    window.open(url, '_blank', 'width=550,height=600');
+    recordShare('reddit');
+  }, [currentGame.title, gameUrl, score, t]);
+
+  const handleShareDiscord = useCallback(async () => {
+    const text = score
+      ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
+      : t('bridge.share.playText', { title: currentGame.title });
+    try {
+      await navigator.clipboard.writeText(text + '\n' + gameUrl);
+      alert(t('bridge.share.discordCopied'));
+      recordShare('discord');
+    } catch (error) {
+      console.error('Copy failed:', error);
+    }
+  }, [currentGame.title, gameUrl, score, t]);
+
+  const handleShareTelegram = useCallback(() => {
+    const text = score
+      ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
+      : t('bridge.share.playText', { title: currentGame.title });
+    const url = `https://t.me/share/url?url=${encodeURIComponent(gameUrl)}&text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+    recordShare('telegram');
+  }, [currentGame.title, gameUrl, score, t]);
+
+  const handleShareWeChat = useCallback(async () => {
+    // WeChat doesn't have web share URL - copy to clipboard for sharing
+    const text = score
+      ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
+      : t('bridge.share.playText', { title: currentGame.title });
+    try {
+      await navigator.clipboard.writeText(text + '\n' + gameUrl);
+      alert(t('bridge.share.wechatCopied'));
+      recordShare('wechat');
+    } catch (error) {
+      console.error('Copy failed:', error);
+    }
+  }, [currentGame.title, gameUrl, score, t]);
+
   const handleNativeShare = useCallback(async () => {
     if (navigator.share) {
       try {
@@ -813,18 +873,25 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 {urlCopied ? '✓ ' + t('bridge.share.urlCopied') : '📋 ' + t('bridge.share.copyUrl')}
               </button>
 
-              {/* SNS共有ボタン（アイコンのみ・横並び） */}
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              {/* SNS共有ボタン（アイコンのみ・グリッド表示） */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '12px',
+                justifyItems: 'center',
+                maxWidth: '280px',
+                margin: '0 auto'
+              }}>
                 {/* X(Twitter)共有ボタン */}
                 <button
                   onClick={handleShareTwitter}
                   style={{
-                    width: '60px',
-                    height: '60px',
+                    width: '56px',
+                    height: '56px',
                     background: '#000000',
                     color: 'white',
                     fontWeight: 'bold',
-                    fontSize: '28px',
+                    fontSize: '24px',
                     borderRadius: '50%',
                     border: 'none',
                     cursor: 'pointer',
@@ -832,21 +899,131 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
-                  title="X (Twitter)"
+                  title="X"
                 >
                   𝕏
+                </button>
+
+                {/* Facebook共有ボタン */}
+                <button
+                  onClick={handleShareFacebook}
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    background: '#1877F2',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: '24px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  title="Facebook"
+                >
+                  f
+                </button>
+
+                {/* WhatsApp共有ボタン */}
+                <button
+                  onClick={handleShareWhatsApp}
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    background: '#25D366',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: '24px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  title="WhatsApp"
+                >
+                  📱
+                </button>
+
+                {/* Reddit共有ボタン */}
+                <button
+                  onClick={handleShareReddit}
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    background: '#FF4500',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: '20px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  title="Reddit"
+                >
+                  👽
+                </button>
+
+                {/* Discord共有ボタン */}
+                <button
+                  onClick={handleShareDiscord}
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    background: '#5865F2',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: '20px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  title="Discord"
+                >
+                  🎮
+                </button>
+
+                {/* Telegram共有ボタン */}
+                <button
+                  onClick={handleShareTelegram}
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    background: '#0088CC',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: '20px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  title="Telegram"
+                >
+                  ✈️
                 </button>
 
                 {/* LINE共有ボタン */}
                 <button
                   onClick={handleShareLine}
                   style={{
-                    width: '60px',
-                    height: '60px',
+                    width: '56px',
+                    height: '56px',
                     background: '#00B900',
                     color: 'white',
                     fontWeight: 'bold',
-                    fontSize: '28px',
+                    fontSize: '20px',
                     borderRadius: '50%',
                     border: 'none',
                     cursor: 'pointer',
@@ -859,30 +1036,52 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   💬
                 </button>
 
-                {/* ネイティブ共有ボタン（対応ブラウザのみ） */}
-                {typeof navigator !== 'undefined' && 'share' in navigator && (
-                  <button
-                    onClick={handleNativeShare}
-                    style={{
-                      width: '60px',
-                      height: '60px',
-                      background: 'rgba(255, 255, 255, 0.3)',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      fontSize: '28px',
-                      borderRadius: '50%',
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    title={t('bridge.share.shareNative')}
-                  >
-                    📤
-                  </button>
-                )}
+                {/* WeChat共有ボタン */}
+                <button
+                  onClick={handleShareWeChat}
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    background: '#07C160',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: '20px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  title="WeChat"
+                >
+                  💚
+                </button>
               </div>
+
+              {/* ネイティブ共有ボタン（対応ブラウザのみ） */}
+              {typeof navigator !== 'undefined' && 'share' in navigator && (
+                <button
+                  onClick={handleNativeShare}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: '14px',
+                    padding: '12px',
+                    borderRadius: '16px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  📤 {t('bridge.share.shareNative')}
+                </button>
+              )}
 
               {/* 閉じるボタン */}
               <button

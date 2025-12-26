@@ -255,15 +255,36 @@ export class GameSocialSharingService {
     facebook: string;
     line: string;
     reddit: string;
+    whatsapp: string;
+    telegram: string;
+    discord: string;
+    wechat: string;
   } {
     const gameUrl = encodeURIComponent(this.generateGameUrl(game.id));
+    const rawGameUrl = this.generateGameUrl(game.id);
     const text = encodeURIComponent(`${game.title}で遊んでみて！ #Swizzle #IndieGame`);
+    const rawText = `${game.title}で遊んでみて！ #Swizzle #IndieGame`;
 
     return {
+      // Global
       twitter: `https://twitter.com/intent/tweet?url=${gameUrl}&text=${text}`,
       facebook: `https://www.facebook.com/sharer/sharer.php?u=${gameUrl}`,
-      line: `https://social-plugins.line.me/lineit/share?url=${gameUrl}`,
+
+      // Europe/Americas/Africa/South Asia
+      whatsapp: `https://wa.me/?text=${encodeURIComponent(rawText + '\n' + rawGameUrl)}`,
       reddit: `https://www.reddit.com/submit?url=${gameUrl}&title=${encodeURIComponent(game.title)}`,
+
+      // Europe/Middle East
+      telegram: `https://t.me/share/url?url=${gameUrl}&text=${text}`,
+
+      // Gaming communities (copy to clipboard)
+      discord: rawGameUrl, // Discord doesn't have share URL - use clipboard
+
+      // Asia
+      line: `https://social-plugins.line.me/lineit/share?url=${gameUrl}`,
+
+      // China (copy to clipboard)
+      wechat: rawGameUrl, // WeChat doesn't have web share URL - use clipboard
     };
   }
 
