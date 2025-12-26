@@ -285,19 +285,85 @@ export class AssetGenerator {
    * - 均一な領域があり、オブジェクトの視認性が確保される
    */
   private buildBackgroundPrompt(concept: GameConcept, bgPlan: AssetPlan['background']): string {
+    // 背景スタイルのバリエーション
+    const bgStyleVariations = this.getBackgroundStyle(bgPlan.mood, concept.visualStyle);
+
     return `Mobile game background for "${concept.theme}":
 Scene: ${bgPlan.description}
 Mood: ${bgPlan.mood}
 Style: ${concept.visualStyle}
 
+BACKGROUND STYLE:
+${bgStyleVariations}
+
 CRITICAL REQUIREMENTS:
-- Abstract, minimal background with soft gradients and subtle patterns
 - NO characters, NO game objects, NO icons, NO UI elements, NO text
-- Central area must be clear and uniform for game objects to be placed on top
-- Use muted, desaturated colors that won't compete with foreground sprites
+- Central area (middle 60% of screen) must be clear for game objects
 - Vertical mobile format composition (portrait orientation)
-- Simple, clean digital illustration style
-- Depth through subtle atmospheric perspective, not detailed elements`;
+- Depth through atmospheric perspective
+
+FORBIDDEN:
+- No foreground elements that would overlap with game objects
+- No busy patterns in the central play area
+- No photorealistic style (unless specifically requested)`;
+  }
+
+  /**
+   * 背景スタイルのバリエーション生成
+   * 固定的な背景ではなく、moodとstyleに基づいて多様な背景を生成
+   */
+  private getBackgroundStyle(mood: string, visualStyle: string): string {
+    const moodStyles: Record<string, string> = {
+      '緊張': `
+- Dark, dramatic lighting with deep shadows
+- Muted color palette with occasional red or orange accents
+- Subtle vignette effect around edges
+- Architectural or industrial elements in background`,
+      '楽しい': `
+- Bright, cheerful colors with warm lighting
+- Playful shapes and patterns (polka dots, stripes, confetti)
+- Soft pastel or vivid saturated colors
+- Whimsical elements (clouds, stars, balloons) in corners`,
+      '神秘的': `
+- Deep blues and purples with glowing accents
+- Starfield or cosmic patterns
+- Ethereal mist or aurora effects
+- Ancient symbols or magical runes as subtle decoration`,
+      '和風': `
+- Traditional Japanese color palette (indigo, vermillion, gold)
+- Subtle paper texture or watercolor effect
+- Cherry blossoms, waves, or cloud patterns
+- Asymmetric composition with empty space (ma)`,
+      'ポップ': `
+- Bold, saturated colors with high contrast
+- Geometric patterns (circles, triangles, zigzags)
+- Gradient transitions between bright colors
+- Memphis-style decorative elements`,
+      'ナチュラル': `
+- Earthy tones with natural lighting
+- Organic textures (wood grain, stone, leaves)
+- Soft gradients mimicking sky or water
+- Nature elements (trees, flowers) at edges`,
+      'レトロ': `
+- Vintage color palette (orange, teal, cream)
+- Halftone dots or scan line effects
+- Retro typography-inspired patterns
+- Nostalgic textures (old paper, worn edges)`,
+      'サイバー': `
+- Neon colors on dark backgrounds
+- Digital grid or circuit patterns
+- Glowing lines and holographic effects
+- Futuristic cityscape silhouettes`,
+    };
+
+    // moodまたはvisualStyleに基づいてスタイルを選択
+    const selectedStyle = moodStyles[mood] || moodStyles[visualStyle] ||
+      `- Soft gradients with subtle patterns
+- Muted, desaturated colors
+- Minimal decoration, focus on atmosphere
+- Clean, modern digital illustration style`;
+
+    return selectedStyle;
   }
 
   /**
@@ -312,19 +378,69 @@ CRITICAL REQUIREMENTS:
     const sizeDesc = objPlan.size === 'small' ? 'small compact icon (64px style)' :
                      objPlan.size === 'large' ? 'large prominent sprite (192px style)' :
                      'medium sized sprite (128px style)';
-    return `Game sprite object: ${objPlan.visualDescription}
-Purpose: ${objPlan.purpose}
-Size: ${sizeDesc}
-Style: ${concept.visualStyle}
+
+    // スタイルシート情報を構築
+    const styleSheet = this.buildStyleSheet(concept);
+
+    return `Game sprite object for mobile game: ${objPlan.visualDescription}
+
+PURPOSE: ${objPlan.purpose}
+SIZE: ${sizeDesc}
+STYLE: ${concept.visualStyle}
+
+${styleSheet}
 
 CRITICAL REQUIREMENTS:
 - MUST have fully transparent background (PNG with alpha channel)
 - Clear, distinct silhouette that's easily recognizable
 - Bold colors and strong contrast for visibility
 - Simple, clean design suitable for mobile game
-- NO background elements, NO shadows on ground, NO text
+
+VIEW REQUIREMENTS (VERY IMPORTANT):
+- FRONT-FACING VIEW ONLY - show the object from the front/main angle
+- NOT a technical drawing, NOT a blueprint, NOT a 3D model sheet
+- NOT multi-angle view, NOT orthographic projection, NOT isometric
+- NOT a diagram or schematic
+- Just ONE single view of the object as it would appear in game
+
+FORBIDDEN:
+- NO background elements
+- NO shadows on ground
+- NO text or labels
+- NO multiple views of the same object
+- NO construction lines or measurements
+- NO top/side/front view combinations
+
+OUTPUT:
 - Single isolated object, centered in frame
-- Cartoon/game art style, not photorealistic`;
+- Cartoon/game art style, not photorealistic
+- Ready to use as a game sprite`;
+  }
+
+  /**
+   * スタイルシート生成
+   * 全オブジェクトで統一感を持たせるためのスタイル情報
+   */
+  private buildStyleSheet(concept: GameConcept): string {
+    // テーマに基づいた色パレットを提案
+    const colorPalettes: Record<string, string> = {
+      '和風': 'Primary: crimson red (#DC143C), Secondary: gold (#FFD700), Accent: deep navy (#1B2838)',
+      'ポップ': 'Primary: hot pink (#FF69B4), Secondary: cyan (#00FFFF), Accent: lime (#32CD32)',
+      'ファンタジー': 'Primary: royal purple (#7B68EE), Secondary: gold (#FFD700), Accent: emerald (#50C878)',
+      'レトロ': 'Primary: orange (#FF8C00), Secondary: teal (#008080), Accent: cream (#FFFDD0)',
+      'サイバー': 'Primary: neon blue (#00BFFF), Secondary: magenta (#FF00FF), Accent: black (#000000)',
+      'ナチュラル': 'Primary: forest green (#228B22), Secondary: earth brown (#8B4513), Accent: sky blue (#87CEEB)',
+    };
+
+    // デフォルトパレット
+    const palette = colorPalettes[concept.visualStyle] ||
+      'Primary: bright and saturated, Secondary: complementary, Accent: contrasting';
+
+    return `STYLE SHEET (apply to ALL sprites in this game):
+Color Palette: ${palette}
+Line Style: ${concept.visualStyle.includes('フラット') ? 'no outlines, flat colors' : 'bold 2-3px outlines, clean edges'}
+Texture: ${concept.visualStyle.includes('リアル') ? 'subtle texture allowed' : 'flat colors, minimal gradients'}
+Shape Language: ${concept.visualStyle.includes('かわいい') || concept.visualStyle.includes('ポップ') ? 'rounded, soft curves' : 'geometric, clean shapes'}`;
   }
 
   /**
