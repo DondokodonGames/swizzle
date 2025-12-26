@@ -643,6 +643,53 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 - se_success: 成功時の効果音
 - se_failure: 失敗時の効果音
 
+## ★★★ 有効なタイプ一覧（これ以外は使用禁止）★★★
+
+### 条件タイプ（trigger.type）
+✅ 有効: 'touch', 'time', 'counter', 'collision', 'flag', 'gameState', 'position', 'animation', 'random', 'objectState'
+❌ 無効: 'state', 'deviceTilt', 'sensor', 'gesture'
+
+### アクションタイプ（actions[].type）
+✅ 有効: 'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag', 'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'followDrag', 'applyForce', 'applyImpulse', 'randomAction', 'pause', 'restart'
+❌ 無効: 'changeState', 'adjustAngle', 'updateCounter', 'rotate', 'scale', 'fade', 'spawn', 'destroy'
+
+### 比較演算子（comparison）
+✅ 有効: 'equals', 'greaterOrEqual', 'greater', 'less', 'lessOrEqual'
+❌ 無効: 'lessThan'（'less'を使う）, 'greaterThan'（'greater'を使う）, '==', '<', '>'
+
+### エフェクトタイプ（effect.type）
+✅ 有効: 'flash', 'shake', 'scale', 'rotate', 'particles'
+❌ 無効: 'particle'（複数形の'particles'を使う）, 'glow', 'pulse', 'fade', 'blur'
+
+### playSoundアクションの必須パラメータ
+playSound を使う場合は必ず soundId を指定:
+✅ 正しい: { type: "playSound", parameters: { soundId: "se_tap" } }
+❌ 間違い: { type: "playSound", parameters: {} }
+
+## SUCCESS_FAILURE_CONFLICT 防止 ★★★
+同一条件で成功と失敗が発火するのは致命的エラー！
+
+### 絶対にやってはいけない ❌
+- tap_silhouette_1 タップ → success
+- tap_silhouette_2 タップ → failure
+  → 両方とも「タップ」条件なのでどちらが発火するか不明
+
+### 正しい設計 ✅
+**方法1: オブジェクトを明確に分離**
+- target_correct タップ → success（targetObjectを設定）
+- target_wrong タップ → failure（targetObjectを設定）
+- targetObjectが異なるので衝突しない
+
+**方法2: 追加条件で区別**
+- object タップ かつ flag "is_glowing" == true → success
+- object タップ かつ flag "is_glowing" == false → failure
+- フラグ状態で区別
+
+**方法3: カウンター値で区別**
+- counter "score" >= 3 → success
+- counter "score" < 3 かつ time == 0 → failure
+- 値で明確に区別
+
 # 出力する仕様
 
 ## 1. オブジェクト仕様
