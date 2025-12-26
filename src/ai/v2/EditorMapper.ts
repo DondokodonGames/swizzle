@@ -877,12 +877,9 @@ export class EditorMapper {
           type: 'touch' as const,
           target: touchTarget,
           touchType: (params.touchType as TriggerCondition['touchType']) || 'down',
-        };
-        // regionがある場合は保持
-        if (params.region && typeof params.region === 'object') {
-          touchResult.region = params.region as TriggerCondition['region'];
-        }
-        return [touchResult];
+          // regionがある場合は保持
+          ...(params.region ? { region: params.region as TriggerCondition['region'] } : {})
+        }];
 
       case 'time':
         return [{
@@ -911,12 +908,8 @@ export class EditorMapper {
         const flagResult: TriggerCondition = {
           type: 'flag' as const,
           flagId: params.flagId as string,
-        };
-        // boolean値をnumber(1/0)に変換
-        if (params.value !== undefined) {
-          flagResult.value = params.value ? 1 : 0;
-        }
-        return [flagResult];
+          ...(params.value !== undefined && { flagValue: params.value as boolean })
+        }];
 
       case 'position':
         return [{
@@ -930,17 +923,10 @@ export class EditorMapper {
         const animResult: TriggerCondition = {
           type: 'animation' as const,
           condition: (params.condition as TriggerCondition['condition']) || 'end',
-        };
-        if (params.frame !== undefined) {
-          animResult.frameNumber = params.frame as number;
-        }
-        if (params.frameRange && Array.isArray(params.frameRange)) {
-          animResult.frameRange = params.frameRange as [number, number];
-        }
-        if (params.loopCount !== undefined) {
-          animResult.loopCount = params.loopCount as number;
-        }
-        return [animResult];
+          ...(params.frame !== undefined ? { frame: params.frame as number } : {}),
+          ...(params.frameRange ? { frameRange: params.frameRange as [number, number] } : {}),
+          ...(params.loopCount !== undefined ? { loopCount: params.loopCount as number } : {})
+        }];
 
       case 'gameState':
         // Note: types.tsのTriggerConditionでは'gameState'型は未定義のプロパティを使う
@@ -1020,6 +1006,7 @@ export class EditorMapper {
         const setFlagResult: GameAction = {
           type: 'setFlag' as const,
           flagId: params.flagId as string,
+          ...(params.value !== undefined && { flagValue: params.value as boolean })
         };
         // boolean値をnumber(1/0)に変換
         if (params.value !== undefined) {

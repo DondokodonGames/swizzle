@@ -231,6 +231,7 @@ export interface TriggerCondition {
   checkMode?: 'hitbox' | 'pixel';
   // flag
   flagId?: string;
+  flagValue?: boolean;
   // position
   area?: 'inside' | 'outside' | 'crossing';
   region?: { x: number; y: number; width?: number; height?: number };
@@ -246,6 +247,9 @@ export interface TriggerCondition {
     onSuccess?: TriggerCondition[];
     onFailure?: TriggerCondition[];
   };
+  // gameState
+  state?: string;
+  became?: boolean;
 }
 
 /**
@@ -271,7 +275,7 @@ export interface GameAction {
   // counter
   counterName?: string;
   operation?: 'increment' | 'decrement' | 'set' | 'add' | 'subtract';
-  value?: number;  // counter操作の値
+  value?: number;
   // addScore
   points?: number;
   // effect
@@ -283,6 +287,7 @@ export interface GameAction {
   };
   // flag
   flagId?: string;
+  flagValue?: boolean;
   // playSound
   soundId?: string;
   volume?: number;
@@ -297,6 +302,8 @@ export interface GameAction {
   force?: { x: number; y: number };
   // applyImpulse
   impulse?: { x: number; y: number };
+  // followDrag
+  enabled?: boolean;
   // randomAction
   actions?: Array<{
     action: GameAction;
