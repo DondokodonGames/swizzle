@@ -772,11 +772,11 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             💎
           </button>
 
-          {/* スキップ */}
+          {/* スキップ - ゲーム中はブリッジへ、ブリッジ中は次のゲームへ */}
           <button
-            onClick={handleSkipToBridge}
+            onClick={gameState === 'bridge' ? handleNextGame : handleSkipToBridge}
             style={styles.topBarButton('rgba(239, 68, 68, 0.9)', false)}
-            title="スキップ"
+            title={gameState === 'bridge' ? '次のゲームへ' : 'スキップ'}
           >
             ⏭️
           </button>
