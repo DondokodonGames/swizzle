@@ -314,7 +314,7 @@ timeType は以下のみ使用可能:
 
 ### アクションタイプ（type）
 ✅ 有効: 'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag', 'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'setAnimationSpeed', 'setAnimationFrame', 'followDrag', 'applyForce', 'applyImpulse', 'randomAction', 'pause', 'restart'
-❌ 無効: 'changeState', 'adjustAngle', 'updateCounter', 'rotate', 'scale', 'fade', 'spawn', 'destroy', 'emit', 'trigger'
+❌ 無効: 'changeState', 'adjustAngle', 'updateCounter', 'rotate', 'scale', 'fade', 'spawn', 'destroy', 'emit', 'trigger', 'conditional'
 
 ### エフェクトタイプ（effect.type）
 ✅ 有効: 'flash', 'shake', 'scale', 'rotate', 'particles'
@@ -334,7 +334,7 @@ timeType は以下のみ使用可能:
 
 ### 移動タイプ（movement.type）
 ✅ 有効: 'straight', 'teleport', 'wander', 'stop'
-❌ 無効: 'linear', 'jump', 'lerp', 'bezier', 'arc', 'zigzag'
+❌ 無効: 'bounce', 'linear', 'jump', 'lerp', 'bezier', 'arc', 'zigzag'
 
 ## playSound アクションの必須パラメータ ★★★
 playSound アクションには必ず soundId を指定:
@@ -347,8 +347,9 @@ playSound アクションには必ず soundId を指定:
 ❌ 無効: "penguin_*", "target_*", "enemy_*"（ワイルドカードは不可）
 ✅ 有効: "penguin_1", "penguin_2", "penguin_3"（具体的なIDを指定）
 
-### "self" の使用ルール
+### "self" の使用ルール ★★★
 - touch条件のtarget: ✅ "self" 使用可能（ルールがアタッチされたオブジェクト自身）
+- targetObjectId: ❌ "self" 不可（具体的なオブジェクトIDを指定）
 - アクションのtargetId: ❌ "self" 不可（具体的なオブジェクトIDを指定）
 
 ### "stage" の使用ルール ★★★
