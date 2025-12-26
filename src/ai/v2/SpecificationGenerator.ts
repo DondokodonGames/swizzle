@@ -666,13 +666,20 @@ rules: [{
 → 条件値で明確に分離
 
 ## タイマー設定の注意点 ★必須
+
+### timeType は以下のみ有効 ★★★
+✅ 有効: 'exact', 'range', 'interval'
+❌ 無効: 'after', 'countdown', 'countup'
+
+例:
+- { "timeType": "exact", "seconds": 5 }  // 5秒経過で発火
+- { "timeType": "interval", "interval": 1 }  // 1秒ごとに発火
+
 タイマー用カウンターを作る場合:
 1. initialValue は失敗閾値より大きく設定
    - ✅ initialValue: 500, 失敗条件: <= 0
    - ❌ initialValue: 0, 失敗条件: <= 0 → 即失敗
-2. timeType は "countdown" または "countup" のみ
-   - ❌ "after" は無効
-3. decrementルールを必ず作成（time条件で毎フレーム減算）
+2. decrementルールを必ず作成（time条件で毎フレーム減算）
 
 ## 必須サウンド ★必須
 以下の3つは必ず含める:
@@ -740,8 +747,45 @@ targetObject（ルールの対象オブジェクト）には具体的なオブ�
 少なくとも1つのルールで type: "success" を使う
 少なくとも1つのルールで type: "failure" を使う（または時間切れで失敗）
 
-## SUCCESS_FAILURE_CONFLICT 防止 ★★★
+## SUCCESS_FAILURE_CONFLICT 防止 ★★★最頻発エラー★★★
 同一条件で成功と失敗が発火するのは致命的エラー！
+**Run 12で10件発生した最重要問題！**
+
+### ★★★ targetObject の正しい使い方 ★★★
+
+**複数のタップ可能オブジェクトがある場合、targetObjectで区別する！**
+
+\`\`\`json
+// ✅ 正しい例：targetObjectが異なるので衝突しない
+{
+  "id": "tap_truth",
+  "targetObject": "truth_object",  // ★ここが重要
+  "trigger": { "type": "touch", "parameters": { "target": "self", "touchType": "down" } },
+  "actions": [{ "type": "success" }]
+},
+{
+  "id": "tap_phantom",
+  "targetObject": "phantom_object",  // ★異なるオブジェクト
+  "trigger": { "type": "touch", "parameters": { "target": "self", "touchType": "down" } },
+  "actions": [{ "type": "failure" }]
+}
+\`\`\`
+
+\`\`\`json
+// ❌ 間違い例：targetObjectが同じなので衝突する
+{
+  "id": "tap_truth",
+  "targetObject": "stage",  // NG: 両方stageなので衝突！
+  "trigger": { "type": "touch", "parameters": { "target": "stage" } },
+  "actions": [{ "type": "success" }]
+},
+{
+  "id": "tap_phantom",
+  "targetObject": "stage",  // NG: 同じstage！
+  "trigger": { "type": "touch", "parameters": { "target": "stage" } },
+  "actions": [{ "type": "failure" }]
+}
+\`\`\`
 
 ### 絶対にやってはいけない ❌
 
@@ -754,10 +798,10 @@ actions: [
 ]
 \`\`\`
 
-**パターン2: 異なるルールが同条件で success/failure**
-- tap_silhouette_1 タップ → success
-- tap_silhouette_2 タップ → failure
-  → 両方とも「タップ」条件なのでどちらが発火するか不明
+**パターン2: 複数オブジェクトが同じtarget条件**
+- tap_truth: target: "stage" → success
+- tap_phantom: target: "stage" → failure
+  → 両方とも「stage」なので衝突！
 
 **パターン3: スワイプ方向が同じで success/failure ★頻発エラー★**
 \`\`\`
@@ -767,26 +811,26 @@ actions: [
 // どちらも「stage」への「right」スワイプなので衝突！
 \`\`\`
 
-**スワイプの正しい設計:**
+### 正しい設計 ✅
+
+**方法1: targetObjectで明確に分離（推奨！）**
+\`\`\`json
+// ルール1
+{ "targetObject": "correct_object", "trigger": { "parameters": { "target": "self" } } }
+// ルール2
+{ "targetObject": "wrong_object", "trigger": { "parameters": { "target": "self" } } }
+\`\`\`
+→ targetObjectが異なるので衝突しない！
+
+**方法2: スワイプ方向で区別**
 - swipe_correct: stage スワイプ(direction: "right") → success
 - swipe_wrong: stage スワイプ(direction: "left") → failure
   → 方向で明確に区別！
 
-### 正しい設計 ✅
-**方法1: オブジェクトを明確に分離**
-- target_correct タップ → success（targetObjectを設定）
-- target_wrong タップ → failure（targetObjectを設定）
-- targetObjectが異なるので衝突しない
-
-**方法2: 追加条件で区別**
+**方法3: 追加条件で区別**
 - object タップ かつ flag "is_glowing" == true → success
 - object タップ かつ flag "is_glowing" == false → failure
 - フラグ状態で区別
-
-**方法3: カウンター値で区別**
-- counter "score" >= 3 → success
-- counter "score" < 3 かつ time == 0 → failure
-- 値で明確に区別
 
 ## アクションで参照するオブジェクトIDの制約 ★★★
 アクションの targetId は必ずアセット計画に存在するオブジェクトを指定:
@@ -1012,7 +1056,7 @@ bgm.mood は以下の英語のみ使用可能:
         "type": "time",
         "description": "5秒経過",
         "parameters": {
-          "timeType": "after",
+          "timeType": "exact",
           "seconds": 5
         }
       },

@@ -316,8 +316,10 @@ sound.type は効果音のカテゴリを表す以下のみ使用可能:
 
 ## 時間条件のtimeType制限 ★必須
 timeType は以下のみ使用可能:
-✅ 有効: 'exact', 'interval', 'countdown', 'countup'
-❌ 無効: 'after'（'after'は使わずに'exact'を使用）
+✅ 有効: 'exact', 'range', 'interval'
+❌ 無効: 'after', 'countdown', 'countup'
+
+例: { "timeType": "exact", "seconds": 5 }  // 5秒経過で発火
 
 ## ★★★ 有効なタイプ一覧（これ以外は使用禁止）★★★
 
