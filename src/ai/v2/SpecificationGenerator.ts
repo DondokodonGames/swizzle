@@ -585,30 +585,47 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 - 「特定オブジェクトをタップしたら成功」→ touch条件で直接success
 - 「ゴールに到達したら成功」→ collision/position条件で直接success
 
-### カウンター参照エラー防止 ★★★ 最重要 ★★★
+### ★★★ カウンターは原則使用禁止 ★★★
 
-**これが最も頻出するエラーです！ルールを書く前に必ずカウンターを定義！**
+**カウンター未定義エラーが最も多いエラーです！**
+**95%のゲームはカウンター不要で実装可能です！**
 
-❌ よくある間違い（エラーになる）:
-- ルールで "wind_strength" を使うが counters に定義がない
-- ルールで "breath_power" をincrementするが counters に定義がない
-- counters に定義した "game_timer" がどのルールでも操作されない
+#### まず検討: カウンターなしで実装できないか？
+- 「正解をタップしたら成功」→ touch + success（カウンター不要）
+- 「ゴールに到達したら成功」→ collision + success（カウンター不要）
+- 「5秒生き残ったら成功」→ time + success（カウンター不要）
 
-✅ 正しい手順:
-1. まずcountersセクションで全カウンターを定義
-2. その後、定義したカウンター名を正確にルールで参照
-3. 名前のtypo（wind_strength vs wind_power）に注意！
+#### どうしてもカウンターが必要な場合のみ:
+**必ずこの順序で出力:**
+1. **先に** stateManagement.counters にカウンターを定義
+2. **後から** rules でそのカウンターを参照
 
-**出力前チェックリスト（必ず確認）:**
-□ rulesのcounter条件で使う全counterNameがcountersに存在？
-□ rulesのcounterアクションで使う全counterNameがcountersに存在？
-□ countersに定義した全カウンターがどこかで操作されている？
-□ countersに定義した全カウンターがどこかでチェックされている？
+#### 絶対にやってはいけない ❌
+\`\`\`
+// counters に何も定義していないのに...
+rules: [{
+  actions: [{ type: "counter", counterName: "tapped_count", operation: "increment" }]  // エラー！
+}]
+\`\`\`
 
-**複雑なゲームは避ける**
-タイマーや複数カウンターは管理が難しい。シンプルに:
-- 「タップ→成功」の直接パターンを優先
-- カウンターは「タップ数を数える」程度に留める
+#### 正しい例 ✅
+\`\`\`
+stateManagement: {
+  counters: [
+    { id: "tapped_count", name: "タップ数", initialValue: 0, ... }  // ★先に定義
+  ]
+},
+rules: [{
+  actions: [{ type: "counter", counterName: "tapped_count", operation: "increment" }]  // OK
+}]
+\`\`\`
+
+#### 出力前の最終チェック（必須）:
+1. rulesで使う全counterNameがcountersに定義されているか？
+2. countersが空なら、rulesにcounter条件/アクションがないか？
+3. カウンターなしで実装できないか再検討したか？
+
+**迷ったらカウンターを使わない！シンプルなパターンを選ぶ！**
 
 ## 成功・失敗条件の排他制御 ★必須
 成功と失敗が同時に発動する可能性を防ぐ:

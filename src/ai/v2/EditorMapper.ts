@@ -262,21 +262,23 @@ ${EDITOR_SPEC}
 ## カウンターの一貫性 ★★★最重要★★★
 
 **カウンター参照エラーが最も多いエラーです！**
+**rulesでカウンターを使うなら、先にcountersで定義が必須！**
 
 ### 変換前に必ず確認
-仕様(Specification)のカウンターをそのまま使用:
-1. 仕様のcountersに定義されているカウンター名を確認
-2. script.countersに同じID・名前で定義
-3. rulesで参照するcounterNameは必ずcountersのidと完全一致
+1. 仕様のcountersをscript.countersにコピー
+2. rulesで参照するcounterNameは必ずcountersのidと完全一致
+3. countersが空なら、rulesでcounter条件/アクションを使わない
 
-### よくあるミス ❌
-- 仕様にない "game_timer" をrulesで勝手に参照
-- 仕様の "tapped_count" を "tapped" と略して参照
-- countersを空にしたのにrulesでcounter条件を使用
+### 絶対にやってはいけない ❌
+- countersが空なのにrulesで { type: "counter", counterName: "xxx" } を使う
+- 仕様にない "game_timer" をrulesで勝手に追加
+- カウンター名のtypo（"tapped_count" vs "tapped"）
 
-### 安全な変換 ✅
-仕様にカウンターがない場合 → counters: [] で空にする
-仕様にカウンターがある場合 → 名前を一字一句正確にコピー
+### 最終チェック ✅
+出力前に以下を確認:
+1. script.counters に定義がないcounterNameがrulesにないか？
+2. rulesの全counter条件/アクションのcounterNameがcountersに存在するか？
+3. 不安ならカウンターを使わずシンプルなパターンに変更
 
 ## カウンター値の妥当性 ★必須（即座に成功/失敗を防ぐ）
 タイマー/カウンターの初期値と判定条件を確認:
@@ -349,17 +351,24 @@ playSound アクションには必ず soundId を指定:
 - touch条件のtarget: ✅ "self" 使用可能（ルールがアタッチされたオブジェクト自身）
 - アクションのtargetId: ❌ "self" 不可（具体的なオブジェクトIDを指定）
 
+### "stage" の使用ルール ★★★
+"stage"は画面全体を表す特殊な値で、使える場所が限定されています:
+- touch条件のtarget: ✅ "stage" 使用可能（画面のどこをタッチしても発火）
+- targetObjectId: ❌ "stage" 不可（アセット計画に存在しないためエラー）
+- アクションのtargetId: ❌ "stage" 不可（アセット計画に存在しないためエラー）
+
 ✅ 正しい例:
 {
-  "targetObjectId": "player",
-  "conditions": [{ "type": "touch", "target": "self" }],  // OK: selfはtouch条件で使用
-  "actions": [{ "type": "hide", "targetId": "player" }]   // OK: 具体的なID
+  "targetObjectId": "player",  // 実際のオブジェクトID
+  "conditions": [{ "type": "touch", "target": "stage" }],  // OK: stageはtouch条件で使用
+  "actions": [{ "type": "hide", "targetId": "player" }]    // OK: 具体的なID
 }
 
 ❌ 間違い例:
 {
-  "conditions": [{ "type": "touch", "target": "self" }],
-  "actions": [{ "type": "hide", "targetId": "self" }]     // NG: targetIdにselfは不可
+  "targetObjectId": "stage",  // NG: stageはtargetObjectIdに使えない
+  "conditions": [{ "type": "touch", "target": "stage" }],
+  "actions": [{ "type": "followDrag", "targetId": "stage" }]  // NG: targetIdにstageは不可
 }
 
 # 重要: 機械的な変換のみ行う
