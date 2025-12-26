@@ -193,6 +193,26 @@ export interface SpecDecision {
 const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジニアです。
 ゲームデザインを、実装可能な詳細仕様に変換してください。
 
+# ⚠️⚠️⚠️ 緊急警告: カウンター使用禁止 ⚠️⚠️⚠️
+
+**カウンター未定義エラーが全エラーの80%を占めています！**
+**カウンターを使わないでください！！！**
+
+## 禁止パターン（絶対にやらない）
+❌ stateManagement.counters が空なのに rules で counter を使う
+❌ counterName を参照しているが counters に定義がない
+❌ 複雑なカウンターロジック
+
+## 推奨パターン（必ずこれを使う）
+✅ タップ → 即座に success/failure（カウンター不要）
+✅ 衝突 → 即座に success/failure（カウンター不要）
+✅ 時間経過 → time条件で success/failure（カウンター不要）
+
+**95%のゲームはカウンターなしで実装可能です！**
+**迷ったら「正解タップで成功、不正解タップで失敗」パターンを使ってください！**
+
+---
+
 # ★★★ 最重要: 「核心体験」を実現するルールを作る ★★★
 
 デザインの coreExperience.keyMechanic を必ずルールとして実装してください。
@@ -875,14 +895,36 @@ bgm.mood は以下の英語のみ使用可能:
 # アセットプラン（参考）
 {{ASSET_PLAN}}
 
-# 出力形式（JSON）
+# ★★★ 出力前の最終チェックリスト ★★★
+
+**必ず以下を確認してから出力:**
+
+□ rulesにcounter条件があるか？ → あればcountersに定義があるか確認
+□ rulesにcounterアクションがあるか？ → あればcountersに定義があるか確認
+□ countersが空[]なら、rulesにcounter関連は一切ないはず
+□ カウンターなしで実装できないか再検討したか？
+
+**カウンター未定義エラーは最も頻発するエラーです！**
+**迷ったらカウンターを使わないシンプルパターンを選んでください！**
+
+# 出力形式（JSON）- ★カウンター不使用の推奨パターン★
 {
   "objects": [
     {
-      "id": "target_1",
-      "name": "ターゲット1",
-      "visualDescription": "...",
-      "initialPosition": { "x": 0.3, "y": 0.4 },  // ★必ず0.0-1.0の範囲
+      "id": "target_correct",
+      "name": "正解ターゲット",
+      "visualDescription": "タップすべき正しいオブジェクト",
+      "initialPosition": { "x": 0.5, "y": 0.4 },
+      "size": "medium",
+      "initiallyVisible": true,
+      "physicsEnabled": false,
+      "touchable": true
+    },
+    {
+      "id": "target_wrong",
+      "name": "不正解ターゲット",
+      "visualDescription": "タップしてはいけないオブジェクト",
+      "initialPosition": { "x": 0.3, "y": 0.6 },
       "size": "medium",
       "initiallyVisible": true,
       "physicsEnabled": false,
@@ -890,57 +932,69 @@ bgm.mood は以下の英語のみ使用可能:
     }
   ],
   "stateManagement": {
-    "counters": [
-      {
-        "id": "tapped_count",
-        "name": "タップ数",
-        "initialValue": 0,
-        "purpose": "タップした数を数える",
-        "modifiedBy": ["tap_target_1", "tap_target_2"],  // ★操作するルール
-        "checkedBy": ["check_win"]                       // ★チェックするルール
-      }
-    ],
+    "counters": [],
     "flags": []
   },
   "rules": [
     {
-      "id": "tap_target_1",
-      "name": "ターゲット1タップ",
-      "description": "ターゲット1をタップしたら消える",
-      "targetObject": "target_1",
+      "id": "tap_correct",
+      "name": "正解タップ",
+      "description": "正解をタップしたら成功",
+      "targetObject": "target_correct",
       "trigger": {
         "type": "touch",
-        "description": "ターゲット1をタップ",
+        "description": "正解をタップ",
         "parameters": {
           "target": "self",
           "touchType": "down"
         }
       },
       "actions": [
-        { "type": "hide", "description": "消す", "parameters": { "targetId": "target_1" } },
         { "type": "playSound", "description": "効果音", "parameters": { "soundId": "se_tap" } },
-        { "type": "counter", "description": "カウント+1", "parameters": { "counterName": "tapped_count", "operation": "increment" } }
-      ],
-      "purpose": "core-mechanic"
-    },
-    {
-      "id": "check_win",
-      "name": "勝利判定",
-      "description": "タップ数が目標に達したら成功",
-      "trigger": {
-        "type": "counter",
-        "description": "タップ数が2以上",
-        "parameters": {
-          "counterName": "tapped_count",
-          "comparison": "greaterOrEqual",
-          "value": 2
-        }
-      },
-      "actions": [
+        { "type": "effect", "description": "エフェクト", "parameters": { "targetId": "target_correct", "effect": { "type": "scale", "duration": 0.2 } } },
         { "type": "success", "description": "ゲームクリア", "parameters": {} },
         { "type": "playSound", "description": "成功音", "parameters": { "soundId": "se_success" } }
       ],
       "purpose": "win-condition"
+    },
+    {
+      "id": "tap_wrong",
+      "name": "不正解タップ",
+      "description": "不正解をタップしたら失敗",
+      "targetObject": "target_wrong",
+      "trigger": {
+        "type": "touch",
+        "description": "不正解をタップ",
+        "parameters": {
+          "target": "self",
+          "touchType": "down"
+        }
+      },
+      "actions": [
+        { "type": "playSound", "description": "効果音", "parameters": { "soundId": "se_tap" } },
+        { "type": "effect", "description": "エフェクト", "parameters": { "targetId": "target_wrong", "effect": { "type": "shake", "duration": 0.3 } } },
+        { "type": "failure", "description": "ゲームオーバー", "parameters": {} },
+        { "type": "playSound", "description": "失敗音", "parameters": { "soundId": "se_failure" } }
+      ],
+      "purpose": "lose-condition"
+    },
+    {
+      "id": "timeout",
+      "name": "タイムアウト",
+      "description": "時間切れで失敗",
+      "trigger": {
+        "type": "time",
+        "description": "5秒経過",
+        "parameters": {
+          "timeType": "after",
+          "seconds": 5
+        }
+      },
+      "actions": [
+        { "type": "failure", "description": "時間切れ", "parameters": {} },
+        { "type": "playSound", "description": "失敗音", "parameters": { "soundId": "se_failure" } }
+      ],
+      "purpose": "lose-condition"
     }
   ],
   "audio": {

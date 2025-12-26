@@ -228,6 +228,19 @@ const EDITOR_SPEC = `
 const MAPPING_PROMPT = `あなたはSwizzleエディターの仕様マッパーです。
 与えられたゲーム仕様を、エディターのJSON形式に正確に変換してください。
 
+# ⚠️⚠️⚠️ 緊急警告: カウンター参照エラー防止 ⚠️⚠️⚠️
+
+**全エラーの80%がカウンター関連です！**
+
+## 変換時の絶対ルール
+1. 仕様の counters が空 [] → rulesで counter は一切使わない
+2. rulesで counterName を使う → 必ず counters に同名の定義があることを確認
+3. 勝手にカウンターを追加しない
+
+## 禁止（全エラーの原因）
+❌ counters: [] なのに actions: [{ type: "counter", counterName: "xxx" }]
+❌ 仕様にないカウンターを勝手に作成
+
 ${EDITOR_SPEC}
 
 # ★★★ 最重要: コンセプトと仕様を忠実に変換 ★★★
