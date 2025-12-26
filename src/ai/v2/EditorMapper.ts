@@ -878,7 +878,7 @@ export class EditorMapper {
           target: touchTarget,
           touchType: (params.touchType as TriggerCondition['touchType']) || 'down',
           // regionがある場合は保持
-          ...(params.region && { region: params.region as TriggerCondition['region'] })
+          ...(params.region ? { region: params.region as TriggerCondition['region'] } : {})
         }];
 
       case 'time':
@@ -908,7 +908,7 @@ export class EditorMapper {
         return [{
           type: 'flag' as const,
           flagId: params.flagId as string,
-          ...(params.value !== undefined && { value: params.value as boolean })
+          ...(params.value !== undefined && { flagValue: params.value as boolean })
         }];
 
       case 'position':
@@ -922,10 +922,10 @@ export class EditorMapper {
       case 'animation':
         return [{
           type: 'animation' as const,
-          condition: (params.condition as string) || 'end',
-          ...(params.frame !== undefined && { frame: params.frame as number }),
-          ...(params.frameRange && { frameRange: params.frameRange as [number, number] }),
-          ...(params.loopCount !== undefined && { loopCount: params.loopCount as number })
+          condition: (params.condition as TriggerCondition['condition']) || 'end',
+          ...(params.frame !== undefined ? { frame: params.frame as number } : {}),
+          ...(params.frameRange ? { frameRange: params.frameRange as [number, number] } : {}),
+          ...(params.loopCount !== undefined ? { loopCount: params.loopCount as number } : {})
         }];
 
       case 'gameState':
@@ -1006,7 +1006,7 @@ export class EditorMapper {
         return {
           type: 'setFlag' as const,
           flagId: params.flagId as string,
-          ...(params.value !== undefined && { value: params.value as boolean })
+          ...(params.value !== undefined && { flagValue: params.value as boolean })
         };
 
       case 'toggleFlag':
