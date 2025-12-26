@@ -1041,6 +1041,18 @@ bgm.mood は以下の英語のみ使用可能:
 ✅ 有効: upbeat, calm, tense, happy, mysterious, energetic
 ❌ 無効: 日本語（「緊張感」等）, undefined, その他の英語
 
+### BGM必須フィールド ★★★
+BGMを定義する場合は必ず id と mood の両方を指定:
+✅ 正しい: { "id": "bgm_main", "description": "楽しいBGM", "mood": "upbeat" }
+❌ 間違い: { "description": "BGM" }（idとmoodがない！）
+❌ 間違い: { "id": "bgm_main" }（moodがない！）
+
+### playSound必須フィールド（再確認）★★★
+playSoundアクションには必ずsoundIdを指定！これが抜けるとエラー:
+✅ 正しい: { "type": "playSound", "parameters": { "soundId": "se_tap" } }
+❌ 間違い: { "type": "playSound", "parameters": {} }（soundIdがない！）
+❌ 間違い: { "type": "playSound", "description": "効果音" }（parametersがない！）
+
 ## 5. UI/視認性仕様 ★重要
 操作対象が一目で分かるようにする:
 - タッチ対象の最小サイズ
