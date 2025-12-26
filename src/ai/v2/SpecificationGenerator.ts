@@ -260,10 +260,21 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 ---
 ### 【タップ系】正解をタップするだけ
 
-#### パターン1: 正解を選ぶ（クイズ・間違い探し・神経衰弱）
+#### パターン1: 正解を選ぶ（クイズ・間違い探し・神経衰弱・ルート選択）
 - target_correct タップ → success
-- target_wrong タップ → failure
+- target_wrong_1, target_wrong_2, target_wrong_3 それぞれタップ → failure
 - **カウンター不要！**
+
+**重要: 複数の選択肢がある場合の正しいルール設計**
+\`\`\`json
+// 正解ルート
+{ "id": "tap_correct", "trigger": { "type": "touch", "parameters": { "target": "route_correct" } }, "actions": [{ "type": "success" }] }
+// 不正解ルート1
+{ "id": "tap_wrong_1", "trigger": { "type": "touch", "parameters": { "target": "route_wrong_1" } }, "actions": [{ "type": "failure" }] }
+// 不正解ルート2
+{ "id": "tap_wrong_2", "trigger": { "type": "touch", "parameters": { "target": "route_wrong_2" } }, "actions": [{ "type": "failure" }] }
+\`\`\`
+**各ルールのtargetは必ず異なるオブジェクトIDを使う！**
 
 #### パターン2: モグラ叩き・反射神経
 - target 表示(time条件) → show
@@ -754,6 +765,62 @@ targetObject（ルールの対象オブジェクト）には具体的なオブ�
 少なくとも1つのルールで type: "success" を使う
 少なくとも1つのルールで type: "failure" を使う（または時間切れで失敗）
 
+## ★★★ 最重要: 成功にはプレイヤー操作が必須 ★★★
+
+**NO_PLAYER_ACTION エラーが最頻発！**
+**成功条件には必ずプレイヤーの操作が関係していなければならない！**
+
+### プレイヤー操作とは？
+✅ touch条件（タップ、ドラッグ、スワイプ、長押し）
+✅ collision条件（プレイヤーが操作するオブジェクトとの衝突）
+✅ position条件（プレイヤーが移動させたオブジェクトの位置）
+
+### 絶対にやってはいけない ❌
+\`\`\`
+// NG: プレイヤー操作なしで成功
+{
+  "id": "check_success",
+  "trigger": { "type": "time", "parameters": { "timeType": "exact", "seconds": 5 } },
+  "actions": [{ "type": "success" }]  // NG! プレイヤーは何もしていない！
+}
+\`\`\`
+
+\`\`\`
+// NG: animation条件だけで成功
+{
+  "id": "check_success",
+  "trigger": { "type": "animation", "parameters": { "condition": "frame", "frameNumber": 10 } },
+  "actions": [{ "type": "success" }]  // NG! プレイヤーは何もしていない！
+}
+\`\`\`
+
+### 正しい設計 ✅
+\`\`\`
+// OK: タップで成功
+{
+  "id": "tap_correct",
+  "trigger": { "type": "touch", "parameters": { "target": "correct_object", "touchType": "down" } },
+  "actions": [{ "type": "success" }]  // OK! プレイヤーがタップした！
+}
+\`\`\`
+
+\`\`\`
+// OK: 衝突で成功（ドラッグで移動したオブジェクト）
+{
+  "id": "reach_goal",
+  "trigger": { "type": "collision", "parameters": { "target": "goal" } },
+  "actions": [{ "type": "success" }]  // OK! プレイヤーがオブジェクトを移動させた！
+}
+\`\`\`
+
+### 成功条件の設計原則
+1. **タップ系**: 正解オブジェクトをタップ → success
+2. **移動系**: ドラッグでゴールに到達 → success
+3. **衝突系**: プレイヤー操作のオブジェクトが目標に衝突 → success
+4. **時間系**: ❌ 時間経過だけで成功はNG！（生存ゲームは例外だがプレイヤーは「避ける」操作をしている）
+
+**迷ったら「タップで成功」パターンを使う！**
+
 ## SUCCESS_FAILURE_CONFLICT 防止 ★★★最頻発エラー★★★
 同一条件で成功と失敗が発火するのは致命的エラー！
 **Run 12-13で計16件発生した最重要問題！**
@@ -967,7 +1034,7 @@ actions: [
 ### サウンドタイプ ★★★
 sound.type は以下のみ使用可能（英語のみ）:
 ✅ 有効: tap, success, failure, collect, pop, whoosh, bounce, ding, buzz, splash
-❌ 無効: effect, bgm, se, hit, countdown, warning
+❌ 無効: effect, bgm, se, hit, countdown, warning, calm（calmはmoodには使えるがsound.typeには使えない！）
 
 ### BGM mood ★★★
 bgm.mood は以下の英語のみ使用可能:
@@ -1014,16 +1081,25 @@ bgm.mood は以下の英語のみ使用可能:
 
 **必ず以下を確認してから出力:**
 
-□ **SUCCESS_FAILURE_CONFLICT チェック（最重要！）**
+□ **プレイヤー操作チェック（最重要！）**
+  - successアクションを持つルールは、プレイヤー操作（touch/collision/position）で発火するか？
+  - time条件やanimation条件だけで成功するルールはないか？
+  - → 必ずプレイヤーが何か操作して成功するようにする！
+
+□ **SUCCESS_FAILURE_CONFLICT チェック（重要！）**
   - 複数オブジェクトで success/failure を分ける場合、各ルールの target が異なるか？
   - target: "self" を複数ルールで使っていないか？
   - → 各ルールで target: "オブジェクトID" を使う！
+
+□ **successアクション存在チェック**
+  - 少なくとも1つのルールに { "type": "success" } があるか？
+  - ない場合、ゲームがクリアできない！
 
 □ rulesにcounter条件があるか？ → あればcountersに定義があるか確認
 □ rulesにcounterアクションがあるか？ → あればcountersに定義があるか確認
 □ countersが空[]なら、rulesにcounter関連は一切ないはず
 
-**SUCCESS_FAILURE_CONFLICTが最頻発エラーです！target に注意！**
+**「プレイヤー操作 → success」が最も重要！**
 
 # 出力形式（JSON）- ★カウンター不使用の推奨パターン★
 {
