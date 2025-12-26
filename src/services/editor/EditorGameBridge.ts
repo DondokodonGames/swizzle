@@ -693,9 +693,9 @@ export class EditorGameBridge {
               obj.y += obj.vy;
             }
 
-            // ✅ 中心基準で描画（bc9ae40f版のロジック）
-            const objWidth = obj.width * obj.scale;
-            const objHeight = obj.height * obj.scale;
+            // ✅ 中心基準で描画（scaleX/scaleY個別対応）
+            const objWidth = obj.width * (obj.scaleX ?? obj.scale);
+            const objHeight = obj.height * (obj.scaleY ?? obj.scale);
             const drawCenterX = obj.x + objWidth / 2;
             const drawCenterY = obj.y + objHeight / 2;
 
@@ -788,9 +788,10 @@ export class EditorGameBridge {
           
           for (const [id, obj] of sortedForHitTest) {
             if (!obj.visible) continue;
-            
-            const objWidth = obj.width * obj.scale;
-            const objHeight = obj.height * obj.scale;
+
+            // ✅ scaleX/scaleY個別対応（ヒット判定）
+            const objWidth = obj.width * (obj.scaleX ?? obj.scale);
+            const objHeight = obj.height * (obj.scaleY ?? obj.scale);
             
             if (x >= obj.x && x <= obj.x + objWidth &&
                 y >= obj.y && y <= obj.y + objHeight) {

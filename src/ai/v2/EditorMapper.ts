@@ -415,6 +415,16 @@ playSound アクションには必ず soundId を指定:
 - initialPosition → initialPosition
 - size → size
 
+## オブジェクト → script.layout.objects
+仕様のobjectsからレイアウト情報を変換:
+- id → objectId
+- initialPosition → position
+- displayScale → scale（省略時は { x: 1.0, y: 1.0 }）
+- zIndex → zIndex（省略時は配列順）
+
+★重要: 縦長オブジェクト（人物、街灯、木など）は displayScale.y > displayScale.x で表現
+★重要: 横長オブジェクト（車、ベンチ、橋など）は displayScale.x > displayScale.y で表現
+
 ## カウンター → script.counters
 仕様のcountersをそのままマッピング:
 - id → id
@@ -455,7 +465,12 @@ playSound アクションには必ず soundId を指定:
   "script": {
     "layout": {
       "objects": [
-        { "objectId": "string", "position": { "x": 0.0-1.0, "y": 0.0-1.0 }, "scale": { "x": 1.0, "y": 1.0 } }
+        {
+          "objectId": "string",
+          "position": { "x": 0.0-1.0, "y": 0.0-1.0 },
+          "scale": { "x": 0.5-2.0, "y": 0.5-2.0 },  // ★仕様のdisplayScaleから変換、縦長なら y>x
+          "zIndex": 1  // 描画順（省略可）
+        }
       ]
     },
     "counters": [
@@ -767,11 +782,12 @@ export class EditorMapper {
       size: obj.size || 'medium'
     }));
 
-    // レイアウトをマッピング
-    const layoutObjects = specObjects.map(obj => ({
+    // レイアウトをマッピング（displayScale, zIndex を反映）
+    const layoutObjects = specObjects.map((obj, index) => ({
       objectId: obj.id,
       position: obj.initialPosition || { x: 0.5, y: 0.5 },
-      scale: { x: 1.0, y: 1.0 }
+      scale: obj.displayScale || { x: 1.0, y: 1.0 },
+      zIndex: obj.zIndex ?? (index + 1)
     }));
 
     // カウンターをマッピング
