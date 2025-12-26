@@ -668,7 +668,11 @@ rules: [{
 
 ### アクションタイプ（actions[].type）
 ✅ 有効: 'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag', 'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'followDrag', 'applyForce', 'applyImpulse', 'randomAction', 'pause', 'restart'
-❌ 無効: 'changeState', 'adjustAngle', 'updateCounter', 'rotate', 'scale', 'fade', 'spawn', 'destroy'
+❌ 無効: 'changeState', 'adjustAngle', 'updateCounter', 'rotate', 'scale', 'fade', 'spawn', 'destroy', 'conditional'
+
+### 移動タイプ（movement.type）★NEW
+✅ 有効: 'straight', 'teleport', 'wander', 'stop'
+❌ 無効: 'bounce', 'linear', 'jump', 'lerp', 'bezier', 'arc', 'zigzag'
 
 ### 比較演算子（comparison）
 ✅ 有効: 'equals', 'greaterOrEqual', 'greater', 'less', 'lessOrEqual'
@@ -682,6 +686,26 @@ rules: [{
 playSound を使う場合は必ず soundId を指定:
 ✅ 正しい: { type: "playSound", parameters: { soundId: "se_tap" } }
 ❌ 間違い: { type: "playSound", parameters: {} }
+
+### targetObject と "self" の使用禁止 ★★★
+targetObject（ルールの対象オブジェクト）には具体的なオブジェクトIDを指定:
+✅ 正しい: targetObject: "player", targetObject: "enemy_1"
+❌ 間違い: targetObject: "self"（selfはtargetObjectに使えない）
+❌ 間違い: targetObject: "stage"（stageはtargetObjectに使えない）
+
+## ★★★ 必須: success と failure アクション ★★★
+すべてのゲームには必ず以下の両方が必要:
+1. **successアクション**: プレイヤーが勝利する条件
+2. **failureアクション**: プレイヤーが敗北する条件
+
+### よくある間違い ❌
+- successアクションがない → ゲームをクリアできない
+- failureアクションがない → ゲームが終わらない
+- 両方を同じ条件で発火させる → コンフリクト
+
+### 正しい設計 ✅
+少なくとも1つのルールで type: "success" を使う
+少なくとも1つのルールで type: "failure" を使う（または時間切れで失敗）
 
 ## SUCCESS_FAILURE_CONFLICT 防止 ★★★
 同一条件で成功と失敗が発火するのは致命的エラー！
