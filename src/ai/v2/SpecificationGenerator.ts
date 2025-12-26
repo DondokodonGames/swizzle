@@ -596,11 +596,35 @@ const SPEC_PROMPT = `あなたはゲームの仕様書を作成するエンジ�
 
 # 絶対に守るべき制約
 
-## 座標の制約 ★必須
-- すべての座標は 0.0〜1.0 の範囲内
+## 座標の制約 ★必須（INVALID_REGION エラー対策）
+
+**すべての座標・位置・領域は 0.0〜1.0 の範囲内！**
+
+### 対象となるフィールド:
+- position.x / position.y（オブジェクト位置）
+- initialPosition.x / initialPosition.y（初期位置）
+- region.x / region.y / region.width / region.height（position条件の領域）
+- move.targetPosition.x / move.targetPosition.y（移動先）
+
+### ルール:
 - 負の値は禁止（-0.1 などは NG）
-- 1.0を超える値も禁止（1.2 などは NG）
+- 1.0を超える値も禁止（1.2, 5, 4.9 などは NG）
 - 中央 = (0.5, 0.5)、左上 = (0.0, 0.0)、右下 = (1.0, 1.0)
+
+### よくある間違い ❌
+\`\`\`json
+// NG: region.yが5（範囲外）
+{ "type": "position", "parameters": { "region": { "x": 0.5, "y": 5, "width": 0.2, "height": 0.2 } } }
+
+// NG: region.yが4.9（範囲外）
+{ "type": "position", "parameters": { "region": { "x": 0.3, "y": 4.9, "width": 0.4, "height": 0.1 } } }
+\`\`\`
+
+### 正しい例 ✅
+\`\`\`json
+// OK: すべて0.0-1.0の範囲内
+{ "type": "position", "parameters": { "region": { "x": 0.3, "y": 0.7, "width": 0.4, "height": 0.2 } } }
+\`\`\`
 
 ## カウンターの一貫性 ★必須
 カウンターを定義する場合、必ず以下の両方が必要:
@@ -745,11 +769,43 @@ playSound を使う場合は必ず soundId を指定:
 ✅ 正しい: { type: "playSound", parameters: { soundId: "se_tap" } }
 ❌ 間違い: { type: "playSound", parameters: {} }
 
-### targetObject と "self" の使用禁止 ★★★
-targetObject（ルールの対象オブジェクト）には具体的なオブジェクトIDを指定:
-✅ 正しい: targetObject: "player", targetObject: "enemy_1"
-❌ 間違い: targetObject: "self"（selfはtargetObjectに使えない）
-❌ 間違い: targetObject: "stage"（stageはtargetObjectに使えない）
+### ★★★ "self" と "screen" は使用禁止 ★★★
+
+**INVALID_OBJECT_ID エラーの主な原因！**
+**"self" と "screen" はオブジェクトIDではありません！**
+
+#### 使用禁止の場所:
+❌ targetObject: "self" - 無効
+❌ targetId: "self" - 無効
+❌ targetId: "screen" - 無効
+❌ collision target: "self" - 無効
+❌ effect targetId: "self" - 無効
+❌ effect targetId: "screen" - 無効
+
+#### 正しい使い方:
+✅ targetObject: "player"（実際のオブジェクトID）
+✅ targetId: "ball"（実際のオブジェクトID）
+✅ collision target: "goal"（実際のオブジェクトID）
+✅ effect targetId: "target_correct"（実際のオブジェクトID）
+
+#### 例：
+\`\`\`json
+// ❌ NG: "self"を使用
+{ "type": "followDrag", "parameters": { "targetId": "self" } }
+{ "type": "effect", "parameters": { "targetId": "screen", "effect": { "type": "flash" } } }
+
+// ✅ OK: 実際のオブジェクトIDを使用
+{ "type": "followDrag", "parameters": { "targetId": "note" } }
+{ "type": "effect", "parameters": { "targetId": "target_correct", "effect": { "type": "flash" } } }
+\`\`\`
+
+**重要: すべてのIDは objects 配列で定義したものだけを使う！**
+
+### touch条件の target について ★★★
+touch条件の target も基本的にオブジェクトIDを使う:
+✅ 推奨: { "target": "button_1" }（具体的なオブジェクトID）
+⚠️ 注意: { "target": "stage" }（画面全体）- 使えるが、複数ルールで使うとCONFLICT発生
+❌ 禁止: { "target": "self" }（複数ルールで使うと必ずCONFLICT）
 
 ## ★★★ 必須: success と failure アクション ★★★
 すべてのゲームには必ず以下の両方が必要:
@@ -1093,10 +1149,19 @@ playSoundアクションには必ずsoundIdを指定！これが抜けるとエ�
 
 **必ず以下を確認してから出力:**
 
+□ **オブジェクトID チェック（最重要！）**
+  - すべての targetObject, targetId, collision target は objects 配列で定義したIDか？
+  - "self", "screen", "stage" を targetObject/targetId に使っていないか？
+  - → 必ず objects で定義した実際のIDのみ使う！
+
 □ **プレイヤー操作チェック（最重要！）**
   - successアクションを持つルールは、プレイヤー操作（touch/collision/position）で発火するか？
   - time条件やanimation条件だけで成功するルールはないか？
   - → 必ずプレイヤーが何か操作して成功するようにする！
+
+□ **座標範囲チェック**
+  - すべての position, region の x, y, width, height は 0.0〜1.0 の範囲内か？
+  - 5, 4.9, 1.2 などの範囲外の値がないか？
 
 □ **SUCCESS_FAILURE_CONFLICT チェック（重要！）**
   - 複数オブジェクトで success/failure を分ける場合、各ルールの target が異なるか？
