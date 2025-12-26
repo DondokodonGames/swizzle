@@ -95,7 +95,8 @@ export type VerifiedConditionType =
   | 'position'
   | 'animation'
   | 'random'
-  | 'objectState';
+  | 'objectState'
+  | 'always';
 
 /**
  * エディター仕様準拠のアクションタイプ（すべて使用可能）

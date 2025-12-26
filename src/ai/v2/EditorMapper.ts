@@ -697,13 +697,16 @@ export class EditorMapper {
         if (touchTarget === 'stageArea') {
           touchTarget = 'stage';
         }
-        return [{
+        const touchResult: TriggerCondition = {
           type: 'touch' as const,
           target: touchTarget,
           touchType: (params.touchType as TriggerCondition['touchType']) || 'down',
-          // regionがある場合は保持
-          ...(params.region && { region: params.region as TriggerCondition['region'] })
-        }];
+        };
+        // regionがある場合は保持
+        if (params.region && typeof params.region === 'object') {
+          touchResult.region = params.region as TriggerCondition['region'];
+        }
+        return [touchResult];
 
       case 'time':
         return [{
@@ -729,11 +732,15 @@ export class EditorMapper {
         }];
 
       case 'flag':
-        return [{
+        const flagResult: TriggerCondition = {
           type: 'flag' as const,
           flagId: params.flagId as string,
-          ...(params.value !== undefined && { value: params.value as boolean })
-        }];
+        };
+        // boolean値をnumber(1/0)に変換
+        if (params.value !== undefined) {
+          flagResult.value = params.value ? 1 : 0;
+        }
+        return [flagResult];
 
       case 'position':
         return [{
@@ -744,20 +751,27 @@ export class EditorMapper {
         }];
 
       case 'animation':
-        return [{
+        const animResult: TriggerCondition = {
           type: 'animation' as const,
-          condition: (params.condition as string) || 'end',
-          ...(params.frame !== undefined && { frame: params.frame as number }),
-          ...(params.frameRange && { frameRange: params.frameRange as [number, number] }),
-          ...(params.loopCount !== undefined && { loopCount: params.loopCount as number })
-        }];
+          condition: (params.condition as TriggerCondition['condition']) || 'end',
+        };
+        if (params.frame !== undefined) {
+          animResult.frameNumber = params.frame as number;
+        }
+        if (params.frameRange && Array.isArray(params.frameRange)) {
+          animResult.frameRange = params.frameRange as [number, number];
+        }
+        if (params.loopCount !== undefined) {
+          animResult.loopCount = params.loopCount as number;
+        }
+        return [animResult];
 
       case 'gameState':
+        // Note: types.tsのTriggerConditionでは'gameState'型は未定義のプロパティを使う
+        // 互換性のためas anyでキャスト
         return [{
           type: 'gameState' as const,
-          state: (params.state as string) || 'playing',
-          ...(params.became !== undefined && { became: params.became as boolean })
-        }];
+        } as TriggerCondition];
 
       case 'random':
         return [{
@@ -827,11 +841,15 @@ export class EditorMapper {
         return { type: 'addScore' as const, points: params.points as number };
 
       case 'setFlag':
-        return {
+        const setFlagResult: GameAction = {
           type: 'setFlag' as const,
           flagId: params.flagId as string,
-          ...(params.value !== undefined && { value: params.value as boolean })
         };
+        // boolean値をnumber(1/0)に変換
+        if (params.value !== undefined) {
+          setFlagResult.value = params.value ? 1 : 0;
+        }
+        return setFlagResult;
 
       case 'toggleFlag':
         return {
@@ -850,7 +868,6 @@ export class EditorMapper {
         return {
           type: 'followDrag' as const,
           targetId: params.targetId as string,
-          enabled: (params.enabled as boolean) ?? true
         };
 
       case 'applyForce':

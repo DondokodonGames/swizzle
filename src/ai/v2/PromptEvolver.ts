@@ -188,13 +188,13 @@ export class PromptEvolver {
 
       // Step 5: Editor Mapping
       console.log('   🔄 Step 5: Mapping to editor format...');
-      mapperOutput = await this.editorMapper.map(concept, spec, assetPlan);
+      mapperOutput = await this.editorMapper.map(concept, spec);
 
       // Step 6: Logic Validation
       console.log('   ✓ Step 6: Validating logic...');
       const logicValidation = this.logicValidator.validate(mapperOutput.logicOutput);
 
-      if (!logicValidation.passed) {
+      if (!logicValidation.valid) {
         for (const error of logicValidation.errors) {
           this.recordError('LogicValidator', error.code || 'LOGIC_ERROR', error.message, {
             title: concept.title,
