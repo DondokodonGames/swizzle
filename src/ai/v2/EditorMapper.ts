@@ -261,6 +261,33 @@ ${EDITOR_SPEC}
 
 # 絶対に守るべき制約
 
+## ★★★ 成功ルールの必須要件 ★★★
+
+### 必須: successアクションを含むルールが1つ以上必要
+ゲームには必ずsuccessアクションを含むルールが必要です。
+❌ successアクションがない → ゲームがクリアできない（NO_SUCCESS エラー）
+✅ 正しい: conditions + successアクション のルールを定義
+
+### 必須: 成功条件にプレイヤー操作（touch/collision/position）を含める
+successアクションを発火させる条件には、必ずプレイヤー操作を含めてください：
+
+✅ 有効なパターン（プレイヤー操作あり）:
+- touch条件 → success: プレイヤーがタップして成功
+- collision条件 → success: ドラッグしたオブジェクトが衝突して成功
+- position条件 → success: ドラッグしたオブジェクトが特定位置に到達して成功
+- touch → counter増加、counter条件 → success: タップでカウンター増加、閾値達成で成功
+
+❌ 禁止パターン（NO_PLAYER_ACTION エラー）:
+- time条件のみ → success: 時間経過だけでクリア（プレイヤー不要）
+- counter条件のみ → success: カウンターを増やす操作がない
+- 条件なし → success: ゲーム開始直後にクリア（INSTANT_WIN エラー）
+
+### 最終チェック
+出力前に以下を確認:
+1. script.rules に successアクションを含むルールがあるか？
+2. そのルールの条件に touch/collision/position が含まれているか？
+3. カウンターで成功判定する場合、そのカウンターを増やすtouch条件があるか？
+
 ## 座標の制約 ★必須
 - すべての座標は 0.0〜1.0 の範囲内
 - 負の値は禁止（-0.1 などは NG → 0.0 に修正）
@@ -552,6 +579,23 @@ export class EditorMapper {
    * 仕様をエディター形式に変換
    */
   async map(concept: GameConcept, spec: GameSpecification): Promise<EditorMapperOutput> {
+    // 防御的入力検証
+    if (!spec) {
+      throw new Error('GameSpecification is undefined');
+    }
+    if (!spec.objects) {
+      spec.objects = [];
+    }
+    if (!spec.rules) {
+      spec.rules = [];
+    }
+    if (!spec.stateManagement) {
+      spec.stateManagement = { counters: [], flags: [] };
+    }
+    if (!spec.stateManagement.counters) {
+      spec.stateManagement.counters = [];
+    }
+
     this.logger?.logInput('EditorMapper', 'specification', {
       objectCount: spec.objects?.length || 0,
       counterCount: spec.stateManagement?.counters?.length || 0,
