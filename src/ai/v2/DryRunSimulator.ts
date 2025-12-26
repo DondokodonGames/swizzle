@@ -528,13 +528,23 @@ export class DryRunSimulator {
 
   /**
    * 条件のシグネチャを生成
+   * ★修正: target="self"の場合はtargetObjectIdを使用して正確に区別
    */
   private getConditionSignature(rule: GameRule): string {
     if (!rule.triggers?.conditions || rule.triggers.conditions.length === 0) {
       return '';
     }
     return rule.triggers.conditions
-      .map(c => `${c.type}:${JSON.stringify(c)}`)
+      .map(c => {
+        // ★修正: "self"を実際のtargetObjectIdに置換してからシリアライズ
+        const normalizedCondition = { ...c };
+        if (normalizedCondition.target === 'self' || !normalizedCondition.target) {
+          if (c.type === 'touch' || c.type === 'collision' || c.type === 'position' || c.type === 'animation') {
+            normalizedCondition.target = rule.targetObjectId || 'unknown';
+          }
+        }
+        return `${c.type}:${JSON.stringify(normalizedCondition)}`;
+      })
       .sort()
       .join('|');
   }

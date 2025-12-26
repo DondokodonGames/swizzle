@@ -665,6 +665,7 @@ export class ProjectValidator {
 
   /**
    * 条件のシグネチャを生成（比較用）
+   * ★修正: target="self"の場合はtargetObjectIdを使用して正確に区別
    */
   private getConditionSignature(rule: GameRule): string {
     if (!rule.triggers?.conditions || rule.triggers.conditions.length === 0) {
@@ -677,10 +678,42 @@ export class ProjectValidator {
           return `counter:${c.counterName}:${c.comparison}:${c.value}`;
         }
         if (c.type === 'touch') {
-          return `touch:${c.target || 'self'}:${c.touchType || 'down'}`;
+          // ★修正: "self"の場合はrule.targetObjectIdを使用
+          const effectiveTarget = (!c.target || c.target === 'self')
+            ? (rule.targetObjectId || 'unknown')
+            : c.target;
+          return `touch:${effectiveTarget}:${c.touchType || 'down'}`;
+        }
+        if (c.type === 'collision') {
+          // ★追加: collision条件はtargetとcollisionTypeを含める
+          const effectiveTarget = (!c.target || c.target === 'self')
+            ? (rule.targetObjectId || 'unknown')
+            : c.target;
+          return `collision:${effectiveTarget}:${c.collisionType || 'enter'}`;
+        }
+        if (c.type === 'position') {
+          // ★追加: position条件はtargetとregionを含める
+          const effectiveTarget = (!c.target || c.target === 'self')
+            ? (rule.targetObjectId || 'unknown')
+            : c.target;
+          const regionKey = c.region
+            ? `${c.region.x?.toFixed(2)},${c.region.y?.toFixed(2)}`
+            : 'noregion';
+          return `position:${effectiveTarget}:${regionKey}`;
+        }
+        if (c.type === 'flag') {
+          // ★追加: flag条件はflagIdを含める（expectedValueはTriggerConditionにないためtrue固定）
+          return `flag:${c.flagId || 'unknown'}`;
         }
         if (c.type === 'time') {
-          return `time:${c.seconds}`;
+          return `time:${c.timeType || 'exact'}:${c.seconds}`;
+        }
+        if (c.type === 'animation') {
+          // ★追加: animation条件はtargetとframeNumberを含める
+          const effectiveTarget = (!c.target || c.target === 'self')
+            ? (rule.targetObjectId || 'unknown')
+            : c.target;
+          return `animation:${effectiveTarget}:${c.condition || 'frame'}:${c.frameNumber ?? 0}`;
         }
         return `${c.type}`;
       })
