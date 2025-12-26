@@ -749,43 +749,63 @@ targetObject（ルールの対象オブジェクト）には具体的なオブ�
 
 ## SUCCESS_FAILURE_CONFLICT 防止 ★★★最頻発エラー★★★
 同一条件で成功と失敗が発火するのは致命的エラー！
-**Run 12で10件発生した最重要問題！**
+**Run 12-13で計16件発生した最重要問題！**
 
-### ★★★ targetObject の正しい使い方 ★★★
+### ★★★ 衝突を防ぐ唯一の方法: target に異なるオブジェクトIDを使う ★★★
 
-**複数のタップ可能オブジェクトがある場合、targetObjectで区別する！**
+**重要: バリデータは trigger.parameters.target の値で衝突を判定します！**
+**targetObject ではなく、target フィールドが重要！**
 
 \`\`\`json
-// ✅ 正しい例：targetObjectが異なるので衝突しない
+// ✅ 正しい例：target に異なるオブジェクトIDを指定
 {
-  "id": "tap_truth",
-  "targetObject": "truth_object",  // ★ここが重要
-  "trigger": { "type": "touch", "parameters": { "target": "self", "touchType": "down" } },
+  "id": "tap_correct",
+  "targetObject": "correct_note",
+  "trigger": {
+    "type": "touch",
+    "parameters": {
+      "target": "correct_note",  // ★ オブジェクトIDを直接指定！
+      "touchType": "down"
+    }
+  },
   "actions": [{ "type": "success" }]
 },
 {
-  "id": "tap_phantom",
-  "targetObject": "phantom_object",  // ★異なるオブジェクト
-  "trigger": { "type": "touch", "parameters": { "target": "self", "touchType": "down" } },
+  "id": "tap_wrong",
+  "targetObject": "wrong_note",
+  "trigger": {
+    "type": "touch",
+    "parameters": {
+      "target": "wrong_note",  // ★ 別のオブジェクトID！
+      "touchType": "down"
+    }
+  },
   "actions": [{ "type": "failure" }]
 }
+// シグネチャ: "touch_target:correct_note" vs "touch_target:wrong_note" → 衝突しない！
 \`\`\`
 
 \`\`\`json
-// ❌ 間違い例：targetObjectが同じなので衝突する
+// ❌ 間違い例：両方とも target: "self" なので衝突する！
 {
-  "id": "tap_truth",
-  "targetObject": "stage",  // NG: 両方stageなので衝突！
-  "trigger": { "type": "touch", "parameters": { "target": "stage" } },
-  "actions": [{ "type": "success" }]
+  "id": "tap_correct",
+  "targetObject": "correct_note",  // targetObjectは異なるが...
+  "trigger": { "type": "touch", "parameters": { "target": "self" } }  // NG: 両方"self"！
 },
 {
-  "id": "tap_phantom",
-  "targetObject": "stage",  // NG: 同じstage！
-  "trigger": { "type": "touch", "parameters": { "target": "stage" } },
-  "actions": [{ "type": "failure" }]
+  "id": "tap_wrong",
+  "targetObject": "wrong_note",  // targetObjectは異なるが...
+  "trigger": { "type": "touch", "parameters": { "target": "self" } }  // NG: 両方"self"！
 }
+// シグネチャ: "touch_target:self" vs "touch_target:self" → 衝突！
 \`\`\`
+
+### 絶対ルール ⚠️
+1. **複数オブジェクトで success/failure を分ける場合:**
+   - target には "self" を使わない
+   - target には実際のオブジェクトIDを使う
+
+2. **単一オブジェクトの場合のみ target: "self" が使える**
 
 ### 絶対にやってはいけない ❌
 
@@ -798,39 +818,31 @@ actions: [
 ]
 \`\`\`
 
-**パターン2: 複数オブジェクトが同じtarget条件**
-- tap_truth: target: "stage" → success
-- tap_phantom: target: "stage" → failure
-  → 両方とも「stage」なので衝突！
+**パターン2: 両方とも target: "self" または target: "stage"**
+- tap_correct: target: "self" → success
+- tap_wrong: target: "self" → failure
+  → 両方とも「self」なので衝突！
 
-**パターン3: スワイプ方向が同じで success/failure ★頻発エラー★**
+**パターン3: スワイプ方向が同じで success/failure**
 \`\`\`
-// NG: swipe_correct と swipe_incorrect が同じ条件
-// ルール1: stage スワイプ(right) → success
-// ルール2: stage スワイプ(right) → failure
-// どちらも「stage」への「right」スワイプなので衝突！
+// NG: 両方とも stage への right スワイプ
+// ルール1: target: "stage", direction: "right" → success
+// ルール2: target: "stage", direction: "right" → failure
 \`\`\`
 
 ### 正しい設計 ✅
 
-**方法1: targetObjectで明確に分離（推奨！）**
+**方法1: target に異なるオブジェクトIDを指定（推奨！）**
 \`\`\`json
-// ルール1
-{ "targetObject": "correct_object", "trigger": { "parameters": { "target": "self" } } }
-// ルール2
-{ "targetObject": "wrong_object", "trigger": { "parameters": { "target": "self" } } }
+{ "trigger": { "parameters": { "target": "correct_object" } }, "actions": [{ "type": "success" }] }
+{ "trigger": { "parameters": { "target": "wrong_object" } }, "actions": [{ "type": "failure" }] }
 \`\`\`
-→ targetObjectが異なるので衝突しない！
 
 **方法2: スワイプ方向で区別**
-- swipe_correct: stage スワイプ(direction: "right") → success
-- swipe_wrong: stage スワイプ(direction: "left") → failure
-  → 方向で明確に区別！
-
-**方法3: 追加条件で区別**
-- object タップ かつ flag "is_glowing" == true → success
-- object タップ かつ flag "is_glowing" == false → failure
-- フラグ状態で区別
+\`\`\`json
+{ "trigger": { "parameters": { "target": "stage", "direction": "right" } }, "actions": [{ "type": "success" }] }
+{ "trigger": { "parameters": { "target": "stage", "direction": "left" } }, "actions": [{ "type": "failure" }] }
+\`\`\`
 
 ## アクションで参照するオブジェクトIDの制約 ★★★
 アクションの targetId は必ずアセット計画に存在するオブジェクトを指定:
@@ -969,13 +981,16 @@ bgm.mood は以下の英語のみ使用可能:
 
 **必ず以下を確認してから出力:**
 
+□ **SUCCESS_FAILURE_CONFLICT チェック（最重要！）**
+  - 複数オブジェクトで success/failure を分ける場合、各ルールの target が異なるか？
+  - target: "self" を複数ルールで使っていないか？
+  - → 各ルールで target: "オブジェクトID" を使う！
+
 □ rulesにcounter条件があるか？ → あればcountersに定義があるか確認
 □ rulesにcounterアクションがあるか？ → あればcountersに定義があるか確認
 □ countersが空[]なら、rulesにcounter関連は一切ないはず
-□ カウンターなしで実装できないか再検討したか？
 
-**カウンター未定義エラーは最も頻発するエラーです！**
-**迷ったらカウンターを使わないシンプルパターンを選んでください！**
+**SUCCESS_FAILURE_CONFLICTが最頻発エラーです！target に注意！**
 
 # 出力形式（JSON）- ★カウンター不使用の推奨パターン★
 {
@@ -1015,7 +1030,7 @@ bgm.mood は以下の英語のみ使用可能:
         "type": "touch",
         "description": "正解をタップ",
         "parameters": {
-          "target": "self",
+          "target": "target_correct",
           "touchType": "down"
         }
       },
@@ -1036,7 +1051,7 @@ bgm.mood は以下の英語のみ使用可能:
         "type": "touch",
         "description": "不正解をタップ",
         "parameters": {
-          "target": "self",
+          "target": "target_wrong",
           "touchType": "down"
         }
       },
