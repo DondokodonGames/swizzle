@@ -261,12 +261,15 @@ export class GameDesignGenerator {
 
     const design = this.extractAndParseJSON(content.text);
 
-    // ログに記録
+    // ログに記録（防御的アクセス）
+    const objectRoles = (design.objects || [])
+      .filter(o => o && o.id && o.role)
+      .map(o => ({ id: o.id, role: o.role as string }));
     this.logger?.logGameDesignGeneration({
-      coreLoop: design.coreLoop.description,
-      mechanics: design.interactions.map(i => i.action),
-      objectRoles: design.objects.map(o => ({ id: o.id, role: o.role })),
-      decisions: design.designDecisions.map(d => `${d.question}: ${d.decision}`)
+      coreLoop: design.coreLoop?.description || '',
+      mechanics: (design.interactions || []).map(i => i?.action).filter((x): x is string => Boolean(x)),
+      objectRoles,
+      decisions: (design.designDecisions || []).map(d => d ? `${d.question}: ${d.decision}` : null).filter((x): x is string => x !== null)
     });
 
     return design;
