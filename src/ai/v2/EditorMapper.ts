@@ -350,11 +350,25 @@ timeType は以下のみ使用可能:
 
 ## ★★★ 有効なタイプ一覧（これ以外は使用禁止）★★★
 
-### 条件タイプ（type）
-✅ 有効: 'touch', 'time', 'counter', 'collision', 'flag', 'gameState', 'position', 'animation', 'random', 'objectState'
+### ⚠️⚠️⚠️ 条件とアクションの混同禁止 ⚠️⚠️⚠️
+**「touch」は条件タイプであり、アクションタイプではありません！**
+
+❌ 間違い（actionsでtouchを使用）:
+\`\`\`json
+"actions": [{ "type": "touch", "target": "player" }]  // NG！touchはアクションではない
+\`\`\`
+
+✅ 正しい（conditionsでtouchを使用）:
+\`\`\`json
+"conditions": [{ "type": "touch", "target": "player", "touchType": "down" }],
+"actions": [{ "type": "success" }]
+\`\`\`
+
+### 条件タイプ（conditions で使用）
+✅ 有効: 'touch', 'time', 'counter', 'collision', 'flag', 'gameState', 'position', 'animation', 'random', 'objectState', 'always'
 ❌ 無効: 'state', 'deviceTilt', 'sensor', 'gesture', 'proximity', 'orientation', 'accelerometer'
 
-### アクションタイプ（type）
+### アクションタイプ（actions で使用）
 ✅ 有効: 'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag', 'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'setAnimationSpeed', 'setAnimationFrame', 'followDrag', 'applyForce', 'applyImpulse', 'randomAction', 'pause', 'restart'
 ❌ 無効: 'changeState', 'adjustAngle', 'updateCounter', 'rotate', 'scale', 'fade', 'spawn', 'destroy', 'emit', 'trigger', 'conditional'
 
@@ -373,6 +387,16 @@ timeType は以下のみ使用可能:
 ### タッチタイプ（touchType）
 ✅ 有効: 'down', 'up', 'hold', 'drag', 'swipe', 'flick'
 ❌ 無効: 'tap', 'click', 'press', 'release', 'longPress', 'doubleTap'
+
+### スワイプ方向（swipeDirection）★★★
+touchType が 'swipe' の場合、swipeDirection で方向を指定:
+✅ 有効: 'left', 'right', 'up', 'down'
+例:
+\`\`\`json
+{ "type": "touch", "target": "card", "touchType": "swipe", "swipeDirection": "left" }
+{ "type": "touch", "target": "card", "touchType": "swipe", "swipeDirection": "right" }
+\`\`\`
+**重要**: swipe_left, swipe_right 等を区別するには swipeDirection が必須！
 
 ### 移動タイプ（movement.type）
 ✅ 有効: 'straight', 'teleport', 'wander', 'stop'
@@ -921,6 +945,8 @@ export class EditorMapper {
           type: 'touch' as const,
           target: touchTarget,
           touchType: (params.touchType as TriggerCondition['touchType']) || 'down',
+          // swipeDirectionがある場合は保持
+          ...(params.swipeDirection ? { swipeDirection: params.swipeDirection as TriggerCondition['swipeDirection'] } : {}),
           // regionがある場合は保持
           ...(params.region ? { region: params.region as TriggerCondition['region'] } : {})
         }];

@@ -249,28 +249,74 @@ export class LogicValidator {
   }
 
   /**
-   * 自動成功チェック（プレイヤー操作なしで成功してしまう）
+   * 自動成功/失敗チェック（プレイヤー操作の意味がない状態を検出）
    *
-   * 問題: time条件のみで成功すると、プレイヤーがゲームを理解する前に終わる
+   * ★修正: 失敗条件の有無を確認して判定を分岐
+   * - OK: time成功 + touch失敗（落とさなければ成功パターン）
+   * - NG: time成功 + 失敗条件なし（絶対クリア）
+   * - NG: time失敗 + 成功にプレイヤー操作なし（自動失敗）
    */
   private checkAutoSuccess(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
     const successRules = output.script.rules.filter(r =>
       r.actions?.some(a => a.type === 'success')
     );
+    const failureRules = output.script.rules.filter(r =>
+      r.actions?.some(a => a.type === 'failure')
+    );
+
+    // プレイヤー操作を必要とする条件タイプ
+    const playerActionTypes = ['touch', 'collision', 'position'];
+
+    // 失敗条件にプレイヤー操作が含まれているか
+    const hasPlayerActionInFailure = failureRules.some(rule => {
+      const conditions = rule.triggers?.conditions || [];
+      return conditions.some(c => playerActionTypes.includes(c.type));
+    });
+
+    // 成功条件にプレイヤー操作が含まれているか
+    const hasPlayerActionInSuccess = successRules.some(rule => {
+      const conditions = rule.triggers?.conditions || [];
+      return conditions.some(c => playerActionTypes.includes(c.type));
+    });
 
     for (const rule of successRules) {
       const conditions = rule.triggers?.conditions || [];
 
-      // time条件のみで成功する場合をチェック
-      const hasOnlyTimeCondition = conditions.length > 0 &&
-        conditions.every(c => c.type === 'time' || c.type === 'gameState');
+      // time/gameState条件のみで成功する場合
+      const hasOnlyAutoCondition = conditions.length > 0 &&
+        conditions.every(c => c.type === 'time' || c.type === 'gameState' || c.type === 'counter' || c.type === 'flag');
 
-      if (hasOnlyTimeCondition) {
+      if (hasOnlyAutoCondition) {
+        // ★修正: 失敗条件にプレイヤー操作がある場合は許容（落とさなければ成功パターン）
+        if (hasPlayerActionInFailure) {
+          // OK: プレイヤー操作で失敗できる = ゲームとして成立
+          continue;
+        }
+
+        // 失敗条件がない、または失敗条件もプレイヤー操作がない = 絶対クリア
         errors.push({
           type: 'critical',
           code: 'AUTO_SUCCESS',
-          message: `自動成功: ルール "${rule.id}" はプレイヤー操作なしで成功します`,
-          fix: `プレイヤー操作を必要とする条件（touch, collision, counter等）を追加してください`
+          message: `自動成功: ルール "${rule.id}" はプレイヤー操作なしで成功し、失敗条件もありません`,
+          fix: `プレイヤー操作による失敗条件を追加するか、成功条件にプレイヤー操作を追加してください`
+        });
+      }
+    }
+
+    // 自動失敗チェック（time条件のみで失敗 + 成功にプレイヤー操作がない）
+    for (const rule of failureRules) {
+      const conditions = rule.triggers?.conditions || [];
+
+      // time条件のみで失敗する場合
+      const hasOnlyTimeFailure = conditions.length > 0 &&
+        conditions.every(c => c.type === 'time');
+
+      if (hasOnlyTimeFailure && !hasPlayerActionInSuccess) {
+        errors.push({
+          type: 'critical',
+          code: 'AUTO_FAILURE',
+          message: `自動失敗: ルール "${rule.id}" は時間経過で失敗し、成功にプレイヤー操作がありません`,
+          fix: `成功条件にプレイヤー操作（touch, collision, position）を追加してください`
         });
       }
     }
@@ -1082,6 +1128,8 @@ export class LogicValidator {
 
           if (c.counterName) parts.push(`counter:${c.counterName}`);
           if (c.touchType) parts.push(`touch:${c.touchType}`);
+          // ★追加: swipeDirectionを含めてスワイプ方向を区別
+          if (c.swipeDirection) parts.push(`swipeDir:${c.swipeDirection}`);
           if (c.timeType) parts.push(`time:${c.timeType}`);
           if (c.seconds !== undefined) parts.push(`sec:${c.seconds}`);
           // collisionType を含めることで enter/exit/stay を区別

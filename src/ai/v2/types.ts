@@ -218,6 +218,7 @@ export interface TriggerCondition {
   // touch
   target?: 'self' | 'stage' | string;
   touchType?: 'down' | 'up' | 'hold' | 'drag' | 'swipe' | 'flick';
+  swipeDirection?: 'left' | 'right' | 'up' | 'down';  // スワイプ方向（touchType='swipe'時）
   // time
   timeType?: 'exact' | 'range' | 'interval';
   seconds?: number;

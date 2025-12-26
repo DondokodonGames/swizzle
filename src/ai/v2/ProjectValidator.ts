@@ -682,7 +682,11 @@ export class ProjectValidator {
           const effectiveTarget = (!c.target || c.target === 'self')
             ? (rule.targetObjectId || 'unknown')
             : c.target;
-          return `touch:${effectiveTarget}:${c.touchType || 'down'}`;
+          // ★追加: swipeDirectionを含めてスワイプ方向を区別
+          const touchKey = c.swipeDirection
+            ? `${c.touchType || 'swipe'}(${c.swipeDirection})`
+            : (c.touchType || 'down');
+          return `touch:${effectiveTarget}:${touchKey}`;
         }
         if (c.type === 'collision') {
           // ★追加: collision条件はtargetとcollisionTypeを含める
