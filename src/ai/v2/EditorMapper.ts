@@ -566,13 +566,13 @@ export class EditorMapper {
     // マッピングテーブルを生成
     const mappingTable = this.createMappingTable(spec, logicOutput);
 
-    // ログに記録
-    const outputObjects = logicOutput.assetPlan?.objects || [];
-    const outputCounters = logicOutput.script?.counters || [];
-    const outputRules = logicOutput.script?.rules || [];
+    // ログに記録（防御的にフィルタリング）
+    const outputObjects = (logicOutput.assetPlan?.objects || []).filter(Boolean);
+    const outputCounters = (logicOutput.script?.counters || []).filter(Boolean);
+    const outputRules = (logicOutput.script?.rules || []).filter(Boolean);
     this.logger?.logEditorMapping({
-      objectIds: outputObjects.map(o => o.id),
-      counterIds: outputCounters.map(c => c.id),
+      objectIds: outputObjects.map(o => o?.id).filter(Boolean),
+      counterIds: outputCounters.map(c => c?.id).filter(Boolean),
       ruleCount: outputRules.length,
       mappingDecisions: [
         `Objects: ${outputObjects.length}`,
@@ -685,50 +685,50 @@ export class EditorMapper {
    * マッピングテーブルを生成
    */
   private createMappingTable(spec: GameSpecification, output: LogicGeneratorOutput): MappingTable {
-    // 安全にアクセス（undefinedの場合は空配列）
-    const specObjects = spec.objects || [];
-    const specCounters = spec.stateManagement?.counters || [];
-    const specSounds = spec.audio?.sounds || [];
-    const specRules = spec.rules || [];
-    const outputObjects = output.assetPlan?.objects || [];
-    const outputCounters = output.script?.counters || [];
-    const outputSounds = output.assetPlan?.sounds || [];
-    const outputRules = output.script?.rules || [];
+    // 安全にアクセス（undefinedの場合は空配列、さらにundefined要素をフィルタ）
+    const specObjects = (spec.objects || []).filter(Boolean);
+    const specCounters = (spec.stateManagement?.counters || []).filter(Boolean);
+    const specSounds = (spec.audio?.sounds || []).filter(Boolean);
+    const specRules = (spec.rules || []).filter(Boolean);
+    const outputObjects = (output.assetPlan?.objects || []).filter(Boolean);
+    const outputCounters = (output.script?.counters || []).filter(Boolean);
+    const outputSounds = (output.assetPlan?.sounds || []).filter(Boolean);
+    const outputRules = (output.script?.rules || []).filter(Boolean);
 
     const objectMappings: ObjectMapping[] = specObjects.map(specObj => {
-      const editorObj = outputObjects.find(o => o.id === specObj.id);
+      const editorObj = outputObjects.find(o => o?.id === specObj.id);
       return {
-        specName: specObj.name,
+        specName: specObj.name || specObj.id,
         editorId: editorObj?.id || specObj.id,
         purpose: editorObj?.purpose || 'unknown'
       };
     });
 
     const counterMappings: CounterMapping[] = specCounters.map(specCounter => {
-      const editorCounter = outputCounters.find(c => c.id === specCounter.id || c.name === specCounter.name);
+      const editorCounter = outputCounters.find(c => c?.id === specCounter.id || c?.name === specCounter.name);
       return {
-        specName: specCounter.name,
+        specName: specCounter.name || specCounter.id,
         editorId: editorCounter?.id || specCounter.id,
-        editorName: editorCounter?.name || specCounter.name
+        editorName: editorCounter?.name || specCounter.name || specCounter.id
       };
     });
 
     const soundMappings: SoundMapping[] = specSounds.map(specSound => {
-      const editorSound = outputSounds.find(s => s.id === specSound.id);
+      const editorSound = outputSounds.find(s => s?.id === specSound.id);
       return {
         specId: specSound.id,
         editorId: editorSound?.id || specSound.id,
-        trigger: specSound.trigger
+        trigger: specSound.trigger || 'unknown'
       };
     });
 
     const ruleMappings: RuleMapping[] = specRules.map(specRule => {
-      const editorRule = outputRules.find(r => r.id === specRule.id);
+      const editorRule = outputRules.find(r => r?.id === specRule.id);
       return {
         specId: specRule.id,
-        specName: specRule.name,
+        specName: specRule.name || specRule.id,
         editorId: editorRule?.id || specRule.id,
-        purpose: specRule.purpose
+        purpose: specRule.purpose || 'unknown'
       };
     });
 
