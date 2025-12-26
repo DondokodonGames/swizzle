@@ -155,7 +155,7 @@ export interface RuleSpecification {
 
   // トリガー条件
   trigger: {
-    type: 'touch' | 'time' | 'counter' | 'collision' | 'flag' | 'always';
+    type: 'touch' | 'time' | 'counter' | 'collision' | 'flag' | 'always' | 'position' | 'animation' | 'gameState' | 'random' | 'objectState';
     description: string;     // 条件の説明
     parameters: Record<string, unknown>;  // 詳細パラメータ
   };
