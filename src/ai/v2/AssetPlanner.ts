@@ -8,7 +8,7 @@
  * 出力: AssetPlan (強化版)
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { ILLMProvider, createLLMProvider, LLMProviderType, DEFAULT_MODELS } from './llm';
 import { GameConcept } from './types';
 import { GameDesign } from './GameDesignGenerator';
 import { GenerationLogger } from './GenerationLogger';
@@ -333,20 +333,26 @@ export interface AssetPlannerConfig {
   model?: string;
   dryRun?: boolean;
   apiKey?: string;
+  llmProvider?: LLMProviderType;
 }
 
 export class AssetPlanner {
-  private client: Anthropic;
-  private config: Required<Omit<AssetPlannerConfig, 'apiKey'>>;
+  private llmProvider: ILLMProvider;
+  private config: Required<Omit<AssetPlannerConfig, 'apiKey' | 'llmProvider'>>;
   private logger?: GenerationLogger;
   private tokensUsed: number = 0;
 
   constructor(config?: AssetPlannerConfig, logger?: GenerationLogger) {
-    this.client = new Anthropic({
-      apiKey: config?.apiKey || process.env.ANTHROPIC_API_KEY
+    const providerType = config?.llmProvider || (process.env.LLM_PROVIDER as LLMProviderType) || 'anthropic';
+    const defaultModel = providerType === 'openai' ? DEFAULT_MODELS.openai : DEFAULT_MODELS.anthropic;
+
+    this.llmProvider = createLLMProvider({
+      provider: providerType,
+      apiKey: config?.apiKey,
+      model: config?.model || defaultModel
     });
     this.config = {
-      model: config?.model || 'claude-sonnet-4-20250514',
+      model: config?.model || defaultModel,
       dryRun: config?.dryRun || false
     };
     this.logger = logger;
@@ -370,20 +376,14 @@ export class AssetPlanner {
       .replace('{{CONCEPT}}', JSON.stringify(concept, null, 2))
       .replace('{{DESIGN}}', JSON.stringify(design, null, 2));
 
-    const response = await this.client.messages.create({
-      model: this.config.model,
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }]
-    });
+    const response = await this.llmProvider.chat(
+      [{ role: 'user', content: prompt }],
+      { maxTokens: 4096, model: this.config.model }
+    );
 
-    this.tokensUsed = (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
+    this.tokensUsed = (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0);
 
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type');
-    }
-
-    const plan = this.extractAndParseJSON(content.text);
+    const plan = this.extractAndParseJSON(response.content);
 
     // 必須アセットの検証
     this.validateRequiredAssets(plan);

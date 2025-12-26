@@ -8,7 +8,7 @@
  * 出力: EditorMapperOutput（LogicGeneratorOutput + MappingTable）
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { ILLMProvider, createLLMProvider, LLMProviderType, DEFAULT_MODELS } from './llm';
 import { GameConcept, LogicGeneratorOutput, AssetPlan, TriggerCondition, GameAction, GameRule } from './types';
 import { GameSpecification } from './SpecificationGenerator';
 import { GenerationLogger } from './GenerationLogger';
@@ -414,20 +414,26 @@ export interface EditorMapperConfig {
   model?: string;
   dryRun?: boolean;
   apiKey?: string;
+  llmProvider?: LLMProviderType;
 }
 
 export class EditorMapper {
-  private client: Anthropic;
-  private config: Required<Omit<EditorMapperConfig, 'apiKey'>>;
+  private llmProvider: ILLMProvider;
+  private config: Required<Omit<EditorMapperConfig, 'apiKey' | 'llmProvider'>>;
   private logger?: GenerationLogger;
   private tokensUsed: number = 0;
 
   constructor(config?: EditorMapperConfig, logger?: GenerationLogger) {
-    this.client = new Anthropic({
-      apiKey: config?.apiKey || process.env.ANTHROPIC_API_KEY
+    const providerType = config?.llmProvider || (process.env.LLM_PROVIDER as LLMProviderType) || 'anthropic';
+    const defaultModel = providerType === 'openai' ? DEFAULT_MODELS.openai : DEFAULT_MODELS.anthropic;
+
+    this.llmProvider = createLLMProvider({
+      provider: providerType,
+      apiKey: config?.apiKey,
+      model: config?.model || defaultModel
     });
     this.config = {
-      model: config?.model || 'claude-sonnet-4-20250514',
+      model: config?.model || defaultModel,
       dryRun: config?.dryRun || false
     };
     this.logger = logger;
@@ -451,20 +457,14 @@ export class EditorMapper {
       .replace('{{CONCEPT}}', JSON.stringify(concept, null, 2))
       .replace('{{SPEC}}', JSON.stringify(spec, null, 2));
 
-    const response = await this.client.messages.create({
-      model: this.config.model,
-      max_tokens: 8192,
-      messages: [{ role: 'user', content: prompt }]
-    });
+    const response = await this.llmProvider.chat(
+      [{ role: 'user', content: prompt }],
+      { maxTokens: 8192, model: this.config.model }
+    );
 
-    this.tokensUsed = (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
+    this.tokensUsed = (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0);
 
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type');
-    }
-
-    let logicOutput = this.extractAndParseJSON(content.text);
+    let logicOutput = this.extractAndParseJSON(response.content);
 
     // ポスト処理: AIが指示に従わなくても安全にする
     logicOutput = this.postProcess(logicOutput);

@@ -5,7 +5,7 @@
  * 即成功/即失敗/型エラーは絶対に出さない
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { ILLMProvider, createLLMProvider, LLMProviderType, DEFAULT_MODELS } from './llm';
 import { GameConcept, LogicGeneratorOutput, AssetPlan } from './types';
 
 const EDITOR_SPEC = `
@@ -203,19 +203,25 @@ export interface LogicGeneratorConfig {
   model?: string;
   dryRun?: boolean;
   apiKey?: string;
+  llmProvider?: LLMProviderType;
 }
 
 export class LogicGenerator {
-  private client: Anthropic;
-  private config: Required<Omit<LogicGeneratorConfig, 'apiKey'>>;
+  private llmProvider: ILLMProvider;
+  private config: Required<Omit<LogicGeneratorConfig, 'apiKey' | 'llmProvider'>>;
   private tokensUsed: number = 0;
 
   constructor(config?: LogicGeneratorConfig) {
-    this.client = new Anthropic({
-      apiKey: config?.apiKey || process.env.ANTHROPIC_API_KEY
+    const providerType = config?.llmProvider || (process.env.LLM_PROVIDER as LLMProviderType) || 'anthropic';
+    const defaultModel = providerType === 'openai' ? DEFAULT_MODELS.openai : DEFAULT_MODELS.anthropic;
+
+    this.llmProvider = createLLMProvider({
+      provider: providerType,
+      apiKey: config?.apiKey,
+      model: config?.model || defaultModel
     });
     this.config = {
-      model: config?.model || 'claude-sonnet-4-20250514',
+      model: config?.model || defaultModel,
       dryRun: config?.dryRun || false
     };
   }
@@ -235,26 +241,15 @@ export class LogicGenerator {
       prompt += `\n\n# 前回の問題点（必ず修正してください）\n${validationFeedback}`;
     }
 
-    const response = await this.client.messages.create({
-      model: this.config.model,
-      max_tokens: 16384,  // Further increased for complex game logic
-      messages: [{ role: 'user', content: prompt }]
-    });
+    const response = await this.llmProvider.chat(
+      [{ role: 'user', content: prompt }],
+      { maxTokens: 16384, model: this.config.model }
+    );
 
-    this.tokensUsed = (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
-
-    // Check for truncation
-    if (response.stop_reason === 'max_tokens') {
-      console.log('      ⚠️ Response was truncated due to max_tokens limit');
-    }
-
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type');
-    }
+    this.tokensUsed = (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0);
 
     // JSONを抽出してパース
-    const output = this.extractAndParseJSON(content.text);
+    const output = this.extractAndParseJSON(response.content);
 
     // 基本的な構造チェック
     if (!output.script?.rules || output.script.rules.length === 0) {
