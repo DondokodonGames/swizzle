@@ -813,66 +813,76 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 {urlCopied ? '✓ ' + t('bridge.share.urlCopied') : '📋 ' + t('bridge.share.copyUrl')}
               </button>
 
-              {/* Twitter共有ボタン */}
-              <button
-                onClick={handleShareTwitter}
-                style={{
-                  width: '100%',
-                  background: '#1DA1F2',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  fontSize: '16px',
-                  padding: '14px',
-                  borderRadius: '16px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                }}
-              >
-                <span style={{ fontSize: '20px' }}>𝕏</span>
-                {t('bridge.share.twitter')}
-              </button>
-
-              {/* LINE共有ボタン */}
-              <button
-                onClick={handleShareLine}
-                style={{
-                  width: '100%',
-                  background: '#00B900',
-                  color: 'white',
-                  fontWeight: 'bold',
-                  fontSize: '16px',
-                  padding: '14px',
-                  borderRadius: '16px',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                💬 {t('bridge.share.line')}
-              </button>
-
-              {/* ネイティブ共有ボタン（対応ブラウザのみ） */}
-              {typeof navigator !== 'undefined' && 'share' in navigator && (
+              {/* SNS共有ボタン（アイコンのみ・横並び） */}
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                {/* X(Twitter)共有ボタン */}
                 <button
-                  onClick={handleNativeShare}
+                  onClick={handleShareTwitter}
                   style={{
-                    width: '100%',
-                    background: 'rgba(255, 255, 255, 0.2)',
+                    width: '60px',
+                    height: '60px',
+                    background: '#000000',
                     color: 'white',
                     fontWeight: 'bold',
-                    fontSize: '16px',
-                    padding: '14px',
-                    borderRadius: '16px',
+                    fontSize: '28px',
+                    borderRadius: '50%',
                     border: 'none',
                     cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                   }}
+                  title="X (Twitter)"
                 >
-                  📤 {t('bridge.share.shareNative')}
+                  𝕏
                 </button>
-              )}
+
+                {/* LINE共有ボタン */}
+                <button
+                  onClick={handleShareLine}
+                  style={{
+                    width: '60px',
+                    height: '60px',
+                    background: '#00B900',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: '28px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  title="LINE"
+                >
+                  💬
+                </button>
+
+                {/* ネイティブ共有ボタン（対応ブラウザのみ） */}
+                {typeof navigator !== 'undefined' && 'share' in navigator && (
+                  <button
+                    onClick={handleNativeShare}
+                    style={{
+                      width: '60px',
+                      height: '60px',
+                      background: 'rgba(255, 255, 255, 0.3)',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      fontSize: '28px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    title={t('bridge.share.shareNative')}
+                  >
+                    📤
+                  </button>
+                )}
+              </div>
 
               {/* 閉じるボタン */}
               <button
