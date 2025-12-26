@@ -691,7 +691,14 @@ rules: [{
 
 ### 条件タイプ（trigger.type）
 ✅ 有効: 'touch', 'time', 'counter', 'collision', 'flag', 'gameState', 'position', 'animation', 'random', 'objectState'
-❌ 無効: 'state', 'deviceTilt', 'sensor', 'gesture'
+❌ 無効: 'state', 'deviceTilt', 'sensor', 'gesture', 'custom'（customは使えない！）
+
+### animation条件の必須パラメータ ★★★
+animation条件を使う場合は必ず frameNumber を指定:
+✅ 正しい: { type: "animation", condition: "frame", frameNumber: 5 }
+❌ 間違い: { type: "animation", condition: "frame" }（frameNumberがない！）
+
+**注意: animation条件での成功/失敗分岐は実装困難！避けること！**
 
 ### アクションタイプ（actions[].type）
 ✅ 有効: 'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag', 'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'followDrag', 'applyForce', 'applyImpulse', 'randomAction', 'pause', 'restart'
@@ -829,6 +836,32 @@ actions: [
 // ルール1: target: "stage", direction: "right" → success
 // ルール2: target: "stage", direction: "right" → failure
 \`\`\`
+
+**パターン4: タイミングベースの成功/失敗 ★頻発エラー★**
+\`\`\`
+// NG: 同じオブジェクトを「正しいタイミング」と「間違ったタイミング」で区別しようとする
+// ルール1: tap_knife_correct: target: "knife" → success（正確なタイミング）
+// ルール2: tap_knife_wrong: target: "knife" → failure（不正確なタイミング）
+// → 両方とも「knife」をタップなので衝突！タイミングは判定できない！
+\`\`\`
+
+**パターン5: 範囲ベースの成功/失敗**
+\`\`\`
+// NG: 同じエリア内の「正しい位置」と「間違った位置」で区別しようとする
+// ルール1: tap_correct_range: target: "stage" → success
+// ルール2: tap_outside_range: target: "stage" → failure
+// → 両方とも「stage」をタップなので衝突！
+\`\`\`
+
+### ⚠️ 実装できないパターン（避ける）
+以下のパターンは技術的に実装困難なので**使わない**:
+- 同じオブジェクトを「タイミング」で成功/失敗を分ける
+- 同じエリアを「位置」で成功/失敗を分ける
+- 同じオブジェクトを「アニメーションフレーム」で成功/失敗を分ける
+
+代わりに**シンプルなパターン**を使う:
+- 正解オブジェクトと不正解オブジェクトを**別々に**用意
+- タップ → 即座に success または failure
 
 ### 正しい設計 ✅
 
