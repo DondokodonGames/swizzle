@@ -16,10 +16,21 @@
     "nextButton": "Next",
     "againButton": "Again",
     "skipButton": "Skip",
+    "shareButton": "Share",
     "copySuccessTitle": "Copy Complete!",
     "copySuccessMessage": "Game rules copied. Swap images in the editor to create your own unique game!",
     "openEditorButton": "Open Editor",
     "editLaterButton": "Edit Later",
+    "share": {
+      "title": "Share Game",
+      "copyUrl": "Copy URL",
+      "urlCopied": "URL Copied!",
+      "twitter": "Share on Twitter",
+      "line": "Share on LINE",
+      "shareNative": "Share via other apps",
+      "resultText": "I scored {{score}} points on \"{{title}}\"! Try it yourself!",
+      "playText": "Check out \"{{title}}\"!"
+    },
     "errors": {
       "gameDataFetchFailed": "Failed to fetch game data",
       "cannotCopy": "This game cannot be copied",

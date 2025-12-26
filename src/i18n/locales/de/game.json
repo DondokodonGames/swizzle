@@ -16,10 +16,21 @@
     "nextButton": "Weiter",
     "againButton": "Nochmal",
     "skipButton": "Überspringen",
+    "shareButton": "Teilen",
     "copySuccessTitle": "Kopie abgeschlossen!",
     "copySuccessMessage": "Spielregeln kopiert. Tauschen Sie Bilder im Editor aus, um Ihr eigenes einzigartiges Spiel zu erstellen!",
     "openEditorButton": "Editor öffnen",
     "editLaterButton": "Später bearbeiten",
+    "share": {
+      "title": "Spiel teilen",
+      "copyUrl": "URL kopieren",
+      "urlCopied": "URL kopiert!",
+      "twitter": "Auf Twitter teilen",
+      "line": "Auf LINE teilen",
+      "shareNative": "Über andere Apps teilen",
+      "resultText": "Ich habe {{score}} Punkte in \"{{title}}\" erreicht! Probier es auch aus!",
+      "playText": "Schau dir \"{{title}}\" an!"
+    },
     "errors": {
       "gameDataFetchFailed": "Fehler beim Abrufen der Spieldaten",
       "cannotCopy": "Dieses Spiel kann nicht kopiert werden",
