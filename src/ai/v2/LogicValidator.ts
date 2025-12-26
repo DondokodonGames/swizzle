@@ -1061,18 +1061,38 @@ export class LogicValidator {
    */
   private checkRuleConflicts(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
     // 条件のシグネチャを生成（同一条件の検出用）
-    const getConditionSignature = (conditions: TriggerCondition[] | undefined): string => {
+    // ★修正: ruleを引数に追加し、target="self"の場合はtargetObjectIdを使用
+    const getConditionSignature = (rule: GameRule): string => {
+      const conditions = rule.triggers?.conditions;
       if (!conditions || conditions.length === 0) return '';
       return conditions
         .map(c => {
           const parts: string[] = [c.type];
-          if (c.target) parts.push(`target:${c.target}`);
+
+          // ★修正: "self"の場合はrule.targetObjectIdを使用
+          if (c.target) {
+            const effectiveTarget = (c.target === 'self')
+              ? (rule.targetObjectId || 'self')
+              : c.target;
+            parts.push(`target:${effectiveTarget}`);
+          } else if (c.type === 'touch' || c.type === 'collision' || c.type === 'position' || c.type === 'animation') {
+            // targetがない場合もtargetObjectIdをデフォルトとして使用
+            parts.push(`target:${rule.targetObjectId || 'unknown'}`);
+          }
+
           if (c.counterName) parts.push(`counter:${c.counterName}`);
           if (c.touchType) parts.push(`touch:${c.touchType}`);
           if (c.timeType) parts.push(`time:${c.timeType}`);
           if (c.seconds !== undefined) parts.push(`sec:${c.seconds}`);
           // collisionType を含めることで enter/exit/stay を区別
           if (c.collisionType) parts.push(`collisionType:${c.collisionType}`);
+          // ★追加: flagIdを含める
+          if (c.flagId) parts.push(`flag:${c.flagId}`);
+          // ★追加: regionを含める（positionの場合）
+          if (c.region) parts.push(`region:${c.region.x?.toFixed(2)},${c.region.y?.toFixed(2)}`);
+          // ★追加: frameNumberを含める（animationの場合）
+          if (c.frameNumber !== undefined) parts.push(`frame:${c.frameNumber}`);
+
           return parts.join('_');
         })
         .sort()
@@ -1088,9 +1108,9 @@ export class LogicValidator {
     );
 
     for (const successRule of successRules) {
-      const successSig = getConditionSignature(successRule.triggers?.conditions);
+      const successSig = getConditionSignature(successRule);
       for (const failureRule of failureRules) {
-        const failureSig = getConditionSignature(failureRule.triggers?.conditions);
+        const failureSig = getConditionSignature(failureRule);
         if (successSig && failureSig && successSig === failureSig) {
           errors.push({
             type: 'critical',
@@ -1107,7 +1127,7 @@ export class LogicValidator {
     const hideActions: { ruleId: string; targetId: string; sig: string }[] = [];
 
     for (const rule of output.script.rules) {
-      const sig = getConditionSignature(rule.triggers?.conditions);
+      const sig = getConditionSignature(rule);
       for (const action of rule.actions || []) {
         if (action.type === 'show' && action.targetId) {
           showActions.push({ ruleId: rule.id, targetId: action.targetId, sig });
@@ -1136,7 +1156,7 @@ export class LogicValidator {
     const counterDecrements: { ruleId: string; counterName: string; sig: string }[] = [];
 
     for (const rule of output.script.rules) {
-      const sig = getConditionSignature(rule.triggers?.conditions);
+      const sig = getConditionSignature(rule);
       for (const action of rule.actions || []) {
         if (action.type === 'counter' && action.counterName) {
           if (action.operation === 'increment' || action.operation === 'add') {
