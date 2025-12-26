@@ -627,30 +627,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
             </button>
 
             <button
-              onClick={onNextGame}
-              style={{
-                flex: 1,
-                padding: '16px 0',
-                border: 'none',
-                background: 'rgba(239, 68, 68, 0.9)',
-                color: 'white',
-                fontSize: '20px',
-                cursor: 'pointer',
-                transition: 'opacity 0.2s',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '2px'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-            >
-              <div className="btn-icon" style={{ fontSize: '28px' }}>⏭️</div>
-              <div className="btn-label" style={{ fontSize: '12px' }}>{t('bridge.skipButton')}</div>
-            </button>
-
-            <button
               onClick={handleShare}
               style={{
                 flex: 1,
