@@ -735,7 +735,7 @@ export class EditorMapper {
     }));
 
     // ルールをマッピング
-    const rules: GameRule[] = specRules.map(rule => {
+    const rules: GameRule[] = specRules.filter(rule => rule).map(rule => {
       const conditions = this.mapTriggerToConditions(rule.trigger);
       const actions = (rule.actions || []).map(a => this.mapActionToEditorAction(a));
 
@@ -771,7 +771,7 @@ export class EditorMapper {
           mood: concept.visualStyle
         },
         sounds,
-        bgm: spec.audio.bgm
+        bgm: spec.audio?.bgm
       },
       selfCheck: {
         hasPlayerActionOnSuccessPath: true,
@@ -795,7 +795,13 @@ export class EditorMapper {
    * トリガーを条件配列に変換
    */
   private mapTriggerToConditions(trigger: GameSpecification['rules'][0]['trigger']): TriggerCondition[] {
-    const params = trigger.parameters;
+    // 防御的チェック: triggerがundefinedの場合は空の条件を返す
+    if (!trigger) {
+      console.warn('      [Warning] Rule has undefined trigger, using empty conditions');
+      return [];
+    }
+
+    const params = trigger.parameters || {};
 
     switch (trigger.type) {
       case 'touch':
