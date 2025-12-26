@@ -349,6 +349,17 @@ timeType は以下のみ使用可能:
 ✅ 有効: 'straight', 'teleport', 'wander', 'stop'
 ❌ 無効: 'bounce', 'linear', 'jump', 'lerp', 'bezier', 'arc', 'zigzag'
 
+### collision条件のtarget ★★★
+collision条件のtargetには具体的なオブジェクトIDを指定:
+✅ 正しい: { type: "collision", target: "goal" }
+❌ 間違い: { type: "collision", target: "any" }（"any"は無効！）
+❌ 間違い: { type: "collision", target: "all" }（"all"は無効！）
+
+### applyImpulse/applyForceの必須パラメータ ★★★
+applyImpulse/applyForce を使う場合は必ず impulse/force を指定:
+✅ 正しい: { type: "applyImpulse", targetId: "ball", impulse: { x: 0, y: -5 } }
+❌ 間違い: { type: "applyImpulse", targetId: "ball" }（impulseがない！）
+
 ## playSound アクションの必須パラメータ ★★★
 playSound アクションには必ず soundId を指定:
 ✅ 正しい: { "type": "playSound", "soundId": "se_tap" }

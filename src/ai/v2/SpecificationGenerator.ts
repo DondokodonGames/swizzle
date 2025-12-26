@@ -702,6 +702,19 @@ rules: [{
 ✅ 有効: 'flash', 'shake', 'scale', 'rotate', 'particles'
 ❌ 無効: 'particle'（複数形の'particles'を使う）, 'glow', 'pulse', 'fade', 'blur'
 
+### collision条件のtarget ★★★
+collision条件のtargetには具体的なオブジェクトIDを指定:
+✅ 正しい: { type: "collision", target: "goal", ... }
+✅ 正しい: { type: "collision", target: "enemy_1", ... }
+❌ 間違い: { type: "collision", target: "any" }（"any"は無効！）
+❌ 間違い: { type: "collision", target: "all" }（"all"は無効！）
+
+### applyImpulse/applyForceの必須パラメータ ★★★
+applyImpulse/applyForce を使う場合は必ず impulse/force を指定:
+✅ 正しい: { type: "applyImpulse", parameters: { targetId: "ball", impulse: { x: 0, y: -5 } } }
+✅ 正しい: { type: "applyForce", parameters: { targetId: "player", force: { x: 1, y: 0 } } }
+❌ 間違い: { type: "applyImpulse", parameters: { targetId: "ball" } }（impulseがない！）
+
 ### playSoundアクションの必須パラメータ
 playSound を使う場合は必ず soundId を指定:
 ✅ 正しい: { type: "playSound", parameters: { soundId: "se_tap" } }
@@ -745,6 +758,19 @@ actions: [
 - tap_silhouette_1 タップ → success
 - tap_silhouette_2 タップ → failure
   → 両方とも「タップ」条件なのでどちらが発火するか不明
+
+**パターン3: スワイプ方向が同じで success/failure ★頻発エラー★**
+\`\`\`
+// NG: swipe_correct と swipe_incorrect が同じ条件
+// ルール1: stage スワイプ(right) → success
+// ルール2: stage スワイプ(right) → failure
+// どちらも「stage」への「right」スワイプなので衝突！
+\`\`\`
+
+**スワイプの正しい設計:**
+- swipe_correct: stage スワイプ(direction: "right") → success
+- swipe_wrong: stage スワイプ(direction: "left") → failure
+  → 方向で明確に区別！
 
 ### 正しい設計 ✅
 **方法1: オブジェクトを明確に分離**
