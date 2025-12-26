@@ -917,7 +917,7 @@ export class EditorMapper {
         if (touchTarget === 'stageArea') {
           touchTarget = 'stage';
         }
-        const touchResult: TriggerCondition = {
+        return [{
           type: 'touch' as const,
           target: touchTarget,
           touchType: (params.touchType as TriggerCondition['touchType']) || 'down',
@@ -949,10 +949,10 @@ export class EditorMapper {
         }];
 
       case 'flag':
-        const flagResult: TriggerCondition = {
+        return [{
           type: 'flag' as const,
           flagId: params.flagId as string,
-          ...(params.value !== undefined && { flagValue: params.value as boolean })
+          ...(params.value !== undefined ? { flagValue: params.value as boolean } : {})
         }];
 
       case 'position':
@@ -964,7 +964,7 @@ export class EditorMapper {
         }];
 
       case 'animation':
-        const animResult: TriggerCondition = {
+        return [{
           type: 'animation' as const,
           condition: (params.condition as TriggerCondition['condition']) || 'end',
           ...(params.frame !== undefined ? { frame: params.frame as number } : {}),
