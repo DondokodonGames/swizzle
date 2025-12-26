@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PublicGame } from '../social/types/SocialTypes';
 import { SocialService } from '../social/services/SocialService';
@@ -8,6 +8,14 @@ import { ProjectStorageManager } from '../services/ProjectStorageManager';
 import { GameProject } from '../types/editor/GameProject';
 import { AdUnit } from './monetization/AdUnit';
 import { AdPlacement } from '../types/MonetizationTypes';
+
+// ゲームURLを生成するヘルパー関数
+const generateGameUrl = (gameId: string): string => {
+  const baseUrl = typeof window !== 'undefined'
+    ? window.location.origin
+    : 'https://playswizzle.com';
+  return `${baseUrl}/play/${gameId}`;
+};
 
 interface GameScore {
   points: number;
@@ -52,6 +60,8 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   const [copiedProjectId, setCopiedProjectId] = useState<string | null>(null);
   const [selectedReaction, setSelectedReaction] = useState<string | null>(null);
   const [animationStage, setAnimationStage] = useState(0);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [urlCopied, setUrlCopied] = useState(false);
 
   const [profileClickEnabled, setProfileClickEnabled] = useState(false);
 
@@ -197,6 +207,95 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     console.log('👤 プロフィールへ遷移');
     if (currentGame.author.username) {
       window.location.href = `/profile/${currentGame.author.username}`;
+    }
+  };
+
+  // ==================== 共有機能 ====================
+  const gameUrl = useMemo(() => generateGameUrl(currentGame.id), [currentGame.id]);
+
+  const handleShare = useCallback(() => {
+    setShowShareModal(true);
+    setUrlCopied(false);
+  }, []);
+
+  const handleCopyUrl = useCallback(async () => {
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(gameUrl);
+      } else {
+        // フォールバック: 古いブラウザ対応
+        const textArea = document.createElement('textarea');
+        textArea.value = gameUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setUrlCopied(true);
+      console.log('✅ URLをコピーしました:', gameUrl);
+
+      // 3秒後にリセット
+      setTimeout(() => setUrlCopied(false), 3000);
+    } catch (error) {
+      console.error('❌ URLコピー失敗:', error);
+    }
+  }, [gameUrl]);
+
+  const handleShareTwitter = useCallback(() => {
+    const text = score
+      ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
+      : t('bridge.share.playText', { title: currentGame.title });
+    const hashtags = 'Swizzle,IndieGame';
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(gameUrl)}&hashtags=${hashtags}`;
+    window.open(url, '_blank', 'width=550,height=420');
+
+    // 共有を記録
+    recordShare('twitter');
+  }, [currentGame.title, gameUrl, score, t]);
+
+  const handleShareLine = useCallback(() => {
+    const text = score
+      ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
+      : t('bridge.share.playText', { title: currentGame.title });
+    const url = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(gameUrl)}&text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+
+    // 共有を記録
+    recordShare('line');
+  }, [currentGame.title, gameUrl, score, t]);
+
+  const handleNativeShare = useCallback(async () => {
+    if (navigator.share) {
+      try {
+        const text = score
+          ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
+          : t('bridge.share.playText', { title: currentGame.title });
+
+        await navigator.share({
+          title: currentGame.title,
+          text: text,
+          url: gameUrl,
+        });
+        console.log('✅ ネイティブ共有成功');
+        recordShare('native');
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          console.error('❌ ネイティブ共有失敗:', error);
+        }
+      }
+    }
+  }, [currentGame.title, gameUrl, score, t]);
+
+  const recordShare = async (platform: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await socialService.recordShare(currentGame.id, platform as any, user.id);
+      }
+    } catch (error) {
+      console.error('共有記録エラー:', error);
     }
   };
 
@@ -542,14 +641,38 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '2px',
-                borderRadius: '0 12px 12px 0',
+                gap: '2px'
               }}
               onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
               onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             >
               <div className="btn-icon" style={{ fontSize: '28px' }}>⏭️</div>
               <div className="btn-label" style={{ fontSize: '12px' }}>{t('bridge.skipButton')}</div>
+            </button>
+
+            <button
+              onClick={handleShare}
+              style={{
+                flex: 1,
+                padding: '16px 0',
+                border: 'none',
+                background: 'rgba(139, 92, 246, 0.9)',
+                color: 'white',
+                fontSize: '20px',
+                cursor: 'pointer',
+                transition: 'opacity 0.2s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '2px',
+                borderRadius: '0 12px 12px 0',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+            >
+              <div className="btn-icon" style={{ fontSize: '28px' }}>🔗</div>
+              <div className="btn-label" style={{ fontSize: '12px' }}>{t('bridge.shareButton')}</div>
             </button>
           </div>
         </div>
@@ -649,7 +772,155 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           </div>
         </div>
       )}
-      
+
+      {/* 共有モーダル */}
+      {showShareModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100,
+          padding: '20px',
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setShowShareModal(false);
+          }
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+            borderRadius: '24px',
+            padding: '32px',
+            maxWidth: '400px',
+            width: '100%',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔗</div>
+            <h2 style={{ color: 'white', fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
+              {t('bridge.share.title')}
+            </h2>
+            <p style={{
+              color: 'rgba(255, 255, 255, 0.8)',
+              fontSize: '14px',
+              marginBottom: '8px',
+              wordBreak: 'break-all',
+              background: 'rgba(0, 0, 0, 0.2)',
+              padding: '12px',
+              borderRadius: '12px',
+            }}>
+              {gameUrl}
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '20px' }}>
+              {/* URLコピーボタン */}
+              <button
+                onClick={handleCopyUrl}
+                style={{
+                  width: '100%',
+                  background: urlCopied ? '#10b981' : 'white',
+                  color: urlCopied ? 'white' : '#7c3aed',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  padding: '14px',
+                  borderRadius: '16px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                {urlCopied ? '✓ ' + t('bridge.share.urlCopied') : '📋 ' + t('bridge.share.copyUrl')}
+              </button>
+
+              {/* Twitter共有ボタン */}
+              <button
+                onClick={handleShareTwitter}
+                style={{
+                  width: '100%',
+                  background: '#1DA1F2',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  padding: '14px',
+                  borderRadius: '16px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                }}
+              >
+                <span style={{ fontSize: '20px' }}>𝕏</span>
+                {t('bridge.share.twitter')}
+              </button>
+
+              {/* LINE共有ボタン */}
+              <button
+                onClick={handleShareLine}
+                style={{
+                  width: '100%',
+                  background: '#00B900',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  padding: '14px',
+                  borderRadius: '16px',
+                  border: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                💬 {t('bridge.share.line')}
+              </button>
+
+              {/* ネイティブ共有ボタン（対応ブラウザのみ） */}
+              {typeof navigator !== 'undefined' && 'share' in navigator && (
+                <button
+                  onClick={handleNativeShare}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: '16px',
+                    padding: '14px',
+                    borderRadius: '16px',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                >
+                  📤 {t('bridge.share.shareNative')}
+                </button>
+              )}
+
+              {/* 閉じるボタン */}
+              <button
+                onClick={() => setShowShareModal(false)}
+                style={{
+                  width: '100%',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  padding: '12px',
+                  borderRadius: '16px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  marginTop: '8px',
+                }}
+              >
+                ✕ 閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* スマホ用メディアクエリ */}
       <style>{`
         @media (max-width: 768px), (max-aspect-ratio: 9/16) {

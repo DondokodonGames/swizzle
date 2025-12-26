@@ -16,10 +16,21 @@
     "nextButton": "次へ",
     "againButton": "もう一度",
     "skipButton": "スキップ",
+    "shareButton": "共有",
     "copySuccessTitle": "パクリ完了！",
     "copySuccessMessage": "ゲームのルールをコピーしました。エディターで画像を差し替えて、自分だけのゲームを作りましょう！",
     "openEditorButton": "エディターを開く",
     "editLaterButton": "後で編集する",
+    "share": {
+      "title": "ゲームを共有",
+      "copyUrl": "URLをコピー",
+      "urlCopied": "URLをコピーしました！",
+      "twitter": "Twitterで共有",
+      "line": "LINEで共有",
+      "shareNative": "他のアプリで共有",
+      "resultText": "「{{title}}」で{{score}}点をゲット！あなたも挑戦してみて！",
+      "playText": "「{{title}}」をプレイしてみて！"
+    },
     "errors": {
       "gameDataFetchFailed": "ゲームデータの取得に失敗しました",
       "cannotCopy": "このゲームはコピーできません",

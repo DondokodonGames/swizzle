@@ -16,10 +16,21 @@
     "nextButton": "다음",
     "againButton": "다시",
     "skipButton": "건너뛰기",
+    "shareButton": "공유",
     "copySuccessTitle": "복사 완료!",
     "copySuccessMessage": "게임 규칙이 복사되었습니다. 에디터에서 이미지를 바꿔 나만의 고유한 게임을 만드세요!",
     "openEditorButton": "에디터 열기",
     "editLaterButton": "나중에 편집",
+    "share": {
+      "title": "게임 공유",
+      "copyUrl": "URL 복사",
+      "urlCopied": "URL 복사됨!",
+      "twitter": "Twitter에서 공유",
+      "line": "LINE에서 공유",
+      "shareNative": "다른 앱으로 공유",
+      "resultText": "「{{title}}」에서 {{score}}점을 획득했어요! 도전해보세요!",
+      "playText": "「{{title}}」를 플레이해보세요!"
+    },
     "errors": {
       "gameDataFetchFailed": "게임 데이터를 가져올 수 없습니다",
       "cannotCopy": "이 게임은 복사할 수 없습니다",
