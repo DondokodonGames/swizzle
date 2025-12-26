@@ -42,21 +42,29 @@ export function getProviderType(): LLMProviderType {
 
 /**
  * LLMプロバイダーを作成
+ *
+ * 注意: config.apiKeyは後方互換性のために残していますが、
+ * 通常は環境変数を使用することを推奨します。
+ * - ANTHROPIC_API_KEY: Anthropic (Claude) 用
+ * - OPENAI_API_KEY: OpenAI (ChatGPT) 用
  */
 export function createLLMProvider(config?: Partial<LLMConfig>): ILLMProvider {
   const providerType = config?.provider || getProviderType();
 
   switch (providerType) {
     case 'openai':
+      // OpenAIの場合は必ずOPENAI_API_KEYを使用
+      // config.apiKeyは無視（Anthropicキーが誤って渡される可能性があるため）
       return new OpenAIProvider(
-        config?.apiKey || process.env.OPENAI_API_KEY,
+        process.env.OPENAI_API_KEY,
         config?.model || DEFAULT_MODELS.openai
       );
 
     case 'anthropic':
     default:
+      // Anthropicの場合は必ずANTHROPIC_API_KEYを使用
       return new AnthropicProvider(
-        config?.apiKey || process.env.ANTHROPIC_API_KEY,
+        process.env.ANTHROPIC_API_KEY,
         config?.model || DEFAULT_MODELS.anthropic
       );
   }
