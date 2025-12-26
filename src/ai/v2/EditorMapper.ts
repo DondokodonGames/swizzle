@@ -304,6 +304,64 @@ timeType は以下のみ使用可能:
 ✅ 有効: 'exact', 'interval', 'countdown', 'countup'
 ❌ 無効: 'after'（'after'は使わずに'exact'を使用）
 
+## ★★★ 有効なタイプ一覧（これ以外は使用禁止）★★★
+
+### 条件タイプ（type）
+✅ 有効: 'touch', 'time', 'counter', 'collision', 'flag', 'gameState', 'position', 'animation', 'random', 'objectState'
+❌ 無効: 'state', 'deviceTilt', 'sensor', 'gesture', 'proximity', 'orientation', 'accelerometer'
+
+### アクションタイプ（type）
+✅ 有効: 'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag', 'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'setAnimationSpeed', 'setAnimationFrame', 'followDrag', 'applyForce', 'applyImpulse', 'randomAction', 'pause', 'restart'
+❌ 無効: 'changeState', 'adjustAngle', 'updateCounter', 'rotate', 'scale', 'fade', 'spawn', 'destroy', 'emit', 'trigger'
+
+### エフェクトタイプ（effect.type）
+✅ 有効: 'flash', 'shake', 'scale', 'rotate', 'particles'
+❌ 無効: 'particle'（複数形の'particles'を使用）, 'glow', 'pulse', 'fade', 'blur', 'sparkle'
+
+### 比較演算子（comparison）
+✅ 有効: 'equals', 'greaterOrEqual', 'greater', 'less', 'lessOrEqual'
+❌ 無効: 'lessThan'（'less'を使用）, 'greaterThan'（'greater'を使用）, 'eq', 'gte', 'lte', 'lt', 'gt', '=='
+
+### カウンター操作（operation）
+✅ 有効: 'increment', 'decrement', 'set', 'add', 'subtract'
+❌ 無効: 'increase', 'decrease', 'reset', 'clear', 'multiply', 'divide'
+
+### タッチタイプ（touchType）
+✅ 有効: 'down', 'up', 'hold', 'drag', 'swipe', 'flick'
+❌ 無効: 'tap', 'click', 'press', 'release', 'longPress', 'doubleTap'
+
+### 移動タイプ（movement.type）
+✅ 有効: 'straight', 'teleport', 'wander', 'stop'
+❌ 無効: 'linear', 'jump', 'lerp', 'bezier', 'arc', 'zigzag'
+
+## playSound アクションの必須パラメータ ★★★
+playSound アクションには必ず soundId を指定:
+✅ 正しい: { "type": "playSound", "soundId": "se_tap" }
+❌ 間違い: { "type": "playSound" }（soundIdがない）
+❌ 間違い: { "type": "playSound", "sound": "se_tap" }（soundではなくsoundId）
+
+## オブジェクトID参照のルール ★★★
+### ワイルドカードは使用禁止
+❌ 無効: "penguin_*", "target_*", "enemy_*"（ワイルドカードは不可）
+✅ 有効: "penguin_1", "penguin_2", "penguin_3"（具体的なIDを指定）
+
+### "self" の使用ルール
+- touch条件のtarget: ✅ "self" 使用可能（ルールがアタッチされたオブジェクト自身）
+- アクションのtargetId: ❌ "self" 不可（具体的なオブジェクトIDを指定）
+
+✅ 正しい例:
+{
+  "targetObjectId": "player",
+  "conditions": [{ "type": "touch", "target": "self" }],  // OK: selfはtouch条件で使用
+  "actions": [{ "type": "hide", "targetId": "player" }]   // OK: 具体的なID
+}
+
+❌ 間違い例:
+{
+  "conditions": [{ "type": "touch", "target": "self" }],
+  "actions": [{ "type": "hide", "targetId": "self" }]     // NG: targetIdにselfは不可
+}
+
 # 重要: 機械的な変換のみ行う
 - 仕様に書かれていないことは追加しない
 - 仕様の内容を勝手に変更しない
