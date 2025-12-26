@@ -4,7 +4,7 @@
  * 4つの評価基準を前提条件として、自由な発想でゲームを考える
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { ILLMProvider, createLLMProvider, LLMProviderType, DEFAULT_MODELS } from './llm';
 import { GameConcept } from './types';
 import { GamePatternAnalyzer } from './GamePatternAnalyzer';
 import * as fs from 'fs';
@@ -246,24 +246,31 @@ export interface ConceptGeneratorConfig {
   minScore?: number;
   dryRun?: boolean;
   apiKey?: string;
+  llmProvider?: LLMProviderType;
 }
 
 export class GameConceptGenerator {
-  private client: Anthropic;
-  private config: Required<Omit<ConceptGeneratorConfig, 'apiKey'>>;
+  private llmProvider: ILLMProvider;
+  private config: Required<Omit<ConceptGeneratorConfig, 'apiKey' | 'llmProvider'>>;
   private usedThemes: Set<string> = new Set();
   private patternAnalyzer: GamePatternAnalyzer;
 
   constructor(config?: ConceptGeneratorConfig) {
-    this.client = new Anthropic({
-      apiKey: config?.apiKey || process.env.ANTHROPIC_API_KEY
+    const providerType = config?.llmProvider || (process.env.LLM_PROVIDER as LLMProviderType) || 'anthropic';
+    const defaultModel = providerType === 'openai' ? DEFAULT_MODELS.openai : DEFAULT_MODELS.anthropic;
+
+    this.llmProvider = createLLMProvider({
+      provider: providerType,
+      apiKey: config?.apiKey,
+      model: config?.model || defaultModel
     });
     this.config = {
-      model: config?.model || 'claude-sonnet-4-20250514',
+      model: config?.model || defaultModel,
       minScore: config?.minScore || 7,
       dryRun: config?.dryRun || false
     };
     this.patternAnalyzer = new GamePatternAnalyzer();
+    console.log(`   🤖 Using LLM Provider: ${this.llmProvider.getProviderName()} (${this.config.model})`);
   }
 
   // ========================================
@@ -461,19 +468,13 @@ export class GameConceptGenerator {
       prompt += `\n\n# 前回の問題点\n${feedback}\n\n上記の問題を解決したコンセプトを生成してください。`;
     }
 
-    const response = await this.client.messages.create({
-      model: this.config.model,
-      max_tokens: 1024,
-      messages: [{ role: 'user', content: prompt }]
-    });
-
-    const content = response.content[0];
-    if (content.type !== 'text') {
-      throw new Error('Unexpected response type');
-    }
+    const response = await this.llmProvider.chat(
+      [{ role: 'user', content: prompt }],
+      { maxTokens: 1024, model: this.config.model }
+    );
 
     // JSONを抽出
-    const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+    const jsonMatch = response.content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error('No JSON found in response');
     }

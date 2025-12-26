@@ -9,7 +9,7 @@
  * 3. 構造的な問題 → 全体再生成を要求
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { ILLMProvider, createLLMProvider, LLMProviderType, DEFAULT_MODELS } from './llm';
 import {
   LogicGeneratorOutput,
   LogicValidationResult,
@@ -50,11 +50,12 @@ interface RepairerConfig {
   dryRun?: boolean;
   apiKey?: string;
   maxAutoRepairs?: number;
+  llmProvider?: LLMProviderType;
 }
 
 export class LogicRepairer {
   private config: RepairerConfig;
-  private client: Anthropic | null = null;
+  private llmProvider: ILLMProvider | null = null;
   private logger?: GenerationLogger;
 
   constructor(config: RepairerConfig = {}, logger?: GenerationLogger) {
@@ -65,8 +66,13 @@ export class LogicRepairer {
     this.logger = logger;
 
     if (!config.dryRun) {
-      this.client = new Anthropic({
-        apiKey: config.apiKey
+      const providerType = config.llmProvider || (process.env.LLM_PROVIDER as LLMProviderType) || 'anthropic';
+      const defaultModel = providerType === 'openai' ? DEFAULT_MODELS.openai : DEFAULT_MODELS.anthropic;
+
+      this.llmProvider = createLLMProvider({
+        provider: providerType,
+        apiKey: config.apiKey,
+        model: defaultModel
       });
     }
   }
@@ -662,7 +668,7 @@ export class LogicRepairer {
     concept: GameConcept,
     spec: GameSpecification
   ): Promise<{ success: boolean; output: LogicGeneratorOutput; repairs: RepairAction[] }> {
-    if (!this.client) {
+    if (!this.llmProvider) {
       return { success: false, output, repairs: [] };
     }
 
@@ -783,33 +789,29 @@ export class LogicRepairer {
       ['COUNTER_NEVER_CHECKED', 'MISSING_TARGET_ID', 'MISSING_FLAG_ID'].includes(e.code)
     );
 
-    if (complexErrors.length > 0) {
+    if (complexErrors.length > 0 && this.llmProvider) {
       try {
         const repairPrompt = this.buildPartialRepairPrompt(output, complexErrors, concept, spec);
-        const response = await this.client.messages.create({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
-          messages: [{ role: 'user', content: repairPrompt }]
-        });
+        const response = await this.llmProvider.chat(
+          [{ role: 'user', content: repairPrompt }],
+          { maxTokens: 4000 }
+        );
 
-        const content = response.content[0];
-        if (content.type === 'text') {
-          const repairedRules = this.parseRepairedRules(content.text);
-          if (repairedRules.length > 0) {
-            // 修復されたルールで置き換え
-            for (const repairedRule of repairedRules) {
-              const index = output.script.rules.findIndex(r => r.id === repairedRule.id);
-              if (index !== -1) {
-                const before = output.script.rules[index];
-                output.script.rules[index] = repairedRule;
-                repairs.push({
-                  errorCode: 'AI_REPAIR',
-                  action: 'Repaired rule via AI',
-                  target: `rules.${repairedRule.id}`,
-                  before,
-                  after: repairedRule
-                });
-              }
+        const repairedRules = this.parseRepairedRules(response.content);
+        if (repairedRules.length > 0) {
+          // 修復されたルールで置き換え
+          for (const repairedRule of repairedRules) {
+            const index = output.script.rules.findIndex(r => r.id === repairedRule.id);
+            if (index !== -1) {
+              const before = output.script.rules[index];
+              output.script.rules[index] = repairedRule;
+              repairs.push({
+                errorCode: 'AI_REPAIR',
+                action: 'Repaired rule via AI',
+                target: `rules.${repairedRule.id}`,
+                before,
+                after: repairedRule
+              });
             }
           }
         }

@@ -6,7 +6,7 @@
  * 3. プロンプトを自動改善
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { ILLMProvider, createLLMProvider, LLMProviderType, DEFAULT_MODELS } from './llm';
 import { GameConceptGenerator } from './GameConceptGenerator';
 import { ConceptValidator } from './ConceptValidator';
 import { GameDesignGenerator, GameDesign } from './GameDesignGenerator';
@@ -62,7 +62,7 @@ export interface PromptImprovement {
 // ===========================================
 
 export class PromptEvolver {
-  private client: Anthropic;
+  private llmProvider: ILLMProvider;
   private conceptGenerator: GameConceptGenerator;
   private conceptValidator: ConceptValidator;
   private gameDesignGenerator: GameDesignGenerator;
@@ -77,38 +77,48 @@ export class PromptEvolver {
   private successCount: number = 0;
   private failureCount: number = 0;
 
-  constructor(apiKey?: string) {
-    this.client = new Anthropic({
-      apiKey: apiKey || process.env.ANTHROPIC_API_KEY
+  constructor(apiKey?: string, llmProviderType?: LLMProviderType) {
+    const providerType = llmProviderType || (process.env.LLM_PROVIDER as LLMProviderType) || 'anthropic';
+    const defaultModel = providerType === 'openai' ? DEFAULT_MODELS.openai : DEFAULT_MODELS.anthropic;
+
+    this.llmProvider = createLLMProvider({
+      provider: providerType,
+      apiKey: apiKey,
+      model: defaultModel
     });
 
     this.logger = new GenerationLogger();
 
     this.conceptGenerator = new GameConceptGenerator({
       dryRun: false,
-      apiKey
+      apiKey,
+      llmProvider: providerType
     });
 
     this.conceptValidator = new ConceptValidator();
 
     this.gameDesignGenerator = new GameDesignGenerator({
       dryRun: false,
-      apiKey
+      apiKey,
+      llmProvider: providerType
     }, this.logger);
 
     this.assetPlanner = new AssetPlanner({
       dryRun: false,
-      apiKey
+      apiKey,
+      llmProvider: providerType
     }, this.logger);
 
     this.specificationGenerator = new SpecificationGenerator({
       dryRun: false,
-      apiKey
+      apiKey,
+      llmProvider: providerType
     }, this.logger);
 
     this.editorMapper = new EditorMapper({
       dryRun: false,
-      apiKey
+      apiKey,
+      llmProvider: providerType
     }, this.logger);
 
     this.logicValidator = new LogicValidator();
@@ -364,18 +374,12 @@ ${patternSummary}
 JSON形式のみ出力してください。`;
 
     try {
-      const response = await this.client.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }]
-      });
+      const response = await this.llmProvider.chat(
+        [{ role: 'user', content: prompt }],
+        { maxTokens: 4096 }
+      );
 
-      const content = response.content[0];
-      if (content.type !== 'text') {
-        throw new Error('Unexpected response type');
-      }
-
-      const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No JSON found in response');
       }
