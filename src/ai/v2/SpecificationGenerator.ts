@@ -747,10 +747,38 @@ actions: [
 ✅ 正しい: targetId: "player"（アセット計画に定義済み）
 ❌ 間違い: targetId: "effect_success"（存在しないオブジェクト）
 ❌ 間違い: targetId: "particle_1"（エフェクト用の架空オブジェクト）
+❌ 間違い: targetId: "stage"（stageはアクションのtargetIdに使えない）
 
 **エフェクトは effect アクションで実現:**
 ✅ 正しい: { type: "effect", targetId: "player", effect: { type: "particles" } }
 ❌ 間違い: { type: "show", targetId: "effect_success" }（存在しないオブジェクト）
+❌ 間違い: { type: "effect", targetId: "stage" }（stageは不可）
+
+## SHOW_HIDE_CONFLICT 防止 ★★★
+同じルール内で同じオブジェクトに show と hide を両方実行してはいけない:
+
+### 絶対にやってはいけない ❌
+\`\`\`
+// NG: 1つのルールで同じオブジェクトにshow/hide
+actions: [
+  { type: "show", targetId: "object_1" },
+  { type: "hide", targetId: "object_1" }  // エラー！
+]
+\`\`\`
+
+### 正しい設計 ✅
+異なるルールで制御するか、片方だけ使う
+
+## 即成功・即失敗の防止 ★★★
+カウンターの初期値が条件を最初から満たしていると、ゲーム開始直後に終了:
+
+### 即成功を防ぐ ❌
+- initialValue: 10, 成功条件: >= 5 → ゲーム開始で即成功
+✅ 正しい: initialValue: 0, 成功条件: >= 5
+
+### 即失敗を防ぐ ❌
+- initialValue: 0, 失敗条件: <= 0 → ゲーム開始で即失敗
+✅ 正しい: initialValue: 100, 失敗条件: <= 0
 
 # 出力する仕様
 
