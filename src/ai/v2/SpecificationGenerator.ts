@@ -1727,13 +1727,45 @@ export class SpecificationGenerator {
     try {
       return JSON.parse(jsonStr) as GameSpecification;
     } catch (error) {
+      // 修復を試みる
       let repaired = jsonStr;
-      repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
+
+      // 1. コメントを削除
       repaired = repaired.replace(/\/\/[^\n]*/g, '');
+
+      // 2. 末尾のカンマを削除
+      repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
+
+      // 3. 途中で切れた文字列を修復（未閉じの引用符を閉じる）
+      const quoteCount = (repaired.match(/(?<!\\)"/g) || []).length;
+      if (quoteCount % 2 !== 0) {
+        repaired = repaired + '"';
+      }
+
+      // 4. 途中で切れたプロパティを削除（"key": の後に値がない場合）
+      repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*$/g, '');
+      repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/g, '');
+
+      // 5. 配列とオブジェクトのバランスを修復
+      const openBraces = (repaired.match(/\{/g) || []).length;
+      const closeBraces = (repaired.match(/\}/g) || []).length;
+      const openBrackets = (repaired.match(/\[/g) || []).length;
+      const closeBrackets = (repaired.match(/\]/g) || []).length;
+
+      // 末尾の不完全なカンマを削除
+      repaired = repaired.replace(/,\s*$/g, '');
+
+      // 足りない閉じ括弧を追加
+      for (let i = 0; i < openBrackets - closeBrackets; i++) {
+        repaired += ']';
+      }
+      for (let i = 0; i < openBraces - closeBraces; i++) {
+        repaired += '}';
+      }
 
       try {
         return JSON.parse(repaired) as GameSpecification;
-      } catch {
+      } catch (secondError) {
         this.logger?.logError('SpecificationGenerator', `JSON parse failed: ${error}`);
         throw new Error(`JSON parse failed: ${error}`);
       }
