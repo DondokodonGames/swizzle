@@ -926,36 +926,37 @@ touch条件の target も基本的にオブジェクトIDを使う:
 ✅ collision条件（プレイヤーが操作するオブジェクトとの衝突）
 ✅ position条件（プレイヤーが移動させたオブジェクトの位置）
 
-### ⚠️⚠️⚠️ AUTO_SUCCESS エラー: バランス系ゲームの正しい実装 ⚠️⚠️⚠️
+### ⚠️⚠️⚠️ AUTO_SUCCESS エラー: バランス系・生存系ゲームの正しい実装 ⚠️⚠️⚠️
 
-**「時間経過で成功」は禁止！代わりに「落としたら失敗」パターンを使う！**
+**バランス系・生存系ゲームは「失敗させないことが成功」パターンが許容されます。**
+**ただし、必ずプレイヤー操作（ドラッグ等）で失敗を回避する仕組みが必要！**
 
-**❌ NG: バランスゲームで時間経過成功**
-\`\`\`
-// NG: プレイヤー操作なしで自動的に成功
-{ "id": "balance_success", "trigger": { "type": "time", "seconds": 5 }, "actions": [{ "type": "success" }] }
-// → AUTO_SUCCESS エラー！
-\`\`\`
-
-**✅ OK: バランスゲームの正しい実装**
+**✅ OK: バランスゲームの正しい実装（落とさなければ成功）**
 \`\`\`
 // 1. ドラッグでバランス維持（プレイヤー操作）
 { "id": "drag_balance", "trigger": { "type": "touch", "parameters": { "target": "ball", "touchType": "drag" } },
   "actions": [{ "type": "followDrag", "parameters": { "targetId": "ball" } }] }
 
-// 2. 落ちたら失敗（position条件 or collision条件）
+// 2. 落ちたら失敗（プレイヤー操作で回避可能）
 { "id": "fall_failure", "trigger": { "type": "position", "parameters": { "target": "ball", "region": { "y": 0.95, ... } } },
   "actions": [{ "type": "failure" }] }
 
-// 3. タップでゴール達成（プレイヤー操作で成功！）
-{ "id": "reach_goal", "trigger": { "type": "touch", "parameters": { "target": "goal_button", "touchType": "down" } },
+// 3. 時間経過で成功（失敗条件にプレイヤー操作があるのでOK）
+{ "id": "time_success", "trigger": { "type": "time", "parameters": { "timeType": "exact", "seconds": 5 } },
   "actions": [{ "type": "success" }] }
 \`\`\`
 
 **バランス系・生存系ゲームのルール:**
-- 成功には必ずプレイヤーの「最終アクション」を要求する（ゴールボタンタップ等）
-- 時間経過は失敗条件にのみ使う（タイムアップで失敗）
-- 「落とさなければ成功」ではなく「落とさずにゴールをタップで成功」
+- 失敗条件にプレイヤー操作（ドラッグ等）で回避できる仕組みがあれば、時間経過成功はOK
+- 「プレイヤー操作で失敗を回避 + 時間経過で成功」= 正しいパターン
+
+**❌ NG: 失敗条件もプレイヤー操作なし**
+\`\`\`
+// NG: 失敗条件にもプレイヤー操作がない（完全自動ゲーム）
+{ "id": "auto_failure", "trigger": { "type": "time", "seconds": 3 }, "actions": [{ "type": "failure" }] }
+{ "id": "auto_success", "trigger": { "type": "time", "seconds": 5 }, "actions": [{ "type": "success" }] }
+// → プレイヤーは何もできない！
+\`\`\`
 
 ### 絶対にやってはいけない ❌
 \`\`\`
@@ -999,8 +1000,8 @@ touch条件の target も基本的にオブジェクトIDを使う:
 1. **タップ系**: 正解オブジェクトをタップ → success
 2. **移動系**: ドラッグでゴールに到達（collision条件） → success
 3. **衝突系**: プレイヤー操作のオブジェクトが目標に衝突 → success
-4. **バランス系**: ゴールボタンをタップ → success（時間経過ではない！）
-5. **時間系**: ❌ 時間経過だけで成功はNG！時間は失敗条件にのみ使う！
+4. **バランス系・生存系**: 失敗条件にプレイヤー操作があれば、時間経過で成功OK
+5. **時間系のみ**: ❌ 失敗条件もプレイヤー操作なしの完全自動ゲームはNG！
 
 **迷ったら「タップで成功」パターンを使う！**
 
