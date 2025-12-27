@@ -926,6 +926,37 @@ touch条件の target も基本的にオブジェクトIDを使う:
 ✅ collision条件（プレイヤーが操作するオブジェクトとの衝突）
 ✅ position条件（プレイヤーが移動させたオブジェクトの位置）
 
+### ⚠️⚠️⚠️ AUTO_SUCCESS エラー: バランス系ゲームの正しい実装 ⚠️⚠️⚠️
+
+**「時間経過で成功」は禁止！代わりに「落としたら失敗」パターンを使う！**
+
+**❌ NG: バランスゲームで時間経過成功**
+\`\`\`
+// NG: プレイヤー操作なしで自動的に成功
+{ "id": "balance_success", "trigger": { "type": "time", "seconds": 5 }, "actions": [{ "type": "success" }] }
+// → AUTO_SUCCESS エラー！
+\`\`\`
+
+**✅ OK: バランスゲームの正しい実装**
+\`\`\`
+// 1. ドラッグでバランス維持（プレイヤー操作）
+{ "id": "drag_balance", "trigger": { "type": "touch", "parameters": { "target": "ball", "touchType": "drag" } },
+  "actions": [{ "type": "followDrag", "parameters": { "targetId": "ball" } }] }
+
+// 2. 落ちたら失敗（position条件 or collision条件）
+{ "id": "fall_failure", "trigger": { "type": "position", "parameters": { "target": "ball", "region": { "y": 0.95, ... } } },
+  "actions": [{ "type": "failure" }] }
+
+// 3. タップでゴール達成（プレイヤー操作で成功！）
+{ "id": "reach_goal", "trigger": { "type": "touch", "parameters": { "target": "goal_button", "touchType": "down" } },
+  "actions": [{ "type": "success" }] }
+\`\`\`
+
+**バランス系・生存系ゲームのルール:**
+- 成功には必ずプレイヤーの「最終アクション」を要求する（ゴールボタンタップ等）
+- 時間経過は失敗条件にのみ使う（タイムアップで失敗）
+- 「落とさなければ成功」ではなく「落とさずにゴールをタップで成功」
+
 ### 絶対にやってはいけない ❌
 \`\`\`
 // NG: プレイヤー操作なしで成功
@@ -966,9 +997,10 @@ touch条件の target も基本的にオブジェクトIDを使う:
 
 ### 成功条件の設計原則
 1. **タップ系**: 正解オブジェクトをタップ → success
-2. **移動系**: ドラッグでゴールに到達 → success
+2. **移動系**: ドラッグでゴールに到達（collision条件） → success
 3. **衝突系**: プレイヤー操作のオブジェクトが目標に衝突 → success
-4. **時間系**: ❌ 時間経過だけで成功はNG！（生存ゲームは例外だがプレイヤーは「避ける」操作をしている）
+4. **バランス系**: ゴールボタンをタップ → success（時間経過ではない！）
+5. **時間系**: ❌ 時間経過だけで成功はNG！時間は失敗条件にのみ使う！
 
 **迷ったら「タップで成功」パターンを使う！**
 
