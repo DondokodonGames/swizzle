@@ -184,17 +184,17 @@ export class PromptEvolver {
       // Step 3: Game Design
       console.log('   🎯 Step 3: Generating design...');
       design = await this.gameDesignGenerator.generate(concept);
-      console.log(`      Objects: ${design.objects.length}, Interactions: ${design.interactions.length}`);
+      console.log(`      Objects: ${design.objects?.length || 0}, Interactions: ${design.interactions?.length || 0}`);
 
       // Step 3.5: Asset Plan
       console.log('   🎨 Step 3.5: Planning assets...');
       assetPlan = await this.assetPlanner.plan(concept, design);
-      console.log(`      Objects: ${assetPlan.objects.length}`);
+      console.log(`      Objects: ${assetPlan.objects?.length || 0}`);
 
       // Step 4: Specification
       console.log('   📝 Step 4: Generating specification...');
       spec = await this.specificationGenerator.generate(concept, design, assetPlan);
-      console.log(`      Rules: ${spec.rules.length}, Counters: ${spec.stateManagement.counters.length}`);
+      console.log(`      Rules: ${spec.rules?.length || 0}, Counters: ${spec.stateManagement?.counters?.length || 0}`);
 
       // Step 5: Editor Mapping
       console.log('   🔄 Step 5: Mapping to editor format...');
