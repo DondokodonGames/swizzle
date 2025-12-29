@@ -1,15 +1,15 @@
 /**
  * create-checkout-session/index.ts
  * Stripe Checkout Sessionを作成するEdge Function
- * 
+ *
  * リクエスト:
  * {
- *   plan: 'premium',
+ *   plan: 'premium' | 'pro',
  *   billingCycle: 'monthly' | 'yearly',
  *   successUrl: string,
  *   cancelUrl: string
  * }
- * 
+ *
  * レスポンス:
  * {
  *   sessionId: string,
@@ -19,49 +19,58 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { createStripeClient, corsHeaders } from '../_shared/stripe.ts';
-
-/**
- * URLが許可されたオリジンからのものかを検証（オープンリダイレクト対策）
- */
-function isValidRedirectUrl(url: string, allowedOrigin: string): boolean {
-  try {
-    const parsedUrl = new URL(url);
-    const allowedUrl = new URL(allowedOrigin);
-    // 同一オリジンのみ許可
-    return parsedUrl.origin === allowedUrl.origin;
-  } catch {
-    return false;
-  }
-}
+import {
+  createStripeClient,
+  getCorsHeaders,
+  corsHeaders,
+  validateProductionEnvironment,
+  isValidPlanType,
+  isValidBillingCycle,
+  isValidRedirectUrl,
+  checkRateLimit,
+  DEFAULT_RATE_LIMITS,
+  logCheckoutEvent,
+  createErrorResponse,
+  getStripeMode,
+} from '../_shared/stripe.ts';
 
 serve(async (req) => {
   // CORS対応
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: getCorsHeaders(req) });
   }
 
+  const headers = getCorsHeaders(req);
+
   try {
+    // 本番環境の設定検証
+    validateProductionEnvironment();
+
     // リクエストボディを取得
     const { plan, billingCycle, successUrl, cancelUrl } = await req.json();
 
-    // バリデーション
+    // 入力バリデーション
     if (!plan || !billingCycle || !successUrl || !cancelUrl) {
-      throw new Error('Missing required parameters');
+      throw new Error('Missing required parameters: plan, billingCycle, successUrl, cancelUrl');
+    }
+
+    // プランタイプのバリデーション
+    if (!isValidPlanType(plan)) {
+      throw new Error(`Invalid plan type: ${plan}. Must be one of: premium, pro`);
+    }
+
+    // 請求サイクルのバリデーション
+    if (!isValidBillingCycle(billingCycle)) {
+      throw new Error(`Invalid billing cycle: ${billingCycle}. Must be one of: monthly, yearly`);
     }
 
     // セキュリティ: リダイレクトURLの検証（オープンリダイレクト攻撃対策）
-    const allowedOrigin = Deno.env.get('APP_URL') || Deno.env.get('SITE_URL');
-    if (!allowedOrigin) {
-      throw new Error('APP_URL environment variable not configured');
+    if (!isValidRedirectUrl(successUrl)) {
+      throw new Error('Invalid successUrl: must be from the same origin as APP_URL');
     }
 
-    if (!isValidRedirectUrl(successUrl, allowedOrigin)) {
-      throw new Error('Invalid successUrl: must be from the same origin');
-    }
-
-    if (!isValidRedirectUrl(cancelUrl, allowedOrigin)) {
-      throw new Error('Invalid cancelUrl: must be from the same origin');
+    if (!isValidRedirectUrl(cancelUrl)) {
+      throw new Error('Invalid cancelUrl: must be from the same origin as APP_URL');
     }
 
     // 認証チェック
@@ -73,7 +82,7 @@ serve(async (req) => {
     // Supabaseクライアント初期化
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
+
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing Supabase configuration');
     }
@@ -91,17 +100,49 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
+    // レート制限チェック
+    const rateLimitResult = checkRateLimit(`checkout:${user.id}`, DEFAULT_RATE_LIMITS.checkout);
+
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for user: ${user.id}`);
+      return new Response(
+        JSON.stringify({
+          error: 'Too many requests. Please try again later.',
+          retryAfter: Math.ceil((rateLimitResult.resetAt.getTime() - Date.now()) / 1000),
+        }),
+        {
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json',
+            'Retry-After': Math.ceil((rateLimitResult.resetAt.getTime() - Date.now()) / 1000).toString(),
+          },
+          status: 429,
+        }
+      );
+    }
+
     // Price IDを取得
     const priceId = billingCycle === 'yearly'
       ? Deno.env.get('VITE_STRIPE_PREMIUM_YEARLY_PRICE_ID')
       : Deno.env.get('VITE_STRIPE_PREMIUM_MONTHLY_PRICE_ID');
 
     if (!priceId) {
-      throw new Error('Price ID not configured');
+      throw new Error('Price ID not configured for this billing cycle');
     }
 
     // Stripeクライアント初期化
     const stripe = createStripeClient();
+
+    // Price IDが有効か確認（本番環境では重要）
+    try {
+      const price = await stripe.prices.retrieve(priceId);
+      if (!price.active) {
+        throw new Error('Selected price is no longer active');
+      }
+    } catch (priceError) {
+      console.error('Error validating price:', priceError);
+      throw new Error('Invalid price configuration');
+    }
 
     // 既存のStripe顧客IDを取得
     const { data: subscription } = await supabase
@@ -124,6 +165,8 @@ serve(async (req) => {
     }
 
     // Checkout Sessionを作成
+    console.log(`[${getStripeMode().toUpperCase()}] Creating checkout session for user: ${user.id}`);
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       line_items: [
@@ -145,7 +188,18 @@ serve(async (req) => {
         plan: plan,
         billing_cycle: billingCycle,
       },
+      // サブスクリプションにもメタデータを設定
+      subscription_data: {
+        metadata: {
+          user_id: user.id,
+          plan: plan,
+          billing_cycle: billingCycle,
+        },
+      },
     });
+
+    // 監査ログを記録
+    logCheckoutEvent('session_created', user.id, session.id, plan, billingCycle);
 
     // レスポンスを返す
     return new Response(
@@ -154,21 +208,12 @@ serve(async (req) => {
         url: session.url,
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...headers, 'Content-Type': 'application/json' },
         status: 200,
       }
     );
   } catch (error) {
     console.error('Error creating checkout session:', error);
-    
-    return new Response(
-      JSON.stringify({
-        error: error.message || 'Internal server error',
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      }
-    );
+    return createErrorResponse(error, headers);
   }
 });
