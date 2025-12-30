@@ -64,12 +64,22 @@ serve(async (req) => {
       throw new Error(`Invalid billing cycle: ${billingCycle}. Must be one of: monthly, yearly`);
     }
 
+    // デバッグログ
+    const appUrl = Deno.env.get('APP_URL');
+    const siteUrl = Deno.env.get('SITE_URL');
+    console.log('[DEBUG] APP_URL:', appUrl);
+    console.log('[DEBUG] SITE_URL:', siteUrl);
+    console.log('[DEBUG] successUrl:', successUrl);
+    console.log('[DEBUG] cancelUrl:', cancelUrl);
+
     // セキュリティ: リダイレクトURLの検証（オープンリダイレクト攻撃対策）
     if (!isValidRedirectUrl(successUrl)) {
+      console.error('[DEBUG] isValidRedirectUrl failed for successUrl');
       throw new Error('Invalid successUrl: must be from the same origin as APP_URL');
     }
 
     if (!isValidRedirectUrl(cancelUrl)) {
+      console.error('[DEBUG] isValidRedirectUrl failed for cancelUrl');
       throw new Error('Invalid cancelUrl: must be from the same origin as APP_URL');
     }
 
