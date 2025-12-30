@@ -181,4 +181,5 @@ SELECT tablename FROM pg_tables WHERE tablename = 'user_games';
 
 - [Supabase RLS Documentation](https://supabase.com/docs/guides/auth/row-level-security)
 - [Supabase Database Functions](https://supabase.com/docs/guides/database/functions)
-- [Phase M: マネタイズ機能仕様書](./docs/phase-m-monetization.md)
+- [Stripe本番環境チェックリスト](./docs/STRIPE_PRODUCTION_CHECKLIST.md)
+- [Stripe Customer Portalセットアップ](./docs/STRIPE_CUSTOMER_PORTAL_SETUP.md)

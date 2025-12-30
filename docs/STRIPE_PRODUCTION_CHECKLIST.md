@@ -215,7 +215,7 @@ stripe trigger checkout.session.completed
 
 | 日付 | 作業者 | 内容 |
 |------|--------|------|
-| YYYY-MM-DD | | 本番環境移行完了 |
+| 2025-12-30 | Claude | 本番環境移行完了・セキュリティ強化実装・動作確認完了 |
 
 ---
 

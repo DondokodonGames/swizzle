@@ -423,9 +423,9 @@ Swizzleは、5〜30秒で完結するショートゲームプラットフォー�
 |----------|------|
 | `README.md` | プロジェクト概要・セットアップ・ロードマップ |
 | `TESTING_GUIDE.md` | テスト実施ガイド |
-| `CURRENT_HANDOVER.md` | 現状引き継ぎドキュメント |
-| `project_status_report.md` | プロジェクト状態レポート |
-| `implementation-status.json` | 実装進捗JSON |
+| `SUPABASE_SETUP.md` | Supabaseデータベースセットアップ手順 |
+| `docs/STRIPE_PRODUCTION_CHECKLIST.md` | Stripe本番環境移行チェックリスト |
+| `docs/STRIPE_CUSTOMER_PORTAL_SETUP.md` | Customer Portalセットアップガイド |
 
 ### スタイル
 
@@ -469,4 +469,4 @@ Swizzleは、5〜30秒で完結するショートゲームプラットフォー�
 
 ---
 
-*最終更新: 2025-11-18*
+*最終更新: 2025-12-30*

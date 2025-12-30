@@ -108,8 +108,8 @@ Stripe Customer Portalでサブスクリプションのキャンセルボタン�
 ### ステータス
 
 - ✅ コード実装完了（`SubscriptionManager.tsx`の「サブスクリプションを管理」ボタン）
-- ⚠️ **Stripe Dashboard側の設定が必要**
-- ⚠️ 本番環境での動作確認が必要
+- ✅ Stripe Dashboard側の設定完了
+- ✅ 本番環境での動作確認完了（2025-12-30）
 
 ---
 
