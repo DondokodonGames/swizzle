@@ -71,6 +71,8 @@ USING (creator_id = auth.uid());
 -- 既存のポリシーを削除
 DROP POLICY IF EXISTS "Profiles are viewable by everyone" ON profiles;
 DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
+DROP POLICY IF EXISTS "Users can create their own profile" ON profiles;
+DROP POLICY IF EXISTS "Service role can insert profiles" ON profiles;
 
 -- 7. RLSを有効化
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -89,6 +91,21 @@ FOR UPDATE
 TO authenticated
 USING (id = auth.uid())
 WITH CHECK (id = auth.uid());
+
+-- 9b. ユーザーは自分のプロフィールを作成可能（INSERT）
+-- 新規ユーザー登録時に必要
+CREATE POLICY "Users can create their own profile"
+ON profiles
+FOR INSERT
+TO authenticated
+WITH CHECK (id = auth.uid());
+
+-- 9c. サービスロールはプロフィールを作成可能（トリガー用）
+CREATE POLICY "Service role can insert profiles"
+ON profiles
+FOR INSERT
+TO service_role
+WITH CHECK (true);
 
 -- ========================================
 -- likes テーブルのRLSポリシー
