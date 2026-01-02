@@ -20,9 +20,14 @@ export class PhysicsManager {
    * 物理演算を更新
    *
    * @param context - ゲーム実行コンテキスト
-   * @param deltaTime - 前フレームからの経過時間（秒）- 重力計算にのみ使用
+   * @param deltaTime - 前フレームからの経過時間（秒）
    */
   updatePhysics(context: RuleExecutionContext, deltaTime: number): void {
+    // 60fps基準のdeltaTime（1/60秒 = 0.01666...）
+    // 実際のdeltaTimeとの比率を計算
+    const targetDeltaTime = 1 / 60;
+    const timeScale = deltaTime / targetDeltaTime;
+
     context.objects.forEach((obj, id) => {
       // 物理プロパティが無効な場合はスキップ
       if (!obj.physics || !obj.physics.enabled) {
@@ -35,15 +40,15 @@ export class PhysicsManager {
       }
 
       // キネマティックオブジェクト（速度のみ適用）
-      // フレームレート非依存: vxとvyはpx/frameとして扱う
+      // vxとvyはpx/frame（60fps基準）として扱い、timeScaleで調整
       if (obj.physics.type === 'kinematic') {
-        obj.x += (obj.vx || 0);
-        obj.y += (obj.vy || 0);
+        obj.x += (obj.vx || 0) * timeScale;
+        obj.y += (obj.vy || 0) * timeScale;
         return;
       }
 
       // ダイナミックオブジェクト（完全な物理演算）
-      this.updateDynamicPhysics(obj, context, deltaTime);
+      this.updateDynamicPhysics(obj, context, deltaTime, timeScale);
     });
   }
 
@@ -52,12 +57,14 @@ export class PhysicsManager {
    *
    * @param obj - 対象オブジェクト
    * @param context - ゲーム実行コンテキスト
-   * @param deltaTime - 経過時間（秒）- 重力計算にのみ使用
+   * @param deltaTime - 経過時間（秒）
+   * @param timeScale - 60fps基準との時間比率
    */
   private updateDynamicPhysics(
     obj: GameObject,
     context: RuleExecutionContext,
-    deltaTime: number
+    deltaTime: number,
+    timeScale: number
   ): void {
     if (!obj.physics) return;
 
@@ -70,9 +77,9 @@ export class PhysicsManager {
     const vx = (obj.vx || 0) * (1 - airResistance);
     const vy = (obj.vy || 0) * (1 - airResistance);
 
-    // 速度の更新（重力を加算）
+    // 速度の更新（重力を加算）- timeScaleで調整
     obj.vx = vx;
-    obj.vy = vy + gravityPerFrame;
+    obj.vy = vy + gravityPerFrame * timeScale;
 
     // 最大速度の制限
     if (obj.physics.maxVelocity) {
@@ -84,17 +91,17 @@ export class PhysicsManager {
       }
     }
 
-    // 位置の更新（フレーム単位）
-    obj.x += obj.vx;
-    obj.y += obj.vy;
+    // 位置の更新（timeScaleで調整）
+    obj.x += obj.vx * timeScale;
+    obj.y += obj.vy * timeScale;
 
     // 地面との衝突チェック
     this.checkGroundCollision(obj, context);
 
-    // 角速度の適用（回転）- 60fps基準
+    // 角速度の適用（回転）- 60fps基準、timeScaleで調整
     if (obj.physics.angularVelocity) {
       const angularVelocityPerFrame = obj.physics.angularVelocity / 60;
-      obj.rotation = (obj.rotation || 0) + angularVelocityPerFrame;
+      obj.rotation = (obj.rotation || 0) + angularVelocityPerFrame * timeScale;
     }
   }
 
