@@ -18,9 +18,9 @@ export class PhysicsManager {
 
   /**
    * 物理演算を更新
-   * 
+   *
    * @param context - ゲーム実行コンテキスト
-   * @param deltaTime - 前フレームからの経過時間（秒）
+   * @param deltaTime - 前フレームからの経過時間（秒）- 重力計算にのみ使用
    */
   updatePhysics(context: RuleExecutionContext, deltaTime: number): void {
     context.objects.forEach((obj, id) => {
@@ -28,19 +28,20 @@ export class PhysicsManager {
       if (!obj.physics || !obj.physics.enabled) {
         return;
       }
-      
+
       // 静的オブジェクトはスキップ
       if (obj.physics.type === 'static') {
         return;
       }
-      
+
       // キネマティックオブジェクト（速度のみ適用）
+      // フレームレート非依存: vxとvyはpx/frameとして扱う
       if (obj.physics.type === 'kinematic') {
-        obj.x += (obj.vx || 0) * deltaTime;
-        obj.y += (obj.vy || 0) * deltaTime;
+        obj.x += (obj.vx || 0);
+        obj.y += (obj.vy || 0);
         return;
       }
-      
+
       // ダイナミックオブジェクト（完全な物理演算）
       this.updateDynamicPhysics(obj, context, deltaTime);
     });
@@ -48,10 +49,10 @@ export class PhysicsManager {
 
   /**
    * ダイナミックオブジェクトの物理演算
-   * 
+   *
    * @param obj - 対象オブジェクト
    * @param context - ゲーム実行コンテキスト
-   * @param deltaTime - 経過時間（秒）
+   * @param deltaTime - 経過時間（秒）- 重力計算にのみ使用
    */
   private updateDynamicPhysics(
     obj: GameObject,
@@ -60,19 +61,19 @@ export class PhysicsManager {
   ): void {
     if (!obj.physics) return;
 
-    // 重力の適用
+    // 重力の適用（60fps基準）
     const gravity = obj.physics.gravity || 980; // px/s^2（デフォルト: 地球の重力）
-    const accY = gravity;
-    
+    const gravityPerFrame = gravity / 60; // px/frame^2 (60fps基準)
+
     // 空気抵抗の適用
     const airResistance = obj.physics.airResistance || 0.01;
     const vx = (obj.vx || 0) * (1 - airResistance);
     const vy = (obj.vy || 0) * (1 - airResistance);
-    
-    // 速度の更新
+
+    // 速度の更新（重力を加算）
     obj.vx = vx;
-    obj.vy = vy + accY * deltaTime;
-    
+    obj.vy = vy + gravityPerFrame;
+
     // 最大速度の制限
     if (obj.physics.maxVelocity) {
       const speed = Math.sqrt(obj.vx ** 2 + obj.vy ** 2);
@@ -82,17 +83,18 @@ export class PhysicsManager {
         obj.vy *= ratio;
       }
     }
-    
-    // 位置の更新
-    obj.x += obj.vx * deltaTime;
-    obj.y += obj.vy * deltaTime;
-    
+
+    // 位置の更新（フレーム単位）
+    obj.x += obj.vx;
+    obj.y += obj.vy;
+
     // 地面との衝突チェック
     this.checkGroundCollision(obj, context);
-    
-    // 角速度の適用（回転）
+
+    // 角速度の適用（回転）- 60fps基準
     if (obj.physics.angularVelocity) {
-      obj.rotation = (obj.rotation || 0) + obj.physics.angularVelocity * deltaTime;
+      const angularVelocityPerFrame = obj.physics.angularVelocity / 60;
+      obj.rotation = (obj.rotation || 0) + angularVelocityPerFrame;
     }
   }
 
