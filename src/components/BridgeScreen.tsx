@@ -207,6 +207,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     console.log('👤 プロフィールへ遷移');
     if (currentGame.author.username) {
       window.location.href = `/profile/${currentGame.author.username}`;
+    } else if (currentGame.author.id) {
+      // usernameがない場合はuser IDを使用
+      console.warn('⚠️ usernameがないため、user IDを使用します');
+      window.location.href = `/profile/${currentGame.author.id}`;
+    } else {
+      console.error('❌ プロフィール情報が不完全です');
+      alert('プロフィール情報が見つかりません。');
     }
   };
 
@@ -244,36 +251,45 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   }, [gameUrl]);
 
   const handleShareTwitter = useCallback(() => {
-    const text = score
+    const baseText = score
       ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
       : t('bridge.share.playText', { title: currentGame.title });
+    const text = currentGame.description
+      ? `${baseText}\n${currentGame.description}`
+      : baseText;
     const hashtags = 'Swizzle,IndieGame';
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(gameUrl)}&hashtags=${hashtags}`;
     window.open(url, '_blank', 'width=550,height=420');
 
     // 共有を記録
     recordShare('twitter');
-  }, [currentGame.title, gameUrl, score, t]);
+  }, [currentGame.title, currentGame.description, gameUrl, score, t]);
 
   const handleShareLine = useCallback(() => {
-    const text = score
+    const baseText = score
       ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
       : t('bridge.share.playText', { title: currentGame.title });
+    const text = currentGame.description
+      ? `${baseText}\n${currentGame.description}`
+      : baseText;
     const url = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(gameUrl)}&text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
 
     // 共有を記録
     recordShare('line');
-  }, [currentGame.title, gameUrl, score, t]);
+  }, [currentGame.title, currentGame.description, gameUrl, score, t]);
 
   const handleShareWhatsApp = useCallback(() => {
-    const text = score
+    const baseText = score
       ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
       : t('bridge.share.playText', { title: currentGame.title });
-    const url = `https://wa.me/?text=${encodeURIComponent(text + '\n' + gameUrl)}`;
+    const text = currentGame.description
+      ? `${baseText}\n${currentGame.description}\n${gameUrl}`
+      : `${baseText}\n${gameUrl}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
     recordShare('whatsapp');
-  }, [currentGame.title, gameUrl, score, t]);
+  }, [currentGame.title, currentGame.description, gameUrl, score, t]);
 
   const handleShareFacebook = useCallback(() => {
     const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(gameUrl)}`;
@@ -282,56 +298,71 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   }, [gameUrl]);
 
   const handleShareReddit = useCallback(() => {
-    const title = score
+    const baseTitle = score
       ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
       : t('bridge.share.playText', { title: currentGame.title });
+    const title = currentGame.description
+      ? `${baseTitle} - ${currentGame.description}`
+      : baseTitle;
     const url = `https://www.reddit.com/submit?url=${encodeURIComponent(gameUrl)}&title=${encodeURIComponent(title)}`;
     window.open(url, '_blank', 'width=550,height=600');
     recordShare('reddit');
-  }, [currentGame.title, gameUrl, score, t]);
+  }, [currentGame.title, currentGame.description, gameUrl, score, t]);
 
   const handleShareDiscord = useCallback(async () => {
-    const text = score
+    const baseText = score
       ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
       : t('bridge.share.playText', { title: currentGame.title });
+    const fullText = currentGame.description
+      ? `${baseText}\n${currentGame.description}\n${gameUrl}`
+      : `${baseText}\n${gameUrl}`;
     try {
-      await navigator.clipboard.writeText(text + '\n' + gameUrl);
+      await navigator.clipboard.writeText(fullText);
       alert(t('bridge.share.discordCopied'));
       recordShare('discord');
     } catch (error) {
       console.error('Copy failed:', error);
     }
-  }, [currentGame.title, gameUrl, score, t]);
+  }, [currentGame.title, currentGame.description, gameUrl, score, t]);
 
   const handleShareTelegram = useCallback(() => {
-    const text = score
+    const baseText = score
       ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
       : t('bridge.share.playText', { title: currentGame.title });
+    const text = currentGame.description
+      ? `${baseText}\n${currentGame.description}`
+      : baseText;
     const url = `https://t.me/share/url?url=${encodeURIComponent(gameUrl)}&text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
     recordShare('telegram');
-  }, [currentGame.title, gameUrl, score, t]);
+  }, [currentGame.title, currentGame.description, gameUrl, score, t]);
 
   const handleShareWeChat = useCallback(async () => {
     // WeChat doesn't have web share URL - copy to clipboard for sharing
-    const text = score
+    const baseText = score
       ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
       : t('bridge.share.playText', { title: currentGame.title });
+    const fullText = currentGame.description
+      ? `${baseText}\n${currentGame.description}\n${gameUrl}`
+      : `${baseText}\n${gameUrl}`;
     try {
-      await navigator.clipboard.writeText(text + '\n' + gameUrl);
+      await navigator.clipboard.writeText(fullText);
       alert(t('bridge.share.wechatCopied'));
       recordShare('wechat');
     } catch (error) {
       console.error('Copy failed:', error);
     }
-  }, [currentGame.title, gameUrl, score, t]);
+  }, [currentGame.title, currentGame.description, gameUrl, score, t]);
 
   const handleNativeShare = useCallback(async () => {
     if (navigator.share) {
       try {
-        const text = score
+        const baseText = score
           ? t('bridge.share.resultText', { title: currentGame.title, score: score.points })
           : t('bridge.share.playText', { title: currentGame.title });
+        const text = currentGame.description
+          ? `${baseText}\n${currentGame.description}`
+          : baseText;
 
         await navigator.share({
           title: currentGame.title,
@@ -346,7 +377,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         }
       }
     }
-  }, [currentGame.title, gameUrl, score, t]);
+  }, [currentGame.title, currentGame.description, gameUrl, score, t]);
 
   const recordShare = async (platform: string) => {
     try {
