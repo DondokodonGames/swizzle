@@ -123,9 +123,10 @@ const AuthModal: React.FC<AuthModalProps> = ({
     try {
       if (mode === 'signin') {
         await signIn(formData.email, formData.password)
+        console.log('✅ ログイン成功 - /feedに遷移します')
         onClose()
-        // ログイン成功後、ゲームフィードに遷移
-        navigate('/feed')
+        // ログイン成功後、確実にゲームフィードに遷移（強制リロード）
+        window.location.href = '/feed'
       } else if (mode === 'signup') {
         const age = parseInt(formData.age)
 
