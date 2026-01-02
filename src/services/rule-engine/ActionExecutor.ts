@@ -667,7 +667,7 @@ export class ActionExecutor {
   // ==================== 物理アクション ====================
 
   /**
-   * 力適用アクション
+   * 力適用アクション（フレームレート非依存版）
    */
   private executeApplyForceAction(
     action: Extract<GameAction, { type: 'applyForce' }>,
@@ -677,14 +677,18 @@ export class ActionExecutor {
     if (!targetObj || !targetObj.physics) {
       return;
     }
-    
+
     const mass = targetObj.physics.mass || 1.0;
-    const accX = action.force.x / mass;
-    const accY = action.force.y / mass;
-    
-    targetObj.vx = (targetObj.vx || 0) + accX * 0.016; // 16ms
-    targetObj.vy = (targetObj.vy || 0) + accY * 0.016;
-    
+    const accX = action.force.x / mass; // px/s^2
+    const accY = action.force.y / mass; // px/s^2
+
+    // 60fps基準: 1フレーム = 1/60秒
+    const accXPerFrame = accX / 60; // px/frame
+    const accYPerFrame = accY / 60; // px/frame
+
+    targetObj.vx = (targetObj.vx || 0) + accXPerFrame;
+    targetObj.vy = (targetObj.vy || 0) + accYPerFrame;
+
     console.log(`💪 力適用: ${action.targetId}`);
   }
 
