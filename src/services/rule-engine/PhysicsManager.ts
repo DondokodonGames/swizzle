@@ -28,6 +28,12 @@ export class PhysicsManager {
     const targetDeltaTime = 1 / 60;
     const timeScale = deltaTime / targetDeltaTime;
 
+    // デバッグ: 初回のみログ出力
+    if (!this.debugLogged) {
+      console.log(`🔧 PhysicsManager: deltaTime=${deltaTime.toFixed(4)}s, timeScale=${timeScale.toFixed(2)}x (${(1/deltaTime).toFixed(1)}fps)`);
+      this.debugLogged = true;
+    }
+
     context.objects.forEach((obj, id) => {
       // 物理プロパティが無効な場合はスキップ
       if (!obj.physics || !obj.physics.enabled) {
@@ -51,6 +57,8 @@ export class PhysicsManager {
       this.updateDynamicPhysics(obj, context, deltaTime, timeScale);
     });
   }
+
+  private debugLogged = false;
 
   /**
    * ダイナミックオブジェクトの物理演算

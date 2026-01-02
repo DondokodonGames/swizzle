@@ -70,13 +70,14 @@ export class SocialService {
       try {
         const userPromise = supabase.auth.getUser();
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Auth timeout')), 3000)
+          setTimeout(() => reject(new Error('Auth timeout')), 5000)
         );
         const { data: { user } } = await Promise.race([userPromise, timeoutPromise]) as any;
         currentUserId = user?.id;
-      } catch {
+        console.log(`👤 認証ユーザー: ${currentUserId || 'ゲスト'}`);
+      } catch (authError) {
         // 認証タイムアウトまたはエラー時はゲストとして続行
-        console.warn('⚠️ 認証情報取得失敗（ゲストとして続行）');
+        console.warn('⚠️ 認証情報取得失敗（ゲストとして続行）:', authError);
         currentUserId = undefined;
       }
 
@@ -88,22 +89,34 @@ export class SocialService {
         try {
           const gameIds = games.map((g: any) => g.id);
 
-          // いいね情報を一括取得
-          const { data: likesData } = await supabase
+          // いいね情報を一括取得（タイムアウト保護）
+          const likesPromise = supabase
             .from('likes')
             .select('game_id')
             .eq('user_id', currentUserId)
             .in('game_id', gameIds);
 
+          const likesTimeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Likes timeout')), 3000)
+          );
+
+          const { data: likesData } = await Promise.race([likesPromise, likesTimeout]) as any;
+
           if (likesData) {
             likedGameIds = new Set(likesData.map((l: { game_id: string }) => l.game_id));
           }
 
-          // お気に入り情報を一括取得（1回だけ）
-          const favorites = await database.favorites.list(currentUserId);
+          // お気に入り情報を一括取得（タイムアウト保護）
+          const favoritesPromise = database.favorites.list(currentUserId);
+          const favoritesTimeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Favorites timeout')), 3000)
+          );
+
+          const favorites = await Promise.race([favoritesPromise, favoritesTimeout]) as any;
           bookmarkedGameIds = new Set(favorites.map((fav: any) => fav.id));
-        } catch {
-          // いいね・お気に入り取得失敗は無視
+        } catch (preferencesError) {
+          // いいね・お気に入り取得失敗は無視（ログのみ）
+          console.warn('⚠️ ユーザー設定取得失敗（続行）:', preferencesError);
         }
       }
 

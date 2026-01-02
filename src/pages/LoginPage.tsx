@@ -19,10 +19,10 @@ export const LoginPage: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
 
-  // 既にログイン済みの場合はホームにリダイレクト
+  // 既にログイン済みの場合はゲームフィードにリダイレクト
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/')
+      navigate('/feed')
     }
   }, [isAuthenticated, navigate])
 
