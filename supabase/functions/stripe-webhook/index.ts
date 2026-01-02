@@ -65,10 +65,11 @@ serve(async (req) => {
         webhookSecret
       );
     } catch (err) {
-      console.error('Webhook signature verification failed:', err);
+      console.error('❌ Webhook signature verification failed:', err);
       logWebhookEvent('signature_verification_failed', '', undefined, undefined, false, err.message);
       return new Response(JSON.stringify({ error: 'Invalid signature' }), {
         status: 401,
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
@@ -152,12 +153,16 @@ serve(async (req) => {
       // 成功をログ
       const processingTime = Date.now() - startTime;
       logWebhookEvent(event.type, event.id, userId, customerId, true);
-      console.log(`Webhook processed successfully in ${processingTime}ms`);
+      console.log(`✅ Webhook processed successfully in ${processingTime}ms`);
 
-      return new Response(JSON.stringify({ received: true }), { status: 200 });
+      return new Response(JSON.stringify({ received: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
 
     } catch (handlerError) {
       // ハンドラー内でのエラー
+      console.error(`❌ Handler error for event ${event.type}:`, handlerError);
       logWebhookEvent(event.type, event.id, userId, customerId, false, handlerError.message);
 
       if (handlerError instanceof WebhookError) {
@@ -173,7 +178,7 @@ serve(async (req) => {
     }
 
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('❌ Webhook error:', error);
 
     // WebhookErrorの場合は適切なステータスコードを返す
     if (error instanceof WebhookError) {
@@ -182,16 +187,28 @@ serve(async (req) => {
       // 再試行可能なエラーの場合は500を返してStripeに再試行させる
       if (error.retryable) {
         response.retryable = true;
-        return new Response(JSON.stringify(response), { status: 500 });
+        console.log(`⚠️ Retryable error: ${error.message}`);
+        return new Response(JSON.stringify(response), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
 
-      return new Response(JSON.stringify(response), { status: error.statusCode });
+      console.log(`⚠️ Non-retryable error (${error.statusCode}): ${error.message}`);
+      return new Response(JSON.stringify(response), {
+        status: error.statusCode,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     // 予期しないエラーは500を返す（Stripeが再試行する）
+    console.error('⚠️ Unexpected error, returning 500 for retry');
     return new Response(
       JSON.stringify({ error: 'Internal server error', retryable: true }),
-      { status: 500 }
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
     );
   }
 });

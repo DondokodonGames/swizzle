@@ -71,6 +71,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
   const [settingsTabHover, setSettingsTabHover] = useState(false);
   const [websiteLinkHover, setWebsiteLinkHover] = useState(false);
   const [changeEarningsButtonHover, setChangeEarningsButtonHover] = useState(false);
+  const [logoutButtonHover, setLogoutButtonHover] = useState(false);
 
   const socialService = useMemo(() => SocialService.getInstance(), []);
 
@@ -190,6 +191,20 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
 
     } catch (err) {
       console.error('フォロー切り替えエラー:', err);
+    }
+  };
+
+  // ログアウト処理
+  const handleLogout = async () => {
+    if (!confirm('ログアウトしますか?')) return;
+
+    try {
+      await supabase.auth.signOut();
+      console.log('✅ ログアウト成功');
+      window.location.href = '/';
+    } catch (err) {
+      console.error('❌ ログアウトエラー:', err);
+      alert('ログアウトに失敗しました');
     }
   };
 
@@ -532,6 +547,21 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
       border: 'none',
       cursor: 'pointer',
       fontSize: DESIGN_TOKENS.typography.fontSize.base
+    },
+    logoutButton: {
+      width: '100%',
+      padding: `${DESIGN_TOKENS.spacing[3]} ${DESIGN_TOKENS.spacing[4]}`,
+      backgroundColor: logoutButtonHover
+        ? DESIGN_TOKENS.colors.error[600]
+        : DESIGN_TOKENS.colors.error[500],
+      color: DESIGN_TOKENS.colors.neutral[0],
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      borderRadius: DESIGN_TOKENS.borderRadius.xl,
+      transition: `all ${DESIGN_TOKENS.animation.duration.normal}`,
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: DESIGN_TOKENS.typography.fontSize.base,
+      marginTop: DESIGN_TOKENS.spacing[6]
     }
   };
 
@@ -785,7 +815,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
                       ¥{profile.preferences.monetization.earnings.toLocaleString()}
                     </span>
                   </div>
-                  <button 
+                  <button
                     onMouseEnter={() => setChangeEarningsButtonHover(true)}
                     onMouseLeave={() => setChangeEarningsButtonHover(false)}
                     style={styles.changeEarningsButton}
@@ -794,6 +824,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
                   </button>
                 </div>
               </div>
+
+              {/* ログアウトボタン */}
+              <button
+                onClick={handleLogout}
+                onMouseEnter={() => setLogoutButtonHover(true)}
+                onMouseLeave={() => setLogoutButtonHover(false)}
+                style={styles.logoutButton}
+              >
+                🚪 ログアウト
+              </button>
             </div>
           )}
         </div>

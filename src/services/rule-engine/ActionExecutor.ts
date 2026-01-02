@@ -332,14 +332,14 @@ export class ActionExecutor {
   }
 
   /**
-   * 直線移動（duration サポート追加版）
-   * 
+   * 直線移動（フレームレート非依存版）
+   *
    * duration が指定されている場合は、自動的に speed を計算します。
-   * 60FPS想定で、指定された秒数で目標座標に到達する速度を算出。
-   * 
+   * フレームレート非依存で、指定された秒数で目標座標に到達する速度を算出。
+   *
    * @param targetObj - 移動対象オブジェクト
    * @param movement - 移動パラメータ
-   * @param speed - 基本速度（duration未指定時に使用）
+   * @param speed - 基本速度（px/秒単位、duration未指定時に使用）
    * @param context - ゲーム実行コンテキスト
    */
   private executeMoveStraight(
@@ -348,13 +348,14 @@ export class ActionExecutor {
     speed: number,
     context: RuleExecutionContext
   ): void {
-    // 🔧 duration サポート追加
-    let effectiveSpeed = speed;
-    
+    // 🔧 フレームレート非依存の速度計算
+    // speedはpx/秒単位で扱う（PhysicsManagerがdeltaTimeをかけるため）
+    let effectiveSpeed = speed * 60; // px/frameからpx/秒に変換（既存のspeedパラメータ用）
+
     if (movement.duration && movement.target) {
       // target座標への移動距離を計算
       let targetX: number, targetY: number;
-      
+
       if (typeof movement.target === 'string') {
         const targetObject = context.objects.get(movement.target);
         if (targetObject) {
@@ -369,23 +370,22 @@ export class ActionExecutor {
         targetX = movement.target.x * context.canvas.width;
         targetY = movement.target.y * context.canvas.height;
       }
-      
+
       const targetScale = targetObj.scale || 1;
       const objCenterX = targetObj.x + (targetObj.width * targetScale) / 2;
       const objCenterY = targetObj.y + (targetObj.height * targetScale) / 2;
-      
+
       const dx = targetX - objCenterX;
       const dy = targetY - objCenterY;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      // 60FPSを想定: duration秒 → フレーム数
-      const targetFrames = movement.duration * 60;
-      effectiveSpeed = distance / targetFrames;
-      
+
+      // フレームレート非依存: distance(px) / duration(秒) = px/秒
+      effectiveSpeed = distance / movement.duration;
+
       console.log(
         `⏱️ duration指定: ${movement.duration}秒 ` +
-        `(距離: ${distance.toFixed(1)}px, フレーム数: ${targetFrames}, ` +
-        `→ speed: ${effectiveSpeed.toFixed(2)} px/frame)`
+        `(距離: ${distance.toFixed(1)}px, ` +
+        `→ speed: ${effectiveSpeed.toFixed(2)} px/秒)`
       );
     }
     
@@ -467,8 +467,10 @@ export class ActionExecutor {
 
   private executeMoveWander(targetObj: GameObject, speed: number): void {
     const randomAngle = Math.random() * Math.PI * 2;
-    targetObj.vx = Math.cos(randomAngle) * speed;
-    targetObj.vy = Math.sin(randomAngle) * speed;
+    // speedをpx/frameからpx/秒に変換
+    const speedPerSecond = speed * 60;
+    targetObj.vx = Math.cos(randomAngle) * speedPerSecond;
+    targetObj.vy = Math.sin(randomAngle) * speedPerSecond;
   }
 
   private executeMoveSwap(
@@ -497,7 +499,7 @@ export class ActionExecutor {
   ): void {
     if (movement.target) {
       let targetX: number, targetY: number;
-      
+
       if (typeof movement.target === 'string') {
         const targetObject = context.objects.get(movement.target);
         if (targetObject) {
@@ -510,14 +512,17 @@ export class ActionExecutor {
         targetX = movement.target.x;
         targetY = movement.target.y;
       }
-      
+
       const dx = targetX - targetObj.x;
       const dy = targetY - targetObj.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      
+
+      // speedをpx/frameからpx/秒に変換
+      const speedPerSecond = speed * 60;
+
       if (distance > 5) {
-        targetObj.vx = (dx / distance) * speed;
-        targetObj.vy = (dy / distance) * speed;
+        targetObj.vx = (dx / distance) * speedPerSecond;
+        targetObj.vy = (dy / distance) * speedPerSecond;
       } else {
         targetObj.vx = 0;
         targetObj.vy = 0;
@@ -851,12 +856,12 @@ export class ActionExecutor {
   getDebugInfo(): any {
     return {
       managerType: 'ActionExecutor',
-      description: '全アクションタイプの実行システム（duration サポート追加版）',
+      description: '全アクションタイプの実行システム（フレームレート非依存版）',
       supportedActions: [
         '基本: success, failure, addScore, show, hide, playSound',
         'フラグ: setFlag, toggleFlag',
         'カウンター: counter',
-        '移動: move (8方向+各種移動タイプ、duration自動計算対応)',
+        '移動: move (8方向+各種移動タイプ、フレームレート非依存)',
         'アニメーション: switchAnimation, playAnimation, setAnimationSpeed, setAnimationFrame',
         'エフェクト: effect (EffectManagerにデリゲート)',
         '高度: followDrag',
@@ -864,7 +869,8 @@ export class ActionExecutor {
         'ランダム: randomAction'
       ],
       features: [
-        'duration サポート: 60FPS想定で自動的に speed を計算',
+        'フレームレート非依存: モバイルとデスクトップで同じ速度で動作',
+        'duration サポート: フレームレートに依存せず正確な時間で移動',
         '後方互換性: 既存の speed パラメータも引き続きサポート',
         'ログ強化: 移動時の詳細情報をコンソール出力'
       ]
