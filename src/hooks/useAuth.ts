@@ -81,13 +81,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setState(prev => ({ ...prev, error: null }))
   }, [])
 
-  const loadProfile = useCallback(async (userId: string): Promise<Profile | null> => {
+  const loadProfile = useCallback(async (userId: string, isNewUser: boolean = false): Promise<Profile | null> => {
     try {
-      // トリガーによる自動作成を考慮し、少し待機してからプロフィール取得
+      // プロフィール取得
       let profile = await database.profiles.get(userId)
 
-      // プロフィールが存在しない場合、少し待ってリトライ（トリガー処理時間考慮）
-      if (!profile) {
+      // 新規ユーザーの場合のみ、トリガー処理を待つ（既存ユーザーログインでは待たない）
+      if (!profile && isNewUser) {
         await new Promise(resolve => setTimeout(resolve, 1000))
         profile = await database.profiles.get(userId)
       }
@@ -279,17 +279,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const result = await auth.signIn(email, password)
 
-      // プロフィールを読み込む
+      // 認証成功を即座に反映（プロフィール読み込みは非同期で実行）
       if (result.user) {
-        const profile = await loadProfile(result.user.id)
-        profileLoadedRef.current = !!profile
+        // ログイン成功をすぐに返す（高速化）
         setState({
           user: result.user,
           session: result.session,
-          profile,
+          profile: null, // プロフィールは後で読み込む
           loading: false,
           initializing: false,
           error: null
+        })
+
+        // プロフィール読み込みをバックグラウンドで実行（待たない）
+        loadProfile(result.user.id).then(profile => {
+          if (profile) {
+            profileLoadedRef.current = true
+            setState(prev => ({
+              ...prev,
+              profile
+            }))
+          }
+        }).catch(err => {
+          console.error('Background profile load error:', err)
         })
       } else {
         setState(prev => ({ ...prev, loading: false }))
