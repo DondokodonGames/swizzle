@@ -332,14 +332,13 @@ export class ActionExecutor {
   }
 
   /**
-   * 直線移動（フレームレート非依存版）
+   * 直線移動（duration サポート版）
    *
    * duration が指定されている場合は、自動的に speed を計算します。
-   * フレームレート非依存で、指定された秒数で目標座標に到達する速度を算出。
    *
    * @param targetObj - 移動対象オブジェクト
    * @param movement - 移動パラメータ
-   * @param speed - 基本速度（px/秒単位、duration未指定時に使用）
+   * @param speed - 基本速度（duration未指定時に使用）
    * @param context - ゲーム実行コンテキスト
    */
   private executeMoveStraight(
@@ -348,9 +347,7 @@ export class ActionExecutor {
     speed: number,
     context: RuleExecutionContext
   ): void {
-    // 🔧 フレームレート非依存の速度計算
-    // speedはpx/秒単位で扱う（PhysicsManagerがdeltaTimeをかけるため）
-    let effectiveSpeed = speed * 60; // px/frameからpx/秒に変換（既存のspeedパラメータ用）
+    let effectiveSpeed = speed;
 
     if (movement.duration && movement.target) {
       // target座標への移動距離を計算
@@ -379,13 +376,14 @@ export class ActionExecutor {
       const dy = targetY - objCenterY;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // フレームレート非依存: distance(px) / duration(秒) = px/秒
-      effectiveSpeed = distance / movement.duration;
+      // 60FPS想定でフレーム数を計算
+      const targetFrames = movement.duration * 60;
+      effectiveSpeed = distance / targetFrames;
 
       console.log(
         `⏱️ duration指定: ${movement.duration}秒 ` +
-        `(距離: ${distance.toFixed(1)}px, ` +
-        `→ speed: ${effectiveSpeed.toFixed(2)} px/秒)`
+        `(距離: ${distance.toFixed(1)}px, フレーム数: ${targetFrames}, ` +
+        `→ speed: ${effectiveSpeed.toFixed(2)} px/frame)`
       );
     }
     
@@ -467,10 +465,8 @@ export class ActionExecutor {
 
   private executeMoveWander(targetObj: GameObject, speed: number): void {
     const randomAngle = Math.random() * Math.PI * 2;
-    // speedをpx/frameからpx/秒に変換
-    const speedPerSecond = speed * 60;
-    targetObj.vx = Math.cos(randomAngle) * speedPerSecond;
-    targetObj.vy = Math.sin(randomAngle) * speedPerSecond;
+    targetObj.vx = Math.cos(randomAngle) * speed;
+    targetObj.vy = Math.sin(randomAngle) * speed;
   }
 
   private executeMoveSwap(
@@ -517,12 +513,9 @@ export class ActionExecutor {
       const dy = targetY - targetObj.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // speedをpx/frameからpx/秒に変換
-      const speedPerSecond = speed * 60;
-
       if (distance > 5) {
-        targetObj.vx = (dx / distance) * speedPerSecond;
-        targetObj.vy = (dy / distance) * speedPerSecond;
+        targetObj.vx = (dx / distance) * speed;
+        targetObj.vy = (dy / distance) * speed;
       } else {
         targetObj.vx = 0;
         targetObj.vy = 0;

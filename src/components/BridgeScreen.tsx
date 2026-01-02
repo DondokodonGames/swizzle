@@ -204,16 +204,27 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
       console.log('⏳ プロフィールクリックはクールダウン中です');
       return;
     }
-    console.log('👤 プロフィールへ遷移');
-    if (currentGame.author.username) {
+    console.log('👤 プロフィールへ遷移', {
+      author: currentGame.author,
+      username: currentGame.author?.username,
+      id: currentGame.author?.id,
+      name: currentGame.author?.name
+    });
+
+    if (currentGame.author?.username) {
+      console.log(`✅ usernameで遷移: /profile/${currentGame.author.username}`);
       window.location.href = `/profile/${currentGame.author.username}`;
-    } else if (currentGame.author.id) {
+    } else if (currentGame.author?.id) {
       // usernameがない場合はuser IDを使用
-      console.warn('⚠️ usernameがないため、user IDを使用します');
+      console.warn(`⚠️ usernameがないため、user IDを使用: /profile/${currentGame.author.id}`);
       window.location.href = `/profile/${currentGame.author.id}`;
+    } else if (currentGame.author?.name) {
+      // nameフィールドがある場合はそれを試す
+      console.warn(`⚠️ name フィールドを使用: /profile/${currentGame.author.name}`);
+      window.location.href = `/profile/${currentGame.author.name}`;
     } else {
-      console.error('❌ プロフィール情報が不完全です');
-      alert('プロフィール情報が見つかりません。');
+      console.error('❌ プロフィール情報が不完全です', currentGame.author);
+      alert('プロフィール情報が見つかりません。開発者ツールのコンソールを確認してください。');
     }
   };
 
