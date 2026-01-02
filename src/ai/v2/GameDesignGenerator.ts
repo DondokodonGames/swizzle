@@ -348,20 +348,62 @@ export class GameDesignGenerator {
   private extractAndParseJSON(text: string): GameDesign {
     let jsonStr = text;
 
+    // 1. コードブロックからJSON抽出を試みる
     const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (codeBlockMatch) {
       jsonStr = codeBlockMatch[1].trim();
-    } else {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[0];
-      }
     }
 
-    if (!jsonStr || !jsonStr.startsWith('{')) {
+    // 2. JSONオブジェクトの開始位置を探す
+    const jsonStartIndex = jsonStr.indexOf('{');
+    if (jsonStartIndex === -1) {
       throw new Error('No JSON found in response');
     }
 
+    // 3. JSONオブジェクトの終了位置を探す（括弧のバランスを考慮）
+    let braceCount = 0;
+    let inString = false;
+    let escapeNext = false;
+    let jsonEndIndex = -1;
+
+    for (let i = jsonStartIndex; i < jsonStr.length; i++) {
+      const char = jsonStr[i];
+
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+
+      if (char === '\\' && inString) {
+        escapeNext = true;
+        continue;
+      }
+
+      if (char === '"' && !escapeNext) {
+        inString = !inString;
+        continue;
+      }
+
+      if (!inString) {
+        if (char === '{') braceCount++;
+        else if (char === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            jsonEndIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
+    // 4. JSONオブジェクトを抽出
+    if (jsonEndIndex !== -1) {
+      jsonStr = jsonStr.substring(jsonStartIndex, jsonEndIndex + 1);
+    } else {
+      jsonStr = jsonStr.substring(jsonStartIndex);
+    }
+
+    // 5. パースを試みる
     try {
       return JSON.parse(jsonStr) as GameDesign;
     } catch (error) {
