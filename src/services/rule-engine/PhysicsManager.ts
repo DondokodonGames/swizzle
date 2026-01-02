@@ -12,28 +12,43 @@ import { RuleExecutionContext, GameObject } from './types';
  * - 物理プロパティの管理
  */
 export class PhysicsManager {
+  private accumulator: number = 0;
+  private readonly fixedTimeStep: number = 1 / 60; // 60fps固定
+
   constructor() {
-    console.log('⚡ PhysicsManager初期化');
+    console.log('⚡ PhysicsManager初期化（Fixed Timestep 60fps）');
   }
 
   /**
-   * 物理演算を更新
+   * 物理演算を更新（Fixed Timestep方式）
    *
    * @param context - ゲーム実行コンテキスト
    * @param deltaTime - 前フレームからの経過時間（秒）
    */
   updatePhysics(context: RuleExecutionContext, deltaTime: number): void {
-    // 60fps基準のdeltaTime（1/60秒 = 0.01666...）
-    // 実際のdeltaTimeとの比率を計算
-    const targetDeltaTime = 1 / 60;
-    const timeScale = deltaTime / targetDeltaTime;
+    // デルタタイムを蓄積
+    this.accumulator += deltaTime;
 
-    // デバッグ: 初回のみログ出力
-    if (!this.debugLogged) {
-      console.log(`🔧 PhysicsManager: deltaTime=${deltaTime.toFixed(4)}s, timeScale=${timeScale.toFixed(2)}x (${(1/deltaTime).toFixed(1)}fps)`);
-      this.debugLogged = true;
+    // 固定タイムステップで物理演算を実行
+    // 30fpsの場合、1フレームで2回実行される
+    let steps = 0;
+    while (this.accumulator >= this.fixedTimeStep) {
+      this.fixedUpdate(context);
+      this.accumulator -= this.fixedTimeStep;
+      steps++;
+
+      // 無限ループ防止（最大5ステップ）
+      if (steps >= 5) {
+        this.accumulator = 0;
+        break;
+      }
     }
+  }
 
+  /**
+   * 固定タイムステップでの物理演算（常に1/60秒）
+   */
+  private fixedUpdate(context: RuleExecutionContext): void {
     context.objects.forEach((obj, id) => {
       // 物理プロパティが無効な場合はスキップ
       if (!obj.physics || !obj.physics.enabled) {
@@ -46,48 +61,42 @@ export class PhysicsManager {
       }
 
       // キネマティックオブジェクト（速度のみ適用）
-      // vxとvyはpx/frame（60fps基準）として扱い、timeScaleで調整
+      // vxとvyはpx/frameとして扱う（固定60fps）
       if (obj.physics.type === 'kinematic') {
-        obj.x += (obj.vx || 0) * timeScale;
-        obj.y += (obj.vy || 0) * timeScale;
+        obj.x += (obj.vx || 0);
+        obj.y += (obj.vy || 0);
         return;
       }
 
       // ダイナミックオブジェクト（完全な物理演算）
-      this.updateDynamicPhysics(obj, context, deltaTime, timeScale);
+      this.updateDynamicPhysicsFixed(obj, context);
     });
   }
 
-  private debugLogged = false;
-
   /**
-   * ダイナミックオブジェクトの物理演算
+   * ダイナミックオブジェクトの物理演算（固定60fps）
    *
    * @param obj - 対象オブジェクト
    * @param context - ゲーム実行コンテキスト
-   * @param deltaTime - 経過時間（秒）
-   * @param timeScale - 60fps基準との時間比率
    */
-  private updateDynamicPhysics(
+  private updateDynamicPhysicsFixed(
     obj: GameObject,
-    context: RuleExecutionContext,
-    deltaTime: number,
-    timeScale: number
+    context: RuleExecutionContext
   ): void {
     if (!obj.physics) return;
 
-    // 重力の適用（60fps基準）
+    // 重力の適用（60fps固定）
     const gravity = obj.physics.gravity || 980; // px/s^2（デフォルト: 地球の重力）
-    const gravityPerFrame = gravity / 60; // px/frame^2 (60fps基準)
+    const gravityPerFrame = gravity / 60; // px/frame (60fps固定)
 
     // 空気抵抗の適用
     const airResistance = obj.physics.airResistance || 0.01;
     const vx = (obj.vx || 0) * (1 - airResistance);
     const vy = (obj.vy || 0) * (1 - airResistance);
 
-    // 速度の更新（重力を加算）- timeScaleで調整
+    // 速度の更新（重力を加算）
     obj.vx = vx;
-    obj.vy = vy + gravityPerFrame * timeScale;
+    obj.vy = vy + gravityPerFrame;
 
     // 最大速度の制限
     if (obj.physics.maxVelocity) {
@@ -99,17 +108,17 @@ export class PhysicsManager {
       }
     }
 
-    // 位置の更新（timeScaleで調整）
-    obj.x += obj.vx * timeScale;
-    obj.y += obj.vy * timeScale;
+    // 位置の更新（固定60fps）
+    obj.x += obj.vx;
+    obj.y += obj.vy;
 
     // 地面との衝突チェック
     this.checkGroundCollision(obj, context);
 
-    // 角速度の適用（回転）- 60fps基準、timeScaleで調整
+    // 角速度の適用（回転）- 60fps固定
     if (obj.physics.angularVelocity) {
       const angularVelocityPerFrame = obj.physics.angularVelocity / 60;
-      obj.rotation = (obj.rotation || 0) + angularVelocityPerFrame * timeScale;
+      obj.rotation = (obj.rotation || 0) + angularVelocityPerFrame;
     }
   }
 
