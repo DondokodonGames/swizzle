@@ -27,10 +27,15 @@ TikTok・YouTubeショート動画のようなUXで「簡単に作って、簡�
 - **EnhancedGameCanvas**: ユーザーフレンドリーエラー表示
 - **パフォーマンス監視**: FPS・メモリ使用量表示
 
-### 🚧 Phase 3: Supabase統合（進行中 - 30%）
-- **✅ 環境準備**: データベーススキーマ・接続設定完了
-- **⏳ 認証システム**: ユーザー登録・ログイン実装中
-- **⏳ データ保存**: ゲーム作成・お気に入り機能準備中
+### ✅ Phase 3: Supabase統合（完了）
+- **✅ データベース**: PostgreSQL + RLS設定完了
+- **✅ 認証システム**: ユーザー登録・ログイン実装完了
+- **✅ データ保存**: ゲーム作成・お気に入り機能実装完了
+
+### ✅ Phase 4: 決済システム（完了）
+- **✅ Stripe統合**: Checkout・Customer Portal・Webhook実装
+- **✅ サブスクリプション管理**: Free/Premiumプラン対応
+- **✅ 本番環境**: セキュリティ強化・自動デプロイ設定完了
 
 ## 🎮 実装済みゲームテンプレート（20種類）
 
@@ -79,6 +84,7 @@ TikTok・YouTubeショート動画のようなUXで「簡単に作って、簡�
 - **Supabase** - PostgreSQL + 認証 + ストレージ
 - **Row Level Security** - データ安全性確保
 - **Edge Functions** - サーバーレス処理
+- **Stripe** - 決済・サブスクリプション管理
 
 ### デプロイメント
 - **Vercel** - 自動デプロイ・CDN
@@ -87,8 +93,7 @@ TikTok・YouTubeショート動画のようなUXで「簡単に作って、簡�
 
 ## 🌐 デモ・リンク
 
-- **ライブデモ**: [Vercel デプロイ版](https://vercel-deployed-url.vercel.app/)
-- **開発環境**: [GitHub Codespaces](https://zany-yodel-g46jwq7v9g952995g-3000.app.github.dev/)
+- **本番サイト**: [playswizzle.com](https://www.playswizzle.com)
 - **リポジトリ**: [GitHub - DondokodonGames/swizzle](https://github.com/DondokodonGames/swizzle)
 
 ## 🚀 セットアップ・開発
@@ -166,11 +171,11 @@ CREATE TABLE playlists (
 
 ## 🎯 ロードマップ
 
-### Phase 4 候補（Phase 3完了後）
-- **A. UI/UX完成**: チュートリアル・設定画面・アニメーション強化
-- **B. AI活用**: ChatGPT/Claude API統合・自動コンテンツ生成
-- **C. 収益化**: 広告システム・プレミアム機能・アプリストア申請
-- **D. 技術強化**: パフォーマンス最適化・テストスイート・CI/CD強化
+### Phase 5 候補（進行中）
+- **A. AI活用**: ChatGPT/Claude API統合・自動コンテンツ生成
+- **B. UI/UX完成**: チュートリアル・設定画面・アニメーション強化
+- **C. マーケティング**: SNS連携・自動投稿・ユーザー獲得
+- **D. 技術強化**: パフォーマンス最適化・テストスイート強化
 
 ### 長期ビジョン
 - **1000本ゲーム**: AI自動生成によるコンテンツ大量準備
@@ -211,8 +216,9 @@ MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照
 ### 🏆 達成状況
 ```
 Phase 1: ████████████████████████████████ 100% (テンプレート実装)
-Phase 2: ████████████████████████████████ 100% (エラーハンドリング)  
-Phase 3: ████████████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒ 30%  (Supabase統合)
+Phase 2: ████████████████████████████████ 100% (エラーハンドリング)
+Phase 3: ████████████████████████████████ 100% (Supabase統合)
+Phase 4: ████████████████████████████████ 100% (決済システム)
 ```
 
-**🚀 次回アップデート**: 認証システム完成・ユーザーゲーム保存機能実装予定
+**🚀 本番稼働中**: [playswizzle.com](https://www.playswizzle.com)
