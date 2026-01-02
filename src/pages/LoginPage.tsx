@@ -52,8 +52,6 @@ export const LoginPage: React.FC = () => {
 
     try {
       await signIn(formData.email, formData.password)
-      console.log('✅ ログイン成功 - /feedに遷移します')
-      // ログイン成功後、確実にゲームフィードに遷移（強制リロード）
       window.location.href = '/feed'
     } catch (error) {
       console.error('Login error:', error)
