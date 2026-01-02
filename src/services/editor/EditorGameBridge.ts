@@ -41,6 +41,7 @@ export class EditorGameBridge {
   private static instance: EditorGameBridge | null = null;
   private ruleEngine: RuleEngine | null = null;
   private animationFrameId: number | null = null;
+  private gameLoopTimerId: number | null = null;
   private currentContext: RuleExecutionContext | null = null;
   private shouldStopGame: boolean = false;
   private currentCanvas: HTMLCanvasElement | null = null;
@@ -66,6 +67,12 @@ export class EditorGameBridge {
       this.animationFrameId = null;
     }
 
+    // ゲームループタイマーをキャンセル
+    if (this.gameLoopTimerId) {
+      clearTimeout(this.gameLoopTimerId);
+      this.gameLoopTimerId = null;
+    }
+
     // イベントリスナーを削除
     if (this.currentCanvas && this.currentHandleInteraction) {
       this.currentCanvas.removeEventListener('click', this.currentHandleInteraction);
@@ -84,7 +91,7 @@ export class EditorGameBridge {
    * ゲームが実行中かどうかを確認
    */
   isGameRunning(): boolean {
-    return this.animationFrameId !== null;
+    return this.animationFrameId !== null || this.gameLoopTimerId !== null;
   }
 
   /**
@@ -523,23 +530,24 @@ export class EditorGameBridge {
       // 11. ゲームループ変数
       let running = true;
       let completed = false;
-      const gameDuration = project.settings.duration?.type === 'unlimited' 
-        ? null 
+      const gameDuration = project.settings.duration?.type === 'unlimited'
+        ? null
         : (project.settings.duration?.seconds || 15);
-      
-      const frameTime = 1000 / 60; // 60 FPS
+
+      const frameTime = 1000 / 60; // 60 FPS固定 (約16.67ms)
+      const fixedDeltaTime = 1 / 60; // 物理演算用の固定deltaTime (秒)
       let lastFrameTime = performance.now();
       let fpsFrames = 0;
       let fpsTime = 0;
       let averageFPS = 60;
 
-      // 12. ゲームループ
+      // 12. ゲームループ（60fps固定）
       const gameLoop = () => {
         // ゲーム停止チェック（外部からの停止リクエストまたはゲーム終了）
         if (!running || this.shouldStopGame) {
-          if (this.animationFrameId) {
-            cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
+          if (this.gameLoopTimerId) {
+            clearTimeout(this.gameLoopTimerId);
+            this.gameLoopTimerId = null;
           }
           running = false;  // 外部停止時もrunningをfalseに
           return;
@@ -547,25 +555,25 @@ export class EditorGameBridge {
 
         try {
           const currentTime = performance.now();
-          const deltaTime = currentTime - lastFrameTime;
+          const actualDeltaTime = currentTime - lastFrameTime;
           lastFrameTime = currentTime;
 
-          // FPS計測
+          // FPS計測（実際のフレームレートを測定）
           fpsFrames++;
-          fpsTime += deltaTime;
+          fpsTime += actualDeltaTime;
           if (fpsTime >= 1000) {
             averageFPS = (fpsFrames / fpsTime) * 1000;
             fpsFrames = 0;
             fpsTime = 0;
           }
 
-          // 時間更新
-          gameState.timeElapsed += deltaTime / 1000;
+          // 時間更新（固定deltaTimeを使用してフレームレート非依存）
+          gameState.timeElapsed += fixedDeltaTime;
           this.currentContext!.gameState.timeElapsed = gameState.timeElapsed;
 
-          // 🆕 Phase H新機能: 物理演算更新（毎フレーム）
+          // 🆕 Phase H新機能: 物理演算更新（固定60fps）
           if (this.ruleEngine) {
-            this.ruleEngine.updatePhysics(this.currentContext!, deltaTime / 1000);
+            this.ruleEngine.updatePhysics(this.currentContext!, fixedDeltaTime);
           }
 
           // 🆕 Phase H新機能: エフェクト更新（毎フレーム）
@@ -753,11 +761,11 @@ export class EditorGameBridge {
             console.log('⏰ 制限時間終了');
           }
 
-          // 次フレーム
+          // 次フレーム（60fps固定）
           if (running) {
-            this.animationFrameId = requestAnimationFrame(gameLoop);
+            this.gameLoopTimerId = window.setTimeout(gameLoop, frameTime);
           }
-          
+
         } catch (loopError) {
           console.error('❌ ゲームループエラー:', loopError);
           running = false;
@@ -865,9 +873,9 @@ export class EditorGameBridge {
       });
 
       // 16. クリーンアップ
-      if (this.animationFrameId) {
-        cancelAnimationFrame(this.animationFrameId);
-        this.animationFrameId = null;
+      if (this.gameLoopTimerId) {
+        clearTimeout(this.gameLoopTimerId);
+        this.gameLoopTimerId = null;
       }
       canvasElement.removeEventListener('click', handleInteraction);
       canvasElement.removeEventListener('touchstart', handleInteraction);
@@ -903,13 +911,13 @@ export class EditorGameBridge {
 
     } catch (error) {
       console.error('❌ ゲーム実行エラー:', error);
-      
+
       // クリーンアップ
-      if (this.animationFrameId) {
-        cancelAnimationFrame(this.animationFrameId);
-        this.animationFrameId = null;
+      if (this.gameLoopTimerId) {
+        clearTimeout(this.gameLoopTimerId);
+        this.gameLoopTimerId = null;
       }
-      
+
       return {
         success: false,
         timeElapsed: (performance.now() - startTime) / 1000,
@@ -1099,9 +1107,9 @@ export class EditorGameBridge {
    * リセット
    */
   reset(): void {
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
+    if (this.gameLoopTimerId) {
+      clearTimeout(this.gameLoopTimerId);
+      this.gameLoopTimerId = null;
     }
     this.ruleEngine = null;
     this.currentContext = null;
