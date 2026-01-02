@@ -180,11 +180,25 @@ export interface AudioSpecification {
     id: string;
     trigger: string;
     type: 'tap' | 'success' | 'failure' | 'collect' | 'pop' | 'whoosh' | 'bounce' | 'ding' | 'buzz' | 'splash';
+    // ★NEW: OpenAI音声生成用の詳細記述
+    prompt?: string;              // サウンド生成用の詳細プロンプト（英語）
+    durationSeconds?: number;     // サウンドの長さ（秒）
+    characteristics?: {
+      pitch?: 'low' | 'medium' | 'high' | 'very_high';    // 音の高さ
+      attack?: 'sharp' | 'soft' | 'gradual';              // 立ち上がり
+      decay?: 'quick' | 'medium' | 'long' | 'sustained';  // 減衰
+      texture?: 'clean' | 'fuzzy' | 'metallic' | 'organic' | 'digital';  // 音質
+    };
   }[];
   bgm?: {
     id: string;
     description: string;
     mood: 'upbeat' | 'calm' | 'tense' | 'happy' | 'mysterious' | 'energetic';
+    // ★NEW: OpenAI BGM生成用の詳細記述
+    prompt?: string;              // BGM生成用の詳細プロンプト（英語）
+    durationSeconds?: number;     // BGMの長さ（秒、5-10秒推奨）
+    instruments?: string[];       // 使用楽器（例: 'piano', 'synth', 'drums'）
+    tempo?: 'slow' | 'medium' | 'fast' | 'very_fast';  // テンポ
   };
 }
 
@@ -824,11 +838,23 @@ animation条件を使う場合は必ず frameNumber を指定:
 ✅ 正しい: { type: "animation", parameters: { condition: "frame", frameNumber: 5 } }
 ❌ 間違い: { type: "animation", parameters: { condition: "frame" } }（frameNumberがない！）
 
-**⚠️⚠️⚠️ animation条件での success は禁止！⚠️⚠️⚠️**
-animation条件だけで成功を発火させるのはプレイヤー操作がないためNG:
-❌ 禁止: { "trigger": { "type": "animation", ... }, "actions": [{ "type": "success" }] }
-→ これは AUTO_SUCCESS エラーになる！
-→ animation条件は「アニメーション後にエフェクトを出す」などの補助的な用途のみ！
+**⚠️⚠️⚠️ 完全禁止: animation条件から success/failure を直接発火 ⚠️⚠️⚠️**
+
+**animation条件からゲーム終了（success/failure）を発火することは完全に禁止です！**
+
+❌ 絶対禁止:
+\`\`\`
+{ "trigger": { "type": "animation", ... }, "actions": [{ "type": "success" }] }  // 完全禁止！
+{ "trigger": { "type": "animation", ... }, "actions": [{ "type": "failure" }] }  // 完全禁止！
+\`\`\`
+
+✅ animation条件の正しい用途（エフェクト・サウンドのみ）:
+\`\`\`
+{ "trigger": { "type": "animation", "parameters": { "condition": "end" } },
+  "actions": [{ "type": "playSound" }, { "type": "effect" }] }  // OK: エフェクトのみ
+\`\`\`
+
+**animation条件は「演出・エフェクト」専用！ゲーム終了には使わない！**
 
 ### アクションタイプ（actions[].type）
 ✅ 有効: 'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag', 'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'followDrag', 'applyForce', 'applyImpulse', 'randomAction', 'pause', 'restart'
@@ -1235,7 +1261,7 @@ actions: [
   }
 }
 
-## 4. 音声仕様
+## 4. 音声仕様 ★★★ OpenAI音声生成対応 ★★★
 
 ### 必須サウンド（3つ必ず含める）
 - se_tap: タップ時の効果音 (type: "tap")
@@ -1247,14 +1273,77 @@ sound.type は以下のみ使用可能（英語のみ）:
 ✅ 有効: tap, success, failure, collect, pop, whoosh, bounce, ding, buzz, splash
 ❌ 無効: effect, bgm, se, hit, countdown, warning, calm（calmはmoodには使えるがsound.typeには使えない！）
 
+### ★NEW: サウンド詳細記述（OpenAI音声生成用）
+各サウンドにはAI音声生成用の詳細情報を追加してください:
+
+\`\`\`json
+{
+  "id": "se_tap",
+  "trigger": "タップ時",
+  "type": "tap",
+  "prompt": "Short, bright click sound like touching a glass button. Clean and satisfying.",
+  "durationSeconds": 0.1,
+  "characteristics": {
+    "pitch": "high",
+    "attack": "sharp",
+    "decay": "quick",
+    "texture": "clean"
+  }
+}
+\`\`\`
+
+**prompt（英語で記述）**: サウンドの詳細な説明
+- 何の音か（click, chime, whoosh, etc.）
+- 質感（bright, warm, soft, metallic, etc.）
+- 連想させるもの（like touching glass, like a coin drop, etc.）
+
+**durationSeconds**: サウンドの長さ（秒）
+- 効果音: 0.1〜0.5秒
+- 成功音: 0.3〜1.0秒
+- 失敗音: 0.3〜0.8秒
+
+**characteristics**: 音の特性
+- pitch: low / medium / high / very_high
+- attack: sharp（即座に鳴る）/ soft（ゆっくり立ち上がる）/ gradual
+- decay: quick（すぐ消える）/ medium / long / sustained（持続）
+- texture: clean / fuzzy / metallic / organic / digital
+
 ### BGM mood ★★★
 bgm.mood は以下の英語のみ使用可能:
 ✅ 有効: upbeat, calm, tense, happy, mysterious, energetic
 ❌ 無効: 日本語（「緊張感」等）, undefined, その他の英語
 
+### ★NEW: BGM詳細記述（OpenAI音声生成用）
+BGMにもAI音声生成用の詳細情報を追加:
+
+\`\`\`json
+{
+  "id": "bgm_main",
+  "description": "楽しいゲームBGM",
+  "mood": "upbeat",
+  "prompt": "Cheerful 8-bit style game music. Bouncy melody with simple drums and synth bass. Fun and energetic loop.",
+  "durationSeconds": 8,
+  "instruments": ["synth", "drums", "bass"],
+  "tempo": "fast"
+}
+\`\`\`
+
+**prompt（英語で記述）**: BGMの詳細な説明
+- スタイル（8-bit, orchestral, electronic, jazz, etc.）
+- 雰囲気（cheerful, mysterious, intense, relaxing, etc.）
+- 主要楽器や特徴
+
+**durationSeconds**: BGMの長さ（5〜10秒推奨、ループ再生される）
+
+**instruments**: 使用楽器リスト
+- 例: piano, synth, drums, bass, strings, guitar, bells, etc.
+
+**tempo**: テンポ
+- slow / medium / fast / very_fast
+
 ### BGM必須フィールド ★★★
 BGMを定義する場合は必ず id と mood の両方を指定:
-✅ 正しい: { "id": "bgm_main", "description": "楽しいBGM", "mood": "upbeat" }
+✅ 正しい: { "id": "bgm_main", "description": "楽しいBGM", "mood": "upbeat", "prompt": "...", "durationSeconds": 8 }
 ❌ 間違い: { "description": "BGM" }（idとmoodがない！）
 ❌ 間違い: { "id": "bgm_main" }（moodがない！）
 
@@ -1743,20 +1832,63 @@ export class SpecificationGenerator {
   private extractAndParseJSON(text: string): GameSpecification {
     let jsonStr = text;
 
+    // 1. コードブロックからJSON抽出を試みる
     const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (codeBlockMatch) {
       jsonStr = codeBlockMatch[1].trim();
-    } else {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[0];
-      }
     }
 
-    if (!jsonStr || !jsonStr.startsWith('{')) {
+    // 2. JSONオブジェクトの開始位置を探す
+    const jsonStartIndex = jsonStr.indexOf('{');
+    if (jsonStartIndex === -1) {
       throw new Error('No JSON found in response');
     }
 
+    // 3. JSONオブジェクトの終了位置を探す（括弧のバランスを考慮）
+    let braceCount = 0;
+    let inString = false;
+    let escapeNext = false;
+    let jsonEndIndex = -1;
+
+    for (let i = jsonStartIndex; i < jsonStr.length; i++) {
+      const char = jsonStr[i];
+
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+
+      if (char === '\\' && inString) {
+        escapeNext = true;
+        continue;
+      }
+
+      if (char === '"' && !escapeNext) {
+        inString = !inString;
+        continue;
+      }
+
+      if (!inString) {
+        if (char === '{') braceCount++;
+        else if (char === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            jsonEndIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
+    // 4. JSONオブジェクトを抽出
+    if (jsonEndIndex !== -1) {
+      jsonStr = jsonStr.substring(jsonStartIndex, jsonEndIndex + 1);
+    } else {
+      // 閉じ括弧が見つからない場合は開始位置から末尾まで
+      jsonStr = jsonStr.substring(jsonStartIndex);
+    }
+
+    // 5. パースを試みる
     try {
       return JSON.parse(jsonStr) as GameSpecification;
     } catch (error) {
