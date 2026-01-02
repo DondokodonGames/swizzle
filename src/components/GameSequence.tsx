@@ -149,8 +149,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       try {
         console.log('📥 最初の1件を高速取得中...');
 
-        // Step 1: ランダムな1件だけ取得して即座に開始（10秒タイムアウト）
-        const randomPage = Math.floor(Math.random() * 10) + 1;
+        // Step 1: 1ページ目から1件取得して即座に開始（20秒タイムアウト）
         const initialResult = await timeoutPromise(
           socialService.getPublicGames(
             {
@@ -161,7 +160,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             1,
             1
           ),
-          10000
+          20000
         );
 
         // ゲームが見つからない場合は1ページ目から取得
@@ -178,9 +177,9 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                 search: undefined
               },
               1,
-              1
+              10
             ),
-            10000
+            20000
           );
           if (fallbackResult.games.length > 0 && fallbackResult.games[0].projectData) {
             initialGame = fallbackResult.games[0];
@@ -216,7 +215,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
               1,
               100
             ),
-            15000
+            30000
           );
 
           const validGames = fullResult.games.filter(game => game.projectData);

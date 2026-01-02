@@ -275,9 +275,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // サインイン
   const signIn = useCallback(async (email: string, password: string) => {
     setState(prev => ({ ...prev, loading: true, error: null }))
-    
+
     try {
-      await auth.signIn(email, password)
+      const result = await auth.signIn(email, password)
+
+      // プロフィールを読み込む
+      if (result.user) {
+        const profile = await loadProfile(result.user.id)
+        profileLoadedRef.current = !!profile
+        setState({
+          user: result.user,
+          session: result.session,
+          profile,
+          loading: false,
+          initializing: false,
+          error: null
+        })
+      } else {
+        setState(prev => ({ ...prev, loading: false }))
+      }
     } catch (error) {
       console.error('Sign in error:', error)
       setState(prev => ({
@@ -287,7 +303,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }))
       throw error
     }
-  }, [])
+  }, [loadProfile])
 
   // サインアウト
   const signOut = useCallback(async () => {
