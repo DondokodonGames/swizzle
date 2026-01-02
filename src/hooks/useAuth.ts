@@ -83,26 +83,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loadProfile = useCallback(async (userId: string, isNewUser: boolean = false): Promise<Profile | null> => {
     try {
+      console.log(`📥 プロフィール取得開始 (userId: ${userId}, isNewUser: ${isNewUser})`)
       // プロフィール取得
       let profile = await database.profiles.get(userId)
+      console.log(`📥 初回取得結果:`, profile ? 'プロフィールあり' : 'プロフィールなし')
 
       // 新規ユーザーの場合のみ、トリガー処理を待つ（既存ユーザーログインでは待たない）
       if (!profile && isNewUser) {
+        console.log('⏳ 新規ユーザー: トリガー処理待機中...')
         await new Promise(resolve => setTimeout(resolve, 1000))
         profile = await database.profiles.get(userId)
+        console.log(`📥 リトライ後取得結果:`, profile ? 'プロフィールあり' : 'プロフィールなし')
       }
 
       // プロフィールの言語設定でi18nを同期
       if (profile?.language) {
-        console.log('プロフィールから言語を同期:', profile.language)
         i18n.changeLanguage(profile.language).then(() => {
-          console.log('i18n言語同期完了:', i18n.language)
+          console.log('🌐 i18n言語同期完了:', i18n.language)
         })
       }
 
       return profile
     } catch (error) {
-      console.error('Load profile error:', error)
+      console.error('❌ Load profile error:', error)
       return null
     }
   }, [])
@@ -279,29 +282,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const result = await auth.signIn(email, password)
 
-      // 認証成功を即座に反映（プロフィール読み込みは非同期で実行）
+      // プロフィールを読み込む（待つが、1秒待機はスキップ）
       if (result.user) {
-        // ログイン成功をすぐに返す（高速化）
+        console.log('🔐 認証成功、プロフィール読み込み開始')
+        const profile = await loadProfile(result.user.id, false)
+        console.log('👤 プロフィール読み込み完了:', profile ? 'あり' : 'なし')
+        profileLoadedRef.current = !!profile
         setState({
           user: result.user,
           session: result.session,
-          profile: null, // プロフィールは後で読み込む
+          profile,
           loading: false,
           initializing: false,
           error: null
-        })
-
-        // プロフィール読み込みをバックグラウンドで実行（待たない）
-        loadProfile(result.user.id).then(profile => {
-          if (profile) {
-            profileLoadedRef.current = true
-            setState(prev => ({
-              ...prev,
-              profile
-            }))
-          }
-        }).catch(err => {
-          console.error('Background profile load error:', err)
         })
       } else {
         setState(prev => ({ ...prev, loading: false }))
