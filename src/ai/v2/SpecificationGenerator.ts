@@ -834,9 +834,16 @@ rules: [{
 ❌ 無効: 'state', 'deviceTilt', 'sensor', 'gesture', 'custom'（customは使えない！）
 
 ### animation条件の必須パラメータ ★★★
+
+**animation condition の有効な値:**
+✅ 有効: 'end', 'frame', 'loop'
+❌ 無効: 'completion', 'start', 'finish', 'done', 'complete'
+
 animation条件を使う場合は必ず frameNumber を指定:
 ✅ 正しい: { type: "animation", parameters: { condition: "frame", frameNumber: 5 } }
+✅ 正しい: { type: "animation", parameters: { condition: "end" } }
 ❌ 間違い: { type: "animation", parameters: { condition: "frame" } }（frameNumberがない！）
+❌ 間違い: { type: "animation", parameters: { condition: "completion" } }（無効なcondition！）
 
 **⚠️⚠️⚠️ 完全禁止: animation条件から success/failure を直接発火 ⚠️⚠️⚠️**
 
@@ -859,6 +866,36 @@ animation条件を使う場合は必ず frameNumber を指定:
 ### アクションタイプ（actions[].type）
 ✅ 有効: 'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag', 'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'followDrag', 'applyForce', 'applyImpulse', 'randomAction', 'pause', 'restart'
 ❌ 無効: 'changeState', 'adjustAngle', 'updateCounter', 'rotate', 'scale', 'fade', 'spawn', 'destroy', 'conditional'
+
+**⚠️⚠️⚠️ 超重要: collision はアクションではない！ ⚠️⚠️⚠️**
+
+collision は「条件タイプ」（trigger.type）であり、「アクションタイプ」ではありません！
+
+❌ 絶対禁止（頻発エラー！）:
+\`\`\`json
+{ "actions": [{ "type": "collision", ... }] }  // NG! collision はアクションではない！
+\`\`\`
+
+✅ 正しい使い方（collision は条件として使う）:
+\`\`\`json
+// ルール1: ドラッグでオブジェクトを移動
+{
+  "id": "drag_player",
+  "trigger": { "type": "touch", "parameters": { "target": "player", "touchType": "drag" } },
+  "actions": [{ "type": "followDrag", "parameters": { "targetId": "player" } }]
+}
+
+// ルール2: collision条件で成功判定
+{
+  "id": "reach_goal",
+  "trigger": { "type": "collision", "parameters": { "target": "goal" } },
+  "actions": [{ "type": "success" }]
+}
+\`\`\`
+
+**ドラッグ→衝突→成功 のパターン:**
+1. touch(drag)条件 → followDragアクション（オブジェクトを動かす）
+2. collision条件 → successアクション（衝突したら成功）
 
 ### 移動タイプ（movement.type）★NEW
 ✅ 有効: 'straight', 'teleport', 'wander', 'stop'
@@ -901,6 +938,24 @@ playSound を使う場合は必ず soundId を指定:
 ❌ targetId: "screen" - 無効
 ❌ collision target: "self" - 無効
 ❌ effect targetId: "self" - 無効
+
+### ★★★ カンマ区切りの複数targetは禁止 ★★★
+
+**1つのtargetには1つのオブジェクトIDのみ指定できます！**
+
+❌ 禁止（カンマ区切り）:
+\`\`\`json
+{ "target": "obj_1,obj_2,obj_3" }  // NG! カンマ区切りは無効！
+{ "targetId": "enemy_1,enemy_2" }  // NG!
+\`\`\`
+
+✅ 正しい方法（個別のルールで）:
+\`\`\`json
+// 複数オブジェクトに同じ処理をしたい場合は、それぞれ個別のルールを作成
+{ "id": "tap_obj_1", "trigger": { "type": "touch", "parameters": { "target": "obj_1" } }, ... }
+{ "id": "tap_obj_2", "trigger": { "type": "touch", "parameters": { "target": "obj_2" } }, ... }
+{ "id": "tap_obj_3", "trigger": { "type": "touch", "parameters": { "target": "obj_3" } }, ... }
+\`\`\`
 ❌ effect targetId: "screen" - 無効
 
 #### 正しい使い方:
