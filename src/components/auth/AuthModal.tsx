@@ -2,6 +2,7 @@
 // ログイン・サインアップモーダルUI（インラインスタイル版）
 
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -18,6 +19,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   defaultMode = 'signin'
 }) => {
+  const navigate = useNavigate()
   const { t } = useTranslation()
   const { signIn, signUp, resetPassword, loading, error, clearError } = useAuth()
 
@@ -122,6 +124,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
       if (mode === 'signin') {
         await signIn(formData.email, formData.password)
         onClose()
+        // ログイン成功後、ゲームフィードに遷移
+        navigate('/feed')
       } else if (mode === 'signup') {
         const age = parseInt(formData.age)
 
