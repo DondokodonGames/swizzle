@@ -74,10 +74,8 @@ export class SocialService {
         );
         const { data: { user } } = await Promise.race([userPromise, timeoutPromise]) as any;
         currentUserId = user?.id;
-        console.log(`👤 認証ユーザー: ${currentUserId || 'ゲスト'}`);
       } catch (authError) {
         // 認証タイムアウトまたはエラー時はゲストとして続行
-        console.warn('⚠️ 認証情報取得失敗（ゲストとして続行）:', authError);
         currentUserId = undefined;
       }
 
@@ -115,8 +113,7 @@ export class SocialService {
           const favorites = await Promise.race([favoritesPromise, favoritesTimeout]) as any;
           bookmarkedGameIds = new Set(favorites.map((fav: any) => fav.id));
         } catch (preferencesError) {
-          // いいね・お気に入り取得失敗は無視（ログのみ）
-          console.warn('⚠️ ユーザー設定取得失敗（続行）:', preferencesError);
+          // いいね・お気に入り取得失敗は無視
         }
       }
 
@@ -1320,7 +1317,6 @@ export class SocialService {
         const { data: { user } } = await Promise.race([userPromise, timeoutPromise]) as any;
         currentUserId = user?.id;
       } catch {
-        console.warn('⚠️ 認証情報取得失敗（ゲストとして続行）');
         currentUserId = undefined;
       }
 
