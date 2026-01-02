@@ -392,8 +392,8 @@ successアクションを発火させる条件には、必ずプレイヤー操�
 ### 【ドラッグ系】ドラッグで移動・配置
 
 #### パターン6: ゴールに運ぶ（パズル・迷路・サッカー）
-- player ドラッグ → followDrag
-- player と goal 衝突 → success
+- ball ドラッグ → followDrag（※"ball"はobjectsで定義したID）
+- ball と goal 衝突 → success
 - **カウンター不要！**
 
 #### パターン7: パズルピースをはめる
@@ -431,9 +431,18 @@ successアクションを発火させる条件には、必ずプレイヤー操�
 - bomb スワイプ → failure
 - **カウンター不要！**
 
-#### パターン13: 方向指示（道案内・信号）
-- stage スワイプ(direction: 正解方向) → success
-- stage スワイプ(direction: 不正解方向) → failure
+#### パターン13: 方向指示（道案内・信号）★スワイプ方向で区別★
+**⚠️ 重要: 方向で成功/失敗を分ける場合、必ず direction パラメータを明示的に設定！**
+\`\`\`json
+// ✅ 正しい: direction パラメータで明確に区別
+{ "id": "swipe_correct", "trigger": { "type": "touch", "parameters": { "target": "stage", "touchType": "swipe", "direction": "right" } }, "actions": [{ "type": "success" }] }
+{ "id": "swipe_wrong", "trigger": { "type": "touch", "parameters": { "target": "stage", "touchType": "swipe", "direction": "left" } }, "actions": [{ "type": "failure" }] }
+
+// ❌ 間違い: direction がないと同一条件でコンフリクト！
+{ "id": "swipe_correct", "trigger": { "type": "touch", "parameters": { "target": "stage", "touchType": "swipe" } }, "actions": [{ "type": "success" }] }
+{ "id": "swipe_wrong", "trigger": { "type": "touch", "parameters": { "target": "stage", "touchType": "swipe" } }, "actions": [{ "type": "failure" }] }
+\`\`\`
+**方向の値: "up", "down", "left", "right"**
 - **カウンター不要！**
 
 #### パターン14: カードをめくる・スワイプ選択
@@ -579,17 +588,17 @@ successアクションを発火させる条件には、必ずプレイヤー操�
 ### 【レース・競争系】
 
 #### パターン38: 連打レース
-- button 連打 → player前進
-- player が goal 到達 → success
+- button 連打 → runner前進（※"runner"はobjectsで定義）
+- runner が goal 到達 → success
 - ※連打はカウンター使用
 - カウンター: { id: "taps", initialValue: 0 }
 - button タップ → counter increment
 - counter >= 10 → success
 
 #### パターン39: 障害物レース（左右移動）
-- player ドラッグ(左右) → 移動
-- player と obstacle 衝突 → failure
-- player と goal 衝突 → success
+- car ドラッグ(左右) → 移動（※"car"はobjectsで定義）
+- car と obstacle 衝突 → failure
+- car と goal 衝突 → success
 - **カウンター不要！**
 
 #### パターン40: 競馬・選択ベット
@@ -605,15 +614,15 @@ successアクションを発火させる条件には、必ずプレイヤー操�
 - **カウンター不要！**
 
 #### パターン42: 隕石避け・弾幕
-- player ドラッグ → 移動
+- spaceship ドラッグ → 移動（※"spaceship"はobjectsで定義）
 - time 5秒経過 → success（生存）
-- player と meteor 衝突 → failure
+- spaceship と meteor 衝突 → failure
 - **カウンター不要！**
 
 #### パターン43: 盾で守る
 - shield ドラッグ → 移動
 - attack と shield 衝突 → ブロック成功
-- attack と player 衝突 → failure
+- attack と hero 衝突 → failure（※"hero"はobjectsで定義）
 - time 経過 → success
 - **カウンター不要！**
 
@@ -878,11 +887,11 @@ collision は「条件タイプ」（trigger.type）であり、「アクショ�
 
 ✅ 正しい使い方（collision は条件として使う）:
 \`\`\`json
-// ルール1: ドラッグでオブジェクトを移動
+// ルール1: ドラッグでオブジェクトを移動（"ball"はobjectsで定義したID）
 {
-  "id": "drag_player",
-  "trigger": { "type": "touch", "parameters": { "target": "player", "touchType": "drag" } },
-  "actions": [{ "type": "followDrag", "parameters": { "targetId": "player" } }]
+  "id": "drag_ball",
+  "trigger": { "type": "touch", "parameters": { "target": "ball", "touchType": "drag" } },
+  "actions": [{ "type": "followDrag", "parameters": { "targetId": "ball" } }]
 }
 
 // ルール2: collision条件で成功判定
@@ -919,7 +928,7 @@ collision条件のtargetには具体的なオブジェクトIDを指定:
 ### applyImpulse/applyForceの必須パラメータ ★★★
 applyImpulse/applyForce を使う場合は必ず impulse/force を指定:
 ✅ 正しい: { type: "applyImpulse", parameters: { targetId: "ball", impulse: { x: 0, y: -5 } } }
-✅ 正しい: { type: "applyForce", parameters: { targetId: "player", force: { x: 1, y: 0 } } }
+✅ 正しい: { type: "applyForce", parameters: { targetId: "character", force: { x: 1, y: 0 } } }
 ❌ 間違い: { type: "applyImpulse", parameters: { targetId: "ball" } }（impulseがない！）
 
 ### playSoundアクションの必須パラメータ
@@ -959,10 +968,10 @@ playSound を使う場合は必ず soundId を指定:
 ❌ effect targetId: "screen" - 無効
 
 #### 正しい使い方:
-✅ targetObject: "player"（実際のオブジェクトID）
-✅ targetId: "ball"（実際のオブジェクトID）
-✅ collision target: "goal"（実際のオブジェクトID）
-✅ effect targetId: "target_correct"（実際のオブジェクトID）
+✅ targetObject: "character"（objects配列で定義したID）
+✅ targetId: "ball"（objects配列で定義したID）
+✅ collision target: "goal"（objects配列で定義したID）
+✅ effect targetId: "target_correct"（objects配列で定義したID）
 
 #### 例：
 \`\`\`json
@@ -1210,14 +1219,26 @@ actions: [
 \`\`\`
 
 ## アクションで参照するオブジェクトIDの制約 ★★★
+
+### ⚠️⚠️⚠️ 重大警告: "player" は予約語ではない！⚠️⚠️⚠️
+**"player" というIDを使う場合は、必ずアセット計画（objects配列）に定義すること！**
+AIが暗黙的に "player" を使うケースが多いが、アセットに定義されていないとエラーになる。
+
+**チェックリスト:**
+1. ルールのtargetIdに "player" を使っている → objectsに "player" が定義されているか？
+2. collision targetに "player" を使っている → objectsに "player" が定義されているか？
+3. 定義されていないなら、具体的な名前（"ball", "character", "hero"等）に変更！
+
 アクションの targetId は必ずアセット計画に存在するオブジェクトを指定:
-✅ 正しい: targetId: "player"（アセット計画に定義済み）
+✅ 正しい: targetId: "ball"（アセット計画で定義済み）
+✅ 正しい: targetId: "character"（アセット計画で定義済み）
+❌ 間違い: targetId: "player"（アセット計画に未定義の場合！）
 ❌ 間違い: targetId: "effect_success"（存在しないオブジェクト）
 ❌ 間違い: targetId: "particle_1"（エフェクト用の架空オブジェクト）
 ❌ 間違い: targetId: "stage"（stageはアクションのtargetIdに使えない）
 
 **エフェクトは effect アクションで実現:**
-✅ 正しい: { type: "effect", targetId: "player", effect: { type: "particles" } }
+✅ 正しい: { type: "effect", targetId: "ball", effect: { type: "particles" } }
 ❌ 間違い: { type: "show", targetId: "effect_success" }（存在しないオブジェクト）
 ❌ 間違い: { type: "effect", targetId: "stage" }（stageは不可）
 
@@ -1467,9 +1488,10 @@ playSoundアクションには必ずsoundIdを指定！これが抜けるとエ�
   - target: "self" を複数ルールで使っていないか？
   - → 各ルールで target: "オブジェクトID" を使う！
 
-□ **successアクション存在チェック**
-  - 少なくとも1つのルールに { "type": "success" } があるか？
-  - ない場合、ゲームがクリアできない！
+□ **successアクション存在チェック（致命的！）**
+  - 少なくとも1つのルールに { "type": "success" } があるか？ ★必須★
+  - ない場合、ゲームがクリアできない（NO_SUCCESS エラー）！
+  - 必ず actions 配列に { "type": "success" } を含むルールを1つ以上作成する！
 
 □ rulesにcounter条件があるか？ → あればcountersに定義があるか確認
 □ rulesにcounterアクションがあるか？ → あればcountersに定義があるか確認
