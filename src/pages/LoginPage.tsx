@@ -52,7 +52,8 @@ export const LoginPage: React.FC = () => {
 
     try {
       await signIn(formData.email, formData.password)
-      window.location.href = '/feed'
+      // ログイン成功後は即座に画面遷移（リロードなし）
+      navigate('/feed', { replace: true })
     } catch (error) {
       console.error('Login error:', error)
       // エラーの場合は遷移しない（エラーメッセージが表示される）
