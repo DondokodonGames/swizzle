@@ -189,30 +189,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return
           }
 
-          // 新規サインイン時（初期化完了後かつプロフィールなし）
-          setState(prev => ({ ...prev, loading: true, error: null }))
+          // 🚀 新規サインイン時：プロフィールをバックグラウンドで読み込む（ローディング表示なし）
+          // これにより、画面遷移後もユーザーを待たせない
+          console.log('🔄 [useAuth] プロフィールをバックグラウンドで読み込み開始')
 
           try {
             const profile = await loadProfile(session.user.id)
             profileLoadedRef.current = !!profile
-            setState({
-              user: session.user,
-              session,
+            console.log('✅ [useAuth] プロフィール読み込み完了（バックグラウンド）:', profile?.username)
+            setState(prev => ({
+              ...prev,
               profile,
               loading: false,
               initializing: false,
               error: null
-            })
+            }))
           } catch (error) {
             console.error('Profile loading error during auth state change:', error)
-            setState({
-              user: session.user,
-              session,
+            setState(prev => ({
+              ...prev,
               profile: null,
               loading: false,
               initializing: false,
               error: null
-            })
+            }))
           }
         }
       } else if (event === 'SIGNED_OUT') {
@@ -268,7 +268,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [])
 
-  // サインイン
+  // サインイン - 超高速化版（プロフィール読み込みは遷移後に実行）
   const signIn = useCallback(async (email: string, password: string) => {
     console.log('🔐 [useAuth] signIn開始')
     setState(prev => ({ ...prev, loading: true, error: null }))
@@ -279,21 +279,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log('✅ [useAuth] auth.signIn成功:', result.user?.id)
 
       if (result.user) {
-        console.log('👤 [useAuth] プロフィール読み込み開始')
-        // プロフィールを同期的に読み込む（確実なログイン処理のため）
-        const profile = await loadProfile(result.user.id, false)
-        console.log('✅ [useAuth] プロフィール読み込み完了:', profile?.username)
-
-        profileLoadedRef.current = !!profile
+        // 🚀 即座にログイン状態を反映（プロフィールは後で読み込む）
         setState({
           user: result.user,
           session: result.session,
-          profile,
-          loading: false, // プロフィール読み込み完了後に loading を解除
+          profile: null, // プロフィールはSIGNED_INイベントで読み込まれる
+          loading: false, // すぐにloadingを解除して画面遷移可能にする
           initializing: false,
           error: null
         })
-        console.log('✅ [useAuth] signIn完了、loadingをfalseに設定')
+        console.log('✅ [useAuth] signIn即座に完了、プロフィールは遷移後に読み込み')
       } else {
         console.warn('⚠️ [useAuth] result.userがnull')
         setState(prev => ({ ...prev, loading: false }))
@@ -307,7 +302,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }))
       throw error
     }
-  }, [loadProfile])
+  }, [])
 
   // サインアウト
   const signOut = useCallback(async () => {
