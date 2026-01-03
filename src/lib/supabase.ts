@@ -218,6 +218,7 @@ export const database = {
         .select('*')
         .eq('creator_id', userId)
         .order('updated_at', { ascending: false })
+        .limit(100) // タイムアウト防止：最新100件のみ取得
 
       if (error) throw new SupabaseError(error.message)
       return data || []
