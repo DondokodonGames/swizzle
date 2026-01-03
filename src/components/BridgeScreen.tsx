@@ -583,18 +583,20 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   {currentGame.title}
                 </p>
               </div>
-              {!profileClickEnabled && (
-                <div style={{
-                  fontSize: '12px',
-                  color: '#9ca3af',
-                  padding: '4px 8px',
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  borderRadius: '8px',
-                  flexShrink: 0,
-                }}>
-                  ⏳
-                </div>
-              )}
+              {/* 砂時計アイコン（常に表示してopacityで制御） */}
+              <div style={{
+                fontSize: '12px',
+                color: '#9ca3af',
+                padding: '4px 8px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '8px',
+                flexShrink: 0,
+                opacity: profileClickEnabled ? 0 : 1,
+                visibility: profileClickEnabled ? 'hidden' : 'visible',
+                transition: 'opacity 0.3s ease, visibility 0.3s ease',
+              }}>
+                ⏳
+              </div>
             </div>
             <button
               onClick={handleLike}
