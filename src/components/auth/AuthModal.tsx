@@ -37,6 +37,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
   const [showPassword, setShowPassword] = useState(false)
   const [showParentalWarning, setShowParentalWarning] = useState(false)
   const [showSignupSuccess, setShowSignupSuccess] = useState(false)
+  const [navigating, setNavigating] = useState(false) // 画面遷移中フラグ
 
   useEffect(() => {
     if (isOpen) {
@@ -122,9 +123,18 @@ const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       if (mode === 'signin') {
+        console.log('🔐 [AuthModal] ログイン開始')
         await signIn(formData.email, formData.password)
-        // ログイン成功後は即座に画面遷移（リロードなし）
-        navigate('/feed', { replace: true })
+        console.log('✅ [AuthModal] signIn完了、画面遷移開始')
+
+        // モーダルを閉じてから遷移
+        onClose()
+
+        // 少し待ってから遷移（モーダルのアニメーションを待つ）
+        setTimeout(() => {
+          console.log('🚀 [AuthModal] navigate実行')
+          navigate('/feed', { replace: true })
+        }, 100)
       } else if (mode === 'signup') {
         const age = parseInt(formData.age)
 
@@ -147,7 +157,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
         setMode('signin')
       }
     } catch (error) {
-      console.error('Auth error:', error)
+      console.error('❌ [AuthModal] エラー発生:', error)
+      // エラーは useAuth で表示される
     }
   }
 
@@ -256,7 +267,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* ローディングオーバーレイ */}
-        {loading && (
+        {(loading || navigating) && (
           <div style={{
             position: 'absolute',
             top: 0,
