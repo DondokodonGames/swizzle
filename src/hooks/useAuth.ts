@@ -276,17 +276,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const result = await auth.signIn(email, password)
 
       if (result.user) {
-        // プロフィールを読み込んでから状態を更新（確実な遷移のため）
-        const profile = await loadProfile(result.user.id, false)
-
-        profileLoadedRef.current = !!profile
+        // 即座に認証状態を反映（超高速・リロードなしで遷移可能）
         setState({
           user: result.user,
           session: result.session,
-          profile,
+          profile: null, // 一旦nullで遷移、バックグラウンドで読み込み
           loading: false,
           initializing: false,
           error: null
+        })
+
+        // プロフィールはバックグラウンドで読み込み（画面遷移後に反映）
+        loadProfile(result.user.id, false).then(profile => {
+          if (profile) {
+            profileLoadedRef.current = true
+            setState(prev => ({
+              ...prev,
+              profile
+            }))
+          }
+        }).catch(error => {
+          console.error('Background profile loading error:', error)
         })
       } else {
         setState(prev => ({ ...prev, loading: false }))

@@ -255,6 +255,41 @@ const AuthModal: React.FC<AuthModalProps> = ({
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* ローディングオーバーレイ */}
+        {loading && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(2px)'
+          }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              border: '4px solid #e5e7eb',
+              borderTop: '4px solid #667eea',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite'
+            }} />
+            <p style={{
+              marginTop: '16px',
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#374151'
+            }}>
+              ログイン中...
+            </p>
+          </div>
+        )}
+
         {/* 閉じるボタン */}
         <button
           onClick={onClose}
