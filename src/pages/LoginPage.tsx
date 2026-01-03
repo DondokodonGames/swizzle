@@ -34,13 +34,13 @@ export const LoginPage: React.FC = () => {
     const errors: Record<string, string> = {}
 
     if (!formData.email.trim()) {
-      errors.email = 'メールアドレスを入力してください'
+      errors.email = t('auth.emailRequired')
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'メールアドレスの形式が正しくありません'
+      errors.email = t('auth.emailInvalid')
     }
 
     if (!formData.password.trim()) {
-      errors.password = 'パスワードを入力してください'
+      errors.password = t('auth.passwordRequired')
     }
 
     setValidationErrors(errors)
@@ -168,14 +168,14 @@ export const LoginPage: React.FC = () => {
             color: '#111827',
             margin: '0 0 8px 0'
           }}>
-            ログイン
+            {t('auth.loginTitle')}
           </h1>
           <p style={{
             color: '#6b7280',
             fontSize: '16px',
             margin: 0
           }}>
-            Swizzleへようこそ！
+            {t('auth.welcome')}
           </p>
         </div>
 
@@ -205,7 +205,7 @@ export const LoginPage: React.FC = () => {
               color: '#374151',
               marginBottom: '6px'
             }}>
-              メールアドレス
+              {t('auth.email')}
             </label>
             <input
               type="email"
@@ -224,7 +224,7 @@ export const LoginPage: React.FC = () => {
                 transition: 'all 0.2s',
                 boxSizing: 'border-box'
               }}
-              placeholder="your@example.com"
+              placeholder={t('auth.emailPlaceholder')}
               disabled={loading || navigating}
               autoFocus
             />
@@ -244,7 +244,7 @@ export const LoginPage: React.FC = () => {
               color: '#374151',
               marginBottom: '6px'
             }}>
-              パスワード
+              {t('auth.password')}
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -264,7 +264,7 @@ export const LoginPage: React.FC = () => {
                   transition: 'all 0.2s',
                   boxSizing: 'border-box'
                 }}
-                placeholder="パスワードを入力"
+                placeholder={t('auth.passwordPlaceholder')}
                 disabled={loading || navigating}
               />
               <button
@@ -313,7 +313,7 @@ export const LoginPage: React.FC = () => {
               marginTop: '8px'
             }}
           >
-            {(loading || navigating) ? 'ログイン中...' : 'ログイン'}
+            {(loading || navigating) ? t('auth.signingIn') : t('auth.signIn')}
           </button>
         </form>
 
@@ -337,7 +337,7 @@ export const LoginPage: React.FC = () => {
             }}
             disabled={loading || navigating}
           >
-            パスワードを忘れた方
+            {t('auth.forgotPasswordLink')}
           </button>
         </div>
 
@@ -348,7 +348,7 @@ export const LoginPage: React.FC = () => {
           fontSize: '14px',
           color: '#6b7280'
         }}>
-          まだアカウントをお持ちでない方は{' '}
+          {t('auth.noAccountYet')}{' '}
           <button
             onClick={() => navigate('/signup')}
             style={{
@@ -361,7 +361,7 @@ export const LoginPage: React.FC = () => {
             }}
             disabled={loading || navigating}
           >
-            新規登録
+            {t('auth.signUp')}
           </button>
         </div>
       </div>

@@ -45,6 +45,7 @@
       "noRulesToCopy": "Impossibile copiare questo gioco perché non ha regole impostate.",
       "copyFailed": "Impossibile copiare il gioco",
       "unknownError": "Errore sconosciuto"
-    }
+    },
+    "close": "Chiudi"
   }
 }

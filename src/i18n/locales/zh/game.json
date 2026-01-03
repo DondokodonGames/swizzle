@@ -45,6 +45,7 @@
       "noRulesToCopy": "无法复制此游戏，因为它没有设置规则。",
       "copyFailed": "复制游戏失败",
       "unknownError": "未知错误"
-    }
+    },
+    "close": "关闭"
   }
 }

@@ -1151,7 +1151,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   marginTop: '8px',
                 }}
               >
-                ✕ 閉じる
+                ✕ {t('bridge.close')}
               </button>
             </div>
           </div>
