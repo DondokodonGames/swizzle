@@ -235,7 +235,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                       margin: 0
                     }}
                   >
-                    {formatTime(project.assets.audio.bgm.duration)} • {formatFileSize(project.assets.audio.bgm.fileSize)} • {(project.assets.audio.bgm.format || 'audio').toUpperCase()}
+                    {formatTime(project.assets.audio.bgm.duration ?? 0)} • {formatFileSize(project.assets.audio.bgm.fileSize ?? 0)} • {(project.assets.audio.bgm.format ?? 'audio').toUpperCase()}
                   </p>
                   {project.assets.audio.bgm && isPlaying(project.assets.audio.bgm.id) && (
                     <p 
@@ -248,7 +248,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                         gap: DESIGN_TOKENS.spacing[1]
                       }}
                     >
-                      ▶️ {formatTime(playbackState.currentTime)} / {formatTime(project.assets.audio.bgm.duration)}
+                      ▶️ {formatTime(playbackState.currentTime ?? 0)} / {formatTime(project.assets.audio.bgm.duration ?? 0)}
                     </p>
                   )}
                 </div>
@@ -452,7 +452,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                         margin: 0
                       }}
                     >
-                      {formatTime(se.duration)} • {formatFileSize(se.fileSize)} • {(se.format || 'audio').toUpperCase()}
+                      {formatTime(se.duration ?? 0)} • {formatFileSize(se.fileSize ?? 0)} • {(se.format ?? 'audio').toUpperCase()}
                     </p>
                     {isPlaying(se.id) && (
                       <p
