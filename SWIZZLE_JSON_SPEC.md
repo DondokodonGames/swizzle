@@ -17,8 +17,13 @@
 7. [ゲーム設定 (settings)](#ゲーム設定-settings)
 8. [制限事項](#制限事項)
 9. [サンプルコード](#サンプルコード)
-10. [ChatGPT向けプロンプトテンプレート](#chatgpt向けプロンプトテンプレート)
-11. [トラブルシューティング](#トラブルシューティング)
+10. [⚠️ 重要な注意事項：混同されやすいフィールド](#️-重要な注意事項混同されやすいフィールド)
+11. [📚 アクション完全リファレンス](#-アクション完全リファレンス)
+12. [📚 条件完全リファレンス](#-条件完全リファレンス)
+13. [📚 MovementPattern完全リファレンス](#-movementpattern完全リファレンス)
+14. [📚 EffectPattern完全リファレンス](#-effectpattern完全リファレンス)
+15. [トラブルシューティング](#トラブルシューティング)
+16. [ChatGPT向けプロンプトテンプレート](#chatgpt向けプロンプトテンプレート)
 
 ---
 
@@ -1161,6 +1166,804 @@ Swizzle JSONフォーマットは、ゲームプロジェクト全体を1つのJ
 - `/public/sample-games/006-number-order.json` - 数字順序ゲーム（17KB）
 
 これらのサンプルは、Swizzleエディターでそのままインポートして動作確認できます。
+
+---
+
+## ⚠️ 重要な注意事項：混同されやすいフィールド
+
+### 🔴 `move.rotate` フィールドは存在しません！
+
+**よくある間違い:**
+```json
+// ❌ 間違い: rotateフィールドは存在しない
+{
+  "type": "move",
+  "targetId": "object-1",
+  "movement": {
+    "type": "straight",
+    "rotate": 360  // ← このフィールドは存在しない！
+  }
+}
+```
+
+**正しい実装:**
+
+円軌道移動（オブジェクトを円を描くように移動）をしたい場合は、`type: 'orbit'`を使用してください：
+
+```json
+// ✅ 正しい: orbitタイプで円軌道移動
+{
+  "type": "move",
+  "targetId": "object-1",
+  "movement": {
+    "type": "orbit",
+    "target": { "x": 0.5, "y": 0.5 },  // 中心座標
+    "orbitRadius": 100,                 // 周回半径（px）
+    "speed": 2.0                        // 角速度
+  }
+}
+```
+
+スプライトの**視覚的な回転**（見た目を回転）をしたい場合は、`effect`アクションを使用してください：
+
+```json
+// ✅ 正しい: エフェクトとして回転
+{
+  "type": "effect",
+  "targetId": "object-1",
+  "effect": {
+    "type": "rotate",
+    "rotationAmount": 360,              // 回転角度（度）
+    "rotationSpeed": 180,               // 回転速度（度/秒）
+    "rotationDirection": "clockwise",   // 回転方向
+    "duration": 2.0
+  }
+}
+```
+
+### 🟡 rotation vs rotate の違い
+
+| フィールド | 場所 | 意味 | 効果 |
+|-----------|------|------|------|
+| `rotation` | `layout.objects[].rotation` | オブジェクトの**初期回転角度**（degree、0-360） | 配置時の向きを設定、移動経路には影響しない |
+| `rotate` | `effect.type = 'rotate'` | **エフェクトとしての回転** | スプライトを一時的に回転させるアニメーション |
+| `rotate` | `movement.rotate` | **存在しない** | ❌ 使用不可（混乱の原因） |
+| `orbit` | `movement.type = 'orbit'` | **円軌道移動** | オブジェクトを円を描くように移動 |
+
+### 🟡 animation条件 vs objectState条件
+
+| 条件タイプ | 用途 | 推奨用途 |
+|-----------|------|---------|
+| `animation` | アニメーションの再生状態を監視 | アニメーションの終了、特定フレーム到達を検出 |
+| `objectState` | オブジェクトの表示状態 + アニメーション状態 | オブジェクトの表示/非表示を検出、またはアニメーション状態も含めて監視 |
+
+**推奨：** アニメーション関連の条件には`animation`を使用し、表示状態の監視には`objectState`を使用してください。
+
+### 🟡 applyForce vs applyImpulse
+
+| アクション | 効果 | 用途 |
+|-----------|------|------|
+| `applyForce` | **継続的な力**を加える | 風、重力、推進力など |
+| `applyImpulse` | **瞬間的な衝撃**を与える | ジャンプ、爆発、衝突時の反発 |
+
+**物理的な違い：**
+- `applyForce`: F = ma （力 = 質量 × 加速度）で徐々に速度が変化
+- `applyImpulse`: 即座に速度が変化（p = mv、運動量保存則）
+
+---
+
+## 📚 アクション完全リファレンス
+
+### ゲーム制御アクション
+
+#### success（成功）
+```json
+{
+  "type": "success",
+  "score": 100,                // オプション: 追加スコア
+  "message": "クリア！"         // オプション: 成功メッセージ
+}
+```
+
+#### failure（失敗）
+```json
+{
+  "type": "failure",
+  "message": "ゲームオーバー"   // オプション: 失敗メッセージ
+}
+```
+
+#### pause（一時停止）
+```json
+{
+  "type": "pause",
+  "duration": 2.0              // オプション: 一時停止時間（秒）
+}
+```
+
+#### restart（再開）
+```json
+{
+  "type": "restart"
+}
+```
+
+### 音響制御アクション
+
+#### playSound（効果音再生）
+```json
+{
+  "type": "playSound",
+  "soundId": "se-1",           // 必須: 効果音ID
+  "volume": 0.8                // オプション: 音量（0.0-1.0）
+}
+```
+
+#### stopSound（効果音停止）
+```json
+{
+  "type": "stopSound",
+  "soundId": "se-1"            // 必須: 停止する効果音ID
+}
+```
+
+#### playBGM（BGM再生）
+```json
+{
+  "type": "playBGM",
+  "volume": 0.5                // オプション: 音量（0.0-1.0）
+}
+```
+
+#### stopBGM（BGM停止）
+```json
+{
+  "type": "stopBGM"
+}
+```
+
+### フラグ制御アクション
+
+#### setFlag（フラグ設定）
+```json
+{
+  "type": "setFlag",
+  "flagId": "flag-1",          // 必須: フラグID
+  "value": true                // 必須: 設定値（true/false）
+}
+```
+
+#### toggleFlag（フラグ切り替え）
+```json
+{
+  "type": "toggleFlag",
+  "flagId": "flag-1"           // 必須: フラグID
+}
+```
+
+### オブジェクト制御アクション
+
+#### show（表示）
+```json
+{
+  "type": "show",
+  "targetId": "object-1",      // 必須: 対象オブジェクトID
+  "fadeIn": true,              // オプション: フェードイン有効化
+  "duration": 0.5              // オプション: フェード時間（秒）
+}
+```
+
+#### hide（非表示）
+```json
+{
+  "type": "hide",
+  "targetId": "object-1",      // 必須: 対象オブジェクトID
+  "fadeOut": true,             // オプション: フェードアウト有効化
+  "duration": 0.5              // オプション: フェード時間（秒）
+}
+```
+
+#### switchAnimation（アニメーション切り替え）
+```json
+{
+  "type": "switchAnimation",
+  "targetId": "object-1",      // 必須: 対象オブジェクトID
+  "animationIndex": 1,         // 必須: アニメーション番号（0-7）
+  "speed": 12,                 // オプション: 再生速度（fps）
+  "autoPlay": true,            // オプション: 自動再生
+  "loop": true,                // オプション: ループ再生
+  "startFrame": 0,             // オプション: 開始フレーム
+  "reverse": false             // オプション: 逆再生
+}
+```
+
+### アニメーション制御アクション
+
+#### playAnimation（アニメーション再生/停止）
+```json
+{
+  "type": "playAnimation",
+  "targetId": "object-1",      // 必須: 対象オブジェクトID
+  "play": true                 // 必須: true=再生、false=停止
+}
+```
+
+#### setAnimationSpeed（アニメーション速度変更）
+```json
+{
+  "type": "setAnimationSpeed",
+  "targetId": "object-1",      // 必須: 対象オブジェクトID
+  "speed": 24                  // 必須: 再生速度（fps）
+}
+```
+
+#### setAnimationFrame（フレーム設定）
+```json
+{
+  "type": "setAnimationFrame",
+  "targetId": "object-1",      // 必須: 対象オブジェクトID
+  "frame": 5                   // 必須: フレーム番号
+}
+```
+
+### 移動制御アクション
+
+#### move（移動）
+```json
+{
+  "type": "move",
+  "targetId": "object-1",      // 必須: 対象オブジェクトID
+  "movement": {                // 必須: MovementPattern（後述）
+    "type": "straight",
+    "target": { "x": 0.8, "y": 0.2 },
+    "speed": 1.5
+  }
+}
+```
+
+詳細は「MovementPattern完全リファレンス」を参照してください。
+
+#### followDrag（ドラッグ追従）
+```json
+{
+  "type": "followDrag",
+  "targetId": "object-1",      // 必須: 対象オブジェクトID
+  "offset": { "x": 0, "y": 0 }, // オプション: オフセット
+  "constraint": "horizontal",   // オプション: 制約（'horizontal' | 'vertical' | 'none'）
+  "smooth": true,               // オプション: スムーズ追従
+  "smoothFactor": 0.2           // オプション: スムーズ係数（0.0-1.0）
+}
+```
+
+### エフェクトアクション
+
+#### effect（エフェクト）
+```json
+{
+  "type": "effect",
+  "targetId": "object-1",      // 必須: 対象オブジェクトID
+  "effect": {                  // 必須: EffectPattern（後述）
+    "type": "scale",
+    "scaleAmount": 1.5,
+    "duration": 0.15
+  }
+}
+```
+
+詳細は「EffectPattern完全リファレンス」を参照してください。
+
+### 物理演算アクション
+
+#### applyForce（力の適用）
+```json
+{
+  "type": "applyForce",
+  "targetId": "object-1",      // 必須: 対象オブジェクトID
+  "force": { "x": 100, "y": -200 }, // 必須: 力ベクトル（px/s²）
+  "point": { "x": 0.5, "y": 0.5 },  // オプション: 作用点
+  "duration": 1.0              // オプション: 継続時間（秒）
+}
+```
+
+#### applyImpulse（衝撃の適用）
+```json
+{
+  "type": "applyImpulse",
+  "targetId": "object-1",      // 必須: 対象オブジェクトID
+  "impulse": { "x": 500, "y": -1000 } // 必須: 衝撃ベクトル（px/s）
+}
+```
+
+#### setGravity（重力変更）
+```json
+{
+  "type": "setGravity",
+  "targetId": "object-1",      // 必須: 対象オブジェクトID
+  "gravity": 980               // 必須: 重力加速度（px/s²）
+}
+```
+
+#### setPhysics（物理設定変更）
+```json
+{
+  "type": "setPhysics",
+  "targetId": "object-1",      // 必須: 対象オブジェクトID
+  "physics": {                 // 必須: 物理プロパティ（部分更新可）
+    "gravity": 980,
+    "mass": 2.0,
+    "friction": 0.5,
+    "restitution": 0.8
+  }
+}
+```
+
+### スコア・UIアクション
+
+#### addScore（スコア加算）
+```json
+{
+  "type": "addScore",
+  "points": 10                 // 必須: 加算するポイント
+}
+```
+
+#### showMessage（メッセージ表示）
+```json
+{
+  "type": "showMessage",
+  "text": "Good!",             // 必須: 表示テキスト
+  "duration": 1.0,             // 必須: 表示時間（秒）
+  "style": {                   // オプション: テキストスタイル
+    "fontSize": 24,
+    "fontColor": "#FF0000"
+  }
+}
+```
+
+### カウンターアクション
+
+#### counter（カウンター操作）
+```json
+{
+  "type": "counter",
+  "counterName": "popped",     // 必須: カウンター名
+  "operation": "add",          // 必須: 操作タイプ
+  "value": 1,                  // オプション: 操作値
+  "notification": {            // オプション: 通知設定
+    "enabled": true,
+    "message": "+1",
+    "duration": 0.5
+  }
+}
+```
+
+**CounterOperation types:**
+- `set`: 値を設定
+- `add`: 加算
+- `subtract`: 減算
+- `multiply`: 乗算
+- `divide`: 除算
+- `increment`: +1（value不要）
+- `decrement`: -1（value不要）
+- `reset`: リセット（value不要）
+
+### ランダムアクション
+
+#### randomAction（ランダムアクション選択）
+```json
+{
+  "type": "randomAction",
+  "actions": [                 // 必須: 選択肢アクション配列
+    {
+      "action": { "type": "addScore", "points": 10 },
+      "weight": 2              // オプション: 重み
+    },
+    {
+      "action": { "type": "addScore", "points": 5 },
+      "weight": 3
+    }
+  ],
+  "selectionMode": "weighted", // オプション: 選択方式（'weighted' | 'probability' | 'uniform'）
+  "executionLimit": {          // オプション: 実行制限
+    "maxExecutions": 10,
+    "cooldown": 1000,
+    "resetOnGameRestart": true
+  }
+}
+```
+
+---
+
+## 📚 条件完全リファレンス
+
+### タッチ条件
+
+#### touch（タッチ検出）
+```json
+{
+  "type": "touch",
+  "target": "self",            // 必須: 'self' | 'stage' | オブジェクトID
+  "touchType": "down",         // 必須: 'down' | 'up' | 'hold' | 'drag' | 'swipe' | 'flick'
+  "holdDuration": 1.0,         // オプション: ホールド時間（秒、holdの場合）
+  "region": {                  // オプション: ステージ範囲指定（targetが'stage'の場合）
+    "shape": "rect",
+    "x": 0.2,
+    "y": 0.2,
+    "width": 0.6,
+    "height": 0.6
+  }
+}
+```
+
+**touchType詳細:**
+- `down`: タッチ開始
+- `up`: タッチ終了
+- `hold`: 長押し（holdDuration必須）
+- `drag`: ドラッグ中
+- `swipe`: スワイプ（direction, minDistance等が使用可能）
+- `flick`: フリック（maxDistance等が使用可能）
+
+### 衝突条件
+
+#### collision（衝突検出）
+```json
+{
+  "type": "collision",
+  "target": "other",           // 必須: 'stageArea' | 'other' | オブジェクトID
+  "targetObjectId": "wall",    // オプション: target='other'の場合に指定
+  "collisionType": "enter",    // 必須: 'enter' | 'stay' | 'exit'
+  "checkMode": "hitbox"        // 必須: 'hitbox' | 'pixel'
+}
+```
+
+**collisionType詳細:**
+- `enter`: 衝突開始時
+- `stay`: 衝突中
+- `exit`: 衝突終了時
+
+### アニメーション条件
+
+#### animation（アニメーション状態）
+```json
+{
+  "type": "animation",
+  "target": "object-1",        // 必須: オブジェクトID
+  "condition": "end",          // 必須: 'frame' | 'end' | 'start' | 'loop' | 'playing' | 'stopped' | 'frameRange'
+  "animationIndex": 0,         // オプション: 対象アニメーション
+  "frameNumber": 5             // オプション: 特定フレーム番号（condition='frame'の場合）
+}
+```
+
+### オブジェクト状態条件
+
+#### objectState（オブジェクト状態）
+```json
+{
+  "type": "objectState",
+  "target": "object-1",        // 必須: オブジェクトID
+  "stateType": "visible",      // 必須: 'visible' | 'hidden' | 'animation'
+  "animationIndex": 0,         // オプション: stateType='animation'の場合
+  "condition": "playing"       // オプション: stateType='animation'の場合
+}
+```
+
+### 時間条件
+
+#### time（時間条件）
+```json
+{
+  "type": "time",
+  "timeType": "interval",      // 必須: 'exact' | 'range' | 'interval'
+  "interval": 0.1              // オプション: 間隔（秒、timeType='interval'の場合）
+}
+```
+
+**timeType詳細:**
+- `exact`: 正確な秒数（seconds必須）
+- `range`: 時間範囲（range必須）
+- `interval`: 繰り返し間隔（interval必須）
+
+### フラグ条件
+
+#### flag（フラグ条件）
+```json
+{
+  "type": "flag",
+  "flagId": "flag-1",          // 必須: フラグID
+  "condition": "ON"            // 必須: 'ON' | 'OFF' | 'CHANGED' | 'ON_TO_OFF' | 'OFF_TO_ON'
+}
+```
+
+### ゲーム状態条件
+
+#### gameState（ゲーム状態）
+```json
+{
+  "type": "gameState",
+  "state": "playing",          // 必須: 'success' | 'failure' | 'playing' | 'paused'
+  "checkType": "is"            // 必須: 'is' | 'not' | 'became'
+}
+```
+
+### 位置条件
+
+#### position（位置条件）
+```json
+{
+  "type": "position",
+  "target": "object-1",        // 必須: オブジェクトID
+  "area": "inside",            // 必須: 'inside' | 'outside' | 'crossing'
+  "region": {                  // 必須: 判定領域
+    "shape": "rect",
+    "x": 0.2,
+    "y": 0.2,
+    "width": 0.6,
+    "height": 0.6
+  }
+}
+```
+
+### カウンター条件
+
+#### counter（カウンター条件）
+```json
+{
+  "type": "counter",
+  "counterName": "popped",     // 必須: カウンター名
+  "comparison": "greaterOrEqual", // 必須: 比較演算子
+  "value": 5                   // 必須: 比較値
+}
+```
+
+**CounterComparison types:**
+- `equals`: 等しい
+- `notEquals`: 等しくない
+- `greater`: より大きい
+- `greaterOrEqual`: 以上
+- `less`: より小さい
+- `lessOrEqual`: 以下
+- `between`: 範囲内（rangeMax必須）
+- `notBetween`: 範囲外（rangeMax必須）
+- `changed`: 変更された
+
+### ランダム条件
+
+#### random（ランダム条件）
+```json
+{
+  "type": "random",
+  "probability": 0.3,          // 必須: 確率（0.0-1.0）
+  "interval": 1000,            // オプション: 判定間隔（ミリ秒）
+  "maxEventsPerSecond": 10     // オプション: 秒間最大イベント数
+}
+```
+
+---
+
+## 📚 MovementPattern完全リファレンス
+
+### straight（直線移動）
+
+**座標指定:**
+```json
+{
+  "type": "straight",
+  "target": { "x": 0.8, "y": 0.2 }, // 目標座標（0.0-1.0）
+  "speed": 2.0,                      // 移動速度（px/秒）
+  "duration": 1.5,                   // オプション: 移動時間（秒）
+  "easing": "ease-in"                // オプション: イージング
+}
+```
+
+**8方向指定:**
+```json
+{
+  "type": "straight",
+  "direction": "down",               // 方向: 'up' | 'down' | 'left' | 'right' | 'up-left' | 'up-right' | 'down-left' | 'down-right'
+  "speed": 3.0                       // 移動速度（px/秒）
+}
+```
+
+### teleport（瞬間移動）
+
+```json
+{
+  "type": "teleport",
+  "target": { "x": 0.5, "y": 0.5 }  // 目標座標（0.0-1.0）
+}
+```
+
+### wander（ランダム徘徊）
+
+```json
+{
+  "type": "wander",
+  "wanderRadius": 100,               // 徘徊半径（ピクセル）
+  "speed": 1.5                       // 移動速度（px/秒）
+}
+```
+
+### stop（停止）
+
+```json
+{
+  "type": "stop"                     // パラメータ不要
+}
+```
+
+### swap（位置交換）
+
+```json
+{
+  "type": "swap",
+  "target": "object-2"               // 交換相手のオブジェクトID
+}
+```
+
+### approach（ターゲットに接近）
+
+```json
+{
+  "type": "approach",
+  "target": { "x": 0.5, "y": 0.5 },  // 目標座標 or オブジェクトID
+  "speed": 2.0                       // 移動速度（px/秒）
+}
+```
+
+### orbit（円軌道移動）⭐
+
+**重要:** これが円運動の正しい実装方法です！
+
+```json
+{
+  "type": "orbit",
+  "target": { "x": 0.5, "y": 0.5 },  // 中心座標 or オブジェクトID
+  "orbitRadius": 150,                // オプション: 周回半径（省略時は現在の距離を使用）
+  "speed": 2.0                       // 角速度に換算される
+}
+```
+
+**動作:**
+- オブジェクトは`target`を中心として円を描きます
+- `orbitRadius`を省略すると、現在の位置からの距離が半径になります
+- `speed`は角速度に変換されます（speed * 0.01 rad/frame）
+
+### bounce（バウンド）
+
+```json
+{
+  "type": "bounce",
+  "bounceStrength": 0.8,             // 反発係数（0.0-1.0）
+  "speed": 2.0                       // 移動速度（px/秒）
+}
+```
+
+### 共通パラメータ
+
+#### easing（イージング）
+
+全移動タイプで使用可能：
+- `linear`: 等速
+- `ease-in`: 加速
+- `ease-out`: 減速
+- `bounce`: バウンス
+
+#### repeat（リピート設定）
+
+```json
+{
+  "type": "straight",
+  "target": { "x": 0.8, "y": 0.8 },
+  "speed": 2.0,
+  "repeat": {
+    "count": 3,                      // 繰り返し回数（'infinite'で無限）
+    "delay": 1.0                     // 繰り返し間隔（秒）
+  }
+}
+```
+
+---
+
+## 📚 EffectPattern完全リファレンス
+
+### flash（点滅）
+
+```json
+{
+  "type": "flash",
+  "duration": 0.5,                   // エフェクト時間（秒）
+  "flashColor": "#FFFFFF",           // 点滅色
+  "flashIntensity": 0.8,             // 点滅強度（0.0-1.0）
+  "flashFrequency": 5                // 点滅周波数（Hz）
+}
+```
+
+### shake（振動）
+
+```json
+{
+  "type": "shake",
+  "duration": 0.3,                   // エフェクト時間（秒）
+  "shakeIntensity": 10,              // 震え強度（ピクセル）
+  "shakeFrequency": 20,              // 震え周波数（Hz）
+  "shakeDirection": "both"           // 震え方向: 'horizontal' | 'vertical' | 'both'
+}
+```
+
+### scale（スケール変化）
+
+```json
+{
+  "type": "scale",
+  "duration": 0.2,                   // エフェクト時間（秒）
+  "scaleAmount": 1.5,                // スケール倍率
+  "easing": "ease-out"               // オプション: イージング
+}
+```
+
+### rotate（回転）⭐
+
+**重要:** これがスプライトの視覚的な回転の正しい実装方法です！
+
+```json
+{
+  "type": "rotate",
+  "duration": 2.0,                   // エフェクト時間（秒）
+  "rotationAmount": 360,             // 回転角度（度）
+  "rotationSpeed": 180,              // 回転速度（度/秒）
+  "rotationDirection": "clockwise"   // 回転方向: 'clockwise' | 'counterclockwise'
+}
+```
+
+**注意:** これは移動経路を回転するのではなく、スプライトの**見た目**を回転させます。
+
+### particles（パーティクル効果）
+
+```json
+{
+  "type": "particles",
+  "duration": 1.0,                   // エフェクト時間（秒）
+  "particleType": "star",            // パーティクル種類
+  "particleCount": 20,               // パーティクル数
+  "particleSize": 10,                // サイズ（ピクセル）
+  "particleColor": "#FFD700",        // 色（単色 or 配列）
+  "particleSpread": 100,             // 拡散範囲（ピクセル）
+  "particleSpeed": 200,              // 速度（px/秒）
+  "particleGravity": true            // 重力適用
+}
+```
+
+**particleType:**
+- `star`: 星
+- `confetti`: 紙吹雪
+- `explosion`: 爆発
+- `splash`: 飛沫
+- `hearts`: ハート
+- `sparkle`: キラキラ
+
+### 共通パラメータ
+
+#### intensity（強度）
+
+全エフェクトで使用可能：
+```json
+{
+  "type": "flash",
+  "duration": 0.5,
+  "intensity": 0.8                   // 強度（0.0-1.0）
+}
+```
+
+#### overlay（重複実行）
+
+```json
+{
+  "type": "scale",
+  "duration": 0.3,
+  "scaleAmount": 1.2,
+  "overlay": true                    // 他エフェクトと同時実行可能
+}
+```
 
 ---
 
