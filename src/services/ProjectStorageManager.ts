@@ -240,37 +240,93 @@ export class ProjectStorageManager {
   // ✅ プロジェクト保存（Supabaseデータベース）
   public async saveToDatabase(project: GameProject, userId: string): Promise<void> {
     try {
-      console.log('[SaveDB-Manager] 💾 Saving project to Supabase database:', { 
-        projectId: project.id, 
+      console.log('[SaveDB-Manager] 💾 Saving project to Supabase database:', {
+        projectId: project.id,
         projectName: project.settings?.name || project.name,
         userId,
-        isPublished: project.status === 'published' 
+        isPublished: project.status === 'published'
       });
 
-      // プレミアムチェック
+      // ✅ 修正: user_creditsレコードを確実に作成（UPSERT）
+      const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+
+      // プランチェック（subscriptionsテーブルから）
+      const { data: subscription } = await supabase
+        .from('subscriptions')
+        .select('plan_type')
+        .eq('user_id', userId)
+        .in('status', ['active', 'trialing'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      const isPremium = subscription?.plan_type === 'premium';
+      const monthlyLimit = isPremium ? 999999 : 3;
+
+      // ✅ user_creditsレコードをUPSERT（既存行があっても衝突しない）
+      // 注: UNIQUE制約が (user_id, month_year) または user_id のどちらでも動作するように
+      try {
+        // まず (user_id, month_year) でUPSERTを試行
+        const { error: upsertError } = await supabase
+          .from('user_credits')
+          .upsert({
+            user_id: userId,
+            month_year: currentMonth,
+            monthly_limit: monthlyLimit,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'user_id,month_year',
+            ignoreDuplicates: false
+          });
+
+        if (upsertError) {
+          // UNIQUE制約がuser_idのみの場合、月情報なしでUPSERT
+          console.warn('[SaveDB-Manager] ⚠️ Primary upsert failed, trying alternative...', upsertError);
+
+          const { error: altUpsertError } = await supabase
+            .from('user_credits')
+            .upsert({
+              user_id: userId,
+              month_year: currentMonth,
+              monthly_limit: monthlyLimit,
+              updated_at: new Date().toISOString()
+            });
+
+          if (altUpsertError) {
+            console.warn('[SaveDB-Manager] ⚠️ Alternative upsert also failed (non-critical):', altUpsertError);
+          }
+        }
+      } catch (upsertException) {
+        console.warn('[SaveDB-Manager] ⚠️ user_credits upsert exception (non-critical):', upsertException);
+        // クレジット作成失敗は警告のみ（プロジェクト保存は継続）
+      }
+
+      // プレミアムチェック（再取得）
       const { data: credits, error: creditsError } = await supabase
         .from('user_credits')
         .select('is_premium, games_created_this_month, monthly_limit')
         .eq('user_id', userId)
-        .single();
+        .eq('month_year', currentMonth)
+        .maybeSingle(); // ✅ singleではなくmaybeSingleを使用（nullを許容）
 
-      if (creditsError) {
-        console.error('[SaveDB-Manager] ❌ Failed to fetch user credits:', creditsError);
-        throw new Error(`クレジット情報の取得に失敗: ${creditsError.message}`);
+      if (creditsError && creditsError.code !== 'PGRST116') {
+        // PGRST116 = "レコードなし"エラーは許容
+        console.warn('[SaveDB-Manager] ⚠️ Failed to fetch user credits (non-critical):', creditsError);
       }
 
-      if (!credits) {
-        console.error('[SaveDB-Manager] ❌ No credits found for user:', userId);
-        throw new Error('ユーザーのクレジット情報が見つかりません');
-      }
+      const userCredits = credits || {
+        is_premium: isPremium,
+        games_created_this_month: 0,
+        monthly_limit: monthlyLimit
+      };
 
-      console.log('[SaveDB-Manager] 💳 User credits:', credits);
+      console.log('[SaveDB-Manager] 💳 User credits:', userCredits);
 
       // プレミアムでない場合のみ制限チェック
-      if (!credits.is_premium && credits.games_created_this_month >= credits.monthly_limit) {
+      if (!userCredits.is_premium && userCredits.games_created_this_month >= userCredits.monthly_limit) {
         console.warn('[SaveDB-Manager] ⚠️ Monthly limit reached:', {
-          created: credits.games_created_this_month,
-          limit: credits.monthly_limit
+          created: userCredits.games_created_this_month,
+          limit: userCredits.monthly_limit
         });
         throw new Error('月間ゲーム作成制限に達しています。プレミアムプランにアップグレードしてください。');
       }
@@ -304,37 +360,40 @@ export class ProjectStorageManager {
       } else {
         // 新規ゲームを作成
         console.log('[SaveDB-Manager] ✨ Creating new game');
-        result = await database.userGames.save(gameData);
+
+        // ✅ 修正: INSERT時のエラーハンドリング改善
+        try {
+          result = await database.userGames.save(gameData);
+        } catch (saveError: any) {
+          // ✅ 409エラー（UNIQUE制約違反）の場合、updateで再試行
+          if (saveError.message?.includes('409') || saveError.message?.includes('duplicate')) {
+            console.warn('[SaveDB-Manager] ⚠️ Duplicate detected, trying update instead...');
+            const conflictGame = userGames.find(g => {
+              const projectData = g.project_data as any as GameProject;
+              return projectData && projectData.id === project.id;
+            });
+
+            if (conflictGame) {
+              result = await database.userGames.update(conflictGame.id, gameData);
+            } else {
+              // それでも見つからない場合はエラーを再スロー
+              throw saveError;
+            }
+          } else {
+            throw saveError;
+          }
+        }
       }
-      
+
       console.log('[SaveDB-Manager] ✅ Successfully saved to database:', result);
-      
+
       // ✅ キャッシュクリア（保存後は再取得が必要）
       this.clearCache();
-      
-      // プレミアムユーザーはカウンター更新をスキップ
-      if (!credits.is_premium && !existingGame) {
-        console.log('[SaveDB-Manager] 📊 Updating user_credits counter...');
-        try {
-          const { error: updateError } = await supabase
-            .from('user_credits')
-            .update({ 
-              games_created_this_month: credits.games_created_this_month + 1,
-              updated_at: new Date().toISOString()
-            })
-            .eq('user_id', userId);
 
-          if (updateError) {
-            console.error('[SaveDB-Manager] ❌ Failed to update credits counter:', updateError);
-          } else {
-            console.log('[SaveDB-Manager] ✅ Credits counter updated successfully');
-          }
-        } catch (counterError) {
-          console.error('[SaveDB-Manager] ❌ Exception while updating counter:', counterError);
-        }
-      } else {
-        console.log('[SaveDB-Manager] 💎 Premium user or update, skipping counter update');
-      }
+      // ✅ 修正: カウンター更新は非同期で行い、失敗してもプロジェクト保存は成功とする
+      // トリガーが既にカウントアップしているため、ここでの更新はスキップ
+      // （トリガーとの二重カウントを防止）
+      console.log('[SaveDB-Manager] 💎 Counter update handled by database trigger');
       
     } catch (error: any) {
       console.error('[SaveDB-Manager] ❌ Failed to save project to database:', error);
