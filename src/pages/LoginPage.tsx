@@ -52,12 +52,15 @@ export const LoginPage: React.FC = () => {
     if (!validateForm()) return
 
     try {
+      console.log('🔐 [LoginPage] ログイン開始')
       await signIn(formData.email, formData.password)
-      // signIn完了（プロフィール読み込み完了）後に遷移
-      setNavigating(true) // 遷移中フラグを立てる
+      console.log('✅ [LoginPage] signIn完了、画面遷移開始')
+
+      // 即座に遷移
+      console.log('🚀 [LoginPage] navigate実行')
       navigate('/feed', { replace: true })
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('❌ [LoginPage] エラー発生:', error)
       // エラーの場合は遷移しない（エラーメッセージが表示される）
     }
   }

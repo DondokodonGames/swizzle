@@ -123,10 +123,18 @@ const AuthModal: React.FC<AuthModalProps> = ({
 
     try {
       if (mode === 'signin') {
+        console.log('🔐 [AuthModal] ログイン開始')
         await signIn(formData.email, formData.password)
-        // signIn完了（プロフィール読み込み完了）後に遷移
-        setNavigating(true) // 遷移中フラグを立てる
-        navigate('/feed', { replace: true })
+        console.log('✅ [AuthModal] signIn完了、画面遷移開始')
+
+        // モーダルを閉じてから遷移
+        onClose()
+
+        // 少し待ってから遷移（モーダルのアニメーションを待つ）
+        setTimeout(() => {
+          console.log('🚀 [AuthModal] navigate実行')
+          navigate('/feed', { replace: true })
+        }, 100)
       } else if (mode === 'signup') {
         const age = parseInt(formData.age)
 
@@ -149,7 +157,8 @@ const AuthModal: React.FC<AuthModalProps> = ({
         setMode('signin')
       }
     } catch (error) {
-      console.error('Auth error:', error)
+      console.error('❌ [AuthModal] エラー発生:', error)
+      // エラーは useAuth で表示される
     }
   }
 
