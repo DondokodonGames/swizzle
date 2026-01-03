@@ -82,13 +82,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [])
 
   const loadProfile = useCallback(async (userId: string, isNewUser: boolean = false): Promise<Profile | null> => {
+    const startTime = performance.now()
+    console.log('📊 [useAuth] loadProfile開始', userId, 'isNewUser:', isNewUser, new Date().toISOString())
     try {
+      const dbStartTime = performance.now()
       let profile = await database.profiles.get(userId)
+      const dbEndTime = performance.now()
+      console.log(`📊 [useAuth] database.profiles.get完了 (${(dbEndTime - dbStartTime).toFixed(0)}ms)`, profile ? 'found' : 'not found')
 
       // 新規ユーザーの場合のみ、トリガー処理を待つ
       if (!profile && isNewUser) {
+        console.log('⏳ [useAuth] 新規ユーザー、1秒待機してリトライ')
         await new Promise(resolve => setTimeout(resolve, 1000))
+        const retryStartTime = performance.now()
         profile = await database.profiles.get(userId)
+        const retryEndTime = performance.now()
+        console.log(`📊 [useAuth] database.profiles.get リトライ完了 (${(retryEndTime - retryStartTime).toFixed(0)}ms)`, profile ? 'found' : 'not found')
       }
 
       // プロフィールの言語設定でi18nを同期
@@ -96,9 +105,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         i18n.changeLanguage(profile.language)
       }
 
+      const totalTime = performance.now() - startTime
+      console.log(`✅ [useAuth] loadProfile完了 (合計: ${totalTime.toFixed(0)}ms)`, profile?.username)
       return profile
     } catch (error) {
-      console.error('Load profile error:', error)
+      const errorTime = performance.now() - startTime
+      console.error(`❌ [useAuth] loadProfileエラー (${errorTime.toFixed(0)}ms):`, error)
       return null
     }
   }, [])
@@ -175,10 +187,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }))
         }
       } else if (event === 'SIGNED_IN') {
+        console.log('🔔 [useAuth] SIGNED_INイベント発火', new Date().toISOString(), 'user:', session?.user?.id)
         if (session?.user) {
           // 初期化中またはプロフィール読み込み済みの場合は、ローディングなしでセッション情報のみ更新
           // これにより、ページリロード時の重複ローディングを防止
           if (!initCompletedRef.current || profileLoadedRef.current) {
+            console.log('⏭️ [useAuth] SIGNED_IN: 初期化中またはプロフィール読み込み済み、スキップ')
             setState(prev => ({
               ...prev,
               user: session.user,
@@ -191,12 +205,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
           // 🚀 新規サインイン時：プロフィールをバックグラウンドで読み込む（ローディング表示なし）
           // これにより、画面遷移後もユーザーを待たせない
-          console.log('🔄 [useAuth] プロフィールをバックグラウンドで読み込み開始')
+          const profileStartTime = performance.now()
+          console.log('🔄 [useAuth] プロフィールをバックグラウンドで読み込み開始', new Date().toISOString())
 
           try {
             const profile = await loadProfile(session.user.id)
+            const profileEndTime = performance.now()
             profileLoadedRef.current = !!profile
-            console.log('✅ [useAuth] プロフィール読み込み完了（バックグラウンド）:', profile?.username)
+            console.log(`✅ [useAuth] プロフィール読み込み完了 (${(profileEndTime - profileStartTime).toFixed(0)}ms):`, profile?.username, new Date().toISOString())
             setState(prev => ({
               ...prev,
               profile,
@@ -205,7 +221,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               error: null
             }))
           } catch (error) {
-            console.error('Profile loading error during auth state change:', error)
+            const profileErrorTime = performance.now()
+            console.error(`❌ [useAuth] プロフィール読み込みエラー (${(profileErrorTime - profileStartTime).toFixed(0)}ms):`, error, new Date().toISOString())
             setState(prev => ({
               ...prev,
               profile: null,
@@ -270,13 +287,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // サインイン - 超高速化版（プロフィール読み込みは遷移後に実行）
   const signIn = useCallback(async (email: string, password: string) => {
-    console.log('🔐 [useAuth] signIn開始')
+    const startTime = performance.now()
+    console.log('🔐 [useAuth] signIn開始', new Date().toISOString())
     setState(prev => ({ ...prev, loading: true, error: null }))
 
     try {
-      console.log('📡 [useAuth] auth.signIn呼び出し')
+      const authStartTime = performance.now()
+      console.log('📡 [useAuth] auth.signIn呼び出し', new Date().toISOString())
       const result = await auth.signIn(email, password)
-      console.log('✅ [useAuth] auth.signIn成功:', result.user?.id)
+      const authEndTime = performance.now()
+      console.log(`✅ [useAuth] auth.signIn成功: ${result.user?.id} (${(authEndTime - authStartTime).toFixed(0)}ms)`, new Date().toISOString())
 
       if (result.user) {
         // 🚀 即座にログイン状態を反映（プロフィールは後で読み込む）
@@ -288,13 +308,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           initializing: false,
           error: null
         })
-        console.log('✅ [useAuth] signIn即座に完了、プロフィールは遷移後に読み込み')
+        const totalTime = performance.now() - startTime
+        console.log(`✅ [useAuth] signIn即座に完了 (合計: ${totalTime.toFixed(0)}ms)`, new Date().toISOString())
       } else {
         console.warn('⚠️ [useAuth] result.userがnull')
         setState(prev => ({ ...prev, loading: false }))
       }
     } catch (error) {
-      console.error('❌ [useAuth] signInエラー:', error)
+      const errorTime = performance.now() - startTime
+      console.error(`❌ [useAuth] signInエラー (${errorTime.toFixed(0)}ms):`, error, new Date().toISOString())
       setState(prev => ({
         ...prev,
         loading: false,

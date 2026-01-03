@@ -19,13 +19,15 @@ export const LoginPage: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
   const [navigating, setNavigating] = useState(false) // 画面遷移中フラグ
+  const [loginAttempted, setLoginAttempted] = useState(false) // ログイン試行フラグ
 
-  // 既にログイン済みの場合はゲームフィードにリダイレクト
+  // 既にログイン済みの場合はゲームフィードにリダイレクト（初回のみ、ログイン試行後は除外）
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !loginAttempted) {
+      console.log('🔄 [LoginPage] 既にログイン済み、自動リダイレクト')
       navigate('/feed')
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, navigate, loginAttempted])
 
   // バリデーション
   const validateForm = (): boolean => {
@@ -51,20 +53,32 @@ export const LoginPage: React.FC = () => {
 
     if (!validateForm()) return
 
-    try {
-      console.log('🔐 [LoginPage] ログイン開始')
-      await signIn(formData.email, formData.password)
-      console.log('✅ [LoginPage] signIn完了、画面遷移開始')
+    const submitStartTime = performance.now()
+    setLoginAttempted(true) // ログイン試行フラグを立てる
+    setNavigating(true) // 画面遷移中フラグを立ててローディング表示を維持
 
-      // 画面遷移中フラグを立ててローディング表示を維持
-      setNavigating(true)
+    try {
+      console.log('🔐 [LoginPage] ログイン開始', new Date().toISOString())
+
+      const signInStartTime = performance.now()
+      await signIn(formData.email, formData.password)
+      const signInEndTime = performance.now()
+
+      console.log(`✅ [LoginPage] signIn完了 (${(signInEndTime - signInStartTime).toFixed(0)}ms)、画面遷移開始`, new Date().toISOString())
 
       // 即座に遷移
-      console.log('🚀 [LoginPage] navigate実行')
+      const navStartTime = performance.now()
+      console.log('🚀 [LoginPage] navigate実行', new Date().toISOString())
       navigate('/feed', { replace: true })
+      const navEndTime = performance.now()
+
+      const totalTime = performance.now() - submitStartTime
+      console.log(`✅ [LoginPage] navigate完了 (${(navEndTime - navStartTime).toFixed(0)}ms)、合計: ${totalTime.toFixed(0)}ms`, new Date().toISOString())
     } catch (error) {
-      console.error('❌ [LoginPage] エラー発生:', error)
+      const errorTime = performance.now() - submitStartTime
+      console.error(`❌ [LoginPage] エラー発生 (${errorTime.toFixed(0)}ms):`, error, new Date().toISOString())
       setNavigating(false)
+      setLoginAttempted(false)
       // エラーの場合は遷移しない（エラーメッセージが表示される）
     }
   }
@@ -211,7 +225,7 @@ export const LoginPage: React.FC = () => {
                 boxSizing: 'border-box'
               }}
               placeholder="your@example.com"
-              disabled={loading}
+              disabled={loading || navigating}
               autoFocus
             />
             {validationErrors.email && (
@@ -251,7 +265,7 @@ export const LoginPage: React.FC = () => {
                   boxSizing: 'border-box'
                 }}
                 placeholder="パスワードを入力"
-                disabled={loading}
+                disabled={loading || navigating}
               />
               <button
                 type="button"
@@ -267,7 +281,7 @@ export const LoginPage: React.FC = () => {
                   fontSize: '20px',
                   padding: '4px'
                 }}
-                disabled={loading}
+                disabled={loading || navigating}
               >
                 {showPassword ? '🙈' : '👁️'}
               </button>
@@ -282,11 +296,11 @@ export const LoginPage: React.FC = () => {
           {/* 送信ボタン */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || navigating}
             style={{
               width: '100%',
               padding: '16px',
-              background: loading
+              background: (loading || navigating)
                 ? '#9ca3af'
                 : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               color: 'white',
@@ -294,12 +308,12 @@ export const LoginPage: React.FC = () => {
               borderRadius: '12px',
               fontSize: '18px',
               fontWeight: '600',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: (loading || navigating) ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s',
               marginTop: '8px'
             }}
           >
-            {loading ? 'ログイン中...' : 'ログイン'}
+            {(loading || navigating) ? 'ログイン中...' : 'ログイン'}
           </button>
         </form>
 
@@ -321,7 +335,7 @@ export const LoginPage: React.FC = () => {
               cursor: 'pointer',
               textDecoration: 'underline'
             }}
-            disabled={loading}
+            disabled={loading || navigating}
           >
             パスワードを忘れた方
           </button>
@@ -345,7 +359,7 @@ export const LoginPage: React.FC = () => {
               cursor: 'pointer',
               textDecoration: 'underline'
             }}
-            disabled={loading}
+            disabled={loading || navigating}
           >
             新規登録
           </button>
