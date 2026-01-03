@@ -730,6 +730,8 @@ export const AdvancedRuleModal: React.FC<AdvancedRuleModalProps> = ({
                 mode="single"
                 showTitle={true}
                 compact={false}
+                onConditionEdit={handleConditionSelect}
+                onActionEdit={handleActionSelect}
               />
             </div>
           </div>

@@ -17,20 +17,24 @@ interface RulePreviewProps {
     actions: GameAction[];
     operator: 'AND' | 'OR';
   };
-  
+
   // 対象オブジェクトの全ルール（複数表示用）
   objectRules?: GameRule[];
-  
+
   // プロジェクト情報
   project: GameProject;
   projectFlags: GameFlag[];
-  
+
   // 表示モード
   mode: 'single' | 'multiple';
-  
+
   // オプション
   showTitle?: boolean;
   compact?: boolean;
+
+  // 編集コールバック
+  onConditionEdit?: (index: number) => void;
+  onActionEdit?: (index: number) => void;
 }
 
 export const RulePreview: React.FC<RulePreviewProps> = ({
@@ -40,7 +44,9 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
   projectFlags,
   mode = 'single',
   showTitle = true,
-  compact = false
+  compact = false,
+  onConditionEdit,
+  onActionEdit
 }) => {
   const { t } = useTranslation();
 
@@ -562,28 +568,62 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         gap: DESIGN_TOKENS.spacing[2],
-                        marginBottom: DESIGN_TOKENS.spacing[2]
+                        marginBottom: DESIGN_TOKENS.spacing[2],
+                        justifyContent: 'space-between'
                       }}>
-                        <span style={{
-                          fontSize: DESIGN_TOKENS.typography.fontSize.xl,
-                          backgroundColor: DESIGN_TOKENS.colors.purple[600],
-                          color: DESIGN_TOKENS.colors.neutral[0],
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: DESIGN_TOKENS.borderRadius.full,
+                        <div style={{
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          gap: DESIGN_TOKENS.spacing[2]
                         }}>
-                          {display.icon}
-                        </span>
-                        <span style={{
-                          fontSize: DESIGN_TOKENS.typography.fontSize.base,
-                          fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                          color: DESIGN_TOKENS.colors.purple[800]
-                        }}>
-                          {t('editor.rulePreview.singleRule.conditionNumber', { number: index + 1, label: display.label })}
-                        </span>
+                          <span style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+                            backgroundColor: DESIGN_TOKENS.colors.purple[600],
+                            color: DESIGN_TOKENS.colors.neutral[0],
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: DESIGN_TOKENS.borderRadius.full,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            {display.icon}
+                          </span>
+                          <span style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                            fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                            color: DESIGN_TOKENS.colors.purple[800]
+                          }}>
+                            {t('editor.rulePreview.singleRule.conditionNumber', { number: index + 1, label: display.label })}
+                          </span>
+                        </div>
+                        {onConditionEdit && (
+                          <button
+                            onClick={() => onConditionEdit(index)}
+                            style={{
+                              padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[3]}`,
+                              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                              backgroundColor: DESIGN_TOKENS.colors.purple[600],
+                              color: DESIGN_TOKENS.colors.neutral[0],
+                              border: 'none',
+                              borderRadius: DESIGN_TOKENS.borderRadius.md,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: DESIGN_TOKENS.spacing[1],
+                              transition: `all ${DESIGN_TOKENS.animation.duration.fast} ${DESIGN_TOKENS.animation.easing.inOut}`
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.purple[700];
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.purple[600];
+                            }}
+                          >
+                            ✏️ 編集
+                          </button>
+                        )}
                       </div>
                       <div style={{
                         marginLeft: '40px',
@@ -655,29 +695,63 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         gap: DESIGN_TOKENS.spacing[2],
-                        marginBottom: DESIGN_TOKENS.spacing[2]
+                        marginBottom: DESIGN_TOKENS.spacing[2],
+                        justifyContent: 'space-between'
                       }}>
-                        <span style={{
-                          fontSize: DESIGN_TOKENS.typography.fontSize.xl,
-                          // 🔧 修正5: success[700] → success[600] に変更
-                          backgroundColor: DESIGN_TOKENS.colors.success[600],
-                          color: DESIGN_TOKENS.colors.neutral[0],
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: DESIGN_TOKENS.borderRadius.full,
+                        <div style={{
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          gap: DESIGN_TOKENS.spacing[2]
                         }}>
-                          {display.icon}
-                        </span>
-                        <span style={{
-                          fontSize: DESIGN_TOKENS.typography.fontSize.base,
-                          fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
-                          color: DESIGN_TOKENS.colors.success[800]
-                        }}>
-                          {t('editor.rulePreview.singleRule.actionNumber', { number: index + 1, label: display.label })}
-                        </span>
+                          <span style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.xl,
+                            // 🔧 修正5: success[700] → success[600] に変更
+                            backgroundColor: DESIGN_TOKENS.colors.success[600],
+                            color: DESIGN_TOKENS.colors.neutral[0],
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: DESIGN_TOKENS.borderRadius.full,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            {display.icon}
+                          </span>
+                          <span style={{
+                            fontSize: DESIGN_TOKENS.typography.fontSize.base,
+                            fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+                            color: DESIGN_TOKENS.colors.success[800]
+                          }}>
+                            {t('editor.rulePreview.singleRule.actionNumber', { number: index + 1, label: display.label })}
+                          </span>
+                        </div>
+                        {onActionEdit && (
+                          <button
+                            onClick={() => onActionEdit(index)}
+                            style={{
+                              padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[3]}`,
+                              fontSize: DESIGN_TOKENS.typography.fontSize.xs,
+                              fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
+                              backgroundColor: DESIGN_TOKENS.colors.success[600],
+                              color: DESIGN_TOKENS.colors.neutral[0],
+                              border: 'none',
+                              borderRadius: DESIGN_TOKENS.borderRadius.md,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: DESIGN_TOKENS.spacing[1],
+                              transition: `all ${DESIGN_TOKENS.animation.duration.fast} ${DESIGN_TOKENS.animation.easing.inOut}`
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.success[700];
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.success[600];
+                            }}
+                          >
+                            ✏️ 編集
+                          </button>
+                        )}
                       </div>
                       <div style={{
                         marginLeft: '40px',
