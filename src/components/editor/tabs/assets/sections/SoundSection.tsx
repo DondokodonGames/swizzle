@@ -235,7 +235,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                       margin: 0
                     }}
                   >
-                    {formatTime(project.assets.audio.bgm.duration)} • {formatFileSize(project.assets.audio.bgm.fileSize)} • {project.assets.audio.bgm.format.toUpperCase()}
+                    {formatTime(project.assets.audio.bgm.duration)} • {formatFileSize(project.assets.audio.bgm.fileSize)} • {(project.assets.audio.bgm.format || 'audio').toUpperCase()}
                   </p>
                   {project.assets.audio.bgm && isPlaying(project.assets.audio.bgm.id) && (
                     <p 
@@ -452,7 +452,7 @@ export const SoundSection: React.FC<SoundSectionProps> = ({
                         margin: 0
                       }}
                     >
-                      {formatTime(se.duration)} • {formatFileSize(se.fileSize)} • {se.format.toUpperCase()}
+                      {formatTime(se.duration)} • {formatFileSize(se.fileSize)} • {(se.format || 'audio').toUpperCase()}
                     </p>
                     {isPlaying(se.id) && (
                       <p
