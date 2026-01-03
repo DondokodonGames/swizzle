@@ -45,6 +45,7 @@
       "noRulesToCopy": "이 게임에는 규칙이 설정되어 있지 않아 복사할 수 없습니다.",
       "copyFailed": "게임 복사 실패",
       "unknownError": "알 수 없는 오류"
-    }
+    },
+    "close": "닫기"
   }
 }
