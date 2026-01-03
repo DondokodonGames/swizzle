@@ -96,6 +96,13 @@ TikTok・YouTubeショート動画のようなUXで「簡単に作って、簡�
 - **本番サイト**: [playswizzle.com](https://www.playswizzle.com)
 - **リポジトリ**: [GitHub - DondokodonGames/swizzle](https://github.com/DondokodonGames/swizzle)
 
+## 📚 開発者向けドキュメント
+
+- **[Swizzle JSON仕様書](SWIZZLE_JSON_SPEC.md)** - ChatGPT/Claude等のAIでゲームJSONを生成する際の完全な仕様書
+  - エディターにインポート可能なJSON形式の詳細説明
+  - 型定義、サンプルコード、トラブルシューティング
+  - AI向けプロンプトテンプレート付き
+
 ## 🚀 セットアップ・開発
 
 ### 開発環境構築
