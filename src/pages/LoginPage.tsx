@@ -81,6 +81,7 @@ export const LoginPage: React.FC = () => {
       padding: '20px'
     }}>
       <div style={{
+        position: 'relative',
         backgroundColor: 'white',
         borderRadius: '24px',
         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
@@ -88,6 +89,42 @@ export const LoginPage: React.FC = () => {
         maxWidth: '450px',
         padding: '48px 40px'
       }}>
+        {/* ローディングオーバーレイ */}
+        {loading && (
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            borderRadius: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(2px)'
+          }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              border: '4px solid #e5e7eb',
+              borderTop: '4px solid #667eea',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite'
+            }} />
+            <p style={{
+              marginTop: '16px',
+              fontSize: '16px',
+              fontWeight: '600',
+              color: '#374151'
+            }}>
+              ログイン中...
+            </p>
+          </div>
+        )}
+
         {/* ヘッダー */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{
