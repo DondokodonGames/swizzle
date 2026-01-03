@@ -56,11 +56,15 @@ export const LoginPage: React.FC = () => {
       await signIn(formData.email, formData.password)
       console.log('✅ [LoginPage] signIn完了、画面遷移開始')
 
+      // 画面遷移中フラグを立ててローディング表示を維持
+      setNavigating(true)
+
       // 即座に遷移
       console.log('🚀 [LoginPage] navigate実行')
       navigate('/feed', { replace: true })
     } catch (error) {
       console.error('❌ [LoginPage] エラー発生:', error)
+      setNavigating(false)
       // エラーの場合は遷移しない（エラーメッセージが表示される）
     }
   }
