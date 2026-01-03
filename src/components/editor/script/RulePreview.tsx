@@ -743,7 +743,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
                               transition: `all ${DESIGN_TOKENS.animation.duration.fast} ${DESIGN_TOKENS.animation.easing.inOut}`
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.success[700];
+                              e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.success[800];
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.backgroundColor = DESIGN_TOKENS.colors.success[600];
