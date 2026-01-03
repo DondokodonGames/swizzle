@@ -538,6 +538,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 alignItems: 'center',
                 gap: '12px',
                 flex: 1,
+                minWidth: 0, // flexアイテムの縮小を許可
                 cursor: profileClickEnabled ? 'pointer' : 'default',
                 opacity: profileClickEnabled ? 1 : 0.5,
                 transition: 'opacity 0.3s ease',
@@ -561,10 +562,10 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 {currentGame.author.name.charAt(0).toUpperCase()}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ 
-                  color: 'white', 
-                  fontWeight: 'bold', 
-                  fontSize: '18px', 
+                <p style={{
+                  color: 'white',
+                  fontWeight: 'bold',
+                  fontSize: '18px',
                   margin: 0,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -572,9 +573,9 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 }}>
                   {currentGame.author.name}
                 </p>
-                <p style={{ 
-                  color: '#9ca3af', 
-                  fontSize: '14px', 
+                <p style={{
+                  color: '#9ca3af',
+                  fontSize: '14px',
                   margin: 0,
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -583,37 +584,45 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   {currentGame.title}
                 </p>
               </div>
-              {!profileClickEnabled && (
-                <div style={{
-                  fontSize: '12px',
-                  color: '#9ca3af',
-                  padding: '4px 8px',
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  borderRadius: '8px',
-                  flexShrink: 0,
-                }}>
-                  ⏳
-                </div>
-              )}
             </div>
-            <button
-              onClick={handleLike}
-              disabled={isLiking}
-              style={{
-                padding: '10px 16px',
-                borderRadius: '12px',
-                fontWeight: 'bold',
-                fontSize: '20px',
-                border: 'none',
-                cursor: isLiking ? 'not-allowed' : 'pointer',
-                background: isLiked ? '#ef4444' : 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
-                opacity: isLiking ? 0.5 : 1,
-                flexShrink: 0,
-              }}
-            >
-              {isLiked ? '❤️' : '🤍'} {likeCount}
-            </button>
+            {/* 砂時計といいねボタンを並べて配置 */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flexShrink: 0, // このエリアは縮小しない
+            }}>
+              {/* 砂時計アイコン（常に表示してopacityで制御） */}
+              <div style={{
+                fontSize: '12px',
+                color: '#9ca3af',
+                padding: '4px 8px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '8px',
+                opacity: profileClickEnabled ? 0 : 1,
+                visibility: profileClickEnabled ? 'hidden' : 'visible',
+                transition: 'opacity 0.3s ease, visibility 0.3s ease',
+              }}>
+                ⏳
+              </div>
+              <button
+                onClick={handleLike}
+                disabled={isLiking}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '12px',
+                  fontWeight: 'bold',
+                  fontSize: '20px',
+                  border: 'none',
+                  cursor: isLiking ? 'not-allowed' : 'pointer',
+                  background: isLiked ? '#ef4444' : 'rgba(255, 255, 255, 0.2)',
+                  color: 'white',
+                  opacity: isLiking ? 0.5 : 1,
+                }}
+              >
+                {isLiked ? '❤️' : '🤍'} {likeCount}
+              </button>
+            </div>
           </div>
 
           {/* 広告エリア */}
