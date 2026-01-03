@@ -419,14 +419,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     overflow: 'hidden',
   };
 
-  // 🔧 修正版: PCでは9:16比率維持、スマホでは全画面
+  // 🔧 修正版: PCでは9:16比率維持、スマホでは全画面（より堅牢）
   const mainBoxStyle: React.CSSProperties = {
     position: 'relative',
-    height: '100vh',         // 🔧 高さを画面いっぱいに
-    width: 'auto',           // 🔧 幅はアスペクト比から自動計算
-    maxWidth: '100%',        // 🔧 画面幅を超えない
-    aspectRatio: '9 / 16',   // 🔧 9:16比率維持
-    margin: '0 auto',        // 🔧 中央揃え
+    height: '100%',           // 🔧 親コンテナに合わせる
+    width: '100%',            // 🔧 幅も100%に
+    maxWidth: '100%',
+    maxHeight: '100%',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
@@ -512,7 +511,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           overflowY: 'auto',
           overflowX: 'hidden',
           padding: '20px',
-          paddingBottom: '140px',
+          paddingBottom: '160px', // ボタンエリアとの重なりを防ぐため増加
           WebkitOverflowScrolling: 'touch',
         }}>
           {/* 結果アイコン */}
@@ -633,11 +632,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           right: 0,
           bottom: '8px',
           padding: '0 20px 12px 20px',
-          background: 'linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, transparent 100%)',
+          background: 'linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 50%, rgba(0,0,0,0.4) 80%, transparent 100%)',
+          pointerEvents: 'none', // グラデーション部分はクリック無効
         }}>
           <div style={{
             display: 'flex',
             gap: 0,
+            pointerEvents: 'auto', // ボタンエリアはクリック有効
           }}>
             <button
               onClick={handleCopyGame}
@@ -1148,18 +1149,31 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         </div>
       )}
 
-      {/* スマホ用メディアクエリ */}
+      {/* レスポンシブ用メディアクエリ */}
       <style>{`
+        /* PC: 9:16比率を維持 */
+        @media (min-width: 769px) and (min-aspect-ratio: 9/16) {
+          .bridge-main-box {
+            height: 100vh !important;
+            width: auto !important;
+            aspect-ratio: 9 / 16 !important;
+            margin: 0 auto !important;
+          }
+        }
+
+        /* タブレット・スマホ: 全画面表示 */
         @media (max-width: 768px), (max-aspect-ratio: 9/16) {
           .bridge-main-box {
-            aspect-ratio: unset !important;
             width: 100% !important;
             height: 100% !important;
-            max-width: 100% !important;
-            max-height: 100% !important;
+            aspect-ratio: unset !important;
+          }
+          .bridge-main-box > div:first-child {
+            padding-bottom: 140px !important; /* スマホではボタンエリアが小さいため調整 */
           }
           .bridge-bottom-buttons {
             padding: 0 12px 8px 12px !important;
+            bottom: 0 !important; /* スマホでは下端にぴったり */
           }
           .bridge-bottom-buttons button {
             padding: 12px 0 !important;
@@ -1175,6 +1189,9 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
         /* より小さな画面用 (480px以下) */
         @media (max-width: 480px) {
+          .bridge-main-box > div:first-child {
+            padding-bottom: 120px !important; /* 小さな画面ではさらに調整 */
+          }
           .bridge-bottom-buttons {
             padding: 0 8px 6px 8px !important;
           }
@@ -1187,6 +1204,15 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           }
           .bridge-bottom-buttons .btn-label {
             font-size: 9px !important;
+          }
+        }
+
+        /* iOS Safari対応: 100vhの代わりに100dvhを使用 */
+        @supports (height: 100dvh) {
+          @media (min-width: 769px) and (min-aspect-ratio: 9/16) {
+            .bridge-main-box {
+              height: 100dvh !important;
+            }
           }
         }
       `}</style>
