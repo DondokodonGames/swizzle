@@ -52,9 +52,10 @@ export const LoginPage: React.FC = () => {
 
     try {
       await signIn(formData.email, formData.password)
-      // 成功したらホームにリダイレクト（useEffectで処理される）
+      window.location.href = '/feed'
     } catch (error) {
       console.error('Login error:', error)
+      // エラーの場合は遷移しない（エラーメッセージが表示される）
     }
   }
 

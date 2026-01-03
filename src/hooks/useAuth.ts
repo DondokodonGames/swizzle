@@ -81,23 +81,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setState(prev => ({ ...prev, error: null }))
   }, [])
 
-  const loadProfile = useCallback(async (userId: string): Promise<Profile | null> => {
+  const loadProfile = useCallback(async (userId: string, isNewUser: boolean = false): Promise<Profile | null> => {
     try {
-      // トリガーによる自動作成を考慮し、少し待機してからプロフィール取得
       let profile = await database.profiles.get(userId)
 
-      // プロフィールが存在しない場合、少し待ってリトライ（トリガー処理時間考慮）
-      if (!profile) {
+      // 新規ユーザーの場合のみ、トリガー処理を待つ
+      if (!profile && isNewUser) {
         await new Promise(resolve => setTimeout(resolve, 1000))
         profile = await database.profiles.get(userId)
       }
 
       // プロフィールの言語設定でi18nを同期
       if (profile?.language) {
-        console.log('プロフィールから言語を同期:', profile.language)
-        i18n.changeLanguage(profile.language).then(() => {
-          console.log('i18n言語同期完了:', i18n.language)
-        })
+        i18n.changeLanguage(profile.language)
       }
 
       return profile
@@ -279,17 +275,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const result = await auth.signIn(email, password)
 
-      // プロフィールを読み込む
       if (result.user) {
-        const profile = await loadProfile(result.user.id)
-        profileLoadedRef.current = !!profile
+        // 即座に認証状態を反映（超高速）
         setState({
           user: result.user,
           session: result.session,
-          profile,
+          profile: null,
           loading: false,
           initializing: false,
           error: null
+        })
+
+        // プロフィール読み込みは遷移後にバックグラウンドで実行
+        loadProfile(result.user.id, false).then(profile => {
+          if (profile) {
+            profileLoadedRef.current = true
+            setState(prev => ({
+              ...prev,
+              profile
+            }))
+          }
         })
       } else {
         setState(prev => ({ ...prev, loading: false }))
