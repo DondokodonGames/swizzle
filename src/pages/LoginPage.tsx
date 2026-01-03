@@ -18,6 +18,7 @@ export const LoginPage: React.FC = () => {
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
+  const [navigating, setNavigating] = useState(false) // 画面遷移中フラグ
 
   // 既にログイン済みの場合はゲームフィードにリダイレクト
   useEffect(() => {
@@ -52,7 +53,8 @@ export const LoginPage: React.FC = () => {
 
     try {
       await signIn(formData.email, formData.password)
-      // ログイン成功後は即座に画面遷移（リロードなし）
+      // signIn完了（プロフィール読み込み完了）後に遷移
+      setNavigating(true) // 遷移中フラグを立てる
       navigate('/feed', { replace: true })
     } catch (error) {
       console.error('Login error:', error)
@@ -90,7 +92,7 @@ export const LoginPage: React.FC = () => {
         padding: '48px 40px'
       }}>
         {/* ローディングオーバーレイ */}
-        {loading && (
+        {(loading || navigating) && (
           <div style={{
             position: 'absolute',
             top: 0,
