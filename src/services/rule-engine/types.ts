@@ -68,6 +68,8 @@ export interface RuleExecutionContext {
     timeElapsed: number;
     flags: Map<string, boolean>;
     counters: Map<string, number>;
+    pendingEndTime?: number;  // success/failure後の終了予定時刻
+    endReason?: 'success' | 'failure';  // 終了理由
   };
   
   objects: Map<string, GameObject>;

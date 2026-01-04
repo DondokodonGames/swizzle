@@ -610,6 +610,11 @@ export class EditorGameBridge {
                   if (result.newGameState.score !== undefined) {
                     gameState.score = result.newGameState.score;
                   }
+                  // pendingEndTime処理: success/failure後の遅延終了
+                  if (result.newGameState.pendingEndTime !== undefined) {
+                    gameState.pendingEndTime = result.newGameState.pendingEndTime;
+                    gameState.endReason = result.newGameState.endReason;
+                  }
                   if (result.newGameState.isPlaying !== undefined) {
                     running = result.newGameState.isPlaying;
                     completed = !result.newGameState.isPlaying;
@@ -620,6 +625,14 @@ export class EditorGameBridge {
           } catch (ruleError) {
             console.error('❌ ルール実行エラー:', ruleError);
             warnings.push('ルール実行中にエラーが発生しました');
+          }
+
+          // success/failure後の遅延終了チェック
+          if (gameState.pendingEndTime !== undefined && Date.now() >= gameState.pendingEndTime) {
+            console.log(`🏁 ${gameState.endReason === 'success' ? '成功' : '失敗'}により1秒後にゲーム終了`);
+            running = false;
+            completed = true;
+            gameState.isPlaying = false;
           }
 
           // イベント履歴をフレーム終了時にクリア

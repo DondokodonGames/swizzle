@@ -55,7 +55,9 @@ export class ActionExecutor {
       try {
         switch (action.type) {
           case 'success':
-            newGameState.isPlaying = false;
+            // 1秒後に終了するよう予約
+            newGameState.pendingEndTime = Date.now() + 1000;
+            newGameState.endReason = 'success';
             if (action.score) {
               newGameState.score = (context.gameState.score || 0) + action.score;
             }
@@ -63,7 +65,9 @@ export class ActionExecutor {
             break;
 
           case 'failure':
-            newGameState.isPlaying = false;
+            // 1秒後に終了するよう予約
+            newGameState.pendingEndTime = Date.now() + 1000;
+            newGameState.endReason = 'failure';
             effectsApplied.push(`失敗: ${action.message || ''}`);
             break;
 
