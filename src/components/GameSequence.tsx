@@ -428,15 +428,18 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
   const handleSkipToBridge = useCallback(() => {
     console.log('⏭️ スキップ → ブリッジ画面へ');
-    
+
+    // 実行中のゲームを停止
+    bridge.stopGame();
+
     setCurrentScore({
       points: 0,
       time: 0,
       success: false
     });
-    
+
     setGameState('bridge');
-  }, []);
+  }, [bridge]);
 
   // ==================== スタイル定義（🔧 完全レスポンシブ対応） ====================
   const styles = {
