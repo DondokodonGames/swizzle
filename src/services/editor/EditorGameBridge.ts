@@ -504,7 +504,9 @@ export class EditorGameBridge {
         score: initialState.gameState?.score || 0,
         timeElapsed: 0,
         flags: new Map(Object.entries(initialState.gameState?.flags || {}).map(([k, v]) => [k, Boolean(v)])),
-        counters: new Map(Object.entries(initialState.gameState?.counters || {}).map(([k, v]) => [k, Number(v)]))
+        counters: new Map(Object.entries(initialState.gameState?.counters || {}).map(([k, v]) => [k, Number(v)])),
+        pendingEndTime: undefined,  // 前のゲームから持ち越さないようクリア
+        endReason: undefined  // 前のゲームから持ち越さないようクリア
       };
 
       // 10. RuleExecutionContext構築
