@@ -525,7 +525,13 @@ export class EditorGameBridge {
         objectCount: objectsMap.size,
         ruleCount: project.script?.rules?.length || 0,
         counters: Array.from(gameState.counters.keys()),
-        flags: Array.from(gameState.flags.keys())
+        flags: Array.from(gameState.flags.keys()),
+        initialGameState: {
+          isPlaying: gameState.isPlaying,
+          timeElapsed: gameState.timeElapsed,
+          pendingEndTime: gameState.pendingEndTime,
+          endReason: gameState.endReason
+        }
       });
 
       // 11. ゲームループ変数
@@ -546,6 +552,12 @@ export class EditorGameBridge {
       const gameLoop = () => {
         // ゲーム停止チェック（外部からの停止リクエストまたはゲーム終了）
         if (!running || this.shouldStopGame) {
+          if (!running) {
+            console.log(`🛑 [GameLoop] ゲーム停止: running=false (timeElapsed=${gameState.timeElapsed.toFixed(2)}s)`);
+          }
+          if (this.shouldStopGame) {
+            console.log(`🛑 [GameLoop] ゲーム停止: shouldStopGame=true (timeElapsed=${gameState.timeElapsed.toFixed(2)}s)`);
+          }
           if (this.gameLoopTimerId) {
             clearTimeout(this.gameLoopTimerId);
             this.gameLoopTimerId = null;
@@ -600,12 +612,12 @@ export class EditorGameBridge {
           try {
             const results = this.ruleEngine!.evaluateAndExecuteRules(this.currentContext!);
             ruleExecutionCount += results.length;
-            
+
             // 実行されたルールを記録
-            results.forEach(result => {
+            results.forEach((result, idx) => {
               if (result.success) {
                 rulesTriggered.push('rule_executed');
-                
+
                 // ゲーム状態の更新を反映
                 if (result.newGameState) {
                   if (result.newGameState.score !== undefined) {
@@ -613,10 +625,12 @@ export class EditorGameBridge {
                   }
                   // pendingEndTime処理: success/failure後の遅延終了
                   if (result.newGameState.pendingEndTime !== undefined) {
+                    console.log(`🚨 [GameLoop] ルール実行により終了予約: timeElapsed=${gameState.timeElapsed.toFixed(2)}s, pendingEndTime=${result.newGameState.pendingEndTime}, endReason=${result.newGameState.endReason}, ruleIndex=${idx}`);
                     gameState.pendingEndTime = result.newGameState.pendingEndTime;
                     gameState.endReason = result.newGameState.endReason;
                   }
                   if (result.newGameState.isPlaying !== undefined) {
+                    console.log(`🚨 [GameLoop] ルール実行によりisPlaying変更: ${gameState.isPlaying} -> ${result.newGameState.isPlaying}, timeElapsed=${gameState.timeElapsed.toFixed(2)}s, ruleIndex=${idx}`);
                     running = result.newGameState.isPlaying;
                     completed = !result.newGameState.isPlaying;
                   }
@@ -630,7 +644,7 @@ export class EditorGameBridge {
 
           // success/failure後の遅延終了チェック
           if (gameState.pendingEndTime !== undefined && Date.now() >= gameState.pendingEndTime) {
-            console.log(`🏁 ${gameState.endReason === 'success' ? '成功' : '失敗'}により1秒後にゲーム終了`);
+            console.log(`🏁 ${gameState.endReason === 'success' ? '成功' : '失敗'}により1秒後にゲーム終了 (timeElapsed=${gameState.timeElapsed.toFixed(2)}s, pendingEndTime=${gameState.pendingEndTime}, now=${Date.now()})`);
             running = false;
             completed = true;
             gameState.isPlaying = false;
@@ -772,7 +786,7 @@ export class EditorGameBridge {
           if (gameDuration && gameState.timeElapsed >= gameDuration) {
             running = false;
             completed = true;
-            console.log('⏰ 制限時間終了');
+            console.log(`⏰ 制限時間終了: timeElapsed=${gameState.timeElapsed.toFixed(2)}s >= gameDuration=${gameDuration}s`);
           }
 
           // 次フレーム（60fps固定）
