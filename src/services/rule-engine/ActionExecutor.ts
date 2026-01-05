@@ -55,20 +55,24 @@ export class ActionExecutor {
       try {
         switch (action.type) {
           case 'success':
-            // 1秒後に終了するよう予約
-            newGameState.pendingEndTime = Date.now() + 1000;
-            newGameState.endReason = 'success';
+            // 1秒後に終了するよう予約（まだ予約されていない場合のみ）
+            if (context.gameState.pendingEndTime === undefined) {
+              newGameState.pendingEndTime = Date.now() + 1000;
+              newGameState.endReason = 'success';
+              effectsApplied.push(`成功予約: ${action.message || ''}`);
+            }
             if (action.score) {
               newGameState.score = (context.gameState.score || 0) + action.score;
             }
-            effectsApplied.push(`成功: ${action.message || ''}`);
             break;
 
           case 'failure':
-            // 1秒後に終了するよう予約
-            newGameState.pendingEndTime = Date.now() + 1000;
-            newGameState.endReason = 'failure';
-            effectsApplied.push(`失敗: ${action.message || ''}`);
+            // 1秒後に終了するよう予約（まだ予約されていない場合のみ）
+            if (context.gameState.pendingEndTime === undefined) {
+              newGameState.pendingEndTime = Date.now() + 1000;
+              newGameState.endReason = 'failure';
+              effectsApplied.push(`失敗予約: ${action.message || ''}`);
+            }
             break;
 
           case 'addScore':
