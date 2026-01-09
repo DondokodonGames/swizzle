@@ -188,8 +188,15 @@ export class EffectManager {
    */
   private updateScaleEffect(obj: GameObject, progress: number): void {
     if (obj.baseScale !== undefined && obj.effectScale !== undefined) {
-      const easedProgress = 1 - Math.pow(1 - progress, 3);
-      obj.scale = obj.baseScale + (obj.effectScale - obj.baseScale) * easedProgress;
+      // 潰れるアニメーション: 1.0 → scaleAmount → 1.0
+      const t = progress * 2; // 0-2の範囲
+      if (t < 1) {
+        // 前半: 1.0 → scaleAmount
+        obj.scale = obj.baseScale * (1.0 - (1.0 - obj.effectScale) * t);
+      } else {
+        // 後半: scaleAmount → 1.0
+        obj.scale = obj.baseScale * (obj.effectScale + (1.0 - obj.effectScale) * (t - 1));
+      }
     }
   }
 

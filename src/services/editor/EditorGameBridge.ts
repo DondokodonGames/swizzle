@@ -688,39 +688,6 @@ export class EditorGameBridge {
               }
             }
 
-            // ✅ エフェクト更新（bc9ae40f版のロジック）
-            if (obj.effectStartTime !== undefined && obj.effectDuration !== undefined) {
-              const elapsed = currentTime - obj.effectStartTime;
-
-              if (elapsed < obj.effectDuration) {
-                // エフェクト実行中
-                if (obj.effectType === 'scale') {
-                  // baseScaleが未定義の場合のフォールバック
-                  if (obj.baseScale === undefined) {
-                    obj.baseScale = obj.scale;
-                  }
-                  
-                  const progress = elapsed / obj.effectDuration;
-                  // 潰れるアニメーション: 1.0 → scaleAmount → 1.0
-                  const t = progress * 2; // 0-2の範囲
-                  if (t < 1) {
-                    // 前半: 1.0 → scaleAmount
-                    obj.scale = obj.baseScale * (1.0 - (1.0 - obj.effectScale) * t);
-                  } else {
-                    // 後半: scaleAmount → 1.0
-                    obj.scale = obj.baseScale * (obj.effectScale + (1.0 - obj.effectScale) * (t - 1));
-                  }
-                }
-              } else {
-                // エフェクト終了
-                obj.scale = obj.baseScale || obj.scale;  // baseScaleがない場合は現在のscaleを維持
-                obj.effectStartTime = undefined;
-                obj.effectDuration = undefined;
-                obj.effectType = undefined;
-                obj.effectScale = undefined;
-              }
-            }
-
             // RuleEngineによる移動を適用（vx/vyが0でない場合のみ）
             if (obj.vx !== undefined && obj.vx !== 0) {
               obj.x += obj.vx;
