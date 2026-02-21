@@ -230,8 +230,10 @@ export class Orchestrator {
 
   /**
    * 単一ゲーム生成（強化版パイプライン）
+   *
+   * @param seed ネタ帳のエントリ（指定時はシードベース生成、省略時は完全ランダム生成）
    */
-  private async generateSingleGame(): Promise<GenerationResult> {
+  private async generateSingleGame(seed?: { id: number; title: string; idea: string; mechanic?: string; theme?: string }): Promise<GenerationResult> {
     const startTime = Date.now();
     let validationPassedFirstTry = true;
 
@@ -245,9 +247,13 @@ export class Orchestrator {
       let conceptRetries = 0;
 
       while (true) {
-        concept = await this.conceptGenerator.generate(
-          conceptRetries > 0 ? 'Previous concept had issues, please improve' : undefined
-        );
+        // シードが指定されている場合はネタ帳ベースで生成、そうでなければ完全ランダム
+        concept = seed
+          ? await this.conceptGenerator.generateFromSeed(seed,
+              conceptRetries > 0 ? 'Previous concept had issues, please improve' : undefined)
+          : await this.conceptGenerator.generate(
+              conceptRetries > 0 ? 'Previous concept had issues, please improve' : undefined
+            );
         console.log(`      Title: ${concept.title}`);
 
         // Log concept
@@ -609,6 +615,148 @@ export class Orchestrator {
     const themes = new Set(result.games.map(g => g.concept.theme));
     console.log(`\nUnique Themes: ${themes.size}`);
     console.log('='.repeat(60));
+  }
+
+  /**
+   * ネタ帳ベースのバッチ実行
+   *
+   * neta.json の未処理エントリを消化してゲームを生成する。
+   * 全エントリ消化後は通常の完全ランダム生成（run()）にフォールバックする。
+   *
+   * @param netaFile neta.json のファイルパス
+   * @param count 生成するゲーム数（neta.json の残件数を上限とする）
+   */
+  async runFromNeta(netaFile: string, count: number = 1): Promise<BatchResult> {
+    if (this.isRunning) {
+      throw new Error('Already running');
+    }
+
+    // ネタ帳を読み込む
+    if (!fs.existsSync(netaFile)) {
+      throw new Error(`neta.json not found: ${netaFile}`);
+    }
+
+    const netaData = JSON.parse(fs.readFileSync(netaFile, 'utf-8')) as {
+      version: string;
+      description: string;
+      totalCount: number;
+      items: Array<{ id: number; title: string; idea: string; mechanic?: string; theme?: string }>;
+    };
+
+    // 進捗ファイルを読み込む（neta.json と同じディレクトリの neta-progress.json）
+    const progressFile = path.join(path.dirname(netaFile), 'neta-progress.json');
+    let processedIds: Set<number> = new Set();
+
+    if (fs.existsSync(progressFile)) {
+      const progressData = JSON.parse(fs.readFileSync(progressFile, 'utf-8')) as { processedIds: number[] };
+      processedIds = new Set(progressData.processedIds);
+      console.log(`   📖 Progress: ${processedIds.size}/${netaData.totalCount} items already processed`);
+    } else {
+      console.log(`   📖 Starting fresh neta generation (0/${netaData.totalCount} processed)`);
+    }
+
+    // 未処理エントリを取得
+    const pendingItems = netaData.items.filter(item => !processedIds.has(item.id));
+
+    if (pendingItems.length === 0) {
+      console.log('\n✅ ネタ帳消化完了！完全ランダム生成モードに切り替えます。');
+      console.log('   Use: npm run ai:v2 to continue with random generation\n');
+      // ネタ帳消化後は通常の run() にフォールバック
+      return this.run();
+    }
+
+    // 今回処理するエントリを選択
+    const itemsToProcess = pendingItems.slice(0, count);
+    const remaining = pendingItems.length - itemsToProcess.length;
+
+    console.log(`\n📓 ネタ帳モード: ${itemsToProcess.length}件を生成`);
+    console.log(`   残り ${remaining} 件（${processedIds.size + itemsToProcess.length}/${netaData.totalCount} 完了後 → ランダム生成に自動切替）`);
+
+    this.isRunning = true;
+    this.shouldStop = false;
+
+    const startTime = Date.now();
+    const results: GenerationResult[] = [];
+    let passed = 0;
+    let failed = 0;
+    let totalCost = 0;
+
+    console.log('\n' + '='.repeat(60));
+    console.log('🎮 V2 Game Generation Batch (ネタ帳モード)');
+    console.log('='.repeat(60));
+
+    for (let i = 0; i < itemsToProcess.length && !this.shouldStop; i++) {
+      const seed = itemsToProcess[i];
+      console.log(`\n📦 Game ${i + 1}/${itemsToProcess.length} [ネタ #${seed.id}]`);
+
+      try {
+        const result = await this.generateSingleGame(seed);
+
+        if (result.passed) {
+          passed++;
+          console.log(`   ✅ Passed: ${result.concept.title}`);
+
+          this.saveGameLocally(result);
+
+          if (this.uploader) {
+            await this.uploadGame(result);
+          }
+        } else {
+          failed++;
+          console.log(`   ❌ Failed: ${result.concept.title}`);
+        }
+
+        results.push(result);
+        totalCost += result.estimatedCost;
+
+        // 進捗を保存（生成成功・失敗に関わらず処理済みとしてマーク）
+        processedIds.add(seed.id);
+        fs.writeFileSync(
+          progressFile,
+          JSON.stringify({ processedIds: Array.from(processedIds) }, null, 2),
+          'utf-8'
+        );
+
+        await this.delay(1000);
+
+      } catch (error) {
+        console.error(`   ❌ Error: ${(error as Error).message}`);
+        failed++;
+        // エラーでも処理済みとしてマーク（無限ループ防止）
+        processedIds.add(seed.id);
+        fs.writeFileSync(
+          progressFile,
+          JSON.stringify({ processedIds: Array.from(processedIds) }, null, 2),
+          'utf-8'
+        );
+      }
+    }
+
+    this.isRunning = false;
+
+    const totalTime = Date.now() - startTime;
+    const batchResult: BatchResult = {
+      totalGenerated: results.length,
+      passed,
+      failed,
+      passRate: results.length > 0 ? passed / results.length : 0,
+      totalTime,
+      totalCost,
+      games: results
+    };
+
+    this.printFinalReport(batchResult);
+
+    // 残りのネタ帳状況を表示
+    const finalRemaining = netaData.totalCount - processedIds.size;
+    if (finalRemaining <= 0) {
+      console.log('\n🎉 ネタ帳200件の消化完了！次回から完全ランダム生成モードになります。');
+      console.log('   Use: npm run ai:v2 (ランダム生成)');
+    } else {
+      console.log(`\n📓 残り ${finalRemaining}/${netaData.totalCount} 件 → 次回: npm run ai:neta`);
+    }
+
+    return batchResult;
   }
 
   /**

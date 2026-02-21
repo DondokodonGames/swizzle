@@ -541,6 +541,97 @@ export class GameConceptGenerator {
   }
 
   /**
+   * ネタ帳のシードからコンセプトを生成
+   *
+   * ランダム生成の代わりに、事前定義されたアイデアをヒントとして使用する。
+   * 200件のネタ帳を消化した後は generate() による完全ランダム生成に切り替わる。
+   */
+  async generateFromSeed(seed: { id: number; title: string; idea: string; mechanic?: string; theme?: string }, feedback?: string): Promise<GameConcept> {
+    if (this.config.dryRun) {
+      return {
+        ...this.generateMockConcept(),
+        title: seed.title,
+        theme: seed.theme || 'テスト'
+      };
+    }
+
+    console.log(`      📖 Seed #${seed.id}: "${seed.title}"`);
+
+    const prompt = `あなたはスマホ向け超短時間ミニゲームのゲームデザイナーです。
+
+# ゲームの長さについて（重要）
+**WarioWareのような5〜10秒で終わる超短時間ゲームを設計してください。**
+
+# 絶対に守る前提条件
+
+1. **目標明確性**: プレイヤーが画面を見た瞬間に「何をすべきか」がわかる
+2. **操作明確性**: プレイヤーが「どう操作すればいいか」がわかる（タップ/スワイプ/ドラッグ/長押しを明記）
+3. **判定明確性**: 成功と失敗の基準が数値で明確
+4. **納得感**: 結果に対してプレイヤーが納得できる
+
+# 今回のゲームアイデア（必ずこのアイデアを元にしてください）
+
+タイトル案: 「${seed.title}」
+アイデア: ${seed.idea}${seed.mechanic ? `\nメカニクス: ${seed.mechanic}` : ''}${seed.theme ? `\nテーマ: ${seed.theme}` : ''}
+
+上記のアイデアを元に、4つの前提条件を全て満たすゲームコンセプトを具体化してください。
+タイトルは変更しても構いません（より良いものがあれば）。
+アイデアの本質を活かしつつ、ゲームとして成立させてください。
+
+# ⚠️ 必須: playerOperationに操作方法を必ず明記
+タップ / スワイプ / ドラッグ / 長押し のいずれかを具体的に記述すること。
+
+# 出力（JSON形式）
+
+{
+  "title": "タイトル（日本語）",
+  "titleEn": "English Title",
+  "description": "一文でゲーム説明",
+  "duration": 7,
+  "theme": "${seed.theme || 'テーマを決めてください'}",
+  "visualStyle": "ビジュアルスタイル（テーマに合わせて選択）",
+  "genre": "アクション/パズル/タイミング/収集等",
+  "tags": ["タグ1", "タグ2", "タグ3"],
+  "playerGoal": "プレイヤーの目標（具体的に、数値を含む）",
+  "playerOperation": "★必須: 操作方法を明記（例: ○○をタップ / 左右にスワイプ / ドラッグで移動）",
+  "successCondition": "成功条件（必ず数値を含む）",
+  "failureCondition": "失敗条件（必ず数値を含む、時間切れ以外も）",
+  "selfEvaluation": {
+    "goalClarity": 8,
+    "operationClarity": 8,
+    "judgmentClarity": 8,
+    "acceptance": 8,
+    "reasoning": "各項目について1文ずつ理由を記述"
+  }
+}
+
+JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n${feedback}\n\n上記の問題を解決したコンセプトを生成してください。` : ''}`;
+
+    const response = await this.llmProvider.chat(
+      [{ role: 'user', content: prompt }],
+      { maxTokens: 1024, model: this.config.model }
+    );
+
+    const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('No JSON found in response');
+    }
+
+    const concept = JSON.parse(jsonMatch[0]) as GameConcept;
+
+    const { goalClarity, operationClarity, judgmentClarity, acceptance } = concept.selfEvaluation;
+    const allAboveMin = [goalClarity, operationClarity, judgmentClarity, acceptance]
+      .every(score => score >= this.config.minScore);
+
+    if (!allAboveMin) {
+      throw new Error(`Self-evaluation scores below minimum (${this.config.minScore}): ${JSON.stringify(concept.selfEvaluation)}`);
+    }
+
+    this.usedThemes.add(concept.theme);
+    return concept;
+  }
+
+  /**
    * キャッシュクリア
    */
   clearCache(): void {
