@@ -1708,6 +1708,32 @@ export class SpecificationGenerator {
 
     const spec = this.extractAndParseJSON(response.content);
 
+    // 必須フィールドのデフォルト値補填
+    if (!spec.successPath) {
+      spec.successPath = { steps: ['ゲームをクリアする'], verification: '成功条件を達成' };
+    }
+    if (!spec.feedbackSpec) {
+      spec.feedbackSpec = { triggers: [] };
+    }
+    if (!spec.uiVisibility) {
+      spec.uiVisibility = {
+        touchTargetMinSize: 'medium',
+        contrastRequirement: 'high',
+        layoutStrategy: 'distributed',
+        overlapPolicy: 'avoid',
+        safeZone: { top: 0.1, bottom: 0.1, left: 0.05, right: 0.05 }
+      };
+    }
+    if (!spec.endingSpec) {
+      spec.endingSpec = {
+        success: { duration: 2, effects: ['confetti', 'message'], soundId: 'success', message: '成功！' },
+        failure: { duration: 1.5, effects: ['shake', 'message'], soundId: 'failure', message: '失敗...' }
+      };
+    }
+    if (!spec.priorityDesign) {
+      spec.priorityDesign = { layers: [], conflictResolution: 'highest-priority', notes: [] };
+    }
+
     // ログに記録（nullチェック付き）
     this.logger?.logSpecificationGeneration({
       objects: (spec.objects || []).map(o => ({ id: o.id, behavior: o.touchable ? 'interactive' : 'static' })),

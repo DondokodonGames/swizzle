@@ -309,10 +309,10 @@ export class Orchestrator {
       let spec: GameSpecification;
       try {
         spec = await this.specificationGenerator.generate(concept, design, assetPlan);
-        console.log(`      Rules: ${spec.rules.length}`);
-        console.log(`      Counters: ${spec.stateManagement.counters.length}`);
-        console.log(`      Success path: ${spec.successPath.steps.length} steps`);
-        console.log(`      Feedbacks: ${spec.feedbackSpec.triggers.length}`);
+        console.log(`      Rules: ${spec.rules?.length ?? 0}`);
+        console.log(`      Counters: ${spec.stateManagement?.counters?.length ?? 0}`);
+        console.log(`      Success path: ${spec.successPath?.steps?.length ?? 0} steps`);
+        console.log(`      Feedbacks: ${spec.feedbackSpec?.triggers?.length ?? 0}`);
       } catch (error) {
         this.logger.logError('SpecificationGenerator', error as Error);
         throw error;
