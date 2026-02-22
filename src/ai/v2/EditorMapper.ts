@@ -522,12 +522,10 @@ playSound アクションには必ず soundId を指定:
 - priorityDesign に記載がないルールは priority を省略（FinalAssembler が配列順で補完）
 - 例: win-condition ルールを最優先（高い数値）、フィードバックルールを低優先
 
-```json
-// priorityDesign.rulePriorities の例に従う:
-{ "id": "rule_win", "priority": 100, ... }  // 高優先
-{ "id": "rule_tap", "priority": 50, ... }   // 中優先
-{ "id": "rule_fail", "priority": 10, ... }  // 低優先
-```
+（例: priorityDesign.rulePriorities に従う）
+  { "id": "rule_win", "priority": 100 }  // 高優先
+  { "id": "rule_tap", "priority": 50 }   // 中優先
+  { "id": "rule_fail", "priority": 10 }  // 低優先
 
 ## UI配置制約（uiVisibility.safeZone を反映）★重要
 
@@ -538,11 +536,9 @@ playSound アクションには必ず soundId を指定:
 - オブジェクトの position.y を `[safeZone.top, 1 - safeZone.bottom]` の範囲内に収める
 - これによりスコア表示・タイマー等のUI部品とゲームオブジェクトが重ならない
 
-```
-例: safeZone = { top: 0.12, bottom: 0.05, left: 0.05, right: 0.05 } の場合
-  x: 0.05 〜 0.95 の範囲
-  y: 0.12 〜 0.95 の範囲
-```
+（例: safeZone = { top: 0.12, bottom: 0.05, left: 0.05, right: 0.05 } の場合）
+  x の有効範囲: 0.05 〜 0.95
+  y の有効範囲: 0.12 〜 0.95
 
 ## 終了演出（endingSpec を反映）★重要
 
