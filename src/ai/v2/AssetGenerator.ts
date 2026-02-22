@@ -294,19 +294,33 @@ Scene: ${bgPlan.description}
 Mood: ${bgPlan.mood}
 Style: ${concept.visualStyle}
 
+GAME CONTEXT (bake into background design):
+- Player goal: ${concept.playerGoal}
+- Player action: ${concept.playerOperation}
+
 BACKGROUND STYLE:
 ${bgStyleVariations}
 
+COMPOSITION:
+- Vertical mobile format (portrait orientation, 9:16 ratio)
+- Game objects (sprites) will be overlaid on top in the central area
+- STRONGLY ENCOURAGED: Bake gameplay context visuals into the background scene:
+  * Goal zones / target areas (e.g., a basket at the bottom for catch games, a goal post, landing pad)
+  * Play area boundaries (lanes, arena walls, floor lines)
+  * Directional cues / arrows indicating where the action happens
+  * Environmental storytelling that shows the player what kind of game this is
+  * Visual hierarchy — dark/empty center, rich context at edges and extremes
+
 CRITICAL REQUIREMENTS:
-- NO characters, NO game objects, NO icons, NO UI elements, NO text
-- Central area (middle 60% of screen) must be clear for game objects
-- Vertical mobile format composition (portrait orientation)
+- No actual interactive game sprites or characters (those are overlaid separately)
+- No written text or word labels
+- Central play area must remain visually accessible (not too busy in the middle)
 - Depth through atmospheric perspective
 
 FORBIDDEN:
-- No foreground elements that would overlap with game objects
-- No busy patterns in the central play area
-- No photorealistic style (unless specifically requested)`;
+- Photorealistic style (unless specifically requested)
+- Completely plain/abstract gradient with zero gameplay context (looks like a screensaver, not a game)
+- Busy repeating patterns covering the entire screen evenly`;
   }
 
   /**
