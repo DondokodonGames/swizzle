@@ -515,9 +515,9 @@ playSound アクションには必ず soundId を指定:
 
 ## ルールの優先度（priorityDesign を反映）★重要
 
-仕様の `priorityDesign.rulePriorities` を参照してルールの priority 値を設定してください。
+仕様の \`priorityDesign.rulePriorities\` を参照してルールの priority 値を設定してください。
 
-- priority 値は rules 配列の各要素に `"priority": number` として出力する
+- priority 値は rules 配列の各要素に \`"priority": number\` として出力する
 - 数値が **大きいほど優先度が高い**（先に評価される）
 - priorityDesign に記載がないルールは priority を省略（FinalAssembler が配列順で補完）
 - 例: win-condition ルールを最優先（高い数値）、フィードバックルールを低優先
@@ -529,11 +529,11 @@ playSound アクションには必ず soundId を指定:
 
 ## UI配置制約（uiVisibility.safeZone を反映）★重要
 
-仕様の `uiVisibility.safeZone` を参照してオブジェクトの初期位置を制約してください。
+仕様の \`uiVisibility.safeZone\` を参照してオブジェクトの初期位置を制約してください。
 
 - safeZone.top / bottom / left / right は 0.0〜1.0 のマージン（例: 0.1 = 10%）
-- オブジェクトの position.x を `[safeZone.left, 1 - safeZone.right]` の範囲内に収める
-- オブジェクトの position.y を `[safeZone.top, 1 - safeZone.bottom]` の範囲内に収める
+- オブジェクトの position.x を \`[safeZone.left, 1 - safeZone.right]\` の範囲内に収める
+- オブジェクトの position.y を \`[safeZone.top, 1 - safeZone.bottom]\` の範囲内に収める
 - これによりスコア表示・タイマー等のUI部品とゲームオブジェクトが重ならない
 
 （例: safeZone = { top: 0.12, bottom: 0.05, left: 0.05, right: 0.05 } の場合）
@@ -542,18 +542,18 @@ playSound アクションには必ず soundId を指定:
 
 ## 終了演出（endingSpec を反映）★重要
 
-仕様の `endingSpec` を参照して、success/failure アクションの**直前**に適切な演出を追加してください。
+仕様の \`endingSpec\` を参照して、success/failure アクションの**直前**に適切な演出を追加してください。
 
 ### endingSpec.success の使い方
-- `effects` に 'confetti' が含まれる → `{ type: 'effect', targetId: <中心オブジェクト>, effect: { type: 'particles', duration: 1.0, intensity: 1.5 } }`
-- `effects` に 'flash' が含まれる → `{ type: 'effect', targetId: <中心オブジェクト>, effect: { type: 'flash', duration: 0.4, intensity: 1.0 } }`
-- `effects` に 'zoom' が含まれる → `{ type: 'effect', targetId: <中心オブジェクト>, effect: { type: 'scale', duration: 0.3, intensity: 1.3 } }`
-- `message` がある → `{ type: 'showMessage', text: '<message>', duration: 1.5 }` を success の直前に追加
-- `soundId` → 対応する playSound アクションを success の直前に追加
+- \`effects\` に 'confetti' が含まれる → \`{ type: 'effect', targetId: <中心オブジェクト>, effect: { type: 'particles', duration: 1.0, intensity: 1.5 } }\`
+- \`effects\` に 'flash' が含まれる → \`{ type: 'effect', targetId: <中心オブジェクト>, effect: { type: 'flash', duration: 0.4, intensity: 1.0 } }\`
+- \`effects\` に 'zoom' が含まれる → \`{ type: 'effect', targetId: <中心オブジェクト>, effect: { type: 'scale', duration: 0.3, intensity: 1.3 } }\`
+- \`message\` がある → \`{ type: 'showMessage', text: '<message>', duration: 1.5 }\` を success の直前に追加
+- \`soundId\` → 対応する playSound アクションを success の直前に追加
 
 ### endingSpec.failure の使い方
-- `effects` に 'flash' → `{ type: 'effect', ... effect: { type: 'shake', ... } }`
-- `message` → `{ type: 'showMessage', text: '<message>', duration: 1.0 }` を failure の直前に追加
+- \`effects\` に 'flash' → \`{ type: 'effect', ... effect: { type: 'shake', ... } }\`
+- \`message\` → \`{ type: 'showMessage', text: '<message>', duration: 1.0 }\` を failure の直前に追加
 
 # 入力
 
