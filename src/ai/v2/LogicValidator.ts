@@ -23,7 +23,7 @@ import {
 // 使用可能な条件タイプ（すべて使用可能）
 const VALID_CONDITIONS: VerifiedConditionType[] = [
   'touch', 'time', 'counter', 'collision', 'flag', 'gameState',
-  'position', 'animation', 'random', 'objectState'
+  'position', 'animation', 'random', 'objectState', 'always'
 ];
 
 // 使用可能なアクションタイプ（すべて使用可能）
@@ -31,8 +31,8 @@ const VALID_ACTIONS: VerifiedActionType[] = [
   'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag',
   'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'setAnimationSpeed',
   'setAnimationFrame', 'followDrag', 'applyForce', 'applyImpulse',
-  'randomAction', 'pause', 'restart'
-  // 使用禁止: showMessage, setGravity, setPhysics
+  'randomAction', 'pause', 'restart', 'showMessage'
+  // 使用禁止: setGravity, setPhysics
 ];
 
 
@@ -256,6 +256,51 @@ export class LogicValidator {
    * - NG: time成功 + 失敗条件なし（絶対クリア）
    * - NG: time失敗 + 成功にプレイヤー操作なし（自動失敗）
    */
+  /**
+   * 成功パスにプレイヤー操作が存在するか（カウンター連鎖を考慮）
+   * - touch/collision/position 条件を直接持つ成功ルール
+   * - カウンターをタップで増やして成功するルール（間接的なプレイヤー操作）
+   * - followDrag によるドラッグ操作
+   */
+  private hasPlayerActionOnPath(output: LogicGeneratorOutput): boolean {
+    const successRules = output.script.rules.filter(r =>
+      r.actions?.some(a => a.type === 'success')
+    );
+    const playerActionTypes = ['touch', 'collision', 'position'];
+    const hasDraggableObject = output.script.rules.some(r =>
+      r.actions?.some(a => a.type === 'followDrag')
+    );
+
+    for (const rule of successRules) {
+      const conditions = rule.triggers?.conditions || [];
+
+      // 直接プレイヤー操作
+      if (conditions.some(c => playerActionTypes.includes(c.type))) return true;
+
+      // followDrag がある場合の collision/position
+      if (hasDraggableObject && conditions.some(c => c.type === 'collision' || c.type === 'position')) return true;
+
+      // カウンター経由のプレイヤー操作（カウンターをタップで増やす）
+      for (const cond of conditions) {
+        if (cond.type === 'counter' && cond.counterName) {
+          const hasPlayerIncrement = output.script.rules.some(r =>
+            r.actions?.some(a =>
+              a.type === 'counter' &&
+              a.counterName === cond.counterName &&
+              (a.operation === 'increment' || a.operation === 'add')
+            ) &&
+            r.triggers?.conditions?.some(c =>
+              playerActionTypes.includes(c.type) ||
+              (hasDraggableObject && (c.type === 'collision' || c.type === 'position'))
+            )
+          );
+          if (hasPlayerIncrement) return true;
+        }
+      }
+    }
+    return false;
+  }
+
   private checkAutoSuccess(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
     const successRules = output.script.rules.filter(r =>
       r.actions?.some(a => a.type === 'success')
@@ -273,21 +318,15 @@ export class LogicValidator {
       return conditions.some(c => playerActionTypes.includes(c.type));
     });
 
-    // 成功条件にプレイヤー操作が含まれているか
-    const hasPlayerActionInSuccess = successRules.some(rule => {
-      const conditions = rule.triggers?.conditions || [];
-      return conditions.some(c => playerActionTypes.includes(c.type));
-    });
-
     for (const rule of successRules) {
       const conditions = rule.triggers?.conditions || [];
 
-      // time/gameState条件のみで成功する場合
+      // time/gameState/flag 条件のみで成功する場合（counterは除外：通常プレイヤーが増やす）
       const hasOnlyAutoCondition = conditions.length > 0 &&
-        conditions.every(c => c.type === 'time' || c.type === 'gameState' || c.type === 'counter' || c.type === 'flag');
+        conditions.every(c => c.type === 'time' || c.type === 'gameState' || c.type === 'flag');
 
       if (hasOnlyAutoCondition) {
-        // ★修正: 失敗条件にプレイヤー操作がある場合は許容（落とさなければ成功パターン）
+        // 失敗条件にプレイヤー操作がある場合は許容（落とさなければ成功パターン）
         if (hasPlayerActionInFailure) {
           // OK: プレイヤー操作で失敗できる = ゲームとして成立
           continue;
@@ -303,7 +342,9 @@ export class LogicValidator {
       }
     }
 
-    // 自動失敗チェック（time条件のみで失敗 + 成功にプレイヤー操作がない）
+    // 自動失敗チェック（time条件のみで失敗 + 成功パスにプレイヤー操作がない）
+    // カウンター経由のプレイヤー操作（タップでカウンター増加→成功）も考慮する
+    const successRequiresPlayerAction = this.hasPlayerActionOnPath(output);
     for (const rule of failureRules) {
       const conditions = rule.triggers?.conditions || [];
 
@@ -311,12 +352,12 @@ export class LogicValidator {
       const hasOnlyTimeFailure = conditions.length > 0 &&
         conditions.every(c => c.type === 'time');
 
-      if (hasOnlyTimeFailure && !hasPlayerActionInSuccess) {
+      if (hasOnlyTimeFailure && !successRequiresPlayerAction) {
         errors.push({
           type: 'critical',
           code: 'AUTO_FAILURE',
           message: `自動失敗: ルール "${rule.id}" は時間経過で失敗し、成功にプレイヤー操作がありません`,
-          fix: `成功条件にプレイヤー操作（touch, collision, position）を追加してください`
+          fix: `成功条件にプレイヤー操作（touch, collision, position）を追加するか、カウンターをタップで増やすルールを追加してください`
         });
       }
     }

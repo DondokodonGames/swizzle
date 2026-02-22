@@ -477,6 +477,10 @@ export class Orchestrator {
 
       // Step 7: AssetGenerator
       console.log('   🎨 Step 7: Generating assets...');
+      // AssetPlannerのリッチな背景説明をAssetGeneratorに渡す
+      // （EditorMapperは簡略化した背景説明しか生成しないため上書きが必要）
+      logicOutput.assetPlan.background.description = assetPlan.background.description;
+      logicOutput.assetPlan.background.mood = assetPlan.background.mood;
       const assets = await this.assetGenerator.generate(concept, logicOutput.assetPlan);
 
       // Step 8: FinalAssembler

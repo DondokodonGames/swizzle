@@ -146,7 +146,8 @@ export class DryRunSimulator {
   private createInitialState(output: LogicGeneratorOutput): GameState {
     const counters = new Map<string, number>();
     for (const counter of output.script.counters) {
-      counters.set(counter.name, counter.initialValue);
+      // counter.id をキーとして使用（LogicValidator/EditorMapper はすべて counter.id で参照）
+      counters.set(counter.id, counter.initialValue);
     }
 
     const visibleObjects = new Set<string>();
@@ -220,6 +221,7 @@ export class DryRunSimulator {
     const state = this.cloneState(initialState);
     const steps: SimulationStep[] = [];
     let tapCount = 0;
+    let timeEstimate = 0; // 待機が必要な秒数（time条件など）
 
     // 成功条件を分析
     const conditions = successRule.triggers?.conditions || [];
@@ -293,8 +295,41 @@ export class DryRunSimulator {
           // 状態を更新
           this.applyRule(state, incrementRule);
         }
+      } else if (condition.type === 'touch') {
+        // タップ条件: プレイヤーが1回タップする必要がある
+        const tapTarget = condition.target || successRule.targetObjectId || 'object';
+        if (tapTarget !== 'stage' && state.hiddenObjects.has(tapTarget)) {
+          return {
+            reachable: false,
+            requiredTaps: -1,
+            estimatedSeconds: -1,
+            blockers: [`Touch target "${tapTarget}" is hidden`]
+          };
+        }
+        steps.push({
+          action: 'tap',
+          target: tapTarget,
+          result: 'Touch condition triggered'
+        });
+        tapCount++;
+      } else if (condition.type === 'time') {
+        // タイム条件: 指定秒数の待機が必要
+        const waitTime = condition.seconds ?? condition.interval ?? 0;
+        if (waitTime > timeEstimate) {
+          timeEstimate = waitTime;
+        }
+        if (tapCount === 0 && steps.length === 0) {
+          // 時間待ちのみが必要な場合（avoid game など）
+          steps.push({
+            action: 'wait',
+            duration: waitTime,
+            result: `Wait ${waitTime}s for time condition`
+          });
+        }
       }
     }
+
+    const estimatedSeconds = tapCount * 0.5 + timeEstimate;
 
     // 成功パスが見つかった
     return {
@@ -302,10 +337,10 @@ export class DryRunSimulator {
       shortestPath: {
         steps,
         totalTaps: tapCount,
-        estimatedTime: tapCount * 0.5 // 0.5秒/タップと仮定
+        estimatedTime: estimatedSeconds
       },
       requiredTaps: tapCount,
-      estimatedSeconds: tapCount * 0.5,
+      estimatedSeconds,
       blockers: []
     };
   }
