@@ -560,7 +560,7 @@ export class Orchestrator {
       const uploadResult = await this.uploader.uploadGame(
         result.project,
         this.qualityScorer.calculateOverallScore(result.qualityScore),
-        false // privateMode
+        true // autoPublish
       );
 
       if (uploadResult.success) {
