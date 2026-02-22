@@ -134,6 +134,7 @@ export class AssetGenerator {
             prompt,
             n: 1,
             size: '1024x1024',
+            style: 'natural',
             response_format: 'b64_json'
           });
 
@@ -382,39 +383,29 @@ FORBIDDEN:
     // スタイルシート情報を構築
     const styleSheet = this.buildStyleSheet(concept);
 
-    return `Game sprite object for mobile game: ${objPlan.visualDescription}
+    return `Sticker / game icon on plain white background: ${objPlan.visualDescription}
 
-PURPOSE: ${objPlan.purpose}
-SIZE: ${sizeDesc}
-STYLE: ${concept.visualStyle}
+ONE OBJECT ONLY — like a product cutout or clipart sticker:
+- The object is centered, filling most of the frame
+- Plain white background — no scene, no landscape, no environment, no floor, no sky
+- No other characters or objects nearby
+
+ROLE IN GAME: ${objPlan.purpose}
+SIZE HINT: ${sizeDesc}
+STYLE: ${concept.visualStyle}, cartoon / vector art (NOT photorealistic)
 
 ${styleSheet}
 
-CRITICAL REQUIREMENTS:
-- MUST have fully transparent background (PNG with alpha channel)
-- Clear, distinct silhouette that's easily recognizable
-- Bold colors and strong contrast for visibility
-- Simple, clean design suitable for mobile game
-
-VIEW REQUIREMENTS (VERY IMPORTANT):
-- FRONT-FACING VIEW ONLY - show the object from the front/main angle
-- NOT a technical drawing, NOT a blueprint, NOT a 3D model sheet
-- NOT multi-angle view, NOT orthographic projection, NOT isometric
-- NOT a diagram or schematic
-- Just ONE single view of the object as it would appear in game
+VIEW: Front-facing, single angle only
+- NOT a multi-angle reference sheet, NOT a technical diagram
+- NOT a scene illustration or environment artwork
+- Just the object alone, as if cut out and placed on white paper
 
 FORBIDDEN:
-- NO background elements
-- NO shadows on ground
+- NO background scenery or environment of any kind
+- NO ground shadow or surface reflection
 - NO text or labels
-- NO multiple views of the same object
-- NO construction lines or measurements
-- NO top/side/front view combinations
-
-OUTPUT:
-- Single isolated object, centered in frame
-- Cartoon/game art style, not photorealistic
-- Ready to use as a game sprite`;
+- NO multiple views of the same object`;
   }
 
   /**
