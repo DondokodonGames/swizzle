@@ -1689,7 +1689,7 @@ export class SpecificationGenerator {
 
     const response = await this.llmProvider.chat(
       [{ role: 'user', content: prompt }],
-      { maxTokens: 8192, model: this.config.model }
+      { maxTokens: 16384, model: this.config.model }
     );
 
     this.tokensUsed = (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0);
@@ -1986,23 +1986,31 @@ export class SpecificationGenerator {
       // 修復を試みる
       let repaired = jsonStr;
 
-      // 1. コメントを削除
+      // 1. コメントを削除（// ... および /* ... */）
       repaired = repaired.replace(/\/\/[^\n]*/g, '');
+      repaired = repaired.replace(/\/\*[\s\S]*?\*\//g, '');
 
       // 2. 末尾のカンマを削除
       repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
 
-      // 3. 途中で切れた文字列を修復（未閉じの引用符を閉じる）
+      // 3. 配列・オブジェクト要素間の欠落カンマを補完
+      //    `} {` や `} [` や `] {` → `, ` を挿入（JSON では必ずカンマが必要）
+      repaired = repaired.replace(/\}(\s*)\{/g, '},$1{');
+      repaired = repaired.replace(/\](\s*)\[/g, '],$1[');
+      repaired = repaired.replace(/\}(\s*)\[/g, '},$1[');
+      repaired = repaired.replace(/\](\s*)\{/g, '],$1{');
+
+      // 4. 途中で切れた文字列を修復（未閉じの引用符を閉じる）
       const quoteCount = (repaired.match(/(?<!\\)"/g) || []).length;
       if (quoteCount % 2 !== 0) {
         repaired = repaired + '"';
       }
 
-      // 4. 途中で切れたプロパティを削除（"key": の後に値がない場合）
+      // 5. 途中で切れたプロパティを削除（"key": の後に値がない場合）
       repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*$/g, '');
       repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/g, '');
 
-      // 5. 配列とオブジェクトのバランスを修復
+      // 6. 配列とオブジェクトのバランスを修復
       const openBraces = (repaired.match(/\{/g) || []).length;
       const closeBraces = (repaired.match(/\}/g) || []).length;
       const openBrackets = (repaired.match(/\[/g) || []).length;
