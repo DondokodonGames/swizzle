@@ -369,8 +369,19 @@ timeType は以下のみ使用可能:
 ❌ 無効: 'state', 'deviceTilt', 'sensor', 'gesture', 'proximity', 'orientation', 'accelerometer'
 
 ### アクションタイプ（actions で使用）
-✅ 有効: 'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag', 'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'setAnimationSpeed', 'setAnimationFrame', 'followDrag', 'applyForce', 'applyImpulse', 'randomAction', 'pause', 'restart'
+✅ 有効: 'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag', 'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'setAnimationSpeed', 'setAnimationFrame', 'followDrag', 'applyForce', 'applyImpulse', 'randomAction', 'pause', 'restart', 'showMessage'
 ❌ 無効: 'changeState', 'adjustAngle', 'updateCounter', 'rotate', 'scale', 'fade', 'spawn', 'destroy', 'emit', 'trigger', 'conditional'
+
+### showMessage（画面上にテキストメッセージを表示）
+| パラメータ | 値 | 説明 |
+|-----------|-----|------|
+| text | string | 表示するテキスト（8文字以内推奨） |
+| duration | number | 表示時間（秒） |
+
+使用例（ゲーム開始時・重要イベント時のガイド表示）:
+- ゲーム開始直後: { "type": "showMessage", "text": "タップ！", "duration": 2.0 }
+- 正解時: { "type": "showMessage", "text": "すごい！", "duration": 1.5 }
+- 失敗時: { "type": "showMessage", "text": "ミス！", "duration": 1.0 }
 
 ### エフェクトタイプ（effect.type）
 ✅ 有効: 'flash', 'shake', 'scale', 'rotate', 'particles'
@@ -500,6 +511,7 @@ playSound アクションには必ず soundId を指定:
 - counter → { type: 'counter', counterName, operation, value? }
 - playSound → { type: 'playSound', soundId }
 - effect → { type: 'effect', targetId, effect }
+- showMessage → { type: 'showMessage', text, duration }
 
 # 入力
 
@@ -1115,6 +1127,13 @@ export class EditorMapper {
           type: 'applyImpulse' as const,
           targetId: params.targetId as string,
           impulse: params.impulse as { x: number; y: number }
+        };
+
+      case 'showMessage':
+        return {
+          type: 'showMessage' as const,
+          text: (params.text as string) || '',
+          duration: (params.duration as number) || 2.0
         };
 
       default:
