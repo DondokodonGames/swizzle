@@ -27,24 +27,47 @@ export class OpenAIProvider implements ILLMProvider {
       content: m.content
     }));
 
-    const response = await this.client.chat.completions.create({
-      model: options?.model || this.defaultModel,
-      max_tokens: options?.maxTokens || 4096,
-      temperature: options?.temperature,
-      messages: openaiMessages
-    });
+    const maxRetries = 5;
+    let lastError: unknown;
 
-    const choice = response.choices[0];
-    const content = choice?.message?.content || '';
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await this.client.chat.completions.create({
+          model: options?.model || this.defaultModel,
+          max_tokens: options?.maxTokens || 4096,
+          temperature: options?.temperature,
+          messages: openaiMessages
+        });
 
-    return {
-      content,
-      model: response.model,
-      usage: response.usage ? {
-        inputTokens: response.usage.prompt_tokens,
-        outputTokens: response.usage.completion_tokens
-      } : undefined
-    };
+        const choice = response.choices[0];
+        const content = choice?.message?.content || '';
+
+        return {
+          content,
+          model: response.model,
+          usage: response.usage ? {
+            inputTokens: response.usage.prompt_tokens,
+            outputTokens: response.usage.completion_tokens
+          } : undefined
+        };
+      } catch (error: unknown) {
+        lastError = error;
+        const apiError = error as { status?: number; message?: string };
+        if (apiError?.status === 429) {
+          // retry-after-ms ヘッダーまたはエラーメッセージから待機時間を取得
+          const msgMatch = apiError?.message?.match(/try again in (\d+)ms/i);
+          const waitMs = msgMatch
+            ? Math.max(parseInt(msgMatch[1]) + 200, 500)
+            : Math.min(1000 * Math.pow(2, attempt), 30000);
+          console.log(`      ⏳ Rate limited (attempt ${attempt + 1}/${maxRetries}), retrying in ${waitMs}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitMs));
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw lastError;
   }
 
   getProviderName(): string {
