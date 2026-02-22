@@ -704,7 +704,9 @@ export class LogicRepairer {
       const match = error.message.match(/undefined counter: (\w+)/);
       if (match) {
         const counterName = match[1];
-        if (!output.script.counters.find(c => c.id === counterName)) {
+        // id でも name でもマッチしない場合のみ追加（既存カウンターが id/name 不一致の場合も救済）
+        const existing = output.script.counters.find(c => c.id === counterName || c.name === counterName);
+        if (!existing) {
           output.script.counters.push({
             id: counterName,
             name: counterName,
@@ -716,6 +718,17 @@ export class LogicRepairer {
             target: `counters.${counterName}`,
             before: undefined,
             after: { id: counterName, name: counterName, initialValue: 0 }
+          });
+        } else if (existing.name !== counterName && existing.id === counterName) {
+          // ID は合っているが name が異なる → name を id に統一して修正
+          const before = { ...existing };
+          existing.name = counterName;
+          repairs.push({
+            errorCode: error.code,
+            action: 'Fixed counter name to match id',
+            target: `counters.${counterName}`,
+            before,
+            after: { ...existing }
           });
         }
       }

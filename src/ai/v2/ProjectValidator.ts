@@ -126,8 +126,12 @@ export class ProjectValidator {
 
     // 定義済みID一覧
     const definedObjectIds = new Set(output.assetPlan.objects.map(o => o.id));
-    const definedCounterNames = new Set(output.script.counters.map(c => c.name));
-    const definedCounterIds = new Set(output.script.counters.map(c => c.id));
+    // カウンターは name と id の両方でマッチできるようにする
+    // （ルールが id 形式で参照する場合も name 形式で参照する場合も有効）
+    const definedCounterKeys = new Set([
+      ...output.script.counters.map(c => c.name),
+      ...output.script.counters.map(c => c.id)
+    ]);
     const definedSoundIds = new Set(output.assetPlan.sounds.map(s => s.id));
     const layoutObjectIds = new Set(output.script.layout.objects.map(o => o.objectId));
 
@@ -154,7 +158,7 @@ export class ProjectValidator {
       if (rule.triggers?.conditions) {
         for (const condition of rule.triggers.conditions) {
           checks++;
-          this.checkConditionReferences(condition, definedObjectIds, definedCounterNames, issues, rule);
+          this.checkConditionReferences(condition, definedObjectIds, definedCounterKeys, issues, rule);
         }
       }
 
@@ -162,7 +166,7 @@ export class ProjectValidator {
       if (rule.actions) {
         for (const action of rule.actions) {
           checks++;
-          this.checkActionReferences(action, definedObjectIds, definedCounterNames, definedSoundIds, issues, rule);
+          this.checkActionReferences(action, definedObjectIds, definedCounterKeys, definedSoundIds, issues, rule);
         }
       }
     }

@@ -393,7 +393,7 @@ export class Orchestrator {
         if (logicRetries >= this.config.maxRetries) {
           console.log(`      ⚠️ Validation failed after ${logicRetries} retries`);
           console.log(`      Errors: ${combinedErrors.slice(0, 5).map(e => e.message).join(', ')}${combinedErrors.length > 5 ? '...' : ''}`);
-          break;
+          throw new Error(`Validation failed after ${logicRetries} retries: ${combinedErrors[0]?.message}`);
         }
 
         console.log(`      ⚠️ Issues: ${combinedErrors.length} errors`);
@@ -407,12 +407,13 @@ export class Orchestrator {
           spec
         );
 
+        // 修復結果を常に適用（repairs が空でも repairedOutput を使う）
+        logicOutput = repairResult.repairedOutput;
         if (repairResult.repairsApplied.length > 0) {
           console.log(`      ✅ Applied ${repairResult.repairsApplied.length} repairs`);
           for (const repair of repairResult.repairsApplied) {
             console.log(`         - ${repair.action}: ${repair.target}`);
           }
-          logicOutput = repairResult.repairedOutput;
         }
 
         // 全体再生成が必要な場合
