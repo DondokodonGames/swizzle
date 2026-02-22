@@ -201,7 +201,7 @@ export class FinalAssembler {
           id: rule.id,
           name: rule.name || rule.id,
           enabled: true,
-          priority: idx,
+          priority: rule.priority ?? idx,
           targetObjectId: rule.targetObjectId || 'stage',
           triggers: rule.triggers || { operator: 'AND' as const, conditions: [] },
           actions: rule.actions || [],

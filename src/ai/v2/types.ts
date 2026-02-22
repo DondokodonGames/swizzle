@@ -203,6 +203,8 @@ export interface GameRule {
   id: string;
   name?: string;
   targetObjectId?: string;
+  /** 実行優先度（数値が大きいほど優先）。spec.priorityDesign から設定される */
+  priority?: number;
   triggers?: {
     operator: 'AND' | 'OR';
     conditions: TriggerCondition[];
