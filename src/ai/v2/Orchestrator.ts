@@ -449,6 +449,24 @@ export class Orchestrator {
         }
       }
 
+      // Step 6.6: DryRunSimulator（ゲート）— アセット生成前に実行
+      // 遊べないゲームにはアセットを生成しない
+      console.log('   🎮 Step 6.6: Simulating gameplay (pre-asset gate)...');
+      const simulation = this.dryRunSimulator.simulate(logicOutput, spec);
+      if (simulation.summary.playable && simulation.summary.confidence !== 'low') {
+        console.log(`      ✅ Game playable (confidence: ${simulation.summary.confidence})`);
+        console.log(`      📊 Success path: ${simulation.success.requiredTaps} taps, ~${simulation.success.estimatedSeconds.toFixed(1)}s`);
+      } else {
+        const reason = simulation.summary.playable
+          ? `confidence too low: ${simulation.summary.confidence}`
+          : simulation.summary.reasoning;
+        console.log(`      ❌ Not playable — skipping asset generation`);
+        simulation.issues.filter(i => i.severity === 'error').forEach(i => {
+          console.log(`         ❌ [${i.code}] ${i.message}`);
+        });
+        throw new Error(`Game not playable: ${reason}`);
+      }
+
       // Step 7: AssetGenerator
       console.log('   🎨 Step 7: Generating assets...');
       const assets = await this.assetGenerator.generate(concept, logicOutput.assetPlan);
@@ -466,33 +484,24 @@ export class Orchestrator {
         console.log('      ✅ Game assembled');
       }
 
-      // ★NEW Step 8.5: DryRunSimulator
-      console.log('   🎮 Step 8.5: Simulating gameplay...');
-      const simulation = this.dryRunSimulator.simulate(logicOutput, spec);
-      if (simulation.summary.playable) {
-        console.log(`      ✅ Game playable (confidence: ${simulation.summary.confidence})`);
-        console.log(`      📊 Success path: ${simulation.success.requiredTaps} taps, ~${simulation.success.estimatedSeconds.toFixed(1)}s`);
-      } else {
-        console.log(`      ⚠️ Playability issues detected`);
-        console.log(`      📊 ${simulation.summary.reasoning}`);
-        simulation.issues.forEach(i => {
-          console.log(`         ${i.severity === 'error' ? '❌' : '⚠️'} [${i.code}] ${i.message}`);
-        });
-        validationPassedFirstTry = false;
-      }
-
       // Step 9: QualityScorer
       console.log('   📊 Step 9: Scoring quality...');
-      const qualityScore = this.qualityScorer.score(concept, assemblyResult.project, validationPassedFirstTry);
+      const qualityScore = this.qualityScorer.score(
+        concept,
+        assemblyResult.project,
+        validationPassedFirstTry,
+        {
+          playable: simulation.summary.playable,
+          confidence: simulation.summary.confidence,
+          requiredTaps: simulation.success.requiredTaps
+        }
+      );
       const overallScore = this.qualityScorer.calculateOverallScore(qualityScore);
       console.log(`      Score: ${overallScore}/100 (${this.qualityScorer.getLabel(overallScore)})`);
 
       const generationTime = Date.now() - startTime;
       const estimatedCost = this.estimateCost();
 
-      // Determine if game passed based on all validations
-      // 緩和版: assemblyが成功していればアップロードする
-      // シミュレーションの警告は無視（致命的なクラッシュにはならない）
       const passed = assemblyResult.valid;
 
       // End logging session

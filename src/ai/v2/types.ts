@@ -415,6 +415,10 @@ export interface QualityScore {
   ruleCount: number;
   objectCount: number;
   validationPassedFirstTry: boolean;
+  // DryRunSimulator の結果（スコアリングの主軸）
+  simulationConfidence: 'high' | 'medium' | 'low';
+  simulationPlayable: boolean;
+  simulationRequiredTaps: number;
   generatedAt: string;
 }
 
