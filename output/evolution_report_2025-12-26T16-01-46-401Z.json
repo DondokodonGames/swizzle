@@ -1,0 +1,160 @@
+{
+  "totalRuns": 10,
+  "successCount": 4,
+  "failureCount": 6,
+  "errorPatterns": [
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 3,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 2,
+      "examples": [
+        "successアクションが存在しません",
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 2,
+      "examples": [
+        "No success rule defined - game cannot be won",
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "EditorMapper:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "Cannot read properties of undefined (reading 'length')"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INSTANT_WIN",
+      "count": 1,
+      "examples": [
+        "ルール \"check_success\" は条件なしでsuccessが発動します"
+      ]
+    },
+    {
+      "errorType": "ConceptValidator:CONCEPT_VALIDATION",
+      "count": 1,
+      "examples": [
+        "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません"
+      ]
+    },
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "JSON parse failed: SyntaxError: Expected ',' or '}' after property value in JSON at position 1374 (line 56 column 32)"
+      ]
+    },
+    {
+      "errorType": "GameDesignGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "Cannot read properties of undefined (reading 'map')"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 1,
+      "examples": [
+        "コンフリクト: ルール \"check_success\" と \"check_collision_with_monster\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 1,
+      "examples": [
+        "Rules \"成功検出\" and \"モンスター衝突検出\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_OBJECT_ID",
+      "count": 1,
+      "examples": [
+        "ルール \"tap_wrong_place\" のアクションtargetId \"background_map\" がアセット計画に存在しません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_TOUCH_TARGET",
+      "count": 1,
+      "examples": [
+        "ルール \"tap_wrong_place\": 無効なtouch target \"background_map\""
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_TARGET",
+      "count": 1,
+      "examples": [
+        "Touch condition in rule \"間違った場所をタップ\" references undefined object: background_map"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_TARGET",
+      "count": 1,
+      "examples": [
+        "Action \"effect\" in rule \"間違った場所をタップ\" references undefined object: background_map"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "プレイヤー操作の検証",
+      "currentIssue": "成功へのパスにプレイヤー操作が含まれていない",
+      "suggestedAddition": "## プレイヤー操作ルール\n成功条件には必ずプレイヤー操作（touch/collision/position条件）の要素を含めてください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "成功ルール仕様",
+      "currentIssue": "successアクションが存在しない",
+      "suggestedAddition": "## 成功アクション定義\nゲーム内の成功条件に対応するsuccessアクションを必ず定義してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "ProjectValidator.ts",
+      "section": "プロジェクト全般の検証",
+      "currentIssue": "No success rule defined - game cannot be won",
+      "suggestedAddition": "## 成功規則の定義\nゲームをクリアするための成功規則を必ず設定してください。これにより、ゲームは正常に終了可能となります。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "成功ルールの条件設定",
+      "currentIssue": "ルールが条件なしでsuccessを発動する",
+      "suggestedAddition": "## 条件付き成功ルール\nsuccessアクションには明確な条件を設定し、無条件で発動しないようにしましょう。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "ConceptValidator.ts",
+      "section": "操作方法の明記",
+      "currentIssue": "操作方法が明記されていない",
+      "suggestedAddition": "##操作方法の記述\nplayerOperationには明確な操作方法（タップ/スワイプ/ドラッグ/長押し）を記載してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "GameDesignGenerator.ts",
+      "section": "ゲームデザイン生成エラー回避",
+      "currentIssue": "Cannot read properties of undefined",
+      "suggestedAddition": "## null/undefinedの未定義処理\nプロパティアクセスの前に値が定義されているかを必ず確認してください。",
+      "priority": "low"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "ルールの競合検出",
+      "currentIssue": "success/failureが同一条件で発動する可能性",
+      "suggestedAddition": "## 成功と失敗の条件競合\n同一条件でsuccessとfailureが発動しないように別々の条件を設定してください。",
+      "priority": "medium"
+    }
+  ]
+}

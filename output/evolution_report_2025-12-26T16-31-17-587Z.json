@@ -1,0 +1,116 @@
+{
+  "totalRuns": 10,
+  "successCount": 6,
+  "failureCount": 4,
+  "errorPatterns": [
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 3,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 3,
+      "examples": [
+        "コンフリクト: ルール \"swipe_left_correct\" と \"swipe_wrong\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"swipe_right_correct\" と \"swipe_wrong\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"swipe_up_correct\" と \"swipe_wrong\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 3,
+      "examples": [
+        "Rules \"Correct Left Swipe\" and \"Incorrect Swipe\" can trigger both success and failure with same condition",
+        "Rules \"Correct Right Swipe\" and \"Incorrect Swipe\" can trigger both success and failure with same condition",
+        "Rules \"Correct Up Swipe\" and \"Incorrect Swipe\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_SUCCESS",
+      "count": 2,
+      "examples": [
+        "自動成功: ルール \"balance_check\" はプレイヤー操作なしで成功します",
+        "自動成功: ルール \"end_game_success\" はプレイヤー操作なしで成功します"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功パス確認要: ルール \"balance_check\" の成功条件がプレイヤー操作に依存していない可能性があります",
+        "成功パス確認要: ルール \"end_game_success\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    },
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 2,
+      "examples": [
+        "No JSON found in response",
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 15727, Requested 14403. Please try again in 260ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_ACTION_TYPE",
+      "count": 1,
+      "examples": [
+        "ルール \"shuriken_aim_and_throw\": 使用できないアクションタイプ \"touch\""
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 1,
+      "examples": [
+        "No success rule defined - game cannot be won"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "プレイヤー操作なしにルールが成功するケース",
+      "suggestedAddition": "## プレイヤー操作依存ルール\nすべてのルールは少なくとも1つのプレイヤーの操作に依存する必要があります。プレイヤーの操作条件がルールに含まれていることを確認してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "同一条件でコンフリクトする成功/失敗ルール",
+      "suggestedAddition": "## コンフリクト防止ガイドライン\n同一条件下で異なる結果を持つルールを定義しないでください。ルールが互いに矛盾しないように、成功と失敗の条件を明確に区別してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "不使用のプレイヤーアクションタイプ",
+      "suggestedAddition": "## 使用可能なアクションタイプ\nルールで使用可能なプレイヤーのアクションタイプのリストを更新し、サポートされていないアクションが含まれていないことを確認してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "GameDesignGenerator.ts",
+      "section": "coreExperience",
+      "currentIssue": "成功ルール未定義でゲームが終了できない",
+      "suggestedAddition": "## 成功条件の設定\nゲームの終了には少なくとも1つの成功ルールを定義する必要があります。常に成功ルールを定義するようにします。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "JSON生成エラー",
+      "suggestedAddition": "## JSON形式の確認\nレスポンスを生成する際に常に有効なJSON形式で出力されることを保証し、構文エラーや不完全な構造を修正してください。",
+      "priority": "medium"
+    }
+  ]
+}

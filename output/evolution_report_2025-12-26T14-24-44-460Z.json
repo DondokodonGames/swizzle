@@ -1,0 +1,143 @@
+{
+  "totalRuns": 10,
+  "successCount": 5,
+  "failureCount": 5,
+  "errorPatterns": [
+    {
+      "errorType": "ConceptValidator:CONCEPT_VALIDATION",
+      "count": 3,
+      "examples": [
+        "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+        "playerGoalに数値または「全て」がありません（推奨）",
+        "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:MISSING_SOUND_ID",
+      "count": 3,
+      "examples": [
+        "ルール \"pass_torii\": playSoundアクションにsoundIdがありません",
+        "ルール \"collision_with_torii\": playSoundアクションにsoundIdがありません",
+        "ルール \"timeout\": playSoundアクションにsoundIdがありません"
+      ]
+    },
+    {
+      "errorType": "EditorMapper:GENERATION_ERROR",
+      "count": 2,
+      "examples": [
+        "Cannot read properties of undefined (reading 'length')",
+        "Cannot read properties of undefined (reading 'length')"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 2,
+      "examples": [
+        "successアクションが存在しません",
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 2,
+      "examples": [
+        "No success rule defined - game cannot be won",
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:MISSING_FRAME_NUMBER",
+      "count": 1,
+      "examples": [
+        "ルール \"tap_jump_peak\": animation frame条件にframeNumberがありません"
+      ]
+    },
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 17994, Requested 12172. Please try again in 332ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_BGM_ID",
+      "count": 1,
+      "examples": [
+        "無効なbgm.id: undefined"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_BGM_MOOD",
+      "count": 1,
+      "examples": [
+        "無効なbgm.mood \"undefined\""
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "GameDesignGenerator.ts",
+      "section": "playerOperation",
+      "currentIssue": "playerOperationに操作方法が明記されていません",
+      "suggestedAddition": "## プレイヤー操作の定義\nゲームにおけるすべてのplayerOperationは、タップ、スワイプ、ドラッグ、長押しのいずれかを含む必要があります。各操作には具体的なガイドラインを提供してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "サウンド仕様",
+      "currentIssue": "playSoundアクションにsoundIdがありません",
+      "suggestedAddition": "## サウンドIDの付加\n'playSound'アクションには有効なsoundIdを必ず指定してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "EditorMapper.ts",
+      "section": "データ読み込み",
+      "currentIssue": "Cannot read properties of undefined (reading 'length')",
+      "suggestedAddition": "## データ初期化\nエディターにロードする前に、すべてのデータが適切に初期化されていることを確認してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "プレイヤー操作が成功へのパスに含まれていない可能性",
+      "suggestedAddition": "## 成功へのプレイヤー操作\nすべてのルールセットは、明確なプレイヤー操作（タッチ、衝突、位置条件など）を含む必要があります。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "ProjectValidator.ts",
+      "section": "プロジェクトルール",
+      "currentIssue": "successアクションが存在しません",
+      "suggestedAddition": "## 終了条件設定\nゲーム完了条件を定義し、少なくとも1つのsuccessアクションを含めてください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "アニメーション仕様",
+      "currentIssue": "animation frame条件にframeNumberがありません",
+      "suggestedAddition": "## アニメーションフレーム設定\n各アニメーション条件には、少なくとも1つのframeNumberを指定する必要があります。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "BGM設定",
+      "currentIssue": "無効なbgm.idおよびbgm.mood",
+      "suggestedAddition": "## BGM設定の定義\nBGMには有効なidとmoodを割り当てる必要があります。無効な場合は事前にエラーチェックを行ってください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "トークン制限",
+      "currentIssue": "Rate limit reached for gpt-4o",
+      "suggestedAddition": "## レート制限の回避\nAPIリクエスト時に使用するトークン数を事前に計算し、制限を超えないようにしてください。",
+      "priority": "low"
+    }
+  ]
+}

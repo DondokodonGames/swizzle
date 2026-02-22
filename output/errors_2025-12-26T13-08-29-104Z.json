@@ -1,0 +1,308 @@
+[
+  {
+    "timestamp": "2025-12-26T13:01:05.866Z",
+    "gameTitle": "セイレーンの誘惑",
+    "theme": "セイレーンの歌",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct_note\" と \"tap_wrong_note\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "セイレーンの誘惑",
+      "theme": "セイレーンの歌",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:01:05.867Z",
+    "gameTitle": "セイレーンの誘惑",
+    "theme": "セイレーンの歌",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正しい音符タップ\" and \"間違った音符タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "セイレーンの誘惑",
+      "theme": "セイレーンの歌",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:01:50.462Z",
+    "gameTitle": "幻の影を照らせ",
+    "theme": "幻と真実",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct\" と \"tap_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "幻の影を照らせ",
+      "theme": "幻と真実",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:01:50.462Z",
+    "gameTitle": "幻の影を照らせ",
+    "theme": "幻と真実",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解タップ\" and \"不正解タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "幻の影を照らせ",
+      "theme": "幻と真実",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:02:23.670Z",
+    "gameTitle": "永遠の瞬間",
+    "theme": "一瞬の永遠",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 19580, Requested 10434. Please try again in 28ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "永遠の瞬間",
+      "theme": "一瞬の永遠"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:03:15.422Z",
+    "gameTitle": "完璧な収穫",
+    "theme": "農家の畑",
+    "step": "LogicValidator",
+    "errorType": "INVALID_ACTION_TYPE",
+    "errorMessage": "ルール \"end_swipe\": 使用できないアクションタイプ \"evaluateLineStraightness\"",
+    "context": {
+      "title": "完璧な収穫",
+      "theme": "農家の畑",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:03:15.422Z",
+    "gameTitle": "完璧な収穫",
+    "theme": "農家の畑",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "完璧な収穫",
+      "theme": "農家の畑",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:03:15.422Z",
+    "gameTitle": "完璧な収穫",
+    "theme": "農家の畑",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"line_success\" と \"line_failure\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "完璧な収穫",
+      "theme": "農家の畑",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:03:15.422Z",
+    "gameTitle": "完璧な収穫",
+    "theme": "農家の畑",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: フラグ \"lineStraightnessAchieved\" を設定するルールがありません",
+    "context": {
+      "title": "完璧な収穫",
+      "theme": "農家の畑",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:03:15.422Z",
+    "gameTitle": "完璧な収穫",
+    "theme": "農家の畑",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"line_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "完璧な収穫",
+      "theme": "農家の畑",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:03:15.422Z",
+    "gameTitle": "完璧な収穫",
+    "theme": "農家の畑",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"ラインの成功\" and \"ラインの失敗\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "完璧な収穫",
+      "theme": "農家の畑",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:04:24.899Z",
+    "gameTitle": "水の花を育てよう",
+    "theme": "水の花",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "水の花を育てよう",
+      "theme": "水の花",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:04:24.899Z",
+    "gameTitle": "水の花を育てよう",
+    "theme": "水の花",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: フラグ \"all_petals_placed\" を設定するルールがありません",
+    "context": {
+      "title": "水の花を育てよう",
+      "theme": "水の花",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:04:24.899Z",
+    "gameTitle": "水の花を育てよう",
+    "theme": "水の花",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"complete_flower\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "水の花を育てよう",
+      "theme": "水の花",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:05:27.146Z",
+    "gameTitle": "パンダの竹林：竹を食べよう！",
+    "theme": "パンダの竹林",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct_bamboo\" と \"tap_wrong_bamboo\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "パンダの竹林：竹を食べよう！",
+      "theme": "パンダの竹林",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:05:27.146Z",
+    "gameTitle": "パンダの竹林：竹を食べよう！",
+    "theme": "パンダの竹林",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"最も太い竹タップ\" and \"不正解竹タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "パンダの竹林：竹を食べよう！",
+      "theme": "パンダの竹林",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:06:16.768Z",
+    "gameTitle": "将棋の連続打ち",
+    "theme": "将棋の駒",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 19351, Requested 10674. Please try again in 50ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "将棋の連続打ち",
+      "theme": "将棋の駒"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:07:01.998Z",
+    "gameTitle": "刀鍛冶の火花職人",
+    "theme": "刀鍛冶の火花",
+    "step": "LogicValidator",
+    "errorType": "AUTO_SUCCESS",
+    "errorMessage": "自動成功: ルール \"check_win_condition\" はプレイヤー操作なしで成功します",
+    "context": {
+      "title": "刀鍛冶の火花職人",
+      "theme": "刀鍛冶の火花",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:07:01.998Z",
+    "gameTitle": "刀鍛冶の火花職人",
+    "theme": "刀鍛冶の火花",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "刀鍛冶の火花職人",
+      "theme": "刀鍛冶の火花",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:07:01.998Z",
+    "gameTitle": "刀鍛冶の火花職人",
+    "theme": "刀鍛冶の火花",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"check_win_condition\" と \"check_failure_condition\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "刀鍛冶の火花職人",
+      "theme": "刀鍛冶の火花",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:07:01.998Z",
+    "gameTitle": "刀鍛冶の火花職人",
+    "theme": "刀鍛冶の火花",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"check_win_condition\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "刀鍛冶の火花職人",
+      "theme": "刀鍛冶の火花",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:07:01.998Z",
+    "gameTitle": "刀鍛冶の火花職人",
+    "theme": "刀鍛冶の火花",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"Check Win Condition\" and \"Check Failure Condition\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "刀鍛冶の火花職人",
+      "theme": "刀鍛冶の火花",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:08:10.999Z",
+    "gameTitle": "思い出の写真",
+    "theme": "修学旅行の夜",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正しい瞬間をキャプチャ\" and \"間違った瞬間をキャプチャ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "思い出の写真",
+      "theme": "修学旅行の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:08:21.578Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 26248, Requested 3770. Please try again in 36ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {}
+  }
+]

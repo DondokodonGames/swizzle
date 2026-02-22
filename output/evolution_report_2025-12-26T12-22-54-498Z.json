@@ -1,0 +1,192 @@
+{
+  "totalRuns": 10,
+  "successCount": 0,
+  "failureCount": 10,
+  "errorPatterns": [
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_COUNTER",
+      "count": 9,
+      "examples": [
+        "Counter action in rule \"星1収集\" references undefined counter: collected_stars",
+        "Counter action in rule \"星2収集\" references undefined counter: collected_stars",
+        "Counter action in rule \"星3収集\" references undefined counter: collected_stars"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COUNTER",
+      "count": 9,
+      "examples": [
+        "Counter condition in rule \"勝利条件チェック\" references undefined counter: collected_stars",
+        "Counter condition in rule \"勝利判定\" references undefined counter: success_count",
+        "Counter condition in rule \"成功判定\" references undefined counter: score"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 3,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 2,
+      "examples": [
+        "successアクションが存在しません",
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 2,
+      "examples": [
+        "No success rule defined - game cannot be won",
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_OBJECT_ID",
+      "count": 1,
+      "examples": [
+        "ルール \"timer_expiration\" のアクションtargetId \"screen\" がアセット計画に存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_TARGET",
+      "count": 1,
+      "examples": [
+        "Action \"effect\" in rule \"タイマー切れ\" references undefined object: screen"
+      ]
+    },
+    {
+      "errorType": "EditorMapper:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "Cannot read properties of undefined (reading 'length')"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:MISSING_IMPULSE",
+      "count": 1,
+      "examples": [
+        "ルール \"tap_to_throw_dart\": applyImpulseにimpulseがありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 1,
+      "examples": [
+        "コンフリクト: ルール \"check_success\" と \"check_failure\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:COUNTER_NEVER_MODIFIED",
+      "count": 1,
+      "examples": [
+        "カウンター \"score\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 0）"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:UNREACHABLE_SUCCESS",
+      "count": 1,
+      "examples": [
+        "成功条件到達不可: カウンター \"score\" を操作するルールがありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_COUNTER_INCREMENT",
+      "count": 1,
+      "examples": [
+        "Success rule \"成功判定\" checks counter \"score\" but no rule increments it"
+      ]
+    },
+    {
+      "errorType": "GameDesignGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 29208, Requested 1692. Please try again in 1.8s. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    },
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 20289, Requested 9713. Please try again in 4ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_COLLISION_TARGET",
+      "count": 1,
+      "examples": [
+        "ルール \"misplace_branch_1\": collision target \"!placement_area_1\" が未定義"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_FAILURE",
+      "count": 1,
+      "examples": [
+        "failureアクションが存在しません（時間切れのみで失敗となります）"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COLLISION_TARGET",
+      "count": 1,
+      "examples": [
+        "Collision condition in rule \"木の枝1誤配置\" references undefined object: !placement_area_1"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "カウンターが定義されているが操作されていない",
+      "suggestedAddition": "## カウンター使用ルール\nカウンターを定義する場合は必ず:\n1. 操作するルール（increment/decrement）\n2. チェックするルール（条件）\nの両方を定義してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "プレイヤー操作が成功へのパスに含まれていない",
+      "suggestedAddition": "## プレイヤー操作設定\nゲーム中での成功条件を満たすためのルールには、必ずプレイヤーの操作（touch/collision/position条件）を含めるようにしてください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "successアクションおよびsuccessルールが不足",
+      "suggestedAddition": "## 成功条件設定\nゲームには少なくとも1つのsuccessアクションとsuccessルールを定義し、ゲームがクリア可能であることを確認してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "AssetPlanner.ts",
+      "section": "アセット計画",
+      "currentIssue": "無効なオブジェクトIDまたは未定義のオブジェクトを参照",
+      "suggestedAddition": "## オブジェクトIDチェック\nすべてのアクションtargetIdはアセット計画に存在することを確認し、不存在の場合は新しくアセットを追加してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "applyImpulseにimpulseが指定されていない",
+      "suggestedAddition": "## applyImpulse設定\napplyImpulseアクションを使用する際は、必ずimpulseパラメータを設定してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "成功/失敗条件におけるコンフリクト",
+      "suggestedAddition": "## 成功・失敗条件调整\n成功条件と失敗条件が同一条件で発動しないように、それぞれのルールを確認し、調整を行ってください。",
+      "priority": "low"
+    }
+  ]
+}

@@ -1,0 +1,418 @@
+[
+  {
+    "timestamp": "2025-12-26T06:37:27.864Z",
+    "gameTitle": "バレンタインチョコレートチャージ",
+    "theme": "チョコレートのバレンタイン",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"release_chocolate_bowl\" と \"release_chocolate_bowl\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "バレンタインチョコレートチャージ",
+      "theme": "チョコレートのバレンタイン",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:37:27.864Z",
+    "gameTitle": "バレンタインチョコレートチャージ",
+    "theme": "チョコレートのバレンタイン",
+    "step": "LogicValidator",
+    "errorType": "SAME_RULE_SUCCESS_FAILURE",
+    "errorMessage": "コンフリクト: ルール \"release_chocolate_bowl\" が同時に success と failure を発動",
+    "context": {
+      "title": "バレンタインチョコレートチャージ",
+      "theme": "チョコレートのバレンタイン",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:37:27.864Z",
+    "gameTitle": "バレンタインチョコレートチャージ",
+    "theme": "チョコレートのバレンタイン",
+    "step": "LogicValidator",
+    "errorType": "COUNTER_NEVER_CHECKED",
+    "errorMessage": "カウンター \"melted_weight\" は操作されていますが、条件でチェックされていません（操作ルール: hold_chocolate_bowl）",
+    "context": {
+      "title": "バレンタインチョコレートチャージ",
+      "theme": "チョコレートのバレンタイン",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:37:27.865Z",
+    "gameTitle": "バレンタインチョコレートチャージ",
+    "theme": "チョコレートのバレンタイン",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"チョコレートを溶かす\" references undefined counter: melted_weight",
+    "context": {
+      "title": "バレンタインチョコレートチャージ",
+      "theme": "チョコレートのバレンタイン",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:38:13.429Z",
+    "gameTitle": "素早く卓球ラリー",
+    "theme": "卓球のラリー",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"ラケットをスワイプ\" references undefined counter: rally_count",
+    "context": {
+      "title": "素早く卓球ラリー",
+      "theme": "卓球のラリー",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:38:13.429Z",
+    "gameTitle": "素早く卓球ラリー",
+    "theme": "卓球のラリー",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: rally_count",
+    "context": {
+      "title": "素早く卓球ラリー",
+      "theme": "卓球のラリー",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:38:57.637Z",
+    "gameTitle": "闇に咲く花",
+    "theme": "闇の花",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"光をタップして成功\" references undefined counter: successful_taps",
+    "context": {
+      "title": "闇に咲く花",
+      "theme": "闇の花",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:38:57.637Z",
+    "gameTitle": "闇に咲く花",
+    "theme": "闇の花",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"光をタップミス\" references undefined counter: missed_taps",
+    "context": {
+      "title": "闇に咲く花",
+      "theme": "闇の花",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:38:57.637Z",
+    "gameTitle": "闇に咲く花",
+    "theme": "闇の花",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: successful_taps",
+    "context": {
+      "title": "闇に咲く花",
+      "theme": "闇の花",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:38:57.637Z",
+    "gameTitle": "闇に咲く花",
+    "theme": "闇の花",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"敗北判定\" references undefined counter: missed_taps",
+    "context": {
+      "title": "闇に咲く花",
+      "theme": "闇の花",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:40:03.532Z",
+    "gameTitle": "勇気の盾を持て",
+    "theme": "勇気の盾",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"矢の反射\" references undefined counter: success_count",
+    "context": {
+      "title": "勇気の盾を持て",
+      "theme": "勇気の盾",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:40:03.532Z",
+    "gameTitle": "勇気の盾を持て",
+    "theme": "勇気の盾",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"矢の失敗\" references undefined counter: failure_count",
+    "context": {
+      "title": "勇気の盾を持て",
+      "theme": "勇気の盾",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:40:03.532Z",
+    "gameTitle": "勇気の盾を持て",
+    "theme": "勇気の盾",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: success_count",
+    "context": {
+      "title": "勇気の盾を持て",
+      "theme": "勇気の盾",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:40:03.532Z",
+    "gameTitle": "勇気の盾を持て",
+    "theme": "勇気の盾",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"敗北判定\" references undefined counter: failure_count",
+    "context": {
+      "title": "勇気の盾を持て",
+      "theme": "勇気の盾",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:41:11.839Z",
+    "gameTitle": "テレポートの瞬間",
+    "theme": "テレポートの瞬間",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"テレポートをチェック\" references undefined counter: successful_taps",
+    "context": {
+      "title": "テレポートの瞬間",
+      "theme": "テレポートの瞬間",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:41:11.839Z",
+    "gameTitle": "テレポートの瞬間",
+    "theme": "テレポートの瞬間",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"失敗タップ\" references undefined counter: failed_taps",
+    "context": {
+      "title": "テレポートの瞬間",
+      "theme": "テレポートの瞬間",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:41:11.839Z",
+    "gameTitle": "テレポートの瞬間",
+    "theme": "テレポートの瞬間",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: successful_taps",
+    "context": {
+      "title": "テレポートの瞬間",
+      "theme": "テレポートの瞬間",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:41:11.839Z",
+    "gameTitle": "テレポートの瞬間",
+    "theme": "テレポートの瞬間",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: failed_taps",
+    "context": {
+      "title": "テレポートの瞬間",
+      "theme": "テレポートの瞬間",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:42:16.307Z",
+    "gameTitle": "不死の雫を求めて",
+    "theme": "不死の薬",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正しい成分タップ\" references undefined counter: tapped_count",
+    "context": {
+      "title": "不死の雫を求めて",
+      "theme": "不死の薬",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:42:16.307Z",
+    "gameTitle": "不死の雫を求めて",
+    "theme": "不死の薬",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"誤った成分タップ\" references undefined counter: incorrect_tap_count",
+    "context": {
+      "title": "不死の雫を求めて",
+      "theme": "不死の薬",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:42:16.307Z",
+    "gameTitle": "不死の雫を求めて",
+    "theme": "不死の薬",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: tapped_count",
+    "context": {
+      "title": "不死の雫を求めて",
+      "theme": "不死の薬",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:42:16.307Z",
+    "gameTitle": "不死の雫を求めて",
+    "theme": "不死の薬",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: incorrect_tap_count",
+    "context": {
+      "title": "不死の雫を求めて",
+      "theme": "不死の薬",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:43:19.079Z",
+    "gameTitle": "完璧なストライク",
+    "theme": "ボウリングのストライク",
+    "step": "LogicValidator",
+    "errorType": "INVALID_OBJECT_ID",
+    "errorMessage": "ルール \"check_success\" のアクションtargetId \"effect_success\" がアセット計画に存在しません",
+    "context": {
+      "title": "完璧なストライク",
+      "theme": "ボウリングのストライク",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:43:19.079Z",
+    "gameTitle": "完璧なストライク",
+    "theme": "ボウリングのストライク",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_TARGET",
+    "errorMessage": "Action \"playAnimation\" in rule \"成功判定\" references undefined object: effect_success",
+    "context": {
+      "title": "完璧なストライク",
+      "theme": "ボウリングのストライク",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:44:16.890Z",
+    "gameTitle": "惑星軌道修正",
+    "theme": "回転する惑星",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"惑星をドラッグする\" references undefined counter: drag_duration",
+    "context": {
+      "title": "惑星軌道修正",
+      "theme": "回転する惑星",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:44:16.890Z",
+    "gameTitle": "惑星軌道修正",
+    "theme": "回転する惑星",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: drag_duration",
+    "context": {
+      "title": "惑星軌道修正",
+      "theme": "回転する惑星",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:45:28.479Z",
+    "gameTitle": "雨傘チャレンジ",
+    "theme": "傘の雨",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"雨粒回避\" references undefined counter: raindrops_avoided",
+    "context": {
+      "title": "雨傘チャレンジ",
+      "theme": "傘の雨",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:45:28.480Z",
+    "gameTitle": "雨傘チャレンジ",
+    "theme": "傘の雨",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: raindrops_avoided",
+    "context": {
+      "title": "雨傘チャレンジ",
+      "theme": "傘の雨",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:46:26.161Z",
+    "gameTitle": "味覚のタッチ",
+    "theme": "味が触れる",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"味覚ゾーン1タップ\" references undefined counter: tapped_count",
+    "context": {
+      "title": "味覚のタッチ",
+      "theme": "味が触れる",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:46:26.161Z",
+    "gameTitle": "味覚のタッチ",
+    "theme": "味が触れる",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"味覚ゾーン2タップ\" references undefined counter: tapped_count",
+    "context": {
+      "title": "味覚のタッチ",
+      "theme": "味が触れる",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:46:26.161Z",
+    "gameTitle": "味覚のタッチ",
+    "theme": "味が触れる",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"味覚ゾーン3タップ\" references undefined counter: tapped_count",
+    "context": {
+      "title": "味覚のタッチ",
+      "theme": "味が触れる",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:46:26.161Z",
+    "gameTitle": "味覚のタッチ",
+    "theme": "味が触れる",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: tapped_count",
+    "context": {
+      "title": "味覚のタッチ",
+      "theme": "味が触れる",
+      "severity": "error"
+    }
+  }
+]

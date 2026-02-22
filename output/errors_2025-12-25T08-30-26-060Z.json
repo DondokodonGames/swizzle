@@ -1,0 +1,1261 @@
+[
+  {
+    "timestamp": "2025-12-25T08:02:35.391Z",
+    "gameTitle": "枝切り職人",
+    "theme": "庭師の鋏",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"伸びすぎた枝1をカット\" references undefined counter: branches_cut",
+    "context": {
+      "title": "枝切り職人",
+      "theme": "庭師の鋏",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:02:35.391Z",
+    "gameTitle": "枝切り職人",
+    "theme": "庭師の鋏",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"伸びすぎた枝2をカット\" references undefined counter: branches_cut",
+    "context": {
+      "title": "枝切り職人",
+      "theme": "庭師の鋏",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:02:35.391Z",
+    "gameTitle": "枝切り職人",
+    "theme": "庭師の鋏",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"伸びすぎた枝3をカット\" references undefined counter: branches_cut",
+    "context": {
+      "title": "枝切り職人",
+      "theme": "庭師の鋏",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:02:35.391Z",
+    "gameTitle": "枝切り職人",
+    "theme": "庭師の鋏",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: branches_cut",
+    "context": {
+      "title": "枝切り職人",
+      "theme": "庭師の鋏",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:06:12.447Z",
+    "gameTitle": "結界の塔：封印石配置",
+    "theme": "結界の塔",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"時間経過\" references undefined counter: game_timer",
+    "context": {
+      "title": "結界の塔：封印石配置",
+      "theme": "結界の塔",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:06:12.447Z",
+    "gameTitle": "結界の塔：封印石配置",
+    "theme": "結界の塔",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"赤石配置\" references undefined counter: placed_stones",
+    "context": {
+      "title": "結界の塔：封印石配置",
+      "theme": "結界の塔",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:06:12.447Z",
+    "gameTitle": "結界の塔：封印石配置",
+    "theme": "結界の塔",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"青石配置\" references undefined counter: placed_stones",
+    "context": {
+      "title": "結界の塔：封印石配置",
+      "theme": "結界の塔",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:06:12.447Z",
+    "gameTitle": "結界の塔：封印石配置",
+    "theme": "結界の塔",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"緑石配置\" references undefined counter: placed_stones",
+    "context": {
+      "title": "結界の塔：封印石配置",
+      "theme": "結界の塔",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:06:12.447Z",
+    "gameTitle": "結界の塔：封印石配置",
+    "theme": "結界の塔",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"結界完成判定\" references undefined counter: placed_stones",
+    "context": {
+      "title": "結界の塔：封印石配置",
+      "theme": "結界の塔",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:06:12.447Z",
+    "gameTitle": "結界の塔：封印石配置",
+    "theme": "結界の塔",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ判定\" references undefined counter: game_timer",
+    "context": {
+      "title": "結界の塔：封印石配置",
+      "theme": "結界の塔",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:06:12.447Z",
+    "gameTitle": "結界の塔：封印石配置",
+    "theme": "結界の塔",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ判定\" references undefined counter: placed_stones",
+    "context": {
+      "title": "結界の塔：封印石配置",
+      "theme": "結界の塔",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:06:12.447Z",
+    "gameTitle": "結界の塔：封印石配置",
+    "theme": "結界の塔",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_stone_pickup\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "結界の塔：封印石配置",
+      "theme": "結界の塔",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:06:12.447Z",
+    "gameTitle": "結界の塔：封印石配置",
+    "theme": "結界の塔",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_stone_place\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "結界の塔：封印石配置",
+      "theme": "結界の塔",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:06:12.447Z",
+    "gameTitle": "結界の塔：封印石配置",
+    "theme": "結界の塔",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_time_up\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "結界の塔：封印石配置",
+      "theme": "結界の塔",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:08:52.773Z",
+    "gameTitle": "記憶の扉",
+    "theme": "記憶の迷宮",
+    "step": "LogicValidator",
+    "errorType": "INVALID_TIME_TYPE",
+    "errorMessage": "ルール \"end_memory_phase\": 無効なtimeType \"after\"",
+    "context": {
+      "title": "記憶の扉",
+      "theme": "記憶の迷宮",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:08:52.773Z",
+    "gameTitle": "記憶の扉",
+    "theme": "記憶の迷宮",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_door_1\" と \"tap_door_2\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "記憶の扉",
+      "theme": "記憶の迷宮",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:08:52.773Z",
+    "gameTitle": "記憶の扉",
+    "theme": "記憶の迷宮",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_door_1\" と \"tap_door_3\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "記憶の扉",
+      "theme": "記憶の迷宮",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:08:52.773Z",
+    "gameTitle": "記憶の扉",
+    "theme": "記憶の迷宮",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_door_1\" と \"tap_door_4\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "記憶の扉",
+      "theme": "記憶の迷宮",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:08:52.773Z",
+    "gameTitle": "記憶の扉",
+    "theme": "記憶の迷宮",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"indicator\" (id: se_memory_flash)",
+    "context": {
+      "title": "記憶の扉",
+      "theme": "記憶の迷宮",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:08:52.773Z",
+    "gameTitle": "記憶の扉",
+    "theme": "記憶の迷宮",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"warning\" (id: se_timer_tick)",
+    "context": {
+      "title": "記憶の扉",
+      "theme": "記憶の迷宮",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:08:52.774Z",
+    "gameTitle": "記憶の扉",
+    "theme": "記憶の迷宮",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"時間カウントダウン\" references undefined counter: game_timer",
+    "context": {
+      "title": "記憶の扉",
+      "theme": "記憶の迷宮",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:08:52.774Z",
+    "gameTitle": "記憶の扉",
+    "theme": "記憶の迷宮",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ判定\" references undefined counter: game_timer",
+    "context": {
+      "title": "記憶の扉",
+      "theme": "記憶の迷宮",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:08:52.774Z",
+    "gameTitle": "記憶の扉",
+    "theme": "記憶の迷宮",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"扉1タップ\" and \"扉2タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "記憶の扉",
+      "theme": "記憶の迷宮",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:08:52.774Z",
+    "gameTitle": "記憶の扉",
+    "theme": "記憶の迷宮",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"扉1タップ\" and \"扉3タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "記憶の扉",
+      "theme": "記憶の迷宮",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:08:52.774Z",
+    "gameTitle": "記憶の扉",
+    "theme": "記憶の迷宮",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"扉1タップ\" and \"扉4タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "記憶の扉",
+      "theme": "記憶の迷宮",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "LogicValidator",
+    "errorType": "INSTANT_WIN",
+    "errorMessage": "即成功: カウンター \"game_timer\" の初期値(800)が条件を満たしています",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "LogicValidator",
+    "errorType": "INSTANT_LOSE",
+    "errorMessage": "即失敗: カウンター \"game_timer\" の初期値(800)が失敗閾値(0)以上",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "LogicValidator",
+    "errorType": "INSTANT_LOSE",
+    "errorMessage": "即失敗: カウンター \"game_timer\" の初期値(800)が失敗閾値(0)以上",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"select_cat\" と \"select_dog\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"select_cat\" と \"select_cow\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"voice\" (id: voice_cat)",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"voice\" (id: voice_dog)",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"voice\" (id: voice_cow)",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイマーカウントダウン\" references undefined counter: game_timer",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"動物の鳴き声再生\" references undefined counter: game_timer",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"ネコを選択\" references undefined counter: game_timer",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"イヌを選択\" references undefined counter: game_timer",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"ウシを選択\" references undefined counter: game_timer",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ判定\" references undefined counter: game_timer",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "ProjectValidator",
+    "errorType": "NO_COUNTER_INCREMENT",
+    "errorMessage": "Success rule \"ネコを選択\" checks counter \"game_timer\" but no rule increments it",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_timeout\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"ネコを選択\" and \"イヌを選択\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:11:52.360Z",
+    "gameTitle": "動物たちの声を聞き分けろ！",
+    "theme": "話す動物",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"ネコを選択\" and \"ウシを選択\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "動物たちの声を聞き分けろ！",
+      "theme": "話す動物",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:15:41.819Z",
+    "gameTitle": "時空のパラドックス",
+    "theme": "タイムトラベル",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"過去カード正解配置\" references undefined counter: cards_placed",
+    "context": {
+      "title": "時空のパラドックス",
+      "theme": "タイムトラベル",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:15:41.819Z",
+    "gameTitle": "時空のパラドックス",
+    "theme": "タイムトラベル",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"現在カード正解配置\" references undefined counter: cards_placed",
+    "context": {
+      "title": "時空のパラドックス",
+      "theme": "タイムトラベル",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:15:41.819Z",
+    "gameTitle": "時空のパラドックス",
+    "theme": "タイムトラベル",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"未来カード正解配置\" references undefined counter: cards_placed",
+    "context": {
+      "title": "時空のパラドックス",
+      "theme": "タイムトラベル",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:15:41.819Z",
+    "gameTitle": "時空のパラドックス",
+    "theme": "タイムトラベル",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイマー更新\" references undefined counter: game_timer",
+    "context": {
+      "title": "時空のパラドックス",
+      "theme": "タイムトラベル",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:15:41.819Z",
+    "gameTitle": "時空のパラドックス",
+    "theme": "タイムトラベル",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"制限時間チェック\" references undefined counter: game_timer",
+    "context": {
+      "title": "時空のパラドックス",
+      "theme": "タイムトラベル",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:15:41.819Z",
+    "gameTitle": "時空のパラドックス",
+    "theme": "タイムトラベル",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: cards_placed",
+    "context": {
+      "title": "時空のパラドックス",
+      "theme": "タイムトラベル",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:15:41.819Z",
+    "gameTitle": "時空のパラドックス",
+    "theme": "タイムトラベル",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_card_pickup\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "時空のパラドックス",
+      "theme": "タイムトラベル",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:15:41.819Z",
+    "gameTitle": "時空のパラドックス",
+    "theme": "タイムトラベル",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_correct_placement\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "時空のパラドックス",
+      "theme": "タイムトラベル",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:15:41.819Z",
+    "gameTitle": "時空のパラドックス",
+    "theme": "タイムトラベル",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_wrong_placement\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "時空のパラドックス",
+      "theme": "タイムトラベル",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:15:41.819Z",
+    "gameTitle": "時空のパラドックス",
+    "theme": "タイムトラベル",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_temporal_fix\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "時空のパラドックス",
+      "theme": "タイムトラベル",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:15:41.819Z",
+    "gameTitle": "時空のパラドックス",
+    "theme": "タイムトラベル",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_time_warning\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "時空のパラドックス",
+      "theme": "タイムトラベル",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:15:41.819Z",
+    "gameTitle": "時空のパラドックス",
+    "theme": "タイムトラベル",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_game_success\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "時空のパラドックス",
+      "theme": "タイムトラベル",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:15:41.819Z",
+    "gameTitle": "時空のパラドックス",
+    "theme": "タイムトラベル",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_game_failure\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "時空のパラドックス",
+      "theme": "タイムトラベル",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:18:40.983Z",
+    "gameTitle": "王冠を被るべき猫は？",
+    "theme": "猫の王国",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct_cat\" と \"tap_wrong_cat_1\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "王冠を被るべき猫は？",
+      "theme": "猫の王国",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:18:40.983Z",
+    "gameTitle": "王冠を被るべき猫は？",
+    "theme": "猫の王国",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct_cat\" と \"tap_wrong_cat_3\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "王冠を被るべき猫は？",
+      "theme": "猫の王国",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:18:40.983Z",
+    "gameTitle": "王冠を被るべき猫は？",
+    "theme": "猫の王国",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"時間カウントダウン\" references undefined counter: game_timer",
+    "context": {
+      "title": "王冠を被るべき猫は？",
+      "theme": "猫の王国",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:18:40.983Z",
+    "gameTitle": "王冠を被るべき猫は？",
+    "theme": "猫の王国",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ判定\" references undefined counter: game_timer",
+    "context": {
+      "title": "王冠を被るべき猫は？",
+      "theme": "猫の王国",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:18:40.983Z",
+    "gameTitle": "王冠を被るべき猫は？",
+    "theme": "猫の王国",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_tap_cat\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "王冠を被るべき猫は？",
+      "theme": "猫の王国",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:18:40.983Z",
+    "gameTitle": "王冠を被るべき猫は？",
+    "theme": "猫の王国",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_fanfare\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "王冠を被るべき猫は？",
+      "theme": "猫の王国",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:18:40.983Z",
+    "gameTitle": "王冠を被るべき猫は？",
+    "theme": "猫の王国",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解猫タップ\" and \"間違い猫1タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "王冠を被るべき猫は？",
+      "theme": "猫の王国",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:18:40.983Z",
+    "gameTitle": "王冠を被るべき猫は？",
+    "theme": "猫の王国",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解猫タップ\" and \"間違い猫3タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "王冠を被るべき猫は？",
+      "theme": "猫の王国",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:20:13.104Z",
+    "gameTitle": "月面基地エネルギー供給",
+    "theme": "月面基地",
+    "step": "AssetPlanner",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "JSON parse failed: SyntaxError: Expected ',' or ']' after array element in JSON at position 8821 (line 258 column 6)",
+    "context": {
+      "title": "月面基地エネルギー供給",
+      "theme": "月面基地"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:20:24.527Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"完璧な桂剥き実行\" references undefined counter: consecutive_success",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"完璧な桂剥き実行\" references undefined counter: daikon_thickness",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"通常の桂剥き実行\" references undefined counter: consecutive_success",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"通常の桂剥き実行\" references undefined counter: daikon_thickness",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"大失敗桂剥き実行\" references undefined counter: consecutive_success",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"大失敗桂剥き実行\" references undefined counter: failure_count",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"大失敗桂剥き実行\" references undefined counter: daikon_thickness",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利条件チェック\" references undefined counter: consecutive_success",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"敗北条件チェック（失敗3回）\" references undefined counter: failure_count",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"敗北条件チェック（大根消失）\" references undefined counter: daikon_thickness",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_peel_thick\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_counter_up\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_game_clear\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:23:38.715Z",
+    "gameTitle": "包丁の技・桂剥き",
+    "theme": "包丁の技",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_game_over\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "包丁の技・桂剥き",
+      "theme": "包丁の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:26:51.388Z",
+    "gameTitle": "フリスビー風向き読み",
+    "theme": "フリスビーの飛行",
+    "step": "LogicValidator",
+    "errorType": "INVALID_TIME_TYPE",
+    "errorMessage": "ルール \"frisbee_miss_reset\": 無効なtimeType \"after\"",
+    "context": {
+      "title": "フリスビー風向き読み",
+      "theme": "フリスビーの飛行",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:26:51.388Z",
+    "gameTitle": "フリスビー風向き読み",
+    "theme": "フリスビーの飛行",
+    "step": "LogicValidator",
+    "errorType": "INVALID_TIME_TYPE",
+    "errorMessage": "ルール \"reset_frisbee_position\": 無効なtimeType \"after\"",
+    "context": {
+      "title": "フリスビー風向き読み",
+      "theme": "フリスビーの飛行",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:26:51.388Z",
+    "gameTitle": "フリスビー風向き読み",
+    "theme": "フリスビーの飛行",
+    "step": "LogicValidator",
+    "errorType": "INVALID_TIME_TYPE",
+    "errorMessage": "ルール \"check_time_failure\": 無効なtimeType \"after\"",
+    "context": {
+      "title": "フリスビー風向き読み",
+      "theme": "フリスビーの飛行",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:26:51.388Z",
+    "gameTitle": "フリスビー風向き読み",
+    "theme": "フリスビーの飛行",
+    "step": "LogicValidator",
+    "errorType": "UNUSUAL_SPEED",
+    "errorMessage": "ルール \"throw_frisbee\": speed(0.3)が推奨範囲外",
+    "context": {
+      "title": "フリスビー風向き読み",
+      "theme": "フリスビーの飛行",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:26:51.388Z",
+    "gameTitle": "フリスビー風向き読み",
+    "theme": "フリスビーの飛行",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"フリスビー投擲\" references undefined counter: total_throws",
+    "context": {
+      "title": "フリスビー風向き読み",
+      "theme": "フリスビーの飛行",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:26:51.388Z",
+    "gameTitle": "フリスビー風向き読み",
+    "theme": "フリスビーの飛行",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"目標エリア着地成功\" references undefined counter: successful_hits",
+    "context": {
+      "title": "フリスビー風向き読み",
+      "theme": "フリスビーの飛行",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:26:51.388Z",
+    "gameTitle": "フリスビー風向き読み",
+    "theme": "フリスビーの飛行",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"目標エリア外着地\" references undefined counter: successful_hits",
+    "context": {
+      "title": "フリスビー風向き読み",
+      "theme": "フリスビーの飛行",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:26:51.388Z",
+    "gameTitle": "フリスビー風向き読み",
+    "theme": "フリスビーの飛行",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"目標エリア外着地\" references undefined counter: miss_count",
+    "context": {
+      "title": "フリスビー風向き読み",
+      "theme": "フリスビーの飛行",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:26:51.388Z",
+    "gameTitle": "フリスビー風向き読み",
+    "theme": "フリスビーの飛行",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: successful_hits",
+    "context": {
+      "title": "フリスビー風向き読み",
+      "theme": "フリスビーの飛行",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:26:51.388Z",
+    "gameTitle": "フリスビー風向き読み",
+    "theme": "フリスビーの飛行",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: miss_count",
+    "context": {
+      "title": "フリスビー風向き読み",
+      "theme": "フリスビーの飛行",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:26:51.388Z",
+    "gameTitle": "フリスビー風向き読み",
+    "theme": "フリスビーの飛行",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ判定\" references undefined counter: total_throws",
+    "context": {
+      "title": "フリスビー風向き読み",
+      "theme": "フリスビーの飛行",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:30:05.306Z",
+    "gameTitle": "芋ホクホク度チェック",
+    "theme": "ホクホクの芋",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"select_potato_1_success\" と \"select_potato_2_failure\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "芋ホクホク度チェック",
+      "theme": "ホクホクの芋",
+      "ruleCount": 9
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:30:05.306Z",
+    "gameTitle": "芋ホクホク度チェック",
+    "theme": "ホクホクの芋",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"select_potato_1_success\" と \"select_potato_3_failure\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "芋ホクホク度チェック",
+      "theme": "ホクホクの芋",
+      "ruleCount": 9
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:30:05.307Z",
+    "gameTitle": "芋ホクホク度チェック",
+    "theme": "ホクホクの芋",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイマーカウントダウン\" references undefined counter: game_timer",
+    "context": {
+      "title": "芋ホクホク度チェック",
+      "theme": "ホクホクの芋",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:30:05.307Z",
+    "gameTitle": "芋ホクホク度チェック",
+    "theme": "ホクホクの芋",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ判定\" references undefined counter: game_timer",
+    "context": {
+      "title": "芋ホクホク度チェック",
+      "theme": "ホクホクの芋",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:30:05.307Z",
+    "gameTitle": "芋ホクホク度チェック",
+    "theme": "ホクホクの芋",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"芋1選択で成功\" and \"芋2選択で失敗\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "芋ホクホク度チェック",
+      "theme": "ホクホクの芋",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:30:05.307Z",
+    "gameTitle": "芋ホクホク度チェック",
+    "theme": "ホクホクの芋",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"芋1選択で成功\" and \"芋3選択で失敗\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "芋ホクホク度チェック",
+      "theme": "ホクホクの芋",
+      "severity": "error"
+    }
+  }
+]

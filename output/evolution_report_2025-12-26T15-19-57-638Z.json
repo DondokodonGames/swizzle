@@ -1,0 +1,128 @@
+{
+  "totalRuns": 10,
+  "successCount": 3,
+  "failureCount": 7,
+  "errorPatterns": [
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 5,
+      "examples": [
+        "Rules \"勝利条件の確認\" and \"敗北条件の確認\" can trigger both success and failure with same condition",
+        "Rules \"スパイス1をドラッグ\" and \"間違ったスパイスドロップ\" can trigger both success and failure with same condition",
+        "Rules \"スパイス2をドラッグ\" and \"間違ったスパイスドロップ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 4,
+      "examples": [
+        "コンフリクト: ルール \"check_win_condition\" と \"check_lose_condition\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"drag_spice_1\" と \"incorrect_spice\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"drag_spice_2\" と \"incorrect_spice\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_REGION_Y",
+      "count": 2,
+      "examples": [
+        "ルール \"check_win_condition\": region.y(-1.5)が0-1の範囲外",
+        "ルール \"check_lose_condition\": region.y(-0.5)が0-1の範囲外"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_COUNTER",
+      "count": 2,
+      "examples": [
+        "Counter action in rule \"正しいポーズを決める\" references undefined counter: correct_poses",
+        "Counter action in rule \"誤ったポーズを決める\" references undefined counter: wrong_poses"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COUNTER",
+      "count": 2,
+      "examples": [
+        "Counter condition in rule \"勝利判定\" references undefined counter: correct_poses",
+        "Counter condition in rule \"敗北判定\" references undefined counter: wrong_poses"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 1,
+      "examples": [
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_COLLISION_TARGET",
+      "count": 1,
+      "examples": [
+        "ルール \"coin_match\": collision target \"row_3_match\" が未定義"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COLLISION_TARGET",
+      "count": 1,
+      "examples": [
+        "Collision condition in rule \"金貨揃いをチェック\" references undefined object: row_3_match"
+      ]
+    },
+    {
+      "errorType": "EditorMapper:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "Cannot read properties of undefined (reading 'length')"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "同一条件での勝利と敗北のトリガーが存在",
+      "suggestedAddition": "## 勝敗条件の排他設定\n1. 勝利条件と敗北条件は互いに排他的であることを確認してください。\n2. 同じ条件で両方の結果を発生させないように、条件を明確に分けてください。",
+      "priority": "critical"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "カウンターが定義されているが操作されていない",
+      "suggestedAddition": "## カウンター使用ルール\nカウンターを定義する場合は必ず:\n1. 操作するルール（increment/decrement）\n2. チェックするルール（条件）\nの両方を定義してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "勝利条件が地域範囲外で指定されている",
+      "suggestedAddition": "## Valid Region Specification\n1. Regionの指定は常に0-1の範囲内で行い、範囲外の指定がないようにしてください。\n2. Regionの設定はウィンドウサイズやゲームエリアとの整合性を確認してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "EditorMapper.ts",
+      "section": "エディター形式",
+      "currentIssue": "未定義のため参照されていない衝突やオブジェクトが存在",
+      "suggestedAddition": "## オブジェクトと衝突の定義\n1. 全てのルールで使用されているオブジェクトは事前に定義してください。\n2. 衝突や条件で使用されるターゲットが未定義にならないよう、設計段階で確認しましょう。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "GameDesignGenerator.ts",
+      "section": "coreExperience",
+      "currentIssue": "プレイヤー操作が欠落",
+      "suggestedAddition": "## プレイヤー操作の包含\n1. プレイヤーが明確に影響を与えるアクションを定義する。\n2. タッチ、コリジョン、ポジションなどのインタラクションがゲームの進行に必須であることを実装段階で確認してください。",
+      "priority": "high"
+    }
+  ]
+}

@@ -1,0 +1,230 @@
+[
+  {
+    "timestamp": "2025-12-26T14:15:19.037Z",
+    "gameTitle": "ゴール突破！",
+    "theme": "マラソンのゴール",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "ゴール突破！",
+      "theme": "マラソンのゴール"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:18:40.968Z",
+    "gameTitle": "虹色の記憶",
+    "theme": "虹の彼方",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "虹色の記憶",
+      "theme": "虹の彼方",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:18:40.968Z",
+    "gameTitle": "虹色の記憶",
+    "theme": "虹の彼方",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "虹色の記憶",
+      "theme": "虹の彼方",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:18:40.969Z",
+    "gameTitle": "虹色の記憶",
+    "theme": "虹の彼方",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "虹色の記憶",
+      "theme": "虹の彼方",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:19:35.419Z",
+    "gameTitle": "ハチドリの花蜜集め",
+    "theme": "ハチドリの舞",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "ハチドリの花蜜集め",
+      "theme": "ハチドリの舞"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:20:30.635Z",
+    "gameTitle": "モコモコ羊の塀越え",
+    "theme": "モコモコの羊",
+    "step": "LogicValidator",
+    "errorType": "MISSING_FRAME_NUMBER",
+    "errorMessage": "ルール \"tap_jump_peak\": animation frame条件にframeNumberがありません",
+    "context": {
+      "title": "モコモコ羊の塀越え",
+      "theme": "モコモコの羊",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:21:21.790Z",
+    "gameTitle": "犬の探検の旅",
+    "theme": "犬の冒険",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 17994, Requested 12172. Please try again in 332ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "犬の探検の旅",
+      "theme": "犬の冒険"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:21:27.941Z",
+    "gameTitle": "紙飛行機の舞",
+    "theme": "紙飛行機の飛翔",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+    "context": {
+      "title": "紙飛行機の舞",
+      "theme": "紙飛行機の飛翔"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:21:27.941Z",
+    "gameTitle": "紙飛行機の舞",
+    "theme": "紙飛行機の飛翔",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerGoalに数値または「全て」がありません（推奨）",
+    "context": {
+      "title": "紙飛行機の舞",
+      "theme": "紙飛行機の飛翔"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:22:42.489Z",
+    "gameTitle": "鳥居を潜り抜け！",
+    "theme": "神社の鳥居",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+    "context": {
+      "title": "鳥居を潜り抜け！",
+      "theme": "神社の鳥居"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:23:48.232Z",
+    "gameTitle": "鳥居を潜り抜け！",
+    "theme": "神社の鳥居",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"pass_torii\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "鳥居を潜り抜け！",
+      "theme": "神社の鳥居",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:23:48.232Z",
+    "gameTitle": "鳥居を潜り抜け！",
+    "theme": "神社の鳥居",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"collision_with_torii\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "鳥居を潜り抜け！",
+      "theme": "神社の鳥居",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:23:48.232Z",
+    "gameTitle": "鳥居を潜り抜け！",
+    "theme": "神社の鳥居",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"timeout\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "鳥居を潜り抜け！",
+      "theme": "神社の鳥居",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:23:48.232Z",
+    "gameTitle": "鳥居を潜り抜け！",
+    "theme": "神社の鳥居",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "鳥居を潜り抜け！",
+      "theme": "神社の鳥居",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:23:48.232Z",
+    "gameTitle": "鳥居を潜り抜け！",
+    "theme": "神社の鳥居",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "鳥居を潜り抜け！",
+      "theme": "神社の鳥居",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:23:48.232Z",
+    "gameTitle": "鳥居を潜り抜け！",
+    "theme": "神社の鳥居",
+    "step": "LogicValidator",
+    "errorType": "INVALID_BGM_ID",
+    "errorMessage": "無効なbgm.id: undefined",
+    "context": {
+      "title": "鳥居を潜り抜け！",
+      "theme": "神社の鳥居",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:23:48.232Z",
+    "gameTitle": "鳥居を潜り抜け！",
+    "theme": "神社の鳥居",
+    "step": "LogicValidator",
+    "errorType": "INVALID_BGM_MOOD",
+    "errorMessage": "無効なbgm.mood \"undefined\"",
+    "context": {
+      "title": "鳥居を潜り抜け！",
+      "theme": "神社の鳥居",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:23:48.232Z",
+    "gameTitle": "鳥居を潜り抜け！",
+    "theme": "神社の鳥居",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "鳥居を潜り抜け！",
+      "theme": "神社の鳥居",
+      "severity": "error"
+    }
+  }
+]

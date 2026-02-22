@@ -1,0 +1,127 @@
+[
+  {
+    "timestamp": "2025-12-26T13:42:44.783Z",
+    "gameTitle": "感謝の金",
+    "theme": "感謝の金",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "感謝の金",
+      "theme": "感謝の金",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:42:44.783Z",
+    "gameTitle": "感謝の金",
+    "theme": "感謝の金",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "感謝の金",
+      "theme": "感謝の金",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:42:44.783Z",
+    "gameTitle": "感謝の金",
+    "theme": "感謝の金",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "感謝の金",
+      "theme": "感謝の金",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:43:34.322Z",
+    "gameTitle": "産業革命の歯車合わせ",
+    "theme": "産業革命の夜明け",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 19013, Requested 11161. Please try again in 348ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "産業革命の歯車合わせ",
+      "theme": "産業革命の夜明け"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:44:07.636Z",
+    "gameTitle": "パットの一撃",
+    "theme": "ゴルフのホールインワン",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "パットの一撃",
+      "theme": "ゴルフのホールインワン"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:45:09.691Z",
+    "gameTitle": "鏡の中の逆像",
+    "theme": "鏡の中",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct\" と \"tap_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "鏡の中の逆像",
+      "theme": "鏡の中",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:45:09.691Z",
+    "gameTitle": "鏡の中の逆像",
+    "theme": "鏡の中",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解タップ\" and \"不正解タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "鏡の中の逆像",
+      "theme": "鏡の中",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:46:18.296Z",
+    "gameTitle": "ベーゴマの戦い",
+    "theme": "ベーゴマの戦い",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "ベーゴマの戦い",
+      "theme": "ベーゴマの戦い"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:46:54.968Z",
+    "gameTitle": "冬眠への道",
+    "theme": "熊の冬眠",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 18714, Requested 11358. Please try again in 144ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "冬眠への道",
+      "theme": "熊の冬眠"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:47:55.968Z",
+    "gameTitle": "パズルのピース合わせ",
+    "theme": "パズルのピース",
+    "step": "GameDesignGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 29019, Requested 1723. Please try again in 1.484s. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "パズルのピース合わせ",
+      "theme": "パズルのピース"
+    }
+  }
+]

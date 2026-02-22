@@ -1,0 +1,2184 @@
+[
+  {
+    "timestamp": "2025-12-25T08:40:43.702Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "LogicValidator",
+    "errorType": "INSTANT_LOSE",
+    "errorMessage": "即失敗: カウンター \"wind_strength\" の初期値(50)が失敗閾値(30)以上",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:40:43.702Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"check_tap_timing_success\" と \"check_tap_timing_failure\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:40:43.702Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "LogicValidator",
+    "errorType": "COUNTER_NEVER_CHECKED",
+    "errorMessage": "カウンター \"wind_timer\" は操作されていますが、条件でチェックされていません（操作ルール: wind_tick）",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:40:43.702Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_tap)",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:40:43.702Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_success)",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:40:43.702Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_failure)",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:40:43.702Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_wind_light)",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:40:43.702Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_wind_strong)",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:40:43.702Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_flag_flutter)",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:40:43.703Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"風タイマー更新\" references undefined counter: wind_timer",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:40:43.703Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"風力変化\" references undefined counter: wind_strength",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:40:43.703Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: wind_strength",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:40:43.703Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: wind_strength",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:40:43.703Z",
+    "gameTitle": "山の頂上でお祝い",
+    "theme": "喜ぶ山",
+    "step": "ProjectValidator",
+    "errorType": "NO_COUNTER_INCREMENT",
+    "errorMessage": "Success rule \"成功判定\" checks counter \"wind_strength\" but no rule increments it",
+    "context": {
+      "title": "山の頂上でお祝い",
+      "theme": "喜ぶ山",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.254Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_tap)",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "ruleCount": 7
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.254Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_success)",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "ruleCount": 7
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.254Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_failure)",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "ruleCount": 7
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.254Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_breath)",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "ruleCount": 7
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.254Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_candle_out)",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "ruleCount": 7
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.254Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_cake_shake)",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "ruleCount": 7
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.255Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"息の強さ上昇\" references undefined counter: breath_power",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.255Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"息吹きリリース\" references undefined counter: breath_power",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.255Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"息吹きリリース\" references undefined counter: breath_power",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.255Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"息吹きリリース\" references undefined counter: extinguished_candles",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.255Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"息が弱すぎる失敗\" references undefined counter: breath_power",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.255Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"息が弱すぎる失敗\" references undefined counter: extinguished_candles",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.255Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"息が強すぎる失敗\" references undefined counter: breath_power",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.255Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: extinguished_candles",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.255Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"息の強さリセット\" references undefined counter: breath_power",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:43:47.255Z",
+    "gameTitle": "ケーキのろうそく消し",
+    "theme": "誕生日の朝",
+    "step": "ProjectValidator",
+    "errorType": "NO_COUNTER_INCREMENT",
+    "errorMessage": "Success rule \"成功判定\" checks counter \"extinguished_candles\" but no rule increments it",
+    "context": {
+      "title": "ケーキのろうそく消し",
+      "theme": "誕生日の朝",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.146Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "ruleCount": 11
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.146Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "LogicValidator",
+    "errorType": "COUNTER_NEVER_CHECKED",
+    "errorMessage": "カウンター \"successful_catches\" は操作されていますが、条件でチェックされていません（操作ルール: perfect_catch）",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "ruleCount": 11
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.146Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_tap)",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "ruleCount": 11
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.146Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_success)",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "ruleCount": 11
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.146Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_failure)",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "ruleCount": 11
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.146Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_kendama_catch)",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "ruleCount": 11
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.146Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_kendama_miss)",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "ruleCount": 11
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.146Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_swing_up)",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "ruleCount": 11
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"ゲーム開始\" references undefined counter: ball_phase",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイマー減算\" references undefined counter: game_timer",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"玉上昇フェーズ\" references undefined counter: ball_phase",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"最適タイミング位置\" references undefined counter: ball_phase",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"玉落下完了\" references undefined counter: miss_count",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"完璧なキャッチ\" references undefined counter: ball_phase",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"完璧なキャッチ\" references undefined counter: successful_catches",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"完璧なキャッチ\" references undefined counter: miss_count",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"タイミングミス\" references undefined counter: ball_phase",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイミングミス\" references undefined counter: miss_count",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"早すぎるタイミングミス\" references undefined counter: ball_phase",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"早すぎるタイミングミス\" references undefined counter: miss_count",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"サイクル再開\" references undefined counter: game_timer",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"サイクル再開\" references undefined counter: miss_count",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"サイクル再開\" references undefined counter: ball_phase",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: miss_count",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間終了での成功判定\" references undefined counter: game_timer",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間終了での成功判定\" references undefined counter: miss_count",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:47:09.147Z",
+    "gameTitle": "けん玉マスター",
+    "theme": "けん玉の技",
+    "step": "ProjectValidator",
+    "errorType": "NO_COUNTER_INCREMENT",
+    "errorMessage": "Success rule \"時間終了での成功判定\" checks counter \"game_timer\" but no rule increments it",
+    "context": {
+      "title": "けん玉マスター",
+      "theme": "けん玉の技",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:49:51.457Z",
+    "gameTitle": "最後のピース",
+    "theme": "ジグソーの絵",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "JSON parse failed: SyntaxError: Expected ',' or ']' after array element in JSON at position 20688 (line 611 column 6)",
+    "context": {
+      "title": "最後のピース",
+      "theme": "ジグソーの絵"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_tap)",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_success)",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_failure)",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_bug_fix)",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_error_tap)",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "LogicValidator",
+    "errorType": "INVALID_BGM_MOOD",
+    "errorMessage": "無効なbgm.mood \"undefined\"",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "ruleCount": 8
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"バグ1修正\" references undefined counter: bugs_fixed",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"バグ2修正\" references undefined counter: bugs_fixed",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"バグ3修正\" references undefined counter: bugs_fixed",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"誤操作\" references undefined counter: error_count",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"時間減少\" references undefined counter: game_time",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: bugs_fixed",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"誤操作による失敗判定\" references undefined counter: error_count",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れによる失敗判定\" references undefined counter: game_time",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:53:05.161Z",
+    "gameTitle": "バグハンター",
+    "theme": "プログラマーのコード",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れによる失敗判定\" references undefined counter: bugs_fixed",
+    "context": {
+      "title": "バグハンター",
+      "theme": "プログラマーのコード",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:54:34.260Z",
+    "gameTitle": "デジタル夢の欠片",
+    "theme": "AIの夢",
+    "step": "AssetPlanner",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "JSON parse failed: SyntaxError: Expected ',' or ']' after array element in JSON at position 8459 (line 204 column 85)",
+    "context": {
+      "title": "デジタル夢の欠片",
+      "theme": "AIの夢"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_tap)",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "ruleCount": 12
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_success)",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "ruleCount": 12
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_failure)",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "ruleCount": 12
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_steam_drag)",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "ruleCount": 12
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_cloud_fill)",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "ruleCount": 12
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_cloud_complete)",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "ruleCount": 12
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_bubbling)",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "ruleCount": 12
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"丸い雲を埋める\" references undefined counter: cloud_round_completion",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"横長雲を埋める\" references undefined counter: cloud_horizontal_completion",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"縦長雲を埋める\" references undefined counter: cloud_vertical_completion",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"丸い雲完成チェック\" references undefined counter: cloud_round_completion",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"横長雲完成チェック\" references undefined counter: cloud_horizontal_completion",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"縦長雲完成チェック\" references undefined counter: cloud_vertical_completion",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"時間カウントダウン\" references undefined counter: game_time",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: cloud_round_completion",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: cloud_horizontal_completion",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: cloud_vertical_completion",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T08:58:04.101Z",
+    "gameTitle": "湯気の雲づくり",
+    "theme": "鍋の湯気",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ失敗判定\" references undefined counter: game_time",
+    "context": {
+      "title": "湯気の雲づくり",
+      "theme": "鍋の湯気",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "COUNTER_NEVER_MODIFIED",
+    "errorMessage": "カウンター \"hour_hand_angle\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 0）",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "COUNTER_NEVER_MODIFIED",
+    "errorMessage": "カウンター \"minute_hand_angle\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 0）",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: カウンター \"hour_hand_angle\" を操作するルールがありません",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: カウンター \"hour_hand_angle\" を操作するルールがありません",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: カウンター \"minute_hand_angle\" を操作するルールがありません",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: カウンター \"minute_hand_angle\" を操作するルールがありません",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_tap)",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_tick)",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_snap)",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_success)",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_failure)",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_bell)",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"時間減算\" references undefined counter: game_timer",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: hour_hand_angle",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: hour_hand_angle",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: minute_hand_angle",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: minute_hand_angle",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ判定\" references undefined counter: game_timer",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"短針精度フィードバック\" references undefined counter: hour_hand_angle",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"短針精度フィードバック\" references undefined counter: hour_hand_angle",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"長針精度フィードバック\" references undefined counter: minute_hand_angle",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"長針精度フィードバック\" references undefined counter: minute_hand_angle",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "ProjectValidator",
+    "errorType": "NO_COUNTER_INCREMENT",
+    "errorMessage": "Success rule \"成功判定\" checks counter \"hour_hand_angle\" but no rule increments it",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "ProjectValidator",
+    "errorType": "SPEC_COUNTER_NOT_IMPLEMENTED",
+    "errorMessage": "Counter \"target_hour_angle\" from specification is not implemented",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:01:11.933Z",
+    "gameTitle": "時計の針合わせ",
+    "theme": "時計の針",
+    "step": "ProjectValidator",
+    "errorType": "SPEC_COUNTER_NOT_IMPLEMENTED",
+    "errorMessage": "Counter \"target_minute_angle\" from specification is not implemented",
+    "context": {
+      "title": "時計の針合わせ",
+      "theme": "時計の針",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.101Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_tap)",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.101Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_success)",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.101Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_failure)",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.101Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_horn_clash)",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.101Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_beetle_push)",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.101Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_miss)",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.101Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_warning)",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.101Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "LogicValidator",
+    "errorType": "INVALID_BGM_MOOD",
+    "errorMessage": "無効なbgm.mood \"緊張感\"",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "ruleCount": 10
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.102Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイマーカウントダウン\" references undefined counter: contact_timer",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.102Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"角接触開始\" references undefined counter: contact_timer",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.102Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"角接触開始\" references undefined counter: contact_timer",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.102Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"完璧なタイミングタップ\" references undefined counter: player_wins",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.102Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"完璧なタイミングタップ\" references undefined counter: consecutive_misses",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.102Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイミングミス\" references undefined counter: consecutive_misses",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.102Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイミング失敗\" references undefined counter: enemy_wins",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.102Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイミング失敗\" references undefined counter: consecutive_misses",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.102Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"プレイヤー勝利判定\" references undefined counter: player_wins",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.102Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"相手勝利判定\" references undefined counter: enemy_wins",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.102Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"連続ミス敗北判定\" references undefined counter: consecutive_misses",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:04:22.102Z",
+    "gameTitle": "角力勝負",
+    "theme": "クワガタの戦い",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"連続ミス警告\" references undefined counter: consecutive_misses",
+    "context": {
+      "title": "角力勝負",
+      "theme": "クワガタの戦い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "LogicValidator",
+    "errorType": "INSTANT_LOSE",
+    "errorMessage": "即失敗: カウンター \"arrow_timer\" の初期値(80)が失敗閾値(0)以上",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "ruleCount": 15
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "LogicValidator",
+    "errorType": "INSTANT_LOSE",
+    "errorMessage": "即失敗: カウンター \"arrow_timer\" の初期値(80)が失敗閾値(0)以上",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "ruleCount": 15
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "LogicValidator",
+    "errorType": "INSTANT_LOSE",
+    "errorMessage": "即失敗: カウンター \"arrow_timer\" の初期値(80)が失敗閾値(0)以上",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "ruleCount": 15
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_tap)",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "ruleCount": 15
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_success)",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "ruleCount": 15
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_failure)",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "ruleCount": 15
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_whoosh)",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "ruleCount": 15
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_ding)",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "ruleCount": 15
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"effect\" (id: se_wind)",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "ruleCount": 15
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"最初の矢印表示\" references undefined counter: arrow_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"矢印タイマー更新\" references undefined counter: arrow_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"矢印タイマー更新\" references undefined counter: arrow_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"矢印非表示\" references undefined counter: arrow_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"正解スワイプ\" references undefined counter: arrow_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正解スワイプ\" references undefined counter: success_count",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正解スワイプ\" references undefined counter: arrow_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正解スワイプ\" references undefined counter: wait_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"不正解スワイプ（下）\" references undefined counter: arrow_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"不正解スワイプ（左）\" references undefined counter: arrow_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"不正解スワイプ（右）\" references undefined counter: arrow_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"待機タイマー更新\" references undefined counter: wait_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"待機タイマー更新\" references undefined counter: wait_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"次の矢印表示\" references undefined counter: wait_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"次の矢印表示\" references undefined counter: success_count",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"次の矢印表示\" references undefined counter: arrow_timer",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"カウンター1点灯\" references undefined counter: success_count",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"カウンター2点灯\" references undefined counter: success_count",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"カウンター3点灯\" references undefined counter: success_count",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:07:45.101Z",
+    "gameTitle": "風向き読み",
+    "theme": "凧の空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: success_count",
+    "context": {
+      "title": "風向き読み",
+      "theme": "凧の空",
+      "severity": "error"
+    }
+  }
+]

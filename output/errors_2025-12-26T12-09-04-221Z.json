@@ -1,0 +1,269 @@
+[
+  {
+    "timestamp": "2025-12-26T12:00:40.275Z",
+    "gameTitle": "炎の軌跡を描け",
+    "theme": "マッチの火",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+    "context": {
+      "title": "炎の軌跡を描け",
+      "theme": "マッチの火"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:00:40.275Z",
+    "gameTitle": "炎の軌跡を描け",
+    "theme": "マッチの火",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerGoalに数値または「全て」がありません（推奨）",
+    "context": {
+      "title": "炎の軌跡を描け",
+      "theme": "マッチの火"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:01:30.106Z",
+    "gameTitle": "炎の軌跡を描け",
+    "theme": "マッチの火",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"時間カウントダウン\" references undefined counter: time_counter",
+    "context": {
+      "title": "炎の軌跡を描け",
+      "theme": "マッチの火",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:01:30.106Z",
+    "gameTitle": "炎の軌跡を描け",
+    "theme": "マッチの火",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ判定\" references undefined counter: time_counter",
+    "context": {
+      "title": "炎の軌跡を描け",
+      "theme": "マッチの火",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:01:30.106Z",
+    "gameTitle": "炎の軌跡を描け",
+    "theme": "マッチの火",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"ゴール地点に到達\" and \"壁に衝突\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "炎の軌跡を描け",
+      "theme": "マッチの火",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:02:27.982Z",
+    "gameTitle": "夕焼けの影",
+    "theme": "夕焼けの空",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"時間の減少\" references undefined counter: time_left",
+    "context": {
+      "title": "夕焼けの影",
+      "theme": "夕焼けの空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:02:27.982Z",
+    "gameTitle": "夕焼けの影",
+    "theme": "夕焼けの空",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れによる失敗\" references undefined counter: time_left",
+    "context": {
+      "title": "夕焼けの影",
+      "theme": "夕焼けの空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:03:34.221Z",
+    "gameTitle": "炎の中のガラスアート",
+    "theme": "ガラス職人の炎",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイマー更新\" references undefined counter: time_left",
+    "context": {
+      "title": "炎の中のガラスアート",
+      "theme": "ガラス職人の炎",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:03:34.221Z",
+    "gameTitle": "炎の中のガラスアート",
+    "theme": "ガラス職人の炎",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: time_left",
+    "context": {
+      "title": "炎の中のガラスアート",
+      "theme": "ガラス職人の炎",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:04:36.432Z",
+    "gameTitle": "オーケストラの夜",
+    "theme": "オーケストラの夜",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正しいタイミングでタップ\" references undefined counter: success_count",
+    "context": {
+      "title": "オーケストラの夜",
+      "theme": "オーケストラの夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:04:36.432Z",
+    "gameTitle": "オーケストラの夜",
+    "theme": "オーケストラの夜",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"間違ったタイミングでタップ\" references undefined counter: miss_count",
+    "context": {
+      "title": "オーケストラの夜",
+      "theme": "オーケストラの夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:04:36.432Z",
+    "gameTitle": "オーケストラの夜",
+    "theme": "オーケストラの夜",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: success_count",
+    "context": {
+      "title": "オーケストラの夜",
+      "theme": "オーケストラの夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:04:36.432Z",
+    "gameTitle": "オーケストラの夜",
+    "theme": "オーケストラの夜",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: miss_count",
+    "context": {
+      "title": "オーケストラの夜",
+      "theme": "オーケストラの夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:05:23.029Z",
+    "gameTitle": "スノボジャンプチャレンジ",
+    "theme": "スノボのジャンプ",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "スノボジャンプチャレンジ",
+      "theme": "スノボのジャンプ"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:06:22.590Z",
+    "gameTitle": "博物館ナイトウォーク",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"成功タップ\" references undefined counter: success_count",
+    "context": {
+      "title": "博物館ナイトウォーク",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:06:22.590Z",
+    "gameTitle": "博物館ナイトウォーク",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"失敗タップ\" references undefined counter: failure_count",
+    "context": {
+      "title": "博物館ナイトウォーク",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:06:22.590Z",
+    "gameTitle": "博物館ナイトウォーク",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: success_count",
+    "context": {
+      "title": "博物館ナイトウォーク",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:06:22.590Z",
+    "gameTitle": "博物館ナイトウォーク",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"敗北判定\" references undefined counter: failure_count",
+    "context": {
+      "title": "博物館ナイトウォーク",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:07:32.283Z",
+    "gameTitle": "空中への飛翔",
+    "theme": "棒高跳びの空",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "空中への飛翔",
+      "theme": "棒高跳びの空"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:08:18.538Z",
+    "gameTitle": "完璧な一撃",
+    "theme": "ボウリングのストライク",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "完璧な一撃",
+      "theme": "ボウリングのストライク"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:08:59.130Z",
+    "gameTitle": "パーフェクトショット",
+    "theme": "カメラのシャッター",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "パーフェクトショット",
+      "theme": "カメラのシャッター"
+    }
+  }
+]

@@ -1,0 +1,118 @@
+[
+  {
+    "timestamp": "2025-12-26T12:34:11.611Z",
+    "gameTitle": "時代の終わりの鐘",
+    "theme": "時代の終わり",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 20340, Requested 9695. Please try again in 70ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "時代の終わりの鐘",
+      "theme": "時代の終わり"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:36:03.625Z",
+    "gameTitle": "刀鍛冶の炎を制御せよ",
+    "theme": "刀鍛冶の炎",
+    "step": "LogicValidator",
+    "errorType": "AUTO_SUCCESS",
+    "errorMessage": "自動成功: ルール \"win_condition\" はプレイヤー操作なしで成功します",
+    "context": {
+      "title": "刀鍛冶の炎を制御せよ",
+      "theme": "刀鍛冶の炎",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:36:03.625Z",
+    "gameTitle": "刀鍛冶の炎を制御せよ",
+    "theme": "刀鍛冶の炎",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "刀鍛冶の炎を制御せよ",
+      "theme": "刀鍛冶の炎",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:36:03.625Z",
+    "gameTitle": "刀鍛冶の炎を制御せよ",
+    "theme": "刀鍛冶の炎",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"win_condition\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "刀鍛冶の炎を制御せよ",
+      "theme": "刀鍛冶の炎",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:37:10.903Z",
+    "gameTitle": "恐怖の影から逃げろ",
+    "theme": "恐怖の闇",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"swipe_correct\" と \"swipe_incorrect\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "恐怖の影から逃げろ",
+      "theme": "恐怖の闇",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:37:10.903Z",
+    "gameTitle": "恐怖の影から逃げろ",
+    "theme": "恐怖の闇",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正しいスワイプ\" and \"不正確なスワイプ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "恐怖の影から逃げろ",
+      "theme": "恐怖の闇",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:38:15.734Z",
+    "gameTitle": "扇子の風でゴール",
+    "theme": "扇子の風",
+    "step": "LogicValidator",
+    "errorType": "INVALID_COLLISION_TARGET",
+    "errorMessage": "ルール \"check_success\": collision target \"any\" が未定義",
+    "context": {
+      "title": "扇子の風でゴール",
+      "theme": "扇子の風",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:38:15.734Z",
+    "gameTitle": "扇子の風でゴール",
+    "theme": "扇子の風",
+    "step": "LogicValidator",
+    "errorType": "MISSING_IMPULSE",
+    "errorMessage": "ルール \"apply_wind\": applyImpulseにimpulseがありません",
+    "context": {
+      "title": "扇子の風でゴール",
+      "theme": "扇子の風",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:38:15.734Z",
+    "gameTitle": "扇子の風でゴール",
+    "theme": "扇子の風",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COLLISION_TARGET",
+    "errorMessage": "Collision condition in rule \"成功判定\" references undefined object: any",
+    "context": {
+      "title": "扇子の風でゴール",
+      "theme": "扇子の風",
+      "severity": "error"
+    }
+  }
+]

@@ -1,0 +1,1183 @@
+[
+  {
+    "timestamp": "2025-12-26T05:51:51.636Z",
+    "gameTitle": "灰のシルエット",
+    "theme": "灰の曖昧",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_silhouette_1\" と \"tap_silhouette_2\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "灰のシルエット",
+      "theme": "灰の曖昧",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:51:51.637Z",
+    "gameTitle": "灰のシルエット",
+    "theme": "灰の曖昧",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"時間の減少\" references undefined counter: time_left",
+    "context": {
+      "title": "灰のシルエット",
+      "theme": "灰の曖昧",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:51:51.637Z",
+    "gameTitle": "灰のシルエット",
+    "theme": "灰の曖昧",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ判定\" references undefined counter: time_left",
+    "context": {
+      "title": "灰のシルエット",
+      "theme": "灰の曖昧",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:51:51.637Z",
+    "gameTitle": "灰のシルエット",
+    "theme": "灰の曖昧",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"シルエット1タップ\" and \"シルエット2タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "灰のシルエット",
+      "theme": "灰の曖昧",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:52:33.185Z",
+    "gameTitle": "愚者のジャンプ",
+    "theme": "愚者の冒険",
+    "step": "LogicValidator",
+    "errorType": "INVALID_COMPARISON",
+    "errorMessage": "ルール \"check_failure\": 無効なcomparison \"lessThan\"",
+    "context": {
+      "title": "愚者のジャンプ",
+      "theme": "愚者の冒険",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:52:33.185Z",
+    "gameTitle": "愚者のジャンプ",
+    "theme": "愚者の冒険",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"check_success\" と \"check_failure\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "愚者のジャンプ",
+      "theme": "愚者の冒険",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:52:33.185Z",
+    "gameTitle": "愚者のジャンプ",
+    "theme": "愚者の冒険",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"ジャンプ台到達時のジャンプ実行\" references undefined counter: jump_distance",
+    "context": {
+      "title": "愚者のジャンプ",
+      "theme": "愚者の冒険",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:52:33.185Z",
+    "gameTitle": "愚者のジャンプ",
+    "theme": "愚者の冒険",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: jump_distance",
+    "context": {
+      "title": "愚者のジャンプ",
+      "theme": "愚者の冒険",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:52:33.185Z",
+    "gameTitle": "愚者のジャンプ",
+    "theme": "愚者の冒険",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: jump_distance",
+    "context": {
+      "title": "愚者のジャンプ",
+      "theme": "愚者の冒険",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:52:33.185Z",
+    "gameTitle": "愚者のジャンプ",
+    "theme": "愚者の冒険",
+    "step": "ProjectValidator",
+    "errorType": "NO_COUNTER_INCREMENT",
+    "errorMessage": "Success rule \"成功判定\" checks counter \"jump_distance\" but no rule increments it",
+    "context": {
+      "title": "愚者のジャンプ",
+      "theme": "愚者の冒険",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:53:15.855Z",
+    "gameTitle": "伝説の剣を引き抜け",
+    "theme": "伝説の剣",
+    "step": "LogicValidator",
+    "errorType": "INVALID_ACTION_TYPE",
+    "errorMessage": "ルール \"sword_glow\": 使用できないアクションタイプ \"changeState\"",
+    "context": {
+      "title": "伝説の剣を引き抜け",
+      "theme": "伝説の剣",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:53:15.855Z",
+    "gameTitle": "伝説の剣を引き抜け",
+    "theme": "伝説の剣",
+    "step": "LogicValidator",
+    "errorType": "INVALID_CONDITION_TYPE",
+    "errorMessage": "ルール \"tap_glowing_sword\": 使用できない条件タイプ \"state\"",
+    "context": {
+      "title": "伝説の剣を引き抜け",
+      "theme": "伝説の剣",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:53:15.855Z",
+    "gameTitle": "伝説の剣を引き抜け",
+    "theme": "伝説の剣",
+    "step": "LogicValidator",
+    "errorType": "INVALID_CONDITION_TYPE",
+    "errorMessage": "ルール \"tap_non_glowing_sword\": 使用できない条件タイプ \"state\"",
+    "context": {
+      "title": "伝説の剣を引き抜け",
+      "theme": "伝説の剣",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:53:15.855Z",
+    "gameTitle": "伝説の剣を引き抜け",
+    "theme": "伝説の剣",
+    "step": "LogicValidator",
+    "errorType": "INVALID_EFFECT_TYPE",
+    "errorMessage": "ルール \"tap_glowing_sword\": 無効なeffect.type \"particle\"",
+    "context": {
+      "title": "伝説の剣を引き抜け",
+      "theme": "伝説の剣",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:53:15.855Z",
+    "gameTitle": "伝説の剣を引き抜け",
+    "theme": "伝説の剣",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_glowing_sword\" と \"tap_non_glowing_sword\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "伝説の剣を引き抜け",
+      "theme": "伝説の剣",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:53:15.855Z",
+    "gameTitle": "伝説の剣を引き抜け",
+    "theme": "伝説の剣",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"時間減少\" references undefined counter: time_counter",
+    "context": {
+      "title": "伝説の剣を引き抜け",
+      "theme": "伝説の剣",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:53:15.855Z",
+    "gameTitle": "伝説の剣を引き抜け",
+    "theme": "伝説の剣",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れチェック\" references undefined counter: time_counter",
+    "context": {
+      "title": "伝説の剣を引き抜け",
+      "theme": "伝説の剣",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:53:15.855Z",
+    "gameTitle": "伝説の剣を引き抜け",
+    "theme": "伝説の剣",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"光っている剣をタップ\" and \"光っていない剣をタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "伝説の剣を引き抜け",
+      "theme": "伝説の剣",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:54:19.651Z",
+    "gameTitle": "ランプの精の願い",
+    "theme": "ランプの精",
+    "step": "LogicValidator",
+    "errorType": "INVALID_EFFECT_TYPE",
+    "errorMessage": "ルール \"tap_lamp_1\": 無効なeffect.type \"glow\"",
+    "context": {
+      "title": "ランプの精の願い",
+      "theme": "ランプの精",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:54:19.651Z",
+    "gameTitle": "ランプの精の願い",
+    "theme": "ランプの精",
+    "step": "LogicValidator",
+    "errorType": "INVALID_EFFECT_TYPE",
+    "errorMessage": "ルール \"tap_lamp_2\": 無効なeffect.type \"glow\"",
+    "context": {
+      "title": "ランプの精の願い",
+      "theme": "ランプの精",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:54:19.651Z",
+    "gameTitle": "ランプの精の願い",
+    "theme": "ランプの精",
+    "step": "LogicValidator",
+    "errorType": "INVALID_EFFECT_TYPE",
+    "errorMessage": "ルール \"tap_lamp_3\": 無効なeffect.type \"glow\"",
+    "context": {
+      "title": "ランプの精の願い",
+      "theme": "ランプの精",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:54:19.651Z",
+    "gameTitle": "ランプの精の願い",
+    "theme": "ランプの精",
+    "step": "LogicValidator",
+    "errorType": "INVALID_EFFECT_TYPE",
+    "errorMessage": "ルール \"check_win\": 無効なeffect.type \"particle\"",
+    "context": {
+      "title": "ランプの精の願い",
+      "theme": "ランプの精",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:54:19.651Z",
+    "gameTitle": "ランプの精の願い",
+    "theme": "ランプの精",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"ランプ1タップ\" references undefined counter: correct_sequence",
+    "context": {
+      "title": "ランプの精の願い",
+      "theme": "ランプの精",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:54:19.651Z",
+    "gameTitle": "ランプの精の願い",
+    "theme": "ランプの精",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"ランプ2タップ\" references undefined counter: correct_sequence",
+    "context": {
+      "title": "ランプの精の願い",
+      "theme": "ランプの精",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:54:19.651Z",
+    "gameTitle": "ランプの精の願い",
+    "theme": "ランプの精",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"ランプ3タップ\" references undefined counter: correct_sequence",
+    "context": {
+      "title": "ランプの精の願い",
+      "theme": "ランプの精",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:54:19.651Z",
+    "gameTitle": "ランプの精の願い",
+    "theme": "ランプの精",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: correct_sequence",
+    "context": {
+      "title": "ランプの精の願い",
+      "theme": "ランプの精",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:54:19.651Z",
+    "gameTitle": "ランプの精の願い",
+    "theme": "ランプの精",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ判定\" references undefined counter: timer_count",
+    "context": {
+      "title": "ランプの精の願い",
+      "theme": "ランプの精",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:54:19.651Z",
+    "gameTitle": "ランプの精の願い",
+    "theme": "ランプの精",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイマー減少\" references undefined counter: timer_count",
+    "context": {
+      "title": "ランプの精の願い",
+      "theme": "ランプの精",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:55:16.490Z",
+    "gameTitle": "お手玉の舞い",
+    "theme": "お手玉の舞い",
+    "step": "LogicValidator",
+    "errorType": "INVALID_EFFECT_TYPE",
+    "errorMessage": "ルール \"catch_object_1_success\": 無効なeffect.type \"visual\"",
+    "context": {
+      "title": "お手玉の舞い",
+      "theme": "お手玉の舞い",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:55:16.490Z",
+    "gameTitle": "お手玉の舞い",
+    "theme": "お手玉の舞い",
+    "step": "LogicValidator",
+    "errorType": "INVALID_EFFECT_TYPE",
+    "errorMessage": "ルール \"catch_object_1_failure\": 無効なeffect.type \"visual\"",
+    "context": {
+      "title": "お手玉の舞い",
+      "theme": "お手玉の舞い",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:55:16.490Z",
+    "gameTitle": "お手玉の舞い",
+    "theme": "お手玉の舞い",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"お手玉キャッチ成功\" references undefined counter: catch_streak",
+    "context": {
+      "title": "お手玉の舞い",
+      "theme": "お手玉の舞い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:55:16.490Z",
+    "gameTitle": "お手玉の舞い",
+    "theme": "お手玉の舞い",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: catch_streak",
+    "context": {
+      "title": "お手玉の舞い",
+      "theme": "お手玉の舞い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:56:20.467Z",
+    "gameTitle": "ペンギンレース",
+    "theme": "ペンギンの行列",
+    "step": "LogicValidator",
+    "errorType": "INVALID_OBJECT_ID",
+    "errorMessage": "ルール \"drag_penguin\" のtargetObjectId \"penguin_*\" がアセット計画に存在しません",
+    "context": {
+      "title": "ペンギンレース",
+      "theme": "ペンギンの行列",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:56:20.467Z",
+    "gameTitle": "ペンギンレース",
+    "theme": "ペンギンの行列",
+    "step": "LogicValidator",
+    "errorType": "INVALID_OBJECT_ID",
+    "errorMessage": "ルール \"drag_penguin\" のアクションtargetId \"self\" がアセット計画に存在しません",
+    "context": {
+      "title": "ペンギンレース",
+      "theme": "ペンギンの行列",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:56:20.467Z",
+    "gameTitle": "ペンギンレース",
+    "theme": "ペンギンの行列",
+    "step": "LogicValidator",
+    "errorType": "INVALID_POSITION_TARGET",
+    "errorMessage": "ルール \"arrange_penguin\": position target \"penguin_*\" が未定義",
+    "context": {
+      "title": "ペンギンレース",
+      "theme": "ペンギンの行列",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:56:20.467Z",
+    "gameTitle": "ペンギンレース",
+    "theme": "ペンギンの行列",
+    "step": "LogicValidator",
+    "errorType": "INVALID_EFFECT_TYPE",
+    "errorMessage": "ルール \"check_order\": 無効なeffect.type \"particle\"",
+    "context": {
+      "title": "ペンギンレース",
+      "theme": "ペンギンの行列",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:56:20.467Z",
+    "gameTitle": "ペンギンレース",
+    "theme": "ペンギンの行列",
+    "step": "ProjectValidator",
+    "errorType": "UNDEFINED_TARGET_OBJECT",
+    "errorMessage": "Rule \"ペンギンドラッグ\" references undefined object: penguin_*",
+    "context": {
+      "title": "ペンギンレース",
+      "theme": "ペンギンの行列",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:56:20.467Z",
+    "gameTitle": "ペンギンレース",
+    "theme": "ペンギンの行列",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_TARGET",
+    "errorMessage": "Action \"followDrag\" in rule \"ペンギンドラッグ\" references undefined object: self",
+    "context": {
+      "title": "ペンギンレース",
+      "theme": "ペンギンの行列",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:56:20.467Z",
+    "gameTitle": "ペンギンレース",
+    "theme": "ペンギンの行列",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"ペンギン順番合わせ\" references undefined counter: order_count",
+    "context": {
+      "title": "ペンギンレース",
+      "theme": "ペンギンの行列",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:56:20.467Z",
+    "gameTitle": "ペンギンレース",
+    "theme": "ペンギンの行列",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"順序チェック\" references undefined counter: order_count",
+    "context": {
+      "title": "ペンギンレース",
+      "theme": "ペンギンの行列",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:56:20.467Z",
+    "gameTitle": "ペンギンレース",
+    "theme": "ペンギンの行列",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"タイムアウトチェック\" references undefined counter: order_count",
+    "context": {
+      "title": "ペンギンレース",
+      "theme": "ペンギンの行列",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:57:14.093Z",
+    "gameTitle": "緑の安らぎ",
+    "theme": "緑の安らぎ",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"tap_correct_plant\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "緑の安らぎ",
+      "theme": "緑の安らぎ",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:57:14.093Z",
+    "gameTitle": "緑の安らぎ",
+    "theme": "緑の安らぎ",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"tap_correct_plant\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "緑の安らぎ",
+      "theme": "緑の安らぎ",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:57:14.093Z",
+    "gameTitle": "緑の安らぎ",
+    "theme": "緑の安らぎ",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"tap_wrong_plant\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "緑の安らぎ",
+      "theme": "緑の安らぎ",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:57:14.093Z",
+    "gameTitle": "緑の安らぎ",
+    "theme": "緑の安らぎ",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"tap_wrong_plant\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "緑の安らぎ",
+      "theme": "緑の安らぎ",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:57:14.093Z",
+    "gameTitle": "緑の安らぎ",
+    "theme": "緑の安らぎ",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"tap_wrong_plant\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "緑の安らぎ",
+      "theme": "緑の安らぎ",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:57:14.093Z",
+    "gameTitle": "緑の安らぎ",
+    "theme": "緑の安らぎ",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"tap_wrong_plant\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "緑の安らぎ",
+      "theme": "緑の安らぎ",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:57:14.093Z",
+    "gameTitle": "緑の安らぎ",
+    "theme": "緑の安らぎ",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct_plant\" と \"tap_wrong_plant\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "緑の安らぎ",
+      "theme": "緑の安らぎ",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:57:14.093Z",
+    "gameTitle": "緑の安らぎ",
+    "theme": "緑の安らぎ",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct_plant\" と \"tap_wrong_plant\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "緑の安らぎ",
+      "theme": "緑の安らぎ",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:57:14.094Z",
+    "gameTitle": "緑の安らぎ",
+    "theme": "緑の安らぎ",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正しい植物をタップ\" and \"誤った植物をタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "緑の安らぎ",
+      "theme": "緑の安らぎ",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:57:14.094Z",
+    "gameTitle": "緑の安らぎ",
+    "theme": "緑の安らぎ",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正しい植物をタップ\" and \"誤った植物をタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "緑の安らぎ",
+      "theme": "緑の安らぎ",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:57:27.038Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:57:27.038Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerGoalに数値または「全て」がありません（推奨）",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "LogicValidator",
+    "errorType": "INVALID_CONDITION_TYPE",
+    "errorMessage": "ルール \"adjust_koinobori_angle\": 使用できない条件タイプ \"deviceTilt\"",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "LogicValidator",
+    "errorType": "INVALID_ACTION_TYPE",
+    "errorMessage": "ルール \"adjust_koinobori_angle\": 使用できないアクションタイプ \"adjustAngle\"",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "LogicValidator",
+    "errorType": "INVALID_ACTION_TYPE",
+    "errorMessage": "ルール \"adjust_koinobori_angle\": 使用できないアクションタイプ \"updateCounter\"",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "LogicValidator",
+    "errorType": "INVALID_ACTION_TYPE",
+    "errorMessage": "ルール \"check_success\": 使用できないアクションタイプ \"triggerEffect\"",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "LogicValidator",
+    "errorType": "INVALID_ACTION_TYPE",
+    "errorMessage": "ルール \"check_failure\": 使用できないアクションタイプ \"showRetryMessage\"",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "LogicValidator",
+    "errorType": "INVALID_COMPARISON",
+    "errorMessage": "ルール \"check_failure\": 無効なcomparison \"lessThan\"",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"check_success\" と \"check_failure\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "LogicValidator",
+    "errorType": "COUNTER_NEVER_MODIFIED",
+    "errorMessage": "カウンター \"height\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 0）",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: カウンター \"height\" を操作するルールがありません",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: height",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: height",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:58:15.521Z",
+    "gameTitle": "鯉のぼりの追い風",
+    "theme": "端午の鯉のぼり",
+    "step": "ProjectValidator",
+    "errorType": "NO_COUNTER_INCREMENT",
+    "errorMessage": "Success rule \"成功判定\" checks counter \"height\" but no rule increments it",
+    "context": {
+      "title": "鯉のぼりの追い風",
+      "theme": "端午の鯉のぼり",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:59:21.186Z",
+    "gameTitle": "増える星の宇宙デザイン",
+    "theme": "増える星",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"drag_star_1\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "増える星の宇宙デザイン",
+      "theme": "増える星",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:59:21.186Z",
+    "gameTitle": "増える星の宇宙デザイン",
+    "theme": "増える星",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"place_star_1\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "増える星の宇宙デザイン",
+      "theme": "増える星",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:59:21.186Z",
+    "gameTitle": "増える星の宇宙デザイン",
+    "theme": "増える星",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"check_win_condition\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "増える星の宇宙デザイン",
+      "theme": "増える星",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:59:21.186Z",
+    "gameTitle": "増える星の宇宙デザイン",
+    "theme": "増える星",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"check_lose_condition\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "増える星の宇宙デザイン",
+      "theme": "増える星",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:59:21.186Z",
+    "gameTitle": "増える星の宇宙デザイン",
+    "theme": "増える星",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "増える星の宇宙デザイン",
+      "theme": "増える星",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:59:21.186Z",
+    "gameTitle": "増える星の宇宙デザイン",
+    "theme": "増える星",
+    "step": "LogicValidator",
+    "errorType": "COUNTER_NEVER_MODIFIED",
+    "errorMessage": "カウンター \"correctly_placed_count\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 0）",
+    "context": {
+      "title": "増える星の宇宙デザイン",
+      "theme": "増える星",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:59:21.186Z",
+    "gameTitle": "増える星の宇宙デザイン",
+    "theme": "増える星",
+    "step": "LogicValidator",
+    "errorType": "COUNTER_NEVER_MODIFIED",
+    "errorMessage": "カウンター \"remaining_time\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 100）",
+    "context": {
+      "title": "増える星の宇宙デザイン",
+      "theme": "増える星",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:59:21.186Z",
+    "gameTitle": "増える星の宇宙デザイン",
+    "theme": "増える星",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: カウンター \"correctly_placed_count\" を操作するルールがありません",
+    "context": {
+      "title": "増える星の宇宙デザイン",
+      "theme": "増える星",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:59:21.186Z",
+    "gameTitle": "増える星の宇宙デザイン",
+    "theme": "増える星",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"check_win_condition\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "増える星の宇宙デザイン",
+      "theme": "増える星",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:59:21.186Z",
+    "gameTitle": "増える星の宇宙デザイン",
+    "theme": "増える星",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"Check Win Condition\" references undefined counter: correctly_placed_count",
+    "context": {
+      "title": "増える星の宇宙デザイン",
+      "theme": "増える星",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:59:21.186Z",
+    "gameTitle": "増える星の宇宙デザイン",
+    "theme": "増える星",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"Check Lose Condition\" references undefined counter: remaining_time",
+    "context": {
+      "title": "増える星の宇宙デザイン",
+      "theme": "増える星",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T05:59:21.186Z",
+    "gameTitle": "増える星の宇宙デザイン",
+    "theme": "増える星",
+    "step": "ProjectValidator",
+    "errorType": "NO_COUNTER_INCREMENT",
+    "errorMessage": "Success rule \"Check Win Condition\" checks counter \"correctly_placed_count\" but no rule increments it",
+    "context": {
+      "title": "増える星の宇宙デザイン",
+      "theme": "増える星",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:00:22.961Z",
+    "gameTitle": "雲の王国の鍵",
+    "theme": "雲の王国",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"tap_cloud_key_1\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "雲の王国の鍵",
+      "theme": "雲の王国",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:00:22.961Z",
+    "gameTitle": "雲の王国の鍵",
+    "theme": "雲の王国",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"tap_cloud_key_1\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "雲の王国の鍵",
+      "theme": "雲の王国",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:00:22.961Z",
+    "gameTitle": "雲の王国の鍵",
+    "theme": "雲の王国",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"tap_cloud_key_2\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "雲の王国の鍵",
+      "theme": "雲の王国",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:00:22.961Z",
+    "gameTitle": "雲の王国の鍵",
+    "theme": "雲の王国",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"tap_cloud_key_2\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "雲の王国の鍵",
+      "theme": "雲の王国",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:00:22.961Z",
+    "gameTitle": "雲の王国の鍵",
+    "theme": "雲の王国",
+    "step": "LogicValidator",
+    "errorType": "MISSING_TARGET_ID",
+    "errorMessage": "ルール \"tap_cloud_key_2\": hideアクションにtargetIdがありません",
+    "context": {
+      "title": "雲の王国の鍵",
+      "theme": "雲の王国",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:00:22.961Z",
+    "gameTitle": "雲の王国の鍵",
+    "theme": "雲の王国",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"tap_cloud_key_3\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "雲の王国の鍵",
+      "theme": "雲の王国",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:00:22.961Z",
+    "gameTitle": "雲の王国の鍵",
+    "theme": "雲の王国",
+    "step": "LogicValidator",
+    "errorType": "MISSING_SOUND_ID",
+    "errorMessage": "ルール \"tap_cloud_key_3\": playSoundアクションにsoundIdがありません",
+    "context": {
+      "title": "雲の王国の鍵",
+      "theme": "雲の王国",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:00:22.961Z",
+    "gameTitle": "雲の王国の鍵",
+    "theme": "雲の王国",
+    "step": "LogicValidator",
+    "errorType": "MISSING_TARGET_ID",
+    "errorMessage": "ルール \"tap_cloud_key_3\": hideアクションにtargetIdがありません",
+    "context": {
+      "title": "雲の王国の鍵",
+      "theme": "雲の王国",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:00:22.961Z",
+    "gameTitle": "雲の王国の鍵",
+    "theme": "雲の王国",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_cloud_key_1\" と \"tap_cloud_key_2\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "雲の王国の鍵",
+      "theme": "雲の王国",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:00:22.961Z",
+    "gameTitle": "雲の王国の鍵",
+    "theme": "雲の王国",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_cloud_key_1\" と \"tap_cloud_key_3\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "雲の王国の鍵",
+      "theme": "雲の王国",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:00:22.961Z",
+    "gameTitle": "雲の王国の鍵",
+    "theme": "雲の王国",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"雲の鍵1タップ\" and \"雲の鍵2タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "雲の王国の鍵",
+      "theme": "雲の王国",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:00:22.961Z",
+    "gameTitle": "雲の王国の鍵",
+    "theme": "雲の王国",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"雲の鍵1タップ\" and \"雲の鍵3タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "雲の王国の鍵",
+      "theme": "雲の王国",
+      "severity": "error"
+    }
+  }
+]

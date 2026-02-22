@@ -1,0 +1,273 @@
+[
+  {
+    "timestamp": "2025-12-26T13:58:56.614Z",
+    "gameTitle": "量子の迷宮",
+    "theme": "量子の世界",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct_route\" と \"tap_wrong_route_1\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "量子の迷宮",
+      "theme": "量子の世界",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:58:56.614Z",
+    "gameTitle": "量子の迷宮",
+    "theme": "量子の世界",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct_route\" と \"tap_wrong_route_3\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "量子の迷宮",
+      "theme": "量子の世界",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:58:56.615Z",
+    "gameTitle": "量子の迷宮",
+    "theme": "量子の世界",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正しいルートのタップ\" and \"間違ったルート1のタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "量子の迷宮",
+      "theme": "量子の世界",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:58:56.615Z",
+    "gameTitle": "量子の迷宮",
+    "theme": "量子の世界",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正しいルートのタップ\" and \"間違ったルート3のタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "量子の迷宮",
+      "theme": "量子の世界",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:01:07.788Z",
+    "gameTitle": "鏡文字のレター",
+    "theme": "鏡文字の手紙",
+    "step": "LogicValidator",
+    "errorType": "INVALID_OBJECT_ID",
+    "errorMessage": "ルール \"check_order\" のアクションtargetId \"combination\" がアセット計画に存在しません",
+    "context": {
+      "title": "鏡文字のレター",
+      "theme": "鏡文字の手紙",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:01:07.788Z",
+    "gameTitle": "鏡文字のレター",
+    "theme": "鏡文字の手紙",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_TARGET",
+    "errorMessage": "Action \"effect\" in rule \"順序チェック\" references undefined object: combination",
+    "context": {
+      "title": "鏡文字のレター",
+      "theme": "鏡文字の手紙",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:02:03.796Z",
+    "gameTitle": "喜びの瞬間キャッチ！",
+    "theme": "喜びの爆発",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "喜びの瞬間キャッチ！",
+      "theme": "喜びの爆発",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:02:03.796Z",
+    "gameTitle": "喜びの瞬間キャッチ！",
+    "theme": "喜びの爆発",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "喜びの瞬間キャッチ！",
+      "theme": "喜びの爆発",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:02:03.797Z",
+    "gameTitle": "喜びの瞬間キャッチ！",
+    "theme": "喜びの爆発",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "喜びの瞬間キャッチ！",
+      "theme": "喜びの爆発",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:03:20.513Z",
+    "gameTitle": "僧侶の祈り",
+    "theme": "僧侶の祈り",
+    "step": "LogicValidator",
+    "errorType": "MISSING_FRAME_NUMBER",
+    "errorMessage": "ルール \"check_success\": animation frame条件にframeNumberがありません",
+    "context": {
+      "title": "僧侶の祈り",
+      "theme": "僧侶の祈り",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:03:20.513Z",
+    "gameTitle": "僧侶の祈り",
+    "theme": "僧侶の祈り",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "僧侶の祈り",
+      "theme": "僧侶の祈り",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:03:20.513Z",
+    "gameTitle": "僧侶の祈り",
+    "theme": "僧侶の祈り",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "僧侶の祈り",
+      "theme": "僧侶の祈り",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:03:20.513Z",
+    "gameTitle": "僧侶の祈り",
+    "theme": "僧侶の祈り",
+    "step": "LogicValidator",
+    "errorType": "INVALID_SOUND_TYPE",
+    "errorMessage": "無効なsound.type \"calm\" (id: se_bell)",
+    "context": {
+      "title": "僧侶の祈り",
+      "theme": "僧侶の祈り",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:05:33.074Z",
+    "gameTitle": "駒を回転させろ！",
+    "theme": "将棋の駒",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "駒を回転させろ！",
+      "theme": "将棋の駒",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:05:33.074Z",
+    "gameTitle": "駒を回転させろ！",
+    "theme": "将棋の駒",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "駒を回転させろ！",
+      "theme": "将棋の駒",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:05:33.074Z",
+    "gameTitle": "駒を回転させろ！",
+    "theme": "将棋の駒",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "駒を回転させろ！",
+      "theme": "将棋の駒",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:06:59.139Z",
+    "gameTitle": "チェスの守護神",
+    "theme": "チェスの戦い",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+    "context": {
+      "title": "チェスの守護神",
+      "theme": "チェスの戦い"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:06:59.139Z",
+    "gameTitle": "チェスの守護神",
+    "theme": "チェスの戦い",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerGoalに数値または「全て」がありません（推奨）",
+    "context": {
+      "title": "チェスの守護神",
+      "theme": "チェスの戦い"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:08:13.548Z",
+    "gameTitle": "チェスの守護神",
+    "theme": "チェスの戦い",
+    "step": "LogicValidator",
+    "errorType": "AUTO_SUCCESS",
+    "errorMessage": "自動成功: ルール \"check_success\" はプレイヤー操作なしで成功します",
+    "context": {
+      "title": "チェスの守護神",
+      "theme": "チェスの戦い",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:08:13.548Z",
+    "gameTitle": "チェスの守護神",
+    "theme": "チェスの戦い",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "チェスの守護神",
+      "theme": "チェスの戦い",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:08:13.548Z",
+    "gameTitle": "チェスの守護神",
+    "theme": "チェスの戦い",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "チェスの守護神",
+      "theme": "チェスの戦い",
+      "ruleCount": 5
+    }
+  }
+]

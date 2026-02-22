@@ -1,0 +1,222 @@
+[
+  {
+    "timestamp": "2025-12-26T15:25:43.902Z",
+    "gameTitle": "和太鼓の響きを奏でろ",
+    "theme": "和太鼓の響き",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"成功した叩き\" references undefined counter: success_count",
+    "context": {
+      "title": "和太鼓の響きを奏でろ",
+      "theme": "和太鼓の響き",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:25:43.902Z",
+    "gameTitle": "和太鼓の響きを奏でろ",
+    "theme": "和太鼓の響き",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"失敗した叩き\" references undefined counter: failure_count",
+    "context": {
+      "title": "和太鼓の響きを奏でろ",
+      "theme": "和太鼓の響き",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:25:43.902Z",
+    "gameTitle": "和太鼓の響きを奏でろ",
+    "theme": "和太鼓の響き",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: success_count",
+    "context": {
+      "title": "和太鼓の響きを奏でろ",
+      "theme": "和太鼓の響き",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:25:43.902Z",
+    "gameTitle": "和太鼓の響きを奏でろ",
+    "theme": "和太鼓の響き",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: failure_count",
+    "context": {
+      "title": "和太鼓の響きを奏でろ",
+      "theme": "和太鼓の響き",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:26:41.593Z",
+    "gameTitle": "影を追え！盗賊の影",
+    "theme": "盗賊の影",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"swipe_shadow\" と \"swipe_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "影を追え！盗賊の影",
+      "theme": "盗賊の影",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:26:41.594Z",
+    "gameTitle": "影を追え！盗賊の影",
+    "theme": "盗賊の影",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"影をスワイプする\" and \"間違った方向にスワイプ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "影を追え！盗賊の影",
+      "theme": "盗賊の影",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:27:53.113Z",
+    "gameTitle": "緊張の一歩",
+    "theme": "入学式の緊張",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "緊張の一歩",
+      "theme": "入学式の緊張",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:27:53.113Z",
+    "gameTitle": "緊張の一歩",
+    "theme": "入学式の緊張",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "緊張の一歩",
+      "theme": "入学式の緊張",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:27:53.113Z",
+    "gameTitle": "緊張の一歩",
+    "theme": "入学式の緊張",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "緊張の一歩",
+      "theme": "入学式の緊張",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:28:59.858Z",
+    "gameTitle": "もちもちお餅キャッチ",
+    "theme": "もちもちの餅",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "もちもちお餅キャッチ",
+      "theme": "もちもちの餅"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:31:38.797Z",
+    "gameTitle": "炎の刀鍛冶",
+    "theme": "刀鍛冶の炎",
+    "step": "LogicValidator",
+    "errorType": "AUTO_SUCCESS",
+    "errorMessage": "自動成功: ルール \"check_temp_reached\" はプレイヤー操作なしで成功します",
+    "context": {
+      "title": "炎の刀鍛冶",
+      "theme": "刀鍛冶の炎",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:31:38.797Z",
+    "gameTitle": "炎の刀鍛冶",
+    "theme": "刀鍛冶の炎",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "炎の刀鍛冶",
+      "theme": "刀鍛冶の炎",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:31:38.797Z",
+    "gameTitle": "炎の刀鍛冶",
+    "theme": "刀鍛冶の炎",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"check_temp_reached\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "炎の刀鍛冶",
+      "theme": "刀鍛冶の炎",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:35:42.745Z",
+    "gameTitle": "選択の瞬間：正しい糸を引け",
+    "theme": "選択の瞬間",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_string_1_correct\" と \"tap_string_2_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "選択の瞬間：正しい糸を引け",
+      "theme": "選択の瞬間",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:35:42.745Z",
+    "gameTitle": "選択の瞬間：正しい糸を引け",
+    "theme": "選択の瞬間",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_string_1_correct\" と \"tap_string_3_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "選択の瞬間：正しい糸を引け",
+      "theme": "選択の瞬間",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:35:42.745Z",
+    "gameTitle": "選択の瞬間：正しい糸を引け",
+    "theme": "選択の瞬間",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解の紐をタップ\" and \"不正解の紐2をタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "選択の瞬間：正しい糸を引け",
+      "theme": "選択の瞬間",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:35:42.745Z",
+    "gameTitle": "選択の瞬間：正しい糸を引け",
+    "theme": "選択の瞬間",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解の紐をタップ\" and \"不正解の紐3をタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "選択の瞬間：正しい糸を引け",
+      "theme": "選択の瞬間",
+      "severity": "error"
+    }
+  }
+]

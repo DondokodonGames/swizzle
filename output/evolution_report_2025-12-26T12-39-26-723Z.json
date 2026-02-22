@@ -1,0 +1,114 @@
+{
+  "totalRuns": 10,
+  "successCount": 7,
+  "failureCount": 3,
+  "errorPatterns": [
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 20340, Requested 9695. Please try again in 70ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "自動成功: ルール \"win_condition\" はプレイヤー操作なしで成功します"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功パス確認要: ルール \"win_condition\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 1,
+      "examples": [
+        "コンフリクト: ルール \"swipe_correct\" と \"swipe_incorrect\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 1,
+      "examples": [
+        "Rules \"正しいスワイプ\" and \"不正確なスワイプ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_COLLISION_TARGET",
+      "count": 1,
+      "examples": [
+        "ルール \"check_success\": collision target \"any\" が未定義"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:MISSING_IMPULSE",
+      "count": 1,
+      "examples": [
+        "ルール \"apply_wind\": applyImpulseにimpulseがありません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COLLISION_TARGET",
+      "count": 1,
+      "examples": [
+        "Collision condition in rule \"成功判定\" references undefined object: any"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "429 Rate limit reached for gpt-4o",
+      "suggestedAddition": "## レート制限管理\nトークンの使用量を監視し、制限に達しないようにトークンの消費を最適化します。必要な場合はレート制限ポリシーを見直してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "ルール検証",
+      "currentIssue": "自動成功: ルール \"win_condition\" はプレイヤー操作なしで成功します",
+      "suggestedAddition": "## プレイヤー操作必須\n成功条件をプレイヤーの操作に依存するようにするため、ルール生成時にはプレイヤーのインタラクションが含まれることを確認してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "ルール検証",
+      "currentIssue": "成功へのパスにプレイヤー操作が含まれていない可能性があります",
+      "suggestedAddition": "## インタラクションの確認\n成功へのパスに正しい形でプレイヤーの操作（touch/collision/position条件）が含まれていることをチェックします。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "ルール検証",
+      "currentIssue": "ルール \"swipe_correct\" と \"swipe_incorrect\" が同一条件で success/failure を発動",
+      "suggestedAddition": "## 条件の明確化\n似た条件で異なる結果を引き起こすルールは条件設定を明確にして、競合を回避します。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "ルール検証",
+      "currentIssue": "collision target \"any\" が未定義",
+      "suggestedAddition": "## 定義の確認\n使用する全てのcollision targetが明確に定義されていることを確認し、未定義の場合は適切な定義を追加してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "ルール検証",
+      "currentIssue": "applyImpulseにimpulseがありません",
+      "suggestedAddition": "## インパルスの定義\napplyImpulseを使用する際には、必ず対応する力のベクトル（impulse）を指定します。",
+      "priority": "medium"
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+{
+  "totalRuns": 10,
+  "successCount": 0,
+  "failureCount": 10,
+  "errorPatterns": [
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COUNTER",
+      "count": 53,
+      "examples": [
+        "Counter condition in rule \"成功判定\" references undefined counter: wind_strength",
+        "Counter condition in rule \"失敗判定\" references undefined counter: wind_strength",
+        "Counter condition in rule \"息吹きリリース\" references undefined counter: breath_power"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_SOUND_TYPE",
+      "count": 49,
+      "examples": [
+        "無効なsound.type \"effect\" (id: se_tap)",
+        "無効なsound.type \"effect\" (id: se_success)",
+        "無効なsound.type \"effect\" (id: se_failure)"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_COUNTER",
+      "count": 40,
+      "examples": [
+        "Counter action in rule \"風タイマー更新\" references undefined counter: wind_timer",
+        "Counter action in rule \"風力変化\" references undefined counter: wind_strength",
+        "Counter action in rule \"息の強さ上昇\" references undefined counter: breath_power"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INSTANT_LOSE",
+      "count": 4,
+      "examples": [
+        "即失敗: カウンター \"wind_strength\" の初期値(50)が失敗閾値(30)以上",
+        "即失敗: カウンター \"arrow_timer\" の初期値(80)が失敗閾値(0)以上",
+        "即失敗: カウンター \"arrow_timer\" の初期値(80)が失敗閾値(0)以上"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_COUNTER_INCREMENT",
+      "count": 4,
+      "examples": [
+        "Success rule \"成功判定\" checks counter \"wind_strength\" but no rule increments it",
+        "Success rule \"成功判定\" checks counter \"extinguished_candles\" but no rule increments it",
+        "Success rule \"時間終了での成功判定\" checks counter \"game_timer\" but no rule increments it"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:UNREACHABLE_SUCCESS",
+      "count": 4,
+      "examples": [
+        "成功条件到達不可: カウンター \"hour_hand_angle\" を操作するルールがありません",
+        "成功条件到達不可: カウンター \"hour_hand_angle\" を操作するルールがありません",
+        "成功条件到達不可: カウンター \"minute_hand_angle\" を操作するルールがありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:COUNTER_NEVER_CHECKED",
+      "count": 2,
+      "examples": [
+        "カウンター \"wind_timer\" は操作されていますが、条件でチェックされていません（操作ルール: wind_tick）",
+        "カウンター \"successful_catches\" は操作されていますが、条件でチェックされていません（操作ルール: perfect_catch）"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_BGM_MOOD",
+      "count": 2,
+      "examples": [
+        "無効なbgm.mood \"undefined\"",
+        "無効なbgm.mood \"緊張感\""
+      ]
+    },
+    {
+      "errorType": "LogicValidator:COUNTER_NEVER_MODIFIED",
+      "count": 2,
+      "examples": [
+        "カウンター \"hour_hand_angle\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 0）",
+        "カウンター \"minute_hand_angle\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 0）"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:SPEC_COUNTER_NOT_IMPLEMENTED",
+      "count": 2,
+      "examples": [
+        "Counter \"target_hour_angle\" from specification is not implemented",
+        "Counter \"target_minute_angle\" from specification is not implemented"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 1,
+      "examples": [
+        "コンフリクト: ルール \"check_tap_timing_success\" と \"check_tap_timing_failure\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "JSON parse failed: SyntaxError: Expected ',' or ']' after array element in JSON at position 20688 (line 611 column 6)"
+      ]
+    },
+    {
+      "errorType": "AssetPlanner:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "JSON parse failed: SyntaxError: Expected ',' or ']' after array element in JSON at position 8459 (line 204 column 85)"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "カウンター定義",
+      "currentIssue": "カウンターの名前が定義されているが、実際に使用するルールで参照されていない",
+      "suggestedAddition": "## カウンター定義ルール\nカウンターを定義する際は以下を厳守:\n1. カウンター名は必ずルール内で参照されること\n2. 定義したカウンターは必ず操作（increment/decrement/set）と条件チェックの両方を持つこと\n3. カウンター名の一貫性を保つこと（typoチェック）\n\n例:\ncounters: { score: 0 }\nrules: [\n  { name: \"スコア増加\", trigger: \"touch\", action: \"counter:score:increment:1\" },\n  { name: \"成功判定\", condition: \"counter:score:gte:10\", result: \"success\" }\n]",
+      "priority": "critical"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "サウンド仕様",
+      "currentIssue": "sound.typeに無効な値\"effect\"が指定されている",
+      "suggestedAddition": "## サウンド仕様\nsound.typeは以下の値のみ使用可能:\n- \"se\" (効果音)\n- \"bgm\" (背景音楽)\n\n例:\nsounds: [\n  { id: \"se_tap\", type: \"se\", file: \"tap.wav\" },\n  { id: \"bgm_main\", type: \"bgm\", file: \"main.mp3\" }\n]",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルールバランス",
+      "currentIssue": "カウンターの初期値が失敗条件を既に満たしている（即失敗）",
+      "suggestedAddition": "## カウンターバランスチェック\nカウンター定義時は以下を確認:\n1. 初期値が成功/失敗条件を即座に満たしていないか\n2. 成功への到達可能性があるか\n3. ゲームプレイが成立するか\n\n例:\n❌ counter: { hp: 0 }, fail_condition: \"hp <= 0\" (即失敗)\n✅ counter: { hp: 100 }, fail_condition: \"hp <= 0\" (プレイ可能)",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "BGM仕様",
+      "currentIssue": "bgm.moodに無効な値\"undefined\"が指定されている",
+      "suggestedAddition": "## BGM mood仕様\nbgm.moodは以下の値から選択:\n- \"calm\" (穏やか)\n- \"exciting\" (興奮)\n- \"mysterious\" (神秘的)\n- \"cheerful\" (陽気)\n- \"tense\" (緊張)\n\n例:\nbgm: { mood: \"calm\", tempo: \"medium\" }",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "プレイヤー操作",
+      "currentIssue": "成功条件にプレイヤーの操作（タッチ、衝突、位置）が含まれていない",
+      "suggestedAddition": "## プレイヤー操作必須\nゲームには必ずプレイヤーが操作する要素を含める:\n1. タッチ操作 (touch conditions)\n2. 衝突判定 (collision conditions)\n3. 位置操作 (position conditions)\n\n成功条件には必ずプレイヤーアクションを経由するパスを用意する。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "EditorMapper.ts",
+      "section": "カウンター参照チェック",
+      "currentIssue": "SpecificationからEditor形式に変換する際にカウンター名の不整合が発生",
+      "suggestedAddition": "## カウンター参照整合性チェック\nEditor形式変換時に以下をバリデート:\n1. ルールで参照されるカウンターがcounters定義に存在するか\n2. 定義されたカウンターが実際に使用されているか\n3. カウンター名のtypoチェック\n\nバリデーション失敗時は詳細エラーメッセージを出力",
+      "priority": "critical"
+    }
+  ]
+}

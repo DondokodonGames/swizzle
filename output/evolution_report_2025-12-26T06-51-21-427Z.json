@@ -1,0 +1,17 @@
+{
+  "totalRuns": 10,
+  "successCount": 0,
+  "failureCount": 10,
+  "errorPatterns": [
+    {
+      "errorType": "ConceptGenerator:GENERATION_ERROR",
+      "count": 10,
+      "examples": [
+        "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWUrZMFFeRvuCf3j157NT\"}",
+        "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWUrZRD83LoqSKgcdmtoL\"}",
+        "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWUrZV1pUjEobyCa8jzwZ\"}"
+      ]
+    }
+  ],
+  "promptImprovements": []
+}

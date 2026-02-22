@@ -1,0 +1,130 @@
+[
+  {
+    "timestamp": "2025-12-26T23:51:45.301Z",
+    "gameTitle": "消える虹をつかまえろ！",
+    "theme": "消える虹",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"swipe_rainbow\" と \"missed_swipe\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "消える虹をつかまえろ！",
+      "theme": "消える虹",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T23:51:45.302Z",
+    "gameTitle": "消える虹をつかまえろ！",
+    "theme": "消える虹",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"虹をスワイプ\" and \"スワイプ失敗\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "消える虹をつかまえろ！",
+      "theme": "消える虹",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T23:52:16.200Z",
+    "gameTitle": "風のメロディ",
+    "theme": "フルートの風",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 15637, Requested 14374. Please try again in 22ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "風のメロディ",
+      "theme": "フルートの風"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T23:53:07.856Z",
+    "gameTitle": "音を奏でよ！三味線チャレンジ",
+    "theme": "三味線の音色",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_success\" と \"tap_failure\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "音を奏でよ！三味線チャレンジ",
+      "theme": "三味線の音色",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T23:53:07.856Z",
+    "gameTitle": "音を奏でよ！三味線チャレンジ",
+    "theme": "三味線の音色",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解タイミングタップ\" and \"不正解タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "音を奏でよ！三味線チャレンジ",
+      "theme": "三味線の音色",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T23:59:51.721Z",
+    "gameTitle": "手裏剣訓練",
+    "theme": "忍術の修行",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "手裏剣訓練",
+      "theme": "忍術の修行",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T23:59:51.721Z",
+    "gameTitle": "手裏剣訓練",
+    "theme": "忍術の修行",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "手裏剣訓練",
+      "theme": "忍術の修行",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T23:59:51.721Z",
+    "gameTitle": "手裏剣訓練",
+    "theme": "忍術の修行",
+    "step": "LogicValidator",
+    "errorType": "NO_FAILURE",
+    "errorMessage": "failureアクションが存在しません（時間切れのみで失敗となります）",
+    "context": {
+      "title": "手裏剣訓練",
+      "theme": "忍術の修行",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T23:59:51.721Z",
+    "gameTitle": "手裏剣訓練",
+    "theme": "忍術の修行",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "手裏剣訓練",
+      "theme": "忍術の修行",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T00:01:11.443Z",
+    "gameTitle": "凧の空で風を掴む",
+    "theme": "凧の空",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "JSON parse failed: SyntaxError: Expected double-quoted property name in JSON at position 1132 (line 44 column 22)",
+    "context": {
+      "title": "凧の空で風を掴む",
+      "theme": "凧の空"
+    }
+  }
+]

@@ -1,0 +1,146 @@
+{
+  "totalRuns": 10,
+  "successCount": 1,
+  "failureCount": 9,
+  "errorPatterns": [
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_COUNTER",
+      "count": 11,
+      "examples": [
+        "Counter action in rule \"正しいタップ1\" references undefined counter: correct_taps",
+        "Counter action in rule \"正しいタップ2\" references undefined counter: correct_taps",
+        "Counter action in rule \"正しいタップ3\" references undefined counter: correct_taps"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COUNTER",
+      "count": 9,
+      "examples": [
+        "Counter condition in rule \"失敗判定\" references undefined counter: wrong_taps",
+        "Counter condition in rule \"勝利判定\" references undefined counter: correct_tap_count",
+        "Counter condition in rule \"失敗判定\" references undefined counter: incorrect_tap_count"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_OBJECT_ID",
+      "count": 1,
+      "examples": [
+        "ルール \"tap_wrong\" のアクションtargetId \"stage\" がアセット計画に存在しません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:COUNTER_NEVER_CHECKED",
+      "count": 1,
+      "examples": [
+        "カウンター \"correct_taps\" は操作されていますが、条件でチェックされていません（操作ルール: tap_correct_1, tap_correct_2, tap_correct_3, tap_correct_4）"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_TARGET",
+      "count": 1,
+      "examples": [
+        "Action \"effect\" in rule \"間違ったタップ\" references undefined object: stage"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INSTANT_LOSE",
+      "count": 1,
+      "examples": [
+        "即失敗: カウンター \"time_left\" の初期値(9)が失敗閾値(0)以上"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:COUNTER_NEVER_MODIFIED",
+      "count": 1,
+      "examples": [
+        "カウンター \"time_left\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 9）"
+      ]
+    },
+    {
+      "errorType": "EditorMapper:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "Cannot read properties of undefined (reading 'length')"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SHOW_HIDE_CONFLICT",
+      "count": 1,
+      "examples": [
+        "コンフリクト: オブジェクト \"object_2\" が同一条件で show/hide される（ルール: successful_swipe, successful_swipe）"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SAME_RULE_SHOW_HIDE",
+      "count": 1,
+      "examples": [
+        "コンフリクト: ルール \"successful_swipe\" が同一オブジェクト \"object_2\" に show/hide を同時実行"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INSTANT_WIN",
+      "count": 1,
+      "examples": [
+        "即成功: カウンター \"swipe_count\" の初期値(0)が条件を満たしています"
+      ]
+    },
+    {
+      "errorType": "GameDesignGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 28796, Requested 1681. Please try again in 954ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    },
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "JSON parse failed: SyntaxError: Unexpected token 'o', ...\" \"value\": obstacle_1\"... is not valid JSON"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "カウンターが定義されているが操作されていない",
+      "suggestedAddition": "## カウンター使用ルール\nカウンターを定義する場合は必ず:\n1. 操作するルール（increment/decrement）\n2. チェックするルール（条件）\nの両方を定義してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "未定義のターゲットやカウンターが使用されている",
+      "suggestedAddition": "## ターゲットとカウンターの定義\nルールで使用するターゲットやカウンターは事前にアセット計画で明示的に定義し、存在を確認してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "ターゲットがエラーメッセージでヒットしていない",
+      "suggestedAddition": "## 正しいターゲット選択\nルールで使用するオブジェクトやターゲットがアセット計画と一致しているか確認し、不一致がある場合は再計画を行ってください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "即失敗やプレイヤー操作の欠如",
+      "suggestedAddition": "## 失敗条件と操作の確認\nゲーム開始時に即座に失敗とならないように時間や操作条件を設定し、プレイヤーの操作を必ず成功パスに含めてください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "GameConceptGenerator.ts",
+      "section": "ゲームコンセプト",
+      "currentIssue": "プレイヤー操作の欠如",
+      "suggestedAddition": "## プレイヤー操作の導入\nゲームコンセプト生成段階で明確なプレイヤー操作（例: タップ/スワイプ）を含めた設計を行ってください。",
+      "priority": "low"
+    }
+  ]
+}

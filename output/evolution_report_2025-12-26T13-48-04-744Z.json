@@ -1,0 +1,116 @@
+{
+  "totalRuns": 10,
+  "successCount": 3,
+  "failureCount": 7,
+  "errorPatterns": [
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 2,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 19013, Requested 11161. Please try again in 348ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 18714, Requested 11358. Please try again in 144ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    },
+    {
+      "errorType": "EditorMapper:GENERATION_ERROR",
+      "count": 2,
+      "examples": [
+        "Cannot read properties of undefined (reading 'length')",
+        "Cannot read properties of undefined (reading 'length')"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 1,
+      "examples": [
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 1,
+      "examples": [
+        "コンフリクト: ルール \"tap_correct\" と \"tap_wrong\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 1,
+      "examples": [
+        "Rules \"正解タップ\" and \"不正解タップ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "GameDesignGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 29019, Requested 1723. Please try again in 1.484s. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様生成",
+      "currentIssue": "429エラーでのトークンレート制限",
+      "suggestedAddition": "リクエスト時にトークンのバッチサイズを調整し、頻度を減らしてレートリミットを回避する仕組みを実装する",
+      "priority": "high"
+    },
+    {
+      "targetFile": "EditorMapper.ts",
+      "section": "エディター形式変換",
+      "currentIssue": "未定義のプロパティ 'length' を読み込もうとしてエラーが発生",
+      "suggestedAddition": "未定義の変数をチェックし、デフォルト値を設定するエラーハンドリングを追加する",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "ゲームロジックの検証",
+      "currentIssue": "プレイヤー操作なしで成功に到達するパス",
+      "suggestedAddition": "成功パスに必ず少なくとも一つのプレイヤー操作を含めるようにするガイドラインを設定する",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "ゲームロジックの検証",
+      "currentIssue": "successアクションが存在しない",
+      "suggestedAddition": "全てのゲームに少なくとも一つの 'success' アクションが必要であることを確認する検証ロジックを追加",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "ProjectValidator.ts",
+      "section": "プロジェクト検証",
+      "currentIssue": "成功ルールが定義されていない",
+      "suggestedAddition": "ゲームを正常にクリアできるかどうかの事前検査を追加し、成功ルールがない場合は警告を表示",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "ゲームロジックの検証",
+      "currentIssue": "successとfailureが同一条件で発動するコンフリクト",
+      "suggestedAddition": "全てのルールセットにおいてsuccessとfailureアクションが同一条件でトリガーされないように検証ロジックを追加",
+      "priority": "high"
+    },
+    {
+      "targetFile": "ProjectValidator.ts",
+      "section": "プロジェクト検証",
+      "currentIssue": "成功と失敗が同一条件で発動するコンフリクト",
+      "suggestedAddition": "ゲームの全ルールを精査し、同一条件での成功と失敗が同時に発生しないようなルール検証を行う",
+      "priority": "high"
+    }
+  ]
+}

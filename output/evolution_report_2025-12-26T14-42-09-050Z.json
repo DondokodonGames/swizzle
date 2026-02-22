@@ -1,0 +1,118 @@
+{
+  "totalRuns": 10,
+  "successCount": 5,
+  "failureCount": 5,
+  "errorPatterns": [
+    {
+      "errorType": "LogicValidator:INVALID_OBJECT_ID",
+      "count": 7,
+      "examples": [
+        "ルール \"check_success\" のアクションtargetId \"screen\" がアセット計画に存在しません",
+        "ルール \"drag_note\" のtargetObjectId \"self\" がアセット計画に存在しません",
+        "ルール \"drag_note\" のアクションtargetId \"self\" がアセット計画に存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_TARGET",
+      "count": 4,
+      "examples": [
+        "Action \"effect\" in rule \"配置成功\" references undefined object: screen",
+        "Action \"followDrag\" in rule \"音符のドラッグ\" references undefined object: self",
+        "Action \"effect\" in rule \"正しい位置に音符を配置\" references undefined object: self"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 3,
+      "examples": [
+        "コンフリクト: ルール \"tap_door_future\" と \"tap_door_past\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_door_future\" と \"tap_door_present\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"check_success\" と \"check_failure\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 3,
+      "examples": [
+        "Rules \"未来のドアをタップ\" and \"過去のドアをタップ\" can trigger both success and failure with same condition",
+        "Rules \"未来のドアをタップ\" and \"現在のドアをタップ\" can trigger both success and failure with same condition",
+        "Rules \"成功判定\" and \"失敗判定\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:UNDEFINED_TARGET_OBJECT",
+      "count": 3,
+      "examples": [
+        "Rule \"音符のドラッグ\" references undefined object: self",
+        "Rule \"正しい位置に音符を配置\" references undefined object: self",
+        "Rule \"間違った位置に音符を配置\" references undefined object: self"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_REGION_Y",
+      "count": 2,
+      "examples": [
+        "ルール \"check_success\": region.y(5)が0-1の範囲外",
+        "ルール \"check_failure\": region.y(4.9)が0-1の範囲外"
+      ]
+    },
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 18100, Requested 11906. Please try again in 12ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_COLLISION_TARGET",
+      "count": 1,
+      "examples": [
+        "ルール \"drop_note_wrong\": collision target \"self\" が未定義"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COLLISION_TARGET",
+      "count": 1,
+      "examples": [
+        "Collision condition in rule \"間違った位置に音符を配置\" references undefined object: self"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "AssetPlanner.ts",
+      "section": "アセット計画",
+      "currentIssue": "アセット計画で定義されていないIDを使用している",
+      "suggestedAddition": "## アセットID検証\nすべてのアセットIDを使用する前にアセット計画で定義されていることを確認してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "未定義のオブジェクトやターゲットを参照している",
+      "suggestedAddition": "## オブジェクト参照\nすべてのルールで使用されるオブジェクトは、事前にアセット計画または定義セクションで適切に定義してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "同一条件での成功と失敗の矛盾が存在",
+      "suggestedAddition": "## 成功/失敗条件の確認\n同一条件で成功と失敗が同時に発生しないようにルールを設計してください。特定の条件に一貫性を持たせるために、論理フローを見直してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "無効な座標値や領域値が使用されている",
+      "suggestedAddition": "## 座標値検証\n指定するすべての座標値は0から1の範囲内にあることを確認してください。範囲外の値を使用すると、無効な操作となる可能性があります。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "AssetPlanner.ts",
+      "section": "アセット計画",
+      "currentIssue": "コリジョンターゲットが未定義",
+      "suggestedAddition": "## コリジョン設定\nすべてのコリジョンターゲットは事前に明確に定義し、使用するルールで正しく参照してください。",
+      "priority": "high"
+    }
+  ]
+}

@@ -1,0 +1,415 @@
+[
+  {
+    "timestamp": "2025-12-26T11:49:45.865Z",
+    "gameTitle": "記憶の迷宮に挑め！",
+    "theme": "記憶の迷宮",
+    "step": "LogicValidator",
+    "errorType": "INVALID_OBJECT_ID",
+    "errorMessage": "ルール \"tap_wrong\" のアクションtargetId \"stage\" がアセット計画に存在しません",
+    "context": {
+      "title": "記憶の迷宮に挑め！",
+      "theme": "記憶の迷宮",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:49:45.865Z",
+    "gameTitle": "記憶の迷宮に挑め！",
+    "theme": "記憶の迷宮",
+    "step": "LogicValidator",
+    "errorType": "COUNTER_NEVER_CHECKED",
+    "errorMessage": "カウンター \"correct_taps\" は操作されていますが、条件でチェックされていません（操作ルール: tap_correct_1, tap_correct_2, tap_correct_3, tap_correct_4）",
+    "context": {
+      "title": "記憶の迷宮に挑め！",
+      "theme": "記憶の迷宮",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:49:45.866Z",
+    "gameTitle": "記憶の迷宮に挑め！",
+    "theme": "記憶の迷宮",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正しいタップ1\" references undefined counter: correct_taps",
+    "context": {
+      "title": "記憶の迷宮に挑め！",
+      "theme": "記憶の迷宮",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:49:45.866Z",
+    "gameTitle": "記憶の迷宮に挑め！",
+    "theme": "記憶の迷宮",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正しいタップ2\" references undefined counter: correct_taps",
+    "context": {
+      "title": "記憶の迷宮に挑め！",
+      "theme": "記憶の迷宮",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:49:45.866Z",
+    "gameTitle": "記憶の迷宮に挑め！",
+    "theme": "記憶の迷宮",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正しいタップ3\" references undefined counter: correct_taps",
+    "context": {
+      "title": "記憶の迷宮に挑め！",
+      "theme": "記憶の迷宮",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:49:45.866Z",
+    "gameTitle": "記憶の迷宮に挑め！",
+    "theme": "記憶の迷宮",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正しいタップ4\" references undefined counter: correct_taps",
+    "context": {
+      "title": "記憶の迷宮に挑め！",
+      "theme": "記憶の迷宮",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:49:45.866Z",
+    "gameTitle": "記憶の迷宮に挑め！",
+    "theme": "記憶の迷宮",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"間違ったタップ\" references undefined counter: wrong_taps",
+    "context": {
+      "title": "記憶の迷宮に挑め！",
+      "theme": "記憶の迷宮",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:49:45.866Z",
+    "gameTitle": "記憶の迷宮に挑め！",
+    "theme": "記憶の迷宮",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_TARGET",
+    "errorMessage": "Action \"effect\" in rule \"間違ったタップ\" references undefined object: stage",
+    "context": {
+      "title": "記憶の迷宮に挑め！",
+      "theme": "記憶の迷宮",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:49:45.866Z",
+    "gameTitle": "記憶の迷宮に挑め！",
+    "theme": "記憶の迷宮",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: wrong_taps",
+    "context": {
+      "title": "記憶の迷宮に挑め！",
+      "theme": "記憶の迷宮",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:50:29.969Z",
+    "gameTitle": "AIの夢の中の投影",
+    "theme": "AIの夢",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正解タップ判定\" references undefined counter: correct_tap_count",
+    "context": {
+      "title": "AIの夢の中の投影",
+      "theme": "AIの夢",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:50:29.969Z",
+    "gameTitle": "AIの夢の中の投影",
+    "theme": "AIの夢",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"誤タップ判定\" references undefined counter: incorrect_tap_count",
+    "context": {
+      "title": "AIの夢の中の投影",
+      "theme": "AIの夢",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:50:29.969Z",
+    "gameTitle": "AIの夢の中の投影",
+    "theme": "AIの夢",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: correct_tap_count",
+    "context": {
+      "title": "AIの夢の中の投影",
+      "theme": "AIの夢",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:50:29.969Z",
+    "gameTitle": "AIの夢の中の投影",
+    "theme": "AIの夢",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: incorrect_tap_count",
+    "context": {
+      "title": "AIの夢の中の投影",
+      "theme": "AIの夢",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:51:26.190Z",
+    "gameTitle": "紅葉の不思議な道しるべ",
+    "theme": "紅葉狩りの散歩",
+    "step": "LogicValidator",
+    "errorType": "INSTANT_LOSE",
+    "errorMessage": "即失敗: カウンター \"time_left\" の初期値(9)が失敗閾値(0)以上",
+    "context": {
+      "title": "紅葉の不思議な道しるべ",
+      "theme": "紅葉狩りの散歩",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:51:26.190Z",
+    "gameTitle": "紅葉の不思議な道しるべ",
+    "theme": "紅葉狩りの散歩",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "紅葉の不思議な道しるべ",
+      "theme": "紅葉狩りの散歩",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:51:26.190Z",
+    "gameTitle": "紅葉の不思議な道しるべ",
+    "theme": "紅葉狩りの散歩",
+    "step": "LogicValidator",
+    "errorType": "COUNTER_NEVER_MODIFIED",
+    "errorMessage": "カウンター \"time_left\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 9）",
+    "context": {
+      "title": "紅葉の不思議な道しるべ",
+      "theme": "紅葉狩りの散歩",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:51:26.191Z",
+    "gameTitle": "紅葉の不思議な道しるべ",
+    "theme": "紅葉狩りの散歩",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ\" references undefined counter: time_left",
+    "context": {
+      "title": "紅葉の不思議な道しるべ",
+      "theme": "紅葉狩りの散歩",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:52:36.997Z",
+    "gameTitle": "土星の輪の調整",
+    "theme": "土星の輪",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"間違った配置\" references undefined counter: wrong_attempts",
+    "context": {
+      "title": "土星の輪の調整",
+      "theme": "土星の輪",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:52:36.997Z",
+    "gameTitle": "土星の輪の調整",
+    "theme": "土星の輪",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"損失判定\" references undefined counter: wrong_attempts",
+    "context": {
+      "title": "土星の輪の調整",
+      "theme": "土星の輪",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:53:26.520Z",
+    "gameTitle": "運命の糸をたどれ",
+    "theme": "運命の糸",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "運命の糸をたどれ",
+      "theme": "運命の糸"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:54:35.098Z",
+    "gameTitle": "露天風呂の月を見守れ",
+    "theme": "露天風呂の月",
+    "step": "LogicValidator",
+    "errorType": "SHOW_HIDE_CONFLICT",
+    "errorMessage": "コンフリクト: オブジェクト \"object_2\" が同一条件で show/hide される（ルール: successful_swipe, successful_swipe）",
+    "context": {
+      "title": "露天風呂の月を見守れ",
+      "theme": "露天風呂の月",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:54:35.098Z",
+    "gameTitle": "露天風呂の月を見守れ",
+    "theme": "露天風呂の月",
+    "step": "LogicValidator",
+    "errorType": "SAME_RULE_SHOW_HIDE",
+    "errorMessage": "コンフリクト: ルール \"successful_swipe\" が同一オブジェクト \"object_2\" に show/hide を同時実行",
+    "context": {
+      "title": "露天風呂の月を見守れ",
+      "theme": "露天風呂の月",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:54:35.099Z",
+    "gameTitle": "露天風呂の月を見守れ",
+    "theme": "露天風呂の月",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"スワイプ成功\" references undefined counter: swipe_count",
+    "context": {
+      "title": "露天風呂の月を見守れ",
+      "theme": "露天風呂の月",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:54:35.099Z",
+    "gameTitle": "露天風呂の月を見守れ",
+    "theme": "露天風呂の月",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"月が雲に隠れる\" references undefined counter: cloud_cover_count",
+    "context": {
+      "title": "露天風呂の月を見守れ",
+      "theme": "露天風呂の月",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:54:35.099Z",
+    "gameTitle": "露天風呂の月を見守れ",
+    "theme": "露天風呂の月",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: swipe_count",
+    "context": {
+      "title": "露天風呂の月を見守れ",
+      "theme": "露天風呂の月",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:54:35.099Z",
+    "gameTitle": "露天風呂の月を見守れ",
+    "theme": "露天風呂の月",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: cloud_cover_count",
+    "context": {
+      "title": "露天風呂の月を見守れ",
+      "theme": "露天風呂の月",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:55:37.795Z",
+    "gameTitle": "盆踊りの輪を揃えよう",
+    "theme": "盆踊りの輪",
+    "step": "LogicValidator",
+    "errorType": "INSTANT_WIN",
+    "errorMessage": "即成功: カウンター \"swipe_count\" の初期値(0)が条件を満たしています",
+    "context": {
+      "title": "盆踊りの輪を揃えよう",
+      "theme": "盆踊りの輪",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:55:37.795Z",
+    "gameTitle": "盆踊りの輪を揃えよう",
+    "theme": "盆踊りの輪",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"輪のスワイプ\" references undefined counter: swipe_count",
+    "context": {
+      "title": "盆踊りの輪を揃えよう",
+      "theme": "盆踊りの輪",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:55:37.795Z",
+    "gameTitle": "盆踊りの輪を揃えよう",
+    "theme": "盆踊りの輪",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: swipe_count",
+    "context": {
+      "title": "盆踊りの輪を揃えよう",
+      "theme": "盆踊りの輪",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:55:37.795Z",
+    "gameTitle": "盆踊りの輪を揃えよう",
+    "theme": "盆踊りの輪",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: swipe_count",
+    "context": {
+      "title": "盆踊りの輪を揃えよう",
+      "theme": "盆踊りの輪",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:55:48.473Z",
+    "gameTitle": "泣く空の音色",
+    "theme": "泣く空",
+    "step": "GameDesignGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 28796, Requested 1681. Please try again in 954ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "泣く空の音色",
+      "theme": "泣く空"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T11:56:37.404Z",
+    "gameTitle": "小人の冒険：飛び越え山道",
+    "theme": "小人の冒険",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "JSON parse failed: SyntaxError: Unexpected token 'o', ...\" \"value\": obstacle_1\"... is not valid JSON",
+    "context": {
+      "title": "小人の冒険：飛び越え山道",
+      "theme": "小人の冒険"
+    }
+  }
+]

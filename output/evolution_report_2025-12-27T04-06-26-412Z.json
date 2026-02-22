@@ -1,0 +1,124 @@
+{
+  "totalRuns": 10,
+  "successCount": 5,
+  "failureCount": 5,
+  "errorPatterns": [
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 3,
+      "examples": [
+        "JSON parse failed: SyntaxError: Unexpected token '.', ...\"\"steps\": [...], \"ver\"... is not valid JSON",
+        "JSON parse failed: SyntaxError: Unexpected token '.', ...\"\"steps\": [...], \"ver\"... is not valid JSON",
+        "JSON parse failed: SyntaxError: Unexpected non-whitespace character after JSON at position 25 (line 2 column 3)"
+      ]
+    },
+    {
+      "errorType": "ConceptValidator:CONCEPT_VALIDATION",
+      "count": 2,
+      "examples": [
+        "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+        "playerGoalに数値または「全て」がありません（推奨）"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_FAILURE",
+      "count": 1,
+      "examples": [
+        "自動失敗: ルール \"miss_failure\" は時間経過で失敗し、成功にプレイヤー操作がありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 1,
+      "examples": [
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:MISSING_FRAME_NUMBER",
+      "count": 1,
+      "examples": [
+        "ルール \"jump_activation\": animation frame条件にframeNumberがありません"
+      ]
+    },
+    {
+      "errorType": "GameDesignGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 28623, Requested 1655. Please try again in 556ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "JSON parse failed: SyntaxError: Unexpected token.",
+      "suggestedAddition": "## JSON生成ルール\n生成されるJSONが有効な形式であることを確認するため、各キーと値のペアには正しい構文が使用されていることを保証してください。また、プロパティのネストが正しいことを確認するチェックを追加してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "ConceptValidator.ts",
+      "section": "playerOperationセクション",
+      "currentIssue": "操作方法が明記されていません",
+      "suggestedAddition": "## 操作方法の必須指定\nplayerOperationでは必ずタップ/スワイプ/ドラッグ/長押しのいずれかを明記してください。これらの操作はゲームのインタラクションを定義するため、明示的に設定してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "miss_failureルール",
+      "currentIssue": "プレイヤー操作が成功に繋がっていない",
+      "suggestedAddition": "## 成功手段の確立\nmiss_failureルールは、プレイヤー操作（タップや移動など）によって成功する手段を必ず含めてください。自動的な失敗条件のみではなく、成功条件を設けることが重要です。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "successパス",
+      "currentIssue": "プレイヤー操作が含まれていない可能性",
+      "suggestedAddition": "## プレイヤー操作条件\n成功へのパスには必ずプレイヤー操作条件（タッチや衝突、位置条件など）を追加してください。これによりプレイヤーの関与が必要となり、ゲームプレイが成立します。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "successアクション",
+      "currentIssue": "成功条件が存在しない",
+      "suggestedAddition": "## 成功アクションの追加\n必ずsuccessアクションをゲームの中に組み込み、明確なゲーム成功の条件を設定してください。これにより、プレイヤーは目標を認識することができます。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "ProjectValidator.ts",
+      "section": "No success rule defined",
+      "currentIssue": "ゲームに勝つためのルールが定義されていない",
+      "suggestedAddition": "## ゲーム勝利ルールの設定\nゲームを勝利に導くための明確なルールをプロジェクト全体に設定してください。これにより、ゲームが目的を持ちプレイヤーに達成感を与えます。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "jump_activationルール",
+      "currentIssue": "animation frame条件にframeNumberがない",
+      "suggestedAddition": "## アニメーションフレームの明示\njump_activationのルールにおいて、各アニメーションフレームには必ずframeNumberを設定してください。これがないとフレーム特定のアクションが正確に発動されません。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "GameDesignGenerator.ts",
+      "section": "APIレート制限",
+      "currentIssue": "APIのレート制限に到達",
+      "suggestedAddition": "## レート制限の管理\nAPIのレートを考慮し、複数のリクエストがある場合は適切なリトライロジックや間隔を挟むよう設定してください。これによりリクエストが失敗しにくくなります。",
+      "priority": "low"
+    }
+  ]
+}

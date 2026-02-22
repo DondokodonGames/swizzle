@@ -1,0 +1,139 @@
+[
+  {
+    "timestamp": "2025-12-27T03:56:39.450Z",
+    "gameTitle": "アンドロイドの記憶チューニング",
+    "theme": "アンドロイドの心",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "JSON parse failed: SyntaxError: Unexpected token '.', ...\"\"steps\": [...], \"ver\"... is not valid JSON",
+    "context": {
+      "title": "アンドロイドの記憶チューニング",
+      "theme": "アンドロイドの心"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:00:12.177Z",
+    "gameTitle": "光速突破！",
+    "theme": "光速の壁",
+    "step": "LogicValidator",
+    "errorType": "AUTO_FAILURE",
+    "errorMessage": "自動失敗: ルール \"miss_failure\" は時間経過で失敗し、成功にプレイヤー操作がありません",
+    "context": {
+      "title": "光速突破！",
+      "theme": "光速の壁",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:00:12.177Z",
+    "gameTitle": "光速突破！",
+    "theme": "光速の壁",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "光速突破！",
+      "theme": "光速の壁",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:00:12.177Z",
+    "gameTitle": "光速突破！",
+    "theme": "光速の壁",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "光速突破！",
+      "theme": "光速の壁",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:00:12.178Z",
+    "gameTitle": "光速突破！",
+    "theme": "光速の壁",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "光速突破！",
+      "theme": "光速の壁",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:01:07.543Z",
+    "gameTitle": "赤面シンドローム",
+    "theme": "恥ずかしさの赤",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "JSON parse failed: SyntaxError: Unexpected token '.', ...\"\"steps\": [...], \"ver\"... is not valid JSON",
+    "context": {
+      "title": "赤面シンドローム",
+      "theme": "恥ずかしさの赤"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:02:10.624Z",
+    "gameTitle": "虹の軌跡",
+    "theme": "虹の彼方",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "JSON parse failed: SyntaxError: Unexpected non-whitespace character after JSON at position 25 (line 2 column 3)",
+    "context": {
+      "title": "虹の軌跡",
+      "theme": "虹の彼方"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:03:25.831Z",
+    "gameTitle": "スノボジャンプチャレンジ",
+    "theme": "スノボのジャンプ",
+    "step": "LogicValidator",
+    "errorType": "MISSING_FRAME_NUMBER",
+    "errorMessage": "ルール \"jump_activation\": animation frame条件にframeNumberがありません",
+    "context": {
+      "title": "スノボジャンプチャレンジ",
+      "theme": "スノボのジャンプ",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:04:53.593Z",
+    "gameTitle": "銅管の迷宮",
+    "theme": "銅管の迷路",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+    "context": {
+      "title": "銅管の迷宮",
+      "theme": "銅管の迷路"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:04:53.593Z",
+    "gameTitle": "銅管の迷宮",
+    "theme": "銅管の迷路",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerGoalに数値または「全て」がありません（推奨）",
+    "context": {
+      "title": "銅管の迷宮",
+      "theme": "銅管の迷路"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:06:17.301Z",
+    "gameTitle": "煙突の森のパズル",
+    "theme": "煙突の森",
+    "step": "GameDesignGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 28623, Requested 1655. Please try again in 556ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "煙突の森のパズル",
+      "theme": "煙突の森"
+    }
+  }
+]

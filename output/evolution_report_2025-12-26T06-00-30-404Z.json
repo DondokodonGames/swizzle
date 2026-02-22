@@ -1,0 +1,225 @@
+{
+  "totalRuns": 10,
+  "successCount": 0,
+  "failureCount": 10,
+  "errorPatterns": [
+    {
+      "errorType": "LogicValidator:MISSING_SOUND_ID",
+      "count": 16,
+      "examples": [
+        "ルール \"tap_correct_plant\": playSoundアクションにsoundIdがありません",
+        "ルール \"tap_correct_plant\": playSoundアクションにsoundIdがありません",
+        "ルール \"tap_wrong_plant\": playSoundアクションにsoundIdがありません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COUNTER",
+      "count": 13,
+      "examples": [
+        "Counter condition in rule \"時間切れ判定\" references undefined counter: time_left",
+        "Counter condition in rule \"成功判定\" references undefined counter: jump_distance",
+        "Counter condition in rule \"失敗判定\" references undefined counter: jump_distance"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_COUNTER",
+      "count": 9,
+      "examples": [
+        "Counter action in rule \"時間の減少\" references undefined counter: time_left",
+        "Counter action in rule \"ジャンプ台到達時のジャンプ実行\" references undefined counter: jump_distance",
+        "Counter action in rule \"時間減少\" references undefined counter: time_counter"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 8,
+      "examples": [
+        "コンフリクト: ルール \"tap_silhouette_1\" と \"tap_silhouette_2\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"check_success\" と \"check_failure\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_glowing_sword\" と \"tap_non_glowing_sword\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_EFFECT_TYPE",
+      "count": 8,
+      "examples": [
+        "ルール \"tap_glowing_sword\": 無効なeffect.type \"particle\"",
+        "ルール \"tap_lamp_1\": 無効なeffect.type \"glow\"",
+        "ルール \"tap_lamp_2\": 無効なeffect.type \"glow\""
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 6,
+      "examples": [
+        "Rules \"シルエット1タップ\" and \"シルエット2タップ\" can trigger both success and failure with same condition",
+        "Rules \"光っている剣をタップ\" and \"光っていない剣をタップ\" can trigger both success and failure with same condition",
+        "Rules \"正しい植物をタップ\" and \"誤った植物をタップ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_ACTION_TYPE",
+      "count": 5,
+      "examples": [
+        "ルール \"sword_glow\": 使用できないアクションタイプ \"changeState\"",
+        "ルール \"adjust_koinobori_angle\": 使用できないアクションタイプ \"adjustAngle\"",
+        "ルール \"adjust_koinobori_angle\": 使用できないアクションタイプ \"updateCounter\""
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_COUNTER_INCREMENT",
+      "count": 3,
+      "examples": [
+        "Success rule \"成功判定\" checks counter \"jump_distance\" but no rule increments it",
+        "Success rule \"成功判定\" checks counter \"height\" but no rule increments it",
+        "Success rule \"Check Win Condition\" checks counter \"correctly_placed_count\" but no rule increments it"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_CONDITION_TYPE",
+      "count": 3,
+      "examples": [
+        "ルール \"tap_glowing_sword\": 使用できない条件タイプ \"state\"",
+        "ルール \"tap_non_glowing_sword\": 使用できない条件タイプ \"state\"",
+        "ルール \"adjust_koinobori_angle\": 使用できない条件タイプ \"deviceTilt\""
+      ]
+    },
+    {
+      "errorType": "LogicValidator:COUNTER_NEVER_MODIFIED",
+      "count": 3,
+      "examples": [
+        "カウンター \"height\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 0）",
+        "カウンター \"correctly_placed_count\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 0）",
+        "カウンター \"remaining_time\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 100）"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_COMPARISON",
+      "count": 2,
+      "examples": [
+        "ルール \"check_failure\": 無効なcomparison \"lessThan\"",
+        "ルール \"check_failure\": 無効なcomparison \"lessThan\""
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_OBJECT_ID",
+      "count": 2,
+      "examples": [
+        "ルール \"drag_penguin\" のtargetObjectId \"penguin_*\" がアセット計画に存在しません",
+        "ルール \"drag_penguin\" のアクションtargetId \"self\" がアセット計画に存在しません"
+      ]
+    },
+    {
+      "errorType": "ConceptValidator:CONCEPT_VALIDATION",
+      "count": 2,
+      "examples": [
+        "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+        "playerGoalに数値または「全て」がありません（推奨）"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:UNREACHABLE_SUCCESS",
+      "count": 2,
+      "examples": [
+        "成功条件到達不可: カウンター \"height\" を操作するルールがありません",
+        "成功条件到達不可: カウンター \"correctly_placed_count\" を操作するルールがありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+        "成功パス確認要: ルール \"check_win_condition\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:MISSING_TARGET_ID",
+      "count": 2,
+      "examples": [
+        "ルール \"tap_cloud_key_2\": hideアクションにtargetIdがありません",
+        "ルール \"tap_cloud_key_3\": hideアクションにtargetIdがありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_POSITION_TARGET",
+      "count": 1,
+      "examples": [
+        "ルール \"arrange_penguin\": position target \"penguin_*\" が未定義"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:UNDEFINED_TARGET_OBJECT",
+      "count": 1,
+      "examples": [
+        "Rule \"ペンギンドラッグ\" references undefined object: penguin_*"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_TARGET",
+      "count": 1,
+      "examples": [
+        "Action \"followDrag\" in rule \"ペンギンドラッグ\" references undefined object: self"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "playSoundアクションにsoundIdがありません",
+      "suggestedAddition": "## サウンド使用ガイド\nplaySoundアクションを使用する場合、必ずsoundIdを指定してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "カウンターが未定義で参照されています",
+      "suggestedAddition": "## カウンター参照ガイド\nカウンターを参照する前に必ず定義してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "同一条件での成功/失敗判定のコンフリクト",
+      "suggestedAddition": "## ルール設定ガイド\n同一条件でsuccessとfailureを設定しないように注意してください。それぞれの条件を具体的に区別してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "無効なeffect.typeが使用されています",
+      "suggestedAddition": "## エフェクトタイプガイド\nサポートされているeffect.typeを必ず使用してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "操作不可能なアクションタイプが使用されています",
+      "suggestedAddition": "## アクションタイプガイド\n使用可能なアクションタイプを確認してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "条件タイプが無効です",
+      "suggestedAddition": "## 条件タイプガイド\nサポートされている条件タイプを使用してください。stateタイプが不正である場合、正しいタイプに置き換えてください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "カウンターが定義されているが操作されていない",
+      "suggestedAddition": "## カウンター使用ルール\nカウンターを定義する場合は必ず:\n1. 操作するルール（increment/decrement）\n2. チェックするルール（条件）\nの両方を定義してください。",
+      "priority": "high"
+    }
+  ]
+}

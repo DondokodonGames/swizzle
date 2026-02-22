@@ -1,0 +1,92 @@
+{
+  "totalRuns": 10,
+  "successCount": 4,
+  "failureCount": 6,
+  "errorPatterns": [
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 6,
+      "examples": [
+        "Rules \"正解のカードタップ\" and \"不正解のカードタップ\" can trigger both success and failure with same condition",
+        "Rules \"壁と接触\" and \"ゴールに到達\" can trigger both success and failure with same condition",
+        "Rules \"正解パビリオンタップ\" and \"不正解パビリオンタップ1\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 5,
+      "examples": [
+        "コンフリクト: ルール \"tap_correct\" と \"tap_wrong\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_correct_pavilion\" と \"tap_wrong_pavilion_1\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_correct_pavilion\" と \"tap_wrong_pavilion_2\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功パス確認要: ルール \"dive_when_wave_peak\" の成功条件がプレイヤー操作に依存していない可能性があります",
+        "成功パス確認要: ルール \"check_all_stones_removed\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "自動成功: ルール \"dive_when_wave_peak\" はプレイヤー操作なしで成功します"
+      ]
+    },
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "JSON parse failed: SyntaxError: Expected ',' or '}' after property value in JSON at position 4618 (line 165 column 3)"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:MISSING_FRAME_NUMBER",
+      "count": 1,
+      "examples": [
+        "ルール \"check_all_stones_removed\": animation frame条件にframeNumberがありません"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "ProjectValidator:CONFLICTING_TERMINATION, LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "suggestedAddition": "## ルールの相互排他性\nすべてのゲームルールは、成功もしくは失敗のいずれか一方の結果をもたらすように定義し、同一条件で競合しないように確認してください。特に成功条件と失敗条件が重ならないようにすることが重要です。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "LogicValidator:NO_PLAYER_ACTION, LogicValidator:SUCCESS_NO_PLAYER_ACTION, LogicValidator:AUTO_SUCCESS",
+      "suggestedAddition": "## プレイヤー操作の必須化\n成功条件には必ず、ユーザーの操作を必要とする要素（タッチ、コリジョン、ポジションの変化など）を含めること。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "JSON出力",
+      "currentIssue": "SpecificationGenerator:GENERATION_ERROR",
+      "suggestedAddition": "## JSON構文のチェック\nルール仕様を生成する際にJSON構文エラーがないか検証する処理を追加し、エラー発生時には正確な行と列の情報を出力する。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "アニメーションフレーム",
+      "currentIssue": "LogicValidator:MISSING_FRAME_NUMBER",
+      "suggestedAddition": "## アニメーションフレーム\nすべてのアニメーションルールには明確なframeNumberを指定し、欠落していないことを確認するためのバリデーションを追加してください。",
+      "priority": "medium"
+    }
+  ]
+}

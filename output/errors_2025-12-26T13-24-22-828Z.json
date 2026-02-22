@@ -1,0 +1,275 @@
+[
+  {
+    "timestamp": "2025-12-26T13:14:15.487Z",
+    "gameTitle": "完璧なまな板チャレンジ",
+    "theme": "まな板の音",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_knife_correct\" と \"tap_knife_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "完璧なまな板チャレンジ",
+      "theme": "まな板の音",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:14:15.489Z",
+    "gameTitle": "完璧なまな板チャレンジ",
+    "theme": "まな板の音",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正確なタイミングでナイフをタップ\" and \"不正確なタイミングでナイフをタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "完璧なまな板チャレンジ",
+      "theme": "まな板の音",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:16:01.663Z",
+    "gameTitle": "花火連打チャレンジ",
+    "theme": "花火大会の空",
+    "step": "LogicValidator",
+    "errorType": "MISSING_FRAME_NUMBER",
+    "errorMessage": "ルール \"tap_firework\": animation frame条件にframeNumberがありません",
+    "context": {
+      "title": "花火連打チャレンジ",
+      "theme": "花火大会の空",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:16:01.663Z",
+    "gameTitle": "花火連打チャレンジ",
+    "theme": "花火大会の空",
+    "step": "LogicValidator",
+    "errorType": "MISSING_FRAME_NUMBER",
+    "errorMessage": "ルール \"firework_disappearance\": animation frame条件にframeNumberがありません",
+    "context": {
+      "title": "花火連打チャレンジ",
+      "theme": "花火大会の空",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:16:01.663Z",
+    "gameTitle": "花火連打チャレンジ",
+    "theme": "花火大会の空",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "花火連打チャレンジ",
+      "theme": "花火大会の空",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:16:01.663Z",
+    "gameTitle": "花火連打チャレンジ",
+    "theme": "花火大会の空",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_firework\" と \"firework_disappearance\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "花火連打チャレンジ",
+      "theme": "花火大会の空",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:16:01.663Z",
+    "gameTitle": "花火連打チャレンジ",
+    "theme": "花火大会の空",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"tap_firework\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "花火連打チャレンジ",
+      "theme": "花火大会の空",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:16:01.664Z",
+    "gameTitle": "花火連打チャレンジ",
+    "theme": "花火大会の空",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"花火タップ判定\" and \"花火消失判定\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "花火連打チャレンジ",
+      "theme": "花火大会の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:18:31.059Z",
+    "gameTitle": "お弁当チャレンジ",
+    "theme": "お弁当の中身",
+    "step": "LogicValidator",
+    "errorType": "INVALID_CONDITION_TYPE",
+    "errorMessage": "ルール \"check_win\": 使用できない条件タイプ \"custom\"",
+    "context": {
+      "title": "お弁当チャレンジ",
+      "theme": "お弁当の中身",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:18:31.059Z",
+    "gameTitle": "お弁当チャレンジ",
+    "theme": "お弁当の中身",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "お弁当チャレンジ",
+      "theme": "お弁当の中身",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:18:31.059Z",
+    "gameTitle": "お弁当チャレンジ",
+    "theme": "お弁当の中身",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"check_win\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "お弁当チャレンジ",
+      "theme": "お弁当の中身",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:19:46.379Z",
+    "gameTitle": "宝の道を切り開け",
+    "theme": "宝の探索",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "宝の道を切り開け",
+      "theme": "宝の探索",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:19:46.379Z",
+    "gameTitle": "宝の道を切り開け",
+    "theme": "宝の探索",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "宝の道を切り開け",
+      "theme": "宝の探索",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:19:46.379Z",
+    "gameTitle": "宝の道を切り開け",
+    "theme": "宝の探索",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "宝の道を切り開け",
+      "theme": "宝の探索",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:22:04.744Z",
+    "gameTitle": "ダムの均衡",
+    "theme": "ダムの放流",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct_range\" と \"tap_outside_range\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "ダムの均衡",
+      "theme": "ダムの放流",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:22:04.744Z",
+    "gameTitle": "ダムの均衡",
+    "theme": "ダムの放流",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"目標範囲内でのタップ\" and \"目標範囲外でのタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "ダムの均衡",
+      "theme": "ダムの放流",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:23:09.315Z",
+    "gameTitle": "蓮の花びら集め",
+    "theme": "蓮の池",
+    "step": "LogicValidator",
+    "errorType": "AUTO_SUCCESS",
+    "errorMessage": "自動成功: ルール \"check_success\" はプレイヤー操作なしで成功します",
+    "context": {
+      "title": "蓮の花びら集め",
+      "theme": "蓮の池",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:23:09.315Z",
+    "gameTitle": "蓮の花びら集め",
+    "theme": "蓮の池",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "蓮の花びら集め",
+      "theme": "蓮の池",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:23:09.315Z",
+    "gameTitle": "蓮の花びら集め",
+    "theme": "蓮の池",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "蓮の花びら集め",
+      "theme": "蓮の池",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:24:15.004Z",
+    "gameTitle": "バグモンスターを駆除せよ",
+    "theme": "バグの怪物",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"swipe_right\" と \"swipe_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "バグモンスターを駆除せよ",
+      "theme": "バグの怪物",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T13:24:15.004Z",
+    "gameTitle": "バグモンスターを駆除せよ",
+    "theme": "バグの怪物",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"右スワイプ成功\" and \"間違ったスワイプ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "バグモンスターを駆除せよ",
+      "theme": "バグの怪物",
+      "severity": "error"
+    }
+  }
+]

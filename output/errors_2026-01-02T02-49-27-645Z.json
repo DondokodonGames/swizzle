@@ -1,0 +1,327 @@
+[
+  {
+    "timestamp": "2026-01-02T02:37:36.725Z",
+    "gameTitle": "希望の光を導け！",
+    "theme": "希望の光",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "希望の光を導け！",
+      "theme": "希望の光",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:37:36.725Z",
+    "gameTitle": "希望の光を導け！",
+    "theme": "希望の光",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "希望の光を導け！",
+      "theme": "希望の光",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:37:36.725Z",
+    "gameTitle": "希望の光を導け！",
+    "theme": "希望の光",
+    "step": "LogicValidator",
+    "errorType": "NO_FAILURE",
+    "errorMessage": "failureアクションが存在しません（時間切れのみで失敗となります）",
+    "context": {
+      "title": "希望の光を導け！",
+      "theme": "希望の光",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:37:36.725Z",
+    "gameTitle": "希望の光を導け！",
+    "theme": "希望の光",
+    "step": "LogicValidator",
+    "errorType": "INVALID_BGM_ID",
+    "errorMessage": "無効なbgm.id: undefined",
+    "context": {
+      "title": "希望の光を導け！",
+      "theme": "希望の光",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:37:36.725Z",
+    "gameTitle": "希望の光を導け！",
+    "theme": "希望の光",
+    "step": "LogicValidator",
+    "errorType": "INVALID_BGM_MOOD",
+    "errorMessage": "無効なbgm.mood \"undefined\"",
+    "context": {
+      "title": "希望の光を導け！",
+      "theme": "希望の光",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:37:36.725Z",
+    "gameTitle": "希望の光を導け！",
+    "theme": "希望の光",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "希望の光を導け！",
+      "theme": "希望の光",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:39:09.389Z",
+    "gameTitle": "月面基地の防衛",
+    "theme": "月面基地",
+    "step": "LogicValidator",
+    "errorType": "AUTO_SUCCESS",
+    "errorMessage": "自動成功: ルール \"rule_success_game\" はプレイヤー操作なしで成功し、失敗条件もありません",
+    "context": {
+      "title": "月面基地の防衛",
+      "theme": "月面基地",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:39:09.389Z",
+    "gameTitle": "月面基地の防衛",
+    "theme": "月面基地",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "月面基地の防衛",
+      "theme": "月面基地",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:39:09.389Z",
+    "gameTitle": "月面基地の防衛",
+    "theme": "月面基地",
+    "step": "LogicValidator",
+    "errorType": "NO_FAILURE",
+    "errorMessage": "failureアクションが存在しません（時間切れのみで失敗となります）",
+    "context": {
+      "title": "月面基地の防衛",
+      "theme": "月面基地",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:39:09.389Z",
+    "gameTitle": "月面基地の防衛",
+    "theme": "月面基地",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: フラグ \"meteor_1_destroyed\" を設定するルールがありません",
+    "context": {
+      "title": "月面基地の防衛",
+      "theme": "月面基地",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:39:09.389Z",
+    "gameTitle": "月面基地の防衛",
+    "theme": "月面基地",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: フラグ \"meteor_2_destroyed\" を設定するルールがありません",
+    "context": {
+      "title": "月面基地の防衛",
+      "theme": "月面基地",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:39:09.389Z",
+    "gameTitle": "月面基地の防衛",
+    "theme": "月面基地",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: フラグ \"meteor_3_destroyed\" を設定するルールがありません",
+    "context": {
+      "title": "月面基地の防衛",
+      "theme": "月面基地",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:39:09.389Z",
+    "gameTitle": "月面基地の防衛",
+    "theme": "月面基地",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"rule_success_game\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "月面基地の防衛",
+      "theme": "月面基地",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:39:09.389Z",
+    "gameTitle": "月面基地の防衛",
+    "theme": "月面基地",
+    "step": "LogicValidator",
+    "errorType": "INVALID_BGM_ID",
+    "errorMessage": "無効なbgm.id: undefined",
+    "context": {
+      "title": "月面基地の防衛",
+      "theme": "月面基地",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:39:09.389Z",
+    "gameTitle": "月面基地の防衛",
+    "theme": "月面基地",
+    "step": "LogicValidator",
+    "errorType": "INVALID_BGM_MOOD",
+    "errorMessage": "無効なbgm.mood \"undefined\"",
+    "context": {
+      "title": "月面基地の防衛",
+      "theme": "月面基地",
+      "ruleCount": 0
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:39:09.389Z",
+    "gameTitle": "月面基地の防衛",
+    "theme": "月面基地",
+    "step": "ProjectValidator",
+    "errorType": "MISSING_REQUIRED_SOUND",
+    "errorMessage": "Required sound \"se_explosion\" from AssetPlan is missing in LogicOutput",
+    "context": {
+      "title": "月面基地の防衛",
+      "theme": "月面基地",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:46:26.655Z",
+    "gameTitle": "消防士の勇気",
+    "theme": "消防士の勇気",
+    "step": "LogicValidator",
+    "errorType": "AUTO_FAILURE",
+    "errorMessage": "自動失敗: ルール \"failure_timeout\" は時間経過で失敗し、成功にプレイヤー操作がありません",
+    "context": {
+      "title": "消防士の勇気",
+      "theme": "消防士の勇気",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:46:26.655Z",
+    "gameTitle": "消防士の勇気",
+    "theme": "消防士の勇気",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "消防士の勇気",
+      "theme": "消防士の勇気",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:46:26.655Z",
+    "gameTitle": "消防士の勇気",
+    "theme": "消防士の勇気",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "消防士の勇気",
+      "theme": "消防士の勇気",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:46:26.655Z",
+    "gameTitle": "消防士の勇気",
+    "theme": "消防士の勇気",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "消防士の勇気",
+      "theme": "消防士の勇気",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:49:20.270Z",
+    "gameTitle": "顔が赤くなる前に",
+    "theme": "恥ずかしさの赤",
+    "step": "LogicValidator",
+    "errorType": "AUTO_FAILURE",
+    "errorMessage": "自動失敗: ルール \"timeout_condition\" は時間経過で失敗し、成功にプレイヤー操作がありません",
+    "context": {
+      "title": "顔が赤くなる前に",
+      "theme": "恥ずかしさの赤",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:49:20.270Z",
+    "gameTitle": "顔が赤くなる前に",
+    "theme": "恥ずかしさの赤",
+    "step": "LogicValidator",
+    "errorType": "MISSING_FRAME_NUMBER",
+    "errorMessage": "ルール \"success_condition\": animation frame条件にframeNumberがありません",
+    "context": {
+      "title": "顔が赤くなる前に",
+      "theme": "恥ずかしさの赤",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:49:20.270Z",
+    "gameTitle": "顔が赤くなる前に",
+    "theme": "恥ずかしさの赤",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "顔が赤くなる前に",
+      "theme": "恥ずかしさの赤",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:49:20.270Z",
+    "gameTitle": "顔が赤くなる前に",
+    "theme": "恥ずかしさの赤",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"success_condition\" と \"failure_condition\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "顔が赤くなる前に",
+      "theme": "恥ずかしさの赤",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:49:20.270Z",
+    "gameTitle": "顔が赤くなる前に",
+    "theme": "恥ずかしさの赤",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"success_condition\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "顔が赤くなる前に",
+      "theme": "恥ずかしさの赤",
+      "ruleCount": 4
+    }
+  }
+]

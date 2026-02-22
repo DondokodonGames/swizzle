@@ -1,0 +1,181 @@
+{
+  "totalRuns": 10,
+  "successCount": 7,
+  "failureCount": 3,
+  "errorPatterns": [
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 4,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:UNREACHABLE_SUCCESS",
+      "count": 3,
+      "examples": [
+        "成功条件到達不可: フラグ \"meteor_1_destroyed\" を設定するルールがありません",
+        "成功条件到達不可: フラグ \"meteor_2_destroyed\" を設定するルールがありません",
+        "成功条件到達不可: フラグ \"meteor_3_destroyed\" を設定するルールがありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 2,
+      "examples": [
+        "successアクションが存在しません",
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_FAILURE",
+      "count": 2,
+      "examples": [
+        "failureアクションが存在しません（時間切れのみで失敗となります）",
+        "failureアクションが存在しません（時間切れのみで失敗となります）"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_BGM_ID",
+      "count": 2,
+      "examples": [
+        "無効なbgm.id: undefined",
+        "無効なbgm.id: undefined"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_BGM_MOOD",
+      "count": 2,
+      "examples": [
+        "無効なbgm.mood \"undefined\"",
+        "無効なbgm.mood \"undefined\""
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 2,
+      "examples": [
+        "No success rule defined - game cannot be won",
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功パス確認要: ルール \"rule_success_game\" の成功条件がプレイヤー操作に依存していない可能性があります",
+        "成功パス確認要: ルール \"success_condition\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_FAILURE",
+      "count": 2,
+      "examples": [
+        "自動失敗: ルール \"failure_timeout\" は時間経過で失敗し、成功にプレイヤー操作がありません",
+        "自動失敗: ルール \"timeout_condition\" は時間経過で失敗し、成功にプレイヤー操作がありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "自動成功: ルール \"rule_success_game\" はプレイヤー操作なしで成功し、失敗条件もありません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:MISSING_REQUIRED_SOUND",
+      "count": 1,
+      "examples": [
+        "Required sound \"se_explosion\" from AssetPlan is missing in LogicOutput"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:MISSING_FRAME_NUMBER",
+      "count": 1,
+      "examples": [
+        "ルール \"success_condition\": animation frame条件にframeNumberがありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 1,
+      "examples": [
+        "コンフリクト: ルール \"success_condition\" と \"failure_condition\" が同一条件で success/failure を発動"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "LogicValidator:NO_PLAYER_ACTION",
+      "suggestedAddition": "## プレイヤー操作を含めるルール\nゲームの成功条件にプレイヤーの操作（touch/collision/position条件）を含めるようにしてください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "LogicValidator:UNREACHABLE_SUCCESS",
+      "suggestedAddition": "## 成功条件の定義\n成功条件に必要なフラグを設定するルールを必ず含めてください。例: 'meteor_1_destroyed' を設定する条件を追加。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "LogicValidator:NO_SUCCESS",
+      "suggestedAddition": "## 成功アクションの設定\n成功条件を満たすときに発生するアクションを明示的に定義してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "LogicValidator:NO_FAILURE",
+      "suggestedAddition": "## 失敗アクションの設定\n時間切れ以外の失敗条件を設定し、発生するアクションを定義してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "AssetPlanner.ts",
+      "section": "BGM設定",
+      "currentIssue": "LogicValidator:INVALID_BGM_ID",
+      "suggestedAddition": "## BGM IDの定義\n有効なbgm.idを使用して、ゲームの雰囲気に合ったBGMを設定してください。",
+      "priority": "low"
+    },
+    {
+      "targetFile": "AssetPlanner.ts",
+      "section": "BGM設定",
+      "currentIssue": "LogicValidator:INVALID_BGM_MOOD",
+      "suggestedAddition": "## BGMの雰囲気設定\nbgm.moodが正しく定義されていることを確認し、ゲームシーンに合った雰囲気を選びましょう。",
+      "priority": "low"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "ProjectValidator:NO_SUCCESS_RULE",
+      "suggestedAddition": "## 成功ルールの定義\nゲームの終了条件としての成功ルールを明らかにし、それがプレイヤーによって達成可能であることを確認してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "suggestedAddition": "## プレイヤー依存の成功条件\nプレイヤーの操作が成功条件に含まれるようにして、ユーザーエンゲージメントを高めます。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "LogicValidator:AUTO_FAILURE",
+      "suggestedAddition": "## 失敗条件の多様化\nプレイヤーの操作が関与する失敗条件を追加し、時間経過による自動失敗を避ける。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "LogicValidator:AUTO_SUCCESS",
+      "suggestedAddition": "## 自動成功の排除\nプレイヤーが積極的に関与することなく成功しないようにルールを調整してください。",
+      "priority": "medium"
+    }
+  ]
+}

@@ -1,0 +1,457 @@
+[
+  {
+    "timestamp": "2025-12-26T06:23:22.250Z",
+    "gameTitle": "巻物の解読",
+    "theme": "巻物の秘密",
+    "step": "LogicValidator",
+    "errorType": "INVALID_ACTION_TYPE",
+    "errorMessage": "ルール \"check_sequence\": 使用できないアクションタイプ \"conditional\"",
+    "context": {
+      "title": "巻物の解読",
+      "theme": "巻物の秘密",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:23:22.250Z",
+    "gameTitle": "巻物の解読",
+    "theme": "巻物の秘密",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "巻物の解読",
+      "theme": "巻物の秘密",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:23:22.250Z",
+    "gameTitle": "巻物の解読",
+    "theme": "巻物の秘密",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "巻物の解読",
+      "theme": "巻物の秘密",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:23:22.250Z",
+    "gameTitle": "巻物の解読",
+    "theme": "巻物の秘密",
+    "step": "LogicValidator",
+    "errorType": "NO_FAILURE",
+    "errorMessage": "failureアクションが存在しません（時間切れのみで失敗となります）",
+    "context": {
+      "title": "巻物の解読",
+      "theme": "巻物の秘密",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:23:22.254Z",
+    "gameTitle": "巻物の解読",
+    "theme": "巻物の秘密",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "巻物の解読",
+      "theme": "巻物の秘密",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:24:07.250Z",
+    "gameTitle": "ヨーヨーキャッチチャレンジ",
+    "theme": "ヨーヨーの往復",
+    "step": "LogicValidator",
+    "errorType": "INVALID_MOVEMENT_TYPE",
+    "errorMessage": "ルール \"rule_yo_yo_movement\": 無効なmovement.type \"bounce\"",
+    "context": {
+      "title": "ヨーヨーキャッチチャレンジ",
+      "theme": "ヨーヨーの往復",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:24:07.250Z",
+    "gameTitle": "ヨーヨーキャッチチャレンジ",
+    "theme": "ヨーヨーの往復",
+    "step": "LogicValidator",
+    "errorType": "UNUSUAL_SPEED",
+    "errorMessage": "ルール \"rule_yo_yo_movement\": speed(0.3)が推奨範囲外",
+    "context": {
+      "title": "ヨーヨーキャッチチャレンジ",
+      "theme": "ヨーヨーの往復",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:24:07.251Z",
+    "gameTitle": "ヨーヨーキャッチチャレンジ",
+    "theme": "ヨーヨーの往復",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"キャッチ成功\" references undefined counter: catch_success_count",
+    "context": {
+      "title": "ヨーヨーキャッチチャレンジ",
+      "theme": "ヨーヨーの往復",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:24:07.251Z",
+    "gameTitle": "ヨーヨーキャッチチャレンジ",
+    "theme": "ヨーヨーの往復",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"キャッチ失敗\" references undefined counter: catch_fail_count",
+    "context": {
+      "title": "ヨーヨーキャッチチャレンジ",
+      "theme": "ヨーヨーの往復",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:24:07.251Z",
+    "gameTitle": "ヨーヨーキャッチチャレンジ",
+    "theme": "ヨーヨーの往復",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: catch_success_count",
+    "context": {
+      "title": "ヨーヨーキャッチチャレンジ",
+      "theme": "ヨーヨーの往復",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:24:07.251Z",
+    "gameTitle": "ヨーヨーキャッチチャレンジ",
+    "theme": "ヨーヨーの往復",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"敗北判定\" references undefined counter: catch_fail_count",
+    "context": {
+      "title": "ヨーヨーキャッチチャレンジ",
+      "theme": "ヨーヨーの往復",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:24:49.750Z",
+    "gameTitle": "ピアノの調律",
+    "theme": "ピアノの鍵盤",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正しいタイミングでタップ\" references undefined counter: correct_tap_count",
+    "context": {
+      "title": "ピアノの調律",
+      "theme": "ピアノの鍵盤",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:24:49.750Z",
+    "gameTitle": "ピアノの調律",
+    "theme": "ピアノの鍵盤",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"誤ったタイミングでタップ\" references undefined counter: incorrect_tap_count",
+    "context": {
+      "title": "ピアノの調律",
+      "theme": "ピアノの鍵盤",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:24:49.750Z",
+    "gameTitle": "ピアノの調律",
+    "theme": "ピアノの鍵盤",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: correct_tap_count",
+    "context": {
+      "title": "ピアノの調律",
+      "theme": "ピアノの鍵盤",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:24:49.750Z",
+    "gameTitle": "ピアノの調律",
+    "theme": "ピアノの鍵盤",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: incorrect_tap_count",
+    "context": {
+      "title": "ピアノの調律",
+      "theme": "ピアノの鍵盤",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:25:52.502Z",
+    "gameTitle": "勇気の盾",
+    "theme": "勇気の盾",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"火の玉を防ぐ\" references undefined counter: blocked_count",
+    "context": {
+      "title": "勇気の盾",
+      "theme": "勇気の盾",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:25:52.502Z",
+    "gameTitle": "勇気の盾",
+    "theme": "勇気の盾",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: blocked_count",
+    "context": {
+      "title": "勇気の盾",
+      "theme": "勇気の盾",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:27:02.097Z",
+    "gameTitle": "鏡文字のミステリー",
+    "theme": "鏡文字の手紙",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "鏡文字のミステリー",
+      "theme": "鏡文字の手紙",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:27:02.097Z",
+    "gameTitle": "鏡文字のミステリー",
+    "theme": "鏡文字の手紙",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "鏡文字のミステリー",
+      "theme": "鏡文字の手紙",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:27:02.097Z",
+    "gameTitle": "鏡文字のミステリー",
+    "theme": "鏡文字の手紙",
+    "step": "LogicValidator",
+    "errorType": "NO_FAILURE",
+    "errorMessage": "failureアクションが存在しません（時間切れのみで失敗となります）",
+    "context": {
+      "title": "鏡文字のミステリー",
+      "theme": "鏡文字の手紙",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:27:02.098Z",
+    "gameTitle": "鏡文字のミステリー",
+    "theme": "鏡文字の手紙",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "鏡文字のミステリー",
+      "theme": "鏡文字の手紙",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:28:09.627Z",
+    "gameTitle": "霧のロンドンのシルエット",
+    "theme": "霧のロンドン",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_object_1\" と \"tap_object_2\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "霧のロンドンのシルエット",
+      "theme": "霧のロンドン",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:28:09.627Z",
+    "gameTitle": "霧のロンドンのシルエット",
+    "theme": "霧のロンドン",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"指定シルエットタップ\" and \"その他シルエットタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "霧のロンドンのシルエット",
+      "theme": "霧のロンドン",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:29:07.700Z",
+    "gameTitle": "和太鼓のリズム",
+    "theme": "和太鼓の響き",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正しいスワイプ\" references undefined counter: correct_swipes",
+    "context": {
+      "title": "和太鼓のリズム",
+      "theme": "和太鼓の響き",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:29:07.700Z",
+    "gameTitle": "和太鼓のリズム",
+    "theme": "和太鼓の響き",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"不正なスワイプ\" references undefined counter: incorrect_swipes",
+    "context": {
+      "title": "和太鼓のリズム",
+      "theme": "和太鼓の響き",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:29:07.700Z",
+    "gameTitle": "和太鼓のリズム",
+    "theme": "和太鼓の響き",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: correct_swipes",
+    "context": {
+      "title": "和太鼓のリズム",
+      "theme": "和太鼓の響き",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:29:07.700Z",
+    "gameTitle": "和太鼓のリズム",
+    "theme": "和太鼓の響き",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: incorrect_swipes",
+    "context": {
+      "title": "和太鼓のリズム",
+      "theme": "和太鼓の響き",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:30:19.402Z",
+    "gameTitle": "虫眼鏡で見つけろ",
+    "theme": "虫眼鏡の拡大",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_target_item\" と \"tap_obstacle_item\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "虫眼鏡で見つけろ",
+      "theme": "虫眼鏡の拡大",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:30:19.402Z",
+    "gameTitle": "虫眼鏡で見つけろ",
+    "theme": "虫眼鏡の拡大",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"指定アイテムタップ\" and \"その他のアイテムタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "虫眼鏡で見つけろ",
+      "theme": "虫眼鏡の拡大",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:31:21.034Z",
+    "gameTitle": "冷凍睡眠からの目覚め",
+    "theme": "冷凍睡眠",
+    "step": "LogicValidator",
+    "errorType": "INVALID_OBJECT_ID",
+    "errorMessage": "ルール \"tap_incorrect_symbol\" のtargetObjectId \"self\" がアセット計画に存在しません",
+    "context": {
+      "title": "冷凍睡眠からの目覚め",
+      "theme": "冷凍睡眠",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:31:21.034Z",
+    "gameTitle": "冷凍睡眠からの目覚め",
+    "theme": "冷凍睡眠",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"コードシンボル1タップ\" references undefined counter: correct_sequence_count",
+    "context": {
+      "title": "冷凍睡眠からの目覚め",
+      "theme": "冷凍睡眠",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:31:21.034Z",
+    "gameTitle": "冷凍睡眠からの目覚め",
+    "theme": "冷凍睡眠",
+    "step": "ProjectValidator",
+    "errorType": "UNDEFINED_TARGET_OBJECT",
+    "errorMessage": "Rule \"間違ったシンボルタップ\" references undefined object: self",
+    "context": {
+      "title": "冷凍睡眠からの目覚め",
+      "theme": "冷凍睡眠",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:31:21.034Z",
+    "gameTitle": "冷凍睡眠からの目覚め",
+    "theme": "冷凍睡眠",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"間違ったシンボルタップ\" references undefined counter: mistake_count",
+    "context": {
+      "title": "冷凍睡眠からの目覚め",
+      "theme": "冷凍睡眠",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:31:21.034Z",
+    "gameTitle": "冷凍睡眠からの目覚め",
+    "theme": "冷凍睡眠",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: correct_sequence_count",
+    "context": {
+      "title": "冷凍睡眠からの目覚め",
+      "theme": "冷凍睡眠",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:31:21.034Z",
+    "gameTitle": "冷凍睡眠からの目覚め",
+    "theme": "冷凍睡眠",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: mistake_count",
+    "context": {
+      "title": "冷凍睡眠からの目覚め",
+      "theme": "冷凍睡眠",
+      "severity": "error"
+    }
+  }
+]

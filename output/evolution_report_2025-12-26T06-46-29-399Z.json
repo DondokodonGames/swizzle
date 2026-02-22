@@ -1,0 +1,61 @@
+{
+  "totalRuns": 10,
+  "successCount": 0,
+  "failureCount": 10,
+  "errorPatterns": [
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_COUNTER",
+      "count": 15,
+      "examples": [
+        "Counter action in rule \"チョコレートを溶かす\" references undefined counter: melted_weight",
+        "Counter action in rule \"ラケットをスワイプ\" references undefined counter: rally_count",
+        "Counter action in rule \"光をタップして成功\" references undefined counter: successful_taps"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COUNTER",
+      "count": 12,
+      "examples": [
+        "Counter condition in rule \"勝利判定\" references undefined counter: rally_count",
+        "Counter condition in rule \"勝利判定\" references undefined counter: successful_taps",
+        "Counter condition in rule \"敗北判定\" references undefined counter: missed_taps"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 1,
+      "examples": [
+        "コンフリクト: ルール \"release_chocolate_bowl\" と \"release_chocolate_bowl\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SAME_RULE_SUCCESS_FAILURE",
+      "count": 1,
+      "examples": [
+        "コンフリクト: ルール \"release_chocolate_bowl\" が同時に success と failure を発動"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:COUNTER_NEVER_CHECKED",
+      "count": 1,
+      "examples": [
+        "カウンター \"melted_weight\" は操作されていますが、条件でチェックされていません（操作ルール: hold_chocolate_bowl）"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_OBJECT_ID",
+      "count": 1,
+      "examples": [
+        "ルール \"check_success\" のアクションtargetId \"effect_success\" がアセット計画に存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_TARGET",
+      "count": 1,
+      "examples": [
+        "Action \"playAnimation\" in rule \"成功判定\" references undefined object: effect_success"
+      ]
+    }
+  ],
+  "promptImprovements": []
+}

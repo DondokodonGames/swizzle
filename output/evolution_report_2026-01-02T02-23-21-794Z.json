@@ -1,0 +1,154 @@
+{
+  "totalRuns": 10,
+  "successCount": 3,
+  "failureCount": 7,
+  "errorPatterns": [
+    {
+      "errorType": "AssetPlanner:GENERATION_ERROR",
+      "count": 3,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 27143, Requested 2945. Please try again in 176ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 27846, Requested 2877. Please try again in 1.446s. Visit https://platform.openai.com/account/rate-limits to learn more.",
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 27283, Requested 2811. Please try again in 188ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 2,
+      "examples": [
+        "successアクションが存在しません",
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 2,
+      "examples": [
+        "No success rule defined - game cannot be won",
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_FAILURE",
+      "count": 1,
+      "examples": [
+        "自動失敗: ルール \"timeout\" は時間経過で失敗し、成功にプレイヤー操作がありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_OBJECT_ID",
+      "count": 1,
+      "examples": [
+        "ルール \"swipe_correct_direction\" のアクションtargetId \"player\" がアセット計画に存在しません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 1,
+      "examples": [
+        "コンフリクト: ルール \"swipe_correct_direction\" と \"swipe_wrong_direction\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_TARGET",
+      "count": 1,
+      "examples": [
+        "Action \"move\" in rule \"正しい方向にスワイプ\" references undefined object: player"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 1,
+      "examples": [
+        "Rules \"正しい方向にスワイプ\" and \"誤った方向にスワイプ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "ConceptValidator:CONCEPT_VALIDATION",
+      "count": 1,
+      "examples": [
+        "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません"
+      ]
+    },
+    {
+      "errorType": "ConceptGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 26097, Requested 4000. Please try again in 194ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "AssetPlanner.ts",
+      "section": "リミット管理",
+      "currentIssue": "Rate limit exceeded for tokens per minute",
+      "suggestedAddition": "## リミット管理強化\nリクエストがリミットを超えないよう、トークン使用状況をリアルタイムで確認し、必要に応じて生成の間隔を調整する機能を追加してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "プレイヤー操作の定義",
+      "currentIssue": "プレイヤー操作が含まれていない",
+      "suggestedAddition": "## プレイヤー操作の強制\n各成功パスに必須でプレイヤー操作（タッチ/衝突/ポジション条件）を含めるよう、検証を強化してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "成功アクションの定義",
+      "currentIssue": "successアクションが存在しない",
+      "suggestedAddition": "## 成功アクションの必須化\nすべてのゲームには少なくともひとつの成功アクションが含まれるよう、生成ルールを強化してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "ProjectValidator.ts",
+      "section": "成功ルールの定義",
+      "currentIssue": "No success rule defined",
+      "suggestedAddition": "## 成功ルールの任意設定\n成功条件が定義されているか確認し、定義されていない場合は警告を表示してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "自動失敗回避",
+      "currentIssue": "時間経過による自動失敗",
+      "suggestedAddition": "## 自動失敗の確認\n自動失敗が発生しないよう、時間経過のルールにプレイヤー操作を必須とする検証を追加してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "アセットIDの検証",
+      "currentIssue": "アセット計画に存在しないオブジェクトIDを使用",
+      "suggestedAddition": "## オブジェクトIDの存在確認\nすべてのオブジェクトIDがアセット計画に存在することを確認し、不正なIDを使用しないようにしてください。",
+      "priority": "low"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "成功と失敗のコンフリクト回避",
+      "currentIssue": "同一条件で成功と失敗を発動",
+      "suggestedAddition": "## 成功・失敗条件の独立性\n成功と失敗の条件が競合しないように検証を強化し、同一条件の場合は警告を表示してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "ProjectValidator.ts",
+      "section": "アクションの対象確認",
+      "currentIssue": "Undefined object referenced in an action",
+      "suggestedAddition": "## アクションのオブジェクト確認\nすべてのアクションで参照されるオブジェクトが定義済みであることを確認してください。",
+      "priority": "low"
+    },
+    {
+      "targetFile": "ConceptValidator.ts",
+      "section": "操作方法の明記",
+      "currentIssue": "操作方法が明記されていない",
+      "suggestedAddition": "## 操作方法の明示\nプレイヤー操作（タップ/スワイプ/ドラッグ/長押し）が明記されるよう、「playerOperation」セクションの検証を追加してください。",
+      "priority": "low"
+    }
+  ]
+}

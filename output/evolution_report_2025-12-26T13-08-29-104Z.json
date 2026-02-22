@@ -1,0 +1,117 @@
+{
+  "totalRuns": 10,
+  "successCount": 1,
+  "failureCount": 9,
+  "errorPatterns": [
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 6,
+      "examples": [
+        "Rules \"正しい音符タップ\" and \"間違った音符タップ\" can trigger both success and failure with same condition",
+        "Rules \"正解タップ\" and \"不正解タップ\" can trigger both success and failure with same condition",
+        "Rules \"ラインの成功\" and \"ラインの失敗\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 5,
+      "examples": [
+        "コンフリクト: ルール \"tap_correct_note\" と \"tap_wrong_note\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_correct\" と \"tap_wrong\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"line_success\" と \"line_failure\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 3,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 3,
+      "examples": [
+        "成功パス確認要: ルール \"line_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+        "成功パス確認要: ルール \"complete_flower\" の成功条件がプレイヤー操作に依存していない可能性があります",
+        "成功パス確認要: ルール \"check_win_condition\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    },
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 2,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 19580, Requested 10434. Please try again in 28ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 19351, Requested 10674. Please try again in 50ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    },
+    {
+      "errorType": "LogicValidator:UNREACHABLE_SUCCESS",
+      "count": 2,
+      "examples": [
+        "成功条件到達不可: フラグ \"lineStraightnessAchieved\" を設定するルールがありません",
+        "成功条件到達不可: フラグ \"all_petals_placed\" を設定するルールがありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_ACTION_TYPE",
+      "count": 1,
+      "examples": [
+        "ルール \"end_swipe\": 使用できないアクションタイプ \"evaluateLineStraightness\""
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "自動成功: ルール \"check_win_condition\" はプレイヤー操作なしで成功します"
+      ]
+    },
+    {
+      "errorType": "ConceptGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 26248, Requested 3770. Please try again in 36ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様生成",
+      "currentIssue": "Rules '正しい音符タップ' and '間違った音符タップ' can trigger both success and failure with same condition",
+      "suggestedAddition": "##条件分岐の明確化\n同一条件で異なる結果（success/failure）をトリガーする場合、条件をより細かく定義するか、優先順位を設定してコンフリクトを回避してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "成功/失敗ロジック",
+      "currentIssue": "コンフリクト: ルール 'tap_correct_note' と 'tap_wrong_note' が同一条件で success/failure を発動",
+      "suggestedAddition": "##操作の優先順位設定\n同一のプレイヤーアクションに対し矛盾する結果を持つ場合、優先順位ルールを明確に設定し、結果が両立しないよう調整してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "プレイヤー操作の確認",
+      "currentIssue": "成功パスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+      "suggestedAddition": "##プレイヤー操作条件の追加\nすべての成功条件にプレイヤー操作に関する条件を含めることを推奨。プレイヤーの入力が必要な箇所で条件設定を確認してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "成功条件ロジック",
+      "currentIssue": "フラグ 'lineStraightnessAchieved' を設定するルールがありません",
+      "suggestedAddition": "##フラグ設定\n成功条件に関与するすべてのフラグは、明示的に設定するアクションを含めるようルールを改訂してください。設定に関するロジックミスがないか確認。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "GameConceptGenerator.ts",
+      "section": "コンセプト生成",
+      "currentIssue": "Rate limit reached for gpt-4o",
+      "suggestedAddition": "##API使用量の最適化\nAPI呼び出し量を減らすため、生成内容のキャッシュを実装し、頻繁な再生成を回避する対策を検討してください。",
+      "priority": "low"
+    }
+  ]
+}

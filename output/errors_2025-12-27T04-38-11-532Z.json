@@ -1,0 +1,183 @@
+[
+  {
+    "timestamp": "2025-12-27T04:26:17.347Z",
+    "gameTitle": "変形メカマスター",
+    "theme": "変形メカ",
+    "step": "LogicValidator",
+    "errorType": "INVALID_OBJECT_ID",
+    "errorMessage": "ルール \"swipe_wrong\" のアクションtargetId \"wrong_pattern\" がアセット計画に存在しません",
+    "context": {
+      "title": "変形メカマスター",
+      "theme": "変形メカ",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:26:17.347Z",
+    "gameTitle": "変形メカマスター",
+    "theme": "変形メカ",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"swipe_correct_2\" と \"swipe_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "変形メカマスター",
+      "theme": "変形メカ",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:26:17.348Z",
+    "gameTitle": "変形メカマスター",
+    "theme": "変形メカ",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_TARGET",
+    "errorMessage": "Action \"effect\" in rule \"不正解パターンのスワイプ\" references undefined object: wrong_pattern",
+    "context": {
+      "title": "変形メカマスター",
+      "theme": "変形メカ",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:26:17.348Z",
+    "gameTitle": "変形メカマスター",
+    "theme": "変形メカ",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解パターン2のスワイプ\" and \"不正解パターンのスワイプ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "変形メカマスター",
+      "theme": "変形メカ",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:27:11.481Z",
+    "gameTitle": "記憶の迷宮",
+    "theme": "記憶の迷宮",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "記憶の迷宮",
+      "theme": "記憶の迷宮",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:27:11.481Z",
+    "gameTitle": "記憶の迷宮",
+    "theme": "記憶の迷宮",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "記憶の迷宮",
+      "theme": "記憶の迷宮",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:27:11.481Z",
+    "gameTitle": "記憶の迷宮",
+    "theme": "記憶の迷宮",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "記憶の迷宮",
+      "theme": "記憶の迷宮",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:30:13.734Z",
+    "gameTitle": "バランス気球",
+    "theme": "上昇する気球",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+    "context": {
+      "title": "バランス気球",
+      "theme": "上昇する気球"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:31:17.212Z",
+    "gameTitle": "バランス気球",
+    "theme": "上昇する気球",
+    "step": "LogicValidator",
+    "errorType": "AUTO_SUCCESS",
+    "errorMessage": "自動成功: ルール \"balance_success\" はプレイヤー操作なしで成功し、失敗条件もありません",
+    "context": {
+      "title": "バランス気球",
+      "theme": "上昇する気球",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:31:17.212Z",
+    "gameTitle": "バランス気球",
+    "theme": "上昇する気球",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "バランス気球",
+      "theme": "上昇する気球",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:31:17.212Z",
+    "gameTitle": "バランス気球",
+    "theme": "上昇する気球",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"balance_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "バランス気球",
+      "theme": "上昇する気球",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:38:07.554Z",
+    "gameTitle": "陶芸家の轆轤チャレンジ",
+    "theme": "陶芸家の轆轤",
+    "step": "LogicValidator",
+    "errorType": "AUTO_SUCCESS",
+    "errorMessage": "自動成功: ルール \"maintain_speed\" はプレイヤー操作なしで成功し、失敗条件もありません",
+    "context": {
+      "title": "陶芸家の轆轤チャレンジ",
+      "theme": "陶芸家の轆轤",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:38:07.554Z",
+    "gameTitle": "陶芸家の轆轤チャレンジ",
+    "theme": "陶芸家の轆轤",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "陶芸家の轆轤チャレンジ",
+      "theme": "陶芸家の轆轤",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:38:07.554Z",
+    "gameTitle": "陶芸家の轆轤チャレンジ",
+    "theme": "陶芸家の轆轤",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"maintain_speed\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "陶芸家の轆轤チャレンジ",
+      "theme": "陶芸家の轆轤",
+      "ruleCount": 3
+    }
+  }
+]

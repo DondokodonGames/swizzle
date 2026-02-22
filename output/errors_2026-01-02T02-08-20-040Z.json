@@ -1,0 +1,340 @@
+[
+  {
+    "timestamp": "2026-01-02T01:58:23.360Z",
+    "gameTitle": "筆で線を引く",
+    "theme": "書道の筆",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"check_success\" と \"check_failure\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "筆で線を引く",
+      "theme": "書道の筆",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T01:58:23.360Z",
+    "gameTitle": "筆で線を引く",
+    "theme": "書道の筆",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"成功判定\" and \"失敗判定\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "筆で線を引く",
+      "theme": "書道の筆",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T01:59:47.787Z",
+    "gameTitle": "ウミガメの卵を守れ！",
+    "theme": "ウミガメの産卵",
+    "step": "LogicValidator",
+    "errorType": "AUTO_FAILURE",
+    "errorMessage": "自動失敗: ルール \"timeout\" は時間経過で失敗し、成功にプレイヤー操作がありません",
+    "context": {
+      "title": "ウミガメの卵を守れ！",
+      "theme": "ウミガメの産卵",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T01:59:47.787Z",
+    "gameTitle": "ウミガメの卵を守れ！",
+    "theme": "ウミガメの産卵",
+    "step": "LogicValidator",
+    "errorType": "INVALID_ACTION_TYPE",
+    "errorMessage": "ルール \"drag_egg_1\": 使用できないアクションタイプ \"collision\"",
+    "context": {
+      "title": "ウミガメの卵を守れ！",
+      "theme": "ウミガメの産卵",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T01:59:47.787Z",
+    "gameTitle": "ウミガメの卵を守れ！",
+    "theme": "ウミガメの産卵",
+    "step": "LogicValidator",
+    "errorType": "INVALID_ACTION_TYPE",
+    "errorMessage": "ルール \"drag_egg_2\": 使用できないアクションタイプ \"collision\"",
+    "context": {
+      "title": "ウミガメの卵を守れ！",
+      "theme": "ウミガメの産卵",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T01:59:47.787Z",
+    "gameTitle": "ウミガメの卵を守れ！",
+    "theme": "ウミガメの産卵",
+    "step": "LogicValidator",
+    "errorType": "INVALID_ACTION_TYPE",
+    "errorMessage": "ルール \"drag_egg_3\": 使用できないアクションタイプ \"collision\"",
+    "context": {
+      "title": "ウミガメの卵を守れ！",
+      "theme": "ウミガメの産卵",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T01:59:47.787Z",
+    "gameTitle": "ウミガメの卵を守れ！",
+    "theme": "ウミガメの産卵",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "ウミガメの卵を守れ！",
+      "theme": "ウミガメの産卵",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T01:59:47.787Z",
+    "gameTitle": "ウミガメの卵を守れ！",
+    "theme": "ウミガメの産卵",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "ウミガメの卵を守れ！",
+      "theme": "ウミガメの産卵",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T01:59:47.787Z",
+    "gameTitle": "ウミガメの卵を守れ！",
+    "theme": "ウミガメの産卵",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "ウミガメの卵を守れ！",
+      "theme": "ウミガメの産卵",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:01:27.026Z",
+    "gameTitle": "ヘビの脱皮チャレンジ",
+    "theme": "ヘビの脱皮",
+    "step": "LogicValidator",
+    "errorType": "AUTO_FAILURE",
+    "errorMessage": "自動失敗: ルール \"timeout\" は時間経過で失敗し、成功にプレイヤー操作がありません",
+    "context": {
+      "title": "ヘビの脱皮チャレンジ",
+      "theme": "ヘビの脱皮",
+      "ruleCount": 7
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:01:27.026Z",
+    "gameTitle": "ヘビの脱皮チャレンジ",
+    "theme": "ヘビの脱皮",
+    "step": "LogicValidator",
+    "errorType": "INVALID_ANIMATION_TARGET",
+    "errorMessage": "ルール \"check_success\": animation target \"old_skin_1,old_skin_2,old_skin_3,old_skin_4,old_skin_5\" が未定義",
+    "context": {
+      "title": "ヘビの脱皮チャレンジ",
+      "theme": "ヘビの脱皮",
+      "ruleCount": 7
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:01:27.026Z",
+    "gameTitle": "ヘビの脱皮チャレンジ",
+    "theme": "ヘビの脱皮",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "ヘビの脱皮チャレンジ",
+      "theme": "ヘビの脱皮",
+      "ruleCount": 7
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:01:27.026Z",
+    "gameTitle": "ヘビの脱皮チャレンジ",
+    "theme": "ヘビの脱皮",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "ヘビの脱皮チャレンジ",
+      "theme": "ヘビの脱皮",
+      "ruleCount": 7
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:04:03.843Z",
+    "gameTitle": "魔法の杖で呪文を描け",
+    "theme": "魔法の杖",
+    "step": "LogicValidator",
+    "errorType": "AUTO_FAILURE",
+    "errorMessage": "自動失敗: ルール \"timeout_condition\" は時間経過で失敗し、成功にプレイヤー操作がありません",
+    "context": {
+      "title": "魔法の杖で呪文を描け",
+      "theme": "魔法の杖",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:04:03.843Z",
+    "gameTitle": "魔法の杖で呪文を描け",
+    "theme": "魔法の杖",
+    "step": "LogicValidator",
+    "errorType": "INVALID_ANIMATION_CONDITION",
+    "errorMessage": "ルール \"success_condition\": 無効なanimation condition \"completion\"",
+    "context": {
+      "title": "魔法の杖で呪文を描け",
+      "theme": "魔法の杖",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:04:03.843Z",
+    "gameTitle": "魔法の杖で呪文を描け",
+    "theme": "魔法の杖",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "魔法の杖で呪文を描け",
+      "theme": "魔法の杖",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:04:03.843Z",
+    "gameTitle": "魔法の杖で呪文を描け",
+    "theme": "魔法の杖",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"success_condition\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "魔法の杖で呪文を描け",
+      "theme": "魔法の杖",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:06:55.175Z",
+    "gameTitle": "入学式の緊張を乗り越えろ",
+    "theme": "入学式の緊張",
+    "step": "LogicValidator",
+    "errorType": "INVALID_COLLISION_TARGET",
+    "errorMessage": "ルール \"drag_correct_seat\": collision target \"seat_1_zone\" が未定義",
+    "context": {
+      "title": "入学式の緊張を乗り越えろ",
+      "theme": "入学式の緊張",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:06:55.175Z",
+    "gameTitle": "入学式の緊張を乗り越えろ",
+    "theme": "入学式の緊張",
+    "step": "LogicValidator",
+    "errorType": "INVALID_COLLISION_TARGET",
+    "errorMessage": "ルール \"drag_wrong_seat\": collision target \"seat_1_zone\" が未定義",
+    "context": {
+      "title": "入学式の緊張を乗り越えろ",
+      "theme": "入学式の緊張",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:06:55.175Z",
+    "gameTitle": "入学式の緊張を乗り越えろ",
+    "theme": "入学式の緊張",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"drag_correct_seat\" と \"drag_wrong_seat\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "入学式の緊張を乗り越えろ",
+      "theme": "入学式の緊張",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:06:55.176Z",
+    "gameTitle": "入学式の緊張を乗り越えろ",
+    "theme": "入学式の緊張",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COLLISION_TARGET",
+    "errorMessage": "Collision condition in rule \"正解の座席をドラッグ\" references undefined object: seat_1_zone",
+    "context": {
+      "title": "入学式の緊張を乗り越えろ",
+      "theme": "入学式の緊張",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:06:55.176Z",
+    "gameTitle": "入学式の緊張を乗り越えろ",
+    "theme": "入学式の緊張",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COLLISION_TARGET",
+    "errorMessage": "Collision condition in rule \"不正解の座席をドラッグ\" references undefined object: seat_1_zone",
+    "context": {
+      "title": "入学式の緊張を乗り越えろ",
+      "theme": "入学式の緊張",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:06:55.176Z",
+    "gameTitle": "入学式の緊張を乗り越えろ",
+    "theme": "入学式の緊張",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解の座席をドラッグ\" and \"不正解の座席をドラッグ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "入学式の緊張を乗り越えろ",
+      "theme": "入学式の緊張",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:08:15.587Z",
+    "gameTitle": "珊瑚の楽園",
+    "theme": "珊瑚の楽園",
+    "step": "LogicValidator",
+    "errorType": "AUTO_SUCCESS",
+    "errorMessage": "自動成功: ルール \"match_check\" はプレイヤー操作なしで成功し、失敗条件もありません",
+    "context": {
+      "title": "珊瑚の楽園",
+      "theme": "珊瑚の楽園",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:08:15.587Z",
+    "gameTitle": "珊瑚の楽園",
+    "theme": "珊瑚の楽園",
+    "step": "LogicValidator",
+    "errorType": "AUTO_FAILURE",
+    "errorMessage": "自動失敗: ルール \"timeout\" は時間経過で失敗し、成功にプレイヤー操作がありません",
+    "context": {
+      "title": "珊瑚の楽園",
+      "theme": "珊瑚の楽園",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:08:15.587Z",
+    "gameTitle": "珊瑚の楽園",
+    "theme": "珊瑚の楽園",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "珊瑚の楽園",
+      "theme": "珊瑚の楽園",
+      "ruleCount": 4
+    }
+  }
+]

@@ -1,0 +1,120 @@
+{
+  "totalRuns": 10,
+  "successCount": 0,
+  "failureCount": 10,
+  "errorPatterns": [
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_COUNTER",
+      "count": 12,
+      "examples": [
+        "Counter action in rule \"ネズミをタップ\" references undefined counter: tapped_count",
+        "Counter action in rule \"タイマー更新\" references undefined counter: game_timer",
+        "Counter action in rule \"タップ成功\" references undefined counter: successful_taps"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COUNTER",
+      "count": 9,
+      "examples": [
+        "Counter condition in rule \"勝利判定\" references undefined counter: tapped_count",
+        "Counter condition in rule \"敗北判定\" references undefined counter: game_timer",
+        "Counter condition in rule \"成功条件判定\" references undefined counter: successful_taps"
+      ]
+    },
+    {
+      "errorType": "GameDesignGenerator:GENERATION_ERROR",
+      "count": 2,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 29126, Requested 1668. Please try again in 1.588s. Visit https://platform.openai.com/account/rate-limits to learn more.",
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 28324, Requested 1684. Please try again in 16ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_OBJECT_ID",
+      "count": 2,
+      "examples": [
+        "ルール \"rule_draw_line\" のtargetObjectId \"stage\" がアセット計画に存在しません",
+        "ルール \"rule_draw_line\" のアクションtargetId \"stage\" がアセット計画に存在しません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_FAILURE",
+      "count": 1,
+      "examples": [
+        "failureアクションが存在しません（時間切れのみで失敗となります）"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 1,
+      "examples": [
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_TARGET",
+      "count": 1,
+      "examples": [
+        "Action \"followDrag\" in rule \"星をドラッグして線を引く\" references undefined object: stage"
+      ]
+    },
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 21930, Requested 8153. Please try again in 166ms. Visit https://platform.openai.com/account/rate-limits to learn more."
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "カウンターが定義されていないまたは操作されていない",
+      "suggestedAddition": "## カウンター管理ルール\nカウンターを使用する際は以下を確認してください:\n1. カウンターが明確に定義されていること。\n2. カウンターを操作するルール（increment/decrement）が存在していること。\n3. カウンターを条件としてチェックするルールが存在していること。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "AssetPlanner.ts",
+      "section": "アセット計画",
+      "currentIssue": "存在しないオブジェクトが参照されている",
+      "suggestedAddition": "## アセットのオブジェクト参照\nすべてのtargetObjectIdは事前にアセット計画で定義されている必要があります。参照するオブジェクトをアセット計画に追加してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "ProjectValidator.ts",
+      "section": "成功条件",
+      "currentIssue": "成功や失敗ルールが不足している",
+      "suggestedAddition": "## 成功/失敗ルール定義\nプレイヤーがゲームを勝利または敗北するためのルールを明確に定義してください。成功条件と失敗条件がお互いに排他であることを確認してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "GameDesignGenerator.ts",
+      "section": "レート制限エラー",
+      "currentIssue": "リクエスト数がレートリミットを超過している",
+      "suggestedAddition": "## レート制限管理\nゲームデザイン生成時にレート制限を考慮してください。レート制限に達した場合はリトライメカニズムを実装し、必要に応じてプロンプトを効率化する対応を取ってください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "EditorMapper.ts",
+      "section": "プレイヤー操作",
+      "currentIssue": "プレイヤー操作が明確でない可能性",
+      "suggestedAddition": "## プレイヤー操作の明確化\nすべての成功へのパスには、プレイヤー操作（touch/collision/position条件）が含まれていると確保してください。プレイヤーがどのようにゲームを操作するかを明瞭にするガイドラインを作成してください。",
+      "priority": "low"
+    }
+  ]
+}

@@ -1,0 +1,235 @@
+[
+  {
+    "timestamp": "2025-12-26T14:50:52.296Z",
+    "gameTitle": "飛び込みのスプラッシュ",
+    "theme": "飛び込みのスプラッシュ",
+    "step": "LogicValidator",
+    "errorType": "AUTO_SUCCESS",
+    "errorMessage": "自動成功: ルール \"dive_when_wave_peak\" はプレイヤー操作なしで成功します",
+    "context": {
+      "title": "飛び込みのスプラッシュ",
+      "theme": "飛び込みのスプラッシュ",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:50:52.296Z",
+    "gameTitle": "飛び込みのスプラッシュ",
+    "theme": "飛び込みのスプラッシュ",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "飛び込みのスプラッシュ",
+      "theme": "飛び込みのスプラッシュ",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:50:52.296Z",
+    "gameTitle": "飛び込みのスプラッシュ",
+    "theme": "飛び込みのスプラッシュ",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"dive_when_wave_peak\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "飛び込みのスプラッシュ",
+      "theme": "飛び込みのスプラッシュ",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:52:02.130Z",
+    "gameTitle": "完璧なお弁当",
+    "theme": "遠足の弁当",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "JSON parse failed: SyntaxError: Expected ',' or '}' after property value in JSON at position 4618 (line 165 column 3)",
+    "context": {
+      "title": "完璧なお弁当",
+      "theme": "遠足の弁当"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:53:09.837Z",
+    "gameTitle": "嫉妬の緑のペアリング",
+    "theme": "嫉妬の緑",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct\" と \"tap_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "嫉妬の緑のペアリング",
+      "theme": "嫉妬の緑",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:53:09.837Z",
+    "gameTitle": "嫉妬の緑のペアリング",
+    "theme": "嫉妬の緑",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解のカードタップ\" and \"不正解のカードタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "嫉妬の緑のペアリング",
+      "theme": "嫉妬の緑",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:54:20.828Z",
+    "gameTitle": "煙突迷路",
+    "theme": "煙突の中",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"壁と接触\" and \"ゴールに到達\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "煙突迷路",
+      "theme": "煙突の中",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:55:43.740Z",
+    "gameTitle": "水色の清流",
+    "theme": "水色の涼",
+    "step": "LogicValidator",
+    "errorType": "MISSING_FRAME_NUMBER",
+    "errorMessage": "ルール \"check_all_stones_removed\": animation frame条件にframeNumberがありません",
+    "context": {
+      "title": "水色の清流",
+      "theme": "水色の涼",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:55:43.740Z",
+    "gameTitle": "水色の清流",
+    "theme": "水色の涼",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "水色の清流",
+      "theme": "水色の涼",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:55:43.740Z",
+    "gameTitle": "水色の清流",
+    "theme": "水色の涼",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"check_all_stones_removed\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "水色の清流",
+      "theme": "水色の涼",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:57:02.910Z",
+    "gameTitle": "奇跡のパビリオン",
+    "theme": "万博の驚異",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct_pavilion\" と \"tap_wrong_pavilion_1\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "奇跡のパビリオン",
+      "theme": "万博の驚異",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:57:02.910Z",
+    "gameTitle": "奇跡のパビリオン",
+    "theme": "万博の驚異",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct_pavilion\" と \"tap_wrong_pavilion_2\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "奇跡のパビリオン",
+      "theme": "万博の驚異",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:57:02.910Z",
+    "gameTitle": "奇跡のパビリオン",
+    "theme": "万博の驚異",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解パビリオンタップ\" and \"不正解パビリオンタップ1\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "奇跡のパビリオン",
+      "theme": "万博の驚異",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:57:02.910Z",
+    "gameTitle": "奇跡のパビリオン",
+    "theme": "万博の驚異",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解パビリオンタップ\" and \"不正解パビリオンタップ2\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "奇跡のパビリオン",
+      "theme": "万博の驚異",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:58:08.802Z",
+    "gameTitle": "苔むすボタニカルクエスト",
+    "theme": "苔むす森",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct\" と \"tap_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "苔むすボタニカルクエスト",
+      "theme": "苔むす森",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:58:08.802Z",
+    "gameTitle": "苔むすボタニカルクエスト",
+    "theme": "苔むす森",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解タップ\" and \"不正解タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "苔むすボタニカルクエスト",
+      "theme": "苔むす森",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:59:24.796Z",
+    "gameTitle": "ツリーハウスの秘密探し",
+    "theme": "ツリーハウスの夏",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_hidden_spot\" と \"tap_non_hidden_area\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "ツリーハウスの秘密探し",
+      "theme": "ツリーハウスの夏",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T14:59:24.796Z",
+    "gameTitle": "ツリーハウスの秘密探し",
+    "theme": "ツリーハウスの夏",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解タップ\" and \"不正解タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "ツリーハウスの秘密探し",
+      "theme": "ツリーハウスの夏",
+      "severity": "error"
+    }
+  }
+]

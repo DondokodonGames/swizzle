@@ -1,0 +1,232 @@
+[
+  {
+    "timestamp": "2025-12-26T15:51:07.192Z",
+    "gameTitle": "食虫植物を避けろ！",
+    "theme": "食虫植物の沼",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "食虫植物を避けろ！",
+      "theme": "食虫植物の沼"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:52:07.746Z",
+    "gameTitle": "風力発電チャレンジ",
+    "theme": "風車の回転",
+    "step": "LogicValidator",
+    "errorType": "INSTANT_WIN",
+    "errorMessage": "ルール \"check_success\" は条件なしでsuccessが発動します",
+    "context": {
+      "title": "風力発電チャレンジ",
+      "theme": "風車の回転",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:52:07.746Z",
+    "gameTitle": "風力発電チャレンジ",
+    "theme": "風車の回転",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "風力発電チャレンジ",
+      "theme": "風車の回転",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:52:13.649Z",
+    "gameTitle": "一反木綿の夜空の旅",
+    "theme": "一反木綿の夜空",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+    "context": {
+      "title": "一反木綿の夜空の旅",
+      "theme": "一反木綿の夜空"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:54:26.364Z",
+    "gameTitle": "バレンタインの告白大作戦",
+    "theme": "バレンタインの告白",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "JSON parse failed: SyntaxError: Expected ',' or '}' after property value in JSON at position 1374 (line 56 column 32)",
+    "context": {
+      "title": "バレンタインの告白大作戦",
+      "theme": "バレンタインの告白"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:55:41.556Z",
+    "gameTitle": "ネバネバ納豆キャッチ",
+    "theme": "ネバネバの納豆",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "ネバネバ納豆キャッチ",
+      "theme": "ネバネバの納豆",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:55:41.556Z",
+    "gameTitle": "ネバネバ納豆キャッチ",
+    "theme": "ネバネバの納豆",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "ネバネバ納豆キャッチ",
+      "theme": "ネバネバの納豆",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:55:41.556Z",
+    "gameTitle": "ネバネバ納豆キャッチ",
+    "theme": "ネバネバの納豆",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "ネバネバ納豆キャッチ",
+      "theme": "ネバネバの納豆",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:55:53.851Z",
+    "gameTitle": "三味線の音を紡ぐ",
+    "theme": "三味線の音",
+    "step": "GameDesignGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'map')",
+    "context": {
+      "title": "三味線の音を紡ぐ",
+      "theme": "三味線の音"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:57:33.608Z",
+    "gameTitle": "嫉妬の緑の宝探し",
+    "theme": "嫉妬の緑",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"check_success\" と \"check_collision_with_monster\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "嫉妬の緑の宝探し",
+      "theme": "嫉妬の緑",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:57:33.609Z",
+    "gameTitle": "嫉妬の緑の宝探し",
+    "theme": "嫉妬の緑",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"成功検出\" and \"モンスター衝突検出\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "嫉妬の緑の宝探し",
+      "theme": "嫉妬の緑",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:01:30.973Z",
+    "gameTitle": "伝説の剣の断片集め",
+    "theme": "伝説の剣",
+    "step": "LogicValidator",
+    "errorType": "INVALID_OBJECT_ID",
+    "errorMessage": "ルール \"tap_wrong_place\" のアクションtargetId \"background_map\" がアセット計画に存在しません",
+    "context": {
+      "title": "伝説の剣の断片集め",
+      "theme": "伝説の剣",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:01:30.973Z",
+    "gameTitle": "伝説の剣の断片集め",
+    "theme": "伝説の剣",
+    "step": "LogicValidator",
+    "errorType": "INVALID_TOUCH_TARGET",
+    "errorMessage": "ルール \"tap_wrong_place\": 無効なtouch target \"background_map\"",
+    "context": {
+      "title": "伝説の剣の断片集め",
+      "theme": "伝説の剣",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:01:30.973Z",
+    "gameTitle": "伝説の剣の断片集め",
+    "theme": "伝説の剣",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "伝説の剣の断片集め",
+      "theme": "伝説の剣",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:01:30.973Z",
+    "gameTitle": "伝説の剣の断片集め",
+    "theme": "伝説の剣",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "伝説の剣の断片集め",
+      "theme": "伝説の剣",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:01:30.973Z",
+    "gameTitle": "伝説の剣の断片集め",
+    "theme": "伝説の剣",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_TARGET",
+    "errorMessage": "Touch condition in rule \"間違った場所をタップ\" references undefined object: background_map",
+    "context": {
+      "title": "伝説の剣の断片集め",
+      "theme": "伝説の剣",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:01:30.973Z",
+    "gameTitle": "伝説の剣の断片集め",
+    "theme": "伝説の剣",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_TARGET",
+    "errorMessage": "Action \"effect\" in rule \"間違った場所をタップ\" references undefined object: background_map",
+    "context": {
+      "title": "伝説の剣の断片集め",
+      "theme": "伝説の剣",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:01:30.973Z",
+    "gameTitle": "伝説の剣の断片集め",
+    "theme": "伝説の剣",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "伝説の剣の断片集め",
+      "theme": "伝説の剣",
+      "severity": "error"
+    }
+  }
+]

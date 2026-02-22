@@ -1,0 +1,202 @@
+[
+  {
+    "timestamp": "2026-01-02T02:16:28.462Z",
+    "gameTitle": "並行世界の窓",
+    "theme": "並行世界",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "並行世界の窓",
+      "theme": "並行世界",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:16:28.462Z",
+    "gameTitle": "並行世界の窓",
+    "theme": "並行世界",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "並行世界の窓",
+      "theme": "並行世界",
+      "ruleCount": 2
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:16:28.462Z",
+    "gameTitle": "並行世界の窓",
+    "theme": "並行世界",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "並行世界の窓",
+      "theme": "並行世界",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:16:58.573Z",
+    "gameTitle": "見極めのストライク",
+    "theme": "ボウリングのストライク",
+    "step": "AssetPlanner",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 27143, Requested 2945. Please try again in 176ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "見極めのストライク",
+      "theme": "ボウリングのストライク"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:17:12.303Z",
+    "gameTitle": "笑う花の共鳴",
+    "theme": "笑う花",
+    "step": "AssetPlanner",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 27846, Requested 2877. Please try again in 1.446s. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "笑う花の共鳴",
+      "theme": "笑う花"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:19:54.007Z",
+    "gameTitle": "イカの墨トラッカー",
+    "theme": "イカの墨",
+    "step": "LogicValidator",
+    "errorType": "AUTO_FAILURE",
+    "errorMessage": "自動失敗: ルール \"timeout\" は時間経過で失敗し、成功にプレイヤー操作がありません",
+    "context": {
+      "title": "イカの墨トラッカー",
+      "theme": "イカの墨",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:19:54.007Z",
+    "gameTitle": "イカの墨トラッカー",
+    "theme": "イカの墨",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "イカの墨トラッカー",
+      "theme": "イカの墨",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:19:54.007Z",
+    "gameTitle": "イカの墨トラッカー",
+    "theme": "イカの墨",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "イカの墨トラッカー",
+      "theme": "イカの墨",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:19:54.007Z",
+    "gameTitle": "イカの墨トラッカー",
+    "theme": "イカの墨",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "イカの墨トラッカー",
+      "theme": "イカの墨",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:21:31.943Z",
+    "gameTitle": "迷宮からの脱出",
+    "theme": "生きている建物",
+    "step": "LogicValidator",
+    "errorType": "INVALID_OBJECT_ID",
+    "errorMessage": "ルール \"swipe_correct_direction\" のアクションtargetId \"player\" がアセット計画に存在しません",
+    "context": {
+      "title": "迷宮からの脱出",
+      "theme": "生きている建物",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:21:31.943Z",
+    "gameTitle": "迷宮からの脱出",
+    "theme": "生きている建物",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"swipe_correct_direction\" と \"swipe_wrong_direction\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "迷宮からの脱出",
+      "theme": "生きている建物",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:21:31.943Z",
+    "gameTitle": "迷宮からの脱出",
+    "theme": "生きている建物",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_TARGET",
+    "errorMessage": "Action \"move\" in rule \"正しい方向にスワイプ\" references undefined object: player",
+    "context": {
+      "title": "迷宮からの脱出",
+      "theme": "生きている建物",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:21:31.943Z",
+    "gameTitle": "迷宮からの脱出",
+    "theme": "生きている建物",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正しい方向にスワイプ\" and \"誤った方向にスワイプ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "迷宮からの脱出",
+      "theme": "生きている建物",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:21:39.676Z",
+    "gameTitle": "火の具合を見極めろ",
+    "theme": "マッチの火",
+    "step": "ConceptValidator",
+    "errorType": "CONCEPT_VALIDATION",
+    "errorMessage": "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+    "context": {
+      "title": "火の具合を見極めろ",
+      "theme": "マッチの火"
+    }
+  },
+  {
+    "timestamp": "2026-01-02T02:23:01.198Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 26097, Requested 4000. Please try again in 194ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {}
+  },
+  {
+    "timestamp": "2026-01-02T02:23:14.440Z",
+    "gameTitle": "月光の森の影合わせ",
+    "theme": "月光の森",
+    "step": "AssetPlanner",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 27283, Requested 2811. Please try again in 188ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "月光の森の影合わせ",
+      "theme": "月光の森"
+    }
+  }
+]

@@ -1,0 +1,136 @@
+{
+  "totalRuns": 10,
+  "successCount": 6,
+  "failureCount": 4,
+  "errorPatterns": [
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 4,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 2,
+      "examples": [
+        "コンフリクト: ルール \"tap_correct_route\" と \"tap_wrong_route_1\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_correct_route\" と \"tap_wrong_route_3\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 2,
+      "examples": [
+        "Rules \"正しいルートのタップ\" and \"間違ったルート1のタップ\" can trigger both success and failure with same condition",
+        "Rules \"正しいルートのタップ\" and \"間違ったルート3のタップ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 2,
+      "examples": [
+        "successアクションが存在しません",
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 2,
+      "examples": [
+        "No success rule defined - game cannot be won",
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+        "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    },
+    {
+      "errorType": "ConceptValidator:CONCEPT_VALIDATION",
+      "count": 2,
+      "examples": [
+        "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+        "playerGoalに数値または「全て」がありません（推奨）"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_OBJECT_ID",
+      "count": 1,
+      "examples": [
+        "ルール \"check_order\" のアクションtargetId \"combination\" がアセット計画に存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_TARGET",
+      "count": 1,
+      "examples": [
+        "Action \"effect\" in rule \"順序チェック\" references undefined object: combination"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:MISSING_FRAME_NUMBER",
+      "count": 1,
+      "examples": [
+        "ルール \"check_success\": animation frame条件にframeNumberがありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_SOUND_TYPE",
+      "count": 1,
+      "examples": [
+        "無効なsound.type \"calm\" (id: se_bell)"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "自動成功: ルール \"check_success\" はプレイヤー操作なしで成功します"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "プレイヤー操作が不足しているため、成功条件が満たされない",
+      "suggestedAddition": "## プレイヤー操作ルール\n成功条件には必ず:\n1. プレイヤー操作（タップ/スワイプ/ドラッグ/長押し）による条件\nを明記してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "同一条件でsuccessとfailureを発動するルールが存在する",
+      "suggestedAddition": "## ルールの優先順位設定\nルールが競合しないように、条件が重複する場合は優先されるルールを明示し、適切な順序で記述してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "成功ルールが明記されていない",
+      "suggestedAddition": "## 成功ルールの定義\nゲームがクリア可能であるように、必ずsuccessアクションが含まれるルールを定義してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "アクションのターゲットIDがアセット計画に存在しない",
+      "suggestedAddition": "## ターゲットIDの確認\nアクションで使用するtargetIdは、事前にアセット計画に含まれていることを確認し、適切に定義してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "GameDesignGenerator.ts",
+      "section": "coreExperience",
+      "currentIssue": "操作方法が不足しているため、ユーザビリティが低下している",
+      "suggestedAddition": "## 操作方法の明示\nゲーム内で使用可能な操作方法（タップ/スワイプ/ドラッグ/長押し）をすべて明示し、ユーザーが直感的にプレイできるようにしてください。",
+      "priority": "medium"
+    }
+  ]
+}

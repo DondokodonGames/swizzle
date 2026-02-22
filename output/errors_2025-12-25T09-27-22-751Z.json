@@ -1,0 +1,331 @@
+[
+  {
+    "timestamp": "2025-12-25T09:16:42.014Z",
+    "gameTitle": "矢の風補正",
+    "theme": "アーチェリーの矢",
+    "step": "LogicValidator",
+    "errorType": "COUNTER_NEVER_CHECKED",
+    "errorMessage": "カウンター \"bow_angle\" は操作されていますが、条件でチェックされていません（操作ルール: drag_adjust_bow）",
+    "context": {
+      "title": "矢の風補正",
+      "theme": "アーチェリーの矢",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:16:42.016Z",
+    "gameTitle": "矢の風補正",
+    "theme": "アーチェリーの矢",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"弓の角度調整\" references undefined counter: bow_angle",
+    "context": {
+      "title": "矢の風補正",
+      "theme": "アーチェリーの矢",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:16:42.016Z",
+    "gameTitle": "矢の風補正",
+    "theme": "アーチェリーの矢",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"矢が中心命中\" and \"矢が外側命中\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "矢の風補正",
+      "theme": "アーチェリーの矢",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:19:37.777Z",
+    "gameTitle": "運命の糸結び",
+    "theme": "運命の糸",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "JSON parse failed: SyntaxError: Expected ',' or '}' after property value in JSON at position 23328 (line 938 column 8)",
+    "context": {
+      "title": "運命の糸結び",
+      "theme": "運命の糸"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:22:58.212Z",
+    "gameTitle": "闇夜の花",
+    "theme": "闇の花",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"安全な蕾1開花\" references undefined counter: safe_flowers_bloomed",
+    "context": {
+      "title": "闇夜の花",
+      "theme": "闇の花",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:22:58.212Z",
+    "gameTitle": "闇夜の花",
+    "theme": "闇の花",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"安全な蕾2開花\" references undefined counter: safe_flowers_bloomed",
+    "context": {
+      "title": "闇夜の花",
+      "theme": "闇の花",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:22:58.212Z",
+    "gameTitle": "闇夜の花",
+    "theme": "闇の花",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"安全な蕾3開花\" references undefined counter: safe_flowers_bloomed",
+    "context": {
+      "title": "闇夜の花",
+      "theme": "闇の花",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:22:58.213Z",
+    "gameTitle": "闇夜の花",
+    "theme": "闇の花",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: safe_flowers_bloomed",
+    "context": {
+      "title": "闇夜の花",
+      "theme": "闇の花",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:22:58.213Z",
+    "gameTitle": "闇夜の花",
+    "theme": "闇の花",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"時間経過\" references undefined counter: game_timer",
+    "context": {
+      "title": "闇夜の花",
+      "theme": "闇の花",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:22:58.213Z",
+    "gameTitle": "闇夜の花",
+    "theme": "闇の花",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ判定\" references undefined counter: game_timer",
+    "context": {
+      "title": "闇夜の花",
+      "theme": "闇の花",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:22:58.213Z",
+    "gameTitle": "闇夜の花",
+    "theme": "闇の花",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ判定\" references undefined counter: safe_flowers_bloomed",
+    "context": {
+      "title": "闇夜の花",
+      "theme": "闇の花",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:26:35.124Z",
+    "gameTitle": "懐中電灯で照らせ！",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"恐竜照射\" references undefined counter: found_artifacts",
+    "context": {
+      "title": "懐中電灯で照らせ！",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:26:35.124Z",
+    "gameTitle": "懐中電灯で照らせ！",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"壺照射\" references undefined counter: found_artifacts",
+    "context": {
+      "title": "懐中電灯で照らせ！",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:26:35.124Z",
+    "gameTitle": "懐中電灯で照らせ！",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"絵画照射\" references undefined counter: found_artifacts",
+    "context": {
+      "title": "懐中電灯で照らせ！",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:26:35.124Z",
+    "gameTitle": "懐中電灯で照らせ！",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"偽彫像照射\" references undefined counter: wrong_illumination_time",
+    "context": {
+      "title": "懐中電灯で照らせ！",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:26:35.124Z",
+    "gameTitle": "懐中電灯で照らせ！",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"偽壺照射\" references undefined counter: wrong_illumination_time",
+    "context": {
+      "title": "懐中電灯で照らせ！",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:26:35.124Z",
+    "gameTitle": "懐中電灯で照らせ！",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"間違い時間リセット\" references undefined counter: wrong_illumination_time",
+    "context": {
+      "title": "懐中電灯で照らせ！",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:26:35.124Z",
+    "gameTitle": "懐中電灯で照らせ！",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイマーカウントダウン\" references undefined counter: game_timer",
+    "context": {
+      "title": "懐中電灯で照らせ！",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:26:35.124Z",
+    "gameTitle": "懐中電灯で照らせ！",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: found_artifacts",
+    "context": {
+      "title": "懐中電灯で照らせ！",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:26:35.124Z",
+    "gameTitle": "懐中電灯で照らせ！",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"間違い失敗判定\" references undefined counter: wrong_illumination_time",
+    "context": {
+      "title": "懐中電灯で照らせ！",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:26:35.124Z",
+    "gameTitle": "懐中電灯で照らせ！",
+    "theme": "博物館の夜",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ失敗判定\" references undefined counter: game_timer",
+    "context": {
+      "title": "懐中電灯で照らせ！",
+      "theme": "博物館の夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:27:17.210Z",
+    "gameTitle": "水玉の雨宿り",
+    "theme": "水玉の雨",
+    "step": "AssetPlanner",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWTAekyjtdZKwb9GEgWwS\"}",
+    "context": {
+      "title": "水玉の雨宿り",
+      "theme": "水玉の雨"
+    }
+  },
+  {
+    "timestamp": "2025-12-25T09:27:18.390Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWTAer74ZqJR8qY2CKjTt\"}",
+    "context": {}
+  },
+  {
+    "timestamp": "2025-12-25T09:27:19.266Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWTAeurHUSvqEFWGEmLRN\"}",
+    "context": {}
+  },
+  {
+    "timestamp": "2025-12-25T09:27:20.143Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWTAeyYHpUme9Kc1hZnPr\"}",
+    "context": {}
+  },
+  {
+    "timestamp": "2025-12-25T09:27:21.130Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWTAf3mXq7ZhNrk4WggX1\"}",
+    "context": {}
+  },
+  {
+    "timestamp": "2025-12-25T09:27:21.986Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWTAf7UXnkr8WHMV37uzN\"}",
+    "context": {}
+  }
+]

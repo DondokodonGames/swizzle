@@ -1,0 +1,89 @@
+{
+  "totalRuns": 10,
+  "successCount": 5,
+  "failureCount": 5,
+  "errorPatterns": [
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 2,
+      "examples": [
+        "コンフリクト: ルール \"swipe_rainbow\" と \"missed_swipe\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_success\" と \"tap_failure\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 2,
+      "examples": [
+        "Rules \"虹をスワイプ\" and \"スワイプ失敗\" can trigger both success and failure with same condition",
+        "Rules \"正解タイミングタップ\" and \"不正解タップ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 2,
+      "examples": [
+        "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 15637, Requested 14374. Please try again in 22ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+        "JSON parse failed: SyntaxError: Expected double-quoted property name in JSON at position 1132 (line 44 column 22)"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_FAILURE",
+      "count": 1,
+      "examples": [
+        "failureアクションが存在しません（時間切れのみで失敗となります）"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 1,
+      "examples": [
+        "No success rule defined - game cannot be won"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "ルール 'swipe_rainbow' と 'missed_swipe' が同一条件で success と failure を発動",
+      "suggestedAddition": "## ルールコンフリクト防止\n成功と失敗が同一条件で発動しないように、条件を具体的かつ明確に定義してください。重複を避けるためのガイドラインを追加し、各ルールの発動条件が相互に排他的であることを確認してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "429エラーによるトークン制限に達しています",
+      "suggestedAddition": "## トークン制限超過への対策\nトークン使用量を考慮したプロンプト設計を心掛け、不要な情報の削減やモデルへの入力タイミングを調整できるようにしてください。特に大きなデータを扱う際はエラーハンドリングの追加も検討してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "GameDesignGenerator.ts",
+      "section": "coreExperience",
+      "currentIssue": "成功へのパスにプレイヤー操作が含まれていない",
+      "suggestedAddition": "## プレイヤー操作の必須項目\n成功条件には必ずプレイヤー操作（touch、collision、position条件など）を含め、明示的かつ達成可能な条件設定を行ってください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "success/failureアクションが定義されていない",
+      "suggestedAddition": "## アクション定義のガイドライン\nゲームの状態を明確にするため、各ルールには必ず成功（success）および失敗（failure）のアクションを最低一つは定義してください。時間制限を考慮する場合もこれらの要素を含む必要があります。",
+      "priority": "high"
+    }
+  ]
+}

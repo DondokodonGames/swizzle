@@ -1,0 +1,146 @@
+{
+  "totalRuns": 10,
+  "successCount": 7,
+  "failureCount": 3,
+  "errorPatterns": [
+    {
+      "errorType": "LogicValidator:AUTO_FAILURE",
+      "count": 4,
+      "examples": [
+        "自動失敗: ルール \"timeout\" は時間経過で失敗し、成功にプレイヤー操作がありません",
+        "自動失敗: ルール \"timeout\" は時間経過で失敗し、成功にプレイヤー操作がありません",
+        "自動失敗: ルール \"timeout_condition\" は時間経過で失敗し、成功にプレイヤー操作がありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 4,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_ACTION_TYPE",
+      "count": 3,
+      "examples": [
+        "ルール \"drag_egg_1\": 使用できないアクションタイプ \"collision\"",
+        "ルール \"drag_egg_2\": 使用できないアクションタイプ \"collision\"",
+        "ルール \"drag_egg_3\": 使用できないアクションタイプ \"collision\""
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 2,
+      "examples": [
+        "コンフリクト: ルール \"check_success\" と \"check_failure\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"drag_correct_seat\" と \"drag_wrong_seat\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 2,
+      "examples": [
+        "Rules \"成功判定\" and \"失敗判定\" can trigger both success and failure with same condition",
+        "Rules \"正解の座席をドラッグ\" and \"不正解の座席をドラッグ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+        "成功パス確認要: ルール \"success_condition\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_COLLISION_TARGET",
+      "count": 2,
+      "examples": [
+        "ルール \"drag_correct_seat\": collision target \"seat_1_zone\" が未定義",
+        "ルール \"drag_wrong_seat\": collision target \"seat_1_zone\" が未定義"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COLLISION_TARGET",
+      "count": 2,
+      "examples": [
+        "Collision condition in rule \"正解の座席をドラッグ\" references undefined object: seat_1_zone",
+        "Collision condition in rule \"不正解の座席をドラッグ\" references undefined object: seat_1_zone"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 1,
+      "examples": [
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_ANIMATION_TARGET",
+      "count": 1,
+      "examples": [
+        "ルール \"check_success\": animation target \"old_skin_1,old_skin_2,old_skin_3,old_skin_4,old_skin_5\" が未定義"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_ANIMATION_CONDITION",
+      "count": 1,
+      "examples": [
+        "ルール \"success_condition\": 無効なanimation condition \"completion\""
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "自動成功: ルール \"match_check\" はプレイヤー操作なしで成功し、失敗条件もありません"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "timeout ルールはプレイヤー操作を必要としないため、自動失敗が発生する",
+      "suggestedAddition": "## プレイヤー操作必須ルール\nすべてのルールには、少なくとも1つのプレイヤー操作（touch/collision/position）が含まれていることを確認してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "drag_egg_1 で無効なアクションタイプ collision が使用されている",
+      "suggestedAddition": "## アクションタイプ指針\n各ルールで有効なアクションタイプを確認し、無効なアクションタイプを使用しないように定義してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "check_success と check_failure で条件が重複し、コンフリクトが発生する",
+      "suggestedAddition": "## 一意な条件設定\n成功と失敗の条件は一意である必要があります。同じ条件で異なる結果をトリガーしないように設定してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "collisionターゲット 'seat_1_zone' が未定義である",
+      "suggestedAddition": "## オブジェクト定義チェック\n使用されるすべてのオブジェクトと条件が存在していることを確認してください。未定義のオブジェクトを参照しないように計画してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "ゲームに成功条件が設定されていない",
+      "suggestedAddition": "## 成功ルールの確認\nゲームを完了するための明確な成功ルールを定義し、それがゲームの勝利をトリガーすることを確認してください。",
+      "priority": "high"
+    }
+  ]
+}

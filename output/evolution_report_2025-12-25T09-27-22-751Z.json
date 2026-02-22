@@ -1,0 +1,63 @@
+{
+  "totalRuns": 10,
+  "successCount": 0,
+  "failureCount": 10,
+  "errorPatterns": [
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_COUNTER",
+      "count": 12,
+      "examples": [
+        "Counter action in rule \"弓の角度調整\" references undefined counter: bow_angle",
+        "Counter action in rule \"安全な蕾1開花\" references undefined counter: safe_flowers_bloomed",
+        "Counter action in rule \"安全な蕾2開花\" references undefined counter: safe_flowers_bloomed"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COUNTER",
+      "count": 6,
+      "examples": [
+        "Counter condition in rule \"勝利判定\" references undefined counter: safe_flowers_bloomed",
+        "Counter condition in rule \"時間切れ判定\" references undefined counter: game_timer",
+        "Counter condition in rule \"時間切れ判定\" references undefined counter: safe_flowers_bloomed"
+      ]
+    },
+    {
+      "errorType": "ConceptGenerator:GENERATION_ERROR",
+      "count": 5,
+      "examples": [
+        "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWTAer74ZqJR8qY2CKjTt\"}",
+        "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWTAeurHUSvqEFWGEmLRN\"}",
+        "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWTAeyYHpUme9Kc1hZnPr\"}"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:COUNTER_NEVER_CHECKED",
+      "count": 1,
+      "examples": [
+        "カウンター \"bow_angle\" は操作されていますが、条件でチェックされていません（操作ルール: drag_adjust_bow）"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 1,
+      "examples": [
+        "Rules \"矢が中心命中\" and \"矢が外側命中\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "SpecificationGenerator:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "JSON parse failed: SyntaxError: Expected ',' or '}' after property value in JSON at position 23328 (line 938 column 8)"
+      ]
+    },
+    {
+      "errorType": "AssetPlanner:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWTAekyjtdZKwb9GEgWwS\"}"
+      ]
+    }
+  ],
+  "promptImprovements": []
+}

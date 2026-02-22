@@ -1,0 +1,111 @@
+{
+  "totalRuns": 10,
+  "successCount": 8,
+  "failureCount": 2,
+  "errorPatterns": [
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 3,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_SUCCESS",
+      "count": 2,
+      "examples": [
+        "自動成功: ルール \"balance_success\" はプレイヤー操作なしで成功し、失敗条件もありません",
+        "自動成功: ルール \"maintain_speed\" はプレイヤー操作なしで成功し、失敗条件もありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功パス確認要: ルール \"balance_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+        "成功パス確認要: ルール \"maintain_speed\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_OBJECT_ID",
+      "count": 1,
+      "examples": [
+        "ルール \"swipe_wrong\" のアクションtargetId \"wrong_pattern\" がアセット計画に存在しません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 1,
+      "examples": [
+        "コンフリクト: ルール \"swipe_correct_2\" と \"swipe_wrong\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_TARGET",
+      "count": 1,
+      "examples": [
+        "Action \"effect\" in rule \"不正解パターンのスワイプ\" references undefined object: wrong_pattern"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 1,
+      "examples": [
+        "Rules \"正解パターン2のスワイプ\" and \"不正解パターンのスワイプ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 1,
+      "examples": [
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "ConceptValidator:CONCEPT_VALIDATION",
+      "count": 1,
+      "examples": [
+        "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "成功/失敗ルール",
+      "currentIssue": "プレイヤー操作がルールに含まれていない可能性がある",
+      "suggestedAddition": "## プレイヤー操作の必要性\nすべての成功条件には少なくとも1つのプレイヤー操作（例えば、タップ、スワイプ、ドラッグ、長押し）を含めて定義してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "成功条件が自動的に満たされる可能性がある",
+      "suggestedAddition": "## 自動成功の回避\n自動的に成功とならないように、すべての成功ルールには明確なプレイヤーアクションと失敗条件を含めることを推奨します。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "AssetPlanner.ts",
+      "section": "アセット計画",
+      "currentIssue": "存在しないオブジェクトIDが参照されている",
+      "suggestedAddition": "## オブジェクトIDの確認\nすべてのアクションのtargetIdがアセット計画で定義されていることを確認してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "GameConceptGenerator.ts",
+      "section": "コンセプト検証",
+      "currentIssue": "playerOperationが具体的に定義されていない",
+      "suggestedAddition": "## プレイヤー操作の明記\nplayerOperationには具体的な操作方法（タップ、スワイプ、ドラッグ、長押し）を明記し、プレイヤーに期待される操作を明確にしてください。",
+      "priority": "medium"
+    }
+  ]
+}

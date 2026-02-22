@@ -1,0 +1,234 @@
+[
+  {
+    "timestamp": "2025-12-26T16:21:47.178Z",
+    "gameTitle": "揺れない積み木の芸術",
+    "theme": "積み木の塔",
+    "step": "LogicValidator",
+    "errorType": "AUTO_SUCCESS",
+    "errorMessage": "自動成功: ルール \"balance_check\" はプレイヤー操作なしで成功します",
+    "context": {
+      "title": "揺れない積み木の芸術",
+      "theme": "積み木の塔",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:21:47.178Z",
+    "gameTitle": "揺れない積み木の芸術",
+    "theme": "積み木の塔",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "揺れない積み木の芸術",
+      "theme": "積み木の塔",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:21:47.178Z",
+    "gameTitle": "揺れない積み木の芸術",
+    "theme": "積み木の塔",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"balance_check\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "揺れない積み木の芸術",
+      "theme": "積み木の塔",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:23:37.139Z",
+    "gameTitle": "香りのカップ",
+    "theme": "コーヒーの香り",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "No JSON found in response",
+    "context": {
+      "title": "香りのカップ",
+      "theme": "コーヒーの香り"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:26:22.211Z",
+    "gameTitle": "忍術の試練",
+    "theme": "忍術の修行",
+    "step": "LogicValidator",
+    "errorType": "AUTO_SUCCESS",
+    "errorMessage": "自動成功: ルール \"end_game_success\" はプレイヤー操作なしで成功します",
+    "context": {
+      "title": "忍術の試練",
+      "theme": "忍術の修行",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:26:22.211Z",
+    "gameTitle": "忍術の試練",
+    "theme": "忍術の修行",
+    "step": "LogicValidator",
+    "errorType": "INVALID_ACTION_TYPE",
+    "errorMessage": "ルール \"shuriken_aim_and_throw\": 使用できないアクションタイプ \"touch\"",
+    "context": {
+      "title": "忍術の試練",
+      "theme": "忍術の修行",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:26:22.211Z",
+    "gameTitle": "忍術の試練",
+    "theme": "忍術の修行",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "忍術の試練",
+      "theme": "忍術の修行",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:26:22.211Z",
+    "gameTitle": "忍術の試練",
+    "theme": "忍術の修行",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"end_game_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "忍術の試練",
+      "theme": "忍術の修行",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:27:03.071Z",
+    "gameTitle": "夢の鍵",
+    "theme": "夢の鍵",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 15727, Requested 14403. Please try again in 260ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "夢の鍵",
+      "theme": "夢の鍵"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:29:22.095Z",
+    "gameTitle": "灯台シグナルチャレンジ",
+    "theme": "灯台の光",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"swipe_left_correct\" と \"swipe_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "灯台シグナルチャレンジ",
+      "theme": "灯台の光",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:29:22.095Z",
+    "gameTitle": "灯台シグナルチャレンジ",
+    "theme": "灯台の光",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"swipe_right_correct\" と \"swipe_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "灯台シグナルチャレンジ",
+      "theme": "灯台の光",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:29:22.095Z",
+    "gameTitle": "灯台シグナルチャレンジ",
+    "theme": "灯台の光",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"swipe_up_correct\" と \"swipe_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "灯台シグナルチャレンジ",
+      "theme": "灯台の光",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:29:22.096Z",
+    "gameTitle": "灯台シグナルチャレンジ",
+    "theme": "灯台の光",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"Correct Left Swipe\" and \"Incorrect Swipe\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "灯台シグナルチャレンジ",
+      "theme": "灯台の光",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:29:22.096Z",
+    "gameTitle": "灯台シグナルチャレンジ",
+    "theme": "灯台の光",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"Correct Right Swipe\" and \"Incorrect Swipe\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "灯台シグナルチャレンジ",
+      "theme": "灯台の光",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:29:22.096Z",
+    "gameTitle": "灯台シグナルチャレンジ",
+    "theme": "灯台の光",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"Correct Up Swipe\" and \"Incorrect Swipe\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "灯台シグナルチャレンジ",
+      "theme": "灯台の光",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:31:09.530Z",
+    "gameTitle": "未来からのメモリーコネクト",
+    "theme": "未来からの手紙",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "未来からのメモリーコネクト",
+      "theme": "未来からの手紙",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:31:09.530Z",
+    "gameTitle": "未来からのメモリーコネクト",
+    "theme": "未来からの手紙",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "未来からのメモリーコネクト",
+      "theme": "未来からの手紙",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T16:31:09.530Z",
+    "gameTitle": "未来からのメモリーコネクト",
+    "theme": "未来からの手紙",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "未来からのメモリーコネクト",
+      "theme": "未来からの手紙",
+      "severity": "error"
+    }
+  }
+]

@@ -1,0 +1,116 @@
+{
+  "totalRuns": 10,
+  "successCount": 5,
+  "failureCount": 5,
+  "errorPatterns": [
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 4,
+      "examples": [
+        "コンフリクト: ルール \"tap_knife_correct\" と \"tap_knife_wrong\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_firework\" と \"firework_disappearance\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_correct_range\" と \"tap_outside_range\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 4,
+      "examples": [
+        "Rules \"正確なタイミングでナイフをタップ\" and \"不正確なタイミングでナイフをタップ\" can trigger both success and failure with same condition",
+        "Rules \"花火タップ判定\" and \"花火消失判定\" can trigger both success and failure with same condition",
+        "Rules \"目標範囲内でのタップ\" and \"目標範囲外でのタップ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 4,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 3,
+      "examples": [
+        "成功パス確認要: ルール \"tap_firework\" の成功条件がプレイヤー操作に依存していない可能性があります",
+        "成功パス確認要: ルール \"check_win\" の成功条件がプレイヤー操作に依存していない可能性があります",
+        "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:MISSING_FRAME_NUMBER",
+      "count": 2,
+      "examples": [
+        "ルール \"tap_firework\": animation frame条件にframeNumberがありません",
+        "ルール \"firework_disappearance\": animation frame条件にframeNumberがありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_CONDITION_TYPE",
+      "count": 1,
+      "examples": [
+        "ルール \"check_win\": 使用できない条件タイプ \"custom\""
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 1,
+      "examples": [
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "自動成功: ルール \"check_success\" はプレイヤー操作なしで成功します"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "suggestedAddition": "## コンフリクト解消ルール\n異なるルールが同一条件でsuccess/failureを発動することは避ける:\n1. 各ルールに対しユニークな条件を設定する。\n2. 同一条件の場合は、トリガーの優先順位を明確に定義する。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "LogicValidator:NO_PLAYER_ACTION",
+      "suggestedAddition": "## プレイヤー操作必須ルール\nゲーム成功にプレイヤー操作を必須とする:\n1. 成功条件にtouch/collision/positionなどのプレイヤー操作条件を含めること。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "LogicValidator:MISSING_FRAME_NUMBER",
+      "suggestedAddition": "## アニメーションフレーム使用ルール\nアニメーション条件にフレーム番号を含めること：\n1. 全てのframe条件に有効なframeNumberを設定してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "LogicValidator:INVALID_CONDITION_TYPE",
+      "suggestedAddition": "## 条件タイプ制限\n使用可能な条件タイプのみを用いる:\n1. 定義された条件タイプ以外の使用を避ける（例: custom条件はサポートされていません）。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "ProjectValidator:NO_SUCCESS_RULE",
+      "suggestedAddition": "## 勝利条件設定ルール\nゲームには少なくとも一つの勝利条件を含める必要があります：\n1. プロジェクト内にsuccessをトリガーするルールを明確に設定してください。",
+      "priority": "high"
+    }
+  ]
+}

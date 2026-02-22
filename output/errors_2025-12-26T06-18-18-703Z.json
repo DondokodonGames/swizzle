@@ -1,0 +1,402 @@
+[
+  {
+    "timestamp": "2025-12-26T06:11:34.791Z",
+    "gameTitle": "フクロウの夜の狩り",
+    "theme": "フクロウの夜",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"ネズミをタップ\" references undefined counter: tapped_count",
+    "context": {
+      "title": "フクロウの夜の狩り",
+      "theme": "フクロウの夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:11:34.791Z",
+    "gameTitle": "フクロウの夜の狩り",
+    "theme": "フクロウの夜",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイマー更新\" references undefined counter: game_timer",
+    "context": {
+      "title": "フクロウの夜の狩り",
+      "theme": "フクロウの夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:11:34.791Z",
+    "gameTitle": "フクロウの夜の狩り",
+    "theme": "フクロウの夜",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: tapped_count",
+    "context": {
+      "title": "フクロウの夜の狩り",
+      "theme": "フクロウの夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:11:34.791Z",
+    "gameTitle": "フクロウの夜の狩り",
+    "theme": "フクロウの夜",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"敗北判定\" references undefined counter: game_timer",
+    "context": {
+      "title": "フクロウの夜の狩り",
+      "theme": "フクロウの夜",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:12:13.873Z",
+    "gameTitle": "合唱の波紋",
+    "theme": "合唱の輪",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タップ成功\" references undefined counter: successful_taps",
+    "context": {
+      "title": "合唱の波紋",
+      "theme": "合唱の輪",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:12:13.873Z",
+    "gameTitle": "合唱の波紋",
+    "theme": "合唱の輪",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タップ成功\" references undefined counter: attempted_taps",
+    "context": {
+      "title": "合唱の波紋",
+      "theme": "合唱の輪",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:12:13.873Z",
+    "gameTitle": "合唱の波紋",
+    "theme": "合唱の輪",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タップ失敗\" references undefined counter: attempted_taps",
+    "context": {
+      "title": "合唱の波紋",
+      "theme": "合唱の輪",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:12:13.873Z",
+    "gameTitle": "合唱の波紋",
+    "theme": "合唱の輪",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功条件判定\" references undefined counter: successful_taps",
+    "context": {
+      "title": "合唱の波紋",
+      "theme": "合唱の輪",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:12:13.873Z",
+    "gameTitle": "合唱の波紋",
+    "theme": "合唱の輪",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗条件判定\" references undefined counter: attempted_taps",
+    "context": {
+      "title": "合唱の波紋",
+      "theme": "合唱の輪",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:12:56.600Z",
+    "gameTitle": "サメの襲来！",
+    "theme": "サメの襲来",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"サメ1をタップ\" references undefined counter: neutralized_count",
+    "context": {
+      "title": "サメの襲来！",
+      "theme": "サメの襲来",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:12:56.600Z",
+    "gameTitle": "サメの襲来！",
+    "theme": "サメの襲来",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"サメ2をタップ\" references undefined counter: neutralized_count",
+    "context": {
+      "title": "サメの襲来！",
+      "theme": "サメの襲来",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:12:56.600Z",
+    "gameTitle": "サメの襲来！",
+    "theme": "サメの襲来",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"サメ3をタップ\" references undefined counter: neutralized_count",
+    "context": {
+      "title": "サメの襲来！",
+      "theme": "サメの襲来",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:12:56.600Z",
+    "gameTitle": "サメの襲来！",
+    "theme": "サメの襲来",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: neutralized_count",
+    "context": {
+      "title": "サメの襲来！",
+      "theme": "サメの襲来",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:14:08.241Z",
+    "gameTitle": "星を探せ！",
+    "theme": "望遠鏡の彼方",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイマー更新\" references undefined counter: time_left",
+    "context": {
+      "title": "星を探せ！",
+      "theme": "望遠鏡の彼方",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:14:08.241Z",
+    "gameTitle": "星を探せ！",
+    "theme": "望遠鏡の彼方",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"タイムアウト判定\" references undefined counter: time_left",
+    "context": {
+      "title": "星を探せ！",
+      "theme": "望遠鏡の彼方",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:15:03.889Z",
+    "gameTitle": "逆さまの空",
+    "theme": "上下逆転の空",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "逆さまの空",
+      "theme": "上下逆転の空",
+      "ruleCount": 1
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:15:03.889Z",
+    "gameTitle": "逆さまの空",
+    "theme": "上下逆転の空",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "逆さまの空",
+      "theme": "上下逆転の空",
+      "ruleCount": 1
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:15:03.889Z",
+    "gameTitle": "逆さまの空",
+    "theme": "上下逆転の空",
+    "step": "LogicValidator",
+    "errorType": "NO_FAILURE",
+    "errorMessage": "failureアクションが存在しません（時間切れのみで失敗となります）",
+    "context": {
+      "title": "逆さまの空",
+      "theme": "上下逆転の空",
+      "ruleCount": 1
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:15:03.889Z",
+    "gameTitle": "逆さまの空",
+    "theme": "上下逆転の空",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "逆さまの空",
+      "theme": "上下逆転の空",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:15:14.047Z",
+    "gameTitle": "思考リンク",
+    "theme": "思考の味",
+    "step": "GameDesignGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 29126, Requested 1668. Please try again in 1.588s. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "思考リンク",
+      "theme": "思考の味"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:16:14.377Z",
+    "gameTitle": "波打つ水面を捉えろ",
+    "theme": "波打つ水面",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"波紋ドラッグ成功\" references undefined counter: successful_catch_count",
+    "context": {
+      "title": "波打つ水面を捉えろ",
+      "theme": "波打つ水面",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:16:14.377Z",
+    "gameTitle": "波打つ水面を捉えろ",
+    "theme": "波打つ水面",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"波紋ドラッグ失敗\" references undefined counter: missed_catch_count",
+    "context": {
+      "title": "波打つ水面を捉えろ",
+      "theme": "波打つ水面",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:16:14.377Z",
+    "gameTitle": "波打つ水面を捉えろ",
+    "theme": "波打つ水面",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: successful_catch_count",
+    "context": {
+      "title": "波打つ水面を捉えろ",
+      "theme": "波打つ水面",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:16:14.377Z",
+    "gameTitle": "波打つ水面を捉えろ",
+    "theme": "波打つ水面",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"敗北判定\" references undefined counter: missed_catch_count",
+    "context": {
+      "title": "波打つ水面を捉えろ",
+      "theme": "波打つ水面",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:17:24.566Z",
+    "gameTitle": "七夕の願いを叶えよう",
+    "theme": "七夕の願い",
+    "step": "LogicValidator",
+    "errorType": "INVALID_OBJECT_ID",
+    "errorMessage": "ルール \"rule_draw_line\" のtargetObjectId \"stage\" がアセット計画に存在しません",
+    "context": {
+      "title": "七夕の願いを叶えよう",
+      "theme": "七夕の願い",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:17:24.566Z",
+    "gameTitle": "七夕の願いを叶えよう",
+    "theme": "七夕の願い",
+    "step": "LogicValidator",
+    "errorType": "INVALID_OBJECT_ID",
+    "errorMessage": "ルール \"rule_draw_line\" のアクションtargetId \"stage\" がアセット計画に存在しません",
+    "context": {
+      "title": "七夕の願いを叶えよう",
+      "theme": "七夕の願い",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:17:24.566Z",
+    "gameTitle": "七夕の願いを叶えよう",
+    "theme": "七夕の願い",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイマー減少\" references undefined counter: timer_count",
+    "context": {
+      "title": "七夕の願いを叶えよう",
+      "theme": "七夕の願い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:17:24.566Z",
+    "gameTitle": "七夕の願いを叶えよう",
+    "theme": "七夕の願い",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: timer_count",
+    "context": {
+      "title": "七夕の願いを叶えよう",
+      "theme": "七夕の願い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:17:24.566Z",
+    "gameTitle": "七夕の願いを叶えよう",
+    "theme": "七夕の願い",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_TARGET",
+    "errorMessage": "Action \"followDrag\" in rule \"星をドラッグして線を引く\" references undefined object: stage",
+    "context": {
+      "title": "七夕の願いを叶えよう",
+      "theme": "七夕の願い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:17:36.254Z",
+    "gameTitle": "バドミントンのスマッシュショット",
+    "theme": "バドミントンのスマッシュ",
+    "step": "GameDesignGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 28324, Requested 1684. Please try again in 16ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "バドミントンのスマッシュショット",
+      "theme": "バドミントンのスマッシュ"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T06:18:13.051Z",
+    "gameTitle": "燃える水のミステリー",
+    "theme": "燃える水",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 21930, Requested 8153. Please try again in 166ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "燃える水のミステリー",
+      "theme": "燃える水"
+    }
+  }
+]

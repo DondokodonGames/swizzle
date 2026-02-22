@@ -1,0 +1,89 @@
+{
+  "totalRuns": 10,
+  "successCount": 6,
+  "failureCount": 4,
+  "errorPatterns": [
+    {
+      "errorType": "LogicValidator:INVALID_COUNTER_NAME",
+      "count": 2,
+      "examples": [
+        "counterName \"correct_ingredients_selected\" がcountersに定義されていません",
+        "counterName \"incorrect_ingredients_selected\" がcountersに定義されていません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COUNTER",
+      "count": 2,
+      "examples": [
+        "Counter condition in rule \"不死の薬成功\" references undefined counter: correct_ingredients_selected",
+        "Counter condition in rule \"不死の薬失敗\" references undefined counter: incorrect_ingredients_selected"
+      ]
+    },
+    {
+      "errorType": "EditorMapper:GENERATION_ERROR",
+      "count": 2,
+      "examples": [
+        "Cannot read properties of undefined (reading 'length')",
+        "Cannot read properties of undefined (reading 'length')"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "自動成功: ルール \"create_elixir_success\" はプレイヤー操作なしで成功し、失敗条件もありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:UNREACHABLE_SUCCESS",
+      "count": 1,
+      "examples": [
+        "成功条件到達不可: カウンター \"correct_ingredients_selected\" を操作するルールがありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功パス確認要: ルール \"create_elixir_success\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_COUNTER_INCREMENT",
+      "count": 1,
+      "examples": [
+        "Success rule \"不死の薬成功\" checks counter \"correct_ingredients_selected\" but no rule increments it"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_FAILURE",
+      "count": 1,
+      "examples": [
+        "failureアクションが存在しません（時間切れのみで失敗となります）"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 1,
+      "examples": [
+        "No success rule defined - game cannot be won"
+      ]
+    }
+  ],
+  "promptImprovements": []
+}

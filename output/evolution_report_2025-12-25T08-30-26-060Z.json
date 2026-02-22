@@ -1,0 +1,150 @@
+{
+  "totalRuns": 10,
+  "successCount": 0,
+  "failureCount": 10,
+  "errorPatterns": [
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_COUNTER",
+      "count": 26,
+      "examples": [
+        "Counter action in rule \"伸びすぎた枝1をカット\" references undefined counter: branches_cut",
+        "Counter action in rule \"伸びすぎた枝2をカット\" references undefined counter: branches_cut",
+        "Counter action in rule \"伸びすぎた枝3をカット\" references undefined counter: branches_cut"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COUNTER",
+      "count": 20,
+      "examples": [
+        "Counter condition in rule \"成功判定\" references undefined counter: branches_cut",
+        "Counter condition in rule \"結界完成判定\" references undefined counter: placed_stones",
+        "Counter condition in rule \"時間切れ判定\" references undefined counter: game_timer"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:MISSING_REQUIRED_SOUND",
+      "count": 17,
+      "examples": [
+        "Required sound \"se_stone_pickup\" from AssetPlan is missing in LogicOutput",
+        "Required sound \"se_stone_place\" from AssetPlan is missing in LogicOutput",
+        "Required sound \"se_time_up\" from AssetPlan is missing in LogicOutput"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 9,
+      "examples": [
+        "コンフリクト: ルール \"tap_door_1\" と \"tap_door_2\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_door_1\" と \"tap_door_3\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_door_1\" と \"tap_door_4\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 9,
+      "examples": [
+        "Rules \"扉1タップ\" and \"扉2タップ\" can trigger both success and failure with same condition",
+        "Rules \"扉1タップ\" and \"扉3タップ\" can trigger both success and failure with same condition",
+        "Rules \"扉1タップ\" and \"扉4タップ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_SOUND_TYPE",
+      "count": 5,
+      "examples": [
+        "無効なsound.type \"indicator\" (id: se_memory_flash)",
+        "無効なsound.type \"warning\" (id: se_timer_tick)",
+        "無効なsound.type \"voice\" (id: voice_cat)"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_TIME_TYPE",
+      "count": 4,
+      "examples": [
+        "ルール \"end_memory_phase\": 無効なtimeType \"after\"",
+        "ルール \"frisbee_miss_reset\": 無効なtimeType \"after\"",
+        "ルール \"reset_frisbee_position\": 無効なtimeType \"after\""
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INSTANT_LOSE",
+      "count": 2,
+      "examples": [
+        "即失敗: カウンター \"game_timer\" の初期値(800)が失敗閾値(0)以上",
+        "即失敗: カウンター \"game_timer\" の初期値(800)が失敗閾値(0)以上"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INSTANT_WIN",
+      "count": 1,
+      "examples": [
+        "即成功: カウンター \"game_timer\" の初期値(800)が条件を満たしています"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_COUNTER_INCREMENT",
+      "count": 1,
+      "examples": [
+        "Success rule \"ネコを選択\" checks counter \"game_timer\" but no rule increments it"
+      ]
+    },
+    {
+      "errorType": "AssetPlanner:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "JSON parse failed: SyntaxError: Expected ',' or ']' after array element in JSON at position 8821 (line 258 column 6)"
+      ]
+    },
+    {
+      "errorType": "ConceptValidator:CONCEPT_VALIDATION",
+      "count": 1,
+      "examples": [
+        "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:UNUSUAL_SPEED",
+      "count": 1,
+      "examples": [
+        "ルール \"throw_frisbee\": speed(0.3)が推奨範囲外"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "カウンター定義・操作",
+      "currentIssue": "カウンターが定義されているが操作されていない、または未定義のカウンターを参照している",
+      "suggestedAddition": "## カウンター管理ルール\nカウンターを使用する場合は必ず:\n1. カウンター定義セクションで明確に定義する\n2. 操作するルール（increment/decrement）を作成する\n3. 条件チェックするルールを作成する\n4. 全てのカウンター名の一貫性を保つ\n\n例:\n- カウンター定義: branches_cut (初期値: 0)\n- 操作ルール: 枝をカットしたときにbranches_cutをインクリメント\n- 条件ルール: branches_cutが3以上で成功判定",
+      "priority": "high"
+    },
+    {
+      "targetFile": "AssetPlanner.ts",
+      "section": "サウンドアセット計画",
+      "currentIssue": "AssetPlanで定義されたサウンドがLogicOutputで生成されない",
+      "suggestedAddition": "## サウンドアセット連携\nAssetPlanで定義したサウンドは必ずLogicOutputでも生成してください:\n1. AssetPlanのsoundsセクションの全アイテムを確認\n2. LogicOutputのsoundsセクションに対応するsoundオブジェクトを生成\n3. sound.typeは 'effect' または 'bgm' のみ使用\n4. idは完全一致させる",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "成功・失敗条件",
+      "currentIssue": "同一条件で成功と失敗が同時に発動する可能性がある",
+      "suggestedAddition": "## 成功・失敗条件の排他制御\n成功と失敗の条件は必ず排他的にしてください:\n1. 同一のタップ対象に対して成功と失敗を同時に設定しない\n2. カウンター条件は明確に範囲を分ける（例: <3で失敗、>=3で成功）\n3. 複数の扉やオブジェクトがある場合は、正解と不正解を明確に区別\n4. 条件の重複チェックを行う",
+      "priority": "high"
+    },
+    {
+      "targetFile": "EditorMapper.ts",
+      "section": "タイマー・カウンター設定",
+      "currentIssue": "カウンターの初期値と条件値の設定で即座に成功/失敗が発生する",
+      "suggestedAddition": "## カウンター値の妥当性チェック\nカウンター設定時は以下を確認:\n1. 初期値が成功条件を満たしていないか\n2. 初期値が失敗条件を満たしていないか\n3. タイマーの場合：初期値 > 失敗閾値となるように設定\n4. timeTypeは 'countdown' または 'countup' のみ使用\n5. decrementルールが適切に設定されているか確認",
+      "priority": "high"
+    },
+    {
+      "targetFile": "EditorMapper.ts",
+      "section": "サウンドタイプ検証",
+      "currentIssue": "無効なサウンドタイプが生成されている",
+      "suggestedAddition": "## サウンドタイプ制限\nsound.typeは以下の値のみ使用してください:\n- 'effect': 効果音\n- 'bgm': 背景音楽\n\n無効な値（'indicator'等）は使用禁止です。",
+      "priority": "medium"
+    }
+  ]
+}

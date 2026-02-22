@@ -1,0 +1,195 @@
+[
+  {
+    "timestamp": "2025-12-27T01:21:47.329Z",
+    "gameTitle": "不死の薬を作れ!",
+    "theme": "不死の薬",
+    "step": "LogicValidator",
+    "errorType": "INVALID_COUNTER_NAME",
+    "errorMessage": "counterName \"correct_ingredients_selected\" がcountersに定義されていません",
+    "context": {
+      "title": "不死の薬を作れ!",
+      "theme": "不死の薬",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:21:47.329Z",
+    "gameTitle": "不死の薬を作れ!",
+    "theme": "不死の薬",
+    "step": "LogicValidator",
+    "errorType": "INVALID_COUNTER_NAME",
+    "errorMessage": "counterName \"incorrect_ingredients_selected\" がcountersに定義されていません",
+    "context": {
+      "title": "不死の薬を作れ!",
+      "theme": "不死の薬",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:21:47.329Z",
+    "gameTitle": "不死の薬を作れ!",
+    "theme": "不死の薬",
+    "step": "LogicValidator",
+    "errorType": "AUTO_SUCCESS",
+    "errorMessage": "自動成功: ルール \"create_elixir_success\" はプレイヤー操作なしで成功し、失敗条件もありません",
+    "context": {
+      "title": "不死の薬を作れ!",
+      "theme": "不死の薬",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:21:47.329Z",
+    "gameTitle": "不死の薬を作れ!",
+    "theme": "不死の薬",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "不死の薬を作れ!",
+      "theme": "不死の薬",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:21:47.329Z",
+    "gameTitle": "不死の薬を作れ!",
+    "theme": "不死の薬",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: カウンター \"correct_ingredients_selected\" を操作するルールがありません",
+    "context": {
+      "title": "不死の薬を作れ!",
+      "theme": "不死の薬",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:21:47.329Z",
+    "gameTitle": "不死の薬を作れ!",
+    "theme": "不死の薬",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"create_elixir_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "不死の薬を作れ!",
+      "theme": "不死の薬",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:21:47.330Z",
+    "gameTitle": "不死の薬を作れ!",
+    "theme": "不死の薬",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"不死の薬成功\" references undefined counter: correct_ingredients_selected",
+    "context": {
+      "title": "不死の薬を作れ!",
+      "theme": "不死の薬",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:21:47.330Z",
+    "gameTitle": "不死の薬を作れ!",
+    "theme": "不死の薬",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"不死の薬失敗\" references undefined counter: incorrect_ingredients_selected",
+    "context": {
+      "title": "不死の薬を作れ!",
+      "theme": "不死の薬",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:21:47.330Z",
+    "gameTitle": "不死の薬を作れ!",
+    "theme": "不死の薬",
+    "step": "ProjectValidator",
+    "errorType": "NO_COUNTER_INCREMENT",
+    "errorMessage": "Success rule \"不死の薬成功\" checks counter \"correct_ingredients_selected\" but no rule increments it",
+    "context": {
+      "title": "不死の薬を作れ!",
+      "theme": "不死の薬",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:24:01.462Z",
+    "gameTitle": "鐘の響きを合わせろ",
+    "theme": "寺院の鐘",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "鐘の響きを合わせろ",
+      "theme": "寺院の鐘"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:26:40.887Z",
+    "gameTitle": "輝く結晶の瞬間",
+    "theme": "雪の結晶",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "輝く結晶の瞬間",
+      "theme": "雪の結晶",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:26:40.887Z",
+    "gameTitle": "輝く結晶の瞬間",
+    "theme": "雪の結晶",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "輝く結晶の瞬間",
+      "theme": "雪の結晶",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:26:40.887Z",
+    "gameTitle": "輝く結晶の瞬間",
+    "theme": "雪の結晶",
+    "step": "LogicValidator",
+    "errorType": "NO_FAILURE",
+    "errorMessage": "failureアクションが存在しません（時間切れのみで失敗となります）",
+    "context": {
+      "title": "輝く結晶の瞬間",
+      "theme": "雪の結晶",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:26:40.887Z",
+    "gameTitle": "輝く結晶の瞬間",
+    "theme": "雪の結晶",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "輝く結晶の瞬間",
+      "theme": "雪の結晶",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T01:30:30.063Z",
+    "gameTitle": "スパイクマスター",
+    "theme": "バレーのスパイク",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "スパイクマスター",
+      "theme": "バレーのスパイク"
+    }
+  }
+]

@@ -1,0 +1,92 @@
+[
+  {
+    "timestamp": "2025-12-26T11:47:23.753Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWVF9MVPiqVN5XWEU3ZeL\"}",
+    "context": {}
+  },
+  {
+    "timestamp": "2025-12-26T11:47:24.629Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWVF9RENgbX8snyJY3bQz\"}",
+    "context": {}
+  },
+  {
+    "timestamp": "2025-12-26T11:47:25.505Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWVF9Uy6rSKLKTH1acare\"}",
+    "context": {}
+  },
+  {
+    "timestamp": "2025-12-26T11:47:26.361Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWVF9YdNKRvzUj3owjzvo\"}",
+    "context": {}
+  },
+  {
+    "timestamp": "2025-12-26T11:47:27.231Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWVF9cKsS7iAhKGCtYvWv\"}",
+    "context": {}
+  },
+  {
+    "timestamp": "2025-12-26T11:47:28.109Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWVF9g2cSB2rZ8HxNSRLQ\"}",
+    "context": {}
+  },
+  {
+    "timestamp": "2025-12-26T11:47:29.016Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWVF9jpKPDPUy95B6tBsP\"}",
+    "context": {}
+  },
+  {
+    "timestamp": "2025-12-26T11:47:29.907Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWVF9ofFHVpJskXB47y2A\"}",
+    "context": {}
+  },
+  {
+    "timestamp": "2025-12-26T11:47:30.826Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWVF9sc8hxveHfEn1CSPD\"}",
+    "context": {}
+  },
+  {
+    "timestamp": "2025-12-26T11:47:31.693Z",
+    "gameTitle": "Unknown",
+    "theme": "Unknown",
+    "step": "ConceptGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CWVF9wRpVCswKopEbTMTj\"}",
+    "context": {}
+  }
+]

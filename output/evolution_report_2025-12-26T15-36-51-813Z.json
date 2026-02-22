@@ -1,0 +1,121 @@
+{
+  "totalRuns": 10,
+  "successCount": 5,
+  "failureCount": 5,
+  "errorPatterns": [
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 3,
+      "examples": [
+        "コンフリクト: ルール \"swipe_shadow\" と \"swipe_wrong\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_string_1_correct\" と \"tap_string_2_wrong\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_string_1_correct\" と \"tap_string_3_wrong\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 3,
+      "examples": [
+        "Rules \"影をスワイプする\" and \"間違った方向にスワイプ\" can trigger both success and failure with same condition",
+        "Rules \"正解の紐をタップ\" and \"不正解の紐2をタップ\" can trigger both success and failure with same condition",
+        "Rules \"正解の紐をタップ\" and \"不正解の紐3をタップ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_COUNTER",
+      "count": 2,
+      "examples": [
+        "Counter action in rule \"成功した叩き\" references undefined counter: success_count",
+        "Counter action in rule \"失敗した叩き\" references undefined counter: failure_count"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COUNTER",
+      "count": 2,
+      "examples": [
+        "Counter condition in rule \"成功判定\" references undefined counter: success_count",
+        "Counter condition in rule \"失敗判定\" references undefined counter: failure_count"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 1,
+      "examples": [
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "EditorMapper:GENERATION_ERROR",
+      "count": 1,
+      "examples": [
+        "Cannot read properties of undefined (reading 'length')"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:AUTO_SUCCESS",
+      "count": 1,
+      "examples": [
+        "自動成功: ルール \"check_temp_reached\" はプレイヤー操作なしで成功します"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功パス確認要: ルール \"check_temp_reached\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "ルール 'swipe_shadow' と 'swipe_wrong' が同一条件で success/failure を発動",
+      "suggestedAddition": "## コンフリクト解消ルール\n- 各ルールの成功と失敗の条件が重ならないように定義してください。\n- 同じ条件で複数の結果がある場合、優先順位を明確にしてください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "カウンターが定義されているが操作されていない",
+      "suggestedAddition": "## カウンター使用ルール\nカウンターを定義する場合は必ず:\n1. 操作するルール（increment/decrement）\n2. チェックするルール（条件）\nの両方を定義してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "成功へのパスにプレイヤー操作が含まれていない可能性",
+      "suggestedAddition": "## プレイヤー操作確認ルール\n- 各成功ルートには必ずプレイヤーの操作を含めることを推奨します。\n- 自動的に成功するルールは避け、インタラクションを促してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "成功アクションが存在しない",
+      "suggestedAddition": "## 成功アクションの定義\n- ゲームの勝利条件を必ず定義し、少なくとも1つの成功アクションを設定してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "EditorMapper.ts",
+      "section": "エディター形式変換",
+      "currentIssue": "未定義のプロパティを読み取る際のエラー",
+      "suggestedAddition": "## エラーチェック\n- 未定義のプロパティが使用されていないか確認し、エラーを防ぐための事前確認を追加してください。",
+      "priority": "medium"
+    }
+  ]
+}

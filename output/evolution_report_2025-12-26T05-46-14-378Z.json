@@ -1,0 +1,17 @@
+{
+  "totalRuns": 10,
+  "successCount": 0,
+  "failureCount": 10,
+  "errorPatterns": [
+    {
+      "errorType": "ConceptGenerator:GENERATION_ERROR",
+      "count": 10,
+      "examples": [
+        "401 Incorrect API key provided: sk-ant-a************************************************************************************************egAA. You can find your API key at https://platform.openai.com/account/api-keys.",
+        "401 Incorrect API key provided: sk-ant-a************************************************************************************************egAA. You can find your API key at https://platform.openai.com/account/api-keys.",
+        "401 Incorrect API key provided: sk-ant-a************************************************************************************************egAA. You can find your API key at https://platform.openai.com/account/api-keys."
+      ]
+    }
+  ],
+  "promptImprovements": []
+}

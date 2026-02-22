@@ -1,0 +1,173 @@
+{
+  "totalRuns": 10,
+  "successCount": 1,
+  "failureCount": 9,
+  "errorPatterns": [
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_COUNTER",
+      "count": 9,
+      "examples": [
+        "Counter action in rule \"キャッチ成功\" references undefined counter: catch_success_count",
+        "Counter action in rule \"キャッチ失敗\" references undefined counter: catch_fail_count",
+        "Counter action in rule \"正しいタイミングでタップ\" references undefined counter: correct_tap_count"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COUNTER",
+      "count": 9,
+      "examples": [
+        "Counter condition in rule \"勝利判定\" references undefined counter: catch_success_count",
+        "Counter condition in rule \"敗北判定\" references undefined counter: catch_fail_count",
+        "Counter condition in rule \"勝利判定\" references undefined counter: correct_tap_count"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 2,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_SUCCESS",
+      "count": 2,
+      "examples": [
+        "successアクションが存在しません",
+        "successアクションが存在しません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_FAILURE",
+      "count": 2,
+      "examples": [
+        "failureアクションが存在しません（時間切れのみで失敗となります）",
+        "failureアクションが存在しません（時間切れのみで失敗となります）"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:NO_SUCCESS_RULE",
+      "count": 2,
+      "examples": [
+        "No success rule defined - game cannot be won",
+        "No success rule defined - game cannot be won"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 2,
+      "examples": [
+        "コンフリクト: ルール \"tap_object_1\" と \"tap_object_2\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"tap_target_item\" と \"tap_obstacle_item\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 2,
+      "examples": [
+        "Rules \"指定シルエットタップ\" and \"その他シルエットタップ\" can trigger both success and failure with same condition",
+        "Rules \"指定アイテムタップ\" and \"その他のアイテムタップ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_ACTION_TYPE",
+      "count": 1,
+      "examples": [
+        "ルール \"check_sequence\": 使用できないアクションタイプ \"conditional\""
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_MOVEMENT_TYPE",
+      "count": 1,
+      "examples": [
+        "ルール \"rule_yo_yo_movement\": 無効なmovement.type \"bounce\""
+      ]
+    },
+    {
+      "errorType": "LogicValidator:UNUSUAL_SPEED",
+      "count": 1,
+      "examples": [
+        "ルール \"rule_yo_yo_movement\": speed(0.3)が推奨範囲外"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_OBJECT_ID",
+      "count": 1,
+      "examples": [
+        "ルール \"tap_incorrect_symbol\" のtargetObjectId \"self\" がアセット計画に存在しません"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:UNDEFINED_TARGET_OBJECT",
+      "count": 1,
+      "examples": [
+        "Rule \"間違ったシンボルタップ\" references undefined object: self"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "カウンターが定義されているが操作されていない",
+      "suggestedAddition": "## カウンター使用ルール\nカウンターを定義する場合は必ず:\n1. 操作するルール（increment/decrement）\n2. チェックするルール（条件）\nの両方を定義してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "パス定義",
+      "currentIssue": "成功へのパスにプレイヤー操作が含まれていない",
+      "suggestedAddition": "## プレイヤー操作の定義\n成功させるための条件には少なくとも1つのプレイヤー操作（touch/collision/position）を含めるようにしてください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "結果処理",
+      "currentIssue": "successアクションが存在しない",
+      "suggestedAddition": "## 結果処理の明確化\nゲームの成功と失敗の条件を明確に定義し、それぞれに対応するアクションを設定してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "結果処理",
+      "currentIssue": "failureアクションが存在しない（時間切れのみで失敗となります）",
+      "suggestedAddition": "## 失敗条件の明確化\n失敗条件には時間切れ以外の要素を含むことを検討し、それに対応するアクションを設定してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "ProjectValidator.ts",
+      "section": "ルール定義",
+      "currentIssue": "成功ルールが定義されていない",
+      "suggestedAddition": "## 成功ルールの設定\nゲーム全体の勝利条件を定義する成功ルールを必ず作成してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "コンフリクト解決",
+      "currentIssue": "ルールが同一条件でsuccess/failureを発動",
+      "suggestedAddition": "## コンフリクト解消\n異なる結果を持つ条件が重複しないように、ルールごとにユニークな条件を設定してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "ProjectValidator.ts",
+      "section": "終了条件",
+      "currentIssue": "同一条件で成功と失敗の両方を引き起こす可能性がある",
+      "suggestedAddition": "## 終了条件の整合性\n同一条件で成功と失敗を同時に引き起こさないようにしてください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "アクションタイプ",
+      "currentIssue": "使用できないアクションタイプ 'conditional'",
+      "suggestedAddition": "## アクションタイプの使用\n有効なアクションタイプのみを使用し、それ以外はアクションのデザインを見直してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "LogicValidator.ts",
+      "section": "移動タイプ",
+      "currentIssue": "無効なmovement.type 'bounce'",
+      "suggestedAddition": "## 移動タイプの標準化\n使用可能な移動タイプを確認し、不正なタイプは修正してください。",
+      "priority": "medium"
+    }
+  ]
+}

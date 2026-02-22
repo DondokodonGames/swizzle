@@ -1,0 +1,506 @@
+[
+  {
+    "timestamp": "2025-12-26T12:15:10.145Z",
+    "gameTitle": "紫の哀愁",
+    "theme": "寂しさの紫",
+    "step": "LogicValidator",
+    "errorType": "INVALID_OBJECT_ID",
+    "errorMessage": "ルール \"timer_expiration\" のアクションtargetId \"screen\" がアセット計画に存在しません",
+    "context": {
+      "title": "紫の哀愁",
+      "theme": "寂しさの紫",
+      "ruleCount": 6
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:15:10.147Z",
+    "gameTitle": "紫の哀愁",
+    "theme": "寂しさの紫",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"星1収集\" references undefined counter: collected_stars",
+    "context": {
+      "title": "紫の哀愁",
+      "theme": "寂しさの紫",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:15:10.147Z",
+    "gameTitle": "紫の哀愁",
+    "theme": "寂しさの紫",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"星2収集\" references undefined counter: collected_stars",
+    "context": {
+      "title": "紫の哀愁",
+      "theme": "寂しさの紫",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:15:10.147Z",
+    "gameTitle": "紫の哀愁",
+    "theme": "寂しさの紫",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"星3収集\" references undefined counter: collected_stars",
+    "context": {
+      "title": "紫の哀愁",
+      "theme": "寂しさの紫",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:15:10.147Z",
+    "gameTitle": "紫の哀愁",
+    "theme": "寂しさの紫",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利条件チェック\" references undefined counter: collected_stars",
+    "context": {
+      "title": "紫の哀愁",
+      "theme": "寂しさの紫",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:15:10.147Z",
+    "gameTitle": "紫の哀愁",
+    "theme": "寂しさの紫",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_TARGET",
+    "errorMessage": "Action \"effect\" in rule \"タイマー切れ\" references undefined object: screen",
+    "context": {
+      "title": "紫の哀愁",
+      "theme": "寂しさの紫",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:15:55.228Z",
+    "gameTitle": "鏡合わせの試練",
+    "theme": "鏡の中",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "鏡合わせの試練",
+      "theme": "鏡の中"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:16:34.492Z",
+    "gameTitle": "飛ぶ山を捕まえろ！",
+    "theme": "飛ぶ山",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"飛ぶ山をタップ\" references undefined counter: success_count",
+    "context": {
+      "title": "飛ぶ山を捕まえろ！",
+      "theme": "飛ぶ山",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:16:34.492Z",
+    "gameTitle": "飛ぶ山を捕まえろ！",
+    "theme": "飛ぶ山",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: success_count",
+    "context": {
+      "title": "飛ぶ山を捕まえろ！",
+      "theme": "飛ぶ山",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:17:36.836Z",
+    "gameTitle": "プロダーツチャレンジ",
+    "theme": "ダーツの的",
+    "step": "LogicValidator",
+    "errorType": "MISSING_IMPULSE",
+    "errorMessage": "ルール \"tap_to_throw_dart\": applyImpulseにimpulseがありません",
+    "context": {
+      "title": "プロダーツチャレンジ",
+      "theme": "ダーツの的",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:17:36.836Z",
+    "gameTitle": "プロダーツチャレンジ",
+    "theme": "ダーツの的",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "プロダーツチャレンジ",
+      "theme": "ダーツの的",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:17:36.836Z",
+    "gameTitle": "プロダーツチャレンジ",
+    "theme": "ダーツの的",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"check_success\" と \"check_failure\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "プロダーツチャレンジ",
+      "theme": "ダーツの的",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:17:36.836Z",
+    "gameTitle": "プロダーツチャレンジ",
+    "theme": "ダーツの的",
+    "step": "LogicValidator",
+    "errorType": "COUNTER_NEVER_MODIFIED",
+    "errorMessage": "カウンター \"score\" は条件でチェックされていますが、どのルールでも操作されていません（初期値: 0）",
+    "context": {
+      "title": "プロダーツチャレンジ",
+      "theme": "ダーツの的",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:17:36.836Z",
+    "gameTitle": "プロダーツチャレンジ",
+    "theme": "ダーツの的",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: カウンター \"score\" を操作するルールがありません",
+    "context": {
+      "title": "プロダーツチャレンジ",
+      "theme": "ダーツの的",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:17:36.836Z",
+    "gameTitle": "プロダーツチャレンジ",
+    "theme": "ダーツの的",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"check_success\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "プロダーツチャレンジ",
+      "theme": "ダーツの的",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:17:36.837Z",
+    "gameTitle": "プロダーツチャレンジ",
+    "theme": "ダーツの的",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: score",
+    "context": {
+      "title": "プロダーツチャレンジ",
+      "theme": "ダーツの的",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:17:36.837Z",
+    "gameTitle": "プロダーツチャレンジ",
+    "theme": "ダーツの的",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: score",
+    "context": {
+      "title": "プロダーツチャレンジ",
+      "theme": "ダーツの的",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:17:36.837Z",
+    "gameTitle": "プロダーツチャレンジ",
+    "theme": "ダーツの的",
+    "step": "ProjectValidator",
+    "errorType": "NO_COUNTER_INCREMENT",
+    "errorMessage": "Success rule \"成功判定\" checks counter \"score\" but no rule increments it",
+    "context": {
+      "title": "プロダーツチャレンジ",
+      "theme": "ダーツの的",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:17:45.678Z",
+    "gameTitle": "完璧なスパイス調整",
+    "theme": "トロトロのカレー",
+    "step": "GameDesignGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 29208, Requested 1692. Please try again in 1.8s. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "完璧なスパイス調整",
+      "theme": "トロトロのカレー"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:18:47.640Z",
+    "gameTitle": "黄の輝きを集めて",
+    "theme": "黄の輝き",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "黄の輝きを集めて",
+      "theme": "黄の輝き",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:18:47.640Z",
+    "gameTitle": "黄の輝きを集めて",
+    "theme": "黄の輝き",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "黄の輝きを集めて",
+      "theme": "黄の輝き",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:18:47.641Z",
+    "gameTitle": "黄の輝きを集めて",
+    "theme": "黄の輝き",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"タイマー減少\" references undefined counter: time_remaining",
+    "context": {
+      "title": "黄の輝きを集めて",
+      "theme": "黄の輝き",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:18:47.641Z",
+    "gameTitle": "黄の輝きを集めて",
+    "theme": "黄の輝き",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"時間切れ失敗\" references undefined counter: time_remaining",
+    "context": {
+      "title": "黄の輝きを集めて",
+      "theme": "黄の輝き",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:18:47.641Z",
+    "gameTitle": "黄の輝きを集めて",
+    "theme": "黄の輝き",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "黄の輝きを集めて",
+      "theme": "黄の輝き",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:19:56.305Z",
+    "gameTitle": "トロールの橋を守れ！",
+    "theme": "トロールの橋",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"トロールタップ\" references undefined counter: adventurer_blocked",
+    "context": {
+      "title": "トロールの橋を守れ！",
+      "theme": "トロールの橋",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:19:56.305Z",
+    "gameTitle": "トロールの橋を守れ！",
+    "theme": "トロールの橋",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"冒険者通過\" references undefined counter: adventurer_crossed",
+    "context": {
+      "title": "トロールの橋を守れ！",
+      "theme": "トロールの橋",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:19:56.305Z",
+    "gameTitle": "トロールの橋を守れ！",
+    "theme": "トロールの橋",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: adventurer_blocked",
+    "context": {
+      "title": "トロールの橋を守れ！",
+      "theme": "トロールの橋",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:19:56.305Z",
+    "gameTitle": "トロールの橋を守れ！",
+    "theme": "トロールの橋",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"敗北判定\" references undefined counter: adventurer_crossed",
+    "context": {
+      "title": "トロールの橋を守れ！",
+      "theme": "トロールの橋",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:20:42.137Z",
+    "gameTitle": "データブレイン",
+    "theme": "データの海",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 20289, Requested 9713. Please try again in 4ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "データブレイン",
+      "theme": "データの海"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:21:25.550Z",
+    "gameTitle": "カラスのおつかい",
+    "theme": "カラスの知恵",
+    "step": "LogicValidator",
+    "errorType": "INVALID_COLLISION_TARGET",
+    "errorMessage": "ルール \"misplace_branch_1\": collision target \"!placement_area_1\" が未定義",
+    "context": {
+      "title": "カラスのおつかい",
+      "theme": "カラスの知恵",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:21:25.550Z",
+    "gameTitle": "カラスのおつかい",
+    "theme": "カラスの知恵",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "カラスのおつかい",
+      "theme": "カラスの知恵",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:21:25.550Z",
+    "gameTitle": "カラスのおつかい",
+    "theme": "カラスの知恵",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "カラスのおつかい",
+      "theme": "カラスの知恵",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:21:25.550Z",
+    "gameTitle": "カラスのおつかい",
+    "theme": "カラスの知恵",
+    "step": "LogicValidator",
+    "errorType": "NO_FAILURE",
+    "errorMessage": "failureアクションが存在しません（時間切れのみで失敗となります）",
+    "context": {
+      "title": "カラスのおつかい",
+      "theme": "カラスの知恵",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:21:25.550Z",
+    "gameTitle": "カラスのおつかい",
+    "theme": "カラスの知恵",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COLLISION_TARGET",
+    "errorMessage": "Collision condition in rule \"木の枝1誤配置\" references undefined object: !placement_area_1",
+    "context": {
+      "title": "カラスのおつかい",
+      "theme": "カラスの知恵",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:21:25.550Z",
+    "gameTitle": "カラスのおつかい",
+    "theme": "カラスの知恵",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "カラスのおつかい",
+      "theme": "カラスの知恵",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:22:46.571Z",
+    "gameTitle": "遺伝子操作の謎",
+    "theme": "遺伝子操作",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正しいDNAパーツ配置\" references undefined counter: correct_count",
+    "context": {
+      "title": "遺伝子操作の謎",
+      "theme": "遺伝子操作",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:22:46.571Z",
+    "gameTitle": "遺伝子操作の謎",
+    "theme": "遺伝子操作",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"誤ったDNAパーツ配置\" references undefined counter: wrong_count",
+    "context": {
+      "title": "遺伝子操作の謎",
+      "theme": "遺伝子操作",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:22:46.571Z",
+    "gameTitle": "遺伝子操作の謎",
+    "theme": "遺伝子操作",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"成功判定\" references undefined counter: correct_count",
+    "context": {
+      "title": "遺伝子操作の謎",
+      "theme": "遺伝子操作",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:22:46.571Z",
+    "gameTitle": "遺伝子操作の謎",
+    "theme": "遺伝子操作",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"失敗判定\" references undefined counter: wrong_count",
+    "context": {
+      "title": "遺伝子操作の謎",
+      "theme": "遺伝子操作",
+      "severity": "error"
+    }
+  }
+]

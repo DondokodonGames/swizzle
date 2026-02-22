@@ -1,0 +1,130 @@
+[
+  {
+    "timestamp": "2025-12-27T04:50:11.451Z",
+    "gameTitle": "金の栄光",
+    "theme": "金の栄光",
+    "step": "SpecificationGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "JSON parse failed: SyntaxError: Unexpected non-whitespace character after JSON at position 23 (line 2 column 1)",
+    "context": {
+      "title": "金の栄光",
+      "theme": "金の栄光"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:50:59.373Z",
+    "gameTitle": "回転コマの調整",
+    "theme": "コマの回転",
+    "step": "LogicValidator",
+    "errorType": "AUTO_FAILURE",
+    "errorMessage": "自動失敗: ルール \"check_failure\" は時間経過で失敗し、成功にプレイヤー操作がありません",
+    "context": {
+      "title": "回転コマの調整",
+      "theme": "コマの回転",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:50:59.373Z",
+    "gameTitle": "回転コマの調整",
+    "theme": "コマの回転",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "回転コマの調整",
+      "theme": "コマの回転",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:50:59.373Z",
+    "gameTitle": "回転コマの調整",
+    "theme": "コマの回転",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "回転コマの調整",
+      "theme": "コマの回転",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:50:59.374Z",
+    "gameTitle": "回転コマの調整",
+    "theme": "コマの回転",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "回転コマの調整",
+      "theme": "コマの回転",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:53:48.661Z",
+    "gameTitle": "石灯籠を正す",
+    "theme": "石灯籠の道",
+    "step": "LogicValidator",
+    "errorType": "AUTO_FAILURE",
+    "errorMessage": "自動失敗: ルール \"timeout_failure\" は時間経過で失敗し、成功にプレイヤー操作がありません",
+    "context": {
+      "title": "石灯籠を正す",
+      "theme": "石灯籠の道",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:53:48.661Z",
+    "gameTitle": "石灯籠を正す",
+    "theme": "石灯籠の道",
+    "step": "LogicValidator",
+    "errorType": "MISSING_FRAME_NUMBER",
+    "errorMessage": "ルール \"check_win_condition\": animation frame条件にframeNumberがありません",
+    "context": {
+      "title": "石灯籠を正す",
+      "theme": "石灯籠の道",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:53:48.661Z",
+    "gameTitle": "石灯籠を正す",
+    "theme": "石灯籠の道",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "石灯籠を正す",
+      "theme": "石灯籠の道",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:53:48.661Z",
+    "gameTitle": "石灯籠を正す",
+    "theme": "石灯籠の道",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"check_win_condition\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "石灯籠を正す",
+      "theme": "石灯籠の道",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-27T04:59:29.009Z",
+    "gameTitle": "ホログラム都市のパズル",
+    "theme": "ホログラムの都市",
+    "step": "GameDesignGenerator",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "429 Rate limit reached for gpt-4o in organization org-VdO5TzTqTWZMKG6jhBTmx8xG on tokens per min (TPM): Limit 30000, Used 28641, Requested 1687. Please try again in 656ms. Visit https://platform.openai.com/account/rate-limits to learn more.",
+    "context": {
+      "title": "ホログラム都市のパズル",
+      "theme": "ホログラムの都市"
+    }
+  }
+]

@@ -1,0 +1,274 @@
+[
+  {
+    "timestamp": "2025-12-26T15:09:56.035Z",
+    "gameTitle": "紙飛行機のフライト",
+    "theme": "紙飛行機の飛翔",
+    "step": "LogicValidator",
+    "errorType": "INVALID_REGION_Y",
+    "errorMessage": "ルール \"check_win_condition\": region.y(-1.5)が0-1の範囲外",
+    "context": {
+      "title": "紙飛行機のフライト",
+      "theme": "紙飛行機の飛翔",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:09:56.035Z",
+    "gameTitle": "紙飛行機のフライト",
+    "theme": "紙飛行機の飛翔",
+    "step": "LogicValidator",
+    "errorType": "INVALID_REGION_Y",
+    "errorMessage": "ルール \"check_lose_condition\": region.y(-0.5)が0-1の範囲外",
+    "context": {
+      "title": "紙飛行機のフライト",
+      "theme": "紙飛行機の飛翔",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:09:56.035Z",
+    "gameTitle": "紙飛行機のフライト",
+    "theme": "紙飛行機の飛翔",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"check_win_condition\" と \"check_lose_condition\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "紙飛行機のフライト",
+      "theme": "紙飛行機の飛翔",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:09:56.035Z",
+    "gameTitle": "紙飛行機のフライト",
+    "theme": "紙飛行機の飛翔",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"勝利条件の確認\" and \"敗北条件の確認\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "紙飛行機のフライト",
+      "theme": "紙飛行機の飛翔",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:12:12.168Z",
+    "gameTitle": "カレーの調合",
+    "theme": "トロトロのカレー",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"drag_spice_1\" と \"incorrect_spice\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "カレーの調合",
+      "theme": "トロトロのカレー",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:12:12.168Z",
+    "gameTitle": "カレーの調合",
+    "theme": "トロトロのカレー",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"drag_spice_2\" と \"incorrect_spice\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "カレーの調合",
+      "theme": "トロトロのカレー",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:12:12.168Z",
+    "gameTitle": "カレーの調合",
+    "theme": "トロトロのカレー",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"drag_spice_3\" と \"incorrect_spice\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "カレーの調合",
+      "theme": "トロトロのカレー",
+      "ruleCount": 5
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:12:12.169Z",
+    "gameTitle": "カレーの調合",
+    "theme": "トロトロのカレー",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"スパイス1をドラッグ\" and \"間違ったスパイスドロップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "カレーの調合",
+      "theme": "トロトロのカレー",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:12:12.169Z",
+    "gameTitle": "カレーの調合",
+    "theme": "トロトロのカレー",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"スパイス2をドラッグ\" and \"間違ったスパイスドロップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "カレーの調合",
+      "theme": "トロトロのカレー",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:12:12.169Z",
+    "gameTitle": "カレーの調合",
+    "theme": "トロトロのカレー",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"スパイス3をドラッグ\" and \"間違ったスパイスドロップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "カレーの調合",
+      "theme": "トロトロのカレー",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:13:28.637Z",
+    "gameTitle": "トランポリンの空中トリック",
+    "theme": "トランポリンの空中",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"正しいポーズを決める\" references undefined counter: correct_poses",
+    "context": {
+      "title": "トランポリンの空中トリック",
+      "theme": "トランポリンの空中",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:13:28.637Z",
+    "gameTitle": "トランポリンの空中トリック",
+    "theme": "トランポリンの空中",
+    "step": "ProjectValidator",
+    "errorType": "ACTION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter action in rule \"誤ったポーズを決める\" references undefined counter: wrong_poses",
+    "context": {
+      "title": "トランポリンの空中トリック",
+      "theme": "トランポリンの空中",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:13:28.637Z",
+    "gameTitle": "トランポリンの空中トリック",
+    "theme": "トランポリンの空中",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"勝利判定\" references undefined counter: correct_poses",
+    "context": {
+      "title": "トランポリンの空中トリック",
+      "theme": "トランポリンの空中",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:13:28.637Z",
+    "gameTitle": "トランポリンの空中トリック",
+    "theme": "トランポリンの空中",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COUNTER",
+    "errorMessage": "Counter condition in rule \"敗北判定\" references undefined counter: wrong_poses",
+    "context": {
+      "title": "トランポリンの空中トリック",
+      "theme": "トランポリンの空中",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:14:49.146Z",
+    "gameTitle": "ベーゴマ大決戦",
+    "theme": "ベーゴマの戦い",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"相手ベーゴマが場外に出た\" and \"プレイヤーベーゴマが場外に出た\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "ベーゴマ大決戦",
+      "theme": "ベーゴマの戦い",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:17:34.106Z",
+    "gameTitle": "ひな人形の装飾",
+    "theme": "ひな祭りの人形",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "ひな人形の装飾",
+      "theme": "ひな祭りの人形",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:17:34.106Z",
+    "gameTitle": "ひな人形の装飾",
+    "theme": "ひな祭りの人形",
+    "step": "LogicValidator",
+    "errorType": "NO_SUCCESS",
+    "errorMessage": "successアクションが存在しません",
+    "context": {
+      "title": "ひな人形の装飾",
+      "theme": "ひな祭りの人形",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:17:34.106Z",
+    "gameTitle": "ひな人形の装飾",
+    "theme": "ひな祭りの人形",
+    "step": "ProjectValidator",
+    "errorType": "NO_SUCCESS_RULE",
+    "errorMessage": "No success rule defined - game cannot be won",
+    "context": {
+      "title": "ひな人形の装飾",
+      "theme": "ひな祭りの人形",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:18:46.452Z",
+    "gameTitle": "金の感謝祭",
+    "theme": "感謝の金",
+    "step": "LogicValidator",
+    "errorType": "INVALID_COLLISION_TARGET",
+    "errorMessage": "ルール \"coin_match\": collision target \"row_3_match\" が未定義",
+    "context": {
+      "title": "金の感謝祭",
+      "theme": "感謝の金",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:18:46.452Z",
+    "gameTitle": "金の感謝祭",
+    "theme": "感謝の金",
+    "step": "ProjectValidator",
+    "errorType": "CONDITION_UNDEFINED_COLLISION_TARGET",
+    "errorMessage": "Collision condition in rule \"金貨揃いをチェック\" references undefined object: row_3_match",
+    "context": {
+      "title": "金の感謝祭",
+      "theme": "感謝の金",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T15:19:49.318Z",
+    "gameTitle": "宇宙飛行士の夢の記憶",
+    "theme": "宇宙飛行士の夢",
+    "step": "EditorMapper",
+    "errorType": "GENERATION_ERROR",
+    "errorMessage": "Cannot read properties of undefined (reading 'length')",
+    "context": {
+      "title": "宇宙飛行士の夢の記憶",
+      "theme": "宇宙飛行士の夢"
+    }
+  }
+]

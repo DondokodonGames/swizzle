@@ -1,0 +1,314 @@
+[
+  {
+    "timestamp": "2025-12-26T12:44:22.941Z",
+    "gameTitle": "幻影の選択",
+    "theme": "幻と真実",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_truth\" と \"tap_phantom\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "幻影の選択",
+      "theme": "幻と真実",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:44:22.942Z",
+    "gameTitle": "幻影の選択",
+    "theme": "幻と真実",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"真実のタップ\" and \"幻影のタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "幻影の選択",
+      "theme": "幻と真実",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:46:06.394Z",
+    "gameTitle": "秘密基地の扉を開けろ！",
+    "theme": "秘密基地の入り口",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"swipe_door_1\" と \"swipe_door_2\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "秘密基地の扉を開けろ！",
+      "theme": "秘密基地の入り口",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:46:06.394Z",
+    "gameTitle": "秘密基地の扉を開けろ！",
+    "theme": "秘密基地の入り口",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"swipe_door_1\" と \"swipe_door_3\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "秘密基地の扉を開けろ！",
+      "theme": "秘密基地の入り口",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:46:06.394Z",
+    "gameTitle": "秘密基地の扉を開けろ！",
+    "theme": "秘密基地の入り口",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"扉1をスワイプ\" and \"扉2をスワイプ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "秘密基地の扉を開けろ！",
+      "theme": "秘密基地の入り口",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:46:06.394Z",
+    "gameTitle": "秘密基地の扉を開けろ！",
+    "theme": "秘密基地の入り口",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"扉1をスワイプ\" and \"扉3をスワイプ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "秘密基地の扉を開けろ！",
+      "theme": "秘密基地の入り口",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:47:18.402Z",
+    "gameTitle": "響く風鈴を捕まえろ",
+    "theme": "風鈴の音",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct\" と \"tap_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "響く風鈴を捕まえろ",
+      "theme": "風鈴の音",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:47:18.402Z",
+    "gameTitle": "響く風鈴を捕まえろ",
+    "theme": "風鈴の音",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正しい風鈴タップ\" and \"誤った風鈴タップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "響く風鈴を捕まえろ",
+      "theme": "風鈴の音",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:48:22.597Z",
+    "gameTitle": "温泉の深層探し",
+    "theme": "温泉の谷",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct_geyser\" と \"tap_wrong_geyser_1\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "温泉の深層探し",
+      "theme": "温泉の谷",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:48:22.597Z",
+    "gameTitle": "温泉の深層探し",
+    "theme": "温泉の谷",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_correct_geyser\" と \"tap_wrong_geyser_2\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "温泉の深層探し",
+      "theme": "温泉の谷",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:48:22.597Z",
+    "gameTitle": "温泉の深層探し",
+    "theme": "温泉の谷",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解の湧き出し口をタップ\" and \"不正解の湧き出し口をタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "温泉の深層探し",
+      "theme": "温泉の谷",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:48:22.597Z",
+    "gameTitle": "温泉の深層探し",
+    "theme": "温泉の谷",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解の湧き出し口をタップ\" and \"不正解の湧き出し口2をタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "温泉の深層探し",
+      "theme": "温泉の谷",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:49:35.351Z",
+    "gameTitle": "監獄の謎の鍵",
+    "theme": "監獄の鍵",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"drag_key_1_to_lock\" と \"drag_key_2_to_lock\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "監獄の謎の鍵",
+      "theme": "監獄の鍵",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:49:35.351Z",
+    "gameTitle": "監獄の謎の鍵",
+    "theme": "監獄の鍵",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"鍵1を錠にドラッグ\" and \"鍵2を錠にドラッグ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "監獄の謎の鍵",
+      "theme": "監獄の鍵",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:51:52.426Z",
+    "gameTitle": "喜ぶ山",
+    "theme": "喜ぶ山",
+    "step": "LogicValidator",
+    "errorType": "INVALID_TIME_TYPE",
+    "errorMessage": "ルール \"timeout\": 無効なtimeType \"countdown\"",
+    "context": {
+      "title": "喜ぶ山",
+      "theme": "喜ぶ山",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:51:52.426Z",
+    "gameTitle": "喜ぶ山",
+    "theme": "喜ぶ山",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"tap_bell_2_correct\" と \"tap_bell_3_wrong\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "喜ぶ山",
+      "theme": "喜ぶ山",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:51:52.427Z",
+    "gameTitle": "喜ぶ山",
+    "theme": "喜ぶ山",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解の鐘をタップ\" and \"不正解の鐘をタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "喜ぶ山",
+      "theme": "喜ぶ山",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:53:02.380Z",
+    "gameTitle": "増え続ける星々",
+    "theme": "増える星",
+    "step": "LogicValidator",
+    "errorType": "NO_PLAYER_ACTION",
+    "errorMessage": "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります",
+    "context": {
+      "title": "増え続ける星々",
+      "theme": "増える星",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:53:02.380Z",
+    "gameTitle": "増え続ける星々",
+    "theme": "増える星",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"correct_guess\" と \"incorrect_guess\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "増え続ける星々",
+      "theme": "増える星",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:53:02.380Z",
+    "gameTitle": "増え続ける星々",
+    "theme": "増える星",
+    "step": "LogicValidator",
+    "errorType": "UNREACHABLE_SUCCESS",
+    "errorMessage": "成功条件到達不可: フラグ \"correct\" を設定するルールがありません",
+    "context": {
+      "title": "増え続ける星々",
+      "theme": "増える星",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:53:02.380Z",
+    "gameTitle": "増え続ける星々",
+    "theme": "増える星",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_NO_PLAYER_ACTION",
+    "errorMessage": "成功パス確認要: ルール \"correct_guess\" の成功条件がプレイヤー操作に依存していない可能性があります",
+    "context": {
+      "title": "増え続ける星々",
+      "theme": "増える星",
+      "ruleCount": 4
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:53:02.380Z",
+    "gameTitle": "増え続ける星々",
+    "theme": "増える星",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正解入力\" and \"不正解入力\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "増え続ける星々",
+      "theme": "増える星",
+      "severity": "error"
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:54:07.158Z",
+    "gameTitle": "巫女の舞い",
+    "theme": "巫女の舞",
+    "step": "LogicValidator",
+    "errorType": "SUCCESS_FAILURE_CONFLICT",
+    "errorMessage": "コンフリクト: ルール \"correct_tap\" と \"incorrect_tap\" が同一条件で success/failure を発動",
+    "context": {
+      "title": "巫女の舞い",
+      "theme": "巫女の舞",
+      "ruleCount": 3
+    }
+  },
+  {
+    "timestamp": "2025-12-26T12:54:07.158Z",
+    "gameTitle": "巫女の舞い",
+    "theme": "巫女の舞",
+    "step": "ProjectValidator",
+    "errorType": "CONFLICTING_TERMINATION",
+    "errorMessage": "Rules \"正しいタップ\" and \"間違いタップ\" can trigger both success and failure with same condition",
+    "context": {
+      "title": "巫女の舞い",
+      "theme": "巫女の舞",
+      "severity": "error"
+    }
+  }
+]

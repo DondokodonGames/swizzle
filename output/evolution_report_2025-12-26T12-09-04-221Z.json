@@ -1,0 +1,79 @@
+{
+  "totalRuns": 10,
+  "successCount": 1,
+  "failureCount": 9,
+  "errorPatterns": [
+    {
+      "errorType": "ProjectValidator:ACTION_UNDEFINED_COUNTER",
+      "count": 7,
+      "examples": [
+        "Counter action in rule \"時間カウントダウン\" references undefined counter: time_counter",
+        "Counter action in rule \"時間の減少\" references undefined counter: time_left",
+        "Counter action in rule \"タイマー更新\" references undefined counter: time_left"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONDITION_UNDEFINED_COUNTER",
+      "count": 7,
+      "examples": [
+        "Counter condition in rule \"時間切れ判定\" references undefined counter: time_counter",
+        "Counter condition in rule \"時間切れによる失敗\" references undefined counter: time_left",
+        "Counter condition in rule \"失敗判定\" references undefined counter: time_left"
+      ]
+    },
+    {
+      "errorType": "EditorMapper:GENERATION_ERROR",
+      "count": 4,
+      "examples": [
+        "Cannot read properties of undefined (reading 'length')",
+        "Cannot read properties of undefined (reading 'length')",
+        "Cannot read properties of undefined (reading 'length')"
+      ]
+    },
+    {
+      "errorType": "ConceptValidator:CONCEPT_VALIDATION",
+      "count": 2,
+      "examples": [
+        "playerOperationに操作方法（タップ/スワイプ/ドラッグ/長押し）が明記されていません",
+        "playerGoalに数値または「全て」がありません（推奨）"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 1,
+      "examples": [
+        "Rules \"ゴール地点に到達\" and \"壁に衝突\" can trigger both success and failure with same condition"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "カウンターが定義されているが操作されていない",
+      "suggestedAddition": "## カウンター使用ルール\nカウンターを定義する場合は必ず:\n1. 操作するルール（increment/decrement）\n2. チェックするルール（条件）\nの両方を定義してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "GameDesignGenerator.ts",
+      "section": "操作説明",
+      "currentIssue": "playerOperationに操作方法が明記されていない",
+      "suggestedAddition": "## 操作方法の指定\nplayerOperationには、必ず操作方法（タップ/スワイプ/ドラッグ/長押し）を明記してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "矛盾した終了条件が存在する",
+      "suggestedAddition": "## 競合する終了条件のチェック\n終了条件が競合しないよう、トリガーの条件が同一の場合、どの条件が優先されるかを明示してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "EditorMapper.ts",
+      "section": "エディター形式変換",
+      "currentIssue": "エラー: undefined のプロパティを読み込めない",
+      "suggestedAddition": "## エラーハンドリングの強化\n生成プロセス中に未定義のプロパティにアクセスしないよう、適切なエラーチェックを追加してください。",
+      "priority": "high"
+    }
+  ]
+}

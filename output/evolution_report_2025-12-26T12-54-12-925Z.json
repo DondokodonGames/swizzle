@@ -1,0 +1,83 @@
+{
+  "totalRuns": 10,
+  "successCount": 2,
+  "failureCount": 8,
+  "errorPatterns": [
+    {
+      "errorType": "LogicValidator:SUCCESS_FAILURE_CONFLICT",
+      "count": 10,
+      "examples": [
+        "コンフリクト: ルール \"tap_truth\" と \"tap_phantom\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"swipe_door_1\" と \"swipe_door_2\" が同一条件で success/failure を発動",
+        "コンフリクト: ルール \"swipe_door_1\" と \"swipe_door_3\" が同一条件で success/failure を発動"
+      ]
+    },
+    {
+      "errorType": "ProjectValidator:CONFLICTING_TERMINATION",
+      "count": 10,
+      "examples": [
+        "Rules \"真実のタップ\" and \"幻影のタップ\" can trigger both success and failure with same condition",
+        "Rules \"扉1をスワイプ\" and \"扉2をスワイプ\" can trigger both success and failure with same condition",
+        "Rules \"扉1をスワイプ\" and \"扉3をスワイプ\" can trigger both success and failure with same condition"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:INVALID_TIME_TYPE",
+      "count": 1,
+      "examples": [
+        "ルール \"timeout\": 無効なtimeType \"countdown\""
+      ]
+    },
+    {
+      "errorType": "LogicValidator:NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:UNREACHABLE_SUCCESS",
+      "count": 1,
+      "examples": [
+        "成功条件到達不可: フラグ \"correct\" を設定するルールがありません"
+      ]
+    },
+    {
+      "errorType": "LogicValidator:SUCCESS_NO_PLAYER_ACTION",
+      "count": 1,
+      "examples": [
+        "成功パス確認要: ルール \"correct_guess\" の成功条件がプレイヤー操作に依存していない可能性があります"
+      ]
+    }
+  ],
+  "promptImprovements": [
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "ルール 'tap_truth' と 'tap_phantom' の成功/失敗条件が同一",
+      "suggestedAddition": "## 条件の異なりを確保するルール\n成功と失敗の条件を設定する際には、各ルール間で条件が重複しないように注意してください。同一の条件であればコンフリクトが発生する可能性があります。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "無効なtimeType 'countdown' 使用",
+      "suggestedAddition": "## 有効なtimeType使用\n'countdown' を使用する代わりに、サポートされているtimeType（例えば、'timer'や'delay'）を使用してください。",
+      "priority": "medium"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "成功条件にプレイヤーアクションが含まれていない可能性",
+      "suggestedAddition": "## プレイヤーアクション必須\n成功ルートには必ずプレイヤー操作を伴う条件（touch/collision/position条件）を設定してください。",
+      "priority": "high"
+    },
+    {
+      "targetFile": "SpecificationGenerator.ts",
+      "section": "ルール仕様",
+      "currentIssue": "成功条件に到達不可能",
+      "suggestedAddition": "## 到達可能な成功パスの設定\n成功条件に到達できるよう、必ずフラグを設定するルールを用意してください。",
+      "priority": "high"
+    }
+  ]
+}
