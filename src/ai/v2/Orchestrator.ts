@@ -343,6 +343,9 @@ export class Orchestrator {
         mapperOutput = await this.editorMapper.map(concept, spec);
         logicOutput = mapperOutput.logicOutput;
 
+        // spec の priorityDesign / uiVisibility.safeZone を logicOutput に反映
+        this.applySpecConstraints(logicOutput, spec);
+
         // Log mapping table
         this.logger.log('EditorMapper', 'output', 'Mapping table generated', {
           mappedObjects: mapperOutput.mappingTable.summary.totalObjects,
@@ -440,6 +443,9 @@ export class Orchestrator {
             mapperOutput = await this.editorMapper.map(concept, spec);
             logicOutput = mapperOutput.logicOutput;
 
+            // spec の priorityDesign / uiVisibility.safeZone を logicOutput に反映
+            this.applySpecConstraints(logicOutput, spec);
+
             this.logger.log('EditorMapper', 'output', 'Re-mapped after regeneration', {
               mappedObjects: mapperOutput.mappingTable.summary.totalObjects,
               mappedRules: mapperOutput.mappingTable.summary.totalRules
@@ -532,6 +538,47 @@ export class Orchestrator {
       this.logger.logError('Orchestrator', error as Error);
       this.logger.endSession(false);
       throw error;
+    }
+  }
+
+  /**
+   * spec の priorityDesign と uiVisibility.safeZone を logicOutput に反映する
+   *
+   * EditorMapper は LLM ベースのため、これらの制約を確実に適用するために
+   * Orchestrator 側でポスト処理として機械的に適用する。
+   */
+  private applySpecConstraints(output: LogicGeneratorOutput, spec: GameSpecification): void {
+    // 1. priorityDesign.rulePriorities → rule.priority に反映
+    if (spec.priorityDesign?.rulePriorities?.length) {
+      const priorityMap = new Map(
+        spec.priorityDesign.rulePriorities.map(p => [p.ruleId, p.priority])
+      );
+      for (const rule of output.script.rules) {
+        const priority = priorityMap.get(rule.id);
+        if (priority !== undefined) {
+          rule.priority = priority;
+        }
+      }
+    }
+
+    // 2. uiVisibility.safeZone → layout オブジェクトの座標をクランプ
+    if (spec.uiVisibility?.safeZone) {
+      const { top, bottom, left, right } = spec.uiVisibility.safeZone;
+      // safeZone は 0.0〜1.0 のマージン値。異常値（0未満や0.5超）はスキップ
+      const minX = Math.max(0, left ?? 0);
+      const maxX = Math.min(1, 1 - (right ?? 0));
+      const minY = Math.max(0, top ?? 0);
+      const maxY = Math.min(1, 1 - (bottom ?? 0));
+
+      // 有効な制約がある場合のみ適用（minX < maxX かつ minY < maxY）
+      if (minX < maxX && minY < maxY) {
+        for (const obj of output.script.layout.objects) {
+          if (obj.position) {
+            obj.position.x = Math.max(minX, Math.min(maxX, obj.position.x));
+            obj.position.y = Math.max(minY, Math.min(maxY, obj.position.y));
+          }
+        }
+      }
     }
   }
 
