@@ -45,6 +45,7 @@ import * as path from 'path';
 const DEFAULT_CONFIG: OrchestratorConfig = {
   targetGamesPerRun: 10,
   maxRetries: 3,
+  maxGameAttempts: Infinity,
   dryRun: false,
   imageGeneration: {
     provider: 'mock'
@@ -149,6 +150,8 @@ export class Orchestrator {
     console.log('🚀 V2 Orchestrator initialized (enhanced pipeline)');
     console.log(`   Target: ${this.config.targetGamesPerRun} games`);
     console.log(`   Max retries: ${this.config.maxRetries}`);
+    const maxAttempts = this.config.maxGameAttempts ?? Infinity;
+    console.log(`   Max game attempts: ${maxAttempts === Infinity ? '∞ (unlimited)' : maxAttempts}`);
     console.log(`   Image provider: ${this.config.imageGeneration.provider}`);
     console.log(`   Dry run: ${this.config.dryRun}`);
     console.log(`   Logging: ${process.env.GENERATION_LOGGING !== 'false' ? 'enabled' : 'disabled'}`);
@@ -179,35 +182,36 @@ export class Orchestrator {
     for (let i = 0; i < this.config.targetGamesPerRun && !this.shouldStop; i++) {
       console.log(`\n📦 Game ${i + 1}/${this.config.targetGamesPerRun}`);
 
-      try {
-        const result = await this.generateSingleGame();
+      const retryResult = await this.generateGameWithPersistentRetry();
 
-        if (result.passed) {
-          passed++;
-          console.log(`   ✅ Passed: ${result.concept.title}`);
-
-          // Save locally
-          this.saveGameLocally(result);
-
-          // Upload if available
-          if (this.uploader) {
-            await this.uploadGame(result);
-          }
-        } else {
-          failed++;
-          console.log(`   ❌ Failed: ${result.concept.title}`);
-        }
-
-        results.push(result);
-        totalCost += result.estimatedCost;
-
-        // Rate limiting
-        await this.delay(1000);
-
-      } catch (error) {
-        console.error(`   ❌ Error: ${(error as Error).message}`);
+      if (retryResult === null) {
         failed++;
+        continue;
       }
+
+      const { result } = retryResult;
+
+      if (result.passed) {
+        passed++;
+        console.log(`   ✅ Passed: ${result.concept.title}`);
+
+        // Save locally
+        this.saveGameLocally(result);
+
+        // Upload if available
+        if (this.uploader) {
+          await this.uploadGame(result);
+        }
+      } else {
+        failed++;
+        console.log(`   ❌ Failed: ${result.concept.title}`);
+      }
+
+      results.push(result);
+      totalCost += result.estimatedCost;
+
+      // Rate limiting
+      await this.delay(1000);
     }
 
     this.isRunning = false;
@@ -232,8 +236,12 @@ export class Orchestrator {
    * 単一ゲーム生成（強化版パイプライン）
    *
    * @param seed ネタ帳のエントリ（指定時はシードベース生成、省略時は完全ランダム生成）
+   * @param prevFeedback 前回の試行で発生したエラーのフィードバック（リトライ時に使用）
    */
-  private async generateSingleGame(seed?: { id: number; title: string; idea: string; mechanic?: string; theme?: string }): Promise<GenerationResult> {
+  private async generateSingleGame(
+    seed?: { id: number; title: string; idea: string; mechanic?: string; theme?: string },
+    prevFeedback?: string
+  ): Promise<GenerationResult> {
     const startTime = Date.now();
     let validationPassedFirstTry = true;
 
@@ -314,7 +322,7 @@ export class Orchestrator {
       console.log('   📝 Step 4: Generating specifications...');
       let spec: GameSpecification;
       try {
-        spec = await this.specificationGenerator.generate(concept, design, assetPlan);
+        spec = await this.specificationGenerator.generate(concept, design, assetPlan, prevFeedback);
         console.log(`      Rules: ${spec.rules?.length ?? 0}`);
         console.log(`      Counters: ${spec.stateManagement?.counters?.length ?? 0}`);
         console.log(`      Success path: ${spec.successPath?.steps?.length ?? 0} steps`);
@@ -425,7 +433,7 @@ export class Orchestrator {
             `Structural issues: ${repairResult.regenerationFeedback}`);
 
           // フィードバック付きで仕様を再生成
-          spec = await this.specificationGenerator.generate(concept, design, assetPlan);
+          spec = await this.specificationGenerator.generate(concept, design, assetPlan, repairResult.regenerationFeedback);
 
           // 再マッピング
           try {
@@ -699,47 +707,50 @@ export class Orchestrator {
       const seed = itemsToProcess[i];
       console.log(`\n📦 Game ${i + 1}/${itemsToProcess.length} [ネタ #${seed.id}]`);
 
-      try {
-        const result = await this.generateSingleGame(seed);
+      // ロジックが合格するまで何度でも再生成する（maxGameAttempts で上限制御）
+      const retryResult = await this.generateGameWithPersistentRetry(seed);
 
-        if (result.passed) {
-          passed++;
-          console.log(`   ✅ Passed: ${result.concept.title}`);
-
-          this.saveGameLocally(result);
-
-          if (this.uploader) {
-            await this.uploadGame(result);
-          }
-        } else {
-          failed++;
-          console.log(`   ❌ Failed: ${result.concept.title}`);
-        }
-
-        results.push(result);
-        totalCost += result.estimatedCost;
-
-        // 進捗を保存（生成成功・失敗に関わらず処理済みとしてマーク）
-        processedIds.add(seed.id);
-        fs.writeFileSync(
-          progressFile,
-          JSON.stringify({ processedIds: Array.from(processedIds) }, null, 2),
-          'utf-8'
-        );
-
-        await this.delay(1000);
-
-      } catch (error) {
-        console.error(`   ❌ Error: ${(error as Error).message}`);
+      if (retryResult === null) {
+        // maxGameAttempts 超過 → スキップして処理済みにマーク
+        console.log(`   ⏭️ Skipped: ネタ #${seed.id}`);
         failed++;
-        // エラーでも処理済みとしてマーク（無限ループ防止）
         processedIds.add(seed.id);
         fs.writeFileSync(
           progressFile,
           JSON.stringify({ processedIds: Array.from(processedIds) }, null, 2),
           'utf-8'
         );
+        continue;
       }
+
+      const { result } = retryResult;
+
+      if (result.passed) {
+        passed++;
+        console.log(`   ✅ Passed: ${result.concept.title}`);
+
+        this.saveGameLocally(result);
+
+        if (this.uploader) {
+          await this.uploadGame(result);
+        }
+      } else {
+        failed++;
+        console.log(`   ❌ Failed: ${result.concept.title}`);
+      }
+
+      results.push(result);
+      totalCost += result.estimatedCost;
+
+      // 合格したときだけ処理済みとしてマーク
+      processedIds.add(seed.id);
+      fs.writeFileSync(
+        progressFile,
+        JSON.stringify({ processedIds: Array.from(processedIds) }, null, 2),
+        'utf-8'
+      );
+
+      await this.delay(1000);
     }
 
     this.isRunning = false;
@@ -767,6 +778,53 @@ export class Orchestrator {
     }
 
     return batchResult;
+  }
+
+  /**
+   * ロジック検証が合格するまで何度でも再生成を繰り返す。
+   *
+   * maxGameAttempts が Infinity の場合は成功するまで無制限にリトライ。
+   * 各リトライは前回のエラーをフィードバックとして次の生成に渡す。
+   *
+   * @param seed ネタ帳のエントリ
+   * @returns 成功した GenerationResult、または maxGameAttempts 超過時に null
+   */
+  private async generateGameWithPersistentRetry(
+    seed?: { id: number; title: string; idea: string; mechanic?: string; theme?: string }
+  ): Promise<{ result: GenerationResult; attempts: number } | null> {
+    const maxAttempts = this.config.maxGameAttempts ?? Infinity;
+    let attempts = 0;
+    let lastFeedback: string | undefined;
+
+    while (!this.shouldStop) {
+      attempts++;
+
+      if (maxAttempts !== Infinity && attempts > maxAttempts) {
+        console.log(`   ⚠️ maxGameAttempts(${maxAttempts}) に達しました。スキップします。`);
+        return null;
+      }
+
+      if (attempts > 1) {
+        console.log(`   ♻️ 試行 ${attempts} 回目（ロジック再生成）...`);
+      }
+
+      try {
+        const result = await this.generateSingleGame(seed, lastFeedback);
+        if (attempts > 1) {
+          console.log(`   ✅ ${attempts} 回目で合格`);
+        }
+        return { result, attempts };
+      } catch (error) {
+        const msg = (error as Error).message;
+        lastFeedback = msg;
+        console.log(`   ❌ 試行 ${attempts} 失敗: ${msg.substring(0, 120)}`);
+        console.log(`   🔄 コンセプトから再生成します...`);
+        // 短い待機を挟んでAPIレートリミットを避ける
+        await this.delay(500);
+      }
+    }
+
+    return null;
   }
 
   /**

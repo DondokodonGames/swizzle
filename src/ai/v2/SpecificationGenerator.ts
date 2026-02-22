@@ -1684,23 +1684,29 @@ export class SpecificationGenerator {
   async generate(
     concept: GameConcept,
     design: GameDesign,
-    assetPlan?: EnhancedAssetPlan
+    assetPlan?: EnhancedAssetPlan,
+    feedback?: string
   ): Promise<GameSpecification> {
     this.logger?.logInput('SpecificationGenerator', 'design', {
       coreLoop: design.coreLoop?.description || 'unknown',
       objectCount: design.objects?.length || 0,
       interactionCount: design.interactions?.length || 0,
-      hasAssetPlan: !!assetPlan
+      hasAssetPlan: !!assetPlan,
+      hasFeedback: !!feedback
     });
 
     if (this.config.dryRun) {
       return this.generateMockSpec(concept, design, assetPlan);
     }
 
-    const prompt = SPEC_PROMPT
+    let prompt = SPEC_PROMPT
       .replace('{{CONCEPT}}', JSON.stringify(concept, null, 2))
       .replace('{{DESIGN}}', JSON.stringify(design, null, 2))
       .replace('{{ASSET_PLAN}}', assetPlan ? JSON.stringify(assetPlan, null, 2) : 'なし');
+
+    if (feedback) {
+      prompt += `\n\n⚠️ 前回の生成で以下の構造的エラーが発生しました。必ず修正してください:\n${feedback}`;
+    }
 
     const response = await this.llmProvider.chat(
       [{ role: 'user', content: prompt }],

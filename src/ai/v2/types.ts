@@ -449,6 +449,8 @@ export interface BatchResult {
 export interface OrchestratorConfig {
   targetGamesPerRun: number;
   maxRetries: number;
+  /** ロジック検証が maxRetries 回失敗した後、コンセプトから再生成する最大回数。Infinity で合格するまで無制限リトライ */
+  maxGameAttempts?: number;
   dryRun: boolean;
   anthropicApiKey?: string;
   imageGeneration: {
