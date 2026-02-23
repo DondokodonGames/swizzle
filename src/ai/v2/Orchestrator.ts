@@ -31,6 +31,7 @@ import { FinalAssembler } from './FinalAssembler';
 import { DryRunSimulator } from './DryRunSimulator';
 import { QualityScorer } from './QualityScorer';
 import { GenerationLogger } from './GenerationLogger';
+import { FailurePatternTracker } from './FailurePatternTracker';
 import { SupabaseUploader } from '../publishers/SupabaseUploader';
 import {
   GameConcept,
@@ -73,6 +74,9 @@ export class Orchestrator {
   // Logging
   private logger: GenerationLogger;
 
+  // Dynamic hints
+  private failureTracker: FailurePatternTracker;
+
   // Optional
   private uploader?: SupabaseUploader;
 
@@ -85,6 +89,9 @@ export class Orchestrator {
 
     // Initialize logger
     this.logger = new GenerationLogger();
+
+    // Initialize failure tracker
+    this.failureTracker = new FailurePatternTracker();
 
     // Initialize all components with logger
     this.conceptGenerator = new GameConceptGenerator({
@@ -824,6 +831,10 @@ export class Orchestrator {
     if (finalRemaining <= 0) {
       console.log('\n🎉 ネタ帳200件の消化完了！次回から完全ランダム生成モードになります。');
       console.log('   Use: npm run ai:v2 (ランダム生成)');
+      // 最終レポートを生成
+      console.log('\n📊 最終失敗パターンレポートを生成中...');
+      const report = this.failureTracker.generateFinalReport();
+      console.log(report);
     } else {
       console.log(`\n📓 残り ${finalRemaining}/${netaData.totalCount} 件 → 次回: npm run ai:neta`);
     }
@@ -860,14 +871,29 @@ export class Orchestrator {
       }
 
       try {
-        const result = await this.generateSingleGame(seed, lastFeedback);
+        // 動的ヒントを prevFeedback に追加
+        const dynamicHints = this.failureTracker.generateDynamicHints();
+        const feedbackWithHints = dynamicHints
+          ? (lastFeedback ? lastFeedback + '\n' + dynamicHints : dynamicHints)
+          : lastFeedback;
+
+        const result = await this.generateSingleGame(seed, feedbackWithHints);
         if (attempts > 1) {
           console.log(`   ✅ ${attempts} 回目で合格`);
         }
+        this.failureTracker.recordSuccess();
         return { result, attempts };
       } catch (error) {
         const msg = (error as Error).message;
         lastFeedback = msg;
+
+        // エラーコードを抽出してパターン記録
+        const errorCodes = this.extractErrorCodes(msg);
+        const gameTitle = seed?.title ?? 'unknown';
+        if (errorCodes.length > 0) {
+          this.failureTracker.recordFailure(errorCodes, gameTitle);
+        }
+
         console.log(`   ❌ 試行 ${attempts} 失敗: ${msg.substring(0, 120)}`);
         console.log(`   🔄 コンセプトから再生成します...`);
         // 短い待機を挟んでAPIレートリミットを避ける
@@ -876,6 +902,20 @@ export class Orchestrator {
     }
 
     return null;
+  }
+
+  /**
+   * エラーメッセージから既知のエラーコードを抽出する
+   */
+  private extractErrorCodes(msg: string): string[] {
+    const knownCodes = [
+      'AUTO_SUCCESS', 'AUTO_FAILURE', 'INSTANT_WIN', 'INSTANT_LOSE',
+      'NO_SUCCESS', 'NO_FAILURE', 'NO_PLAYER_ACTION', 'SUCCESS_FAILURE_CONFLICT',
+      'CONFLICTING_TERMINATION', 'UNREACHABLE_SUCCESS', 'MISSING_COUNTER',
+      'INVALID_COMPARISON', 'POOR_HORIZONTAL_DISTRIBUTION', 'MISSING_SOUND_ID',
+      'ACTION_UNDEFINED_OBJECT', 'CONDITION_UNDEFINED_OBJECT'
+    ];
+    return knownCodes.filter(code => msg.includes(code));
   }
 
   /**

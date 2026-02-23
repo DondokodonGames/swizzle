@@ -1089,6 +1089,49 @@ touch条件の target も基本的にオブジェクトIDを使う:
 - 失敗条件にプレイヤー操作（ドラッグ等）で回避できる仕組みがあれば、時間経過成功はOK
 - 「プレイヤー操作で失敗を回避 + 時間経過で成功」= 正しいパターン
 
+**✅ サバイバル・回避ゲームの正しい実装（4ルールセット必須！）**
+
+「ヴァンパイアサバイバー」「スキー」「レース」「シューティング」などの回避ゲームは以下の**4ルールすべて**が必要:
+
+\`\`\`json
+// ルール1: プレイヤー移動（touch/drag → followDrag）
+{ "id": "move_player",
+  "targetObjectId": "player",
+  "triggers": { "operator": "AND", "conditions": [{ "type": "touch", "target": "player", "touchType": "drag" }] },
+  "actions": [{ "type": "followDrag", "parameters": { "targetId": "player" } }] }
+
+// ルール2: 敵との衝突 → 失敗（★これがないとAUTO_SUCCESS！）
+{ "id": "hit_enemy",
+  "targetObjectId": "player",
+  "triggers": { "operator": "AND", "conditions": [{ "type": "collision", "target": "enemy" }] },
+  "actions": [{ "type": "failure" }, { "type": "playSound", "parameters": { "soundId": "se_failure" } }] }
+
+// ルール3: 時間経過 → 成功（ルール2があるので有効）
+{ "id": "survival_win",
+  "targetObjectId": "stage",
+  "triggers": { "operator": "AND", "conditions": [{ "type": "time", "timeType": "exact", "seconds": 10 }] },
+  "actions": [{ "type": "success" }, { "type": "playSound", "parameters": { "soundId": "se_success" } }] }
+\`\`\`
+
+**★★★ objects定義で敵キャラに自動移動を設定すること ★★★**
+敵が動かなければ衝突（collision）が起きない！
+\`\`\`json
+// 敵オブジェクトにmovement設定が必須
+{ "id": "enemy", "name": "敵", ...,
+  "movement": { "type": "wander" } }
+// または直線移動
+{ "id": "meteor", "name": "隕石", ...,
+  "movement": { "type": "straight", "direction": "down", "speed": 0.3 } }
+\`\`\`
+
+**❌ AUTO_SUCCESS無限ループの原因:**
+\`\`\`
+// NG: ルール2（collision→failure）がない！
+ルール1: move_player（touch→followDrag）✓
+ルール3: survival_win（time→success）✓
+ルール2: hit_enemy がない！→ 失敗条件なし → AUTO_SUCCESS エラー → 無限ループ
+\`\`\`
+
 **❌ NG: 失敗条件もプレイヤー操作なし**
 \`\`\`
 // NG: 失敗条件にもプレイヤー操作がない（完全自動ゲーム）

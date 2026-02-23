@@ -934,7 +934,9 @@ ${output.assetPlan.sounds.map(s => `- ${s.id}: ${s.type}`).join('\n')}
           feedback.push('→ カウンターの初期値を失敗閾値より低く設定してください');
           break;
         case 'AUTO_SUCCESS':
-          feedback.push('→ 成功条件にタッチやコリジョンなどのプレイヤー操作を必須にしてください');
+          feedback.push('→ 【重要】time→successルールは単独では無効です。必ず「失敗条件（collision→failure）」とセットで使ってください。');
+          feedback.push('→ サバイバル・回避ゲームの場合: (1)プレイヤー移動(followDrag) (2)敵との衝突→失敗(collision→failure) (3)時間経過→成功(time→success) の3ルールが全て必要です。objectsで敵にmovement(wander/straight)を設定してください。');
+          feedback.push('→ それ以外のゲームの場合: touch/collisionなどプレイヤー操作を成功条件に追加するか、成功パターンをタップ判断型（正解をタップ→success）に変更してください。');
           break;
         case 'NO_SUCCESS':
           feedback.push('→ successアクションを含むルールを追加してください');
