@@ -6,6 +6,7 @@
 
 import OpenAI from 'openai';
 import { GameConcept, AssetPlan, GeneratedAssets, GeneratedObject, GeneratedSound, BgmPlan } from './types';
+import { GameDesign } from './GameDesignGenerator';
 
 // BGMプリセット（各ムードに対応した音楽パラメータ）
 const BGM_PRESETS: Record<string, { baseFreq: number; tempo: number; pattern: string }> = {
@@ -51,14 +52,14 @@ export class AssetGenerator {
   /**
    * アセットを生成
    */
-  async generate(concept: GameConcept, assetPlan: AssetPlan): Promise<GeneratedAssets> {
+  async generate(concept: GameConcept, assetPlan: AssetPlan, design?: GameDesign): Promise<GeneratedAssets> {
     console.log('   🎨 Generating assets...');
 
     // 背景生成
     const background = await this.generateBackground(concept, assetPlan.background);
 
     // オブジェクト生成
-    const objects = await this.generateObjects(concept, assetPlan.objects);
+    const objects = await this.generateObjects(concept, assetPlan.objects, design);
 
     // 効果音生成
     const sounds = this.generateSounds(assetPlan.sounds);
@@ -120,12 +121,13 @@ export class AssetGenerator {
    */
   private async generateObjects(
     concept: GameConcept,
-    objectPlans: AssetPlan['objects']
+    objectPlans: AssetPlan['objects'],
+    design?: GameDesign
   ): Promise<GeneratedObject[]> {
     const objects: GeneratedObject[] = [];
 
     for (const plan of objectPlans) {
-      const prompt = this.buildObjectPrompt(concept, plan);
+      const prompt = this.buildObjectPrompt(concept, plan, design);
 
       if (this.config.imageProvider === 'openai' && this.openai) {
         try {
@@ -389,13 +391,25 @@ FORBIDDEN:
    * - はっきりしたシルエットで視認性が高い
    * - ゲームスプライトとして機能する
    */
-  private buildObjectPrompt(concept: GameConcept, objPlan: AssetPlan['objects'][0]): string {
+  private buildObjectPrompt(concept: GameConcept, objPlan: AssetPlan['objects'][0], design?: GameDesign): string {
     const sizeDesc = objPlan.size === 'small' ? 'small compact icon (64px style)' :
                      objPlan.size === 'large' ? 'large prominent sprite (192px style)' :
                      'medium sized sprite (128px style)';
 
     // スタイルシート情報を構築
     const styleSheet = this.buildStyleSheet(concept);
+
+    // このオブジェクトに関係するインタラクションをGameDesignから取得
+    const mechanicHint = design ? (() => {
+      const related = design.interactions.find(i =>
+        i.trigger.includes(objPlan.id) || i.action.includes(objPlan.id) ||
+        i.trigger.includes(objPlan.name) || i.action.includes(objPlan.name)
+      );
+      if (related) return `GAME MECHANIC: ${related.action} (${related.feedback})`;
+      const isCoreObject = design.objects.find(o => o.id === objPlan.id && o.role === 'target');
+      if (isCoreObject) return `GAME MECHANIC: ${design.coreLoop.description}`;
+      return null;
+    })() : null;
 
     return `Sticker / game icon on plain white background: ${objPlan.visualDescription}
 
@@ -404,7 +418,7 @@ ONE OBJECT ONLY — like a product cutout or clipart sticker:
 - Plain white background — no scene, no landscape, no environment, no floor, no sky
 - No other characters or objects nearby
 
-ROLE IN GAME: ${objPlan.purpose}
+ROLE IN GAME: ${objPlan.purpose}${mechanicHint ? `\n${mechanicHint}` : ''}
 SIZE HINT: ${sizeDesc}
 STYLE: ${concept.visualStyle}, cartoon / vector art (NOT photorealistic)
 

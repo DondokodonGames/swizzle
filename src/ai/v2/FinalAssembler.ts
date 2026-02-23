@@ -13,6 +13,8 @@ import {
   GeneratedAssets,
   AssemblyResult
 } from './types';
+import { GameDesign } from './GameDesignGenerator';
+import { GameSpecification } from './SpecificationGenerator';
 
 // duration秒数を有効な選択肢に変換
 function toValidDuration(seconds: number): GameDurationOption {
@@ -45,7 +47,9 @@ export class FinalAssembler {
   assemble(
     concept: GameConcept,
     logicOutput: LogicGeneratorOutput,
-    assets: GeneratedAssets
+    assets: GeneratedAssets,
+    design?: GameDesign,
+    spec?: GameSpecification
   ): AssemblyResult {
     const issues: string[] = [];
 
@@ -54,6 +58,40 @@ export class FinalAssembler {
     for (const layoutObj of logicOutput.script.layout.objects) {
       if (!assetObjectIds.has(layoutObj.objectId)) {
         issues.push(`Missing asset for objectId: ${layoutObj.objectId}`);
+      }
+    }
+
+    // 1b. GameDesign/spec によるメカニクス整合性検証
+    if (design && spec) {
+      // (a) 勝利条件が実装されているか
+      const hasWinRule = (spec.rules || []).some(r =>
+        (r.actions || []).some(a => a.type === 'success')
+      );
+      if (!hasWinRule) {
+        issues.push(`[design] No success action found. Win condition requires: ${design.winCondition.requirement}`);
+      }
+
+      // (b) 必須オブジェクト（essential）がすべてレイアウトに含まれているか
+      const layoutObjectIds = new Set(logicOutput.script.layout.objects.map(o => o.objectId));
+      for (const obj of design.objects.filter(o => o.importance === 'essential')) {
+        if (!layoutObjectIds.has(obj.id)) {
+          issues.push(`[design] Essential object "${obj.id}" (${obj.name}) missing from layout`);
+        }
+      }
+
+      // (c) target ロールのオブジェクトは何らかのルールで参照されているか
+      const allRuleObjectRefs = new Set<string>();
+      for (const rule of spec.rules || []) {
+        if (rule.targetObject) allRuleObjectRefs.add(rule.targetObject);
+      }
+      for (const obj of design.objects.filter(o => o.role === 'target')) {
+        if (!allRuleObjectRefs.has(obj.id)) {
+          issues.push(`[design] Target object "${obj.id}" is not referenced by any rule`);
+        }
+      }
+
+      if (issues.some(i => i.startsWith('[design]'))) {
+        console.warn(`      [FinalAssembler] Design coherence issues:`, issues.filter(i => i.startsWith('[design]')));
       }
     }
 

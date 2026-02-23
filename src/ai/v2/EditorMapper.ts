@@ -10,7 +10,9 @@
 
 import { ILLMProvider, createLLMProvider, LLMProviderType, DEFAULT_MODELS } from './llm';
 import { GameConcept, LogicGeneratorOutput, AssetPlan, TriggerCondition, GameAction, GameRule } from './types';
+import { GameDesign } from './GameDesignGenerator';
 import { GameSpecification } from './SpecificationGenerator';
+import { EnhancedAssetPlan } from './AssetPlanner';
 import { GenerationLogger } from './GenerationLogger';
 
 // ==========================================
@@ -248,11 +250,19 @@ ${EDITOR_SPEC}
 **仕様をそのままエディター形式に変換してください。**
 勝手にゲーム内容を変えないでください。
 
+## ルールID・サウンドID（変更禁止）★★★
+- \`script.rules\` の各ルールの \`"id"\` は **仕様の \`rules[].id\` と完全一致させること**（LLMが勝手に変えない）
+- \`playSound\` アクションの \`soundId\` は **仕様の \`audio.sounds[].id\` に存在するもののみ** 使用可能
+- 上記を守ることで優先度マッピングとサウンド参照整合が保証される
+
 ## チェックリスト（必ず確認）
 - [ ] 仕様の全オブジェクトがassetPlanに含まれているか？
 - [ ] 仕様の全ルールがscript.rulesに含まれているか？
+- [ ] 各 script.rules[].id が spec.rules[].id と一致しているか？（変更禁止）
+- [ ] playSound の soundId が spec.audio.sounds から選ばれているか？
 - [ ] オブジェクトIDが仕様と一致しているか？
 - [ ] 成功/失敗条件が仕様と一致しているか？
+- [ ] ゲームデザインの核心メカニクス（followDrag/collision等）がルールに反映されているか？
 
 ## よくある間違い ❌
 - 仕様にある具体的なオブジェクト（goldfish, star, catなど）を汎用的な「target」に変えてしまう
@@ -557,6 +567,12 @@ playSound アクションには必ず soundId を指定:
 
 # 入力
 
+## ゲームデザイン（★最優先★ これを実現するルールを生成すること）
+{{DESIGN}}
+
+## 画面構成（オブジェクトの配置に使うこと）
+{{SCREEN_COMPOSITION}}
+
 ## コンセプト
 {{CONCEPT}}
 
@@ -657,7 +673,7 @@ export class EditorMapper {
   /**
    * 仕様をエディター形式に変換
    */
-  async map(concept: GameConcept, spec: GameSpecification): Promise<EditorMapperOutput> {
+  async map(concept: GameConcept, spec: GameSpecification, design?: GameDesign, enhancedAssetPlan?: EnhancedAssetPlan): Promise<EditorMapperOutput> {
     // 防御的入力検証
     if (!spec) {
       throw new Error('GameSpecification is undefined');
@@ -685,7 +701,33 @@ export class EditorMapper {
       return this.mapMock(concept, spec);
     }
 
+    // ゲームデザインのエッセンスを抽出（プロンプトに渡す）
+    const designContext = design ? {
+      coreLoop: design.coreLoop.description,
+      keyMechanic: design.coreExperience?.keyMechanic,
+      objects: design.objects.map(o => ({ id: o.id, role: o.role, behavior: o.behavior })),
+      interactions: design.interactions.map(i => ({
+        trigger: i.trigger,
+        action: i.action,
+        feedback: i.feedback
+      })),
+      winCondition: design.winCondition.requirement,
+      loseCondition: design.loseCondition.trigger
+    } : null;
+
+    // screenComposition: 画面レイアウトとオブジェクト配置の意図
+    const screenCompositionContext = enhancedAssetPlan?.screenComposition ? {
+      layout: enhancedAssetPlan.screenComposition.layout,
+      focalPoint: enhancedAssetPlan.screenComposition.focalPoint,
+      visualHierarchy: enhancedAssetPlan.screenComposition.visualHierarchy,
+      allowedObjectIds: enhancedAssetPlan.objects.map(o => o.id)
+    } : null;
+
     const prompt = MAPPING_PROMPT
+      .replace('{{DESIGN}}', designContext ? JSON.stringify(designContext, null, 2) : '（ゲームデザイン情報なし）')
+      .replace('{{SCREEN_COMPOSITION}}', screenCompositionContext
+        ? `${JSON.stringify(screenCompositionContext, null, 2)}\n\n★ allowedObjectIds に含まれないオブジェクトIDを assetPlan に追加しないこと`
+        : '（画面構成情報なし）')
       .replace('{{CONCEPT}}', JSON.stringify(concept, null, 2))
       .replace('{{SPEC}}', JSON.stringify(spec, null, 2));
 
@@ -699,7 +741,7 @@ export class EditorMapper {
     let logicOutput = this.extractAndParseJSON(response.content);
 
     // ポスト処理: AIが指示に従わなくても安全にする
-    logicOutput = this.postProcess(logicOutput);
+    logicOutput = this.postProcess(logicOutput, spec);
 
     // マッピングテーブルを生成
     const mappingTable = this.createMappingTable(spec, logicOutput);
@@ -723,9 +765,9 @@ export class EditorMapper {
   }
 
   /**
-   * ポスト処理: 座標のクランプ、必須サウンドの追加など
+   * ポスト処理: 座標のクランプ、必須サウンドの追加、ID整合性修正など
    */
-  private postProcess(output: LogicGeneratorOutput): LogicGeneratorOutput {
+  private postProcess(output: LogicGeneratorOutput, spec?: GameSpecification): LogicGeneratorOutput {
     // 0. 防御的初期化: script と assetPlan が存在することを保証
     if (!output.script) {
       console.warn('      [PostProcess] Missing script, creating empty structure');
@@ -788,7 +830,54 @@ export class EditorMapper {
       }
     }
 
-    // 3. 未使用カウンターの削除
+    // 3. オブジェクトID整合性修正: specのIDを正として統一
+    if (spec?.objects?.length && output.assetPlan?.objects?.length) {
+      const specIds = new Set(spec.objects.map(o => o.id));
+      const idRemapTable = new Map<string, string>(); // outputId → specId
+
+      for (const outObj of output.assetPlan.objects) {
+        if (!specIds.has(outObj.id)) {
+          // specにないIDの場合、名前の類似度でマッチングを試みる
+          const match = spec.objects.find(s =>
+            s.name === outObj.name ||
+            s.id.replace(/_\d+$/, '') === outObj.id.replace(/_\d+$/, '') ||
+            outObj.id.includes(s.id) || s.id.includes(outObj.id)
+          );
+          if (match) {
+            console.warn(`      [PostProcess] ID mismatch remapped: "${outObj.id}" → "${match.id}"`);
+            idRemapTable.set(outObj.id, match.id);
+            outObj.id = match.id;
+          } else {
+            console.warn(`      [PostProcess] Unknown objectId "${outObj.id}" not in spec — keeping as-is`);
+          }
+        }
+      }
+
+      // layout.objects の objectId も同様にリマップ
+      if (idRemapTable.size > 0 && output.script?.layout?.objects) {
+        for (const layoutObj of output.script.layout.objects) {
+          const remapped = idRemapTable.get(layoutObj.objectId);
+          if (remapped) layoutObj.objectId = remapped;
+        }
+        // rules 内の objectId 参照もリマップ
+        for (const rule of output.script?.rules || []) {
+          // GameRule.targetObjectId のリマップ
+          if (rule.targetObjectId) {
+            const remapped = idRemapTable.get(rule.targetObjectId);
+            if (remapped) rule.targetObjectId = remapped;
+          }
+          // triggers.conditions[].target のリマップ
+          for (const cond of rule.triggers?.conditions || []) {
+            if (cond.target && cond.target !== 'self' && cond.target !== 'stage') {
+              const remapped = idRemapTable.get(cond.target);
+              if (remapped) cond.target = remapped;
+            }
+          }
+        }
+      }
+    }
+
+    // 4. 未使用カウンターの削除
     if (output.script?.counters && output.script?.rules) {
       const usedCounterNames = new Set<string>();
 
@@ -807,7 +896,7 @@ export class EditorMapper {
         }
       }
 
-      // 使用されていないカウンターを削除
+      // 5. 使用されていないカウンターを削除
       const originalCount = output.script.counters.length;
       output.script.counters = output.script.counters.filter(c => usedCounterNames.has(c.id));
       const removedCount = originalCount - output.script.counters.length;
@@ -1175,7 +1264,7 @@ export class EditorMapper {
       case 'showMessage':
         return {
           type: 'showMessage' as const,
-          text: (params.text as string) || '',
+          message: (params.text as string) || (params.message as string) || '',
           duration: (params.duration as number) || 2.0
         };
 
