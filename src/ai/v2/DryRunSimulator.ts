@@ -227,7 +227,44 @@ export class DryRunSimulator {
     const conditions = successRule.triggers?.conditions || [];
 
     for (const condition of conditions) {
-      if (condition.type === 'counter' && condition.counterName) {
+      if (condition.type === 'collision') {
+        // collision 条件: 衝突する2オブジェクトの一方を動かすルールを探す
+        // そのルールが touch トリガーなら、プレイヤーのタップが1回必要
+        const collisionTarget = condition.target || successRule.targetObjectId;
+        const launchRule = output.script.rules.find(r => {
+          const hasTouchTrigger = r.triggers?.conditions?.some(c => c.type === 'touch');
+          const movesTarget = r.actions?.some(a =>
+            (a.type === 'applyImpulse' || a.type === 'applyForce' || a.type === 'move') &&
+            (a.targetId === collisionTarget || r.targetObjectId === collisionTarget ||
+             a.targetId !== undefined || r.targetObjectId !== undefined)
+          );
+          return hasTouchTrigger && movesTarget;
+        });
+
+        if (launchRule) {
+          // プレイヤーがタップして発射するルールが存在
+          const tapTarget = launchRule.targetObjectId || this.findTapTarget(launchRule) || 'launcher';
+          steps.push({
+            action: 'tap',
+            target: tapTarget,
+            result: `Launch projectile toward collision target`
+          });
+          tapCount++;
+        } else {
+          // タップなしで衝突が発生 → 自動成功の疑い
+          issues.push({
+            code: 'AUTO_SUCCESS_COLLISION',
+            message: `Collision condition in success rule "${successRule.id}" has no preceding touch-triggered launch rule. Game may auto-succeed without player input.`,
+            severity: 'error'
+          });
+          return {
+            reachable: false,
+            requiredTaps: -1,
+            estimatedSeconds: -1,
+            blockers: [`Collision-based success has no player-triggered launch rule`]
+          };
+        }
+      } else if (condition.type === 'counter' && condition.counterName) {
         // カウンター条件の場合、必要なタップ数を計算
         const targetValue = condition.value || 0;
         const currentValue = state.counters.get(condition.counterName) || 0;
@@ -330,6 +367,26 @@ export class DryRunSimulator {
     }
 
     const estimatedSeconds = tapCount * 0.5 + timeEstimate;
+
+    // 条件があるのにタップも待機も不要 → プレイヤー操作なしで自動成功の疑い
+    if (tapCount === 0 && timeEstimate === 0 && conditions.length > 0) {
+      const unhandledConditions = conditions.filter(c =>
+        c.type !== 'counter' && c.type !== 'touch' && c.type !== 'time' && c.type !== 'collision'
+      );
+      if (unhandledConditions.length > 0) {
+        issues.push({
+          code: 'AUTO_SUCCESS_SUSPECTED',
+          message: `Success rule "${successRule.id}" has conditions (${unhandledConditions.map(c => c.type).join(', ')}) but requires no player input. Game may auto-succeed.`,
+          severity: 'error'
+        });
+        return {
+          reachable: false,
+          requiredTaps: -1,
+          estimatedSeconds: -1,
+          blockers: ['Success requires no player input (auto-win suspected)']
+        };
+      }
+    }
 
     // 成功パスが見つかった
     return {
