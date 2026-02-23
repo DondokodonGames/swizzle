@@ -194,7 +194,7 @@ export class DryRunSimulator {
 
     // 各成功ルールについて到達可能性を検証
     for (const successRule of successRules) {
-      const pathResult = this.simulateToSuccess(output, initialState, successRule);
+      const pathResult = this.simulateToSuccess(output, initialState, successRule, issues);
       if (pathResult.reachable) {
         return pathResult;
       }
@@ -216,7 +216,8 @@ export class DryRunSimulator {
   private simulateToSuccess(
     output: LogicGeneratorOutput,
     initialState: GameState,
-    successRule: GameRule
+    successRule: GameRule,
+    issues: SimulationIssue[]
   ): ReachabilityReport['success'] {
     const state = this.cloneState(initialState);
     const steps: SimulationStep[] = [];
