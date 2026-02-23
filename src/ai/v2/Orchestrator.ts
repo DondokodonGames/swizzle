@@ -340,7 +340,7 @@ export class Orchestrator {
 
       // 初回マッピング
       try {
-        mapperOutput = await this.editorMapper.map(concept, spec, design);
+        mapperOutput = await this.editorMapper.map(concept, spec, design, assetPlan);
         logicOutput = mapperOutput.logicOutput;
 
         // spec の priorityDesign / uiVisibility.safeZone を logicOutput に反映
@@ -440,7 +440,7 @@ export class Orchestrator {
 
           // 再マッピング
           try {
-            mapperOutput = await this.editorMapper.map(concept, spec, design);
+            mapperOutput = await this.editorMapper.map(concept, spec, design, assetPlan);
             logicOutput = mapperOutput.logicOutput;
 
             // spec の priorityDesign / uiVisibility.safeZone を logicOutput に反映
@@ -487,11 +487,11 @@ export class Orchestrator {
       // （EditorMapperは簡略化した背景説明しか生成しないため上書きが必要）
       logicOutput.assetPlan.background.description = assetPlan.background.description;
       logicOutput.assetPlan.background.mood = assetPlan.background.mood;
-      const assets = await this.assetGenerator.generate(concept, logicOutput.assetPlan);
+      const assets = await this.assetGenerator.generate(concept, logicOutput.assetPlan, design);
 
       // Step 8: FinalAssembler
       console.log('   🔧 Step 8: Assembling game...');
-      const assemblyResult = this.finalAssembler.assemble(concept, logicOutput, assets);
+      const assemblyResult = this.finalAssembler.assemble(concept, logicOutput, assets, design, spec);
 
       if (!assemblyResult.valid) {
         console.log(`      ❌ Assembly errors: ${assemblyResult.issues.join(', ')}`);
