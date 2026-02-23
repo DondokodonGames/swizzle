@@ -8,7 +8,7 @@
  * 出力: ProjectValidationResult
  */
 
-import { LogicGeneratorOutput, GameRule, TriggerCondition, GameAction } from './types';
+import { LogicGeneratorOutput, GameRule, TriggerCondition, GameAction, GameConcept } from './types';
 import { EnhancedAssetPlan } from './AssetPlanner';
 import { GameSpecification } from './SpecificationGenerator';
 import { GenerationLogger } from './GenerationLogger';
@@ -55,7 +55,8 @@ export class ProjectValidator {
   validate(
     logicOutput: LogicGeneratorOutput,
     assetPlan?: EnhancedAssetPlan,
-    specification?: GameSpecification
+    specification?: GameSpecification,
+    concept?: GameConcept
   ): ProjectValidationResult {
     const allIssues: ProjectValidationError[] = [];
     let totalChecks = 0;
@@ -63,7 +64,7 @@ export class ProjectValidator {
     // 1. 参照整合チェック
     totalChecks += this.checkReferenceIntegrity(logicOutput, allIssues);
 
-    // 2. レイアウト整合チェック
+    // 2. レイアウト整合チェック（分布チェック含む）
     totalChecks += this.checkLayoutIntegrity(logicOutput, allIssues);
 
     // 3. Priority整合チェック
@@ -84,6 +85,11 @@ export class ProjectValidator {
 
     // 7. ルール間の競合チェック
     totalChecks += this.checkRuleConflicts(logicOutput, allIssues);
+
+    // 8. コンセプト整合チェック（操作タイプとルールの一致）
+    if (concept) {
+      totalChecks += this.checkConceptAlignment(logicOutput, concept, allIssues);
+    }
 
     // 結果を分類
     const errors = allIssues.filter(i => i.severity === 'error');
@@ -366,6 +372,45 @@ export class ProjectValidator {
           code: 'DUPLICATE_LAYOUT_OBJECT',
           message: `Object "${objectId}" appears ${count} times in layout`,
           details: { objectId, count }
+        });
+      }
+    }
+
+    // 配置分布チェック（中央集中・上下端のみ検出）
+    const layoutObjs = output.script.layout.objects;
+    if (layoutObjs.length >= 2) {
+      checks++;
+      const xValues = layoutObjs.map(o => o.position.x);
+      const yValues = layoutObjs.map(o => o.position.y);
+
+      // 標準偏差を計算
+      const xMean = xValues.reduce((s, v) => s + v, 0) / xValues.length;
+      const xStddev = Math.sqrt(xValues.reduce((s, v) => s + (v - xMean) ** 2, 0) / xValues.length);
+      const yMean = yValues.reduce((s, v) => s + v, 0) / yValues.length;
+      const yStddev = Math.sqrt(yValues.reduce((s, v) => s + (v - yMean) ** 2, 0) / yValues.length);
+
+      // 全オブジェクトが水平方向の中央列（x=0.4〜0.6）に集中している場合
+      const allHorizontallyCentered = xValues.every(x => Math.abs(x - 0.5) <= 0.12);
+      if (allHorizontallyCentered && xStddev < 0.08) {
+        issues.push({
+          severity: 'error',
+          category: 'layout',
+          code: 'POOR_HORIZONTAL_DISTRIBUTION',
+          message: `All ${layoutObjs.length} objects are horizontally centered (x stddev: ${xStddev.toFixed(3)}). Objects should be spread across the screen width.`,
+          details: { xValues, xStddev, xMean },
+          fix: 'Assign distinct x positions (e.g., 0.2, 0.5, 0.8) based on game mechanics'
+        });
+      }
+
+      // 全オブジェクトがほぼ同一座標に集中している場合
+      if (xStddev < 0.05 && yStddev < 0.05) {
+        issues.push({
+          severity: 'error',
+          category: 'layout',
+          code: 'IDENTICAL_POSITIONS',
+          message: `All objects are clustered at nearly the same position (x≈${xMean.toFixed(2)}, y≈${yMean.toFixed(2)}). Each object needs a distinct position.`,
+          details: { xStddev, yStddev, xMean, yMean },
+          fix: 'Assign each object a meaningful position reflecting its role in the game'
         });
       }
     }
@@ -727,6 +772,80 @@ export class ProjectValidator {
       })
       .sort()
       .join('|');
+  }
+
+  /**
+   * 8. コンセプト整合チェック
+   * playerOperation に記述された操作種別と実際のルールのトリガータイプを照合する
+   */
+  private checkConceptAlignment(
+    output: LogicGeneratorOutput,
+    concept: GameConcept,
+    issues: ProjectValidationError[]
+  ): number {
+    let checks = 0;
+    const op = (concept.playerOperation || '').toLowerCase();
+
+    // 全ルールのトリガー条件タイプを収集
+    const allTriggerTypes = new Set<string>();
+    const allTouchTypes = new Set<string>();
+    for (const rule of output.script.rules) {
+      for (const cond of rule.triggers?.conditions || []) {
+        allTriggerTypes.add(cond.type);
+        if (cond.type === 'touch' && cond.touchType) {
+          allTouchTypes.add(cond.touchType);
+        }
+      }
+    }
+
+    // ドラッグ操作が必要なのに follow/drag が存在しない
+    checks++;
+    const expectsDrag = /ドラッグ|drag|引っ張|スライド/.test(op);
+    const hasDrag = allTouchTypes.has('drag') ||
+      output.script.rules.some(r => r.actions?.some(a => a.type === 'followDrag'));
+    if (expectsDrag && !hasDrag) {
+      issues.push({
+        severity: 'error',
+        category: 'logic',
+        code: 'MISSING_DRAG_MECHANIC',
+        message: `Concept requires drag operation ("${concept.playerOperation}") but no drag/followDrag is used in rules.`,
+        details: { playerOperation: concept.playerOperation, touchTypes: [...allTouchTypes] },
+        fix: 'Add touch trigger with touchType:"drag" or followDrag action'
+      });
+    }
+
+    // フリック操作が必要なのに flick/impulse が存在しない
+    checks++;
+    const expectsFlick = /フリック|flick|弾く|投げ|発射/.test(op);
+    const hasFlick = allTouchTypes.has('flick') ||
+      output.script.rules.some(r => r.actions?.some(a => a.type === 'applyImpulse' || a.type === 'applyForce'));
+    if (expectsFlick && !hasFlick) {
+      issues.push({
+        severity: 'error',
+        category: 'logic',
+        code: 'MISSING_FLICK_MECHANIC',
+        message: `Concept requires flick/launch operation ("${concept.playerOperation}") but no flick trigger or applyImpulse action is used.`,
+        details: { playerOperation: concept.playerOperation, touchTypes: [...allTouchTypes] },
+        fix: 'Add touch trigger with touchType:"flick" or use applyImpulse action'
+      });
+    }
+
+    // タップのみのゲームなのに複雑な物理が使われている（逆方向不整合）
+    checks++;
+    const expectsTapOnly = /^(タップ|tap)[^&ドラッグフリック]/.test(op);
+    const hasPhysicsOnly = !hasDrag && !hasFlick &&
+      output.script.rules.some(r => r.actions?.some(a => a.type === 'applyImpulse' || a.type === 'applyForce'));
+    if (expectsTapOnly && hasPhysicsOnly) {
+      issues.push({
+        severity: 'warning',
+        category: 'logic',
+        code: 'UNEXPECTED_PHYSICS',
+        message: `Concept describes tap-only operation but physics (applyImpulse/applyForce) is used without player input.`,
+        details: { playerOperation: concept.playerOperation }
+      });
+    }
+
+    return checks;
   }
 
   /**

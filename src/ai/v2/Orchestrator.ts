@@ -358,7 +358,7 @@ export class Orchestrator {
       }
 
       // Step 6: LogicValidator + ProjectValidator + LogicRepairer ループ
-      let projectValidation = this.projectValidator.validate(logicOutput, assetPlan, spec);
+      let projectValidation = this.projectValidator.validate(logicOutput, assetPlan, spec, concept);
 
       while (true) {
         console.log('   ✓ Step 6: Validating logic...');
@@ -374,7 +374,7 @@ export class Orchestrator {
 
           // ProjectValidatorでも検証
           console.log('   🔍 Step 6.5: Validating project integrity...');
-          projectValidation = this.projectValidator.validate(logicOutput, assetPlan, spec);
+          projectValidation = this.projectValidator.validate(logicOutput, assetPlan, spec, concept);
 
           if (projectValidation.valid) {
             console.log(`      ✅ Project validated (${projectValidation.summary.totalChecks} checks)`);
