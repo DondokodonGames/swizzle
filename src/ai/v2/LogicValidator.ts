@@ -1177,6 +1177,9 @@ export class LogicValidator {
           if (c.collisionType) parts.push(`collisionType:${c.collisionType}`);
           // ★追加: flagIdを含める
           if (c.flagId) parts.push(`flag:${c.flagId}`);
+          // ★追加: position の area（inside/outside/crossing）を含める
+          // これがないと position.inside と position.outside が同一シグネチャになり誤検知する
+          if (c.area) parts.push(`area:${c.area}`);
           // ★追加: regionを含める（positionの場合）
           if (c.region) parts.push(`region:${c.region.x?.toFixed(2)},${c.region.y?.toFixed(2)}`);
           // ★追加: frameNumberを含める（animationの場合）
@@ -1208,6 +1211,26 @@ export class LogicValidator {
             fix: `条件を変更するか、どちらか一方を削除してください`
           });
         }
+      }
+    }
+
+    // 1b. position.outside → failure の即発動パターン検出
+    // position.outside はゲーム開始フレームから発火し続けるため、
+    // followDrag等のフラグゲートなしに failure を引き起こす。
+    for (const failureRule of failureRules) {
+      const conditions = failureRule.triggers?.conditions || [];
+      const hasPositionOutside = conditions.some(c => c.type === 'position' && c.area === 'outside');
+      const hasTimeGuard = conditions.some(c => c.type === 'time');
+      const hasFlagGuard = conditions.some(c => c.type === 'flag');
+      const hasCounterGuard = conditions.some(c => c.type === 'counter');
+      // position.outside のみ (時間/フラグ/カウンターガードなし) → 即失敗
+      if (hasPositionOutside && !hasTimeGuard && !hasFlagGuard && !hasCounterGuard) {
+        errors.push({
+          type: 'critical',
+          code: 'IMMEDIATE_POSITION_FAILURE',
+          message: `ルール "${failureRule.id}" が position.outside → failure を使用しています。初期フレームから発火してゲームが即終了します。`,
+          fix: `ドラッグ配置ゲームは collision（衝突判定）を使ってください: followDrag で animal を動かし、animal と target が衝突したら success。time で failure を設定。`
+        });
       }
     }
 
