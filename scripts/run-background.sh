@@ -15,7 +15,20 @@ COUNT=${1:-200}
 LOG_FILE="$HOME/generation.log"
 PID_FILE="$HOME/generation.pid"
 
-echo "🚀 バックグラウンドで $COUNT 件の生成を開始します..."
+# COUNT に対応する npm スクリプトを選択
+# package.json にある: ai:neta:1, ai:neta:5, ai:neta:10, ai:neta:all(=200)
+if [ "$COUNT" -le 1 ]; then
+  NPM_SCRIPT="ai:neta:1"
+elif [ "$COUNT" -le 5 ]; then
+  NPM_SCRIPT="ai:neta:5"
+elif [ "$COUNT" -le 10 ]; then
+  NPM_SCRIPT="ai:neta:10"
+else
+  # 200件以上は ai:neta:all (tsx run-neta.ts 200)
+  NPM_SCRIPT="ai:neta:all"
+fi
+
+echo "🚀 バックグラウンドで $COUNT 件の生成を開始します... (script: $NPM_SCRIPT)"
 echo "   ログ: $LOG_FILE"
 echo "   PID: $PID_FILE"
 echo ""
@@ -35,7 +48,7 @@ if [ -f "$PID_FILE" ]; then
 fi
 
 # nohup でバックグラウンド実行
-nohup npm run "ai:neta:$COUNT" > "$LOG_FILE" 2>&1 &
+nohup npm run "$NPM_SCRIPT" > "$LOG_FILE" 2>&1 &
 PID=$!
 echo $PID > "$PID_FILE"
 
