@@ -340,7 +340,7 @@ export class Orchestrator {
 
       // 初回マッピング
       try {
-        mapperOutput = await this.editorMapper.map(concept, spec);
+        mapperOutput = await this.editorMapper.map(concept, spec, design);
         logicOutput = mapperOutput.logicOutput;
 
         // spec の priorityDesign / uiVisibility.safeZone を logicOutput に反映
@@ -440,7 +440,7 @@ export class Orchestrator {
 
           // 再マッピング
           try {
-            mapperOutput = await this.editorMapper.map(concept, spec);
+            mapperOutput = await this.editorMapper.map(concept, spec, design);
             logicOutput = mapperOutput.logicOutput;
 
             // spec の priorityDesign / uiVisibility.safeZone を logicOutput に反映
