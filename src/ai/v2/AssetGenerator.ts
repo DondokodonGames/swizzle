@@ -452,7 +452,7 @@ Shape Language: ${concept.visualStyle.includes('かわいい') || concept.visual
    * プレースホルダー背景生成
    */
   private createPlaceholderBackground(concept: GameConcept): GeneratedAssets['background'] {
-    // SVGプレースホルダー
+    // SVGプレースホルダー（テキストなし、グラデーション背景のみ）
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
       <defs>
         <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -461,7 +461,6 @@ Shape Language: ${concept.visualStyle.includes('かわいい') || concept.visual
         </linearGradient>
       </defs>
       <rect width="1080" height="1920" fill="url(#bg)"/>
-      <text x="540" y="960" text-anchor="middle" fill="white" font-size="48" font-family="sans-serif">${concept.theme}</text>
     </svg>`;
 
     const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
