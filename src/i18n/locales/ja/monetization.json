@@ -1,4 +1,34 @@
 {
+  "wallet": {
+    "title": "ウォレット",
+    "costPerGame": "{{cost}}円 / ゲーム",
+    "totalGames": "累計ゲーム数",
+    "freeRemaining": "無料残り",
+    "balance": "残高",
+    "freeProgress": "無料枠の進行状況",
+    "freeProgressRemaining": "あと{{count}}ゲーム無料で遊べます",
+    "freeExhausted": "無料枠を使い切りました。残高からゲームを続けましょう！",
+    "topUpSection": "チャージ",
+    "topUpOpen": "開く ▼",
+    "topUpClose": "閉じる ▲",
+    "topUpSelectAmount": "チャージ金額を選択",
+    "topUpGames": "{{count}}ゲーム",
+    "topUpProcessing": "処理中...",
+    "topUpFooter": "残高は有効期限なし。安全な決済はStripeで処理されます。",
+    "topUpError": "決済の開始に失敗しました。もう一度お試しください。",
+    "badgeRecommended": "おすすめ",
+    "badgeBestValue": "お得"
+  },
+  "paywall": {
+    "title": "残高が不足しています",
+    "description": "無料の{{limit}}ゲームを使い切りました。チャージして続けましょう！",
+    "costNote": "1ゲーム = 1円",
+    "usageTotalGames": "累計ゲーム作成数",
+    "usageBalance": "残高",
+    "selectAmount": "チャージ金額を選択",
+    "stripeNote": "安全な決済は Stripe で処理されます。",
+    "close": "閉じる"
+  },
   "monetization": {
     "premium": "プレミアム",
     "subscribe": "購読する",

@@ -48,8 +48,6 @@ export function validateProductionEnvironment(): void {
   const requiredEnvVars = [
     'STRIPE_SECRET_KEY',
     'STRIPE_WEBHOOK_SECRET',
-    'VITE_STRIPE_PREMIUM_MONTHLY_PRICE_ID',
-    'VITE_STRIPE_PREMIUM_YEARLY_PRICE_ID',
     'SUPABASE_URL',
     'SUPABASE_SERVICE_ROLE_KEY',
     'APP_URL',

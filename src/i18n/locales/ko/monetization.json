@@ -81,5 +81,35 @@
     "continueWithFree": "무료 플랜으로 계속 →",
     "anyQuestions": "질문이 있으시면",
     "happyToHelp": "기꺼이 도와드리겠습니다!"
+  },
+  "wallet": {
+    "title": "Wallet",
+    "costPerGame": "{{cost}}¥ / game",
+    "totalGames": "Total Games",
+    "freeRemaining": "Free Left",
+    "balance": "Balance",
+    "freeProgress": "Free quota progress",
+    "freeProgressRemaining": "{{count}} more games free",
+    "freeExhausted": "Free quota used up. Keep playing with your balance!",
+    "topUpSection": "Top Up",
+    "topUpOpen": "Open ▼",
+    "topUpClose": "Close ▲",
+    "topUpSelectAmount": "Select amount to top up",
+    "topUpGames": "{{count}} games",
+    "topUpProcessing": "Processing...",
+    "topUpFooter": "Balance never expires. Payments securely processed by Stripe.",
+    "topUpError": "Failed to start payment. Please try again.",
+    "badgeRecommended": "Best",
+    "badgeBestValue": "Great Value"
+  },
+  "paywall": {
+    "title": "Insufficient Balance",
+    "description": "You've used all {{limit}} free games. Top up to continue!",
+    "costNote": "1 game = 1¥",
+    "usageTotalGames": "Total games created",
+    "usageBalance": "Balance",
+    "selectAmount": "Select top-up amount",
+    "stripeNote": "Payments securely processed by Stripe.",
+    "close": "Close"
   }
 }

@@ -4,12 +4,14 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useWallet } from '../../hooks/monetization/useWallet';
 import { TOP_UP_OPTIONS, FREE_GAME_LIMIT, COST_PER_GAME_YEN } from '../../types/MonetizationTypes';
 import { TopUpButton } from './TopUpButton';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 
 export function SubscriptionManager() {
+  const { t } = useTranslation();
   const { wallet, loading, status } = useWallet();
   const [showTopUp, setShowTopUp] = useState(false);
 
@@ -59,7 +61,7 @@ export function SubscriptionManager() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: DESIGN_TOKENS.spacing[6] }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: DESIGN_TOKENS.colors.neutral[900], margin: 0 }}>
-          ウォレット
+          {t('wallet.title')}
         </h2>
         <span style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.xs,
@@ -68,16 +70,16 @@ export function SubscriptionManager() {
           borderRadius: DESIGN_TOKENS.borderRadius.full,
           padding: `${DESIGN_TOKENS.spacing[1]} ${DESIGN_TOKENS.spacing[3]}`
         }}>
-          {COST_PER_GAME_YEN}円 / ゲーム
+          {t('wallet.costPerGame', { cost: COST_PER_GAME_YEN })}
         </span>
       </div>
 
       {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: DESIGN_TOKENS.spacing[3], marginBottom: DESIGN_TOKENS.spacing[6] }}>
         {[
-          { label: '累計ゲーム数', value: totalCreated.toLocaleString() },
-          { label: '無料残り', value: `${freeRemaining}回` },
-          { label: '残高', value: `${balanceYen.toLocaleString()}円` },
+          { label: t('wallet.totalGames'), value: totalCreated.toLocaleString() },
+          { label: t('wallet.freeRemaining'), value: t('wallet.topUpGames', { count: freeRemaining }) },
+          { label: t('wallet.balance'), value: balanceYen.toLocaleString() },
         ].map(({ label, value }) => (
           <div key={label} style={{
             backgroundColor: DESIGN_TOKENS.colors.neutral[50],
@@ -103,7 +105,7 @@ export function SubscriptionManager() {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: DESIGN_TOKENS.spacing[2] }}>
           <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm, color: DESIGN_TOKENS.colors.neutral[600] }}>
-            無料枠の進行状況
+            {t('wallet.freeProgress')}
           </span>
           <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.sm, fontWeight: 700, color: DESIGN_TOKENS.colors.neutral[800] }}>
             {freeUsed} / {FREE_GAME_LIMIT}
@@ -123,11 +125,11 @@ export function SubscriptionManager() {
         </div>
         {isFreePhase ? (
           <p style={{ marginTop: DESIGN_TOKENS.spacing[2], fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.neutral[500] }}>
-            あと <strong>{freeRemaining}</strong> ゲーム無料で遊べます
+            {t('wallet.freeProgressRemaining', { count: freeRemaining })}
           </p>
         ) : (
           <p style={{ marginTop: DESIGN_TOKENS.spacing[2], fontSize: DESIGN_TOKENS.typography.fontSize.xs, color: DESIGN_TOKENS.colors.warning[600], fontWeight: 600 }}>
-            無料枠を使い切りました。残高からゲームを続けましょう！
+            {t('wallet.freeExhausted')}
           </p>
         )}
       </div>
@@ -136,7 +138,7 @@ export function SubscriptionManager() {
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: DESIGN_TOKENS.spacing[3] }}>
           <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: DESIGN_TOKENS.colors.neutral[900], margin: 0 }}>
-            チャージ
+            {t('wallet.topUpSection')}
           </h3>
           <button
             onClick={() => setShowTopUp(!showTopUp)}
@@ -147,7 +149,7 @@ export function SubscriptionManager() {
               fontWeight: 600
             }}
           >
-            {showTopUp ? '閉じる ▲' : '開く ▼'}
+            {showTopUp ? t('wallet.topUpClose') : t('wallet.topUpOpen')}
           </button>
         </div>
         {showTopUp && (
@@ -160,7 +162,7 @@ export function SubscriptionManager() {
       </div>
 
       <p style={{ marginTop: DESIGN_TOKENS.spacing[6], fontSize: '0.75rem', color: DESIGN_TOKENS.colors.neutral[500], textAlign: 'center' }}>
-        残高は有効期限なし。安全な決済はStripeで処理されます。
+        {t('wallet.topUpFooter')}
       </p>
     </div>
   );

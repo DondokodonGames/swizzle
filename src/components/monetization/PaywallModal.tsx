@@ -4,12 +4,15 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { PaywallModalProps } from '../../types/MonetizationTypes';
 import { TOP_UP_OPTIONS, FREE_GAME_LIMIT } from '../../types/MonetizationTypes';
 import { TopUpButton } from './TopUpButton';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 
 export function PaywallModal({ isOpen, onClose, currentUsage }: PaywallModalProps) {
+  const { t } = useTranslation();
+
   if (!isOpen) return null;
 
   return (
@@ -51,7 +54,7 @@ export function PaywallModal({ isOpen, onClose, currentUsage }: PaywallModalProp
               background: 'transparent', border: 'none', cursor: 'pointer',
               color: DESIGN_TOKENS.colors.neutral[400]
             }}
-            aria-label="閉じる"
+            aria-label={t('paywall.close')}
           >
             <svg style={{ width: 24, height: 24 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -77,7 +80,7 @@ export function PaywallModal({ isOpen, onClose, currentUsage }: PaywallModalProp
             textAlign: 'center', color: DESIGN_TOKENS.colors.neutral[900],
             marginBottom: DESIGN_TOKENS.spacing[2]
           }}>
-            残高が不足しています
+            {t('paywall.title')}
           </h2>
 
           {/* Description */}
@@ -86,9 +89,8 @@ export function PaywallModal({ isOpen, onClose, currentUsage }: PaywallModalProp
             fontSize: DESIGN_TOKENS.typography.fontSize.sm,
             marginBottom: DESIGN_TOKENS.spacing[5]
           }}>
-            無料の {FREE_GAME_LIMIT} ゲームを使い切りました。
-            チャージして続けましょう！<br />
-            <strong style={{ color: DESIGN_TOKENS.colors.neutral[700] }}>1ゲーム = 1円</strong>
+            {t('paywall.description', { limit: FREE_GAME_LIMIT })}<br />
+            <strong style={{ color: DESIGN_TOKENS.colors.neutral[700] }}>{t('paywall.costNote')}</strong>
           </p>
 
           {/* Usage info */}
@@ -102,12 +104,12 @@ export function PaywallModal({ isOpen, onClose, currentUsage }: PaywallModalProp
               fontSize: DESIGN_TOKENS.typography.fontSize.sm,
               color: DESIGN_TOKENS.colors.neutral[600]
             }}>
-              累計ゲーム作成数: <strong style={{ color: DESIGN_TOKENS.colors.neutral[900] }}>
+              {t('paywall.usageTotalGames')}: <strong style={{ color: DESIGN_TOKENS.colors.neutral[900] }}>
                 {currentUsage.used}
               </strong>
               {currentUsage.remaining > 0 && (
-                <> &nbsp;|&nbsp; 残高: <strong style={{ color: DESIGN_TOKENS.colors.neutral[900] }}>
-                  {currentUsage.remaining}円
+                <> &nbsp;|&nbsp; {t('paywall.usageBalance')}: <strong style={{ color: DESIGN_TOKENS.colors.neutral[900] }}>
+                  {currentUsage.remaining}
                 </strong></>
               )}
             </div>
@@ -120,7 +122,7 @@ export function PaywallModal({ isOpen, onClose, currentUsage }: PaywallModalProp
             color: DESIGN_TOKENS.colors.neutral[700],
             marginBottom: DESIGN_TOKENS.spacing[3]
           }}>
-            チャージ金額を選択
+            {t('paywall.selectAmount')}
           </p>
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
@@ -136,7 +138,7 @@ export function PaywallModal({ isOpen, onClose, currentUsage }: PaywallModalProp
             color: DESIGN_TOKENS.colors.neutral[400],
             textAlign: 'center'
           }}>
-            安全な決済は Stripe で処理されます。
+            {t('paywall.stripeNote')}
           </p>
         </div>
       </div>
