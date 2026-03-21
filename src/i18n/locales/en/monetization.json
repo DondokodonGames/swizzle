@@ -12,7 +12,7 @@
     "topUpOpen": "Open ▼",
     "topUpClose": "Close ▲",
     "topUpSelectAmount": "Select amount to top up",
-    "topUpGames": "{{count}} games",
+    "topUpGames": "{{games}} games",
     "topUpProcessing": "Processing...",
     "topUpFooter": "Balance never expires. Payments securely processed by Stripe.",
     "topUpError": "Failed to start payment. Please try again.",
