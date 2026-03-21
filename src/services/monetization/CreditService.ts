@@ -17,6 +17,7 @@ import {
 
 /**
  * ユーザーの今月のクレジット情報を取得
+ * @deprecated 旧 user_credits テーブルモデル。現在はウォレットモデル（useWallet）を使用。
  */
 export async function getUserCredits(userId: string): Promise<UserCredit | null> {
   try {
@@ -46,6 +47,7 @@ export async function getUserCredits(userId: string): Promise<UserCredit | null>
 
 /**
  * ユーザーの今月のクレジット使用状況を取得
+ * @deprecated 旧 user_credits テーブルモデル。現在はウォレットモデル（useCredits → useWallet）を使用。
  */
 export async function getCreditUsage(userId: string): Promise<CreditUsage> {
   try {
@@ -89,6 +91,7 @@ export async function canCreateGame(): Promise<boolean> {
 /**
  * ゲーム作成数をインクリメント（手動呼び出し用）
  * 注意: 通常はuser_gamesテーブルのINSERTトリガーで自動実行されるため不要
+ * @deprecated 旧 user_credits テーブルモデル。現在はウォレットモデルのトリガーが自動処理。
  */
 export async function incrementGameCount(userId: string): Promise<void> {
   try {
@@ -109,6 +112,7 @@ export async function incrementGameCount(userId: string): Promise<void> {
 
 /**
  * プランに応じた月間制限数を取得
+ * @deprecated 旧 user_credits テーブルモデル。現在はウォレットモデルが制限を管理。
  */
 export function getPlanLimit(plan: MVPSubscriptionPlan): number {
   return getMonthlyGameLimit(plan);

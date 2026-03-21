@@ -42,7 +42,6 @@ function isValidStripeUrl(url: string): boolean {
  */
 export const getStripe = (): Promise<Stripe | null> => {
   if (!stripePromise) {
-    // @ts-ignore
     const publicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
     if (!publicKey) {
       console.error('VITE_STRIPE_PUBLIC_KEY is not defined');
@@ -50,7 +49,7 @@ export const getStripe = (): Promise<Stripe | null> => {
     }
     stripePromise = loadStripe(publicKey);
   }
-  return stripePromise;
+  return stripePromise!;
 };
 
 /**
@@ -69,7 +68,6 @@ export async function createCheckoutSession(
 
     // Supabase Edge Functionを呼び出してCheckout Session作成
     const response = await fetch(
-      // @ts-ignore
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`,
       {
         method: 'POST',
@@ -154,7 +152,6 @@ export async function redirectToCustomerPortal(): Promise<void> {
 
     // Supabase Edge Functionを呼び出してCustomer Portal Session作成
     const response = await fetch(
-      // @ts-ignore
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-customer-portal`,
       {
         method: 'POST',
@@ -202,7 +199,6 @@ export async function redirectToTopUpCheckout(amountYen: number): Promise<void> 
     }
 
     const response = await fetch(
-      // @ts-ignore
       `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`,
       {
         method: 'POST',
@@ -248,11 +244,7 @@ export function getStripePriceId(
     return '';
   }
 
-  const envKey =
-    billingCycle === 'yearly'
-      ? 'VITE_STRIPE_PREMIUM_YEARLY_PRICE_ID'
-      : 'VITE_STRIPE_PREMIUM_MONTHLY_PRICE_ID';
-
-  // @ts-ignore
-  return import.meta.env[envKey] || '';
+  return billingCycle === 'yearly'
+    ? import.meta.env.VITE_STRIPE_PREMIUM_YEARLY_PRICE_ID || ''
+    : import.meta.env.VITE_STRIPE_PREMIUM_MONTHLY_PRICE_ID || '';
 }

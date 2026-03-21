@@ -19,15 +19,6 @@ export enum MVPSubscriptionPlan {
 }
 
 /**
- * 完全なサブスクリプションプラン種類（将来の拡張用）
- */
-export enum SubscriptionPlan {
-  FREE = 'free',
-  PREMIUM = 'premium',
-  PRO = 'pro', // 準備のみ、MVP では使用しない
-}
-
-/**
  * サブスクリプションステータス
  */
 export enum SubscriptionStatus {
@@ -161,6 +152,8 @@ export interface Payment {
 
 /**
  * User Credits テーブル型
+ * @deprecated 旧月次制限モデル（user_credits テーブル）。現在はウォレットモデル（UserWallet）を使用。
+ *             useCredits() との互換インターフェースで null を返すためのみ残存。
  */
 export interface UserCredit {
   id: string;
@@ -354,8 +347,8 @@ export const MVP_PLAN_CONFIGS: Record<MVPSubscriptionPlan, MVPPlanDetails> = {
     description: 'Unlimited creativity without ads',
     price: 4.99,
     yearlyPrice: 49.99,
-    stripePriceId: '', // 実行時に取得
-    stripeYearlyPriceId: '', // 実行時に取得
+    stripePriceId: '',         // 実際の値は StripeService.getStripePriceId() が env var から取得
+    stripeYearlyPriceId: '',   // 実際の値は StripeService.getStripePriceId() が env var から取得
     limits: {
       gamesPerMonth: -1, // 無制限
       hasAds: false,
@@ -741,19 +734,6 @@ export function calculateCreditUsage(
 }
 
 /**
- * Stripe Price ID取得（MVP版）
- */
-export function getStripePriceId(
-  plan: MVPSubscriptionPlan,
-  billingCycle: 'monthly' | 'yearly'
-): string {
-  const planDetails = MVP_PLAN_CONFIGS[plan];
-  return billingCycle === 'yearly'
-    ? planDetails.stripeYearlyPriceId
-    : planDetails.stripePriceId;
-}
-
-/**
  * 割引率計算
  */
 export function calculateYearlyDiscount(plan: MVPSubscriptionPlan): number {
@@ -767,21 +747,18 @@ export function calculateYearlyDiscount(plan: MVPSubscriptionPlan): number {
  * 広告スロットID取得
  */
 export function getAdSlotId(placement: AdPlacement): string {
-  const envKey = {
-    [AdPlacement.GAME_BRIDGE]: 'VITE_ADSENSE_SLOT_GAME_BRIDGE',
-    [AdPlacement.GAME_LIST]: 'VITE_ADSENSE_SLOT_GAME_LIST',
-    [AdPlacement.EDITOR_SIDEBAR]: 'VITE_ADSENSE_SLOT_EDITOR',
-  }[placement];
-
-  // @ts-ignore
-  return import.meta.env[envKey] || '';
+  const slots: Record<AdPlacement, string> = {
+    [AdPlacement.GAME_BRIDGE]: import.meta.env.VITE_ADSENSE_SLOT_GAME_BRIDGE || '',
+    [AdPlacement.GAME_LIST]: import.meta.env.VITE_ADSENSE_SLOT_GAME_LIST || '',
+    [AdPlacement.EDITOR_SIDEBAR]: import.meta.env.VITE_ADSENSE_SLOT_EDITOR || '',
+  };
+  return slots[placement];
 }
 
 /**
  * 広告クライアントID取得
  */
 export function getAdClientId(): string {
-    // @ts-ignore
   return import.meta.env.VITE_ADSENSE_CLIENT_ID || '';
 }
 
