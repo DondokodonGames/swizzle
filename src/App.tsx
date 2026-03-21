@@ -4,7 +4,6 @@ import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import './styles/arcade-theme.css';
 
-import { useSubscription } from './hooks/monetization/useSubscription';
 import { PremiumBadge } from './components/monetization/PremiumBadge';
 import { EditorGameBridge } from './services/editor/EditorGameBridge';
 

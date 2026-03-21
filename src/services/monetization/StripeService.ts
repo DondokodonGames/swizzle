@@ -192,6 +192,52 @@ export async function redirectToCustomerPortal(): Promise<void> {
 }
 
 /**
+ * チャージ（Top-up）用 Checkout Session を作成してリダイレクト
+ */
+export async function redirectToTopUpCheckout(amountYen: number): Promise<void> {
+  try {
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session?.access_token) {
+      throw new Error('Not authenticated. Please sign in.');
+    }
+
+    const response = await fetch(
+      // @ts-ignore
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          mode: 'topup',
+          amount_yen: amountYen,
+          successUrl: `${window.location.origin}/profile?topup=success`,
+          cancelUrl: `${window.location.origin}/pricing?canceled=true`,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create checkout session');
+    }
+
+    const data = await response.json();
+
+    if (!data.url || !isValidStripeUrl(data.url)) {
+      throw new Error('Invalid checkout URL received');
+    }
+
+    window.location.href = data.url;
+  } catch (error) {
+    console.error('Error redirecting to top-up checkout:', error);
+    throw error;
+  }
+}
+
+/**
  * Stripe Price IDを取得
  */
 export function getStripePriceId(
