@@ -35,7 +35,6 @@
     "premium": "プレミアム",
     "subscribe": "購読する",
     "freeTier": "無料プラン",
-    "proPlan": "Proプラン",
     "premiumPlan": "プレミアムプラン",
     "monthlyPrice": "月額",
     "yearlyPrice": "年額",
@@ -82,7 +81,7 @@
     "problemQuestion": "何か問題がありましたか？お困りの際はお気軽にお問い合わせください。",
     "freePlanTitle": "無料プランでもできること",
     "freePlanFeatures": {
-      "limit5Games": "月5ゲームまで作成可能",
+      "limit5Games": "月3ゲームまで作成可能",
       "basicTemplates": "基本テンプレート50種類",
       "basicEditor": "基本ゲームエディター",
       "socialFeatures": "ソーシャル機能（いいね・フォロー）",

@@ -3,7 +3,6 @@
     "premium": "프리미엄",
     "subscribe": "구독",
     "freeTier": "무료 플랜",
-    "proPlan": "프로 플랜",
     "premiumPlan": "프리미엄 플랜",
     "monthlyPrice": "월간",
     "yearlyPrice": "연간",
@@ -50,7 +49,7 @@
     "problemQuestion": "문제가 있었나요? 도움이 필요하시면 문의해주세요.",
     "freePlanTitle": "무료 플랜으로 할 수 있는 것",
     "freePlanFeatures": {
-      "limit5Games": "월 최대 5개 게임",
+      "limit5Games": "월 최대 3개 게임",
       "basicTemplates": "기본 템플릿 50개",
       "basicEditor": "기본 게임 에디터",
       "socialFeatures": "소셜 기능 (좋아요/팔로우)",

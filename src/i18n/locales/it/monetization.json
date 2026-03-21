@@ -3,7 +3,6 @@
     "premium": "Premium",
     "subscribe": "Abbonati",
     "freeTier": "Piano gratuito",
-    "proPlan": "Piano Pro",
     "premiumPlan": "Piano Premium",
     "monthlyPrice": "Mensile",
     "yearlyPrice": "Annuale",
@@ -50,7 +49,7 @@
     "problemQuestion": "C'è stato un problema? Contattaci se hai bisogno di aiuto.",
     "freePlanTitle": "Cosa puoi fare con il piano gratuito",
     "freePlanFeatures": {
-      "limit5Games": "Fino a 5 giochi al mese",
+      "limit5Games": "Fino a 3 giochi al mese",
       "basicTemplates": "50 modelli di base",
       "basicEditor": "Editor di giochi di base",
       "socialFeatures": "Funzionalità sociali (mi piace/segui)",

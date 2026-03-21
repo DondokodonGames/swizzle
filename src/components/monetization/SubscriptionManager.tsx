@@ -78,7 +78,7 @@ export function SubscriptionManager() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: DESIGN_TOKENS.spacing[3], marginBottom: DESIGN_TOKENS.spacing[6] }}>
         {[
           { label: t('wallet.totalGames'), value: totalCreated.toLocaleString() },
-          { label: t('wallet.freeRemaining'), value: t('wallet.topUpGames', { count: freeRemaining }) },
+          { label: t('wallet.freeRemaining'), value: t('wallet.topUpGames', { games: freeRemaining }) },
           { label: t('wallet.balance'), value: `¥${balanceYen.toLocaleString()}` },
         ].map(({ label, value }) => (
           <div key={label} style={{

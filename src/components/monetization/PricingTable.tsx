@@ -12,13 +12,15 @@ import {
 } from '../../types/MonetizationTypes';
 import { CheckoutButton } from './CheckoutButton';
 
+const freeGamesPerMonth = MVP_PLAN_CONFIGS[MVPSubscriptionPlan.FREE].limits.gamesPerMonth;
+
 // プラン機能の定義
 const PLAN_FEATURES = {
   free: [
     { text: 'ゲームをプレイ', included: true },
     { text: 'ソーシャル機能', included: true },
     { text: '広告表示あり', included: true, isNegative: true },
-    { text: '月3ゲームまで作成', included: true },
+    { text: `月${freeGamesPerMonth}ゲームまで作成`, included: true },
   ],
   premium: [
     { text: 'ゲームをプレイ', included: true },
