@@ -27,7 +27,9 @@
     "usageBalance": "Balance",
     "selectAmount": "Select top-up amount",
     "stripeNote": "Payments securely processed by Stripe.",
-    "close": "Close"
+    "close": "Close",
+    "reasonNeedsTopUp": "You've used all your free games. Top up to continue! (1 game = 1¥)",
+    "reasonNoBalance": "Balance required to create a game."
   },
   "monetization": {
     "premium": "Premium",

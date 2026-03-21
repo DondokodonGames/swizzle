@@ -234,6 +234,18 @@ async function handleTopUpCompleted(
     throw new WebhookError('Invalid topup metadata', false);
   }
 
+  // 冪等性チェック: 同じセッションを二重処理しない（Stripe のリトライ対策）
+  const { data: existing } = await supabase
+    .from('credit_purchases')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle();
+
+  if (existing) {
+    console.log(`[Idempotency] TopUp already processed: session=${session.id}`);
+    return;
+  }
+
   // credit_purchases に記録
   const { error: purchaseError } = await supabase.from('credit_purchases').insert({
     user_id: userId,
@@ -258,7 +270,8 @@ async function handleTopUpCompleted(
   }
 
   // payments テーブルにも記録（既存の履歴テーブルとの整合性）
-  await supabase.from('payments').insert({
+  // 失敗しても wallet 加算は完了しているので非致命的エラーとして扱う
+  const { error: paymentLogError } = await supabase.from('payments').insert({
     user_id: userId,
     amount: amountYen,
     currency: 'jpy',
@@ -268,6 +281,9 @@ async function handleTopUpCompleted(
     description: `クレジットチャージ ${amountYen}円`,
     metadata: { topup_mode: true, amount_yen: amountYen },
   });
+  if (paymentLogError) {
+    console.error('Error logging to payments table (non-fatal):', paymentLogError);
+  }
 
   console.log(`TopUp completed: user=${userId} amount=${amountYen}¥`);
 }

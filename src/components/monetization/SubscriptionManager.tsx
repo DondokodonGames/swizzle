@@ -79,7 +79,7 @@ export function SubscriptionManager() {
         {[
           { label: t('wallet.totalGames'), value: totalCreated.toLocaleString() },
           { label: t('wallet.freeRemaining'), value: t('wallet.topUpGames', { count: freeRemaining }) },
-          { label: t('wallet.balance'), value: balanceYen.toLocaleString() },
+          { label: t('wallet.balance'), value: `¥${balanceYen.toLocaleString()}` },
         ].map(({ label, value }) => (
           <div key={label} style={{
             backgroundColor: DESIGN_TOKENS.colors.neutral[50],

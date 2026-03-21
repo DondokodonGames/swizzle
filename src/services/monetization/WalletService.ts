@@ -74,7 +74,9 @@ export async function consumeGameCredit(): Promise<boolean> {
     return false;
   }
 
-  return data as boolean;
+  // RPC は JSON { allowed, free_games_remaining, balance_yen } を返す
+  const result = data as { allowed: boolean } | null;
+  return result?.allowed ?? false;
 }
 
 /**
