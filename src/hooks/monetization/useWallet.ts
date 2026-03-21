@@ -11,9 +11,22 @@ import { calcWalletStatus } from '../../types/MonetizationTypes';
 import { getUserWallet } from '../../services/monetization/WalletService';
 
 // モジュールレベルキャッシュ（ユーザーIDをキーにする）
+// Map は挿入順を保持するため、先頭エントリが最も古い（LRU eviction に利用）
 const walletCache = new Map<string, { wallet: UserWallet | null; timestamp: number }>();
 const fetchingMap = new Map<string, Promise<void>>();
 const CACHE_DURATION = 60_000; // 1分
+const MAX_CACHE_SIZE = 50;     // 最大エントリ数（超過時に最古エントリを削除）
+
+function setCacheEntry(userId: string, wallet: UserWallet | null): void {
+  // 既存エントリを一度削除してから追加することで「最近使用」を末尾に移動
+  walletCache.delete(userId);
+  if (walletCache.size >= MAX_CACHE_SIZE) {
+    // Map.keys() は挿入順を返す → 先頭 = 最も古いエントリ
+    const oldestKey = walletCache.keys().next().value as string;
+    walletCache.delete(oldestKey);
+  }
+  walletCache.set(userId, { wallet, timestamp: Date.now() });
+}
 
 async function getCachedWallet(userId: string, force = false): Promise<UserWallet | null> {
   const now = Date.now();
@@ -32,7 +45,7 @@ async function getCachedWallet(userId: string, force = false): Promise<UserWalle
   const fetching = (async () => {
     try {
       const wallet = await getUserWallet(userId);
-      walletCache.set(userId, { wallet, timestamp: Date.now() });
+      setCacheEntry(userId, wallet);
     } finally {
       fetchingMap.delete(userId);
     }

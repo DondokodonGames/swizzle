@@ -35,14 +35,19 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!supabaseUrl || !supabaseServiceKey) throw new Error('Missing Supabase configuration');
 
-    // ユーザー確認はサービスロールクライアントで行う
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+
+    // ユーザーの JWT を Authorization ヘッダーに含めることで auth.uid() が正しく機能する
+    // サービスロールキーは RLS バイパスに使用し、JWT はユーザーコンテキスト確立に使用
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) throw new Error('Unauthorized');
 
     // レート制限（ゲーム作成はチェックアウトより緩め）
-    const rateLimitResult = checkRateLimit(`consume:${user.id}`, { maxRequests: 60, windowMs: 60_000 });
+    const rateLimitResult = await checkRateLimit(`consume:${user.id}`, { maxRequests: 60, windowMs: 60_000 });
     if (!rateLimitResult.allowed) {
       return new Response(
         JSON.stringify({ error: 'Rate limit exceeded' }),
@@ -50,13 +55,8 @@ serve(async (req) => {
       );
     }
 
-    // RPC でアトミックに消費
-    // IMPORTANT: ユーザーの JWT を Authorization に含めないと auth.uid() が NULL になり
-    //            consume_game_credit() が常に allowed:false を返す
-    const supabaseUserCtx = createClient(supabaseUrl, supabaseServiceKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data, error } = await supabaseUserCtx.rpc('consume_game_credit');
+    // RPC でアトミックに消費（同一クライアントで auth.uid() が正しく設定される）
+    const { data, error } = await supabase.rpc('consume_game_credit');
 
     if (error) {
       console.error('consume_game_credit RPC error:', error);
