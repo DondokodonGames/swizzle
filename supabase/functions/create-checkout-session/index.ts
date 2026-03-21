@@ -153,6 +153,15 @@ serve(async (req) => {
       throw new Error('Missing plan or billingCycle for subscription mode');
     }
 
+    const ALLOWED_PLANS = ['premium'];
+    const ALLOWED_BILLING_CYCLES = ['monthly', 'yearly'];
+    if (!ALLOWED_PLANS.includes(plan)) {
+      throw new Error(`Invalid plan. Must be one of: ${ALLOWED_PLANS.join(', ')}`);
+    }
+    if (!ALLOWED_BILLING_CYCLES.includes(billingCycle)) {
+      throw new Error(`Invalid billingCycle. Must be one of: ${ALLOWED_BILLING_CYCLES.join(', ')}`);
+    }
+
     const priceId = billingCycle === 'yearly'
       ? Deno.env.get('VITE_STRIPE_PREMIUM_YEARLY_PRICE_ID')
       : Deno.env.get('VITE_STRIPE_PREMIUM_MONTHLY_PRICE_ID');

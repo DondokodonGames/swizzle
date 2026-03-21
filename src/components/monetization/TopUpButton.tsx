@@ -84,7 +84,7 @@ export function TopUpButton({ option, onSuccess, onError }: TopUpButtonProps) {
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.neutral[500], marginTop: '2px'
       }}>
-        {t('wallet.topUpGames', { count: option.games.toLocaleString() })}
+        {t('wallet.topUpGames', { games: option.games })}
       </div>
       {loading && (
         <div style={{

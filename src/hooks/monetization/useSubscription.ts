@@ -208,8 +208,9 @@ export function useSubscription(): UseSubscriptionResult {
    * 便利なプロパティ
    */
   const isActive = isSubscriptionActive(subscription);
-  const isPremium = subscription?.plan_type === 'premium';
-  const isFree = subscription?.plan_type === 'free' || !subscription;
+  // isActive も確認: キャンセル済みのプレミアムレコードが残っていても広告を非表示にしない
+  const isPremium = isActive && subscription?.plan_type === 'premium';
+  const isFree = !isPremium;
 
   return {
     subscription,

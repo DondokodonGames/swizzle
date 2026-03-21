@@ -231,7 +231,9 @@ async function handleTopUpCompleted(
   session: Stripe.Checkout.Session
 ): Promise<void> {
   const stripeCustomerId = session.customer as string;
-  const amountYen = Number(session.metadata?.amount_yen ?? 0);
+  // session.amount_total はStripeが確認した実際の請求額（JPYはzero-decimal = 円）
+  // metadata.amount_yen は参考値として保持しつつ、権威ある値として amount_total を使用
+  const amountYen = session.amount_total ?? 0;
 
   if (!stripeCustomerId || amountYen <= 0) {
     throw new WebhookError('Invalid topup session data', false);
@@ -253,31 +255,34 @@ async function handleTopUpCompleted(
   const userId = walletRow.user_id;
 
   // 冪等性チェック: 同じセッションを二重処理しない（Stripe のリトライ対策）
+  // pending = ウォレット未加算, completed = 処理済み
   const { data: existing } = await supabase
     .from('credit_purchases')
-    .select('id')
+    .select('id, status')
     .eq('stripe_session_id', session.id)
     .maybeSingle();
 
-  if (existing) {
-    console.log(`[Idempotency] TopUp already processed: session=${session.id}`);
+  if (existing?.status === 'completed') {
+    console.log(`[Idempotency] TopUp already fully processed: session=${session.id}`);
     return;
   }
 
-  // credit_purchases に記録
-  const { error: purchaseError } = await supabase.from('credit_purchases').insert({
-    user_id: userId,
-    amount_yen: amountYen,
-    stripe_session_id: session.id,
-    stripe_payment_intent_id: session.payment_intent ?? null,
-    status: 'completed',
-  });
-  if (purchaseError) {
-    console.error('Error inserting credit_purchase:', purchaseError);
-    throw new WebhookError(`Database error: ${purchaseError.message}`, true);
+  // credit_purchases に pending で記録（まだ存在しない場合のみ INSERT）
+  if (!existing) {
+    const { error: purchaseError } = await supabase.from('credit_purchases').insert({
+      user_id: userId,
+      amount_yen: amountYen,
+      stripe_session_id: session.id,
+      stripe_payment_intent_id: session.payment_intent ?? null,
+      status: 'pending',
+    });
+    if (purchaseError) {
+      console.error('Error inserting credit_purchase:', purchaseError);
+      throw new WebhookError(`Database error: ${purchaseError.message}`, true);
+    }
   }
 
-  // user_wallets の残高を加算
+  // user_wallets の残高を加算（pending の場合は再試行として再実行）
   const { error: walletError } = await supabase.rpc('add_wallet_balance', {
     p_user_id: userId,
     p_amount_yen: amountYen,
@@ -285,6 +290,17 @@ async function handleTopUpCompleted(
   if (walletError) {
     console.error('Error adding wallet balance:', walletError);
     throw new WebhookError(`Database error: ${walletError.message}`, true);
+  }
+
+  // ウォレット加算成功後に completed に更新
+  const { error: updateError } = await supabase
+    .from('credit_purchases')
+    .update({ status: 'completed' })
+    .eq('stripe_session_id', session.id);
+  if (updateError) {
+    // 更新失敗は致命的でないが、次の retry で re-credit が起きる恐れがある
+    console.error('Error updating credit_purchase status to completed:', updateError);
+    throw new WebhookError(`Database error: ${updateError.message}`, true);
   }
 
   // payments テーブルにも記録（既存の履歴テーブルとの整合性）
