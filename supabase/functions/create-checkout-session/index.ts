@@ -100,11 +100,16 @@ serve(async (req) => {
         customerId = customer.id;
 
         // ウォレットに顧客IDを保存（upsert）
-        await supabase.from('user_wallets').upsert({
+        // 失敗すると次回チャージ時に重複 Customer が作成されるため、エラーは致命的として扱う
+        const { error: walletUpsertError } = await supabase.from('user_wallets').upsert({
           user_id: user.id,
           stripe_customer_id: customerId,
           updated_at: new Date().toISOString(),
         });
+        if (walletUpsertError) {
+          console.error('Failed to save stripe_customer_id to user_wallets:', walletUpsertError);
+          throw new Error(`Failed to save customer info: ${walletUpsertError.message}`);
+        }
       }
 
       console.log(`[${getStripeMode().toUpperCase()}] Creating topup session: user=${user.id} amount=${amountYen}¥`);

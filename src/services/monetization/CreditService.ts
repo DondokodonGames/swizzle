@@ -72,11 +72,10 @@ export async function getCreditUsage(userId: string): Promise<CreditUsage> {
  */
 export async function canCreateGame(): Promise<boolean> {
   try {
-    // Supabaseのcheck_game_creation_limit()関数を呼び出し
-    const { data, error } = await supabase.rpc('check_game_creation_limit');
+    const { data, error } = await supabase.rpc('check_wallet_can_play');
 
     if (error) {
-      console.error('Error checking game creation limit:', error);
+      console.error('Error checking wallet can play:', error);
       return false;
     }
 

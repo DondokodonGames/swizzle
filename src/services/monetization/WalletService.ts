@@ -62,35 +62,19 @@ export async function canCreateGame(): Promise<boolean> {
 }
 
 /**
- * ゲーム作成時にクレジットを消費
- * Supabase RPC 経由でアトミックに処理
- * 返り値: 消費できたか (false = 残高不足)
+ * ゲーム作成前の残高チェック
+ * 実際の消費は user_games INSERT トリガー（consume_game_credit RPC）が担当するため、
+ * ここでは check_wallet_can_play で事前確認のみ行う（二重消費防止）
+ * 返り値: 作成可能か (false = 残高不足)
  */
 export async function consumeGameCredit(): Promise<boolean> {
-  const { data, error } = await supabase.rpc('consume_game_credit');
+  const { data, error } = await supabase.rpc('check_wallet_can_play');
 
   if (error) {
-    console.error('[WalletService] consume_game_credit error:', error);
+    console.error('[WalletService] check_wallet_can_play error:', error);
     return false;
   }
 
-  // RPC は JSON { allowed, free_games_remaining, balance_yen } を返す
-  const result = data as { allowed: boolean } | null;
-  return result?.allowed ?? false;
+  return (data as boolean) ?? false;
 }
 
-/**
- * チャージ後のウォレット残高加算（Webhook から呼び出される想定だが
- * フロント確認用にも公開）
- */
-export async function addWalletBalance(userId: string, amountYen: number): Promise<UserWallet> {
-  const { data, error } = await supabase.rpc('add_wallet_balance', {
-    p_user_id: userId,
-    p_amount_yen: amountYen,
-  });
-
-  if (error) throw error;
-
-  // 最新ウォレットを再取得
-  return getUserWallet(userId);
-}
