@@ -35,9 +35,10 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!supabaseUrl || !supabaseServiceKey) throw new Error('Missing Supabase configuration');
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // ユーザー確認はサービスロールクライアントで行う
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
     if (userError || !user) throw new Error('Unauthorized');
 
     // レート制限（ゲーム作成はチェックアウトより緩め）
@@ -50,7 +51,12 @@ serve(async (req) => {
     }
 
     // RPC でアトミックに消費
-    const { data, error } = await supabase.rpc('consume_game_credit');
+    // IMPORTANT: ユーザーの JWT を Authorization に含めないと auth.uid() が NULL になり
+    //            consume_game_credit() が常に allowed:false を返す
+    const supabaseUserCtx = createClient(supabaseUrl, supabaseServiceKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data, error } = await supabaseUserCtx.rpc('consume_game_credit');
 
     if (error) {
       console.error('consume_game_credit RPC error:', error);

@@ -27,7 +27,9 @@
     "usageBalance": "残高",
     "selectAmount": "チャージ金額を選択",
     "stripeNote": "安全な決済は Stripe で処理されます。",
-    "close": "閉じる"
+    "close": "閉じる",
+    "reasonNeedsTopUp": "無料の100ゲームを使い切りました。チャージして続けましょう！（1ゲーム1円）",
+    "reasonNoBalance": "ゲームを作成するには残高が必要です。"
   },
   "monetization": {
     "premium": "プレミアム",

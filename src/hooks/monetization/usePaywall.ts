@@ -4,6 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { UsePaywallResult } from '../../types/MonetizationTypes';
 import { useWallet } from './useWallet';
 
@@ -11,6 +12,7 @@ import { useWallet } from './useWallet';
  * Paywall 制御Hook
  */
 export function usePaywall(): UsePaywallResult {
+  const { t } = useTranslation();
   const { status, canCreateGame } = useWallet();
   const [isOpen, setIsOpen] = useState(false);
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
@@ -19,10 +21,8 @@ export function usePaywall(): UsePaywallResult {
 
   const reason: string | null = (() => {
     if (!shouldShowPaywall) return null;
-    if (status?.needsTopUp) {
-      return '無料の100ゲームを使い切りました。チャージして続けましょう！（1ゲーム1円）';
-    }
-    return 'ゲームを作成するには残高が必要です。';
+    if (status?.needsTopUp) return t('paywall.reasonNeedsTopUp');
+    return t('paywall.reasonNoBalance');
   })();
 
   const openPaywall = useCallback(() => setIsOpen(true), []);
