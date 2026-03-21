@@ -106,9 +106,12 @@ serve(async (req) => {
       .from('subscriptions')
       .select('stripe_customer_id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (subError || !subscription?.stripe_customer_id) {
+    if (subError) {
+      throw new Error(`Subscription lookup failed: ${subError.message}`);
+    }
+    if (!subscription?.stripe_customer_id) {
       throw new Error('No Stripe customer found for user');
     }
 

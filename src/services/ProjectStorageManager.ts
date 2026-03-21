@@ -247,95 +247,35 @@ export class ProjectStorageManager {
         isPublished: project.status === 'published'
       });
 
-      // ✅ 修正: user_creditsレコードを確実に作成（UPSERT）
-      const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+      // ✅ キャッシュから検索して新規作成かどうかを先に確認
+      const userGamesForCheck = await this.getUserGames(userId);
+      const isNewGame = !userGamesForCheck.find(g => {
+        const projectData = g.project_data as any as GameProject;
+        return projectData && projectData.id === project.id;
+      });
 
-      // プランチェック（subscriptionsテーブルから）
-      const { data: subscription } = await supabase
-        .from('subscriptions')
-        .select('plan_type')
-        .eq('user_id', userId)
-        .in('status', ['active', 'trialing'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      // 新規ゲーム作成時のみウォレット残高チェック（ペイ・パー・プレイモデル）
+      if (isNewGame) {
+        const { data: canPlay, error: walletCheckError } = await supabase.rpc('check_wallet_can_play');
 
-      const isPremium = subscription?.plan_type === 'premium';
-      const monthlyLimit = isPremium ? 999999 : 3;
-
-      // ✅ user_creditsレコードをUPSERT（既存行があっても衝突しない）
-      // 注: UNIQUE制約が (user_id, month_year) または user_id のどちらでも動作するように
-      try {
-        // まず (user_id, month_year) でUPSERTを試行
-        const { error: upsertError } = await supabase
-          .from('user_credits')
-          .upsert({
-            user_id: userId,
-            month_year: currentMonth,
-            monthly_limit: monthlyLimit,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'user_id,month_year',
-            ignoreDuplicates: false
-          });
-
-        if (upsertError) {
-          // UNIQUE制約がuser_idのみの場合、月情報なしでUPSERT
-          console.warn('[SaveDB-Manager] ⚠️ Primary upsert failed, trying alternative...', upsertError);
-
-          const { error: altUpsertError } = await supabase
-            .from('user_credits')
-            .upsert({
-              user_id: userId,
-              month_year: currentMonth,
-              monthly_limit: monthlyLimit,
-              updated_at: new Date().toISOString()
-            });
-
-          if (altUpsertError) {
-            console.warn('[SaveDB-Manager] ⚠️ Alternative upsert also failed (non-critical):', altUpsertError);
-          }
+        if (walletCheckError) {
+          console.error('[SaveDB-Manager] ❌ Wallet check error:', walletCheckError);
+          throw new Error('残高確認に失敗しました。しばらくしてから再試行してください。');
         }
-      } catch (upsertException) {
-        console.warn('[SaveDB-Manager] ⚠️ user_credits upsert exception (non-critical):', upsertException);
-        // クレジット作成失敗は警告のみ（プロジェクト保存は継続）
+
+        if (!canPlay) {
+          console.warn('[SaveDB-Manager] ⚠️ Insufficient wallet balance for new game creation');
+          throw new Error('残高が不足しています。チャージしてからゲームを作成してください。');
+        }
+
+        console.log('[SaveDB-Manager] ✅ Wallet check passed, creating new game...');
+      } else {
+        console.log('[SaveDB-Manager] ✅ Updating existing game, no wallet check needed.');
       }
 
-      // プレミアムチェック（再取得）
-      const { data: credits, error: creditsError } = await supabase
-        .from('user_credits')
-        .select('is_premium, games_created_this_month, monthly_limit')
-        .eq('user_id', userId)
-        .eq('month_year', currentMonth)
-        .maybeSingle(); // ✅ singleではなくmaybeSingleを使用（nullを許容）
-
-      if (creditsError && creditsError.code !== 'PGRST116') {
-        // PGRST116 = "レコードなし"エラーは許容
-        console.warn('[SaveDB-Manager] ⚠️ Failed to fetch user credits (non-critical):', creditsError);
-      }
-
-      const userCredits = credits || {
-        is_premium: isPremium,
-        games_created_this_month: 0,
-        monthly_limit: monthlyLimit
-      };
-
-      console.log('[SaveDB-Manager] 💳 User credits:', userCredits);
-
-      // プレミアムでない場合のみ制限チェック
-      if (!userCredits.is_premium && userCredits.games_created_this_month >= userCredits.monthly_limit) {
-        console.warn('[SaveDB-Manager] ⚠️ Monthly limit reached:', {
-          created: userCredits.games_created_this_month,
-          limit: userCredits.monthly_limit
-        });
-        throw new Error('月間ゲーム作成制限に達しています。プレミアムプランにアップグレードしてください。');
-      }
-
-      console.log('[SaveDB-Manager] ✅ Credit check passed, saving to user_games...');
-
-      // ✅ キャッシュから検索（Supabaseクエリ回避）
-      const userGames = await this.getUserGames(userId);
-      const existingGame = userGames.find(g => {
+      // ✅ キャッシュから検索（上で取得済みのキャッシュを再利用）
+      const userGames = userGamesForCheck;
+      const existingGame = isNewGame ? undefined : userGames.find(g => {
         const projectData = g.project_data as any as GameProject;
         return projectData && projectData.id === project.id;
       });
