@@ -1730,11 +1730,12 @@ export class SpecificationGenerator {
     if (!spec.endingSpec) {
       spec.endingSpec = {
         success: { duration: 2, effects: ['confetti', 'message'], soundId: 'success', message: '成功！' },
-        failure: { duration: 1.5, effects: ['shake', 'message'], soundId: 'failure', message: '失敗...' }
+        failure: { duration: 1.5, effects: ['shake', 'message'], soundId: 'failure', message: '失敗...' },
+        transitionDelay: 1
       };
     }
     if (!spec.priorityDesign) {
-      spec.priorityDesign = { layers: [], conflictResolution: 'highest-priority', notes: [] };
+      spec.priorityDesign = { rulePriorities: [], conflictResolution: 'highest-priority', notes: [] };
     }
 
     // ログに記録（nullチェック付き）
