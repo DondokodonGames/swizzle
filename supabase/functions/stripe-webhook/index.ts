@@ -314,11 +314,22 @@ async function handleCheckoutCompleted(
   stripe: Stripe,
   session: Stripe.Checkout.Session
 ): Promise<void> {
-  const userId = session.metadata?.user_id;
+  // Stripe 発行の customer_id から userId を逆引き（session.metadata を直接信頼しない）
+  // create-checkout-session が customers.create 時に supabase_user_id を customer.metadata に保存している
+  const stripeCustomerId = session.customer as string;
+  if (!stripeCustomerId) {
+    throw new WebhookError('No customer ID in session', false);
+  }
+
+  const customer = await stripe.customers.retrieve(stripeCustomerId);
+  if (customer.deleted) {
+    throw new WebhookError(`Customer ${stripeCustomerId} has been deleted`, false);
+  }
+  const userId = (customer as Stripe.Customer).metadata?.supabase_user_id;
   const plan = session.metadata?.plan || 'premium';
 
   if (!userId) {
-    throw new WebhookError('No user_id in session metadata', false);
+    throw new WebhookError(`No supabase_user_id in customer metadata: ${stripeCustomerId}`, false);
   }
 
   // サブスクリプション情報を取得
@@ -365,11 +376,11 @@ async function handleSubscriptionChange(
     .from('subscriptions')
     .select('user_id')
     .eq('stripe_customer_id', subscription.customer)
-    .single();
+    .maybeSingle();
 
-  if (fetchError && fetchError.code !== 'PGRST116') {
-    // PGRST116 = no rows found（これは新規顧客の可能性があるのでエラーではない）
+  if (fetchError) {
     console.error('Error fetching subscription:', fetchError);
+    throw new WebhookError(`Database error: ${fetchError.message}`, true);
   }
 
   if (!existingSub) {
@@ -415,10 +426,11 @@ async function handleSubscriptionDeleted(
     .from('subscriptions')
     .select('user_id')
     .eq('stripe_customer_id', subscription.customer)
-    .single();
+    .maybeSingle();
 
   if (fetchError) {
     console.error('Error fetching subscription:', fetchError);
+    throw new WebhookError(`Database error: ${fetchError.message}`, true);
   }
 
   if (!existingSub) {
@@ -457,10 +469,11 @@ async function handlePaymentSucceeded(
     .from('subscriptions')
     .select('user_id')
     .eq('stripe_customer_id', invoice.customer)
-    .single();
+    .maybeSingle();
 
   if (fetchError) {
     console.error('Error fetching subscription:', fetchError);
+    throw new WebhookError(`Database error: ${fetchError.message}`, true);
   }
 
   if (!existingSub) {
@@ -502,10 +515,11 @@ async function handlePaymentFailed(
     .from('subscriptions')
     .select('user_id')
     .eq('stripe_customer_id', invoice.customer)
-    .single();
+    .maybeSingle();
 
   if (fetchError) {
     console.error('Error fetching subscription:', fetchError);
+    throw new WebhookError(`Database error: ${fetchError.message}`, true);
   }
 
   if (!existingSub) {
