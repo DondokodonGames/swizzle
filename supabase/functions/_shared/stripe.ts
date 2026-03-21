@@ -169,13 +169,6 @@ export function isValidRedirectUrl(url: string): boolean {
 // レート制限
 // ============================================
 
-/**
- * シンプルなインメモリレート制限
- * Edge Functionsはステートレスなので、分散環境では
- * Upstash Redis等の外部ストレージを使用することを推奨
- */
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
-
 export interface RateLimitConfig {
   maxRequests: number;  // 許可される最大リクエスト数
   windowMs: number;     // 時間ウィンドウ（ミリ秒）
@@ -188,50 +181,45 @@ export interface RateLimitResult {
 }
 
 /**
- * レート制限をチェック
- * @param key レート制限のキー（通常はユーザーIDまたはIPアドレス）
+ * レート制限をチェック（Deno KV バックエンド）
+ *
+ * Deno KV は Edge Function インスタンス間で共有されるため、
+ * インメモリ実装と異なり分散環境でも正しく機能する。
+ * KV が利用不可の場合はフェイルオープン（全リクエストを通過）。
+ *
+ * @param key レート制限のキー（通常はユーザーIDやIPアドレスを含む）
  * @param config レート制限の設定
  */
-export function checkRateLimit(key: string, config: RateLimitConfig): RateLimitResult {
-  const now = Date.now();
-  const record = rateLimitStore.get(key);
+export async function checkRateLimit(key: string, config: RateLimitConfig): Promise<RateLimitResult> {
+  try {
+    const kv = await Deno.openKv();
+    const kvKey = ['rl', key];
+    const now = Date.now();
 
-  // 古いエントリをクリーンアップ（メモリリーク対策）
-  if (rateLimitStore.size > 10000) {
-    for (const [k, v] of rateLimitStore.entries()) {
-      if (v.resetAt < now) {
-        rateLimitStore.delete(k);
-      }
+    const entry = await kv.get<{ count: number; resetAt: number }>(kvKey);
+
+    if (!entry.value || entry.value.resetAt <= now) {
+      const resetAt = now + config.windowMs;
+      await kv.set(kvKey, { count: 1, resetAt }, { expireIn: config.windowMs });
+      return { allowed: true, remaining: config.maxRequests - 1, resetAt: new Date(resetAt) };
     }
-  }
 
-  // レコードが存在しない、または期限切れの場合
-  if (!record || record.resetAt < now) {
-    const resetAt = now + config.windowMs;
-    rateLimitStore.set(key, { count: 1, resetAt });
+    if (entry.value.count >= config.maxRequests) {
+      return { allowed: false, remaining: 0, resetAt: new Date(entry.value.resetAt) };
+    }
+
+    const ttl = Math.max(1, entry.value.resetAt - now);
+    await kv.set(kvKey, { count: entry.value.count + 1, resetAt: entry.value.resetAt }, { expireIn: ttl });
     return {
       allowed: true,
-      remaining: config.maxRequests - 1,
-      resetAt: new Date(resetAt),
+      remaining: config.maxRequests - entry.value.count - 1,
+      resetAt: new Date(entry.value.resetAt),
     };
+  } catch (err) {
+    // Deno KV が利用不可の場合はフェイルオープン（リクエストをブロックしない）
+    console.warn('[RateLimit] KV store unavailable, fail-open:', err);
+    return { allowed: true, remaining: config.maxRequests, resetAt: new Date(Date.now() + config.windowMs) };
   }
-
-  // レート制限をチェック
-  if (record.count >= config.maxRequests) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetAt: new Date(record.resetAt),
-    };
-  }
-
-  // カウントを増加
-  record.count++;
-  return {
-    allowed: true,
-    remaining: config.maxRequests - record.count,
-    resetAt: new Date(record.resetAt),
-  };
 }
 
 /**

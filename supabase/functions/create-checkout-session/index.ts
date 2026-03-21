@@ -66,7 +66,7 @@ serve(async (req) => {
     if (userError || !user) throw new Error('Unauthorized');
 
     // レート制限
-    const rateLimitResult = checkRateLimit(`checkout:${user.id}`, DEFAULT_RATE_LIMITS.checkout);
+    const rateLimitResult = await checkRateLimit(`checkout:${user.id}`, DEFAULT_RATE_LIMITS.checkout);
     if (!rateLimitResult.allowed) {
       return new Response(
         JSON.stringify({ error: 'Too many requests. Please try again later.' }),
@@ -157,11 +157,13 @@ serve(async (req) => {
     const price = await stripe.prices.retrieve(priceId);
     if (!price.active) throw new Error('Selected price is no longer active');
 
-    const { data: subscription } = await supabase
+    const { data: subscription, error: subLookupError } = await supabase
       .from('subscriptions')
       .select('stripe_customer_id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
+
+    if (subLookupError) throw new Error(`Subscription lookup failed: ${subLookupError.message}`);
 
     let customerId = subscription?.stripe_customer_id;
     if (!customerId) {

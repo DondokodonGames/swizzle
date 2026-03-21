@@ -73,9 +73,12 @@ serve(async (req) => {
       });
     }
 
-    // レート制限チェック（イベントタイプ別）
-    const rateLimitKey = `webhook:${event.type}`;
-    const rateLimitResult = checkRateLimit(rateLimitKey, DEFAULT_RATE_LIMITS.webhook);
+    // レート制限チェック（イベントタイプ + 顧客/ユーザー識別子で絞る）
+    // customer や user_id はイベント種別によって取得できる場合のみ使用
+    const eventObj = event.data.object as Record<string, unknown>;
+    const rlIdentifier = (eventObj.customer as string) ?? (eventObj.client_reference_id as string) ?? 'global';
+    const rateLimitKey = `webhook:${event.type}:${rlIdentifier}`;
+    const rateLimitResult = await checkRateLimit(rateLimitKey, DEFAULT_RATE_LIMITS.webhook);
 
     if (!rateLimitResult.allowed) {
       console.warn(`Rate limit exceeded for ${event.type}`);
@@ -227,12 +230,27 @@ async function handleTopUpCompleted(
   supabase: ReturnType<typeof createClient>,
   session: Stripe.Checkout.Session
 ): Promise<void> {
-  const userId = session.metadata?.user_id;
+  const stripeCustomerId = session.customer as string;
   const amountYen = Number(session.metadata?.amount_yen ?? 0);
 
-  if (!userId || amountYen <= 0) {
-    throw new WebhookError('Invalid topup metadata', false);
+  if (!stripeCustomerId || amountYen <= 0) {
+    throw new WebhookError('Invalid topup session data', false);
   }
+
+  // Stripe 発行の customer_id から user_id を逆引き（metadata.user_id を直接信頼しない）
+  const { data: walletRow, error: lookupError } = await supabase
+    .from('user_wallets')
+    .select('user_id')
+    .eq('stripe_customer_id', stripeCustomerId)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new WebhookError(`Wallet lookup failed: ${lookupError.message}`, true);
+  }
+  if (!walletRow) {
+    throw new WebhookError(`No wallet found for customer: ${stripeCustomerId}`, false);
+  }
+  const userId = walletRow.user_id;
 
   // 冪等性チェック: 同じセッションを二重処理しない（Stripe のリトライ対策）
   const { data: existing } = await supabase
