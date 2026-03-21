@@ -55,16 +55,28 @@ serve(async (req) => {
       );
     }
 
-    // RPC でアトミックに消費（同一クライアントで auth.uid() が正しく設定される）
-    const { data, error } = await supabase.rpc('consume_game_credit');
+    // 事前チェックのみ（実際の消費は user_games INSERT トリガーが担当）
+    // Edge Function + トリガーの二重消費を防ぐため check_wallet_can_play を使用
+    const { data: canPlay, error: checkError } = await supabase.rpc('check_wallet_can_play');
 
-    if (error) {
-      console.error('consume_game_credit RPC error:', error);
-      throw new Error(`Database error: ${error.message}`);
+    if (checkError) {
+      console.error('check_wallet_can_play RPC error:', checkError);
+      throw new Error(`Database error: ${checkError.message}`);
     }
 
+    // UI 表示用にウォレット残高も返す
+    const { data: walletRow } = await supabase
+      .from('user_wallets')
+      .select('free_games_remaining, balance_yen')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
     return new Response(
-      JSON.stringify(data),
+      JSON.stringify({
+        allowed: canPlay,
+        free_games_remaining: walletRow?.free_games_remaining ?? 0,
+        balance_yen: walletRow?.balance_yen ?? 0,
+      }),
       { headers: { ...headers, 'Content-Type': 'application/json' }, status: 200 }
     );
 

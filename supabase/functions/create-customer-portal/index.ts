@@ -81,7 +81,7 @@ serve(async (req) => {
     }
 
     // レート制限チェック
-    const rateLimitResult = checkRateLimit(`portal:${user.id}`, DEFAULT_RATE_LIMITS.customerPortal);
+    const rateLimitResult = await checkRateLimit(`portal:${user.id}`, DEFAULT_RATE_LIMITS.customerPortal);
 
     if (!rateLimitResult.allowed) {
       console.warn(`Rate limit exceeded for user: ${user.id}`);
