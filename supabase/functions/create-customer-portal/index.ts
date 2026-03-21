@@ -101,7 +101,7 @@ serve(async (req) => {
       );
     }
 
-    // ユーザーのStripe顧客IDを取得
+    // ユーザーのStripe顧客IDを取得（subscriptions → user_wallets の優先順位で検索）
     const { data: subscription, error: subError } = await supabase
       .from('subscriptions')
       .select('stripe_customer_id')
@@ -111,7 +111,25 @@ serve(async (req) => {
     if (subError) {
       throw new Error(`Subscription lookup failed: ${subError.message}`);
     }
-    if (!subscription?.stripe_customer_id) {
+
+    let stripeCustomerId: string | null = subscription?.stripe_customer_id ?? null;
+
+    // subscriptions に stripe_customer_id がない場合は user_wallets を確認
+    // （ペイ・パー・プレイのみのユーザーはここに customer_id が記録されている）
+    if (!stripeCustomerId) {
+      const { data: wallet, error: walletError } = await supabase
+        .from('user_wallets')
+        .select('stripe_customer_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (walletError) {
+        throw new Error(`Wallet lookup failed: ${walletError.message}`);
+      }
+      stripeCustomerId = wallet?.stripe_customer_id ?? null;
+    }
+
+    if (!stripeCustomerId) {
       throw new Error('No Stripe customer found for user');
     }
 
@@ -120,7 +138,7 @@ serve(async (req) => {
 
     // 顧客が存在することを確認
     try {
-      await stripe.customers.retrieve(subscription.stripe_customer_id);
+      await stripe.customers.retrieve(stripeCustomerId);
     } catch (customerError) {
       console.error('Error retrieving customer:', customerError);
       throw new Error('Customer not found in Stripe');
@@ -130,7 +148,7 @@ serve(async (req) => {
     console.log(`[${getStripeMode().toUpperCase()}] Creating customer portal session for user: ${user.id}`);
 
     const session = await stripe.billingPortal.sessions.create({
-      customer: subscription.stripe_customer_id,
+      customer: stripeCustomerId,
       return_url: returnUrl,
     });
 

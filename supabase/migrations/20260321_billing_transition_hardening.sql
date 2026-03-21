@@ -10,6 +10,10 @@
  *
  * 3. subscriptions テーブルへの DELETE RLS ポリシーを追加
  *    → ユーザーが自分のサブスクリプションレコードを削除できないように制限
+ *
+ * 4. subscriptions テーブルへの INSERT RLS ポリシーを追加
+ *    → フロントエンドから createSubscription() で偽のサブスクリプション行を
+ *      挿入することを防止（Webhook の service_role のみが INSERT 可能）
  */
 
 -- -------------------------------------------------------
@@ -39,6 +43,13 @@ CREATE POLICY "Users cannot delete subscriptions"
   ON public.subscriptions
   FOR DELETE
   USING (FALSE);
+
+-- INSERT も禁止（Webhook の service_role のみが subscriptions を作成できる）
+DROP POLICY IF EXISTS "Users cannot insert subscriptions" ON public.subscriptions;
+CREATE POLICY "Users cannot insert subscriptions"
+  ON public.subscriptions
+  FOR INSERT
+  WITH CHECK (FALSE);
 
 -- SELECT は自分のレコードのみ許可（既存ポリシーがない場合に備えて追加）
 DROP POLICY IF EXISTS "Users can view own subscriptions" ON public.subscriptions;
