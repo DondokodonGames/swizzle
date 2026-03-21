@@ -10,34 +10,37 @@ import type { UserWallet, WalletStatus, UseWalletResult } from '../../types/Mone
 import { calcWalletStatus } from '../../types/MonetizationTypes';
 import { getUserWallet } from '../../services/monetization/WalletService';
 
-// モジュールレベルキャッシュ
-let cachedWallet: UserWallet | null = null;
-let cacheTimestamp = 0;
-let fetchingWallet: Promise<void> | null = null;
+// モジュールレベルキャッシュ（ユーザーIDをキーにする）
+const walletCache = new Map<string, { wallet: UserWallet | null; timestamp: number }>();
+const fetchingMap = new Map<string, Promise<void>>();
 const CACHE_DURATION = 60_000; // 1分
 
 async function getCachedWallet(userId: string, force = false): Promise<UserWallet | null> {
   const now = Date.now();
-  if (!force && cachedWallet && now - cacheTimestamp < CACHE_DURATION) {
-    return cachedWallet;
+  const cached = walletCache.get(userId);
+
+  if (!force && cached && now - cached.timestamp < CACHE_DURATION) {
+    return cached.wallet;
   }
 
-  if (fetchingWallet) {
-    await fetchingWallet;
-    return cachedWallet;
+  const existing = fetchingMap.get(userId);
+  if (existing) {
+    await existing;
+    return walletCache.get(userId)?.wallet ?? null;
   }
 
-  fetchingWallet = (async () => {
+  const fetching = (async () => {
     try {
-      cachedWallet = await getUserWallet(userId);
-      cacheTimestamp = Date.now();
+      const wallet = await getUserWallet(userId);
+      walletCache.set(userId, { wallet, timestamp: Date.now() });
     } finally {
-      fetchingWallet = null;
+      fetchingMap.delete(userId);
     }
   })();
+  fetchingMap.set(userId, fetching);
 
-  await fetchingWallet;
-  return cachedWallet;
+  await fetching;
+  return walletCache.get(userId)?.wallet ?? null;
 }
 
 export function useWallet(): UseWalletResult {

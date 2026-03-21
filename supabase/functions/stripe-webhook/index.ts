@@ -437,7 +437,7 @@ async function handlePaymentSucceeded(
   // 支払い履歴を保存
   const { error } = await supabase.from('payments').insert({
     user_id: existingSub.user_id,
-    amount: invoice.amount_paid / 100, // セントからドルに変換
+    amount: invoice.amount_paid, // JPY は zero-decimal（円をそのまま保存）
     currency: invoice.currency,
     payment_type: 'subscription',
     status: 'succeeded',
@@ -482,7 +482,7 @@ async function handlePaymentFailed(
   // 支払い失敗を記録
   const { error: paymentError } = await supabase.from('payments').insert({
     user_id: existingSub.user_id,
-    amount: invoice.amount_due / 100,
+    amount: invoice.amount_due, // JPY は zero-decimal（円をそのまま保存）
     currency: invoice.currency,
     payment_type: 'subscription',
     status: 'failed',

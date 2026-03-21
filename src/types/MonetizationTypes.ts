@@ -229,10 +229,10 @@ export interface TopUpOption {
  * 利用可能なチャージ金額一覧
  */
 export const TOP_UP_OPTIONS: TopUpOption[] = [
-  { amount_yen: 100,  label: '100円',  games: 100 },
-  { amount_yen: 500,  label: '500円',  games: 500,  badge: 'おすすめ' },
-  { amount_yen: 1000, label: '1,000円', games: 1000 },
-  { amount_yen: 3000, label: '3,000円', games: 3000, badge: 'お得' },
+  { amount_yen: 100,  label: '¥100',  games: 100 },
+  { amount_yen: 500,  label: '¥500',  games: 500,  badge: 'wallet.badgeRecommended' },
+  { amount_yen: 1000, label: '¥1,000', games: 1000 },
+  { amount_yen: 3000, label: '¥3,000', games: 3000, badge: 'wallet.badgeBestValue' },
 ];
 
 /** 無料ゲーム上限数 */

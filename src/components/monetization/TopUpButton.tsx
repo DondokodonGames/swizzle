@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { TopUpOption } from '../../types/MonetizationTypes';
 import { redirectToTopUpCheckout } from '../../services/monetization/StripeService';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
@@ -16,6 +17,7 @@ interface TopUpButtonProps {
 }
 
 export function TopUpButton({ option, onSuccess, onError }: TopUpButtonProps) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [hover, setHover] = useState(false);
 
@@ -28,11 +30,12 @@ export function TopUpButton({ option, onSuccess, onError }: TopUpButtonProps) {
       console.error('TopUp error:', err);
       setLoading(false);
       onError?.(err as Error);
-      alert('決済の開始に失敗しました。もう一度お試しください。');
+      alert(t('wallet.topUpError'));
     }
   };
 
   const isFeatured = !!option.badge;
+  const badgeLabel = option.badge ? t(option.badge) : undefined;
 
   return (
     <button
@@ -57,7 +60,7 @@ export function TopUpButton({ option, onSuccess, onError }: TopUpButtonProps) {
         textAlign: 'center',
       }}
     >
-      {option.badge && (
+      {badgeLabel && (
         <span style={{
           position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
           backgroundColor: DESIGN_TOKENS.colors.success[500],
@@ -67,7 +70,7 @@ export function TopUpButton({ option, onSuccess, onError }: TopUpButtonProps) {
           borderRadius: DESIGN_TOKENS.borderRadius.full,
           whiteSpace: 'nowrap',
         }}>
-          {option.badge}
+          {badgeLabel}
         </span>
       )}
       <div style={{
@@ -81,14 +84,14 @@ export function TopUpButton({ option, onSuccess, onError }: TopUpButtonProps) {
         fontSize: DESIGN_TOKENS.typography.fontSize.xs,
         color: DESIGN_TOKENS.colors.neutral[500], marginTop: '2px'
       }}>
-        {option.games.toLocaleString()} ゲーム
+        {t('wallet.topUpGames', { count: option.games.toLocaleString() })}
       </div>
       {loading && (
         <div style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.xs,
           color: DESIGN_TOKENS.colors.neutral[400], marginTop: '2px'
         }}>
-          処理中...
+          {t('wallet.topUpProcessing')}
         </div>
       )}
     </button>
