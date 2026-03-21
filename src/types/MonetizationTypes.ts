@@ -43,7 +43,8 @@ export enum SubscriptionStatus {
  */
 export enum PaymentType {
   SUBSCRIPTION = 'subscription',
-  ONE_TIME = 'one_time', // MVP では未使用（将来のアイテム課金用）
+  ONE_TIME = 'one_time',
+  CREDIT_TOPUP = 'credit_topup', // クレジットチャージ
   REFUND = 'refund',
 }
 
@@ -175,6 +176,104 @@ export interface UserCredit {
   // タイムスタンプ
   created_at: string;
   updated_at: string;
+}
+
+// ============================================
+// Pay-Per-Play Wallet Types
+// ============================================
+
+/**
+ * ユーザーウォレット（ゲームプレイ課金用）
+ */
+export interface UserWallet {
+  id: string;
+  user_id: string;
+
+  /** 残高（円）*/
+  balance_yen: number;
+
+  /** 累計ゲーム作成数（全期間） */
+  total_games_created: number;
+
+  /** 無料ゲーム残数（初期値 100） */
+  free_games_remaining: number;
+
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * クレジット購入履歴
+ */
+export interface CreditPurchase {
+  id: string;
+  user_id: string;
+  amount_yen: number;
+  stripe_session_id: string | null;
+  stripe_payment_intent_id: string | null;
+  status: 'pending' | 'completed' | 'failed';
+  created_at: string;
+}
+
+/**
+ * チャージオプション
+ */
+export interface TopUpOption {
+  amount_yen: number;
+  label: string;
+  games: number;
+  badge?: string;
+}
+
+/**
+ * 利用可能なチャージ金額一覧
+ */
+export const TOP_UP_OPTIONS: TopUpOption[] = [
+  { amount_yen: 100,  label: '100円',  games: 100 },
+  { amount_yen: 500,  label: '500円',  games: 500,  badge: 'おすすめ' },
+  { amount_yen: 1000, label: '1,000円', games: 1000 },
+  { amount_yen: 3000, label: '3,000円', games: 3000, badge: 'お得' },
+];
+
+/** 無料ゲーム上限数 */
+export const FREE_GAME_LIMIT = 100;
+
+/** 1ゲームあたりの課金額（円） */
+export const COST_PER_GAME_YEN = 1;
+
+/**
+ * ウォレット状態
+ */
+export interface WalletStatus {
+  /** 無料枠内か */
+  isFreePhase: boolean;
+  /** ゲーム可能か（無料残あり OR 残高あり） */
+  canPlay: boolean;
+  /** 次のゲームに残高が必要か */
+  needsTopUp: boolean;
+  /** 残高で遊べるゲーム数 */
+  paidGamesRemaining: number;
+}
+
+/**
+ * useWallet Hook 戻り値型
+ */
+export interface UseWalletResult {
+  wallet: UserWallet | null;
+  loading: boolean;
+  error: Error | null;
+  refetch: () => Promise<void>;
+  status: WalletStatus | null;
+  canCreateGame: boolean;
+}
+
+/**
+ * チャージ用 Checkout Session リクエスト（新型）
+ */
+export interface CreateTopUpSessionRequest {
+  amount_yen: number;
+  successUrl: string;
+  cancelUrl: string;
 }
 
 /**
@@ -430,6 +529,10 @@ export interface UsePaywallResult {
   reason: string | null;
   openPaywall: () => void;
   closePaywall: () => void;
+  /** チャージ（Top-up）モーダルを開く */
+  openTopUp: () => void;
+  isTopUpOpen: boolean;
+  closeTopUp: () => void;
 }
 
 // ============================================
@@ -437,13 +540,25 @@ export interface UsePaywallResult {
 // ============================================
 
 /**
- * Checkout Session作成リクエスト
+ * Checkout Session作成リクエスト（サブスクリプション用・後方互換で残す）
  */
 export interface CreateCheckoutSessionRequest {
   plan: MVPSubscriptionPlan;
   billingCycle: 'monthly' | 'yearly';
   successUrl: string;
   cancelUrl: string;
+}
+
+/**
+ * ウォレット残高計算
+ */
+export function calcWalletStatus(wallet: UserWallet): WalletStatus {
+  const isFreePhase = wallet.free_games_remaining > 0;
+  const paidGamesRemaining = wallet.balance_yen; // 1円=1ゲーム
+  const canPlay = isFreePhase || paidGamesRemaining > 0;
+  const needsTopUp = !isFreePhase && paidGamesRemaining === 0;
+
+  return { isFreePhase, canPlay, needsTopUp, paidGamesRemaining };
 }
 
 /**

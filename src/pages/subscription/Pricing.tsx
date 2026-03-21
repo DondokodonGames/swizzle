@@ -7,37 +7,15 @@
  * - すべてのclassName削除（識別用のみ残す）
  */
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { PricingTable } from '../../components/monetization/PricingTable';
-import { useSubscription } from '../../hooks/monetization/useSubscription';
-import { MVPSubscriptionPlan } from '../../types/MonetizationTypes';
+import { SubscriptionManager } from '../../components/monetization/SubscriptionManager';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 
 export function Pricing() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { subscription, isPremium, loading } = useSubscription();
-
-  /**
-   * キャンセルパラメータをチェック
-   */
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const canceled = params.get('canceled');
-
-    if (canceled === 'true') {
-      console.log('Checkout was canceled');
-    }
-  }, []);
-
-  /**
-   * プラン選択時の処理
-   */
-  const handleSelectPlan = (plan: MVPSubscriptionPlan) => {
-    console.log('Plan selected:', plan);
-  };
 
   return (
     <div style={{
@@ -100,81 +78,16 @@ export function Pricing() {
             {t('pricing.backToHome')}
           </button>
 
-          {/* Premium Badge */}
-          {isPremium && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: DESIGN_TOKENS.spacing[2],
-              padding: `6px ${DESIGN_TOKENS.spacing[3]}`,
-              background: 'linear-gradient(135deg, #f3e8ff 0%, #fce7f3 100%)',
-              borderRadius: DESIGN_TOKENS.borderRadius.full
-            }}>
-              <svg
-                style={{ 
-                  width: '16px', 
-                  height: '16px', 
-                  minWidth: '16px', 
-                  minHeight: '16px',
-                  color: DESIGN_TOKENS.colors.purple[600]
-                }}
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span style={{
-                fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-                fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
-                color: DESIGN_TOKENS.colors.purple[600]
-              }}>
-                {t('pricing.premium')}
-              </span>
-            </div>
-          )}
+          {/* Wallet icon placeholder */}
+          <span style={{ fontSize: '1.25rem' }}>🪙</span>
         </div>
       </header>
 
       {/* Main Content */}
       <main style={{ padding: `${DESIGN_TOKENS.spacing[12]} 0` }}>
-        {loading ? (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '400px'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div
-                style={{
-                  width: '48px',
-                  height: '48px',
-                  border: `2px solid ${DESIGN_TOKENS.colors.purple[200]}`,
-                  borderTop: `2px solid ${DESIGN_TOKENS.colors.purple[600]}`,
-                  borderRadius: DESIGN_TOKENS.borderRadius.full,
-                  animation: 'spin 1s linear infinite',
-                  margin: `0 auto ${DESIGN_TOKENS.spacing[4]} auto`
-                }}
-              />
-              <p style={{
-                color: DESIGN_TOKENS.colors.neutral[600],
-                fontSize: DESIGN_TOKENS.typography.fontSize.sm
-              }}>
-                {t('pricing.loading')}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <PricingTable
-            currentPlan={subscription?.plan_type as MVPSubscriptionPlan}
-            onSelectPlan={handleSelectPlan}
-            showAnnualToggle={true}
-          />
-        )}
+        <div style={{ maxWidth: '480px', margin: '0 auto', padding: `0 ${DESIGN_TOKENS.spacing[4]}` }}>
+          <SubscriptionManager />
+        </div>
       </main>
 
       {/* Footer */}

@@ -1,96 +1,42 @@
 /**
  * usePaywall.ts
- * Paywall表示制御のReact Hook
- * 
- * 機能:
- * - ゲーム作成制限チェック
- * - Paywall表示判定
- * - モーダル開閉管理
+ * Paywall 表示制御のReact Hook（ペイ・パー・プレイモデル対応版）
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { UsePaywallResult } from '../../types/MonetizationTypes';
-import { useSubscription } from './useSubscription';
-import { useCredits } from './useCredits';
+import { useWallet } from './useWallet';
 
 /**
- * Paywall制御Hook
+ * Paywall 制御Hook
  */
 export function usePaywall(): UsePaywallResult {
-  const { isPremium, isFree } = useSubscription();
-  const { usage, canCreateGame } = useCredits();
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [reason, setReason] = useState<string | null>(null);
+  const { status, canCreateGame } = useWallet();
+  const [isOpen, setIsOpen] = useState(false);
+  const [isTopUpOpen, setIsTopUpOpen] = useState(false);
 
-  /**
-   * Paywall表示が必要かチェック
-   */
-  const shouldShowPaywall = useCallback((): boolean => {
-    // プレミアムユーザーは常に制限なし
-    if (isPremium) {
-      return false;
+  const shouldShowPaywall = !canCreateGame;
+
+  const reason: string | null = (() => {
+    if (!shouldShowPaywall) return null;
+    if (status?.needsTopUp) {
+      return '無料の100ゲームを使い切りました。チャージして続けましょう！（1ゲーム1円）';
     }
+    return 'ゲームを作成するには残高が必要です。';
+  })();
 
-    // 無料ユーザーで制限に達している場合
-    if (isFree && !canCreateGame) {
-      return true;
-    }
-
-    return false;
-  }, [isPremium, isFree, canCreateGame]);
-
-  /**
-   * Paywall表示理由を計算
-   */
-  useEffect(() => {
-    if (!shouldShowPaywall()) {
-      setReason(null);
-      return;
-    }
-
-    // 無料プランの月間制限に達した場合
-    if (isFree && usage && usage.isLimited) {
-      if (usage.remaining === 0) {
-        setReason(
-          `今月の無料プラン制限（${usage.limit}ゲーム）に達しました。プレミアムプランにアップグレードして無制限でゲームを作成しましょう！`
-        );
-        return;
-      }
-    }
-
-    // デフォルトメッセージ
-    setReason('ゲームを作成するにはプレミアムプランが必要です。');
-  }, [shouldShowPaywall, isFree, usage]);
-
-  /**
-   * Paywallを開く
-   */
-  const openPaywall = useCallback(() => {
-    setIsOpen(true);
-  }, []);
-
-  /**
-   * Paywallを閉じる
-   */
-  const closePaywall = useCallback(() => {
-    setIsOpen(false);
-  }, []);
-
-  /**
-   * ゲーム作成時の自動チェック
-   * useEffectで制限に達したら自動的にPaywallを表示
-   */
-  useEffect(() => {
-    if (shouldShowPaywall() && !isOpen) {
-      // 自動的にPaywallを開く場合はコメント解除
-      // openPaywall();
-    }
-  }, [shouldShowPaywall, isOpen, openPaywall]);
+  const openPaywall = useCallback(() => setIsOpen(true), []);
+  const closePaywall = useCallback(() => setIsOpen(false), []);
+  const openTopUp = useCallback(() => setIsTopUpOpen(true), []);
+  const closeTopUp = useCallback(() => setIsTopUpOpen(false), []);
 
   return {
-    shouldShowPaywall: shouldShowPaywall(),
+    shouldShowPaywall,
     reason,
     openPaywall,
     closePaywall,
+    openTopUp,
+    isTopUpOpen,
+    closeTopUp,
   };
 }

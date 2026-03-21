@@ -109,7 +109,14 @@ serve(async (req) => {
           const session = event.data.object as Stripe.Checkout.Session;
           customerId = session.customer as string;
           userId = session.metadata?.user_id;
-          await handleCheckoutCompleted(supabase, stripe, session);
+
+          if (session.metadata?.topup_mode === 'true') {
+            // ペイ・パー・プレイ: チャージ処理
+            await handleTopUpCompleted(supabase, session);
+          } else {
+            // 旧サブスクリプション処理（後方互換）
+            await handleCheckoutCompleted(supabase, stripe, session);
+          }
           break;
         }
 
@@ -212,6 +219,58 @@ serve(async (req) => {
     );
   }
 });
+
+/**
+ * チャージ完了時の処理（ペイ・パー・プレイ）
+ */
+async function handleTopUpCompleted(
+  supabase: ReturnType<typeof createClient>,
+  session: Stripe.Checkout.Session
+): Promise<void> {
+  const userId = session.metadata?.user_id;
+  const amountYen = Number(session.metadata?.amount_yen ?? 0);
+
+  if (!userId || amountYen <= 0) {
+    throw new WebhookError('Invalid topup metadata', false);
+  }
+
+  // credit_purchases に記録
+  const { error: purchaseError } = await supabase.from('credit_purchases').insert({
+    user_id: userId,
+    amount_yen: amountYen,
+    stripe_session_id: session.id,
+    stripe_payment_intent_id: session.payment_intent ?? null,
+    status: 'completed',
+  });
+  if (purchaseError) {
+    console.error('Error inserting credit_purchase:', purchaseError);
+    throw new WebhookError(`Database error: ${purchaseError.message}`, true);
+  }
+
+  // user_wallets の残高を加算
+  const { error: walletError } = await supabase.rpc('add_wallet_balance', {
+    p_user_id: userId,
+    p_amount_yen: amountYen,
+  });
+  if (walletError) {
+    console.error('Error adding wallet balance:', walletError);
+    throw new WebhookError(`Database error: ${walletError.message}`, true);
+  }
+
+  // payments テーブルにも記録（既存の履歴テーブルとの整合性）
+  await supabase.from('payments').insert({
+    user_id: userId,
+    amount: amountYen,
+    currency: 'jpy',
+    payment_type: 'credit_topup',
+    status: 'succeeded',
+    stripe_payment_intent_id: session.payment_intent ?? null,
+    description: `クレジットチャージ ${amountYen}円`,
+    metadata: { topup_mode: true, amount_yen: amountYen },
+  });
+
+  console.log(`TopUp completed: user=${userId} amount=${amountYen}¥`);
+}
 
 /**
  * Checkout完了時の処理
