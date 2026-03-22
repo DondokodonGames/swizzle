@@ -887,6 +887,13 @@ export class Orchestrator {
         const msg = (error as Error).message;
         lastFeedback = msg;
 
+        // 致命的エラー（リトライしても解決しないもの）は即座に停止
+        if (this.isFatalError(msg)) {
+          console.error(`   💀 致命的エラー（リトライ不可）: ${msg.substring(0, 200)}`);
+          this.shouldStop = true;
+          return null;
+        }
+
         // エラーコードを抽出してパターン記録
         const errorCodes = this.extractErrorCodes(msg);
         const gameTitle = seed?.title ?? 'unknown';
@@ -902,6 +909,23 @@ export class Orchestrator {
     }
 
     return null;
+  }
+
+  /**
+   * リトライしても解決しない致命的エラーかどうかを判定する
+   */
+  private isFatalError(msg: string): boolean {
+    const fatalPatterns = [
+      'credit balance is too low',        // Anthropic クレジット不足
+      'Your credit balance',              // 同上（別フォーマット）
+      'insufficient_quota',               // OpenAI クォータ超過
+      'billing_not_active',               // 課金未設定
+      'account_deactivated',              // アカウント無効
+      'invalid_api_key',                  // APIキー無効
+      'authentication_error',             // 認証エラー
+      'Permission denied',                // 権限エラー
+    ];
+    return fatalPatterns.some(pattern => msg.toLowerCase().includes(pattern.toLowerCase()));
   }
 
   /**
