@@ -136,7 +136,7 @@ export class AssetGenerator {
             prompt,
             n: 1,
             size: '1024x1024',
-            style: 'natural',
+            style: 'vivid',
             response_format: 'b64_json'
           });
 
@@ -284,45 +284,44 @@ export class AssetGenerator {
    *
    * ゲーム用背景は以下の要件を満たす必要がある:
    * - オブジェクトが上に配置されるため、シンプルで邪魔にならない
-   * - キャラクターやゲーム要素を含まない
-   * - 均一な領域があり、オブジェクトの視認性が確保される
+   * - テーマの雰囲気を色と質感で表現する（ゲーム内容は説明しない）
+   * - 中央は広く空けて、オブジェクトの視認性を確保する
    */
   private buildBackgroundPrompt(concept: GameConcept, bgPlan: AssetPlan['background']): string {
     // 背景スタイルのバリエーション
     const bgStyleVariations = this.getBackgroundStyle(bgPlan.mood, concept.visualStyle);
 
-    return `Mobile game background for "${concept.theme}":
-Scene: ${bgPlan.description}
+    return `Simple mobile game background for "${concept.theme}" theme:
 Mood: ${bgPlan.mood}
-Style: ${concept.visualStyle}
-
-GAME CONTEXT (bake into background design):
-- Player goal: ${concept.playerGoal}
-- Player action: ${concept.playerOperation}
+Style: ${concept.visualStyle}, flat illustration or gradient
 
 BACKGROUND STYLE:
 ${bgStyleVariations}
 
 COMPOSITION:
 - Vertical mobile format (portrait orientation, 9:16 ratio)
-- Game objects (sprites) will be overlaid on top in the central area
-- STRONGLY ENCOURAGED: Bake gameplay context visuals into the background scene:
-  * Goal zones / target areas (e.g., a basket at the bottom for catch games, a goal post, landing pad)
-  * Play area boundaries (lanes, arena walls, floor lines)
-  * Directional cues / arrows indicating where the action happens
-  * Environmental storytelling that shows the player what kind of game this is
-  * Visual hierarchy — dark/empty center, rich context at edges and extremes
+- Game objects (sprites) will be overlaid in the center — keep the center OPEN and UNCLUTTERED
+- Decorative elements only at the edges and corners
+- Soft gradient, simple pattern, or clean color field as the main background
 
 CRITICAL REQUIREMENTS:
-- No actual interactive game sprites or characters (those are overlaid separately)
-- No written text or word labels
-- Central play area must remain visually accessible (not too busy in the middle)
-- Depth through atmospheric perspective
+- Atmosphere and mood conveyed through COLOR and TEXTURE only — not through game mechanics or story
+- No interactive game sprites, characters, or gameplay elements
+- No goal zones, target areas, baskets, arrows, or directional cues
+- No written text or labels
+- Central area must remain visually open (do not add detailed scenes or objects in the middle)
+- Keep it simple — this background should never compete with the game objects
+
+STYLE TARGET:
+- Think: stylized wallpaper, abstract art, or minimal scene
+- Soft, harmonious colors that match the theme's mood
+- Decorative but NOT distracting
 
 FORBIDDEN:
-- Photorealistic style (unless specifically requested)
-- Completely plain/abstract gradient with zero gameplay context (looks like a screensaver, not a game)
-- Busy repeating patterns covering the entire screen evenly`;
+- Photorealistic style
+- Busy scenes with many characters or objects
+- Detailed environments that look like a game level or stage
+- Anything that explains or depicts the game mechanics`;
   }
 
   /**
@@ -387,9 +386,9 @@ FORBIDDEN:
    * オブジェクトプロンプト生成
    *
    * ゲームオブジェクトの要件:
-   * - 透明背景で、他の要素と重ねやすい
-   * - はっきりしたシルエットで視認性が高い
-   * - ゲームスプライトとして機能する
+   * - 白背景で切り抜きやすい、はっきりしたシルエット
+   * - フラットカートゥーン・ベクターアートスタイル
+   * - 単一オブジェクトのみ、シーンではない
    */
   private buildObjectPrompt(concept: GameConcept, objPlan: AssetPlan['objects'][0], design?: GameDesign): string {
     const sizeDesc = objPlan.size === 'small' ? 'small compact icon (64px style)' :
@@ -399,41 +398,32 @@ FORBIDDEN:
     // スタイルシート情報を構築
     const styleSheet = this.buildStyleSheet(concept);
 
-    // このオブジェクトに関係するインタラクションをGameDesignから取得
-    const mechanicHint = design ? (() => {
-      const related = design.interactions.find(i =>
-        i.trigger.includes(objPlan.id) || i.action.includes(objPlan.id) ||
-        i.trigger.includes(objPlan.name) || i.action.includes(objPlan.name)
-      );
-      if (related) return `GAME MECHANIC: ${related.action} (${related.feedback})`;
-      const isCoreObject = design.objects.find(o => o.id === objPlan.id && o.role === 'target');
-      if (isCoreObject) return `GAME MECHANIC: ${design.coreLoop.description}`;
-      return null;
-    })() : null;
+    return `Flat cartoon game icon: ${objPlan.visualDescription}
 
-    return `Sticker / game icon on plain white background: ${objPlan.visualDescription}
+STYLE REQUIREMENTS:
+- Flat vector illustration / cartoon style — bold, clean, simple shapes
+- Pure white background (#FFFFFF) — completely plain, no texture, no gradient
+- Single object only, centered and large in frame
+- Bold outline (2-4px), solid flat colors, minimal shading
+- Cute / stylized proportions — NOT photorealistic, NOT textured
 
-ONE OBJECT ONLY — like a product cutout or clipart sticker:
-- The object is centered, filling most of the frame
-- Plain white background — no scene, no landscape, no environment, no floor, no sky
-- No other characters or objects nearby
-
-ROLE IN GAME: ${objPlan.purpose}${mechanicHint ? `\n${mechanicHint}` : ''}
 SIZE HINT: ${sizeDesc}
-STYLE: ${concept.visualStyle}, cartoon / vector art (NOT photorealistic)
+THEME: ${concept.theme}, ${concept.visualStyle} style
 
 ${styleSheet}
 
-VIEW: Front-facing, single angle only
-- NOT a multi-angle reference sheet, NOT a technical diagram
-- NOT a scene illustration or environment artwork
-- Just the object alone, as if cut out and placed on white paper
+COMPOSITION:
+- Object fills 70-80% of the frame
+- Perfectly centered
+- Slight shadow below the object only if it helps readability
 
-FORBIDDEN:
-- NO background scenery or environment of any kind
-- NO ground shadow or surface reflection
+STRICTLY FORBIDDEN:
+- NO background scenery, environment, floor, sky, or landscape
+- NO other characters, objects, or decorative elements around the main object
+- NO photorealistic texture or rendering
+- NO complex scenes or multi-element compositions
 - NO text or labels
-- NO multiple views of the same object`;
+- NO multi-angle views`;
   }
 
   /**

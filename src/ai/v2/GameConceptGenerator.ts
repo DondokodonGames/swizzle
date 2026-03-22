@@ -292,10 +292,59 @@ export interface ConceptGeneratorConfig {
   llmProvider?: LLMProviderType;
 }
 
+// ゲームアーキタイプ（操作タイプ別の多様なゲームパターン）
+// 各アーキタイプは操作タイプと具体的なゲームデザインのヒントを持つ
+const GAME_ARCHETYPES = [
+  {
+    operationType: 'タップ選択',
+    description: '複数の選択肢から正解を1回タップで選ぶ',
+    hint: '「仲間外れを1つタップして選ぶ」「正しいものを選ぶ」「間違いを探す」タイプのゲーム',
+    examples: ['3つのうち正しいものを選ぶ', '違う種類が混ざっているものを見つける', '一番大きい/小さいものを選ぶ']
+  },
+  {
+    operationType: 'タップタイミング',
+    description: '動くオブジェクトが正しい位置に来た瞬間にタップ',
+    hint: '「動いているものが正しい場所に来たらタップ」「ゲージが正しい位置でタップ」タイプのゲーム',
+    examples: ['振り子が的に重なった瞬間タップ', '動くターゲットが正解ゾーンに来たらタップ', 'メーターが正しい値の時タップ']
+  },
+  {
+    operationType: 'ドラッグ配置',
+    description: 'オブジェクトをドラッグして正しい場所に配置する',
+    hint: '「アイテムを正しい場所にドラッグして運ぶ」「ゾーンに重ねると成功」タイプのゲーム',
+    examples: ['形が合う穴にパーツをはめ込む', 'バケツに水をドラッグで運ぶ', '影に本体を重ねる']
+  },
+  {
+    operationType: 'スワイプ方向',
+    description: '正しい方向にスワイプして答える',
+    hint: '「どちらの方向にスワイプするか判断する」タイプのゲーム',
+    examples: ['重い方向に傾けてスワイプ', '流れに逆らって上スワイプ', '正しい分類方向にスワイプ']
+  },
+  {
+    operationType: '長押しチャージ',
+    description: '長押しの長さで力加減や量を調整する',
+    hint: '「適切な長さだけ押し続けてリリース」「長押しでゲージを調整」タイプのゲーム',
+    examples: ['弓を引く力を長押しで調整', 'ちょうどよい量だけ長押しで注ぐ', '3秒ちょうどで長押しを離す']
+  },
+  {
+    operationType: 'ドラッグ回避',
+    description: 'キャラクターをドラッグで動かして障害物を回避し生存する',
+    hint: '「ドラッグで移動して敵と衝突しないよう避ける」「X秒間生存で成功」タイプのゲーム',
+    examples: ['迫ってくる敵をドラッグで避ける', '障害物の間をドラッグで通り抜ける', '壁に当たらないようにドラッグで移動']
+  },
+  {
+    operationType: '連打カウント',
+    description: '制限時間内に目標回数をタップする連打ゲーム',
+    hint: '「N秒以内にN回タップ」タイプのゲーム。シンプルだが数値設定を工夫する',
+    examples: ['5秒以内に20回タップ', '敵のHPをタップで削る', '10秒で30個採取']
+  }
+];
+
 export class GameConceptGenerator {
   private llmProvider: ILLMProvider;
   private config: Required<Omit<ConceptGeneratorConfig, 'apiKey' | 'llmProvider'>>;
   private usedThemes: Set<string> = new Set();
+  private recentOperations: string[] = []; // 最近使った操作タイプを記録
+  private archetypeIndex: number = 0;      // アーキタイプのローテーションインデックス
   private patternAnalyzer: GamePatternAnalyzer;
 
   constructor(config?: ConceptGeneratorConfig) {
@@ -464,6 +513,15 @@ export class GameConceptGenerator {
   }
 
   /**
+   * 次のゲームアーキタイプを選択（ローテーション式で多様性を確保）
+   */
+  private selectNextArchetype() {
+    const archetype = GAME_ARCHETYPES[this.archetypeIndex % GAME_ARCHETYPES.length];
+    this.archetypeIndex++;
+    return archetype;
+  }
+
+  /**
    * ゲームコンセプトを生成
    */
   async generate(feedback?: string): Promise<GameConcept> {
@@ -475,6 +533,10 @@ export class GameConceptGenerator {
     // ジャンルとタグはAIがテーマに基づいて生成
     const forcedTheme = this.selectRandomTheme();
     console.log(`      🎲 Selected theme: ${forcedTheme}`);
+
+    // アーキタイプをローテーション選択（操作タイプの多様性を確保）
+    const archetype = this.selectNextArchetype();
+    console.log(`      🎮 Selected archetype: ${archetype.operationType}`);
 
     // 動的パターン分析コンテキストを取得（Supabaseから既存ゲームを分析）
     let dynamicContext = '';
@@ -494,12 +556,22 @@ export class GameConceptGenerator {
       prompt += `\n\n# 既存ゲームの分析結果（重要: 以下の情報を参考に多様性を確保してください）\n${dynamicContext}`;
     }
 
-    // 強制テーマを追加（ジャンル・タグはAIが決定）
-    prompt += `\n\n# 今回のテーマ（必ずこのテーマを使用してください）
+    // 強制テーマと操作タイプを追加
+    prompt += `\n\n# 今回のテーマと操作タイプ（必ず両方を使用してください）
 テーマ: 「${forcedTheme}」
+操作タイプ: 「${archetype.operationType}」
 
-このテーマに基づいたゲームを考えてください。テーマは変更しないでください。
-ジャンルとタグはテーマとゲーム内容に合わせて適切なものを選んでください。`;
+## 操作タイプの説明
+${archetype.description}
+${archetype.hint}
+
+## 操作タイプのゲーム例
+${archetype.examples.map(e => `- ${e}`).join('\n')}
+
+このテーマと操作タイプに基づいたゲームを設計してください。
+- テーマは変更しないでください
+- 指定された操作タイプを必ず playerOperation に含めてください
+- ジャンルとタグはテーマとゲーム内容に合わせて適切なものを選んでください`;
 
     // 既存テーマを避けるための追加指示
     if (this.usedThemes.size > 0) {
@@ -533,8 +605,12 @@ export class GameConceptGenerator {
       throw new Error(`Self-evaluation scores below minimum (${this.config.minScore}): ${JSON.stringify(concept.selfEvaluation)}`);
     }
 
-    // テーマを記録
+    // テーマと操作タイプを記録
     this.usedThemes.add(concept.theme);
+    this.recentOperations.push(archetype.operationType);
+    if (this.recentOperations.length > 10) {
+      this.recentOperations.shift();
+    }
 
     return concept;
   }
