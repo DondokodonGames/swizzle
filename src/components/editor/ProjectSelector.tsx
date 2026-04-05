@@ -41,6 +41,8 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importFileName, setImportFileName] = useState('');
+  const [importTotalFiles, setImportTotalFiles] = useState(0);
+  const [importCurrentFile, setImportCurrentFile] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -146,73 +148,84 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   };
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-    try {
-      console.log('[ProjectSelector] 📥 Importing JSON file:', file.name, 'Size:', (file.size / 1024).toFixed(1), 'KB');
+    const fileList = Array.from(files);
+    const total = fileList.length;
 
-      // インポート開始
-      setIsImporting(true);
-      setImportProgress(0);
+    setIsImporting(true);
+    setImportTotalFiles(total);
+    setImportCurrentFile(0);
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      setImportCurrentFile(i + 1);
       setImportFileName(file.name);
-
-      // ファイル読み込みプログレスをシミュレート（FileReaderのonprogressを使用）
-      const readFileWithProgress = (): Promise<string> => {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-
-          reader.onprogress = (e) => {
-            if (e.lengthComputable) {
-              const progress = Math.round((e.loaded / e.total) * 50); // 読み込みは0-50%
-              setImportProgress(progress);
-            }
-          };
-
-          reader.onload = (e) => {
-            setImportProgress(50); // 読み込み完了
-            resolve(e.target?.result as string);
-          };
-
-          reader.onerror = () => reject(new Error('ファイル読み込み失敗'));
-
-          reader.readAsText(file);
-        });
-      };
-
-      // ファイルを読み込み
-      await readFileWithProgress();
-      setImportProgress(60); // パース開始
-
-      if (importProject) {
-        // 処理中の進捗をシミュレート
-        setImportProgress(70);
-        await importProject(file);
-        setImportProgress(90);
-
-        console.log('[ProjectSelector] ✅ Project imported successfully');
-
-        // ✅ reloadProjects関数を使用
-        await reloadProjects();
-        setImportProgress(100);
-
-        // 少し待ってから完了表示
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        alert('✅ ' + t('success.projectImported'));
-      } else {
-        throw new Error('Import function not available');
-      }
-    } catch (err) {
-      console.error('[ProjectSelector] ❌ Import failed:', err);
-      alert('❌ ' + t('errors.projectImportFailed'));
-    } finally {
-      setIsImporting(false);
       setImportProgress(0);
-      setImportFileName('');
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+
+      console.log(`[ProjectSelector] 📥 Importing JSON file (${i + 1}/${total}):`, file.name, 'Size:', (file.size / 1024).toFixed(1), 'KB');
+
+      try {
+        const readFileWithProgress = (): Promise<string> => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onprogress = (e) => {
+              if (e.lengthComputable) {
+                const progress = Math.round((e.loaded / e.total) * 50);
+                setImportProgress(progress);
+              }
+            };
+            reader.onload = (e) => {
+              setImportProgress(50);
+              resolve(e.target?.result as string);
+            };
+            reader.onerror = () => reject(new Error('ファイル読み込み失敗'));
+            reader.readAsText(file);
+          });
+        };
+
+        await readFileWithProgress();
+        setImportProgress(70);
+
+        if (!importProject) throw new Error('Import function not available');
+
+        await importProject(file);
+        setImportProgress(100);
+        successCount++;
+        console.log(`[ProjectSelector] ✅ Imported: ${file.name}`);
+
+        // ファイル間の短いウェイト（最後のファイル以外）
+        if (i < fileList.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 150));
+        }
+      } catch (err) {
+        console.error(`[ProjectSelector] ❌ Import failed for ${file.name}:`, err);
+        failCount++;
       }
+    }
+
+    await reloadProjects();
+
+    setIsImporting(false);
+    setImportProgress(0);
+    setImportFileName('');
+    setImportTotalFiles(0);
+    setImportCurrentFile(0);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+
+    if (failCount === 0) {
+      alert(total === 1
+        ? '✅ ' + t('success.projectImported')
+        : `✅ ${successCount}件のプロジェクトをインポートしました`
+      );
+    } else {
+      alert(`⚠️ ${successCount}件成功、${failCount}件失敗しました`);
     }
   };
 
@@ -401,6 +414,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
             ref={fileInputRef}
             type="file"
             accept=".json"
+            multiple
             style={{ display: 'none' }}
             onChange={handleFileImport}
           />
@@ -484,7 +498,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   margin: 0
                 }}
               >
-                ゲームJSONファイルをインポート
+                ゲームJSONファイルをインポート（複数ファイル対応）
               </p>
             </div>
             <ModernButton
@@ -511,7 +525,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   color: DESIGN_TOKENS.colors.neutral[700],
                   fontWeight: 500
                 }}>
-                  📥 インポート中: {importFileName}
+                  📥 {importTotalFiles > 1 ? `(${importCurrentFile}/${importTotalFiles}) ` : ''}インポート中: {importFileName}
                 </span>
                 <span style={{
                   fontSize: DESIGN_TOKENS.typography.fontSize.sm,
