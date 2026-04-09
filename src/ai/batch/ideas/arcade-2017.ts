@@ -1,0 +1,178 @@
+/**
+ * ideas/arcade-2017.ts
+ * Arcade Archives 2017年配信タイトル — Swizzleゲームネタ帳
+ */
+
+export const arcade2017Ideas = [
+  {
+    id: 'arcade-048',
+    title: 'アークエリア',
+    brand: 'UPL',
+    year: 1989,
+    duration: 20,
+    difficulty: 'normal',
+    concept: '自機が円軌道を自動的に旋回している。敵が外周から中心へ向かって侵入してくる。自機の向きが侵入中の敵と正面に重なった瞬間にタップして撃墜。中心に到達される前に5体撃破でクリア。',
+    objects: [
+      { shape: 'triangle', role: '自機（円軌道を自動旋回）', note: '' },
+      { shape: 'circle', role: '敵（外周から中心へ侵入）', note: '' },
+      { shape: 'circle', role: '守るべき中心点', note: '' },
+    ],
+    counters: [
+      { id: 'killed', name: '撃墜数', target: 5, note: '5体でクリア' },
+    ],
+    winTrigger: 'counter killed >= 5',
+    failTrigger: '敵が中心に到達したら失敗',
+  },
+  {
+    id: 'arcade-049',
+    title: 'ミュータントナイト',
+    brand: 'UPL',
+    year: 1987,
+    duration: 20,
+    difficulty: 'normal',
+    concept: 'ミュータントが縦に積み重なりながら近づいてくる。スピン攻撃は一番下の個体だけに当たる。1体や2体の時は効果が薄い——3体が積み上がった瞬間に底をタップして土台を崩し、全員まとめて倒せ。',
+    objects: [
+      { shape: 'face', role: 'ミュータント（1→2→3体と積み重なる）', note: '積み重なり数を表示' },
+      { shape: 'button', role: 'スピン攻撃ボタン', note: '' },
+    ],
+    counters: [
+      { id: 'piles', name: '全員倒し数', target: 3, note: '3スタック撃破でクリア' },
+    ],
+    winTrigger: '3体積み上がり状態でタップ3回',
+    failTrigger: '3体未満でタップ3回で失敗',
+  },
+  {
+    id: 'arcade-050',
+    title: 'サンダークロス',
+    brand: 'KONAMI',
+    year: 1988,
+    duration: 20,
+    difficulty: 'hard',
+    concept: '画面左右の電極間で雷が充電されていく。電流がちょうど両電極を橋渡しした瞬間（ゲージが満杯）にタップして全電力を放電。早すぎると弱射、遅すぎると放電が霧散する。',
+    objects: [
+      { shape: 'circle', role: '左電極', note: '' },
+      { shape: 'circle', role: '右電極', note: '' },
+      { shape: 'rect', role: '充電ゲージ', note: '満杯で橋渡し表示' },
+      { shape: 'button', role: '放電ボタン', note: '' },
+    ],
+    counters: [
+      { id: 'fullBlasts', name: '満杯放電数', target: 3, note: '3回でクリア' },
+    ],
+    winTrigger: 'ゲージ満杯状態でタップ3回',
+    failTrigger: '満杯でないタップ3回で失敗',
+  },
+  {
+    id: 'arcade-051',
+    title: 'ニンジャウォーリアーズ',
+    brand: 'タイトー',
+    year: 1988,
+    duration: 20,
+    difficulty: 'normal',
+    concept: '巨大ロボ忍者が中央に仁王立ちしている。攻撃リーチは短い。左右から敵が押し寄せてくる中、左右両側の敵が同時にリーチ圏内に入った瞬間にタップして両断。片側だけのタップは攻撃が届かない。',
+    objects: [
+      { shape: 'face', role: 'ロボ忍者（中央固定）', note: 'リーチ圏を円で表示' },
+      { shape: 'face', role: '敵（左から接近）', note: '' },
+      { shape: 'face', role: '敵（右から接近）', note: '' },
+    ],
+    counters: [
+      { id: 'dualSlashes', name: '両断数', target: 3, note: '3回でクリア' },
+    ],
+    winTrigger: '左右両方がリーチ圏内でタップ3回',
+    failTrigger: '片側だけの状態でタップ3回で失敗',
+  },
+  {
+    id: 'arcade-052',
+    title: 'マリオブラザーズ',
+    brand: '任天堂',
+    year: 1983,
+    duration: 20,
+    difficulty: 'normal',
+    concept: 'カメが上の床を歩いている。床の真下をタップしてカメを裏返す。裏返った状態は3秒で元に戻る——その3秒以内にカメ自身をタップして蹴り飛ばせ。2段階のタイミングを連続で合わせる。',
+    objects: [
+      { shape: 'face', role: 'カメ（上段プラットフォームを歩く）', note: '' },
+      { shape: 'rect', role: 'プラットフォーム（真下をタップで裏返し）', note: '' },
+    ],
+    counters: [
+      { id: 'kicked', name: '蹴り飛ばし数', target: 5, note: '5体でクリア' },
+    ],
+    winTrigger: 'counter kicked >= 5',
+    failTrigger: '3秒以内に蹴れず元に戻った回数3回で失敗',
+  },
+  {
+    id: 'arcade-053',
+    title: 'エレベーターアクション',
+    brand: 'タイトー',
+    year: 1983,
+    duration: 25,
+    difficulty: 'normal',
+    concept: 'エレベーターが各フロアを通過する。赤いドアのあるフロアで1秒だけドアが開く。その瞬間にタップして侵入し、部屋の中の電球をタップして消灯——消灯前に警備員が振り向いたら失敗。',
+    objects: [
+      { shape: 'rect', role: 'エレベーター（上下移動）', note: '' },
+      { shape: 'rect', role: '赤ドア（1秒だけ開く）', note: '' },
+      { shape: 'circle', role: '電球（部屋の中）', note: 'タップで消灯' },
+      { shape: 'face', role: '警備員（振り向きアニメ）', note: '' },
+    ],
+    counters: [
+      { id: 'docs', name: '書類入手数', target: 3, note: '3か所でクリア' },
+    ],
+    winTrigger: 'counter docs >= 3',
+    failTrigger: '消灯前に警備員が振り向いたら失敗',
+  },
+  {
+    id: 'arcade-054',
+    title: 'ジッピーレース',
+    brand: 'アイレム',
+    year: 1983,
+    duration: 20,
+    difficulty: 'normal',
+    concept: 'バイクが5か所の急カーブへ向かって走っている。カーブ手前の距離ゲージが「制動点」を示す。ゲージが制動点に達した瞬間にタップしてブレーキ。早すぎると失速、遅すぎると曲がりきれない。',
+    objects: [
+      { shape: 'triangle', role: 'バイク（前進）', note: '' },
+      { shape: 'rect', role: '距離ゲージ（制動点マーカー付き）', note: '' },
+      { shape: 'button', role: 'ブレーキボタン', note: '' },
+    ],
+    counters: [
+      { id: 'curves', name: 'クリアしたカーブ数', target: 5, note: '5か所でクリア' },
+    ],
+    winTrigger: 'counter curves >= 5',
+    failTrigger: 'ブレーキタイミング外れ3回で失敗',
+  },
+  {
+    id: 'arcade-055',
+    title: 'VS.スーパーマリオブラザーズ',
+    brand: '任天堂',
+    year: 1986,
+    duration: 20,
+    difficulty: 'normal',
+    concept: 'ハンマーブロスがハンマーを左右交互に放物線で投げている。2本のハンマーの軌道が重ならない「すり抜け窓」が1秒間だけ出現する。その瞬間にタップしてマリオをダッシュで通過させよ。',
+    objects: [
+      { shape: 'face', role: 'ハンマーブロス（中央）', note: '' },
+      { shape: 'diamond', role: 'ハンマー×2（左右交互放物線）', note: '' },
+      { shape: 'face', role: 'マリオ（左端待機）', note: '' },
+    ],
+    counters: [
+      { id: 'dashes', name: '通過成功数', target: 3, note: '3回でクリア' },
+    ],
+    winTrigger: 'counter dashes >= 3',
+    failTrigger: 'ハンマーに当たったら失敗',
+  },
+  {
+    id: 'arcade-056',
+    title: 'フロントライン',
+    brand: 'タイトー',
+    year: 1983,
+    duration: 20,
+    difficulty: 'normal',
+    concept: '戦車の天蓋ハッチが3秒ごとに一瞬だけ開く。手榴弾の放物線軌道が点線で表示されている。ハッチが開いた瞬間に点線の弧がハッチの真上を通るようにタップして投擲し、ハッチの中に命中させよ。',
+    objects: [
+      { shape: 'rect', role: '戦車（移動）', note: 'ハッチが周期的に開閉' },
+      { shape: 'circle', role: '手榴弾（放物線軌道・点線表示）', note: '' },
+      { shape: 'button', role: '投擲ボタン', note: '' },
+    ],
+    counters: [
+      { id: 'hits', name: '命中数', target: 3, note: '3回でクリア' },
+    ],
+    winTrigger: 'counter hits >= 3',
+    failTrigger: 'ハッチ閉鎖中に投擲3回で失敗',
+  },
+] as const;
