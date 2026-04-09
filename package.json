@@ -43,7 +43,10 @@
     "marketing:twitter": "tsx src/marketing/cli.ts twitter",
     "marketing:instagram": "tsx src/marketing/cli.ts instagram",
     "marketing:status": "tsx src/marketing/cli.ts status",
-    "marketing:dry": "MARKETING_DRY_RUN=true tsx src/marketing/cli.ts start"
+    "marketing:dry": "MARKETING_DRY_RUN=true tsx src/marketing/cli.ts start",
+    "ai:batch": "tsx src/ai/batch/run.ts",
+    "ai:batch:dry": "SKIP_UPLOAD=true tsx src/ai/batch/run.ts",
+    "ai:batch:status": "tsx src/ai/batch/run.ts --status"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
