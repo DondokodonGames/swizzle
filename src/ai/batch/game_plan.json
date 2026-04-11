@@ -1,0 +1,151 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-04-11",
+  "projectName": "アーケードルネサンス バッチ生成計画",
+  "summary": {
+    "totalTargetGames": 700,
+    "arcadeTarget": 500,
+    "barTarget": 200,
+    "currentProgress": {
+      "arcade": 500,
+      "bar": 200,
+      "errorCount": 0,
+      "note": "batch-progress.json参照。ドライラン完了済み。本番アップロードには.env.local設定が必要。"
+    }
+  },
+  "ideasInventory": {
+    "description": "src/ai/batch/ideas/ 以下のアイデア帳（参考資料）",
+    "arcadeIdeas": {
+      "files": [
+        "arcade-2014.ts", "arcade-2015.ts", "arcade-2016.ts",
+        "arcade-2017.ts", "arcade-2018.ts",
+        "arcade-2019a.ts", "arcade-2019b.ts",
+        "arcade-2020q1.ts", "arcade-2020q2.ts", "arcade-2020q3.ts", "arcade-2020q4.ts",
+        "arcade-2021q1.ts", "arcade-2021q2.ts", "arcade-2021q3.ts", "arcade-2021q4.ts",
+        "arcade-2022q1.ts", "arcade-2022q2.ts", "arcade-2022q3.ts", "arcade-2022q4.ts",
+        "arcade-2023q1.ts", "arcade-2023q2.ts", "arcade-2023q3.ts", "arcade-2023q4.ts",
+        "arcade-2024q1.ts", "arcade-2024q2.ts", "arcade-2024q3.ts", "arcade-2024q4.ts",
+        "arcade-2025q1.ts", "arcade-2025q2.ts", "arcade-2025q3.ts", "arcade-2025q4.ts"
+      ],
+      "totalIdeas": 392,
+      "idRange": "arcade-1 〜 arcade-392",
+      "purpose": "アーケード実機タイトルをインスパイアしたゲームアイデア帳"
+    },
+    "barIdeas": {
+      "files": [
+        "bar-01.ts", "bar-02.ts", "bar-03.ts", "bar-04.ts", "bar-05.ts",
+        "bar-06.ts", "bar-07.ts", "bar-08.ts", "bar-09.ts", "bar-10.ts",
+        "bar-11.ts", "bar-12.ts", "bar-13.ts", "bar-14.ts", "bar-15.ts",
+        "bar-16.ts", "bar-17.ts", "bar-18.ts", "bar-19.ts", "bar-20.ts"
+      ],
+      "totalIdeas": 200,
+      "idRange": "bar-001 〜 bar-200",
+      "purpose": "バー・飲み会向けミニゲーム・会話お題アイデア帳（5〜30秒で完結するもの）"
+    }
+  },
+  "generationStrategy": {
+    "phase1": {
+      "name": "テンプレートベース生成（現行）",
+      "status": "実装済み",
+      "description": "patterns/arcade.ts および patterns/bar.ts で定義されたテンプレートをパラメータ変化で500+200本生成",
+      "arcadeTemplates": [
+        {
+          "name": "tapFloaters",
+          "description": "浮かぶ的をタップ（ギャラガ/インベーダー系）",
+          "count": 100,
+          "parameters": "テーマ10種 × カラーセット5種 × 難易度3種"
+        },
+        {
+          "name": "tapFallers",
+          "description": "落ちてくるものをタップ（固定画面アクション）",
+          "count": 100,
+          "parameters": "テーマ10種 × カラーセット5種 × 難易度3種"
+        },
+        {
+          "name": "rapidTap",
+          "description": "連打カウンター（ラピッドファイア系）",
+          "count": 100,
+          "parameters": "色15種 × 目標数5段階 × 時間4段階"
+        },
+        {
+          "name": "timingTap",
+          "description": "タイミングタップ（左右往復ターゲット）",
+          "count": 100,
+          "parameters": "色15種 × 目標数4段階 × 速度5段階"
+        },
+        {
+          "name": "catchGame",
+          "description": "キャッチゲーム（ドラッグバスケット）",
+          "count": 100,
+          "parameters": "テーマ10種 × 色15種 × 目標数4段階"
+        }
+      ],
+      "barTemplates": [
+        {
+          "name": "speedTap",
+          "description": "連打バトル（誰が一番多くタップできるか）",
+          "count": 40,
+          "parameters": "名前10種 × 目標数5段階 × 色15種"
+        },
+        {
+          "name": "roulette",
+          "description": "ルーレット（誰が選ばれるか）",
+          "count": 40,
+          "parameters": "テーマ20種 × 色パレット"
+        },
+        {
+          "name": "hotPotato",
+          "description": "爆弾タイマー（最後にタップした人が負け）",
+          "count": 40,
+          "parameters": "テーマ20種 × 時間6段階"
+        },
+        {
+          "name": "quizGame",
+          "description": "クイズ（○か×か）",
+          "count": 40,
+          "parameters": "トピック20種"
+        },
+        {
+          "name": "quickDraw",
+          "description": "早押し（最初にタップした人が勝ち）",
+          "count": 40,
+          "parameters": "テーマ20種 × 色15種"
+        }
+      ]
+    },
+    "phase2": {
+      "name": "アイデアベース生成（将来拡張）",
+      "status": "計画中",
+      "description": "ideas/ 以下のアイデア帳をもとに、各アイデア固有のゲームロジックをコード化して追加生成",
+      "note": "現時点では ideas/ ファイルは参考資料として保持。将来的にはアイデアIDをゲームIDとして使用し、より個性的なゲームを生成する。"
+    }
+  },
+  "uploadConfiguration": {
+    "supabaseUrl": "https://rqzehjsygvkkvntswqbs.supabase.co",
+    "table": "user_games",
+    "requiredEnvVars": [
+      "VITE_SUPABASE_URL",
+      "SUPABASE_SERVICE_KEY",
+      "MASTER_USER_ID"
+    ],
+    "commands": {
+      "dryRun": "SKIP_UPLOAD=true npx tsx src/ai/batch/run.ts",
+      "production": "npx tsx src/ai/batch/run.ts",
+      "status": "npx tsx src/ai/batch/run.ts --status"
+    },
+    "retryLogic": {
+      "maxRetries": 3,
+      "backoffMs": [2000, 4000],
+      "delayBetweenInserts": 300
+    },
+    "progressTracking": "src/ai/batch/batch-progress.json",
+    "errorLog": "src/ai/batch/batch-errors.log"
+  },
+  "qualityGuidelines": {
+    "titleFormat": "{テーマ}タイプ名（{index+1}）",
+    "descriptionFormat": "プレイ内容を20〜80字で説明",
+    "tagsCount": "3〜5個推奨",
+    "objectsCountRecommended": "2〜8個（パフォーマンスのため最大15個以内）",
+    "rulesCountRecommended": "2〜6個（複雑すぎないように）"
+  }
+}
