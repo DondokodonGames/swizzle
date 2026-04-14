@@ -12,7 +12,6 @@
  *   MASTER_USER_ID=（ゲームを所有させるユーザーのUUID）
  */
 
-
 import * as path from 'path';
 
 // .env.local を手動読み込み（dotenv不要）
@@ -35,15 +34,13 @@ loadEnv();
 
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
-import { BatchRunner } from './BatchRunner';
-import { generateArcadeGames } from './patterns/arcade';
-import { generateBarGames } from './patterns/bar';
+import { BatchRunner } from './BatchRunner.js';
+import { generateArcadeGamesFromIdeas } from './generators/arcade-generator.js';
+import { generateBarGamesFromIdeas }    from './generators/bar-generator.js';
+import { generateNetaGames }            from './generators/neta-generator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-
-
 
 async function showStatus() {
   const progressFile = path.join(__dirname, 'batch-progress.json');
@@ -52,11 +49,10 @@ async function showStatus() {
     return;
   }
   const p = JSON.parse(fs.readFileSync(progressFile, 'utf-8'));
+  const total = p.total ?? ((p.arcade ?? 0) + (p.bar ?? 0));
   console.log(`\n📊 バッチ進捗:`);
-  console.log(`   arcade: ${p.arcade}/500`);
-  console.log(`   bar:    ${p.bar}/200`);
-  console.log(`   エラー: ${p.errorCount}`);
-  console.log(`   合計:   ${p.arcade + p.bar}/700\n`);
+  console.log(`   完了: ${total}/792`);
+  console.log(`   エラー: ${p.errorCount ?? 0}\n`);
 }
 
 async function main() {
@@ -67,15 +63,20 @@ async function main() {
     return;
   }
 
-  console.log('🎮 アーケードルネサンス バッチ生成スクリプト');
-  console.log('==========================================\n');
+  console.log('🎮 バッチ生成スクリプト v2 (792本)');
+  console.log('=====================================\n');
 
-  // ゲームパターンを事前生成
-  console.log('📦 ゲームパターンを生成中...');
-  const arcadeGames = generateArcadeGames();
-  const barGames = generateBarGames();
+  // ゲームデータを事前生成（3ソース合計792本）
+  console.log('📦 ゲームデータを生成中...');
+  const netaGames   = generateNetaGames();
+  const arcadeGames = generateArcadeGamesFromIdeas();
+  const barGames    = generateBarGamesFromIdeas();
+
+  const allGames = [...netaGames, ...arcadeGames, ...barGames];
+  console.log(`   ネタ:    ${netaGames.length}本`);
   console.log(`   アーケード: ${arcadeGames.length}本`);
-  console.log(`   バー:       ${barGames.length}本\n`);
+  console.log(`   バー:    ${barGames.length}本`);
+  console.log(`   合計:    ${allGames.length}本\n`);
 
   const runner = new BatchRunner();
 
@@ -85,7 +86,7 @@ async function main() {
     runner.stop();
   });
 
-  await runner.run(arcadeGames, barGames);
+  await runner.run(allGames);
 }
 
 main().catch(err => {

@@ -25,16 +25,20 @@ const LOG_FILE = path.join(__dirname, 'batch-errors.log');
 const MAX_ERRORS = 50;
 
 interface Progress {
-  arcade: number;
-  bar: number;
+  total: number;
   errorCount: number;
 }
 
 function loadProgress(): Progress {
   if (fs.existsSync(PROGRESS_FILE)) {
-    return JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf-8'));
+    const p = JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf-8'));
+    // 旧フォーマット（arcade/bar）からの移行
+    if (typeof p.total === 'undefined') {
+      return { total: (p.arcade ?? 0) + (p.bar ?? 0), errorCount: p.errorCount ?? 0 };
+    }
+    return p as Progress;
   }
-  return { arcade: 0, bar: 0, errorCount: 0 };
+  return { total: 0, errorCount: 0 };
 }
 
 function saveProgress(p: Progress) {
@@ -173,10 +177,12 @@ export class BatchRunner {
     return false;
   }
 
-  async run(arcadeGames: GameConfig[], barGames: GameConfig[]) {
+  async run(games: GameConfig[]) {
+    const total = games.length;
     console.log('\n🎮 バッチ生成ランナー起動');
-    console.log(`   SKIP_UPLOAD: ${this.skipUpload}`);
-    console.log(`   MASTER_USER_ID: ${this.masterUserId.substring(0, 8)}...\n`);
+    console.log(`   SKIP_UPLOAD:   ${this.skipUpload}`);
+    console.log(`   MASTER_USER_ID: ${this.masterUserId.substring(0, 8)}...`);
+    console.log(`   対象ゲーム数:   ${total}\n`);
 
     // DB に存在するバッチゲームを一括取得（重複 INSERT 防止）
     console.log('🔍 既存バッチゲームを確認中...');
@@ -184,57 +190,36 @@ export class BatchRunner {
     console.log(`   既存: ${existingIds.size} 件\n`);
 
     const progress = loadProgress();
-    // progress.arcade/bar はチェックポイント再開用のインデックス
-    // existingIds による per-game スキップで実際の重複は防止される
-    let arcadeIdx = progress.arcade;
-    let barIdx = progress.bar;
+    let idx = progress.total;
 
-    const TARGET_ARCADE = 500;
-    const TARGET_BAR = 200;
-    let total = arcadeIdx + barIdx;
-
-    while (!this.stopped) {
+    while (!this.stopped && idx < total) {
       // エラーが閾値を超えたら緊急停止
       if (progress.errorCount >= MAX_ERRORS) {
         console.error(`\n❌ エラーが${MAX_ERRORS}件を超えたため停止します。${LOG_FILE} を確認してください。`);
         break;
       }
 
-      const needsArcade = arcadeIdx < TARGET_ARCADE && arcadeIdx < arcadeGames.length;
-      const needsBar = barIdx < TARGET_BAR && barIdx < barGames.length;
+      const cfg = games[idx];
+      process.stdout.write(`[${idx + 1}/${total}] ${cfg.category}/${cfg.id} ... `);
+      const ok = await this.insertGame(cfg, existingIds);
+      idx++;
+      progress.total = idx;
+      if (ok) { console.log('✓'); } else { progress.errorCount++; }
 
-      if (!needsArcade && !needsBar) {
-        console.log('\n✅ 全700本の生成が完了しました！');
-        break;
-      }
-
-      if (needsArcade) {
-        const cfg = arcadeGames[arcadeIdx];
-        process.stdout.write(`[arcade ${arcadeIdx + 1}/500] ${cfg.title} ... `);
-        const ok = await this.insertGame(cfg, existingIds);
-        arcadeIdx++;
-        progress.arcade = arcadeIdx;
-        if (ok) { console.log('✓'); } else { progress.errorCount++; }
-      } else if (needsBar) {
-        const cfg = barGames[barIdx];
-        process.stdout.write(`[bar ${barIdx + 1}/200] ${cfg.title} ... `);
-        const ok = await this.insertGame(cfg, existingIds);
-        barIdx++;
-        progress.bar = barIdx;
-        if (ok) { console.log('✓'); } else { progress.errorCount++; }
-      }
-
-      total++;
       saveProgress(progress);
 
-      if (total % 50 === 0) {
-        console.log(`\n📊 進捗: arcade=${arcadeIdx}/500, bar=${barIdx}/200, エラー=${progress.errorCount}\n`);
+      if (idx % 50 === 0) {
+        console.log(`\n📊 進捗: ${idx}/${total}, エラー=${progress.errorCount}\n`);
       }
 
       if (!this.skipUpload) await sleep(300);
     }
 
     saveProgress(progress);
-    console.log(`\n📊 最終: arcade=${arcadeIdx}/500, bar=${barIdx}/200, エラー=${progress.errorCount}`);
+    console.log(`\n📊 最終: ${idx}/${total}, エラー=${progress.errorCount}`);
+
+    if (idx >= total) {
+      console.log(`\n✅ 全${total}本の生成が完了しました！`);
+    }
   }
 }
