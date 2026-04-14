@@ -33,7 +33,7 @@ const COLOR_SETS: Array<{ colors: ColorName[]; accent: string }> = [
 const DIFFICULTIES = [
   { name: 'easy'   as const, speed: 1.0, interval: 0.15, target: 5,  duration: 20 },
   { name: 'normal' as const, speed: 1.5, interval: 0.10, target: 8,  duration: 15 },
-  { name: 'hard'   as const, speed: 2.0, interval: 0.07, target: 12, duration: 12 },
+  { name: 'hard'   as const, speed: 2.0, interval: 0.07, target: 12, duration: 10 },
 ];
 
 // ---------- ヘルパー ----------
@@ -173,7 +173,8 @@ function tapFallers(idx: number): GameConfig {
 function rapidTap(idx: number): GameConfig {
   const colorName = Object.keys(COLORS)[idx % Object.keys(COLORS).length] as ColorName;
   const target = 20 + (idx % 5) * 5;
-  const duration = 10 + (idx % 4) * 2;
+  const RAPID_DURATIONS = [10, 15, 20, 15] as const;
+  const duration = RAPID_DURATIONS[idx % RAPID_DURATIONS.length];
   const bgNames = Object.keys(BG_COLORS) as BgColorName[];
   const bgName = bgNames[idx % bgNames.length];
 
@@ -221,7 +222,7 @@ function rapidTap(idx: number): GameConfig {
 function timingTap(idx: number): GameConfig {
   const colorName = Object.keys(COLORS)[(idx * 2) % Object.keys(COLORS).length] as ColorName;
   const target = 3 + (idx % 4);
-  const duration = 15 + (idx % 3) * 3;
+  const duration = [10, 15, 20][idx % 3];
   const speed = 1.2 + (idx % 5) * 0.2;
 
   const objects: ObjectDef[] = [
@@ -291,7 +292,7 @@ function catchGame(idx: number): GameConfig {
   const colorName = Object.keys(COLORS)[(idx * 3) % Object.keys(COLORS).length] as ColorName;
   const theme = THEMES[(idx + 5) % THEMES.length];
   const target = 4 + (idx % 4);
-  const duration = 15 + (idx % 3) * 3;
+  const duration = [10, 15, 20][idx % 3];
   const speed = 1.0 + (idx % 4) * 0.3;
   const bgNames = Object.keys(BG_COLORS) as BgColorName[];
 
@@ -327,12 +328,12 @@ function catchGame(idx: number): GameConfig {
       actions: [{ type: 'move', targetId: 'item', movement: { type: 'straight', target: { x: 0.3 + (idx % 5) * 0.1, y: 1.2 }, speed } }],
     },
     {
-      id: 'drag-catcher',
-      name: 'バスケットドラッグ',
+      id: 'bounce-catcher',
+      name: 'キャッチャー移動',
       targetObjectId: 'catcher',
       priority: 1,
-      conditions: [{ type: 'touch', target: 'stage', touchType: 'drag' }],
-      actions: [{ type: 'followDrag', targetId: 'catcher', constraint: 'horizontal', smooth: false }],
+      conditions: [{ type: 'time', timeType: 'interval', interval: 0.05 }],
+      actions: [{ type: 'move', targetId: 'catcher', movement: { type: 'bounce', speed: 1.0 + (idx % 4) * 0.25 } }],
     },
     {
       id: 'catch-collision',
@@ -353,7 +354,7 @@ function catchGame(idx: number): GameConfig {
   return {
     id: `arcade-catch-${idx}`,
     title: `${theme.name}キャッチ（${idx + 1}）`,
-    description: `落ちてくる${theme.name}をバスケットでキャッチしよう！${target}個でクリア`,
+    description: `バスケットが動く！落ちてくる${theme.name}をタイミングよくキャッチしよう！${target}個でクリア`,
     category: 'arcade',
     duration,
     difficulty: idx % 3 === 0 ? 'easy' : idx % 3 === 1 ? 'normal' : 'hard',

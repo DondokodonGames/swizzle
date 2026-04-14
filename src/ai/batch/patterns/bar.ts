@@ -167,7 +167,8 @@ function roulette(idx: number): GameConfig {
 
 function hotPotato(idx: number): GameConfig {
   const theme = DARE_THEMES[(idx + 5) % DARE_THEMES.length];
-  const duration = 15 + (idx % 6) * 3;
+  const POTATO_DURATIONS = [10, 15, 20, 15, 20, 30] as const;
+  const duration = POTATO_DURATIONS[idx % POTATO_DURATIONS.length];
 
   const objects: ObjectDef[] = [
     {
