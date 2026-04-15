@@ -46,7 +46,15 @@
     "marketing:dry": "MARKETING_DRY_RUN=true tsx src/marketing/cli.ts start",
     "ai:batch": "tsx src/ai/batch/run.ts",
     "ai:batch:dry": "SKIP_UPLOAD=true tsx src/ai/batch/run.ts",
-    "ai:batch:status": "tsx src/ai/batch/run.ts --status"
+    "ai:batch:status": "tsx src/ai/batch/run.ts --status",
+    "ai:ideas": "tsx src/ai/v2/run-ideas.ts 1",
+    "ai:ideas:5": "tsx src/ai/v2/run-ideas.ts 5",
+    "ai:ideas:10": "tsx src/ai/v2/run-ideas.ts 10",
+    "ai:ideas:all": "tsx src/ai/v2/run-ideas.ts 592",
+    "ai:ideas:dry": "DRY_RUN=true tsx src/ai/v2/run-ideas.ts 1",
+    "ai:ideas:local": "SKIP_UPLOAD=true tsx src/ai/v2/run-ideas.ts 1",
+    "ai:ideas:status": "tsx src/ai/v2/run-ideas.ts --status",
+    "ai:ideas:export": "tsx src/ai/batch/export-ideas.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",

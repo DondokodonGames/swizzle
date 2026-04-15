@@ -719,8 +719,9 @@ export class Orchestrator {
       items: Array<{ id: number; title: string; idea: string; mechanic?: string; theme?: string }>;
     };
 
-    // 進捗ファイルを読み込む（neta.json と同じディレクトリの neta-progress.json）
-    const progressFile = path.join(path.dirname(netaFile), 'neta-progress.json');
+    // 進捗ファイルを読み込む（入力ファイルと同じディレクトリ、basename から -progress.json を生成）
+    const baseName = path.basename(netaFile, '.json');
+    const progressFile = path.join(path.dirname(netaFile), `${baseName}-progress.json`);
     let processedIds: Set<number> = new Set();
 
     if (fs.existsSync(progressFile)) {
