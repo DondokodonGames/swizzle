@@ -473,7 +473,7 @@ export class Orchestrator {
       // Step 6.6: DryRunSimulator（ゲート）— アセット生成前に実行
       // 遊べないゲームにはアセットを生成しない
       console.log('   🎮 Step 6.6: Simulating gameplay (pre-asset gate)...');
-      const simulation = this.dryRunSimulator.simulate(logicOutput, spec);
+      const simulation = this.dryRunSimulator.simulate(logicOutput, spec, concept.duration);
       if (simulation.summary.playable && simulation.summary.confidence !== 'low') {
         console.log(`      ✅ Game playable (confidence: ${simulation.summary.confidence})`);
         console.log(`      📊 Success path: ${simulation.success.requiredTaps} taps, ~${simulation.success.estimatedSeconds.toFixed(1)}s`);

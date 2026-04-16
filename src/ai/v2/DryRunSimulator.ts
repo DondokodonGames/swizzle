@@ -92,10 +92,12 @@ export class DryRunSimulator {
 
   /**
    * ゲームの到達可能性をシミュレート
+   * @param gameDuration ゲームの制限時間（秒）。タップ数の実現可能性チェックに使用。
    */
   simulate(
     logicOutput: LogicGeneratorOutput,
-    specification?: GameSpecification
+    specification?: GameSpecification,
+    gameDuration?: number
   ): ReachabilityReport {
     const issues: SimulationIssue[] = [];
     const conflicts: ConflictReport[] = [];
@@ -111,6 +113,20 @@ export class DryRunSimulator {
 
     // 競合検出
     this.detectConflicts(logicOutput, conflicts);
+
+    // タップ数の実現可能性チェック（制限時間が指定されている場合）
+    // 人間が連打できる最大速度は約3回/秒。それを超えるタップ数は物理的に不可能。
+    if (gameDuration && successResult.reachable && successResult.requiredTaps > 0) {
+      const maxTapsPerSecond = 3;
+      const maxFeasibleTaps = Math.floor(gameDuration * maxTapsPerSecond);
+      if (successResult.requiredTaps > maxFeasibleTaps) {
+        issues.push({
+          code: 'TAP_COUNT_INFEASIBLE',
+          message: `${gameDuration}秒のゲームで${successResult.requiredTaps}回のタップが必要ですが、人間の限界（約3回/秒）では達成不可能です（最大${maxFeasibleTaps}回）`,
+          severity: 'error'
+        });
+      }
+    }
 
     // 結果をまとめる
     const playable = successResult.reachable && issues.filter(i => i.severity === 'error').length === 0;

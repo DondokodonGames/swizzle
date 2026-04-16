@@ -296,6 +296,7 @@ export class GameConceptGenerator {
   private llmProvider: ILLMProvider;
   private config: Required<Omit<ConceptGeneratorConfig, 'apiKey' | 'llmProvider'>>;
   private usedThemes: Set<string> = new Set();
+  private usedMechanics: Map<string, number> = new Map();  // mechanic → count
   private patternAnalyzer: GamePatternAnalyzer;
 
   constructor(config?: ConceptGeneratorConfig) {
@@ -506,6 +507,12 @@ export class GameConceptGenerator {
       prompt += `\n\n# 避けるべきテーマ（既出）\n${Array.from(this.usedThemes).join(', ')}`;
     }
 
+    // メカニクス多様性ヒント（使いすぎのメカニクスを避ける）
+    const mechanicHint = this.buildMechanicDiversityHint();
+    if (mechanicHint) {
+      prompt += mechanicHint;
+    }
+
     // フィードバックがある場合（再生成時）
     if (feedback) {
       prompt += `\n\n# 前回の問題点\n${feedback}\n\n上記の問題を解決したコンセプトを生成してください。`;
@@ -533,8 +540,10 @@ export class GameConceptGenerator {
       throw new Error(`Self-evaluation scores below minimum (${this.config.minScore}): ${JSON.stringify(concept.selfEvaluation)}`);
     }
 
-    // テーマを記録
+    // テーマとメカニクスを記録
     this.usedThemes.add(concept.theme);
+    const mechanic = this.classifyMechanic(concept.playerOperation);
+    this.usedMechanics.set(mechanic, (this.usedMechanics.get(mechanic) ?? 0) + 1);
 
     return concept;
   }
@@ -655,8 +664,12 @@ export class GameConceptGenerator {
 
 JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n${feedback}\n\n上記の問題を解決したコンセプトを生成してください。` : ''}`;
 
+    // メカニクス多様性ヒント（使いすぎのメカニクスを避ける）
+    const mechanicHint = this.buildMechanicDiversityHint();
+    const finalPrompt = mechanicHint ? prompt + mechanicHint : prompt;
+
     const response = await this.llmProvider.chat(
-      [{ role: 'user', content: prompt }],
+      [{ role: 'user', content: finalPrompt }],
       { maxTokens: 1024, model: this.config.model }
     );
 
@@ -676,7 +689,37 @@ JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n
     }
 
     this.usedThemes.add(concept.theme);
+    const mechanic = this.classifyMechanic(concept.playerOperation);
+    this.usedMechanics.set(mechanic, (this.usedMechanics.get(mechanic) ?? 0) + 1);
     return concept;
+  }
+
+  /**
+   * playerOperationからメカニクス種別を分類（多様性トラッキング用）
+   */
+  private classifyMechanic(playerOperation: string): string {
+    const op = playerOperation;
+    if (/連打|mash|rapid|連続タップ/.test(op)) return '連打';
+    if (/ドラッグ|drag/.test(op)) return 'ドラッグ';
+    if (/スワイプ|swipe/.test(op)) return 'スワイプ';
+    if (/長押し|hold|press/.test(op)) return '長押し';
+    if (/フリック|flick/.test(op)) return 'フリック';
+    if (/タップ|tap/.test(op)) return 'タップ';
+    return 'その他';
+  }
+
+  /**
+   * 使いすぎのメカニクスをプロンプトに追加するための文字列を生成
+   * 同じメカニクスが2回以上使われていたら警告
+   */
+  private buildMechanicDiversityHint(): string {
+    const overused = [...this.usedMechanics.entries()]
+      .filter(([, count]) => count >= 2)
+      .map(([mechanic, count]) => `${mechanic}（${count}回使用済み）`);
+
+    if (overused.length === 0) return '';
+
+    return `\n\n# ⚠️ メカニクス多様性アラート（重要）\n以下のメカニクスはこのセッションで使いすぎです。**今回は絶対に使わないでください**:\n${overused.map(m => `- ${m}`).join('\n')}\n\n代わりに以下のメカニクスを使ってください: ドラッグ配置、タイミング判断、スワイプ方向、長押しチャージ、位置選択、衝突判定。`;
   }
 
   /**
@@ -684,6 +727,7 @@ JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n
    */
   clearCache(): void {
     this.usedThemes.clear();
+    this.usedMechanics.clear();
     this.patternAnalyzer.clearCache();
   }
 
@@ -701,6 +745,7 @@ JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n
     return {
       config: this.config,
       usedThemesCount: this.usedThemes.size,
+      usedMechanics: Object.fromEntries(this.usedMechanics),
       patternAnalyzer: this.patternAnalyzer.getDebugInfo()
     };
   }
