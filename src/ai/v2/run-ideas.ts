@@ -31,7 +31,11 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const IDEAS_FILE = path.join(__dirname, 'ideas-arcade-bar.json');
 const PROGRESS_FILE = path.join(__dirname, 'ideas-arcade-bar-progress.json');
-const TOTAL = 592;
+
+function getTotal(): number {
+  if (!fs.existsSync(IDEAS_FILE)) return 0;
+  return JSON.parse(fs.readFileSync(IDEAS_FILE, 'utf-8')).totalCount as number;
+}
 
 function showStatus() {
   if (!fs.existsSync(IDEAS_FILE)) {
@@ -40,6 +44,7 @@ function showStatus() {
     return;
   }
 
+  const total = getTotal();
   let processed = 0;
   if (fs.existsSync(PROGRESS_FILE)) {
     const p = JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf-8'));
@@ -47,9 +52,9 @@ function showStatus() {
   }
 
   console.log('\n📊 個別生成 進捗:');
-  console.log(`   完了: ${processed} / ${TOTAL}`);
-  console.log(`   残り: ${TOTAL - processed}`);
-  console.log(`   進捗: ${((processed / TOTAL) * 100).toFixed(1)}%\n`);
+  console.log(`   完了: ${processed} / ${total}`);
+  console.log(`   残り: ${total - processed}`);
+  console.log(`   進捗: ${((processed / total) * 100).toFixed(1)}%\n`);
 }
 
 async function main() {
@@ -123,13 +128,14 @@ async function main() {
 
     // 全件完了チェック
     if (fs.existsSync(PROGRESS_FILE)) {
+      const total = getTotal();
       const p = JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf-8'));
       const done = (p.processedIds ?? []).length;
-      if (done >= TOTAL) {
-        console.log('\n🎉 全592件の個別生成が完了しました！');
+      if (done >= total) {
+        console.log(`\n🎉 全${total}件の個別生成が完了しました！`);
       } else {
         console.log(`\n📌 次回実行: npm run ai:ideas -- ${count}`);
-        console.log(`   残り ${TOTAL - done} 件`);
+        console.log(`   残り ${total - done} 件`);
       }
     }
 
