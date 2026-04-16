@@ -65,12 +65,21 @@ async function main() {
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const dryRun = process.env.DRY_RUN === 'true';
+  const skipUpload = process.env.SKIP_UPLOAD === 'true';
+  const masterUserId = process.env.MASTER_USER_ID;
 
   console.log(`🔑 ANTHROPIC_API_KEY: ${anthropicKey ? `設定済み (${anthropicKey.substring(0, 15)}...)` : '❌ 未設定'}`);
 
   if (!anthropicKey && !dryRun) {
     console.error('❌ エラー: ANTHROPIC_API_KEY が設定されていません。');
     console.error('   .env.local に ANTHROPIC_API_KEY=sk-ant-... を設定してください。');
+    process.exit(1);
+  }
+
+  if (!skipUpload && !dryRun && !masterUserId) {
+    console.error('❌ エラー: MASTER_USER_ID が設定されていません。');
+    console.error('   .env.local に MASTER_USER_ID=<uuid> を設定してください。');
+    console.error('   アップロードをスキップする場合は SKIP_UPLOAD=true を設定してください。');
     process.exit(1);
   }
 

@@ -135,10 +135,33 @@ export class SupabaseUploader {
   async uploadGame(
     project: GameProject,
     qualityScore: number,
-    autoPublish: boolean = true
+    autoPublish: boolean = true,
+    templateId?: string,
+    category?: string
   ): Promise<UploadResult> {
     const fullSize = this.calculateProjectSize(project);
     console.log(`   📊 Project size: ${(fullSize / 1024).toFixed(1)} KB`);
+
+    const resolvedTemplateId = templateId ?? 'ai_generated';
+
+    // 重複チェック（同じ template_id が既に存在する場合はスキップ）
+    if (resolvedTemplateId !== 'ai_generated') {
+      try {
+        const { data: existing } = await this.supabase
+          .from('user_games')
+          .select('id')
+          .eq('template_id', resolvedTemplateId)
+          .eq('creator_id', this.masterUserId)
+          .limit(1)
+          .single();
+        if (existing) {
+          console.log(`   ⏭️ Skip: template_id=${resolvedTemplateId} already exists (id=${existing.id})`);
+          return { success: true, gameId: existing.id };
+        }
+      } catch {
+        // 存在しない場合は .single() がエラーを投げるので無視
+      }
+    }
 
     // ゲームIDを事前生成（Storageパスに必要）
     const gameId = randomUUID();
@@ -203,7 +226,8 @@ export class SupabaseUploader {
       creator_id: this.masterUserId,
       title: projectToSave.name || projectToSave.settings?.name || 'Untitled Game',
       description: projectToSave.description || projectToSave.settings?.description || 'AI-generated game',
-      template_id: 'ai_generated',
+      template_id: resolvedTemplateId,
+      category: category ?? null,
       game_data: {},                           // 旧フィールド（空オブジェクト）
       project_data: projectToSave,             // 新フィールド（Storage URL使用）
       thumbnail_url: thumbnailUrl,

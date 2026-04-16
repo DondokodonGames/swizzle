@@ -628,15 +628,27 @@ export class Orchestrator {
   /**
    * ゲームをアップロード
    */
-  private async uploadGame(result: GenerationResult): Promise<void> {
+  private async uploadGame(
+    result: GenerationResult,
+    seed?: { id: number; title: string; idea: string; mechanic?: string; theme?: string }
+  ): Promise<void> {
     if (!this.uploader) return;
 
     try {
       console.log(`   📤 Uploading...`);
+
+      // seedがある場合は一意なtemplate_idとcategoryを付与
+      const templateId = seed ? `v2_idea_${seed.id}` : undefined;
+      const category = seed?.theme?.includes('アーケード') ? 'arcade'
+                     : seed?.theme?.includes('バー') ? 'bar'
+                     : undefined;
+
       const uploadResult = await this.uploader.uploadGame(
         result.project,
         this.qualityScorer.calculateOverallScore(result.qualityScore),
-        true // autoPublish
+        true, // autoPublish
+        templateId,
+        category
       );
 
       if (uploadResult.success) {
@@ -791,7 +803,7 @@ export class Orchestrator {
         this.saveGameLocally(result);
 
         if (this.uploader) {
-          await this.uploadGame(result);
+          await this.uploadGame(result, seed);
         }
       } else {
         failed++;
