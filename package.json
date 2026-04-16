@@ -54,7 +54,12 @@
     "ai:ideas:dry": "DRY_RUN=true tsx src/ai/v2/run-ideas.ts 1",
     "ai:ideas:local": "SKIP_UPLOAD=true tsx src/ai/v2/run-ideas.ts 1",
     "ai:ideas:status": "tsx src/ai/v2/run-ideas.ts --status",
-    "ai:ideas:export": "tsx src/ai/batch/export-ideas.ts"
+    "ai:ideas:export": "tsx src/ai/batch/export-ideas.ts",
+    "ai:neta:gen": "tsx src/ai/v2/generate-neta.ts 1",
+    "ai:neta:gen:5": "tsx src/ai/v2/generate-neta.ts 5",
+    "ai:neta:gen:all": "tsx src/ai/v2/generate-neta.ts --all",
+    "ai:neta:gen:status": "tsx src/ai/v2/generate-neta.ts --status",
+    "ai:neta:gen:commit": "tsx src/ai/v2/generate-neta.ts --commit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",
