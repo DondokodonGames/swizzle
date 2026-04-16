@@ -18,8 +18,18 @@ const __dirname = path.dirname(__filename);
 // テーマをJSONファイルから読み込み
 const themesPath = path.join(__dirname, 'themes.json');
 const tagsPath = path.join(__dirname, 'tags.json');
+const mechanicsPath = path.join(__dirname, 'mechanics-catalog.json');
 let LOADED_THEMES: string[] = [];
 let LOADED_TAGS: any = {};
+
+interface MechanicEntry {
+  id: string;
+  name: string;
+  description: string;
+  playerOperationHint: string;
+  editorNote?: string;
+}
+let LOADED_MECHANICS: MechanicEntry[] = [];
 
 try {
   const themesData = JSON.parse(fs.readFileSync(themesPath, 'utf-8'));
@@ -44,6 +54,15 @@ try {
 } catch (e) {
   console.warn('   ⚠️ Failed to load tags.json');
   LOADED_TAGS = { genres: [], tags: [], themes: {} };
+}
+
+try {
+  const mechanicsData = JSON.parse(fs.readFileSync(mechanicsPath, 'utf-8'));
+  LOADED_MECHANICS = mechanicsData.mechanics || [];
+  console.log(`   🎮 Loaded ${LOADED_MECHANICS.length} mechanics from mechanics-catalog.json`);
+} catch (e) {
+  console.warn('   ⚠️ Failed to load mechanics-catalog.json, mechanic forcing disabled');
+  LOADED_MECHANICS = [];
 }
 
 const CONCEPT_PROMPT = `あなたはスマホ向け超短時間ミニゲームのゲームデザイナーです。
@@ -296,7 +315,8 @@ export class GameConceptGenerator {
   private llmProvider: ILLMProvider;
   private config: Required<Omit<ConceptGeneratorConfig, 'apiKey' | 'llmProvider'>>;
   private usedThemes: Set<string> = new Set();
-  private usedMechanics: Map<string, number> = new Map();  // mechanic → count
+  private usedMechanicIds: Set<string> = new Set();        // catalog ID rotation
+  private usedMechanics: Map<string, number> = new Map();  // type → count (debug)
   private patternAnalyzer: GamePatternAnalyzer;
 
   constructor(config?: ConceptGeneratorConfig) {
@@ -507,10 +527,12 @@ export class GameConceptGenerator {
       prompt += `\n\n# 避けるべきテーマ（既出）\n${Array.from(this.usedThemes).join(', ')}`;
     }
 
-    // メカニクス多様性ヒント（使いすぎのメカニクスを避ける）
-    const mechanicHint = this.buildMechanicDiversityHint();
-    if (mechanicHint) {
-      prompt += mechanicHint;
+    // ★ メカニクスを強制注入（カタログからローテーション）
+    // テーマ強制と同じ方式。LLMが自由に選ぶとパターンが収束するため外部から指定する。
+    const forcedMechanic = this.selectForcedMechanic();
+    if (forcedMechanic) {
+      console.log(`      🎮 Forced mechanic: ${forcedMechanic.name} (${forcedMechanic.id})`);
+      prompt += this.buildForcedMechanicSection(forcedMechanic, forcedTheme);
     }
 
     // フィードバックがある場合（再生成時）
@@ -542,8 +564,9 @@ export class GameConceptGenerator {
 
     // テーマとメカニクスを記録
     this.usedThemes.add(concept.theme);
-    const mechanic = this.classifyMechanic(concept.playerOperation);
-    this.usedMechanics.set(mechanic, (this.usedMechanics.get(mechanic) ?? 0) + 1);
+    if (forcedMechanic) this.usedMechanicIds.add(forcedMechanic.id);
+    const mechanicType = this.classifyMechanic(concept.playerOperation);
+    this.usedMechanics.set(mechanicType, (this.usedMechanics.get(mechanicType) ?? 0) + 1);
 
     return concept;
   }
@@ -590,7 +613,7 @@ export class GameConceptGenerator {
 
     console.log(`      📖 Seed #${seed.id}: "${seed.title}"`);
 
-    const prompt = `あなたはスマホ向け超短時間ミニゲームのゲームデザイナーです。
+    let prompt = `あなたはスマホ向け超短時間ミニゲームのゲームデザイナーです。
 
 # ゲームの長さについて（重要）
 **WarioWareのような5〜10秒で終わる超短時間ゲームを設計してください。**
@@ -664,12 +687,21 @@ export class GameConceptGenerator {
 
 JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n${feedback}\n\n上記の問題を解決したコンセプトを生成してください。` : ''}`;
 
-    // メカニクス多様性ヒント（使いすぎのメカニクスを避ける）
-    const mechanicHint = this.buildMechanicDiversityHint();
-    const finalPrompt = mechanicHint ? prompt + mechanicHint : prompt;
+    // ★ シードのmechanicをカタログに照合してメカニクス説明を補強
+    // シードの idea にメカニクス情報は含まれているが、カタログの説明で実装意図を明確化する
+    const catalogMechanic = this.mapSeedMechanicToCatalog(seed.mechanic);
+    if (catalogMechanic) {
+      console.log(`      🎮 Seed mechanic mapped: ${seed.mechanic} → ${catalogMechanic.name}`);
+      prompt += `\n\n# このメカニクスを実装してください
+上記のアイデアはこのメカニクスを使っています: **${catalogMechanic.name}**
+
+${catalogMechanic.description}
+
+playerOperation は必ず次のガイドに沿って書いてください: ${catalogMechanic.playerOperationHint}`;
+    }
 
     const response = await this.llmProvider.chat(
-      [{ role: 'user', content: finalPrompt }],
+      [{ role: 'user', content: prompt }],
       { maxTokens: 1024, model: this.config.model }
     );
 
@@ -689,9 +721,66 @@ JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n
     }
 
     this.usedThemes.add(concept.theme);
-    const mechanic = this.classifyMechanic(concept.playerOperation);
-    this.usedMechanics.set(mechanic, (this.usedMechanics.get(mechanic) ?? 0) + 1);
+    if (catalogMechanic) this.usedMechanicIds.add(catalogMechanic.id);
+    const mechanicType = this.classifyMechanic(concept.playerOperation);
+    this.usedMechanics.set(mechanicType, (this.usedMechanics.get(mechanicType) ?? 0) + 1);
     return concept;
+  }
+
+  /**
+   * カタログからメカニクスをランダム選択（使用済みを避けてローテーション）
+   * テーマ選択と同じ方式。全消化したらリセット。
+   */
+  private selectForcedMechanic(): MechanicEntry | null {
+    if (LOADED_MECHANICS.length === 0) return null;
+    const available = LOADED_MECHANICS.filter(m => !this.usedMechanicIds.has(m.id));
+    if (available.length === 0) {
+      this.usedMechanicIds.clear();
+      return LOADED_MECHANICS[Math.floor(Math.random() * LOADED_MECHANICS.length)];
+    }
+    return available[Math.floor(Math.random() * available.length)];
+  }
+
+  /**
+   * シードのmechanicフィールドをカタログエントリにマッピング
+   * ideas-arcade-bar.json / neta.json のmechanic種別に対応
+   */
+  private mapSeedMechanicToCatalog(seedMechanic?: string): MechanicEntry | null {
+    if (!seedMechanic || LOADED_MECHANICS.length === 0) return null;
+    const mapping: Record<string, string> = {
+      timingWindow:  'timing_window',
+      timing_window: 'timing_window',
+      rapidTap:      'count_exact',
+      rapid_tap:     'count_exact',
+      twoStep:       'sequence_tap',
+      two_step:      'sequence_tap',
+      flick:         'flick_launch',
+      drag:          'drag_place',
+      swipe:         'swipe_direction',
+      tap:           'select_one_correct',   // generic tap → force specific
+    };
+    const catalogId = mapping[seedMechanic];
+    if (!catalogId) return null;
+    return LOADED_MECHANICS.find(m => m.id === catalogId) ?? null;
+  }
+
+  /**
+   * メカニクス強制注入用のプロンプトセクションを生成
+   */
+  private buildForcedMechanicSection(mechanic: MechanicEntry, theme?: string): string {
+    return `
+
+# ★★★ 今回のメカニクス（必ず実装してください）★★★
+
+**${mechanic.name}**
+
+${mechanic.description}
+
+**playerOperation フィールドは必ず次のガイドに沿って書いてください:**
+${mechanic.playerOperationHint}
+
+このメカニクスをテーマ「${theme ?? ''}」の世界観で表現してください。
+メカニクスの本質（操作方法・判定方法）を変更・回避・別のもので代替しないでください。`;
   }
 
   /**
@@ -727,6 +816,7 @@ JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n
    */
   clearCache(): void {
     this.usedThemes.clear();
+    this.usedMechanicIds.clear();
     this.usedMechanics.clear();
     this.patternAnalyzer.clearCache();
   }
@@ -745,6 +835,7 @@ JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n
     return {
       config: this.config,
       usedThemesCount: this.usedThemes.size,
+      usedMechanicIds: [...this.usedMechanicIds],
       usedMechanics: Object.fromEntries(this.usedMechanics),
       patternAnalyzer: this.patternAnalyzer.getDebugInfo()
     };
