@@ -6,9 +6,10 @@
  *
  * Environment variables:
  *   ANTHROPIC_API_KEY - Required for AI generation
- *   OPENAI_API_KEY - Optional for DALL-E 3 image generation
- *   SKIP_UPLOAD - Set to 'true' to skip Supabase upload
- *   DRY_RUN - Set to 'true' for dry run mode
+ *   OPENAI_API_KEY    - Optional, enables DALL-E 3 image generation
+ *   IMAGE_PROVIDER    - 'openai' | 'claude-svg' | 'mock' (default: auto-detect)
+ *   SKIP_UPLOAD       - Set to 'true' to skip Supabase upload
+ *   DRY_RUN           - Set to 'true' for dry run mode
  */
 
 import * as dotenv from 'dotenv';
@@ -28,8 +29,12 @@ async function main() {
   const openaiApiKey = process.env.OPENAI_API_KEY;
   const dryRun = process.env.DRY_RUN === 'true';
 
+  // IMAGE_PROVIDER で明示指定、なければ鍵の有無で自動判定
+  const imageProvider = (process.env.IMAGE_PROVIDER as 'openai' | 'mock' | 'claude-svg' | undefined)
+    ?? (openaiApiKey ? 'openai' : 'mock');
+
   console.log(`🔑 ANTHROPIC_API_KEY: ${anthropicKey ? `設定済み (${anthropicKey.substring(0, 15)}...)` : '❌ 未設定'}`);
-  console.log(`🔑 OPENAI_API_KEY: ${openaiApiKey ? `設定済み` : '未設定 (mockを使用)'}`);
+  console.log(`🔑 OPENAI_API_KEY: ${openaiApiKey ? `設定済み` : '未設定'}`);
 
   if (!anthropicKey && !dryRun) {
     console.error('❌ エラー: ANTHROPIC_API_KEY が設定されていません');
@@ -43,7 +48,7 @@ async function main() {
 
   console.log(`Target: ${count} games`);
   console.log(`Dry run: ${dryRun}`);
-  console.log(`Image provider: ${openaiApiKey ? 'openai' : 'mock'}`);
+  console.log(`Image provider: ${imageProvider}`);
   console.log('');
 
   // Create orchestrator
@@ -53,7 +58,7 @@ async function main() {
     dryRun,
     anthropicApiKey: anthropicKey,
     imageGeneration: {
-      provider: openaiApiKey ? 'openai' : 'mock',
+      provider: imageProvider,
       apiKey: openaiApiKey
     }
   });

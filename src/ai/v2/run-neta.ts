@@ -38,8 +38,12 @@ async function main() {
   const skipUpload = process.env.SKIP_UPLOAD === 'true';
   const masterUserId = process.env.MASTER_USER_ID;
 
+  // IMAGE_PROVIDER で明示指定、なければ鍵の有無で自動判定
+  const imageProvider = (process.env.IMAGE_PROVIDER as 'openai' | 'mock' | 'claude-svg' | undefined)
+    ?? (openaiApiKey ? 'openai' : 'mock');
+
   console.log(`🔑 ANTHROPIC_API_KEY: ${anthropicKey ? `設定済み (${anthropicKey.substring(0, 15)}...)` : '❌ 未設定'}`);
-  console.log(`🔑 OPENAI_API_KEY: ${openaiApiKey ? '設定済み' : '未設定 (mockを使用)'}`);
+  console.log(`🔑 OPENAI_API_KEY: ${openaiApiKey ? '設定済み' : '未設定'}`);
 
   if (!anthropicKey && !dryRun) {
     console.error('❌ エラー: ANTHROPIC_API_KEY が設定されていません');
@@ -82,7 +86,7 @@ async function main() {
     console.log('\n   ⚠️  ネタ帳消化済み → 完全ランダム生成モードで起動します\n');
   }
   console.log(`   Dry run: ${dryRun}`);
-  console.log(`   Image provider: ${openaiApiKey ? 'openai' : 'mock'}`);
+  console.log(`   Image provider: ${imageProvider}`);
   console.log('');
 
   const orchestrator = new Orchestrator({
@@ -91,7 +95,7 @@ async function main() {
     dryRun,
     anthropicApiKey: anthropicKey,
     imageGeneration: {
-      provider: openaiApiKey ? 'openai' : 'mock',
+      provider: imageProvider,
       apiKey: openaiApiKey
     }
   });
