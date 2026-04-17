@@ -43,63 +43,6 @@ const TARGET_TOTAL = 800;    // 目標総件数
 const NEW_ITEMS = TARGET_TOTAL - EXISTING_COUNT;  // 600件追加
 const BATCH_SIZE = 20;       // 1回のAPIコールで生成する件数
 
-// テーマグループ（バッチごとに異なるテーマを強制）
-const THEME_GROUPS = [
-  '動物・自然（猫、犬、鳥、虫、魚、花、木、海、山、空）',
-  '食べ物・料理（寿司、ラーメン、スイーツ、果物、野菜、料理器具）',
-  'スポーツ・体育（野球、サッカー、テニス、水泳、体操、格闘技）',
-  '日本文化（忍者、侍、妖怪、神社、お祭り、茶道、相撲）',
-  'ファンタジー・魔法（魔法使い、ドラゴン、勇者、宝箱、魔王）',
-  '宇宙・SF（宇宙人、ロケット、惑星、ロボット、タイムマシン）',
-  '職業・仕事（医者、料理人、消防士、警察、農家、パン屋）',
-  '乗り物・交通（電車、飛行機、車、船、自転車、バイク）',
-  '音楽・楽器（ギター、ドラム、ピアノ、歌、DJ、オーケストラ）',
-  '歴史・伝説（恐竜、古代エジプト、騎士、海賊、探検家）',
-  '天気・季節（雨、雪、台風、虹、落ち葉、桜）',
-  '学校・勉強（算数、理科、体育、図工、テスト、部活）',
-  'ゲーム・アニメ（レトロゲーム風、マンガ風、アーケード風）',
-  '海・水中（サメ、クジラ、タコ、珊瑚、宝物、潜水艦）',
-  '夜・夢・不思議（幽霊、夢の中、影、鏡、記憶、時間）',
-  '都市・街（渋谷、秋葉原、縁日、工事現場、デパート）',
-  '科学・実験（化学反応、電気、磁石、顕微鏡、ロケット燃料）',
-  '農業・植物（種まき、水やり、収穫、虫退治、天気管理）',
-  '芸術・工作（絵描き、粘土、折り紙、陶芸、木工）',
-  'スイーツ・お菓子（チョコレート、アイス、ケーキ、飴、クッキー）',
-  'お正月・行事（初日の出、福笑い、凧揚げ、餅つき、おみくじ）',
-  'アウトドア・冒険（キャンプ、釣り、登山、サバイバル、宝探し）',
-  '動物園・サーカス（ライオン、ゾウ、空中ブランコ、綱渡り）',
-  '幼稚園・おもちゃ（積み木、だるまさん、おままごと、シャボン玉）',
-  '医療・健康（注射、包帯、薬、体温計、手術、歯医者）',
-  'レストラン・接客（注文、料理提供、お会計、席案内）',
-  '空想・SFギミック（透明、縮小、分身、テレポート、タイムループ）',
-  '伝統芸能（歌舞伎、能、落語、和太鼓、三味線）',
-  '感情・心理（喜怒哀楽、共感、記憶、トラウマ克服）',
-  '建築・工事（ビル建設、橋、トンネル、解体）',
-];
-
-// メカニクス例示（各バッチで違うメカニクスを優先）
-const MECHANIC_ROTATIONS = [
-  'タイミング一発タップ（移動するものが特定位置に来た瞬間だけタップ）',
-  'ドラッグ配置（オブジェクトを正しい場所にドラッグ）',
-  '方向スワイプ判断（見て正しい方向にスワイプ）',
-  '長押しチャージ（ちょうどよいタイミングで離す）',
-  '正解を1つ選ぶ（複数の中から条件に合う1つをタップ）',
-  '順序タップ（2〜3個を正しい順番でタップ）',
-  '回避生存（障害物をドラッグで避け続ける）',
-  'ドラッグでゴール到達（ゴール地点まで誘導する）',
-  '仲間外れを見つけてタップ（1つだけ違うものをタップ）',
-  'フリック発射（フリックして目標に当てる）',
-  'ちょうどN回タップ（超えると失敗）',
-  '選別タップ（安全なものだけタップ、危険なものは触れない）',
-  'シルエット合わせ（正しいオブジェクトをシルエットに重ねる）',
-  'チャンスウィンドウタップ（特定の瞬間だけタップ有効）',
-  '長押し時間調整（正確にN秒間だけ押す）',
-  '左右交互タップ（交互にリズムよくタップ）',
-  'A→B接続ドラッグ（始点から終点までドラッグして繋ぐ）',
-  '大小・違い瞬間判断（最も大きい/違うものを瞬時にタップ）',
-  '仕分けドラッグ（複数をカテゴリ別にドラッグして仕分け）',
-  'ペア発見タップ（対になる2つを見つけてタップ）',
-];
 
 // ==========================================
 // 進捗管理
@@ -139,59 +82,77 @@ function saveProgress(progress: Progress): void {
   fs.writeFileSync(PROGRESS_FILE, JSON.stringify(progress, null, 2), 'utf-8');
 }
 
+function loadExistingTitles(progress: Progress): string[] {
+  const titles: string[] = [];
+
+  if (fs.existsSync(NETA_FILE)) {
+    try {
+      const neta = JSON.parse(fs.readFileSync(NETA_FILE, 'utf-8'));
+      titles.push(...(neta.items ?? []).map((i: NetaItem) => i.title));
+    } catch { /* ignore */ }
+  }
+
+  titles.push(...progress.generatedItems.map(i => i.title));
+  return titles;
+}
+
 // ==========================================
 // プロンプト生成
 // ==========================================
 
 function buildPrompt(
-  batchIndex: number,
   startId: number,
-  themeGroup: string,
-  mechanic: string,
-  count: number
+  count: number,
+  existingTitles: string[]
 ): string {
   return `あなたはスマホ向け超短時間ミニゲームのアイデアを大量生成するアシスタントです。
 
 # タスク
 ${count}件のミニゲームアイデアをJSON配列で生成してください。
-- 今回のテーマグループ: **${themeGroup}**
-- 優先するメカニクス: **${mechanic}**
-- IDは ${startId} から ${startId + count - 1} を使用
+IDは ${startId} から ${startId + count - 1} を使用。
+
+# 自由に発想してください
+テーマもメカニクスも指定しません。
+あなたが面白いと思うゲームを自由に考えてください。
+ただし以下の多様性ルールを守ってください:
+
+## 多様性ルール（1バッチ${count}件の中で）
+- 同じテーマを3回以上使わない（例: 動物系が多すぎない）
+- 同じ操作（タップ/スワイプ/ドラッグ/長押し）を5回以上使わない
+- 類似したゲームプレイを繰り返さない（例: 「○○が来たらタップ」ばかりにならない）
+
+## 操作の種類（必ずどれか1つ選ぶ）
+- tap: 何かをタップする
+- swipe: 方向にスワイプする
+- drag: オブジェクトをドラッグして移動
+- hold: 長押しで時間・力加減を調整
+- flick: フリックして飛ばす
 
 # 記述粒度（重要）
 
 **良い例（中程度の粒度）:**
-\`\`\`
-「ビルの窓が左右交互に光る。左窓と右窓が同時に光った0.5秒の間だけ壁に掴める。タイミングを見極めて交互タップで頂上まで登れ。
-成功条件: 10回掴んで頂上到達
-失敗条件: タイミングを外したら落下」
-
 「3匹の魚が泳いでいる。1匹だけ違う向きを向いている。仲間外れを素早く見つけてタップせよ。
 成功条件: 仲間外れをタップ
 失敗条件: 間違いをタップ」
 
-「スシが高速ベルトコンベアで流れてくる。注文の品（上部に表示）が来た瞬間だけタップして取れ。
-成功条件: 注文通りのネタを3つ取る
-失敗条件: 違うネタをタップ、または時間切れ」
-\`\`\`
-
 **NGな例（詳細すぎる / ピクセル指定）:**
-\`\`\`
-「赤白モンスターボール（SVG円100×100px、上半分#FF0000、下半分#FFFFFF）が0.2秒ごとに±5度揺れる。30回タップ、タップで1.2倍拡大+赤パルス（0.1秒）」
-\`\`\`
-↑ 色コード、ピクセルサイズ、アニメーション詳細は書かない。ゲームプレイの本質だけ書く。
+「赤白ボール（SVG円100×100px、上半分#FF0000）が0.2秒ごとに揺れる」
+↑ 色コード・ピクセルサイズ・アニメーション詳細は書かない
 
 # ルール
-1. 各アイデアは2〜5文で簡潔に（長すぎない）
+1. 各アイデアは2〜5文で簡潔に
 2. 「何が見えるか」「何をするか」「成功/失敗条件」を含める
-3. 操作はタップ/スワイプ/ドラッグ/フリック/長押しのどれか1種類
-4. 5〜15秒で完結するミニゲーム
+3. 操作はtap/swipe/drag/hold/flickのどれか1種類
+4. 5〜15秒で完結するミニゲーム（WarioWare感覚）
 5. テーマが分かるタイトル（日本語10文字以内）
-6. 「mechanic」フィールド: tap / swipe / drag / flick / hold のどれかを使用
-7. 「theme」フィールド: 短い日本語テーマ（例: 食べ物、動物、宇宙）
-
+6. themeフィールド: 短い日本語テーマ（例: 宇宙、動物、料理）
+${existingTitles.length > 0 ? `
+# 既存タイトル（重複厳禁）
+以下とは全く異なるゲームを作ってください:
+${existingTitles.map(t => `- ${t}`).join('\n')}
+` : ''}
 # 出力フォーマット
-JSON配列のみを出力してください（コードブロックなし）:
+JSON配列のみを出力してください（コードブロックなし、前置きなし）:
 [
   {
     "id": ${startId},
@@ -212,15 +173,12 @@ async function generateBatch(
   client: Anthropic,
   batchIndex: number,
   startId: number,
-  count: number
+  count: number,
+  existingTitles: string[]
 ): Promise<NetaItem[]> {
-  const themeGroup = THEME_GROUPS[batchIndex % THEME_GROUPS.length];
-  const mechanic = MECHANIC_ROTATIONS[batchIndex % MECHANIC_ROTATIONS.length];
-  const prompt = buildPrompt(batchIndex, startId, themeGroup, mechanic, count);
+  const prompt = buildPrompt(startId, count, existingTitles.slice(-30));
 
-  console.log(`   📝 バッチ ${batchIndex + 1}: ID ${startId}〜${startId + count - 1}`);
-  console.log(`      テーマ: ${themeGroup.split('（')[0]}`);
-  console.log(`      メカニクス: ${mechanic.split('（')[0]}`);
+  console.log(`   📝 バッチ ${batchIndex + 1}: ID ${startId}〜${startId + count - 1}（自由生成）`);
 
   const response = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
@@ -249,7 +207,7 @@ async function generateBatch(
   // バリデーション
   const valid = items.filter(item => {
     if (!item.id || !item.title || !item.idea) return false;
-    if (item.idea.includes('px') || item.idea.includes('#FF') || item.idea.includes('#00')) {
+    if (item.idea.includes('px') || /\#[0-9A-Fa-f]{3,6}/.test(item.idea)) {
       console.warn(`      ⚠️  ID ${item.id} にピクセル指定が含まれています（スキップ）: ${item.title}`);
       return false;
     }
@@ -259,7 +217,15 @@ async function generateBatch(
   // IDを正規化（LLMがずれた場合の補正）
   valid.forEach((item, i) => { item.id = startId + i; });
 
+  const themes = [...new Set(valid.map(i => i.theme ?? '不明'))];
+  const mechanics = valid.reduce<Record<string, number>>((acc, i) => {
+    const m = i.mechanic ?? '?';
+    acc[m] = (acc[m] ?? 0) + 1;
+    return acc;
+  }, {});
   console.log(`      ✅ ${valid.length}/${items.length} 件を生成`);
+  console.log(`      📊 テーマ: ${themes.slice(0, 6).join(', ')}${themes.length > 6 ? ' ...' : ''}`);
+  console.log(`      🎮 操作分布: ${Object.entries(mechanics).map(([k, v]) => `${k}:${v}`).join(', ')}`);
   return valid;
 }
 
@@ -379,8 +345,6 @@ async function main() {
     console.log('\n\n⏹️ 中断します（進捗は保存済みです）...');
   });
 
-  let totalCost = 0;
-
   for (let b = 0; b < batchCount && !stopped; b++) {
     const stillRemaining = NEW_ITEMS - progress.totalGenerated;
     if (stillRemaining <= 0) break;
@@ -389,7 +353,8 @@ async function main() {
     const startId = EXISTING_COUNT + progress.totalGenerated + 1;
 
     try {
-      const items = await generateBatch(client, progress.batches, startId, thisCount);
+      const existingTitles = loadExistingTitles(progress);
+      const items = await generateBatch(client, progress.batches, startId, thisCount, existingTitles);
 
       progress.generatedItems.push(...items);
       progress.totalGenerated += items.length;
