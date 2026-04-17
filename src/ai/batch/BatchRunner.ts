@@ -21,17 +21,24 @@ const __dirname = path.dirname(__filename);
 const PROGRESS_FILE = path.join(__dirname, 'batch-progress.json');
 const LOG_FILE = path.join(__dirname, 'batch-errors.log');
 
+/** 連続エラーがこの件数を超えたらバッチを緊急停止 */
+const MAX_ERRORS = 50;
+
 interface Progress {
-  arcade: number;
-  bar: number;
+  total: number;
   errorCount: number;
 }
 
 function loadProgress(): Progress {
   if (fs.existsSync(PROGRESS_FILE)) {
-    return JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf-8'));
+    const p = JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf-8'));
+    // 旧フォーマット（arcade/bar）からの移行
+    if (typeof p.total === 'undefined') {
+      return { total: (p.arcade ?? 0) + (p.bar ?? 0), errorCount: p.errorCount ?? 0 };
+    }
+    return p as Progress;
   }
-  return { arcade: 0, bar: 0, errorCount: 0 };
+  return { total: 0, errorCount: 0 };
 }
 
 function saveProgress(p: Progress) {
@@ -67,30 +74,6 @@ async function supabaseInsert(
   return { ok: false, error: `HTTP ${res.status}: ${body}` };
 }
 
-async function supabaseCount(
-  url: string,
-  serviceKey: string,
-  table: string,
-  creatorId: string,
-  category: string
-): Promise<number> {
-  const res = await fetch(
-    `${url}/rest/v1/${table}?creator_id=eq.${encodeURIComponent(creatorId)}&category=eq.${category}&select=id`,
-    {
-      headers: {
-        'apikey': serviceKey,
-        'Authorization': `Bearer ${serviceKey}`,
-        'Prefer': 'count=exact',
-        'Range-Unit': 'items',
-        'Range': '0-0',
-      },
-    }
-  );
-  const range = res.headers.get('content-range') ?? '0/0';
-  const total = parseInt(range.split('/')[1] ?? '0', 10);
-  return isNaN(total) ? 0 : total;
-}
-
 export class BatchRunner {
   private supabaseUrl: string;
   private serviceKey: string;
@@ -115,18 +98,50 @@ export class BatchRunner {
 
   stop() { this.stopped = true; }
 
-  private async getExistingCounts(): Promise<{ arcade: number; bar: number }> {
-    if (this.skipUpload) return { arcade: 0, bar: 0 };
-    const [arcade, bar] = await Promise.all([
-      supabaseCount(this.supabaseUrl, this.serviceKey, 'user_games', this.masterUserId, 'arcade'),
-      supabaseCount(this.supabaseUrl, this.serviceKey, 'user_games', this.masterUserId, 'bar'),
-    ]);
-    return { arcade, bar };
+  /**
+   * DBに既に存在するバッチゲームの template_id を Set で返す。
+   * これを使って再実行時の重複 INSERT を防ぐ（冪等性の保証）。
+   * template_id は 'batch_{cfg.id}' 形式なので LIKE 'batch_%' でフィルタ。
+   */
+  private async getExistingTemplateIds(): Promise<Set<string>> {
+    if (this.skipUpload) return new Set();
+    const res = await fetch(
+      `${this.supabaseUrl}/rest/v1/user_games` +
+      `?creator_id=eq.${encodeURIComponent(this.masterUserId)}` +
+      `&template_id=like.batch_%25` +
+      `&select=template_id&limit=2000`,
+      {
+        headers: {
+          'apikey': this.serviceKey,
+          'Authorization': `Bearer ${this.serviceKey}`,
+        },
+      }
+    );
+    if (!res.ok) {
+      logError(`既存ゲーム一覧の取得に失敗: HTTP ${res.status}`);
+      return new Set();
+    }
+    const rows: { template_id: string }[] = await res.json().catch(() => []);
+    return new Set(rows.map(r => r.template_id));
   }
 
-  private async insertGame(cfg: GameConfig): Promise<boolean> {
+  /**
+   * 1本のゲームを INSERT する。
+   * - existingIds に既に含まれる場合は SKIP（重複防止）
+   * - INSERT 成功後は existingIds に追加（同一セッション内の重複も防止）
+   * - 最大3回リトライ（2s / 4s バックオフ）
+   */
+  private async insertGame(cfg: GameConfig, existingIds: Set<string>): Promise<boolean> {
+    const templateId = `batch_${cfg.id}`;
+
     if (this.skipUpload) {
       console.log(`  [DRY] ${cfg.category}/${cfg.id}: ${cfg.title}`);
+      return true;
+    }
+
+    // 既にアップロード済みならスキップ（冪等）
+    if (existingIds.has(templateId)) {
+      process.stdout.write('  [SKIP]\n');
       return true;
     }
 
@@ -136,7 +151,7 @@ export class BatchRunner {
       creator_id: this.masterUserId,
       title: cfg.title,
       description: cfg.description,
-      template_id: `batch_${cfg.category}`,
+      template_id: templateId,   // ゲームごとに一意: 'batch_{cfg.id}'
       category: cfg.category,
       game_data: {},
       project_data: projectData,
@@ -148,7 +163,10 @@ export class BatchRunner {
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       const result = await supabaseInsert(this.supabaseUrl, this.serviceKey, 'user_games', row);
-      if (result.ok) return true;
+      if (result.ok) {
+        existingIds.add(templateId); // ローカルでも追跡
+        return true;
+      }
       if (attempt < 3) {
         await sleep(2000 * attempt);
       } else {
@@ -159,58 +177,49 @@ export class BatchRunner {
     return false;
   }
 
-  async run(arcadeGames: GameConfig[], barGames: GameConfig[]) {
+  async run(games: GameConfig[]) {
+    const total = games.length;
     console.log('\n🎮 バッチ生成ランナー起動');
-    console.log(`   SKIP_UPLOAD: ${this.skipUpload}`);
-    console.log(`   MASTER_USER_ID: ${this.masterUserId.substring(0, 8)}...\n`);
+    console.log(`   SKIP_UPLOAD:   ${this.skipUpload}`);
+    console.log(`   MASTER_USER_ID: ${this.masterUserId.substring(0, 8)}...`);
+    console.log(`   対象ゲーム数:   ${total}\n`);
+
+    // DB に存在するバッチゲームを一括取得（重複 INSERT 防止）
+    console.log('🔍 既存バッチゲームを確認中...');
+    const existingIds = await this.getExistingTemplateIds();
+    console.log(`   既存: ${existingIds.size} 件\n`);
 
     const progress = loadProgress();
-    const existing = await this.getExistingCounts();
-    console.log(`📊 現在のDB件数: arcade=${existing.arcade}, bar=${existing.bar}`);
+    let idx = progress.total;
 
-    let arcadeIdx = Math.max(progress.arcade, existing.arcade);
-    let barIdx = Math.max(progress.bar, existing.bar);
-
-    const TARGET_ARCADE = 500;
-    const TARGET_BAR = 200;
-    let total = arcadeIdx + barIdx;
-
-    while (!this.stopped) {
-      const needsArcade = arcadeIdx < TARGET_ARCADE && arcadeIdx < arcadeGames.length;
-      const needsBar = barIdx < TARGET_BAR && barIdx < barGames.length;
-
-      if (!needsArcade && !needsBar) {
-        console.log('\n✅ 全700本の生成が完了しました！');
+    while (!this.stopped && idx < total) {
+      // エラーが閾値を超えたら緊急停止
+      if (progress.errorCount >= MAX_ERRORS) {
+        console.error(`\n❌ エラーが${MAX_ERRORS}件を超えたため停止します。${LOG_FILE} を確認してください。`);
         break;
       }
 
-      if (needsArcade) {
-        const cfg = arcadeGames[arcadeIdx];
-        process.stdout.write(`[arcade ${arcadeIdx + 1}/500] ${cfg.title} ... `);
-        const ok = await this.insertGame(cfg);
-        arcadeIdx++;
-        progress.arcade = arcadeIdx;
-        if (ok) { console.log('✓'); } else { progress.errorCount++; }
-      } else if (needsBar) {
-        const cfg = barGames[barIdx];
-        process.stdout.write(`[bar ${barIdx + 1}/200] ${cfg.title} ... `);
-        const ok = await this.insertGame(cfg);
-        barIdx++;
-        progress.bar = barIdx;
-        if (ok) { console.log('✓'); } else { progress.errorCount++; }
-      }
+      const cfg = games[idx];
+      process.stdout.write(`[${idx + 1}/${total}] ${cfg.category}/${cfg.id} ... `);
+      const ok = await this.insertGame(cfg, existingIds);
+      idx++;
+      progress.total = idx;
+      if (ok) { console.log('✓'); } else { progress.errorCount++; }
 
-      total++;
       saveProgress(progress);
 
-      if (total % 50 === 0) {
-        console.log(`\n📊 進捗: arcade=${arcadeIdx}/500, bar=${barIdx}/200, エラー=${progress.errorCount}\n`);
+      if (idx % 50 === 0) {
+        console.log(`\n📊 進捗: ${idx}/${total}, エラー=${progress.errorCount}\n`);
       }
 
       if (!this.skipUpload) await sleep(300);
     }
 
     saveProgress(progress);
-    console.log(`\n📊 最終: arcade=${arcadeIdx}/500, bar=${barIdx}/200, エラー=${progress.errorCount}`);
+    console.log(`\n📊 最終: ${idx}/${total}, エラー=${progress.errorCount}`);
+
+    if (idx >= total) {
+      console.log(`\n✅ 全${total}本の生成が完了しました！`);
+    }
   }
 }

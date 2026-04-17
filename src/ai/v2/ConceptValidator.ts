@@ -41,6 +41,29 @@ export class ConceptValidator {
       criticalIssues.push('successConditionが指定されていないか、極端に短いです');
     }
 
+    // === クリティカル: 意味のある成功条件チェック ===
+
+    // 成功条件がプレイヤー操作を含まない（時間経過のみ）
+    const successOnlyTime = /^(時間が経つ|時間が来たら|時間経過|制限時間|タイムアップ|time\s*up|時間内に何もしな|ただ待つ)/.test(
+      concept.successCondition.trim()
+    );
+    if (successOnlyTime) {
+      criticalIssues.push('successConditionが時間経過のみで、プレイヤー操作が関与していません');
+    }
+
+    // 連打ゲームで達成不可能なタップ数チェック
+    // 例: 10秒で100回連打は不可能（上限3回/秒 = 30回）
+    const mashMatch = concept.playerOperation.match(/連打|mash|rapid/i);
+    const tapCountMatch = concept.successCondition.match(/([0-9]+)\s*(回|タップ|tap)/i) ||
+                          concept.playerGoal.match(/([0-9]+)\s*(回|タップ|tap)/i);
+    if (mashMatch && tapCountMatch) {
+      const requiredTaps = parseInt(tapCountMatch[1], 10);
+      const maxFeasibleTaps = concept.duration * 3; // 3 taps/sec max
+      if (requiredTaps > maxFeasibleTaps) {
+        criticalIssues.push(`連打ゲームで${requiredTaps}回は${concept.duration}秒内に不可能です（最大${maxFeasibleTaps}回）。タップ数を減らすか、操作方法を変えてください`);
+      }
+    }
+
     // === 警告: あると良いが、なくてもゲームは成立する ===
 
     // 目標に数値があるとより明確

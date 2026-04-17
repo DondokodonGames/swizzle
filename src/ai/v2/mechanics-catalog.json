@@ -1,0 +1,146 @@
+{
+  "version": "1.0",
+  "description": "ゲームメカニクスカタログ。GameConceptGeneratorがここからランダムに1つ選んでLLMに強制する。テーマ強制と同様の仕組み。",
+  "mechanics": [
+    {
+      "id": "timing_one_shot",
+      "name": "タイミング一発タップ",
+      "description": "動いているオブジェクトが画面上の特定ゾーン（ターゲット位置）を通過する瞬間に1回だけタップする。早すぎても遅すぎても失敗。精度が問われる緊張感のあるメカニクス。",
+      "playerOperationHint": "「[対象]が[場所]に来た瞬間にタップ」のような文にすること。操作は1〜3回。",
+      "editorNote": "移動オブジェクト + touch条件 + time/position条件を組み合わせる"
+    },
+    {
+      "id": "drag_place",
+      "name": "ドラッグ配置",
+      "description": "オブジェクトを正しい位置（ターゲットエリア）にドラッグして配置する。合った/合わなかったが即座に判定される。「パズルのピースをはめる」「物を正しい場所に置く」などのバリエーションがある。",
+      "playerOperationHint": "「[対象]を[場所/ターゲット]にドラッグして配置する」のような文にすること。",
+      "editorNote": "followDrag + collision判定 または position(inside)判定でsuccess"
+    },
+    {
+      "id": "swipe_direction",
+      "name": "方向スワイプ判断",
+      "description": "画面に何かが表示される。それを見て正しい方向（左/右/上/下）にスワイプして答える。方向が合っていれば成功、間違いは失敗。素早い判断力が必要。",
+      "playerOperationHint": "「[何かを見て]正しい方向にスワイプする」のような文にすること。例: 「矢印の向きにスワイプ」「正しいルートの方向にスワイプ」",
+      "editorNote": "swipe条件でdirection判定。左右上下の4択が基本。"
+    },
+    {
+      "id": "hold_charge",
+      "name": "長押しチャージ調整",
+      "description": "長押しするとゲージ/パワーが溜まり、適切なタイミングで離すことで「ちょうどよい量」を実現する。早すぎても遅すぎても失敗。チャージ量の精度を競う。",
+      "playerOperationHint": "「長押しでチャージして、[適切な状態]になったら離す」のような文にすること。例: 「弓を引く」「ジャンプ力をためる」",
+      "editorNote": "hold条件 + counter(時間経過でincrement) + counterがrange内でsuccess"
+    },
+    {
+      "id": "select_one_correct",
+      "name": "正解を1つ選ぶ",
+      "description": "複数（3〜5個）の選択肢が表示される。そのうち1つだけが正解（ルールに合致する）。正解をタップすれば成功、不正解をタップすれば即失敗。瞬間的な判断力が試される。",
+      "playerOperationHint": "「[N個の対象]から[条件]に合うものを1つタップして選ぶ」のような文にすること。例: 「3匹の中で本物の○○をタップ」",
+      "editorNote": "正解objectのtouch→success / 不正解のtouch→failure"
+    },
+    {
+      "id": "sequence_tap",
+      "name": "順序タップ",
+      "description": "2〜3個のオブジェクトを正しい順番でタップする。表示されたルール・順序通りにタップしないと失敗。順番を暗記・読み取る力が必要。",
+      "playerOperationHint": "「[対象]を[順序/ルール]通りの順番でタップする」のような文にすること。例: 「数字の小さい順にタップ」「光った順番にタップ」",
+      "editorNote": "flag/counter組み合わせで順序管理 → 最後の1つでsuccess、順序違いでfailure"
+    },
+    {
+      "id": "avoid_survive",
+      "name": "回避生存",
+      "description": "移動する障害物や危険物をドラッグで避けながら制限時間を生き残る。触れたら失敗、時間を生き残ったら成功。操作はシンプルだが緊張感がある。",
+      "playerOperationHint": "「[自キャラ]をドラッグして[障害物]を避け続ける」のような文にすること。",
+      "editorNote": "followDrag + obstacle collision→failure + time→success"
+    },
+    {
+      "id": "guide_to_goal",
+      "name": "ドラッグでゴール到達",
+      "description": "ドラッグ可能なオブジェクトを操作してゴール地点まで誘導する。障害物を避けながら、または正しいルートを通ってゴールに到達させる。",
+      "playerOperationHint": "「[対象]をドラッグして[ゴール]まで誘導する（障害物を避けながら）」のような文にすること。",
+      "editorNote": "followDrag + goal collision→success + obstacle collision→failure"
+    },
+    {
+      "id": "spot_odd_one",
+      "name": "仲間外れを見つけてタップ",
+      "description": "似たようなオブジェクトの中に1つだけ違う（異なる色・形・向き・状態）ものがある。仲間外れを素早く見つけてタップ。間違いをタップすると失敗。",
+      "playerOperationHint": "「[N個の対象]の中から違う/仲間外れのものを見つけてタップ」のような文にすること。",
+      "editorNote": "見た目の違いをSVGで明確に表現。正解touchでsuccess、他touchでfailure"
+    },
+    {
+      "id": "flick_launch",
+      "name": "フリック発射",
+      "description": "オブジェクトをフリックして目標に向かって打ち出す。角度・方向・強さを見極めて正確にフリックすることが必要。スポーツ感・爽快感がある。",
+      "playerOperationHint": "「[対象]を[ターゲット方向]にフリックして飛ばす」のような文にすること。例: 「ボールをゴールにフリック」",
+      "editorNote": "flick → move(straight) → collision→success"
+    },
+    {
+      "id": "count_exact",
+      "name": "ちょうどN回タップ",
+      "description": "オブジェクトをちょうどN回タップする（N回ピッタリで成功、超えると即失敗）。少なすぎると時間切れ失敗。タップ数の正確なコントロールが必要。",
+      "playerOperationHint": "「[対象]をちょうど[N]回タップする（超えたら失敗）」のような文にすること。Nは3〜7が適切。",
+      "editorNote": "counter increment(touch) + counter==N→success + counter>N→failure"
+    },
+    {
+      "id": "pair_match_tap",
+      "name": "ペア発見タップ",
+      "description": "複数のオブジェクトの中から、対になる/マッチする2つを素早く見つけてタップする。1つ目の選択が合っていないと2つ目に進めない。",
+      "playerOperationHint": "「[対象]の中から対になる2つを見つけてタップする」のような文にすること。",
+      "editorNote": "flag管理で1つ目タップ→flagセット→2つ目タップ+flag確認→success、ミスでfailure"
+    },
+    {
+      "id": "timing_window",
+      "name": "チャンスウィンドウタップ",
+      "description": "特定の条件（アニメーションの特定フレーム、特定の配置、開いた窓など）が成立した短い「ウィンドウ」の間だけタップが有効。ウィンドウ外でタップすると失敗またはミス扱い。",
+      "playerOperationHint": "「[対象]が[特定状態/タイミング]になった瞬間だけタップ（それ以外はNG）」のような文にすること。",
+      "editorNote": "animation/objectState + flag(ウィンドウ開閉) + touchはflag=trueのときのみsuccess"
+    },
+    {
+      "id": "drag_sort",
+      "name": "仕分けドラッグ",
+      "description": "複数のオブジェクトをルールに従って2〜3つのカテゴリ（エリア）にドラッグして仕分ける。全て正しく分類できたら成功。間違えたカテゴリに入れると失敗。",
+      "playerOperationHint": "「[対象]を[カテゴリA/B]のエリアにドラッグして仕分ける」のような文にすること。",
+      "editorNote": "各objectにfollowDrag + zoneごとにcollision判定 → 全正解でsuccess"
+    },
+    {
+      "id": "tap_selective",
+      "name": "選別タップ（正解だけ叩く）",
+      "description": "安全なもの/正しいものだけをタップし、危険なもの/NGなものには絶対触れてはいけない。素早く正確に選別タップ。反射神経と識別力が必要。",
+      "playerOperationHint": "「[安全/正解のもの]だけタップし、[危険/NG]には触れないようにする」のような文にすること。",
+      "editorNote": "safe objectのtouch→counter increment→success / NG objectのtouch→failure"
+    },
+    {
+      "id": "silhouette_match",
+      "name": "シルエット合わせドラッグ",
+      "description": "影や輪郭（シルエット）が表示されている。正しいオブジェクトをドラッグして、そのシルエットにぴったり重ねる。複数の候補から正しいものを選ぶ識別力も必要。",
+      "playerOperationHint": "「[正しいオブジェクト]を選んでシルエットの位置にドラッグして合わせる」のような文にすること。",
+      "editorNote": "followDrag + position(inside target zone) → success"
+    },
+    {
+      "id": "hold_duration",
+      "name": "長押し時間調整",
+      "description": "オブジェクトを正確にN秒間だけ長押しする（または特定の区間だけ押し続ける）。短すぎても長すぎても失敗。時間感覚の精度が問われる。",
+      "playerOperationHint": "「[対象]を[N秒間/特定区間]だけ長押しする（短すぎても長すぎても失敗）」のような文にすること。",
+      "editorNote": "hold開始でflag + time条件でsuccess window + window後のtouchUpでfailure"
+    },
+    {
+      "id": "alternate_tap",
+      "name": "左右交互タップ",
+      "description": "左側と右側（または2つの対象）を交互にタップし続ける。同じ側を連続でタップすると失敗。リズムよく交互に叩くことが求められる。",
+      "playerOperationHint": "「[左側]と[右側]を交互にリズムよくタップし続ける（同じ側連続はNG）」のような文にすること。",
+      "editorNote": "flag(lastTapped=left/right)で交互チェック + counter → success。同側連続でfailure"
+    },
+    {
+      "id": "connect_ab",
+      "name": "A→B接続ドラッグ",
+      "description": "始点Aから終点Bまでドラッグして2点を繋げる。または複数のポイントを順番に通過するようにドラッグする。繋がった/到達したら成功。",
+      "playerOperationHint": "「[始点A]から[終点B]までドラッグして繋ぐ」のような文にすること。例: 「電池の＋から電球にドラッグ」",
+      "editorNote": "followDrag + collision/position(B) → success"
+    },
+    {
+      "id": "size_judge",
+      "name": "大小・違い瞬間判断",
+      "description": "表示された複数のものを見て、指定のルール（一番大きい/小さい/違う色/正しい方向）に当てはまるものを瞬時に1回タップ。間違いは即失敗。",
+      "playerOperationHint": "「[複数の対象]の中で[最も大きい/一番違う/正解の]ものをタップする」のような文にすること。",
+      "editorNote": "SVGで明確な違いを表現。正解touch→success、他touch→failure"
+    }
+  ]
+}

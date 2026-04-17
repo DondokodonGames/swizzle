@@ -473,7 +473,7 @@ export class Orchestrator {
       // Step 6.6: DryRunSimulator（ゲート）— アセット生成前に実行
       // 遊べないゲームにはアセットを生成しない
       console.log('   🎮 Step 6.6: Simulating gameplay (pre-asset gate)...');
-      const simulation = this.dryRunSimulator.simulate(logicOutput, spec);
+      const simulation = this.dryRunSimulator.simulate(logicOutput, spec, concept.duration);
       if (simulation.summary.playable && simulation.summary.confidence !== 'low') {
         console.log(`      ✅ Game playable (confidence: ${simulation.summary.confidence})`);
         console.log(`      📊 Success path: ${simulation.success.requiredTaps} taps, ~${simulation.success.estimatedSeconds.toFixed(1)}s`);
@@ -628,15 +628,27 @@ export class Orchestrator {
   /**
    * ゲームをアップロード
    */
-  private async uploadGame(result: GenerationResult): Promise<void> {
+  private async uploadGame(
+    result: GenerationResult,
+    seed?: { id: number; title: string; idea: string; mechanic?: string; theme?: string }
+  ): Promise<void> {
     if (!this.uploader) return;
 
     try {
       console.log(`   📤 Uploading...`);
+
+      // seedがある場合は一意なtemplate_idとcategoryを付与
+      const templateId = seed ? `v2_idea_${seed.id}` : undefined;
+      const category = seed?.theme?.includes('アーケード') ? 'arcade'
+                     : seed?.theme?.includes('バー') ? 'bar'
+                     : undefined;
+
       const uploadResult = await this.uploader.uploadGame(
         result.project,
         this.qualityScorer.calculateOverallScore(result.qualityScore),
-        true // autoPublish
+        true, // autoPublish
+        templateId,
+        category
       );
 
       if (uploadResult.success) {
@@ -719,8 +731,9 @@ export class Orchestrator {
       items: Array<{ id: number; title: string; idea: string; mechanic?: string; theme?: string }>;
     };
 
-    // 進捗ファイルを読み込む（neta.json と同じディレクトリの neta-progress.json）
-    const progressFile = path.join(path.dirname(netaFile), 'neta-progress.json');
+    // 進捗ファイルを読み込む（入力ファイルと同じディレクトリ、basename から -progress.json を生成）
+    const baseName = path.basename(netaFile, '.json');
+    const progressFile = path.join(path.dirname(netaFile), `${baseName}-progress.json`);
     let processedIds: Set<number> = new Set();
 
     if (fs.existsSync(progressFile)) {
@@ -790,7 +803,7 @@ export class Orchestrator {
         this.saveGameLocally(result);
 
         if (this.uploader) {
-          await this.uploadGame(result);
+          await this.uploadGame(result, seed);
         }
       } else {
         failed++;

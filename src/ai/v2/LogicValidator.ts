@@ -1103,10 +1103,10 @@ export class LogicValidator {
     }
 
     errors.push({
-      type: 'warning',
+      type: 'critical',
       code: 'NO_PLAYER_ACTION',
-      message: '成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていない可能性があります',
-      fix: 'ゲームコンセプトの操作方法に合わせてルールを確認してください'
+      message: '成功へのパスにプレイヤー操作（touch/collision/position条件）が含まれていません。操作なしで成立するゲームは受け入れられません',
+      fix: 'touch/collision/positionトリガーを持つルールを成功パスに追加してください'
     });
   }
 

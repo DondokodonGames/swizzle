@@ -478,15 +478,73 @@ Shape Language: ${concept.visualStyle.includes('かわいい') || concept.visual
 
   /**
    * プレースホルダーオブジェクト生成
-   * 透明な画像を生成（後で実画像に差し替え可能）
+   * オブジェクト名・用途から形状を推定し、色付きSVG図形を生成する
    */
   private createPlaceholderObject(plan: AssetPlan['objects'][0]): GeneratedObject {
     const size = plan.size === 'small' ? 64 : plan.size === 'large' ? 192 : 128;
+    const color = this.getColorFromName(plan.name);
+    const hint = `${plan.name} ${plan.purpose}`.toLowerCase();
 
-    // 完全に透明なSVG（後で画像差し替え用）
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-      <rect width="${size}" height="${size}" fill="transparent" opacity="0"/>
-    </svg>`;
+    let svg: string;
+
+    if (/bomb|danger|explosive|地雷/.test(hint)) {
+      // bomb: black circle with fuse
+      const cx = size * 0.52, cy = size * 0.56, r = size * 0.38;
+      svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="#222"/>
+        <line x1="${cx}" y1="${size*0.18}" x2="${size*0.7}" y2="${size*0.05}" stroke="#888" stroke-width="${Math.max(2,size*0.04)}"/>
+        <circle cx="${size*0.7}" cy="${size*0.05}" r="${size*0.07}" fill="#ff6600"/>
+      </svg>`;
+    } else if (/star|コイン|star|medal/.test(hint)) {
+      // star shape
+      const cx = size / 2, cy = size / 2, r = size * 0.46;
+      const pts = Array.from({ length: 5 }, (_, i) => {
+        const outer = (Math.PI / 2) + (i * 2 * Math.PI / 5);
+        const inner = outer + Math.PI / 5;
+        return [
+          `${(cx + r * Math.cos(outer)).toFixed(1)},${(cy - r * Math.sin(outer)).toFixed(1)}`,
+          `${(cx + r * 0.42 * Math.cos(inner)).toFixed(1)},${(cy - r * 0.42 * Math.sin(inner)).toFixed(1)}`
+        ];
+      }).flat().join(' ');
+      svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <polygon points="${pts}" fill="${color}"/>
+      </svg>`;
+    } else if (/ball|circle|bubble|玉|球|coin|コイン/.test(hint)) {
+      // circle
+      const r = size / 2 - 3;
+      svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="${color}"/>
+      </svg>`;
+    } else if (/balloon|風船/.test(hint)) {
+      // balloon
+      const w = size, h = Math.floor(size * 1.2);
+      svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+        <ellipse cx="${w/2}" cy="${h*0.42}" rx="${w/2-4}" ry="${h*0.42-2}" fill="${color}"/>
+        <line x1="${w/2}" y1="${h*0.84}" x2="${w/2}" y2="${h-2}" stroke="#999" stroke-width="2"/>
+      </svg>`;
+    } else if (/diamond|菱形/.test(hint)) {
+      const h = size / 2;
+      svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <polygon points="${h},4 ${size-4},${h} ${h},${size-4} 4,${h}" fill="${color}"/>
+      </svg>`;
+    } else if (/arrow|triangle|三角|矢印/.test(hint)) {
+      svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <polygon points="${size/2},4 ${size-4},${size-4} 4,${size-4}" fill="${color}"/>
+      </svg>`;
+    } else if (/button|btn|ボタン|タップ/.test(hint)) {
+      const label = plan.name.substring(0, 2);
+      const fontSize = Math.floor(size * 0.28);
+      svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <rect x="4" y="4" width="${size-8}" height="${size-8}" rx="${size*0.14}" fill="${color}"/>
+        <text x="${size/2}" y="${size/2+fontSize*0.35}" text-anchor="middle" font-size="${fontSize}" font-weight="bold" fill="#fff" font-family="Arial">${label}</text>
+      </svg>`;
+    } else {
+      // default: rounded rectangle
+      const rx = Math.floor(size * 0.12);
+      svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <rect x="4" y="4" width="${size-8}" height="${size-8}" rx="${rx}" fill="${color}"/>
+      </svg>`;
+    }
 
     const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 
