@@ -412,7 +412,11 @@ export class Orchestrator {
         if (logicRetries >= this.config.maxRetries) {
           console.log(`      ⚠️ Validation failed after ${logicRetries} retries`);
           console.log(`      Errors: ${combinedErrors.slice(0, 5).map(e => e.message).join(', ')}${combinedErrors.length > 5 ? '...' : ''}`);
-          throw new Error(`Validation failed after ${logicRetries} retries: ${combinedErrors[0]?.message}`);
+          const errorSummary = combinedErrors
+            .slice(0, 8)
+            .map(e => `[${e.code}] ${e.message}${e.fix ? ` → 修正: ${e.fix}` : ''}`)
+            .join('\n');
+          throw new Error(`Validation failed after ${logicRetries} retries:\n${errorSummary}`);
         }
 
         console.log(`      ⚠️ Issues: ${combinedErrors.length} errors`);
@@ -486,7 +490,11 @@ export class Orchestrator {
         simulation.issues.filter(i => i.severity === 'error').forEach(i => {
           console.log(`         ❌ [${i.code}] ${i.message}`);
         });
-        throw new Error(`Game not playable: ${reason}`);
+        const simIssueDetails = simulation.issues
+          .filter(i => i.severity === 'error')
+          .map(i => `[${i.code}] ${i.message}`)
+          .join('\n');
+        throw new Error(`Game not playable: ${reason}\n${simIssueDetails}`);
       }
 
       // Step 7: AssetGenerator
@@ -929,7 +937,8 @@ export class Orchestrator {
       'NO_SUCCESS', 'NO_FAILURE', 'NO_PLAYER_ACTION', 'SUCCESS_FAILURE_CONFLICT',
       'CONFLICTING_TERMINATION', 'UNREACHABLE_SUCCESS', 'MISSING_COUNTER',
       'INVALID_COMPARISON', 'POOR_HORIZONTAL_DISTRIBUTION', 'MISSING_SOUND_ID',
-      'ACTION_UNDEFINED_OBJECT', 'CONDITION_UNDEFINED_OBJECT'
+      'ACTION_UNDEFINED_OBJECT', 'CONDITION_UNDEFINED_OBJECT',
+      'COUNTER_UNREACHABLE', 'OBJECT_NO_RULES', 'SUCCESS_UNREACHABLE_TIME'
     ];
     return knownCodes.filter(code => msg.includes(code));
   }
