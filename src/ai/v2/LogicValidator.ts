@@ -298,6 +298,22 @@ export class LogicValidator {
         }
       }
     }
+
+    // サバイバルゲームパターン: time → success + collision/touch → failure
+    // 「N秒生き残れば成功、障害物に当たれば失敗」はプレイヤー操作（回避）が必要
+    const hasTimedSuccess = successRules.some(r =>
+      r.triggers?.conditions?.some(c => c.type === 'time')
+    );
+    if (hasTimedSuccess) {
+      const failureRules = output.script.rules.filter(r =>
+        r.actions?.some(a => a.type === 'failure')
+      );
+      const hasInteractiveFailure = failureRules.some(r =>
+        r.triggers?.conditions?.some(c => c.type === 'collision' || c.type === 'touch')
+      );
+      if (hasInteractiveFailure) return true;
+    }
+
     return false;
   }
 
@@ -1102,6 +1118,20 @@ export class LogicValidator {
       }
     }
 
+    // サバイバルゲームパターン: time → success + collision/touch → failure
+    const hasTimedSuccess2 = successRules.some(r =>
+      r.triggers?.conditions?.some(c => c.type === 'time')
+    );
+    if (hasTimedSuccess2) {
+      const allFailureRules = output.script.rules.filter(r =>
+        r.actions?.some(a => a.type === 'failure')
+      );
+      const hasInteractiveFailure2 = allFailureRules.some(r =>
+        r.triggers?.conditions?.some(c => c.type === 'collision' || c.type === 'touch')
+      );
+      if (hasInteractiveFailure2) return;
+    }
+
     errors.push({
       type: 'critical',
       code: 'NO_PLAYER_ACTION',
@@ -1537,6 +1567,18 @@ export class LogicValidator {
         }
 
         if (!hasIndirectPlayerAction) {
+          // サバイバルゲームパターン: time → success + collision/touch → failure は有効
+          const isTimedSuccessRule = conditions.some(c => c.type === 'time');
+          if (isTimedSuccessRule) {
+            const allFailRules = output.script.rules.filter(r =>
+              r.actions?.some(a => a.type === 'failure')
+            );
+            const hasSurvivalFailure = allFailRules.some(r =>
+              r.triggers?.conditions?.some(c => c.type === 'collision' || c.type === 'touch')
+            );
+            if (hasSurvivalFailure) continue;
+          }
+
           errors.push({
             type: 'warning',
             code: 'SUCCESS_NO_PLAYER_ACTION',
