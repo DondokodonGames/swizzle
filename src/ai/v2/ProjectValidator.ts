@@ -392,8 +392,10 @@ export class ProjectValidator {
       // 全オブジェクトが水平方向の中央列（x=0.4〜0.6）に集中している場合
       const allHorizontallyCentered = xValues.every(x => Math.abs(x - 0.5) <= 0.12);
       if (allHorizontallyCentered && xStddev < 0.08) {
+        // オブジェクト2個以下はバスケ・タイミング系の縦軸レイアウトが正当なため warning に格下げ
+        const distributionSeverity: 'error' | 'warning' = layoutObjs.length <= 2 ? 'warning' : 'error';
         issues.push({
-          severity: 'error',
+          severity: distributionSeverity,
           category: 'layout',
           code: 'POOR_HORIZONTAL_DISTRIBUTION',
           message: `All ${layoutObjs.length} objects are horizontally centered (x stddev: ${xStddev.toFixed(3)}). Objects should be spread across the screen width.`,
