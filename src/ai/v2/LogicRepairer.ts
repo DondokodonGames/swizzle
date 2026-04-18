@@ -225,7 +225,11 @@ export class LogicRepairer {
       case 'COUNTER_CONFLICT':
       case 'SAME_RULE_SUCCESS_FAILURE':
       case 'UNREACHABLE_SUCCESS':
+      case 'COUNTER_UNREACHABLE':
+      case 'SUCCESS_UNREACHABLE_TIME':
         return 'full_regen';
+      case 'OBJECT_NO_RULES':
+        return 'partial_regen';
 
       default:
         return error.type === 'critical' ? 'full_regen' : 'partial_regen';
@@ -949,6 +953,18 @@ ${output.assetPlan.sounds.map(s => `- ${s.id}: ${s.type}`).join('\n')}
           break;
         case 'COUNTER_NEVER_MODIFIED':
           feedback.push('→ カウンターを操作するルールを追加してください');
+          break;
+        case 'COUNTER_UNREACHABLE':
+          feedback.push('→ 成功カウンターの目標値がインクリメントルール数を超えています。');
+          feedback.push('→ 「同じオブジェクトを3回タップして成功」は実装不可。代わりに「3つの別オブジェクト(target_1, target_2, target_3)を1回ずつタップして成功」に設計を変更してください。');
+          feedback.push('→ 目標値はインクリメントルール数と一致させること（例: 3オブジェクト → counter >= 3, 各オブジェクトに1ルール）。');
+          break;
+        case 'SUCCESS_UNREACHABLE_TIME':
+          feedback.push('→ ゲームの成功条件がtime（タイマー）のみです。これは自動成功（AUTO_SUCCESS）になります。');
+          feedback.push('→ 成功条件にtouch/collisionなどプレイヤー操作を追加するか、time→successをtime→failureに変更してサバイバルゲームとして設計してください。');
+          break;
+        case 'OBJECT_NO_RULES':
+          feedback.push('→ ルールが1つもないオブジェクトがあります。全オブジェクトに最低1つのルールを生成してください（省略禁止）。');
           break;
       }
     }

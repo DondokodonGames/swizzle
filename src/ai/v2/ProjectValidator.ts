@@ -392,14 +392,18 @@ export class ProjectValidator {
       // 全オブジェクトが水平方向の中央列（x=0.4〜0.6）に集中している場合
       const allHorizontallyCentered = xValues.every(x => Math.abs(x - 0.5) <= 0.12);
       if (allHorizontallyCentered && xStddev < 0.08) {
-        // オブジェクト2個以下はバスケ・タイミング系の縦軸レイアウトが正当なため warning に格下げ
-        const distributionSeverity: 'error' | 'warning' = layoutObjs.length <= 2 ? 'warning' : 'error';
+        // 縦軸レイアウトが正当な場合はwarningに格下げ:
+        //   1. オブジェクト2個以下（バスケ・タイミング系など）
+        //   2. y軸標準偏差が高い（縦に分散 = ボール上ゴール下など縦軸配置）
+        const isVerticalLayout = yStddev >= 0.15;
+        const distributionSeverity: 'error' | 'warning' =
+          (layoutObjs.length <= 2 || isVerticalLayout) ? 'warning' : 'error';
         issues.push({
           severity: distributionSeverity,
           category: 'layout',
           code: 'POOR_HORIZONTAL_DISTRIBUTION',
-          message: `All ${layoutObjs.length} objects are horizontally centered (x stddev: ${xStddev.toFixed(3)}). Objects should be spread across the screen width.`,
-          details: { xValues, xStddev, xMean },
+          message: `All ${layoutObjs.length} objects are horizontally centered (x stddev: ${xStddev.toFixed(3)}, y stddev: ${yStddev.toFixed(3)}). Objects should be spread across the screen width.`,
+          details: { xValues, xStddev, xMean, yStddev },
           fix: 'Assign distinct x positions (e.g., 0.2, 0.5, 0.8) based on game mechanics'
         });
       }

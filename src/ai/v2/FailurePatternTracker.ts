@@ -130,7 +130,10 @@ export class FailurePatternTracker {
       MISSING_COUNTER: 'counterNameで参照するカウンターをstateManagement.countersに先に定義すること',
       POOR_HORIZONTAL_DISTRIBUTION: 'オブジェクトが画面中央に集中している。x座標を0.2〜0.8の範囲に分散させること',
       MISSING_SOUND_ID: 'soundIdで参照するサウンドをaudio.soundsに定義すること（se_tap, se_success, se_failureは必須）',
-      CONFLICTING_TERMINATION: '複数のルールで同じ条件が成功と失敗の両方を発火させている。targetObjectを分けること'
+      CONFLICTING_TERMINATION: '複数のルールで同じ条件が成功と失敗の両方を発火させている。targetObjectを分けること',
+      COUNTER_UNREACHABLE: 'カウンター目標値がインクリメントルール数より多い。「同じ操作をN回」は不可。「N個の別オブジェクトを1回ずつ」に設計変更すること',
+      OBJECT_NO_RULES: '全オブジェクトに最低1つのルールが必要。省略せず全件にルールを生成すること（block_1だけでなくblock_2, block_3も）',
+      SUCCESS_UNREACHABLE_TIME: 'time→successのみの成功条件は自動成功になる。touch/collisionを成功条件に使うか、time→failureにしてサバイバルゲームにすること'
     };
     return hints[code] || '';
   }
