@@ -128,6 +128,76 @@ export class DryRunSimulator {
       }
     }
 
+    // チェック1: カウンター到達可能性（成功条件 counter >= N に対してN回インクリメントできるか）
+    const successRulesForCounterCheck = logicOutput.script.rules.filter(r =>
+      r.actions?.some(a => a.type === 'success')
+    );
+    const successCounterCondition = successRulesForCounterCheck
+      .flatMap(r => r.triggers?.conditions || [])
+      .find(c => c.type === 'counter' && c.comparison === 'greaterOrEqual');
+
+    if (successCounterCondition) {
+      const targetValue = successCounterCondition.value || 0;
+      const counterName = successCounterCondition.counterName || '';
+      const incrementRuleCount = logicOutput.script.rules.filter(r =>
+        r.actions?.some(a =>
+          a.type === 'counter' &&
+          a.counterName === counterName &&
+          a.operation === 'increment'
+        )
+      ).length;
+
+      if (incrementRuleCount < targetValue) {
+        issues.push({
+          code: 'COUNTER_UNREACHABLE',
+          message: `Counter "${counterName}" needs ${targetValue} increments but only ${incrementRuleCount} rules can increment it.`,
+          severity: 'error'
+        });
+      }
+    }
+
+    // チェック2: duration と success時間の整合
+    const effectiveGameDuration = gameDuration ?? 999;
+    const timeSuccessRules = logicOutput.script.rules.filter(r =>
+      r.triggers?.conditions?.some(c => c.type === 'time') &&
+      r.actions?.some(a => a.type === 'success')
+    );
+    for (const rule of timeSuccessRules) {
+      const timeCond = rule.triggers?.conditions?.find(c => c.type === 'time');
+      const ruleSeconds = timeCond?.seconds ?? timeCond?.interval ?? 0;
+      if (ruleSeconds > effectiveGameDuration) {
+        issues.push({
+          code: 'SUCCESS_UNREACHABLE_TIME',
+          message: `Rule "${rule.id}" fires success at ${ruleSeconds}s but game ends at ${effectiveGameDuration}s.`,
+          severity: 'error'
+        });
+      }
+    }
+
+    // チェック3: ルールのないオブジェクト検出
+    const nonPlayerObjects = logicOutput.script.layout.objects.filter(obj =>
+      !obj.objectId.includes('guide') &&
+      !obj.objectId.includes('bg') &&
+      !obj.objectId.includes('hp_bar') &&
+      !obj.objectId.includes('ui') &&
+      !obj.objectId.includes('player') &&
+      !obj.objectId.includes('character')
+    );
+    for (const obj of nonPlayerObjects) {
+      const hasAnyRule = logicOutput.script.rules.some(r =>
+        r.targetObjectId === obj.objectId ||
+        r.triggers?.conditions?.some(c => c.target === obj.objectId) ||
+        r.actions?.some(a => a.targetId === obj.objectId)
+      );
+      if (!hasAnyRule) {
+        issues.push({
+          code: 'OBJECT_NO_RULES',
+          message: `Object "${obj.objectId}" has no rules. It will appear on screen but do nothing.`,
+          severity: 'warning'
+        });
+      }
+    }
+
     // 結果をまとめる
     const playable = successResult.reachable && issues.filter(i => i.severity === 'error').length === 0;
 
