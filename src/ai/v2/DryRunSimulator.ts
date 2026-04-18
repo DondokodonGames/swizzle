@@ -295,8 +295,8 @@ export class DryRunSimulator {
           if (comparison === 'greater') requiredIncrement++;
         }
 
-        // カウンターを増やすルールを探す
-        const incrementRule = output.script.rules.find(r =>
+        // カウンターを増やすルールを全て収集
+        const incrementRules = output.script.rules.filter(r =>
           r.actions?.some(a =>
             a.type === 'counter' &&
             a.counterName === condition.counterName &&
@@ -304,7 +304,7 @@ export class DryRunSimulator {
           )
         );
 
-        if (!incrementRule) {
+        if (incrementRules.length === 0) {
           return {
             reachable: false,
             requiredTaps: -1,
@@ -312,6 +312,24 @@ export class DryRunSimulator {
             blockers: [`No rule to increment counter "${condition.counterName}"`]
           };
         }
+
+        // インクリメントルール数が目標値未満なら到達不可能
+        // （各ルールが1回しか発火できない設計の場合: 例 block_1のみにルールがあり placed_count >= 5）
+        if (incrementRules.length < targetValue) {
+          issues.push({
+            code: 'COUNTER_UNREACHABLE',
+            message: `Counter "${condition.counterName}" requires ${targetValue} but only ${incrementRules.length} rule(s) can increment it. Success is impossible.`,
+            severity: 'error'
+          });
+          return {
+            reachable: false,
+            requiredTaps: -1,
+            estimatedSeconds: -1,
+            blockers: [`Counter "${condition.counterName}" requires ${targetValue} increments but only ${incrementRules.length} increment rule(s) exist`]
+          };
+        }
+
+        const incrementRule = incrementRules[0];
 
         // タップ対象を特定
         const tapTarget = incrementRule.targetObjectId || this.findTapTarget(incrementRule);
