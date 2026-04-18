@@ -456,7 +456,7 @@ export interface OrchestratorConfig {
   dryRun: boolean;
   anthropicApiKey?: string;
   imageGeneration: {
-    provider: 'openai' | 'mock';
+    provider: 'openai' | 'mock' | 'claude-svg';
     apiKey?: string;
   };
 }

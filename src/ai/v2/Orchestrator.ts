@@ -134,7 +134,8 @@ export class Orchestrator {
 
     this.assetGenerator = new AssetGenerator({
       imageProvider: this.config.imageGeneration.provider,
-      openaiApiKey: this.config.imageGeneration.apiKey
+      openaiApiKey: this.config.imageGeneration.apiKey,
+      anthropicApiKey: this.config.anthropicApiKey
     });
     this.finalAssembler = new FinalAssembler();
 
@@ -670,9 +671,11 @@ export class Orchestrator {
       this.gameDesignGenerator.getTokensUsed() +
       this.specificationGenerator.getTokensUsed() +
       this.editorMapper.getTokensUsed();
-    // Claude: ~$0.003/1K tokens average
-    // DALL-E 3: ~$0.04/image
-    const imageCost = this.config.imageGeneration.provider === 'openai' ? 0.2 : 0;
+    // Claude: ~$0.003/1K tokens average (blended input/output)
+    // DALL-E 3: ~$0.04/image × ~6 images
+    // claude-svg: ~$0.015 (haiku, 1 batch call)
+    const p = this.config.imageGeneration.provider;
+    const imageCost = p === 'openai' ? 0.24 : p === 'claude-svg' ? 0.015 : 0;
     return tokensUsed * 0.000003 + imageCost;
   }
 

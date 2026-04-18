@@ -5,6 +5,7 @@
  */
 
 import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import { GameConcept, AssetPlan, GeneratedAssets, GeneratedObject, GeneratedSound, BgmPlan } from './types';
 import { GameDesign } from './GameDesignGenerator';
 
@@ -33,19 +34,24 @@ const SOUND_PRESETS: Record<string, { frequency: number; duration: number; type:
 };
 
 export interface AssetGeneratorConfig {
-  imageProvider: 'openai' | 'mock';
+  imageProvider: 'openai' | 'mock' | 'claude-svg';
   openaiApiKey?: string;
+  anthropicApiKey?: string;
 }
 
 export class AssetGenerator {
   private config: AssetGeneratorConfig;
   private openai?: OpenAI;
+  private anthropic?: Anthropic;
 
   constructor(config: AssetGeneratorConfig) {
     this.config = config;
 
     if (config.imageProvider === 'openai' && config.openaiApiKey) {
       this.openai = new OpenAI({ apiKey: config.openaiApiKey });
+    }
+    if (config.imageProvider === 'claude-svg' && config.anthropicApiKey) {
+      this.anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
     }
   }
 
@@ -54,6 +60,10 @@ export class AssetGenerator {
    */
   async generate(concept: GameConcept, assetPlan: AssetPlan, design?: GameDesign): Promise<GeneratedAssets> {
     console.log('   🎨 Generating assets...');
+
+    if (this.config.imageProvider === 'claude-svg' && this.anthropic) {
+      return this.generateWithClaudeSVG(concept, assetPlan);
+    }
 
     // 背景生成
     const background = await this.generateBackground(concept, assetPlan.background);
@@ -73,6 +83,113 @@ export class AssetGenerator {
       sounds,
       bgm
     };
+  }
+
+  /**
+   * Claude でSVGアセットを一括生成（背景+全オブジェクトを1回のAPIコールで）
+   */
+  private async generateWithClaudeSVG(concept: GameConcept, assetPlan: AssetPlan): Promise<GeneratedAssets> {
+    const prompt = this.buildClaudeSVGPrompt(concept, assetPlan);
+
+    try {
+      const response = await this.anthropic!.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 8000,
+        messages: [{ role: 'user', content: prompt }]
+      });
+
+      const raw = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
+
+      // JSONブロック抽出
+      const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/) ?? raw.match(/(\{[\s\S]*\})/);
+      const jsonText = jsonMatch ? jsonMatch[1] ?? jsonMatch[0] : raw;
+
+      const parsed = JSON.parse(jsonText) as {
+        background: string;
+        objects: { id: string; svg: string }[];
+      };
+
+      // 背景
+      const bgSvg = parsed.background ?? '';
+      const bgDataUrl = `data:image/svg+xml;base64,${Buffer.from(bgSvg).toString('base64')}`;
+      const background: GeneratedAssets['background'] = {
+        id: 'bg_main',
+        name: `${concept.theme} 背景`,
+        frames: [{ dataUrl: bgDataUrl }]
+      };
+
+      // オブジェクト
+      const genMap = new Map((parsed.objects ?? []).map(o => [o.id, o.svg]));
+      const objects: GeneratedObject[] = assetPlan.objects.map(plan => {
+        const svg = genMap.get(plan.id);
+        if (svg) {
+          const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+          return { id: plan.id, name: plan.name, imageUrl: dataUrl, frames: [{ dataUrl }] };
+        }
+        return this.createPlaceholderObject(plan);
+      });
+
+      console.log(`      ✅ Claude SVG: 背景 + ${objects.length} オブジェクト (${response.usage.input_tokens}in/${response.usage.output_tokens}out tokens)`);
+
+      const sounds = this.generateSounds(assetPlan.sounds);
+      const bgm = assetPlan.bgm ? this.generateBGM(assetPlan.bgm) : undefined;
+      return { background, objects, sounds, bgm };
+
+    } catch (error) {
+      console.log(`      ⚠️ Claude SVG 生成失敗 (${error instanceof Error ? error.message : error})、プレースホルダーにフォールバック`);
+      const background = this.createPlaceholderBackground(concept);
+      const objects = assetPlan.objects.map(p => this.createPlaceholderObject(p));
+      const sounds = this.generateSounds(assetPlan.sounds);
+      const bgm = assetPlan.bgm ? this.generateBGM(assetPlan.bgm) : undefined;
+      return { background, objects, sounds, bgm };
+    }
+  }
+
+  /**
+   * Claude SVG生成用プロンプト（背景+全オブジェクト一括）
+   */
+  private buildClaudeSVGPrompt(concept: GameConcept, assetPlan: AssetPlan): string {
+    const sizeMap: Record<string, number> = { small: 64, medium: 128, large: 192 };
+
+    const objectList = assetPlan.objects.map(o => {
+      const sz = sizeMap[o.size] ?? 128;
+      return `  { "id": "${o.id}", "size": ${sz}, "name": "${o.name}", "visual": "${o.visualDescription}", "purpose": "${o.purpose}" }`;
+    }).join(',\n');
+
+    return `あなたはモバイルゲーム用SVGアセットジェネレーターです。
+
+ゲーム情報:
+- タイトル: ${concept.title}
+- テーマ: ${concept.theme}
+- 説明: ${concept.description}
+- ビジュアルスタイル: ${concept.visualStyle}
+
+## タスク
+以下のゲームアセットをSVGで一括生成し、JSON形式で返してください。
+
+### 背景 (1080×1920, 縦型モバイル)
+- テーマに合ったグラデーション＋シンプルな図形で雰囲気を表現
+- 中央エリアはゲームオブジェクト配置のため比較的シンプルに
+
+### オブジェクト一覧
+[
+${objectList}
+]
+
+## 出力フォーマット（JSONのみ、コードブロックなし）
+{
+  "background": "<svg xmlns='http://www.w3.org/2000/svg' width='1080' height='1920' viewBox='0 0 1080 1920'>...</svg>",
+  "objects": [
+    { "id": "...", "svg": "<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128' viewBox='0 0 128 128'>...</svg>" }
+  ]
+}
+
+## SVGルール
+- SVG属性はシングルクォートを使用（JSONエスケープを避けるため）
+- 背景: width='1080' height='1920', グラデーションで全体を覆い、上下にテーマ装飾
+- オブジェクト: 各sizeに合わせたwidth/height, 背景なし（透明）, シンプルなシルエット＋色塗り
+- テーマに合った色を統一して使用
+- コンパクトなSVGコード（1オブジェクト30行以内）`;
   }
 
   /**

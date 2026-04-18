@@ -757,19 +757,6 @@ ${archetype.examples.map(e => `- ${e}`).join('\n')}
 
 JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n${feedback}\n\n上記の問題を解決したコンセプトを生成してください。` : ''}`;
 
-    // ★ シードのmechanicをカタログに照合してメカニクス説明を補強
-    // シードの idea にメカニクス情報は含まれているが、カタログの説明で実装意図を明確化する
-    const catalogMechanic = this.mapSeedMechanicToCatalog(seed.mechanic);
-    if (catalogMechanic) {
-      console.log(`      🎮 Seed mechanic mapped: ${seed.mechanic} → ${catalogMechanic.name}`);
-      prompt += `\n\n# このメカニクスを実装してください
-上記のアイデアはこのメカニクスを使っています: **${catalogMechanic.name}**
-
-${catalogMechanic.description}
-
-playerOperation は必ず次のガイドに沿って書いてください: ${catalogMechanic.playerOperationHint}`;
-    }
-
     const response = await this.llmProvider.chat(
       [{ role: 'user', content: prompt }],
       { maxTokens: 1024, model: this.config.model }
@@ -791,7 +778,6 @@ playerOperation は必ず次のガイドに沿って書いてください: ${cat
     }
 
     this.usedThemes.add(concept.theme);
-    if (catalogMechanic) this.usedMechanicIds.add(catalogMechanic.id);
     const mechanicType = this.classifyMechanic(concept.playerOperation);
     this.usedMechanics.set(mechanicType, (this.usedMechanics.get(mechanicType) ?? 0) + 1);
     return concept;
