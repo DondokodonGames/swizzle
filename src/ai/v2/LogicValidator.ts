@@ -298,6 +298,47 @@ export class LogicValidator {
         }
       }
     }
+
+    // サバイバルゲームパターン: time → success + collision/touch → failure（HP連鎖も含む）
+    const hasTimedSuccess = successRules.some(r =>
+      r.triggers?.conditions?.some(c => c.type === 'time')
+    );
+    if (hasTimedSuccess && this.hasInteractiveFailurePath(output)) return true;
+
+    return false;
+  }
+
+  /**
+   * インタラクティブな失敗パスが存在するか（HP連鎖を考慮）
+   * - 直接: collision/touch/position → failure
+   * - 間接: collision/touch → counter減少 → counter==0 → failure (HPシステム)
+   */
+  private hasInteractiveFailurePath(output: LogicGeneratorOutput): boolean {
+    const failureRules = output.script.rules.filter(r =>
+      r.actions?.some(a => a.type === 'failure')
+    );
+    const playerActionTypes = ['collision', 'touch', 'position'];
+
+    if (failureRules.some(r =>
+      r.triggers?.conditions?.some(c => playerActionTypes.includes(c.type))
+    )) return true;
+
+    for (const failureRule of failureRules) {
+      for (const cond of (failureRule.triggers?.conditions || [])) {
+        if (cond.type !== 'counter' || !cond.counterName) continue;
+        const counterName = cond.counterName;
+        const hasInteractiveDecrement = output.script.rules.some(r =>
+          r.actions?.some(a =>
+            a.type === 'counter' &&
+            a.counterName === counterName &&
+            (a.operation === 'decrement' || a.operation === 'subtract')
+          ) &&
+          r.triggers?.conditions?.some(c => c.type === 'collision' || c.type === 'touch')
+        );
+        if (hasInteractiveDecrement) return true;
+      }
+    }
+
     return false;
   }
 
@@ -309,14 +350,8 @@ export class LogicValidator {
       r.actions?.some(a => a.type === 'failure')
     );
 
-    // プレイヤー操作を必要とする条件タイプ
-    const playerActionTypes = ['touch', 'collision', 'position'];
-
-    // 失敗条件にプレイヤー操作が含まれているか
-    const hasPlayerActionInFailure = failureRules.some(rule => {
-      const conditions = rule.triggers?.conditions || [];
-      return conditions.some(c => playerActionTypes.includes(c.type));
-    });
+    // 失敗パスにプレイヤー操作が含まれているか（HP連鎖も考慮）
+    const hasPlayerActionInFailure = this.hasInteractiveFailurePath(output);
 
     for (const rule of successRules) {
       const conditions = rule.triggers?.conditions || [];
@@ -1102,6 +1137,12 @@ export class LogicValidator {
       }
     }
 
+    // サバイバルゲームパターン: time → success + collision/touch → failure（HP連鎖も含む）
+    const hasTimedSuccess2 = successRules.some(r =>
+      r.triggers?.conditions?.some(c => c.type === 'time')
+    );
+    if (hasTimedSuccess2 && this.hasInteractiveFailurePath(output)) return;
+
     errors.push({
       type: 'critical',
       code: 'NO_PLAYER_ACTION',
@@ -1537,6 +1578,10 @@ export class LogicValidator {
         }
 
         if (!hasIndirectPlayerAction) {
+          // サバイバルゲームパターン: time → success + collision/touch → failure は有効（HP連鎖も含む）
+          const isTimedSuccessRule = conditions.some(c => c.type === 'time');
+          if (isTimedSuccessRule && this.hasInteractiveFailurePath(output)) continue;
+
           errors.push({
             type: 'warning',
             code: 'SUCCESS_NO_PLAYER_ACTION',
