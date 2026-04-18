@@ -968,6 +968,41 @@ export class EditorMapper {
       }
     }
 
+    // 6. カウンター目標値とインクリメントルール数の整合修正
+    // COUNTER_UNREACHABLE を防ぐため、目標値 > 実際にインクリメントできる回数の場合に修正する
+    if (output.script?.counters && output.script?.rules) {
+      for (const counter of output.script.counters) {
+        const successRule = output.script.rules.find(r =>
+          r.triggers?.conditions?.some(c =>
+            c.type === 'counter' &&
+            c.counterName === counter.id &&
+            c.comparison === 'greaterOrEqual'
+          ) &&
+          r.actions?.some(a => a.type === 'success')
+        );
+
+        if (!successRule) continue;
+
+        const successCondition = successRule.triggers?.conditions?.find(c =>
+          c.type === 'counter' && c.counterName === counter.id
+        );
+        if (!successCondition || successCondition.value === undefined) continue;
+
+        const incrementCount = output.script.rules.filter(r =>
+          r.actions?.some(a =>
+            a.type === 'counter' &&
+            a.counterName === counter.id &&
+            a.operation === 'increment'
+          )
+        ).length;
+
+        if (incrementCount > 0 && successCondition.value > incrementCount) {
+          console.log(`      [PostProcess] Counter "${counter.id}": fixing target ${successCondition.value} → ${incrementCount}`);
+          successCondition.value = incrementCount;
+        }
+      }
+    }
+
     return output;
   }
 
