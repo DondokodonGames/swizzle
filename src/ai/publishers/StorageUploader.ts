@@ -142,6 +142,11 @@ export class StorageUploader {
     assetId: string,
     frameIndex?: number
   ): Promise<StorageUploadResult> {
+    // SVGはSupabase Storageが拒否するためスキップ（data URLのままDBに保持）
+    if (dataUrl.startsWith('data:image/svg+xml')) {
+      return { success: false, error: 'SVG skipped (kept as data URL)' };
+    }
+
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
@@ -326,6 +331,8 @@ export class StorageUploader {
         uploadedCount++;
         // dataUrlのサイズを概算（Base64は元データの約1.33倍）
         totalSize += Math.floor(task.dataUrl.length * 0.75);
+      } else if (result.error?.startsWith('SVG skipped')) {
+        // SVGはdata URLのままDBに保持するため失敗扱いにしない
       } else {
         failedCount++;
         console.warn(`   ⚠️ アップロード失敗: ${task.id} - ${result.error}`);
