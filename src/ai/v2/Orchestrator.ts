@@ -94,9 +94,13 @@ export class Orchestrator {
     this.failureTracker = new FailurePatternTracker();
 
     // Initialize all components with logger
+    // 軽量ステップ（短い出力・判断不要）はHaikuでコスト削減
+    const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+
     this.conceptGenerator = new GameConceptGenerator({
       dryRun: this.config.dryRun,
-      apiKey: this.config.anthropicApiKey
+      apiKey: this.config.anthropicApiKey,
+      model: HAIKU_MODEL
     });
     this.conceptValidator = new ConceptValidator();
 
@@ -109,7 +113,8 @@ export class Orchestrator {
     // ★NEW Step 3.5
     this.assetPlanner = new AssetPlanner({
       dryRun: this.config.dryRun,
-      apiKey: this.config.anthropicApiKey
+      apiKey: this.config.anthropicApiKey,
+      model: HAIKU_MODEL
     }, this.logger);
 
     this.specificationGenerator = new SpecificationGenerator({
