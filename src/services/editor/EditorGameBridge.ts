@@ -796,6 +796,7 @@ export class EditorGameBridge {
               );
             } else {
               // フォールバック描画（画像未ロードの場合）
+              ctx.globalAlpha = obj.alpha ?? 1.0;
               ctx.fillStyle = '#FF6B9D';
               ctx.fillRect(
                 drawCenterX - objWidth / 2,

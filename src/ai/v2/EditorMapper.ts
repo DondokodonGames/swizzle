@@ -228,19 +228,32 @@ const EDITOR_SPEC = `
 
 ## ⚠️ エンジン実装上の制限（コードで確認済み）
 
-### 使えないもの（型定義はあるが実行時に無効）
-- \`effect.type: 'particles'\` → パーティクルシステム未接続。描画されない
-- \`show/hide\` の \`fadeIn\`/\`fadeOut\`/\`duration\` → パラメータ無視。即時切替のみ
+### 使えないもの
 - \`pause\`/\`restart\` アクション → switch ケースなし。何も起きない
-- \`stopSound\`/\`playBGM\`/\`stopBGM\` アクション → 未実装
-- \`objectState\` 条件 → ConditionEvaluator に実装なし
-- \`touch, touchType: 'swipe'\`/\`'flick'\` 条件 → EditorGameBridge が 'down' イベントしか生成しないため発火しない
+- \`collision checkMode:'pixel'\` → 常にAABB矩形当たり判定
+- \`animation\` 条件の \`loopCount\` → 不具合あり、使用非推奨
 
-### 使えるタッチ条件
+### 使えるタッチ条件（全て実装済み）
 - \`touch, touchType: 'down'\` → 最も確実。常に使える
 - \`touch, touchType: 'up'\` → タップ離し
-- \`touch, touchType: 'hold'\` → 長押し
-- \`followDrag\` アクション → ドラッグ追従は動作する（条件ではなくアクション）
+- \`touch, touchType: 'hold'\` → 長押し（holdDuration ms）
+- \`touch, touchType: 'drag'\` → ドラッグ（dragState: 'start'/'dragging'/'end'）
+- \`touch, touchType: 'swipe'\` → スワイプ（direction, minDistance, minVelocity）
+- \`touch, touchType: 'flick'\` → フリック（direction, maxDuration, minVelocity）
+- \`followDrag\` アクション → ドラッグ追従
+
+### 音声（全て実装済み）
+- \`playSound\` / \`stopSound\` / \`playBGM\` / \`stopBGM\`
+
+### フェード（実装済み）
+- \`show\` の \`fadeIn:true\`, \`duration\` → フェードイン
+- \`hide\` の \`fadeOut:true\`, \`duration\` → フェードアウト
+
+### パーティクル（実装済み）
+- \`effect.type:'particles'\`, \`particleType:'star'/'confetti'/'explosion'/'splash'/'hearts'/'sparkle'\`
+
+### objectState 条件（実装済み）
+- \`stateType:'visible'/'hidden'/'animation'\`
 
 ### 物理演算の制限
 - オブジェクト同士の衝突応答（押し戻し・反発）は未実装

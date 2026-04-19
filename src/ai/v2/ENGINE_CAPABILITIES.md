@@ -20,10 +20,17 @@
 | minVelocity | number | — | swipe:500 flick:1000 px/s | 最小速度 |
 | holdDuration | number | — | 1000ms | hold 判定時間 |
 
-**⚠️ 重要な制限**:
-- **`touchType: 'down'` のみ動作が確認済み**。`drag`/`swipe`/`flick` は EditorGameBridge が `type='touch', touchType='down'` のみ生成するため、これらの条件は現状ではほぼ発火しない。
+**実装済みタッチタイプ**:
+- `down` / `up` — タップ押下・離し（最も確実）
+- `hold` — 長押し（300ms後から発火開始、1000msで `holdState:'complete'`）
+- `drag` — ドラッグ（`dragState: 'start'/'dragging'/'end'`）
+- `swipe` — スワイプ（minVelocity≥500px/s, distance≥100px, duration≤500ms で判定）
+- `flick` — フリック（minVelocity≥1000px/s, distance≤150px, duration≤200ms で判定）
+
+**制限**:
 - **マルチタッチ非対応**: `touches[0]` のみ処理（ピンチ・回転ジェスチャー不可）。
 - `region` の `shape` は `'rect'` と `'circle'` のみ（多角形不可）。
+- `swipe`/`flick`/`drag`/`hold` はタッチデバイスのみ。マウスクリックでは発火しない。
 
 ---
 
@@ -109,8 +116,14 @@
 
 ---
 
-### objectState — ⚠️ **型定義のみ、実装なし**
-`type: 'objectState'` は GameScript.ts に型定義はあるが、ConditionEvaluator に switch ケースが存在しない。**使用不可。**
+### objectState
+| パラメータ | 型 | 必須 | 説明 |
+|---|---|---|---|
+| target | objectId | ✅ | 対象オブジェクト |
+| stateType | `'visible'` \| `'hidden'` \| `'animation'` | ✅ | 判定種別 |
+| animationState | `'playing'` \| `'stopped'` | animation 時 | アニメーション状態 |
+
+`visible`/`hidden` はオブジェクトの `visible` プロパティを確認。`animation` は `animationState` と照合。
 
 ---
 
@@ -130,8 +143,8 @@
 ### 表示
 | type | 主なパラメータ | 動作 |
 |---|---|---|
-| `show` | `targetId` | `visible = true`。**`fadeIn`/`duration` は宣言のみで未使用** |
-| `hide` | `targetId` | `visible = false`。**`fadeOut`/`duration` は宣言のみで未使用** |
+| `show` | `targetId`, `fadeIn?:boolean`, `duration?:number` | `visible = true`。`fadeIn:true` で alpha 0→1 フェードイン（`duration` 秒） |
+| `hide` | `targetId`, `fadeOut?:boolean`, `duration?:number` | `visible = false`。`fadeOut:true` で alpha 1→0 フェードアウト後に非表示 |
 
 ---
 
@@ -174,15 +187,17 @@
 | `effect` | `flash` | `flashColor?`, `flashIntensity`, `flashFrequency` |
 | `effect` | `shake` | `shakeIntensity`, `shakeDirection:'horizontal'/'vertical'/'both'` |
 | `effect` | `rotate` | `rotationAmount` (度), `rotationDirection`, `duration` |
-| `effect` | `particles` | `particleType`, `particleCount` 他 — **⚠️ 未実装（パーティクルシステムが接続されていない）** |
+| `effect` | `particles` | `particleType:'star'/'confetti'/'explosion'/'splash'/'hearts'/'sparkle'`, `particleCount`, `particleColor?`, `particleSize?`, `particleSpread?`, `particleSpeed?`, `particleGravity?` |
 
 ---
 
 ### 音声
 | type | 動作 |
 |---|---|
-| `playSound` | `soundId`, `volume?` — **実装済み** |
-| `stopSound`, `playBGM`, `stopBGM` | 型定義のみ、**switch ケースなし（未実装）** |
+| `playSound` | `soundId`, `volume?` — 効果音を再生 |
+| `stopSound` | `soundId` — 指定効果音を停止 |
+| `playBGM` | `soundId?`, `volume?` — BGM を再生（ループ） |
+| `stopBGM` | — BGM を停止 |
 
 ---
 
@@ -224,12 +239,6 @@
 - 重力は常に下方向のみ（方向変更不可）。
 - ジョイント・バネ・コンストレイント不可。
 
-### ❌ パーティクルエフェクト
-`effect.type: 'particles'` は型定義済みだが実際には描画されない。
-
-### ❌ フェードイン/フェードアウト
-`show` と `hide` の `fadeIn`/`fadeOut`/`duration` パラメータは宣言のみで無視される。
-
 ### ❌ 複数オブジェクトへの一括ルール適用
 1ルール = 1オブジェクト。`forEach` 的な一括適用は不可。
 N個のオブジェクトにはN個のルールが必要。
@@ -237,14 +246,7 @@ N個のオブジェクトにはN個のルールが必要。
 ### ❌ マルチタッチ
 `touches[0]` のみ処理。ピンチ・2本指ジェスチャー不可。
 
-### ❌ swipe/flick/drag 条件（現状）
-EditorGameBridge が `touchType: 'down'` イベントのみ生成するため、これらの条件は発火しない。
-`followDrag` アクションは動作する（別途ドラッグ位置を追跡するため）。
-
 ### ❌ pause / restart アクション
-型定義のみ。実行時に何も起きない。
-
-### ❌ stopSound / playBGM / stopBGM アクション
 型定義のみ。実行時に何も起きない。
 
 ### ❌ キーボード入力・加速度センサー
@@ -257,45 +259,67 @@ EditorGameBridge が `touchType: 'down'` イベントのみ生成するため、
 ```
 # エンジン実装済み機能（使ってよいもの）
 
-## タッチ入力
-- touch, touchType: 'down' → オブジェクトをタップ（最も確実）
+## タッチ入力（条件）
+- touch, touchType: 'down' → オブジェクト/ステージをタップ（最も確実）
 - touch, touchType: 'up'   → タップ離し
-- touch, touchType: 'hold' → 長押し（holdDuration指定）
-- followDrag アクション    → オブジェクトをドラッグで動かす
+- touch, touchType: 'hold' → 長押し（holdDuration ms、デフォルト1000ms）
+- touch, touchType: 'drag' → ドラッグ（dragState: 'start'/'dragging'/'end'）
+- touch, touchType: 'swipe' → スワイプ（direction, minDistance, minVelocity）
+- touch, touchType: 'flick' → フリック（direction, maxDuration, minVelocity）
+- followDrag アクション → オブジェクトをドラッグで動かす
 
 ## 当たり判定
 - collision, 'enter'/'stay'/'exit' → AABB矩形当たり判定
-- position, 'inside'/'outside' → 領域判定（オブジェクト中心点）
+- position, 'inside'/'outside'/'crossing' → 領域判定（オブジェクト中心点）
 
 ## ゲーム制御
 - success / failure → ゲーム終了
-- time, 'exact'/'interval' → タイマー発火
-- counter, increment/decrement/set → カウンター操作
-- flag, setFlag/toggleFlag → フラグ管理
+- time, 'exact'/'range'/'interval' → タイマー発火
+- counter + comparison → カウンター条件判定
+- counter action: increment/decrement/set/add/subtract/multiply/reset
+- flag: setFlag/toggleFlag/条件判定（ON/OFF/CHANGED/ON_TO_OFF/OFF_TO_ON）
+- gameState: playing/paused/success/failure 判定
+- random: 確率的発火（probability）
+
+## オブジェクト状態（条件）
+- objectState, stateType: 'visible'/'hidden' → 表示状態チェック
+- objectState, stateType: 'animation' → アニメーション再生状態チェック
 
 ## 移動
-- move: straight / teleport / wander / bounce / approach / orbit / swap
+- move: straight / teleport / wander / bounce / approach / orbit / swap / stop
 - followDrag（ドラッグ追従）
 
 ## 物理（単体オブジェクト）
 - dynamic physics: 重力・空気抵抗・反発（キャンバス底面のみ）
-- applyImpulse / applyForce
+- applyImpulse / applyForce / setGravity / setPhysics
 
 ## エフェクト（視覚）
-- effect: scale / flash / shake / rotate（particles は不可）
-- playSound
+- effect: scale / flash / shake / rotate
+- effect: particles（type: 'star'/'confetti'/'explosion'/'splash'/'hearts'/'sparkle'）
+- show / hide（fadeIn:true / fadeOut:true で duration 秒フェード）
+
+## 音声
+- playSound（soundId, volume）
+- stopSound（soundId）
+- playBGM（soundId, volume）— BGMループ再生
+- stopBGM — BGM停止
+
+## アニメーション制御
+- playAnimation（play: true/false）
+- setAnimationSpeed / setAnimationFrame / switchAnimation
+
+## ランダムアクション
+- randomAction: actions配列からweighted/probability/uniformで1つ選択
 
 # エンジン未実装機能（絶対に使わないこと）
 
-❌ swipe / flick 条件 → 発火しない（followDragアクションは使える）
-❌ particles エフェクト → 描画されない
-❌ fadeIn / fadeOut → show/hideのパラメータとして宣言があるが無視される
 ❌ pause / restart アクション → 何も起きない
-❌ stopSound / playBGM / stopBGM → 何も起きない
-❌ objectState 条件 → 未実装
 ❌ NPC追跡AI・経路探索 → wander（ランダム方向）しかない
-❌ オブジェクト間物理応答 → 当たった際に押し戻しや反発はない（ルールで明示的に対応が必要）
+❌ オブジェクト間物理応答 → 衝突時の押し戻し・反発はない（ルールで明示的に対応が必要）
 ❌ 物理重力の方向変更 → 常に下方向のみ
 ❌ 複数オブジェクトへの一括ルール → N個には必ずN個のルール
 ❌ マルチタッチ・ピンチ操作 → touches[0]のみ
+❌ キーボード入力・加速度センサー → 実装なし
+❌ animation 条件の loopCount → カウント実装に不具合あり、使用非推奨
+❌ collision checkMode:'pixel' → 常にAABB（矩形）当たり判定のみ
 ```
