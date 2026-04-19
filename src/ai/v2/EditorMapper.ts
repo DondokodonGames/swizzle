@@ -476,11 +476,32 @@ settings.duration.seconds で指定した秒数が経過するとゲームが強
 **確認手順**: settings.duration.seconds の値を確認し、successを持つ全ルールの
 time条件 seconds がその値以下か確認してから出力すること。
 
+## ★★★ 標準ID命名規則（仕様の名前に関わらず以下に統一）★★★
+
+### カウンターID（役割ごとに固定）
+仕様でどんな名前が使われていても、以下の標準IDに変換すること:
+
+| 役割 | 標準ID | 変換例 |
+|------|--------|--------|
+| スコア・得点・収集数 | **"score"** | tap_count, collected, points → score |
+| HP・体力・ライフ数 | **"hp"** | life, lives, health → hp |
+| タップ連打カウント（スコア以外） | **"tap_count"** | taps, hits → tap_count |
+
+**重要**: script.counters[].id と rules[].triggers.conditions[].counterName と
+rules[].actions[].counterName はすべて同一の標準IDを使用すること。
+
+### BGM ID（固定）
+BGMのIDは常に **"bgm_main"** を使用すること。仕様で別名（bgm_game, main_bgm等）が
+使われていても "bgm_main" に変換する。
+
 ## 必須サウンド ★必須
 以下の3つは必ずsoundsに含める:
 - { "id": "se_tap", "trigger": "タップ時", "type": "tap" }
 - { "id": "se_success", "trigger": "成功時", "type": "success" }
 - { "id": "se_failure", "trigger": "失敗時", "type": "failure" }
+
+収集・アイテム取得ゲームには追加:
+- { "id": "se_collect", "trigger": "収集時", "type": "collect" }
 
 ## カウンターの一貫性 ★★★最重要★★★
 
