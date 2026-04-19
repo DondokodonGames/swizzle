@@ -380,7 +380,8 @@ export class Orchestrator {
 
         // LogicValidator通過後、ProjectValidatorもチェック
         let allValid = logicValidation.valid;
-        let combinedErrors = [...logicValidation.errors];
+        // warningはrepairの判断に混入させない（背景オブジェクト等の誤検知を防ぐ）
+        let combinedErrors = logicValidation.errors.filter(e => e.type === 'critical');
 
         if (logicValidation.valid) {
           console.log('      ✅ Logic validated');

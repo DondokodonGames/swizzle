@@ -1720,15 +1720,8 @@ export class LogicValidator {
             message: `オブジェクト "${objectId}" は衝突対象として参照されていますが、ルールが1つもありません（静止した障害物になります）`,
             fix: `"${objectId}" に move:straight ルールを追加して動かすか、collision ターゲットから外してください。流れてくる障害物ゲームは time:exact:0→move:straight + collision:exit:stageArea→teleport の2ルールが必要です`
           });
-        } else {
-          // ルールなしの非衝突オブジェクト（warning: 背景オブジェクトかもしれない）
-          errors.push({
-            type: 'warning',
-            code: 'OBJECT_NO_RULES',
-            message: `オブジェクト "${objectId}" にルールが1つもありません`,
-            fix: `静止した背景オブジェクトなら問題ありません。インタラクティブなオブジェクトなら適切なルールを追加してください`
-          });
         }
+        // 衝突対象でない無ルールオブジェクトは背景/装飾オブジェクトとして許容
       }
     }
   }
