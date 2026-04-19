@@ -367,6 +367,10 @@ export class ActionExecutor {
         this.executeMoveBounce(targetObj, context);
         break;
 
+      case 'arc':
+        this.executeMoveArc(targetObj, movement, context);
+        break;
+
       default:
         break;
     }
@@ -611,6 +615,36 @@ export class ActionExecutor {
     if (targetObj.y <= margin || targetObj.y + targetObj.height >= context.canvas.height - margin) {
       targetObj.vy = -(targetObj.vy || 0);
     }
+  }
+
+  private executeMoveArc(
+    targetObj: GameObject,
+    movement: any,
+    context: RuleExecutionContext
+  ): void {
+    let targetX: number, targetY: number;
+
+    if (typeof movement.target === 'string') {
+      const targetObject = context.objects.get(movement.target);
+      if (!targetObject) return;
+      targetX = targetObject.x;
+      targetY = targetObject.y;
+    } else if (movement.target) {
+      targetX = movement.target.x * context.canvas.width;
+      targetY = movement.target.y * context.canvas.height;
+    } else {
+      return;
+    }
+
+    targetObj.arcStartX = targetObj.x;
+    targetObj.arcStartY = targetObj.y;
+    targetObj.arcTargetX = targetX;
+    targetObj.arcTargetY = targetY;
+    targetObj.arcStartTime = performance.now();
+    targetObj.arcDuration = (movement.duration || 1.0) * 1000;
+    targetObj.arcHeight = movement.arcHeight ?? 100;
+    targetObj.vx = 0;
+    targetObj.vy = 0;
   }
 
   // ==================== 高度なアクション ====================

@@ -766,6 +766,23 @@ export class EditorGameBridge {
               obj.y += obj.vy;
             }
 
+            // arc移動（放物線パス）— vx/vyより後に実行して上書き
+            if (obj.arcStartTime !== undefined && obj.arcDuration !== undefined) {
+              const t = Math.min((currentTime - obj.arcStartTime) / obj.arcDuration, 1.0);
+              obj.x = obj.arcStartX! + (obj.arcTargetX! - obj.arcStartX!) * t;
+              obj.y = obj.arcStartY! + (obj.arcTargetY! - obj.arcStartY!) * t
+                    - (obj.arcHeight! * 4 * t * (1 - t));
+              if (t >= 1.0) {
+                obj.arcStartTime = undefined;
+                obj.arcDuration = undefined;
+                obj.arcStartX = undefined;
+                obj.arcStartY = undefined;
+                obj.arcTargetX = undefined;
+                obj.arcTargetY = undefined;
+                obj.arcHeight = undefined;
+              }
+            }
+
             // ✅ 中心基準で描画（scaleX/scaleY個別対応）
             const objWidth = obj.width * (obj.scaleX ?? obj.scale);
             const objHeight = obj.height * (obj.scaleY ?? obj.scale);

@@ -169,7 +169,7 @@ const EDITOR_SPEC = `
 | パラメータ | 値 | 説明 |
 |-----------|-----|------|
 | targetId | string | 対象オブジェクトID |
-| movement.type | 'straight'/'teleport'/'wander'/'bounce'/'stop'/'swap'/'approach'/'orbit' | 移動タイプ |
+| movement.type | 'straight'/'teleport'/'wander'/'bounce'/'stop'/'swap'/'approach'/'orbit'/'arc' | 移動タイプ |
 | movement.target? | {x, y} | 目標座標 |
 | movement.direction? | 'up'/'down'/'left'/'right'/'upLeft'/'upRight'/'downLeft'/'downRight' | 方向 |
 | movement.speed? | number | 速度 |
@@ -529,8 +529,9 @@ touchType が 'swipe' の場合、swipeDirection で方向を指定:
 **重要**: swipe_left, swipe_right 等を区別するには swipeDirection が必須！
 
 ### 移動タイプ（movement.type）
-✅ 有効: 'straight', 'teleport', 'wander', 'stop'
-❌ 無効: 'bounce', 'linear', 'jump', 'lerp', 'bezier', 'arc', 'zigzag'
+✅ 有効: 'straight', 'teleport', 'wander', 'stop', 'bounce', 'swap', 'approach', 'orbit', 'arc'
+- arc: target（{x,y}正規化座標またはobjectId）, duration（秒）, arcHeight（px, 正=上アーク, デフォルト100）
+❌ 無効: 'linear', 'jump', 'lerp', 'bezier', 'zigzag'
 
 ### collision条件のtarget ★★★
 collision条件のtargetには具体的なオブジェクトIDを指定:

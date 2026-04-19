@@ -61,6 +61,15 @@ export interface GameObject {
   fadeStartTime?: number;
   fadeDuration?: number;
   fadeDirection?: 'in' | 'out';
+
+  // arc移動（放物線パス）
+  arcStartX?: number;
+  arcStartY?: number;
+  arcTargetX?: number;
+  arcTargetY?: number;
+  arcStartTime?: number;
+  arcDuration?: number;
+  arcHeight?: number;
 }
 
 /**

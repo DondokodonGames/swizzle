@@ -159,6 +159,7 @@
 | `move` | `approach` | `target`, `speed`（5px 以内で停止） |
 | `move` | `orbit` | `target`, `speed`（角速度） |
 | `move` | `bounce` | — （キャンバス境界で反射） |
+| `move` | `arc` | `target`（座標またはobjectId）, `duration`（秒）, `arcHeight?`（px、正=上アーク、デフォルト100） |
 | `followDrag` | — | `targetId`, `constraint?`, `smooth?`, `smoothFactor?` |
 
 **制限**: `easing` パラメータは宣言のみで未使用。
@@ -286,7 +287,7 @@ N個のオブジェクトにはN個のルールが必要。
 - objectState, stateType: 'animation' → アニメーション再生状態チェック
 
 ## 移動
-- move: straight / teleport / wander / bounce / approach / orbit / swap / stop
+- move: straight / teleport / wander / bounce / approach / orbit / swap / stop / arc
 - followDrag（ドラッグ追従）
 
 ## 物理（単体オブジェクト）
