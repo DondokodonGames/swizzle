@@ -228,8 +228,10 @@ export class LogicRepairer {
       case 'UNREACHABLE_SUCCESS':
       case 'COUNTER_UNREACHABLE':
       case 'SUCCESS_UNREACHABLE_TIME':
-      case 'OBJECT_NO_RULES':  // ルールが欠落 → ゲームが動かない構造的破損
-        return 'full_regen';
+      case 'OBJECT_NO_RULES':
+        // critical = 衝突対象なのにルールなし → full_regen
+        // warning = 背景オブジェクトなど → 無視（partial_regenにしても問題ない）
+        return error.type === 'critical' ? 'full_regen' : 'partial_regen';
 
       default:
         return error.type === 'critical' ? 'full_regen' : 'partial_regen';
