@@ -10,6 +10,7 @@
 
 import { ILLMProvider, createLLMProvider, LLMProviderType, DEFAULT_MODELS } from './llm';
 import { GameConcept } from './types';
+import { robustParseJSON } from './jsonParser';
 import { GenerationLogger } from './GenerationLogger';
 
 /**
@@ -374,110 +375,7 @@ export class GameDesignGenerator {
    * JSONを抽出してパース
    */
   private extractAndParseJSON(text: string): GameDesign {
-    let jsonStr = text;
-
-    // 1. コードブロックからJSON抽出を試みる
-    const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (codeBlockMatch) {
-      jsonStr = codeBlockMatch[1].trim();
-    }
-
-    // 2. JSONオブジェクトの開始位置を探す
-    const jsonStartIndex = jsonStr.indexOf('{');
-    if (jsonStartIndex === -1) {
-      throw new Error('No JSON found in response');
-    }
-
-    // 3. JSONオブジェクトの終了位置を探す（括弧のバランスを考慮）
-    let braceCount = 0;
-    let inString = false;
-    let escapeNext = false;
-    let jsonEndIndex = -1;
-
-    for (let i = jsonStartIndex; i < jsonStr.length; i++) {
-      const char = jsonStr[i];
-
-      if (escapeNext) {
-        escapeNext = false;
-        continue;
-      }
-
-      if (char === '\\' && inString) {
-        escapeNext = true;
-        continue;
-      }
-
-      if (char === '"' && !escapeNext) {
-        inString = !inString;
-        continue;
-      }
-
-      if (!inString) {
-        if (char === '{') braceCount++;
-        else if (char === '}') {
-          braceCount--;
-          if (braceCount === 0) {
-            jsonEndIndex = i;
-            break;
-          }
-        }
-      }
-    }
-
-    // 4. JSONオブジェクトを抽出
-    if (jsonEndIndex !== -1) {
-      jsonStr = jsonStr.substring(jsonStartIndex, jsonEndIndex + 1);
-    } else {
-      jsonStr = jsonStr.substring(jsonStartIndex);
-    }
-
-    // 5. パースを試みる
-    try {
-      return JSON.parse(jsonStr) as GameDesign;
-    } catch (error) {
-      // 修復を試みる
-      let repaired = jsonStr;
-
-      // 1. コメントを削除
-      repaired = repaired.replace(/\/\/[^\n]*/g, '');
-
-      // 2. 末尾のカンマを削除
-      repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
-
-      // 3. 途中で切れた文字列を修復（未閉じの引用符を閉じる）
-      const quoteCount = (repaired.match(/(?<!\\)"/g) || []).length;
-      if (quoteCount % 2 !== 0) {
-        repaired = repaired + '"';
-      }
-
-      // 4. 途中で切れたプロパティを削除
-      repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*$/g, '');
-      repaired = repaired.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/g, '');
-
-      // 5. 配列とオブジェクトのバランスを修復
-      const openBraces = (repaired.match(/\{/g) || []).length;
-      const closeBraces = (repaired.match(/\}/g) || []).length;
-      const openBrackets = (repaired.match(/\[/g) || []).length;
-      const closeBrackets = (repaired.match(/\]/g) || []).length;
-
-      // 末尾の不完全なカンマを削除
-      repaired = repaired.replace(/,\s*$/g, '');
-
-      // 足りない閉じ括弧を追加
-      for (let i = 0; i < openBrackets - closeBrackets; i++) {
-        repaired += ']';
-      }
-      for (let i = 0; i < openBraces - closeBraces; i++) {
-        repaired += '}';
-      }
-
-      try {
-        return JSON.parse(repaired) as GameDesign;
-      } catch {
-        this.logger?.logError('GameDesignGenerator', `JSON parse failed: ${error}`);
-        throw new Error(`JSON parse failed: ${error}`);
-      }
-    }
+    return robustParseJSON<GameDesign>(text);
   }
 
   /**

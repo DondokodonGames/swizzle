@@ -10,6 +10,7 @@
  */
 
 import { ILLMProvider, createLLMProvider, LLMProviderType, DEFAULT_MODELS } from './llm';
+import { robustParseJSONArray } from './jsonParser';
 import {
   LogicGeneratorOutput,
   LogicValidationResult,
@@ -947,16 +948,7 @@ ${output.assetPlan.sounds.map(s => `- ${s.id}: ${s.type}`).join('\n')}
    * AIからの修復ルールをパース
    */
   private parseRepairedRules(text: string): GameRule[] {
-    try {
-      const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[1]);
-      }
-      // JSONブロックがない場合は配列として直接パース
-      return JSON.parse(text);
-    } catch {
-      return [];
-    }
+    return robustParseJSONArray<GameRule>(text);
   }
 
   /**
