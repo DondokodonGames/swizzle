@@ -10,6 +10,7 @@
 
 import { ILLMProvider, createLLMProvider, LLMProviderType, DEFAULT_MODELS } from './llm';
 import { GameConcept } from './types';
+import { robustParseJSON } from './jsonParser';
 import { GameDesign } from './GameDesignGenerator';
 import { GenerationLogger } from './GenerationLogger';
 
@@ -550,36 +551,7 @@ export class AssetPlanner {
    * JSONを抽出してパース
    */
   private extractAndParseJSON(text: string): EnhancedAssetPlan {
-    let jsonStr = text;
-
-    const codeBlockMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (codeBlockMatch) {
-      jsonStr = codeBlockMatch[1].trim();
-    } else {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[0];
-      }
-    }
-
-    if (!jsonStr || !jsonStr.startsWith('{')) {
-      throw new Error('No JSON found in response');
-    }
-
-    try {
-      return JSON.parse(jsonStr) as EnhancedAssetPlan;
-    } catch (error) {
-      let repaired = jsonStr;
-      repaired = repaired.replace(/,(\s*[}\]])/g, '$1');
-      repaired = repaired.replace(/\/\/[^\n]*/g, '');
-
-      try {
-        return JSON.parse(repaired) as EnhancedAssetPlan;
-      } catch {
-        this.logger?.logError('AssetPlanner', `JSON parse failed: ${error}`);
-        throw new Error(`JSON parse failed: ${error}`);
-      }
-    }
+    return robustParseJSON<EnhancedAssetPlan>(text);
   }
 
   getTokensUsed(): number {

@@ -6,6 +6,7 @@
 
 import { ILLMProvider, createLLMProvider, LLMProviderType, DEFAULT_MODELS } from './llm';
 import { GameConcept } from './types';
+import { robustParseJSON } from './jsonParser';
 import { GamePatternAnalyzer } from './GamePatternAnalyzer';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -639,13 +640,7 @@ ${archetype.examples.map(e => `- ${e}`).join('\n')}
       { maxTokens: 1024, model: this.config.model }
     );
 
-    // JSONを抽出
-    const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No JSON found in response');
-    }
-
-    const concept = JSON.parse(jsonMatch[0]) as GameConcept;
+    const concept = robustParseJSON<GameConcept>(response.content);
 
     // スコアチェック
     const { goalClarity, operationClarity, judgmentClarity, acceptance } = concept.selfEvaluation;
@@ -801,12 +796,7 @@ JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n
       { maxTokens: 1024, model: this.config.model }
     );
 
-    const jsonMatch = response.content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No JSON found in response');
-    }
-
-    const concept = JSON.parse(jsonMatch[0]) as GameConcept;
+    const concept = robustParseJSON<GameConcept>(response.content);
 
     const { goalClarity, operationClarity, judgmentClarity, acceptance } = concept.selfEvaluation;
     const allAboveMin = [goalClarity, operationClarity, judgmentClarity, acceptance]
