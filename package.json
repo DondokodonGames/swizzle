@@ -27,7 +27,7 @@
     "ai:v2:local": "SKIP_UPLOAD=true tsx src/ai/v2/run.ts 1",
     "ai:v2:svg": "IMAGE_PROVIDER=claude-svg SKIP_UPLOAD=true tsx src/ai/v2/run.ts 1",
     "ai:v2:svg:10": "IMAGE_PROVIDER=claude-svg SKIP_UPLOAD=true tsx src/ai/v2/run.ts 10",
-    "ai:neta": "tsx src/ai/v2/run-neta.ts 1",
+    "ai:neta": "tsx src/ai/v2/run-neta.ts",
     "ai:neta:1": "tsx src/ai/v2/run-neta.ts 1",
     "ai:neta:5": "tsx src/ai/v2/run-neta.ts 5",
     "ai:neta:10": "tsx src/ai/v2/run-neta.ts 10",
