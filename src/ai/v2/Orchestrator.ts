@@ -357,7 +357,7 @@ export class Orchestrator {
         logicOutput = mapperOutput.logicOutput;
 
         // spec の priorityDesign / uiVisibility.safeZone を logicOutput に反映
-        this.applySpecConstraints(logicOutput, spec);
+        this.applySpecConstraints(logicOutput, spec, concept);
 
         // Log mapping table
         this.logger.log('EditorMapper', 'output', 'Mapping table generated', {
@@ -461,7 +461,7 @@ export class Orchestrator {
             logicOutput = mapperOutput.logicOutput;
 
             // spec の priorityDesign / uiVisibility.safeZone を logicOutput に反映
-            this.applySpecConstraints(logicOutput, spec);
+            this.applySpecConstraints(logicOutput, spec, concept);
 
             this.logger.log('EditorMapper', 'output', 'Re-mapped after regeneration', {
               mappedObjects: mapperOutput.mappingTable.summary.totalObjects,
@@ -568,7 +568,7 @@ export class Orchestrator {
    * EditorMapper は LLM ベースのため、これらの制約を確実に適用するために
    * Orchestrator 側でポスト処理として機械的に適用する。
    */
-  private applySpecConstraints(output: LogicGeneratorOutput, spec: GameSpecification): void {
+  private applySpecConstraints(output: LogicGeneratorOutput, spec: GameSpecification, concept?: GameConcept): void {
     // 1. priorityDesign.rulePriorities → rule.priority に反映
     if (spec.priorityDesign?.rulePriorities?.length) {
       const priorityMap = new Map(
@@ -597,6 +597,33 @@ export class Orchestrator {
           if (obj.position) {
             obj.position.x = Math.max(minX, Math.min(maxX, obj.position.x));
             obj.position.y = Math.max(minY, Math.min(maxY, obj.position.y));
+          }
+        }
+      }
+    }
+
+    // 3. duration と success の time 条件を自動整合
+    // concept.duration が設定されている場合、success を発火する time ルールの
+    // seconds が duration を超えていたら強制的に合わせる
+    const gameDuration = concept?.duration;
+    if (gameDuration && gameDuration > 0) {
+      for (const rule of output.script.rules) {
+        const actions = rule.actions ?? [];
+        const hasSuccess = actions.some(a => a.type === 'success');
+        if (!hasSuccess) continue;
+
+        const conditions = rule.triggers?.conditions ?? [];
+        for (const cond of conditions) {
+          if (cond.type === 'time' && (cond as any).timeType === 'exact') {
+            const timeCond = cond as any;
+            if (typeof timeCond.seconds === 'number' && timeCond.seconds > gameDuration) {
+              this.logger.log('Orchestrator', 'decision', `duration整合: success time ${timeCond.seconds}s → ${gameDuration}s`, {
+                ruleId: rule.id,
+                before: timeCond.seconds,
+                after: gameDuration
+              });
+              timeCond.seconds = gameDuration;
+            }
           }
         }
       }
