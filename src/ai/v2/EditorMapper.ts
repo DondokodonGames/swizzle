@@ -225,6 +225,31 @@ const EDITOR_SPEC = `
 |-----------|-----|------|
 | targetId | string | 対象オブジェクトID |
 | force/impulse | {x, y} | 力/衝撃の方向と大きさ |
+
+## ⚠️ エンジン実装上の制限（コードで確認済み）
+
+### 使えないもの（型定義はあるが実行時に無効）
+- \`effect.type: 'particles'\` → パーティクルシステム未接続。描画されない
+- \`show/hide\` の \`fadeIn\`/\`fadeOut\`/\`duration\` → パラメータ無視。即時切替のみ
+- \`pause\`/\`restart\` アクション → switch ケースなし。何も起きない
+- \`stopSound\`/\`playBGM\`/\`stopBGM\` アクション → 未実装
+- \`objectState\` 条件 → ConditionEvaluator に実装なし
+- \`touch, touchType: 'swipe'\`/\`'flick'\` 条件 → EditorGameBridge が 'down' イベントしか生成しないため発火しない
+
+### 使えるタッチ条件
+- \`touch, touchType: 'down'\` → 最も確実。常に使える
+- \`touch, touchType: 'up'\` → タップ離し
+- \`touch, touchType: 'hold'\` → 長押し
+- \`followDrag\` アクション → ドラッグ追従は動作する（条件ではなくアクション）
+
+### 物理演算の制限
+- オブジェクト同士の衝突応答（押し戻し・反発）は未実装
+- 重力は下方向固定。方向変更不可
+- キャンバス底面のみ地面衝突検出
+
+### 一括ルール適用は不可
+- 1ルール = 1オブジェクト（forEach 的な適用なし）
+- N個のオブジェクトには必ず N 個の個別ルールが必要
 `;
 
 const MAPPING_PROMPT = `あなたはSwizzleエディターの仕様マッパーです。
