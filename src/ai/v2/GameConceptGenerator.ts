@@ -637,7 +637,7 @@ ${archetype.examples.map(e => `- ${e}`).join('\n')}
 
     const response = await this.llmProvider.chat(
       [{ role: 'user', content: prompt }],
-      { maxTokens: 1024, model: this.config.model }
+      { maxTokens: 2048, model: this.config.model }
     );
 
     const concept = robustParseJSON<GameConcept>(response.content);
@@ -793,7 +793,7 @@ JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n
 
     const response = await this.llmProvider.chat(
       [{ role: 'user', content: prompt }],
-      { maxTokens: 1024, model: this.config.model }
+      { maxTokens: 2048, model: this.config.model }
     );
 
     const concept = robustParseJSON<GameConcept>(response.content);
