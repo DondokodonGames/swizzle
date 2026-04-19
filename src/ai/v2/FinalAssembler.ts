@@ -176,9 +176,18 @@ export class FinalAssembler {
       },
       script: {
         initialState: {
-          score: 0,
-          flags: {},
-          counters: {}
+          layout: {
+            background: { visible: true, frameIndex: 0, animationSpeed: 10, autoStart: false },
+            objects: [],
+            texts: []
+          },
+          gameState: {
+            score: 0,
+            flags: {},
+            counters: Object.fromEntries(
+              logicOutput.script.counters.map(c => [c.name, c.initialValue])
+            )
+          }
         },
         layout: {
           background: {
@@ -317,6 +326,12 @@ export class FinalAssembler {
       errors.push('No game objects');
     }
 
+    // 7. プレイアビリティ検証
+    const playability = this.verifyPlayable(logicOutput);
+    if (!playability.playable) {
+      errors.push(`Game not playable: ${playability.reason}`);
+    }
+
     // 既存のissues配列（早期チェック分）もエラーとして扱う
     const allErrors = [...issues, ...errors];  // 早期チェック分 + 後半エラー
     const allIssues = [...allErrors, ...warnings];
@@ -325,6 +340,69 @@ export class FinalAssembler {
       project,
       valid: allErrors.length === 0,  // 致命的エラーがなければOK
       issues: allIssues
+    };
+  }
+
+  /**
+   * ゲームがプレイ可能か検証
+   * プレイヤー操作 → 成功/失敗 のパスが存在するか確認
+   */
+  verifyPlayable(output: LogicGeneratorOutput): { playable: boolean; reason: string } {
+    const rules = output.script?.rules || [];
+
+    // タッチ/ドラッグ操作を持つルールを収集
+    const playerTriggerTypes = ['touch', 'collision', 'position'];
+    const playerRules = rules.filter(r =>
+      r.triggers?.conditions?.some(c => playerTriggerTypes.includes(c.type))
+    );
+
+    if (playerRules.length === 0) {
+      return { playable: false, reason: 'No player-interactive rules (touch/drag/collision) found' };
+    }
+
+    // 成功/失敗アクションへの到達可能性チェック
+    const successRules = rules.filter(r => r.actions?.some(a => a.type === 'success' || a.type === 'failure'));
+    if (successRules.length === 0) {
+      return { playable: false, reason: 'No success or failure action found' };
+    }
+
+    // パターン1: タッチルールが直接 success/failure を持つ
+    const directWin = playerRules.some(r =>
+      r.actions?.some(a => a.type === 'success' || a.type === 'failure')
+    );
+    if (directWin) return { playable: true, reason: '' };
+
+    // パターン2: タッチルールがカウンターを操作 → カウンター条件で success/failure
+    const touchCounterNames = new Set<string>();
+    playerRules.forEach(r => {
+      r.actions?.forEach((a: any) => {
+        if (a.type === 'counter' && a.counterName) touchCounterNames.add(a.counterName);
+        if (a.type === 'hide' || a.type === 'show') touchCounterNames.add(`__state_${a.targetId}`);
+      });
+    });
+
+    const counterReachable = successRules.some(r =>
+      r.triggers?.conditions?.some((c: any) =>
+        c.type === 'counter' && touchCounterNames.has(c.counterName)
+      )
+    );
+    if (counterReachable) return { playable: true, reason: '' };
+
+    // パターン3: オブジェクト状態変化 → objectState条件で success/failure
+    const stateReachable = successRules.some(r =>
+      r.triggers?.conditions?.some((c: any) =>
+        c.type === 'objectState' && touchCounterNames.has(`__state_${c.target}`)
+      )
+    );
+    if (stateReachable) return { playable: true, reason: '' };
+
+    // パターン4: addScore経由（addScoreはgameState.scoreを更新するが、条件での使用は限定的）
+    const touchAddsScore = playerRules.some(r => r.actions?.some((a: any) => a.type === 'addScore'));
+    if (touchAddsScore) return { playable: true, reason: '' };
+
+    return {
+      playable: false,
+      reason: 'Player actions cannot reach success/failure conditions. Check counter names match between action and condition rules.'
     };
   }
 
