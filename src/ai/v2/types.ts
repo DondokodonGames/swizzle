@@ -342,7 +342,8 @@ export interface LogicGeneratorOutput {
     coordinatesInRange: boolean;
     onlyVerifiedFeaturesUsed: boolean;
     noRuleConflicts?: boolean;
-    allCountersFullyImplemented?: boolean;  // すべてのカウンターが操作と判定の両方を持つ
+    allCountersFullyImplemented?: boolean;
+    counterUsedOnlyWhenNecessary?: boolean;
   };
 }
 
