@@ -192,13 +192,38 @@ function balanceBracketsStringAware(json: string): string {
 }
 
 function truncateAtValidPoint(json: string, errorPosition: number): string {
-  let pos = errorPosition;
-  for (let i = errorPosition - 1; i > 0; i--) {
-    if (json[i] === '}' || json[i] === ']' || json[i] === '"') {
-      pos = i + 1;
-      break;
+  const len = Math.min(errorPosition, json.length);
+
+  // Precompute: for each position, is it inside a string?
+  // insideStr[i] = true means json[i] is inside a string (BEFORE the quote at that position toggles state)
+  const insideStr = new Uint8Array(len);
+  let inS = false, esc = false;
+  for (let i = 0; i < len; i++) {
+    const ch = json[i];
+    if (esc) { esc = false; insideStr[i] = inS ? 1 : 0; continue; }
+    if (ch === '\\' && inS) { esc = true; insideStr[i] = 1; continue; }
+    insideStr[i] = inS ? 1 : 0; // record BEFORE the quote toggles state
+    if (ch === '"') inS = !inS;
+  }
+
+  // Walk backwards looking for:
+  // 1. Structural end (} or ]) that is NOT inside a string  ← preferred
+  // 2. Closing quote (json[i]==" and insideStr[i]==true)    ← fallback
+  for (let i = len - 1; i > 0; i--) {
+    const ch = json[i];
+    if (!insideStr[i]) {
+      if (ch === '}' || ch === ']') {
+        // Unambiguous: end of a complete object or array
+        const truncated = json.substring(0, i + 1).replace(/,\s*$/, '');
+        return balanceBracketsStringAware(truncated);
+      }
+    } else if (ch === '"') {
+      // insideStr[i] == true means we were inside a string before this quote → this is a CLOSING quote
+      const truncated = json.substring(0, i + 1).replace(/,\s*$/, '');
+      return balanceBracketsStringAware(truncated);
     }
   }
-  const truncated = json.substring(0, pos).replace(/,\s*$/, '');
-  return balanceBracketsStringAware(truncated);
+
+  // Nothing usable found — return minimal valid JSON
+  return '{}';
 }
