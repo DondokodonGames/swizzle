@@ -111,6 +111,21 @@ export class ActionExecutor {
             effectsApplied.push(`音声再生: ${action.soundId}`);
             break;
 
+          case 'stopSound':
+            context.audioSystem?.stopSound(action.soundId);
+            effectsApplied.push(`音声停止: ${action.soundId}`);
+            break;
+
+          case 'playBGM':
+            context.audioSystem?.playBGM?.(action.soundId, action.volume);
+            effectsApplied.push('BGM再生');
+            break;
+
+          case 'stopBGM':
+            context.audioSystem?.stopBGM?.();
+            effectsApplied.push('BGM停止');
+            break;
+
           case 'move':
             this.executeMoveAction(action, context);
             effectsApplied.push(`移動: ${action.targetId}`);
@@ -217,6 +232,15 @@ export class ActionExecutor {
     }
 
     targetObj.visible = true;
+
+    if (action.fadeIn) {
+      targetObj.alpha = 0;
+      targetObj.fadeDirection = 'in';
+      targetObj.fadeStartTime = performance.now();
+      targetObj.fadeDuration = (action.duration || 0.3) * 1000;
+    } else {
+      targetObj.alpha = 1;
+    }
   }
 
   /**
@@ -231,7 +255,16 @@ export class ActionExecutor {
       return;
     }
 
-    targetObj.visible = false;
+    if (action.fadeOut) {
+      targetObj.alpha = targetObj.alpha ?? 1;
+      targetObj.fadeDirection = 'out';
+      targetObj.fadeStartTime = performance.now();
+      targetObj.fadeDuration = (action.duration || 0.3) * 1000;
+      // visible はフェード完了後に false になる（EffectManager が処理）
+    } else {
+      targetObj.visible = false;
+      targetObj.alpha = 1;
+    }
   }
 
   /**
@@ -332,6 +365,10 @@ export class ActionExecutor {
 
       case 'bounce':
         this.executeMoveBounce(targetObj, context);
+        break;
+
+      case 'arc':
+        this.executeMoveArc(targetObj, movement, context);
         break;
 
       default:
@@ -578,6 +615,36 @@ export class ActionExecutor {
     if (targetObj.y <= margin || targetObj.y + targetObj.height >= context.canvas.height - margin) {
       targetObj.vy = -(targetObj.vy || 0);
     }
+  }
+
+  private executeMoveArc(
+    targetObj: GameObject,
+    movement: any,
+    context: RuleExecutionContext
+  ): void {
+    let targetX: number, targetY: number;
+
+    if (typeof movement.target === 'string') {
+      const targetObject = context.objects.get(movement.target);
+      if (!targetObject) return;
+      targetX = targetObject.x;
+      targetY = targetObject.y;
+    } else if (movement.target) {
+      targetX = movement.target.x * context.canvas.width;
+      targetY = movement.target.y * context.canvas.height;
+    } else {
+      return;
+    }
+
+    targetObj.arcStartX = targetObj.x;
+    targetObj.arcStartY = targetObj.y;
+    targetObj.arcTargetX = targetX;
+    targetObj.arcTargetY = targetY;
+    targetObj.arcStartTime = performance.now();
+    targetObj.arcDuration = (movement.duration || 1.0) * 1000;
+    targetObj.arcHeight = movement.arcHeight ?? 100;
+    targetObj.vx = 0;
+    targetObj.vy = 0;
   }
 
   // ==================== 高度なアクション ====================

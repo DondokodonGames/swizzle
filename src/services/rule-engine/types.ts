@@ -55,6 +55,21 @@ export interface GameObject {
   baseRotation?: number;
   rotationAmount?: number;
   rotationDirection?: string;
+
+  // フェードアニメーション（show/hide の fadeIn/fadeOut）
+  alpha?: number;
+  fadeStartTime?: number;
+  fadeDuration?: number;
+  fadeDirection?: 'in' | 'out';
+
+  // arc移動（放物線パス）
+  arcStartX?: number;
+  arcStartY?: number;
+  arcTargetX?: number;
+  arcTargetY?: number;
+  arcStartTime?: number;
+  arcDuration?: number;
+  arcHeight?: number;
 }
 
 /**
@@ -90,6 +105,8 @@ export interface RuleExecutionContext {
     playSound: (soundId: string, volume?: number) => Promise<void>;
     stopSound: (soundId: string) => void;
     setVolume: (soundId: string, volume: number) => void;
+    playBGM?: (soundId?: string, volume?: number) => void;
+    stopBGM?: () => void;
   };
   
   particleSystem?: {

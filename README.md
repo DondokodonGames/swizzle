@@ -199,6 +199,27 @@ CREATE TABLE playlists (
 - **技術負債**: 最小限（型安全性・エラーハンドリング完備）
 - **パフォーマンス**: モバイル60FPS・3秒以内ロード達成
 
+## 🤖 GitHub Actions 自動生成の設定
+
+GitHubリポジトリの **Settings > Secrets and variables > Actions** で
+以下のシークレットを設定してください。
+
+| シークレット名 | 内容 |
+|---|---|
+| `ANTHROPIC_API_KEY` | AnthropicのAPIキー |
+| `OPENAI_API_KEY` | OpenAIのAPIキー（画像生成用、省略時はモック） |
+| `VITE_SUPABASE_URL` | SupabaseのプロジェクトURL |
+| `VITE_SUPABASE_ANON_KEY` | Supabaseの匿名キー |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabaseのサービスロールキー |
+| `SUPABASE_MASTER_USER_ID` | ゲーム投稿に使うマスターユーザーID |
+
+設定後、**Actions タブ > Auto Game Generation > Run workflow** から手動実行して動作確認してください。
+
+デフォルトは毎時3件・1時間ごとに自動実行されます。  
+件数・頻度はワークフローファイル (`.github/workflows/generate-games.yml`) で変更できます。
+
+---
+
 ## 🤝 コントリビューション
 
 現在一人開発中ですが、将来的にはコントリビューション歓迎予定です。

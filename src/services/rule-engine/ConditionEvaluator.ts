@@ -103,6 +103,9 @@ export class ConditionEvaluator {
       case 'random':
         result = this.evaluateRandomCondition(condition, context);
         break;
+      case 'objectState':
+        result = this.evaluateObjectStateCondition(condition as Extract<TriggerCondition, { type: 'objectState' }>, context);
+        break;
       default:
         result = false;
     }
@@ -140,7 +143,10 @@ export class ConditionEvaluator {
         return this.evaluateHoldCondition(condition, latestTouch, touchTarget, context);
       case 'down':
       case 'up':
-        // down/up処理
+        // down/up はそれぞれのtouchTypeのみ処理（swipe/flick/drag等と混同しない）
+        if (latestTouch.data.touchType !== condition.touchType) {
+          return false;
+        }
         const touchKey = `${latestTouch.timestamp}-${latestTouch.data.target}`;
         if (this.consumedTouchEvents.has(touchKey)) {
           return false;
@@ -647,6 +653,40 @@ export class ConditionEvaluator {
     this.randomStates.clear();
     this.animationStates.clear();
     this.previousGameState = undefined;
+  }
+
+  /**
+   * objectState 条件評価
+   */
+  private evaluateObjectStateCondition(
+    condition: Extract<TriggerCondition, { type: 'objectState' }>,
+    context: RuleExecutionContext
+  ): boolean {
+    const obj = context.objects.get(condition.target);
+    if (!obj) return false;
+
+    switch (condition.stateType) {
+      case 'visible':
+        return obj.visible === true;
+      case 'hidden':
+        return obj.visible === false;
+      case 'animation': {
+        const isPlaying = obj.animationPlaying === true;
+        const currentFrame = obj.currentFrame ?? 0;
+        switch (condition.condition) {
+          case 'playing': return isPlaying;
+          case 'stopped': return !isPlaying;
+          case 'frame': return currentFrame === condition.frameNumber;
+          case 'frameRange':
+            return condition.frameRange !== undefined &&
+              currentFrame >= condition.frameRange[0] &&
+              currentFrame <= condition.frameRange[1];
+          default: return false;
+        }
+      }
+      default:
+        return false;
+    }
   }
 
   /**

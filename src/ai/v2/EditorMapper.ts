@@ -169,7 +169,7 @@ const EDITOR_SPEC = `
 | パラメータ | 値 | 説明 |
 |-----------|-----|------|
 | targetId | string | 対象オブジェクトID |
-| movement.type | 'straight'/'teleport'/'wander'/'bounce'/'stop'/'swap'/'approach'/'orbit' | 移動タイプ |
+| movement.type | 'straight'/'teleport'/'wander'/'bounce'/'stop'/'swap'/'approach'/'orbit'/'arc' | 移動タイプ |
 | movement.target? | {x, y} | 目標座標 |
 | movement.direction? | 'up'/'down'/'left'/'right'/'upLeft'/'upRight'/'downLeft'/'downRight' | 方向 |
 | movement.speed? | number | 速度 |
@@ -225,6 +225,44 @@ const EDITOR_SPEC = `
 |-----------|-----|------|
 | targetId | string | 対象オブジェクトID |
 | force/impulse | {x, y} | 力/衝撃の方向と大きさ |
+
+## ⚠️ エンジン実装上の制限（コードで確認済み）
+
+### 使えないもの
+- \`pause\`/\`restart\` アクション → switch ケースなし。何も起きない
+- \`collision checkMode:'pixel'\` → 常にAABB矩形当たり判定
+- \`animation\` 条件の \`loopCount\` → 不具合あり、使用非推奨
+
+### 使えるタッチ条件（全て実装済み）
+- \`touch, touchType: 'down'\` → 最も確実。常に使える
+- \`touch, touchType: 'up'\` → タップ離し
+- \`touch, touchType: 'hold'\` → 長押し（holdDuration ms）
+- \`touch, touchType: 'drag'\` → ドラッグ（dragState: 'start'/'dragging'/'end'）
+- \`touch, touchType: 'swipe'\` → スワイプ（direction, minDistance, minVelocity）
+- \`touch, touchType: 'flick'\` → フリック（direction, maxDuration, minVelocity）
+- \`followDrag\` アクション → ドラッグ追従
+
+### 音声（全て実装済み）
+- \`playSound\` / \`stopSound\` / \`playBGM\` / \`stopBGM\`
+
+### フェード（実装済み）
+- \`show\` の \`fadeIn:true\`, \`duration\` → フェードイン
+- \`hide\` の \`fadeOut:true\`, \`duration\` → フェードアウト
+
+### パーティクル（実装済み）
+- \`effect.type:'particles'\`, \`particleType:'star'/'confetti'/'explosion'/'splash'/'hearts'/'sparkle'\`
+
+### objectState 条件（実装済み）
+- \`stateType:'visible'/'hidden'/'animation'\`
+
+### 物理演算の制限
+- オブジェクト同士の衝突応答（押し戻し・反発）は未実装
+- 重力は下方向固定。方向変更不可
+- キャンバス底面のみ地面衝突検出
+
+### 一括ルール適用は不可
+- 1ルール = 1オブジェクト（forEach 的な適用なし）
+- N個のオブジェクトには必ず N 個の個別ルールが必要
 `;
 
 const MAPPING_PROMPT = `あなたはSwizzleエディターの仕様マッパーです。
@@ -491,8 +529,9 @@ touchType が 'swipe' の場合、swipeDirection で方向を指定:
 **重要**: swipe_left, swipe_right 等を区別するには swipeDirection が必須！
 
 ### 移動タイプ（movement.type）
-✅ 有効: 'straight', 'teleport', 'wander', 'stop'
-❌ 無効: 'bounce', 'linear', 'jump', 'lerp', 'bezier', 'arc', 'zigzag'
+✅ 有効: 'straight', 'teleport', 'wander', 'stop', 'bounce', 'swap', 'approach', 'orbit', 'arc'
+- arc: target（{x,y}正規化座標またはobjectId）, duration（秒）, arcHeight（px, 正=上アーク, デフォルト100）
+❌ 無効: 'linear', 'jump', 'lerp', 'bezier', 'zigzag'
 
 ### collision条件のtarget ★★★
 collision条件のtargetには具体的なオブジェクトIDを指定:

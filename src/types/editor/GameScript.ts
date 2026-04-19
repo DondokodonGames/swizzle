@@ -342,21 +342,22 @@ export type MovementDirection = 'up' | 'down' | 'left' | 'right' | 'up-left' | '
 
 // 移動パターン
 export interface MovementPattern {
-  type: 'straight' | 'teleport' | 'wander' | 'stop' | 'swap' | 'approach' | 'orbit' | 'bounce';
-  
+  type: 'straight' | 'teleport' | 'wander' | 'stop' | 'swap' | 'approach' | 'orbit' | 'bounce' | 'arc';
+
   // 移動パラメータ
   target?: Position | string;             // 座標またはオブジェクトID
   speed?: number;                         // 移動速度（px/sec）
   duration?: number;                      // 移動時間（秒）
   easing?: 'linear' | 'ease-in' | 'ease-out' | 'bounce'; // イージング
-  
+
   // 🔧 追加: 8方向移動用（type='straight'で使用、targetの代わりに指定可能）
   direction?: MovementDirection;
-  
+
   // パターン固有設定
   wanderRadius?: number;                  // wander用の半径
   orbitRadius?: number;                   // orbit用の半径
   bounceStrength?: number;                // bounce用の反発力
+  arcHeight?: number;                     // arc用：山の高さ（px、正=上方向）デフォルト100
   
   // リピート設定
   repeat?: {
@@ -416,7 +417,7 @@ export type GameAction =
   // 音響制御
   | { type: 'playSound'; soundId: string; volume?: number }
   | { type: 'stopSound'; soundId: string }
-  | { type: 'playBGM'; volume?: number }
+  | { type: 'playBGM'; soundId?: string; volume?: number }
   | { type: 'stopBGM' }
   
   // フラグ制御

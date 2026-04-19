@@ -366,6 +366,7 @@ export class EditorGameBridge {
       }
 
       // AudioSystem作成
+      let bgmAudio: HTMLAudioElement | null = null;
       const audioSystem = {
         playSound: async (soundId: string, volume?: number) => {
           const audio = audioCache.get(soundId);
@@ -386,6 +387,27 @@ export class EditorGameBridge {
           const audio = audioCache.get(soundId);
           if (audio) {
             audio.volume = Math.max(0, Math.min(1, volume));
+          }
+        },
+        playBGM: (soundId?: string, volume?: number) => {
+          if (bgmAudio) {
+            bgmAudio.pause();
+            bgmAudio.currentTime = 0;
+          }
+          const audio = audioCache.get(soundId ?? 'bgm');
+          if (audio) {
+            audio.volume = Math.max(0, Math.min(1, volume ?? 0.7));
+            audio.loop = true;
+            audio.currentTime = 0;
+            audio.play().catch(e => console.warn('BGM play failed:', e));
+            bgmAudio = audio;
+          }
+        },
+        stopBGM: () => {
+          if (bgmAudio) {
+            bgmAudio.pause();
+            bgmAudio.currentTime = 0;
+            bgmAudio = null;
           }
         }
       };
@@ -521,6 +543,38 @@ export class EditorGameBridge {
         audioSystem
       };
 
+      // パーティクルプール
+      interface SimpleParticle {
+        x: number; y: number; vx: number; vy: number;
+        size: number; color: string; alpha: number;
+        createdAt: number; maxLife: number; useGravity: boolean;
+      }
+      const particlePool: SimpleParticle[] = [];
+      this.currentContext.particleSystem = {
+        emit: (config: any) => {
+          const count = Math.min(config.count || 20, 80);
+          const colors: string[] = config.colors || ['#FFD700'];
+          const spread = config.spread || 100;
+          const speed = config.speed || 200;
+          for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const spd = speed * (0.4 + Math.random() * 0.6);
+            particlePool.push({
+              x: config.x + (Math.random() - 0.5) * spread * 0.4,
+              y: config.y + (Math.random() - 0.5) * spread * 0.4,
+              vx: Math.cos(angle) * spd / 60,
+              vy: Math.sin(angle) * spd / 60 - 1.5,
+              size: (config.size || 10) * (0.4 + Math.random() * 0.6),
+              color: colors[Math.floor(Math.random() * colors.length)],
+              alpha: 1.0,
+              createdAt: performance.now(),
+              maxLife: (config.duration || 1.0) * 1000,
+              useGravity: config.gravity !== false,
+            });
+          }
+        }
+      };
+
       console.log('✅ ゲーム初期化完了:', {
         objectCount: objectsMap.size,
         ruleCount: project.script?.rules?.length || 0,
@@ -583,6 +637,22 @@ export class EditorGameBridge {
           // 時間更新（固定deltaTimeを使用してフレームレート非依存）
           gameState.timeElapsed += fixedDeltaTime;
           this.currentContext!.gameState.timeElapsed = gameState.timeElapsed;
+
+          // ホールドイベント生成（タッチ継続中）
+          if (touchActive) {
+            const holdDuration = Date.now() - touchStartTime;
+            if (holdDuration >= 300) {
+              this.currentContext!.events.push({
+                type: 'touch', timestamp: Date.now(),
+                data: {
+                  type: 'hold', touchType: 'hold',
+                  target: touchedObjectId ?? 'stage',
+                  currentDuration: holdDuration,
+                  holdState: holdDuration >= 1000 ? 'complete' : 'progress'
+                }
+              });
+            }
+          }
 
           // 🆕 Phase H新機能: 物理演算更新（固定60fps）
           if (this.ruleEngine) {
@@ -696,6 +766,23 @@ export class EditorGameBridge {
               obj.y += obj.vy;
             }
 
+            // arc移動（放物線パス）— vx/vyより後に実行して上書き
+            if (obj.arcStartTime !== undefined && obj.arcDuration !== undefined) {
+              const t = Math.min((currentTime - obj.arcStartTime) / obj.arcDuration, 1.0);
+              obj.x = obj.arcStartX! + (obj.arcTargetX! - obj.arcStartX!) * t;
+              obj.y = obj.arcStartY! + (obj.arcTargetY! - obj.arcStartY!) * t
+                    - (obj.arcHeight! * 4 * t * (1 - t));
+              if (t >= 1.0) {
+                obj.arcStartTime = undefined;
+                obj.arcDuration = undefined;
+                obj.arcStartX = undefined;
+                obj.arcStartY = undefined;
+                obj.arcTargetX = undefined;
+                obj.arcTargetY = undefined;
+                obj.arcHeight = undefined;
+              }
+            }
+
             // ✅ 中心基準で描画（scaleX/scaleY個別対応）
             const objWidth = obj.width * (obj.scaleX ?? obj.scale);
             const objHeight = obj.height * (obj.scaleY ?? obj.scale);
@@ -716,7 +803,7 @@ export class EditorGameBridge {
             }
             
             if (img && img.complete) {
-              ctx.globalAlpha = 1.0;
+              ctx.globalAlpha = obj.alpha ?? 1.0;
               ctx.drawImage(
                 img,
                 drawCenterX - objWidth / 2,  // 中心基準で計算した左上X
@@ -726,6 +813,7 @@ export class EditorGameBridge {
               );
             } else {
               // フォールバック描画（画像未ロードの場合）
+              ctx.globalAlpha = obj.alpha ?? 1.0;
               ctx.fillStyle = '#FF6B9D';
               ctx.fillRect(
                 drawCenterX - objWidth / 2,
@@ -749,6 +837,30 @@ export class EditorGameBridge {
             ctx.restore();
           });
 
+          // パーティクル更新・描画
+          if (particlePool.length > 0) {
+            const pNow = performance.now();
+            for (let pi = particlePool.length - 1; pi >= 0; pi--) {
+              const p = particlePool[pi];
+              const pAge = pNow - p.createdAt;
+              if (pAge >= p.maxLife) {
+                particlePool.splice(pi, 1);
+                continue;
+              }
+              p.x += p.vx;
+              p.y += p.vy;
+              if (p.useGravity) p.vy += 0.3;
+              p.alpha = 1 - pAge / p.maxLife;
+              ctx.save();
+              ctx.globalAlpha = p.alpha;
+              ctx.fillStyle = p.color;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          }
+
           // ゲーム終了判定（制限時間）
           if (gameDuration && gameState.timeElapsed >= gameDuration) {
             running = false;
@@ -767,6 +879,40 @@ export class EditorGameBridge {
           errors.push('ゲームループでエラーが発生しました');
         }
       };
+
+      // 13. タッチ追跡状態（swipe/flick/drag/hold 検出用）
+      let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+      let lastTouchX = 0, lastTouchY = 0;
+      let touchedObjectId: string | null = null;
+      let touchActive = false;
+
+      // タッチ座標をキャンバス座標に変換
+      const toCanvasCoords = (clientX: number, clientY: number) => {
+        const rect = canvasElement.getBoundingClientRect();
+        return {
+          x: (clientX - rect.left) * (canvasElement.width / rect.width),
+          y: (clientY - rect.top) * (canvasElement.height / rect.height),
+        };
+      };
+
+      // ヒットオブジェクトを検出
+      const hitTest = (x: number, y: number): string | null => {
+        const sorted = Array.from(objectsMap.entries())
+          .sort((a, b) => (b[1].zIndex || 0) - (a[1].zIndex || 0));
+        for (const [id, obj] of sorted) {
+          if (!obj.visible) continue;
+          const w = obj.width * (obj.scaleX ?? obj.scale);
+          const h = obj.height * (obj.scaleY ?? obj.scale);
+          if (x >= obj.x && x <= obj.x + w && y >= obj.y && y <= obj.y + h) return id;
+        }
+        return null;
+      };
+
+      // タッチ方向を算出
+      const getDirection = (dx: number, dy: number): string =>
+        Math.abs(dx) >= Math.abs(dy)
+          ? (dx >= 0 ? 'right' : 'left')
+          : (dy >= 0 ? 'down' : 'up');
 
       // 13. ✅ タッチ・クリックイベント（bc9ae40f版のシンプルなhandleInteraction）
       const handleInteraction = (event: MouseEvent | TouchEvent) => {
@@ -837,16 +983,91 @@ export class EditorGameBridge {
             this.currentContext!.events.push(touchEvent);
             
             console.log(`👆 ステージタッチ: at (${x.toFixed(0)}, ${y.toFixed(0)})`);
-            console.log('🔍 [HandleInteraction] イベント追加後 - context.events:', this.currentContext!.events);
           }
-          
+
+          // タッチ追跡状態を更新
+          touchStartX = x; touchStartY = y; touchStartTime = Date.now();
+          lastTouchX = x; lastTouchY = y;
+          touchedObjectId = hitObject;
+          touchActive = 'touches' in event;  // タッチデバイスのみ追跡
+
+          // ドラッグ開始イベント
+          if (touchActive) {
+            this.currentContext!.events.push({
+              type: 'touch', timestamp: Date.now(),
+              data: { type: 'drag', touchType: 'drag', dragState: 'start',
+                      target: hitObject ?? 'stage', x, y }
+            });
+          }
+
         } catch (error) {
           console.warn('⚠️ インタラクション処理エラー:', error);
         }
       };
 
+      const handleTouchMove = (event: TouchEvent) => {
+        event.preventDefault();
+        if (!this.currentContext || !touchActive) return;
+        const touch = event.touches[0];
+        if (!touch) return;
+        const { x, y } = toCanvasCoords(touch.clientX, touch.clientY);
+        lastTouchX = x; lastTouchY = y;
+        this.currentContext.events.push({
+          type: 'touch', timestamp: Date.now(),
+          data: { type: 'drag', touchType: 'drag', dragState: 'dragging',
+                  target: touchedObjectId ?? 'stage', x, y }
+        });
+      };
+
+      const handleTouchEnd = (event: TouchEvent) => {
+        if (!this.currentContext || !touchActive) return;
+        touchActive = false;
+        const endTime = Date.now();
+        const dx = lastTouchX - touchStartX;
+        const dy = lastTouchY - touchStartY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const duration = endTime - touchStartTime;
+        const velocity = duration > 0 ? (distance / duration) * 1000 : 0;
+        const direction = getDirection(dx, dy);
+
+        // ドラッグ終了
+        this.currentContext.events.push({
+          type: 'touch', timestamp: endTime,
+          data: { type: 'drag', touchType: 'drag', dragState: 'end',
+                  target: touchedObjectId ?? 'stage', x: lastTouchX, y: lastTouchY }
+        });
+
+        // タッチアップ
+        this.currentContext.events.push({
+          type: 'touch', timestamp: endTime,
+          data: { touchType: 'up', target: touchedObjectId ?? 'stage',
+                  x: lastTouchX, y: lastTouchY }
+        });
+
+        // フリック判定（速い・短距離・短時間）
+        if (velocity >= 1000 && distance <= 150 && duration <= 200) {
+          this.currentContext.events.push({
+            type: 'touch', timestamp: endTime,
+            data: { type: 'flick', touchType: 'flick', target: touchedObjectId ?? 'stage',
+                    distance, duration, velocity, direction }
+          });
+        }
+        // スワイプ判定（速い・長距離）
+        else if (velocity >= 500 && distance >= 100 && duration <= 500) {
+          this.currentContext.events.push({
+            type: 'touch', timestamp: endTime,
+            data: { type: 'swipe', touchType: 'swipe', target: touchedObjectId ?? 'stage',
+                    distance, duration, velocity, direction }
+          });
+        }
+
+        touchedObjectId = null;
+      };
+
       canvasElement.addEventListener('click', handleInteraction);
-      canvasElement.addEventListener('touchstart', handleInteraction);
+      canvasElement.addEventListener('touchstart', handleInteraction, { passive: false });
+      canvasElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+      canvasElement.addEventListener('touchend', handleTouchEnd);
 
       // 外部停止用にハンドラ参照を保存
       this.currentHandleInteraction = handleInteraction;
@@ -874,6 +1095,9 @@ export class EditorGameBridge {
       }
       canvasElement.removeEventListener('click', handleInteraction);
       canvasElement.removeEventListener('touchstart', handleInteraction);
+      canvasElement.removeEventListener('touchmove', handleTouchMove);
+      canvasElement.removeEventListener('touchend', handleTouchEnd);
+      audioSystem.stopBGM();
 
       // 17. 結果計算
       const endTime = performance.now();
