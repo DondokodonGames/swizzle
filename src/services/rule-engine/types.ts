@@ -55,6 +55,12 @@ export interface GameObject {
   baseRotation?: number;
   rotationAmount?: number;
   rotationDirection?: string;
+
+  // フェードアニメーション（show/hide の fadeIn/fadeOut）
+  alpha?: number;
+  fadeStartTime?: number;
+  fadeDuration?: number;
+  fadeDirection?: 'in' | 'out';
 }
 
 /**
@@ -90,6 +96,8 @@ export interface RuleExecutionContext {
     playSound: (soundId: string, volume?: number) => Promise<void>;
     stopSound: (soundId: string) => void;
     setVolume: (soundId: string, volume: number) => void;
+    playBGM?: (soundId?: string, volume?: number) => void;
+    stopBGM?: () => void;
   };
   
   particleSystem?: {

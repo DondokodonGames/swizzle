@@ -152,20 +152,43 @@ export class EffectManager {
    */
   updateEffects(context: RuleExecutionContext): void {
     const now = performance.now();
-    
-    context.objects.forEach((obj, id) => {
+
+    context.objects.forEach((obj) => {
+      // フェード更新（show/hide の fadeIn/fadeOut）
+      if (obj.fadeDirection !== undefined && obj.fadeStartTime !== undefined && obj.fadeDuration !== undefined) {
+        const fadeElapsed = now - obj.fadeStartTime;
+        const fadeProgress = Math.min(fadeElapsed / obj.fadeDuration, 1.0);
+
+        if (obj.fadeDirection === 'in') {
+          obj.alpha = fadeProgress;
+        } else {
+          obj.alpha = 1 - fadeProgress;
+          if (fadeProgress >= 1.0) {
+            obj.visible = false;
+            obj.alpha = 1;
+          }
+        }
+
+        if (fadeProgress >= 1.0) {
+          obj.fadeDirection = undefined;
+          obj.fadeStartTime = undefined;
+          obj.fadeDuration = undefined;
+        }
+      }
+
+      // 通常エフェクト更新
       if (!obj.effectType || !obj.effectStartTime) {
         return;
       }
-      
+
       const elapsed = now - obj.effectStartTime;
       const progress = Math.min(elapsed / obj.effectDuration!, 1.0);
-      
+
       if (progress >= 1.0) {
         this.endEffect(obj);
         return;
       }
-      
+
       switch (obj.effectType) {
         case 'scale':
           this.updateScaleEffect(obj, progress);

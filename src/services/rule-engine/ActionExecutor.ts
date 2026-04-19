@@ -111,6 +111,21 @@ export class ActionExecutor {
             effectsApplied.push(`音声再生: ${action.soundId}`);
             break;
 
+          case 'stopSound':
+            context.audioSystem?.stopSound(action.soundId);
+            effectsApplied.push(`音声停止: ${action.soundId}`);
+            break;
+
+          case 'playBGM':
+            context.audioSystem?.playBGM?.(action.soundId, action.volume);
+            effectsApplied.push('BGM再生');
+            break;
+
+          case 'stopBGM':
+            context.audioSystem?.stopBGM?.();
+            effectsApplied.push('BGM停止');
+            break;
+
           case 'move':
             this.executeMoveAction(action, context);
             effectsApplied.push(`移動: ${action.targetId}`);
@@ -217,6 +232,15 @@ export class ActionExecutor {
     }
 
     targetObj.visible = true;
+
+    if (action.fadeIn) {
+      targetObj.alpha = 0;
+      targetObj.fadeDirection = 'in';
+      targetObj.fadeStartTime = performance.now();
+      targetObj.fadeDuration = (action.duration || 0.3) * 1000;
+    } else {
+      targetObj.alpha = 1;
+    }
   }
 
   /**
@@ -231,7 +255,16 @@ export class ActionExecutor {
       return;
     }
 
-    targetObj.visible = false;
+    if (action.fadeOut) {
+      targetObj.alpha = targetObj.alpha ?? 1;
+      targetObj.fadeDirection = 'out';
+      targetObj.fadeStartTime = performance.now();
+      targetObj.fadeDuration = (action.duration || 0.3) * 1000;
+      // visible はフェード完了後に false になる（EffectManager が処理）
+    } else {
+      targetObj.visible = false;
+      targetObj.alpha = 1;
+    }
   }
 
   /**

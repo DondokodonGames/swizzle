@@ -416,7 +416,7 @@ export type GameAction =
   // 音響制御
   | { type: 'playSound'; soundId: string; volume?: number }
   | { type: 'stopSound'; soundId: string }
-  | { type: 'playBGM'; volume?: number }
+  | { type: 'playBGM'; soundId?: string; volume?: number }
   | { type: 'stopBGM' }
   
   // フラグ制御
