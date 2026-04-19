@@ -189,6 +189,8 @@ export class LogicRepairer {
       case 'LARGE_SCALE_AMOUNT':
       case 'MISSING_POINTS':
       case 'COUNTER_NEVER_MODIFIED':  // 未使用カウンターを削除することで自動修復可能
+      case 'INSTANT_WIN':             // カウンター初期値を0にリセット
+      case 'INSTANT_LOSE':            // カウンター初期値を閾値未満にリセット
         return 'auto_fixable';
 
       // 部分再生成
@@ -204,8 +206,8 @@ export class LogicRepairer {
       case 'MISSING_ANIMATION_INDEX':
       case 'UNUSED_COUNTER':
       case 'COUNTER_NEVER_CHECKED':
-      case 'NO_PLAYER_ACTION':    // warningなので部分再生成（collisionなど他の操作も有効）
-      case 'NO_FAILURE':          // warningなので部分再生成（時間切れのみで失敗も有効）
+      case 'NO_PLAYER_ACTION':    // warningなので部分再生成
+      case 'NO_FAILURE':          // warningなので部分再生成
       // ProjectValidatorからのエラー
       case 'ACTION_UNDEFINED_COUNTER':
       case 'CONDITION_UNDEFINED_COUNTER':
@@ -215,9 +217,7 @@ export class LogicRepairer {
       case 'LAYOUT_UNDEFINED_OBJECT':
         return 'partial_regen';
 
-      // 全体再生成が必要
-      case 'INSTANT_WIN':
-      case 'INSTANT_LOSE':
+      // 全体再生成が必要（意味的エラーのみ）
       case 'AUTO_SUCCESS':
       case 'NO_SUCCESS':
       case 'SUCCESS_FAILURE_CONFLICT':
@@ -227,9 +227,8 @@ export class LogicRepairer {
       case 'UNREACHABLE_SUCCESS':
       case 'COUNTER_UNREACHABLE':
       case 'SUCCESS_UNREACHABLE_TIME':
+      case 'OBJECT_NO_RULES':  // ルールが欠落 → ゲームが動かない構造的破損
         return 'full_regen';
-      case 'OBJECT_NO_RULES':
-        return 'partial_regen';
 
       default:
         return error.type === 'critical' ? 'full_regen' : 'partial_regen';
@@ -274,6 +273,12 @@ export class LogicRepairer {
 
       case 'COUNTER_NEVER_MODIFIED':
         return this.repairNeverModifiedCounter(output, error);
+
+      case 'INSTANT_WIN':
+        return this.repairInstantWin(output, error);
+
+      case 'INSTANT_LOSE':
+        return this.repairInstantLose(output, error);
 
       default:
         return null;
@@ -664,6 +669,52 @@ export class LogicRepairer {
   }
 
   /**
+   * 即成功を修復（カウンター初期値を0にリセット）
+   */
+  private repairInstantWin(output: LogicGeneratorOutput, error: LogicValidationError): RepairAction | null {
+    const match = error.message.match(/カウンター "([^"]+)"/);
+    if (!match) return null;
+
+    const counterId = match[1];
+    const counter = output.script.counters.find(c => c.id === counterId);
+    if (!counter) return null;
+
+    const before = counter.initialValue;
+    counter.initialValue = 0;
+    return {
+      errorCode: error.code,
+      action: 'Reset counter initialValue to 0 to prevent instant win',
+      target: `counters.${counterId}`,
+      before,
+      after: 0
+    };
+  }
+
+  /**
+   * 即失敗を修復（カウンター初期値を失敗閾値の2倍に設定）
+   */
+  private repairInstantLose(output: LogicGeneratorOutput, error: LogicValidationError): RepairAction | null {
+    const match = error.message.match(/カウンター "([^"]+)".*失敗閾値\((\d+)\)/);
+    if (!match) return null;
+
+    const counterId = match[1];
+    const threshold = parseInt(match[2], 10);
+    const counter = output.script.counters.find(c => c.id === counterId);
+    if (!counter) return null;
+
+    const before = counter.initialValue;
+    const safeValue = threshold * 2;
+    counter.initialValue = safeValue;
+    return {
+      errorCode: error.code,
+      action: `Set counter initialValue to ${safeValue} (above fail threshold ${threshold})`,
+      target: `counters.${counterId}`,
+      before,
+      after: safeValue
+    };
+  }
+
+  /**
    * 部分再生成
    */
   private async partialRegenerate(
@@ -964,7 +1015,10 @@ ${output.assetPlan.sounds.map(s => `- ${s.id}: ${s.type}`).join('\n')}
           feedback.push('→ 成功条件にtouch/collisionなどプレイヤー操作を追加するか、time→successをtime→failureに変更してサバイバルゲームとして設計してください。');
           break;
         case 'OBJECT_NO_RULES':
-          feedback.push('→ ルールが1つもないオブジェクトがあります。全オブジェクトに最低1つのルールを生成してください（省略禁止）。');
+          feedback.push('→ ルールが1つもないオブジェクトがあります。全インタラクティブオブジェクトに最低1つのルールを生成してください（省略禁止）。');
+          feedback.push('→ 障害物が衝突ターゲットになっているのにルールがない場合: 以下の2ルールを追加してください:');
+          feedback.push('   ルール1: { triggers: { conditions: [{ type:"time", timeType:"exact", seconds:0 }] }, actions: [{ type:"move", movement:{ type:"straight", direction:"down", speed:3 } }] }');
+          feedback.push('   ルール2: { triggers: { conditions: [{ type:"collision", target:"stageArea", collisionType:"exit" }] }, actions: [{ type:"move", movement:{ type:"teleport", target:{ x:<各障害物のx>, y:0.0 } } }] }');
           break;
       }
     }

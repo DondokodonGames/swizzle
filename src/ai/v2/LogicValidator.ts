@@ -44,7 +44,7 @@ const VALID_COMPARISONS = ['equals', 'greaterOrEqual', 'greater', 'less', 'lessO
 const VALID_COLLISION_TYPES = ['enter', 'stay', 'exit'];
 const VALID_CHECK_MODES = ['hitbox', 'pixel'];
 const VALID_COUNTER_OPERATIONS = ['increment', 'decrement', 'set', 'add', 'subtract'];
-const VALID_MOVEMENT_TYPES = ['straight', 'teleport', 'wander', 'stop'];
+const VALID_MOVEMENT_TYPES = ['straight', 'teleport', 'wander', 'stop', 'arc'];
 const VALID_EFFECT_TYPES = ['flash', 'shake', 'scale', 'rotate', 'particles'];
 // 新規追加
 const VALID_POSITION_AREAS = ['inside', 'outside', 'crossing'];
@@ -106,6 +106,9 @@ export class LogicValidator {
 
     // 13. サウンド/BGM整合性チェック
     this.checkSoundAndBgm(output, errors);
+
+    // 15. 全オブジェクトへのルール存在チェック
+    this.checkObjectsHaveRules(output, errors);
 
     return {
       valid: errors.filter(e => e.type === 'critical').length === 0,
@@ -1677,6 +1680,54 @@ export class LogicValidator {
               fix: `sounds配列に "${action.soundId}" を追加するか、正しいsoundIdに修正してください`
             });
           }
+        }
+      }
+    }
+  }
+
+  /**
+   * 全オブジェクトへのルール存在チェック
+   * 特に「衝突対象になっているが動きルールがないオブジェクト」を検出
+   */
+  private checkObjectsHaveRules(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
+    const allObjectIds = new Set(output.assetPlan.objects.map(o => o.id));
+
+    // ルールに登場するtargetObjectId一覧
+    const objectsWithRules = new Set<string>();
+    for (const rule of output.script.rules) {
+      if (rule.targetObjectId) objectsWithRules.add(rule.targetObjectId);
+    }
+
+    // 衝突ルールのtarget（障害物として参照されているオブジェクト）
+    const collisionTargets = new Set<string>();
+    for (const rule of output.script.rules) {
+      for (const cond of rule.triggers?.conditions || []) {
+        if (cond.type === 'collision' && cond.target &&
+            cond.target !== 'stageArea' && cond.target !== 'any' && cond.target !== 'other') {
+          collisionTargets.add(cond.target);
+        }
+      }
+    }
+
+    // 各オブジェクトをチェック
+    for (const objectId of allObjectIds) {
+      if (!objectsWithRules.has(objectId)) {
+        // 衝突ターゲットになっているがルールなし → 動かない障害物（重大）
+        if (collisionTargets.has(objectId)) {
+          errors.push({
+            type: 'critical',
+            code: 'OBJECT_NO_RULES',
+            message: `オブジェクト "${objectId}" は衝突対象として参照されていますが、ルールが1つもありません（静止した障害物になります）`,
+            fix: `"${objectId}" に move:straight ルールを追加して動かすか、collision ターゲットから外してください。流れてくる障害物ゲームは time:exact:0→move:straight + collision:exit:stageArea→teleport の2ルールが必要です`
+          });
+        } else {
+          // ルールなしの非衝突オブジェクト（warning: 背景オブジェクトかもしれない）
+          errors.push({
+            type: 'warning',
+            code: 'OBJECT_NO_RULES',
+            message: `オブジェクト "${objectId}" にルールが1つもありません`,
+            fix: `静止した背景オブジェクトなら問題ありません。インタラクティブなオブジェクトなら適切なルールを追加してください`
+          });
         }
       }
     }
