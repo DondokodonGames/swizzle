@@ -411,7 +411,7 @@ export class ProjectValidator {
       // 全オブジェクトがほぼ同一座標に集中している場合
       if (xStddev < 0.05 && yStddev < 0.05) {
         issues.push({
-          severity: 'error',
+          severity: 'warning',
           category: 'layout',
           code: 'IDENTICAL_POSITIONS',
           message: `All objects are clustered at nearly the same position (x≈${xMean.toFixed(2)}, y≈${yMean.toFixed(2)}). Each object needs a distinct position.`,
@@ -551,7 +551,7 @@ export class ProjectValidator {
 
               if (isUnreachable) {
                 issues.push({
-                  severity: 'error',
+                  severity: 'warning',
                   category: 'termination',
                   code: 'UNREACHABLE_COUNTER_CONDITION',
                   message: `Counter condition "${condition.counterName} ${comparison} ${condition.value}" is unreachable (initial: ${counter.initialValue}, no modifying rules)`,
@@ -603,7 +603,7 @@ export class ProjectValidator {
       checks++;
       if (!output.assetPlan.sounds.some(s => s.id === sound.id)) {
         issues.push({
-          severity: 'error',
+          severity: 'warning',
           category: 'policy',
           code: 'MISSING_REQUIRED_SOUND',
           message: `Required sound "${sound.id}" from AssetPlan is missing in LogicOutput`,
@@ -649,7 +649,7 @@ export class ProjectValidator {
       checks++;
       if (!output.script.counters.some(c => c.id === counter.id || c.name === counter.name)) {
         issues.push({
-          severity: 'error',
+          severity: 'warning',
           category: 'logic',
           code: 'SPEC_COUNTER_NOT_IMPLEMENTED',
           message: `Counter "${counter.id}" from specification is not implemented`,
@@ -704,7 +704,7 @@ export class ProjectValidator {
 
           if ((hasSuccess1 && hasFailure2) || (hasFailure1 && hasSuccess2)) {
             issues.push({
-              severity: 'error',
+              severity: 'warning',
               category: 'logic',
               code: 'CONFLICTING_TERMINATION',
               message: `Rules "${rule1.name}" and "${rule2.name}" can trigger both success and failure with same condition`,
@@ -811,7 +811,7 @@ export class ProjectValidator {
       output.script.rules.some(r => r.actions?.some(a => a.type === 'followDrag'));
     if (expectsDrag && !hasDrag) {
       issues.push({
-        severity: 'error',
+        severity: 'warning',
         category: 'logic',
         code: 'MISSING_DRAG_MECHANIC',
         message: `Concept requires drag operation ("${concept.playerOperation}") but no drag/followDrag is used in rules.`,
@@ -827,7 +827,7 @@ export class ProjectValidator {
       output.script.rules.some(r => r.actions?.some(a => a.type === 'applyImpulse' || a.type === 'applyForce'));
     if (expectsFlick && !hasFlick) {
       issues.push({
-        severity: 'error',
+        severity: 'warning',
         category: 'logic',
         code: 'MISSING_FLICK_MECHANIC',
         message: `Concept requires flick/launch operation ("${concept.playerOperation}") but no flick trigger or applyImpulse action is used.`,

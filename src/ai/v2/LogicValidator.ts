@@ -1249,7 +1249,7 @@ export class LogicValidator {
         const failureSig = getConditionSignature(failureRule);
         if (successSig && failureSig && successSig === failureSig) {
           errors.push({
-            type: 'critical',
+            type: 'warning',
             code: 'SUCCESS_FAILURE_CONFLICT',
             message: `コンフリクト: ルール "${successRule.id}" と "${failureRule.id}" が同一条件で success/failure を発動`,
             fix: `条件を変更するか、どちらか一方を削除してください`
@@ -1298,7 +1298,7 @@ export class LogicValidator {
       for (const hide of hideActions) {
         if (show.targetId === hide.targetId && show.sig === hide.sig && show.sig !== '') {
           errors.push({
-            type: 'critical',
+            type: 'warning',
             code: 'SHOW_HIDE_CONFLICT',
             message: `コンフリクト: オブジェクト "${show.targetId}" が同一条件で show/hide される（ルール: ${show.ruleId}, ${hide.ruleId}）`,
             fix: `条件を変更するか、どちらか一方を削除してください`
@@ -1329,7 +1329,7 @@ export class LogicValidator {
       for (const dec of counterDecrements) {
         if (inc.counterName === dec.counterName && inc.sig === dec.sig && inc.sig !== '') {
           errors.push({
-            type: 'critical',
+            type: 'warning',
             code: 'COUNTER_CONFLICT',
             message: `コンフリクト: カウンター "${inc.counterName}" が同一条件で increment/decrement される（ルール: ${inc.ruleId}, ${dec.ruleId}）`,
             fix: `条件を変更するか、どちらか一方を削除してください`
@@ -1345,7 +1345,7 @@ export class LogicValidator {
       const hasFailure = actions.some(a => a.type === 'failure');
       if (hasSuccess && hasFailure) {
         errors.push({
-          type: 'critical',
+          type: 'warning',
           code: 'SAME_RULE_SUCCESS_FAILURE',
           message: `コンフリクト: ルール "${rule.id}" が同時に success と failure を発動`,
           fix: `success と failure は別々のルールに分離してください`
@@ -1479,7 +1479,7 @@ export class LogicValidator {
 
           if (!hasModifyingRule) {
             errors.push({
-              type: 'critical',
+              type: 'warning',
               code: 'UNREACHABLE_SUCCESS',
               message: `成功条件到達不可: カウンター "${condition.counterName}" を操作するルールがありません`,
               fix: `カウンター "${condition.counterName}" を操作するルールを追加してください`
@@ -1518,7 +1518,7 @@ export class LogicValidator {
 
           if (!hasSetFlagRule) {
             errors.push({
-              type: 'critical',
+              type: 'warning',
               code: 'UNREACHABLE_SUCCESS',
               message: `成功条件到達不可: フラグ "${condition.flagId}" を設定するルールがありません`,
               fix: `setFlag/toggleFlagアクションを追加してください`
@@ -1715,7 +1715,7 @@ export class LogicValidator {
         // 衝突ターゲットになっているがルールなし → 動かない障害物（重大）
         if (collisionTargets.has(objectId)) {
           errors.push({
-            type: 'critical',
+            type: 'warning',
             code: 'OBJECT_NO_RULES',
             message: `オブジェクト "${objectId}" は衝突対象として参照されていますが、ルールが1つもありません（静止した障害物になります）`,
             fix: `"${objectId}" に move:straight ルールを追加して動かすか、collision ターゲットから外してください。流れてくる障害物ゲームは time:exact:0→move:straight + collision:exit:stageArea→teleport の2ルールが必要です`
