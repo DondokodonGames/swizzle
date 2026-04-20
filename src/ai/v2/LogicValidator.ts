@@ -283,14 +283,14 @@ export class LogicValidator {
       // followDrag がある場合の collision/position
       if (hasDraggableObject && conditions.some(c => c.type === 'collision' || c.type === 'position')) return true;
 
-      // カウンター経由のプレイヤー操作（カウンターをタップで増やす）
+      // カウンター経由のプレイヤー操作（タップでカウンターを増減する）
       for (const cond of conditions) {
         if (cond.type === 'counter' && cond.counterName) {
           const hasPlayerIncrement = output.script.rules.some(r =>
             r.actions?.some(a =>
               a.type === 'counter' &&
               a.counterName === cond.counterName &&
-              (a.operation === 'increment' || a.operation === 'add')
+              a.operation != null && ['increment', 'add', 'decrement', 'subtract', 'set'].includes(a.operation)
             ) &&
             r.triggers?.conditions?.some(c =>
               playerActionTypes.includes(c.type) ||

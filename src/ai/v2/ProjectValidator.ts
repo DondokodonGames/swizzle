@@ -456,12 +456,12 @@ export class ProjectValidator {
       if (counterCondition?.counterName) {
         checks++;
 
-        // このカウンターを増加させるルールを探す
+        // このカウンターを操作するルールを探す（increment/add/decrement/subtract/set すべて対象）
         const incrementRuleIndex = output.script.rules.findIndex(r =>
           r.actions?.some(a =>
             a.type === 'counter' &&
             a.counterName === counterCondition.counterName &&
-            (a.operation === 'increment' || a.operation === 'add')
+            a.operation != null && ['increment', 'add', 'decrement', 'subtract', 'set'].includes(a.operation)
           )
         );
 
@@ -470,7 +470,7 @@ export class ProjectValidator {
             severity: 'error',
             category: 'priority',
             code: 'NO_COUNTER_INCREMENT',
-            message: `Success rule "${successRule.name}" checks counter "${counterCondition.counterName}" but no rule increments it`,
+            message: `Success rule "${successRule.name}" checks counter "${counterCondition.counterName}" but no rule modifies it`,
             details: { ruleId: successRule.id, counterName: counterCondition.counterName }
           });
         }
