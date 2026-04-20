@@ -87,27 +87,44 @@ ${EDITOR_SPEC}
 - オブジェクト数: コンセプトに必要な分だけ
 - 複雑なロジックは不要。条件→アクションの1対1対応で良い
 
-## 2. カウンターの一貫性を保つ
-**定義したカウンターは必ず完全に実装する**
+## 2. 成功/失敗パターンの選択
 
-カウンターを使う場面（積極的に使う）:
-- 複数のオブジェクトをタップして達成 → tapped_count で数える
-- 〇回成功で達成 → success_count で数える
-- 残り〇回でゲームオーバー → miss_count で数える
+**まず「カウンターが本当に必要か」を判断してから実装する。**
+デフォルトはパターンAを試みて、数え上げが必要な場合のみパターンBを使う。
 
-カウンターを使わない場面（直接判定する）:
-- 特定のオブジェクトをタップしたら成功 → collision/touch条件で直接success
-- ゴールエリアに到達したら成功 → position/collision条件で直接success
+### パターンA: 直接判定（カウンター不要・推奨）
+1つの操作・状態変化で結果が決まる場合、counterを定義せず直接success/failureを発動。
 
-**重要: カウンターの完全性チェック**
-カウンターを定義したら、必ず以下の2つのルールを作成:
-1. 操作ルール: counterアクションでカウンターを変更（increment/decrement/set）
-2. 判定ルール: counter条件でカウンターをチェックしてsuccess/failureを発動
+例1: ドラッグしてゴールに重ねたら成功
+  条件: collision(target="goal", enter) → アクション: success
 
-例: tapped_countカウンターを定義した場合
-- ✅ タップ時にincrement → tapped_count >= 5 で success（両方ある = OK）
-- ❌ タップ時にincrement → 成功条件でチェックしていない（操作のみ = NG）
-- ❌ tapped_count >= 5 で success → どこでもincrementしていない（チェックのみ = NG）
+例2: 正しいオブジェクトをタップしたら成功
+  条件: touch(target="self", down) on targetObjectId="correct_item" → アクション: success
+
+例3: 敵に触れたら失敗
+  条件: collision(target="enemy", enter) → アクション: failure
+
+例4: エリア外に出たら失敗
+  条件: position(target="player", area="outside", region=ゾーン) → アクション: failure
+
+例5: タイミングよくタップしたら成功
+  条件: touch(down) AND position(area="inside", region=指定ゾーン) → アクション: success
+
+### パターンB: カウント判定（カウンターが必要な場合のみ）
+「N個集める」「N回成功する」という**数え上げが核心のゲームのみ**使う。
+カウンターを定義した場合、操作ルールと判定ルールの両方を必ず作成する。
+
+例: 5個タップしたら成功
+  ルール1: touch(down) → counter(collected, add, 1)
+  ルール2: counter(collected >= 5) → success
+
+**判断基準（これで決める）:**
+| ゲームの核心 | 使うパターン |
+|------------|------------|
+| 「N個/N回」という数え上げ | パターンB（カウンター） |
+| 「特定の操作をしたら」 | パターンA（直接判定） |
+| ドラッグ・回避・タイミング系 | パターンA（直接判定） |
+| 「正解を選ぶ」「ゴールに運ぶ」 | パターンA（直接判定） |
 
 ## 3. ルールのコンフリクトを防ぐ
 同一条件で矛盾するアクションを発動させない:
@@ -196,7 +213,7 @@ ${EDITOR_SPEC}
     "coordinatesInRange": boolean,
     "onlyVerifiedFeaturesUsed": boolean,
     "noRuleConflicts": boolean,
-    "allCountersFullyImplemented": boolean  // すべてのカウンターが操作と判定の両方を持つ
+    "counterUsedOnlyWhenNecessary": boolean  // 数え上げが核心の場合のみカウンターを使っているか
   }
 }`;
 
@@ -267,115 +284,128 @@ export class LogicGenerator {
 
   /**
    * モックロジック生成（ドライラン用）
+   * 3パターンをランダム選択して多様性を担保
    */
   private generateMockLogic(concept: GameConcept): LogicGeneratorOutput {
-    const objectCount = 5;
-    const objects: AssetPlan['objects'] = [];
-    const layoutObjects = [];
+    const patterns = ['direct', 'counter', 'drag'] as const;
+    const pattern = patterns[Math.floor(Math.random() * patterns.length)];
 
-    for (let i = 0; i < objectCount; i++) {
-      const id = `target_${i + 1}`;
-      objects.push({
-        id,
-        name: `ターゲット${i + 1}`,
-        purpose: 'タップする対象',
-        visualDescription: 'タップ対象のオブジェクト',
-        initialPosition: {
-          x: 0.2 + (i % 3) * 0.3,
-          y: 0.3 + Math.floor(i / 3) * 0.3
-        },
-        size: 'medium'
-      });
-      layoutObjects.push({
-        objectId: id,
-        position: { x: 0.2 + (i % 3) * 0.3, y: 0.3 + Math.floor(i / 3) * 0.3 },
-        scale: { x: 1.0, y: 1.0 }
-      });
+    switch (pattern) {
+      case 'direct': return this.generateDirectMock(concept);
+      case 'counter': return this.generateCounterMock(concept);
+      case 'drag': return this.generateDragMock(concept);
     }
+  }
 
+  /** パターンA: タップ→直接success（カウンターなし） */
+  private generateDirectMock(concept: GameConcept): LogicGeneratorOutput {
+    const objects: AssetPlan['objects'] = [
+      { id: 'correct', name: '正解', purpose: 'タップして成功', visualDescription: '正解オブジェクト', initialPosition: { x: 0.5, y: 0.5 }, size: 'large' },
+      { id: 'wrong_1', name: 'ハズレ1', purpose: 'タップして失敗', visualDescription: 'ハズレオブジェクト', initialPosition: { x: 0.2, y: 0.3 }, size: 'medium' },
+      { id: 'wrong_2', name: 'ハズレ2', purpose: 'タップして失敗', visualDescription: 'ハズレオブジェクト', initialPosition: { x: 0.8, y: 0.7 }, size: 'medium' },
+    ];
     return {
       script: {
-        layout: { objects: layoutObjects },
-        counters: [
-          { id: 'tapped', name: 'タップ数', initialValue: 0 },
-          { id: 'missed', name: 'ミス数', initialValue: 0 }
-        ],
+        layout: { objects: objects.map(o => ({ objectId: o.id, position: o.initialPosition, scale: { x: 1.0, y: 1.0 } })) },
+        counters: [],
         rules: [
-          // 各オブジェクトのタップルール
-          ...objects.map((obj, i) => ({
-            id: `tap_${i + 1}`,
-            name: `${obj.name}タップ`,
-            targetObjectId: obj.id,
-            triggers: {
-              operator: 'AND' as const,
-              conditions: [
-                { type: 'touch' as const, target: 'self', touchType: 'down' as const }
-              ]
-            },
-            actions: [
-              { type: 'hide' as const, targetId: obj.id },
-              { type: 'counter' as const, counterName: 'tapped', operation: 'add' as const, value: 1 },
-              { type: 'effect' as const, targetId: obj.id, effect: { type: 'scale' as const, scaleAmount: 1.3, duration: 0.1 } }
-            ]
-          })),
-          // 成功判定
-          {
-            id: 'win',
-            name: '成功判定',
-            triggers: {
-              operator: 'AND' as const,
-              conditions: [
-                { type: 'counter' as const, counterName: 'tapped', comparison: 'greaterOrEqual' as const, value: 5 }
-              ]
-            },
-            actions: [
-              { type: 'success' as const, message: 'クリア！' }
-            ]
-          },
-          // 失敗判定（時間切れはエンジン側で処理）
-          {
-            id: 'lose',
-            name: '失敗判定',
-            triggers: {
-              operator: 'AND' as const,
-              conditions: [
-                { type: 'counter' as const, counterName: 'missed', comparison: 'greaterOrEqual' as const, value: 3 }
-              ]
-            },
-            actions: [
-              { type: 'failure' as const, message: '失敗...' }
-            ]
-          }
+          { id: 'tap_correct', name: '正解タップ', targetObjectId: 'correct',
+            triggers: { operator: 'AND' as const, conditions: [{ type: 'touch' as const, target: 'self', touchType: 'down' as const }] },
+            actions: [{ type: 'success' as const, message: '正解！' }] },
+          { id: 'tap_wrong_1', name: 'ハズレ1タップ', targetObjectId: 'wrong_1',
+            triggers: { operator: 'AND' as const, conditions: [{ type: 'touch' as const, target: 'self', touchType: 'down' as const }] },
+            actions: [{ type: 'failure' as const, message: 'ハズレ...' }] },
+          { id: 'tap_wrong_2', name: 'ハズレ2タップ', targetObjectId: 'wrong_2',
+            triggers: { operator: 'AND' as const, conditions: [{ type: 'touch' as const, target: 'self', touchType: 'down' as const }] },
+            actions: [{ type: 'failure' as const, message: 'ハズレ...' }] },
         ]
       },
       assetPlan: {
         objects,
-        background: {
-          description: `${concept.theme}をテーマにした背景`,
-          mood: concept.visualStyle
-        },
+        background: { description: `${concept.theme}の背景`, mood: concept.visualStyle },
         sounds: [
           { id: 'se_tap', trigger: 'タップ時', type: 'tap' },
           { id: 'se_success', trigger: '成功時', type: 'success' },
           { id: 'se_failure', trigger: '失敗時', type: 'failure' },
-          { id: 'se_collect', trigger: 'アイテム取得時', type: 'collect' }
         ],
-        bgm: {
-          id: 'bgm_main',
-          description: `${concept.theme}に合った明るいBGM`,
-          mood: 'upbeat' as const
-        }
+        bgm: { id: 'bgm_main', description: `${concept.theme}のBGM`, mood: 'upbeat' as const }
       },
-      selfCheck: {
-        hasPlayerActionOnSuccessPath: true,
-        counterInitialValuesSafe: true,
-        allObjectIdsValid: true,
-        allCounterNamesValid: true,
-        coordinatesInRange: true,
-        onlyVerifiedFeaturesUsed: true,
-        noRuleConflicts: true,
-        allCountersFullyImplemented: true
-      }
+      selfCheck: { hasPlayerActionOnSuccessPath: true, counterInitialValuesSafe: true, allObjectIdsValid: true, allCounterNamesValid: true, coordinatesInRange: true, onlyVerifiedFeaturesUsed: true, noRuleConflicts: true, counterUsedOnlyWhenNecessary: true }
+    };
+  }
+
+  /** パターンB: タップ→counter→success（数え上げ型） */
+  private generateCounterMock(concept: GameConcept): LogicGeneratorOutput {
+    const count = 4;
+    const objects: AssetPlan['objects'] = Array.from({ length: count }, (_, i) => ({
+      id: `target_${i + 1}`, name: `ターゲット${i + 1}`, purpose: 'タップ対象',
+      visualDescription: 'タップ対象のオブジェクト',
+      initialPosition: { x: 0.2 + (i % 2) * 0.6, y: 0.3 + Math.floor(i / 2) * 0.4 },
+      size: 'medium' as const
+    }));
+    return {
+      script: {
+        layout: { objects: objects.map(o => ({ objectId: o.id, position: o.initialPosition, scale: { x: 1.0, y: 1.0 } })) },
+        counters: [{ id: 'tapped', name: 'tapped', initialValue: 0 }],
+        rules: [
+          ...objects.map((obj, i) => ({
+            id: `tap_${i + 1}`, name: `${obj.name}タップ`, targetObjectId: obj.id,
+            triggers: { operator: 'AND' as const, conditions: [{ type: 'touch' as const, target: 'self', touchType: 'down' as const }] },
+            actions: [
+              { type: 'hide' as const, targetId: obj.id },
+              { type: 'counter' as const, counterName: 'tapped', operation: 'add' as const, value: 1 },
+            ]
+          })),
+          { id: 'win', name: '成功判定',
+            triggers: { operator: 'AND' as const, conditions: [{ type: 'counter' as const, counterName: 'tapped', comparison: 'greaterOrEqual' as const, value: count }] },
+            actions: [{ type: 'success' as const, message: 'クリア！' }] },
+        ]
+      },
+      assetPlan: {
+        objects,
+        background: { description: `${concept.theme}の背景`, mood: concept.visualStyle },
+        sounds: [
+          { id: 'se_tap', trigger: 'タップ時', type: 'tap' },
+          { id: 'se_success', trigger: '成功時', type: 'success' },
+          { id: 'se_failure', trigger: '失敗時', type: 'failure' },
+          { id: 'se_collect', trigger: '取得時', type: 'collect' },
+        ],
+        bgm: { id: 'bgm_main', description: `${concept.theme}のBGM`, mood: 'upbeat' as const }
+      },
+      selfCheck: { hasPlayerActionOnSuccessPath: true, counterInitialValuesSafe: true, allObjectIdsValid: true, allCounterNamesValid: true, coordinatesInRange: true, onlyVerifiedFeaturesUsed: true, noRuleConflicts: true, counterUsedOnlyWhenNecessary: true }
+    };
+  }
+
+  /** パターンC: ドラッグ→position/collision→success（移動型） */
+  private generateDragMock(concept: GameConcept): LogicGeneratorOutput {
+    const objects: AssetPlan['objects'] = [
+      { id: 'item', name: 'アイテム', purpose: 'ドラッグして運ぶ対象', visualDescription: 'ドラッグ可能なオブジェクト', initialPosition: { x: 0.5, y: 0.7 }, size: 'medium' },
+      { id: 'goal', name: 'ゴール', purpose: 'アイテムを運ぶ先', visualDescription: 'ゴールエリア', initialPosition: { x: 0.5, y: 0.2 }, size: 'large' },
+    ];
+    return {
+      script: {
+        layout: { objects: objects.map(o => ({ objectId: o.id, position: o.initialPosition, scale: { x: 1.0, y: 1.0 } })) },
+        counters: [],
+        rules: [
+          { id: 'drag_item', name: 'アイテムドラッグ', targetObjectId: 'item',
+            triggers: { operator: 'AND' as const, conditions: [{ type: 'touch' as const, target: 'self', touchType: 'drag' as const }] },
+            actions: [{ type: 'followDrag' as const, targetId: 'item' }] },
+          { id: 'reach_goal', name: 'ゴール到達', targetObjectId: 'item',
+            triggers: { operator: 'AND' as const, conditions: [{ type: 'collision' as const, target: 'goal', collisionType: 'enter' as const }] },
+            actions: [{ type: 'success' as const, message: 'ゴール！' }] },
+        ]
+      },
+      assetPlan: {
+        objects,
+        background: { description: `${concept.theme}の背景`, mood: concept.visualStyle },
+        sounds: [
+          { id: 'se_tap', trigger: 'タップ時', type: 'tap' },
+          { id: 'se_success', trigger: '成功時', type: 'success' },
+          { id: 'se_failure', trigger: '失敗時', type: 'failure' },
+        ],
+        bgm: { id: 'bgm_main', description: `${concept.theme}のBGM`, mood: 'upbeat' as const }
+      },
+      selfCheck: { hasPlayerActionOnSuccessPath: true, counterInitialValuesSafe: true, allObjectIdsValid: true, allCounterNamesValid: true, coordinatesInRange: true, onlyVerifiedFeaturesUsed: true, noRuleConflicts: true, counterUsedOnlyWhenNecessary: true }
     };
   }
 

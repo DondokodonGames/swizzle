@@ -139,10 +139,32 @@ export class EditorGameBridge {
       console.log('✅ RuleEngine初期化完了');
 
       // 4. カウンター定義を登録
+      // project.script.counters を優先使用（AI生成ゲームのメインパス）
+      const registeredCounterNames = new Set<string>();
+      const now4 = new Date().toISOString();
+
+      if (project.script?.counters && project.script.counters.length > 0) {
+        project.script.counters.forEach((counter: any) => {
+          this.ruleEngine!.addCounterDefinition({
+            id: counter.id || `counter_${counter.name}`,
+            name: counter.name,
+            initialValue: counter.initialValue ?? 0,
+            currentValue: counter.initialValue ?? 0,
+            min: counter.min ?? 0,
+            max: counter.max ?? 9999,
+            persistence: counter.persistence || 'game',
+            createdAt: counter.createdAt || now4,
+            lastModified: counter.lastModified || now4
+          });
+          registeredCounterNames.add(counter.name);
+        });
+        console.log(`✅ script.countersからカウンター登録: ${project.script.counters.length}個`);
+      }
+
+      // initialState.gameState.counters にのみ存在するカウンターも登録（既存ゲーム互換）
       const counters = initialState.gameState?.counters || {};
-      if (Object.keys(counters).length > 0) {
-        Object.entries(counters).forEach(([name, value]) => {
-          const now = new Date().toISOString();
+      Object.entries(counters).forEach(([name, value]) => {
+        if (!registeredCounterNames.has(name)) {
           this.ruleEngine!.addCounterDefinition({
             id: `counter_${name}_${Date.now()}`,
             name: name,
@@ -151,11 +173,14 @@ export class EditorGameBridge {
             min: 0,
             max: 9999,
             persistence: 'game',
-            createdAt: now,
-            lastModified: now
+            createdAt: now4,
+            lastModified: now4
           });
-        });
-        console.log(`✅ カウンター登録: ${Object.keys(counters).length}個`);
+          registeredCounterNames.add(name);
+        }
+      });
+      if (registeredCounterNames.size > 0) {
+        console.log(`✅ カウンター合計登録: ${registeredCounterNames.size}個`);
       }
 
       // 5. フラグ初期化
