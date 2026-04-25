@@ -3,6 +3,7 @@
 
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js'
 import type { Database } from './database.types'
+import { getErrorMessage } from '../utils/errorUtils'
 
 // 環境変数から取得（セキュリティ対策）
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -206,8 +207,8 @@ export const database = {
           profiles: profilesMap[game.creator_id] || null
         }));
 
-      } catch (error: any) {
-        console.error('getPublished エラー:', error?.message);
+      } catch (error: unknown) {
+        console.error('getPublished エラー:', getErrorMessage(error));
         return [];
       }
     },
@@ -353,9 +354,9 @@ export const storage = {
         .getPublicUrl(filePath)
 
       return urlData.publicUrl
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Avatar upload error:', error)
-      throw new SupabaseError(error.message || 'Failed to upload avatar')
+      throw new SupabaseError(getErrorMessage(error) || 'Failed to upload avatar')
     }
   },
 
@@ -397,7 +398,7 @@ export const storage = {
         .remove([fileName])
 
       if (error) throw new SupabaseError(error.message)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Delete avatar error:', error)
       // エラーを無視（ファイルが存在しない場合など）
     }
@@ -416,10 +417,10 @@ export const testConnection = async () => {
       error: error?.message,
       latency
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       connected: false,
-      error: error.message || 'Unknown error'
+      error: getErrorMessage(error) || 'Unknown error'
     }
   }
 }

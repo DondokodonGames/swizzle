@@ -6,6 +6,7 @@ import './styles/arcade-theme.css';
 
 import { PremiumBadge } from './components/monetization/PremiumBadge';
 import { EditorGameBridge } from './services/editor/EditorGameBridge';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 // ゲーム関連コンポーネントの遅延読み込み（問題30・31対応）
 const GameSequence = React.lazy(() => import('./components/GameSequence'));
@@ -443,25 +444,27 @@ function MainApp() {
   if (mode === 'sequence') {
     return (
       <>
-        <Suspense fallback={
-          <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ marginBottom: '16px', fontSize: '48px' }}>🎮</div>
-              <p style={{ color: '#a21caf', fontSize: '18px' }}>ゲームを読み込み中...</p>
+        <ErrorBoundary>
+          <Suspense fallback={
+            <div style={{
+              minHeight: '100vh',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ marginBottom: '16px', fontSize: '48px' }}>🎮</div>
+                <p style={{ color: '#a21caf', fontSize: '18px' }}>ゲームを読み込み中...</p>
+              </div>
             </div>
-          </div>
-        }>
-          <GameSequence
-            onExit={handleExitSequence}
-            onOpenFeed={handleSwitchToFeed}
-          />
-        </Suspense>
+          }>
+            <GameSequence
+              onExit={handleExitSequence}
+              onOpenFeed={handleSwitchToFeed}
+            />
+          </Suspense>
+        </ErrorBoundary>
         {/* グローバルAuthModal */}
         {AuthModal && (
           <Suspense fallback={null}>
@@ -480,33 +483,29 @@ function MainApp() {
   if (mode === 'editor') {
     return (
       <>
-        <Suspense fallback={
-          <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ marginBottom: '16px', fontSize: '48px', animation: 'pulse 2s infinite' }}>🎨</div>
-              <div style={{ color: '#6b7280', fontSize: '18px', fontWeight: '600' }}>
-                エディターを読み込み中...
+        <ErrorBoundary>
+          <Suspense fallback={
+            <div style={{
+              minHeight: '100vh',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ marginBottom: '16px', fontSize: '48px', animation: 'pulse 2s infinite' }}>🎨</div>
+                <div style={{ color: '#6b7280', fontSize: '18px', fontWeight: '600' }}>
+                  エディターを読み込み中...
+                </div>
               </div>
-              <style>{`
-                @keyframes pulse {
-                  0%, 100% { opacity: 1; }
-                  50% { opacity: 0.7; }
-                }
-              `}</style>
             </div>
-          </div>
-        }>
-          <EditorApp
-            onClose={handleExitEditor}
-            initialProjectId={editorProjectId}
-          />
-        </Suspense>
+          }>
+            <EditorApp
+              onClose={handleExitEditor}
+              initialProjectId={editorProjectId}
+            />
+          </Suspense>
+        </ErrorBoundary>
         {/* グローバルAuthModal */}
         {AuthModal && (
           <Suspense fallback={null}>
@@ -525,25 +524,27 @@ function MainApp() {
   if (mode === 'feed') {
     return (
       <>
-        <Suspense fallback={
-          <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ marginBottom: '16px', fontSize: '48px' }}>📱</div>
-              <p style={{ color: '#a21caf', fontSize: '18px' }}>フィードを読み込み中...</p>
+        <ErrorBoundary>
+          <Suspense fallback={
+            <div style={{
+              minHeight: '100vh',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ marginBottom: '16px', fontSize: '48px' }}>📱</div>
+                <p style={{ color: '#a21caf', fontSize: '18px' }}>フィードを読み込み中...</p>
+              </div>
             </div>
-          </div>
-        }>
-          <GameFeed
-            onGameSelect={handleFeedGameSelect}
-            onBack={handleExitFeed}
-          />
-        </Suspense>
+          }>
+            <GameFeed
+              onGameSelect={handleFeedGameSelect}
+              onBack={handleExitFeed}
+            />
+          </Suspense>
+        </ErrorBoundary>
         {/* グローバルAuthModal */}
         {AuthModal && (
           <Suspense fallback={null}>

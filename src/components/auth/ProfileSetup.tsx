@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { storage } from '../../lib/supabase'
 import type { Profile } from '../../lib/database.types'
 import { supportedLanguages } from '../../i18n'
+import { getErrorMessage } from '../../utils/errorUtils'
 
 interface ProfileSetupProps {
   isOpen: boolean
@@ -189,10 +190,10 @@ const ProfileSetup: React.FC<ProfileSetupProps> = ({
           onClose()
         }, 1500)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setValidationErrors(prev => ({
         ...prev,
-        general: `${t('profile.saveFailed')}: ${error.message || t('errors.generic')}`
+        general: `${t('profile.saveFailed')}: ${getErrorMessage(error) || t('errors.generic')}`
       }))
     } finally {
       setAvatarUploading(false)

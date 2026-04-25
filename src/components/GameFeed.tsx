@@ -45,11 +45,9 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        console.log('🔐 GameFeed: ユーザー情報取得開始...');
         const { data: { user } } = await supabase.auth.getUser();
         setCurrentUser(user);
         setUserLoaded(true); // ✅ 読み込み完了フラグを立てる
-        console.log('✅ GameFeed: ユーザー情報取得完了', user?.id || 'Guest');
       } catch (err) {
         console.warn('⚠️ GameFeed: ユーザー情報の取得に失敗:', err);
         setCurrentUser(null);
@@ -89,16 +87,12 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
     fetchedRef.current = true;
 
     const fetchFeedData = async () => {
-      console.log('🎮 GameFeed: フィードデータ取得開始（並列実行）');
-
       // フォロー中ゲーム取得関数
       const fetchFollowingGames = async (): Promise<PublicGame[]> => {
         if (!currentUser) {
-          console.log('ℹ️ ゲストユーザー - フォロー中スキップ');
           return [];
         }
 
-        console.log('👥 フォロー中ゲーム取得中...');
         const followsQuery = supabase
           .from('follows')
           .select('following_id')
@@ -108,7 +102,6 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
         const followingData = followsResult?.data;
 
         if (!followingData || followingData.length === 0) {
-          console.log('ℹ️ フォロー中のユーザーなし');
           return [];
         }
 
@@ -153,25 +146,21 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
         // トレンドゲーム
         withTimeout(socialService.getTrendingGames('week', 'trending', 12), 8000)
           .then(games => {
-            console.log('✅ トレンドゲーム取得成功:', games?.length || 0);
             return games || [];
           }),
         // フォロー中
         fetchFollowingGames()
           .then(games => {
-            console.log('✅ フォロー中ゲーム取得成功:', games.length);
             return games;
           }),
         // おすすめ
         withTimeout(socialService.getTrendingGames('week', 'popular', 12), 8000)
           .then(games => {
-            console.log('✅ おすすめゲーム取得成功:', games?.length || 0);
             return games || [];
           }),
         // ランダム
         withTimeout(socialService.getRandomGames(12), 8000)
           .then(games => {
-            console.log('✅ ランダムゲーム取得成功:', games?.length || 0);
             return games || [];
           }),
       ]);
@@ -207,8 +196,6 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
 
       // プレミアム（Coming Soon）
       updateSection('premium', [], false);
-
-      console.log('🎮 GameFeed: フィードデータ取得完了（並列実行）');
     };
 
     fetchFeedData();
@@ -216,7 +203,6 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
 
   // ==================== リフレッシュ ====================
   const handleRefresh = async () => {
-    console.log('🔄 リフレッシュ開始');
     setIsRefreshing(true);
     setSections(prev => prev.map(section => ({ ...section, loading: true, error: undefined })));
     
@@ -235,7 +221,6 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
     }
     
     setIsRefreshing(false);
-    console.log('🔄 リフレッシュ完了');
   };
 
   // ==================== 現在のセクション ====================

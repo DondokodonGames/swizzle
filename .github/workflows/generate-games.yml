@@ -26,6 +26,14 @@ jobs:
 
       - run: npm ci
 
+      - name: シークレットマスキング
+        run: |
+          echo "::add-mask::${{ secrets.ANTHROPIC_API_KEY }}"
+          echo "::add-mask::${{ secrets.OPENAI_API_KEY }}"
+          echo "::add-mask::${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}"
+          echo "::add-mask::${{ secrets.VITE_SUPABASE_ANON_KEY }}"
+          echo "::add-mask::${{ secrets.SUPABASE_MASTER_USER_ID }}"
+
       - name: ゲーム自動生成
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

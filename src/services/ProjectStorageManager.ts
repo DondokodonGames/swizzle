@@ -3,6 +3,7 @@
 
 import { GameProject } from '../types/editor/GameProject';
 import { database, supabase } from '../lib/supabase';
+import { getErrorMessage } from '../utils/errorUtils';
 
 // 🔧 軽量版プロジェクトメタデータ（一覧表示用）
 export interface ProjectMetadata {
@@ -335,9 +336,9 @@ export class ProjectStorageManager {
       // （トリガーとの二重カウントを防止）
       console.log('[SaveDB-Manager] 💎 Counter update handled by database trigger');
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[SaveDB-Manager] ❌ Failed to save project to database:', error);
-      throw new Error(`データベース保存に失敗: ${error.message || 'Unknown error'}`);
+      throw new Error(`データベース保存に失敗: ${getErrorMessage(error)}`);
     }
   }
 
@@ -395,9 +396,9 @@ export class ProjectStorageManager {
 
       console.log('[SaveDB-Manager] ✅ Metadata updated successfully');
       this.clearCache();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[SaveDB-Manager] ❌ Metadata update failed:', error);
-      throw new Error(`メタデータ更新に失敗: ${error.message || 'Unknown error'}`);
+      throw new Error(`メタデータ更新に失敗: ${getErrorMessage(error)}`);
     }
   }
 

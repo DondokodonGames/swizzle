@@ -12,6 +12,7 @@ import ProfileSetup from '../components/auth/ProfileSetup'
 import { SocialService } from '../social/services/SocialService'
 import type { UserGame } from '../social/types/SocialTypes'
 import { supportedLanguages } from '../i18n'
+import { getErrorMessage } from '../utils/errorUtils'
 
 // 言語コードから表示名を取得するヘルパー関数
 const getLanguageDisplay = (code: string): string => {
@@ -117,9 +118,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
         } else {
           throw new Error('ユーザー情報が指定されていません')
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Profile load error:', error)
-        setError(error.message || t('profile.loadError'))
+        setError(getErrorMessage(error) || t('profile.loadError'))
       } finally {
         setLoading(false)
       }

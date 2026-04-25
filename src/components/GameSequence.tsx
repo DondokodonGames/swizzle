@@ -147,8 +147,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       };
 
       try {
-        console.log('📥 最初の1件を高速取得中...');
-
         // Step 1: 1ページ目から1件取得して即座に開始（20秒タイムアウト）
         const initialResult = await timeoutPromise(
           socialService.getPublicGames(
@@ -168,7 +166,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         if (initialResult.games.length > 0 && initialResult.games[0].projectData) {
           initialGame = initialResult.games[0];
         } else {
-          console.log('⏳ フォールバック取得中...');
           const fallbackResult = await timeoutPromise(
             socialService.getPublicGames(
               {
@@ -192,8 +189,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           return;
         }
 
-        console.log(`🎲 即座に開始: "${initialGame.title}"`);
-
         // 初期ゲームを設定し、即座に開始
         setPublicGames([initialGame]);
         setUsedGameIds(new Set([initialGame.id]));
@@ -202,8 +197,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         setGameState('playing');
 
         // Step 2: バックグラウンドで残りのゲームを取得（失敗しても無視）
-        console.log('🔄 バックグラウンドで残りのゲームを取得中...');
-
         try {
           const fullResult = await timeoutPromise(
             socialService.getPublicGames(
@@ -222,7 +215,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
           if (validGames.length > 0) {
             setAllValidGames(validGames);
-            console.log(`✅ バックグラウンド取得完了: ${validGames.length}件のゲームをキャッシュ`);
           }
         } catch (bgErr) {
           // バックグラウンド取得失敗は無視（初期ゲームは既に開始済み）
@@ -258,7 +250,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     const nextGameData = gamesToChooseFrom[randomIndex];
 
     setNextGame(nextGameData);
-    console.log(`✅ 次のゲームを選択: "${nextGameData.title}" (キャッシュから)`);
   }, [allValidGames, publicGames, currentIndex, usedGameIds]);
 
   // ブリッジ画面表示時に次のゲームをプリロード
@@ -337,8 +328,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     const launchGame = async () => {
       currentGameRef.current = currentGame.id;
 
-      console.log(`🎮 ゲーム起動: "${currentGame.title}" (${currentGame.id})`);
-
       // ゲーム時間トラッキング開始
       setGameStartTime(Date.now());
       setGameTimeElapsed(0);
@@ -354,8 +343,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           currentGame.projectData,
           canvasRef.current!,
           (result: any) => {
-            console.log(`🏁 ゲーム終了: "${currentGame.title}"`, result);
-
             // ゲーム時間トラッキング停止
             setGameStartTime(null);
 
@@ -387,8 +374,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
   // ==================== ゲーム遷移ハンドラ ====================
   const handleNextGame = useCallback(() => {
-    console.log('⏭️ 次のゲームへ');
-
     if (bridgeTimerRef.current) {
       clearInterval(bridgeTimerRef.current);
       bridgeTimerRef.current = null;
