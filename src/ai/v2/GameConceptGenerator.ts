@@ -389,6 +389,7 @@ export class GameConceptGenerator {
   private usedThemes: Set<string> = new Set();
   private usedMechanicIds: Set<string> = new Set();        // catalog ID rotation
   private usedMechanics: Map<string, number> = new Map();  // type → count (debug)
+  private archetypeIndex: number = 0;
   private patternAnalyzer: GamePatternAnalyzer;
 
   constructor(config?: ConceptGeneratorConfig) {
