@@ -3,7 +3,7 @@
  * ウォレット残高・利用状況表示パネル（ペイ・パー・プレイモデル）
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWallet } from '../../hooks/monetization/useWallet';
 import { TOP_UP_OPTIONS, FREE_GAME_LIMIT, COST_PER_GAME_YEN } from '../../types/MonetizationTypes';

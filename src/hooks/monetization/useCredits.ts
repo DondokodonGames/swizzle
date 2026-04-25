@@ -7,7 +7,7 @@
  *   - EditorApp.tsx 等との互換インターフェースを維持
  */
 
-import { useCallback } from 'react';
+import { useState } from 'react';
 import type { UseCreditsResult, CreditUsage, UserCredit } from '../../types/MonetizationTypes';
 import { FREE_GAME_LIMIT } from '../../types/MonetizationTypes';
 import { useWallet } from './useWallet';

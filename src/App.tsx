@@ -1,10 +1,9 @@
 // src/App.tsx
 
-import React, { useState, useEffect, Suspense, useCallback } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import './styles/arcade-theme.css';
 
-import { PremiumBadge } from './components/monetization/PremiumBadge';
 import { EditorGameBridge } from './services/editor/EditorGameBridge';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
@@ -180,15 +179,6 @@ const AuthModal = ENABLE_AUTH ? React.lazy(async () => {
   }
 }) : null;
 
-const ProfileSetup = ENABLE_AUTH ? React.lazy(async () => {
-  try {
-    return await import('./components/auth/ProfileSetup');
-  } catch (error) {
-    console.warn('ProfileSetup読み込み失敗:', error);
-    return { default: () => null };
-  }
-}) : null;
-
 // 🎨 スプラッシュスクリーンコンポーネント（ロゴ画像版）
 const SplashScreen: React.FC = () => {
   return (
@@ -294,8 +284,8 @@ function MainApp() {
   
   const [mode, setMode] = useState<AppMode>('sequence');
   const [editorProjectId, setEditorProjectId] = useState<string | undefined>(undefined);
-  const [selectedFeedGame, setSelectedFeedGame] = useState<any>(null);
-  const [volumeSettings, setVolumeSettings] = useState<VolumeSettings>(DEFAULT_VOLUME);
+  const [_selectedFeedGame, setSelectedFeedGame] = useState<any>(null);
+  const [_volumeSettings, setVolumeSettings] = useState<VolumeSettings>(DEFAULT_VOLUME);
 
   // グローバルAuthModal用state
   const [globalAuthModalOpen, setGlobalAuthModalOpen] = useState(false);
@@ -355,19 +345,6 @@ function MainApp() {
     return () => clearTimeout(timer);
   }, []);
 
-  const saveVolumeSettings = useCallback((newSettings: VolumeSettings) => {
-    try {
-      localStorage.setItem('gameVolumeSettings', JSON.stringify(newSettings))
-      setVolumeSettings(newSettings)
-      
-      if (typeof window !== 'undefined') {
-        (window as any).gameVolumeSettings = newSettings
-      }
-    } catch (error) {
-      console.warn('音量設定の保存に失敗:', error)
-    }
-  }, [])
-
   const handleExitSequence = () => {
     window.location.reload();
   };
@@ -400,12 +377,6 @@ function MainApp() {
 
   const handleExitFeed = () => {
     setMode('sequence');
-  };
-
-  // 料金プランページへ遷移
-  const handleGoToPricing = () => {
-    EditorGameBridge.getInstance().stopGame();
-    navigate('/pricing');
   };
 
   // グローバルイベントリスナー

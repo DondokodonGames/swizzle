@@ -3,7 +3,7 @@
  * 残高不足時のチャージ促進モーダル（ペイ・パー・プレイモデル）
  */
 
-import React from 'react';
+
 import { useTranslation } from 'react-i18next';
 import type { PaywallModalProps } from '../../types/MonetizationTypes';
 import { TOP_UP_OPTIONS, FREE_GAME_LIMIT } from '../../types/MonetizationTypes';

@@ -14,7 +14,6 @@ import { SocialService } from '../services/SocialService';
 import { PublicGame, UserProfile, SocialStats } from '../types/SocialTypes';
 import { auth, database } from '../../lib/supabase';
 import type { User } from '@supabase/supabase-js';
-import { getErrorMessage } from '../../utils/errorUtils';
 
 // =============================================================================
 // 型定義
