@@ -9,7 +9,7 @@ import { useAuth } from '../hooks/useAuth'
 export const LoginPage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { signIn, loading, error, clearError, isAuthenticated } = useAuth()
+  const { signIn, resetPassword, loading, error, clearError, isAuthenticated } = useAuth()
 
   const [formData, setFormData] = useState({
     email: '',
@@ -18,13 +18,18 @@ export const LoginPage: React.FC = () => {
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
-  const [navigating, setNavigating] = useState(false) // 画面遷移中フラグ
-  const [loginAttempted, setLoginAttempted] = useState(false) // ログイン試行フラグ
+  const [navigating, setNavigating] = useState(false)
+  const [loginAttempted, setLoginAttempted] = useState(false)
+
+  // パスワードリセット用 state
+  const [showResetMode, setShowResetMode] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetStatus, setResetStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [resetErrorMessage, setResetErrorMessage] = useState('')
 
   // 既にログイン済みの場合はゲームフィードにリダイレクト（初回のみ、ログイン試行後は除外）
   useEffect(() => {
     if (isAuthenticated && !loginAttempted) {
-      console.log('🔄 [LoginPage] 既にログイン済み、自動リダイレクト')
       navigate('/feed')
     }
   }, [isAuthenticated, navigate, loginAttempted])
@@ -53,33 +58,16 @@ export const LoginPage: React.FC = () => {
 
     if (!validateForm()) return
 
-    const submitStartTime = performance.now()
-    setLoginAttempted(true) // ログイン試行フラグを立てる
-    setNavigating(true) // 画面遷移中フラグを立ててローディング表示を維持
+    setLoginAttempted(true)
+    setNavigating(true)
 
     try {
-      console.log('🔐 [LoginPage] ログイン開始', new Date().toISOString())
-
-      const signInStartTime = performance.now()
       await signIn(formData.email, formData.password)
-      const signInEndTime = performance.now()
-
-      console.log(`✅ [LoginPage] signIn完了 (${(signInEndTime - signInStartTime).toFixed(0)}ms)、画面遷移開始`, new Date().toISOString())
-
-      // 即座に遷移
-      const navStartTime = performance.now()
-      console.log('🚀 [LoginPage] navigate実行', new Date().toISOString())
       navigate('/feed', { replace: true })
-      const navEndTime = performance.now()
-
-      const totalTime = performance.now() - submitStartTime
-      console.log(`✅ [LoginPage] navigate完了 (${(navEndTime - navStartTime).toFixed(0)}ms)、合計: ${totalTime.toFixed(0)}ms`, new Date().toISOString())
     } catch (error) {
-      const errorTime = performance.now() - submitStartTime
-      console.error(`❌ [LoginPage] エラー発生 (${errorTime.toFixed(0)}ms):`, error, new Date().toISOString())
+      console.error('[LoginPage] ログインエラー:', error)
       setNavigating(false)
       setLoginAttempted(false)
-      // エラーの場合は遷移しない（エラーメッセージが表示される）
     }
   }
 
@@ -88,10 +76,34 @@ export const LoginPage: React.FC = () => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
 
-    // バリデーションエラーをクリア
     if (validationErrors[name]) {
       setValidationErrors(prev => ({ ...prev, [name]: '' }))
     }
+  }
+
+  // パスワードリセット送信
+  const handleResetSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!resetEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resetEmail)) return
+
+    setResetStatus('sending')
+    setResetErrorMessage('')
+    try {
+      await resetPassword(resetEmail)
+      setResetStatus('sent')
+    } catch (err) {
+      console.error('[LoginPage] パスワードリセットエラー:', err)
+      setResetStatus('error')
+      setResetErrorMessage(t('auth.passwordResetError'))
+    }
+  }
+
+  const handleBackToLogin = () => {
+    setShowResetMode(false)
+    setResetStatus('idle')
+    setResetEmail('')
+    setResetErrorMessage('')
+    clearError()
   }
 
   return (
@@ -143,7 +155,7 @@ export const LoginPage: React.FC = () => {
               fontWeight: '600',
               color: '#374151'
             }}>
-              ログイン中...
+              {t('auth.signingIn')}
             </p>
           </div>
         )}
@@ -168,202 +180,296 @@ export const LoginPage: React.FC = () => {
             color: '#111827',
             margin: '0 0 8px 0'
           }}>
-            {t('auth.loginTitle')}
+            {showResetMode ? t('auth.passwordResetTitle') : t('auth.loginTitle')}
           </h1>
-          <p style={{
-            color: '#6b7280',
-            fontSize: '16px',
-            margin: 0
-          }}>
-            {t('auth.welcome')}
+          <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>
+            {showResetMode ? t('auth.passwordResetDescription') : t('auth.welcome')}
           </p>
         </div>
 
-        {/* エラーメッセージ */}
-        {error && (
-          <div style={{
-            marginBottom: '24px',
-            padding: '16px',
-            backgroundColor: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: '12px',
-            color: '#dc2626',
-            fontSize: '14px'
-          }}>
-            {error}
-          </div>
-        )}
-
-        {/* フォーム */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* メールアドレス */}
-          <div>
-            <label htmlFor="email" style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '6px'
-            }}>
-              {t('auth.email')}
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: `1px solid ${validationErrors.email ? '#fca5a5' : '#d1d5db'}`,
-                borderRadius: '10px',
-                fontSize: '16px',
-                backgroundColor: validationErrors.email ? '#fef2f2' : 'white',
-                outline: 'none',
-                transition: 'all 0.2s',
-                boxSizing: 'border-box'
-              }}
-              placeholder={t('auth.emailPlaceholder')}
-              disabled={loading || navigating}
-              autoFocus
-            />
-            {validationErrors.email && (
-              <p style={{ marginTop: '4px', fontSize: '13px', color: '#dc2626' }}>
-                {validationErrors.email}
-              </p>
+        {/* ── パスワードリセットモード ── */}
+        {showResetMode ? (
+          <>
+            {resetStatus === 'sent' ? (
+              <div style={{
+                padding: '20px',
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #86efac',
+                borderRadius: '12px',
+                textAlign: 'center',
+                marginBottom: '24px'
+              }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>📧</div>
+                <p style={{ color: '#15803d', fontWeight: '600', margin: '0 0 4px 0' }}>
+                  {t('auth.passwordResetEmailSent')}
+                </p>
+                <p style={{ color: '#166534', fontSize: '14px', margin: 0 }}>
+                  {resetEmail}
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleResetSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {resetStatus === 'error' && (
+                  <div style={{
+                    padding: '16px',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: '12px',
+                    color: '#dc2626',
+                    fontSize: '14px'
+                  }}>
+                    {resetErrorMessage}
+                  </div>
+                )}
+                <div>
+                  <label htmlFor="resetEmail" style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#374151',
+                    marginBottom: '6px'
+                  }}>
+                    {t('auth.email')}
+                  </label>
+                  <input
+                    type="email"
+                    id="resetEmail"
+                    value={resetEmail}
+                    onChange={e => setResetEmail(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '10px',
+                      fontSize: '16px',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                    placeholder={t('auth.emailPlaceholder')}
+                    disabled={resetStatus === 'sending'}
+                    autoFocus
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={resetStatus === 'sending' || !resetEmail.trim()}
+                  style={{
+                    width: '100%',
+                    padding: '16px',
+                    background: (resetStatus === 'sending' || !resetEmail.trim())
+                      ? '#9ca3af'
+                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    cursor: (resetStatus === 'sending' || !resetEmail.trim()) ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {resetStatus === 'sending' ? t('auth.sendingResetEmail') : t('auth.sendResetEmail')}
+                </button>
+              </form>
             )}
-          </div>
 
-          {/* パスワード */}
-          <div>
-            <label htmlFor="password" style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '6px'
-            }}>
-              {t('auth.password')}
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                style={{
-                  width: '100%',
-                  padding: '12px 48px 12px 16px',
-                  border: `1px solid ${validationErrors.password ? '#fca5a5' : '#d1d5db'}`,
-                  borderRadius: '10px',
-                  fontSize: '16px',
-                  backgroundColor: validationErrors.password ? '#fef2f2' : 'white',
-                  outline: 'none',
-                  transition: 'all 0.2s',
-                  boxSizing: 'border-box'
-                }}
-                placeholder={t('auth.passwordPlaceholder')}
-                disabled={loading || navigating}
-              />
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
               <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={handleBackToLogin}
                 style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
                   background: 'none',
                   border: 'none',
+                  color: '#667eea',
+                  fontSize: '14px',
                   cursor: 'pointer',
-                  fontSize: '20px',
-                  padding: '4px'
+                  fontWeight: '600'
+                }}
+              >
+                ← {t('auth.backToLogin')}
+              </button>
+            </div>
+          </>
+        ) : (
+          /* ── ログインモード ── */
+          <>
+            {error && (
+              <div style={{
+                marginBottom: '24px',
+                padding: '16px',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: '12px',
+                color: '#dc2626',
+                fontSize: '14px'
+              }}>
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* メールアドレス */}
+              <div>
+                <label htmlFor="email" style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  {t('auth.email')}
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: `1px solid ${validationErrors.email ? '#fca5a5' : '#d1d5db'}`,
+                    borderRadius: '10px',
+                    fontSize: '16px',
+                    backgroundColor: validationErrors.email ? '#fef2f2' : 'white',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box'
+                  }}
+                  placeholder={t('auth.emailPlaceholder')}
+                  disabled={loading || navigating}
+                  autoFocus
+                />
+                {validationErrors.email && (
+                  <p style={{ marginTop: '4px', fontSize: '13px', color: '#dc2626' }}>
+                    {validationErrors.email}
+                  </p>
+                )}
+              </div>
+
+              {/* パスワード */}
+              <div>
+                <label htmlFor="password" style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: '#374151',
+                  marginBottom: '6px'
+                }}>
+                  {t('auth.password')}
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    style={{
+                      width: '100%',
+                      padding: '12px 48px 12px 16px',
+                      border: `1px solid ${validationErrors.password ? '#fca5a5' : '#d1d5db'}`,
+                      borderRadius: '10px',
+                      fontSize: '16px',
+                      backgroundColor: validationErrors.password ? '#fef2f2' : 'white',
+                      outline: 'none',
+                      transition: 'all 0.2s',
+                      boxSizing: 'border-box'
+                    }}
+                    placeholder={t('auth.passwordPlaceholder')}
+                    disabled={loading || navigating}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '20px',
+                      padding: '4px'
+                    }}
+                    disabled={loading || navigating}
+                  >
+                    {showPassword ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                {validationErrors.password && (
+                  <p style={{ marginTop: '4px', fontSize: '13px', color: '#dc2626' }}>
+                    {validationErrors.password}
+                  </p>
+                )}
+              </div>
+
+              {/* 送信ボタン */}
+              <button
+                type="submit"
+                disabled={loading || navigating}
+                style={{
+                  width: '100%',
+                  padding: '16px',
+                  background: (loading || navigating)
+                    ? '#9ca3af'
+                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  cursor: (loading || navigating) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  marginTop: '8px'
+                }}
+              >
+                {(loading || navigating) ? t('auth.signingIn') : t('auth.signIn')}
+              </button>
+            </form>
+
+            {/* パスワードリセットリンク */}
+            <div style={{ marginTop: '16px', textAlign: 'center' }}>
+              <button
+                onClick={() => { clearError(); setShowResetMode(true) }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#6b7280',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
                 }}
                 disabled={loading || navigating}
               >
-                {showPassword ? '🙈' : '👁️'}
+                {t('auth.forgotPasswordLink')}
               </button>
             </div>
-            {validationErrors.password && (
-              <p style={{ marginTop: '4px', fontSize: '13px', color: '#dc2626' }}>
-                {validationErrors.password}
-              </p>
-            )}
-          </div>
 
-          {/* 送信ボタン */}
-          <button
-            type="submit"
-            disabled={loading || navigating}
-            style={{
-              width: '100%',
-              padding: '16px',
-              background: (loading || navigating)
-                ? '#9ca3af'
-                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '12px',
-              fontSize: '18px',
-              fontWeight: '600',
-              cursor: (loading || navigating) ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s',
-              marginTop: '8px'
-            }}
-          >
-            {(loading || navigating) ? t('auth.signingIn') : t('auth.signIn')}
-          </button>
-        </form>
-
-        {/* パスワードリセットリンク */}
-        <div style={{
-          marginTop: '16px',
-          textAlign: 'center'
-        }}>
-          <button
-            onClick={() => {
-              // TODO: パスワードリセット機能を実装
-              alert(t('auth.passwordResetComingSoon'))
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#6b7280',
+            {/* フッター */}
+            <div style={{
+              marginTop: '24px',
+              textAlign: 'center',
               fontSize: '14px',
-              cursor: 'pointer',
-              textDecoration: 'underline'
-            }}
-            disabled={loading || navigating}
-          >
-            {t('auth.forgotPasswordLink')}
-          </button>
-        </div>
-
-        {/* フッター */}
-        <div style={{
-          marginTop: '24px',
-          textAlign: 'center',
-          fontSize: '14px',
-          color: '#6b7280'
-        }}>
-          {t('auth.noAccountYet')}{' '}
-          <button
-            onClick={() => navigate('/signup')}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#667eea',
-              fontWeight: '600',
-              cursor: 'pointer',
-              textDecoration: 'underline'
-            }}
-            disabled={loading || navigating}
-          >
-            {t('auth.signUp')}
-          </button>
-        </div>
+              color: '#6b7280'
+            }}>
+              {t('auth.noAccountYet')}{' '}
+              <button
+                onClick={() => navigate('/signup')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#667eea',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
+                }}
+                disabled={loading || navigating}
+              >
+                {t('auth.signUp')}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
