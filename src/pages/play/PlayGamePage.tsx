@@ -13,12 +13,19 @@ interface GamePaymentConfig {
   payment_link_url: string | null;
 }
 
+interface PlayValidation {
+  plays_remaining: number;
+  max_play_count: number;
+}
+
 type PageState =
   | 'loading'
-  | 'payment_gate'  // 決済が必要
-  | 'exchanging'    // session_id → token 引き換え中
-  | 'playing'       // ゲームプレイ中
-  | 'finished'      // ゲーム終了
+  | 'payment_gate'   // 決済が必要
+  | 'exchanging'     // session_id → token 引き換え中
+  | 'validating'     // サーバーサイドトークン検証中
+  | 'playing'        // ゲームプレイ中
+  | 'finished'       // ゲーム終了
+  | 'limit_reached'  // プレイ回数上限
   | 'error';
 
 // =====================================================
@@ -36,18 +43,20 @@ export function PlayGamePage() {
   const [config, setConfig] = useState<GamePaymentConfig>({ price_yen: null, payment_link_url: null });
   const [projectData, setProjectData] = useState<GameProject | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [validation, setValidation] = useState<PlayValidation | null>(null);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const bridge = EditorGameBridge.getInstance();
   const TOKEN_KEY = `play_token_${gameId}`;
 
-  // sessionStorage に保存したトークンの有効性を確認
-  const getValidToken = useCallback((): string | null => {
+  // sessionStorage に保存したトークンを取得（期限チェックはサーバーに委ねる）
+  const getStoredToken = useCallback((): string | null => {
     if (!gameId) return null;
     const stored = sessionStorage.getItem(TOKEN_KEY);
     if (!stored) return null;
     try {
       const { token, expires_at } = JSON.parse(stored);
+      // クライアント側では有効期限が切れていないことだけ確認（サーバーが最終判断）
       if (new Date(expires_at) > new Date()) return token as string;
     } catch {
       // ignore
@@ -67,7 +76,6 @@ export function PlayGamePage() {
     }
 
     const load = async () => {
-      // ゲーム情報（公開済みのみ）
       const { data: game, error: gameErr } = await supabase
         .from('user_games')
         .select('title, thumbnail_url, project_data')
@@ -85,7 +93,6 @@ export function PlayGamePage() {
       setThumbnailUrl(game.thumbnail_url ?? null);
       setProjectData(game.project_data as GameProject);
 
-      // 課金設定（存在しない場合は無料扱い）
       const { data: cfg } = await supabase
         .from('game_payment_config')
         .select('price_yen, payment_link_url')
@@ -96,7 +103,7 @@ export function PlayGamePage() {
       const linkUrl = cfg?.payment_link_url ?? null;
       setConfig({ price_yen: priceYen, payment_link_url: linkUrl });
 
-      // 無料ゲーム → 即プレイ
+      // 無料ゲーム → 即プレイ（トークン検証不要）
       if (!priceYen) {
         setPageState('playing');
         return;
@@ -108,9 +115,10 @@ export function PlayGamePage() {
         return;
       }
 
-      // 有効なトークンがあれば → プレイ
-      if (getValidToken()) {
-        setPageState('playing');
+      // 保存済みトークンがあれば → サーバー検証へ
+      const token = getStoredToken();
+      if (token) {
+        setPageState('validating');
         return;
       }
 
@@ -122,7 +130,7 @@ export function PlayGamePage() {
       setErrorMsg('読み込みに失敗しました');
       setPageState('error');
     });
-  }, [gameId, sessionId, getValidToken]);
+  }, [gameId, sessionId, getStoredToken]);
 
   // =====================================================
   // Step 2: session_id → token 引き換え
@@ -145,19 +153,16 @@ export function PlayGamePage() {
 
           if (cancelled) return;
 
-          // トークンを sessionStorage に保存
           sessionStorage.setItem(
             TOKEN_KEY,
             JSON.stringify({ token: data.token, expires_at: data.expires_at })
           );
 
-          // URL から session_id を除去
           window.history.replaceState({}, '', `/play/${gameId}`);
-          setPageState('playing');
+          setPageState('validating');
           return;
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
-          // token_not_found はリトライ対象（Webhook 未処理）
           if (msg === 'token_not_found' && i < 4) {
             await new Promise((r) => setTimeout(r, 2000));
             continue;
@@ -177,7 +182,67 @@ export function PlayGamePage() {
   }, [pageState, sessionId, gameId, TOKEN_KEY]);
 
   // =====================================================
-  // Step 3: ゲーム起動
+  // Step 3: サーバーサイドトークン検証
+  // =====================================================
+  useEffect(() => {
+    if (pageState !== 'validating' || !gameId) return;
+
+    let cancelled = false;
+
+    const validate = async () => {
+      const token = getStoredToken();
+      if (!token) {
+        setPageState('payment_gate');
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.functions.invoke('validate-play-token', {
+          body: { token, gameId },
+        });
+
+        if (cancelled) return;
+
+        if (error) {
+          const msg = error.message || '';
+          if (msg.includes('play_limit_reached')) {
+            setPageState('limit_reached');
+          } else if (msg.includes('token_expired')) {
+            sessionStorage.removeItem(TOKEN_KEY);
+            setPageState('payment_gate');
+          } else {
+            setErrorMsg('アクセス検証に失敗しました');
+            setPageState('error');
+          }
+          return;
+        }
+
+        if (!data?.valid) {
+          sessionStorage.removeItem(TOKEN_KEY);
+          setPageState('payment_gate');
+          return;
+        }
+
+        setValidation({
+          plays_remaining: data.plays_remaining,
+          max_play_count: data.max_play_count,
+        });
+        setPageState('playing');
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Token validation error:', err);
+          setErrorMsg('アクセス検証に失敗しました');
+          setPageState('error');
+        }
+      }
+    };
+
+    validate();
+    return () => { cancelled = true; };
+  }, [pageState, gameId, getStoredToken, TOKEN_KEY]);
+
+  // =====================================================
+  // Step 4: ゲーム起動
   // =====================================================
   useEffect(() => {
     if (pageState !== 'playing' || !projectData || !canvasRef.current) return;
@@ -203,13 +268,15 @@ export function PlayGamePage() {
 
   const s = styles;
 
-  if (pageState === 'loading' || pageState === 'exchanging') {
+  if (pageState === 'loading' || pageState === 'exchanging' || pageState === 'validating') {
+    const hint =
+      pageState === 'exchanging' ? '決済を確認中...' :
+      pageState === 'validating' ? 'アクセスを確認中...' :
+      '読み込み中...';
     return (
       <div style={s.center}>
         <div style={s.spinner} />
-        <p style={s.hint}>
-          {pageState === 'exchanging' ? '決済を確認中...' : '読み込み中...'}
-        </p>
+        <p style={s.hint}>{hint}</p>
       </div>
     );
   }
@@ -218,9 +285,22 @@ export function PlayGamePage() {
     return (
       <div style={s.center}>
         <p style={{ color: '#f87171', fontSize: 16 }}>{errorMsg}</p>
-        <button style={s.btn} onClick={() => window.history.back()}>
-          戻る
-        </button>
+        <button style={s.btn} onClick={() => window.history.back()}>戻る</button>
+      </div>
+    );
+  }
+
+  if (pageState === 'limit_reached') {
+    return (
+      <div style={s.center}>
+        <p style={{ fontSize: 40, marginBottom: 16 }}>🔒</p>
+        <p style={{ fontSize: 18, color: '#e2e8f0', marginBottom: 8 }}>プレイ回数の上限に達しました</p>
+        <p style={s.hint}>このチケットで遊べる回数をすべて使い切りました。</p>
+        {config.payment_link_url && (
+          <a href={config.payment_link_url} style={s.payBtn}>
+            もう一度購入する
+          </a>
+        )}
       </div>
     );
   }
@@ -244,13 +324,27 @@ export function PlayGamePage() {
     return (
       <div style={s.center}>
         <p style={{ fontSize: 40, marginBottom: 16 }}>🎉</p>
-        <p style={{ fontSize: 20, color: '#e2e8f0' }}>ゲーム終了！</p>
-        <button
-          style={{ ...s.btn, marginTop: 24 }}
-          onClick={() => setPageState('playing')}
-        >
-          もう一度プレイ
-        </button>
+        <p style={{ fontSize: 20, color: '#e2e8f0', marginBottom: 8 }}>ゲーム終了！</p>
+        {validation && validation.plays_remaining > 0 && (
+          <p style={s.hint}>あと {validation.plays_remaining} 回プレイできます</p>
+        )}
+        {validation && validation.plays_remaining > 0 ? (
+          <button
+            style={{ ...s.btn, marginTop: 24 }}
+            onClick={() => setPageState('validating')}
+          >
+            もう一度プレイ
+          </button>
+        ) : (
+          <>
+            <p style={s.hint}>このチケットのプレイ回数をすべて使いました</p>
+            {config.payment_link_url && (
+              <a href={config.payment_link_url} style={{ ...s.payBtn, marginTop: 24 }}>
+                もう一度購入する
+              </a>
+            )}
+          </>
+        )}
       </div>
     );
   }
@@ -259,6 +353,11 @@ export function PlayGamePage() {
   return (
     <div style={s.gameWrap}>
       <div ref={canvasRef} style={s.canvas} />
+      {validation && (
+        <div style={s.playsBadge}>
+          残り {validation.plays_remaining} 回
+        </div>
+      )}
     </div>
   );
 }
@@ -334,11 +433,23 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative' as const,
   } as React.CSSProperties,
   canvas: {
     width: '100%',
     height: '100%',
     maxWidth: 'calc(100vh * 9 / 16)',
     position: 'relative' as const,
+  } as React.CSSProperties,
+  playsBadge: {
+    position: 'absolute' as const,
+    top: 12,
+    right: 12,
+    background: 'rgba(0,0,0,0.6)',
+    color: '#94a3b8',
+    fontSize: 12,
+    padding: '4px 10px',
+    borderRadius: 99,
+    backdropFilter: 'blur(4px)',
   } as React.CSSProperties,
 } as const;

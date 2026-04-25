@@ -19,6 +19,7 @@ interface PaymentConfig {
   payment_link_id: string | null;
   payment_link_url: string | null;
   nfc_tag_ref: string | null;
+  max_play_count: number | null;
 }
 
 type PageState = 'loading' | 'ready' | 'saving' | 'writing_nfc' | 'error';
@@ -49,9 +50,11 @@ export function NfcSetupPage() {
     payment_link_id: null,
     payment_link_url: null,
     nfc_tag_ref: null,
+    max_play_count: null,
   });
   const [priceInput, setPriceInput] = useState('');
   const [tagRefInput, setTagRefInput] = useState('');
+  const [maxPlayInput, setMaxPlayInput] = useState('3');
   const [errorMsg, setErrorMsg] = useState('');
   const [nfcStatus, setNfcStatus] = useState('');
   const [copyDone, setCopyDone] = useState(false);
@@ -94,7 +97,7 @@ export function NfcSetupPage() {
 
       const { data: cfg } = await supabase
         .from('game_payment_config')
-        .select('price_yen, payment_link_id, payment_link_url, nfc_tag_ref')
+        .select('price_yen, payment_link_id, payment_link_url, nfc_tag_ref, max_play_count')
         .eq('game_id', gameId)
         .maybeSingle();
 
@@ -102,6 +105,7 @@ export function NfcSetupPage() {
         setConfig(cfg as PaymentConfig);
         setPriceInput(cfg.price_yen?.toString() ?? '');
         setTagRefInput(cfg.nfc_tag_ref ?? '');
+        setMaxPlayInput((cfg.max_play_count ?? 3).toString());
       }
 
       setPageState('ready');
@@ -149,15 +153,26 @@ export function NfcSetupPage() {
   };
 
   // =====================================================
-  // タグ設置場所メモを保存
+  // タグ設置場所メモ + プレイ上限を保存
   // =====================================================
-  const handleSaveTagRef = async () => {
+  const handleSaveSettings = async () => {
     if (!gameId) return;
+    const maxPlay = parseInt(maxPlayInput, 10);
+    if (isNaN(maxPlay) || maxPlay < 1) {
+      setErrorMsg('プレイ上限は1以上の整数を入力してください');
+      return;
+    }
     setPageState('saving');
+    setErrorMsg('');
     await supabase
       .from('game_payment_config')
-      .upsert({ game_id: gameId, nfc_tag_ref: tagRefInput, updated_at: new Date().toISOString() });
-    setConfig((prev) => ({ ...prev, nfc_tag_ref: tagRefInput }));
+      .upsert({
+        game_id: gameId,
+        nfc_tag_ref: tagRefInput,
+        max_play_count: maxPlay,
+        updated_at: new Date().toISOString(),
+      });
+    setConfig((prev) => ({ ...prev, nfc_tag_ref: tagRefInput, max_play_count: maxPlay }));
     setPageState('ready');
   };
 
@@ -339,9 +354,29 @@ export function NfcSetupPage() {
         )}
       </div>
 
-      {/* タグ設置場所メモ */}
+      {/* アクセス制御 + タグ設置場所メモ */}
       <div style={s.card}>
-        <h2 style={s.sectionTitle}>タグ設置場所メモ</h2>
+        <h2 style={s.sectionTitle}>アクセス制御 / タグ設置場所</h2>
+
+        <label style={{ ...s.label, display: 'block', marginBottom: 4 }}>
+          1チケットあたりのプレイ上限回数
+        </label>
+        <div style={{ ...s.formRow, marginBottom: 16 }}>
+          <input
+            style={{ ...s.input, maxWidth: 100 }}
+            type="number"
+            min={1}
+            step={1}
+            value={maxPlayInput}
+            onChange={(e) => setMaxPlayInput(e.target.value)}
+            disabled={isBusy}
+          />
+          <span style={{ color: '#64748b', fontSize: 13 }}>回まで（デフォルト: 3回）</span>
+        </div>
+
+        <label style={{ ...s.label, display: 'block', marginBottom: 4 }}>
+          タグ設置場所メモ
+        </label>
         <div style={s.formRow}>
           <input
             style={s.input}
@@ -351,12 +386,15 @@ export function NfcSetupPage() {
             placeholder="例: 渋谷アーケード 2F 入口横"
             disabled={isBusy}
           />
-          <button style={s.btn} disabled={isBusy} onClick={handleSaveTagRef}>
+          <button style={s.btn} disabled={isBusy} onClick={handleSaveSettings}>
             保存
           </button>
         </div>
         {config.nfc_tag_ref && (
-          <p style={s.savedRef}>保存済み: {config.nfc_tag_ref}</p>
+          <p style={s.savedRef}>設置場所: {config.nfc_tag_ref}</p>
+        )}
+        {config.max_play_count != null && (
+          <p style={s.savedRef}>プレイ上限: {config.max_play_count} 回</p>
         )}
       </div>
 
