@@ -113,7 +113,10 @@ serve(async (req) => {
           customerId = session.customer as string;
           userId = session.metadata?.user_id;
 
-          if (session.metadata?.topup_mode === 'true') {
+          if (session.metadata?.game_payment === 'true') {
+            // NFC/QR ゲーム課金: one_time_access トークン発行
+            await handleGamePaymentCompleted(supabase, session);
+          } else if (session.metadata?.topup_mode === 'true') {
             // ペイ・パー・プレイ: チャージ処理
             await handleTopUpCompleted(supabase, session);
           } else {
@@ -222,6 +225,50 @@ serve(async (req) => {
     );
   }
 });
+
+/**
+ * NFC/QR ゲーム課金完了時の処理
+ * Payment Link の metadata.game_payment === 'true' のセッションが対象
+ */
+async function handleGamePaymentCompleted(
+  supabase: ReturnType<typeof createClient>,
+  session: Stripe.Checkout.Session
+): Promise<void> {
+  const gameId = session.metadata?.game_id;
+  const amountYen = session.amount_total ?? 0;
+
+  if (!gameId) {
+    throw new WebhookError('game_id missing from session metadata', false);
+  }
+
+  // 冪等性チェック
+  const { data: existing } = await supabase
+    .from('one_time_access')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle();
+
+  if (existing) {
+    console.log(`[Idempotency] Game access already issued: session=${session.id}`);
+    return;
+  }
+
+  // 24 時間有効なトークンを発行
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  const { error } = await supabase.from('one_time_access').insert({
+    game_id: gameId,
+    stripe_session_id: session.id,
+    amount_paid_yen: amountYen,
+    expires_at: expiresAt,
+  });
+
+  if (error) {
+    throw new WebhookError(`Failed to issue game access token: ${error.message}`, true);
+  }
+
+  console.log(`[GamePayment] Access token issued: game=${gameId} amount=¥${amountYen}`);
+}
 
 /**
  * チャージ完了時の処理（ペイ・パー・プレイ）
