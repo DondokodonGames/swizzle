@@ -24,7 +24,7 @@ serve(async (req) => {
     const { sessionId } = await req.json();
 
     if (!sessionId || typeof sessionId !== 'string') {
-      return createErrorResponse('session_id required', 400, corsHeaders);
+      return createErrorResponse(new Error('session_id required'), corsHeaders, 400);
     }
 
     const stripe = createStripeClient();
@@ -33,12 +33,12 @@ serve(async (req) => {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (session.payment_status !== 'paid') {
-      return createErrorResponse('payment_not_completed', 402, corsHeaders);
+      return createErrorResponse(new Error('payment_not_completed'), corsHeaders, 402);
     }
 
     // game_payment セッションであることを確認
     if (session.metadata?.game_payment !== 'true') {
-      return createErrorResponse('invalid_session_type', 400, corsHeaders);
+      return createErrorResponse(new Error('invalid_session_type'), corsHeaders, 400);
     }
 
     const supabase = createClient(
@@ -54,16 +54,16 @@ serve(async (req) => {
 
     if (error) {
       console.error('DB lookup error:', error);
-      return createErrorResponse('db_error', 500, corsHeaders);
+      return createErrorResponse(new Error('db_error'), corsHeaders, 500);
     }
 
     if (!data) {
       // Webhook がまだ処理されていない可能性（数秒のラグ）
-      return createErrorResponse('token_not_found', 404, corsHeaders);
+      return createErrorResponse(new Error('token_not_found'), corsHeaders, 404);
     }
 
     if (new Date(data.expires_at) < new Date()) {
-      return createErrorResponse('token_expired', 410, corsHeaders);
+      return createErrorResponse(new Error('token_expired'), corsHeaders, 410);
     }
 
     return new Response(
@@ -72,6 +72,10 @@ serve(async (req) => {
     );
   } catch (err) {
     console.error('exchange-session-token error:', err);
-    return createErrorResponse('internal_error', 500, corsHeaders);
+    return createErrorResponse(
+      err instanceof Error ? err : new Error('internal_error'),
+      corsHeaders,
+      500,
+    );
   }
 });

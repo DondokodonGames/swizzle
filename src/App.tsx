@@ -26,6 +26,11 @@ const PlayGamePage = React.lazy(() =>
   import('./pages/play/PlayGamePage').then(module => ({ default: module.PlayGamePage }))
 );
 
+// NFC セットアップページの遅延読み込み
+const NfcSetupPage = React.lazy(() =>
+  import('./pages/nfc/NfcSetupPage').then(module => ({ default: module.NfcSetupPage }))
+);
+
 // マネタイズページの遅延読み込み
 const Pricing = React.lazy(() =>
   import('./pages/subscription/Pricing').then(module => ({
@@ -810,6 +815,13 @@ function App() {
           <Route path="/play/:gameId" element={
             <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
               <PlayGamePage />
+            </Suspense>
+          } />
+
+          {/* NFC セットアップページ（ゲームオーナー向け） */}
+          <Route path="/admin/games/:gameId/nfc" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+              <NfcSetupPage />
             </Suspense>
           } />
 
