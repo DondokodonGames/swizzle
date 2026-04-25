@@ -107,7 +107,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
       }
 
       await socialService.toggleLike(currentGame.id, user.id);
-      console.log('✅ いいね更新成功');
     } catch (error) {
       console.error('❌ いいね更新エラー:', error);
       setIsLiked(!newLikeState);
@@ -122,16 +121,11 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     setIsCopying(true);
 
     try {
-      console.log('📋 ゲームコピー開始:', currentGame.title);
-
       let sourceProjectData: GameProject | null = null;
 
       if (currentGame.projectData) {
         sourceProjectData = currentGame.projectData as GameProject;
-        console.log('✅ projectDataから取得成功');
       } else {
-        console.log('⚠️ projectDataが存在しないため、データベースから取得を試みます...');
-
         const { data, error } = await supabase
           .from('user_games')
           .select('project_data')
@@ -144,7 +138,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         }
 
         sourceProjectData = data.project_data as GameProject;
-        console.log('✅ データベースから取得成功');
       }
 
       if (!sourceProjectData) {
@@ -153,13 +146,11 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
       const copier = GameProjectCopier.getInstance();
 
-      console.log('🔍 コピー可能かチェック中...');
       if (!copier.canCopy(sourceProjectData)) {
         alert(t('bridge.errors.noRulesToCopy'));
         return;
       }
 
-      console.log('✅ コピー可能 - コピー処理開始');
       const copiedProject = copier.copyProject(sourceProjectData);
 
       const storage = ProjectStorageManager.getInstance();
@@ -170,16 +161,12 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         userId: user?.id
       });
 
-      console.log('✅ プロジェクトを保存しました:', copiedProject.id);
-
       localStorage.setItem('editProjectId', copiedProject.id);
       localStorage.setItem('copiedGameTitle', currentGame.title);
       localStorage.setItem('shouldOpenEditor', 'true');
 
       setCopiedProjectId(copiedProject.id);
       setShowSuccessModal(true);
-
-      console.log(`✅ 「${currentGame.title}」のルールをコピーしました！`);
 
     } catch (error) {
       console.error('❌ コピーエラー:', error);
@@ -195,24 +182,15 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   };
 
   const handleGoToFeed = () => {
-    console.log('📱 フィードへ遷移');
     window.location.href = '/feed';
   };
 
   const handleGoToProfile = () => {
     if (!profileClickEnabled) {
-      console.log('⏳ プロフィールクリックはクールダウン中です');
       return;
     }
-    console.log('👤 プロフィールへ遷移', {
-      author: currentGame.author,
-      username: currentGame.author?.username,
-      id: currentGame.author?.id,
-      name: currentGame.author?.name
-    });
 
     if (currentGame.author?.username) {
-      console.log(`✅ usernameで遷移: /profile/${currentGame.author.username}`);
       window.location.href = `/profile/${currentGame.author.username}`;
     } else if (currentGame.author?.id) {
       // usernameがない場合はuser IDを使用
@@ -252,7 +230,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         document.body.removeChild(textArea);
       }
       setUrlCopied(true);
-      console.log('✅ URLをコピーしました:', gameUrl);
 
       // 3秒後にリセット
       setTimeout(() => setUrlCopied(false), 3000);
@@ -380,7 +357,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           text: text,
           url: gameUrl,
         });
-        console.log('✅ ネイティブ共有成功');
         recordShare('native');
       } catch (error) {
         if ((error as Error).name !== 'AbortError') {

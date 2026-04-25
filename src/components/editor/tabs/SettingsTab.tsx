@@ -130,7 +130,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
   // テストプレイ機能（EditorGameBridge統合）
   const handleTestPlay = useCallback(async () => {
-    console.log('🧪 テストプレイ開始:', project.name);
     setIsTestPlaying(true);
     setTestPlayResult(null);
     setTestPlayDetails(null);
@@ -160,10 +159,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         throw new Error(t('errors.testPlayFailed'));
       }
 
-      console.log('🔄 EditorGameBridge でテストプレイ実行...');
       const result = await bridge.quickTestPlay(project);
-      
-      console.log('📊 テストプレイ結果:', result);
+
       setTestPlayDetails(result);
       
       if (result.success && result.completed) {
@@ -205,8 +202,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
   // フルゲーム実行機能（DOM要素待機対応版）
   const handleFullGamePlay = useCallback(async () => {
-    console.log('🎮 フルゲーム実行開始:', project.name);
-
     if (!bridgeRef.current) {
       alert(t('errors.testPlayFailed'));
       return;
@@ -231,13 +226,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         throw new Error(t('errors.generic'));
       }
       
-      console.log('✅ DOM要素準備完了、ゲーム実行開始');
-      
       await bridgeRef.current.launchFullGame(
         project,
         fullGameRef.current,
         (result: GameExecutionResult) => {
-          console.log('🏁 フルゲーム終了:', result);
           setShowFullGame(false);
 
           if (result.success) {
@@ -286,7 +278,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         }
         
         localStorage.setItem('editor_projects', JSON.stringify(savedProjects));
-        console.log('💾 プロジェクト保存完了:', project.name);
       }
     } catch (error) {
       console.error('保存エラー:', error);
@@ -301,8 +292,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     setGenerateThumbnail(true);
     
     try {
-      console.log('サムネイル生成開始');
-      
       const canvas = document.createElement('canvas');
       canvas.width = 300;
       canvas.height = 400;
@@ -368,7 +357,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         }
       });
       
-      console.log('サムネイル生成完了');
     } catch (error) {
       console.error('サムネイル生成エラー:', error);
       alert(`${t('errors.generic')}:\n${error instanceof Error ? error.message : t('errors.generic')}`);
@@ -383,8 +371,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     setPublishError(null);
     
     try {
-      console.log('📤 公開処理開始:', project.name);
-      
       // バリデーション
       const errors: string[] = [];
 
@@ -401,15 +387,12 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       }
 
       // 🔧 Phase H-2: ユーザーIDを取得
-      console.log('🔐 ユーザー認証確認...');
       const user = await auth.getCurrentUser();
 
       if (!user) {
         throw new Error(t('editor.app.loginRequired'));
       }
-      
-      console.log('✅ ユーザー確認完了:', user.id);
-      
+
       // プロジェクトデータを更新
       const projectData: GameProject = {
         ...project,
@@ -428,12 +411,9 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       };
       
       // 🔧 Phase H-2: Supabaseに保存
-      console.log('💾 Supabaseに保存中...');
       const storageManager = ProjectStorageManager.getInstance();
       await storageManager.saveToDatabase(projectData, user.id);
-      
-      console.log('✅ Supabase保存完了！');
-      
+
       // ローカルストレージにも保存（従来通り）
       const projectId = project.id || `project_${Date.now()}`;
       const savedProjects = JSON.parse(localStorage.getItem('savedProjects') || '[]');
@@ -473,7 +453,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         id: projectId
       });
       
-      console.log('🎉 公開完了:', { projectId, name: project.settings.name });
       alert(`✅ ${t('editor.app.projectPublished')}`);
 
     } catch (error) {
@@ -489,8 +468,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 // エクスポート機能（ProjectExportData形式対応）
 const handleExport = useCallback(async () => {
   try {
-    console.log('エクスポート開始');
-    
     // ✅ ProjectExportData形式で出力
     const exportData = {
       project: project,
@@ -512,7 +489,6 @@ const handleExport = useCallback(async () => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    console.log('エクスポート完了');
     alert(t('editor.app.projectExported'));
 
   } catch (error) {

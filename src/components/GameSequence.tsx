@@ -384,10 +384,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       setCurrentIndex(0);
       setUsedGameIds(prev => new Set([...prev, nextGame.id]));
       setNextGame(null);
-      console.log(`🎮 プリロードしたゲームを開始: "${nextGame.title}"`);
     } else if (publicGames.length > 0) {
       setCurrentIndex(0);
-      console.log('🔄 プリロードなし、現在のゲームを再実行');
     }
 
     setGameState('playing');
@@ -399,8 +397,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   }, [handleNextGame]);
 
   const handleReplayGame = useCallback(() => {
-    console.log('🔄 もう一度遊ぶ');
-    
     if (bridgeTimerRef.current) {
       clearInterval(bridgeTimerRef.current);
       bridgeTimerRef.current = null;
@@ -412,8 +408,6 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   }, []);
 
   const handleSkipToBridge = useCallback(() => {
-    console.log('⏭️ スキップ → ブリッジ画面へ');
-
     // 実行中のゲームを停止
     bridge.stopGame();
 

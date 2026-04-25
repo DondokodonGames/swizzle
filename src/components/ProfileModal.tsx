@@ -201,7 +201,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
 
     try {
       await supabase.auth.signOut();
-      console.log('✅ ログアウト成功');
       window.location.href = '/';
     } catch (err) {
       console.error('❌ ログアウトエラー:', err);

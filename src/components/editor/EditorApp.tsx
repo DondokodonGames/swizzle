@@ -85,7 +85,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   // ✅ プロジェクト選択（受け取ったprojectをそのまま使用）
   const handleProjectSelect = useCallback(async (project: GameProject) => {
     try {
-      console.log('[EditorApp] 📂 プロジェクト選択:', project.id, project.name);
       setCurrentProjectDirectly(project);
       setMode('editor');
       showNotification('success', t('editor.app.projectOpened', { name: project.name }));
@@ -123,8 +122,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       const isLargeProject = projectSize > 5 * 1024 * 1024; // 5MB
 
       if (isLargeProject && !options?.metadataOnly) {
-        console.log('[EditorApp] ⚠️ Large project detected:', (projectSize / 1024 / 1024).toFixed(1), 'MB');
-        console.log('[EditorApp] 🚀 Using metadata-only save for faster performance');
         await saveMetadataOnly();
       } else if (options?.metadataOnly) {
         await saveMetadataOnly();
@@ -191,8 +188,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       if (!testPlayContainerRef.current) {
         throw new Error(t('editor.app.testPlayScreenFailed'));
       }
-
-      console.log('✅ テストプレイ画面準備完了、ゲーム実行開始');
 
       await gameBridge.current.launchFullGame(
         currentProject,
@@ -303,14 +298,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       await saveProject();
 
       showNotification('success', t('editor.app.projectPublishedSuccess'));
-      
-      console.log('✅ Game published successfully:', {
-        projectId: publishedProject.id,
-        projectName: publishedProject.settings?.name || publishedProject.name,
-        userId: user.id,
-        publishedAt: publishedProject.settings.publishing.publishedAt,
-        isPublished: publishedProject.status === 'published'
-      });
 
     } catch (error: unknown) {
       console.error('Publish failed:', error);
