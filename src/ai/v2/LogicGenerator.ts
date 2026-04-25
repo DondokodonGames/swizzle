@@ -149,6 +149,17 @@ ${EDITOR_SPEC}
 - bgm配列にはBGMを1個定義
 - 必須SE: タップ時(se_tap)、成功時(se_success)、失敗時(se_failure)
 
+## 7. 衝突ターゲットには移動ルール必須
+
+collision 条件の target に指定したオブジェクトは必ず独自のルールを持つこと。
+「流れる障害物」「移動する敵」「転がるボール」等、全 collision 対象オブジェクトに以下2ルールが必要:
+
+  ルール1 (起動): time(timeType="exact", seconds=0) → move(straight, direction="down", speed=3)
+  ルール2 (リセット): collision(target="stageArea", collisionType="exit") → move(teleport, target={x: 元の位置, y: -0.1})
+
+静止した壁・ゴールゾーン等を collision 対象にする場合: collision ターゲットから外して position 条件で代替。
+collision ターゲットにしたオブジェクトで move ルールがないものは必ず追加すること（省略禁止）。
+
 # ゲームコンセプト
 {{CONCEPT}}
 
