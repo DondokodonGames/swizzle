@@ -239,7 +239,7 @@ export class EffectManager {
   /**
    * シェイクエフェクト更新
    */
-  private updateShakeEffect(obj: GameObject, elapsed: number): void {
+  private updateShakeEffect(obj: GameObject, _elapsed: number): void {
     const intensity = obj.shakeIntensity || 5;
     const direction = obj.shakeDirection || 'both';
     

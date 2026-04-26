@@ -7,7 +7,7 @@ import { GameEditor } from './GameEditor';
 import { ProjectSelector } from './ProjectSelector';
 import { useGameProject } from '../../hooks/editor/useGameProject';
 import { useAuth } from '../../hooks/useAuth';
-import { DEFAULT_EDITOR_TABS, getProgressTabConfig } from './common/TabNavigation';
+import { getProgressTabConfig } from './common/TabNavigation';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 import { ModernButton } from '../ui/ModernButton';
 import { ModernCard } from '../ui/ModernCard';
@@ -56,7 +56,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     error,
     hasUnsavedChanges,
     createProject,
-    loadProject,
+    loadProject: _loadProject,
     saveProject,
     saveMetadataOnly,
     updateProject,
@@ -100,7 +100,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
 
     try {
-      const newProject = await createProject(name);
+      await createProject(name);
       setMode('editor');
       showNotification('success', t('editor.app.projectCreated', { name }));
     } catch (error: unknown) {
@@ -404,7 +404,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
   }, [currentProject, duplicateProject, showNotification]);
 
-  const handleExport = useCallback(async (projectId: string) => {
+  const handleExport = useCallback(async (_projectId: string) => {
     try {
       if (currentProject) {
         const exportData = {

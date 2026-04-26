@@ -10,8 +10,6 @@ import { ModernCard } from '../../ui/ModernCard';
 import { ModernButton } from '../../ui/ModernButton';
 import { RulePreview } from './RulePreview';
 
-// 分割されたライブラリインポート
-import { CONDITION_LIBRARY, ACTION_LIBRARY, PRIORITY_ACTION_LIBRARY } from './constants/RuleLibrary';
 
 // 新規パネルコンポーネントインポート
 import { ConditionListPanel } from './ConditionListPanel';

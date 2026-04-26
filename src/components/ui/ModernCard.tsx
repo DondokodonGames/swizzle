@@ -4,7 +4,7 @@
  */
 
 import React, { HTMLAttributes, forwardRef, useState, useCallback } from 'react';
-import { DESIGN_TOKENS, COMPONENT_STYLES } from '../../constants/DesignSystem';
+import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 
 // 🎯 カードバリアント
 export type ModernCardVariant = 

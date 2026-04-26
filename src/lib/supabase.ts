@@ -1,8 +1,7 @@
 // src/lib/supabase.ts
 // シンプル版 - ウォームアップ削除（パフォーマンス改善）
 
-import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js'
-import type { Database } from './database.types'
+import { createClient, User, Session } from '@supabase/supabase-js'
 import { getErrorMessage } from '../utils/errorUtils'
 
 // 環境変数から取得（セキュリティ対策）
@@ -336,7 +335,7 @@ export const storage = {
       const filePath = fileName
 
       // ファイルをアップロード
-      const { data, error } = await supabase.storage
+      const { data: _data, error } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, {
           cacheControl: '3600',

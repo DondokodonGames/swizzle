@@ -553,7 +553,7 @@ export class NotificationService {
     }
   }
 
-  private getNotificationTitle(type: NotificationType, metadata: any): string {
+  private getNotificationTitle(type: NotificationType, _metadata: any): string {
     switch (type) {
       case 'reaction':
         return 'リアクションが届きました！';

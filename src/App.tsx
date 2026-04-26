@@ -277,8 +277,6 @@ const SplashScreen: React.FC = () => {
 
 // メインアプリケーションコンポーネント
 function MainApp() {
-  const navigate = useNavigate();
-  
   // ✅ スプラッシュ画面の表示状態（1.5秒間表示）
   const [showSplash, setShowSplash] = useState(true);
   

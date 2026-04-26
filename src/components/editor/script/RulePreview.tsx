@@ -285,7 +285,7 @@ export const RulePreview: React.FC<RulePreviewProps> = ({
   };
 
   // 単一ルール用の条件・アクション文字列生成
-  const generateRuleText = (rule: GameRule, conditions: TriggerCondition[], actions: GameAction[], operator: 'AND' | 'OR') => {
+  const generateRuleText = (_rule: GameRule, conditions: TriggerCondition[], actions: GameAction[], operator: 'AND' | 'OR') => {
     // 条件部分
     const conditionTexts = conditions.map(condition => {
       const display = getConditionDisplay(condition);

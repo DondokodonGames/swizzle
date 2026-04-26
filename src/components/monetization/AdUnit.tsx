@@ -41,7 +41,7 @@ declare global {
 export function AdUnit({ placement, className = '' }: AdUnitProps) {
   const { isPremium, loading } = useSubscription();
   const adRef = useRef<HTMLModElement>(null);
-  const [adLoaded, setAdLoaded] = useState(false);
+  const [_adLoaded, setAdLoaded] = useState(false);
   const [adError, setAdError] = useState(false);
   const initializedRef = useRef(false);
 

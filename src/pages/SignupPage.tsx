@@ -7,7 +7,7 @@ import { useAuth } from '../hooks/useAuth'
 
 export const SignupPage: React.FC = () => {
   const navigate = useNavigate()
-  const { signUp, loading, error, clearError, isAuthenticated } = useAuth()
+  const { signUp, loading, error, clearError: _clearError, isAuthenticated } = useAuth()
 
   const [formData, setFormData] = useState({
     email: '',

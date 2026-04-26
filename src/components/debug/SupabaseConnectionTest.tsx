@@ -106,16 +106,6 @@ const SupabaseConnectionTest: React.FC = () => {
     }
   }
 
-  // URLの基本チェック
-  const checkUrl = async (url: string) => {
-    try {
-      const response = await fetch(url, { method: 'HEAD', mode: 'no-cors' })
-      return true
-    } catch (error) {
-      return false
-    }
-  }
-
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-lg">
       <h1 className="text-2xl font-bold mb-6 text-center">

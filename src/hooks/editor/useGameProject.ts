@@ -112,17 +112,6 @@ export const useGameProject = () => {
     return project || null;
   }, []);
 
-  // ✅ キャッシュ更新
-  const updateCache = useCallback((userId: string, projects: GameProject[]) => {
-    projectsCacheRef.current = {
-      userId,
-      projects,
-      timestamp: Date.now(),
-      expiresIn: 5 * 60 * 1000 // 5分間有効
-    };
-    console.log('[Cache] ✅ キャッシュ更新:', projects.length, '件');
-  }, []);
-
   // ✅ キャッシュクリア
   const clearCache = useCallback(() => {
     projectsCacheRef.current = null;

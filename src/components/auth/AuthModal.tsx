@@ -37,7 +37,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
   const [showPassword, setShowPassword] = useState(false)
   const [showParentalWarning, setShowParentalWarning] = useState(false)
   const [showSignupSuccess, setShowSignupSuccess] = useState(false)
-  const [navigating, setNavigating] = useState(false) // 画面遷移中フラグ
+  const [navigating, _setNavigating] = useState(false) // 画面遷移中フラグ
 
   useEffect(() => {
     if (isOpen) {

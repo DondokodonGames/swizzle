@@ -8,7 +8,7 @@ import { TriggerCondition, GameAction, GameFlag } from '../../../types/editor/Ga
 import { GameProject } from '../../../types/editor/GameProject';
 import { GameCounter } from '../../../types/counterTypes';
 import { ModernCard } from '../../ui/ModernCard';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from './ModalDesignConstants';
+import { COLORS, SPACING, BORDER_RADIUS } from './ModalDesignConstants';
 
 // 条件エディターインポート
 import { TouchConditionEditor } from './conditions/TouchConditionEditor';

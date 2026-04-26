@@ -7,7 +7,7 @@
  */
 
 import { ContentGenerator } from '../content/ContentGenerator';
-import { GameInfo, ContentType, PostResult, TikTokVideo } from '../types';
+import { GameInfo, ContentType, PostResult } from '../types';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export class TikTokAutomation {
@@ -147,7 +147,7 @@ export class TikTokAutomation {
   /**
    * 週間サマリー投稿
    */
-  async postWeeklySummary(summary: string): Promise<PostResult> {
+  async postWeeklySummary(_summary: string): Promise<PostResult> {
     console.log('📊 Posting TikTok weekly summary');
 
     if (!this.isApproved) {

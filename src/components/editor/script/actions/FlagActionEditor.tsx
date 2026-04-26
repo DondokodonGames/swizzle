@@ -11,7 +11,6 @@ import { ModernButton } from '../../../ui/ModernButton';
 import {
   getFlagActionOptions,
   getFlagValueOptions,
-  getFlagOperationEffects
 } from '../constants/FlagConstants';
 
 interface FlagActionEditorProps {

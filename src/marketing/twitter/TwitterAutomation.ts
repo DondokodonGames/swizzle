@@ -3,12 +3,11 @@
  * Twitter API v2を使用した自動投稿・エンゲージメント
  */
 
-import { TwitterApi, TweetV2PostTweetResult } from 'twitter-api-v2';
+import { TwitterApi } from 'twitter-api-v2';
 import { ContentGenerator } from '../content/ContentGenerator';
-import { GameInfo, ContentType, Tweet, PostResult } from '../types';
+import { GameInfo, ContentType, PostResult } from '../types';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
-import * as path from 'path';
 
 export class TwitterAutomation {
   private client: TwitterApi;

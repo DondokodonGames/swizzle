@@ -19,7 +19,7 @@ interface SettingsTabProps {
 }
 
 // 🆕 ゲームスピード設定（テストプレイ下に移動）
-const getGameSpeedLevels = (t: any) => [
+const getGameSpeedLevels = (_t: any) => [
   { value: 0.7, labelKey: 'editor.settings.testPlay.gameSpeed.slow.label', descriptionKey: 'editor.settings.testPlay.gameSpeed.slow.description', emoji: '🐌' },
   { value: 1.0, labelKey: 'editor.settings.testPlay.gameSpeed.normal.label', descriptionKey: 'editor.settings.testPlay.gameSpeed.normal.description', emoji: '🚶' },
   { value: 1.3, labelKey: 'editor.settings.testPlay.gameSpeed.fast.label', descriptionKey: 'editor.settings.testPlay.gameSpeed.fast.description', emoji: '🏃' },
@@ -29,19 +29,18 @@ const getGameSpeedLevels = (t: any) => [
 export const SettingsTab: React.FC<SettingsTabProps> = ({
   project,
   onProjectUpdate,
-  onTestPlay,
+  onTestPlay: _onTestPlay,
   onSave
 }) => {
   const { t } = useTranslation();
-  const [isTestPlaying, setIsTestPlaying] = useState(false);
+  const [isTestPlaying, _setIsTestPlaying] = useState(false);
   const [testPlayResult, setTestPlayResult] = useState<'success' | 'failure' | null>(null);
-  const [testPlayDetails, setTestPlayDetails] = useState<GameExecutionResult | null>(null);
+  const [testPlayDetails, _setTestPlayDetails] = useState<GameExecutionResult | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [generateThumbnail, setGenerateThumbnail] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showFullGame, setShowFullGame] = useState(false);
-  const gameTestRef = useRef<HTMLDivElement>(null);
   const fullGameRef = useRef<HTMLDivElement>(null);
 
   // EditorGameBridge インスタンス
@@ -128,77 +127,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     });
   }, [updateProject, project.metadata]);
 
-  // テストプレイ機能（EditorGameBridge統合）
-  const handleTestPlay = useCallback(async () => {
-    setIsTestPlaying(true);
-    setTestPlayResult(null);
-    setTestPlayDetails(null);
-    
-    try {
-      // プロジェクトバリデーション
-      const validationErrors: string[] = [];
-
-      if (!project.settings?.name?.trim()) {
-        validationErrors.push(t('editor.settings.gameNameRequired'));
-      }
-
-      if (!(project.assets?.objects?.length || 0) && !project.assets?.background) {
-        validationErrors.push(t('errors.noAssets'));
-      }
-
-      if (!(project.script?.rules?.length || 0)) {
-        validationErrors.push(t('errors.noRules'));
-      }
-      
-      if (validationErrors.length > 0) {
-        throw new Error(validationErrors.join('\n'));
-      }
-
-      const bridge = bridgeRef.current;
-      if (!bridge) {
-        throw new Error(t('errors.testPlayFailed'));
-      }
-
-      const result = await bridge.quickTestPlay(project);
-
-      setTestPlayDetails(result);
-      
-      if (result.success && result.completed) {
-        setTestPlayResult('success');
-      } else {
-        setTestPlayResult('failure');
-        if (result.errors.length > 0) {
-          alert(`${t('editor.settings.testPlay.failure')}:\n${result.errors.join('\n')}`);
-        }
-      }
-      
-      // 統計更新
-      updateProject({
-        metadata: {
-          ...project.metadata,
-          statistics: {
-            ...project.metadata.statistics,
-            testPlayCount: (project.metadata.statistics.testPlayCount || 0) + 1
-          }
-        }
-      });
-      
-    } catch (error) {
-      console.error('❌ テストプレイエラー:', error);
-      setTestPlayResult('failure');
-      setTestPlayDetails({
-        success: false,
-        timeElapsed: 0,
-        completed: false,
-        errors: [error instanceof Error ? error.message : 'Unknown error'],
-        warnings: [],
-        performance: { averageFPS: 0, memoryUsage: 0, renderTime: 0, objectCount: 0, ruleExecutions: 0 }
-      });
-      alert(`${t('errors.testPlayFailed')}:\n${error instanceof Error ? error.message : t('errors.testPlayFailed')}`);
-    } finally {
-      setIsTestPlaying(false);
-    }
-  }, [project, updateProject]);
 
   // フルゲーム実行機能（DOM要素待機対応版）
   const handleFullGamePlay = useCallback(async () => {

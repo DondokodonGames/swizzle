@@ -5,10 +5,9 @@
 // 作成日: 2025年12月4日
 
 import { GameProject } from '../../types/editor/GameProject';
-import { GameRule, TriggerCondition, GameAction, PhysicsProperties } from '../../types/editor/GameScript';
 import { createDefaultInitialState, syncInitialStateWithLayout, createDefaultPhysics } from '../../types/editor/GameScript';
-import { RuleEngine, RuleExecutionContext, ActionExecutionResult } from '../rule-engine/RuleEngine';
-import { getBackgroundUrl, getObjectUrl, getAudioAssetUrl, getAssetFrameUrl } from '../../utils/assetUrl';
+import { RuleEngine, RuleExecutionContext } from '../rule-engine/RuleEngine';
+import { getBackgroundUrl, getAudioAssetUrl, getAssetFrameUrl } from '../../utils/assetUrl';
 
 // ゲーム実行結果
 export interface GameExecutionResult {
@@ -337,7 +336,7 @@ export class EditorGameBridge {
                 showLoadingScreen(loadedImages / Math.max(totalImages, 1), `${asset.name} 読み込み中...`);
                 console.log(`✅ オブジェクト画像読み込み完了: ${asset.name} (frame ${frameIndex})`);
               })
-              .catch(error => {
+              .catch(_error => {
                 warnings.push(`オブジェクト画像 "${asset.name}" フレーム${frameIndex}の読み込みに失敗しました`);
                 loadedImages++;
                 showLoadingScreen(loadedImages / Math.max(totalImages, 1), `${asset.name} 読み込み失敗`);
@@ -920,19 +919,6 @@ export class EditorGameBridge {
         };
       };
 
-      // ヒットオブジェクトを検出
-      const hitTest = (x: number, y: number): string | null => {
-        const sorted = Array.from(objectsMap.entries())
-          .sort((a, b) => (b[1].zIndex || 0) - (a[1].zIndex || 0));
-        for (const [id, obj] of sorted) {
-          if (!obj.visible) continue;
-          const w = obj.width * (obj.scaleX ?? obj.scale);
-          const h = obj.height * (obj.scaleY ?? obj.scale);
-          if (x >= obj.x && x <= obj.x + w && y >= obj.y && y <= obj.y + h) return id;
-        }
-        return null;
-      };
-
       // タッチ方向を算出
       const getDirection = (dx: number, dy: number): string =>
         Math.abs(dx) >= Math.abs(dy)
@@ -1044,7 +1030,7 @@ export class EditorGameBridge {
         });
       };
 
-      const handleTouchEnd = (event: TouchEvent) => {
+      const handleTouchEnd = (_event: TouchEvent) => {
         if (!this.currentContext || !touchActive) return;
         touchActive = false;
         const endTime = Date.now();

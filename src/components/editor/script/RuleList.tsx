@@ -20,10 +20,10 @@ interface RuleListProps {
 
 export const RuleList: React.FC<RuleListProps> = ({
   project,
-  selectedObjectId,
+  selectedObjectId: _selectedObjectId,
   onProjectUpdate,
   onEditRule,
-  onCreateRule,
+  onCreateRule: _onCreateRule,
   onModeChange
 }) => {
   const { t } = useTranslation();
@@ -93,7 +93,7 @@ export const RuleList: React.FC<RuleListProps> = ({
   };
 
   // 🔧 新規: 条件タイプを人間が読める形式に変換
-  const formatCondition = (condition: TriggerCondition, index: number): React.ReactNode => {
+  const formatCondition = (condition: TriggerCondition, _index: number): React.ReactNode => {
     const conditionType = condition.type;
     
     switch (conditionType) {
@@ -173,7 +173,7 @@ export const RuleList: React.FC<RuleListProps> = ({
   };
 
   // 🔧 新規: アクションタイプを人間が読める形式に変換
-  const formatAction = (action: GameAction, index: number): React.ReactNode => {
+  const formatAction = (action: GameAction, _index: number): React.ReactNode => {
     const actionType = action.type;
     
     switch (actionType) {
@@ -490,7 +490,7 @@ export const RuleList: React.FC<RuleListProps> = ({
           </ModernCard>
         ) : (
           /* ルール一覧表示 - IF-THEN詳細表示対応版 */
-          project.script.rules.map((rule, index) => {
+          project.script.rules.map((rule, _index) => {
             const isExpanded = expandedRules.has(rule.id);
             
             return (

@@ -142,7 +142,7 @@ export class CounterManager {
    */
   executeCounterAction(
     action: Extract<GameAction, { type: 'counter' }>,
-    context?: RuleExecutionContext
+    _context?: RuleExecutionContext
   ): CounterChangeEvent[] {
     const counterDef = this.counterDefinitions.get(action.counterName);
     if (!counterDef) {

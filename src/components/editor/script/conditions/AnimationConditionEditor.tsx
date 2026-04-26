@@ -14,7 +14,6 @@ import {
   getAnimationConditions,
   getAnimationTargetOptions,
   getFrameNumberOptions,
-  getAnimationIndexOptions,
   ANIMATION_DEFAULTS,
   ANIMATION_RANGES
 } from '../constants/AnimationConstants';
@@ -39,8 +38,6 @@ export const AnimationConditionEditor: React.FC<AnimationConditionEditorProps> =
   const ANIMATION_CONDITIONS = useMemo(() => getAnimationConditions(), []);
   const ANIMATION_TARGET_OPTIONS = useMemo(() => getAnimationTargetOptions(), []);
   const FRAME_NUMBER_OPTIONS = useMemo(() => getFrameNumberOptions(), []);
-  const ANIMATION_INDEX_OPTIONS = useMemo(() => getAnimationIndexOptions(), []);
-
   // Get project objects
   const projectObjects = project.assets?.objects || [];
 

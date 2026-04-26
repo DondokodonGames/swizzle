@@ -2000,7 +2000,7 @@ export class SpecificationGenerator {
     const rules: RuleSpecification[] = [];
 
     // タップルール
-    targetObjects.forEach((obj, idx) => {
+    targetObjects.forEach((obj, _idx) => {
       rules.push({
         id: `tap_${obj.id}`,
         name: `${obj.name}タップ`,

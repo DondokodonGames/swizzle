@@ -22,7 +22,7 @@ export class PhysicsManager {
    * @param deltaTime - 前フレームからの経過時間（秒）
    */
   updatePhysics(context: RuleExecutionContext, deltaTime: number): void {
-    context.objects.forEach((obj, id) => {
+    context.objects.forEach((obj, _id) => {
       // 物理プロパティが無効な場合はスキップ
       if (!obj.physics || !obj.physics.enabled) {
         return;

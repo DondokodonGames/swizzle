@@ -75,8 +75,6 @@ export const getProgressTabConfig = (project: GameProject, t: TFunction): TabCon
   // 🔧 修正: アセット進捗計算（音声を含む統合版 + 安全アクセス）
   const calculateAssetsProgress = () => {
     let progress = 0;
-    const totalSteps = 4; // 背景、オブジェクト、テキスト、音声の4要素
-    
     // 背景があれば25%
     if (project.assets.background) progress += 25;
     
@@ -239,7 +237,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({
   };
 
   const getTabButtonStyle = (
-    tab: TabConfig,
+    _tab: TabConfig,
     isActive: boolean,
     isHovered: boolean,
     isDisabled: boolean

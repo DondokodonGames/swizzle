@@ -144,8 +144,8 @@ export function toResponsivePosition(
  */
 export function toAbsolutePosition(
   responsivePos: ResponsivePosition,
-  containerWidth?: number,
-  containerHeight?: number
+  _containerWidth?: number,
+  _containerHeight?: number
 ): { x: number; y: number } {
   return {
     x: responsivePos.x / responsivePos.scale,

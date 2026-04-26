@@ -2,7 +2,7 @@
 // 🔧 Phase E-1: AssetsTab共通ロジック抽出 - アップロード処理統合
 import { useState, useCallback } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
-import { ProjectAssets, AssetFrame, AudioAsset, ObjectAsset, BackgroundAsset } from '../../types/editor/ProjectAssets';
+import { ProjectAssets, AssetFrame, AudioAsset, ObjectAsset } from '../../types/editor/ProjectAssets';
 import { EDITOR_LIMITS } from '../../constants/EditorLimits';
 import { createDefaultInitialState, syncInitialStateWithLayout } from '../../types/editor/GameScript';
 import { FileProcessingResult } from '../../components/ui/DragDropZone';

@@ -901,7 +901,7 @@ export class LogicRepairer {
     output: LogicGeneratorOutput,
     errors: LogicValidationError[],
     concept: GameConcept,
-    spec: GameSpecification
+    _spec: GameSpecification
   ): string {
     const errorDescriptions = errors.map(e =>
       `- [${e.code}] ${e.message}${e.fix ? ` (修正方法: ${e.fix})` : ''}`

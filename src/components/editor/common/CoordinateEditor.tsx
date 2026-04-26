@@ -19,11 +19,8 @@ interface CoordinateEditorProps {
 }
 
 // GamePreview.tsxと同じ座標系定義
-const GAME_WIDTH = 1080;
-const GAME_HEIGHT = 1920;
 const PREVIEW_WIDTH = 720;
 const PREVIEW_HEIGHT = 1280;
-const PREVIEW_SCALE = 0.667; // 720/1080 = 0.667
 
 export const CoordinateEditor: React.FC<CoordinateEditorProps> = ({
   value,

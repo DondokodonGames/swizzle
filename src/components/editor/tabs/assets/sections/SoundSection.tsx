@@ -9,7 +9,7 @@ import { EDITOR_LIMITS } from '../../../../../constants/EditorLimits';
 import { DESIGN_TOKENS } from '../../../../../constants/DesignSystem';
 import { ModernButton } from '../../../../ui/ModernButton';
 import { ModernCard } from '../../../../ui/ModernCard';
-import { DragDropZone, FileProcessingResult } from '../../../../ui/DragDropZone';
+import { DragDropZone } from '../../../../ui/DragDropZone';
 import { useAssetUpload } from '../../../../../hooks/editor/useAssetUpload';
 import { useNotification } from '../../../../../hooks/editor/useNotification';
 import { useAudioPlayback } from '../../../../../hooks/editor/useAudioPlayback';

@@ -830,7 +830,7 @@ export class ActionExecutor {
   private executeRandomAction(
     action: Extract<GameAction, { type: 'randomAction' }>,
     context: RuleExecutionContext,
-    ruleId: string,
+    _ruleId: string,
     executionCounts: Map<string, number>
   ): ActionExecutionResult {
     const effectsApplied: string[] = [];

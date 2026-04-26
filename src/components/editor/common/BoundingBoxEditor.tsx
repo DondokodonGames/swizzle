@@ -5,11 +5,8 @@ import React, { useRef, useState, useCallback } from 'react';
 import { DESIGN_TOKENS } from '../../../constants/DesignSystem';
 
 // GamePreview.tsxと同じ座標系定義
-const GAME_WIDTH = 1080;
-const GAME_HEIGHT = 1920;
 const PREVIEW_WIDTH = 720;
 const PREVIEW_HEIGHT = 1280;
-const PREVIEW_SCALE = PREVIEW_WIDTH / GAME_WIDTH; // 0.667
 
 // 矩形範囲（正規化座標 0.0～1.0）
 export interface BoundingBox {

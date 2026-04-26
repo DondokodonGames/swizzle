@@ -1,7 +1,7 @@
 // src/components/editor/script/CounterRuleComponents.tsx
 // カウンター条件・アクション設定UIコンポーネント - AdvancedRuleModal統合用
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
 import { TriggerCondition, GameAction } from '../../../types/editor/GameScript';

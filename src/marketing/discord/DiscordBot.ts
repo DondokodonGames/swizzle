@@ -13,7 +13,7 @@ import {
   ChannelType,
 } from 'discord.js';
 import { ContentGenerator } from '../content/ContentGenerator';
-import { GameInfo, ContentType, DiscordEmbed } from '../types';
+import { GameInfo, DiscordEmbed } from '../types';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // チャンネルID設定
@@ -32,7 +32,6 @@ export class SwizzleDiscordBot {
   private client: Client;
   private supabase: SupabaseClient;
   private contentGenerator: ContentGenerator;
-  private channels: ChannelConfig | null = null;
   private guildId: string;
 
   constructor() {

@@ -113,7 +113,7 @@ export const useErrorHandling = () => {
 // エラー表示コンポーネント
 const ErrorDisplay: React.FC = () => {
   const { getActiveErrors, removeError, recoverError } = useErrorHandling();
-  const { currentTheme } = useGameTheme();
+  const { currentTheme: _currentTheme } = useGameTheme();
   const activeErrors = getActiveErrors();
 
   if (activeErrors.length === 0) {

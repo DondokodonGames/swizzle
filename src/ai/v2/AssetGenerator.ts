@@ -507,7 +507,7 @@ FORBIDDEN:
    * - フラットカートゥーン・ベクターアートスタイル
    * - 単一オブジェクトのみ、シーンではない
    */
-  private buildObjectPrompt(concept: GameConcept, objPlan: AssetPlan['objects'][0], design?: GameDesign): string {
+  private buildObjectPrompt(concept: GameConcept, objPlan: AssetPlan['objects'][0], _design?: GameDesign): string {
     const sizeDesc = objPlan.size === 'small' ? 'small compact icon (64px style)' :
                      objPlan.size === 'large' ? 'large prominent sprite (192px style)' :
                      'medium sized sprite (128px style)';

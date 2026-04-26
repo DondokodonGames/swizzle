@@ -19,43 +19,6 @@ const COLORS = {
 const SPACING = { 1: '4px', 2: '8px', 3: '12px', 4: '16px' };
 const BORDER_RADIUS = { md: '6px', lg: '8px' };
 
-// ランダム条件のプリセット
-const RANDOM_PRESETS = [
-  { label: '低確率', probability: 0.1, interval: 2000, description: '10%の確率、2秒間隔' },
-  { label: '中確率', probability: 0.3, interval: 1000, description: '30%の確率、1秒間隔' },
-  { label: '高確率', probability: 0.7, interval: 500, description: '70%の確率、0.5秒間隔' },
-  { label: 'エンドレス', probability: 0.8, interval: 2500, description: 'Flappy Bird風' },
-  { label: 'ランナー', probability: 0.3, interval: 1200, description: 'Temple Run風' }
-];
-
-// ランダムアクションのプリセット（型安全版）
-const RANDOM_ACTION_PRESETS = [
-  {
-    label: 'エンドレス障害物',
-    description: '障害物とアイテムのランダム生成',
-    actions: [
-      { action: { type: 'show' as const, targetId: 'obstacle' }, weight: 3 },
-      { action: { type: 'show' as const, targetId: 'item' }, weight: 1 }
-    ]
-  },
-  {
-    label: 'ボーナス効果',
-    description: 'ランダムボーナス効果',
-    actions: [
-      { action: { type: 'playSound' as const, soundId: 'bonus' }, weight: 2 },
-      { action: { type: 'success' as const }, weight: 1 }
-    ]
-  },
-  {
-    label: '難易度調整',
-    description: '自動難易度調整',
-    actions: [
-      { action: { type: 'show' as const, targetId: 'enemy' }, weight: 1 },
-      { action: { type: 'hide' as const, targetId: 'enemy' }, weight: 1 }
-    ]
-  }
-];
-
 // 型安全なランダム条件型定義
 type RandomConditionType = Extract<TriggerCondition, { type: 'random' }>;
 
