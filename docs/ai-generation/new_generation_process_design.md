@@ -259,7 +259,6 @@ function validateConcept(concept: GameConcept): ValidationResult {
 **使用禁止（要検証のため）:**
 - position（動作不安定）
 - animation（要検証）
-- random（要検証）
 
 #### 使用可能なアクションタイプ
 
@@ -499,7 +498,7 @@ function validateLogic(output: LogicGeneratorOutput): LogicValidationResult {
   }
 
   // 6. 使用禁止機能チェック
-  const forbiddenConditions = ['position', 'animation', 'random'];
+  const forbiddenConditions = ['position', 'animation']; // random は使用可能
   const forbiddenActions = ['playSound', 'switchAnimation', 'applyForce', 'applyImpulse', 'randomAction'];
 
   for (const rule of output.script.rules) {
@@ -739,7 +738,7 @@ interface QualityScore {
 | gameState | - | ✅ |
 | position | - | ⚠️禁止 |
 | animation | - | ⚠️禁止 |
-| random | - | ⚠️禁止 |
+| random | probability: 0.0-1.0 | ✅ |
 
 ### アクションタイプ（✅のみ使用可）
 
