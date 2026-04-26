@@ -292,7 +292,8 @@ N個のオブジェクトにはN個のルールが必要。
 
 ## 物理（単体オブジェクト）
 - dynamic physics: 重力・空気抵抗・反発（キャンバス底面のみ）
-- applyImpulse / applyForce / setGravity / setPhysics
+- applyImpulse / applyForce / setPhysics
+- setGravity ← プレイヤー操作で重力方向を制御する用途はOK。「オブジェクトが自然落下するだけ」のゲームはNG
 
 ## エフェクト（視覚）
 - effect: scale / flash / shake / rotate
