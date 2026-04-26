@@ -684,6 +684,7 @@ export class LogicRepairer {
 
     const before = counter.initialValue;
     counter.initialValue = 0;
+    console.warn(`[LogicRepairer] INSTANT_WIN auto-repair: counter "${counterId}" initialValue ${before} → 0`);
     return {
       errorCode: error.code,
       action: 'Reset counter initialValue to 0 to prevent instant win',
@@ -708,6 +709,7 @@ export class LogicRepairer {
     const before = counter.initialValue;
     const safeValue = threshold * 2;
     counter.initialValue = safeValue;
+    console.warn(`[LogicRepairer] INSTANT_LOSE auto-repair: counter "${counterId}" initialValue ${before} → ${safeValue} (fail threshold: ${threshold})`);
     return {
       errorCode: error.code,
       action: `Set counter initialValue to ${safeValue} (above fail threshold ${threshold})`,
