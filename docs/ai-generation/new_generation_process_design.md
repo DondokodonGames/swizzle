@@ -736,7 +736,7 @@ interface QualityScore {
 | collision | target: 'stageArea'/'other'/objectId, collisionType: 'enter'/'stay'/'exit', checkMode: 'hitbox'/'pixel' | ✅ |
 | flag | flagId, value | ✅ |
 | gameState | - | ✅ |
-| position | - | ⚠️禁止 |
+| position | target, area: 'inside'/'outside'/'crossing', region | ✅ ただし即失敗トリガー（outside→failure）への使用禁止 |
 | animation | - | ⚠️禁止 |
 | random | probability: 0.0-1.0 | ✅ |
 
