@@ -376,7 +376,7 @@ JSON形式のみ出力してください。`;
     try {
       const response = await this.llmProvider.chat(
         [{ role: 'user', content: prompt }],
-        { maxTokens: 4096 }
+        {}
       );
 
       const jsonMatch = response.content.match(/\{[\s\S]*\}/);
