@@ -7,7 +7,7 @@
  * - すべてのclassName削除（識別用のみ残す）
  */
 
-import React from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { SubscriptionManager } from '../../components/monetization/SubscriptionManager';

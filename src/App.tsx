@@ -1,11 +1,11 @@
 // src/App.tsx
 
-import React, { useState, useEffect, Suspense, useCallback } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import './styles/arcade-theme.css';
 
-import { PremiumBadge } from './components/monetization/PremiumBadge';
 import { EditorGameBridge } from './services/editor/EditorGameBridge';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 // ゲーム関連コンポーネントの遅延読み込み（問題30・31対応）
 const GameSequence = React.lazy(() => import('./components/GameSequence'));
@@ -189,15 +189,6 @@ const AuthModal = ENABLE_AUTH ? React.lazy(async () => {
   }
 }) : null;
 
-const ProfileSetup = ENABLE_AUTH ? React.lazy(async () => {
-  try {
-    return await import('./components/auth/ProfileSetup');
-  } catch (error) {
-    console.warn('ProfileSetup読み込み失敗:', error);
-    return { default: () => null };
-  }
-}) : null;
-
 // 🎨 スプラッシュスクリーンコンポーネント（ロゴ画像版）
 const SplashScreen: React.FC = () => {
   return (
@@ -296,15 +287,13 @@ const SplashScreen: React.FC = () => {
 
 // メインアプリケーションコンポーネント
 function MainApp() {
-  const navigate = useNavigate();
-  
   // ✅ スプラッシュ画面の表示状態（1.5秒間表示）
   const [showSplash, setShowSplash] = useState(true);
   
   const [mode, setMode] = useState<AppMode>('sequence');
   const [editorProjectId, setEditorProjectId] = useState<string | undefined>(undefined);
-  const [selectedFeedGame, setSelectedFeedGame] = useState<any>(null);
-  const [volumeSettings, setVolumeSettings] = useState<VolumeSettings>(DEFAULT_VOLUME);
+  const [_selectedFeedGame, setSelectedFeedGame] = useState<any>(null);
+  const [_volumeSettings, setVolumeSettings] = useState<VolumeSettings>(DEFAULT_VOLUME);
 
   // グローバルAuthModal用state
   const [globalAuthModalOpen, setGlobalAuthModalOpen] = useState(false);
@@ -364,19 +353,6 @@ function MainApp() {
     return () => clearTimeout(timer);
   }, []);
 
-  const saveVolumeSettings = useCallback((newSettings: VolumeSettings) => {
-    try {
-      localStorage.setItem('gameVolumeSettings', JSON.stringify(newSettings))
-      setVolumeSettings(newSettings)
-      
-      if (typeof window !== 'undefined') {
-        (window as any).gameVolumeSettings = newSettings
-      }
-    } catch (error) {
-      console.warn('音量設定の保存に失敗:', error)
-    }
-  }, [])
-
   const handleExitSequence = () => {
     window.location.reload();
   };
@@ -409,12 +385,6 @@ function MainApp() {
 
   const handleExitFeed = () => {
     setMode('sequence');
-  };
-
-  // 料金プランページへ遷移
-  const handleGoToPricing = () => {
-    EditorGameBridge.getInstance().stopGame();
-    navigate('/pricing');
   };
 
   // グローバルイベントリスナー
@@ -453,25 +423,27 @@ function MainApp() {
   if (mode === 'sequence') {
     return (
       <>
-        <Suspense fallback={
-          <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ marginBottom: '16px', fontSize: '48px' }}>🎮</div>
-              <p style={{ color: '#a21caf', fontSize: '18px' }}>ゲームを読み込み中...</p>
+        <ErrorBoundary>
+          <Suspense fallback={
+            <div style={{
+              minHeight: '100vh',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ marginBottom: '16px', fontSize: '48px' }}>🎮</div>
+                <p style={{ color: '#a21caf', fontSize: '18px' }}>ゲームを読み込み中...</p>
+              </div>
             </div>
-          </div>
-        }>
-          <GameSequence
-            onExit={handleExitSequence}
-            onOpenFeed={handleSwitchToFeed}
-          />
-        </Suspense>
+          }>
+            <GameSequence
+              onExit={handleExitSequence}
+              onOpenFeed={handleSwitchToFeed}
+            />
+          </Suspense>
+        </ErrorBoundary>
         {/* グローバルAuthModal */}
         {AuthModal && (
           <Suspense fallback={null}>
@@ -490,33 +462,29 @@ function MainApp() {
   if (mode === 'editor') {
     return (
       <>
-        <Suspense fallback={
-          <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ marginBottom: '16px', fontSize: '48px', animation: 'pulse 2s infinite' }}>🎨</div>
-              <div style={{ color: '#6b7280', fontSize: '18px', fontWeight: '600' }}>
-                エディターを読み込み中...
+        <ErrorBoundary>
+          <Suspense fallback={
+            <div style={{
+              minHeight: '100vh',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ marginBottom: '16px', fontSize: '48px', animation: 'pulse 2s infinite' }}>🎨</div>
+                <div style={{ color: '#6b7280', fontSize: '18px', fontWeight: '600' }}>
+                  エディターを読み込み中...
+                </div>
               </div>
-              <style>{`
-                @keyframes pulse {
-                  0%, 100% { opacity: 1; }
-                  50% { opacity: 0.7; }
-                }
-              `}</style>
             </div>
-          </div>
-        }>
-          <EditorApp
-            onClose={handleExitEditor}
-            initialProjectId={editorProjectId}
-          />
-        </Suspense>
+          }>
+            <EditorApp
+              onClose={handleExitEditor}
+              initialProjectId={editorProjectId}
+            />
+          </Suspense>
+        </ErrorBoundary>
         {/* グローバルAuthModal */}
         {AuthModal && (
           <Suspense fallback={null}>
@@ -535,25 +503,27 @@ function MainApp() {
   if (mode === 'feed') {
     return (
       <>
-        <Suspense fallback={
-          <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ marginBottom: '16px', fontSize: '48px' }}>📱</div>
-              <p style={{ color: '#a21caf', fontSize: '18px' }}>フィードを読み込み中...</p>
+        <ErrorBoundary>
+          <Suspense fallback={
+            <div style={{
+              minHeight: '100vh',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 100%)'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ marginBottom: '16px', fontSize: '48px' }}>📱</div>
+                <p style={{ color: '#a21caf', fontSize: '18px' }}>フィードを読み込み中...</p>
+              </div>
             </div>
-          </div>
-        }>
-          <GameFeed
-            onGameSelect={handleFeedGameSelect}
-            onBack={handleExitFeed}
-          />
-        </Suspense>
+          }>
+            <GameFeed
+              onGameSelect={handleFeedGameSelect}
+              onBack={handleExitFeed}
+            />
+          </Suspense>
+        </ErrorBoundary>
         {/* グローバルAuthModal */}
         {AuthModal && (
           <Suspense fallback={null}>

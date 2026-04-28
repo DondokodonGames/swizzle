@@ -2,7 +2,7 @@
 // 条件評価システム
 
 import { TriggerCondition } from '../../types/editor/GameScript';
-import { RuleExecutionContext, GameObject, AnimationState, RandomState, PositionState } from './types';
+import { RuleExecutionContext, AnimationState, RandomState, PositionState } from './types';
 import { FlagManager } from './FlagManager';
 import { CounterManager } from './CounterManager';
 import { CollisionDetector } from './CollisionDetector';
@@ -217,7 +217,7 @@ export class ConditionEvaluator {
     condition: Extract<TriggerCondition, { type: 'touch' }>,
     touchEvent: any,
     touchTarget: string,
-    context: RuleExecutionContext
+    _context: RuleExecutionContext
   ): boolean {
     if (touchEvent.data.type !== 'drag') {
       return false;
@@ -247,7 +247,7 @@ export class ConditionEvaluator {
   private evaluateSwipeCondition(
     condition: Extract<TriggerCondition, { type: 'touch' }>,
     touchEvent: any,
-    context: RuleExecutionContext
+    _context: RuleExecutionContext
   ): boolean {
     if (touchEvent.data.type !== 'swipe') {
       return false;
@@ -283,7 +283,7 @@ export class ConditionEvaluator {
   private evaluateFlickCondition(
     condition: Extract<TriggerCondition, { type: 'touch' }>,
     touchEvent: any,
-    context: RuleExecutionContext
+    _context: RuleExecutionContext
   ): boolean {
     if (touchEvent.data.type !== 'flick') {
       return false;
@@ -320,7 +320,7 @@ export class ConditionEvaluator {
     condition: Extract<TriggerCondition, { type: 'touch' }>,
     touchEvent: any,
     touchTarget: string,
-    context: RuleExecutionContext
+    _context: RuleExecutionContext
   ): boolean {
     if (touchEvent.data.type !== 'hold') {
       return false;

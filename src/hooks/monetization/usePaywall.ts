@@ -14,7 +14,7 @@ import { useWallet } from './useWallet';
 export function usePaywall(): UsePaywallResult {
   const { t } = useTranslation();
   const { status, canCreateGame } = useWallet();
-  const [isOpen, setIsOpen] = useState(false);
+  const [_isOpen, setIsOpen] = useState(false);
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
 
   const shouldShowPaywall = !canCreateGame;

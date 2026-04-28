@@ -6,7 +6,7 @@
  * - Tailwind CSSクラス → 完全インラインスタイル + DESIGN_TOKENS
  */
 
-import React, { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSubscription } from '../../hooks/monetization/useSubscription';

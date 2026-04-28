@@ -11,11 +11,10 @@
 import { TextStyle } from './ProjectAssets';
 
 // 🔢 新規追加: カウンター型インポート
-import { 
-  GameCounter, 
-  CounterOperation, 
+import {
+  GameCounter,
+  CounterOperation,
   CounterComparison,
-  CounterChangeEvent
 } from '../counterTypes';
 
 // 位置座標（0-1の正規化座標）

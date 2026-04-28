@@ -10,8 +10,6 @@ import {
   LogicValidationResult,
   LogicValidationError,
   GameRule,
-  TriggerCondition,
-  GameAction,
   VerifiedConditionType,
   VerifiedActionType
 } from './types';
@@ -666,7 +664,7 @@ export class LogicValidator {
             }
             // regionチェック（座標範囲）
             if (condition.region) {
-              const { x, y, width, height } = condition.region;
+              const { x, y, width: _width, height: _height } = condition.region;
               if (x !== undefined && (x < 0 || x > 1)) {
                 errors.push({
                   type: 'warning',

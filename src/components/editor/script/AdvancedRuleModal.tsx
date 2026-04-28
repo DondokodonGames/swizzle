@@ -1,7 +1,7 @@
 // src/components/editor/script/AdvancedRuleModal.tsx
 // 新レイアウト版: 詳細設定エリア分離 + 選択式UI
 
-import React, { useState, useEffect } from 'react';
+import React, { useState} from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameRule, TriggerCondition, GameAction, GameFlag } from '../../../types/editor/GameScript';
 import { GameProject } from '../../../types/editor/GameProject';
@@ -10,8 +10,6 @@ import { ModernCard } from '../../ui/ModernCard';
 import { ModernButton } from '../../ui/ModernButton';
 import { RulePreview } from './RulePreview';
 
-// 分割されたライブラリインポート
-import { CONDITION_LIBRARY, ACTION_LIBRARY, PRIORITY_ACTION_LIBRARY } from './constants/RuleLibrary';
 
 // 新規パネルコンポーネントインポート
 import { ConditionListPanel } from './ConditionListPanel';

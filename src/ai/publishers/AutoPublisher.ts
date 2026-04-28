@@ -9,7 +9,6 @@
  * - 公開ステータス管理
  */
 
-import { GameProject } from '../../types/editor/GameProject';
 import { GeneratedGame } from '../types/GenerationTypes';
 import { SupabaseUploader } from './SupabaseUploader';
 import { AssetRegistrar } from './AssetRegistrar';

@@ -8,7 +8,7 @@
  * 出力: ReachabilityReport
  */
 
-import { LogicGeneratorOutput, GameRule, TriggerCondition, GameAction } from './types';
+import { LogicGeneratorOutput, GameRule } from './types';
 import { GameSpecification } from './SpecificationGenerator';
 import { GenerationLogger } from './GenerationLogger';
 
@@ -83,7 +83,6 @@ interface GameState {
 
 export class DryRunSimulator {
   private logger?: GenerationLogger;
-  private maxSimulationSteps = 100;
   private gameTimeLimit = 15; // 秒
 
   constructor(logger?: GenerationLogger) {
@@ -96,7 +95,7 @@ export class DryRunSimulator {
    */
   simulate(
     logicOutput: LogicGeneratorOutput,
-    specification?: GameSpecification,
+    _specification?: GameSpecification,
     gameDuration?: number
   ): ReachabilityReport {
     const issues: SimulationIssue[] = [];
@@ -574,7 +573,7 @@ export class DryRunSimulator {
    */
   private findFailurePaths(
     output: LogicGeneratorOutput,
-    initialState: GameState
+    _initialState: GameState
   ): ReachabilityReport['failure'] {
     const failureRules = output.script.rules.filter(r =>
       r.actions?.some(a => a.type === 'failure')
@@ -751,7 +750,7 @@ export class DryRunSimulator {
    */
   private calculateConfidence(
     success: ReachabilityReport['success'],
-    failure: ReachabilityReport['failure'],
+    _failure: ReachabilityReport['failure'],
     issues: SimulationIssue[]
   ): 'high' | 'medium' | 'low' {
     const errorCount = issues.filter(i => i.severity === 'error').length;
@@ -772,7 +771,7 @@ export class DryRunSimulator {
    */
   private generateReasoning(
     success: ReachabilityReport['success'],
-    failure: ReachabilityReport['failure'],
+    _failure: ReachabilityReport['failure'],
     conflicts: ConflictReport[],
     issues: SimulationIssue[]
   ): string {

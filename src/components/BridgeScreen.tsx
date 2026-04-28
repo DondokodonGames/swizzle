@@ -42,12 +42,12 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   nextGame,
   score,
   timeLeft,
-  totalGames,
-  currentIndex,
+  totalGames: _totalGames,
+  currentIndex: _currentIndex,
   onNextGame,
-  onPreviousGame,
+  onPreviousGame: _onPreviousGame,
   onReplayGame,
-  onExit,
+  onExit: _onExit,
   inline = false,
 }) => {
   const { t } = useTranslation();
@@ -58,8 +58,8 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   const [isCopying, setIsCopying] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [copiedProjectId, setCopiedProjectId] = useState<string | null>(null);
-  const [selectedReaction, setSelectedReaction] = useState<string | null>(null);
-  const [animationStage, setAnimationStage] = useState(0);
+  const [_selectedReaction, _setSelectedReaction] = useState<string | null>(null);
+  const [_animationStage, setAnimationStage] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
   const [urlCopied, setUrlCopied] = useState(false);
 
@@ -107,7 +107,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
       }
 
       await socialService.toggleLike(currentGame.id, user.id);
-      console.log('✅ いいね更新成功');
     } catch (error) {
       console.error('❌ いいね更新エラー:', error);
       setIsLiked(!newLikeState);
@@ -122,16 +121,11 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     setIsCopying(true);
 
     try {
-      console.log('📋 ゲームコピー開始:', currentGame.title);
-
       let sourceProjectData: GameProject | null = null;
 
       if (currentGame.projectData) {
         sourceProjectData = currentGame.projectData as GameProject;
-        console.log('✅ projectDataから取得成功');
       } else {
-        console.log('⚠️ projectDataが存在しないため、データベースから取得を試みます...');
-
         const { data, error } = await supabase
           .from('user_games')
           .select('project_data')
@@ -144,7 +138,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         }
 
         sourceProjectData = data.project_data as GameProject;
-        console.log('✅ データベースから取得成功');
       }
 
       if (!sourceProjectData) {
@@ -153,13 +146,11 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
 
       const copier = GameProjectCopier.getInstance();
 
-      console.log('🔍 コピー可能かチェック中...');
       if (!copier.canCopy(sourceProjectData)) {
         alert(t('bridge.errors.noRulesToCopy'));
         return;
       }
 
-      console.log('✅ コピー可能 - コピー処理開始');
       const copiedProject = copier.copyProject(sourceProjectData);
 
       const storage = ProjectStorageManager.getInstance();
@@ -170,16 +161,12 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         userId: user?.id
       });
 
-      console.log('✅ プロジェクトを保存しました:', copiedProject.id);
-
       localStorage.setItem('editProjectId', copiedProject.id);
       localStorage.setItem('copiedGameTitle', currentGame.title);
       localStorage.setItem('shouldOpenEditor', 'true');
 
       setCopiedProjectId(copiedProject.id);
       setShowSuccessModal(true);
-
-      console.log(`✅ 「${currentGame.title}」のルールをコピーしました！`);
 
     } catch (error) {
       console.error('❌ コピーエラー:', error);
@@ -189,30 +176,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     }
   };
 
-  const handleOpenEditor = () => {
-    if (!copiedProjectId) return;
-    window.location.href = `/editor/${copiedProjectId}`;
-  };
-
-  const handleGoToFeed = () => {
-    console.log('📱 フィードへ遷移');
-    window.location.href = '/feed';
-  };
 
   const handleGoToProfile = () => {
     if (!profileClickEnabled) {
-      console.log('⏳ プロフィールクリックはクールダウン中です');
       return;
     }
-    console.log('👤 プロフィールへ遷移', {
-      author: currentGame.author,
-      username: currentGame.author?.username,
-      id: currentGame.author?.id,
-      name: currentGame.author?.name
-    });
 
     if (currentGame.author?.username) {
-      console.log(`✅ usernameで遷移: /profile/${currentGame.author.username}`);
       window.location.href = `/profile/${currentGame.author.username}`;
     } else if (currentGame.author?.id) {
       // usernameがない場合はuser IDを使用
@@ -252,7 +222,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
         document.body.removeChild(textArea);
       }
       setUrlCopied(true);
-      console.log('✅ URLをコピーしました:', gameUrl);
 
       // 3秒後にリセット
       setTimeout(() => setUrlCopied(false), 3000);
@@ -380,7 +349,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           text: text,
           url: gameUrl,
         });
-        console.log('✅ ネイティブ共有成功');
         recordShare('native');
       } catch (error) {
         if ((error as Error).name !== 'AbortError') {
@@ -430,77 +398,6 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     flexDirection: 'column',
     overflow: 'hidden',
   };
-
-  const titleIconStyle: React.CSSProperties = {
-    fontSize: '96px',
-    marginBottom: '16px',
-    transform: animationStage >= 1 ? 'scale(1)' : 'scale(0)',
-    transition: 'transform 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
-  };
-
-  const titleTextStyle: React.CSSProperties = {
-    color: 'white',
-    fontSize: '60px',
-    fontWeight: 'bold',
-    marginBottom: '16px',
-    textAlign: 'center',
-    transform: animationStage >= 2 ? 'translateY(0)' : 'translateY(30px)',
-    opacity: animationStage >= 2 ? 1 : 0,
-    transition: 'all 0.5s ease-out',
-  };
-
-  const scoreCardStyle: React.CSSProperties = {
-    background: 'linear-gradient(135deg, rgba(88, 28, 135, 0.5) 0%, rgba(157, 23, 77, 0.5) 100%)',
-    backdropFilter: 'blur(10px)',
-    borderRadius: '32px',
-    padding: '32px',
-    marginBottom: '24px',
-    border: '2px solid rgba(168, 85, 247, 0.3)',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
-    transform: animationStage >= 3 ? 'translateY(0)' : 'translateY(30px)',
-    opacity: animationStage >= 3 ? 1 : 0,
-    transition: 'all 0.5s ease-out',
-  };
-
-  const scoreItemStyle: React.CSSProperties = {
-    textAlign: 'center',
-    transition: 'transform 0.3s ease',
-  };
-
-  const scoreLabelStyle: React.CSSProperties = {
-    color: '#d8b4fe',
-    fontSize: '20px',
-    marginBottom: '12px',
-    fontWeight: '600',
-  };
-
-  const scoreValueBoxStyle = (gradient: string): React.CSSProperties => ({
-    background: gradient,
-    borderRadius: '20px',
-    padding: '20px',
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
-  });
-
-  const scoreValueTextStyle: React.CSSProperties = {
-    color: 'white',
-    fontSize: '48px',
-    fontWeight: '900',
-    textShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-  };
-
-  const buttonStyle = (bgColor: string, hoverColor?: string): React.CSSProperties => ({
-    background: bgColor,
-    color: 'white',
-    fontSize: '24px',
-    fontWeight: 'bold',
-    padding: '24px',
-    borderRadius: '20px',
-    border: 'none',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
-    width: '100%',
-  });
 
   return (
     <div style={containerStyle}>

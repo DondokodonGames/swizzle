@@ -6,7 +6,7 @@
  * - Tailwind CSSクラス → 完全インラインスタイル + DESIGN_TOKENS
  */
 
-import React from 'react';
+
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';

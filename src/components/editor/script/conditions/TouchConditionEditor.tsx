@@ -31,7 +31,7 @@ export const TouchConditionEditor: React.FC<TouchConditionEditorProps> = ({
   project,
   onUpdate
 }) => {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<EditorStep>('touchType');
 
   // Get localized options（drag/swipe/flickは除外済み）

@@ -111,7 +111,7 @@ export const DragDropZone: React.FC<DragDropZoneProps> = ({
   style = {}
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isDragActive, setIsDragActive] = useState(false);
+  const [_isDragActive, setIsDragActive] = useState(false);
   const [processingFiles, setProcessingFiles] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 

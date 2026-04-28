@@ -51,11 +51,9 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   // ✅ 修正: 依存配列を空にして初回のみ実行
   useEffect(() => {
     const loadProjects = async () => {
-      console.log('[ProjectSelector] 🚀 Loading lightweight project metadata...');
       setIsLoading(true);
       try {
         const metadataList = await listProjectMetadata();
-        console.log(`[ProjectSelector] ✅ Loaded ${metadataList.length} project metadata`);
         setProjectMetadataList(metadataList);
         setFilteredProjects(metadataList);
       } catch (error) {
@@ -70,11 +68,9 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
   // ✅ プロジェクト一覧を再読み込みする関数（公開用）
   const reloadProjects = useCallback(async () => {
-    console.log('[ProjectSelector] 🔄 Reloading project list...');
     setIsLoading(true);
     try {
       const metadataList = await listProjectMetadata();
-      console.log(`[ProjectSelector] ✅ Reloaded ${metadataList.length} project metadata`);
       setProjectMetadataList(metadataList);
       setFilteredProjects(metadataList);
     } catch (error) {
@@ -113,11 +109,9 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
 
   // プロジェクト選択時: 詳細データ取得
   const handleProjectSelect = async (projectId: string) => {
-    console.log(`[ProjectSelector] 📂 Loading full project data for: ${projectId}`);
     setLoadingProjectId(projectId);
     try {
       const fullProject = await loadFullProject(projectId);
-      console.log(`[ProjectSelector] ✅ Full project loaded: ${fullProject.name}`);
       await onProjectSelect(fullProject);
     } catch (error) {
       console.error(`[ProjectSelector] ❌ Failed to load project:`, error);
@@ -167,8 +161,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       setImportFileName(file.name);
       setImportProgress(0);
 
-      console.log(`[ProjectSelector] 📥 Importing JSON file (${i + 1}/${total}):`, file.name, 'Size:', (file.size / 1024).toFixed(1), 'KB');
-
       try {
         const readFileWithProgress = (): Promise<string> => {
           return new Promise((resolve, reject) => {
@@ -196,7 +188,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
         await importProject(file);
         setImportProgress(100);
         successCount++;
-        console.log(`[ProjectSelector] ✅ Imported: ${file.name}`);
 
         // ファイル間の短いウェイト（最後のファイル以外）
         if (i < fileList.length - 1) {

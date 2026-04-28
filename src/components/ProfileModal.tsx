@@ -7,6 +7,7 @@ import { SocialService } from '../social/services/SocialService';
 import { supabase } from '../lib/supabase';
 import { SubscriptionManager } from './monetization/SubscriptionManager';
 import { DESIGN_TOKENS } from '../constants/DesignSystem';
+import { getErrorMessage } from '../utils/errorUtils';
 
 /**
  * URLが安全なプロトコルを使用しているか検証
@@ -159,9 +160,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
           isFollowing
         });
 
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('プロフィール取得エラー:', err);
-        setError(err.message || 'プロフィールの読み込みに失敗しました');
+        setError(getErrorMessage(err) || 'プロフィールの読み込みに失敗しました');
       } finally {
         setLoading(false);
       }
@@ -200,7 +201,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
 
     try {
       await supabase.auth.signOut();
-      console.log('✅ ログアウト成功');
       window.location.href = '/';
     } catch (err) {
       console.error('❌ ログアウトエラー:', err);

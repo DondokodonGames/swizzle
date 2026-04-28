@@ -93,10 +93,8 @@ export async function canCreateGame(): Promise<boolean> {
  * 注意: 通常はuser_gamesテーブルのINSERTトリガーで自動実行されるため不要
  * @deprecated 旧 user_credits テーブルモデル。現在はウォレットモデルのトリガーが自動処理。
  */
-export async function incrementGameCount(userId: string): Promise<void> {
+export async function incrementGameCount(_userId: string): Promise<void> {
   try {
-    const monthYear = getCurrentMonthYear();
-
     // user_creditsレコードを更新
     const { error } = await supabase.rpc('increment_game_count');
 

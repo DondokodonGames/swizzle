@@ -2,7 +2,7 @@
 // Phase 1-A: エラーハンドリング・復旧機能実装
 // 基準: 引継ぎプロンプト・確実性重視・ユーザーフレンドリー
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback} from 'react';
 import i18n from '../../i18n';
 import { useGameTheme } from '../../components/ui/GameThemeProvider';
 import { IconAlertTriangle, IconX } from '@tabler/icons-react';
@@ -113,7 +113,7 @@ export const useErrorHandling = () => {
 // エラー表示コンポーネント
 const ErrorDisplay: React.FC = () => {
   const { getActiveErrors, removeError, recoverError } = useErrorHandling();
-  const { currentTheme } = useGameTheme();
+  const { currentTheme: _currentTheme } = useGameTheme();
   const activeErrors = getActiveErrors();
 
   if (activeErrors.length === 0) {

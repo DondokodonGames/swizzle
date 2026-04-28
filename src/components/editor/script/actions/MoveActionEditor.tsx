@@ -50,7 +50,7 @@ export const MoveActionEditor: React.FC<MoveActionEditorProps> = ({
   onUpdate,
   onShowNotification
 }) => {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<EditorStep>('movementType');
   const [straightMode, setStraightMode] = useState<StraightMode>('direction');
 

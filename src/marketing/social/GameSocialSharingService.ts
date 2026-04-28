@@ -10,7 +10,7 @@
  */
 
 import { ContentGenerator } from '../content/ContentGenerator';
-import { GameInfo, ContentType, PostResult, Tweet, TikTokVideo } from '../types';
+import { GameInfo, ContentType, PostResult, TikTokVideo } from '../types';
 
 export interface ShareableGame {
   id: string;
@@ -45,12 +45,10 @@ export interface ShareContent {
 export class GameSocialSharingService {
   private contentGenerator: ContentGenerator;
   private baseUrl: string;
-  private dryRun: boolean;
 
   constructor() {
     this.contentGenerator = new ContentGenerator();
     this.baseUrl = process.env.VITE_APP_URL || 'https://playswizzle.com';
-    this.dryRun = process.env.MARKETING_DRY_RUN === 'true';
   }
 
   /**

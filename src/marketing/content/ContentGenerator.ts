@@ -129,7 +129,7 @@ URL: ${game.playUrl}
   /**
    * Instagram投稿を生成
    */
-  async generateInstagramPost(game: GameInfo, type: ContentType): Promise<InstagramPost> {
+  async generateInstagramPost(game: GameInfo, _type: ContentType): Promise<InstagramPost> {
     const prompt = `
 Instagramフィード投稿を作成してください。
 
@@ -171,7 +171,7 @@ URL: ${game.playUrl}
   /**
    * Instagramハッシュタグ生成（最大30個）
    */
-  async generateInstagramHashtags(game: GameInfo): Promise<string[]> {
+  async generateInstagramHashtags(_game: GameInfo): Promise<string[]> {
     const baseHashtags = [
       // ゲーム関連（10個）
       '#indiegame', '#mobilegame', '#webgame', '#gaming',

@@ -165,7 +165,7 @@ export const SocialIntegrationProvider: React.FC<SocialIntegrationProviderProps>
           loading: false
         }));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Auth initialization failed:', error);
       setState(prev => ({
         ...prev,
@@ -201,7 +201,7 @@ export const SocialIntegrationProvider: React.FC<SocialIntegrationProviderProps>
           loading: false
         }));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Auth sync failed:', error);
       setState(prev => ({
         ...prev,
@@ -268,7 +268,7 @@ export const SocialIntegrationProvider: React.FC<SocialIntegrationProviderProps>
       setState(prev => ({ ...prev, loading: false }));
       
       return savedGame.id;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to publish project to social:', error);
       setState(prev => ({
         ...prev,
@@ -290,7 +290,7 @@ export const SocialIntegrationProvider: React.FC<SocialIntegrationProviderProps>
         social_stats: stats,
         updated_at: new Date().toISOString()
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update project social stats:', error);
     }
   }, [state.socialEnabled, state.user]);
@@ -303,7 +303,7 @@ export const SocialIntegrationProvider: React.FC<SocialIntegrationProviderProps>
     try {
       await database.userGames.delete(projectId);
       setState(prev => ({ ...prev, loading: false }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to delete project from social:', error);
       setState(prev => ({
         ...prev,
@@ -338,7 +338,7 @@ export const SocialIntegrationProvider: React.FC<SocialIntegrationProviderProps>
         userGames,
         loading: false
       }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to refresh social data:', error);
       setState(prev => ({
         ...prev,

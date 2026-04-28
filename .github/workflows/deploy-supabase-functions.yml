@@ -27,6 +27,8 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
           supabase link --project-ref $SUPABASE_PROJECT_REF
+          # stripe-webhook は Stripe からの着信のため JWT が存在しない。
+          # 代わりに stripe.webhooks.constructEventAsync() で署名検証を実施。
           supabase functions deploy stripe-webhook --no-verify-jwt
           supabase functions deploy create-checkout-session
           supabase functions deploy create-customer-portal

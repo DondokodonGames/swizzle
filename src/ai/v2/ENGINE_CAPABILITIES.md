@@ -84,7 +84,7 @@
 | area | `'inside'/'outside'/'crossing'` | ✅ | 領域の内外 |
 | region | `{shape, x, y, width?, height?, radius?}` | ✅ | 判定領域（正規化座標） |
 
-**制限**: オブジェクト中心点のみ判定（バウンディングボックス全体ではない）。
+**制限**: オブジェクト中心点のみ判定（バウンディングボックス全体ではない）。毎フレーム評価のため、`outside → failure` のような即失敗トリガーへの使用は禁止（ゲーム開始直後に発火する）。
 
 ---
 
@@ -292,7 +292,8 @@ N個のオブジェクトにはN個のルールが必要。
 
 ## 物理（単体オブジェクト）
 - dynamic physics: 重力・空気抵抗・反発（キャンバス底面のみ）
-- applyImpulse / applyForce / setGravity / setPhysics
+- applyImpulse / applyForce / setPhysics
+- setGravity ← プレイヤー操作で重力方向を制御する用途はOK。「オブジェクトが自然落下するだけ」のゲームはNG
 
 ## エフェクト（視覚）
 - effect: scale / flash / shake / rotate

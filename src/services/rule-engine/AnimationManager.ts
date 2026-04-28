@@ -25,7 +25,7 @@ export class AnimationManager {
    * @param context - ゲーム実行コンテキスト
    * @param deltaTime - 前フレームからの経過時間（秒）
    */
-  updateAnimations(context: RuleExecutionContext, deltaTime: number): void {
+  updateAnimations(context: RuleExecutionContext, _deltaTime: number): void {
     const now = performance.now();
     
     context.objects.forEach((obj, id) => {

@@ -71,7 +71,7 @@ export const useNavigation = () => {
   }, []);
 
   const goHome = useCallback(() => {
-    setContext(prev => ({
+    setContext(_prev => ({
       currentState: 'home',
       project: null,
       canGoBack: false,

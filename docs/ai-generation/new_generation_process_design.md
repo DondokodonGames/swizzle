@@ -109,7 +109,8 @@
 3. **判定明確性**
    成功と失敗の基準が数値で明確
    - ✅ 「5個キャッチで成功、3個落としたら失敗」
-   - ❌ 「なんとなく終わる」「時間切れで終了」
+   - ❌ 「なんとなく終わる」「時間切れのみ（数値条件なし）」
+   - ⚠️ 時間切れは**補助条件**として可。数値条件との併用が必須
 
 4. **納得感**
    結果に対してプレイヤーが納得できる
@@ -144,8 +145,8 @@
   例: 「画面下部のキャラを左右スワイプで移動、リンゴの落下位置に合わせる」
 - successCondition: 成功条件（必ず数値を含む）
   例: 「リンゴを5個キャッチ」
-- failureCondition: 失敗条件（必ず数値を含む）
-  例: 「リンゴを3個落とす、または時間切れ」
+- failureCondition: 失敗条件（数値条件必須。時間切れは補助条件として可だが単体禁止）
+  例: 「リンゴを3個落とす、または時間切れ」（数値条件＋時間切れの併用 → ✅）
 
 ## 自己評価（各項目1-10点、全て7点以上必須）
 - goalClarity: 目標明確性
@@ -258,7 +259,6 @@ function validateConcept(concept: GameConcept): ValidationResult {
 **使用禁止（要検証のため）:**
 - position（動作不安定）
 - animation（要検証）
-- random（要検証）
 
 #### 使用可能なアクションタイプ
 
@@ -498,7 +498,7 @@ function validateLogic(output: LogicGeneratorOutput): LogicValidationResult {
   }
 
   // 6. 使用禁止機能チェック
-  const forbiddenConditions = ['position', 'animation', 'random'];
+  const forbiddenConditions = ['position', 'animation']; // random は使用可能
   const forbiddenActions = ['playSound', 'switchAnimation', 'applyForce', 'applyImpulse', 'randomAction'];
 
   for (const rule of output.script.rules) {
@@ -736,9 +736,9 @@ interface QualityScore {
 | collision | target: 'stageArea'/'other'/objectId, collisionType: 'enter'/'stay'/'exit', checkMode: 'hitbox'/'pixel' | ✅ |
 | flag | flagId, value | ✅ |
 | gameState | - | ✅ |
-| position | - | ⚠️禁止 |
+| position | target, area: 'inside'/'outside'/'crossing', region | ✅ ただし即失敗トリガー（outside→failure）への使用禁止 |
 | animation | - | ⚠️禁止 |
-| random | - | ⚠️禁止 |
+| random | probability: 0.0-1.0 | ✅ |
 
 ### アクションタイプ（✅のみ使用可）
 

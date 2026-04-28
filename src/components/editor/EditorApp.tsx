@@ -7,7 +7,7 @@ import { GameEditor } from './GameEditor';
 import { ProjectSelector } from './ProjectSelector';
 import { useGameProject } from '../../hooks/editor/useGameProject';
 import { useAuth } from '../../hooks/useAuth';
-import { DEFAULT_EDITOR_TABS, getProgressTabConfig } from './common/TabNavigation';
+import { getProgressTabConfig } from './common/TabNavigation';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 import { ModernButton } from '../ui/ModernButton';
 import { ModernCard } from '../ui/ModernCard';
@@ -16,6 +16,7 @@ import { ProjectStorageManager } from '../../services/ProjectStorageManager';
 import { useCredits } from '../../hooks/monetization/useCredits';
 import { usePaywall } from '../../hooks/monetization/usePaywall';
 import { PaywallModal } from '../monetization/PaywallModal';
+import { getErrorMessage } from '../../utils/errorUtils';
 
 type AppMode = 'selector' | 'editor' | 'testplay';
 
@@ -55,7 +56,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     error,
     hasUnsavedChanges,
     createProject,
-    loadProject,
+    loadProject: _loadProject,
     saveProject,
     saveMetadataOnly,
     updateProject,
@@ -84,12 +85,11 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   // ✅ プロジェクト選択（受け取ったprojectをそのまま使用）
   const handleProjectSelect = useCallback(async (project: GameProject) => {
     try {
-      console.log('[EditorApp] 📂 プロジェクト選択:', project.id, project.name);
       setCurrentProjectDirectly(project);
       setMode('editor');
       showNotification('success', t('editor.app.projectOpened', { name: project.name }));
-    } catch (error: any) {
-      showNotification('error', `${t('errors.projectLoadFailed')}: ${error.message}`);
+    } catch (error: unknown) {
+      showNotification('error', `${t('errors.projectLoadFailed')}: ${getErrorMessage(error)}`);
     }
   }, [setCurrentProjectDirectly, showNotification, t]);
 
@@ -100,11 +100,11 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
 
     try {
-      const newProject = await createProject(name);
+      await createProject(name);
       setMode('editor');
       showNotification('success', t('editor.app.projectCreated', { name }));
-    } catch (error: any) {
-      showNotification('error', `${t('errors.generic')}: ${error.message}`);
+    } catch (error: unknown) {
+      showNotification('error', `${t('errors.generic')}: ${getErrorMessage(error)}`);
     }
   }, [createProject, showNotification, t, canCreateGame, openPaywall]);
 
@@ -122,8 +122,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       const isLargeProject = projectSize > 5 * 1024 * 1024; // 5MB
 
       if (isLargeProject && !options?.metadataOnly) {
-        console.log('[EditorApp] ⚠️ Large project detected:', (projectSize / 1024 / 1024).toFixed(1), 'MB');
-        console.log('[EditorApp] 🚀 Using metadata-only save for faster performance');
         await saveMetadataOnly();
       } else if (options?.metadataOnly) {
         await saveMetadataOnly();
@@ -145,9 +143,9 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         }
       }));
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Save failed:', error);
-      showNotification('error', `${t('errors.projectSaveFailed')}: ${error.message}`);
+      showNotification('error', `${t('errors.projectSaveFailed')}: ${getErrorMessage(error)}`);
     }
   }, [currentProject, saveProject, saveMetadataOnly, getValidationErrors, updateProject, showNotification, t]);
 
@@ -191,8 +189,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         throw new Error(t('editor.app.testPlayScreenFailed'));
       }
 
-      console.log('✅ テストプレイ画面準備完了、ゲーム実行開始');
-
       await gameBridge.current.launchFullGame(
         currentProject,
         testPlayContainerRef.current,
@@ -225,10 +221,10 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           }));
         }
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('テストプレイエラー:', error);
       setIsTestPlaying(false);
-      showNotification('error', t('editor.app.testPlayFailed', { error: error.message }));
+      showNotification('error', t('editor.app.testPlayFailed', { error: getErrorMessage(error) }));
       setMode('editor');
     }
   }, [currentProject, getValidationErrors, updateProject, showNotification]);
@@ -302,26 +298,19 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       await saveProject();
 
       showNotification('success', t('editor.app.projectPublishedSuccess'));
-      
-      console.log('✅ Game published successfully:', {
-        projectId: publishedProject.id,
-        projectName: publishedProject.settings?.name || publishedProject.name,
-        userId: user.id,
-        publishedAt: publishedProject.settings.publishing.publishedAt,
-        isPublished: publishedProject.status === 'published'
-      });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Publish failed:', error);
 
       let errorMessage = t('editor.app.publishFailed');
+      const msg = getErrorMessage(error);
 
-      if (error.message?.includes('データベース保存に失敗')) {
+      if (msg.includes('データベース保存に失敗')) {
         errorMessage = t('editor.app.publishFailedNetwork');
-      } else if (error.message?.includes('認証')) {
+      } else if (msg.includes('認証')) {
         errorMessage = t('editor.app.publishFailedAuth');
-      } else if (error.message) {
-        errorMessage = t('editor.app.publishFailedWithError', { error: error.message });
+      } else if (msg) {
+        errorMessage = t('editor.app.publishFailedWithError', { error: msg });
       }
 
       showNotification('error', errorMessage);
@@ -399,8 +388,8 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     try {
       await deleteProject(projectId);
       showNotification('success', t('editor.app.projectDeleted'));
-    } catch (error: any) {
-      showNotification('error', t('editor.app.deleteFailed', { error: error.message }));
+    } catch (error: unknown) {
+      showNotification('error', t('editor.app.deleteFailed', { error: getErrorMessage(error) }));
     }
   }, [deleteProject, showNotification]);
 
@@ -410,12 +399,12 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       const newName = `${originalProject.name}${t('editor.app.copyOf')}`;
       const duplicated = await duplicateProject(projectId, newName);
       showNotification('success', t('editor.app.projectDuplicated', { name: duplicated.name }));
-    } catch (error: any) {
-      showNotification('error', t('editor.app.duplicateFailed', { error: error.message }));
+    } catch (error: unknown) {
+      showNotification('error', t('editor.app.duplicateFailed', { error: getErrorMessage(error) }));
     }
   }, [currentProject, duplicateProject, showNotification]);
 
-  const handleExport = useCallback(async (projectId: string) => {
+  const handleExport = useCallback(async (_projectId: string) => {
     try {
       if (currentProject) {
         const exportData = {
@@ -445,8 +434,8 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         
         showNotification('success', t('editor.app.projectExported'));
       }
-    } catch (error: any) {
-      showNotification('error', t('editor.app.exportFailedWithError', { error: error.message }));
+    } catch (error: unknown) {
+      showNotification('error', t('editor.app.exportFailedWithError', { error: getErrorMessage(error) }));
     }
   }, [currentProject, showNotification]);
 

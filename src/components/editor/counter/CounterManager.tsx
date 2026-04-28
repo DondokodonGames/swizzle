@@ -10,7 +10,6 @@ import {
   createCounterFromPreset, 
   createCounter,
   CounterCategory,
-  CounterFormat,
   formatCounterValue
 } from '../../../types/counterTypes';
 import { DESIGN_TOKENS } from '../../../constants/DesignSystem';

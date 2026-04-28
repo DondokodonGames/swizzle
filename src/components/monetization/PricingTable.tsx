@@ -3,7 +3,7 @@
  * モダンなプラン比較表コンポーネント
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { MVPPricingTableProps } from '../../types/MonetizationTypes';
 import {
   MVPSubscriptionPlan,

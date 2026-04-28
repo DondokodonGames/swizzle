@@ -257,7 +257,7 @@ export class GameCaptureService {
       const timestamp = Date.now();
       const filePath = `game-captures/${folder}/${gameId}/${timestamp}.${extension}`;
 
-      const { data, error } = await this.supabase.storage
+      const { data: _data, error } = await this.supabase.storage
         .from('assets')
         .upload(filePath, captureResult.blob, {
           contentType: captureResult.type === 'screenshot' ? 'image/png' : 'video/webm',

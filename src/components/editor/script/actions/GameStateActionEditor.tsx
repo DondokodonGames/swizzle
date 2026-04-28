@@ -54,7 +54,7 @@ export const GameStateActionEditor: React.FC<GameStateActionEditorProps> = ({
   onUpdate,
   onShowNotification
 }) => {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
 
   // 現在のアクション型を取得
   const currentType = action.type === 'success' || action.type === 'failure' || 

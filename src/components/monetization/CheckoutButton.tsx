@@ -19,7 +19,7 @@ import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 export function CheckoutButton({
   plan,
   billingCycle,
-  className = '',
+  className: _className = '',
   disabled = false,
   onSuccess,
   onError,

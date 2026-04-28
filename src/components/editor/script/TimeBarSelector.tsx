@@ -37,8 +37,8 @@ export const TimeBarSelector: React.FC<TimeBarSelectorProps> = ({
 }) => {
   const { t } = useTranslation();
   // ドラッグ状態管理
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragType, setDragType] = useState<'point' | 'start' | 'end' | null>(null);
+  const [isDragging, _setIsDragging] = useState(false);
+  const [_dragType, _setDragType] = useState<'point' | 'start' | 'end' | null>(null);
 
   // 時間→プログレスバー位置変換
   const timeToPosition = useCallback((time: number) => {

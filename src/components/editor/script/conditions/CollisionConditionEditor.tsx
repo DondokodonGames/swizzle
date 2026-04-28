@@ -27,7 +27,7 @@ export const CollisionConditionEditor: React.FC<CollisionConditionEditorProps> =
   project,
   onUpdate
 }) => {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<EditorStep>('collisionType');
 
   // ✅ Phase 3-2-2: 背景画像URL抽出

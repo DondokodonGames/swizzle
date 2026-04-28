@@ -26,7 +26,7 @@ export const TimeConditionEditor: React.FC<TimeConditionEditorProps> = ({
   onShowNotification,
   gameDuration = 30
 }) => {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
   const [currentStep, setCurrentStep] = useState<EditorStep>('timeType');
   const timeCondition = condition;
 

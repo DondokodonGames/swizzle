@@ -70,13 +70,13 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
   onProjectUpdate
 }) => {
   const { t } = useTranslation();
-  const { uploading, deleteAsset } = useAssetUpload(project, onProjectUpdate);
+  const { uploading, deleteAsset: _deleteAsset } = useAssetUpload(project, onProjectUpdate);
   const { showSuccess, showError } = useNotification();
   
   // アニメーション管理状態
   const [editingObjectId, setEditingObjectId] = useState<string | null>(null);
   const [animationPreviewIndex, setAnimationPreviewIndex] = useState<number>(0);
-  const [isPreviewPlaying, setIsPreviewPlaying] = useState<boolean>(false);
+  const [isPreviewPlaying, _setIsPreviewPlaying] = useState<boolean>(false);
   
   // 🔄 差し替え用の状態と参照（Phase 3-1-9: フレームインデックス追加）
   const [replacingObjectId, setReplacingObjectId] = useState<string | null>(null);
@@ -483,17 +483,6 @@ export const ObjectSection: React.FC<ObjectSectionProps> = ({
       setEditingObjectId(null);
     }
   }, [project, onProjectUpdate, editingObjectId, showSuccess, showError, t]);
-
-  // アニメーションプレビュー制御
-  const toggleAnimationPreview = useCallback((objectId: string) => {
-    if (isPreviewPlaying && editingObjectId === objectId) {
-      setIsPreviewPlaying(false);
-    } else {
-      setEditingObjectId(objectId);
-      setAnimationPreviewIndex(0);
-      setIsPreviewPlaying(true);
-    }
-  }, [isPreviewPlaying, editingObjectId]);
 
   // アニメーションプレビュー更新（簡易実装）
   React.useEffect(() => {

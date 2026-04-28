@@ -23,7 +23,7 @@ interface FileUploaderProps {
 
 const FileUploader: React.FC<FileUploaderProps> = ({
   accept,
-  maxSize,
+  maxSize: _maxSize,
   onUpload,
   disabled = false,
   className = '',
@@ -111,38 +111,6 @@ const getAudioInfo = (file: File): Promise<{
   });
 };
 
-// 音声波形を描画
-const drawWaveform = (canvas: HTMLCanvasElement, audioBuffer: AudioBuffer) => {
-  const ctx = canvas.getContext('2d')!;
-  const width = canvas.width;
-  const height = canvas.height;
-  
-  ctx.clearRect(0, 0, width, height);
-  
-  const data = audioBuffer.getChannelData(0);
-  const step = Math.ceil(data.length / width);
-  const amp = height / 2;
-  
-  ctx.fillStyle = '#6366f1';
-  ctx.beginPath();
-  
-  for (let i = 0; i < width; i++) {
-    let min = 1.0;
-    let max = -1.0;
-    
-    for (let j = 0; j < step; j++) {
-      const datum = data[i * step + j];
-      if (datum < min) min = datum;
-      if (datum > max) max = datum;
-    }
-    
-    const minY = (1 + min) * amp;
-    const maxY = (1 + max) * amp;
-    
-    ctx.fillRect(i, minY, 1, maxY - minY);
-  }
-};
-
 // 時間フォーマット (秒 → mm:ss)
 const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
@@ -170,7 +138,6 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
 
   // 🔧 修正箇所1: 音声容量計算（176-177行目）
   const getAudioSize = useCallback(() => {

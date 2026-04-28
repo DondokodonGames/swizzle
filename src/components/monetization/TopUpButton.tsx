@@ -3,7 +3,7 @@
  * チャージ（Top-up）ボタンコンポーネント
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TopUpOption } from '../../types/MonetizationTypes';
 import { redirectToTopUpCheckout } from '../../services/monetization/StripeService';

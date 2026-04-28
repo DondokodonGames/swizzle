@@ -11,7 +11,7 @@
 import { TwitterAutomation } from '../twitter/TwitterAutomation';
 import { TikTokAutomation } from '../tiktok/TikTokAutomation';
 import { GameSocialSharingService, ShareableGame } from './GameSocialSharingService';
-import { GameInfo, ContentType, PostResult } from '../types';
+import { GameInfo, PostResult } from '../types';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export interface PublishConfig {

@@ -1,13 +1,12 @@
 // src/services/rule-engine/RuleEngine.ts
 // ルールエンジン - 全モジュールを統括、公開API提供
 
-import { GameRule, TriggerCondition, GameAction, GameFlag, PhysicsProperties } from '../../types/editor/GameScript';
-import { GameCounter, CounterChangeEvent } from '../../types/counterTypes';
-import { 
-  RuleExecutionContext, 
-  GameObject, 
-  RuleEvaluationResult, 
-  ActionExecutionResult 
+import { GameRule, GameFlag } from '../../types/editor/GameScript';
+import { GameCounter } from '../../types/counterTypes';
+import {
+  RuleExecutionContext,
+  RuleEvaluationResult,
+  ActionExecutionResult
 } from './types';
 
 // 外部モジュールで使用するために型をre-export

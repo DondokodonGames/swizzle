@@ -4,7 +4,7 @@
  */
 
 import { ContentGenerator } from '../content/ContentGenerator';
-import { GameInfo, ContentType, InstagramPost, PostResult } from '../types';
+import { GameInfo, ContentType, PostResult } from '../types';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export class InstagramAutomation {

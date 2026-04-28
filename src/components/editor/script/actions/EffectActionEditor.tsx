@@ -6,7 +6,6 @@
 import React, { useState, useMemo } from 'react';
 import { GameAction, EffectPattern } from '../../../../types/editor/GameScript';
 import { GameProject } from '../../../../types/editor/GameProject';
-import { ObjectAsset } from '../../../../types/editor/ProjectAssets';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
 import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
@@ -71,7 +70,7 @@ const EFFECT_TYPE_OPTIONS = [
 
 export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
   action,
-  project,
+  project: _project,
   index,
   onUpdate,
   onShowNotification
@@ -79,17 +78,6 @@ export const EffectActionEditor: React.FC<EffectActionEditorProps> = ({
   const [currentStep, setCurrentStep] = useState<EditorStep>('effectType');
 
   // オブジェクトリスト取得
-  const objects = useMemo(() => {
-    return project.assets.objects || [];
-  }, [project.assets.objects]);
-
-  // 選択中のオブジェクト
-  const selectedObject = useMemo(() => {
-    if (action.type !== 'effect') return null;
-    if (!action.targetId) return null;
-    return objects.find((obj: ObjectAsset) => obj.id === action.targetId) || null;
-  }, [action, objects, objects.length]);
-
   // 現在のエフェクトタイプ
   const currentEffectType: EffectType = action.type === 'effect' && action.effect?.type
     ? action.effect.type as EffectType
