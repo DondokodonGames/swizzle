@@ -31,13 +31,17 @@ export class AnthropicProvider implements ILLMProvider {
       content: m.content
     }));
 
-    const response = await this.client.messages.create({
+    const params = {
       model: options?.model || this.defaultModel,
       max_tokens: options?.maxTokens || 32768,
       temperature: options?.temperature,
       system: systemMessages.length > 0 ? systemMessages.map(m => m.content).join('\n\n') : undefined,
       messages: anthropicMessages
-    });
+    };
+
+    // ストリーミングで取得（高max_tokensでも10分制限エラーを回避）
+    const stream = await this.client.messages.stream(params);
+    const response = await stream.finalMessage();
 
     // レスポンスからテキストを抽出
     const textContent = response.content.find((block: { type: string }) => block.type === 'text');
