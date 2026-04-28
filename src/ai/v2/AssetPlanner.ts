@@ -404,7 +404,7 @@ export class AssetPlanner {
 
     const response = await this.llmProvider.chat(
       [{ role: 'user', content: prompt }],
-      { maxTokens: 8192, model: this.config.model }
+      { model: this.config.model }
     );
 
     this.tokensUsed = (response.usage?.inputTokens || 0) + (response.usage?.outputTokens || 0);

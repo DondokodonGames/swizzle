@@ -33,7 +33,7 @@ export class AnthropicProvider implements ILLMProvider {
 
     const response = await this.client.messages.create({
       model: options?.model || this.defaultModel,
-      max_tokens: options?.maxTokens || 4096,
+      max_tokens: options?.maxTokens || 16384,
       temperature: options?.temperature,
       system: systemMessages.length > 0 ? systemMessages.map(m => m.content).join('\n\n') : undefined,
       messages: anthropicMessages

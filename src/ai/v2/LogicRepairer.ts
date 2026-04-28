@@ -867,7 +867,7 @@ export class LogicRepairer {
         const repairPrompt = this.buildPartialRepairPrompt(output, complexErrors, concept, spec);
         const response = await this.llmProvider.chat(
           [{ role: 'user', content: repairPrompt }],
-          { maxTokens: 4000 }
+          {}
         );
 
         const repairedRules = this.parseRepairedRules(response.content);
