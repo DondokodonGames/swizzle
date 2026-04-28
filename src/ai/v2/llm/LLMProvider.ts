@@ -54,7 +54,7 @@ export interface ILLMProvider {
  * デフォルトのモデル設定
  */
 export const DEFAULT_MODELS = {
-  anthropic: 'claude-sonnet-4-20250514',
+  anthropic: 'claude-sonnet-4-6',
   openai: 'gpt-4o'
 } as const;
 
