@@ -518,12 +518,15 @@ ${archetype.examples.map(e => `- ${e}`).join('\n')}
 
     const response = await this.llmProvider.chat(
       [{ role: 'user', content: prompt }],
-      { maxTokens: 2048, model: this.config.model }
+      { maxTokens: 4096, model: this.config.model }
     );
 
     const concept = robustParseJSON<GameConcept>(response.content);
 
     // スコアチェック
+    if (!concept.selfEvaluation) {
+      throw new Error('selfEvaluation is missing from concept response (likely truncated)');
+    }
     const { goalClarity, operationClarity, judgmentClarity, acceptance } = concept.selfEvaluation;
     const allAboveMin = [goalClarity, operationClarity, judgmentClarity, acceptance]
       .every(score => score >= this.config.minScore);
@@ -675,11 +678,14 @@ JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n
 
     const response = await this.llmProvider.chat(
       [{ role: 'user', content: prompt }],
-      { maxTokens: 2048, model: this.config.model }
+      { maxTokens: 4096, model: this.config.model }
     );
 
     const concept = robustParseJSON<GameConcept>(response.content);
 
+    if (!concept.selfEvaluation) {
+      throw new Error('selfEvaluation is missing from concept response (likely truncated)');
+    }
     const { goalClarity, operationClarity, judgmentClarity, acceptance } = concept.selfEvaluation;
     const allAboveMin = [goalClarity, operationClarity, judgmentClarity, acceptance]
       .every(score => score >= this.config.minScore);
