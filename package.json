@@ -51,7 +51,9 @@
     "ai:neta:gen:5": "tsx src/ai/v2/generate-neta.ts 5",
     "ai:neta:gen:all": "tsx src/ai/v2/generate-neta.ts --all",
     "ai:neta:gen:status": "tsx src/ai/v2/generate-neta.ts --status",
-    "ai:neta:gen:commit": "tsx src/ai/v2/generate-neta.ts --commit"
+    "ai:neta:gen:commit": "tsx src/ai/v2/generate-neta.ts --commit",
+    "ai:build-neta-all": "tsx src/ai/batch/build-neta-all.ts",
+    "ai:build-templates": "tsx src/ai/v2/run-build-templates.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
