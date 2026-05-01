@@ -1,0 +1,108 @@
+{
+  "_comment": "手作り品質基準ゲーム: neta #1 連打でポケモン捕まえる (CounterTap パターン)",
+  "_mechanic": "tap_counter",
+  "_netaId": 1,
+  "script": {
+    "layout": {
+      "objects": [
+        {
+          "objectId": "obj_ball",
+          "position": { "x": 0.5, "y": 0.5 },
+          "scale": { "x": 1.0, "y": 1.0 }
+        }
+      ]
+    },
+    "counters": [
+      {
+        "id": "tapCount",
+        "name": "tapCount",
+        "initialValue": 0
+      }
+    ],
+    "rules": [
+      {
+        "id": "rule_tap_ball",
+        "name": "ボールタップ",
+        "targetObjectId": "obj_ball",
+        "priority": 10,
+        "triggers": {
+          "operator": "AND",
+          "conditions": [
+            { "type": "touch", "target": "self", "touchType": "down" }
+          ]
+        },
+        "actions": [
+          { "type": "counter", "operation": "increment", "counterName": "tapCount" },
+          { "type": "effect", "targetId": "obj_ball", "effect": { "type": "scale", "duration": 0.1, "intensity": 0.5, "scaleAmount": 1.3 } },
+          { "type": "playSound", "soundId": "se_tap" }
+        ]
+      },
+      {
+        "id": "rule_success",
+        "name": "30回達成で成功",
+        "priority": 20,
+        "triggers": {
+          "operator": "AND",
+          "conditions": [
+            { "type": "counter", "counterName": "tapCount", "comparison": "greaterOrEqual", "value": 30 }
+          ]
+        },
+        "actions": [
+          { "type": "effect", "targetId": "obj_ball", "effect": { "type": "particles", "duration": 1.0, "intensity": 1.0, "particleType": "star", "particleCount": 20 } },
+          { "type": "playSound", "soundId": "se_success" },
+          { "type": "success", "score": 100, "message": "ゲットだぜ！" }
+        ]
+      },
+      {
+        "id": "rule_timeout",
+        "name": "時間切れで失敗",
+        "priority": 5,
+        "triggers": {
+          "operator": "AND",
+          "conditions": [
+            { "type": "time", "timeType": "exact", "seconds": 10 }
+          ]
+        },
+        "actions": [
+          { "type": "playSound", "soundId": "se_failure" },
+          { "type": "failure", "message": "逃げられた！" }
+        ]
+      }
+    ]
+  },
+  "assetPlan": {
+    "objects": [
+      {
+        "id": "obj_ball",
+        "name": "モンスターボール",
+        "purpose": "プレイヤーがタップするメインターゲット",
+        "visualDescription": "赤白のモンスターボール。上半分赤、下半分白、中央に黒いライン。円形100×100px。",
+        "initialPosition": { "x": 0.5, "y": 0.5 },
+        "size": "medium"
+      }
+    ],
+    "background": {
+      "description": "草原の背景。緑の芝生と青空。",
+      "mood": "energetic"
+    },
+    "sounds": [
+      { "id": "se_tap",     "trigger": "タップ時", "type": "tap" },
+      { "id": "se_success", "trigger": "成功時",   "type": "success" },
+      { "id": "se_failure", "trigger": "失敗時",   "type": "failure" }
+    ],
+    "bgm": {
+      "id": "bgm_main",
+      "description": "アクションBGM",
+      "mood": "energetic"
+    }
+  },
+  "_qualityNotes": {
+    "pattern": "CounterTap",
+    "targetCount": 30,
+    "duration": 10,
+    "tapTarget": "obj_ball",
+    "successTrigger": "tapCount >= 30",
+    "failureTrigger": "time == 10s",
+    "validated": false
+  }
+}
