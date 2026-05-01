@@ -53,7 +53,10 @@
     "ai:neta:gen:status": "tsx src/ai/v2/generate-neta.ts --status",
     "ai:neta:gen:commit": "tsx src/ai/v2/generate-neta.ts --commit",
     "ai:build-neta-all": "tsx src/ai/batch/build-neta-all.ts",
-    "ai:build-templates": "tsx src/ai/v2/run-build-templates.ts"
+    "ai:build-templates": "tsx src/ai/v2/run-build-templates.ts",
+    "ai:produce-games": "tsx src/ai/v2/run-produce-games.ts",
+    "ai:produce-games:dry": "DRY_RUN=true tsx src/ai/v2/run-produce-games.ts",
+    "ai:produce-games:mock": "IMAGE_PROVIDER=mock SKIP_UPLOAD=true tsx src/ai/v2/run-produce-games.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
