@@ -72,7 +72,8 @@
           "format": "wav",
           "uploadedAt": "2026-05-01T21:27:02.378Z",
           "volume": 1,
-          "loop": true
+          "loop": true,
+          "autoPlay": true
         },
         "se": [
           {
@@ -153,7 +154,11 @@
           }
         },
         "audio": {
-          "bgm": null,
+          "bgm": {
+            "id": "bgm_main",
+            "volume": 0.7,
+            "autoPlay": true
+          },
           "masterVolume": 0.7,
           "seVolume": 0.8
         },
