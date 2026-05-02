@@ -75,38 +75,17 @@ export function useSubscription(): UseSubscriptionResult {
    * リアルタイム更新を設定
    */
   useEffect(() => {
-    const {
-      data: { subscription: authSubscription },
-    } = supabase.auth.onAuthStateChange((event, _session) => {
-      // SIGNED_IN時のみ取得（TOKEN_REFRESHEDはトークン更新のみなのでスキップ）
-      if (event === 'SIGNED_IN') {
-        fetchSubscription();
-      } else if (event === 'SIGNED_OUT') {
-        setSubscription(null);
-      }
-    });
-
     // Supabase Realtimeでサブスクリプションテーブルの変更を監視
     const channel = supabase
       .channel('subscription-changes')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'subscriptions',
-        },
-        (payload) => {
-          console.log('Subscription changed:', payload);
-          fetchSubscription();
-        }
+        { event: '*', schema: 'public', table: 'subscriptions' },
+        () => { fetchSubscription(); }
       )
       .subscribe();
 
-    return () => {
-      authSubscription?.unsubscribe();
-      channel.unsubscribe();
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [fetchSubscription]);
 
   /**

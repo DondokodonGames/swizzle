@@ -372,56 +372,22 @@ export const SocialIntegrationProvider: React.FC<SocialIntegrationProviderProps>
     }
   }, [enableSocial]);
 
-  // 認証初期化
+  // 認証初期化 — currentUser が既に渡されている場合はスキップ（二重 getUser() 防止）
   useEffect(() => {
-    if (state.socialEnabled) {
+    if (state.socialEnabled && !currentUser) {
       initializeAuth();
     }
-  }, [state.socialEnabled, initializeAuth]);
+  }, [state.socialEnabled, initializeAuth, currentUser]);
 
   // App.tsx からの認証ユーザー同期
   useEffect(() => {
-    if (currentUser && state.socialEnabled) {
+    if (!state.socialEnabled) return;
+    if (currentUser) {
       syncAuthState(currentUser);
+    } else {
+      setState(prev => ({ ...prev, user: null, profile: null, isAuthenticated: false }));
     }
   }, [currentUser, syncAuthState, state.socialEnabled]);
-
-  // Supabase認証状態変更監視
-  useEffect(() => {
-    if (!state.socialEnabled) return;
-
-    const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
-      console.log('Supabase auth state changed:', event, session?.user?.id);
-
-      // TOKEN_REFRESHED はトークン更新のみなので、DBクエリをスキップ
-      if (event === 'TOKEN_REFRESHED') {
-        if (session?.user) {
-          setState(prev => ({
-            ...prev,
-            user: session.user,
-            // profile は既存のものを維持（DB呼び出し不要）
-          }));
-        }
-        return;
-      }
-
-      if (session?.user) {
-        // 🚀 awaitを削除して非同期実行（auth.signIn()をブロックしない）
-        syncAuthState(session.user);
-      } else {
-        setState(prev => ({
-          ...prev,
-          user: null,
-          profile: null,
-          isAuthenticated: false
-        }));
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [syncAuthState, state.socialEnabled]);
 
   // ---------------------------------------------------------------------------
   // Context値作成

@@ -72,8 +72,7 @@
           "format": "wav",
           "uploadedAt": "2026-05-01T21:27:02.378Z",
           "volume": 1,
-          "loop": true,
-          "autoPlay": true
+          "loop": true
         },
         "se": [
           {
@@ -88,6 +87,33 @@
             "volume": 1,
             "loop": false
           },
+          "flags": {},
+          "variables": {}
+        },
+        "audio": {
+          "bgm": {
+            "id": "bgm_main",
+            "volume": 0.7,
+            "autoPlay": true
+          },
+          "seVolume": 0.8
+        },
+        "autoRules": true,
+        "metadata": {
+          "startTime": null,
+          "frameCount": 0,
+          "lastUpdated": null
+        }
+      },
+      "layout": {
+        "background": {
+          "assetId": "bg_main",
+          "visible": true,
+          "initialAnimation": 0,
+          "animationSpeed": 10,
+          "autoStart": true
+        },
+        "objects": [
           {
             "id": "se_success",
             "name": "se_success",
@@ -137,76 +163,36 @@
     "script": {
       "initialState": {
         "layout": {
-          "objects": [
-            {
-              "objectId": "obj_pokemon",
-              "position": {
-                "x": 0.5,
-                "y": 0.25
-              },
-              "scale": {
-                "x": 1,
-                "y": 1
-              },
-              "rotation": 0,
-              "visible": true,
-              "frameIndex": 0
-            },
-            {
-              "objectId": "obj_ball",
-              "position": {
-                "x": 0.5,
-                "y": 0.52
-              },
-              "scale": {
-                "x": 1,
-                "y": 1
-              },
-              "rotation": 0,
-              "visible": true,
-              "frameIndex": 0
-            },
-            {
-              "objectId": "obj_button",
-              "position": {
-                "x": 0.5,
-                "y": 0.82
-              },
-              "scale": {
-                "x": 1,
-                "y": 1
-              },
-              "rotation": 0,
-              "visible": true,
-              "frameIndex": 0
-            }
-          ]
+          "background": {
+            "visible": true,
+            "frameIndex": 0,
+            "animationSpeed": 10,
+            "autoStart": false
+          },
+          "objects": [],
+          "texts": []
         },
         "gameState": {
+          "score": 0,
+          "flags": {},
           "counters": {
             "tapCount": 0
-          },
-          "flags": {},
-          "variables": {}
+          }
         },
         "audio": {
-          "bgm": {
-            "id": "bgm_main",
-            "volume": 0.7,
-            "autoPlay": true
-          },
+          "bgm": null,
+          "masterVolume": 0.7,
           "seVolume": 0.8
         },
-        "autoRules": true,
+        "autoRules": [],
         "metadata": {
-          "startTime": null,
-          "frameCount": 0,
-          "lastUpdated": null
+          "version": "1.0.0",
+          "createdAt": "2026-05-02T09:34:50.941021Z",
+          "lastModified": "2026-05-02T09:34:50.941021Z"
         }
       },
       "layout": {
         "background": {
-          "assetId": "bg_main",
           "visible": true,
           "initialAnimation": 0,
           "animationSpeed": 10,
@@ -214,55 +200,17 @@
         },
         "objects": [
           {
-            "objectId": "obj_pokemon",
-            "position": {
-              "x": 0.5,
-              "y": 0.25
-            },
-            "scale": {
-              "x": 1,
-              "y": 1
-            },
-            "rotation": 0,
-            "zIndex": 2,
-            "initialState": {
-              "visible": true,
-              "animation": 0,
-              "animationSpeed": 10,
-              "autoStart": true
-            }
-          },
-          {
             "objectId": "obj_ball",
             "position": {
               "x": 0.5,
-              "y": 0.52
+              "y": 0.5
             },
             "scale": {
               "x": 1,
               "y": 1
             },
             "rotation": 0,
-            "zIndex": 3,
-            "initialState": {
-              "visible": true,
-              "animation": 0,
-              "animationSpeed": 10,
-              "autoStart": true
-            }
-          },
-          {
-            "objectId": "obj_button",
-            "position": {
-              "x": 0.5,
-              "y": 0.82
-            },
-            "scale": {
-              "x": 1,
-              "y": 1
-            },
-            "rotation": 0,
-            "zIndex": 4,
+            "zIndex": 1,
             "initialState": {
               "visible": true,
               "animation": 0,
@@ -271,40 +219,7 @@
             }
           }
         ],
-        "texts": [
-          {
-            "id": "text_counter",
-            "content": "連打: {tapCount}/30",
-            "position": {
-              "x": 0.5,
-              "y": 0.12
-            },
-            "style": {
-              "fontSize": 24,
-              "fontFamily": "monospace",
-              "color": "#FFFFFF",
-              "fontWeight": "bold",
-              "textShadow": "2px 2px 4px rgba(0,0,0,0.8)"
-            },
-            "visible": true
-          },
-          {
-            "id": "text_timer",
-            "content": "残り: {timeRemaining}秒",
-            "position": {
-              "x": 0.5,
-              "y": 0.07
-            },
-            "style": {
-              "fontSize": 20,
-              "fontFamily": "monospace",
-              "color": "#FFEB3B",
-              "fontWeight": "bold",
-              "textShadow": "2px 2px 4px rgba(0,0,0,0.8)"
-            },
-            "visible": true
-          }
-        ],
+        "texts": [],
         "stage": {
           "backgroundColor": "#87CEEB"
         }
@@ -323,11 +238,11 @@
       "flags": [],
       "rules": [
         {
-          "id": "rule_tap_button",
-          "name": "ボタン連打",
+          "id": "rule_tap_ball",
+          "name": "ボールタップ",
           "enabled": true,
           "priority": 10,
-          "targetObjectId": "obj_button",
+          "targetObjectId": "obj_ball",
           "triggers": {
             "operator": "AND",
             "conditions": [
@@ -345,38 +260,26 @@
               "counterName": "tapCount"
             },
             {
-              "type": "playSound",
-              "soundId": "se_tap"
-            },
-            {
-              "type": "effect",
-              "targetId": "obj_button",
-              "effect": {
-                "type": "scale",
-                "scaleX": 0.92,
-                "scaleY": 0.92,
-                "duration": 0.08,
-                "easing": "linear"
-              }
-            },
-            {
               "type": "effect",
               "targetId": "obj_ball",
               "effect": {
                 "type": "scale",
-                "scaleX": 1.12,
-                "scaleY": 1.12,
                 "duration": 0.1,
-                "easing": "easeOut"
+                "intensity": 0.5,
+                "scaleAmount": 1.3
               }
+            },
+            {
+              "type": "playSound",
+              "soundId": "se_tap"
             }
           ],
-          "createdAt": "2026-05-02T10:00:00.000Z",
-          "lastModified": "2026-05-02T10:00:00.000Z"
+          "createdAt": "2026-05-01T21:27:02.378Z",
+          "lastModified": "2026-05-01T21:27:02.378Z"
         },
         {
           "id": "rule_success",
-          "name": "30回達成で成功（ゲット！）",
+          "name": "30回達成で成功",
           "enabled": true,
           "priority": 20,
           "targetObjectId": "stage",
@@ -393,41 +296,28 @@
           },
           "actions": [
             {
-              "type": "animateTo",
+              "type": "effect",
               "targetId": "obj_ball",
-              "position": {
-                "x": 0.5,
-                "y": 0.25
-              },
-              "duration": 0.4,
-              "easing": "easeIn"
-            },
-            {
-              "type": "changeFrame",
-              "targetId": "obj_ball",
-              "frameIndex": 1
+              "effect": {
+                "type": "particles",
+                "duration": 1,
+                "intensity": 1,
+                "particleType": "star",
+                "particleCount": 20
+              }
             },
             {
               "type": "playSound",
               "soundId": "se_success"
             },
             {
-              "type": "effect",
-              "targetId": "obj_pokemon",
-              "effect": {
-                "type": "particles",
-                "duration": 1,
-                "intensity": 1,
-                "particleType": "stars"
-              }
-            },
-            {
               "type": "success",
+              "score": 100,
               "message": "ゲットだぜ！"
             }
           ],
-          "createdAt": "2026-05-02T10:00:00.000Z",
-          "lastModified": "2026-05-02T10:00:00.000Z"
+          "createdAt": "2026-05-01T21:27:02.378Z",
+          "lastModified": "2026-05-01T21:27:02.378Z"
         },
         {
           "id": "rule_timeout",
@@ -447,16 +337,6 @@
           },
           "actions": [
             {
-              "type": "changeFrame",
-              "targetId": "obj_ball",
-              "frameIndex": 1
-            },
-            {
-              "type": "changeFrame",
-              "targetId": "obj_pokemon",
-              "frameIndex": 1
-            },
-            {
               "type": "playSound",
               "soundId": "se_failure"
             },
@@ -465,249 +345,46 @@
               "message": "逃げられた！"
             }
           ],
-          "createdAt": "2026-05-02T10:00:00.000Z",
-          "lastModified": "2026-05-02T10:00:00.000Z"
+          "createdAt": "2026-05-01T21:27:02.378Z",
+          "lastModified": "2026-05-01T21:27:02.378Z"
         }
       ],
       "successConditions": [],
       "statistics": {
         "totalRules": 3,
-        "totalConditions": 4,
-        "totalActions": 13,
-        "complexityScore": 35,
+        "totalConditions": 0,
+        "totalActions": 0,
+        "complexityScore": 0,
         "usedTriggerTypes": [
           "touch",
-          "counter",
           "time"
         ],
         "usedActionTypes": [
           "counter",
           "playSound",
-          "effect",
-          "animateTo",
-          "changeFrame",
           "success",
           "failure"
         ],
         "flagCount": 0,
         "estimatedCPUUsage": "low",
-        "estimatedMemoryUsage": "low",
-        "hasPhysics": false,
-        "hasParticles": true,
-        "hasAudio": true,
-        "objectCount": 3,
-        "assetCount": 10
+        "estimatedMemoryUsage": 0,
+        "maxConcurrentEffects": 1,
+        "counterCount": 1,
+        "usedCounterOperations": [
+          "increment"
+        ],
+        "usedCounterComparisons": [
+          "greaterEqual"
+        ],
+        "randomConditionCount": 0,
+        "randomActionCount": 0,
+        "totalRandomChoices": 0,
+        "averageRandomProbability": 0,
+        "randomEventsPerSecond": 0,
+        "randomMemoryUsage": 0
       },
       "version": "1.0.0",
-      "lastModified": "2026-05-01T21:27:02.378Z",
-      "assets": {
-        "bg_main": {
-          "id": "bg_main",
-          "type": "image",
-          "name": "バトル背景",
-          "data": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNjAwIiB2aWV3Qm94PSIwIDAgNDAwIDYwMCI+CiAgPCEtLSBTa3kgZ3JhZGllbnQgLS0+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9InNreSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojNEE5MEQ5Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6Izg3Q0VFQiIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZ3JvdW5kIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiM3RUM4NTAiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojNEE4QjJBIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJwbGF0Zm9ybSIgeDE9IjAlIiB5MT0iMCUiIHgyPSIwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojRDRBODQzIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6I0EwNzAzMCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPCEtLSBTa3kgLS0+CiAgPHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSI2MDAiIGZpbGw9InVybCgjc2t5KSIvPgogIDwhLS0gR3JvdW5kIC0tPgogIDxyZWN0IHk9IjM4MCIgd2lkdGg9IjQwMCIgaGVpZ2h0PSIyMjAiIGZpbGw9InVybCgjZ3JvdW5kKSIvPgogIDwhLS0gUG9rZW1vbiBwbGF0Zm9ybSAoZWxldmF0ZWQpIC0tPgogIDxlbGxpcHNlIGN4PSIxMjAiIGN5PSIyODAiIHJ4PSI4MCIgcnk9IjIwIiBmaWxsPSJ1cmwoI3BsYXRmb3JtKSIgb3BhY2l0eT0iMC45Ii8+CiAgPCEtLSBQbGF5ZXIgcGxhdGZvcm0gLS0+CiAgPGVsbGlwc2UgY3g9IjI4MCIgY3k9IjQyMCIgcng9IjgwIiByeT0iMjAiIGZpbGw9InVybCgjcGxhdGZvcm0pIiBvcGFjaXR5PSIwLjkiLz4KICA8IS0tIENsb3VkcyAtLT4KICA8ZWxsaXBzZSBjeD0iODAiIGN5PSI4MCIgcng9IjQwIiByeT0iMjAiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjgiLz4KICA8ZWxsaXBzZSBjeD0iMTEwIiBjeT0iNzAiIHJ4PSIzNSIgcnk9IjIyIiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC44Ii8+CiAgPGVsbGlwc2UgY3g9IjYwIiBjeT0iNzUiIHJ4PSIzMCIgcnk9IjE4IiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC44Ii8+CiAgPGVsbGlwc2UgY3g9IjMwMCIgY3k9IjEwMCIgcng9IjQ1IiByeT0iMjAiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjgiLz4KICA8ZWxsaXBzZSBjeD0iMzMwIiBjeT0iOTAiIHJ4PSIzOCIgcnk9IjIyIiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC44Ii8+CiAgPGVsbGlwc2UgY3g9IjI3NSIgY3k9Ijk1IiByeD0iMzIiIHJ5PSIxOCIgZmlsbD0id2hpdGUiIG9wYWNpdHk9IjAuOCIvPgogIDwhLS0gSFAgYmFycyBVSSBlbGVtZW50IGhpbnQgLS0+CiAgPHJlY3QgeD0iMjAiIHk9IjMwIiB3aWR0aD0iMTYwIiBoZWlnaHQ9IjYwIiByeD0iOCIgZmlsbD0id2hpdGUiIG9wYWNpdHk9IjAuOSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiLz4KICA8dGV4dCB4PSIzMCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJtb25vc3BhY2UiIGZvbnQtc2l6ZT0iMTQiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjMzMzIj5XaWxkIFBva2Vtb24hPC90ZXh0PgogIDxyZWN0IHg9IjMwIiB5PSI2MiIgd2lkdGg9IjEzMCIgaGVpZ2h0PSIxMiIgcng9IjYiIGZpbGw9IiNkZGQiLz4KICA8cmVjdCB4PSIzMCIgeT0iNjIiIHdpZHRoPSIxMDAiIGhlaWdodD0iMTIiIHJ4PSI2IiBmaWxsPSIjNENBRjUwIi8+CiAgPCEtLSBUcmVlcyBpbiBiYWNrZ3JvdW5kIC0tPgogIDxjaXJjbGUgY3g9IjM1MCIgY3k9IjMwMCIgcj0iMzUiIGZpbGw9IiMyRTdEMzIiLz4KICA8cmVjdCB4PSIzNDIiIHk9IjMyNSIgd2lkdGg9IjE2IiBoZWlnaHQ9IjMwIiBmaWxsPSIjNUQ0MDM3Ii8+CiAgPGNpcmNsZSBjeD0iNDAiIGN5PSIzMjAiIHI9IjMwIiBmaWxsPSIjMkU3RDMyIi8+CiAgPHJlY3QgeD0iMzMiIHk9IjM0MiIgd2lkdGg9IjE0IiBoZWlnaHQ9IjI1IiBmaWxsPSIjNUQ0MDM3Ii8+Cjwvc3ZnPg==",
-          "width": 400,
-          "height": 600
-        },
-        "img_pokemon_normal": {
-          "id": "img_pokemon_normal",
-          "type": "image",
-          "name": "ポケモン通常",
-          "data": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAiIGhlaWdodD0iMTYwIiB2aWV3Qm94PSIwIDAgMTYwIDE2MCI+CiAgPCEtLSBQb2tlbW9uIGJvZHkgLSBjdXRlIGdyZWVuIGNhdGVycGlsbGFyL2J1ZyBzdHlsZSAtLT4KICA8IS0tIE1haW4gYm9keSBzZWdtZW50cyAtLT4KICA8Y2lyY2xlIGN4PSI4MCIgY3k9Ijk1IiByPSIzOCIgZmlsbD0iIzRDQUY1MCIvPgogIDxjaXJjbGUgY3g9IjgwIiBjeT0iOTUiIHI9IjM0IiBmaWxsPSIjNjZCQjZBIi8+CiAgPCEtLSBCb2R5IHNlZ21lbnRzIC0tPgogIDxlbGxpcHNlIGN4PSI1MCIgY3k9IjEwNSIgcng9IjIwIiByeT0iMTgiIGZpbGw9IiM0Q0FGNTAiLz4KICA8ZWxsaXBzZSBjeD0iNTAiIGN5PSIxMDUiIHJ4PSIxNiIgcnk9IjE0IiBmaWxsPSIjNjZCQjZBIi8+CiAgPGVsbGlwc2UgY3g9IjExMCIgY3k9IjEwNSIgcng9IjIwIiByeT0iMTgiIGZpbGw9IiM0Q0FGNTAiLz4KICA8ZWxsaXBzZSBjeD0iMTEwIiBjeT0iMTA1IiByeD0iMTYiIHJ5PSIxNCIgZmlsbD0iIzY2QkI2QSIvPgogIDwhLS0gQmVsbHkgLS0+CiAgPGVsbGlwc2UgY3g9IjgwIiBjeT0iMTAwIiByeD0iMjgiIHJ5PSIyNCIgZmlsbD0iI0E1RDZBNyIvPgogIDwhLS0gSGVhZCAtLT4KICA8Y2lyY2xlIGN4PSI4MCIgY3k9IjU1IiByPSIzMiIgZmlsbD0iIzRDQUY1MCIvPgogIDxjaXJjbGUgY3g9IjgwIiBjeT0iNTUiIHI9IjI4IiBmaWxsPSIjNjZCQjZBIi8+CiAgPCEtLSBFeWVzIC0tPgogIDxjaXJjbGUgY3g9IjY2IiBjeT0iNTAiIHI9IjEwIiBmaWxsPSJ3aGl0ZSIvPgogIDxjaXJjbGUgY3g9Ijk0IiBjeT0iNTAiIHI9IjEwIiBmaWxsPSJ3aGl0ZSIvPgogIDxjaXJjbGUgY3g9IjY4IiBjeT0iNTAiIHI9IjYiIGZpbGw9IiMxQTFBMkUiLz4KICA8Y2lyY2xlIGN4PSI5NiIgY3k9IjUwIiByPSI2IiBmaWxsPSIjMUExQTJFIi8+CiAgPCEtLSBFeWUgc2hpbmUgLS0+CiAgPGNpcmNsZSBjeD0iNzAiIGN5PSI0OCIgcj0iMiIgZmlsbD0id2hpdGUiLz4KICA8Y2lyY2xlIGN4PSI5OCIgY3k9IjQ4IiByPSIyIiBmaWxsPSJ3aGl0ZSIvPgogIDwhLS0gU21pbGUgLS0+CiAgPHBhdGggZD0iTSA2OCA2NCBRIDgwIDc0IDkyIDY0IiBzdHJva2U9IiMzMzMiIHN0cm9rZS13aWR0aD0iMi41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8IS0tIEFudGVubmEgLS0+CiAgPGxpbmUgeDE9IjcwIiB5MT0iMjgiIHgyPSI2MiIgeTI9IjEyIiBzdHJva2U9IiMzODhFM0MiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPGNpcmNsZSBjeD0iNjIiIGN5PSIxMiIgcj0iNSIgZmlsbD0iI0Y0NDMzNiIvPgogIDxsaW5lIHgxPSI5MCIgeTE9IjI4IiB4Mj0iOTgiIHkyPSIxMiIgc3Ryb2tlPSIjMzg4RTNDIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDxjaXJjbGUgY3g9Ijk4IiBjeT0iMTIiIHI9IjUiIGZpbGw9IiNGNDQzMzYiLz4KICA8IS0tIExlZ3MvZmVldCAtLT4KICA8ZWxsaXBzZSBjeD0iNTUiIGN5PSIxMjUiIHJ4PSIxNCIgcnk9IjgiIGZpbGw9IiMzODhFM0MiLz4KICA8ZWxsaXBzZSBjeD0iMTA1IiBjeT0iMTI1IiByeD0iMTQiIHJ5PSI4IiBmaWxsPSIjMzg4RTNDIi8+CiAgPGVsbGlwc2UgY3g9IjgwIiBjeT0iMTMwIiByeD0iMTQiIHJ5PSI4IiBmaWxsPSIjMzg4RTNDIi8+Cjwvc3ZnPg==",
-          "width": 160,
-          "height": 160
-        },
-        "img_pokemon_angry": {
-          "id": "img_pokemon_angry",
-          "type": "image",
-          "name": "ポケモン怒り",
-          "data": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAiIGhlaWdodD0iMTYwIiB2aWV3Qm94PSIwIDAgMTYwIDE2MCI+CiAgPCEtLSBBbmdyeSBzcGFya2xlcy9lZmZlY3RzIC0tPgogIDx0ZXh0IHg9IjE1IiB5PSIzMCIgZm9udC1zaXplPSIxOCIgZmlsbD0iI0ZGNkIwMCI+ITwvdGV4dD4KICA8dGV4dCB4PSIxMzAiIHk9IjI1IiBmb250LXNpemU9IjE4IiBmaWxsPSIjRkY2QjAwIj4hPC90ZXh0PgogIDxsaW5lIHgxPSIyNSIgeTE9IjM1IiB4Mj0iMTAiIHkyPSIyMCIgc3Ryb2tlPSIjRkZENzAwIiBzdHJva2Utd2lkdGg9IjMiLz4KICA8bGluZSB4MT0iMTM1IiB5MT0iMzAiIHgyPSIxNTAiIHkyPSIxNSIgc3Ryb2tlPSIjRkZENzAwIiBzdHJva2Utd2lkdGg9IjMiLz4KICA8IS0tIFBva2Vtb24gYm9keSAtIGFuZ3J5IHBvc2UsIHJhaXNlZCB1cCAtLT4KICA8IS0tIE1haW4gYm9keSBzZWdtZW50cyAtLT4KICA8Y2lyY2xlIGN4PSI4MCIgY3k9Ijk1IiByPSIzOCIgZmlsbD0iIzRDQUY1MCIvPgogIDxjaXJjbGUgY3g9IjgwIiBjeT0iOTUiIHI9IjM0IiBmaWxsPSIjNjZCQjZBIi8+CiAgPCEtLSBCb2R5IHNlZ21lbnRzIC0tPgogIDxlbGxpcHNlIGN4PSI1MCIgY3k9IjEwNSIgcng9IjIwIiByeT0iMTgiIGZpbGw9IiM0Q0FGNTAiLz4KICA8ZWxsaXBzZSBjeD0iNTAiIGN5PSIxMDUiIHJ4PSIxNiIgcnk9IjE0IiBmaWxsPSIjNjZCQjZBIi8+CiAgPGVsbGlwc2UgY3g9IjExMCIgY3k9IjEwNSIgcng9IjIwIiByeT0iMTgiIGZpbGw9IiM0Q0FGNTAiLz4KICA8ZWxsaXBzZSBjeD0iMTEwIiBjeT0iMTA1IiByeD0iMTYiIHJ5PSIxNCIgZmlsbD0iIzY2QkI2QSIvPgogIDwhLS0gQmVsbHkgLS0+CiAgPGVsbGlwc2UgY3g9IjgwIiBjeT0iMTAwIiByeD0iMjgiIHJ5PSIyNCIgZmlsbD0iI0E1RDZBNyIvPgogIDwhLS0gSGVhZCAtLT4KICA8Y2lyY2xlIGN4PSI4MCIgY3k9IjU1IiByPSIzMiIgZmlsbD0iIzRDQUY1MCIvPgogIDxjaXJjbGUgY3g9IjgwIiBjeT0iNTUiIHI9IjI4IiBmaWxsPSIjNjZCQjZBIi8+CiAgPCEtLSBBbmdyeSBleWVzIChzbGFudGVkKSAtLT4KICA8Y2lyY2xlIGN4PSI2NiIgY3k9IjUwIiByPSIxMCIgZmlsbD0id2hpdGUiLz4KICA8Y2lyY2xlIGN4PSI5NCIgY3k9IjUwIiByPSIxMCIgZmlsbD0id2hpdGUiLz4KICA8Y2lyY2xlIGN4PSI2OCIgY3k9IjUyIiByPSI2IiBmaWxsPSIjMUExQTJFIi8+CiAgPGNpcmNsZSBjeD0iOTYiIGN5PSI1MiIgcj0iNiIgZmlsbD0iIzFBMUEyRSIvPgogIDwhLS0gRXllIHNoaW5lIC0tPgogIDxjaXJjbGUgY3g9IjcwIiBjeT0iNTAiIHI9IjIiIGZpbGw9IndoaXRlIi8+CiAgPGNpcmNsZSBjeD0iOTgiIGN5PSI1MCIgcj0iMiIgZmlsbD0id2hpdGUiLz4KICA8IS0tIEFuZ3J5IGV5ZWJyb3dzIC0tPgogIDxsaW5lIHgxPSI1OCIgeTE9IjQwIiB4Mj0iNzQiIHkyPSI0NCIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDxsaW5lIHgxPSI4NiIgeTE9IjQ0IiB4Mj0iMTAyIiB5Mj0iNDAiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8IS0tIEFuZ3J5IG1vdXRoIChmcm93bi9vcGVuKSAtLT4KICA8cGF0aCBkPSJNIDY4IDY4IFEgODAgNjAgOTIgNjgiIHN0cm9rZT0iIzMzMyIgc3Ryb2tlLXdpZHRoPSIyLjUiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDwhLS0gVGVldGggc2hvd2luZyAtLT4KICA8cmVjdCB4PSI3MiIgeT0iNjQiIHdpZHRoPSI4IiBoZWlnaHQ9IjYiIGZpbGw9IndoaXRlIiByeD0iMSIvPgogIDxyZWN0IHg9IjgxIiB5PSI2NCIgd2lkdGg9IjgiIGhlaWdodD0iNiIgZmlsbD0id2hpdGUiIHJ4PSIxIi8+CiAgPCEtLSBBbnRlbm5hIChtb3JlIGFnZ3Jlc3NpdmUgYW5nbGUpIC0tPgogIDxsaW5lIHgxPSI3MCIgeTE9IjI4IiB4Mj0iNTgiIHkyPSIxMCIgc3Ryb2tlPSIjMzg4RTNDIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDxjaXJjbGUgY3g9IjU4IiBjeT0iMTAiIHI9IjUiIGZpbGw9IiNGNDQzMzYiLz4KICA8bGluZSB4MT0iOTAiIHkxPSIyOCIgeDI9IjEwMiIgeTI9IjEwIiBzdHJva2U9IiMzODhFM0MiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPGNpcmNsZSBjeD0iMTAyIiBjeT0iMTAiIHI9IjUiIGZpbGw9IiNGNDQzMzYiLz4KICA8IS0tIEFuZ3J5IGltcGFjdCBsaW5lcyAtLT4KICA8bGluZSB4MT0iMzAiIHkxPSI2MCIgeDI9IjIwIiB5Mj0iNTUiIHN0cm9rZT0iI0ZGNTcyMiIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KICA8bGluZSB4MT0iMzAiIHkxPSI2NSIgeDI9IjE4IiB5Mj0iNjUiIHN0cm9rZT0iI0ZGNTcyMiIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KICA8bGluZSB4MT0iMTMwIiB5MT0iNjAiIHgyPSIxNDAiIHkyPSI1NSIgc3Ryb2tlPSIjRkY1NzIyIiBzdHJva2Utd2lkdGg9IjIuNSIvPgogIDxsaW5lIHgxPSIxMzAiIHkxPSI2NSIgeDI9IjE0MiIgeTI9IjY1IiBzdHJva2U9IiNGRjU3MjIiIHN0cm9rZS13aWR0aD0iMi41Ii8+CiAgPCEtLSBMZWdzL2ZlZXQgLS0+CiAgPGVsbGlwc2UgY3g9IjU1IiBjeT0iMTI1IiByeD0iMTQiIHJ5PSI4IiBmaWxsPSIjMzg4RTNDIi8+CiAgPGVsbGlwc2UgY3g9IjEwNSIgY3k9IjEyNSIgcng9IjE0IiByeT0iOCIgZmlsbD0iIzM4OEUzQyIvPgogIDxlbGxpcHNlIGN4PSI4MCIgY3k9IjEzMCIgcng9IjE0IiByeT0iOCIgZmlsbD0iIzM4OEUzQyIvPgo8L3N2Zz4=",
-          "width": 160,
-          "height": 160
-        },
-        "img_ball_closed": {
-          "id": "img_ball_closed",
-          "type": "image",
-          "name": "ボール（閉）",
-          "data": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPGRlZnM+CiAgICA8Y2xpcFBhdGggaWQ9ImJhbGxDbGlwIj4KICAgICAgPGNpcmNsZSBjeD0iNjAiIGN5PSI2MCIgcj0iNTIiLz4KICAgIDwvY2xpcFBhdGg+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9ImJhbGxHcmFkIiBjeD0iNDAlIiBjeT0iMzUlIiByPSI2MCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojRkY2MDYwIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6I0NDMDAwMCIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICAgIDxyYWRpYWxHcmFkaWVudCBpZD0iYmFsbFdoaXRlR3JhZCIgY3g9IjQwJSIgY3k9IjM1JSIgcj0iNjAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6I0ZGRkZGRiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNEREREREQiLz4KICAgIDwvcmFkaWFsR3JhZGllbnQ+CiAgPC9kZWZzPgogIDwhLS0gU2hhZG93IC0tPgogIDxlbGxpcHNlIGN4PSI2MCIgY3k9IjExMiIgcng9IjQwIiByeT0iOCIgZmlsbD0icmdiYSgwLDAsMCwwLjIpIi8+CiAgPCEtLSBCYWxsIG91dGxpbmUgLS0+CiAgPGNpcmNsZSBjeD0iNjAiIGN5PSI1OCIgcj0iNTIiIGZpbGw9IiMzMzMiIC8+CiAgPCEtLSBUb3AgaGFsZiAtIHJlZCAtLT4KICA8cGF0aCBkPSJNIDggNTggQSA1MiA1MiAwIDAgMSAxMTIgNTggWiIgZmlsbD0idXJsKCNiYWxsR3JhZCkiIGNsaXAtcGF0aD0idXJsKCNiYWxsQ2xpcCkiLz4KICA8IS0tIEJvdHRvbSBoYWxmIC0gd2hpdGUgLS0+CiAgPHBhdGggZD0iTSA4IDU4IEEgNTIgNTIgMCAwIDAgMTEyIDU4IFoiIGZpbGw9InVybCgjYmFsbFdoaXRlR3JhZCkiIGNsaXAtcGF0aD0idXJsKCNiYWxsQ2xpcCkiLz4KICA8IS0tIENlbnRlciBiYW5kIC0tPgogIDxyZWN0IHg9IjgiIHk9IjUzIiB3aWR0aD0iMTA0IiBoZWlnaHQ9IjEwIiBmaWxsPSIjMjIyIi8+CiAgPCEtLSBDZW50ZXIgYnV0dG9uIC0tPgogIDxjaXJjbGUgY3g9IjYwIiBjeT0iNTgiIHI9IjE0IiBmaWxsPSIjMjIyIi8+CiAgPGNpcmNsZSBjeD0iNjAiIGN5PSI1OCIgcj0iMTAiIGZpbGw9IiNFRUUiLz4KICA8Y2lyY2xlIGN4PSI2MCIgY3k9IjU4IiByPSI2IiBmaWxsPSIjRkZGIi8+CiAgPCEtLSBTaGluZSBlZmZlY3QgLS0+CiAgPGVsbGlwc2UgY3g9IjQyIiBjeT0iMzQiIHJ4PSIxMiIgcnk9IjgiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4zNSkiIHRyYW5zZm9ybT0icm90YXRlKC0zMCA0MiAzNCkiLz4KPC9zdmc+",
-          "width": 120,
-          "height": 120
-        },
-        "img_ball_open": {
-          "id": "img_ball_open",
-          "type": "image",
-          "name": "ボール（開）",
-          "data": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMTIwIDEyMCI+CiAgPGRlZnM+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9ImJhbGxHcmFkMiIgY3g9IjQwJSIgY3k9IjM1JSIgcj0iNjAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6I0ZGNjA2MCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNDQzAwMDAiLz4KICAgIDwvcmFkaWFsR3JhZGllbnQ+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9ImJhbGxXaGl0ZUdyYWQyIiBjeD0iNDAlIiBjeT0iMzUlIiByPSI2MCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojRkZGRkZGIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6I0RERERERCIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICA8L2RlZnM+CiAgPCEtLSBHbG93IGVmZmVjdCBmb3Igb3BlbmluZyAtLT4KICA8Y2lyY2xlIGN4PSI2MCIgY3k9IjU4IiByPSI1NiIgZmlsbD0icmdiYSgyNTUsMjAwLDAsMC4zKSIvPgogIDwhLS0gRW5lcmd5IGJ1cnN0IGxpbmVzIC0tPgogIDxsaW5lIHgxPSI2MCIgeTE9IjEwIiB4Mj0iNjAiIHkyPSItNSIgc3Ryb2tlPSIjRkZENzAwIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDxsaW5lIHgxPSI5MCIgeTE9IjIwIiB4Mj0iMTAyIiB5Mj0iMTAiIHN0cm9rZT0iI0ZGRDcwMCIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8bGluZSB4MT0iMzAiIHkxPSIyMCIgeDI9IjE4IiB5Mj0iMTAiIHN0cm9rZT0iI0ZGRDcwMCIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8IS0tIEJhbGwgb3V0bGluZSAtLT4KICA8Y2lyY2xlIGN4PSI2MCIgY3k9IjU4IiByPSI1MiIgZmlsbD0iIzMzMyIgLz4KICA8IS0tIFRvcCBoYWxmIC0gdGlsdGVkIG9wZW4gKHJvdGF0ZSBhcm91bmQgY2VudGVyKSAtLT4KICA8cGF0aCBkPSJNIDggNDUgQSA1MiA1MiAwIDAgMSAxMTIgNDUgTCAxMTIgNTAgTCA4IDUwIFoiIGZpbGw9InVybCgjYmFsbEdyYWQyKSIgdHJhbnNmb3JtPSJyb3RhdGUoLTIwIDYwIDU4KSIvPgogIDwhLS0gQm90dG9tIGhhbGYgLSB0aWx0ZWQgb3BlbiAtLT4KICA8cGF0aCBkPSJNIDggNzAgQSA1MiA1MiAwIDAgMCAxMTIgNzAgTCAxMTIgNjUgTCA4IDY1IFoiIGZpbGw9InVybCgjYmFsbFdoaXRlR3JhZDIpIiB0cmFuc2Zvcm09InJvdGF0ZSgxNSA2MCA1OCkiLz4KICA8IS0tIE9wZW5pbmcgZ2xvdyBpbiBjZW50ZXIgLS0+CiAgPGVsbGlwc2UgY3g9IjYwIiBjeT0iNTgiIHJ4PSIzMCIgcnk9IjIwIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjAwLDAuOCkiLz4KICA8IS0tIENlbnRlciBiYW5kIHBpZWNlcyAtLT4KICA8cmVjdCB4PSI4IiB5PSI1MyIgd2lkdGg9IjQwIiBoZWlnaHQ9IjEwIiBmaWxsPSIjMjIyIiB0cmFuc2Zvcm09InJvdGF0ZSgtMjAgNjAgNTgpIi8+CiAgPHJlY3QgeD0iNzIiIHk9IjUzIiB3aWR0aD0iNDAiIGhlaWdodD0iMTAiIGZpbGw9IiMyMjIiIHRyYW5zZm9ybT0icm90YXRlKDE1IDYwIDU4KSIvPgogIDwhLS0gQ2VudGVyIGJ1dHRvbiBoYWx2ZXMgLS0+CiAgPGNpcmNsZSBjeD0iNjAiIGN5PSI1OCIgcj0iMTQiIGZpbGw9IiMyMjIiLz4KICA8Y2lyY2xlIGN4PSI2MCIgY3k9IjU4IiByPSIxMCIgZmlsbD0iI0VFRSIvPgogIDwhLS0gQnJpZ2h0IGNlbnRlciBmbGFzaCAtLT4KICA8Y2lyY2xlIGN4PSI2MCIgY3k9IjU4IiByPSI4IiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC45Ii8+Cjwvc3ZnPg==",
-          "width": 120,
-          "height": 120
-        },
-        "img_tap_button": {
-          "id": "img_tap_button",
-          "type": "image",
-          "name": "タップボタン",
-          "data": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCAyMDAgODAiPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJidG5CYXNlIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNGRjZCMzUiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI2MCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNFNTNFMUEiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdHlsZT0ic3RvcC1jb2xvcjojQzAzMTBEIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJidG5Ub3AiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3R5bGU9InN0b3AtY29sb3I6I0ZGOEY1RiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiNGRjZCMzUiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8ZmlsdGVyIGlkPSJidG5TaGFkb3ciPgogICAgICA8ZmVEcm9wU2hhZG93IGR4PSIwIiBkeT0iNCIgc3RkRGV2aWF0aW9uPSI0IiBmbG9vZC1jb2xvcj0icmdiYSgwLDAsMCwwLjQpIi8+CiAgICA8L2ZpbHRlcj4KICA8L2RlZnM+CiAgPCEtLSBCdXR0b24gM0QgYm90dG9tIChzaGFkb3cgbGF5ZXIpIC0tPgogIDxyZWN0IHg9IjEwIiB5PSIyMiIgd2lkdGg9IjE4MCIgaGVpZ2h0PSI1MiIgcng9IjI2IiBmaWxsPSIjOEIxQTAwIiBmaWx0ZXI9InVybCgjYnRuU2hhZG93KSIvPgogIDwhLS0gQnV0dG9uIDNEIHNpZGUgKGRhcmtlcikgLS0+CiAgPHJlY3QgeD0iMTAiIHk9IjE4IiB3aWR0aD0iMTgwIiBoZWlnaHQ9IjUyIiByeD0iMjYiIGZpbGw9IiNDMDMxMEQiLz4KICA8IS0tIEJ1dHRvbiB0b3AgZmFjZSAtLT4KICA8cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIxODAiIGhlaWdodD0iNTIiIHJ4PSIyNiIgZmlsbD0idXJsKCNidG5CYXNlKSIvPgogIDwhLS0gQnV0dG9uIGhpZ2hsaWdodCAodG9wIHNoaW5lKSAtLT4KICA8cmVjdCB4PSIyMCIgeT0iMTMiIHdpZHRoPSIxNjAiIGhlaWdodD0iMjQiIHJ4PSIyMCIgZmlsbD0idXJsKCNidG5Ub3ApIiBvcGFjaXR5PSIwLjYiLz4KICA8IS0tIFNoaW5lIGdsb3NzIC0tPgogIDxlbGxpcHNlIGN4PSIxMDAiIGN5PSIyMCIgcng9IjcwIiByeT0iMTAiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4yNSkiLz4KICA8IS0tIFRhcCBpY29uIC0gaGFuZC9maXN0IHN5bWJvbCAtLT4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxMDAsIDM2KSI+CiAgICA8IS0tIFN0eWxpemVkIHRhcC9oaXQgc3ltYm9sIC0gZmlzdCBzaGFwZSAtLT4KICAgIDxyZWN0IHg9Ii0yMiIgeT0iLTEyIiB3aWR0aD0iMTQiIGhlaWdodD0iMTAiIHJ4PSIzIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuOSkiLz4KICAgIDxyZWN0IHg9Ii04IiB5PSItMTQiIHdpZHRoPSIxNCIgaGVpZ2h0PSIxMCIgcng9IjMiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC45KSIvPgogICAgPHJlY3QgeD0iNiIgeT0iLTEyIiB3aWR0aD0iMTQiIGhlaWdodD0iMTAiIHJ4PSIzIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuOSkiLz4KICAgIDxyZWN0IHg9Ii0yMiIgeT0iLTMiIHdpZHRoPSI0MiIgaGVpZ2h0PSIxNiIgcng9IjQiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC45KSIvPgogICAgPCEtLSBJbXBhY3QgbGluZXMgLS0+CiAgICA8bGluZSB4MT0iMjYiIHkxPSItMTgiIHgyPSIzMiIgeTI9Ii0yNCIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuNykiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICAgIDxsaW5lIHgxPSIyOCIgeTE9Ii0xMCIgeDI9IjM2IiB5Mj0iLTEyIiBzdHJva2U9InJnYmEoMjU1LDI1NSwyNTUsMC43KSIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogICAgPGxpbmUgeDE9IjI2IiB5MT0iLTIiIHgyPSIzNCIgeTI9IjIiIHN0cm9rZT0icmdiYSgyNTUsMjU1LDI1NSwwLjcpIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPC9nPgo8L3N2Zz4=",
-          "width": 200,
-          "height": 80
-        },
-        "bgm_main": {
-          "id": "bgm_main",
-          "type": "audio",
-          "name": "バトルBGM",
-          "data": "",
-          "loop": true,
-          "volume": 0.7
-        },
-        "se_tap": {
-          "id": "se_tap",
-          "type": "audio",
-          "name": "タップ音",
-          "data": "",
-          "loop": false,
-          "volume": 0.8
-        },
-        "se_success": {
-          "id": "se_success",
-          "type": "audio",
-          "name": "成功音",
-          "data": "",
-          "loop": false,
-          "volume": 1.0
-        },
-        "se_failure": {
-          "id": "se_failure",
-          "type": "audio",
-          "name": "失敗音",
-          "data": "",
-          "loop": false,
-          "volume": 1.0
-        }
-      },
-      "objects": [
-        {
-          "id": "obj_pokemon",
-          "name": "ポケモン",
-          "type": "sprite",
-          "frames": [
-            {
-              "id": "frame_pokemon_normal",
-              "assetId": "img_pokemon_normal",
-              "duration": 100,
-              "name": "通常"
-            },
-            {
-              "id": "frame_pokemon_angry",
-              "assetId": "img_pokemon_angry",
-              "duration": 100,
-              "name": "怒り"
-            }
-          ],
-          "defaultFrame": 0,
-          "width": 160,
-          "height": 160,
-          "physics": {
-            "enabled": false,
-            "mass": 1,
-            "friction": 0.5,
-            "restitution": 0.3,
-            "isStatic": true
-          },
-          "collider": {
-            "enabled": false,
-            "type": "circle",
-            "radius": 70,
-            "offsetX": 0,
-            "offsetY": 0
-          },
-          "tags": [
-            "pokemon",
-            "enemy"
-          ],
-          "createdAt": "2026-05-02T10:00:00.000Z",
-          "lastModified": "2026-05-02T10:00:00.000Z"
-        },
-        {
-          "id": "obj_ball",
-          "name": "モンスターボール",
-          "type": "sprite",
-          "frames": [
-            {
-              "id": "frame_ball_closed",
-              "assetId": "img_ball_closed",
-              "duration": 100,
-              "name": "閉"
-            },
-            {
-              "id": "frame_ball_open",
-              "assetId": "img_ball_open",
-              "duration": 100,
-              "name": "開"
-            }
-          ],
-          "defaultFrame": 0,
-          "width": 120,
-          "height": 120,
-          "physics": {
-            "enabled": false,
-            "mass": 1,
-            "friction": 0.5,
-            "restitution": 0.3,
-            "isStatic": true
-          },
-          "collider": {
-            "enabled": false,
-            "type": "circle",
-            "radius": 55,
-            "offsetX": 0,
-            "offsetY": 0
-          },
-          "tags": [
-            "ball",
-            "player"
-          ],
-          "createdAt": "2026-05-02T10:00:00.000Z",
-          "lastModified": "2026-05-02T10:00:00.000Z"
-        },
-        {
-          "id": "obj_button",
-          "name": "タップボタン",
-          "type": "sprite",
-          "frames": [
-            {
-              "id": "frame_button_normal",
-              "assetId": "img_tap_button",
-              "duration": 100,
-              "name": "通常"
-            }
-          ],
-          "defaultFrame": 0,
-          "width": 200,
-          "height": 80,
-          "physics": {
-            "enabled": false,
-            "mass": 1,
-            "friction": 0,
-            "restitution": 0,
-            "isStatic": true
-          },
-          "collider": {
-            "enabled": false,
-            "type": "rectangle",
-            "width": 200,
-            "height": 80,
-            "offsetX": 0,
-            "offsetY": 0
-          },
-          "tags": [
-            "button",
-            "ui"
-          ],
-          "createdAt": "2026-05-02T10:00:00.000Z",
-          "lastModified": "2026-05-02T10:00:00.000Z"
-        }
-      ],
-      "timeLimit": 10,
-      "countdownFrom": 10,
-      "difficulty": "normal"
+      "lastModified": "2026-05-01T21:27:02.378Z"
     },
     "settings": {
       "name": "ポケモン捕まえる！",
