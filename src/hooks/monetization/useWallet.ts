@@ -103,7 +103,7 @@ export function useWallet(): UseWalletResult {
       )
       .subscribe();
 
-    return () => { channel.unsubscribe(); };
+    return () => { supabase.removeChannel(channel); };
   }, [user, fetchWallet]);
 
   const refetch = useCallback(async () => {

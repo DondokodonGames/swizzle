@@ -105,7 +105,7 @@ export function useSubscription(): UseSubscriptionResult {
 
     return () => {
       authSubscription?.unsubscribe();
-      channel.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, [fetchSubscription]);
 
