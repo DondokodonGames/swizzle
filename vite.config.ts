@@ -34,6 +34,11 @@ export default defineConfig({
           if (id.includes('node_modules/react-router')) {
             return 'vendor-router';
           }
+          // qrcode.react has a TDZ bug when bundled by esbuild — keep it out of
+          // the eagerly-preloaded vendor-other chunk so it only loads with NfcSetupPage
+          if (id.includes('node_modules/qrcode.react')) {
+            return undefined;
+          }
           if (id.includes('node_modules')) {
             return 'vendor-other';
           }
