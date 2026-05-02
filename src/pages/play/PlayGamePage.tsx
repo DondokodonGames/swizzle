@@ -29,6 +29,98 @@ type PageState =
   | 'error';
 
 // =====================================================
+// スタイル
+// =====================================================
+
+const styles = {
+  center: {
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0f0f1a',
+    color: '#e2e8f0',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+    padding: 24,
+    gap: 0,
+  } as React.CSSProperties,
+  spinner: {
+    width: 40,
+    height: 40,
+    border: '3px solid #334155',
+    borderTop: '3px solid #7c3aed',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite',
+    marginBottom: 16,
+  } as React.CSSProperties,
+  thumbnail: {
+    width: 180,
+    borderRadius: 16,
+    marginBottom: 20,
+    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+  } as React.CSSProperties,
+  title: {
+    fontSize: 24,
+    fontWeight: 700,
+    margin: '0 0 8px',
+    textAlign: 'center' as const,
+  } as React.CSSProperties,
+  hint: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginBottom: 28,
+    textAlign: 'center' as const,
+  } as React.CSSProperties,
+  payBtn: {
+    display: 'inline-block',
+    padding: '16px 48px',
+    background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+    color: '#fff',
+    borderRadius: 14,
+    textDecoration: 'none',
+    fontSize: 18,
+    fontWeight: 700,
+    boxShadow: '0 4px 20px rgba(124,58,237,0.4)',
+  } as React.CSSProperties,
+  btn: {
+    padding: '12px 32px',
+    background: '#1e293b',
+    color: '#e2e8f0',
+    border: '1px solid #334155',
+    borderRadius: 10,
+    fontSize: 15,
+    cursor: 'pointer',
+  } as React.CSSProperties,
+  gameWrap: {
+    width: '100vw',
+    height: '100vh',
+    backgroundColor: '#000',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative' as const,
+  } as React.CSSProperties,
+  canvas: {
+    width: '100%',
+    height: '100%',
+    maxWidth: 'calc(100vh * 9 / 16)',
+    position: 'relative' as const,
+  } as React.CSSProperties,
+  playsBadge: {
+    position: 'absolute' as const,
+    top: 12,
+    right: 12,
+    background: 'rgba(0,0,0,0.6)',
+    color: '#94a3b8',
+    fontSize: 12,
+    padding: '4px 10px',
+    borderRadius: 99,
+    backdropFilter: 'blur(4px)',
+  } as React.CSSProperties,
+} as const;
+
+// =====================================================
 // メインコンポーネント
 // =====================================================
 
@@ -361,95 +453,3 @@ export function PlayGamePage() {
     </div>
   );
 }
-
-// =====================================================
-// スタイル
-// =====================================================
-
-const styles = {
-  center: {
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0f0f1a',
-    color: '#e2e8f0',
-    fontFamily: 'system-ui, -apple-system, sans-serif',
-    padding: 24,
-    gap: 0,
-  } as React.CSSProperties,
-  spinner: {
-    width: 40,
-    height: 40,
-    border: '3px solid #334155',
-    borderTop: '3px solid #7c3aed',
-    borderRadius: '50%',
-    animation: 'spin 0.8s linear infinite',
-    marginBottom: 16,
-  } as React.CSSProperties,
-  thumbnail: {
-    width: 180,
-    borderRadius: 16,
-    marginBottom: 20,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-  } as React.CSSProperties,
-  title: {
-    fontSize: 24,
-    fontWeight: 700,
-    margin: '0 0 8px',
-    textAlign: 'center' as const,
-  } as React.CSSProperties,
-  hint: {
-    color: '#94a3b8',
-    fontSize: 14,
-    marginBottom: 28,
-    textAlign: 'center' as const,
-  } as React.CSSProperties,
-  payBtn: {
-    display: 'inline-block',
-    padding: '16px 48px',
-    background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
-    color: '#fff',
-    borderRadius: 14,
-    textDecoration: 'none',
-    fontSize: 18,
-    fontWeight: 700,
-    boxShadow: '0 4px 20px rgba(124,58,237,0.4)',
-  } as React.CSSProperties,
-  btn: {
-    padding: '12px 32px',
-    background: '#1e293b',
-    color: '#e2e8f0',
-    border: '1px solid #334155',
-    borderRadius: 10,
-    fontSize: 15,
-    cursor: 'pointer',
-  } as React.CSSProperties,
-  gameWrap: {
-    width: '100vw',
-    height: '100vh',
-    backgroundColor: '#000',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative' as const,
-  } as React.CSSProperties,
-  canvas: {
-    width: '100%',
-    height: '100%',
-    maxWidth: 'calc(100vh * 9 / 16)',
-    position: 'relative' as const,
-  } as React.CSSProperties,
-  playsBadge: {
-    position: 'absolute' as const,
-    top: 12,
-    right: 12,
-    background: 'rgba(0,0,0,0.6)',
-    color: '#94a3b8',
-    fontSize: 12,
-    padding: '4px 10px',
-    borderRadius: 99,
-    backdropFilter: 'blur(4px)',
-  } as React.CSSProperties,
-} as const;
