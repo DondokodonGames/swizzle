@@ -278,7 +278,11 @@
           "seVolume": 0.8
         },
         "gameState": {
-          "flags": {},
+          "flags": {
+            "successTriggered": false,
+            "timeoutTriggered": false,
+            "bgmStarted": false
+          },
           "score": 0,
           "timeLimit": 10,
           "counters": {
@@ -377,7 +381,6 @@
           "lastModified": "2026-05-02T12:00:00.000Z"
         }
       ],
-      "flags": [],
       "rules": [
         {
           "id": "rule_start_bgm",
@@ -392,10 +395,20 @@
                 "type": "time",
                 "timeType": "exact",
                 "seconds": 0.1
+              },
+              {
+                "type": "flag",
+                "flagId": "bgmStarted",
+                "condition": "OFF"
               }
             ]
           },
           "actions": [
+            {
+              "type": "setFlag",
+              "flagId": "bgmStarted",
+              "value": true
+            },
             {
               "type": "playBGM",
               "volume": 0.7
@@ -466,10 +479,20 @@
                 "counterName": "tapCount",
                 "comparison": "greaterOrEqual",
                 "value": 30
+              },
+              {
+                "type": "flag",
+                "flagId": "successTriggered",
+                "condition": "OFF"
               }
             ]
           },
           "actions": [
+            {
+              "type": "setFlag",
+              "flagId": "successTriggered",
+              "value": true
+            },
             {
               "type": "move",
               "targetId": "obj_ball",
@@ -521,10 +544,20 @@
                 "type": "time",
                 "timeType": "exact",
                 "seconds": 10
+              },
+              {
+                "type": "flag",
+                "flagId": "timeoutTriggered",
+                "condition": "OFF"
               }
             ]
           },
           "actions": [
+            {
+              "type": "setFlag",
+              "flagId": "timeoutTriggered",
+              "value": true
+            },
             {
               "type": "switchAnimation",
               "targetId": "obj_ball",
