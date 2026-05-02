@@ -435,7 +435,7 @@
               "targetId": "obj_button",
               "effect": {
                 "type": "scale",
-                "scaleAmount": 0.25,
+                "scaleAmount": 0.85,
                 "duration": 0.15
               }
             },
@@ -444,7 +444,7 @@
               "targetId": "obj_ball",
               "effect": {
                 "type": "scale",
-                "scaleAmount": 0.15,
+                "scaleAmount": 0.9,
                 "duration": 0.08
               }
             }
