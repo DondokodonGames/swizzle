@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../useAuth';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import type { UserWallet, WalletStatus, UseWalletResult } from '../../types/MonetizationTypes';
 import { calcWalletStatus } from '../../types/MonetizationTypes';
 import { getUserWallet } from '../../services/monetization/WalletService';
@@ -16,6 +17,10 @@ const walletCache = new Map<string, { wallet: UserWallet | null; timestamp: numb
 const fetchingMap = new Map<string, Promise<void>>();
 const CACHE_DURATION = 60_000; // 1分
 const MAX_CACHE_SIZE = 50;     // 最大エントリ数（超過時に最古エントリを削除）
+
+// Realtime チャンネル singleton — 同名チャンネルに複数の .on() を追加するエラーを防ぐ
+const channelMap = new Map<string, RealtimeChannel>();
+const channelRefCount = new Map<string, number>();
 
 function setCacheEntry(userId: string, wallet: UserWallet | null): void {
   // 既存エントリを一度削除してから追加することで「最近使用」を末尾に移動
@@ -88,22 +93,35 @@ export function useWallet(): UseWalletResult {
     fetchWallet(user.id, true);
   }, [user, authLoading, fetchWallet]);
 
-  // リアルタイム更新
+  // リアルタイム更新（モジュールレベル singleton で同名チャンネルの重複 subscribe を防ぐ）
   useEffect(() => {
     if (!user) return;
+    const key = `wallet-changes-${user.id}`;
 
-    const channel = supabase
-      .channel(`wallet-changes-${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'user_wallets', filter: `user_id=eq.${user.id}` },
-        () => {
-          fetchWallet(user.id, true);
-        }
-      )
-      .subscribe();
+    channelRefCount.set(key, (channelRefCount.get(key) ?? 0) + 1);
 
-    return () => { supabase.removeChannel(channel); };
+    if (!channelMap.has(key)) {
+      const ch = supabase
+        .channel(key)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'user_wallets', filter: `user_id=eq.${user.id}` },
+          () => { fetchWallet(user.id, true); }
+        )
+        .subscribe();
+      channelMap.set(key, ch);
+    }
+
+    return () => {
+      const count = (channelRefCount.get(key) ?? 1) - 1;
+      channelRefCount.set(key, count);
+      if (count <= 0) {
+        const ch = channelMap.get(key);
+        if (ch) supabase.removeChannel(ch);
+        channelMap.delete(key);
+        channelRefCount.delete(key);
+      }
+    };
   }, [user, fetchWallet]);
 
   const refetch = useCallback(async () => {
