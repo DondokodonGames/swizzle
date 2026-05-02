@@ -390,6 +390,7 @@ export class GameConceptGenerator {
   private usedMechanicIds: Set<string> = new Set();        // catalog ID rotation
   private usedMechanics: Map<string, number> = new Map();  // type → count (debug)
   private patternAnalyzer: GamePatternAnalyzer;
+  private archetypeIndex: number = 0;
 
   constructor(config?: ConceptGeneratorConfig) {
     const providerType = config?.llmProvider || (process.env.LLM_PROVIDER as LLMProviderType) || 'anthropic';
