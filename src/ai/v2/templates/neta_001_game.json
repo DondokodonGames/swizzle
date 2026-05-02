@@ -323,6 +323,32 @@
       "flags": [],
       "rules": [
         {
+          "id": "rule_start_bgm",
+          "name": "ゲーム開始BGM",
+          "enabled": true,
+          "priority": 100,
+          "targetObjectId": "stage",
+          "triggers": {
+            "operator": "AND",
+            "conditions": [
+              {
+                "type": "time",
+                "timeType": "exact",
+                "seconds": 0.1
+              }
+            ]
+          },
+          "actions": [
+            {
+              "type": "playBGM",
+              "soundId": "bgm_main",
+              "volume": 0.7
+            }
+          ],
+          "createdAt": "2026-05-02T12:00:00.000Z",
+          "lastModified": "2026-05-02T12:00:00.000Z"
+        },
+        {
           "id": "rule_tap_button",
           "name": "ボタン連打",
           "enabled": true,
@@ -353,10 +379,8 @@
               "targetId": "obj_button",
               "effect": {
                 "type": "scale",
-                "scaleX": 0.92,
-                "scaleY": 0.92,
-                "duration": 0.08,
-                "easing": "linear"
+                "scaleAmount": 0.18,
+                "duration": 0.12
               }
             },
             {
@@ -364,19 +388,17 @@
               "targetId": "obj_ball",
               "effect": {
                 "type": "scale",
-                "scaleX": 1.12,
-                "scaleY": 1.12,
-                "duration": 0.1,
-                "easing": "easeOut"
+                "scaleAmount": 0.12,
+                "duration": 0.1
               }
             }
           ],
-          "createdAt": "2026-05-02T10:00:00.000Z",
-          "lastModified": "2026-05-02T10:00:00.000Z"
+          "createdAt": "2026-05-02T12:00:00.000Z",
+          "lastModified": "2026-05-02T12:00:00.000Z"
         },
         {
           "id": "rule_success",
-          "name": "30回達成で成功（ゲット！）",
+          "name": "30回達成でゲット",
           "enabled": true,
           "priority": 20,
           "targetObjectId": "stage",
@@ -393,19 +415,20 @@
           },
           "actions": [
             {
-              "type": "animateTo",
+              "type": "move",
               "targetId": "obj_ball",
-              "position": {
-                "x": 0.5,
-                "y": 0.25
-              },
-              "duration": 0.4,
-              "easing": "easeIn"
+              "movement": {
+                "type": "arc",
+                "target": "obj_pokemon",
+                "duration": 0.6,
+                "arcHeight": 120
+              }
             },
             {
-              "type": "changeFrame",
+              "type": "switchAnimation",
               "targetId": "obj_ball",
-              "frameIndex": 1
+              "animationIndex": 1,
+              "autoPlay": false
             },
             {
               "type": "playSound",
@@ -415,10 +438,10 @@
               "type": "effect",
               "targetId": "obj_pokemon",
               "effect": {
-                "type": "particles",
-                "duration": 1,
-                "intensity": 1,
-                "particleType": "stars"
+                "type": "flash",
+                "flashColor": "#FFD700",
+                "flashIntensity": 0.6,
+                "duration": 0.8
               }
             },
             {
@@ -426,12 +449,12 @@
               "message": "ゲットだぜ！"
             }
           ],
-          "createdAt": "2026-05-02T10:00:00.000Z",
-          "lastModified": "2026-05-02T10:00:00.000Z"
+          "createdAt": "2026-05-02T12:00:00.000Z",
+          "lastModified": "2026-05-02T12:00:00.000Z"
         },
         {
           "id": "rule_timeout",
-          "name": "時間切れで失敗",
+          "name": "時間切れ失敗",
           "enabled": true,
           "priority": 5,
           "targetObjectId": "stage",
@@ -447,14 +470,26 @@
           },
           "actions": [
             {
-              "type": "changeFrame",
+              "type": "switchAnimation",
               "targetId": "obj_ball",
-              "frameIndex": 1
+              "animationIndex": 1,
+              "autoPlay": false
             },
             {
-              "type": "changeFrame",
+              "type": "switchAnimation",
               "targetId": "obj_pokemon",
-              "frameIndex": 1
+              "animationIndex": 1,
+              "autoPlay": false
+            },
+            {
+              "type": "effect",
+              "targetId": "obj_pokemon",
+              "effect": {
+                "type": "shake",
+                "shakeIntensity": 10,
+                "shakeFrequency": 25,
+                "duration": 0.6
+              }
             },
             {
               "type": "playSound",
@@ -465,13 +500,13 @@
               "message": "逃げられた！"
             }
           ],
-          "createdAt": "2026-05-02T10:00:00.000Z",
-          "lastModified": "2026-05-02T10:00:00.000Z"
+          "createdAt": "2026-05-02T12:00:00.000Z",
+          "lastModified": "2026-05-02T12:00:00.000Z"
         }
       ],
       "successConditions": [],
       "statistics": {
-        "totalRules": 3,
+        "totalRules": 4,
         "totalConditions": 4,
         "totalActions": 13,
         "complexityScore": 35,
@@ -483,9 +518,10 @@
         "usedActionTypes": [
           "counter",
           "playSound",
+          "playBGM",
           "effect",
-          "animateTo",
-          "changeFrame",
+          "move",
+          "switchAnimation",
           "success",
           "failure"
         ],
