@@ -550,8 +550,8 @@ export class ActionExecutor {
           return;
         }
       } else {
-        targetX = movement.target.x;
-        targetY = movement.target.y;
+        targetX = movement.target.x * context.canvas.width;
+        targetY = movement.target.y * context.canvas.height;
       }
 
       const dx = targetX - targetObj.x;
@@ -586,8 +586,8 @@ export class ActionExecutor {
           return;
         }
       } else {
-        centerX = movement.target.x;
-        centerY = movement.target.y;
+        centerX = movement.target.x * context.canvas.width;
+        centerY = movement.target.y * context.canvas.height;
       }
       
       const dx = targetObj.x - centerX;

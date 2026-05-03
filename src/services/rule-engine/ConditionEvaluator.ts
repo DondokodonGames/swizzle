@@ -502,6 +502,15 @@ export class ConditionEvaluator {
       // 最終フレームに到達したかチェック（ループしない場合の end 検出）
       const reachedLastFrame = currentFrame === frameCount - 1 && state.lastFrame !== currentFrame;
 
+      // ループ検出: フレームが最終→先頭にリセットされた場合（逆再生は先頭→最終）
+      const looped = isPlaying && (
+        (state.lastFrame === frameCount - 1 && currentFrame === 0) ||
+        (state.lastFrame === 0 && currentFrame === frameCount - 1)
+      );
+      if (looped) {
+        state.loopCount++;
+      }
+
       // 状態を更新
       state.wasPlaying = isPlaying;
       state.justStarted = justStarted;
