@@ -393,7 +393,6 @@ export class GameConceptGenerator {
   private usedMechanics: Map<string, number> = new Map();  // type → count (debug)
   private archetypeIndex: number = 0;
   private patternAnalyzer: GamePatternAnalyzer;
-  private archetypeIndex: number = 0;
 
   constructor(config?: ConceptGeneratorConfig) {
     const providerType = config?.llmProvider || (process.env.LLM_PROVIDER as LLMProviderType) || 'anthropic';
