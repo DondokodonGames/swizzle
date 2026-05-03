@@ -148,12 +148,13 @@ export class CollisionDetector {
     const region = condition.region;
     const collisionType = condition.collisionType || 'enter';
     
-    // オブジェクトの境界ボックス
-    const objScale = sourceObj.scale || 1;
+    // オブジェクトの境界ボックス（scaleX/scaleY個別対応）
+    const objScaleX = (sourceObj as any).scaleX ?? sourceObj.scale ?? 1;
+    const objScaleY = (sourceObj as any).scaleY ?? sourceObj.scale ?? 1;
     const objLeft = sourceObj.x;
-    const objRight = sourceObj.x + sourceObj.width * objScale;
+    const objRight = sourceObj.x + sourceObj.width * objScaleX;
     const objTop = sourceObj.y;
-    const objBottom = sourceObj.y + sourceObj.height * objScale;
+    const objBottom = sourceObj.y + sourceObj.height * objScaleY;
     
     // stageAreaの境界ボックス（正規化座標 → ピクセル座標）
     const regionLeft = region.x * context.canvas.width;
@@ -217,13 +218,15 @@ export class CollisionDetector {
       return false;
     }
 
-    const scale1 = obj1.scale || 1;
-    const scale2 = obj2.scale || 1;
+    const scaleX1 = (obj1 as any).scaleX ?? obj1.scale ?? 1;
+    const scaleY1 = (obj1 as any).scaleY ?? obj1.scale ?? 1;
+    const scaleX2 = (obj2 as any).scaleX ?? obj2.scale ?? 1;
+    const scaleY2 = (obj2 as any).scaleY ?? obj2.scale ?? 1;
 
-    const result = obj1.x < obj2.x + obj2.width * scale2 &&
-           obj1.x + obj1.width * scale1 > obj2.x &&
-           obj1.y < obj2.y + obj2.height * scale2 &&
-           obj1.y + obj1.height * scale1 > obj2.y;
+    const result = obj1.x < obj2.x + obj2.width * scaleX2 &&
+           obj1.x + obj1.width * scaleX1 > obj2.x &&
+           obj1.y < obj2.y + obj2.height * scaleY2 &&
+           obj1.y + obj1.height * scaleY1 > obj2.y;
 
     // デバッグログ追加（Perfect Stop専用）
     if (obj1.id === 'obj_moving_bar' && obj2.id === 'obj_green_zone') {

@@ -419,8 +419,10 @@ export class ConditionEvaluator {
       }
 
       const { region } = condition;
-      const objCenterX = targetObj.x + targetObj.width / 2;
-      const objCenterY = targetObj.y + targetObj.height / 2;
+      const objScaleX = (targetObj as any).scaleX ?? targetObj.scale ?? 1;
+      const objScaleY = (targetObj as any).scaleY ?? targetObj.scale ?? 1;
+      const objCenterX = targetObj.x + (targetObj.width * objScaleX) / 2;
+      const objCenterY = targetObj.y + (targetObj.height * objScaleY) / 2;
 
       const regionX = region.x * context.canvas.width;
       const regionY = region.y * context.canvas.height;
