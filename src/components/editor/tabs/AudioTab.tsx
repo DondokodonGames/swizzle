@@ -302,8 +302,8 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
     }
 
     audioRef.current.src = audio.dataUrl;
-    audioRef.current.volume = audio.volume * volume;
-    audioRef.current.loop = audio.loop;
+    audioRef.current.volume = Math.max(0, Math.min(1, (audio.volume ?? 0.8) * volume));
+    audioRef.current.loop = audio.loop ?? false;
     
     audioRef.current.play().then(() => {
       setPlayingId(audio.id);
