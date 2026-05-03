@@ -35,6 +35,8 @@ export interface GameObject {
   effectStartTime?: number;
   effectDuration?: number;
   effectType?: string;
+  effectCenterX?: number;
+  effectCenterY?: number;
   originalScale?: number;
   originalX?: number;
   originalY?: number;

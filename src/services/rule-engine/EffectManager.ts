@@ -61,6 +61,10 @@ export class EffectManager {
     if (obj.baseScaleX === undefined) obj.baseScaleX = obj.scaleX ?? targetObj.scale;
     if (obj.baseScaleY === undefined) obj.baseScaleY = obj.scaleY ?? targetObj.scale;
 
+    // Save center position so scaling stays visually centered (not top-left anchored)
+    targetObj.effectCenterX = targetObj.x + (targetObj.width * obj.baseScaleX) / 2;
+    targetObj.effectCenterY = targetObj.y + (targetObj.height * obj.baseScaleY) / 2;
+
     const scaleAmount = effect.scaleAmount || 0.5;
     targetObj.effectScale = scaleAmount;
     targetObj.effectStartTime = performance.now();
@@ -227,6 +231,13 @@ export class EffectManager {
       const o = obj as any;
       if (o.baseScaleX !== undefined) o.scaleX = o.baseScaleX * factor;
       if (o.baseScaleY !== undefined) o.scaleY = o.baseScaleY * factor;
+      // Reposition so the object scales around its center, not top-left corner
+      if (obj.effectCenterX !== undefined && o.baseScaleX !== undefined) {
+        obj.x = obj.effectCenterX - (obj.width * o.baseScaleX * factor) / 2;
+      }
+      if (obj.effectCenterY !== undefined && o.baseScaleY !== undefined) {
+        obj.y = obj.effectCenterY - (obj.height * o.baseScaleY * factor) / 2;
+      }
     }
   }
 
@@ -285,6 +296,13 @@ export class EffectManager {
           const o = obj as any;
           if (o.baseScaleX !== undefined) o.scaleX = o.baseScaleX;
           if (o.baseScaleY !== undefined) o.scaleY = o.baseScaleY;
+          // Restore position to center-anchored original
+          if (obj.effectCenterX !== undefined && o.baseScaleX !== undefined) {
+            obj.x = obj.effectCenterX - (obj.width * o.baseScaleX) / 2;
+          }
+          if (obj.effectCenterY !== undefined && o.baseScaleY !== undefined) {
+            obj.y = obj.effectCenterY - (obj.height * o.baseScaleY) / 2;
+          }
         }
         break;
       case 'flash':
