@@ -392,6 +392,26 @@ export class EditorGameBridge {
 
       // AudioSystem作成
       let bgmAudio: HTMLAudioElement | null = null;
+      let audioUnlocked = false;
+
+      // ブラウザのAutoplay Policyをアンロックする（最初のユーザー操作時に呼ぶ）
+      const unlockAudio = () => {
+        if (audioUnlocked) return;
+        audioUnlocked = true;
+        // 全SEを一瞬再生→即停止してaudioコンテキストを解放
+        audioCache.forEach((audio, key) => {
+          if (key !== 'bgm') {
+            const p = audio.play();
+            if (p) p.then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
+          }
+        });
+        // ブロックされていたBGMを再試行
+        if (bgmAudio) {
+          bgmAudio.currentTime = 0;
+          bgmAudio.play().catch(() => {});
+        }
+      };
+
       const audioSystem = {
         playSound: async (soundId: string, volume?: number) => {
           const audio = audioCache.get(soundId);
@@ -942,6 +962,9 @@ export class EditorGameBridge {
       // 13. ✅ タッチ・クリックイベント（bc9ae40f版のシンプルなhandleInteraction）
       const handleInteraction = (event: MouseEvent | TouchEvent) => {
         try {
+          // 最初のユーザー操作でaudioをアンロック（Autoplay Policy対策）
+          unlockAudio();
+
           const rect = canvasElement.getBoundingClientRect();
           const clientX = 'touches' in event ? event.touches[0]?.clientX : event.clientX;
           const clientY = 'touches' in event ? event.touches[0]?.clientY : event.clientY;
