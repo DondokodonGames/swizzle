@@ -7,7 +7,7 @@
 import { GameProject } from '../../types/editor/GameProject';
 import { createDefaultInitialState, syncInitialStateWithLayout, createDefaultPhysics } from '../../types/editor/GameScript';
 import { RuleEngine, RuleExecutionContext } from '../rule-engine/RuleEngine';
-import { getBackgroundUrl, getAudioAssetUrl, getAssetFrameUrl } from '../../utils/assetUrl';
+import { getBackgroundUrl, getAudioAssetUrl, getAssetFrameUrl, dataUrlToObjectUrl } from '../../utils/assetUrl';
 
 // ゲーム実行結果
 export interface GameExecutionResult {
@@ -357,16 +357,26 @@ export class EditorGameBridge {
       // 7.5. 音声リソース読み込み
       const audioCache = new Map<string, HTMLAudioElement>();
 
+      // data: URL を blob: URL に変換（CSP の media-src data: が未設定の環境対応）
+      const toAudioSrc = (url: string): string => {
+        try {
+          return url.startsWith('data:') ? dataUrlToObjectUrl(url) : url;
+        } catch {
+          return url;
+        }
+      };
+
       // BGM読み込み（storageUrl / dataUrl両対応）
       if (project.assets?.audio?.bgm) {
-        const bgmUrl = getAudioAssetUrl(project.assets.audio.bgm);
-        if (bgmUrl) {
+        const rawUrl = getAudioAssetUrl(project.assets.audio.bgm);
+        if (rawUrl) {
           try {
-            const bgmAudio = new Audio(bgmUrl);
-            if (!bgmUrl.startsWith('data:')) bgmAudio.crossOrigin = 'anonymous';
+            const bgmSrc = toAudioSrc(rawUrl);
+            const bgmAudio = new Audio(bgmSrc);
+            if (bgmSrc.startsWith('http')) bgmAudio.crossOrigin = 'anonymous';
             bgmAudio.loop = true;
             audioCache.set('bgm', bgmAudio);
-            console.log('✅ BGM読み込み完了');
+            console.log('✅ BGM読み込み完了:', bgmSrc.startsWith('blob:') ? 'blob URL' : bgmSrc.substring(0, 30));
           } catch (error) {
             warnings.push('BGMの読み込みに失敗しました');
           }
@@ -376,13 +386,14 @@ export class EditorGameBridge {
       // SE読み込み（storageUrl / dataUrl両対応）
       if (project.assets?.audio?.se) {
         for (const se of project.assets.audio.se) {
-          const seUrl = getAudioAssetUrl(se);
-          if (!seUrl) continue;
+          const rawUrl = getAudioAssetUrl(se);
+          if (!rawUrl) continue;
           try {
-            const seAudio = new Audio(seUrl);
-            if (!seUrl.startsWith('data:')) seAudio.crossOrigin = 'anonymous';
+            const seSrc = toAudioSrc(rawUrl);
+            const seAudio = new Audio(seSrc);
+            if (seSrc.startsWith('http')) seAudio.crossOrigin = 'anonymous';
             audioCache.set(se.id, seAudio);
-            console.log(`✅ SE読み込み完了: ${se.name}`);
+            console.log(`✅ SE読み込み完了: ${se.name}`, seSrc.startsWith('blob:') ? 'blob URL' : '');
           } catch (error) {
             warnings.push(`SE "${se.name}" の読み込みに失敗しました`);
           }
