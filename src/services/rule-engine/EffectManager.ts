@@ -53,9 +53,13 @@ export class EffectManager {
    * スケールエフェクト実行
    */
   private executeScaleEffect(targetObj: GameObject, effect: any, durationMs: number): void {
+    const obj = targetObj as any;
     if (targetObj.baseScale === undefined) {
       targetObj.baseScale = targetObj.scale;
     }
+    // Save scaleX/scaleY bases so rendering (which prefers scaleX ?? scale) can be updated
+    if (obj.baseScaleX === undefined) obj.baseScaleX = obj.scaleX ?? targetObj.scale;
+    if (obj.baseScaleY === undefined) obj.baseScaleY = obj.scaleY ?? targetObj.scale;
 
     const scaleAmount = effect.scaleAmount || 0.5;
     targetObj.effectScale = scaleAmount;
@@ -211,15 +215,18 @@ export class EffectManager {
    */
   private updateScaleEffect(obj: GameObject, progress: number): void {
     if (obj.baseScale !== undefined && obj.effectScale !== undefined) {
-      // 潰れるアニメーション: 1.0 → scaleAmount → 1.0
-      const t = progress * 2; // 0-2の範囲
+      const t = progress * 2;
+      let factor: number;
       if (t < 1) {
-        // 前半: 1.0 → scaleAmount
-        obj.scale = obj.baseScale * (1.0 - (1.0 - obj.effectScale) * t);
+        factor = 1.0 - (1.0 - obj.effectScale) * t;
       } else {
-        // 後半: scaleAmount → 1.0
-        obj.scale = obj.baseScale * (obj.effectScale + (1.0 - obj.effectScale) * (t - 1));
+        factor = obj.effectScale + (1.0 - obj.effectScale) * (t - 1);
       }
+      obj.scale = obj.baseScale * factor;
+      // Also update scaleX/scaleY — rendering uses these preferentially
+      const o = obj as any;
+      if (o.baseScaleX !== undefined) o.scaleX = o.baseScaleX * factor;
+      if (o.baseScaleY !== undefined) o.scaleY = o.baseScaleY * factor;
     }
   }
 
@@ -275,6 +282,9 @@ export class EffectManager {
       case 'scale':
         if (obj.baseScale !== undefined) {
           obj.scale = obj.baseScale;
+          const o = obj as any;
+          if (o.baseScaleX !== undefined) o.scaleX = o.baseScaleX;
+          if (o.baseScaleY !== undefined) o.scaleY = o.baseScaleY;
         }
         break;
       case 'flash':
