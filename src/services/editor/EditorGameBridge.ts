@@ -364,7 +364,7 @@ export class EditorGameBridge {
         if (bgmUrl) {
           try {
             const bgmAudio = new Audio(bgmUrl);
-            bgmAudio.crossOrigin = 'anonymous'; // CORS対応
+            if (!bgmUrl.startsWith('data:')) bgmAudio.crossOrigin = 'anonymous';
             bgmAudio.loop = true;
             audioCache.set('bgm', bgmAudio);
             console.log('✅ BGM読み込み完了');
@@ -381,7 +381,7 @@ export class EditorGameBridge {
           if (!seUrl) continue;
           try {
             const seAudio = new Audio(seUrl);
-            seAudio.crossOrigin = 'anonymous'; // CORS対応
+            if (!seUrl.startsWith('data:')) seAudio.crossOrigin = 'anonymous';
             audioCache.set(se.id, seAudio);
             console.log(`✅ SE読み込み完了: ${se.name}`);
           } catch (error) {
@@ -856,6 +856,12 @@ export class EditorGameBridge {
                 objWidth,
                 objHeight
               );
+              // Flash overlay
+              if (obj.flashValue && obj.flashValue > 0) {
+                ctx.globalAlpha = obj.flashValue * (obj.alpha ?? 1.0);
+                ctx.fillStyle = obj.flashColor || '#FFFFFF';
+                ctx.fillRect(drawCenterX - objWidth / 2, drawCenterY - objHeight / 2, objWidth, objHeight);
+              }
             } else {
               // フォールバック描画（画像未ロードの場合）
               ctx.globalAlpha = obj.alpha ?? 1.0;
