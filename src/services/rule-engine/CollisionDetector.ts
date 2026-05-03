@@ -232,15 +232,15 @@ export class CollisionDetector {
     if (obj1.id === 'obj_moving_bar' && obj2.id === 'obj_green_zone') {
       console.log('🧮 衝突計算詳細:', {
         obj1_left: obj1.x.toFixed(2),
-        obj1_right: (obj1.x + obj1.width * scale1).toFixed(2),
-        obj1_width_scaled: (obj1.width * scale1).toFixed(2),
+        obj1_right: (obj1.x + obj1.width * scaleX1).toFixed(2),
+        obj1_width_scaled: (obj1.width * scaleX1).toFixed(2),
         obj2_left: obj2.x.toFixed(2),
-        obj2_right: (obj2.x + obj2.width * scale2).toFixed(2),
-        obj2_width_scaled: (obj2.width * scale2).toFixed(2),
-        overlap_x: (obj1.x < obj2.x + obj2.width * scale2) && 
-                   (obj1.x + obj1.width * scale1 > obj2.x),
-        overlap_y: (obj1.y < obj2.y + obj2.height * scale2) && 
-                   (obj1.y + obj1.height * scale1 > obj2.y),
+        obj2_right: (obj2.x + obj2.width * scaleX2).toFixed(2),
+        obj2_width_scaled: (obj2.width * scaleX2).toFixed(2),
+        overlap_x: (obj1.x < obj2.x + obj2.width * scaleX2) &&
+                   (obj1.x + obj1.width * scaleX1 > obj2.x),
+        overlap_y: (obj1.y < obj2.y + obj2.height * scaleY2) &&
+                   (obj1.y + obj1.height * scaleY1 > obj2.y),
         result
       });
     }
