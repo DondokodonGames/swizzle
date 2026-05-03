@@ -2,6 +2,7 @@
 // 🔧 Phase E-1: 音声再生システム共通ロジック抽出
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { AudioAsset } from '../../types/editor/ProjectAssets';
+import { dataUrlToObjectUrl } from '../../utils/assetUrl';
 
 // 再生状態型定義
 export interface PlaybackState {
@@ -40,10 +41,10 @@ export const useAudioPlayback = () => {
         return;
       }
 
-      // 新しい音声を設定
-      audioRef.current.src = audio.dataUrl;
-      audioRef.current.volume = audio.volume;
-      audioRef.current.loop = audio.loop;
+      // 新しい音声を設定（data: URL → blob: URL に変換してCSPをパス）
+      audioRef.current.src = dataUrlToObjectUrl(audio.dataUrl);
+      audioRef.current.volume = Math.max(0, Math.min(1, audio.volume ?? 0.8));
+      audioRef.current.loop = audio.loop ?? false;
       
       audioRef.current.play()
         .then(() => {

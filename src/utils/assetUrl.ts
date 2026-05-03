@@ -30,7 +30,25 @@ export function getAssetFrameUrl(frame: AssetFrame | undefined | null): string |
 }
 
 /**
+ * dataURL を Blob URL に変換する
+ * CSP の media-src が data: を許可しない環境でも再生できるようにする
+ * blob: URL は 'self' と同じオリジンとして扱われるため CSP をパスする
+ */
+export function dataUrlToObjectUrl(dataUrl: string): string {
+  if (!dataUrl.startsWith('data:')) return dataUrl;
+  const [header, base64] = dataUrl.split(',', 2);
+  const mimeType = header.match(/:(.*?);/)?.[1] || 'audio/wav';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+}
+
+/**
  * 音声アセットから再生用URLを取得
+ * data: URL は Blob URL に変換して CSP をパスさせる
  */
 export function getAudioAssetUrl(audio: AudioAsset | undefined | null): string | null {
   if (!audio) return null;
@@ -40,9 +58,9 @@ export function getAudioAssetUrl(audio: AudioAsset | undefined | null): string |
     return audio.storageUrl;
   }
 
-  // dataUrlが存在する場合
+  // dataUrlをBlob URLに変換してCSPをパス
   if (audio.dataUrl && audio.dataUrl.length > 0) {
-    return audio.dataUrl;
+    return dataUrlToObjectUrl(audio.dataUrl);
   }
 
   return null;

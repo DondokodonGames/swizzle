@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../../types/editor/GameProject';
 import { AudioAsset } from '../../../types/editor/ProjectAssets';
 import { EDITOR_LIMITS } from '../../../constants/EditorLimits';
+import { dataUrlToObjectUrl } from '../../../utils/assetUrl';
 
 interface AudioTabProps {
   project: GameProject;
@@ -301,7 +302,7 @@ export const AudioTab: React.FC<AudioTabProps> = ({ project, onProjectUpdate }) 
       return;
     }
 
-    audioRef.current.src = audio.dataUrl;
+    audioRef.current.src = dataUrlToObjectUrl(audio.dataUrl);
     audioRef.current.volume = Math.max(0, Math.min(1, (audio.volume ?? 0.8) * volume));
     audioRef.current.loop = audio.loop ?? false;
     
