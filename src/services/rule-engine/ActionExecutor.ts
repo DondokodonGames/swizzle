@@ -544,14 +544,16 @@ export class ActionExecutor {
       if (typeof movement.target === 'string') {
         const targetObject = context.objects.get(movement.target);
         if (targetObject) {
-          targetX = targetObject.x;
-          targetY = targetObject.y;
+          const tScaleX = (targetObject as any).scaleX ?? targetObject.scale ?? 1;
+          const tScaleY = (targetObject as any).scaleY ?? targetObject.scale ?? 1;
+          targetX = targetObject.x + (targetObject.width * tScaleX) / 2;
+          targetY = targetObject.y + (targetObject.height * tScaleY) / 2;
         } else {
           return;
         }
       } else {
-        targetX = movement.target.x;
-        targetY = movement.target.y;
+        targetX = movement.target.x * context.canvas.width;
+        targetY = movement.target.y * context.canvas.height;
       }
 
       const dx = targetX - targetObj.x;
@@ -580,14 +582,16 @@ export class ActionExecutor {
       if (typeof movement.target === 'string') {
         const targetObject = context.objects.get(movement.target);
         if (targetObject) {
-          centerX = targetObject.x;
-          centerY = targetObject.y;
+          const tScaleX = (targetObject as any).scaleX ?? targetObject.scale ?? 1;
+          const tScaleY = (targetObject as any).scaleY ?? targetObject.scale ?? 1;
+          centerX = targetObject.x + (targetObject.width * tScaleX) / 2;
+          centerY = targetObject.y + (targetObject.height * tScaleY) / 2;
         } else {
           return;
         }
       } else {
-        centerX = movement.target.x;
-        centerY = movement.target.y;
+        centerX = movement.target.x * context.canvas.width;
+        centerY = movement.target.y * context.canvas.height;
       }
       
       const dx = targetObj.x - centerX;

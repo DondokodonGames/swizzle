@@ -419,8 +419,10 @@ export class ConditionEvaluator {
       }
 
       const { region } = condition;
-      const objCenterX = targetObj.x + targetObj.width / 2;
-      const objCenterY = targetObj.y + targetObj.height / 2;
+      const objScaleX = (targetObj as any).scaleX ?? targetObj.scale ?? 1;
+      const objScaleY = (targetObj as any).scaleY ?? targetObj.scale ?? 1;
+      const objCenterX = targetObj.x + (targetObj.width * objScaleX) / 2;
+      const objCenterY = targetObj.y + (targetObj.height * objScaleY) / 2;
 
       const regionX = region.x * context.canvas.width;
       const regionY = region.y * context.canvas.height;
@@ -501,6 +503,15 @@ export class ConditionEvaluator {
 
       // 最終フレームに到達したかチェック（ループしない場合の end 検出）
       const reachedLastFrame = currentFrame === frameCount - 1 && state.lastFrame !== currentFrame;
+
+      // ループ検出: フレームが最終→先頭にリセットされた場合（逆再生は先頭→最終）
+      const looped = isPlaying && (
+        (state.lastFrame === frameCount - 1 && currentFrame === 0) ||
+        (state.lastFrame === 0 && currentFrame === frameCount - 1)
+      );
+      if (looped) {
+        state.loopCount++;
+      }
 
       // 状態を更新
       state.wasPlaying = isPlaying;
