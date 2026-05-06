@@ -130,7 +130,8 @@ export function useWallet(): UseWalletResult {
   }, [user, fetchWallet]);
 
   const status: WalletStatus | null = wallet ? calcWalletStatus(wallet) : null;
-  const canCreateGame = status?.canPlay ?? false;
+  // ゲーム作成はウォレット残高に関わらず常に許可
+  const canCreateGame = true;
 
   return { wallet, loading, error, refetch, status, canCreateGame };
 }

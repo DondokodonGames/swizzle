@@ -2,7 +2,7 @@
 // ✅ キャッシュシステム追加版（フリーズ解消・getUserGames修正版）
 
 import { GameProject } from '../types/editor/GameProject';
-import { database, supabase } from '../lib/supabase';
+import { database } from '../lib/supabase';
 import { getErrorMessage } from '../utils/errorUtils';
 
 // 🔧 軽量版プロジェクトメタデータ（一覧表示用）
@@ -255,23 +255,10 @@ export class ProjectStorageManager {
         return projectData && projectData.id === project.id;
       });
 
-      // 新規ゲーム作成時のみウォレット残高チェック（ペイ・パー・プレイモデル）
       if (isNewGame) {
-        const { data: canPlay, error: walletCheckError } = await supabase.rpc('check_wallet_can_play');
-
-        if (walletCheckError) {
-          console.error('[SaveDB-Manager] ❌ Wallet check error:', walletCheckError);
-          throw new Error('残高確認に失敗しました。しばらくしてから再試行してください。');
-        }
-
-        if (!canPlay) {
-          console.warn('[SaveDB-Manager] ⚠️ Insufficient wallet balance for new game creation');
-          throw new Error('残高が不足しています。チャージしてからゲームを作成してください。');
-        }
-
-        console.log('[SaveDB-Manager] ✅ Wallet check passed, creating new game...');
+        console.log('[SaveDB-Manager] ✨ Creating new game...');
       } else {
-        console.log('[SaveDB-Manager] ✅ Updating existing game, no wallet check needed.');
+        console.log('[SaveDB-Manager] ✅ Updating existing game.');
       }
 
       // ✅ キャッシュから検索（上で取得済みのキャッシュを再利用）

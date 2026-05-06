@@ -47,7 +47,7 @@ function toUsage(
  * クレジット管理Hook（互換ラッパー）
  */
 export function useCredits(): UseCreditsResult {
-  const { wallet, loading, error, refetch, canCreateGame } = useWallet();
+  const { wallet, loading, error, refetch } = useWallet();
 
   const usage: CreditUsage | null = wallet
     ? toUsage(wallet.free_games_remaining, wallet.total_games_created, wallet.balance_yen)
@@ -55,6 +55,9 @@ export function useCredits(): UseCreditsResult {
 
   // 旧インターフェース互換: credits は null を返す（ウォレット経由のため不要）
   const credits: UserCredit | null = null;
+
+  // ゲーム作成はウォレット残高に関わらず常に許可
+  const canCreateGame = true;
 
   return {
     credits,

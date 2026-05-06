@@ -13,9 +13,6 @@ import { ModernButton } from '../ui/ModernButton';
 import { ModernCard } from '../ui/ModernCard';
 import { EditorGameBridge, GameExecutionResult } from '../../services/editor/EditorGameBridge';
 import { ProjectStorageManager } from '../../services/ProjectStorageManager';
-import { useCredits } from '../../hooks/monetization/useCredits';
-import { usePaywall } from '../../hooks/monetization/usePaywall';
-import { PaywallModal } from '../monetization/PaywallModal';
 import { getErrorMessage } from '../../utils/errorUtils';
 
 type AppMode = 'selector' | 'editor' | 'testplay';
@@ -45,11 +42,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   const gameBridge = useRef(EditorGameBridge.getInstance());
 
   const { user, loading: authLoading } = useAuth();
-  const { canCreateGame, usage, loading: creditsLoading } = useCredits();
-  const { shouldShowPaywall, openPaywall, closePaywall } = usePaywall();
-
-  // ウォレット読み込み完了後にPaywallモーダルを表示可能にする
-  const isMonetizationReady = !creditsLoading;
   
   const {
     currentProject,
@@ -95,12 +87,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   }, [setCurrentProjectDirectly, showNotification, t]);
 
   const handleCreateNew = useCallback(async (name: string) => {
-    if (creditsLoading) return; // ウォレット確認中は待機
-    if (!canCreateGame) {
-      openPaywall();
-      return;
-    }
-
     try {
       await createProject(name);
       setMode('editor');
@@ -108,7 +94,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     } catch (error: unknown) {
       showNotification('error', `${t('errors.generic')}: ${getErrorMessage(error)}`);
     }
-  }, [createProject, showNotification, t, canCreateGame, openPaywall]);
+  }, [createProject, showNotification, t]);
 
   const handleSave = useCallback(async (options?: { metadataOnly?: boolean }) => {
     if (!currentProject) return;
@@ -240,12 +226,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
 
   const handlePublish = useCallback(async () => {
     if (!currentProject) return;
-
-    if (creditsLoading) return; // ウォレット確認中は待機
-    if (!canCreateGame) {
-      openPaywall();
-      return;
-    }
 
     if (!user) {
       showNotification('error', t('editor.app.publishRequiresLogin'));
@@ -497,14 +477,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')
       }}
     >
-      {isMonetizationReady && (
-        <PaywallModal
-          isOpen={shouldShowPaywall}
-          onClose={closePaywall}
-          currentUsage={usage || undefined}
-        />
-      )}
-
       {(loading || authLoading) && (
         <div
           style={{
