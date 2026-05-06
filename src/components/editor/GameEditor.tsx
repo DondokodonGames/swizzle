@@ -2,7 +2,7 @@
 // ✅ テーマシステム削除・ModernCard/ModernButton使用・清潔なデザイン
 // 🔧 audio プロパティエラー修正版（3箇所修正）
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import ModernButton from '../ui/ModernButton';
 import { GameProject } from '../../types/editor/GameProject';
@@ -41,7 +41,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
 
   // プロジェクト更新時の処理
-  const handleProjectUpdate = (updatedProject: GameProject) => {
+  const handleProjectUpdate = useCallback((updatedProject: GameProject) => {
     onProjectUpdate({
       ...updatedProject,
       lastModified: new Date().toISOString(),
@@ -75,7 +75,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
       }
     });
     setHasUnsavedChanges(true);
-  };
+  }, [onProjectUpdate, activeTab, autoSaveEnabled]);
 
   // 自動保存機能
   useEffect(() => {
@@ -94,31 +94,16 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     setHasUnsavedChanges(false);
   }, [project.id]);
 
-  // 🔧 修正箇所1: 容量計算（107-112行目）
-  const calculateTotalSize = (): number => {
+  const totalSize = useMemo((): number => {
     const assets = project.assets;
     let total = 0;
-
-    if (assets.background) {
-      total += assets.background.totalSize;
-    }
-
-    assets.objects.forEach(obj => {
-      total += obj.totalSize;
-    });
-
-    // ✅ 修正: オプショナルチェーン追加
-    if (assets.audio?.bgm) {
-      total += assets.audio.bgm.fileSize;
-    }
-    assets.audio?.se?.forEach(se => {
-      total += se.fileSize;
-    });
-
+    if (assets.background) total += assets.background.totalSize;
+    assets.objects.forEach(obj => { total += obj.totalSize; });
+    if (assets.audio?.bgm) total += assets.audio.bgm.fileSize;
+    assets.audio?.se?.forEach(se => { total += se.fileSize; });
     return total;
-  };
+  }, [project.assets]);
 
-  const totalSize = calculateTotalSize();
   const sizePercentage = (totalSize / EDITOR_LIMITS.PROJECT.TOTAL_MAX_SIZE) * 100;
 
   // 🔧 修正箇所2: タブの設定（131-135行目）
@@ -153,45 +138,19 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     }
   ];
 
-  // プロジェクト完成度判定
-  const getProjectCompleteness = (): { percentage: number; issues: string[] } => {
+  const completeness = useMemo((): { percentage: number; issues: string[] } => {
     const issues: string[] = [];
     let score = 0;
     const maxScore = 5;
 
-    if (project.settings.name?.trim()) {
-      score += 1;
-    } else {
-      issues.push(t('errors.gameNameRequired'));
-    }
+    if (project.settings.name?.trim()) { score += 1; } else { issues.push(t('errors.gameNameRequired')); }
+    if (project.assets.objects.length > 0 || project.assets.background) { score += 1; } else { issues.push(t('errors.noAssets')); }
+    if (project.settings.duration) { score += 1; } else { issues.push(t('editor.settings.duration')); }
+    if (project.script.rules.length > 0) { score += 1; }
+    if (project.settings.preview?.thumbnailDataUrl) { score += 1; }
 
-    if (project.assets.objects.length > 0 || project.assets.background) {
-      score += 1;
-    } else {
-      issues.push(t('errors.noAssets'));
-    }
-
-    if (project.settings.duration) {
-      score += 1;
-    } else {
-      issues.push(t('editor.settings.duration'));
-    }
-
-    if (project.script.rules.length > 0) {
-      score += 1;
-    }
-
-    if (project.settings.preview?.thumbnailDataUrl) {
-      score += 1;
-    }
-
-    return {
-      percentage: (score / maxScore) * 100,
-      issues
-    };
-  };
-
-  const completeness = getProjectCompleteness();
+    return { percentage: (score / maxScore) * 100, issues };
+  }, [project.settings, project.assets, project.script.rules, t]);
 
   return (
     <div style={{ 
@@ -206,11 +165,11 @@ export const GameEditor: React.FC<GameEditorProps> = ({
         boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
       }}>
         <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 24px' }}>
-          <div style={{ 
+          <div style={{
             display: 'flex',
-            flexDirection: window.innerWidth < 1024 ? 'column' : 'row',
+            flexWrap: 'wrap',
             justifyContent: 'space-between',
-            alignItems: window.innerWidth < 1024 ? 'flex-start' : 'center',
+            alignItems: 'center',
             padding: '16px 0',
             gap: '16px'
           }}>

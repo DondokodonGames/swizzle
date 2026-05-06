@@ -93,28 +93,24 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
   // 🔧 新規: オブジェクトを初期配置（ドラッグ&ドロップの代替）
   const handleAddObjectToLayout = (objectId: string) => {
     console.log(`[ScriptTab] レイアウトにオブジェクト追加: ${objectId}`);
-    
-    const updatedScript = JSON.parse(JSON.stringify(project.script));
-    
-    // 既に配置済みかチェック
-    const existingIndex = updatedScript.layout.objects.findIndex((obj: any) => obj.objectId === objectId);
-    
+
+    const existingIndex = project.script.layout.objects.findIndex((obj: any) => obj.objectId === objectId);
+
     if (existingIndex >= 0) {
       showNotification('info', t('editor.script.objectPlacement.alreadyPlaced'));
       return;
     }
-    
-    // 新しい位置を計算（重複しないように配置）
-    const existingCount = updatedScript.layout.objects.length;
-    const baseX = 0.2 + (existingCount % 3) * 0.3; // 3列配置
-    const baseY = 0.2 + Math.floor(existingCount / 3) * 0.3; // 行を下に
-    
+
+    const existingCount = project.script.layout.objects.length;
+    const baseX = 0.2 + (existingCount % 3) * 0.3;
+    const baseY = 0.2 + Math.floor(existingCount / 3) * 0.3;
+
     const asset = project.assets.objects.find(obj => obj.id === objectId);
     if (asset) {
-      updatedScript.layout.objects.push({
+      const newLayoutObj = {
         objectId: objectId,
         position: { x: baseX, y: baseY },
-        scale: { x: 1.5, y: 1.5 }, // 🔧 デフォルトスケールを1.5に
+        scale: { x: 1.5, y: 1.5 },
         rotation: 0,
         zIndex: existingCount + 10,
         initialState: {
@@ -123,23 +119,31 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
           animationSpeed: 12,
           autoStart: false
         }
+      };
+      updateProject({
+        script: {
+          ...project.script,
+          layout: {
+            ...project.script.layout,
+            objects: [...project.script.layout.objects, newLayoutObj]
+          }
+        }
       });
-      
-      updateProject({ script: updatedScript });
-      setSelectedObjectId(objectId); // 自動選択
+      setSelectedObjectId(objectId);
       showNotification('success', t('success.fileUploaded'));
     }
   };
 
   // 🔧 新規: レイアウトからオブジェクト削除
   const handleRemoveObjectFromLayout = (objectId: string) => {
-    const updatedScript = JSON.parse(JSON.stringify(project.script));
-    const beforeCount = updatedScript.layout.objects.length;
-    
-    updatedScript.layout.objects = updatedScript.layout.objects.filter((obj: any) => obj.objectId !== objectId);
-    
-    if (updatedScript.layout.objects.length < beforeCount) {
-      updateProject({ script: updatedScript });
+    const filtered = project.script.layout.objects.filter((obj: any) => obj.objectId !== objectId);
+    if (filtered.length < project.script.layout.objects.length) {
+      updateProject({
+        script: {
+          ...project.script,
+          layout: { ...project.script.layout, objects: filtered }
+        }
+      });
       if (selectedObjectId === objectId) {
         setSelectedObjectId(null);
       }
@@ -150,56 +154,63 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
   // オブジェクト配置更新（既存機能保護）
   const handleObjectPositionUpdate = (objectId: string, position: { x: number; y: number }) => {
     console.log(`[ScriptTab] 位置更新: ${objectId} → (${position.x.toFixed(2)}, ${position.y.toFixed(2)})`);
-    
-    const updatedScript = JSON.parse(JSON.stringify(project.script));
-    
-    // 既存のレイアウトオブジェクトを探す
-    const existingIndex = updatedScript.layout.objects.findIndex((obj: any) => obj.objectId === objectId);
-    
+
+    const layoutObjects = project.script.layout.objects;
+    const existingIndex = layoutObjects.findIndex((obj: any) => obj.objectId === objectId);
+
+    let updatedObjects;
     if (existingIndex >= 0) {
-      // 既存オブジェクトの位置を更新
-      updatedScript.layout.objects[existingIndex].position = position;
+      updatedObjects = layoutObjects.map((obj: any, i: number) =>
+        i === existingIndex ? { ...obj, position } : obj
+      );
     } else {
-      // 新しいオブジェクトを追加
       const asset = project.assets.objects.find(obj => obj.id === objectId);
       if (asset) {
-        updatedScript.layout.objects.push({
+        updatedObjects = [...layoutObjects, {
           objectId: objectId,
           position: position,
-          scale: { x: 1.5, y: 1.5 }, // 🔧 デフォルトスケールを1.5に
+          scale: { x: 1.5, y: 1.5 },
           rotation: 0,
-          zIndex: updatedScript.layout.objects.length + 10,
+          zIndex: layoutObjects.length + 10,
           initialState: {
             visible: true,
             animation: 0,
             animationSpeed: 12,
             autoStart: false
           }
-        });
+        }];
         console.log(`[ScriptTab] 新規配置: ${asset.name}`);
       }
     }
-    
-    updateProject({ script: updatedScript });
+    if (updatedObjects) {
+      updateProject({
+        script: {
+          ...project.script,
+          layout: { ...project.script.layout, objects: updatedObjects }
+        }
+      });
+    }
   };
 
   // 🔧 新規追加: スケール更新ハンドラ
   const handleObjectScaleUpdate = (objectId: string, scale: { x: number; y: number }) => {
     console.log(`[ScriptTab] スケール更新: ${objectId} → (${scale.x.toFixed(2)}, ${scale.y.toFixed(2)})`);
-    
-    const updatedScript = JSON.parse(JSON.stringify(project.script));
-    const existingIndex = updatedScript.layout.objects.findIndex((obj: any) => obj.objectId === objectId);
-    
+
+    const layoutObjects = project.script.layout.objects;
+    const existingIndex = layoutObjects.findIndex((obj: any) => obj.objectId === objectId);
+
     if (existingIndex >= 0) {
-      updatedScript.layout.objects[existingIndex].scale = scale;
-      
-      // 🔧 通知なしで更新（リサイズ中は頻繁に呼ばれるため）
-      const updatedProject = {
+      const updatedObjects = layoutObjects.map((obj: any, i: number) =>
+        i === existingIndex ? { ...obj, scale } : obj
+      );
+      onProjectUpdate({
         ...project,
-        script: updatedScript,
+        script: {
+          ...project.script,
+          layout: { ...project.script.layout, objects: updatedObjects }
+        },
         lastModified: new Date().toISOString()
-      };
-      onProjectUpdate(updatedProject);
+      });
       setForceRender(prev => prev + 1);
     }
   };
@@ -281,25 +292,21 @@ export const ScriptTab: React.FC<ScriptTabProps> = ({ project, onProjectUpdate }
     console.log('[ScriptTab] ルール保存:', rule.name);
     console.log('[ScriptTab] ルール内容:', JSON.stringify(rule, null, 2));
 
-    // ✅ 深いコピーを作成して変更を確実に反映
-    const updatedScript = JSON.parse(JSON.stringify(project.script));
-    const existingIndex = updatedScript.rules.findIndex((r: GameRule) => r.id === rule.id);
+    const existingIndex = project.script.rules.findIndex((r: GameRule) => r.id === rule.id);
+    const updatedRules = existingIndex >= 0
+      ? project.script.rules.map((r: GameRule) => r.id === rule.id ? rule : r)
+      : [...project.script.rules, rule];
 
     if (existingIndex >= 0) {
-      // 既存ルール更新
-      updatedScript.rules[existingIndex] = rule;
       console.log('[ScriptTab] 既存ルール更新:', { index: existingIndex, ruleId: rule.id });
-      showNotification('success', t('editor.script.ruleModal.saved'));
     } else {
-      // 新規ルール追加
-      updatedScript.rules.push(rule);
-      console.log('[ScriptTab] 新規ルール追加:', { ruleId: rule.id, totalRules: updatedScript.rules.length });
-      showNotification('success', t('editor.script.ruleModal.saved'));
+      console.log('[ScriptTab] 新規ルール追加:', { ruleId: rule.id, totalRules: updatedRules.length });
     }
+    showNotification('success', t('editor.script.ruleModal.saved'));
 
-    console.log('[ScriptTab] 保存後のルール一覧:', updatedScript.rules.map((r: GameRule) => ({ id: r.id, name: r.name, enabled: r.enabled })));
+    console.log('[ScriptTab] 保存後のルール一覧:', updatedRules.map((r: GameRule) => ({ id: r.id, name: r.name, enabled: r.enabled })));
 
-    updateProject({ script: updatedScript });
+    updateProject({ script: { ...project.script, rules: updatedRules } });
     setShowRuleModal(false);
     setEditingRule(null);
   };

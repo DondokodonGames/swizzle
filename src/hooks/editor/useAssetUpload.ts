@@ -1,6 +1,6 @@
 // src/hooks/editor/useAssetUpload.ts
 // 🔧 Phase E-1: AssetsTab共通ロジック抽出 - アップロード処理統合
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { ProjectAssets, AssetFrame, AudioAsset, ObjectAsset } from '../../types/editor/ProjectAssets';
 import { EDITOR_LIMITS } from '../../constants/EditorLimits';
@@ -95,22 +95,28 @@ export const useAssetUpload = (
 ) => {
   const [uploading, setUploading] = useState(false);
 
+  // ref で最新値を保持することでコールバック再生成を防ぐ
+  const projectRef = useRef(project);
+  const onProjectUpdateRef = useRef(onProjectUpdate);
+  useEffect(() => { projectRef.current = project; }, [project]);
+  useEffect(() => { onProjectUpdateRef.current = onProjectUpdate; }, [onProjectUpdate]);
+
   // プロジェクト更新ヘルパー（script・layout同期機能付き）
+  // 依存配列を空にして安定した参照を保つ
   const updateProjectWithSync = useCallback((updates: Partial<GameProject>) => {
-    const updatedProject = { ...project, ...updates };
-    
-    // 初期条件の確保・同期
+    const updatedProject = { ...projectRef.current, ...updates };
+
     if (updates.assets && !updatedProject.script.initialState) {
       console.log('🔧 初期条件なし→デフォルト作成・同期');
       updatedProject.script.initialState = createDefaultInitialState();
       updatedProject.script.initialState = syncInitialStateWithLayout(
-        updatedProject.script.initialState, 
+        updatedProject.script.initialState,
         updatedProject.script.layout
       );
     }
-    
-    onProjectUpdate(updatedProject);
-  }, [project, onProjectUpdate]);
+
+    onProjectUpdateRef.current(updatedProject);
+  }, []);
 
   // 統計更新ヘルパー
   const updateAssetStatistics = useCallback((assets: ProjectAssets): ProjectAssets => {
@@ -156,8 +162,8 @@ export const useAssetUpload = (
     
     try {
       const now = new Date().toISOString();
-      const updatedAssets = { ...project.assets };
-      const updatedScript = { ...project.script };
+      const updatedAssets = { ...projectRef.current.assets };
+      const updatedScript = { ...projectRef.current.script };
       let addedCount = 0;
 
       for (const result of results) {
@@ -305,7 +311,7 @@ export const useAssetUpload = (
     } finally {
       setUploading(false);
     }
-  }, [project, updateProjectWithSync, updateAssetStatistics, uploading]);
+  }, [updateProjectWithSync, updateAssetStatistics, uploading]);
 
   // 音声ファイルアップロード（BGM・SE対応）
   const uploadAudioFile = useCallback(async (
@@ -337,7 +343,7 @@ export const useAssetUpload = (
       }
 
       // 容量制限チェック
-      if (type === 'se' && (project.assets.audio?.se?.length || 0) >= EDITOR_LIMITS.PROJECT.MAX_SE_COUNT) {
+      if (type === 'se' && (projectRef.current.assets.audio?.se?.length || 0) >= EDITOR_LIMITS.PROJECT.MAX_SE_COUNT) {
         return { 
           success: false, 
           message: `効果音は最大${EDITOR_LIMITS.PROJECT.MAX_SE_COUNT}個まで追加できます`, 
@@ -368,7 +374,7 @@ export const useAssetUpload = (
       };
 
       // プロジェクト更新
-      const updatedAssets = { ...project.assets };
+      const updatedAssets = { ...projectRef.current.assets };
       
       if (type === 'bgm') {
         updatedAssets.audio.bgm = newAudioAsset;
@@ -400,15 +406,15 @@ export const useAssetUpload = (
     } finally {
       setUploading(false);
     }
-  }, [project, updateProjectWithSync, updateAssetStatistics, uploading]);
+  }, [updateProjectWithSync, updateAssetStatistics, uploading]);
 
   // アセット削除（layout同期対応）
   const deleteAsset = useCallback((
     type: 'background' | 'objects' | 'bgm' | 'se',
     id?: string
   ): UploadResult => {
-    const updatedAssets = { ...project.assets };
-    const updatedScript = { ...project.script };
+    const updatedAssets = { ...projectRef.current.assets };
+    const updatedScript = { ...projectRef.current.script };
     let removedSize = 0;
     const now = new Date().toISOString();
 
@@ -465,7 +471,7 @@ export const useAssetUpload = (
     updateProjectWithSync({
       assets: finalAssets,
       script: updatedScript,
-      totalSize: project.totalSize - removedSize,
+      totalSize: projectRef.current.totalSize - removedSize,
       lastModified: now
     });
 
@@ -474,7 +480,7 @@ export const useAssetUpload = (
       message: 'アセットを削除しました',
       type: 'success'
     };
-  }, [project, updateProjectWithSync, updateAssetStatistics]);
+  }, [updateProjectWithSync, updateAssetStatistics]);
 
   // アセットプロパティ更新
   const updateAssetProperty = useCallback((
@@ -483,9 +489,9 @@ export const useAssetUpload = (
     property: string,
     value: any
   ): UploadResult => {
-    const updatedAssets = { ...project.assets };
+    const updatedAssets = { ...projectRef.current.assets };
     const now = new Date().toISOString();
-    
+
     if (type === 'bgm' && updatedAssets.audio.bgm?.id === id) {
       updatedAssets.audio.bgm = {
         ...updatedAssets.audio.bgm,
@@ -513,7 +519,7 @@ export const useAssetUpload = (
       message: 'プロパティを更新しました',
       type: 'success'
     };
-  }, [project, updateProjectWithSync]);
+  }, [updateProjectWithSync]);
 
   return {
     uploading,
