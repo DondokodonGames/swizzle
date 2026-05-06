@@ -48,7 +48,8 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   const { canCreateGame, usage, loading: creditsLoading } = useCredits();
   const { shouldShowPaywall, openPaywall, closePaywall } = usePaywall();
 
-  const isMonetizationReady = !authLoading && !creditsLoading;
+  // ウォレット読み込み完了後にPaywallモーダルを表示可能にする
+  const isMonetizationReady = !creditsLoading;
   
   const {
     currentProject,
@@ -94,6 +95,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   }, [setCurrentProjectDirectly, showNotification, t]);
 
   const handleCreateNew = useCallback(async (name: string) => {
+    if (creditsLoading) return; // ウォレット確認中は待機
     if (!canCreateGame) {
       openPaywall();
       return;
@@ -239,6 +241,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   const handlePublish = useCallback(async () => {
     if (!currentProject) return;
 
+    if (creditsLoading) return; // ウォレット確認中は待機
     if (!canCreateGame) {
       openPaywall();
       return;
@@ -502,7 +505,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         />
       )}
 
-      {(loading || authLoading || creditsLoading) && (
+      {(loading || authLoading) && (
         <div
           style={{
             position: 'fixed',
@@ -536,7 +539,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
                   margin: 0
                 }}
               >
-                {authLoading ? t('editor.app.authenticating') : creditsLoading ? t('editor.app.loadingAccount') : t('editor.app.loading')}
+                {authLoading ? t('editor.app.authenticating') : t('editor.app.loading')}
               </p>
             </div>
           </ModernCard>

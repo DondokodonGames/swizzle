@@ -14,10 +14,11 @@ import { useWallet } from './useWallet';
 export function usePaywall(): UsePaywallResult {
   const { t } = useTranslation();
   const { status, canCreateGame } = useWallet();
-  const [_isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [isTopUpOpen, setIsTopUpOpen] = useState(false);
 
-  const shouldShowPaywall = !canCreateGame;
+  // 残高不足かつ明示的に openPaywall() が呼ばれた場合のみ表示
+  const shouldShowPaywall = isOpen && !canCreateGame;
 
   const reason: string | null = (() => {
     if (!shouldShowPaywall) return null;
@@ -25,7 +26,11 @@ export function usePaywall(): UsePaywallResult {
     return t('paywall.reasonNoBalance');
   })();
 
-  const openPaywall = useCallback(() => setIsOpen(true), []);
+  // 残高不足の場合のみモーダルを開く。残高があれば何もしない
+  const openPaywall = useCallback(() => {
+    if (!canCreateGame) setIsOpen(true);
+  }, [canCreateGame]);
+
   const closePaywall = useCallback(() => setIsOpen(false), []);
   const openTopUp = useCallback(() => setIsTopUpOpen(true), []);
   const closeTopUp = useCallback(() => setIsTopUpOpen(false), []);

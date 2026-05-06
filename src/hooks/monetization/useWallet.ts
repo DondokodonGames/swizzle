@@ -63,9 +63,10 @@ async function getCachedWallet(userId: string, force = false): Promise<UserWalle
 
 export function useWallet(): UseWalletResult {
   const [wallet, setWallet] = useState<UserWallet | null>(null);
-  const [loading, setLoading] = useState(true);
+  // false で初期化: ユーザー確定前にオーバーレイが表示されるのを防ぐ
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, initializing } = useAuth();
 
   const fetchWallet = useCallback(async (userId: string, force = false) => {
     try {
@@ -82,16 +83,16 @@ export function useWallet(): UseWalletResult {
     }
   }, []);
 
-  // 初期ロード
+  // 初期ロード: auth が完全に初期化されてから判断する（initializing 中は待機）
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || initializing) return;
     if (!user) {
       setWallet(null);
       setLoading(false);
       return;
     }
     fetchWallet(user.id, true);
-  }, [user, authLoading, fetchWallet]);
+  }, [user, authLoading, initializing, fetchWallet]);
 
   // リアルタイム更新（モジュールレベル singleton で同名チャンネルの重複 subscribe を防ぐ）
   useEffect(() => {
