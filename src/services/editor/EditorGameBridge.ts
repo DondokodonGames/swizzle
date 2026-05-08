@@ -45,6 +45,7 @@ export class EditorGameBridge {
   private shouldStopGame: boolean = false;
   private currentCanvas: HTMLCanvasElement | null = null;
   private currentHandleInteraction: ((event: MouseEvent | TouchEvent) => void) | null = null;
+  private currentBgmAudio: HTMLAudioElement | null = null;
 
   static getInstance(): EditorGameBridge {
     if (!this.instance) {
@@ -76,6 +77,13 @@ export class EditorGameBridge {
     if (this.currentCanvas && this.currentHandleInteraction) {
       this.currentCanvas.removeEventListener('click', this.currentHandleInteraction);
       this.currentCanvas.removeEventListener('touchstart', this.currentHandleInteraction);
+    }
+
+    // BGMを停止
+    if (this.currentBgmAudio) {
+      this.currentBgmAudio.pause();
+      this.currentBgmAudio.currentTime = 0;
+      this.currentBgmAudio = null;
     }
 
     // コンテキストをクリア
@@ -456,6 +464,7 @@ export class EditorGameBridge {
             audio.currentTime = 0;
             audio.play().catch(e => console.warn('BGM play failed:', e));
             bgmAudio = audio;
+            this.currentBgmAudio = audio;
           }
         },
         stopBGM: () => {
@@ -464,6 +473,7 @@ export class EditorGameBridge {
             bgmAudio.currentTime = 0;
             bgmAudio = null;
           }
+          this.currentBgmAudio = null;
         }
       };
 
@@ -992,9 +1002,24 @@ export class EditorGameBridge {
             // ✅ scaleX/scaleY個別対応（ヒット判定）
             const objWidth = obj.width * (obj.scaleX ?? obj.scale);
             const objHeight = obj.height * (obj.scaleY ?? obj.scale);
-            
-            if (x >= obj.x && x <= obj.x + objWidth &&
-                y >= obj.y && y <= obj.y + objHeight) {
+
+            // 回転を考慮したヒット判定: タッチ座標をオブジェクト中心を軸に逆回転させてAABBチェック
+            const objCenterX = obj.x + objWidth / 2;
+            const objCenterY = obj.y + objHeight / 2;
+            let testX = x;
+            let testY = y;
+            if (obj.rotation) {
+              const angle = -(obj.rotation * Math.PI) / 180;
+              const cos = Math.cos(angle);
+              const sin = Math.sin(angle);
+              const dx = x - objCenterX;
+              const dy = y - objCenterY;
+              testX = cos * dx - sin * dy + objCenterX;
+              testY = sin * dx + cos * dy + objCenterY;
+            }
+
+            if (testX >= obj.x && testX <= obj.x + objWidth &&
+                testY >= obj.y && testY <= obj.y + objHeight) {
               hitObject = id;
               objectsInteracted.push(id);
               
@@ -1186,6 +1211,11 @@ export class EditorGameBridge {
       if (this.gameLoopTimerId) {
         clearTimeout(this.gameLoopTimerId);
         this.gameLoopTimerId = null;
+      }
+      if (this.currentBgmAudio) {
+        this.currentBgmAudio.pause();
+        this.currentBgmAudio.currentTime = 0;
+        this.currentBgmAudio = null;
       }
 
       return {

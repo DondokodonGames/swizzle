@@ -156,6 +156,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       return;
     }
 
+    setTestPlayResult(null);
     setIsTestPlaying(true);
     showNotification('info', t('editor.settings.testPlay.testing'));
 

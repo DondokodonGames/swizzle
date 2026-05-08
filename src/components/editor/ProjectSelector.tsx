@@ -153,7 +153,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
     setImportCurrentFile(0);
 
     let successCount = 0;
-    let failCount = 0;
+    const failedFiles: { name: string; reason: string }[] = [];
 
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
@@ -195,7 +195,8 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
         }
       } catch (err) {
         console.error(`[ProjectSelector] ❌ Import failed for ${file.name}:`, err);
-        failCount++;
+        const reason = err instanceof Error ? err.message : String(err);
+        failedFiles.push({ name: file.name, reason });
       }
     }
 
@@ -210,13 +211,14 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       fileInputRef.current.value = '';
     }
 
-    if (failCount === 0) {
+    if (failedFiles.length === 0) {
       alert(total === 1
         ? '✅ ' + t('success.projectImported')
         : `✅ ${successCount}件のプロジェクトをインポートしました`
       );
     } else {
-      alert(`⚠️ ${successCount}件成功、${failCount}件失敗しました`);
+      const failDetails = failedFiles.map(f => `・${f.name}: ${f.reason}`).join('\n');
+      alert(`⚠️ ${successCount}件成功、${failedFiles.length}件失敗しました\n\n失敗したファイル:\n${failDetails}`);
     }
   };
 

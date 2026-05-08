@@ -138,7 +138,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     }
   ];
 
-  const completeness = useMemo((): { percentage: number; issues: string[] } => {
+  const completeness = useMemo((): { percentage: number; issues: string[]; canPublish: boolean } => {
     const issues: string[] = [];
     let score = 0;
     const maxScore = 5;
@@ -149,7 +149,10 @@ export const GameEditor: React.FC<GameEditorProps> = ({
     if (project.script.rules.length > 0) { score += 1; }
     if (project.settings.preview?.thumbnailDataUrl) { score += 1; }
 
-    return { percentage: (score / maxScore) * 100, issues };
+    const canPublish = !!project.settings.name?.trim() &&
+      (project.assets.objects.length > 0 || !!project.assets.background);
+
+    return { percentage: (score / maxScore) * 100, issues, canPublish };
   }, [project.settings, project.assets, project.script.rules, t]);
 
   return (
@@ -332,7 +335,7 @@ export const GameEditor: React.FC<GameEditorProps> = ({
                 variant="success"
                 size="sm"
                 onClick={onPublish}
-                disabled={completeness.percentage < 60}
+                disabled={!completeness.canPublish}
               >
                 {project.status === 'published' ? '🔄 ' + t('editor.app.buttons.update') : '🚀 ' + t('editor.app.buttons.publish')}
               </ModernButton>
