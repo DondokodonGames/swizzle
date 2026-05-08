@@ -224,6 +224,20 @@ export const database = {
       return data || []
     },
 
+    // project_data 内の id フィールドで特定プロジェクトを検索（JSONB フィルタ）
+    // getUserGames の limit(100) に引っかからないプロジェクトでも正確に検索できる
+    findByProjectId: async (userId: string, projectId: string) => {
+      const { data, error } = await supabase
+        .from('user_games')
+        .select('id, updated_at')
+        .eq('creator_id', userId)
+        .filter('project_data->>id', 'eq', projectId)
+        .maybeSingle()
+
+      if (error) throw new SupabaseError(error.message)
+      return data as { id: string; updated_at: string } | null
+    },
+
     save: async (gameData: any) => {
       const { data, error } = await supabase
         .from('user_games')

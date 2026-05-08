@@ -248,25 +248,14 @@ export class ProjectStorageManager {
         isPublished: project.status === 'published'
       });
 
-      // ✅ キャッシュから検索して新規作成かどうかを先に確認
-      const userGamesForCheck = await this.getUserGames(userId);
-      const isNewGame = !userGamesForCheck.find(g => {
-        const projectData = g.project_data as any as GameProject;
-        return projectData && projectData.id === project.id;
-      });
+      // JSONB フィルタで project.id を直接検索（limit(100) の影響を受けない正確な判定）
+      const existingRecord = await database.userGames.findByProjectId(userId, project.id);
 
-      if (isNewGame) {
-        console.log('[SaveDB-Manager] ✨ Creating new game...');
+      if (existingRecord) {
+        console.log('[SaveDB-Manager] ✅ Updating existing game:', existingRecord.id);
       } else {
-        console.log('[SaveDB-Manager] ✅ Updating existing game.');
+        console.log('[SaveDB-Manager] ✨ Creating new game...');
       }
-
-      // ✅ キャッシュから検索（上で取得済みのキャッシュを再利用）
-      const userGames = userGamesForCheck;
-      const existingGame = isNewGame ? undefined : userGames.find(g => {
-        const projectData = g.project_data as any as GameProject;
-        return projectData && projectData.id === project.id;
-      });
 
       // user_gamesテーブルに保存するデータを準備
       const gameData = {
@@ -281,30 +270,43 @@ export class ProjectStorageManager {
       };
 
       let result;
-      if (existingGame) {
-        // 既存ゲームを更新
-        console.log('[SaveDB-Manager] 🔄 Updating existing game:', existingGame.id);
-        result = await database.userGames.update(existingGame.id, gameData);
+      if (existingRecord) {
+        // 既存ゲームを更新（BEFOREトリガーは UPDATE では発火しない）
+        result = await database.userGames.update(existingRecord.id, gameData);
       } else {
         // 新規ゲームを作成
-        console.log('[SaveDB-Manager] ✨ Creating new game');
-
-        // ✅ 修正: INSERT時のエラーハンドリング改善
         try {
           result = await database.userGames.save(gameData);
         } catch (saveError: any) {
-          // ✅ 409エラー（UNIQUE制約違反）の場合、updateで再試行
-          if (saveError.message?.includes('409') || saveError.message?.includes('duplicate')) {
-            console.warn('[SaveDB-Manager] ⚠️ Duplicate detected, trying update instead...');
-            const conflictGame = userGames.find(g => {
-              const projectData = g.project_data as any as GameProject;
-              return projectData && projectData.id === project.id;
-            });
+          const msg: string = saveError.message || '';
 
-            if (conflictGame) {
-              result = await database.userGames.update(conflictGame.id, gameData);
+          // DB の billing トリガーがまだ残っている場合のエラーを吸収する
+          // 本来はゲーム作成にクレジットは不要（マイグレーション未適用の暫定対処）
+          // 対象マイグレーション: supabase/migrations/20260506_remove_credit_on_game_create.sql
+          if (msg.includes('Insufficient credits') || msg.includes('credit') || msg.includes('wallet')) {
+            console.warn(
+              '[SaveDB-Manager] ⚠️ Billing trigger still active in DB. ' +
+              'Apply migration 20260506_remove_credit_on_game_create.sql to fix permanently.',
+              saveError
+            );
+            // INSERT が弾かれたが、JSONB 検索で再確認して UPDATE に切り替える
+            const retryRecord = await database.userGames.findByProjectId(userId, project.id);
+            if (retryRecord) {
+              result = await database.userGames.update(retryRecord.id, gameData);
             } else {
-              // それでも見つからない場合はエラーを再スロー
+              // 本当に新規で残高不足 → エラーを保持しつつ保存は続行（ローカル状態は維持）
+              console.error('[SaveDB-Manager] ❌ Could not save new game: billing trigger blocked INSERT.');
+              throw new Error(
+                'ゲームの保存に失敗しました。サーバー設定に問題があります（管理者: DB migration 20260506_remove_credit_on_game_create.sql を適用してください）'
+              );
+            }
+          } else if (msg.includes('409') || msg.includes('duplicate')) {
+            // UNIQUE 制約違反 → 競合した既存行を探して UPDATE
+            console.warn('[SaveDB-Manager] ⚠️ Duplicate detected, retrying as update...');
+            const conflictRecord = await database.userGames.findByProjectId(userId, project.id);
+            if (conflictRecord) {
+              result = await database.userGames.update(conflictRecord.id, gameData);
+            } else {
               throw saveError;
             }
           } else {
