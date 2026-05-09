@@ -144,7 +144,7 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       // 全セクションを並列実行（最大8秒で全て完了）
       const [trendingResult, followingResult, tagsResult, randomResult] = await Promise.allSettled([
         // トレンドゲーム
-        withTimeout(socialService.getTrendingGames('week', 'trending', 12), 8000)
+        withTimeout(socialService.getTrendingGames('all', 'trending', 12), 8000)
           .then(games => {
             return games || [];
           }),
@@ -154,7 +154,7 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
             return games;
           }),
         // おすすめ
-        withTimeout(socialService.getTrendingGames('week', 'popular', 12), 8000)
+        withTimeout(socialService.getTrendingGames('all', 'popular', 12), 8000)
           .then(games => {
             return games || [];
           }),
