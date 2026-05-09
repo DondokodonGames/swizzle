@@ -147,79 +147,45 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       };
 
       try {
-        // Step 1: 1ページ目から1件取得して即座に開始（20秒タイムアウト）
+        // Step 1: ゲーム一覧取得（project_data なし・軽量）
         const initialResult = await timeoutPromise(
           socialService.getPublicGames(
-            {
-              sortBy: 'latest',
-              category: 'all',
-              search: undefined
-            },
+            { sortBy: 'latest', category: 'all', search: undefined },
             1,
-            1
+            100
           ),
           20000
         );
 
-        // ゲームが見つからない場合は1ページ目から取得
-        let initialGame: PublicGame | null = null;
-        if (initialResult.games.length > 0 && initialResult.games[0].projectData) {
-          initialGame = initialResult.games[0];
-        } else {
-          const fallbackResult = await timeoutPromise(
-            socialService.getPublicGames(
-              {
-                sortBy: 'latest',
-                category: 'all',
-                search: undefined
-              },
-              1,
-              10
-            ),
-            20000
-          );
-          if (fallbackResult.games.length > 0 && fallbackResult.games[0].projectData) {
-            initialGame = fallbackResult.games[0];
-          }
-        }
-
-        if (!initialGame) {
+        if (initialResult.games.length === 0) {
           setError('公開ゲームがありません。エディターでゲームを作成して公開してください。');
           setGameState('loading');
           return;
         }
 
-        // 初期ゲームを設定し、即座に開始
+        // Step 2: 最初のゲームの project_data を取得してから開始
+        const firstGame = initialResult.games[0];
+        const { data: firstData } = await supabase
+          .from('user_games')
+          .select('id, project_data')
+          .eq('id', firstGame.id)
+          .eq('is_published', true)
+          .single();
+
+        if (!firstData?.project_data) {
+          setError('公開ゲームがありません。エディターでゲームを作成して公開してください。');
+          setGameState('loading');
+          return;
+        }
+
+        const initialGame: PublicGame = { ...firstGame, projectData: firstData.project_data };
+
+        // 一覧は project_data なしで保持（再生時にオンデマンド取得）
+        setAllValidGames(initialResult.games);
         setPublicGames([initialGame]);
         setUsedGameIds(new Set([initialGame.id]));
-        setAllValidGames([initialGame]);
         setCurrentIndex(0);
         setGameState('playing');
-
-        // Step 2: バックグラウンドで残りのゲームを取得（失敗しても無視）
-        try {
-          const fullResult = await timeoutPromise(
-            socialService.getPublicGames(
-              {
-                sortBy: 'latest',
-                category: 'all',
-                search: undefined
-              },
-              1,
-              100
-            ),
-            30000
-          );
-
-          const validGames = fullResult.games.filter(game => game.projectData);
-
-          if (validGames.length > 0) {
-            setAllValidGames(validGames);
-          }
-        } catch (bgErr) {
-          // バックグラウンド取得失敗は無視（初期ゲームは既に開始済み）
-          console.warn('⚠️ バックグラウンド取得失敗（無視）:', bgErr);
-        }
 
       } catch (err) {
         console.error('❌ 公開ゲーム取得エラー:', err);
@@ -232,7 +198,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   }, [socialService]);
 
   // ==================== 次のゲームをプリロード ====================
-  const preloadNextGame = useCallback(() => {
+  const preloadNextGame = useCallback(async () => {
     if (allValidGames.length <= 1) return;
 
     const currentGameId = publicGames[currentIndex]?.id;
@@ -247,9 +213,27 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     if (gamesToChooseFrom.length === 0) return;
 
     const randomIndex = Math.floor(Math.random() * gamesToChooseFrom.length);
-    const nextGameData = gamesToChooseFrom[randomIndex];
+    const candidate = gamesToChooseFrom[randomIndex];
 
-    setNextGame(nextGameData);
+    // project_data をバックグラウンドで先読み
+    if (!candidate.projectData) {
+      try {
+        const { data } = await supabase
+          .from('user_games')
+          .select('id, project_data')
+          .eq('id', candidate.id)
+          .eq('is_published', true)
+          .single();
+        if (data?.project_data) {
+          setNextGame({ ...candidate, projectData: data.project_data });
+          return;
+        }
+      } catch {
+        // 取得失敗時は project_data なしで設定（再生時に再取得）
+      }
+    }
+
+    setNextGame(candidate);
   }, [allValidGames, publicGames, currentIndex, usedGameIds]);
 
   // ブリッジ画面表示時に次のゲームをプリロード
@@ -314,9 +298,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     }
 
     const currentGame = publicGames[currentIndex];
-    if (!currentGame || !currentGame.projectData) {
-      console.warn('⚠️ 現在のゲームまたはproject_dataが存在しません');
-      handleNextGame();
+    if (!currentGame) {
       return;
     }
 
@@ -327,6 +309,32 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
     const launchGame = async () => {
       currentGameRef.current = currentGame.id;
+
+      // project_data がない場合はオンデマンド取得
+      if (!currentGame.projectData) {
+        try {
+          const { data } = await supabase
+            .from('user_games')
+            .select('id, project_data')
+            .eq('id', currentGame.id)
+            .eq('is_published', true)
+            .single();
+          if (data?.project_data) {
+            currentGame.projectData = data.project_data;
+            setPublicGames(prev => prev.map(g =>
+              g.id === currentGame.id ? { ...g, projectData: data.project_data } : g
+            ));
+          } else {
+            currentGameRef.current = null;
+            handleNextGame();
+            return;
+          }
+        } catch {
+          currentGameRef.current = null;
+          handleNextGame();
+          return;
+        }
+      }
 
       // ゲーム時間トラッキング開始
       setGameStartTime(Date.now());

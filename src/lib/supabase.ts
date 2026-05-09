@@ -255,6 +255,19 @@ export const database = {
       return data
     },
 
+    // 公開ゲームの project_data 取得（再生時のみ・is_published=true のみ）
+    getPublicProjectData: async (gameId: string) => {
+      const { data, error } = await supabase
+        .from('user_games')
+        .select('id, project_data')
+        .eq('id', gameId)
+        .eq('is_published', true)
+        .single()
+
+      if (error) throw new SupabaseError(error.message)
+      return data as { id: string; project_data: any }
+    },
+
     save: async (gameData: any) => {
       const { data, error } = await supabase
         .from('user_games')
