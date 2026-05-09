@@ -127,39 +127,33 @@ export class ProjectStorageManager {
       
       console.log('[ListProjects-Manager] ✅ Games:', userGames?.length || 0);
 
-      // 重複IDを除去しつつメタデータ生成
+      // getUserGames は project_data を含まない軽量データを返す
+      // game_id を project の ID として使用（project_data.id の代替）
       const projectMap = new Map<string, ProjectMetadata>();
-      
-      for (const game of userGames) {
-        const projectData = game.project_data as any as GameProject;
-        
-        if (!projectData) {
-          console.warn('[ListProjects-Manager] ⚠️ Game has no project_data:', game.id);
-          continue;
-        }
 
-        const projectId = projectData.id;
+      for (const game of userGames) {
+        // project_data が存在する場合はそちらも活用（後方互換）
+        const projectData = (game.project_data as any as GameProject) ?? null;
+        const projectId: string = (projectData?.id) ?? game.id;
+
         const existing = projectMap.get(projectId);
-        
-        // 同じIDがある場合は新しい方を優先
         if (existing && new Date(game.updated_at) <= new Date(existing.lastModified)) {
           continue;
         }
 
-        // 🔧 軽量版メタデータ生成（詳細データは含まない）
         const metadata: ProjectMetadata = {
-          id: projectData.id,
-          name: game.title || projectData.name || projectData.settings?.name || 'Untitled',
-          description: projectData.description || projectData.settings?.description || undefined,
+          id: projectId,
+          name: game.title || projectData?.name || projectData?.settings?.name || 'Untitled',
+          description: game.description || projectData?.settings?.description || undefined,
           lastModified: game.updated_at,
-          status: (projectData.status as 'draft' | 'published' | 'archived') || (game.is_published ? 'published' : 'draft'),
-          size: projectData.totalSize || 0,
-          version: projectData.version || '1.0.0',
-          thumbnailDataUrl: projectData.thumbnailDataUrl || projectData.settings?.preview?.thumbnailDataUrl,
+          status: (projectData?.status as 'draft' | 'published' | 'archived') || (game.is_published ? 'published' : 'draft'),
+          size: projectData?.totalSize || 0,
+          version: projectData?.version || '1.0.0',
+          thumbnailDataUrl: game.thumbnail_url || projectData?.settings?.preview?.thumbnailDataUrl,
           stats: {
-            objectsCount: projectData.assets?.objects?.length || 0,
-            soundsCount: (projectData.assets?.audio?.bgm ? 1 : 0) + (projectData.assets?.audio?.se?.length || 0),
-            rulesCount: projectData.script?.rules?.length || 0
+            objectsCount: projectData?.assets?.objects?.length || 0,
+            soundsCount: (projectData?.assets?.audio?.bgm ? 1 : 0) + (projectData?.assets?.audio?.se?.length || 0),
+            rulesCount: projectData?.script?.rules?.length || 0
           }
         };
 
@@ -192,35 +186,34 @@ export class ProjectStorageManager {
         return null;
       }
 
-      // ✅ キャッシュ優先で取得
-      console.log('[LoadProject-Manager] 🔍 キャッシュから検索中...');
-      const userGames = await this.getUserGames(userId);
-      
-      console.log('[LoadProject-Manager] 🔍 Total games:', userGames.length);
+      // project_data.id で DB レコードを特定してから project_data を個別取得
+      // getUserGames は project_data を含まない軽量クエリになったため、
+      // 編集時は findByProjectId → getProjectData の 2 ステップで取得する
+      const record = await database.userGames.findByProjectId(userId, id);
 
-      // project_data.idでマッチング
-      const game = userGames.find(g => {
-        const projectData = g.project_data as any as GameProject;
-        return projectData && projectData.id === id;
-      });
-
-      if (!game) {
+      if (!record) {
         console.warn('[LoadProject-Manager] ⚠️ Project not found:', id);
         return null;
       }
 
-      console.log('[LoadProject-Manager] ✅ Project found:', game.title);
+      console.log('[LoadProject-Manager] 🔄 Fetching project_data for game:', record.id);
+      const game = await database.userGames.getProjectData(record.id, userId);
 
+      if (!game || !game.project_data) {
+        console.warn('[LoadProject-Manager] ⚠️ project_data missing for game:', record.id);
+        return null;
+      }
+
+      console.log('[LoadProject-Manager] ✅ Project loaded:', game.title);
       const projectData = game.project_data as any as GameProject;
 
-      // DBのtitle/descriptionをproject_dataにマージ（metadata-only saveで更新された場合に対応）
       const mergedProject: GameProject = {
         ...projectData,
-        name: game.title || projectData.name,  // DBのtitleを優先
+        name: game.title || projectData.name,
         description: game.description || projectData.description,
         settings: {
           ...projectData.settings,
-          name: game.title || projectData.settings?.name,  // settingsにも反映
+          name: game.title || projectData.settings?.name,
           description: game.description || projectData.settings?.description
         },
         metadata: {

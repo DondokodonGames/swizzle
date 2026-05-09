@@ -109,6 +109,10 @@ export const auth = {
   }
 }
 
+// ゲームの一覧表示に必要な軽量カラムのみ（project_data は含まない）
+// project_data には base64 画像が含まれ、1件あたり数 MB になるため一覧取得では除外する
+const GAME_LIST_COLUMNS = 'id, title, description, thumbnail_url, is_published, created_at, updated_at, creator_id, template_id';
+
 // データベース操作（シンプル版・any型使用）
 export const database = {
   profiles: {
@@ -154,10 +158,10 @@ export const database = {
   userGames: {
     getPublished: async (options: any = {}) => {
       try {
-        // シンプルなクエリ（リトライなし）
+        // project_data を除外した軽量クエリ（ゲームフィード用）
         let query = supabase
           .from('user_games')
-          .select('*')
+          .select(GAME_LIST_COLUMNS)
           .eq('is_published', true)
           .order('created_at', { ascending: false });
 
@@ -212,20 +216,20 @@ export const database = {
       }
     },
 
+    // 一覧用（project_data を除外した軽量クエリ）
     getUserGames: async (userId: string) => {
       const { data, error } = await supabase
         .from('user_games')
-        .select('*')
+        .select(GAME_LIST_COLUMNS)
         .eq('creator_id', userId)
         .order('updated_at', { ascending: false })
-        .limit(100) // タイムアウト防止：最新100件のみ取得
+        .limit(200)
 
       if (error) throw new SupabaseError(error.message)
       return data || []
     },
 
     // project_data 内の id フィールドで特定プロジェクトを検索（JSONB フィルタ）
-    // getUserGames の limit(100) に引っかからないプロジェクトでも正確に検索できる
     findByProjectId: async (userId: string, projectId: string) => {
       const { data, error } = await supabase
         .from('user_games')
@@ -236,6 +240,19 @@ export const database = {
 
       if (error) throw new SupabaseError(error.message)
       return data as { id: string; updated_at: string } | null
+    },
+
+    // 特定ゲームの完全データ取得（project_data 含む・編集時のみ使用）
+    getProjectData: async (gameId: string, userId: string) => {
+      const { data, error } = await supabase
+        .from('user_games')
+        .select('id, title, description, project_data, is_published, updated_at')
+        .eq('id', gameId)
+        .eq('creator_id', userId)
+        .single()
+
+      if (error) throw new SupabaseError(error.message)
+      return data
     },
 
     save: async (gameData: any) => {
@@ -321,7 +338,7 @@ export const database = {
         .select(`
           game_id,
           user_games:game_id (
-            *,
+            id, title, description, thumbnail_url, is_published, created_at, updated_at, creator_id, template_id,
             profiles:creator_id (
               username,
               display_name,
