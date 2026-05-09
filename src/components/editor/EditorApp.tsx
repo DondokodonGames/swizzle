@@ -67,6 +67,14 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
   }, [initialProjectId]);
 
+  // セレクター画面からのテストプレイ: プロジェクトがセットされたら起動
+  useEffect(() => {
+    if (pendingTestPlayRef.current && currentProject) {
+      pendingTestPlayRef.current = false;
+      handleTestPlay();
+    }
+  }, [currentProject, handleTestPlay]);
+
   const showNotification = useCallback((type: 'success' | 'error' | 'info', message: string) => {
     const notificationId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     setNotification({ type, message, id: notificationId });
@@ -136,6 +144,13 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       showNotification('error', `${t('errors.projectSaveFailed')}: ${getErrorMessage(error)}`);
     }
   }, [currentProject, saveProject, saveMetadataOnly, getValidationErrors, updateProject, showNotification, t]);
+
+  const pendingTestPlayRef = useRef(false);
+
+  const handleTestPlayFromSelector = useCallback((project: GameProject) => {
+    pendingTestPlayRef.current = true;
+    setCurrentProjectDirectly(project);
+  }, [setCurrentProjectDirectly]);
 
   const handleTestPlay = useCallback(async () => {
     if (!currentProject) return;
@@ -772,7 +787,8 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           onDelete={handleProjectDelete}
           onDuplicate={handleProjectDuplicate}
           onExport={handleExport}
-          onBackToMain={onClose}  // ✅ 追加: メイン画面に戻る
+          onBackToMain={onClose}
+          onTestPlay={handleTestPlayFromSelector}
         />
       ) : mode === 'testplay' ? (
         <div style={{ minHeight: '100vh', backgroundColor: DESIGN_TOKENS.colors.neutral[900] }}>

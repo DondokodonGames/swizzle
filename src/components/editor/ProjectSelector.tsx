@@ -14,7 +14,8 @@ export interface ProjectSelectorProps {
   onDelete: (projectId: string) => Promise<void>;
   onDuplicate: (projectId: string) => Promise<void>;
   onExport: (projectId: string) => Promise<void>;
-  onBackToMain?: () => void;  // ✅ 追加: メイン画面に戻る
+  onBackToMain?: () => void;
+  onTestPlay?: (project: GameProject) => void;
 }
 
 type ViewMode = 'grid' | 'list';
@@ -26,7 +27,8 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   onDelete,
   onDuplicate,
   onExport,
-  onBackToMain  // ✅ 追加
+  onBackToMain,
+  onTestPlay,
 }) => {
   const { t } = useTranslation();
   const [projectMetadataList, setProjectMetadataList] = useState<ProjectMetadata[]>([]);
@@ -115,6 +117,20 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
       await onProjectSelect(fullProject);
     } catch (error) {
       console.error(`[ProjectSelector] ❌ Failed to load project:`, error);
+    } finally {
+      setLoadingProjectId(null);
+    }
+  };
+
+  const handleTestPlayProject = async (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation();
+    if (!onTestPlay) return;
+    setLoadingProjectId(projectId);
+    try {
+      const fullProject = await loadFullProject(projectId);
+      onTestPlay(fullProject);
+    } catch (error) {
+      console.error(`[ProjectSelector] ❌ Failed to load project for test play:`, error);
     } finally {
       setLoadingProjectId(null);
     }
@@ -714,6 +730,17 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
+                  {onTestPlay && (
+                    <ModernButton
+                      variant="primary"
+                      size="sm"
+                      onClick={(e) => handleTestPlayProject(e, project.id)}
+                      disabled={loadingProjectId === project.id}
+                      style={{ flex: 1 }}
+                    >
+                      ▶️ テスト
+                    </ModernButton>
+                  )}
                   <ModernButton
                     variant="secondary"
                     size="sm"
@@ -838,6 +865,16 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                     style={{ display: 'flex', gap: DESIGN_TOKENS.spacing[2] }}
                     onClick={(e) => e.stopPropagation()}
                   >
+                    {onTestPlay && (
+                      <ModernButton
+                        variant="primary"
+                        size="sm"
+                        onClick={(e) => handleTestPlayProject(e, project.id)}
+                        disabled={loadingProjectId === project.id}
+                      >
+                        ▶️ テスト
+                      </ModernButton>
+                    )}
                     <ModernButton
                       variant="secondary"
                       size="sm"
