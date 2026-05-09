@@ -56,21 +56,27 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const raw = JSON.parse(e.target?.result as string);
+          const jsonData = JSON.parse(e.target?.result as string);
+          // ProjectExportData形式（{project: GameProject}）の場合はアンラップする
+          const raw: GameProject = jsonData.project ?? jsonData;
           // Codex生成JSONが settings を持たない場合に補完する
           const project: GameProject = {
             ...raw,
             name: raw.name || raw.settings?.name || file.name.replace('.json', ''),
-            settings: {
-              name: raw.name || raw.settings?.name || file.name.replace('.json', ''),
-              description: raw.description || raw.settings?.description || '',
-              duration: raw.settings?.duration || { type: 'fixed', seconds: 15 },
-              difficulty: raw.settings?.difficulty || 'normal',
-              publishing: raw.settings?.publishing || { isPublished: false, visibility: 'public', allowComments: true, allowRemix: false },
-              preview: raw.settings?.preview || {},
-              export: raw.settings?.export || { includeSourceData: false, compressionLevel: 'medium', format: 'json' },
-              ...raw.settings,
-            },
+            settings: Object.assign(
+              {
+                duration: { type: 'fixed', seconds: 15 },
+                difficulty: 'normal',
+                publishing: { isPublished: false, visibility: 'public', allowComments: true, allowRemix: false },
+                preview: {},
+                export: { includeSourceData: false, compressionLevel: 'medium', format: 'json' },
+              },
+              raw.settings || {},
+              {
+                name: raw.settings?.name || raw.name || file.name.replace('.json', ''),
+                description: raw.settings?.description || raw.description || '',
+              }
+            ),
             assets: raw.assets || { objects: [], audio: { se: [] } },
             script: raw.script || { rules: [], flags: [], counters: [] },
           };
