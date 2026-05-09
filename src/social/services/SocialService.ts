@@ -1390,7 +1390,7 @@ export class SocialService {
       updatedAt: dbGame.updated_at,
       isLiked,
       isBookmarked,
-      projectData: dbGame.project_data || null
+      projectData: dbGame.project_data ?? null  // null from list queries; fetched on-demand in GameSequence
     };
   }
 
