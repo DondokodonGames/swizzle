@@ -111,7 +111,7 @@ export const auth = {
 
 // ゲームの一覧表示に必要な軽量カラムのみ（project_data は含まない）
 // project_data には base64 画像が含まれ、1件あたり数 MB になるため一覧取得では除外する
-const GAME_LIST_COLUMNS = 'id, title, description, thumbnail_url, is_published, created_at, updated_at, creator_id, template_id';
+const GAME_LIST_COLUMNS = 'id, title, description, thumbnail_url, is_published, created_at, updated_at, creator_id, template_id, play_count, like_count';
 
 // データベース操作（シンプル版・any型使用）
 export const database = {
