@@ -186,18 +186,25 @@ export class ProjectStorageManager {
         return null;
       }
 
-      // project_data.id で DB レコードを特定してから project_data を個別取得
-      // getUserGames は project_data を含まない軽量クエリになったため、
-      // 編集時は findByProjectId → getProjectData の 2 ステップで取得する
-      const record = await database.userGames.findByProjectId(userId, id);
-
-      if (!record) {
-        console.warn('[LoadProject-Manager] ⚠️ Project not found:', id);
-        return null;
+      // listProjects が game.id（DB row ID）を返す場合と
+      // project_data.id を返す場合の両方に対応する
+      // まず game.id として直接取得を試み、失敗したら JSONB フィルタで検索する
+      let game = null;
+      try {
+        game = await database.userGames.getProjectData(id, userId);
+      } catch {
+        // id が game.id でない場合は findByProjectId にフォールバック
       }
 
-      console.log('[LoadProject-Manager] 🔄 Fetching project_data for game:', record.id);
-      const game = await database.userGames.getProjectData(record.id, userId);
+      if (!game) {
+        const record = await database.userGames.findByProjectId(userId, id);
+        if (!record) {
+          console.warn('[LoadProject-Manager] ⚠️ Project not found:', id);
+          return null;
+        }
+        console.log('[LoadProject-Manager] 🔄 Fetching project_data for game:', record.id);
+        game = await database.userGames.getProjectData(record.id, userId);
+      }
 
       if (!game || !game.project_data) {
         console.warn('[LoadProject-Manager] ⚠️ project_data missing for game:', record.id);
