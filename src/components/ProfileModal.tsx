@@ -96,7 +96,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ userId, onClose }) =
 
         const { data: games } = await supabase
           .from('user_games')
-          .select('*')
+          .select('id, play_count, like_count')
           .eq('creator_id', userId);
 
         const totalGames = games?.length || 0;
