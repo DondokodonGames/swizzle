@@ -285,7 +285,7 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}>
-            {current.project.name || current.file.name}
+            {current?.project?.name || current?.file?.name || ''}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
