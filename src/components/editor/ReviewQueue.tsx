@@ -56,7 +56,24 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const project = JSON.parse(e.target?.result as string) as GameProject;
+          const raw = JSON.parse(e.target?.result as string);
+          // Codex生成JSONが settings を持たない場合に補完する
+          const project: GameProject = {
+            ...raw,
+            name: raw.name || raw.settings?.name || file.name.replace('.json', ''),
+            settings: {
+              name: raw.name || raw.settings?.name || file.name.replace('.json', ''),
+              description: raw.description || raw.settings?.description || '',
+              duration: raw.settings?.duration || { type: 'fixed', seconds: 15 },
+              difficulty: raw.settings?.difficulty || 'normal',
+              publishing: raw.settings?.publishing || { isPublished: false, visibility: 'public', allowComments: true, allowRemix: false },
+              preview: raw.settings?.preview || {},
+              export: raw.settings?.export || { includeSourceData: false, compressionLevel: 'medium', format: 'json' },
+              ...raw.settings,
+            },
+            assets: raw.assets || { objects: [], audio: { se: [] } },
+            script: raw.script || { rules: [], flags: [], counters: [] },
+          };
           parsed.push({ file, project });
         } catch {
           errors.push(file.name);
