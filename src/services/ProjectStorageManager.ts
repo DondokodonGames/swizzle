@@ -400,19 +400,22 @@ export class ProjectStorageManager {
         throw new Error('ユーザーIDが必要です');
       }
 
-      // ✅ キャッシュから検索
+      // まず game.id として直接検索（軽量クエリ対応）
+      let gameId: string | null = null;
       const userGames = await this.getUserGames(userId);
-      const game = userGames.find(g => {
-        const projectData = g.project_data as any as GameProject;
-        return projectData && projectData.id === id;
-      });
+      const byRowId = userGames.find(g => g.id === id);
+      if (byRowId) {
+        gameId = byRowId.id;
+      } else {
+        // project_data.id で検索（旧形式のIDの場合）
+        const record = await database.userGames.findByProjectId(userId, id);
+        if (record) gameId = record.id;
+      }
 
-      if (game) {
-        console.log('[DeleteProject-Manager] 🗑️ Deleting from Supabase...', { databaseId: game.id });
-        await database.userGames.delete(game.id);
+      if (gameId) {
+        console.log('[DeleteProject-Manager] 🗑️ Deleting from Supabase...', { databaseId: gameId });
+        await database.userGames.delete(gameId);
         console.log('[DeleteProject-Manager] ✅ Deleted from Supabase successfully');
-        
-        // ✅ キャッシュクリア
         this.clearCache();
       } else {
         console.warn('[DeleteProject-Manager] ⚠️ Project not found in Supabase:', id);
