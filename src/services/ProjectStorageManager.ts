@@ -207,7 +207,7 @@ export class ProjectStorageManager {
       }
 
       if (!game || !game.project_data) {
-        console.warn('[LoadProject-Manager] ⚠️ project_data missing for game:', record.id);
+        console.warn('[LoadProject-Manager] ⚠️ project_data missing for game:', game?.id ?? id);
         return null;
       }
 
