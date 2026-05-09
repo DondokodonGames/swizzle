@@ -16,6 +16,8 @@ export interface ProjectSelectorProps {
   onExport: (projectId: string) => Promise<void>;
   onBackToMain?: () => void;
   onTestPlay?: (project: GameProject) => void;
+  onStartReview?: (files: File[]) => void;
+  isAdmin?: boolean;
 }
 
 type ViewMode = 'grid' | 'list';
@@ -29,6 +31,8 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   onExport,
   onBackToMain,
   onTestPlay,
+  onStartReview,
+  isAdmin = false,
 }) => {
   const { t } = useTranslation();
   const [projectMetadataList, setProjectMetadataList] = useState<ProjectMetadata[]>([]);
@@ -47,6 +51,18 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   const [importCurrentFile, setImportCurrentFile] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const reviewFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleReviewClick = () => {
+    reviewFileInputRef.current?.click();
+  };
+
+  const handleReviewFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+    if (reviewFileInputRef.current) reviewFileInputRef.current.value = '';
+    onStartReview?.(files);
+  };
   
   const { listProjectMetadata, loadFullProject, importProject } = useGameProject();
 
@@ -427,6 +443,14 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
             style={{ display: 'none' }}
             onChange={handleFileImport}
           />
+          <input
+            ref={reviewFileInputRef}
+            type="file"
+            accept=".json"
+            multiple
+            style={{ display: 'none' }}
+            onChange={handleReviewFileSelect}
+          />
 
           {/* 新規作成セクション */}
           <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
@@ -518,6 +542,16 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
             >
               JSONインポート
             </ModernButton>
+            {isAdmin && onStartReview && (
+              <ModernButton
+                variant="secondary"
+                size="md"
+                onClick={handleReviewClick}
+                disabled={isImporting}
+              >
+                📋 バッチレビュー
+              </ModernButton>
+            )}
           </div>
 
           {/* インポートプログレスバー */}

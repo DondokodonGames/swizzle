@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { GameProject } from '../../types/editor/GameProject';
 import { GameEditor } from './GameEditor';
 import { ProjectSelector } from './ProjectSelector';
+import { ReviewQueue } from './ReviewQueue';
 import { useGameProject } from '../../hooks/editor/useGameProject';
 import { useAuth } from '../../hooks/useAuth';
 import { getProgressTabConfig } from './common/TabNavigation';
@@ -15,7 +16,7 @@ import { EditorGameBridge, GameExecutionResult } from '../../services/editor/Edi
 import { ProjectStorageManager } from '../../services/ProjectStorageManager';
 import { getErrorMessage } from '../../utils/errorUtils';
 
-type AppMode = 'selector' | 'editor' | 'testplay';
+type AppMode = 'selector' | 'editor' | 'testplay' | 'review';
 
 interface EditorAppProps {
   onClose?: () => void;
@@ -38,6 +39,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
 
   const [isTestPlaying, setIsTestPlaying] = useState(false);
   const [testPlayResult, setTestPlayResult] = useState<GameExecutionResult | null>(null);
+  const [reviewFiles, setReviewFiles] = useState<File[]>([]);
   const testPlayContainerRef = useRef<HTMLDivElement>(null);
   const gameBridge = useRef(EditorGameBridge.getInstance());
 
@@ -67,13 +69,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     }
   }, [initialProjectId]);
 
-  // セレクター画面からのテストプレイ: プロジェクトがセットされたら起動
-  useEffect(() => {
-    if (pendingTestPlayRef.current && currentProject) {
-      pendingTestPlayRef.current = false;
-      handleTestPlay();
-    }
-  }, [currentProject, handleTestPlay]);
 
   const showNotification = useCallback((type: 'success' | 'error' | 'info', message: string) => {
     const notificationId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -144,13 +139,6 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       showNotification('error', `${t('errors.projectSaveFailed')}: ${getErrorMessage(error)}`);
     }
   }, [currentProject, saveProject, saveMetadataOnly, getValidationErrors, updateProject, showNotification, t]);
-
-  const pendingTestPlayRef = useRef(false);
-
-  const handleTestPlayFromSelector = useCallback((project: GameProject) => {
-    pendingTestPlayRef.current = true;
-    setCurrentProjectDirectly(project);
-  }, [setCurrentProjectDirectly]);
 
   const handleTestPlay = useCallback(async () => {
     if (!currentProject) return;
@@ -239,6 +227,19 @@ export const EditorApp: React.FC<EditorAppProps> = ({
     gameBridge.current.reset();
     showNotification('info', t('editor.app.returnedToEditor'));
   }, [showNotification, t]);
+
+  // セレクター画面からのテストプレイ: プロジェクトがセットされたら起動
+  const pendingTestPlayRef = useRef(false);
+  const handleTestPlayFromSelector = useCallback((project: GameProject) => {
+    pendingTestPlayRef.current = true;
+    setCurrentProjectDirectly(project);
+  }, [setCurrentProjectDirectly]);
+  useEffect(() => {
+    if (pendingTestPlayRef.current && currentProject) {
+      pendingTestPlayRef.current = false;
+      handleTestPlay();
+    }
+  }, [currentProject, handleTestPlay]);
 
   const handlePublish = useCallback(async () => {
     if (!currentProject) return;
@@ -333,6 +334,16 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   const handleGameEditorUpdate = useCallback((updatedProject: GameProject) => {
     updateProject(() => updatedProject);
   }, [updateProject]);
+
+  const handleStartReview = useCallback((files: File[]) => {
+    setReviewFiles(files);
+    setMode('review');
+  }, []);
+
+  const handleReviewDone = useCallback(() => {
+    setReviewFiles([]);
+    setMode('selector');
+  }, []);
 
   const handleBackToSelector = useCallback(async () => {
     if (hasUnsavedChanges) {
@@ -789,6 +800,14 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           onExport={handleExport}
           onBackToMain={onClose}
           onTestPlay={handleTestPlayFromSelector}
+          onStartReview={handleStartReview}
+          isAdmin={user?.id === import.meta.env.VITE_ADMIN_USER_ID}
+        />
+      ) : mode === 'review' ? (
+        <ReviewQueue
+          files={reviewFiles}
+          onDone={handleReviewDone}
+          onExit={handleReviewDone}
         />
       ) : mode === 'testplay' ? (
         <div style={{ minHeight: '100vh', backgroundColor: DESIGN_TOKENS.colors.neutral[900] }}>
