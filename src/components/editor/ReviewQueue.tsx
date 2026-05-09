@@ -77,28 +77,35 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
 
   // Launch game when index or phase changes to 'playing'
   useEffect(() => {
-    if (phase !== 'playing' || !canvasRef.current || projects.length === 0) return;
+    if (phase !== 'playing' || projects.length === 0) return;
     const current = projects[index];
     if (!current) return;
 
+    let cancelled = false;
     bridge.current.stopGame();
 
-    const launch = async () => {
-      try {
-        await bridge.current.launchFullGame(
-          current.project,
-          canvasRef.current!,
-          () => {
-            setPhase('feedback');
-          }
-        );
-      } catch {
-        setPhase('feedback');
-      }
+    // Wait for canvas to be in DOM and laid out
+    const launch = () => {
+      requestAnimationFrame(async () => {
+        if (cancelled || !canvasRef.current) return;
+        try {
+          await bridge.current.launchFullGame(
+            current.project,
+            canvasRef.current,
+            () => {
+              if (!cancelled) setPhase('feedback');
+            }
+          );
+        } catch (err) {
+          console.error('[ReviewQueue] ゲーム起動エラー:', err);
+          if (!cancelled) setPhase('feedback');
+        }
+      });
     };
     launch();
 
     return () => {
+      cancelled = true;
       bridge.current.stopGame();
     };
   }, [index, phase, projects]);
@@ -225,19 +232,11 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
     URL.revokeObjectURL(url);
   }, [results]);
 
-  if (phase === 'loading') {
-    return (
-      <div style={styles.center}>
-        <div style={{ fontSize: 24, marginBottom: 12 }}>📋 JSONを解析中...</div>
-        {parseError && <div style={{ color: '#ef4444' }}>{parseError}</div>}
-      </div>
-    );
-  }
+  const passCount = results.filter((r) => r.rating === 'pass').length;
+  const fixCount = results.filter((r) => r.rating === 'fix').length;
+  const failCount = results.filter((r) => r.rating === 'fail').length;
 
   if (phase === 'done') {
-    const passCount = results.filter((r) => r.rating === 'pass').length;
-    const fixCount = results.filter((r) => r.rating === 'fix').length;
-    const failCount = results.filter((r) => r.rating === 'fail').length;
     return (
       <div style={styles.center}>
         <div style={{ fontSize: 32, marginBottom: 16 }}>🎉 レビュー完了</div>
@@ -260,12 +259,19 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
   }
 
   const current = projects[index];
-  if (!current) return null;
 
   return (
     <div style={styles.root}>
+      {/* Loading overlay */}
+      {phase === 'loading' && (
+        <div style={{ ...styles.overlay }}>
+          <div style={{ fontSize: 24, marginBottom: 12 }}>📋 JSONを解析中...</div>
+          {parseError && <div style={{ color: '#ef4444' }}>{parseError}</div>}
+        </div>
+      )}
+
       {/* Header */}
-      <div style={styles.header}>
+      <div style={{ ...styles.header, visibility: phase === 'loading' ? 'hidden' : 'visible' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontWeight: 700, fontSize: 16 }}>📋 バッチレビュー</span>
           <span style={{ color: DESIGN_TOKENS.colors.neutral[400], fontSize: 14 }}>
@@ -380,6 +386,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
+    position: 'relative' as const,
     backgroundColor: DESIGN_TOKENS.colors.neutral[900],
     color: '#fff',
   },
@@ -410,6 +417,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   canvas: {
     flex: 1,
+    height: '100%',
+    minHeight: 0,
+    position: 'relative',
   },
   feedbackPanel: {
     width: 360,
@@ -470,6 +480,17 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     height: '100vh',
+    backgroundColor: DESIGN_TOKENS.colors.neutral[900],
+    color: '#fff',
+  },
+  overlay: {
+    position: 'absolute' as const,
+    inset: 0,
+    zIndex: 50,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: DESIGN_TOKENS.colors.neutral[900],
     color: '#fff',
   },
