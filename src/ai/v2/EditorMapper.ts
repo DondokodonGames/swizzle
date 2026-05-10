@@ -574,19 +574,8 @@ timeType は以下のみ使用可能:
 ❌ 無効: 'state', 'deviceTilt', 'sensor', 'gesture', 'proximity', 'orientation', 'accelerometer'
 
 ### アクションタイプ（actions で使用）
-✅ 有効: 'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag', 'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'setAnimationSpeed', 'setAnimationFrame', 'followDrag', 'applyForce', 'applyImpulse', 'randomAction', 'pause', 'restart', 'showMessage'
-❌ 無効: 'changeState', 'adjustAngle', 'updateCounter', 'rotate', 'scale', 'fade', 'spawn', 'destroy', 'emit', 'trigger', 'conditional'
-
-### showMessage（画面上にテキストメッセージを表示）
-| パラメータ | 値 | 説明 |
-|-----------|-----|------|
-| text | string | 表示するテキスト（8文字以内推奨） |
-| duration | number | 表示時間（秒） |
-
-使用例（ゲーム開始時・重要イベント時のガイド表示）:
-- ゲーム開始直後: { "type": "showMessage", "text": "タップ！", "duration": 2.0 }
-- 正解時: { "type": "showMessage", "text": "すごい！", "duration": 1.5 }
-- 失敗時: { "type": "showMessage", "text": "ミス！", "duration": 1.0 }
+✅ 有効: 'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag', 'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'setAnimationSpeed', 'setAnimationFrame', 'followDrag', 'applyForce', 'applyImpulse', 'randomAction', 'pause', 'restart'
+❌ 無効: 'showMessage'（削除済み・使用禁止）, 'changeState', 'adjustAngle', 'updateCounter', 'rotate', 'scale', 'fade', 'spawn', 'destroy', 'emit', 'trigger', 'conditional'
 
 ### エフェクトタイプ（effect.type）
 ✅ 有効: 'flash', 'shake', 'scale', 'rotate', 'particles'
@@ -754,12 +743,12 @@ playSound アクションには必ず soundId を指定:
 - \`effects\` に 'confetti' が含まれる → \`{ type: 'effect', targetId: <中心オブジェクト>, effect: { type: 'particles', duration: 1.0, intensity: 1.5 } }\`
 - \`effects\` に 'flash' が含まれる → \`{ type: 'effect', targetId: <中心オブジェクト>, effect: { type: 'flash', duration: 0.4, intensity: 1.0 } }\`
 - \`effects\` に 'zoom' が含まれる → \`{ type: 'effect', targetId: <中心オブジェクト>, effect: { type: 'scale', duration: 0.3, intensity: 1.3 } }\`
-- \`message\` がある → \`{ type: 'showMessage', text: '<message>', duration: 1.5 }\` を success の直前に追加
+- \`message\` がある → playSound またはエフェクトで代替する（showMessage は削除済み・使用禁止）
 - \`soundId\` → 対応する playSound アクションを success の直前に追加
 
 ### endingSpec.failure の使い方
 - \`effects\` に 'flash' → \`{ type: 'effect', ... effect: { type: 'shake', ... } }\`
-- \`message\` → \`{ type: 'showMessage', text: '<message>', duration: 1.0 }\` を failure の直前に追加
+- \`message\` がある → エフェクトで代替する（showMessage は削除済み・使用禁止）
 
 # 入力
 
@@ -1490,13 +1479,6 @@ export class EditorMapper {
           type: 'applyImpulse' as const,
           targetId: params.targetId as string,
           impulse: params.impulse as { x: number; y: number }
-        };
-
-      case 'showMessage':
-        return {
-          type: 'showMessage' as const,
-          message: (params.text as string) || (params.message as string) || '',
-          duration: (params.duration as number) || 2.0
         };
 
       default:

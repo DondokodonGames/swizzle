@@ -32,7 +32,6 @@ const ACTION_TYPES = {
   failure: { icon: '💔', color: 'bg-red-100 border-red-300' },
   setFlag: { icon: '🏳️', color: 'bg-purple-100 border-purple-300' },
   playSound: { icon: '🔊', color: 'bg-blue-100 border-blue-300' },
-  showMessage: { icon: '💬', color: 'bg-gray-100 border-gray-300' },
   hide: { icon: '👻', color: 'bg-gray-100 border-gray-300' },
   show: { icon: '👁️', color: 'bg-blue-100 border-blue-300' },
   // 🔧 追加：不足していた型
@@ -78,7 +77,6 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
       failure: t('actions.failure.label'),
       setFlag: t('actions.setFlag.label'),
       playSound: t('actions.playSound.label'),
-      showMessage: t('actions.showMessage.label'),
       hide: t('actions.hide.label'),
       show: t('actions.show.label'),
       move: t('actions.move.label'),
@@ -194,9 +192,6 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
         break;
       case 'playSound':
         newAction = { type: 'playSound', soundId: 'sound1', volume: 0.8 };
-        break;
-      case 'showMessage':
-        newAction = { type: 'showMessage', text: t('editor.script.messageText'), duration: 2 };
         break;
       case 'move':
         newAction = { 
@@ -601,30 +596,6 @@ export const VisualRuleEditor: React.FC<VisualRuleEditorProps> = ({
                     </div>
                   )}
 
-                  {action.type === 'showMessage' && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1">{t('editor.script.message')}</label>
-                        <input
-                          type="text"
-                          value={action.text}
-                          onChange={(e) => updateAction(index, { text: e.target.value })}
-                          className="w-full px-2 py-1 border rounded text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-600 mb-1">{t('editor.script.displayDuration')}</label>
-                        <input
-                          type="number"
-                          min="0.5"
-                          step="0.5"
-                          value={action.duration}
-                          onChange={(e) => updateAction(index, { duration: parseFloat(e.target.value) })}
-                          className="w-full px-2 py-1 border rounded text-sm"
-                        />
-                      </div>
-                    </div>
-                  )}
 
                   {(action.type === 'success' || action.type === 'failure') && (
                     <div>

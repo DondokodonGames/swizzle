@@ -29,7 +29,7 @@ const VALID_ACTIONS: VerifiedActionType[] = [
   'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag',
   'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'setAnimationSpeed',
   'setAnimationFrame', 'followDrag', 'applyForce', 'applyImpulse',
-  'randomAction', 'pause', 'restart', 'showMessage'
+  'randomAction', 'pause', 'restart'
   // 使用禁止: setGravity, setPhysics
 ];
 

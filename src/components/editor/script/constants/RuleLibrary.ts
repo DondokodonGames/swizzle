@@ -221,14 +221,6 @@ export const ACTION_LIBRARY: ActionInfo[] = [
     description: 'スコアを加算',
     category: 'data'
   },
-  { 
-    type: 'showMessage', 
-    label: 'メッセージ表示', 
-    icon: '💬', 
-    description: 'メッセージを表示',
-    category: 'data'
-  },
-
   // ランダムアクション
   { 
     type: 'randomAction', 

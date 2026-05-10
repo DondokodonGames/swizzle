@@ -45,6 +45,8 @@ export class EditorGameBridge {
   private shouldStopGame: boolean = false;
   private currentCanvas: HTMLCanvasElement | null = null;
   private currentHandleInteraction: ((event: MouseEvent | TouchEvent) => void) | null = null;
+  private currentHandleMouseMove: ((event: MouseEvent) => void) | null = null;
+  private currentHandleMouseUp: ((event: MouseEvent) => void) | null = null;
   private currentBgmAudio: HTMLAudioElement | null = null;
 
   static getInstance(): EditorGameBridge {
@@ -74,9 +76,17 @@ export class EditorGameBridge {
     }
 
     // イベントリスナーを削除
-    if (this.currentCanvas && this.currentHandleInteraction) {
-      this.currentCanvas.removeEventListener('click', this.currentHandleInteraction);
-      this.currentCanvas.removeEventListener('touchstart', this.currentHandleInteraction);
+    if (this.currentCanvas) {
+      if (this.currentHandleInteraction) {
+        this.currentCanvas.removeEventListener('mousedown', this.currentHandleInteraction);
+        this.currentCanvas.removeEventListener('touchstart', this.currentHandleInteraction);
+      }
+      if (this.currentHandleMouseMove) {
+        this.currentCanvas.removeEventListener('mousemove', this.currentHandleMouseMove);
+      }
+      if (this.currentHandleMouseUp) {
+        this.currentCanvas.removeEventListener('mouseup', this.currentHandleMouseUp);
+      }
     }
 
     // BGMを停止
@@ -90,6 +100,8 @@ export class EditorGameBridge {
     this.currentContext = null;
     this.currentCanvas = null;
     this.currentHandleInteraction = null;
+    this.currentHandleMouseMove = null;
+    this.currentHandleMouseUp = null;
 
     console.log('✅ ゲーム停止完了');
   }
@@ -707,15 +719,20 @@ export class EditorGameBridge {
           if (touchActive) {
             const holdDuration = Date.now() - touchStartTime;
             if (holdDuration >= 300) {
-              this.currentContext!.events.push({
-                type: 'touch', timestamp: Date.now(),
-                data: {
-                  type: 'hold', touchType: 'hold',
-                  target: touchedObjectId ?? 'stage',
-                  currentDuration: holdDuration,
-                  holdState: holdDuration >= 1000 ? 'complete' : 'progress'
-                }
-              });
+              const isComplete = holdDuration >= 1000;
+              // 'complete' は閾値到達時に1回だけ発火。'progress' は毎フレーム継続発火
+              if (!isComplete || !holdCompleteFired) {
+                if (isComplete) holdCompleteFired = true;
+                this.currentContext!.events.push({
+                  type: 'touch', timestamp: Date.now(),
+                  data: {
+                    type: 'hold', touchType: 'hold',
+                    target: touchedObjectId ?? 'stage',
+                    currentDuration: holdDuration,
+                    holdState: isComplete ? 'complete' : 'progress'
+                  }
+                });
+              }
             }
           }
 
@@ -956,6 +973,7 @@ export class EditorGameBridge {
       let lastTouchX = 0, lastTouchY = 0;
       let touchedObjectId: string | null = null;
       let touchActive = false;
+      let holdCompleteFired = false;
 
       // タッチ座標をキャンバス座標に変換
       const toCanvasCoords = (clientX: number, clientY: number) => {
@@ -1061,20 +1079,19 @@ export class EditorGameBridge {
             console.log(`👆 ステージタッチ: at (${x.toFixed(0)}, ${y.toFixed(0)})`);
           }
 
-          // タッチ追跡状態を更新
+          // タッチ追跡状態を更新（タッチ・マウス両対応）
           touchStartX = x; touchStartY = y; touchStartTime = Date.now();
           lastTouchX = x; lastTouchY = y;
           touchedObjectId = hitObject;
-          touchActive = 'touches' in event;  // タッチデバイスのみ追跡
+          touchActive = true;
+          holdCompleteFired = false;
 
           // ドラッグ開始イベント
-          if (touchActive) {
-            this.currentContext!.events.push({
-              type: 'touch', timestamp: Date.now(),
-              data: { type: 'drag', touchType: 'drag', dragState: 'start',
-                      target: hitObject ?? 'stage', x, y }
-            });
-          }
+          this.currentContext!.events.push({
+            type: 'touch', timestamp: Date.now(),
+            data: { type: 'drag', touchType: 'drag', dragState: 'start',
+                    target: hitObject ?? 'stage', x, y }
+          });
 
         } catch (error) {
           console.warn('⚠️ インタラクション処理エラー:', error);
@@ -1140,13 +1157,69 @@ export class EditorGameBridge {
         touchedObjectId = null;
       };
 
-      canvasElement.addEventListener('click', handleInteraction);
+      const handleMouseMove = (event: MouseEvent) => {
+        if (!this.currentContext || !touchActive) return;
+        const { x, y } = toCanvasCoords(event.clientX, event.clientY);
+        lastTouchX = x; lastTouchY = y;
+        this.currentContext.events.push({
+          type: 'touch', timestamp: Date.now(),
+          data: { type: 'drag', touchType: 'drag', dragState: 'dragging',
+                  target: touchedObjectId ?? 'stage', x, y }
+        });
+      };
+
+      const handleMouseUp = (event: MouseEvent) => {
+        if (!this.currentContext || !touchActive) return;
+        touchActive = false;
+        const endTime = Date.now();
+        const { x, y } = toCanvasCoords(event.clientX, event.clientY);
+        lastTouchX = x; lastTouchY = y;
+        const dx = lastTouchX - touchStartX;
+        const dy = lastTouchY - touchStartY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const duration = endTime - touchStartTime;
+        const velocity = duration > 0 ? (distance / duration) * 1000 : 0;
+        const direction = getDirection(dx, dy);
+
+        this.currentContext.events.push({
+          type: 'touch', timestamp: endTime,
+          data: { type: 'drag', touchType: 'drag', dragState: 'end',
+                  target: touchedObjectId ?? 'stage', x: lastTouchX, y: lastTouchY }
+        });
+        this.currentContext.events.push({
+          type: 'touch', timestamp: endTime,
+          data: { touchType: 'up', target: touchedObjectId ?? 'stage',
+                  x: lastTouchX, y: lastTouchY }
+        });
+
+        if (velocity >= 1000 && distance <= 150 && duration <= 200) {
+          this.currentContext.events.push({
+            type: 'touch', timestamp: endTime,
+            data: { type: 'flick', touchType: 'flick', target: touchedObjectId ?? 'stage',
+                    distance, duration, velocity, direction }
+          });
+        } else if (velocity >= 500 && distance >= 100 && duration <= 500) {
+          this.currentContext.events.push({
+            type: 'touch', timestamp: endTime,
+            data: { type: 'swipe', touchType: 'swipe', target: touchedObjectId ?? 'stage',
+                    distance, duration, velocity, direction }
+          });
+        }
+
+        touchedObjectId = null;
+      };
+
+      canvasElement.addEventListener('mousedown', handleInteraction);
+      canvasElement.addEventListener('mousemove', handleMouseMove);
+      canvasElement.addEventListener('mouseup', handleMouseUp);
       canvasElement.addEventListener('touchstart', handleInteraction, { passive: false });
       canvasElement.addEventListener('touchmove', handleTouchMove, { passive: false });
       canvasElement.addEventListener('touchend', handleTouchEnd);
 
       // 外部停止用にハンドラ参照を保存
       this.currentHandleInteraction = handleInteraction;
+      this.currentHandleMouseMove = handleMouseMove;
+      this.currentHandleMouseUp = handleMouseUp;
 
       // 14. ゲーム開始
       console.log('🚀 ゲームループ開始');
@@ -1169,7 +1242,9 @@ export class EditorGameBridge {
         clearTimeout(this.gameLoopTimerId);
         this.gameLoopTimerId = null;
       }
-      canvasElement.removeEventListener('click', handleInteraction);
+      canvasElement.removeEventListener('mousedown', handleInteraction);
+      canvasElement.removeEventListener('mousemove', handleMouseMove);
+      canvasElement.removeEventListener('mouseup', handleMouseUp);
       canvasElement.removeEventListener('touchstart', handleInteraction);
       canvasElement.removeEventListener('touchmove', handleTouchMove);
       canvasElement.removeEventListener('touchend', handleTouchEnd);

@@ -448,9 +448,8 @@ export type GameAction =
   | { type: 'setGravity'; targetId: string; gravity: number }
   | { type: 'setPhysics'; targetId: string; physics: Partial<PhysicsProperties> }
   
-  // スコア・UI
+  // スコア
   | { type: 'addScore'; points: number }
-  | { type: 'showMessage'; text: string; duration: number; style?: TextStyle }
   
   // 🔢 カウンターアクション（Phase G）
   | { type: 'counter'; operation: CounterOperation; counterName: string; value?: number; notification?: CounterNotification }
@@ -990,6 +989,5 @@ export type ActionType =
   | 'setGravity'
   | 'setPhysics'
   | 'addScore'
-  | 'showMessage'
   | 'counter'
   | 'randomAction';

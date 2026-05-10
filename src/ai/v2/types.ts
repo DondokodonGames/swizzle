@@ -126,7 +126,6 @@ export type VerifiedActionType =
   | 'setGravity'
   | 'setPhysics'
   | 'randomAction'
-  | 'showMessage'
   | 'pause'
   | 'restart';
 

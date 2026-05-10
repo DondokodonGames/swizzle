@@ -147,11 +147,6 @@ export class ConditionEvaluator {
         if (latestTouch.data.touchType !== condition.touchType) {
           return false;
         }
-        const touchKey = `${latestTouch.timestamp}-${latestTouch.data.target}`;
-        if (this.consumedTouchEvents.has(touchKey)) {
-          return false;
-        }
-
         if (touchTarget === 'stage') {
           if (latestTouch.data.target !== 'stage') {
             return false;
@@ -167,14 +162,8 @@ export class ConditionEvaluator {
               const rectWidth = (region.width || 0.4) * context.canvas.width;
               const rectHeight = (region.height || 0.4) * context.canvas.height;
 
-              const result = touchX >= rectX && touchX <= rectX + rectWidth &&
-                            touchY >= rectY && touchY <= rectY + rectHeight;
-
-              if (result) {
-                this.consumedTouchEvents.add(touchKey);
-              }
-
-              return result;
+              return touchX >= rectX && touchX <= rectX + rectWidth &&
+                     touchY >= rectY && touchY <= rectY + rectHeight;
             } else if (region.shape === 'circle') {
               const centerX = region.x * context.canvas.width;
               const centerY = region.y * context.canvas.height;
@@ -184,27 +173,14 @@ export class ConditionEvaluator {
                 Math.pow(touchX - centerX, 2) + Math.pow(touchY - centerY, 2)
               );
 
-              const result = distance <= radius;
-
-              if (result) {
-                this.consumedTouchEvents.add(touchKey);
-              }
-
-              return result;
+              return distance <= radius;
             }
           }
 
-          this.consumedTouchEvents.add(touchKey);
           return true;
         }
 
-        const result = latestTouch.data.target === touchTarget;
-
-        if (result) {
-          this.consumedTouchEvents.add(touchKey);
-        }
-
-        return result;
+        return latestTouch.data.target === touchTarget;
       default:
         return false;
     }
