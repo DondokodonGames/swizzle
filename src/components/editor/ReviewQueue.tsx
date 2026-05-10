@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
 import { EditorGameBridge } from '../../services/editor/EditorGameBridge';
-import { supabase } from '../../lib/supabase';
+import { ProjectStorageManager } from '../../services/ProjectStorageManager';
+import { database } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 import { ModernButton } from '../ui/ModernButton';
@@ -169,9 +170,12 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
 
     try {
       if (user) {
-        // Inject review metadata into project before saving
+        const storage = ProjectStorageManager.getInstance();
+        // Inject review metadata and set status for publish
         const projectToSave: GameProject = {
           ...current.project,
+          id: current.project.id || crypto.randomUUID(),
+          status: rating === 'pass' ? 'published' : 'draft',
           metadata: {
             ...current.project.metadata,
             review: {
@@ -184,27 +188,14 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
           },
         };
 
-        const { data, error } = await supabase
-          .from('user_games')
-          .insert({
-            title: projectToSave.name || projectToSave.settings?.name || '無題',
-            description: projectToSave.description || projectToSave.settings?.description || '',
-            creator_id: user.id,
-            project_data: projectToSave,
-            is_published: rating === 'pass',
-            template_id: (projectToSave as any).template_id || 'unknown',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .select('id')
-          .single();
-
-        if (!error && data) {
-          result.savedGameId = data.id;
-        }
+        await storage.saveToDatabase(projectToSave, user.id);
+        // Retrieve the DB row id after save
+        const saved = await database.userGames.findByProjectId(user.id, projectToSave.id);
+        if (saved?.id) result.savedGameId = saved.id;
       }
-    } catch {
-      // Save failure is non-blocking
+    } catch (saveErr) {
+      console.error('[ReviewQueue] 保存失敗:', saveErr);
+      // Save failure is non-blocking — review result is still recorded locally
     }
 
     setResults((prev) => [...prev, result]);
