@@ -43,6 +43,7 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
   const [comment, setComment] = useState('');
   const [results, setResults] = useState<ReviewResult[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [replayCount, setReplayCount] = useState(0);
   const canvasRef = useRef<HTMLDivElement>(null);
   const bridge = useRef(EditorGameBridge.getInstance());
 
@@ -131,7 +132,21 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
       cancelled = true;
       bridge.current.stopGame();
     };
-  }, [index, phase, projects]);
+  }, [index, phase, projects, replayCount]);
+
+  const handleReplay = useCallback(() => {
+    bridge.current.stopGame();
+    setRating(null);
+    setSelectedIssues([]);
+    setComment('');
+    setPhase('playing');
+    setReplayCount((c) => c + 1);
+  }, []);
+
+  const handleJudgeNow = useCallback(() => {
+    bridge.current.stopGame();
+    setPhase('feedback');
+  }, []);
 
   const handleToggleIssue = (issue: string) => {
     setSelectedIssues((prev) =>
@@ -317,8 +332,16 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
               📥 CSV
             </ModernButton>
           )}
+          <ModernButton variant="outline" size="sm" onClick={handleReplay}>
+            🔄 やり直し
+          </ModernButton>
+          {phase === 'playing' && (
+            <ModernButton variant="outline" size="sm" onClick={handleJudgeNow}>
+              📝 途中判定
+            </ModernButton>
+          )}
           <ModernButton variant="outline" size="sm" onClick={handleSkip}>
-            スキップ →
+            次へ →
           </ModernButton>
           <ModernButton variant="secondary" size="sm" onClick={onExit}>
             終了
