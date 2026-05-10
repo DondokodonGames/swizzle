@@ -7,9 +7,6 @@
  * 🔧 修正（2025-12-04）: collision型にtargetObjectId追加（Phase 3-1項目6&7）
  */
 
-// TextStyleをインポート
-import { TextStyle } from './ProjectAssets';
-
 // 🔢 新規追加: カウンター型インポート
 import {
   GameCounter,
