@@ -43,7 +43,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   const testPlayContainerRef = useRef<HTMLDivElement>(null);
   const gameBridge = useRef(EditorGameBridge.getInstance());
 
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, initializing: authInitializing } = useAuth();
   
   const {
     currentProject,
@@ -504,7 +504,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         fontFamily: DESIGN_TOKENS.typography.fontFamily.sans.join(', ')
       }}
     >
-      {(loading || authLoading) && (
+      {(loading || authLoading || authInitializing) && (
         <div
           style={{
             position: 'fixed',
@@ -538,7 +538,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
                   margin: 0
                 }}
               >
-                {authLoading ? t('editor.app.authenticating') : t('editor.app.loading')}
+                {(authLoading || authInitializing) ? t('editor.app.authenticating') : t('editor.app.loading')}
               </p>
             </div>
           </ModernCard>
@@ -628,7 +628,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
         </div>
       )}
 
-      {!authLoading && !user ? (
+      {!authInitializing && !authLoading && !user ? (
         <div
           style={{
             minHeight: '100vh',
