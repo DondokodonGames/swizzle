@@ -169,33 +169,20 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
     };
 
     try {
-      if (user) {
+      if (user && rating === 'pass') {
         const storage = ProjectStorageManager.getInstance();
-        // Inject review metadata and set status for publish
         const projectToSave: GameProject = {
           ...current.project,
           id: current.project.id || crypto.randomUUID(),
-          status: rating === 'pass' ? 'published' : 'draft',
-          metadata: {
-            ...current.project.metadata,
-            review: {
-              rating,
-              issues: selectedIssues,
-              comment,
-              reviewedAt: new Date().toISOString(),
-              reviewerUserId: user.id,
-            } as any,
-          },
+          status: 'published',
         };
 
         await storage.saveToDatabase(projectToSave, user.id);
-        // Retrieve the DB row id after save
         const saved = await database.userGames.findByProjectId(user.id, projectToSave.id);
         if (saved?.id) result.savedGameId = saved.id;
       }
     } catch (saveErr) {
       console.error('[ReviewQueue] 保存失敗:', saveErr);
-      // Save failure is non-blocking — review result is still recorded locally
     }
 
     setResults((prev) => [...prev, result]);
