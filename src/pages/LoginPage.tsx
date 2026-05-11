@@ -9,7 +9,7 @@ import { useAuth } from '../hooks/useAuth'
 export const LoginPage: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { signIn, resetPassword, loading, error, clearError, isAuthenticated } = useAuth()
+  const { signIn, resetPassword, loading, error, clearError, isAuthenticated, initializing } = useAuth()
 
   const [formData, setFormData] = useState({
     email: '',
@@ -105,6 +105,8 @@ export const LoginPage: React.FC = () => {
     setResetErrorMessage('')
     clearError()
   }
+
+  if (initializing) return null
 
   return (
     <div style={{
