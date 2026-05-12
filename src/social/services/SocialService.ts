@@ -1192,25 +1192,18 @@ export class SocialService {
 
   async incrementViews(gameId: string): Promise<number> {
     try {
-      // ゲーム情報を直接取得（N+1問題解決）
-      const { data: gameData } = await supabase
-        .from('user_games')
-        .select('id, play_count')
-        .eq('id', gameId)
-        .single();
+      const { data, error } = await supabase.rpc('increment_game_play_count', {
+        p_game_id: gameId
+      });
 
-      if (gameData) {
-        const newPlayCount = (gameData.play_count || 0) + 1;
-
-        await database.userGames.update(gameId, {
-          play_count: newPlayCount
-        });
-
-        console.log(`Views incremented for game ${gameId}: ${newPlayCount}`);
-        return newPlayCount;
+      if (error) {
+        console.error('Error incrementing views via RPC:', error);
+        return 0;
       }
 
-      return 0;
+      const newPlayCount = data as number ?? 0;
+      console.log(`Views incremented for game ${gameId}: ${newPlayCount}`);
+      return newPlayCount;
 
     } catch (error) {
       console.error('Error incrementing views:', error);

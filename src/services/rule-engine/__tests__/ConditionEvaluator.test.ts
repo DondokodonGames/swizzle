@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { ConditionEvaluator } from '../ConditionEvaluator';
 import { FlagManager } from '../FlagManager';
 import { CounterManager } from '../CounterManager';
@@ -282,7 +282,7 @@ describe('ConditionEvaluator – touch swipe', () => {
   it('matches with valid swipe params', () => {
     const ctx = makeContext({ events: [swipeEvent()] });
     expect(ev.evaluateCondition(
-      { type: 'touch', touchType: 'swipe' },
+      { type: 'touch', touchType: 'swipe' } as any,
       ctx,
       'obj1',
     )).toBe(true);
@@ -362,7 +362,7 @@ describe('ConditionEvaluator – touch flick', () => {
   it('matches valid flick', () => {
     const ctx = makeContext({ events: [flickEvent()] });
     expect(ev.evaluateCondition(
-      { type: 'touch', touchType: 'flick' },
+      { type: 'touch', touchType: 'flick' } as any,
       ctx,
       'obj1',
     )).toBe(true);

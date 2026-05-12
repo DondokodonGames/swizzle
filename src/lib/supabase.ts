@@ -280,10 +280,14 @@ export const database = {
     },
 
     update: async (gameId: string, updates: any) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new SupabaseError('認証が必要です')
+
       const { data, error } = await supabase
         .from('user_games')
         .update(updates)
         .eq('id', gameId)
+        .eq('creator_id', user.id)
         .select()
         .single()
 
@@ -298,6 +302,9 @@ export const database = {
       is_published?: boolean;
       thumbnail_url?: string | null;
     }) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new SupabaseError('認証が必要です')
+
       const { data, error } = await supabase
         .from('user_games')
         .update({
@@ -305,6 +312,7 @@ export const database = {
           updated_at: new Date().toISOString()
         })
         .eq('id', gameId)
+        .eq('creator_id', user.id)
         .select('id, title, description, updated_at')
         .single()
 
@@ -313,10 +321,14 @@ export const database = {
     },
 
     delete: async (gameId: string) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new SupabaseError('認証が必要です')
+
       const { error } = await supabase
         .from('user_games')
         .delete()
         .eq('id', gameId)
+        .eq('creator_id', user.id)
 
       if (error) throw new SupabaseError(error.message)
     }
