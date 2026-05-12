@@ -81,12 +81,13 @@ export class EditorGameBridge {
         this.currentCanvas.removeEventListener('mousedown', this.currentHandleInteraction);
         this.currentCanvas.removeEventListener('touchstart', this.currentHandleInteraction);
       }
-      if (this.currentHandleMouseMove) {
-        this.currentCanvas.removeEventListener('mousemove', this.currentHandleMouseMove);
-      }
-      if (this.currentHandleMouseUp) {
-        this.currentCanvas.removeEventListener('mouseup', this.currentHandleMouseUp);
-      }
+    }
+    // mousemove/mouseup are attached to document (M-2 fix)
+    if (this.currentHandleMouseMove) {
+      document.removeEventListener('mousemove', this.currentHandleMouseMove);
+    }
+    if (this.currentHandleMouseUp) {
+      document.removeEventListener('mouseup', this.currentHandleMouseUp);
     }
 
     // BGMを停止
@@ -1210,8 +1211,10 @@ export class EditorGameBridge {
       };
 
       canvasElement.addEventListener('mousedown', handleInteraction);
-      canvasElement.addEventListener('mousemove', handleMouseMove);
-      canvasElement.addEventListener('mouseup', handleMouseUp);
+      // M-2: mousemove/mouseup are attached to document so dragging outside the canvas
+      // does not leave touchActive stuck as true.
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
       canvasElement.addEventListener('touchstart', handleInteraction, { passive: false });
       canvasElement.addEventListener('touchmove', handleTouchMove, { passive: false });
       canvasElement.addEventListener('touchend', handleTouchEnd);
@@ -1243,8 +1246,8 @@ export class EditorGameBridge {
         this.gameLoopTimerId = null;
       }
       canvasElement.removeEventListener('mousedown', handleInteraction);
-      canvasElement.removeEventListener('mousemove', handleMouseMove);
-      canvasElement.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
       canvasElement.removeEventListener('touchstart', handleInteraction);
       canvasElement.removeEventListener('touchmove', handleTouchMove);
       canvasElement.removeEventListener('touchend', handleTouchEnd);
@@ -1352,8 +1355,8 @@ export class EditorGameBridge {
       canvas.style.maxHeight = '100%';
       canvas.style.backgroundColor = '#000000';
       
-      // 既存コンテンツクリア
-      targetElement.innerHTML = '';
+      // 既存コンテンツクリア (L-2: avoid innerHTML assignment)
+      while (targetElement.firstChild) targetElement.removeChild(targetElement.firstChild);
       targetElement.appendChild(canvas);
       
       // ゲーム実行
@@ -1400,7 +1403,8 @@ export class EditorGameBridge {
       errorContainer.appendChild(titleH3);
       errorContainer.appendChild(messageP);
 
-      targetElement.innerHTML = '';
+      // L-2: avoid innerHTML assignment
+      while (targetElement.firstChild) targetElement.removeChild(targetElement.firstChild);
       targetElement.appendChild(errorContainer);
       
       if (onGameEnd) {

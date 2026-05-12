@@ -33,11 +33,74 @@ const ISSUE_OPTIONS = [
   'その他',
 ];
 
+// CSV injection prevention helper
+const escapeCsvCell = (value: string): string => {
+  // Neutralize formula injection by prefixing dangerous leading chars with single quote
+  let escaped = value;
+  if (/^[=+\-@]/.test(escaped)) {
+    escaped = `'${escaped}`;
+  }
+  // Wrap in double quotes and escape internal double quotes
+  return `"${escaped.replace(/"/g, '""')}"`;
+};
+
+// Lightweight schema validation for uploaded project JSON
+const validateProjectJson = (raw: unknown): { valid: boolean; error?: string } => {
+  if (typeof raw !== 'object' || raw === null) {
+    return { valid: false, error: 'JSONがオブジェクトではありません' };
+  }
+  const obj = raw as Record<string, unknown>;
+
+  // Support ProjectExportData wrapper ({project: GameProject}) or bare GameProject
+  const project = (obj.project && typeof obj.project === 'object')
+    ? (obj.project as Record<string, unknown>)
+    : obj;
+
+  // At least one of name / settings.name must exist
+  const hasName = typeof project.name === 'string' || (
+    typeof project.settings === 'object' && project.settings !== null &&
+    typeof (project.settings as Record<string, unknown>).name === 'string'
+  );
+  if (!hasName) {
+    return { valid: false, error: '必須フィールド "name" が見つかりません' };
+  }
+
+  // assets must exist (object)
+  if (typeof project.assets !== 'object' || project.assets === null) {
+    return { valid: false, error: '必須フィールド "assets" が見つかりません' };
+  }
+
+  // script must exist (object)
+  if (typeof project.script !== 'object' || project.script === null) {
+    return { valid: false, error: '必須フィールド "script" が見つかりません' };
+  }
+
+  // script.rules must be array or undefined; cap length
+  const script = project.script as Record<string, unknown>;
+  if (script.rules !== undefined) {
+    if (!Array.isArray(script.rules)) {
+      return { valid: false, error: '"script.rules" は配列である必要があります' };
+    }
+    if (script.rules.length > 500) {
+      return { valid: false, error: '"script.rules" の数が上限 (500) を超えています' };
+    }
+  }
+
+  // assets.objects length cap
+  const assets = project.assets as Record<string, unknown>;
+  if (assets.objects !== undefined && Array.isArray(assets.objects) && assets.objects.length > 500) {
+    return { valid: false, error: '"assets.objects" の数が上限 (500) を超えています' };
+  }
+
+  return { valid: true };
+};
+
 export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit }) => {
   const { user } = useAuth();
   const [projects, setProjects] = useState<{ file: File; project: GameProject }[]>([]);
   const [index, setIndex] = useState(0);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [phase, setPhase] = useState<'loading' | 'playing' | 'feedback' | 'done'>('loading');
   const [rating, setRating] = useState<'pass' | 'fix' | 'fail' | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
@@ -59,6 +122,23 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
       reader.onload = (e) => {
         try {
           const jsonData = JSON.parse(e.target?.result as string);
+
+          // Schema validation before accepting data
+          const validation = validateProjectJson(jsonData);
+          if (!validation.valid) {
+            errors.push(`${file.name}: ${validation.error}`);
+            done++;
+            if (done === files.length) {
+              parsed.sort((a, b) => a.file.name.localeCompare(b.file.name));
+              setProjects(parsed);
+              if (errors.length > 0) {
+                setParseError(`解析失敗: ${errors.join(', ')}`);
+              }
+              setPhase('playing');
+            }
+            return;
+          }
+
           // ProjectExportData形式（{project: GameProject}）の場合はアンラップする
           const raw: GameProject = jsonData.project ?? jsonData;
           // Codex生成JSONが settings を持たない場合に補完する
@@ -157,6 +237,13 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
 
   const handleSubmit = useCallback(async () => {
     if (!rating) return;
+
+    // M-4: Guard against expired session before attempting any save
+    if (!user) {
+      setAuthError('セッションが切れました。再ログインしてください。');
+      return;
+    }
+
     setSubmitting(true);
 
     const current = projects[index];
@@ -230,12 +317,12 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
     const header = 'filename,projectName,rating,issues,comment,savedGameId';
     const rows = results.map((r) =>
       [
-        `"${r.filename}"`,
-        `"${r.projectName}"`,
-        r.rating,
-        `"${r.issues.join('|')}"`,
-        `"${r.comment.replace(/"/g, '""')}"`,
-        r.savedGameId || '',
+        escapeCsvCell(r.filename),
+        escapeCsvCell(r.projectName),
+        escapeCsvCell(r.rating),
+        escapeCsvCell(r.issues.join('|')),
+        escapeCsvCell(r.comment),
+        escapeCsvCell(r.savedGameId || ''),
       ].join(',')
     );
     const csv = [header, ...rows].join('\n');
@@ -340,6 +427,19 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
         {phase === 'feedback' && (
           <div style={styles.feedbackPanel}>
             <div style={styles.feedbackTitle}>🎮 プレイ完了 — フィードバックを入力</div>
+
+            {authError && (
+              <div style={{
+                padding: '10px 14px',
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: 8,
+                color: '#dc2626',
+                fontSize: 13,
+              }}>
+                {authError}
+              </div>
+            )}
 
             {/* Rating */}
             <div style={styles.ratingRow}>

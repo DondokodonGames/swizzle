@@ -1,7 +1,7 @@
 // src/pages/SignupPage.tsx
 // 専用の新規登録ページ（問題5対応）
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
@@ -20,6 +20,22 @@ export const SignupPage: React.FC = () => {
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [showPassword, setShowPassword] = useState(false)
+
+  // M-3: timeout for initializing state
+  const [initTimeout, setInitTimeout] = useState(false)
+  const initTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (initializing) {
+      initTimerRef.current = setTimeout(() => setInitTimeout(true), 5000)
+    } else {
+      if (initTimerRef.current) clearTimeout(initTimerRef.current)
+      setInitTimeout(false)
+    }
+    return () => {
+      if (initTimerRef.current) clearTimeout(initTimerRef.current)
+    }
+  }, [initializing])
   const [showParentalWarning, setShowParentalWarning] = useState(false)
   const [showSignupSuccess, setShowSignupSuccess] = useState(false)
   const [successEmail, setSuccessEmail] = useState('')
@@ -103,7 +119,44 @@ export const SignupPage: React.FC = () => {
     }
   }
 
-  if (initializing) return null
+  if (initializing) {
+    if (initTimeout) {
+      return (
+        <div style={{
+          minHeight: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          flexDirection: 'column',
+          gap: '16px',
+          color: 'white',
+          textAlign: 'center',
+        }}>
+          <p style={{ fontSize: '18px', fontWeight: '600' }}>
+            接続に失敗しました。ページを再読み込みしてください。
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '12px 24px',
+              background: 'white',
+              color: '#667eea',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer',
+            }}
+          >
+            再読み込み
+          </button>
+        </div>
+      )
+    }
+    return null
+  }
 
   return (
     <div style={{
