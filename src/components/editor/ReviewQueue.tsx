@@ -46,7 +46,7 @@ const escapeCsvCell = (value: string): string => {
 
 // Lightweight schema validation for uploaded project JSON
 const validateProjectJson = (raw: unknown): { valid: boolean; error?: string } => {
-  if (typeof raw !== 'object' || raw === null) {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     return { valid: false, error: 'JSONがオブジェクトではありません' };
   }
   const obj = raw as Record<string, unknown>;
@@ -56,28 +56,10 @@ const validateProjectJson = (raw: unknown): { valid: boolean; error?: string } =
     ? (obj.project as Record<string, unknown>)
     : obj;
 
-  // At least one of name / settings.name must exist
-  const hasName = typeof project.name === 'string' || (
-    typeof project.settings === 'object' && project.settings !== null &&
-    typeof (project.settings as Record<string, unknown>).name === 'string'
-  );
-  if (!hasName) {
-    return { valid: false, error: '必須フィールド "name" が見つかりません' };
-  }
-
-  // assets must exist (object)
-  if (typeof project.assets !== 'object' || project.assets === null) {
-    return { valid: false, error: '必須フィールド "assets" が見つかりません' };
-  }
-
-  // script must exist (object)
-  if (typeof project.script !== 'object' || project.script === null) {
-    return { valid: false, error: '必須フィールド "script" が見つかりません' };
-  }
-
-  // script.rules must be array or undefined; cap length
-  const script = project.script as Record<string, unknown>;
-  if (script.rules !== undefined) {
+  // Cap rules array length to prevent abuse (assets/script fields are optional –
+  // the parser adds defaults for missing fields)
+  const script = project.script as Record<string, unknown> | undefined;
+  if (script?.rules !== undefined) {
     if (!Array.isArray(script.rules)) {
       return { valid: false, error: '"script.rules" は配列である必要があります' };
     }
@@ -86,9 +68,9 @@ const validateProjectJson = (raw: unknown): { valid: boolean; error?: string } =
     }
   }
 
-  // assets.objects length cap
-  const assets = project.assets as Record<string, unknown>;
-  if (assets.objects !== undefined && Array.isArray(assets.objects) && assets.objects.length > 500) {
+  // Cap assets.objects length
+  const assets = project.assets as Record<string, unknown> | undefined;
+  if (assets?.objects !== undefined && Array.isArray(assets.objects) && assets.objects.length > 500) {
     return { valid: false, error: '"assets.objects" の数が上限 (500) を超えています' };
   }
 
