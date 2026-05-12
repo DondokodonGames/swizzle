@@ -1,0 +1,378 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { LogicValidator } from '../LogicValidator';
+import { LogicGeneratorOutput, GameRule } from '../types';
+
+// ────────────────────────────────────────────────────────────
+// Minimal valid output factory
+// ────────────────────────────────────────────────────────────
+
+function makeObject(id: string) {
+  return {
+    id,
+    name: id,
+    purpose: 'player',
+    visualDescription: 'a ' + id,
+    initialPosition: { x: 0.5, y: 0.5 },
+    size: 'medium' as const,
+  };
+}
+
+function makeOutput(overrides: Partial<LogicGeneratorOutput> = {}): LogicGeneratorOutput {
+  const defaultRule: GameRule = {
+    id: 'rule1',
+    targetObjectId: 'obj1',
+    triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+    actions: [{ type: 'success', score: 100 }],
+  };
+
+  return {
+    script: {
+      layout: {
+        objects: [{
+          objectId: 'obj1',
+          position: { x: 0.5, y: 0.5 },
+          scale: { x: 1, y: 1 },
+        }],
+      },
+      rules: [defaultRule],
+      counters: [],
+      flags: [],
+      initialState: { gameState: {} },
+    } as any,
+    assetPlan: {
+      objects: [makeObject('obj1')],
+      background: { description: 'plain', mood: 'neutral' },
+      sounds: [],
+      bgm: undefined,
+    } as any,
+    selfCheck: {
+      hasPlayerActionOnSuccessPath: true,
+      counterInitialValuesSafe: true,
+      allObjectIdsValid: true,
+      allCounterNamesValid: true,
+      coordinatesInRange: true,
+      onlyVerifiedFeaturesUsed: true,
+    },
+    ...overrides,
+  };
+}
+
+function withRule(rule: GameRule, base?: Partial<LogicGeneratorOutput>): LogicGeneratorOutput {
+  const out = makeOutput(base);
+  out.script.rules = [rule];
+  return out;
+}
+
+// ────────────────────────────────────────────────────────────
+// Invalid action types
+// ────────────────────────────────────────────────────────────
+
+describe('LogicValidator – invalid action types', () => {
+  let validator: LogicValidator;
+  beforeEach(() => { validator = new LogicValidator(); });
+
+  it('rejects showMessage as INVALID_ACTION_TYPE', () => {
+    const output = withRule({
+      id: 'r1',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+      actions: [{ type: 'showMessage' } as any],
+    });
+    const result = validator.validate(output);
+    const err = result.errors.find(e => e.code === 'INVALID_ACTION_TYPE');
+    expect(err).toBeDefined();
+    expect(err?.type).toBe('critical');
+    expect(err?.message).toContain('showMessage');
+  });
+
+  it('rejects setGravity as INVALID_ACTION_TYPE', () => {
+    const output = withRule({
+      id: 'r1',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+      actions: [{ type: 'setGravity' } as any],
+    });
+    const result = validator.validate(output);
+    const err = result.errors.find(e => e.code === 'INVALID_ACTION_TYPE');
+    expect(err).toBeDefined();
+    expect(err?.message).toContain('setGravity');
+  });
+
+  it('rejects setPhysics as INVALID_ACTION_TYPE', () => {
+    const output = withRule({
+      id: 'r1',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+      actions: [{ type: 'setPhysics' } as any],
+    });
+    const result = validator.validate(output);
+    const err = result.errors.find(e => e.code === 'INVALID_ACTION_TYPE');
+    expect(err).toBeDefined();
+    expect(err?.message).toContain('setPhysics');
+  });
+
+  it('does not reject valid action types', () => {
+    const validTypes = [
+      'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore',
+      'effect', 'setFlag', 'toggleFlag', 'playSound', 'stopSound', 'playBGM',
+      'stopBGM', 'switchAnimation', 'playAnimation', 'followDrag',
+      'applyForce', 'applyImpulse', 'randomAction', 'pause', 'restart',
+    ] as const;
+
+    for (const type of validTypes) {
+      const output = withRule({
+        id: 'r1',
+        targetObjectId: 'obj1',
+        triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+        actions: [{ type } as any],
+      });
+      const result = validator.validate(output);
+      const invalidErr = result.errors.find(
+        e => e.code === 'INVALID_ACTION_TYPE' && e.message.includes(type),
+      );
+      expect(invalidErr, `${type} should be valid but got INVALID_ACTION_TYPE`).toBeUndefined();
+    }
+  });
+});
+
+// ────────────────────────────────────────────────────────────
+// Invalid condition types
+// ────────────────────────────────────────────────────────────
+
+describe('LogicValidator – invalid condition types', () => {
+  let validator: LogicValidator;
+  beforeEach(() => { validator = new LogicValidator(); });
+
+  it('rejects unknown condition type', () => {
+    const output = withRule({
+      id: 'r1',
+      targetObjectId: 'obj1',
+      triggers: {
+        operator: 'AND',
+        conditions: [{ type: 'unknownCondition' } as any],
+      },
+      actions: [{ type: 'success', score: 0 }],
+    });
+    const result = validator.validate(output);
+    const err = result.errors.find(e => e.code === 'INVALID_CONDITION_TYPE');
+    expect(err).toBeDefined();
+    expect(err?.type).toBe('critical');
+    expect(err?.message).toContain('unknownCondition');
+  });
+
+  it('accepts all verified condition types', () => {
+    const verifiedTypes = [
+      'touch', 'time', 'counter', 'collision', 'flag',
+      'gameState', 'position', 'animation', 'random', 'objectState', 'always',
+    ] as const;
+
+    for (const type of verifiedTypes) {
+      const output = withRule({
+        id: 'r1',
+        targetObjectId: 'obj1',
+        triggers: { operator: 'AND', conditions: [{ type } as any] },
+        actions: [{ type: 'success', score: 0 }],
+      });
+      const result = validator.validate(output);
+      const invalidErr = result.errors.find(
+        e => e.code === 'INVALID_CONDITION_TYPE' && e.message.includes(type),
+      );
+      expect(invalidErr, `${type} should be valid`).toBeUndefined();
+    }
+  });
+});
+
+// ────────────────────────────────────────────────────────────
+// Object ID consistency
+// ────────────────────────────────────────────────────────────
+
+describe('LogicValidator – object ID consistency', () => {
+  let validator: LogicValidator;
+  beforeEach(() => { validator = new LogicValidator(); });
+
+  it('detects missing object ID in rule targetObjectId', () => {
+    const output = withRule({
+      id: 'r1',
+      targetObjectId: 'nonexistent',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+      actions: [{ type: 'success', score: 0 }],
+    });
+    const result = validator.validate(output);
+    const err = result.errors.find(e => e.code === 'INVALID_OBJECT_ID');
+    expect(err).toBeDefined();
+    expect(err?.message).toContain('nonexistent');
+  });
+
+  it('detects missing object ID in action targetId', () => {
+    const output = withRule({
+      id: 'r1',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+      actions: [{ type: 'hide', targetId: 'ghost_obj' }],
+    });
+    const result = validator.validate(output);
+    const err = result.errors.find(
+      e => e.code === 'INVALID_OBJECT_ID' && e.message.includes('ghost_obj'),
+    );
+    expect(err).toBeDefined();
+  });
+
+  it('detects missing layout object ID', () => {
+    const output = makeOutput();
+    output.script.layout.objects = [{
+      objectId: 'missing_obj',
+      position: { x: 0.5, y: 0.5 },
+      scale: { x: 1, y: 1 },
+    }];
+    const result = validator.validate(output);
+    const err = result.errors.find(
+      e => e.code === 'INVALID_OBJECT_ID' && e.message.includes('missing_obj'),
+    );
+    expect(err).toBeDefined();
+  });
+
+  it('passes when all IDs are consistent', () => {
+    const output = makeOutput();
+    const result = validator.validate(output);
+    const idErrors = result.errors.filter(e => e.code === 'INVALID_OBJECT_ID');
+    expect(idErrors).toHaveLength(0);
+  });
+});
+
+// ────────────────────────────────────────────────────────────
+// Counter name consistency
+// ────────────────────────────────────────────────────────────
+
+describe('LogicValidator – counter name consistency', () => {
+  let validator: LogicValidator;
+  beforeEach(() => { validator = new LogicValidator(); });
+
+  it('rejects undefined counter name in condition', () => {
+    const output = withRule({
+      id: 'r1',
+      targetObjectId: 'obj1',
+      triggers: {
+        operator: 'AND',
+        conditions: [{ type: 'counter', counterName: 'ghost_counter', comparison: 'equals', value: 1 } as any],
+      },
+      actions: [{ type: 'success', score: 0 }],
+    });
+    const result = validator.validate(output);
+    const err = result.errors.find(e => e.code === 'INVALID_COUNTER_NAME');
+    expect(err).toBeDefined();
+    expect(err?.message).toContain('ghost_counter');
+  });
+
+  it('rejects undefined counter name in counter action', () => {
+    const output = withRule({
+      id: 'r1',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+      actions: [{ type: 'counter', counterName: 'undefined_counter', operation: 'increment' }],
+    });
+    const result = validator.validate(output);
+    const err = result.errors.find(e => e.code === 'INVALID_COUNTER_NAME');
+    expect(err).toBeDefined();
+    expect(err?.message).toContain('undefined_counter');
+  });
+
+  it('passes when counter name matches defined counter', () => {
+    const output = makeOutput();
+    output.script.counters = [{ id: 'hits', name: 'hits', initialValue: 0 } as any];
+    output.script.rules = [{
+      id: 'r1',
+      targetObjectId: 'obj1',
+      triggers: {
+        operator: 'AND',
+        conditions: [{ type: 'counter', counterName: 'hits', comparison: 'equals', value: 3 } as any],
+      },
+      actions: [{ type: 'success', score: 100 }],
+    }];
+    const result = validator.validate(output);
+    const counterErrors = result.errors.filter(e => e.code === 'INVALID_COUNTER_NAME');
+    expect(counterErrors).toHaveLength(0);
+  });
+});
+
+// ────────────────────────────────────────────────────────────
+// Action parameter validation
+// ────────────────────────────────────────────────────────────
+
+describe('LogicValidator – action parameter validation', () => {
+  let validator: LogicValidator;
+  beforeEach(() => { validator = new LogicValidator(); });
+
+  it('rejects invalid counter operation', () => {
+    const output = makeOutput();
+    output.script.counters = [{ id: 'score', name: 'score', initialValue: 0 } as any];
+    output.script.rules = [{
+      id: 'r1',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+      actions: [{ type: 'counter', counterName: 'score', operation: 'multiply' } as any],
+    }];
+    const result = validator.validate(output);
+    const err = result.errors.find(e => e.code === 'INVALID_COUNTER_OPERATION');
+    expect(err).toBeDefined();
+  });
+
+  it('rejects invalid movement type', () => {
+    const output = withRule({
+      id: 'r1',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+      actions: [{
+        type: 'move',
+        movement: { type: 'zigzag', speed: 3 },
+      } as any],
+    });
+    const result = validator.validate(output);
+    const err = result.errors.find(e => e.code === 'INVALID_MOVEMENT_TYPE');
+    expect(err).toBeDefined();
+  });
+
+  it('rejects negative movement speed', () => {
+    const output = withRule({
+      id: 'r1',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+      actions: [{
+        type: 'move',
+        movement: { type: 'straight', speed: -1 },
+      } as any],
+    });
+    const result = validator.validate(output);
+    const err = result.errors.find(e => e.code === 'INVALID_SPEED');
+    expect(err).toBeDefined();
+  });
+
+  it('rejects invalid effect type', () => {
+    const output = withRule({
+      id: 'r1',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+      actions: [{
+        type: 'effect',
+        effect: { type: 'dissolve', duration: 1 },
+      } as any],
+    });
+    const result = validator.validate(output);
+    const err = result.errors.find(e => e.code === 'INVALID_EFFECT_TYPE');
+    expect(err).toBeDefined();
+  });
+
+  it('rejects negative effect duration', () => {
+    const output = withRule({
+      id: 'r1',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+      actions: [{
+        type: 'effect',
+        effect: { type: 'flash', duration: -0.5 },
+      } as any],
+    });
+    const result = validator.validate(output);
+    const err = result.errors.find(e => e.code === 'INVALID_EFFECT_DURATION');
+    expect(err).toBeDefined();
+  });
+});

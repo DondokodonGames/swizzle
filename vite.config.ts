@@ -4,6 +4,21 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: [
+        'src/services/rule-engine/ConditionEvaluator.ts',
+        'src/services/editor/EditorGameBridge.ts',
+        'src/ai/v2/LogicValidator.ts',
+      ],
+    },
+  },
   plugins: [react()],
   base: '/',
   resolve: {
