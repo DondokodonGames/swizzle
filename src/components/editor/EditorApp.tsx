@@ -8,6 +8,7 @@ import { ProjectSelector } from './ProjectSelector';
 import { ReviewQueue } from './ReviewQueue';
 import { useGameProject } from '../../hooks/editor/useGameProject';
 import { useAuth } from '../../hooks/useAuth';
+import { useIsAdmin } from '../../hooks/useIsAdmin';
 import { getProgressTabConfig } from './common/TabNavigation';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 import { ModernButton } from '../ui/ModernButton';
@@ -44,6 +45,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
   const gameBridge = useRef(EditorGameBridge.getInstance());
 
   const { user, loading: authLoading, initializing: authInitializing } = useAuth();
+  const { isAdmin } = useIsAdmin(user ?? null);
   
   const {
     currentProject,
@@ -801,7 +803,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           onBackToMain={onClose}
           onTestPlay={handleTestPlayFromSelector}
           onStartReview={handleStartReview}
-          isAdmin={user?.id === import.meta.env.VITE_ADMIN_USER_ID}
+          isAdmin={isAdmin}
         />
       ) : mode === 'review' ? (
         <ReviewQueue

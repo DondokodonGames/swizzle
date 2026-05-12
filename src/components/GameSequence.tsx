@@ -128,7 +128,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   // ==================== Ref ====================
   const canvasRef = useRef<HTMLDivElement>(null);
   const currentGameRef = useRef<string | null>(null);
-  const bridgeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const bridgeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ==================== 公開ゲーム取得（超高速版: 1件取得→即開始→バックグラウンドで残り取得） ====================
   useEffect(() => {

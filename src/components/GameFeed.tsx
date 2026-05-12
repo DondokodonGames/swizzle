@@ -98,7 +98,8 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
           .select('following_id')
           .eq('follower_id', currentUser.id);
 
-        const followsResult = await withTimeout(followsQuery, 8000);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const followsResult = await withTimeout(followsQuery, 8000) as any;
         const followingData = followsResult?.data;
 
         if (!followingData || followingData.length === 0) {
@@ -118,7 +119,8 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
           .order('created_at', { ascending: false })
           .limit(12);
 
-        const gamesResult = await withTimeout(gamesQuery, 8000);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const gamesResult = await withTimeout(gamesQuery, 8000) as any;
         const followingGames = gamesResult?.data;
 
         if (!followingGames) return [];

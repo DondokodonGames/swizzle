@@ -1246,7 +1246,7 @@ export class SocialService {
         .eq('id', gameId)
         .single();
 
-      if (gameData) {
+      if (gameData && currentUserId) {
         await this.createActivity(
           currentUserId,
           'game_shared',

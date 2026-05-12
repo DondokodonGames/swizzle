@@ -132,8 +132,8 @@ export class GamePatternAnalyzer {
 
       // パターンを抽出
       const patterns: GamePattern[] = (data || [])
-        .filter(game => game.project_data)
-        .map(game => {
+        .filter((game: any) => game.project_data)
+        .map((game: any) => {
           const projectData = game.project_data as any;
           const concept = projectData?.concept || projectData?.metadata?.concept || {};
 

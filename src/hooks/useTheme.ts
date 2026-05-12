@@ -53,7 +53,7 @@ export const useTheme = (): UseThemeReturn => {
   
   // パフォーマンス最適化用ref
   const lastChangeTime = useRef<number>(0);
-  const changeTimeoutRef = useRef<NodeJS.Timeout>();
+  const changeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
   // 利用可能テーマ定義
   const availableThemes: ThemeType[] = useMemo(() => [

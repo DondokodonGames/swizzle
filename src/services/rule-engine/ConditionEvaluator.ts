@@ -12,6 +12,9 @@ import { CollisionDetector } from './CollisionDetector';
  * 全ての条件タイプ（touch, collision, time, flag, counter等）を評価
  */
 export class ConditionEvaluator {
+  // consumedTouchEvents は意図的に評価チェックから除外されています。
+  // 複数のルールが同一タップに同時反応できるよう設計変更されたためです。
+  // Set 自体はcleanupConsumedTouchEvents / reset の互換性維持のために残しています。
   private consumedTouchEvents: Set<string> = new Set();
   private randomStates: Map<string, RandomState> = new Map();
   private animationStates: Map<string, AnimationState> = new Map();
