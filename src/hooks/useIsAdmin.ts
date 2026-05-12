@@ -27,12 +27,15 @@ export function useIsAdmin(user: User | null): { isAdmin: boolean; adminLoading:
 
     supabase.rpc('is_admin').then(({ data, error }: { data: boolean | null; error: unknown }) => {
       if (cancelled) return;
-      if (!error) {
-        setIsAdmin(data === true);
+      if (data === true) {
+        // RPC exists and profiles.is_admin = true
+        setIsAdmin(true);
       } else {
-        // RPC not yet available (migration pending) – fall back to env var
+        // data is false/null (column not set yet) OR RPC doesn't exist (migration pending).
+        // Either way, fall back to env var so existing deployments keep working.
         const adminId = import.meta.env.VITE_ADMIN_USER_ID as string | undefined;
         setIsAdmin(!!adminId && user.id === adminId);
+        void error; // expected when migration not yet applied
       }
       setAdminLoading(false);
     });
