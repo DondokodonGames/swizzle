@@ -11,6 +11,7 @@ import { User } from '@supabase/supabase-js';
  *           existing deployments keep working before the migration is run.
  *           Once the migration is applied and is_admin = true is set in the
  *           profiles table, the env var can be removed from the build.
+ * Retries once after 1.5s on transient failure (cold start / network blip).
  */
 export function useIsAdmin(user: User | null): { isAdmin: boolean; adminLoading: boolean } {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -39,6 +40,23 @@ export function useIsAdmin(user: User | null): { isAdmin: boolean; adminLoading:
       }
       setAdminLoading(false);
     });
+    const attempt = (retryOnError: boolean) => {
+      supabase.rpc('is_admin').then(({ data, error }: { data: boolean | null; error: unknown }) => {
+        if (cancelled) return;
+        if (!error) {
+          setIsAdmin(data === true);
+          setAdminLoading(false);
+        } else if (retryOnError) {
+          // 1回だけリトライ（コールドスタート・一時的ネットワーク障害対策）
+          setTimeout(() => attempt(false), 1500);
+        } else {
+          // リトライも失敗したら諦めてローディング解除（isAdmin は false のまま）
+          setAdminLoading(false);
+        }
+      });
+    };
+
+    attempt(true);
 
     return () => { cancelled = true; };
   }, [user?.id]);
