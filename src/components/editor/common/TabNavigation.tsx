@@ -128,9 +128,9 @@ export const getProgressTabConfig = (project: GameProject, t: TFunction): TabCon
       description: t('editor.tabs.assetsDescription'),
       // 🔧 修正: badge計算（オプショナルチェーン使用）
       badge: (
-        project.assets.objects.length +
+        (project.assets.objects?.length || 0) +
         (project.assets.background ? 1 : 0) +
-        project.assets.texts.length +
+        (project.assets.texts?.length || 0) +
         (project.assets.audio?.bgm ? 1 : 0) +
         (project.assets.audio?.se?.length || 0)
       ) || undefined,
