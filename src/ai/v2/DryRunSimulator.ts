@@ -142,7 +142,7 @@ export class DryRunSimulator {
         r.actions?.some(a =>
           a.type === 'counter' &&
           a.counterName === counterName &&
-          a.operation === 'increment' || a.operation === 'add'
+          (a.operation === 'increment' || a.operation === 'add')
         )
       ).length;
 
