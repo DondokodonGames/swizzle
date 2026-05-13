@@ -108,4 +108,29 @@ describe('LogicRepairer – INSTANT_LOSE 修復', () => {
     expect(repairedCounter?.initialValue).toBe(0); // 変更なし
     expect(result.repairsApplied).toHaveLength(0);
   });
+
+  it('小数の失敗閾値（5.5）でも INSTANT_LOSE が修復される（修正済みバグ: \\d+ → [\\d.]+）', async () => {
+    const repairer = new LogicRepairer({ dryRun: true });
+    const output = makeOutput(6, 5); // initialValue=6, threshold=5.5 想定
+
+    // メッセージに小数の閾値を含む
+    const result = await repairer.repair(
+      output,
+      {
+        valid: false,
+        errors: [{
+          type: 'critical',
+          code: 'INSTANT_LOSE',
+          message: `即失敗: カウンター "hp" の初期値(6)が失敗閾値(5.5)以上`,
+        }],
+      },
+      mockConcept,
+      mockSpec
+    );
+
+    const repairedCounter = result.repairedOutput.script.counters.find(c => c.id === 'hp');
+    // Math.max(0, 5.5 - 1) = 4.5
+    expect(repairedCounter?.initialValue).toBe(4.5);
+    expect(result.repairsApplied).toHaveLength(1);
+  });
 });

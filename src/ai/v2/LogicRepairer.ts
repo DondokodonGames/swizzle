@@ -698,11 +698,11 @@ export class LogicRepairer {
    * 即失敗を修復（カウンター初期値を失敗閾値未満の安全な値に設定）
    */
   private repairInstantLose(output: LogicGeneratorOutput, error: LogicValidationError): RepairAction | null {
-    const match = error.message.match(/カウンター "([^"]+)".*失敗閾値\((\d+)\)/);
+    const match = error.message.match(/カウンター "([^"]+)".*失敗閾値\(([\d.]+)\)/);
     if (!match) return null;
 
     const counterId = match[1];
-    const threshold = parseInt(match[2], 10);
+    const threshold = parseFloat(match[2]);
     const counter = output.script.counters.find(c => c.id === counterId);
     if (!counter) return null;
 

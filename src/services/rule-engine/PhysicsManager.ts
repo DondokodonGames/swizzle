@@ -115,12 +115,12 @@ export class PhysicsManager {
       // 位置を地面に修正
       obj.y = groundY;
       
-      // 反発係数による跳ね返り
-      const restitution = obj.physics.restitution || 0.5;
+      // 反発係数による跳ね返り（1.0 を超えると速度が増幅するため上限を設ける）
+      const restitution = Math.min(1.0, obj.physics.restitution || 0.5);
       obj.vy = -(obj.vy || 0) * restitution;
-      
-      // 摩擦による水平速度の減衰
-      const friction = obj.physics.friction || 0.3;
+
+      // 摩擦による水平速度の減衰（1.0 を超えると加速するため上限を設ける）
+      const friction = Math.min(1.0, obj.physics.friction || 0.3);
       obj.vx = (obj.vx || 0) * (1 - friction);
       
       // 微小な速度はゼロにする（停止判定）

@@ -314,6 +314,10 @@ export class EffectManager {
         break;
       case 'flash':
         obj.flashValue = 0;
+        if (obj.baseOpacity !== undefined) {
+          obj.alpha = obj.baseOpacity;
+          obj.baseOpacity = undefined;
+        }
         break;
       case 'shake':
         // オフセットを打ち消して元の位置に戻す
@@ -332,6 +336,36 @@ export class EffectManager {
     obj.effectType = undefined;
     obj.effectStartTime = undefined;
     obj.effectDuration = undefined;
+  }
+
+  /**
+   * ゲームリセット時にすべてのオブジェクトのエフェクト状態をクリア
+   */
+  reset(context: RuleExecutionContext): void {
+    context.objects.forEach((obj) => {
+      obj.effectType = undefined;
+      obj.effectStartTime = undefined;
+      obj.effectDuration = undefined;
+      obj.effectScale = undefined;
+      obj.baseScale = undefined;
+      (obj as any).baseScaleX = undefined;
+      (obj as any).baseScaleY = undefined;
+      obj.effectCenterX = undefined;
+      obj.effectCenterY = undefined;
+      obj.flashValue = undefined;
+      obj.flashColor = undefined;
+      obj.flashIntensity = undefined;
+      obj.flashFrequency = undefined;
+      obj.baseOpacity = undefined;
+      obj.shakeOffsetX = undefined;
+      obj.shakeOffsetY = undefined;
+      obj.shakeIntensity = undefined;
+      obj.shakeFrequency = undefined;
+      obj.shakeDirection = undefined;
+      obj.baseRotation = undefined;
+      obj.rotationAmount = undefined;
+      obj.rotationDirection = undefined;
+    });
   }
 
   /**

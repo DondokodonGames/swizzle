@@ -1235,8 +1235,7 @@ export class LogicValidator {
 
           if (c.counterName) parts.push(`counter:${c.counterName}`);
           if (c.touchType) parts.push(`touch:${c.touchType}`);
-          // ★修正: c.direction が正しいフィールド名（c.swipeDirectionは存在しない）
-          if (c.direction) parts.push(`swipeDir:${c.direction}`);
+          if (c.swipeDirection) parts.push(`swipeDir:${c.swipeDirection}`);
           if (c.timeType) parts.push(`time:${c.timeType}`);
           if (c.seconds !== undefined) parts.push(`sec:${c.seconds}`);
           // collisionType を含めることで enter/exit/stay を区別
