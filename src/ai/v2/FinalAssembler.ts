@@ -183,7 +183,9 @@ export class FinalAssembler {
           },
           gameState: {
             score: 0,
-            flags: {},
+            flags: Object.fromEntries(
+              (logicOutput.script.flags || []).map(f => [f.id, f.initialValue ?? false])
+            ),
             counters: Object.fromEntries(
               logicOutput.script.counters.map(c => [c.id, c.initialValue])
             )
@@ -224,7 +226,11 @@ export class FinalAssembler {
           createdAt: now,
           lastModified: now
         })),
-        flags: [],
+        flags: (logicOutput.script.flags || []).map(f => ({
+          ...f,
+          createdAt: f.createdAt || now,
+          lastModified: now
+        })),
         rules: logicOutput.script.rules.map((rule, idx) => ({
           id: rule.id,
           name: rule.name || rule.id,

@@ -695,7 +695,7 @@ export class LogicRepairer {
   }
 
   /**
-   * 即失敗を修復（カウンター初期値を失敗閾値の2倍に設定）
+   * 即失敗を修復（カウンター初期値を失敗閾値未満の安全な値に設定）
    */
   private repairInstantLose(output: LogicGeneratorOutput, error: LogicValidationError): RepairAction | null {
     const match = error.message.match(/カウンター "([^"]+)".*失敗閾値\((\d+)\)/);
@@ -707,12 +707,12 @@ export class LogicRepairer {
     if (!counter) return null;
 
     const before = counter.initialValue;
-    const safeValue = threshold * 2;
+    const safeValue = Math.max(0, threshold - 1);
     counter.initialValue = safeValue;
     console.warn(`[LogicRepairer] INSTANT_LOSE auto-repair: counter "${counterId}" initialValue ${before} → ${safeValue} (fail threshold: ${threshold})`);
     return {
       errorCode: error.code,
-      action: `Set counter initialValue to ${safeValue} (above fail threshold ${threshold})`,
+      action: `Set counter initialValue to ${safeValue} (below fail threshold ${threshold})`,
       target: `counters.${counterId}`,
       before,
       after: safeValue

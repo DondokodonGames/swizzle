@@ -142,7 +142,7 @@ export class DryRunSimulator {
         r.actions?.some(a =>
           a.type === 'counter' &&
           a.counterName === counterName &&
-          a.operation === 'increment'
+          a.operation === 'increment' || a.operation === 'add'
         )
       ).length;
 
@@ -321,8 +321,7 @@ export class DryRunSimulator {
           const hasTouchTrigger = r.triggers?.conditions?.some(c => c.type === 'touch');
           const movesTarget = r.actions?.some(a =>
             (a.type === 'applyImpulse' || a.type === 'applyForce' || a.type === 'move') &&
-            (a.targetId === collisionTarget || r.targetObjectId === collisionTarget ||
-             a.targetId !== undefined || r.targetObjectId !== undefined)
+            (a.targetId === collisionTarget || r.targetObjectId === collisionTarget)
           );
           return hasTouchTrigger && movesTarget;
         });

@@ -324,7 +324,16 @@ export interface GameScript {
     objects: LayoutObject[];
   };
   counters: CounterDefinition[];
+  flags?: FlagDefinition[];
   rules: GameRule[];
+}
+
+export interface FlagDefinition {
+  id: string;
+  name: string;
+  initialValue: boolean;
+  description?: string;
+  createdAt?: string;
 }
 
 /**

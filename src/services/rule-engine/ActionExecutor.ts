@@ -294,7 +294,7 @@ export class ActionExecutor {
 
     targetObj.animationIndex = action.animationIndex;
     
-    const startFrame = action.startFrame ?? action.animationIndex ?? 0;
+    const startFrame = action.startFrame ?? 0;
     targetObj.currentFrame = startFrame;
     
     if (action.autoPlay !== undefined) {
