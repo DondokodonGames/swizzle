@@ -130,33 +130,60 @@ export class ConditionEvaluator {
       return false;
     }
 
-    const latestTouch = touchEvents[touchEvents.length - 1];
-    const touchTarget = condition.target === 'self' ? targetObjectId : 
+    // touchTypeに対応するイベントを逆順に検索（最新のものを優先）
+    let matchingEvent: any;
+    switch (condition.touchType) {
+      case 'down':
+      case 'up':
+        matchingEvent = [...touchEvents].reverse().find(e => e.data.touchType === condition.touchType);
+        break;
+      case 'drag':
+        matchingEvent = [...touchEvents].reverse().find(e => e.data.type === 'drag');
+        break;
+      case 'swipe':
+        matchingEvent = [...touchEvents].reverse().find(e => e.data.type === 'swipe');
+        break;
+      case 'flick':
+        matchingEvent = [...touchEvents].reverse().find(e => e.data.type === 'flick');
+        break;
+      case 'hold':
+        matchingEvent = [...touchEvents].reverse().find(e => e.data.type === 'hold');
+        break;
+      default:
+        matchingEvent = touchEvents[touchEvents.length - 1];
+    }
+
+    if (!matchingEvent) {
+      return false;
+    }
+
+    const touchTarget = condition.target === 'self' ? targetObjectId :
                         condition.target === 'stage' ? 'stage' : condition.target;
 
     // touchTypeによる分岐
     switch (condition.touchType) {
       case 'drag':
-        return this.evaluateDragCondition(condition, latestTouch, touchTarget, context);
+        return this.evaluateDragCondition(condition, matchingEvent, touchTarget, context);
       case 'swipe':
-        return this.evaluateSwipeCondition(condition, latestTouch, context);
+        return this.evaluateSwipeCondition(condition, matchingEvent, context);
       case 'flick':
-        return this.evaluateFlickCondition(condition, latestTouch, context);
+        return this.evaluateFlickCondition(condition, matchingEvent, context);
       case 'hold':
-        return this.evaluateHoldCondition(condition, latestTouch, touchTarget, context);
+        return this.evaluateHoldCondition(condition, matchingEvent, touchTarget, context);
       case 'down':
       case 'up':
         // down/up はそれぞれのtouchTypeのみ処理（swipe/flick/drag等と混同しない）
-        if (latestTouch.data.touchType !== condition.touchType) {
+        // matchingEvent は既に touchType 一致のものを選択済み
+        if (matchingEvent.data.touchType !== condition.touchType) {
           return false;
         }
         if (touchTarget === 'stage') {
-          if (latestTouch.data.target !== 'stage') {
+          if (matchingEvent.data.target !== 'stage') {
             return false;
           }
 
           if (condition.region) {
-            const { x: touchX, y: touchY } = latestTouch.data;
+            const { x: touchX, y: touchY } = matchingEvent.data;
             const region = condition.region;
 
             if (region.shape === 'rect') {
@@ -183,7 +210,7 @@ export class ConditionEvaluator {
           return true;
         }
 
-        return latestTouch.data.target === touchTarget;
+        return matchingEvent.data.target === touchTarget;
       default:
         return false;
     }

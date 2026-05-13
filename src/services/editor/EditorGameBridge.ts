@@ -975,6 +975,7 @@ export class EditorGameBridge {
       let touchedObjectId: string | null = null;
       let touchActive = false;
       let holdCompleteFired = false;
+      let dragStarted = false;
 
       // タッチ座標をキャンバス座標に変換
       const toCanvasCoords = (clientX: number, clientY: number) => {
@@ -1086,13 +1087,7 @@ export class EditorGameBridge {
           touchedObjectId = hitObject;
           touchActive = true;
           holdCompleteFired = false;
-
-          // ドラッグ開始イベント
-          this.currentContext!.events.push({
-            type: 'touch', timestamp: Date.now(),
-            data: { type: 'drag', touchType: 'drag', dragState: 'start',
-                    target: hitObject ?? 'stage', x, y }
-          });
+          dragStarted = false;
 
         } catch (error) {
           console.warn('⚠️ インタラクション処理エラー:', error);
@@ -1106,8 +1101,17 @@ export class EditorGameBridge {
         if (!touch) return;
         const { x, y } = toCanvasCoords(touch.clientX, touch.clientY);
         lastTouchX = x; lastTouchY = y;
+        const now = Date.now();
+        if (!dragStarted) {
+          dragStarted = true;
+          this.currentContext.events.push({
+            type: 'touch', timestamp: now,
+            data: { type: 'drag', touchType: 'drag', dragState: 'start',
+                    target: touchedObjectId ?? 'stage', x, y }
+          });
+        }
         this.currentContext.events.push({
-          type: 'touch', timestamp: Date.now(),
+          type: 'touch', timestamp: now,
           data: { type: 'drag', touchType: 'drag', dragState: 'dragging',
                   target: touchedObjectId ?? 'stage', x, y }
         });
@@ -1162,8 +1166,17 @@ export class EditorGameBridge {
         if (!this.currentContext || !touchActive) return;
         const { x, y } = toCanvasCoords(event.clientX, event.clientY);
         lastTouchX = x; lastTouchY = y;
+        const now = Date.now();
+        if (!dragStarted) {
+          dragStarted = true;
+          this.currentContext.events.push({
+            type: 'touch', timestamp: now,
+            data: { type: 'drag', touchType: 'drag', dragState: 'start',
+                    target: touchedObjectId ?? 'stage', x, y }
+          });
+        }
         this.currentContext.events.push({
-          type: 'touch', timestamp: Date.now(),
+          type: 'touch', timestamp: now,
           data: { type: 'drag', touchType: 'drag', dragState: 'dragging',
                   target: touchedObjectId ?? 'stage', x, y }
         });
