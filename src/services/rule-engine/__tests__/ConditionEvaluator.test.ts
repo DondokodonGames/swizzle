@@ -772,3 +772,35 @@ describe('ConditionEvaluator – evaluateConditions AND/OR', () => {
     expect(result.shouldExecute).toBe(false);
   });
 });
+
+// ──────────────────────────────────────────────
+// reset – positionStates クリア（修正済みバグ）
+// ──────────────────────────────────────────────
+
+describe('ConditionEvaluator – reset positionStates（修正済みバグ）', () => {
+  it('reset 後、crossing 条件が初回扱いに戻る（前ゲームの状態が残らない）', () => {
+    const ev = makeEvaluator();
+
+    // オブジェクトを領域内に置いてcrossing評価（初回→false、状態記録）
+    const obj = { id: 'ball', x: 400, y: 800, width: 100, height: 100, visible: true, animationIndex: 0, animationPlaying: false, scale: 1, rotation: 0 };
+    const ctx = makeContext({ objects: new Map([['ball', obj]]) });
+    const crossingCond: any = { type: 'position', target: 'ball', area: 'crossing', region: { x: 0.3, y: 0.3, width: 0.4, height: 0.4 } };
+
+    // フレーム1: 初回評価 → false（状態記録）
+    const r1 = (ev as any).evaluatePositionCondition(crossingCond, ctx);
+    expect(r1).toBe(false);
+
+    // オブジェクトを領域外に移動（crossing = true になるはず）
+    obj.x = 0; obj.y = 0;
+    const r2 = (ev as any).evaluatePositionCondition(crossingCond, ctx);
+    expect(r2).toBe(true); // 境界を越えたのでtrue
+
+    // reset
+    ev.reset();
+
+    // reset後: オブジェクトを領域内に戻して再評価 → 初回扱いなのでfalse
+    obj.x = 400; obj.y = 800;
+    const r3 = (ev as any).evaluatePositionCondition(crossingCond, ctx);
+    expect(r3).toBe(false); // positionStates がクリアされたので初回扱い
+  });
+});

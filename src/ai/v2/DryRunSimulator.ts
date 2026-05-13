@@ -131,13 +131,13 @@ export class DryRunSimulator {
     const successRulesForCounterCheck = logicOutput.script.rules.filter(r =>
       r.actions?.some(a => a.type === 'success')
     );
-    const successCounterCondition = successRulesForCounterCheck
+    const successCounterConditions = successRulesForCounterCheck
       .flatMap(r => r.triggers?.conditions || [])
-      .find(c => c.type === 'counter' && (
+      .filter(c => c.type === 'counter' && (
         c.comparison === 'greaterOrEqual' || c.comparison === 'greater' || c.comparison === 'equals'
       ));
 
-    if (successCounterCondition) {
+    for (const successCounterCondition of successCounterConditions) {
       const targetValue = successCounterCondition.value || 0;
       const counterName = successCounterCondition.counterName || '';
       const incrementRuleCount = logicOutput.script.rules.filter(r =>

@@ -285,6 +285,15 @@ export class RuleEngine {
     this.animationManager.updateAnimations(context, currentTime);
   }
 
+  /**
+   * フレーム状態の更新（衝突キャッシュ + フラグ前回値）
+   * ルール評価の直前に毎フレーム呼び出す必要がある
+   */
+  updateFrameState(): void {
+    this.collisionDetector.updateCollisionCache();
+    this.flagManager.updatePreviousFlags();
+  }
+
   // ==================== フラグ管理（デリゲート） ====================
 
   addFlagDefinition(flag: GameFlag): void {

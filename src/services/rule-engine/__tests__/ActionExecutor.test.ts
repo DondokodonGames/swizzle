@@ -352,6 +352,37 @@ describe('ActionExecutor – 移動', () => {
     expect(obj.vx).toBe(0);
     expect(obj.vy).toBe(0);
   });
+
+  it('move/stop: moveTargetX/Y がクリアされる（修正済みバグ）', () => {
+    const { executor } = makeExecutor();
+    const obj = makeObject('obj1', { vx: 5, vy: -3 } as any);
+    (obj as any).moveTargetX = 500;
+    (obj as any).moveTargetY = 800;
+    const ctx = makeContext(new Map([['obj1', obj]]));
+    executor.executeActions(makeRule([{
+      type: 'move', targetId: 'obj1',
+      movement: { type: 'stop' }
+    }]), ctx, new Map());
+    expect((obj as any).moveTargetX).toBeUndefined();
+    expect((obj as any).moveTargetY).toBeUndefined();
+  });
+
+  it('move/stop: arc 移動状態がクリアされる（修正済みバグ）', () => {
+    const { executor } = makeExecutor();
+    const obj = makeObject('obj1', {} as any);
+    (obj as any).arcStartTime = Date.now();
+    (obj as any).arcDuration = 1000;
+    (obj as any).arcTargetX = 300;
+    (obj as any).arcTargetY = 600;
+    const ctx = makeContext(new Map([['obj1', obj]]));
+    executor.executeActions(makeRule([{
+      type: 'move', targetId: 'obj1',
+      movement: { type: 'stop' }
+    }]), ctx, new Map());
+    expect((obj as any).arcStartTime).toBeUndefined();
+    expect((obj as any).arcDuration).toBeUndefined();
+    expect((obj as any).arcTargetX).toBeUndefined();
+  });
 });
 
 // ──────────────────────────────────────────────

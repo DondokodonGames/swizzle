@@ -221,3 +221,64 @@ describe('DryRunSimulator – 衝突到達可能性', () => {
     expect(collisionIssue).toBeDefined();
   });
 });
+
+// ──────────────────────────────────────────────
+// 複数カウンター条件（修正済みバグ: find→filter）
+// ──────────────────────────────────────────────
+
+describe('DryRunSimulator – 複数カウンター条件（修正済みバグ）', () => {
+  const sim = new DryRunSimulator();
+
+  it('2つの成功ルールが異なるカウンターを使うとき、両方をチェックする', () => {
+    const output = makeOutput({
+      counters: [
+        { id: 'coins', name: 'coins', initialValue: 0, currentValue: 0, min: 0, max: 99 },
+        { id: 'stars', name: 'stars', initialValue: 0, currentValue: 0, min: 0, max: 99 },
+      ],
+      rules: [
+        // coins は1ルールのみで coins>=5 → 到達不可
+        {
+          id: 'coin-tap', name: 'coin-tap', enabled: true, priority: 50,
+          targetObjectId: 'ball',
+          triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+          actions: [{ type: 'counter', counterName: 'coins', operation: 'increment' }],
+        },
+        {
+          id: 'win-coins', name: 'win-coins', enabled: true, priority: 50,
+          targetObjectId: 'stage',
+          triggers: { operator: 'AND', conditions: [{ type: 'counter', counterName: 'coins', comparison: 'greaterOrEqual', value: 5 }] },
+          actions: [{ type: 'success' }],
+        },
+        // stars は3ルールで stars>=3 → 到達可能（こちらが初回にfindで引っかかる）
+        {
+          id: 'star-tap1', name: 'star-tap1', enabled: true, priority: 50,
+          targetObjectId: 'ball',
+          triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+          actions: [{ type: 'counter', counterName: 'stars', operation: 'increment' }],
+        },
+        {
+          id: 'star-tap2', name: 'star-tap2', enabled: true, priority: 50,
+          targetObjectId: 'ball',
+          triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+          actions: [{ type: 'counter', counterName: 'stars', operation: 'increment' }],
+        },
+        {
+          id: 'star-tap3', name: 'star-tap3', enabled: true, priority: 50,
+          targetObjectId: 'ball',
+          triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+          actions: [{ type: 'counter', counterName: 'stars', operation: 'increment' }],
+        },
+        {
+          id: 'win-stars', name: 'win-stars', enabled: true, priority: 50,
+          targetObjectId: 'stage',
+          triggers: { operator: 'AND', conditions: [{ type: 'counter', counterName: 'stars', comparison: 'greaterOrEqual', value: 3 }] },
+          actions: [{ type: 'success' }],
+        },
+      ],
+    });
+    const report = sim.simulate(output);
+    // coins のCOUNTER_UNREACHABLE が検出されるはず（1ルール < 5）
+    const counterIssue = report.issues.find(i => i.code === 'COUNTER_UNREACHABLE' && i.message.includes('coins'));
+    expect(counterIssue).toBeDefined();
+  });
+});

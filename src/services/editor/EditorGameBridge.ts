@@ -761,6 +761,11 @@ export class EditorGameBridge {
             this.ruleEngine.updateAnimations(this.currentContext!, currentTime);
           }
 
+          // 衝突キャッシュ・フラグ前回値の更新（ルール評価直前）
+          if (this.ruleEngine) {
+            this.ruleEngine.updateFrameState();
+          }
+
           // デバッグ: ルール評価前のイベント確認
           if (this.currentContext!.events.length > 0) {
             console.log('🔍 [GameLoop] ルール評価前 - context.events:', this.currentContext!.events.map(e => ({

@@ -149,3 +149,52 @@ describe('RuleEngine – フラグ統合', () => {
     expect(engine.getCounter('hp')).toBe(5);
   });
 });
+
+// ──────────────────────────────────────────────
+// updateFrameState（修正済みバグ）
+// ──────────────────────────────────────────────
+
+describe('RuleEngine – updateFrameState（修正済みバグ）', () => {
+  it('updateFrameState 後、フラグ CHANGED 条件が false になる', () => {
+    const engine = new RuleEngine();
+    engine.setFlag('f', true);
+    // updateFrameState を呼ぶと previousFlags が更新される
+    const ctx = makeContext();
+    engine.updateFrameState();
+    // CHANGED: 前フレームと同じ値なら false
+    engine.addRule({
+      id: 'check-changed',
+      name: 'check-changed',
+      enabled: true,
+      priority: 50,
+      targetObjectId: 'stage',
+      triggers: { operator: 'AND', conditions: [{ type: 'flag', flagId: 'f', condition: 'CHANGED' }] },
+      actions: [{ type: 'addScore', points: 99 }],
+      createdAt: '',
+      lastModified: '',
+    });
+    engine.evaluateAndExecuteRules(ctx);
+    // CHANGED=false なのでルールは発火しない
+    expect(ctx.gameState.score).toBe(0);
+  });
+
+  it('updateFrameState 前は CHANGED 条件が true になる（setFlag 直後）', () => {
+    const engine = new RuleEngine();
+    engine.setFlag('f', true);
+    // updateFrameState を呼ばなければ previousFlags は古いまま → CHANGED=true
+    engine.addRule({
+      id: 'check-changed',
+      name: 'check-changed',
+      enabled: true,
+      priority: 50,
+      targetObjectId: 'stage',
+      triggers: { operator: 'AND', conditions: [{ type: 'flag', flagId: 'f', condition: 'CHANGED' }] },
+      actions: [{ type: 'addScore', points: 99 }],
+      createdAt: '',
+      lastModified: '',
+    });
+    const ctx = makeContext();
+    engine.evaluateAndExecuteRules(ctx);
+    expect(ctx.gameState.score).toBe(99);
+  });
+});

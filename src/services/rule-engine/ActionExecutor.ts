@@ -349,6 +349,15 @@ export class ActionExecutor {
       case 'stop':
         targetObj.vx = 0;
         targetObj.vy = 0;
+        targetObj.moveTargetX = undefined;
+        targetObj.moveTargetY = undefined;
+        targetObj.arcStartTime = undefined;
+        targetObj.arcDuration = undefined;
+        targetObj.arcStartX = undefined;
+        targetObj.arcStartY = undefined;
+        targetObj.arcTargetX = undefined;
+        targetObj.arcTargetY = undefined;
+        targetObj.arcHeight = undefined;
         break;
 
       case 'swap':

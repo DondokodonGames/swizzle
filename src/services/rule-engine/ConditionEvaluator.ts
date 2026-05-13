@@ -671,6 +671,7 @@ export class ConditionEvaluator {
     this.consumedTouchEvents.clear();
     this.randomStates.clear();
     this.animationStates.clear();
+    this.positionStates.clear();
     this.previousGameState = undefined;
   }
 
