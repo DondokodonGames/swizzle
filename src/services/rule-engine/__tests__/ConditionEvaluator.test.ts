@@ -632,7 +632,7 @@ describe('ConditionEvaluator – time conditions', () => {
 
   it('exact: true when time is within tolerance', () => {
     const ctx = makeContext();
-    ctx.gameState.timeElapsed = 5.05;
+    ctx.gameState.timeElapsed = 5.01; // |5.01 - 5.0| = 0.01 < 0.017 (1フレーム幅)
     expect(ev.evaluateCondition(
       { type: 'time', timeType: 'exact', seconds: 5.0 } as any,
       ctx, 'obj',
@@ -668,7 +668,7 @@ describe('ConditionEvaluator – time conditions', () => {
 
   it('interval: true when time is multiple of interval', () => {
     const ctx = makeContext();
-    ctx.gameState.timeElapsed = 2.05; // 2 % 2 ≈ 0 < 0.1
+    ctx.gameState.timeElapsed = 2.01; // 2.01 % 2 = 0.01 < 0.017 (1フレーム幅)
     expect(ev.evaluateCondition(
       { type: 'time', timeType: 'interval', interval: 2 } as any,
       ctx, 'obj',

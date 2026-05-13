@@ -47,6 +47,8 @@ export class EditorGameBridge {
   private currentHandleInteraction: ((event: MouseEvent | TouchEvent) => void) | null = null;
   private currentHandleMouseMove: ((event: MouseEvent) => void) | null = null;
   private currentHandleMouseUp: ((event: MouseEvent) => void) | null = null;
+  private currentHandleTouchMove: ((event: TouchEvent) => void) | null = null;
+  private currentHandleTouchEnd: ((event: TouchEvent) => void) | null = null;
   private currentBgmAudio: HTMLAudioElement | null = null;
 
   static getInstance(): EditorGameBridge {
@@ -87,6 +89,12 @@ export class EditorGameBridge {
       if (this.currentHandleMouseUp) {
         this.currentCanvas.removeEventListener('mouseup', this.currentHandleMouseUp);
       }
+      if (this.currentHandleTouchMove) {
+        this.currentCanvas.removeEventListener('touchmove', this.currentHandleTouchMove);
+      }
+      if (this.currentHandleTouchEnd) {
+        this.currentCanvas.removeEventListener('touchend', this.currentHandleTouchEnd);
+      }
     }
 
     // BGMを停止
@@ -102,6 +110,8 @@ export class EditorGameBridge {
     this.currentHandleInteraction = null;
     this.currentHandleMouseMove = null;
     this.currentHandleMouseUp = null;
+    this.currentHandleTouchMove = null;
+    this.currentHandleTouchEnd = null;
 
     console.log('✅ ゲーム停止完了');
   }
@@ -848,6 +858,26 @@ export class EditorGameBridge {
               obj.y += obj.vy;
             }
 
+            // straight移動の目標到達検出・自動停止
+            if (obj.moveTargetX !== undefined && obj.moveTargetY !== undefined) {
+              const mScale = obj.scaleX ?? obj.scale ?? 1;
+              const mScaleY = obj.scaleY ?? obj.scale ?? 1;
+              const centerX = obj.x + (obj.width * mScale) / 2;
+              const centerY = obj.y + (obj.height * mScaleY) / 2;
+              const stepDist = Math.sqrt((obj.vx || 0) ** 2 + (obj.vy || 0) ** 2);
+              const toDist = Math.sqrt(
+                (obj.moveTargetX - centerX) ** 2 + (obj.moveTargetY - centerY) ** 2
+              );
+              if (toDist <= Math.max(stepDist, 2)) {
+                obj.x = obj.moveTargetX - (obj.width * mScale) / 2;
+                obj.y = obj.moveTargetY - (obj.height * mScaleY) / 2;
+                obj.vx = 0;
+                obj.vy = 0;
+                obj.moveTargetX = undefined;
+                obj.moveTargetY = undefined;
+              }
+            }
+
             // arc移動（放物線パス）— vx/vyより後に実行して上書き
             if (obj.arcStartTime !== undefined && obj.arcDuration !== undefined) {
               const t = Math.min((currentTime - obj.arcStartTime) / obj.arcDuration, 1.0);
@@ -1233,6 +1263,8 @@ export class EditorGameBridge {
       this.currentHandleInteraction = handleInteraction;
       this.currentHandleMouseMove = handleMouseMove;
       this.currentHandleMouseUp = handleMouseUp;
+      this.currentHandleTouchMove = handleTouchMove;
+      this.currentHandleTouchEnd = handleTouchEnd;
 
       // 14. ゲーム開始
       console.log('🚀 ゲームループ開始');

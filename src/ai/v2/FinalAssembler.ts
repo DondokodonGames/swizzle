@@ -185,7 +185,7 @@ export class FinalAssembler {
             score: 0,
             flags: {},
             counters: Object.fromEntries(
-              logicOutput.script.counters.map(c => [c.name, c.initialValue])
+              logicOutput.script.counters.map(c => [c.id, c.initialValue])
             )
           }
         },

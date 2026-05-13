@@ -217,6 +217,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
       );
     } catch (error: unknown) {
       console.error('テストプレイエラー:', error);
+      gameBridge.current.reset();
       setIsTestPlaying(false);
       showNotification('error', t('editor.app.testPlayFailed', { error: getErrorMessage(error) }));
       setMode('editor');

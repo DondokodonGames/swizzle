@@ -476,7 +476,10 @@ export class ActionExecutor {
       if (distance > 0) {
         targetObj.vx = (dx / distance) * effectiveSpeed;
         targetObj.vy = (dy / distance) * effectiveSpeed;
-        
+        // 目標座標を記録して到達時に自動停止させる
+        targetObj.moveTargetX = targetX;
+        targetObj.moveTargetY = targetY;
+
         console.log(
           `🎯 座標移動: (${objCenterX.toFixed(1)}, ${objCenterY.toFixed(1)}) → ` +
           `(${targetX.toFixed(1)}, ${targetY.toFixed(1)}) ` +

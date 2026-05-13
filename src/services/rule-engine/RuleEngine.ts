@@ -150,7 +150,12 @@ export class RuleEngine {
    */
   evaluateAndExecuteRules(context: RuleExecutionContext): ActionExecutionResult[] {
     const results: ActionExecutionResult[] = [];
-    
+
+    // success/failure後（pendingEndTime設定済み）はルール評価を止める
+    if (context.gameState.pendingEndTime !== undefined) {
+      return results;
+    }
+
     for (const rule of this.rules) {
       // ルール実行可否チェック
       if (!this.canExecuteRule(rule, context)) {

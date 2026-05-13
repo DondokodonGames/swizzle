@@ -260,15 +260,22 @@ export class EffectManager {
   private updateShakeEffect(obj: GameObject, _elapsed: number): void {
     const intensity = obj.shakeIntensity || 5;
     const direction = obj.shakeDirection || 'both';
-    
+
     const shakeX = (Math.random() - 0.5) * 2 * intensity;
     const shakeY = (Math.random() - 0.5) * 2 * intensity;
-    
+
+    // 固定originalXではなく現在位置にオフセットを乗せる（moveアクションと共存）
+    // shakeOffsetX/Yで前フレームのオフセットを打ち消してから新オフセットを加算
+    const prevOffsetX = obj.shakeOffsetX ?? 0;
+    const prevOffsetY = obj.shakeOffsetY ?? 0;
+
     if (direction === 'horizontal' || direction === 'both') {
-      obj.x = obj.originalX! + shakeX;
+      obj.x = obj.x - prevOffsetX + shakeX;
+      obj.shakeOffsetX = shakeX;
     }
     if (direction === 'vertical' || direction === 'both') {
-      obj.y = obj.originalY! + shakeY;
+      obj.y = obj.y - prevOffsetY + shakeY;
+      obj.shakeOffsetY = shakeY;
     }
   }
 
@@ -309,12 +316,11 @@ export class EffectManager {
         obj.flashValue = 0;
         break;
       case 'shake':
-        if (obj.originalX !== undefined) {
-          obj.x = obj.originalX;
-        }
-        if (obj.originalY !== undefined) {
-          obj.y = obj.originalY;
-        }
+        // オフセットを打ち消して元の位置に戻す
+        obj.x = obj.x - (obj.shakeOffsetX ?? 0);
+        obj.y = obj.y - (obj.shakeOffsetY ?? 0);
+        obj.shakeOffsetX = undefined;
+        obj.shakeOffsetY = undefined;
         break;
       case 'rotate':
         if (obj.baseRotation !== undefined) {

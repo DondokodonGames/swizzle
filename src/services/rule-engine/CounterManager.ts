@@ -61,6 +61,7 @@ export class CounterManager {
    * カウンター値を設定
    */
   setCounter(name: string, value: number): void {
+    const oldValue = this.counters.get(name) ?? 0;
     const def = this.counterDefinitions.get(name);
     if (def) {
       const clampedValue = this.clampCounterValue(value, def);
@@ -68,6 +69,7 @@ export class CounterManager {
     } else {
       this.counters.set(name, value);
     }
+    this.counterPreviousValues.set(name, oldValue);
   }
 
   /**

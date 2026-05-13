@@ -662,9 +662,17 @@ export class LogicValidator {
                 fix: `定義済みのobjectIdを使用してください`
               });
             }
-            // regionチェック（座標範囲）
+            // regionチェック（座標範囲・shape値）
             if (condition.region) {
-              const { x, y, width: _width, height: _height } = condition.region;
+              const { x, y, width: _width, height: _height, shape } = condition.region;
+              if (shape !== undefined && shape !== 'rect' && shape !== 'circle') {
+                errors.push({
+                  type: 'error',
+                  code: 'INVALID_REGION_SHAPE',
+                  message: `ルール "${ruleId}": region.shape "${shape}" は無効（'rect' または 'circle' のみ有効）`,
+                  fix: `shape: 'rect' または shape: 'circle' を使用してください`
+                });
+              }
               if (x !== undefined && (x < 0 || x > 1)) {
                 errors.push({
                   type: 'warning',
@@ -805,6 +813,16 @@ export class LogicValidator {
                   code: 'INVALID_MOVEMENT_TYPE',
                   message: `ルール "${ruleId}": 無効なmovement.type "${action.movement.type}"`,
                   fix: `有効な値: ${VALID_MOVEMENT_TYPES.join(', ')}`
+                });
+              }
+              // directionの有効値チェック
+              const VALID_DIRECTIONS = ['up', 'down', 'left', 'right', 'up-left', 'up-right', 'down-left', 'down-right'];
+              if (action.movement.direction && !VALID_DIRECTIONS.includes(action.movement.direction)) {
+                errors.push({
+                  type: 'critical',
+                  code: 'INVALID_MOVEMENT_DIRECTION',
+                  message: `ルール "${ruleId}": 無効なmovement.direction "${action.movement.direction}"`,
+                  fix: `有効な値: ${VALID_DIRECTIONS.join(', ')}`
                 });
               }
               // speedチェック
@@ -1211,8 +1229,8 @@ export class LogicValidator {
 
           if (c.counterName) parts.push(`counter:${c.counterName}`);
           if (c.touchType) parts.push(`touch:${c.touchType}`);
-          // ★追加: swipeDirectionを含めてスワイプ方向を区別
-          if (c.swipeDirection) parts.push(`swipeDir:${c.swipeDirection}`);
+          // ★修正: c.direction が正しいフィールド名（c.swipeDirectionは存在しない）
+          if (c.direction) parts.push(`swipeDir:${c.direction}`);
           if (c.timeType) parts.push(`time:${c.timeType}`);
           if (c.seconds !== undefined) parts.push(`sec:${c.seconds}`);
           // collisionType を含めることで enter/exit/stay を区別
