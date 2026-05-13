@@ -133,7 +133,9 @@ export class DryRunSimulator {
     );
     const successCounterCondition = successRulesForCounterCheck
       .flatMap(r => r.triggers?.conditions || [])
-      .find(c => c.type === 'counter' && c.comparison === 'greaterOrEqual');
+      .find(c => c.type === 'counter' && (
+        c.comparison === 'greaterOrEqual' || c.comparison === 'greater' || c.comparison === 'equals'
+      ));
 
     if (successCounterCondition) {
       const targetValue = successCounterCondition.value || 0;
@@ -610,7 +612,7 @@ export class DryRunSimulator {
     }
 
     return {
-      reachable: failureRules.length > 0 || true, // タイムアウトは常に到達可能
+      reachable: failureRules.length > 0,
       commonPaths: paths.slice(0, 3), // 上位3つ
       risks
     };

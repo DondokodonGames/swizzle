@@ -376,3 +376,59 @@ describe('LogicValidator – action parameter validation', () => {
     expect(err).toBeDefined();
   });
 });
+
+// ────────────────────────────────────────────────────────────
+// INSTANT_LOSE – less/lessOrEqual comparisons
+// ────────────────────────────────────────────────────────────
+
+describe('LogicValidator – INSTANT_LOSE less/lessOrEqual（修正済みバグ）', () => {
+  let validator: LogicValidator;
+  beforeEach(() => { validator = new LogicValidator(); });
+
+  function makeInstantLoseOutput(comparison: string, counterInitialValue: number, threshold: number): LogicGeneratorOutput {
+    return makeOutput({
+      script: {
+        layout: { objects: [{ objectId: 'obj1', position: { x: 0.5, y: 0.5 }, scale: 1 }] },
+        counters: [{ id: 'hp', name: 'hp', initialValue: counterInitialValue, currentValue: counterInitialValue, min: 0, max: 100 }],
+        rules: [
+          {
+            id: 'fail-rule',
+            name: 'fail-rule',
+            enabled: true,
+            priority: 50,
+            targetObjectId: 'stage',
+            triggers: {
+              operator: 'AND',
+              conditions: [{ type: 'counter', counterName: 'hp', comparison, value: threshold }]
+            },
+            actions: [{ type: 'failure' }],
+          }
+        ],
+      } as any,
+    });
+  }
+
+  it('less: initialValue < threshold → INSTANT_LOSE を検出する', () => {
+    const output = makeInstantLoseOutput('less', 2, 5); // 2 < 5 → 即失敗
+    const result = validator.validate(output);
+    expect(result.errors.find(e => e.code === 'INSTANT_LOSE')).toBeDefined();
+  });
+
+  it('less: initialValue >= threshold → 問題なし', () => {
+    const output = makeInstantLoseOutput('less', 5, 3); // 5 >= 3 → 即失敗しない
+    const result = validator.validate(output);
+    expect(result.errors.find(e => e.code === 'INSTANT_LOSE')).toBeUndefined();
+  });
+
+  it('lessOrEqual: initialValue <= threshold → INSTANT_LOSE を検出する', () => {
+    const output = makeInstantLoseOutput('lessOrEqual', 3, 3); // 3 <= 3 → 即失敗
+    const result = validator.validate(output);
+    expect(result.errors.find(e => e.code === 'INSTANT_LOSE')).toBeDefined();
+  });
+
+  it('lessOrEqual: initialValue > threshold → 問題なし', () => {
+    const output = makeInstantLoseOutput('lessOrEqual', 5, 3); // 5 > 3 → 即失敗しない
+    const result = validator.validate(output);
+    expect(result.errors.find(e => e.code === 'INSTANT_LOSE')).toBeUndefined();
+  });
+});

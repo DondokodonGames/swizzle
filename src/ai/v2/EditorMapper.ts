@@ -1114,7 +1114,7 @@ export class EditorMapper {
           r.actions?.some(a =>
             a.type === 'counter' &&
             a.counterName === counter.id &&
-            a.operation === 'increment'
+            (a.operation === 'increment' || a.operation === 'add')
           )
         ).length;
 

@@ -99,6 +99,30 @@ describe('DryRunSimulator – カウンター到達可能性', () => {
     expect(counterIssue).toBeUndefined();
   });
 
+  it('equals 比較でも到達可能性がチェックされる（修正済みバグ: greaterOrEqual のみ）', () => {
+    const output = makeOutput({
+      counters: [{ id: 'hits', name: 'hits', initialValue: 0, currentValue: 0, min: 0, max: 99 }],
+      rules: [
+        {
+          id: 'tap-rule', name: 'tap-rule', enabled: true, priority: 50,
+          targetObjectId: 'ball',
+          triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+          actions: [{ type: 'counter', counterName: 'hits', operation: 'increment' }],
+        },
+        // equals=5 で1ルールのみ → 到達不可
+        {
+          id: 'win-rule', name: 'win-rule', enabled: true, priority: 50,
+          targetObjectId: 'stage',
+          triggers: { operator: 'AND', conditions: [{ type: 'counter', counterName: 'hits', comparison: 'equals', value: 5 }] },
+          actions: [{ type: 'success' }],
+        },
+      ],
+    });
+    const report = sim.simulate(output);
+    const counterIssue = report.issues.find(i => i.code === 'COUNTER_UNREACHABLE');
+    expect(counterIssue).toBeDefined();
+  });
+
   it('increment ルールが目標値より少ない場合 COUNTER_UNREACHABLE エラー', () => {
     const output = makeOutput({
       counters: [{ id: 'hits', name: 'hits', initialValue: 0, currentValue: 0, min: 0, max: 99 }],
@@ -151,6 +175,27 @@ describe('DryRunSimulator – 衝突到達可能性', () => {
     const report = sim.simulate(output);
     const collisionIssue = report.issues.find(i => i.code === 'AUTO_SUCCESS_COLLISION');
     expect(collisionIssue).toBeUndefined();
+  });
+
+  it('failureRules が存在しない場合 failure reachable は false（修正済みバグ: || true）', () => {
+    const output = makeOutput({ rules: [] });
+    const report = sim.simulate(output);
+    expect(report.failure.reachable).toBe(false);
+  });
+
+  it('failure ルールが存在すれば reachable は true', () => {
+    const output = makeOutput({
+      rules: [
+        {
+          id: 'lose', name: 'lose', enabled: true, priority: 50,
+          targetObjectId: 'stage',
+          triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+          actions: [{ type: 'failure' }],
+        },
+      ],
+    });
+    const report = sim.simulate(output);
+    expect(report.failure.reachable).toBe(true);
   });
 
   it('衝突対象 (ball) を動かすルールがない場合 AUTO_SUCCESS_COLLISION エラー（修正済みバグ）', () => {

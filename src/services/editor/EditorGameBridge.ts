@@ -841,15 +841,6 @@ export class EditorGameBridge {
           sortedObjects.forEach(([id, obj]) => {
             if (!obj.visible) return;
 
-            // アニメーションフレーム更新
-            if (obj.animationPlaying && obj.frameCount > 1) {
-              const frameInterval = 1000 / (obj.animationSpeed || 12); // fps to ms
-              if (currentTime - obj.lastFrameUpdate >= frameInterval) {
-                obj.currentFrame = (obj.currentFrame + 1) % obj.frameCount;
-                obj.lastFrameUpdate = currentTime;
-              }
-            }
-
             // RuleEngineによる移動を適用（vx/vyが0でない場合のみ）
             if (obj.vx !== undefined && obj.vx !== 0) {
               obj.x += obj.vx;
@@ -892,6 +883,8 @@ export class EditorGameBridge {
                 obj.arcTargetX = undefined;
                 obj.arcTargetY = undefined;
                 obj.arcHeight = undefined;
+                obj.vx = 0;
+                obj.vy = 0;
               }
             }
 

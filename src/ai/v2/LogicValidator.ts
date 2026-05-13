@@ -433,6 +433,12 @@ export class LogicValidator {
             case 'greater':
               isInstantLose = counter.initialValue > counterCondition.value;
               break;
+            case 'less':
+              isInstantLose = counter.initialValue < counterCondition.value;
+              break;
+            case 'lessOrEqual':
+              isInstantLose = counter.initialValue <= counterCondition.value;
+              break;
           }
 
           if (isInstantLose) {

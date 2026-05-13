@@ -99,6 +99,32 @@ describe('CollisionDetector – AABB 衝突判定', () => {
     );
     expect(result).toBe(false);
   });
+
+  it('updateCollisionCache 後に collisionCache がクリアされる（修正済みバグ: enter 再発火）', () => {
+    const a = makeObject('a', 0, 0);
+    const b = makeObject('b', 50, 50);
+    const ctx = makeContext(new Map([['a', a], ['b', b]]));
+
+    // フレーム1: enter
+    cd.evaluateCollisionCondition({ type: 'collision', target: 'b', collisionType: 'enter' }, ctx, 'a');
+    cd.updateCollisionCache();
+
+    // フレーム2: まだ重なっているが enter ではなく stay
+    const enterResult = cd.evaluateCollisionCondition(
+      { type: 'collision', target: 'b', collisionType: 'enter' },
+      ctx,
+      'a'
+    );
+    // previousCollisions に b が記録されているので enter = false (already colliding)
+    expect(enterResult).toBe(false);
+
+    const stayResult = cd.evaluateCollisionCondition(
+      { type: 'collision', target: 'b', collisionType: 'stay' },
+      ctx,
+      'a'
+    );
+    expect(stayResult).toBe(true);
+  });
 });
 
 // ──────────────────────────────────────────────
