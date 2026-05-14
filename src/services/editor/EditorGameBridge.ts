@@ -83,7 +83,12 @@ export class EditorGameBridge {
         this.currentCanvas.removeEventListener('mousedown', this.currentHandleInteraction);
         this.currentCanvas.removeEventListener('touchstart', this.currentHandleInteraction);
       }
-<<<<<<< HEAD
+      if (this.currentHandleTouchMove) {
+        this.currentCanvas.removeEventListener('touchmove', this.currentHandleTouchMove);
+      }
+      if (this.currentHandleTouchEnd) {
+        this.currentCanvas.removeEventListener('touchend', this.currentHandleTouchEnd);
+      }
     }
     // mousemove/mouseup are attached to document (M-2 fix)
     if (this.currentHandleMouseMove) {
@@ -91,20 +96,6 @@ export class EditorGameBridge {
     }
     if (this.currentHandleMouseUp) {
       document.removeEventListener('mouseup', this.currentHandleMouseUp);
-=======
-      if (this.currentHandleMouseMove) {
-        this.currentCanvas.removeEventListener('mousemove', this.currentHandleMouseMove);
-      }
-      if (this.currentHandleMouseUp) {
-        this.currentCanvas.removeEventListener('mouseup', this.currentHandleMouseUp);
-      }
-      if (this.currentHandleTouchMove) {
-        this.currentCanvas.removeEventListener('touchmove', this.currentHandleTouchMove);
-      }
-      if (this.currentHandleTouchEnd) {
-        this.currentCanvas.removeEventListener('touchend', this.currentHandleTouchEnd);
-      }
->>>>>>> 74941eadfa12d2955ddd106d0d3142cbbb70496c
     }
 
     // BGMを停止
