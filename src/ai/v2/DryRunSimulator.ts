@@ -131,18 +131,20 @@ export class DryRunSimulator {
     const successRulesForCounterCheck = logicOutput.script.rules.filter(r =>
       r.actions?.some(a => a.type === 'success')
     );
-    const successCounterCondition = successRulesForCounterCheck
+    const successCounterConditions = successRulesForCounterCheck
       .flatMap(r => r.triggers?.conditions || [])
-      .find(c => c.type === 'counter' && c.comparison === 'greaterOrEqual');
+      .filter(c => c.type === 'counter' && (
+        c.comparison === 'greaterOrEqual' || c.comparison === 'greater' || c.comparison === 'equals'
+      ));
 
-    if (successCounterCondition) {
+    for (const successCounterCondition of successCounterConditions) {
       const targetValue = successCounterCondition.value || 0;
       const counterName = successCounterCondition.counterName || '';
       const incrementRuleCount = logicOutput.script.rules.filter(r =>
         r.actions?.some(a =>
           a.type === 'counter' &&
           a.counterName === counterName &&
-          a.operation === 'increment'
+          (a.operation === 'increment' || a.operation === 'add')
         )
       ).length;
 
@@ -321,8 +323,7 @@ export class DryRunSimulator {
           const hasTouchTrigger = r.triggers?.conditions?.some(c => c.type === 'touch');
           const movesTarget = r.actions?.some(a =>
             (a.type === 'applyImpulse' || a.type === 'applyForce' || a.type === 'move') &&
-            (a.targetId === collisionTarget || r.targetObjectId === collisionTarget ||
-             a.targetId !== undefined || r.targetObjectId !== undefined)
+            (a.targetId === collisionTarget || r.targetObjectId === collisionTarget)
           );
           return hasTouchTrigger && movesTarget;
         });
@@ -611,7 +612,7 @@ export class DryRunSimulator {
     }
 
     return {
-      reachable: failureRules.length > 0 || true, // タイムアウトは常に到達可能
+      reachable: failureRules.length > 0,
       commonPaths: paths.slice(0, 3), // 上位3つ
       risks
     };

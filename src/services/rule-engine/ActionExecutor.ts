@@ -294,7 +294,7 @@ export class ActionExecutor {
 
     targetObj.animationIndex = action.animationIndex;
     
-    const startFrame = action.startFrame ?? action.animationIndex ?? 0;
+    const startFrame = action.startFrame ?? 0;
     targetObj.currentFrame = startFrame;
     
     if (action.autoPlay !== undefined) {
@@ -349,6 +349,15 @@ export class ActionExecutor {
       case 'stop':
         targetObj.vx = 0;
         targetObj.vy = 0;
+        targetObj.moveTargetX = undefined;
+        targetObj.moveTargetY = undefined;
+        targetObj.arcStartTime = undefined;
+        targetObj.arcDuration = undefined;
+        targetObj.arcStartX = undefined;
+        targetObj.arcStartY = undefined;
+        targetObj.arcTargetX = undefined;
+        targetObj.arcTargetY = undefined;
+        targetObj.arcHeight = undefined;
         break;
 
       case 'swap':
@@ -476,7 +485,10 @@ export class ActionExecutor {
       if (distance > 0) {
         targetObj.vx = (dx / distance) * effectiveSpeed;
         targetObj.vy = (dy / distance) * effectiveSpeed;
-        
+        // 目標座標を記録して到達時に自動停止させる
+        targetObj.moveTargetX = targetX;
+        targetObj.moveTargetY = targetY;
+
         console.log(
           `🎯 座標移動: (${objCenterX.toFixed(1)}, ${objCenterY.toFixed(1)}) → ` +
           `(${targetX.toFixed(1)}, ${targetY.toFixed(1)}) ` +

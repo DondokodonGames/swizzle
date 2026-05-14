@@ -268,7 +268,10 @@ export class CollisionDetector {
    * フレームごとに呼び出す
    */
   updateCollisionCache(): void {
-    this.previousCollisions = new Map(this.collisionCache);
+    this.previousCollisions = new Map(
+      Array.from(this.collisionCache.entries()).map(([k, v]) => [k, new Set(v)])
+    );
+    this.collisionCache.clear();
     this.lastCollisionCheckTime = Date.now();
   }
 

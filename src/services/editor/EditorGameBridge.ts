@@ -47,6 +47,8 @@ export class EditorGameBridge {
   private currentHandleInteraction: ((event: MouseEvent | TouchEvent) => void) | null = null;
   private currentHandleMouseMove: ((event: MouseEvent) => void) | null = null;
   private currentHandleMouseUp: ((event: MouseEvent) => void) | null = null;
+  private currentHandleTouchMove: ((event: TouchEvent) => void) | null = null;
+  private currentHandleTouchEnd: ((event: TouchEvent) => void) | null = null;
   private currentBgmAudio: HTMLAudioElement | null = null;
 
   static getInstance(): EditorGameBridge {
@@ -81,6 +83,7 @@ export class EditorGameBridge {
         this.currentCanvas.removeEventListener('mousedown', this.currentHandleInteraction);
         this.currentCanvas.removeEventListener('touchstart', this.currentHandleInteraction);
       }
+<<<<<<< HEAD
     }
     // mousemove/mouseup are attached to document (M-2 fix)
     if (this.currentHandleMouseMove) {
@@ -88,6 +91,20 @@ export class EditorGameBridge {
     }
     if (this.currentHandleMouseUp) {
       document.removeEventListener('mouseup', this.currentHandleMouseUp);
+=======
+      if (this.currentHandleMouseMove) {
+        this.currentCanvas.removeEventListener('mousemove', this.currentHandleMouseMove);
+      }
+      if (this.currentHandleMouseUp) {
+        this.currentCanvas.removeEventListener('mouseup', this.currentHandleMouseUp);
+      }
+      if (this.currentHandleTouchMove) {
+        this.currentCanvas.removeEventListener('touchmove', this.currentHandleTouchMove);
+      }
+      if (this.currentHandleTouchEnd) {
+        this.currentCanvas.removeEventListener('touchend', this.currentHandleTouchEnd);
+      }
+>>>>>>> 74941eadfa12d2955ddd106d0d3142cbbb70496c
     }
 
     // BGMを停止
@@ -103,6 +120,8 @@ export class EditorGameBridge {
     this.currentHandleInteraction = null;
     this.currentHandleMouseMove = null;
     this.currentHandleMouseUp = null;
+    this.currentHandleTouchMove = null;
+    this.currentHandleTouchEnd = null;
 
     console.log('✅ ゲーム停止完了');
   }
@@ -752,6 +771,11 @@ export class EditorGameBridge {
             this.ruleEngine.updateAnimations(this.currentContext!, currentTime);
           }
 
+          // 衝突キャッシュ・フラグ前回値の更新（ルール評価直前）
+          if (this.ruleEngine) {
+            this.ruleEngine.updateFrameState();
+          }
+
           // デバッグ: ルール評価前のイベント確認
           if (this.currentContext!.events.length > 0) {
             console.log('🔍 [GameLoop] ルール評価前 - context.events:', this.currentContext!.events.map(e => ({
@@ -832,21 +856,32 @@ export class EditorGameBridge {
           sortedObjects.forEach(([id, obj]) => {
             if (!obj.visible) return;
 
-            // アニメーションフレーム更新
-            if (obj.animationPlaying && obj.frameCount > 1) {
-              const frameInterval = 1000 / (obj.animationSpeed || 12); // fps to ms
-              if (currentTime - obj.lastFrameUpdate >= frameInterval) {
-                obj.currentFrame = (obj.currentFrame + 1) % obj.frameCount;
-                obj.lastFrameUpdate = currentTime;
-              }
-            }
-
             // RuleEngineによる移動を適用（vx/vyが0でない場合のみ）
             if (obj.vx !== undefined && obj.vx !== 0) {
               obj.x += obj.vx;
             }
             if (obj.vy !== undefined && obj.vy !== 0) {
               obj.y += obj.vy;
+            }
+
+            // straight移動の目標到達検出・自動停止
+            if (obj.moveTargetX !== undefined && obj.moveTargetY !== undefined) {
+              const mScale = obj.scaleX ?? obj.scale ?? 1;
+              const mScaleY = obj.scaleY ?? obj.scale ?? 1;
+              const centerX = obj.x + (obj.width * mScale) / 2;
+              const centerY = obj.y + (obj.height * mScaleY) / 2;
+              const stepDist = Math.sqrt((obj.vx || 0) ** 2 + (obj.vy || 0) ** 2);
+              const toDist = Math.sqrt(
+                (obj.moveTargetX - centerX) ** 2 + (obj.moveTargetY - centerY) ** 2
+              );
+              if (toDist <= Math.max(stepDist, 2)) {
+                obj.x = obj.moveTargetX - (obj.width * mScale) / 2;
+                obj.y = obj.moveTargetY - (obj.height * mScaleY) / 2;
+                obj.vx = 0;
+                obj.vy = 0;
+                obj.moveTargetX = undefined;
+                obj.moveTargetY = undefined;
+              }
             }
 
             // arc移動（放物線パス）— vx/vyより後に実行して上書き
@@ -863,6 +898,8 @@ export class EditorGameBridge {
                 obj.arcTargetX = undefined;
                 obj.arcTargetY = undefined;
                 obj.arcHeight = undefined;
+                obj.vx = 0;
+                obj.vy = 0;
               }
             }
 
@@ -1236,6 +1273,8 @@ export class EditorGameBridge {
       this.currentHandleInteraction = handleInteraction;
       this.currentHandleMouseMove = handleMouseMove;
       this.currentHandleMouseUp = handleMouseUp;
+      this.currentHandleTouchMove = handleTouchMove;
+      this.currentHandleTouchEnd = handleTouchEnd;
 
       // 14. ゲーム開始
       console.log('🚀 ゲームループ開始');

@@ -376,3 +376,129 @@ describe('LogicValidator – action parameter validation', () => {
     expect(err).toBeDefined();
   });
 });
+
+// ────────────────────────────────────────────────────────────
+// INSTANT_LOSE – less/lessOrEqual comparisons
+// ────────────────────────────────────────────────────────────
+
+describe('LogicValidator – INSTANT_LOSE less/lessOrEqual（修正済みバグ）', () => {
+  let validator: LogicValidator;
+  beforeEach(() => { validator = new LogicValidator(); });
+
+  function makeInstantLoseOutput(comparison: string, counterInitialValue: number, threshold: number): LogicGeneratorOutput {
+    return makeOutput({
+      script: {
+        layout: { objects: [{ objectId: 'obj1', position: { x: 0.5, y: 0.5 }, scale: 1 }] },
+        counters: [{ id: 'hp', name: 'hp', initialValue: counterInitialValue, currentValue: counterInitialValue, min: 0, max: 100 }],
+        rules: [
+          {
+            id: 'fail-rule',
+            name: 'fail-rule',
+            enabled: true,
+            priority: 50,
+            targetObjectId: 'stage',
+            triggers: {
+              operator: 'AND',
+              conditions: [{ type: 'counter', counterName: 'hp', comparison, value: threshold }]
+            },
+            actions: [{ type: 'failure' }],
+          }
+        ],
+      } as any,
+    });
+  }
+
+  it('less: initialValue < threshold → INSTANT_LOSE を検出する', () => {
+    const output = makeInstantLoseOutput('less', 2, 5); // 2 < 5 → 即失敗
+    const result = validator.validate(output);
+    expect(result.errors.find(e => e.code === 'INSTANT_LOSE')).toBeDefined();
+  });
+
+  it('less: initialValue >= threshold → 問題なし', () => {
+    const output = makeInstantLoseOutput('less', 5, 3); // 5 >= 3 → 即失敗しない
+    const result = validator.validate(output);
+    expect(result.errors.find(e => e.code === 'INSTANT_LOSE')).toBeUndefined();
+  });
+
+  it('lessOrEqual: initialValue <= threshold → INSTANT_LOSE を検出する', () => {
+    const output = makeInstantLoseOutput('lessOrEqual', 3, 3); // 3 <= 3 → 即失敗
+    const result = validator.validate(output);
+    expect(result.errors.find(e => e.code === 'INSTANT_LOSE')).toBeDefined();
+  });
+
+  it('lessOrEqual: initialValue > threshold → 問題なし', () => {
+    const output = makeInstantLoseOutput('lessOrEqual', 5, 3); // 5 > 3 → 即失敗しない
+    const result = validator.validate(output);
+    expect(result.errors.find(e => e.code === 'INSTANT_LOSE')).toBeUndefined();
+  });
+});
+
+// ──────────────────────────────────────────────
+// getConditionSignature: swipeDirection（修正済みバグ: c.direction → c.swipeDirection）
+// ──────────────────────────────────────────────
+
+describe('LogicValidator – swipeDirection シグネチャ（修正済みバグ）', () => {
+  const validator = new LogicValidator();
+
+  it('swipeDirection が異なるスワイプ条件は別シグネチャ: SUCCESS_FAILURE_CONFLICT が発生しない', () => {
+    // success=swipe-up, failure=swipe-down → 異なる方向なので衝突しない
+    const swipeUp: GameRule = {
+      id: 'swipe-up',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'swipe', target: 'self', swipeDirection: 'up' }] },
+      actions: [{ type: 'success', score: 10 }],
+    };
+    const swipeDown: GameRule = {
+      id: 'swipe-down',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'swipe', target: 'self', swipeDirection: 'down' }] },
+      actions: [{ type: 'failure' }],
+    };
+
+    const output = makeOutput({
+      script: {
+        layout: { objects: [{ objectId: 'obj1', position: { x: 0.5, y: 0.5 }, scale: { x: 1, y: 1 } }] },
+        rules: [swipeUp, swipeDown],
+        counters: [],
+        flags: [],
+        initialState: { gameState: {} },
+      } as any,
+    });
+
+    const result = validator.validate(output);
+    // swipeDirection が異なるため SUCCESS_FAILURE_CONFLICT は発生しない
+    const conflict = result.errors.find(e => e.code === 'SUCCESS_FAILURE_CONFLICT');
+    expect(conflict).toBeUndefined();
+  });
+
+  it('swipeDirection が同じスワイプ条件は同一シグネチャ: SUCCESS_FAILURE_CONFLICT が検出される', () => {
+    // success=swipe-up, failure=swipe-up → 同じ方向なので衝突
+    const swipeUpSuccess: GameRule = {
+      id: 'swipe-up-success',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'swipe', target: 'self', swipeDirection: 'up' }] },
+      actions: [{ type: 'success', score: 10 }],
+    };
+    const swipeUpFailure: GameRule = {
+      id: 'swipe-up-failure',
+      targetObjectId: 'obj1',
+      triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'swipe', target: 'self', swipeDirection: 'up' }] },
+      actions: [{ type: 'failure' }],
+    };
+
+    const output = makeOutput({
+      script: {
+        layout: { objects: [{ objectId: 'obj1', position: { x: 0.5, y: 0.5 }, scale: { x: 1, y: 1 } }] },
+        rules: [swipeUpSuccess, swipeUpFailure],
+        counters: [],
+        flags: [],
+        initialState: { gameState: {} },
+      } as any,
+    });
+
+    const result = validator.validate(output);
+    // 同じ swipeDirection なので SUCCESS_FAILURE_CONFLICT が検出される
+    const conflict = result.errors.find(e => e.code === 'SUCCESS_FAILURE_CONFLICT');
+    expect(conflict).toBeDefined();
+  });
+});

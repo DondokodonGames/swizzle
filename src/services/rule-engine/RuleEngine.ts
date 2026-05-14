@@ -150,7 +150,12 @@ export class RuleEngine {
    */
   evaluateAndExecuteRules(context: RuleExecutionContext): ActionExecutionResult[] {
     const results: ActionExecutionResult[] = [];
-    
+
+    // success/failure後（pendingEndTime設定済み）はルール評価を止める
+    if (context.gameState.pendingEndTime !== undefined) {
+      return results;
+    }
+
     for (const rule of this.rules) {
       // ルール実行可否チェック
       if (!this.canExecuteRule(rule, context)) {
@@ -280,6 +285,15 @@ export class RuleEngine {
     this.animationManager.updateAnimations(context, currentTime);
   }
 
+  /**
+   * フレーム状態の更新（衝突キャッシュ + フラグ前回値）
+   * ルール評価の直前に毎フレーム呼び出す必要がある
+   */
+  updateFrameState(): void {
+    this.collisionDetector.updateCollisionCache();
+    this.flagManager.updatePreviousFlags();
+  }
+
   // ==================== フラグ管理（デリゲート） ====================
 
   addFlagDefinition(flag: GameFlag): void {
@@ -333,9 +347,9 @@ export class RuleEngine {
   /**
    * 全状態をリセット
    */
-  reset(): void {
+  reset(context?: RuleExecutionContext): void {
     console.log('🔄 RuleEngine リセット開始');
-    
+
     // 各マネージャーのリセット
     this.flagManager.reset();
     this.counterManager.reset();
@@ -344,10 +358,13 @@ export class RuleEngine {
     this.physicsManager.reset();
     this.animationManager.reset();
     this.actionExecutor.reset();
-    
+    if (context) {
+      this.effectManager.reset(context);
+    }
+
     // ルール実行回数のリセット
     this.ruleExecutionCounts.clear();
-    
+
     console.log('✅ RuleEngine リセット完了');
   }
 

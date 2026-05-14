@@ -359,16 +359,18 @@ export class ConditionEvaluator {
     
     switch (condition.timeType) {
       case 'exact':
-        return condition.seconds !== undefined && 
-               Math.abs(currentTime - condition.seconds) < 0.1;
+        // 1フレーム分(~17ms)のウィンドウで判定（0.1秒は広すぎて多重発火する）
+        return condition.seconds !== undefined &&
+               Math.abs(currentTime - condition.seconds) < 0.017;
       case 'range':
         return condition.range !== undefined &&
-               currentTime >= condition.range.min && 
+               currentTime >= condition.range.min &&
                currentTime <= condition.range.max;
       case 'interval':
+        // 1フレーム分のウィンドウで判定（0.1秒ウィンドウは最大6フレーム連続発火するため修正）
         return condition.interval !== undefined &&
                currentTime > 0 &&
-               currentTime % condition.interval < 0.1;
+               currentTime % condition.interval < 0.017;
       default:
         return false;
     }
@@ -669,6 +671,7 @@ export class ConditionEvaluator {
     this.consumedTouchEvents.clear();
     this.randomStates.clear();
     this.animationStates.clear();
+    this.positionStates.clear();
     this.previousGameState = undefined;
   }
 

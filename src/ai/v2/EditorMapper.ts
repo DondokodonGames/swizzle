@@ -1098,7 +1098,7 @@ export class EditorMapper {
           r.triggers?.conditions?.some(c =>
             c.type === 'counter' &&
             c.counterName === counter.id &&
-            c.comparison === 'greaterOrEqual'
+            (c.comparison === 'greaterOrEqual' || c.comparison === 'greater' || c.comparison === 'equals')
           ) &&
           r.actions?.some(a => a.type === 'success')
         );
@@ -1114,7 +1114,7 @@ export class EditorMapper {
           r.actions?.some(a =>
             a.type === 'counter' &&
             a.counterName === counter.id &&
-            a.operation === 'increment'
+            (a.operation === 'increment' || a.operation === 'add')
           )
         ).length;
 
