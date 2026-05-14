@@ -236,7 +236,7 @@ export interface TriggerCondition {
   flagValue?: boolean;
   // position
   area?: 'inside' | 'outside' | 'crossing';
-  region?: { x: number; y: number; width?: number; height?: number };
+  region?: { shape?: 'rect' | 'circle'; x: number; y: number; width?: number; height?: number; radius?: number };
   // animation
   condition?: 'playing' | 'stopped' | 'frame' | 'frameRange' | 'loop' | 'start' | 'end';
   frameNumber?: number;

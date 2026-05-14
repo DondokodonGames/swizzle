@@ -52,6 +52,8 @@ export interface GameObject {
   shakeIntensity?: number;
   shakeFrequency?: number;
   shakeDirection?: string;
+  shakeOffsetX?: number;
+  shakeOffsetY?: number;
   
   // Rotate エフェクト
   baseRotation?: number;
@@ -63,6 +65,10 @@ export interface GameObject {
   fadeStartTime?: number;
   fadeDuration?: number;
   fadeDirection?: 'in' | 'out';
+
+  // 移動目標（straight移動のターゲット座標）
+  moveTargetX?: number;
+  moveTargetY?: number;
 
   // arc移動（放物線パス）
   arcStartX?: number;

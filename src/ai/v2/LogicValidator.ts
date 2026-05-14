@@ -673,7 +673,7 @@ export class LogicValidator {
               const { x, y, width: _width, height: _height, shape } = condition.region;
               if (shape !== undefined && shape !== 'rect' && shape !== 'circle') {
                 errors.push({
-                  type: 'error',
+                  type: 'warning',
                   code: 'INVALID_REGION_SHAPE',
                   message: `ルール "${ruleId}": region.shape "${shape}" は無効（'rect' または 'circle' のみ有効）`,
                   fix: `shape: 'rect' または shape: 'circle' を使用してください`
