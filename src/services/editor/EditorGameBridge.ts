@@ -845,7 +845,8 @@ export class EditorGameBridge {
 
           // オブジェクト更新・描画（zIndex順）
           sortedObjects.forEach(([id, obj]) => {
-            if (!obj.visible) return;
+            // 移動・物理は visible に関わらず全オブジェクトに適用する
+            // （move → hide を同フレームに実行した場合でも位置が正しく更新されるよう）
 
             // RuleEngineによる移動を適用（vx/vyが0でない場合のみ）
             if (obj.vx !== undefined && obj.vx !== 0) {
@@ -893,6 +894,9 @@ export class EditorGameBridge {
                 obj.vy = 0;
               }
             }
+
+            // 以下は描画のみ — 非表示オブジェクトはスキップ
+            if (!obj.visible) return;
 
             // ✅ 中心基準で描画（scaleX/scaleY個別対応）
             const objWidth = obj.width * (obj.scaleX ?? obj.scale);
@@ -1170,16 +1174,17 @@ export class EditorGameBridge {
                   x: lastTouchX, y: lastTouchY }
         });
 
-        // フリック判定（速い・短距離・短時間）
-        if (velocity >= 1000 && distance <= 150 && duration <= 200) {
+        // フリック判定（短時間・高速）— ConditionEvaluator が condition フィールドで再検証する
+        // プリフィルターは「意図的ジェスチャーか？」の判定のみ行い、閾値は非常に緩くする
+        if (velocity >= 200 && distance <= 600 && duration <= 800) {
           this.currentContext.events.push({
             type: 'touch', timestamp: endTime,
             data: { type: 'flick', touchType: 'flick', target: touchedObjectId ?? 'stage',
                     distance, duration, velocity, direction }
           });
         }
-        // スワイプ判定（速い・長距離）
-        else if (velocity >= 500 && distance >= 100 && duration <= 500) {
+        // スワイプ判定（方向性のある移動）— flick と独立して評価（両方 emit 可）
+        if (velocity >= 50 && distance >= 20 && duration <= 2000) {
           this.currentContext.events.push({
             type: 'touch', timestamp: endTime,
             data: { type: 'swipe', touchType: 'swipe', target: touchedObjectId ?? 'stage',
@@ -1234,13 +1239,14 @@ export class EditorGameBridge {
                   x: lastTouchX, y: lastTouchY }
         });
 
-        if (velocity >= 1000 && distance <= 150 && duration <= 200) {
+        if (velocity >= 200 && distance <= 600 && duration <= 800) {
           this.currentContext.events.push({
             type: 'touch', timestamp: endTime,
             data: { type: 'flick', touchType: 'flick', target: touchedObjectId ?? 'stage',
                     distance, duration, velocity, direction }
           });
-        } else if (velocity >= 500 && distance >= 100 && duration <= 500) {
+        }
+        if (velocity >= 50 && distance >= 20 && duration <= 2000) {
           this.currentContext.events.push({
             type: 'touch', timestamp: endTime,
             data: { type: 'swipe', touchType: 'swipe', target: touchedObjectId ?? 'stage',
