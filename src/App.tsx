@@ -31,6 +31,16 @@ const NfcSetupPage = React.lazy(() =>
   import('./pages/nfc/NfcSetupPage').then(module => ({ default: module.NfcSetupPage }))
 );
 
+// NFC スポットページ（屋外タグ → 匿名ログイン → ゲーム起動）
+const NfcSpotPage = React.lazy(() =>
+  import('./pages/nfc/NfcSpotPage').then(module => ({ default: module.NfcSpotPage }))
+);
+
+// NFC スポット管理ページ（管理者向け）
+const NfcSpotManagerPage = React.lazy(() =>
+  import('./pages/admin/NfcSpotManagerPage').then(module => ({ default: module.NfcSpotManagerPage }))
+);
+
 // マネタイズページの遅延読み込み
 const Pricing = React.lazy(() =>
   import('./pages/subscription/Pricing').then(module => ({
@@ -792,6 +802,20 @@ function App() {
           <Route path="/admin/games/:gameId/nfc" element={
             <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
               <NfcSetupPage />
+            </Suspense>
+          } />
+
+          {/* NFC スポットページ（屋外タグからのエントリーポイント） */}
+          <Route path="/nfc/:spotId" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+              <NfcSpotPage />
+            </Suspense>
+          } />
+
+          {/* NFC スポット管理ページ（管理者向け） */}
+          <Route path="/admin/nfc-spots" element={
+            <Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>読み込み中...</div>}>
+              <NfcSpotManagerPage />
             </Suspense>
           } />
 
