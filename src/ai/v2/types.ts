@@ -17,6 +17,7 @@
  */
 
 import { GameProject } from '../../types/editor/GameProject';
+import type { ActionType, ConditionType } from '../../types/editor/contract';
 
 // Re-export types from other modules for convenience
 export type { GameDesign, GameDesignObject, Interaction, DesignDecision } from './GameDesignGenerator';
@@ -83,51 +84,17 @@ export interface ConceptValidationResult {
 // ==========================================
 
 /**
- * エディター仕様準拠の条件タイプ（すべて使用可能）
+ * エディター仕様準拠の条件タイプ。
+ * 単一の正解 src/types/editor/contract.ts から導出（手動で列挙しないこと）。
  */
-export type VerifiedConditionType =
-  | 'touch'
-  | 'time'
-  | 'counter'
-  | 'collision'
-  | 'flag'
-  | 'gameState'
-  | 'position'
-  | 'animation'
-  | 'random'
-  | 'objectState'
-  | 'always';
+export type VerifiedConditionType = ConditionType;
 
 /**
- * エディター仕様準拠のアクションタイプ（すべて使用可能）
+ * エディター仕様準拠のアクションタイプ。
+ * 単一の正解 src/types/editor/contract.ts から導出（手動で列挙しないこと）。
+ * 注: setGravity/setPhysics も型上は含むが、AI生成対象は GENERATABLE_ACTIONS に限る。
  */
-export type VerifiedActionType =
-  | 'success'
-  | 'failure'
-  | 'hide'
-  | 'show'
-  | 'move'
-  | 'counter'
-  | 'addScore'
-  | 'effect'
-  | 'setFlag'
-  | 'toggleFlag'
-  | 'playSound'
-  | 'stopSound'
-  | 'playBGM'
-  | 'stopBGM'
-  | 'switchAnimation'
-  | 'playAnimation'
-  | 'setAnimationSpeed'
-  | 'setAnimationFrame'
-  | 'followDrag'
-  | 'applyForce'
-  | 'applyImpulse'
-  | 'setGravity'
-  | 'setPhysics'
-  | 'randomAction'
-  | 'pause'
-  | 'restart';
+export type VerifiedActionType = ActionType;
 
 /**
  * オブジェクト計画

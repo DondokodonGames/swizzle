@@ -27,34 +27,30 @@
     "gameName": { "minChars": 1, "maxChars": 50 },
     "description": { "minChars": 0, "maxChars": 200 }
   },
+  "_generated": "contract-derived fields below are validated against src/types/editor/contract.ts by contract.consistency.test.ts — do not edit by hand",
   "touchTypes": ["down", "up", "hold", "drag", "swipe", "flick"],
   "movementPatterns": [
-    "straight",
-    "teleport",
-    "wander",
-    "stop",
-    "swap",
-    "approach",
-    "orbit",
-    "bounce"
+    "straight", "teleport", "wander", "stop", "swap", "approach", "orbit", "bounce", "arc"
   ],
   "effectTypes": ["flash", "shake", "scale", "rotate", "particles"],
   "counterOperations": [
-    "set", "add", "subtract", "multiply", "divide",
-    "increment", "decrement", "reset"
+    "increment", "decrement", "set", "reset", "add", "subtract", "multiply", "divide"
   ],
   "counterComparisons": [
-    "equal", "notEqual", "greater", "less",
-    "greaterOrEqual", "lessOrEqual", "between", "notBetween"
+    "equals", "notEquals", "greater", "greaterOrEqual", "less", "lessOrEqual", "between", "notBetween", "changed"
   ],
-  "triggerTypes": ["touch", "collision", "time", "counter", "flag", "position"],
+  "triggerTypes": [
+    "touch", "time", "counter", "collision", "flag",
+    "gameState", "position", "animation", "random", "objectState", "always"
+  ],
   "actionTypes": [
     "success", "failure", "pause", "restart",
     "playSound", "stopSound", "playBGM", "stopBGM",
     "setFlag", "toggleFlag",
-    "show", "hide", "switchAnimation",
-    "move", "effect",
-    "addScore", "showMessage", "counter"
+    "show", "hide", "switchAnimation", "playAnimation", "setAnimationSpeed", "setAnimationFrame",
+    "move", "followDrag", "effect",
+    "applyForce", "applyImpulse",
+    "addScore", "counter", "randomAction"
   ],
   "collisionTypes": ["enter", "stay", "exit"],
   "collisionCheckModes": ["hitbox", "pixel"],

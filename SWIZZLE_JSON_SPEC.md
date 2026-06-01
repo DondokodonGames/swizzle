@@ -768,12 +768,14 @@ Swizzle JSONフォーマットは、ゲームプロジェクト全体を1つのJ
 - `rotate`: 回転
 - `particles`: パーティクル効果
 
-#### スコア・メッセージ
+#### スコア
 
 ```json
 { "type": "addScore", "points": 10 }
-{ "type": "showMessage", "text": "Good!", "duration": 1.0 }
 ```
+
+> ⚠️ `showMessage` アクションは廃止されました（エンジンに実装がありません）。
+> メッセージ表示が必要な場合は `effect`（flash/scale 等）や `playSound` で代替してください。
 
 #### カウンター操作
 
@@ -819,6 +821,11 @@ Swizzle JSONフォーマットは、ゲームプロジェクト全体を1つのJ
   }
 }
 ```
+
+> ✅ `successConditions` は実行時に毎フレーム評価され、成立すると `successSettings.delay` 秒後に
+> クリア扱いでゲームが終了します（`successSettings.score` は加算）。`success` アクションを
+> 明示しなくてもクリアにできます。対応する条件タイプ: `flag` / `score` / `time` / `counter` /
+> `objectState`（visible/hidden）。
 
 ### ScriptStatistics（スクリプト統計）
 
@@ -1507,18 +1514,8 @@ Swizzle JSONフォーマットは、ゲームプロジェクト全体を1つのJ
 }
 ```
 
-#### showMessage（メッセージ表示）
-```json
-{
-  "type": "showMessage",
-  "text": "Good!",             // 必須: 表示テキスト
-  "duration": 1.0,             // 必須: 表示時間（秒）
-  "style": {                   // オプション: テキストスタイル
-    "fontSize": 24,
-    "fontColor": "#FF0000"
-  }
-}
-```
+> ⚠️ **`showMessage` は廃止されました。** エンジンに実装がなく、生成しても無視されます。
+> メッセージ表示が必要な場合は `effect`（flash/scale 等）や `playSound` で演出してください。
 
 ### カウンターアクション
 

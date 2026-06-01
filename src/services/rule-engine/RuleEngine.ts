@@ -1,7 +1,7 @@
 // src/services/rule-engine/RuleEngine.ts
 // ルールエンジン - 全モジュールを統括、公開API提供
 
-import { GameRule, GameFlag } from '../../types/editor/GameScript';
+import { GameRule, GameFlag, SuccessCondition } from '../../types/editor/GameScript';
 import { GameCounter } from '../../types/counterTypes';
 import {
   RuleExecutionContext,
@@ -196,8 +196,127 @@ export class RuleEngine {
   }
 
   /**
+   * 成功条件(successConditions)を評価する。
+   *
+   * これまで successConditions は型・UI には存在したが実行時に一切評価されておらず、
+   * 「success アクション」を明示的に書かない限りゲームがクリアできなかった。
+   * 本メソッドで flag/score/time/counter/objectState の各条件を評価し、
+   * 成立した SuccessCondition があれば true を返す（呼び出し側が終了予約を行う）。
+   *
+   * @param successConditions 評価対象の成功条件配列
+   * @param context ゲーム実行コンテキスト
+   * @returns 成立した SuccessCondition。なければ null
+   */
+  evaluateSuccessConditions(
+    successConditions: SuccessCondition[] | undefined,
+    context: RuleExecutionContext
+  ): SuccessCondition | null {
+    if (!successConditions || successConditions.length === 0) {
+      return null;
+    }
+
+    for (const sc of successConditions) {
+      if (!sc.conditions || sc.conditions.length === 0) {
+        continue;
+      }
+
+      const operator = sc.operator || 'AND';
+      const results = sc.conditions.map((c) => this.evaluateSingleSuccessCondition(c, context));
+      const satisfied = operator === 'OR' ? results.some(Boolean) : results.every(Boolean);
+
+      if (satisfied) {
+        return sc;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * 個々の成功条件を評価する。
+   */
+  private evaluateSingleSuccessCondition(
+    condition: SuccessCondition['conditions'][number],
+    context: RuleExecutionContext
+  ): boolean {
+    const gs = context.gameState;
+
+    switch (condition.type) {
+      case 'flag': {
+        if (!condition.flagId) return false;
+        // フラグの実体は FlagManager が保持（context.gameState.flags は同期されない）
+        const current = this.flagManager.getFlag(condition.flagId);
+        return current === (condition.flagValue ?? true);
+      }
+
+      case 'score': {
+        if (condition.scoreValue === undefined) return false;
+        return this.compareWithSymbol(gs.score || 0, condition.scoreComparison || '>=', condition.scoreValue);
+      }
+
+      case 'time': {
+        if (condition.timeValue === undefined) return false;
+        return this.compareWithSymbol(gs.timeElapsed || 0, condition.timeComparison || '>=', condition.timeValue);
+      }
+
+      case 'counter': {
+        if (!condition.counterName || condition.counterValue === undefined) return false;
+        // カウンターの実体は CounterManager が保持（context.gameState.counters は同期されない）
+        const current = this.counterManager.getCounter(condition.counterName);
+        return this.compareCounter(
+          current,
+          condition.counterComparison || 'greaterOrEqual',
+          condition.counterValue,
+          condition.counterRangeMax
+        );
+      }
+
+      case 'objectState': {
+        if (!condition.objectId) return false;
+        const obj = context.objects.get(condition.objectId);
+        if (!obj) return false;
+        switch (condition.objectCondition) {
+          case 'visible': return obj.visible === true;
+          case 'hidden': return obj.visible === false;
+          default: return false; // position/animation は現状未対応
+        }
+      }
+
+      default:
+        return false;
+    }
+  }
+
+  /** 記号比較(>=, >, ==, <, <=) */
+  private compareWithSymbol(actual: number, op: string, expected: number): boolean {
+    switch (op) {
+      case '>=': return actual >= expected;
+      case '>': return actual > expected;
+      case '==': return actual === expected;
+      case '<': return actual < expected;
+      case '<=': return actual <= expected;
+      default: return false;
+    }
+  }
+
+  /** カウンター比較(CounterComparison) */
+  private compareCounter(actual: number, op: string, expected: number, rangeMax?: number): boolean {
+    switch (op) {
+      case 'equals': return actual === expected;
+      case 'notEquals': return actual !== expected;
+      case 'greater': return actual > expected;
+      case 'greaterOrEqual': return actual >= expected;
+      case 'less': return actual < expected;
+      case 'lessOrEqual': return actual <= expected;
+      case 'between': return rangeMax !== undefined && actual >= expected && actual <= rangeMax;
+      case 'notBetween': return rangeMax !== undefined && (actual < expected || actual > rangeMax);
+      default: return false;
+    }
+  }
+
+  /**
    * ルールが実行可能かチェック
-   * 
+   *
    * @param rule - チェック対象のルール
    * @param context - ゲーム実行コンテキスト
    * @returns 実行可能ならtrue

@@ -309,7 +309,7 @@ describe('LogicValidator – action parameter validation', () => {
       id: 'r1',
       targetObjectId: 'obj1',
       triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
-      actions: [{ type: 'counter', counterName: 'score', operation: 'multiply' } as any],
+      actions: [{ type: 'counter', counterName: 'score', operation: 'modulo' } as any],
     }];
     const result = validator.validate(output);
     const err = result.errors.find(e => e.code === 'INVALID_COUNTER_OPERATION');

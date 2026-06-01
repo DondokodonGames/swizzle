@@ -93,6 +93,8 @@ export interface RuleExecutionContext {
     counters: Map<string, number>;
     pendingEndTime?: number;  // success/failure後の終了予定時刻
     endReason?: 'success' | 'failure';  // 終了理由
+    pauseUntil?: number;      // pause アクションの自動解除予定時刻（duration指定時）
+    pendingRestart?: boolean; // restart アクション要求フラグ（ブリッジが検知して再初期化）
   };
   
   objects: Map<string, GameObject>;

@@ -41,6 +41,7 @@ export class EditorGameBridge {
   private ruleEngine: RuleEngine | null = null;
   private animationFrameId: number | null = null;
   private gameLoopTimerId: number | null = null;
+  private currentRelaunch: (() => void) | null = null;
   private currentContext: RuleExecutionContext | null = null;
   private shouldStopGame: boolean = false;
   private currentCanvas: HTMLCanvasElement | null = null;
@@ -136,6 +137,8 @@ export class EditorGameBridge {
     // ゲーム停止フラグをリセット
     this.shouldStopGame = false;
     this.currentCanvas = canvasElement;
+    // restart アクション用に同条件での再実行クロージャを保持
+    this.currentRelaunch = () => { void this.executeGame(project, canvasElement); };
 
     const startTime = performance.now();
     let ruleExecutionCount = 0;
@@ -708,6 +711,35 @@ export class EditorGameBridge {
           return;
         }
 
+        // restart 要求処理: 現ループを止めて同条件でゲームを再初期化する
+        if (gameState.pendingRestart) {
+          gameState.pendingRestart = false;
+          console.log('🔄 [GameLoop] リスタート要求を検知 — ゲームを再初期化');
+          running = false;
+          if (this.gameLoopTimerId) {
+            clearTimeout(this.gameLoopTimerId);
+            this.gameLoopTimerId = null;
+          }
+          const relaunch = this.currentRelaunch;
+          if (relaunch) {
+            setTimeout(() => relaunch(), 0);
+          }
+          return;
+        }
+
+        // 一時停止処理: isPaused 中は時間もルールも進めない。
+        // duration 指定(pauseUntil)があれば経過時に自動解除、無ければ解除されるまで待機。
+        if (gameState.isPaused) {
+          if (gameState.pauseUntil !== undefined && Date.now() >= gameState.pauseUntil) {
+            gameState.isPaused = false;
+            gameState.pauseUntil = undefined;
+            console.log('▶️ [GameLoop] 一時停止を自動解除');
+          } else {
+            this.gameLoopTimerId = window.setTimeout(gameLoop, frameTime);
+            return;
+          }
+        }
+
         try {
           const currentTime = performance.now();
           const actualDeltaTime = currentTime - lastFrameTime;
@@ -808,6 +840,24 @@ export class EditorGameBridge {
           } catch (ruleError) {
             console.error('❌ ルール実行エラー:', ruleError);
             warnings.push('ルール実行中にエラーが発生しました');
+          }
+
+          // 成功条件(successConditions)の評価
+          // success アクションが明示されていなくても、成功条件成立でクリア扱いにする
+          if (gameState.pendingEndTime === undefined && this.ruleEngine) {
+            const matched = this.ruleEngine.evaluateSuccessConditions(
+              project.script?.successConditions,
+              this.currentContext!
+            );
+            if (matched) {
+              const delaySec = matched.successSettings?.delay ?? 1;
+              gameState.pendingEndTime = Date.now() + delaySec * 1000;
+              gameState.endReason = 'success';
+              if (matched.successSettings?.score) {
+                gameState.score += matched.successSettings.score;
+              }
+              console.log(`🏆 [GameLoop] 成功条件成立: "${matched.name}" (delay=${delaySec}s)`);
+            }
           }
 
           // success/failure後の遅延終了チェック

@@ -75,6 +75,21 @@ export class ActionExecutor {
             }
             break;
 
+          case 'pause':
+            // ゲームを一時停止。duration 指定時は pauseUntil 経過で自動解除（ブリッジが処理）
+            newGameState.isPaused = true;
+            if (action.duration && action.duration > 0) {
+              newGameState.pauseUntil = Date.now() + action.duration * 1000;
+            }
+            effectsApplied.push(`一時停止${action.duration ? `: ${action.duration}秒` : ''}`);
+            break;
+
+          case 'restart':
+            // ゲームの最初からのやり直しを要求（ブリッジが検知して再初期化）
+            newGameState.pendingRestart = true;
+            effectsApplied.push('リスタート要求');
+            break;
+
           case 'addScore':
             newGameState.score = (context.gameState.score || 0) + action.points;
             effectsApplied.push(`スコア加算: +${action.points}`);

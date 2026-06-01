@@ -106,6 +106,9 @@ export class ConditionEvaluator {
       case 'random':
         result = this.evaluateRandomCondition(condition, context);
         break;
+      case 'always':
+        result = true;
+        break;
       case 'objectState':
         result = this.evaluateObjectStateCondition(condition as Extract<TriggerCondition, { type: 'objectState' }>, context);
         break;

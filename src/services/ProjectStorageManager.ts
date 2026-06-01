@@ -2,6 +2,7 @@
 // ✅ キャッシュシステム追加版（フリーズ解消・getUserGames修正版）
 
 import { GameProject } from '../types/editor/GameProject';
+import { validateProjectForImport } from '../types/editor/contractValidation';
 import { database } from '../lib/supabase';
 import { getErrorMessage } from '../utils/errorUtils';
 
@@ -556,6 +557,13 @@ export class ProjectStorageManager {
           lastSyncedAt: undefined
         }
       };
+
+      // 契約(contract.ts)ベースの検証。壊れたゲームをサイレント保存せず明確に弾く
+      const validationErrors = validateProjectForImport(importedProject);
+      if (validationErrors.length > 0) {
+        console.error('[ImportProject-Manager] ❌ Validation failed:', validationErrors);
+        throw new Error(`ゲームJSONの検証に失敗しました:\n- ${validationErrors.join('\n- ')}`);
+      }
 
       console.log('[ImportProject-Manager] 💾 Saving project to Supabase...');
       await this.saveToDatabase(importedProject, userId);

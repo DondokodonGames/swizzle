@@ -13,41 +13,46 @@ import {
   VerifiedConditionType,
   VerifiedActionType
 } from './types';
+import {
+  GENERATABLE_ACTIONS,
+  GENERATABLE_CONDITIONS,
+  TOUCH_TYPES,
+  TOUCH_TARGETS,
+  TIME_TYPES,
+  COUNTER_COMPARISONS,
+  COLLISION_TYPES,
+  COLLISION_CHECK_MODES,
+  COUNTER_OPERATIONS,
+  MOVEMENT_TYPES,
+  EFFECT_TYPES,
+  POSITION_AREAS,
+  ANIMATION_CONDITIONS,
+  RANDOM_SELECTION_MODES,
+} from '../../types/editor/contract';
 
 // ==========================================
-// エディター仕様定義（動作確認済みのみ）
+// エディター仕様定義（単一の正解 = contract.ts から導出）
+// すべての有効値は src/types/editor/contract.ts を唯一の正解として参照する。
+// ここで配列を直接定義しないこと（ドリフトの原因になるため）。
 // ==========================================
 
-// 使用可能な条件タイプ（すべて使用可能）
-const VALID_CONDITIONS: VerifiedConditionType[] = [
-  'touch', 'time', 'counter', 'collision', 'flag', 'gameState',
-  'position', 'animation', 'random', 'objectState', 'always'
-];
+// 使用可能な条件/アクションタイプ（= Codex/AI が生成してよいもの）
+const VALID_CONDITIONS: readonly string[] = GENERATABLE_CONDITIONS;
+const VALID_ACTIONS: readonly string[] = GENERATABLE_ACTIONS; // setGravity/setPhysics はエンジン内部用のため除外
 
-// 使用可能なアクションタイプ（すべて使用可能）
-const VALID_ACTIONS: VerifiedActionType[] = [
-  'success', 'failure', 'hide', 'show', 'move', 'counter', 'addScore', 'effect', 'setFlag', 'toggleFlag',
-  'playSound', 'stopSound', 'playBGM', 'stopBGM', 'switchAnimation', 'playAnimation', 'setAnimationSpeed',
-  'setAnimationFrame', 'followDrag', 'applyForce', 'applyImpulse',
-  'randomAction', 'pause', 'restart'
-  // 使用禁止: setGravity, setPhysics
-];
-
-
-// 各パラメータの有効値
-const VALID_TOUCH_TYPES = ['down', 'up', 'hold', 'drag', 'swipe', 'flick'];
-const VALID_TOUCH_TARGETS = ['self', 'stage']; // + objectId
-const VALID_TIME_TYPES = ['exact', 'range', 'interval'];
-const VALID_COMPARISONS = ['equals', 'greaterOrEqual', 'greater', 'less', 'lessOrEqual'];
-const VALID_COLLISION_TYPES = ['enter', 'stay', 'exit'];
-const VALID_CHECK_MODES = ['hitbox', 'pixel'];
-const VALID_COUNTER_OPERATIONS = ['increment', 'decrement', 'set', 'add', 'subtract'];
-const VALID_MOVEMENT_TYPES = ['straight', 'teleport', 'wander', 'stop', 'arc'];
-const VALID_EFFECT_TYPES = ['flash', 'shake', 'scale', 'rotate', 'particles'];
-// 新規追加
-const VALID_POSITION_AREAS = ['inside', 'outside', 'crossing'];
-const VALID_ANIMATION_CONDITIONS = ['playing', 'stopped', 'frame', 'frameRange', 'loop', 'start', 'end'];
-const VALID_RANDOM_SELECTION_MODES = ['uniform', 'probability', 'weighted'];
+// 各パラメータの有効値（contract から導出）
+const VALID_TOUCH_TYPES: readonly string[] = TOUCH_TYPES;
+const VALID_TOUCH_TARGETS: readonly string[] = TOUCH_TARGETS; // + objectId
+const VALID_TIME_TYPES: readonly string[] = TIME_TYPES;
+const VALID_COMPARISONS: readonly string[] = COUNTER_COMPARISONS;
+const VALID_COLLISION_TYPES: readonly string[] = COLLISION_TYPES;
+const VALID_CHECK_MODES: readonly string[] = COLLISION_CHECK_MODES;
+const VALID_COUNTER_OPERATIONS: readonly string[] = COUNTER_OPERATIONS;
+const VALID_MOVEMENT_TYPES: readonly string[] = MOVEMENT_TYPES;
+const VALID_EFFECT_TYPES: readonly string[] = EFFECT_TYPES;
+const VALID_POSITION_AREAS: readonly string[] = POSITION_AREAS;
+const VALID_ANIMATION_CONDITIONS: readonly string[] = ANIMATION_CONDITIONS;
+const VALID_RANDOM_SELECTION_MODES: readonly string[] = RANDOM_SELECTION_MODES;
 
 // 速度の推奨範囲
 const SPEED_MIN = 0.5;

@@ -331,6 +331,11 @@ export type TriggerCondition =
         onSuccess?: TriggerCondition[];   // 確率成立時の追加条件
         onFailure?: TriggerCondition[];   // 確率不成立時の追加条件
       };
+    }
+
+  // 常時条件: 毎フレーム常に成立（"常時チェック"）。タイマー/カウンター主導の演出に使用
+  | {
+      type: 'always';
     };
 
 // 🔧 追加: 8方向の型定義
