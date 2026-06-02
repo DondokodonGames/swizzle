@@ -9,3 +9,6 @@ public/generated-games/
 
 # AI generation logs
 logs/
+
+# Batch run debug output (errors / evolution reports)
+output/
