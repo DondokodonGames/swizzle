@@ -653,7 +653,7 @@ Swizzle JSONフォーマットは、ゲームプロジェクト全体を1つのJ
 }
 ```
 
-- `comparison`: "equal" | "notEqual" | "greater" | "less" | "greaterOrEqual" | "lessOrEqual" | "between" | "notBetween"
+- `comparison`: "equals" | "notEquals" | "greater" | "greaterOrEqual" | "less" | "lessOrEqual" | "between" | "notBetween" | "changed"
 
 #### フラグ条件
 
@@ -686,6 +686,18 @@ Swizzle JSONフォーマットは、ゲームプロジェクト全体を1つのJ
 
 - `area`: "inside" | "outside" | "crossing"
 - `shape`: "rect" | "circle"
+
+#### 常時条件（always）
+
+```json
+{ "type": "always" }
+```
+
+毎フレーム常に成立する条件。タイマーやカウンター主導で継続的に発火させたい演出に使う。
+
+> このほか `gameState` / `animation` / `random` / `objectState` 条件も利用可能です。
+> 有効な条件・アクション・enum の完全な一覧は `src/types/editor/contract.ts`（単一の正解）と
+> `src/ai/batch/platform_constraints.json` を参照してください。
 
 ### アクション (GameAction)
 

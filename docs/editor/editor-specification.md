@@ -409,12 +409,11 @@ type GameAction =
   // エフェクト
   | { type: 'effect'; targetId: string; effect: EffectPattern }
   
-  // スコア・UI
-  | { type: 'addScore'; points: number }
-  | { type: 'showMessage'; text: string; duration: number };
+  // スコア（注: showMessage は廃止・エンジン未実装）
+  | { type: 'addScore'; points: number };
 
 interface MovementPattern {
-  type: 'straight' | 'teleport' | 'wander' | 'stop' | 'swap' | 'approach' | 'orbit' | 'bounce';
+  type: 'straight' | 'teleport' | 'wander' | 'stop' | 'swap' | 'approach' | 'orbit' | 'bounce' | 'arc';
   
   // 移動パラメータ
   target?: { x: number; y: number } | string; // 座標またはオブジェクトID

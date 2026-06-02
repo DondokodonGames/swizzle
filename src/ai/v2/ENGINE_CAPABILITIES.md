@@ -127,6 +127,12 @@
 
 ---
 
+### always
+パラメータなし（`{ "type": "always" }`）。毎フレーム常に成立する条件。タイマーやカウンター主導で
+継続的に発火させたい演出（常時移動・常時エフェクト等）に使う。
+
+---
+
 ## 2. アクションタイプ（Actions）
 
 ### ゲーム制御
@@ -135,8 +141,8 @@
 | `success` | `score?`, `message?` | 1秒後ゲーム成功終了 |
 | `failure` | `message?` | 1秒後ゲーム失敗終了 |
 | `addScore` | `points: number` | スコア加算 |
-
-**未実装**: `pause`, `restart` は型定義のみ（switch ケースなし）。
+| `pause` | `duration?:number` | ゲームを一時停止。`duration` 秒後に自動解除（省略時は解除されるまで停止） |
+| `restart` | — | ゲームを最初から再初期化 |
 
 ---
 
@@ -247,9 +253,6 @@ N個のオブジェクトにはN個のルールが必要。
 ### ❌ マルチタッチ
 `touches[0]` のみ処理。ピンチ・2本指ジェスチャー不可。
 
-### ❌ pause / restart アクション
-型定義のみ。実行時に何も起きない。
-
 ### ❌ キーボード入力・加速度センサー
 実装なし。
 
@@ -275,12 +278,15 @@ N個のオブジェクトにはN個のルールが必要。
 
 ## ゲーム制御
 - success / failure → ゲーム終了
+- pause（duration?秒で自動解除）/ restart（最初から再初期化）
 - time, 'exact'/'range'/'interval' → タイマー発火
-- counter + comparison → カウンター条件判定
-- counter action: increment/decrement/set/add/subtract/multiply/reset
+- counter + comparison → カウンター条件判定（comparison: equals/notEquals/greater/greaterOrEqual/less/lessOrEqual/between/notBetween/changed）
+- counter action: increment/decrement/set/reset/add/subtract/multiply/divide
 - flag: setFlag/toggleFlag/条件判定（ON/OFF/CHANGED/ON_TO_OFF/OFF_TO_ON）
 - gameState: playing/paused/success/failure 判定
 - random: 確率的発火（probability）
+- always 条件 → 毎フレーム常に成立（タイマー/カウンター主導の演出に使用）
+- successConditions（flag/score/time/counter/objectState）→ 成立で自動的にクリア終了。success アクションを書かなくてもよい
 
 ## オブジェクト状態（条件）
 - objectState, stateType: 'visible'/'hidden' → 表示状態チェック
@@ -315,7 +321,6 @@ N個のオブジェクトにはN個のルールが必要。
 
 # エンジン未実装機能（絶対に使わないこと）
 
-❌ pause / restart アクション → 何も起きない
 ❌ NPC追跡AI・経路探索 → wander（ランダム方向）しかない
 ❌ オブジェクト間物理応答 → 衝突時の押し戻し・反発はない（ルールで明示的に対応が必要）
 ❌ 物理重力の方向変更 → 常に下方向のみ

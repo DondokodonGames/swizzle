@@ -706,7 +706,6 @@ playSound アクションには必ず soundId を指定:
 - counter → { type: 'counter', counterName, operation, value? }
 - playSound → { type: 'playSound', soundId }
 - effect → { type: 'effect', targetId, effect }
-- showMessage → { type: 'showMessage', text, duration }
 
 ## ルールの優先度（priorityDesign を反映）★重要
 

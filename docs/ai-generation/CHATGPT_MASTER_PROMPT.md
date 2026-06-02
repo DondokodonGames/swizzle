@@ -309,7 +309,7 @@ data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEyMCIgeG1sbnM9Imh0dH
 { "type": "move", "targetId": "obj", "movement": { "type": "bounce", "speed": 1.5 } }
 { "type": "move", "targetId": "obj", "movement": { "type": "wander", "speed": 1.0 } }
 { "type": "move", "targetId": "obj", "movement": { "type": "approach", "target": "other-obj-id", "speed": 1.5 } }
-// movement.type: "straight" | "teleport" | "bounce" | "wander" | "stop" | "approach" | "orbit"
+// movement.type: "straight" | "teleport" | "wander" | "stop" | "swap" | "approach" | "orbit" | "bounce" | "arc"
 ```
 
 ### ドラッグ追従
@@ -348,9 +348,8 @@ data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEyMCIgeG1sbnM9Imh0dH
 ```
 
 ### メッセージ
-```json
-{ "type": "showMessage", "text": "Great!", "duration": 1.5 }
-```
+`showMessage` は廃止されました（エンジン未実装）。フィードバックは `effect`（flash/scale 等）や
+`playSound` で表現してください。
 
 ---
 

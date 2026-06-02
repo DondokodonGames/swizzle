@@ -4,6 +4,10 @@
 **Phase**: 1-2
 **目的**: AI生成システムが正確なゲームを生成するための実装ベース仕様
 
+> ⚠️ **本書は歴史的な設計記録です（2025-12時点）。** 有効なアクション/条件/enum/上限の最新かつ正の定義は
+> `src/types/editor/contract.ts`（単一の正解）と `SWIZZLE_JSON_SPEC.md` を参照してください。
+> 例: `showMessage` は廃止、`pause`/`restart`/`always`/`successConditions` は実装済みです。
+
 ---
 
 ## 1. 座標系・画面サイズ
