@@ -12,3 +12,8 @@ logs/
 
 # Batch run debug output (errors / evolution reports)
 output/
+
+# Generator checkpoint/progress outputs (regenerated on each run)
+src/ai/v2/neta-progress.json
+src/ai/v2/neta-generate-progress.json
+src/ai/batch/batch-progress.json

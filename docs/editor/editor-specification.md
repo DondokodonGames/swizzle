@@ -807,7 +807,6 @@ docs/editor/
 ├── editor-specification.md           # 本仕様書
 ├── data-structures.md                # データ構造詳細
 ├── ui-wireframes/                    # UI設計図
-├── implementation-progress.json       # 実装進捗管理
 └── testing-checklist.md             # テストチェックリスト
 ```
 
