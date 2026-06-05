@@ -122,6 +122,9 @@ export interface RuleExecutionContext {
   particleSystem?: {
     emit: (config: any) => void;
   };
+
+  // 入力ゾーン有効/無効オーバーライドマップ（setInputZoneEnabled アクション用）
+  inputZoneOverrides?: Map<string, boolean>;
 }
 
 /**

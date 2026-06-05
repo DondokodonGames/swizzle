@@ -2,11 +2,24 @@
   "version": "1.0.0",
   "extractedFrom": "SWIZZLE_JSON_SPEC.md",
   "assetLimits": {
-    "background": { "max": 1, "maxFrames": 4 },
-    "objects": { "max": 15, "maxFrames": 8 },
-    "texts": { "max": 5, "maxCharsPerText": 8 },
-    "bgm": { "max": 1 },
-    "se": { "max": 15 }
+    "background": {
+      "max": 1,
+      "maxFrames": 4
+    },
+    "objects": {
+      "max": 15,
+      "maxFrames": 8
+    },
+    "texts": {
+      "max": 5,
+      "maxCharsPerText": 8
+    },
+    "bgm": {
+      "max": 1
+    },
+    "se": {
+      "max": 15
+    }
   },
   "sizeLimits": {
     "imageCapacityMB": 50,
@@ -15,67 +28,217 @@
   },
   "gameDuration": {
     "type": "fixed | unlimited",
-    "fixedOptions": [5, 10, 15, 20, 30],
-    "unlimitedMaxSeconds": { "min": 60, "max": 300 }
+    "fixedOptions": [
+      5,
+      10,
+      15,
+      20,
+      30
+    ],
+    "unlimitedMaxSeconds": {
+      "min": 60,
+      "max": 300
+    }
   },
-  "difficulty": ["easy", "normal", "hard"],
+  "difficulty": [
+    "easy",
+    "normal",
+    "hard"
+  ],
   "coordinates": {
-    "x": { "min": 0.0, "max": 1.0, "description": "0.0=left edge, 1.0=right edge, 0.5=center" },
-    "y": { "min": 0.0, "max": 1.0, "description": "0.0=top edge, 1.0=bottom edge, 0.5=center" }
+    "x": {
+      "min": 0.0,
+      "max": 1.0,
+      "description": "0.0=left edge, 1.0=right edge, 0.5=center"
+    },
+    "y": {
+      "min": 0.0,
+      "max": 1.0,
+      "description": "0.0=top edge, 1.0=bottom edge, 0.5=center"
+    }
   },
   "textLimits": {
-    "gameName": { "minChars": 1, "maxChars": 50 },
-    "description": { "minChars": 0, "maxChars": 200 }
+    "gameName": {
+      "minChars": 1,
+      "maxChars": 50
+    },
+    "description": {
+      "minChars": 0,
+      "maxChars": 200
+    }
   },
   "_generated": "contract-derived fields below are validated against src/types/editor/contract.ts by contract.consistency.test.ts — do not edit by hand",
-  "touchTypes": ["down", "up", "hold", "drag", "swipe", "flick"],
-  "movementPatterns": [
-    "straight", "teleport", "wander", "stop", "swap", "approach", "orbit", "bounce", "arc"
+  "touchTypes": [
+    "down",
+    "up",
+    "hold",
+    "drag",
+    "swipe",
+    "flick"
   ],
-  "effectTypes": ["flash", "shake", "scale", "rotate", "particles"],
+  "movementPatterns": [
+    "straight",
+    "teleport",
+    "wander",
+    "stop",
+    "swap",
+    "approach",
+    "orbit",
+    "bounce",
+    "arc"
+  ],
+  "effectTypes": [
+    "flash",
+    "shake",
+    "scale",
+    "rotate",
+    "particles"
+  ],
   "counterOperations": [
-    "increment", "decrement", "set", "reset", "add", "subtract", "multiply", "divide"
+    "increment",
+    "decrement",
+    "set",
+    "reset",
+    "add",
+    "subtract",
+    "multiply",
+    "divide"
   ],
   "counterComparisons": [
-    "equals", "notEquals", "greater", "greaterOrEqual", "less", "lessOrEqual", "between", "notBetween", "changed"
+    "equals",
+    "notEquals",
+    "greater",
+    "greaterOrEqual",
+    "less",
+    "lessOrEqual",
+    "between",
+    "notBetween",
+    "changed"
   ],
   "triggerTypes": [
-    "touch", "time", "counter", "collision", "flag",
-    "gameState", "position", "animation", "random", "objectState", "always"
+    "touch",
+    "time",
+    "counter",
+    "collision",
+    "flag",
+    "gameState",
+    "position",
+    "animation",
+    "random",
+    "objectState",
+    "always"
   ],
   "actionTypes": [
-    "success", "failure", "pause", "restart",
-    "playSound", "stopSound", "playBGM", "stopBGM",
-    "setFlag", "toggleFlag",
-    "show", "hide", "switchAnimation", "playAnimation", "setAnimationSpeed", "setAnimationFrame",
-    "move", "followDrag", "effect",
-    "applyForce", "applyImpulse",
-    "addScore", "counter", "randomAction"
+    "success",
+    "failure",
+    "pause",
+    "restart",
+    "playSound",
+    "stopSound",
+    "playBGM",
+    "stopBGM",
+    "setFlag",
+    "toggleFlag",
+    "show",
+    "hide",
+    "switchAnimation",
+    "playAnimation",
+    "setAnimationSpeed",
+    "setAnimationFrame",
+    "move",
+    "followDrag",
+    "effect",
+    "applyForce",
+    "applyImpulse",
+    "addScore",
+    "counter",
+    "randomAction",
+    "delay",
+    "cancelDelay",
+    "setAnimationFromCounter",
+    "bindAnimationToCounter",
+    "setInputZoneEnabled"
   ],
-  "collisionTypes": ["enter", "stay", "exit"],
-  "collisionCheckModes": ["hitbox", "pixel"],
-  "positionAreas": ["inside", "outside", "crossing"],
-  "flagConditions": ["ON", "OFF", "CHANGED", "ON_TO_OFF", "OFF_TO_ON"],
-  "timeTypes": ["exact", "range", "interval"],
-  "publishingCategories": ["action", "puzzle", "adventure", "education"],
-  "publishingVisibility": ["public", "unlisted", "private"],
+  "collisionTypes": [
+    "enter",
+    "stay",
+    "exit"
+  ],
+  "collisionCheckModes": [
+    "hitbox",
+    "pixel"
+  ],
+  "positionAreas": [
+    "inside",
+    "outside",
+    "crossing"
+  ],
+  "flagConditions": [
+    "ON",
+    "OFF",
+    "CHANGED",
+    "ON_TO_OFF",
+    "OFF_TO_ON"
+  ],
+  "timeTypes": [
+    "exact",
+    "range",
+    "interval"
+  ],
+  "publishingCategories": [
+    "action",
+    "puzzle",
+    "adventure",
+    "education"
+  ],
+  "publishingVisibility": [
+    "public",
+    "unlisted",
+    "private"
+  ],
   "svgShapesAvailable": [
-    "circle", "ellipse", "rect", "star", "diamond",
-    "triangle", "balloon", "face", "basket", "button",
-    "coin", "bomb"
+    "circle",
+    "ellipse",
+    "rect",
+    "star",
+    "diamond",
+    "triangle",
+    "balloon",
+    "face",
+    "basket",
+    "button",
+    "coin",
+    "bomb"
   ],
   "colorPalette": {
-    "red":    "#E53935", "orange": "#F57C00", "yellow": "#FDD835",
-    "green":  "#43A047", "teal":   "#00897B", "blue":   "#1E88E5",
-    "indigo": "#3949AB", "purple": "#8E24AA", "pink":   "#E91E63",
-    "brown":  "#6D4C41", "gray":   "#757575", "lime":   "#C0CA33",
-    "cyan":   "#00ACC1", "amber":  "#FFB300", "white":  "#FAFAFA"
+    "red": "#E53935",
+    "orange": "#F57C00",
+    "yellow": "#FDD835",
+    "green": "#43A047",
+    "teal": "#00897B",
+    "blue": "#1E88E5",
+    "indigo": "#3949AB",
+    "purple": "#8E24AA",
+    "pink": "#E91E63",
+    "brown": "#6D4C41",
+    "gray": "#757575",
+    "lime": "#C0CA33",
+    "cyan": "#00ACC1",
+    "amber": "#FFB300",
+    "white": "#FAFAFA"
   },
   "backgroundColors": {
-    "sky":      "#87CEEB", "night":    "#1a1a2e", "dusk":     "#2c1654",
-    "forest":   "#2d5a27", "ocean":    "#006994", "sunset":   "#ff6b35",
-    "cream":    "#FFF8E7", "mint":     "#e0f7e9", "lavender": "#e8e0f0",
-    "dark":     "#1e1e1e", "bright":   "#fff9c4"
+    "sky": "#87CEEB",
+    "night": "#1a1a2e",
+    "dusk": "#2c1654",
+    "forest": "#2d5a27",
+    "ocean": "#006994",
+    "sunset": "#ff6b35",
+    "cream": "#FFF8E7",
+    "mint": "#e0f7e9",
+    "lavender": "#e8e0f0",
+    "dark": "#1e1e1e",
+    "bright": "#fff9c4"
   },
   "supabaseTable": "user_games",
   "supabaseTableSchema": {

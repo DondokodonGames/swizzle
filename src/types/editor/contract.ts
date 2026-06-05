@@ -50,6 +50,8 @@ export const ALL_ACTION_TYPES = [
   'applyForce', 'applyImpulse', 'setGravity', 'setPhysics',
   // スコア・カウンター・ランダム
   'addScore', 'counter', 'randomAction',
+  // ディレイ・アニメーション・入力ゾーン
+  'delay', 'cancelDelay', 'setAnimationFromCounter', 'bindAnimationToCounter', 'setInputZoneEnabled',
 ] as const;
 export type ActionType = typeof ALL_ACTION_TYPES[number];
 

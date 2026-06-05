@@ -7,6 +7,7 @@ import { CounterChangeEvent } from '../../types/counterTypes';
 import { EffectManager } from './EffectManager';
 import { CounterManager } from './CounterManager';
 import { FlagManager } from './FlagManager';
+import { DelayScheduler } from './DelayScheduler';
 
 /**
  * ActionExecutor クラス
@@ -19,6 +20,8 @@ import { FlagManager } from './FlagManager';
  * - ランダムアクション
  */
 export class ActionExecutor {
+  private delayScheduler: DelayScheduler | null = null;
+
   constructor(
     private effectManager: EffectManager,
     private counterManager: CounterManager,
@@ -27,9 +30,58 @@ export class ActionExecutor {
     console.log('🎯 ActionExecutor初期化');
   }
 
+  setDelayScheduler(scheduler: DelayScheduler): void {
+    this.delayScheduler = scheduler;
+  }
+
+  /**
+   * アクションリストをそのまま実行（DelayScheduler から呼び出される）
+   *
+   * @param actions - 実行するアクション配列
+   * @param context - ゲーム実行コンテキスト
+   * @param selfObjectId - 'self' ターゲットの解決先オブジェクトID
+   */
+  public executeActionList(
+    actions: GameAction[],
+    context: RuleExecutionContext,
+    selfObjectId: string = 'stage'
+  ): void {
+    for (const action of actions) {
+      try {
+        this.executeSingleAction(action, context, selfObjectId);
+      } catch (error) {
+        console.error('[ActionExecutor] executeActionList error:', error);
+      }
+    }
+  }
+
+  /**
+   * 単一アクションを実行（executeActionList および executeActions の共通実行パス）
+   */
+  private executeSingleAction(
+    action: GameAction,
+    context: RuleExecutionContext,
+    selfObjectId: string
+  ): void {
+    // 'self' を解決するためのダミールールを構築して executeActions を流用する
+    // 注: カウンターや実行回数には影響しない簡易パス
+    const dummyRule: GameRule = {
+      id: `__single_${Date.now()}`,
+      name: '__single',
+      enabled: true,
+      priority: 0,
+      targetObjectId: selfObjectId,
+      triggers: { operator: 'AND', conditions: [] },
+      actions: [action],
+      createdAt: '',
+      lastModified: '',
+    };
+    this.executeActions(dummyRule, context, new Map());
+  }
+
   /**
    * ルールのアクションを実行
-   * 
+   *
    * @param rule - 実行対象のルール
    * @param context - ゲーム実行コンテキスト
    * @param executionCounts - ルール実行回数マップ
@@ -60,6 +112,7 @@ export class ActionExecutor {
               newGameState.pendingEndTime = Date.now() + 1000;
               newGameState.endReason = 'success';
               effectsApplied.push(`成功予約: ${action.message || ''}`);
+              this.delayScheduler?.cancelGameEndItems();
             }
             if (action.score) {
               newGameState.score = (context.gameState.score || 0) + action.score;
@@ -72,6 +125,7 @@ export class ActionExecutor {
               newGameState.pendingEndTime = Date.now() + 1000;
               newGameState.endReason = 'failure';
               effectsApplied.push(`失敗予約: ${action.message || ''}`);
+              this.delayScheduler?.cancelGameEndItems();
             }
             break;
 
@@ -201,6 +255,52 @@ export class ActionExecutor {
             effectsApplied.push(...randomResult.effectsApplied);
             errors.push(...randomResult.errors);
             counterChanges.push(...randomResult.counterChanges);
+            break;
+
+          case 'delay': {
+            const selfId = rule.targetObjectId ?? 'stage';
+            this.delayScheduler?.schedule(
+              action.delayId,
+              context.gameState.timeElapsed + action.seconds,
+              action.actions,
+              { mode: action.mode ?? 'replace', cancelOnGameEnd: action.cancelOnGameEnd ?? true, selfObjectId: selfId }
+            );
+            effectsApplied.push(`ディレイ登録: ${action.delayId} (${action.seconds}s)`);
+            break;
+          }
+
+          case 'cancelDelay':
+            this.delayScheduler?.cancel(action.delayId);
+            effectsApplied.push(`ディレイキャンセル: ${action.delayId}`);
+            break;
+
+          case 'setAnimationFromCounter': {
+            const resolvedId = action.targetId === 'self' ? rule.targetObjectId : action.targetId;
+            const targetObj = context.objects.get(resolvedId ?? '');
+            if (targetObj) {
+              const counter = this.counterManager.getCounter(action.counterName);
+              const frame = counter + (action.offset ?? 0);
+              const min = action.minFrame ?? 0;
+              const max = action.maxFrame;
+              if (action.clamp ?? true) {
+                targetObj.currentFrame = Math.max(min, Math.min(max, frame));
+              } else if (frame < min || frame > max) {
+                console.warn(`[setAnimationFromCounter] frame ${frame} out of [${min},${max}]`);
+              } else {
+                targetObj.currentFrame = frame;
+              }
+            }
+            break;
+          }
+
+          case 'bindAnimationToCounter':
+            // RuleEngine.evaluateAndExecuteRules がバインディング登録を担当
+            break;
+
+          case 'setInputZoneEnabled':
+            if (context.inputZoneOverrides instanceof Map) {
+              context.inputZoneOverrides.set(action.zoneId, action.enabled);
+            }
             break;
 
           default:

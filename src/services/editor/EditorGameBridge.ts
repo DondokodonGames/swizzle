@@ -7,6 +7,8 @@
 import { GameProject } from '../../types/editor/GameProject';
 import { createDefaultInitialState, syncInitialStateWithLayout, createDefaultPhysics } from '../../types/editor/GameScript';
 import { RuleEngine, RuleExecutionContext } from '../rule-engine/RuleEngine';
+import { DelayScheduler } from '../rule-engine/DelayScheduler';
+import { InputZone } from '../../types/editor/GameScript';
 import { getBackgroundUrl, getAudioAssetUrl, getAssetFrameUrl, dataUrlToObjectUrl } from '../../utils/assetUrl';
 
 // ゲーム実行結果
@@ -51,6 +53,9 @@ export class EditorGameBridge {
   private currentHandleTouchMove: ((event: TouchEvent) => void) | null = null;
   private currentHandleTouchEnd: ((event: TouchEvent) => void) | null = null;
   private currentBgmAudio: HTMLAudioElement | null = null;
+  private delayScheduler: DelayScheduler = new DelayScheduler();
+  private inputZones: InputZone[] = [];
+  private inputZoneOverrides: Map<string, boolean> = new Map();
 
   static getInstance(): EditorGameBridge {
     if (!this.instance) {
@@ -169,6 +174,9 @@ export class EditorGameBridge {
 
       // 3. RuleEngine初期化
       this.ruleEngine = new RuleEngine();
+      this.delayScheduler.reset();
+      this.inputZoneOverrides.clear();
+      this.ruleEngine.setDelaySchedulerOnExecutor(this.delayScheduler);
       console.log('✅ RuleEngine初期化完了');
 
       // 4. カウンター定義を登録
@@ -621,6 +629,9 @@ export class EditorGameBridge {
         // pendingEndTime と endReason は省略（新しいオブジェクトなので自動的にクリアされる）
       };
 
+      // inputZones をレイアウトからロード
+      this.inputZones = project.script?.initialState?.layout?.inputZones ?? [];
+
       // 10. RuleExecutionContext構築
       this.currentContext = {
         gameState,
@@ -631,7 +642,8 @@ export class EditorGameBridge {
           height: canvasElement.height,
           context: ctx
         },
-        audioSystem
+        audioSystem,
+        inputZoneOverrides: this.inputZoneOverrides,
       };
 
       // パーティクルプール
@@ -799,6 +811,11 @@ export class EditorGameBridge {
             this.ruleEngine.updateFrameState();
           }
 
+          // ディレイスケジューラのティック（ルール評価前に期限アクションを実行）
+          if (this.ruleEngine) {
+            this.ruleEngine.tickDelayScheduler(this.delayScheduler, this.currentContext!);
+          }
+
           // デバッグ: ルール評価前のイベント確認
           if (this.currentContext!.events.length > 0) {
             console.log('🔍 [GameLoop] ルール評価前 - context.events:', this.currentContext!.events.map(e => ({
@@ -840,6 +857,11 @@ export class EditorGameBridge {
           } catch (ruleError) {
             console.error('❌ ルール実行エラー:', ruleError);
             warnings.push('ルール実行中にエラーが発生しました');
+          }
+
+          // bindAnimationToCounter バインディングの毎フレーム更新
+          if (this.ruleEngine) {
+            this.ruleEngine.tickBindings(this.currentContext!);
           }
 
           // 成功条件(successConditions)の評価
@@ -1074,6 +1096,15 @@ export class EditorGameBridge {
           ? (dx >= 0 ? 'right' : 'left')
           : (dy >= 0 ? 'down' : 'up');
 
+      // 入力ゾーンの touchTypes フィルタチェック（ゾーン ID か通常オブジェクト/stage かを判定）
+      const canEmitForTarget = (targetId: string | null, touchType: string): boolean => {
+        const id = targetId ?? 'stage';
+        const zone = this.inputZones.find(z => z.id === id);
+        if (!zone) return true; // オブジェクト/stage は常に許可
+        if (!zone.touchTypes) return true; // touchTypes 未指定は全許可
+        return zone.touchTypes.includes(touchType as any);
+      };
+
       // 13. ✅ タッチ・クリックイベント（bc9ae40f版のシンプルなhandleInteraction）
       const handleInteraction = (event: MouseEvent | TouchEvent) => {
         try {
@@ -1092,74 +1123,84 @@ export class EditorGameBridge {
           const x = (clientX - rect.left) * scaleX;
           const y = (clientY - rect.top) * scaleY;
 
-          // zIndex順（逆順＝上から）でヒット判定
-          const sortedForHitTest = Array.from(objectsMap.entries())
-            .sort((a, b) => (b[1].zIndex || 0) - (a[1].zIndex || 0)); // 上のオブジェクトから判定
+          // 候補リスト: 入力ゾーン + 可視オブジェクトを zIndex 降順で統合
+          type HitCandidate =
+            | { kind: 'zone'; zone: InputZone }
+            | { kind: 'obj'; id: string; obj: any };
+          const candidates: (HitCandidate & { zIndex: number })[] = [];
+
+          for (const zone of this.inputZones) {
+            const enabled = this.inputZoneOverrides.has(zone.id)
+              ? this.inputZoneOverrides.get(zone.id)!
+              : zone.enabled;
+            if (!enabled) continue;
+            candidates.push({ kind: 'zone', zone, zIndex: zone.zIndex });
+          }
+          for (const [id, obj] of objectsMap.entries()) {
+            if (!obj.visible) continue;
+            candidates.push({ kind: 'obj', id, obj, zIndex: obj.zIndex || 0 });
+          }
+          candidates.sort((a, b) => b.zIndex - a.zIndex);
 
           let hitObject: string | null = null;
-          
-          for (const [id, obj] of sortedForHitTest) {
-            if (!obj.visible) continue;
 
-            // ✅ scaleX/scaleY個別対応（ヒット判定）
-            const objWidth = obj.width * (obj.scaleX ?? obj.scale);
-            const objHeight = obj.height * (obj.scaleY ?? obj.scale);
-
-            // 回転を考慮したヒット判定: タッチ座標をオブジェクト中心を軸に逆回転させてAABBチェック
-            const objCenterX = obj.x + objWidth / 2;
-            const objCenterY = obj.y + objHeight / 2;
-            let testX = x;
-            let testY = y;
-            if (obj.rotation) {
-              const angle = -(obj.rotation * Math.PI) / 180;
-              const cos = Math.cos(angle);
-              const sin = Math.sin(angle);
-              const dx = x - objCenterX;
-              const dy = y - objCenterY;
-              testX = cos * dx - sin * dy + objCenterX;
-              testY = sin * dx + cos * dy + objCenterY;
-            }
-
-            if (testX >= obj.x && testX <= obj.x + objWidth &&
-                testY >= obj.y && testY <= obj.y + objHeight) {
-              hitObject = id;
-              objectsInteracted.push(id);
-              
-              // RuleEngineが期待する形式でイベント記録
-              const touchEvent = {
-                type: 'touch',
-                timestamp: Date.now(),
-                data: { 
-                  target: id,
-                  touchType: 'down',
-                  x, 
-                  y 
-                }
-              };
-              this.currentContext!.events.push(touchEvent);
-              
-              console.log(`👆 オブジェクトタッチ: ${id} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
-              console.log('🔍 [HandleInteraction] イベント追加後 - context.events:', this.currentContext!.events);
-              
-              break; // 最前面のオブジェクトのみヒット
+          for (const candidate of candidates) {
+            if (candidate.kind === 'zone') {
+              const zone = candidate.zone;
+              const zx = zone.rect.x * canvasElement.width;
+              const zy = zone.rect.y * canvasElement.height;
+              const zw = zone.rect.width * canvasElement.width;
+              const zh = zone.rect.height * canvasElement.height;
+              if (x >= zx && x <= zx + zw && y >= zy && y <= zy + zh) {
+                hitObject = zone.id;
+                this.currentContext!.events.push({
+                  type: 'touch',
+                  timestamp: Date.now(),
+                  data: { target: zone.id, touchType: 'down', x, y }
+                });
+                console.log(`👆 ゾーンタッチ: ${zone.id} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
+                break;
+              }
+            } else {
+              const { id, obj } = candidate;
+              const objWidth = obj.width * (obj.scaleX ?? obj.scale);
+              const objHeight = obj.height * (obj.scaleY ?? obj.scale);
+              const objCenterX = obj.x + objWidth / 2;
+              const objCenterY = obj.y + objHeight / 2;
+              let testX = x;
+              let testY = y;
+              if (obj.rotation) {
+                const angle = -(obj.rotation * Math.PI) / 180;
+                const cos = Math.cos(angle);
+                const sin = Math.sin(angle);
+                const dx = x - objCenterX;
+                const dy = y - objCenterY;
+                testX = cos * dx - sin * dy + objCenterX;
+                testY = sin * dx + cos * dy + objCenterY;
+              }
+              if (testX >= obj.x && testX <= obj.x + objWidth &&
+                  testY >= obj.y && testY <= obj.y + objHeight) {
+                hitObject = id;
+                objectsInteracted.push(id);
+                this.currentContext!.events.push({
+                  type: 'touch',
+                  timestamp: Date.now(),
+                  data: { target: id, touchType: 'down', x, y }
+                });
+                console.log(`👆 オブジェクトタッチ: ${id} at (${x.toFixed(0)}, ${y.toFixed(0)})`);
+                console.log('🔍 [HandleInteraction] イベント追加後 - context.events:', this.currentContext!.events);
+                break;
+              }
             }
           }
-          
+
           // ステージタッチの場合
           if (!hitObject) {
-            // RuleEngineが期待する形式でイベント記録
-            const touchEvent = {
+            this.currentContext!.events.push({
               type: 'touch',
               timestamp: Date.now(),
-              data: { 
-                target: 'stage',
-                touchType: 'down',
-                x, 
-                y 
-              }
-            };
-            this.currentContext!.events.push(touchEvent);
-            
+              data: { target: 'stage', touchType: 'down', x, y }
+            });
             console.log(`👆 ステージタッチ: at (${x.toFixed(0)}, ${y.toFixed(0)})`);
           }
 
@@ -1184,19 +1225,21 @@ export class EditorGameBridge {
         const { x, y } = toCanvasCoords(touch.clientX, touch.clientY);
         lastTouchX = x; lastTouchY = y;
         const now = Date.now();
-        if (!dragStarted) {
-          dragStarted = true;
+        if (canEmitForTarget(touchedObjectId, 'drag')) {
+          if (!dragStarted) {
+            dragStarted = true;
+            this.currentContext.events.push({
+              type: 'touch', timestamp: now,
+              data: { type: 'drag', touchType: 'drag', dragState: 'start',
+                      target: touchedObjectId ?? 'stage', x, y }
+            });
+          }
           this.currentContext.events.push({
             type: 'touch', timestamp: now,
-            data: { type: 'drag', touchType: 'drag', dragState: 'start',
+            data: { type: 'drag', touchType: 'drag', dragState: 'dragging',
                     target: touchedObjectId ?? 'stage', x, y }
           });
         }
-        this.currentContext.events.push({
-          type: 'touch', timestamp: now,
-          data: { type: 'drag', touchType: 'drag', dragState: 'dragging',
-                  target: touchedObjectId ?? 'stage', x, y }
-        });
       };
 
       const handleTouchEnd = (_event: TouchEvent) => {
@@ -1211,22 +1254,25 @@ export class EditorGameBridge {
         const direction = getDirection(dx, dy);
 
         // ドラッグ終了
-        this.currentContext.events.push({
-          type: 'touch', timestamp: endTime,
-          data: { type: 'drag', touchType: 'drag', dragState: 'end',
-                  target: touchedObjectId ?? 'stage', x: lastTouchX, y: lastTouchY }
-        });
+        if (canEmitForTarget(touchedObjectId, 'drag')) {
+          this.currentContext.events.push({
+            type: 'touch', timestamp: endTime,
+            data: { type: 'drag', touchType: 'drag', dragState: 'end',
+                    target: touchedObjectId ?? 'stage', x: lastTouchX, y: lastTouchY }
+          });
+        }
 
         // タッチアップ
-        this.currentContext.events.push({
-          type: 'touch', timestamp: endTime,
-          data: { touchType: 'up', target: touchedObjectId ?? 'stage',
-                  x: lastTouchX, y: lastTouchY }
-        });
+        if (canEmitForTarget(touchedObjectId, 'up')) {
+          this.currentContext.events.push({
+            type: 'touch', timestamp: endTime,
+            data: { touchType: 'up', target: touchedObjectId ?? 'stage',
+                    x: lastTouchX, y: lastTouchY }
+          });
+        }
 
-        // フリック判定（短時間・高速）— ConditionEvaluator が condition フィールドで再検証する
-        // プリフィルターは「意図的ジェスチャーか？」の判定のみ行い、閾値は非常に緩くする
-        if (velocity >= 200 && distance <= 600 && duration <= 800) {
+        // フリック判定（短時間・高速）
+        if (velocity >= 200 && distance <= 600 && duration <= 800 && canEmitForTarget(touchedObjectId, 'flick')) {
           this.currentContext.events.push({
             type: 'touch', timestamp: endTime,
             data: { type: 'flick', touchType: 'flick', target: touchedObjectId ?? 'stage',
@@ -1234,7 +1280,7 @@ export class EditorGameBridge {
           });
         }
         // スワイプ判定（方向性のある移動）— flick と独立して評価（両方 emit 可）
-        if (velocity >= 50 && distance >= 20 && duration <= 2000) {
+        if (velocity >= 50 && distance >= 20 && duration <= 2000 && canEmitForTarget(touchedObjectId, 'swipe')) {
           this.currentContext.events.push({
             type: 'touch', timestamp: endTime,
             data: { type: 'swipe', touchType: 'swipe', target: touchedObjectId ?? 'stage',
@@ -1250,19 +1296,21 @@ export class EditorGameBridge {
         const { x, y } = toCanvasCoords(event.clientX, event.clientY);
         lastTouchX = x; lastTouchY = y;
         const now = Date.now();
-        if (!dragStarted) {
-          dragStarted = true;
+        if (canEmitForTarget(touchedObjectId, 'drag')) {
+          if (!dragStarted) {
+            dragStarted = true;
+            this.currentContext.events.push({
+              type: 'touch', timestamp: now,
+              data: { type: 'drag', touchType: 'drag', dragState: 'start',
+                      target: touchedObjectId ?? 'stage', x, y }
+            });
+          }
           this.currentContext.events.push({
             type: 'touch', timestamp: now,
-            data: { type: 'drag', touchType: 'drag', dragState: 'start',
+            data: { type: 'drag', touchType: 'drag', dragState: 'dragging',
                     target: touchedObjectId ?? 'stage', x, y }
           });
         }
-        this.currentContext.events.push({
-          type: 'touch', timestamp: now,
-          data: { type: 'drag', touchType: 'drag', dragState: 'dragging',
-                  target: touchedObjectId ?? 'stage', x, y }
-        });
       };
 
       const handleMouseUp = (event: MouseEvent) => {
@@ -1278,25 +1326,29 @@ export class EditorGameBridge {
         const velocity = duration > 0 ? (distance / duration) * 1000 : 0;
         const direction = getDirection(dx, dy);
 
-        this.currentContext.events.push({
-          type: 'touch', timestamp: endTime,
-          data: { type: 'drag', touchType: 'drag', dragState: 'end',
-                  target: touchedObjectId ?? 'stage', x: lastTouchX, y: lastTouchY }
-        });
-        this.currentContext.events.push({
-          type: 'touch', timestamp: endTime,
-          data: { touchType: 'up', target: touchedObjectId ?? 'stage',
-                  x: lastTouchX, y: lastTouchY }
-        });
+        if (canEmitForTarget(touchedObjectId, 'drag')) {
+          this.currentContext.events.push({
+            type: 'touch', timestamp: endTime,
+            data: { type: 'drag', touchType: 'drag', dragState: 'end',
+                    target: touchedObjectId ?? 'stage', x: lastTouchX, y: lastTouchY }
+          });
+        }
+        if (canEmitForTarget(touchedObjectId, 'up')) {
+          this.currentContext.events.push({
+            type: 'touch', timestamp: endTime,
+            data: { touchType: 'up', target: touchedObjectId ?? 'stage',
+                    x: lastTouchX, y: lastTouchY }
+          });
+        }
 
-        if (velocity >= 200 && distance <= 600 && duration <= 800) {
+        if (velocity >= 200 && distance <= 600 && duration <= 800 && canEmitForTarget(touchedObjectId, 'flick')) {
           this.currentContext.events.push({
             type: 'touch', timestamp: endTime,
             data: { type: 'flick', touchType: 'flick', target: touchedObjectId ?? 'stage',
                     distance, duration, velocity, direction }
           });
         }
-        if (velocity >= 50 && distance >= 20 && duration <= 2000) {
+        if (velocity >= 50 && distance >= 20 && duration <= 2000 && canEmitForTarget(touchedObjectId, 'swipe')) {
           this.currentContext.events.push({
             type: 'touch', timestamp: endTime,
             data: { type: 'swipe', touchType: 'swipe', target: touchedObjectId ?? 'stage',
@@ -1591,6 +1643,9 @@ export class EditorGameBridge {
     }
     this.ruleEngine = null;
     this.currentContext = null;
+    this.delayScheduler.reset();
+    this.inputZones = [];
+    this.inputZoneOverrides.clear();
     console.log('🔄 EditorGameBridge リセット完了');
   }
 }

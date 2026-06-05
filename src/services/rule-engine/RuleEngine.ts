@@ -2,6 +2,7 @@
 // ルールエンジン - 全モジュールを統括、公開API提供
 
 import { GameRule, GameFlag, SuccessCondition } from '../../types/editor/GameScript';
+import { DelayScheduler } from './DelayScheduler';
 import { GameCounter } from '../../types/counterTypes';
 import {
   RuleExecutionContext,
@@ -37,6 +38,19 @@ export class RuleEngine {
   
   // ルール実行回数追跡
   private ruleExecutionCounts: Map<string, number> = new Map();
+
+  // execution.once/limit/cooldown 用の実行状態
+  private ruleExecutionState: Map<string, { count: number; lastTime: number }> = new Map();
+
+  // bindAnimationToCounter の永続バインディング
+  private counterAnimationBindings: Map<string, {
+    targetId: string;
+    counterName: string;
+    minFrame: number;
+    maxFrame: number;
+    offset: number;
+    clamp: boolean;
+  }> = new Map();
 
   // 各種マネージャー
   private flagManager: FlagManager;
@@ -176,14 +190,38 @@ export class RuleEngine {
           context,
           this.ruleExecutionCounts
         );
-        
+
         // コンテキストの状態を更新
         if (result.newGameState) {
           Object.assign(context.gameState, result.newGameState);
         }
-        
+
         results.push(result);
-        
+
+        // execution 実行状態を更新
+        if (rule.execution) {
+          const prev = this.ruleExecutionState.get(rule.id) ?? { count: 0, lastTime: -Infinity };
+          this.ruleExecutionState.set(rule.id, {
+            count: prev.count + 1,
+            lastTime: context.gameState.timeElapsed,
+          });
+        }
+
+        // bindAnimationToCounter バインディングを登録
+        for (const action of rule.actions) {
+          if (action.type === 'bindAnimationToCounter') {
+            const key = `${action.targetId}:${action.counterName}`;
+            this.counterAnimationBindings.set(key, {
+              targetId: action.targetId,
+              counterName: action.counterName,
+              minFrame: action.minFrame ?? 0,
+              maxFrame: action.maxFrame,
+              offset: action.offset ?? 0,
+              clamp: action.clamp ?? true,
+            });
+          }
+        }
+
         console.log(
           `✅ ルール実行: ${rule.name} ` +
           `(優先度: ${rule.priority || 50}, ` +
@@ -326,12 +364,30 @@ export class RuleEngine {
     if (!rule.enabled) {
       return false;
     }
-    
+
     // 時間条件のチェック
     if (!this.isRuleTimeValid(rule, context)) {
       return false;
     }
-    
+
+    // execution.once/limit/cooldown チェック（条件評価前に行いタッチイベント消費を防ぐ）
+    if (!this.canExecuteByExecutionControl(rule, context.gameState.timeElapsed)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private canExecuteByExecutionControl(rule: GameRule, timeElapsed: number): boolean {
+    if (!rule.execution) return true;
+    const eff = rule.execution;
+    const limit = eff.once ? 1 : (eff.limit ?? Infinity);
+    const cooldown = eff.cooldown ?? 0;
+    const state = this.ruleExecutionState.get(rule.id);
+    if (state) {
+      if (state.count >= limit) return false;
+      if (cooldown > 0 && (timeElapsed - state.lastTime) < cooldown) return false;
+    }
     return true;
   }
 
@@ -461,6 +517,46 @@ export class RuleEngine {
     return this.counterManager.getCounterPreviousValue(counterName);
   }
 
+  // ==================== DelayScheduler セットアップ ====================
+
+  setDelaySchedulerOnExecutor(scheduler: DelayScheduler): void {
+    this.actionExecutor.setDelayScheduler(scheduler);
+  }
+
+  // ==================== ディレイスケジューラ / バインディング ====================
+
+  /**
+   * DelayScheduler をティックし、期限が来た遅延アクションを実行する
+   */
+  tickDelayScheduler(scheduler: DelayScheduler, context: RuleExecutionContext): void {
+    scheduler.tick(
+      context.gameState.timeElapsed,
+      context,
+      (actions, ctx, selfId) => this.actionExecutor.executeActionList(actions, ctx, selfId)
+    );
+  }
+
+  /**
+   * bindAnimationToCounter の永続バインディングを毎フレーム更新する
+   */
+  tickBindings(context: RuleExecutionContext): void {
+    for (const binding of this.counterAnimationBindings.values()) {
+      const targetObj = context.objects.get(binding.targetId);
+      if (!targetObj) continue;
+      const counter = this.counterManager.getCounter(binding.counterName);
+      const frame = counter + binding.offset;
+      let finalFrame: number;
+      if (binding.clamp) {
+        finalFrame = Math.max(binding.minFrame, Math.min(binding.maxFrame, frame));
+      } else if (frame < binding.minFrame || frame > binding.maxFrame) {
+        continue;
+      } else {
+        finalFrame = frame;
+      }
+      targetObj.currentFrame = finalFrame;
+    }
+  }
+
   // ==================== リセット ====================
 
   /**
@@ -483,6 +579,8 @@ export class RuleEngine {
 
     // ルール実行回数のリセット
     this.ruleExecutionCounts.clear();
+    this.ruleExecutionState.clear();
+    this.counterAnimationBindings.clear();
 
     console.log('✅ RuleEngine リセット完了');
   }

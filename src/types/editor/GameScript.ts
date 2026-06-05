@@ -89,6 +89,7 @@ export interface GameInitialState {
       rotation: number;                 // 初期回転角度
       zIndex: number;                   // 描画順序
     }>;
+    inputZones?: InputZone[];           // 入力ゾーン（不可視ヒット領域）
   };
   
   // 音声初期設定
@@ -128,6 +129,15 @@ export interface GameInitialState {
     createdAt: string;                  // 作成日時
     lastModified: string;               // 最終更新日時
   };
+}
+
+// 入力ゾーン（タッチ判定専用の不可視ヒット領域）
+export interface InputZone {
+  id: string;
+  enabled: boolean;
+  rect: { x: number; y: number; width: number; height: number };
+  zIndex: number;
+  touchTypes?: Array<'down' | 'up' | 'hold' | 'drag' | 'swipe' | 'flick'>;
 }
 
 // ゲームレイアウト設定
@@ -174,6 +184,9 @@ export interface GameLayout {
     backgroundColor: string;    // hex color
     backgroundImage?: string;   // 追加背景画像URL（オプション）
   };
+
+  // 入力ゾーン（不可視ヒット領域）
+  inputZones?: InputZone[];
 }
 
 // ゲームフラグ（カスタム変数）
@@ -457,14 +470,42 @@ export type GameAction =
   | { type: 'counter'; operation: CounterOperation; counterName: string; value?: number; notification?: CounterNotification }
   
   // 🎲 新規追加: ランダムアクション（Phase G-3）
-  | { 
+  | {
       type: 'randomAction';
       actions: RandomActionOption[];       // 選択肢アクション配列
       weights?: number[];                  // 重み配列（省略時は均等）
       selectionMode?: 'weighted' | 'probability' | 'uniform'; // 選択方式
       executionLimit?: RandomExecutionLimit; // 実行制限
       debugMode?: boolean;                 // デバッグモード（選択結果をログ出力）
-    };
+    }
+  | {
+      type: 'delay';
+      delayId: string;
+      seconds: number;
+      mode?: 'replace' | 'ignore' | 'append';
+      cancelOnGameEnd?: boolean;
+      actions: GameAction[];
+    }
+  | { type: 'cancelDelay'; delayId: string }
+  | {
+      type: 'setAnimationFromCounter';
+      targetId: string;
+      counterName: string;
+      minFrame?: number;
+      maxFrame: number;
+      offset?: number;
+      clamp?: boolean;
+    }
+  | {
+      type: 'bindAnimationToCounter';
+      targetId: string;
+      counterName: string;
+      minFrame?: number;
+      maxFrame: number;
+      offset?: number;
+      clamp?: boolean;
+    }
+  | { type: 'setInputZoneEnabled'; zoneId: string; enabled: boolean };
 
 // 🔢 カウンター通知設定（Phase G）
 export interface CounterNotification {
@@ -511,6 +552,13 @@ export interface GameRule {
     end: number;                          // 終了時間（秒）
   };
   
+  // 実行制御（once/limit/cooldown）
+  execution?: {
+    once?: boolean;
+    limit?: number;
+    cooldown?: number;
+  };
+
   // 作成・更新情報
   createdAt: string;
   lastModified: string;
