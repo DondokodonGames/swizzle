@@ -141,6 +141,46 @@
       "description": "表示された複数のものを見て、指定のルール（一番大きい/小さい/違う色/正しい方向）に当てはまるものを瞬時に1回タップ。間違いは即失敗。",
       "playerOperationHint": "「[複数の対象]の中で[最も大きい/一番違う/正解の]ものをタップする」のような文にすること。",
       "editorNote": "SVGで明確な違いを表現。正解touch→success、他touch→failure"
+    },
+    {
+      "id": "delay-chain",
+      "name": "遅延アニメーション連鎖",
+      "description": "タップや衝突など入力イベントを受けて、delay アクションで0.2〜0.8秒後に順次アニメーションや状態変化を起動するパターン。",
+      "primitives": ["delay", "switchAnimation", "show", "hide"],
+      "example": "タップ → delay 0.3s → 爆発アニメーション → delay 0.5s → 次のオブジェクト出現",
+      "tags": ["reaction", "animation", "sequence"]
+    },
+    {
+      "id": "cooldown-tap",
+      "name": "クールダウン付き連打",
+      "description": "execution.cooldown で一定間隔以上のタップのみ受け付ける。スパム入力防止や「一定リズムで叩く」ゲームに使用。",
+      "primitives": ["execution.cooldown", "counter", "touch"],
+      "example": "0.5秒に1回だけカウンターを加算できる。規定回数でクリア。",
+      "tags": ["tap", "cooldown", "rhythm"]
+    },
+    {
+      "id": "zone-split",
+      "name": "左右/上下分割入力",
+      "description": "InputZone で画面を2〜4つの領域に分割し、プレイヤーがどの領域をタップしたかで分岐するパターン。",
+      "primitives": ["InputZone", "touch", "flag", "setFlag"],
+      "example": "左半分タップ → flag_left=ON / 右半分タップ → flag_right=ON で正解/不正解判定",
+      "tags": ["judgment", "spatial", "split"]
+    },
+    {
+      "id": "progress-meter",
+      "name": "進捗ゲージ表示",
+      "description": "setAnimationFromCounter でカウンター値をそのままスプライトのフレーム番号にマッピング。HP/スコアゲージを1アクションで実現。",
+      "primitives": ["setAnimationFromCounter", "counter"],
+      "example": "hp カウンター(0〜5) の変化に合わせてゲージスプライトのフレーム(0〜5)を自動同期",
+      "tags": ["ui", "gauge", "progress", "animation"]
+    },
+    {
+      "id": "one-shot-setup",
+      "name": "ゲーム開始時1回限り初期化",
+      "description": "execution: { once: true } + always 条件で、ゲーム最初のフレームに1度だけ実行される初期化ルール。フラグなしで安全に書ける。",
+      "primitives": ["execution.once", "always", "show", "hide", "switchAnimation"],
+      "example": "ゲーム開始時1回だけ obj_enemy を表示 + アニメーション開始",
+      "tags": ["setup", "initialization", "once"]
     }
   ]
 }

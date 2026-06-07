@@ -56,18 +56,41 @@ export const ALL_ACTION_TYPES = [
 export type ActionType = typeof ALL_ACTION_TYPES[number];
 
 /**
- * エンジン内部専用アクション。実装済みだが Codex/AI による生成対象には含めない
+ * エンジン内部専用アクション（物理系）。実装済みだが Codex/AI による生成対象には含めない
  * (物理パラメータは不安定でゲーム品質を損ないやすいため)。
  */
 export const ENGINE_INTERNAL_ACTIONS = ['setGravity', 'setPhysics'] as const;
 export type EngineInternalAction = typeof ENGINE_INTERNAL_ACTIONS[number];
 
 /**
- * Codex/AI が生成してよいアクション(= 全アクション − エンジン内部専用)。
+ * AI生成では直接生成させないアクション。
+ * - bindAnimationToCounter: 永続バインディングは生成より setAnimationFromCounter で代替する方が安全
+ * - setInputZoneEnabled: ランタイム切り替え用。生成時は enabled フィールドで初期値を指定すれば十分
+ */
+export const AI_EXCLUDED_ACTIONS = [
+  ...ENGINE_INTERNAL_ACTIONS,
+  'bindAnimationToCounter',
+  'setInputZoneEnabled',
+] as const;
+export type AiExcludedAction = typeof AI_EXCLUDED_ACTIONS[number];
+
+/**
+ * Codex/AI が生成してよいアクション(= 全アクション − AI除外アクション)。
  * LogicValidator / 仕様書 / platform_constraints はこれを正とする。
+ *
+ * AI生成で使えるアクション一覧（カテゴリ別）:
+ *   ゲーム制御: success, failure, pause, restart
+ *   音響制御:   playSound, stopSound, playBGM, stopBGM
+ *   フラグ制御: setFlag, toggleFlag
+ *   オブジェクト: show, hide, switchAnimation, playAnimation, setAnimationSpeed, setAnimationFrame
+ *   移動・追従: move, followDrag, effect
+ *   スコア等:   addScore, counter, randomAction
+ *   ディレイ:   delay, cancelDelay
+ *   アニメ同期: setAnimationFromCounter  ← カウンター→フレーム番号を1アクションで同期
+ *   入力制御:   (setInputZoneEnabled は除外 — layout.inputZones で初期設定を推奨)
  */
 export const GENERATABLE_ACTIONS: readonly ActionType[] = ALL_ACTION_TYPES.filter(
-  (a): a is ActionType => !ENGINE_INTERNAL_ACTIONS.includes(a as EngineInternalAction)
+  (a): a is ActionType => !AI_EXCLUDED_ACTIONS.includes(a as AiExcludedAction)
 );
 
 // =============================================================================

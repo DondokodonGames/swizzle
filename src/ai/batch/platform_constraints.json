@@ -155,9 +155,7 @@
     "randomAction",
     "delay",
     "cancelDelay",
-    "setAnimationFromCounter",
-    "bindAnimationToCounter",
-    "setInputZoneEnabled"
+    "setAnimationFromCounter"
   ],
   "collisionTypes": [
     "enter",

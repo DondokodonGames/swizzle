@@ -16,6 +16,7 @@ import {
   LogicValidationResult,
   LogicValidationError,
   GameRule,
+  GameAction,
   GameConcept
 } from './types';
 import { GameSpecification } from './SpecificationGenerator';
@@ -192,6 +193,8 @@ export class LogicRepairer {
       case 'COUNTER_NEVER_MODIFIED':  // 未使用カウンターを削除することで自動修復可能
       case 'INSTANT_WIN':             // カウンター初期値を0にリセット
       case 'INSTANT_LOSE':            // カウンター初期値を閾値未満にリセット
+      case 'ALWAYS_EFFECT_LOOP':      // always+毎フレーム副作用 → execution.once 挿入
+      case 'COUNTER_ANIM_FANOUT':     // counter==N→switchAnimation × 3以上 → setAnimationFromCounter
         return 'auto_fixable';
 
       // 部分再生成
@@ -282,6 +285,12 @@ export class LogicRepairer {
 
       case 'INSTANT_LOSE':
         return this.repairInstantLose(output, error);
+
+      case 'ALWAYS_EFFECT_LOOP':
+        return this.repairAlwaysEffectLoop(output, error);
+
+      case 'COUNTER_ANIM_FANOUT':
+        return this.repairCounterAnimFanout(output, error);
 
       default:
         return null;
@@ -1016,6 +1025,13 @@ ${output.assetPlan.sounds.map(s => `- ${s.id}: ${s.type}`).join('\n')}
           feedback.push('   ルール1: { triggers: { conditions: [{ type:"time", timeType:"exact", seconds:0 }] }, actions: [{ type:"move", movement:{ type:"straight", direction:"down", speed:3 } }] }');
           feedback.push('   ルール2: { triggers: { conditions: [{ type:"collision", target:"stageArea", collisionType:"exit" }] }, actions: [{ type:"move", movement:{ type:"teleport", target:{ x:<各障害物のx>, y:0.0 } } }] }');
           break;
+        case 'SUCCESS_FAILURE_CONFLICT':
+        case 'SAME_RULE_SUCCESS_FAILURE':
+          feedback.push('→ 成功と失敗を別々のルールに分離してください:');
+          feedback.push('   成功ルール: { triggers: { conditions: [<success条件>] }, actions: [{ type:"success" }] }');
+          feedback.push('   失敗ルール: { triggers: { conditions: [<failure条件>] }, actions: [{ type:"failure" }] }');
+          feedback.push('→ 同一ルールに success/failure 両方を入れるのは禁止。条件が競合する場合は別の counterName で分岐させること。');
+          break;
       }
     }
 
@@ -1036,6 +1052,87 @@ ${output.assetPlan.sounds.map(s => `- ${s.id}: ${s.type}`).join('\n')}
     return originalErrors.filter(e =>
       !repairedCodes.has(e.code) && !fullRegenCodes.has(e.code)
     );
+  }
+
+  /**
+   * always条件+毎フレーム副作用ルールに execution.once を挿入
+   * これにより初期化ルールが1回だけ実行されるようになる
+   */
+  private repairAlwaysEffectLoop(output: LogicGeneratorOutput, error: LogicValidationError): RepairAction | null {
+    const ruleIdMatch = error.message.match(/ルール "(\w+)"/);
+    if (!ruleIdMatch) return null;
+
+    const ruleId = ruleIdMatch[1];
+    const rule = output.script.rules.find(r => r.id === ruleId);
+    if (!rule) return null;
+
+    const ruleWithExecution = rule as GameRule & { execution?: { once?: boolean } };
+    if (ruleWithExecution.execution?.once) return null;
+
+    ruleWithExecution.execution = { once: true };
+
+    return {
+      errorCode: error.code,
+      action: 'Added execution.once to always-condition setup rule',
+      target: `rules.${ruleId}`,
+      before: undefined,
+      after: { once: true }
+    };
+  }
+
+  /**
+   * counter==N→switchAnimation ファンアウト（3件以上）を setAnimationFromCounter 1件に集約
+   */
+  private repairCounterAnimFanout(output: LogicGeneratorOutput, error: LogicValidationError): RepairAction | null {
+    const match = error.message.match(/カウンター "(\w+)".*オブジェクト "(\w+)"/);
+    if (!match) return null;
+
+    const [, counterName, targetId] = match;
+
+    // 対象ルール群を収集: counter条件(equals) + switchAnimation アクション
+    const fanoutRules = output.script.rules.filter(r => {
+      const hasCounterEq = r.triggers?.conditions?.some(
+        c => c.type === 'counter' && c.counterName === counterName && c.comparison === 'equals'
+      );
+      const hasSwitchAnim = r.actions?.some(
+        a => a.type === 'switchAnimation' && (a as { targetId?: string }).targetId === targetId
+      );
+      return hasCounterEq && hasSwitchAnim;
+    });
+
+    if (fanoutRules.length < 3) return null;
+
+    // maxFrame = 最大 animationIndex
+    const maxFrame = fanoutRules.reduce((max, r) => {
+      const anim = r.actions?.find(a => a.type === 'switchAnimation') as { animationIndex?: number } | undefined;
+      return Math.max(max, anim?.animationIndex ?? 0);
+    }, 0);
+
+    // ファンアウトルールをすべて削除し、代わりに setAnimationFromCounter を持つ新ルールを挿入
+    const firstRule = fanoutRules[0];
+    const newRuleId = `${firstRule.id}_anim_sync`;
+
+    output.script.rules = output.script.rules.filter(r => !fanoutRules.includes(r));
+    output.script.rules.push({
+      id: newRuleId,
+      targetObjectId: targetId,
+      triggers: { operator: 'OR', conditions: [{ type: 'always' as never }] },
+      actions: [{
+        type: 'setAnimationFromCounter',
+        targetId,
+        counterName,
+        maxFrame,
+        clamp: true
+      } as unknown as GameAction]
+    });
+
+    return {
+      errorCode: error.code,
+      action: `Consolidated ${fanoutRules.length} counter→switchAnimation rules into setAnimationFromCounter`,
+      target: `rules (counter: ${counterName}, object: ${targetId})`,
+      before: fanoutRules.map(r => r.id),
+      after: newRuleId
+    };
   }
 
   /**

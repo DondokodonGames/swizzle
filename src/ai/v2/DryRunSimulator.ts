@@ -287,6 +287,14 @@ export class DryRunSimulator {
       }
     }
 
+    // A: delay でラップされた success を "非同期成功パス" として検出
+    // delay の actions 内に success が含まれるルールを探す
+    const asyncSuccessPath = this.findAsyncSuccessPath(output, initialState, issues);
+    if (asyncSuccessPath) {
+      this.logger?.log('DryRunSimulator', 'decision', 'Async success path found via delay', { asyncSuccess: true });
+      return asyncSuccessPath;
+    }
+
     // 到達不能
     const blockers = this.identifyBlockers(output, successRules, initialState);
     return {
@@ -479,19 +487,29 @@ export class DryRunSimulator {
         c.type !== 'counter' && c.type !== 'touch' && c.type !== 'time' && c.type !== 'collision'
       );
       if (unhandledConditions.length > 0) {
-        issues.push({
-          code: 'AUTO_SUCCESS_SUSPECTED',
-          message: `Success rule "${successRule.id}" has conditions (${unhandledConditions.map(c => c.type).join(', ')}) but requires no player input. Game may auto-succeed.`,
-          severity: 'error'
-        });
-        return {
-          reachable: false,
-          requiredTaps: -1,
-          estimatedSeconds: -1,
-          blockers: ['Success requires no player input (auto-win suspected)']
-        };
+        // C: always 条件 + execution.once のルールは意図的なセットアップルール（一度だけ発火）
+        // AUTO_SUCCESS とはみなさない
+        const hasAlwaysCondition = unhandledConditions.some(c => c.type === 'always');
+        if (hasAlwaysCondition && this.isSetupRule(successRule)) {
+          // セットアップルールの always 成功は意図的 — 引き続き処理する
+        } else {
+          issues.push({
+            code: 'AUTO_SUCCESS_SUSPECTED',
+            message: `Success rule "${successRule.id}" has conditions (${unhandledConditions.map(c => c.type).join(', ')}) but requires no player input. Game may auto-succeed.`,
+            severity: 'error'
+          });
+          return {
+            reachable: false,
+            requiredTaps: -1,
+            estimatedSeconds: -1,
+            blockers: ['Success requires no player input (auto-win suspected)']
+          };
+        }
       }
     }
+
+    // B: execution.once / execution.limit 付きルールが条件にプレイヤー操作を持つ場合、
+    // それは正当なプレイヤー操作起動の成功パスとして扱う（「複数回発火」ではない）
 
     // 成功パスが見つかった
     return {
@@ -505,6 +523,78 @@ export class DryRunSimulator {
       estimatedSeconds,
       blockers: []
     };
+  }
+
+  /**
+   * A: delay でラップされた success を非同期成功パスとして探索
+   * delay.actions 内に success が含まれるルールを「到達可能な成功パス」とみなす
+   */
+  private findAsyncSuccessPath(
+    output: LogicGeneratorOutput,
+    _initialState: GameState,
+    _issues: SimulationIssue[]
+  ): ReachabilityReport['success'] | null {
+    // delay アクション内を再帰的に探索して success があるか確認するヘルパー
+    const hasSuccessInDelayActions = (actions: Array<Record<string, unknown>>): boolean => {
+      for (const action of actions) {
+        if (action['type'] === 'delay') {
+          const innerActions = action['actions'] as Array<Record<string, unknown>> | undefined;
+          if (innerActions && innerActions.some(a => a['type'] === 'success')) {
+            return true;
+          }
+          // さらにネスト
+          if (innerActions && hasSuccessInDelayActions(innerActions)) return true;
+        }
+      }
+      return false;
+    };
+
+    for (const rule of output.script.rules) {
+      const actions = (rule.actions || []) as unknown as Array<Record<string, unknown>>;
+      if (hasSuccessInDelayActions(actions)) {
+        // B: execution.once / execution.limit がある場合はセットアップルールとして正しく扱う
+        // 条件にプレイヤー操作が含まれるか確認
+        const conditions = rule.triggers?.conditions || [];
+        const playerActionTypes = ['touch', 'collision', 'position'];
+        const hasPlayerCondition = conditions.some(c => playerActionTypes.includes(c.type));
+        const waitTime = (() => {
+          const delayAction = actions.find(a => a['type'] === 'delay');
+          return (delayAction?.['delay'] as number | undefined) ?? 0;
+        })();
+
+        // delay 経由の success は非同期成功パスとして reachable: true を返す
+        return {
+          reachable: true,
+          shortestPath: {
+            steps: hasPlayerCondition
+              ? [
+                  { action: 'tap' as const, target: rule.targetObjectId || 'object', result: 'Trigger async success via delay (asyncSuccess: true)' },
+                  { action: 'wait' as const, duration: waitTime, result: `Wait ${waitTime}ms for delayed success` }
+                ]
+              : [
+                  { action: 'wait' as const, duration: waitTime, result: `Async success fires via delay after ${waitTime}ms (asyncSuccess: true)` }
+                ],
+            totalTaps: hasPlayerCondition ? 1 : 0,
+            estimatedTime: waitTime / 1000
+          },
+          requiredTaps: hasPlayerCondition ? 1 : 0,
+          estimatedSeconds: waitTime / 1000,
+          blockers: []
+        };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * ルールが execution.once または execution.limit を持つ「セットアップルール」かどうかを確認
+   * B: セットアップルールは「毎フレーム発火」や「複数回発火」とみなさない
+   */
+  private isSetupRule(rule: GameRule): boolean {
+    const execution = (rule as unknown as Record<string, unknown>)['execution'] as
+      | { once?: boolean; limit?: number }
+      | undefined;
+    return execution?.once === true || (execution?.limit !== undefined && execution.limit > 0);
   }
 
   /**
@@ -758,6 +848,15 @@ export class DryRunSimulator {
 
     if (!success.reachable || errorCount > 0) {
       return 'low';
+    }
+
+    // A: delay 経由の非同期成功パス（asyncSuccess: true のフラグを steps の result で識別）
+    // estimatedSeconds が非常に小さく steps に 'asyncSuccess: true' が含まれる場合は high
+    const hasAsyncSuccessStep = success.shortestPath?.steps.some(
+      s => typeof s.result === 'string' && s.result.includes('asyncSuccess: true')
+    );
+    if (hasAsyncSuccessStep) {
+      return errorCount === 0 ? 'high' : 'medium';
     }
 
     if (success.requiredTaps > 20 || issues.length > 2) {

@@ -5,6 +5,7 @@ import {
   ALL_ACTION_TYPES,
   ALL_CONDITION_TYPES,
   ENGINE_INTERNAL_ACTIONS,
+  AI_EXCLUDED_ACTIONS,
   GENERATABLE_ACTIONS,
   GENERATABLE_CONDITIONS,
   MOVEMENT_TYPES,
@@ -48,8 +49,8 @@ describe('contract ⇔ ルールエンジン 整合性', () => {
     expect(sorted(cases)).toEqual(sorted(ALL_CONDITION_TYPES));
   });
 
-  it('GENERATABLE_ACTIONS = 全アクション − エンジン内部専用アクション', () => {
-    const expected = ALL_ACTION_TYPES.filter((a) => !ENGINE_INTERNAL_ACTIONS.includes(a as any));
+  it('GENERATABLE_ACTIONS = 全アクション − AI除外アクション', () => {
+    const expected = ALL_ACTION_TYPES.filter((a) => !AI_EXCLUDED_ACTIONS.includes(a as any));
     expect(sorted(GENERATABLE_ACTIONS)).toEqual(sorted(expected));
   });
 

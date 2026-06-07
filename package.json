@@ -59,7 +59,8 @@
     "ai:build-templates": "tsx src/ai/v2/run-build-templates.ts",
     "ai:produce-games": "tsx src/ai/v2/run-produce-games.ts",
     "ai:produce-games:dry": "DRY_RUN=true tsx src/ai/v2/run-produce-games.ts",
-    "ai:produce-games:mock": "IMAGE_PROVIDER=mock SKIP_UPLOAD=true tsx src/ai/v2/run-produce-games.ts"
+    "ai:produce-games:mock": "IMAGE_PROVIDER=mock SKIP_UPLOAD=true tsx src/ai/v2/run-produce-games.ts",
+    "ai:status": "tsx src/ai/batch/status-report.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",

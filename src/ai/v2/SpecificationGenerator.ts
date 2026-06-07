@@ -401,10 +401,55 @@ time 経過 → failure
 // → それぞれ異なるオブジェクトIDなのでCONFLICTしない！
 \`\`\`
 
+### 新しいプリミティブ（必ず活用すること）
+
+■ delay アクション（入力から相対時間後にアクションを実行）
+  - seconds はアクション実行瞬間からの相対秒数（ゲーム開始からではない）
+  - delayId は必須（省略不可）。同一ルール内で複数回呼ぶ場合は mode:"replace" を使う
+  - 用途例: タップ後 0.3 秒でアニメーション → 0.6 秒後に次のオブジェクト登場
+  - JSON例:
+    { "type": "delay", "delayId": "after_tap", "seconds": 0.4, "mode": "replace",
+      "cancelOnGameEnd": true, "actions": [
+        { "type": "switchAnimation", "targetId": "obj_target", "animationIndex": 1 }
+      ] }
+
+■ rule.execution（ルール実行ガード）
+  - once: true → このルールはゲームセッション中1回だけ実行（初期化・セットアップに最適）
+  - cooldown: N → 前回実行から N 秒経過するまで再実行しない（連打防止に最適）
+  - limit: N → 最大 N 回まで実行（3回タップ系ゲームに最適）
+  - once と limit が共存する場合 once が優先（limit: 1 と同じ）
+  - JSON例: "execution": { "once": true }
+  - JSON例: "execution": { "cooldown": 0.5 }
+  - JSON例: "execution": { "limit": 3 }
+
+■ setAnimationFromCounter（カウンター値をそのままフレーム番号に変換）
+  - counter == 0 → switchAnimation frame 0、counter == 1 → frame 1 …の多数ルールを1アクションに置き換える
+  - animationIndex は変更しない（currentFrame のみ更新）
+  - clamp: true（デフォルト）の場合 minFrame/maxFrame の範囲にクランプ
+  - JSON例:
+    { "type": "setAnimationFromCounter", "targetId": "obj_meter",
+      "counterName": "hp", "minFrame": 0, "maxFrame": 5, "clamp": true }
+
+■ InputZone（不可視の大きなタッチ領域）
+  - layout.inputZones 配列に定義する（オブジェクトではない、描画されない）
+  - rect は正規化座標（0〜1）。touchTypes を指定しない場合は全ジェスチャーを受信
+  - touch 条件の target に zone の id を書くだけで使える
+  - 用途例: 画面の左半分タップ判定、全画面スワイプキャッチャー、スプライットより広い当たり判定
+  - JSON例（layout.inputZones に追加）:
+    { "id": "zone_left", "enabled": true,
+      "rect": { "x": 0, "y": 0, "width": 0.5, "height": 1.0 },
+      "zIndex": 1000, "touchTypes": ["down"] }
+  - JSON例（ルール条件）:
+    { "type": "touch", "target": "zone_left", "touchType": "down" }
+
 ### ★★★ 絶対禁止パターン ★★★
 1. **「勝利条件の確認」「敗北条件の確認」という名前のルール** → シンプルにタップで決める！
 2. **counter/flag条件でsuccess/failureを発火** → タップで直接success/failureを発火！
 3. **position条件で「ゴールエリア」「落下エリア」を分ける** → collision条件で異なるオブジェクトに衝突したら判定！
+❌ 大きな透明オブジェクトでタップ領域を代用する → layout.inputZones の InputZone を使うこと
+❌ 毎フレーム always ルールで状態を変化させる（フラグのセット以外）→ execution.once または execution.cooldown を使うこと
+❌ 初期化処理を flag で守る → execution: { "once": true } を使うこと
+❌ counter == N → switchAnimation を N 個並べる → setAnimationFromCounter 1つに置き換えること
 
 ### ★★★ 推奨パターン ★★★
 1. **正解オブジェクトをタップ → success**

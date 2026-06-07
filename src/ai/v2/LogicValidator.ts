@@ -10,6 +10,7 @@ import {
   LogicValidationResult,
   LogicValidationError,
   GameRule,
+  GameAction,
   VerifiedConditionType,
   VerifiedActionType
 } from './types';
@@ -112,6 +113,18 @@ export class LogicValidator {
 
     // 15. 全オブジェクトへのルール存在チェック
     this.checkObjectsHaveRules(output, errors);
+
+    // 16. delay 無限スケジューリングリスクチェック
+    this.checkDelayRecursionRisk(output, errors);
+
+    // 17. always 条件 + 実行ガードなしチェック
+    this.checkExecutionOnceWithAlways(output, errors);
+
+    // 18. setAnimationFromCounter の maxFrame 範囲チェック
+    this.checkSetAnimationFromCounterBounds(output, errors);
+
+    // 19. inputZone id 重複チェック
+    this.checkInputZoneIdUniqueness(output, errors);
 
     return {
       valid: errors.filter(e => e.type === 'critical').length === 0,
@@ -1749,6 +1762,159 @@ export class LogicValidator {
         }
         // 衝突対象でない無ルールオブジェクトは背景/装飾オブジェクトとして許容
       }
+    }
+  }
+
+  /**
+   * delay 無限スケジューリングリスクチェック
+   * delay の actions 内に同じ delayId の delay（mode≠replace）が含まれている場合、
+   * 無限スケジューリングになる可能性があるため WARNING を出す。
+   */
+  private checkDelayRecursionRisk(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
+    // delay アクション内のネストを再帰的にチェックするヘルパー
+    const hasRecursiveDelay = (
+      actions: GameAction[],
+      outerDelayId: string
+    ): boolean => {
+      for (const action of actions) {
+        const a = action as unknown as Record<string, unknown>;
+        if (action.type === 'delay') {
+          const delayId = a['delayId'] as string | undefined;
+          const mode = a['mode'] as string | undefined;
+          const innerActions = a['actions'] as GameAction[] | undefined;
+          // 同じ delayId かつ mode が 'replace' でない場合
+          if (delayId === outerDelayId && mode !== 'replace') {
+            return true;
+          }
+          // さらにネストされた actions も探索
+          if (innerActions && innerActions.length > 0) {
+            if (hasRecursiveDelay(innerActions, outerDelayId)) return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    for (const rule of output.script.rules) {
+      for (const action of rule.actions || []) {
+        const a = action as unknown as Record<string, unknown>;
+        if (action.type === 'delay') {
+          const delayId = a['delayId'] as string | undefined;
+          const innerActions = a['actions'] as GameAction[] | undefined;
+          if (delayId && innerActions && innerActions.length > 0) {
+            if (hasRecursiveDelay(innerActions, delayId)) {
+              errors.push({
+                type: 'warning',
+                code: 'DELAY_RECURSION_RISK',
+                message: `delay '${delayId}' の actions 内に同じ delayId の delay（mode≠replace）が含まれています。無限スケジューリングになる可能性があります`,
+                fix: `再スケジュールする delay には mode: 'replace' を指定してください`
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * always 条件 + 実行ガードなしチェック
+   * always 条件を持つルールに execution.once / execution.limit が設定されていない場合、
+   * 毎フレーム発火し続けるため WARNING を出す。
+   * execution.once: true または execution.limit が設定されている場合は意図的なセットアップルールとして許容。
+   */
+  private checkExecutionOnceWithAlways(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
+    for (const rule of output.script.rules) {
+      const conditions = rule.triggers?.conditions || [];
+      const hasAlwaysCondition = conditions.some(c => c.type === 'always');
+      if (!hasAlwaysCondition) continue;
+
+      // execution ガードを確認（型定義にないため any キャスト）
+      const execution = (rule as unknown as Record<string, unknown>)['execution'] as
+        | { once?: boolean; limit?: number; cooldown?: number }
+        | undefined;
+
+      const hasExecutionGuard =
+        execution?.once === true ||
+        (execution?.limit !== undefined && execution.limit > 0);
+
+      if (!hasExecutionGuard) {
+        errors.push({
+          type: 'warning',
+          code: 'ALWAYS_WITHOUT_EXECUTION_GUARD',
+          message: `ルール "${rule.id}" が 'always' 条件を使用していますが、execution.once / execution.limit が設定されていません。毎フレーム発火し続けます`,
+          fix: `execution: { once: true } を追加するか、適切なトリガー条件に変更してください`
+        });
+      }
+    }
+  }
+
+  /**
+   * setAnimationFromCounter の maxFrame 範囲チェック
+   * assetPlan のフレーム数と照合し、maxFrame が超えている場合は WARNING を出す。
+   */
+  private checkSetAnimationFromCounterBounds(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
+    // assetPlan から objectId → frames のマップを構築
+    // ObjectPlan は型定義上 frames を持たないが、拡張データとして参照する
+    const objectFrameMap = new Map<string, number>();
+    for (const obj of output.assetPlan.objects) {
+      const extObj = obj as unknown as Record<string, unknown>;
+      const frames = extObj['frames'] as Array<unknown> | undefined;
+      if (frames && Array.isArray(frames)) {
+        objectFrameMap.set(obj.id, frames.length);
+      }
+    }
+
+    for (const rule of output.script.rules) {
+      for (const action of rule.actions || []) {
+        if (action.type === 'setAnimationFromCounter') {
+          const a = action as unknown as Record<string, unknown>;
+          const targetId = (a['targetId'] as string | undefined) || action.targetId;
+          const maxFrame = a['maxFrame'] as number | undefined;
+
+          if (targetId && maxFrame !== undefined && objectFrameMap.has(targetId)) {
+            const frameCount = objectFrameMap.get(targetId)!;
+            if (maxFrame >= frameCount) {
+              errors.push({
+                type: 'warning',
+                code: 'SET_ANIMATION_FROM_COUNTER_BOUNDS',
+                message: `setAnimationFromCounter: ${targetId} の maxFrame(${maxFrame}) が アセットのフレーム数を超えています`,
+                fix: `maxFrame を ${frameCount - 1} 以下に設定してください`
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * inputZone id 重複チェック
+   * layout.inputZones に同じ id が複数存在する場合は ERROR を出す。
+   */
+  private checkInputZoneIdUniqueness(output: LogicGeneratorOutput, errors: LogicValidationError[]): void {
+    // GameScript.layout は型定義上 inputZones を持たないが、拡張データとして参照する
+    const layout = output.script.layout as unknown as Record<string, unknown>;
+    const inputZones = layout['inputZones'] as Array<{ id?: string }> | undefined;
+    if (!inputZones || !Array.isArray(inputZones)) return;
+
+    const seenIds = new Set<string>();
+    const duplicatedIds = new Set<string>();
+
+    for (const zone of inputZones) {
+      if (!zone.id) continue;
+      if (seenIds.has(zone.id)) {
+        duplicatedIds.add(zone.id);
+      }
+      seenIds.add(zone.id);
+    }
+
+    for (const id of duplicatedIds) {
+      errors.push({
+        type: 'critical',
+        code: 'DUPLICATE_INPUT_ZONE_ID',
+        message: `inputZones に重複した id '${id}' があります`,
+        fix: `各 inputZone に固有の id を設定してください`
+      });
     }
   }
 
