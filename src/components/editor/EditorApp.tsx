@@ -6,6 +6,7 @@ import { GameProject } from '../../types/editor/GameProject';
 import { GameEditor } from './GameEditor';
 import { ProjectSelector } from './ProjectSelector';
 import { ReviewQueue } from './ReviewQueue';
+import { GameReviewQueue } from './GameReviewQueue';
 import { useGameProject } from '../../hooks/editor/useGameProject';
 import { useAuth } from '../../hooks/useAuth';
 import { useIsAdmin } from '../../hooks/useIsAdmin';
@@ -17,7 +18,7 @@ import { EditorGameBridge, GameExecutionResult } from '../../services/editor/Edi
 import { ProjectStorageManager } from '../../services/ProjectStorageManager';
 import { getErrorMessage } from '../../utils/errorUtils';
 
-type AppMode = 'selector' | 'editor' | 'testplay' | 'review';
+type AppMode = 'selector' | 'editor' | 'testplay' | 'review' | 'ai-review';
 
 interface EditorAppProps {
   onClose?: () => void;
@@ -804,6 +805,7 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           onBackToMain={onClose}
           onTestPlay={handleTestPlayFromSelector}
           onStartReview={handleStartReview}
+          onStartAiReview={isAdmin ? () => setMode('ai-review') : undefined}
           isAdmin={isAdmin}
         />
       ) : mode === 'review' ? (
@@ -812,6 +814,8 @@ export const EditorApp: React.FC<EditorAppProps> = ({
           onDone={handleReviewDone}
           onExit={handleReviewDone}
         />
+      ) : mode === 'ai-review' ? (
+        <GameReviewQueue onExit={() => setMode('selector')} />
       ) : mode === 'testplay' ? (
         <div style={{ minHeight: '100vh', backgroundColor: DESIGN_TOKENS.colors.neutral[900] }}>
           <header 

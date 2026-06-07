@@ -17,6 +17,7 @@ export interface ProjectSelectorProps {
   onBackToMain?: () => void;
   onTestPlay?: (project: GameProject) => void;
   onStartReview?: (files: File[]) => void;
+  onStartAiReview?: () => void;
   isAdmin?: boolean;
 }
 
@@ -32,6 +33,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   onBackToMain,
   onTestPlay,
   onStartReview,
+  onStartAiReview,
   isAdmin = false,
 }) => {
   const { t } = useTranslation();
@@ -550,6 +552,16 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                 disabled={isImporting}
               >
                 📋 バッチレビュー
+              </ModernButton>
+            )}
+            {isAdmin && onStartAiReview && (
+              <ModernButton
+                variant="secondary"
+                size="md"
+                onClick={onStartAiReview}
+                disabled={isImporting}
+              >
+                🤖 AIゲームレビュー
               </ModernButton>
             )}
           </div>
