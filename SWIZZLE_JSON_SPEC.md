@@ -1307,6 +1307,37 @@ Swizzle JSONフォーマットは、ゲームプロジェクト全体を1つのJ
 }
 ```
 
+---
+
+### ⏱️ ディレイアクション
+
+#### delay — 相対時間後にアクションを実行
+```json
+{
+  "type": "delay",
+  "delayId": "after_tap",
+  "seconds": 0.4,
+  "mode": "replace",
+  "cancelOnGameEnd": true,
+  "actions": [
+    { "type": "switchAnimation", "targetId": "obj_target", "animationIndex": 1 }
+  ]
+}
+```
+- `delayId`: **必須**。同一ルール内で同じIDを使うと `mode` に従って制御される
+- `seconds`: アクション実行瞬間からの**相対秒数**（ゲーム開始からではない）
+- `mode`: `"replace"`（同じdelayIdを上書き）/ `"ignore"`（既存があれば無視）/ `"append"`（常に追加）。省略時は `"replace"`
+- `cancelOnGameEnd`: `true` のとき success/failure 発生と同時にキャンセル（省略時 `true`）
+- `actions`: ディレイ後に実行するアクション配列（ネスト可）
+
+**用途例**: タップ後 0.4秒でアニメーション → 0.8秒後に次オブジェクト登場
+
+#### cancelDelay — 予約済みディレイをキャンセル
+```json
+{ "type": "cancelDelay", "delayId": "after_tap" }
+```
+指定した `delayId` の pending ディレイをすべてキャンセルする。
+
 ### 音響制御アクション
 
 #### playSound（効果音再生）
@@ -1424,6 +1455,26 @@ Swizzle JSONフォーマットは、ゲームプロジェクト全体を1つのJ
   "frame": 5                   // 必須: フレーム番号
 }
 ```
+
+#### setAnimationFromCounter — カウンター値をフレーム番号に同期
+```json
+{
+  "type": "setAnimationFromCounter",
+  "targetId": "obj_meter",
+  "counterName": "hp",
+  "minFrame": 0,
+  "maxFrame": 5,
+  "offset": 0,
+  "clamp": true
+}
+```
+- `counterName`: 参照するカウンター名
+- `minFrame` / `maxFrame`: フレーム範囲（minFrame 省略時は 0、maxFrame は必須）
+- `offset`: カウンター値に加算するオフセット（省略時 0）
+- `clamp`: `true` のとき min/max の範囲内にクランプ（省略時 `true`）
+
+**用途**: 体力ゲージ、進捗バー、段階表示。`counter==N → switchAnimation` を複数書く代わりに1行で実現。  
+**注意**: `animationIndex` は変更しない。現在のアニメーション内の `currentFrame` のみ更新する。
 
 ### 移動制御アクション
 
@@ -1583,6 +1634,29 @@ Swizzle JSONフォーマットは、ゲームプロジェクト全体を1つのJ
 
 ---
 
+### 🔒 ルール実行制御 (rule.execution)
+
+`GameRule` に `execution` フィールドを指定することで、ルールの実行回数・インターバルを制御できる。
+
+```json
+{
+  "id": "rule_init",
+  "execution": { "once": true },
+  "triggers": { "operator": "OR", "conditions": [{ "type": "always" }] },
+  "actions": [{ "type": "show", "targetId": "obj_enemy" }]
+}
+```
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `once` | boolean | `true` のとき1回だけ実行（`limit:1` と同等）。初期化・セットアップに最適 |
+| `limit` | number | 最大実行回数（セッション内）。`once` が優先 |
+| `cooldown` | number | 前回実行から N 秒間は再実行しない。連打防止に最適 |
+
+**重要**: `execution` でブロックされたルールは touch イベントを消費しない。
+
+---
+
 ## 📚 条件完全リファレンス
 
 ### タッチ条件
@@ -1611,6 +1685,51 @@ Swizzle JSONフォーマットは、ゲームプロジェクト全体を1つのJ
 - `drag`: ドラッグ中
 - `swipe`: スワイプ（direction, minDistance等が使用可能）
 - `flick`: フリック（maxDistance等が使用可能）
+
+---
+
+### 🎯 InputZone（不可視タッチゾーン）
+
+InputZone はオブジェクトを使わずに画面上の任意の矩形領域をタッチターゲットとして定義する仕組み。  
+`layout.inputZones` に定義し、touch 条件の `target` にゾーンIDを指定するだけで使える。
+
+#### layout.inputZones の定義
+```json
+{
+  "layout": {
+    "inputZones": [
+      {
+        "id": "zone_left",
+        "enabled": true,
+        "rect": { "x": 0, "y": 0, "width": 0.5, "height": 1 },
+        "zIndex": 1000,
+        "touchTypes": ["down", "swipe"]
+      }
+    ]
+  }
+}
+```
+
+| フィールド | 型 | 説明 |
+|-----------|-----|------|
+| `id` | string | ゾーンID（touch条件の `target` に指定） |
+| `enabled` | boolean | 有効/無効。`false` のとき無視される |
+| `rect` | object | 正規化座標（0.0〜1.0）で指定。x:0=左端、y:0=上端 |
+| `zIndex` | number | 高いほど優先。同 zIndex の可視オブジェクトより前面 |
+| `touchTypes` | string[] | 許可するタッチタイプ。省略時はすべて許可 |
+
+#### 使用例（画面左半分タップ）
+```json
+{
+  "triggers": {
+    "conditions": [{ "type": "touch", "target": "zone_left", "touchType": "down" }]
+  },
+  "actions": [{ "type": "move", "targetId": "obj_player", "movement": { "type": "straight", "direction": "left", "speed": 5 } }]
+}
+```
+
+**用途**: 左右分割操作、全画面スワイプキャッチャー、スプライト外の広い当たり判定  
+**注意**: InputZone はレンダリングされない。大きな透明オブジェクトの代替として使うこと。
 
 ### 衝突条件
 
@@ -2113,6 +2232,7 @@ ChatGPTが生成したJSONをインポートする前に確認：
 ## バージョン履歴
 
 - **v1.0** (2026-01-03): 初版作成
+- **v1.1** (2026-06-08): delay/cancelDelay、rule.execution、setAnimationFromCounter、InputZone を追加
 
 ---
 
