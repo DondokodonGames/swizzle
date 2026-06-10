@@ -33,6 +33,7 @@ import { QualityScorer } from './QualityScorer';
 import { GenerationLogger } from './GenerationLogger';
 import { FailurePatternTracker } from './FailurePatternTracker';
 import { shouldAutoPublish } from './publishGate';
+import { compilePhases } from './PhaseCompiler';
 import { SupabaseUploader } from '../publishers/SupabaseUploader';
 import {
   GameConcept,
@@ -399,6 +400,9 @@ export class Orchestrator {
         // spec の priorityDesign / uiVisibility.safeZone を logicOutput に反映
         this.applySpecConstraints(logicOutput, spec, concept);
 
+        // spec.phases があればフラグ+ルールへコンパイルしてマージ
+        this.applyPhases(logicOutput, spec);
+
         // Log mapping table
         this.logger.log('EditorMapper', 'output', 'Mapping table generated', {
           mappedObjects: mapperOutput.mappingTable.summary.totalObjects,
@@ -503,6 +507,9 @@ export class Orchestrator {
 
             // spec の priorityDesign / uiVisibility.safeZone を logicOutput に反映
             this.applySpecConstraints(logicOutput, spec, concept);
+
+            // 再生成されたspecのphasesを再コンパイル（logicOutputは新規なので二重適用なし）
+            this.applyPhases(logicOutput, spec);
 
             this.logger.log('EditorMapper', 'output', 'Re-mapped after regeneration', {
               mappedObjects: mapperOutput.mappingTable.summary.totalObjects,
@@ -642,6 +649,42 @@ export class Orchestrator {
       console.warn(`      ⚠️ Similarity check failed: ${(error as Error).message}`);
       return null;
     }
+  }
+
+  /**
+   * spec.phases（フェーズ状態機械）をフラグ+ルールへコンパイルして logicOutput にマージする
+   *
+   * グラフ不正は throw → generateGameWithPersistentRetry のフィードバックループに乗り
+   * 仕様から再生成される。phases が無いゲームでは何もしない。
+   */
+  private applyPhases(logicOutput: LogicGeneratorOutput, spec: GameSpecification): void {
+    if (!spec.phases || spec.phases.length === 0) return;
+
+    // 冪等ガード: 既にコンパイル済みのルールがあれば二重適用しない
+    if (logicOutput.script.rules.some(r => r.id.startsWith('phase_'))) {
+      console.warn('      ⚠️ Phase rules already present, skipping recompilation');
+      return;
+    }
+
+    const compiled = compilePhases(spec.phases);  // throws PhaseGraphError on invalid graph
+
+    logicOutput.script.flags = [...(logicOutput.script.flags ?? []), ...compiled.flags];
+    logicOutput.script.rules.push(...compiled.rules);
+
+    console.log(`      🔀 Phases compiled: ${spec.phases.length} phases → ${compiled.flags.length} flags + ${compiled.rules.length} rules`);
+    for (const warning of compiled.warnings) {
+      console.log(`         ⚠️ ${warning}`);
+    }
+    this.logger.log('PhaseCompiler', 'output', 'Phases compiled to flags+rules', {
+      phases: spec.phases.map(p => ({
+        id: p.id,
+        initial: !!p.initial,
+        transitions: p.transitions.map(t => t.to)
+      })),
+      flagCount: compiled.flags.length,
+      ruleCount: compiled.rules.length,
+      warnings: compiled.warnings
+    });
   }
 
   /**
@@ -1103,7 +1146,7 @@ export class Orchestrator {
       'INVALID_COMPARISON', 'POOR_HORIZONTAL_DISTRIBUTION', 'MISSING_SOUND_ID',
       'ACTION_UNDEFINED_OBJECT', 'CONDITION_UNDEFINED_OBJECT',
       'COUNTER_UNREACHABLE', 'OBJECT_NO_RULES', 'SUCCESS_UNREACHABLE_TIME',
-      'CONCEPT_TOO_SIMILAR'
+      'CONCEPT_TOO_SIMILAR', 'PHASE_GRAPH_INVALID'
     ];
     return knownCodes.filter(code => msg.includes(code));
   }

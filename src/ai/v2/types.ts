@@ -207,8 +207,9 @@ export interface TriggerCondition {
   // position
   area?: 'inside' | 'outside' | 'crossing';
   region?: { shape?: 'rect' | 'circle'; x: number; y: number; width?: number; height?: number; radius?: number };
-  // animation
-  condition?: 'playing' | 'stopped' | 'frame' | 'frameRange' | 'loop' | 'start' | 'end';
+  // animation（playing〜end）/ flag（ON〜OFF_TO_ON: エンジンのflag条件はこの形式）
+  condition?: 'playing' | 'stopped' | 'frame' | 'frameRange' | 'loop' | 'start' | 'end'
+    | 'ON' | 'OFF' | 'CHANGED' | 'ON_TO_OFF' | 'OFF_TO_ON';
   frameNumber?: number;
   frameRange?: [number, number];
   loopCount?: number;
@@ -244,10 +245,10 @@ export interface GameAction {
     duration?: number;
     direction?: 'up' | 'down' | 'left' | 'right';
   };
-  // counter
+  // counter（number）/ setFlag（boolean: エンジンはstrictにbooleanを要求する）
   counterName?: string;
   operation?: 'increment' | 'decrement' | 'set' | 'add' | 'subtract';
-  value?: number;
+  value?: number | boolean;
   // addScore
   points?: number;
   // effect
@@ -276,14 +277,19 @@ export interface GameAction {
   impulse?: { x: number; y: number };
   // followDrag
   enabled?: boolean;
-  // randomAction
+  // randomAction（{action,...}形式）/ delay（GameAction[]形式）
   actions?: Array<{
     action: GameAction;
     weight?: number;
     probability?: number;
-  }>;
+  }> | GameAction[];
   selectionMode?: 'uniform' | 'probability' | 'weighted';
   weights?: number[];
+  // delay / cancelDelay
+  delayId?: string;
+  seconds?: number;
+  mode?: 'replace' | 'ignore' | 'append';
+  cancelOnGameEnd?: boolean;
 }
 
 /**
@@ -304,6 +310,31 @@ export interface FlagDefinition {
   initialValue: boolean;
   description?: string;
   createdAt?: string;
+}
+
+// ==========================================
+// フェーズ（状態機械）オーサリング層
+// PhaseCompiler が既存の flag 条件 / setFlag / delay へコンパイルする。
+// エンジン・contract.ts には新しい型を追加しない。
+// ==========================================
+
+export interface PhaseTransition {
+  /** 遷移条件（phase activeフラグとANDされる）。afterSeconds と併用可 */
+  when?: TriggerCondition | TriggerCondition[];
+  /** 遷移先: 別フェーズのid、または終端 'success' | 'failure' */
+  to: string;
+  /** フェーズに入ってからN秒後に発火（delayアクションでコンパイル、精度は1フレーム） */
+  afterSeconds?: number;
+}
+
+export interface GamePhase {
+  /** [a-z0-9_]+。'success' / 'failure' は予約語 */
+  id: string;
+  /** 初期フェーズ（全フェーズ中ちょうど1つ） */
+  initial?: boolean;
+  /** このフェーズに入る全遷移のactionsにインライン展開される */
+  onEnter?: GameAction[];
+  transitions: PhaseTransition[];
 }
 
 /**

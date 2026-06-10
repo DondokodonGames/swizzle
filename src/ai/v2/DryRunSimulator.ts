@@ -8,7 +8,7 @@
  * 出力: ReachabilityReport
  */
 
-import { LogicGeneratorOutput, GameRule } from './types';
+import { LogicGeneratorOutput, GameRule, GameAction } from './types';
 import { GameSpecification } from './SpecificationGenerator';
 import { GenerationLogger } from './GenerationLogger';
 
@@ -494,6 +494,46 @@ export class DryRunSimulator {
             result: `Wait ${waitTime}s for time condition`
           });
         }
+      } else if (condition.type === 'flag' && condition.flagId) {
+        // フラグ条件（PhaseCompiler のフェーズ遷移等）: 1段トレースで充足可能性を判定
+        // condition:'ON'（または旧 flagValue 形）は true 要求、'OFF' は false 要求として近似
+        const desired = condition.condition === 'OFF' || condition.flagValue === false ? false : true;
+        const flagDef = output.script.flags?.find(f => f.id === condition.flagId);
+        const initialValue = flagDef?.initialValue ?? false;
+
+        if (initialValue !== desired) {
+          // フラグを desired にする setter を探す（再帰なし・1段のみ）
+          const setter = output.script.rules.find(r =>
+            r.id !== successRule.id && this.ruleSetsFlag(r, condition.flagId!, desired)
+          );
+          if (!setter) {
+            return {
+              reachable: false,
+              requiredTaps: -1,
+              estimatedSeconds: -1,
+              blockers: [`Flag "${condition.flagId}" is never set to ${desired ? 'ON' : 'OFF'} by any rule`]
+            };
+          }
+
+          const setterConditions = setter.triggers?.conditions ?? [];
+          if (setterConditions.some(c => c.type === 'touch' || c.type === 'collision')) {
+            steps.push({
+              action: 'tap',
+              target: setter.targetObjectId || 'object',
+              result: `Set flag ${condition.flagId} via rule ${setter.id}`
+            });
+            tapCount++;
+          }
+          const setterTime = setterConditions.find(c => c.type === 'time');
+          if (setterTime) {
+            timeEstimate = Math.max(timeEstimate, setterTime.seconds ?? setterTime.interval ?? 0);
+          }
+          // delay 経由でフラグが立つ場合（フェーズタイマー等）は秒数を加算
+          const delaySeconds = this.findDelaySetFlagSeconds(setter, condition.flagId, desired);
+          if (delaySeconds !== null) {
+            timeEstimate = Math.max(timeEstimate, delaySeconds);
+          }
+        }
       }
     }
 
@@ -502,7 +542,7 @@ export class DryRunSimulator {
     // 条件があるのにタップも待機も不要 → プレイヤー操作なしで自動成功の疑い
     if (tapCount === 0 && timeEstimate === 0 && conditions.length > 0) {
       const unhandledConditions = conditions.filter(c =>
-        c.type !== 'counter' && c.type !== 'touch' && c.type !== 'time' && c.type !== 'collision'
+        c.type !== 'counter' && c.type !== 'touch' && c.type !== 'time' && c.type !== 'collision' && c.type !== 'flag'
       );
       if (unhandledConditions.length > 0) {
         // C: always 条件 + execution.once のルールは意図的なセットアップルール（一度だけ発火）
@@ -616,6 +656,47 @@ export class DryRunSimulator {
   }
 
   /**
+   * ルールが指定フラグを desired 値にセットするか（直接 setFlag / toggleFlag / delay内のsetFlag）
+   */
+  private ruleSetsFlag(rule: GameRule, flagId: string, desired: boolean): boolean {
+    for (const action of rule.actions ?? []) {
+      if (action.type === 'setFlag' && action.flagId === flagId) {
+        const value = Boolean(action.value ?? action.flagValue);
+        if (value === desired) return true;
+      }
+      if (action.type === 'toggleFlag' && action.flagId === flagId) {
+        return true; // toggleは両値に到達しうる
+      }
+      if (action.type === 'delay' && Array.isArray(action.actions)) {
+        for (const nested of action.actions as GameAction[]) {
+          if (nested.type === 'setFlag' && nested.flagId === flagId &&
+              Boolean(nested.value ?? nested.flagValue) === desired) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * delay 経由で指定フラグを desired にセットする場合、その遅延秒数を返す（なければ null）
+   */
+  private findDelaySetFlagSeconds(rule: GameRule, flagId: string, desired: boolean): number | null {
+    for (const action of rule.actions ?? []) {
+      if (action.type === 'delay' && Array.isArray(action.actions)) {
+        for (const nested of action.actions as GameAction[]) {
+          if (nested.type === 'setFlag' && nested.flagId === flagId &&
+              Boolean(nested.value ?? nested.flagValue) === desired) {
+            return action.seconds ?? 0;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
    * ルールからタップ対象を特定
    */
   private findTapTarget(rule: GameRule): string | null {
@@ -641,7 +722,9 @@ export class DryRunSimulator {
     if (!counterAction) return 1;
 
     if (counterAction.operation === 'increment') return 1;
-    if (counterAction.operation === 'add') return counterAction.value || 1;
+    if (counterAction.operation === 'add') {
+      return typeof counterAction.value === 'number' ? counterAction.value : 1;
+    }
     return 1;
   }
 
@@ -660,12 +743,13 @@ export class DryRunSimulator {
         state.visibleObjects.add(action.targetId);
       } else if (action.type === 'counter' && action.counterName) {
         const current = state.counters.get(action.counterName) || 0;
+        const numValue = typeof action.value === 'number' ? action.value : undefined;
         let newValue = current;
         if (action.operation === 'increment') newValue++;
         else if (action.operation === 'decrement') newValue--;
-        else if (action.operation === 'add') newValue += action.value || 1;
-        else if (action.operation === 'subtract') newValue -= action.value || 1;
-        else if (action.operation === 'set') newValue = action.value || 0;
+        else if (action.operation === 'add') newValue += numValue ?? 1;
+        else if (action.operation === 'subtract') newValue -= numValue ?? 1;
+        else if (action.operation === 'set') newValue = numValue ?? 0;
         state.counters.set(action.counterName, newValue);
       } else if (action.type === 'setFlag' && action.flagId) {
         state.flags.set(action.flagId, true);

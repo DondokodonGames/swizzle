@@ -1441,9 +1441,9 @@ export class EditorMapper {
           flagId: params.flagId as string,
           ...(params.value !== undefined && { flagValue: params.value as boolean })
         };
-        // boolean値をnumber(1/0)に変換
+        // エンジン（FlagManager）は value の strict boolean を要求する（1/0 はON判定に失敗する）
         if (params.value !== undefined) {
-          setFlagResult.value = params.value ? 1 : 0;
+          setFlagResult.value = Boolean(params.value);
         }
         return setFlagResult;
 

@@ -155,7 +155,8 @@ export class FailurePatternTracker {
       COUNTER_UNREACHABLE: 'カウンター目標値がインクリメントルール数より多い。「同じ操作をN回」は不可。「N個の別オブジェクトを1回ずつ」に設計変更すること',
       OBJECT_NO_RULES: '全オブジェクトに最低1つのルールが必要。省略せず全件にルールを生成すること（block_1だけでなくblock_2, block_3も）',
       SUCCESS_UNREACHABLE_TIME: 'time→successのみの成功条件は自動成功になる。touch/collisionを成功条件に使うか、time→failureにしてサバイバルゲームにすること',
-      CONCEPT_TOO_SIMILAR: '既存ゲームと類似しすぎている。テーマの切り口・操作方法・成功条件のいずれかを大きく変えて差別化すること'
+      CONCEPT_TOO_SIMILAR: '既存ゲームと類似しすぎている。テーマの切り口・操作方法・成功条件のいずれかを大きく変えて差別化すること',
+      PHASE_GRAPH_INVALID: 'phasesのグラフが不正。initial:trueをちょうど1つ、全遷移先を定義済みphaseIdかsuccess/failureに、初期フェーズからsuccessへ到達可能にすること'
     };
     return hints[code] || '';
   }

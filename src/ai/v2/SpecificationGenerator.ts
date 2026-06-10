@@ -9,7 +9,7 @@
  */
 
 import { ILLMProvider, createLLMProvider, LLMProviderType, DEFAULT_MODELS } from './llm';
-import { GameConcept } from './types';
+import { GameConcept, GamePhase } from './types';
 import { robustParseJSON } from './jsonParser';
 import { GameDesign } from './GameDesignGenerator';
 import { EnhancedAssetPlan } from './AssetPlanner';
@@ -48,6 +48,10 @@ export interface GameSpecification {
     steps: string[];
     verification: string;
   };
+
+  // ★NEW: フェーズ（状態機械）。2段階以上の明確な段階を持つゲームのみ任意で出力。
+  // PhaseCompiler がフラグ+ルールへ決定的にコンパイルする。
+  phases?: GamePhase[];
 
   // 仕様決定の記録
   specDecisions: SpecDecision[];
@@ -441,6 +445,44 @@ time 経過 → failure
       "zIndex": 1000, "touchTypes": ["down"] }
   - JSON例（ルール条件）:
     { "type": "touch", "target": "zone_left", "touchType": "down" }
+
+## フェーズ（任意 — 2段階以上の明確な段階を持つゲームのみ）
+
+ゲームが**2つ以上の明確な段階**を持つ場合（例: timing_window の「待て→今だ！」、
+sequence_tap の手順進行、hold_charge の充電→解放）、トップレベルに "phases" 配列を出力する。
+フェーズはコンパイラが自動的にフラグとルールへ変換するため、
+**フェーズの状態管理用に自前の flags / rules を書かないこと**（二重管理になる）。
+単段階のゲーム（タップしたら即判定など）では phases を省略する。
+
+各 phase の形式:
+{
+  "id": "wait",              // [a-z0-9_]+。success/failure は予約語
+  "initial": true,           // 初期フェーズ（ちょうど1つ）
+  "onEnter": [ ...GameAction ],  // このフェーズに入った瞬間に実行（任意）
+  "transitions": [
+    { "when": { "type": "touch", "target": "obj_x", "touchType": "down" }, "to": "active" },
+    { "afterSeconds": 2, "to": "failure" }   // フェーズに入ってから2秒後
+  ]
+}
+- "to" は別フェーズの id、または "success" / "failure"（終端）
+- "when" と "afterSeconds" は併用可（両方満たした時に遷移）
+- 初期フェーズから success へ到達できるグラフであること（検証で弾かれる）
+
+### フェーズ例: timing_window（「光った瞬間だけタップ」）
+"phases": [
+  { "id": "wait", "initial": true,
+    "transitions": [
+      { "afterSeconds": 2, "to": "active" },
+      { "when": { "type": "touch", "target": "obj_target", "touchType": "down" }, "to": "failure" }
+    ] },
+  { "id": "active",
+    "onEnter": [ { "type": "switchAnimation", "targetId": "obj_target", "animationIndex": 1 } ],
+    "transitions": [
+      { "when": { "type": "touch", "target": "obj_target", "touchType": "down" }, "to": "success" },
+      { "afterSeconds": 1, "to": "failure" }
+    ] }
+]
+→ 「2秒待つ→ターゲットが光る→1秒以内にタップで成功。早すぎ/遅すぎは失敗」が宣言的に書ける。
 
 ### ★★★ 絶対禁止パターン ★★★
 1. **「勝利条件の確認」「敗北条件の確認」という名前のルール** → シンプルにタップで決める！
@@ -1898,6 +1940,7 @@ failureアクションの**直前**に必ず以下を入れる:
     "notes": ["成功判定はカウンター増加後に評価される"]
   },
   "successPath": { "steps": [...], "verification": "..." },
+  "phases": [ /* 任意: 2段階以上の段階を持つゲームのみ（「## フェーズ」参照） */ ],
   "specDecisions": [...]
 }`;
 

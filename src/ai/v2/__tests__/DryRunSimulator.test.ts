@@ -388,3 +388,87 @@ describe('DryRunSimulator – 自己hideするタップターゲット', () => {
     }
   });
 });
+
+// ──────────────────────────────────────────────
+// flag条件の成功パス（PhaseCompilerのフェーズ遷移等）
+// ──────────────────────────────────────────────
+
+describe('DryRunSimulator – flag条件の成功パス', () => {
+  const sim = new DryRunSimulator();
+
+  it('touchゲートのsetter経由でflagが立つ場合は到達可能（+1タップ）', () => {
+    const output = makeOutput({
+      flags: [{ id: 'armed', name: 'armed', initialValue: false }],
+      rules: [
+        {
+          id: 'arm_rule', name: 'arm_rule', enabled: true, priority: 50,
+          targetObjectId: 'ball',
+          triggers: { operator: 'AND', conditions: [{ type: 'touch', touchType: 'down', target: 'self' }] },
+          actions: [{ type: 'setFlag', flagId: 'armed', value: true }],
+        },
+        {
+          id: 'win_rule', name: 'win_rule', enabled: true, priority: 90,
+          targetObjectId: 'stage',
+          triggers: {
+            operator: 'AND',
+            conditions: [
+              { type: 'flag', flagId: 'armed', condition: 'ON' },
+              { type: 'touch', touchType: 'down', target: 'ball' },
+            ]
+          },
+          actions: [{ type: 'success' }],
+        },
+      ],
+    });
+    const report = sim.simulate(output);
+    expect(report.summary.playable).toBe(true);
+    // armフラグのsetterタップ + win条件自体のタップ = 2
+    expect(report.success.requiredTaps).toBe(2);
+  });
+
+  it('どのルールもflagを立てない場合はblockerにflagIdが含まれる', () => {
+    const output = makeOutput({
+      flags: [{ id: 'never_set', name: 'never_set', initialValue: false }],
+      rules: [
+        {
+          id: 'win_rule', name: 'win_rule', enabled: true, priority: 90,
+          targetObjectId: 'stage',
+          triggers: {
+            operator: 'AND',
+            conditions: [
+              { type: 'flag', flagId: 'never_set', condition: 'ON' },
+              { type: 'touch', touchType: 'down', target: 'ball' },
+            ]
+          },
+          actions: [{ type: 'success' }],
+        },
+      ],
+    });
+    const report = sim.simulate(output);
+    expect(report.summary.playable).toBe(false);
+    expect(report.success.blockers.some(b => b.includes('never_set'))).toBe(true);
+  });
+
+  it('initialValue: true のflag条件は追加コストなしで満たされる', () => {
+    const output = makeOutput({
+      flags: [{ id: 'ready', name: 'ready', initialValue: true }],
+      rules: [
+        {
+          id: 'win_rule', name: 'win_rule', enabled: true, priority: 90,
+          targetObjectId: 'stage',
+          triggers: {
+            operator: 'AND',
+            conditions: [
+              { type: 'flag', flagId: 'ready', condition: 'ON' },
+              { type: 'touch', touchType: 'down', target: 'ball' },
+            ]
+          },
+          actions: [{ type: 'success' }],
+        },
+      ],
+    });
+    const report = sim.simulate(output);
+    expect(report.summary.playable).toBe(true);
+    expect(report.success.requiredTaps).toBe(1);
+  });
+});

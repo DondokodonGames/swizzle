@@ -151,8 +151,9 @@ export class LogicValidator {
     }
 
     // rulesのtargetObjectIdチェック
+    // 'stage' はグローバルルール用の予約値（ProjectValidator と同じ扱い、template-factories でも使用）
     for (const rule of output.script.rules) {
-      if (rule.targetObjectId && !definedObjectIds.has(rule.targetObjectId)) {
+      if (rule.targetObjectId && rule.targetObjectId !== 'stage' && !definedObjectIds.has(rule.targetObjectId)) {
         errors.push({
           type: 'critical',
           code: 'INVALID_OBJECT_ID',
