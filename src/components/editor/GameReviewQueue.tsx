@@ -8,15 +8,60 @@ import { EditorGameBridge } from '../../services/editor/EditorGameBridge';
 import { supabase } from '../../lib/supabase';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 import { ModernButton } from '../ui/ModernButton';
+import { useAuth } from '../../hooks/useAuth';
+import { useIsAdmin } from '../../hooks/useIsAdmin';
 
 interface AiGame {
   id: string;
   title: string;
   ai_quality_score: number | null;
+  ai_image_score: number | null;
+  review_status: string | null;
+  review_notes: string | null;
+  thumbnail_url: string | null;
   is_published: boolean;
   created_at: string;
   project_data: GameProject;
 }
+
+/** frames は dataUrl（インライン）と storageUrl（Storage最適化済み）の両形式がある */
+const frameUrl = (frame: unknown): string | null => {
+  const f = frame as { dataUrl?: string; storageUrl?: string } | undefined;
+  return f?.dataUrl ?? f?.storageUrl ?? null;
+};
+
+/** 背景+各オブジェクトの1フレーム目をサムネイル表示する（プレイせずに画像品質を確認） */
+const AssetPreviewGrid: React.FC<{ project: GameProject; size?: number }> = ({ project, size = 48 }) => {
+  const previews: { id: string; url: string }[] = [];
+  const bg = project?.assets?.background;
+  const bgUrl = bg?.frames?.[0] ? frameUrl(bg.frames[0]) : null;
+  if (bgUrl) previews.push({ id: 'bg', url: bgUrl });
+  for (const obj of project?.assets?.objects ?? []) {
+    const url = obj?.frames?.[0] ? frameUrl(obj.frames[0]) : null;
+    if (url) previews.push({ id: obj.id, url });
+  }
+  if (previews.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+      {previews.map((p) => (
+        <img
+          key={p.id}
+          src={p.url}
+          alt={p.id}
+          title={p.id}
+          style={{
+            width: size,
+            height: size,
+            objectFit: 'contain',
+            borderRadius: 6,
+            backgroundColor: DESIGN_TOKENS.colors.neutral[700],
+            border: `1px solid ${DESIGN_TOKENS.colors.neutral[600]}`,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
 
 interface GameReviewQueueProps {
   onExit: () => void;
@@ -46,9 +91,12 @@ const qualityLabel = (score: number | null): string => {
 };
 
 export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
+  const { user } = useAuth();
+  const { isAdmin, adminLoading } = useIsAdmin(user);
   const [games, setGames] = useState<AiGame[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<'list' | 'playing' | 'feedback' | 'done'>('list');
   const [rating, setRating] = useState<'pass' | 'fix' | 'fail' | null>(null);
@@ -57,17 +105,17 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
   const [submitting, setSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [replayCount, setReplayCount] = useState(0);
-  const [filterTab, setFilterTab] = useState<'unreviewed' | 'low' | 'mid' | 'high'>('unreviewed');
+  const [filterTab, setFilterTab] = useState<'pending' | 'low' | 'mid' | 'high'>('pending');
   const canvasRef = useRef<HTMLDivElement>(null);
   const bridge = useRef(EditorGameBridge.getInstance());
 
-  // Fetch all AI-generated games (with ai_quality_score)
+  // Fetch all AI-generated games
   useEffect(() => {
     setLoading(true);
     supabase
       .from('user_games')
-      .select('id, title, ai_quality_score, is_published, created_at, project_data')
-      .not('ai_quality_score', 'is', null)
+      .select('id, title, ai_quality_score, ai_image_score, review_status, review_notes, thumbnail_url, is_published, created_at, project_data')
+      .eq('ai_generated', true)
       .order('ai_quality_score', { ascending: true })
       .limit(500)
       .then(({ data, error }) => {
@@ -85,8 +133,8 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
     if (filterTab === 'low') return s !== null && s < 60;
     if (filterTab === 'mid') return s !== null && s >= 60 && s < 75;
     if (filterTab === 'high') return s !== null && s >= 75;
-    // unreviewed = not published
-    return !g.is_published;
+    // pending = 審査待ち（公開ゲートで止まったゲーム）
+    return g.review_status === 'pending_review';
   });
 
   const currentGame = filteredGames[index];
@@ -145,19 +193,41 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
   const handleSubmit = useCallback(async () => {
     if (!rating || !currentGame) return;
     setSubmitting(true);
+    setUpdateError(null);
 
-    // 合格 → is_published = true
-    if (rating === 'pass') {
-      const { error } = await supabase
-        .from('user_games')
-        .update({ is_published: true, updated_at: new Date().toISOString() })
-        .eq('id', currentGame.id);
-      if (!error) {
-        setGames((prev) =>
-          prev.map((g) => (g.id === currentGame.id ? { ...g, is_published: true } : g))
-        );
-      }
+    // 課題タグ + コメントをレビューノートとして保存
+    const notes = [
+      selectedIssues.length > 0 ? `[${selectedIssues.join(', ')}]` : '',
+      comment.trim()
+    ].filter(Boolean).join(' ') || null;
+
+    const reviewFields = {
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user?.id ?? null,
+      review_notes: notes,
+      updated_at: new Date().toISOString(),
+    };
+
+    // pass → 公開+承認 / fail → 非公開+却下 / fix → pending のままノートだけ保存
+    const updateData =
+      rating === 'pass' ? { ...reviewFields, is_published: true, review_status: 'approved' }
+      : rating === 'fail' ? { ...reviewFields, is_published: false, review_status: 'rejected' }
+      : reviewFields;
+
+    const { error } = await supabase
+      .from('user_games')
+      .update(updateData)
+      .eq('id', currentGame.id);
+
+    if (error) {
+      setUpdateError(`保存失敗: ${error.message}`);
+      setSubmitting(false);
+      return;
     }
+
+    setGames((prev) =>
+      prev.map((g) => (g.id === currentGame.id ? { ...g, ...updateData } as AiGame : g))
+    );
 
     setSubmitting(false);
     const next = index + 1;
@@ -170,7 +240,7 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
       setComment('');
       setPhase('playing');
     }
-  }, [rating, currentGame, index, filteredGames.length]);
+  }, [rating, currentGame, index, filteredGames.length, selectedIssues, comment, user]);
 
   const handleSkip = useCallback(() => {
     bridge.current.stopGame();
@@ -189,18 +259,46 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
   // Inline publish/unpublish from list view
   const handleTogglePublish = useCallback(async (game: AiGame) => {
     setUpdatingId(game.id);
+    setUpdateError(null);
     const next = !game.is_published;
+    const updateData = next
+      ? {
+          is_published: true,
+          review_status: 'approved',
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: user?.id ?? null,
+          updated_at: new Date().toISOString(),
+        }
+      : { is_published: false, updated_at: new Date().toISOString() };
     const { error } = await supabase
       .from('user_games')
-      .update({ is_published: next, updated_at: new Date().toISOString() })
+      .update(updateData)
       .eq('id', game.id);
-    if (!error) {
+    if (error) {
+      setUpdateError(`更新失敗: ${error.message}`);
+    } else {
       setGames((prev) =>
-        prev.map((g) => (g.id === game.id ? { ...g, is_published: next } : g))
+        prev.map((g) => (g.id === game.id ? { ...g, ...updateData } as AiGame : g))
       );
     }
     setUpdatingId(null);
-  }, []);
+  }, [user]);
+
+  // ── Admin guard ──────────────────────────────────────────────────────────
+  if (!adminLoading && !isAdmin) {
+    return (
+      <div style={styles.center}>
+        <div style={{ fontSize: 24, marginBottom: 12 }}>🔒 管理者専用</div>
+        <div style={{ color: DESIGN_TOKENS.colors.neutral[400], marginBottom: 24, textAlign: 'center' }}>
+          AIゲームレビューには管理者権限が必要です。<br />
+          （profiles.is_admin = true のアカウントでログインしてください）
+        </div>
+        <ModernButton variant="secondary" size="md" onClick={onExit}>
+          戻る
+        </ModernButton>
+      </div>
+    );
+  }
 
   // ── Done screen ──────────────────────────────────────────────────────────
   if (phase === 'done') {
@@ -280,6 +378,21 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
             <div style={styles.feedbackPanel}>
               <div style={{ fontWeight: 600, fontSize: 15 }}>🎮 プレイ完了 — フィードバック</div>
 
+              {/* 画像プレビュー（プレイせず画像品質を判断できる） */}
+              {currentGame && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontSize: 12, color: DESIGN_TOKENS.colors.neutral[400] }}>
+                    🖼️ アセット
+                    {currentGame.ai_image_score !== null && (
+                      <span style={{ marginLeft: 8, color: qualityColor(currentGame.ai_image_score), fontWeight: 600 }}>
+                        画像QA {currentGame.ai_image_score}/100
+                      </span>
+                    )}
+                  </div>
+                  <AssetPreviewGrid project={currentGame.project_data} size={44} />
+                </div>
+              )}
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {(['pass', 'fix', 'fail'] as const).map((r) => (
                   <button
@@ -345,6 +458,10 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
                 rows={3}
               />
 
+              {updateError && (
+                <div style={{ color: '#ef4444', fontSize: 12 }}>{updateError}</div>
+              )}
+
               <ModernButton
                 variant="primary"
                 size="md"
@@ -363,10 +480,10 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
 
   // ── List view (default) ─────────────────────────────────────────────────
   const tabs: { key: typeof filterTab; label: string; count: number }[] = [
-    { key: 'unreviewed', label: '未公開', count: games.filter((g) => !g.is_published).length },
-    { key: 'low',        label: '❌ <60',  count: games.filter((g) => g.ai_quality_score !== null && g.ai_quality_score < 60).length },
-    { key: 'mid',        label: '⚠️ 60-74', count: games.filter((g) => g.ai_quality_score !== null && g.ai_quality_score >= 60 && g.ai_quality_score < 75).length },
-    { key: 'high',       label: '✅ ≥75',  count: games.filter((g) => g.ai_quality_score !== null && g.ai_quality_score >= 75).length },
+    { key: 'pending', label: '⏳ 審査待ち', count: games.filter((g) => g.review_status === 'pending_review').length },
+    { key: 'low',     label: '❌ <60',  count: games.filter((g) => g.ai_quality_score !== null && g.ai_quality_score < 60).length },
+    { key: 'mid',     label: '⚠️ 60-74', count: games.filter((g) => g.ai_quality_score !== null && g.ai_quality_score >= 60 && g.ai_quality_score < 75).length },
+    { key: 'high',    label: '✅ ≥75',  count: games.filter((g) => g.ai_quality_score !== null && g.ai_quality_score >= 75).length },
   ];
 
   return (
@@ -407,13 +524,16 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
         ))}
       </div>
 
-      {loading && (
+      {(loading || adminLoading) && (
         <div style={styles.center}>
           <div>読み込み中...</div>
         </div>
       )}
       {fetchError && (
         <div style={{ padding: 20, color: '#ef4444' }}>エラー: {fetchError}</div>
+      )}
+      {updateError && (
+        <div style={{ padding: '8px 20px', color: '#ef4444', fontSize: 13 }}>{updateError}</div>
       )}
 
       {!loading && !fetchError && filteredGames.length === 0 && (
@@ -444,6 +564,15 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
             }}>
               {game.ai_quality_score ?? '?'}点
             </span>
+            {game.ai_image_score !== null && (
+              <span style={{
+                fontSize: 11,
+                color: qualityColor(game.ai_image_score),
+                flexShrink: 0,
+              }} title="画像QAスコア">
+                🖼️{game.ai_image_score}
+              </span>
+            )}
             <span style={{
               flex: 1,
               fontSize: 14,
@@ -453,6 +582,7 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
             }}>
               {game.title}
             </span>
+            <AssetPreviewGrid project={game.project_data} size={28} />
             <span style={{ fontSize: 12, color: DESIGN_TOKENS.colors.neutral[400], flexShrink: 0 }}>
               {new Date(game.created_at).toLocaleDateString('ja-JP')}
             </span>
@@ -460,11 +590,20 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
               fontSize: 11,
               padding: '2px 8px',
               borderRadius: 12,
-              background: game.is_published ? '#16a34a33' : DESIGN_TOKENS.colors.neutral[700],
-              color: game.is_published ? '#4ade80' : DESIGN_TOKENS.colors.neutral[400],
+              background: game.is_published ? '#16a34a33'
+                : game.review_status === 'rejected' ? '#ef444433'
+                : game.review_status === 'pending_review' ? '#f59e0b33'
+                : DESIGN_TOKENS.colors.neutral[700],
+              color: game.is_published ? '#4ade80'
+                : game.review_status === 'rejected' ? '#f87171'
+                : game.review_status === 'pending_review' ? '#fbbf24'
+                : DESIGN_TOKENS.colors.neutral[400],
               flexShrink: 0,
             }}>
-              {game.is_published ? '公開中' : '非公開'}
+              {game.is_published ? '公開中'
+                : game.review_status === 'rejected' ? '却下'
+                : game.review_status === 'pending_review' ? '審査待ち'
+                : '非公開'}
             </span>
             <ModernButton
               variant="outline"
