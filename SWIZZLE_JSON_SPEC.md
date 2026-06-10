@@ -670,6 +670,91 @@ Swizzle JSONフォーマットは、ゲームプロジェクト全体を1つのJ
 
 - `condition`: "ON" | "OFF" | "CHANGED" | "ON_TO_OFF" | "OFF_TO_ON"
 
+### 推奨パターン: フェーズ（状態機械）
+
+ゲームが「待機→チャンス→判定」のような**複数の段階**を持つ場合、フラグの場当たり的な
+組み合わせではなく、以下の**フェーズ・イディオム**で状態機械として書くことを強く推奨します。
+段階が明示されるため人間にもLLMにも読みやすく、AUTO_SUCCESS / SUCCESS_FAILURE_CONFLICT 等の
+頻出バグを構造的に防げます。
+
+**ルール:**
+1. フェーズごとに1つのフラグ `phase_<id>` を定義（初期フェーズのみ `initialValue: true`）
+2. 遷移 = 1ルール: `AND(phase_<from> ON, phase_lock OFF, <遷移条件>)` →
+   `[setFlag phase_lock true, setFlag phase_<from> false, setFlag phase_<to> true, ...入場時アクション]`
+3. `phase_lock` フラグで同一フレーム内の二重遷移を防ぐ（priority 1 の解除ルールとセット）
+4. 終端への遷移は遷移先フラグの代わりに `{"type": "success"}` / `{"type": "failure"}` を実行
+5. 「フェーズに入ってからN秒」は `delay` アクション（`mode: "ignore"` で毎フレーム再armを無害化）で
+   経過フラグを立てる（`time` 条件はゲーム開始基準なので使わない）
+
+**注意事項:**
+- `setFlag` の `value` は**必ずboolean**（`true`/`false`）。`1`/`0` はエンジンのON判定に失敗する
+- ルールはpriority昇順に評価され、フラグ変更は同一フレーム内の後続ルールから見える。
+  遷移ルールはpriority 80〜99（通常のゲームプレイルール30〜79より後）に置く
+
+**完全な例: 「光った瞬間だけタップ」（wait → active → success/failure）**
+
+```json
+{
+  "flags": [
+    { "id": "phase_wait",   "name": "Phase: wait",   "initialValue": true },
+    { "id": "phase_active", "name": "Phase: active", "initialValue": false },
+    { "id": "phase_lock",   "name": "Phase: lock",   "initialValue": false },
+    { "id": "phase_wait_t0_elapsed", "name": "wait 2秒経過", "initialValue": false }
+  ],
+  "rules": [
+    { "id": "phase__lock_reset", "priority": 1, "targetObjectId": "stage",
+      "triggers": { "operator": "AND", "conditions": [{ "type": "flag", "flagId": "phase_lock", "condition": "ON" }] },
+      "actions": [{ "type": "setFlag", "flagId": "phase_lock", "value": false }] },
+
+    { "id": "phase_wait__timer_0", "priority": 10, "targetObjectId": "stage",
+      "triggers": { "operator": "AND", "conditions": [{ "type": "flag", "flagId": "phase_wait", "condition": "ON" }] },
+      "actions": [{ "type": "delay", "delayId": "phase_wait_t0", "seconds": 2, "mode": "ignore",
+        "cancelOnGameEnd": true,
+        "actions": [{ "type": "setFlag", "flagId": "phase_wait_t0_elapsed", "value": true }] }] },
+
+    { "id": "phase_wait__to__active", "priority": 80, "targetObjectId": "stage",
+      "triggers": { "operator": "AND", "conditions": [
+        { "type": "flag", "flagId": "phase_wait", "condition": "ON" },
+        { "type": "flag", "flagId": "phase_lock", "condition": "OFF" },
+        { "type": "flag", "flagId": "phase_wait_t0_elapsed", "condition": "ON" }
+      ] },
+      "actions": [
+        { "type": "setFlag", "flagId": "phase_wait_t0_elapsed", "value": false },
+        { "type": "setFlag", "flagId": "phase_lock", "value": true },
+        { "type": "setFlag", "flagId": "phase_wait", "value": false },
+        { "type": "setFlag", "flagId": "phase_active", "value": true },
+        { "type": "switchAnimation", "targetId": "obj_target", "animationIndex": 1 }
+      ] },
+
+    { "id": "phase_wait__to__failure", "priority": 90, "targetObjectId": "stage",
+      "triggers": { "operator": "AND", "conditions": [
+        { "type": "flag", "flagId": "phase_wait", "condition": "ON" },
+        { "type": "flag", "flagId": "phase_lock", "condition": "OFF" },
+        { "type": "touch", "target": "obj_target", "touchType": "down" }
+      ] },
+      "actions": [
+        { "type": "setFlag", "flagId": "phase_lock", "value": true },
+        { "type": "setFlag", "flagId": "phase_wait", "value": false },
+        { "type": "failure" }
+      ] },
+
+    { "id": "phase_active__to__success", "priority": 91, "targetObjectId": "stage",
+      "triggers": { "operator": "AND", "conditions": [
+        { "type": "flag", "flagId": "phase_active", "condition": "ON" },
+        { "type": "flag", "flagId": "phase_lock", "condition": "OFF" },
+        { "type": "touch", "target": "obj_target", "touchType": "down" }
+      ] },
+      "actions": [
+        { "type": "setFlag", "flagId": "phase_lock", "value": true },
+        { "type": "setFlag", "flagId": "phase_active", "value": false },
+        { "type": "success" }
+      ] }
+  ]
+}
+```
+
+（active から1秒で failure に落とす場合は `phase_active__timer_*` + 遷移ルールを同じ形で追加）
+
 #### 位置条件
 
 ```json
