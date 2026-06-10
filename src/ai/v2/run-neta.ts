@@ -14,6 +14,10 @@
  *   OPENAI_API_KEY    - 画像生成（省略時はモック）
  *   SKIP_UPLOAD       - 'true' で Supabase アップロードをスキップ
  *   DRY_RUN           - 'true' でドライラン
+ *   IMAGE_QA          - 'true' | 'false'（既定: openai プロバイダ時に有効）
+ *   IMAGE_QA_MAX_RETRIES - QA不合格時の再生成上限（既定1、最大2）
+ *   QUALITY_PUBLISH_THRESHOLD - このスコア未満は pending_review で未公開保存（既定70）
+ *   SIMILARITY_GATE   - 'false' で類似度ゲートを無効化
  */
 
 import * as dotenv from 'dotenv';
@@ -21,6 +25,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 import { Orchestrator } from './Orchestrator';
+import { resolveImageQAFromEnv } from './AssetGenerator';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -96,7 +101,8 @@ async function main() {
     anthropicApiKey: anthropicKey,
     imageGeneration: {
       provider: imageProvider,
-      apiKey: openaiApiKey
+      apiKey: openaiApiKey,
+      imageQA: resolveImageQAFromEnv(imageProvider)
     }
   });
 

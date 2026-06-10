@@ -281,9 +281,11 @@ async function main() {
           const uploadResult = await uploader.uploadGame(
             assembly.project,
             80,           // qualityScore
-            true,         // autoPublish
-            key,          // templateId (重複チェック用)
-            netaMechanic  // category
+            {
+              autoPublish: true,
+              templateId: key,        // 重複チェック用
+              category: netaMechanic
+            }
           );
           if (!uploadResult.success) {
             console.log(`⚠️ アップロード失敗: ${uploadResult.error}`);

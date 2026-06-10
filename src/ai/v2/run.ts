@@ -10,11 +10,16 @@
  *   IMAGE_PROVIDER    - 'openai' | 'claude-svg' | 'mock' (default: auto-detect)
  *   SKIP_UPLOAD       - Set to 'true' to skip Supabase upload
  *   DRY_RUN           - Set to 'true' for dry run mode
+ *   IMAGE_QA          - 'true' | 'false'（既定: openai プロバイダ時に有効）
+ *   IMAGE_QA_MAX_RETRIES - QA不合格時の再生成上限（既定1、最大2）
+ *   QUALITY_PUBLISH_THRESHOLD - このスコア未満は pending_review で未公開保存（既定70）
+ *   SIMILARITY_GATE   - 'false' で類似度ゲートを無効化
  */
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { Orchestrator } from './Orchestrator';
+import { resolveImageQAFromEnv } from './AssetGenerator';
 
 // .envと.env.localの両方を読み込む
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
@@ -59,7 +64,8 @@ async function main() {
     anthropicApiKey: anthropicKey,
     imageGeneration: {
       provider: imageProvider,
-      apiKey: openaiApiKey
+      apiKey: openaiApiKey,
+      imageQA: resolveImageQAFromEnv(imageProvider)
     }
   });
 

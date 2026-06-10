@@ -88,7 +88,7 @@ export class AutoPublisher {
         const uploadResult = await this.supabaseUploader.uploadGame(
           game.project,
           game.quality.totalScore,
-          autoPublish && game.quality.passed
+          { autoPublish: autoPublish && game.quality.passed }
         );
         
         if (uploadResult.success && uploadResult.gameId) {

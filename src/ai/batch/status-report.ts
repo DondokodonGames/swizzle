@@ -6,8 +6,12 @@
 
 import fs from 'fs';
 import path from 'path';
+import * as dotenv from 'dotenv';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
+
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -102,5 +106,35 @@ if (totalGames > 0) {
 } else {
   console.log('No game logs found. Run the generation pipeline to populate logs.\n');
 }
+
+// ── pending review (Supabase) ─────────────────────────────────────────────────
+// 認証情報がある場合のみ審査待ち件数を表示。なければ静かにスキップ。
+
+async function reportPendingReview(): Promise<void> {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_SERVICE_KEY;
+  if (!supabaseUrl || !supabaseKey) return;
+
+  try {
+    const { createClient } = await import('@supabase/supabase-js');
+    const client = createClient(supabaseUrl, supabaseKey);
+    const { count, error } = await client
+      .from('user_games')
+      .select('*', { count: 'exact', head: true })
+      .eq('review_status', 'pending_review');
+
+    if (error) return;
+    if ((count ?? 0) > 0) {
+      console.log(`⏳ 審査待ち: ${count} 件`);
+      console.log('   → npm run dev → エディター → AIゲームレビュー で承認/却下\n');
+    } else {
+      console.log('⏳ 審査待ち: 0 件\n');
+    }
+  } catch {
+    // ネットワーク障害等は無視（ローカル統計の表示を妨げない）
+  }
+}
+
+await reportPendingReview();
 
 console.log('═══════════════════════════════════════════════════\n');

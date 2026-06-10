@@ -48,10 +48,18 @@ const DEFAULT_CONFIG: OrchestratorConfig = {
   maxRetries: 3,
   maxGameAttempts: Infinity,
   dryRun: false,
+  qualityPublishThreshold: 70,
   imageGeneration: {
     provider: 'mock'
   }
 };
+
+/**
+ * 公開ゲート判定: スコアが閾値以上なら自動公開、未満なら審査キュー行き
+ */
+export function shouldAutoPublish(score: number, threshold: number): boolean {
+  return score >= threshold;
+}
 
 export class Orchestrator {
   private config: OrchestratorConfig;
@@ -86,6 +94,14 @@ export class Orchestrator {
 
   constructor(config?: Partial<OrchestratorConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+
+    // 公開ゲート閾値: config > 環境変数 QUALITY_PUBLISH_THRESHOLD > デフォルト70
+    if (config?.qualityPublishThreshold === undefined && process.env.QUALITY_PUBLISH_THRESHOLD) {
+      const envThreshold = Number(process.env.QUALITY_PUBLISH_THRESHOLD);
+      if (Number.isFinite(envThreshold)) {
+        this.config.qualityPublishThreshold = envThreshold;
+      }
+    }
 
     // Initialize logger
     this.logger = new GenerationLogger();
@@ -140,7 +156,8 @@ export class Orchestrator {
     this.assetGenerator = new AssetGenerator({
       imageProvider: this.config.imageGeneration.provider,
       openaiApiKey: this.config.imageGeneration.apiKey,
-      anthropicApiKey: this.config.anthropicApiKey
+      anthropicApiKey: this.config.anthropicApiKey,
+      imageQA: this.config.imageGeneration.imageQA
     });
     this.finalAssembler = new FinalAssembler();
 
@@ -166,6 +183,8 @@ export class Orchestrator {
     const maxAttempts = this.config.maxGameAttempts ?? Infinity;
     console.log(`   Max game attempts: ${maxAttempts === Infinity ? '∞ (unlimited)' : maxAttempts}`);
     console.log(`   Image provider: ${this.config.imageGeneration.provider}`);
+    console.log(`   Image QA: ${this.config.imageGeneration.imageQA?.enabled ? `enabled (max ${this.config.imageGeneration.imageQA.maxRetriesPerImage} regen/image)` : 'disabled'}`);
+    console.log(`   Publish threshold: ${this.config.qualityPublishThreshold}点未満 → pending_review（未公開）`);
     console.log(`   Dry run: ${this.config.dryRun}`);
     console.log(`   Logging: ${process.env.GENERATION_LOGGING !== 'false' ? 'enabled' : 'disabled'}`);
     console.log(`   New steps: AssetPlanner, ProjectValidator, DryRunSimulator, LogicRepairer`);
@@ -266,15 +285,13 @@ export class Orchestrator {
       console.log('   📋 Step 1: Generating concept...');
       let concept: GameConcept;
       let conceptRetries = 0;
+      let conceptFeedback: string | undefined;
 
       while (true) {
         // シードが指定されている場合はネタ帳ベースで生成、そうでなければ完全ランダム
         concept = seed
-          ? await this.conceptGenerator.generateFromSeed(seed,
-              conceptRetries > 0 ? 'Previous concept had issues, please improve' : undefined)
-          : await this.conceptGenerator.generate(
-              conceptRetries > 0 ? 'Previous concept had issues, please improve' : undefined
-            );
+          ? await this.conceptGenerator.generateFromSeed(seed, conceptFeedback)
+          : await this.conceptGenerator.generate(conceptFeedback);
         console.log(`      Title: ${concept.title}`);
 
         // Log concept
@@ -285,20 +302,43 @@ export class Orchestrator {
         const conceptValidation = this.conceptValidator.validate(concept);
         this.logger.logConceptValidation(conceptValidation.passed, conceptValidation.issues);
 
-        if (conceptValidation.passed) {
-          console.log('      ✅ Concept validated');
-          break;
+        if (!conceptValidation.passed) {
+          conceptRetries++;
+          if (conceptRetries >= this.config.maxRetries) {
+            console.log(`      ⚠️ Concept validation failed after ${conceptRetries} retries, proceeding anyway`);
+            validationPassedFirstTry = false;
+            break;
+          }
+
+          console.log(`      ⚠️ Issues: ${conceptValidation.issues.join(', ')}`);
+          console.log(`      🔄 Retrying (${conceptRetries}/${this.config.maxRetries})...`);
+          conceptFeedback = 'Previous concept had issues, please improve';
+          continue;
+        }
+        console.log('      ✅ Concept validated');
+
+        // Step 2.5: 類似度ゲート — 既存ゲームと70%超類似なら再生成
+        const similarity = await this.checkConceptSimilarity(concept);
+        if (similarity) {
+          conceptRetries++;
+          const topSimilar = similarity.similarGames[0];
+          const simPercent = Math.round(similarity.similarityScore * 100);
+          if (conceptRetries >= this.config.maxRetries) {
+            throw new Error(
+              `CONCEPT_TOO_SIMILAR: "${concept.title}" は既存ゲーム「${topSimilar?.title}」と${simPercent}%類似（${topSimilar?.reason}）`
+            );
+          }
+          console.log(`      ⚠️ 既存ゲーム「${topSimilar?.title}」と${simPercent}%類似 (${topSimilar?.reason})`);
+          console.log(`      🔄 Retrying with differentiation feedback (${conceptRetries}/${this.config.maxRetries})...`);
+          conceptFeedback = [
+            `前回のコンセプトは既存ゲームと類似しすぎていました（類似度${simPercent}%）。`,
+            `類似ゲーム: ${similarity.similarGames.slice(0, 3).map(g => `「${g.title}」`).join('、')}`,
+            'テーマの切り口・操作方法・成功条件のいずれかを大きく変えて、明確に差別化したコンセプトを生成してください。'
+          ].join('\n');
+          continue;
         }
 
-        conceptRetries++;
-        if (conceptRetries >= this.config.maxRetries) {
-          console.log(`      ⚠️ Concept validation failed after ${conceptRetries} retries, proceeding anyway`);
-          validationPassedFirstTry = false;
-          break;
-        }
-
-        console.log(`      ⚠️ Issues: ${conceptValidation.issues.join(', ')}`);
-        console.log(`      🔄 Retrying (${conceptRetries}/${this.config.maxRetries})...`);
+        break;
       }
 
       // Update session with concept title
@@ -534,10 +574,14 @@ export class Orchestrator {
           playable: simulation.summary.playable,
           confidence: simulation.summary.confidence,
           requiredTaps: simulation.success.requiredTaps
-        }
+        },
+        assets
       );
       const overallScore = this.qualityScorer.calculateOverallScore(qualityScore);
       console.log(`      Score: ${overallScore}/100 (${this.qualityScorer.getLabel(overallScore)})`);
+      if (qualityScore.imageQualityAverage !== undefined) {
+        console.log(`      Image QA: ${qualityScore.imageQualityAverage}/100${qualityScore.placeholderCount ? ` (placeholder ${qualityScore.placeholderCount})` : ''}`);
+      }
 
       const generationTime = Date.now() - startTime;
       const estimatedCost = this.estimateCost();
@@ -552,6 +596,7 @@ export class Orchestrator {
         concept,
         project: assemblyResult.project,
         qualityScore,
+        overallScore,
         passed,
         generationTime,
         estimatedCost
@@ -560,6 +605,42 @@ export class Orchestrator {
       this.logger.logError('Orchestrator', error as Error);
       this.logger.endSession(false);
       throw error;
+    }
+  }
+
+  // 類似度ゲートのフォールバック警告を一度だけ出すフラグ
+  private similarityFallbackWarned = false;
+
+  /**
+   * Step 2.5: コンセプトの類似度ゲート
+   *
+   * 既存ゲーム（Supabase）との類似度が70%超なら SimilarityResult を返す（=リジェクト）。
+   * 無効化条件: SIMILARITY_GATE=false / dryRun / Supabase未接続（フォールバック）
+   */
+  private async checkConceptSimilarity(
+    concept: GameConcept
+  ): Promise<import('./GamePatternAnalyzer').SimilarityResult | null> {
+    if (process.env.SIMILARITY_GATE === 'false' || this.config.dryRun) {
+      return null;
+    }
+
+    const analyzer = this.conceptGenerator.getPatternAnalyzer();
+    const debugInfo = analyzer.getDebugInfo() as { hasClient: boolean };
+    if (!debugInfo.hasClient) {
+      if (!this.similarityFallbackWarned) {
+        this.similarityFallbackWarned = true;
+        console.warn('   ⚠️⚠️⚠️ 類似度ゲートが無効です: Supabase認証情報（SUPABASE_SERVICE_KEY）が見つかりません。');
+        console.warn('   既存ゲームとの重複チェックなしで生成を続行します。');
+      }
+      return null;
+    }
+
+    try {
+      const result = await analyzer.checkSimilarity(concept);
+      return result.isSimilar ? result : null;
+    } catch (error) {
+      console.warn(`      ⚠️ Similarity check failed: ${(error as Error).message}`);
+      return null;
     }
   }
 
@@ -685,16 +766,27 @@ export class Orchestrator {
                      : seed?.theme?.includes('バー') ? 'bar'
                      : undefined;
 
+      // 公開ゲート: 閾値未満は未公開 + 審査キュー行き
+      const threshold = this.config.qualityPublishThreshold ?? 70;
+      const autoPublish = shouldAutoPublish(result.overallScore, threshold);
+      if (!autoPublish) {
+        console.log(`   📋 Score ${result.overallScore} < ${threshold} → pending_review（未公開で保存、管理UIで審査）`);
+      }
+
       const uploadResult = await this.uploader.uploadGame(
         result.project,
-        this.qualityScorer.calculateOverallScore(result.qualityScore),
-        true, // autoPublish
-        templateId,
-        category
+        result.overallScore,
+        {
+          autoPublish,
+          reviewStatus: autoPublish ? 'approved' : 'pending_review',
+          imageScore: result.qualityScore.imageQualityAverage,
+          templateId,
+          category
+        }
       );
 
       if (uploadResult.success) {
-        console.log(`   ✅ Uploaded: ${uploadResult.gameId}`);
+        console.log(`   ✅ Uploaded: ${uploadResult.gameId}${autoPublish ? '' : ' (pending_review)'}`);
       } else {
         console.error(`   ❌ Upload failed: ${uploadResult.error}`);
       }
@@ -715,9 +807,11 @@ export class Orchestrator {
     // Claude: ~$0.003/1K tokens average (blended input/output)
     // DALL-E 3: ~$0.04/image × ~6 images
     // claude-svg: ~$0.015 (haiku, 1 batch call)
+    // Image QA (haiku vision): ~$0.002/image × ~6 images
     const p = this.config.imageGeneration.provider;
     const imageCost = p === 'openai' ? 0.24 : p === 'claude-svg' ? 0.015 : 0;
-    return tokensUsed * 0.000003 + imageCost;
+    const qaCost = (p === 'openai' && this.config.imageGeneration.imageQA?.enabled) ? 6 * 0.002 : 0;
+    return tokensUsed * 0.000003 + imageCost + qaCost;
   }
 
   /**
@@ -738,9 +832,19 @@ export class Orchestrator {
       result.games
         .filter(g => g.passed)
         .forEach((g, i) => {
-          const score = this.qualityScorer.calculateOverallScore(g.qualityScore);
-          console.log(`   ${i + 1}. ${g.concept.title} - Score: ${score}`);
+          console.log(`   ${i + 1}. ${g.concept.title} - Score: ${g.overallScore}`);
         });
+    }
+
+    // 審査待ち（閾値未満で未公開のまま保存されたゲーム）
+    const threshold = this.config.qualityPublishThreshold ?? 70;
+    const pendingGames = result.games.filter(g => g.passed && !shouldAutoPublish(g.overallScore, threshold));
+    if (pendingGames.length > 0) {
+      console.log(`\n📋 Pending Review (score < ${threshold}, 未公開):`);
+      pendingGames.forEach((g, i) => {
+        console.log(`   ${i + 1}. ${g.concept.title} - Score: ${g.overallScore}`);
+      });
+      console.log('   → エディターの「AIゲームレビュー」で承認/却下してください');
     }
 
     // Theme diversity
@@ -929,7 +1033,9 @@ export class Orchestrator {
 
       try {
         // 動的ヒントを prevFeedback に追加
-        const dynamicHints = this.failureTracker.generateDynamicHints();
+        // メカニクスIDは前回試行（または seed）のもの — ヒントはエラー分類の説明なので許容
+        const mechanicId = seed?.mechanic ?? this.conceptGenerator.getLastForcedMechanic()?.id;
+        const dynamicHints = this.failureTracker.generateDynamicHints(mechanicId);
         const feedbackWithHints = dynamicHints
           ? (lastFeedback ? lastFeedback + '\n' + dynamicHints : dynamicHints)
           : lastFeedback;
@@ -951,11 +1057,12 @@ export class Orchestrator {
           return null;
         }
 
-        // エラーコードを抽出してパターン記録
+        // エラーコードを抽出してパターン記録（メカニクス別に集計）
         const errorCodes = this.extractErrorCodes(msg);
         const gameTitle = seed?.title ?? 'unknown';
         if (errorCodes.length > 0) {
-          this.failureTracker.recordFailure(errorCodes, gameTitle);
+          const failedMechanicId = seed?.mechanic ?? this.conceptGenerator.getLastForcedMechanic()?.id;
+          this.failureTracker.recordFailure(errorCodes, gameTitle, failedMechanicId);
         }
 
         console.log(`   ❌ 試行 ${attempts} 失敗: ${msg.substring(0, 120)}`);
@@ -995,7 +1102,8 @@ export class Orchestrator {
       'CONFLICTING_TERMINATION', 'UNREACHABLE_SUCCESS', 'MISSING_COUNTER',
       'INVALID_COMPARISON', 'POOR_HORIZONTAL_DISTRIBUTION', 'MISSING_SOUND_ID',
       'ACTION_UNDEFINED_OBJECT', 'CONDITION_UNDEFINED_OBJECT',
-      'COUNTER_UNREACHABLE', 'OBJECT_NO_RULES', 'SUCCESS_UNREACHABLE_TIME'
+      'COUNTER_UNREACHABLE', 'OBJECT_NO_RULES', 'SUCCESS_UNREACHABLE_TIME',
+      'CONCEPT_TOO_SIMILAR'
     ];
     return knownCodes.filter(code => msg.includes(code));
   }

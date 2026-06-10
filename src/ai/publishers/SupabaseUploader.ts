@@ -47,6 +47,20 @@ export interface UploadResult {
 }
 
 /**
+ * アップロードオプション
+ */
+export interface UploadOptions {
+  /** true なら is_published=true で即公開（既定: true） */
+  autoPublish?: boolean;
+  /** 審査ステータス。省略時は autoPublish から導出 */
+  reviewStatus?: 'approved' | 'pending_review';
+  /** ImageQualityChecker の平均スコア（0-100） */
+  imageScore?: number;
+  templateId?: string;
+  category?: string;
+}
+
+/**
  * ゲーム統計
  */
 export interface GameStatistics {
@@ -57,6 +71,7 @@ export interface GameStatistics {
   averageQuality: number;
   publishedGames: number;
   unpublishedGames: number;
+  pendingReviewGames: number;
 }
 
 /**
@@ -135,14 +150,15 @@ export class SupabaseUploader {
   async uploadGame(
     project: GameProject,
     qualityScore: number,
-    autoPublish: boolean = true,
-    templateId?: string,
-    category?: string
+    options: UploadOptions = {}
   ): Promise<UploadResult> {
+    const autoPublish = options.autoPublish ?? true;
+    const reviewStatus = options.reviewStatus ?? (autoPublish ? 'approved' : 'pending_review');
+
     const fullSize = this.calculateProjectSize(project);
     console.log(`   📊 Project size: ${(fullSize / 1024).toFixed(1)} KB`);
 
-    const resolvedTemplateId = templateId ?? 'ai_generated';
+    const resolvedTemplateId = options.templateId ?? 'ai_generated';
 
     // 重複チェック（同じ template_id が既に存在する場合はスキップ）
     if (resolvedTemplateId !== 'ai_generated') {
@@ -227,16 +243,18 @@ export class SupabaseUploader {
       title: projectToSave.name || projectToSave.settings?.name || 'Untitled Game',
       description: projectToSave.description || projectToSave.settings?.description || 'AI-generated game',
       template_id: resolvedTemplateId,
-      category: category ?? null,
+      category: options.category ?? null,
       game_data: {},                           // 旧フィールド（空オブジェクト）
       project_data: projectToSave,             // 新フィールド（Storage URL使用）
       thumbnail_url: thumbnailUrl,
       is_published: autoPublish,
+      review_status: reviewStatus,
       is_featured: false,
       play_count: 0,
       like_count: 0,
       ai_generated: true,
       ai_quality_score: qualityScore,
+      ai_image_score: options.imageScore ?? null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -321,22 +339,32 @@ export class SupabaseUploader {
    */
   async updateGameStatus(
     gameId: string,
-    status: 'published' | 'unpublished' | 'pending'
+    status: 'published' | 'unpublished' | 'pending',
+    review?: { reviewedBy?: string; reviewNotes?: string }
   ): Promise<boolean> {
-    
+
     try {
       const updateData: any = {
         updated_at: new Date().toISOString()
       };
-      
+
       if (status === 'published') {
         updateData.is_published = true;
+        updateData.review_status = 'approved';
       } else if (status === 'unpublished') {
+        // 公開取り下げ: review_status はそのまま（承認済みのまま非公開にもできる）
         updateData.is_published = false;
       } else if (status === 'pending') {
         updateData.is_published = false;
+        updateData.review_status = 'pending_review';
       }
-      
+
+      if (review?.reviewedBy || review?.reviewNotes) {
+        updateData.reviewed_at = new Date().toISOString();
+        if (review.reviewedBy) updateData.reviewed_by = review.reviewedBy;
+        if (review.reviewNotes) updateData.review_notes = review.reviewNotes;
+      }
+
       const { error } = await this.supabase
         .from('user_games')
         .update(updateData)
@@ -496,7 +524,14 @@ export class SupabaseUploader {
         .select('*', { count: 'exact', head: true })
         .eq('creator_id', this.masterUserId)
         .eq('is_published', false);
-      
+
+      // 審査待ちゲーム数
+      const { count: pendingReviewGames } = await this.supabase
+        .from('user_games')
+        .select('*', { count: 'exact', head: true })
+        .eq('creator_id', this.masterUserId)
+        .eq('review_status', 'pending_review');
+
       return {
         totalGames: totalGames || 0,
         gamesToday: gamesToday || 0,
@@ -504,12 +539,13 @@ export class SupabaseUploader {
         gamesThisMonth: gamesThisMonth || 0,
         averageQuality: averageQuality || 0,
         publishedGames: publishedGames || 0,
-        unpublishedGames: unpublishedGames || 0
+        unpublishedGames: unpublishedGames || 0,
+        pendingReviewGames: pendingReviewGames || 0
       };
-      
+
     } catch (error) {
       console.error('Get statistics error:', error);
-      
+
       return {
         totalGames: 0,
         gamesToday: 0,
@@ -517,7 +553,8 @@ export class SupabaseUploader {
         gamesThisMonth: 0,
         averageQuality: 0,
         publishedGames: 0,
-        unpublishedGames: 0
+        unpublishedGames: 0,
+        pendingReviewGames: 0
       };
     }
   }
