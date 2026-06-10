@@ -59,6 +59,9 @@ export interface GameConcept {
   successCondition: string; // 成功条件（数値必須）
   failureCondition: string; // 失敗条件（数値必須）
 
+  // 強制メカニクス由来の想定難易度（SpecificationGenerator のパラメータ指針に使う）
+  difficulty?: 'easy' | 'normal' | 'hard';
+
   // 自己評価
   selfEvaluation: {
     goalClarity: number;       // 1-10
@@ -347,6 +350,10 @@ export interface GeneratedObject {
   name: string;
   imageUrl: string;
   frames: Array<{ dataUrl: string }>;
+  /** 画像生成に失敗してプレースホルダーSVGで代替された場合 true（品質スコアで減点） */
+  isPlaceholder?: boolean;
+  /** ImageQualityChecker による採点（0-100）。未検査なら undefined */
+  imageScore?: number;
 }
 
 export interface GeneratedSound {
@@ -368,6 +375,13 @@ export interface GeneratedAssets {
     id: string;
     name: string;
     data: string;
+  };
+  /** ImageQualityChecker のサマリー。Vision QA 無効時は undefined */
+  imageQuality?: {
+    averageScore: number;     // プレースホルダーは0点として平均
+    checkedCount: number;
+    placeholderCount: number;
+    regeneratedCount: number;
   };
 }
 
@@ -397,6 +411,9 @@ export interface QualityScore {
   simulationConfidence: 'high' | 'medium' | 'low';
   simulationPlayable: boolean;
   simulationRequiredTaps: number;
+  // 画像品質（Vision QA 有効時のみ。プレースホルダーは0点として平均）
+  imageQualityAverage?: number;
+  placeholderCount?: number;
   generatedAt: string;
 }
 
@@ -409,6 +426,8 @@ export interface GenerationResult {
   concept: GameConcept;
   project: GameProject;
   qualityScore: QualityScore;
+  /** calculateOverallScore() の結果（0-100）。公開ゲート判定とレポートで使用 */
+  overallScore: number;
   passed: boolean;
   generationTime: number;
   estimatedCost: number;
@@ -431,8 +450,15 @@ export interface OrchestratorConfig {
   maxGameAttempts?: number;
   dryRun: boolean;
   anthropicApiKey?: string;
+  /** このスコア未満は is_published=false + review_status='pending_review' で保存（既定: 70） */
+  qualityPublishThreshold?: number;
   imageGeneration: {
     provider: 'openai' | 'mock' | 'claude-svg';
     apiKey?: string;
+    /** Vision による画像QA。openai プロバイダ時のみ有効化を推奨 */
+    imageQA?: {
+      enabled: boolean;
+      maxRetriesPerImage: number;
+    };
   };
 }

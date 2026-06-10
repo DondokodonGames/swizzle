@@ -1,24 +1,31 @@
 /**
  * Step 9: QualityScorer
  *
- * スコアの構成:
- *   65%: DryRunSimulator の信頼度（実際に遊べるかどうか）
- *   30%: コンセプト自己評価の平均（4指標）
- *    5%: 初回バリデーション通過ボーナス
+ * スコアの構成（計100点）:
+ *   50点: DryRunSimulator の信頼度（実際に遊べるかどうか）
+ *   25点: コンセプト自己評価の平均（4指標）
+ *   20点: 画像品質（ImageQualityChecker の平均。プレースホルダーは0点扱い）
+ *    5点: 初回バリデーション通過ボーナス
  *
- * confidence high   → base 65点
- * confidence medium → base 40点
- * confidence low    → ここには来ない（Orchestratorでゲート済み）
+ * confidence high   → base 50点
+ * confidence medium → base 30点
+ * confidence low    → 8点（通常 Orchestrator でゲート済み）
+ *
+ * 画像品質が未計測（mock / claude-svg / DRY_RUN）の場合は中立の12点を与え、
+ * ローカル実行が公開ゲートで不当に落ちないようにする。
  */
 
 import { GameProject } from '../../types/editor/GameProject';
-import { GameConcept, QualityScore } from './types';
+import { GameConcept, GeneratedAssets, QualityScore } from './types';
 
 interface SimulationSummary {
   playable: boolean;
   confidence: 'high' | 'medium' | 'low';
   requiredTaps?: number;
 }
+
+/** 画像品質が未計測の場合に与える中立点（20点満点中） */
+const IMAGE_SCORE_NEUTRAL = 12;
 
 export class QualityScorer {
   /**
@@ -28,7 +35,8 @@ export class QualityScorer {
     concept: GameConcept,
     project: GameProject,
     validationPassedFirstTry: boolean,
-    simulation: SimulationSummary
+    simulation: SimulationSummary,
+    assets?: GeneratedAssets
   ): QualityScore {
     return {
       // コンセプト自己評価（LLMによる自己採点）
@@ -47,6 +55,10 @@ export class QualityScorer {
       simulationPlayable: simulation.playable,
       simulationRequiredTaps: simulation.requiredTaps ?? 0,
 
+      // 画像品質（Vision QA 有効時のみ）
+      imageQualityAverage: assets?.imageQuality?.averageScore,
+      placeholderCount: assets?.imageQuality?.placeholderCount,
+
       generatedAt: new Date().toISOString()
     };
   }
@@ -55,30 +67,35 @@ export class QualityScorer {
    * 総合スコアを計算
    *
    * DryRunSimulator の信頼度を主軸に、
-   * 自己評価を副軸として組み合わせる。
+   * 自己評価と画像品質を副軸として組み合わせる。
    */
   calculateOverallScore(qualityScore: QualityScore): number {
-    // ① シミュレーション信頼度 → 0〜65点
+    // ① シミュレーション信頼度 → 0〜50点
     let simBase: number;
     switch (qualityScore.simulationConfidence) {
-      case 'high':   simBase = 65; break;
-      case 'medium': simBase = 40; break;
-      default:       simBase = 10; // low（通常ここには来ない）
+      case 'high':   simBase = 50; break;
+      case 'medium': simBase = 30; break;
+      default:       simBase = 8; // low（通常ここには来ない）
     }
 
-    // ② 自己評価平均 → 0〜30点
+    // ② 自己評価平均 → 0〜25点
     const selfAvg = (
       qualityScore.goalClarity +
       qualityScore.operationClarity +
       qualityScore.judgmentClarity +
       qualityScore.acceptance
     ) / 4;
-    const selfScore = Math.round((selfAvg / 10) * 30);
+    const selfScore = Math.round((selfAvg / 10) * 25);
 
-    // ③ 初回通過ボーナス → 5点
+    // ③ 画像品質 → 0〜20点（未計測なら中立12点）
+    const imageScore = qualityScore.imageQualityAverage !== undefined
+      ? Math.round((qualityScore.imageQualityAverage / 100) * 20)
+      : IMAGE_SCORE_NEUTRAL;
+
+    // ④ 初回通過ボーナス → 5点
     const firstTryBonus = qualityScore.validationPassedFirstTry ? 5 : 0;
 
-    return Math.min(100, simBase + selfScore + firstTryBonus);
+    return Math.min(100, simBase + selfScore + imageScore + firstTryBonus);
   }
 
   /**
@@ -98,6 +115,11 @@ export class QualityScorer {
     const overall = this.calculateOverallScore(qualityScore);
     const label = this.getLabel(overall);
 
+    const imageLine = qualityScore.imageQualityAverage !== undefined
+      ? `  画像品質: ${qualityScore.imageQualityAverage}/100` +
+        (qualityScore.placeholderCount ? ` (プレースホルダー ${qualityScore.placeholderCount}件)` : '')
+      : '  画像品質: 未計測（中立扱い）';
+
     return [
       `総合スコア: ${overall}点 (${label})`,
       `  シミュレーション: ${qualityScore.simulationConfidence} / ${qualityScore.simulationRequiredTaps}taps`,
@@ -105,6 +127,7 @@ export class QualityScorer {
       `  操作明確性: ${qualityScore.operationClarity}/10`,
       `  判定明確性: ${qualityScore.judgmentClarity}/10`,
       `  納得感: ${qualityScore.acceptance}/10`,
+      imageLine,
       `  ルール数: ${qualityScore.ruleCount}`,
       `  オブジェクト数: ${qualityScore.objectCount}`,
       `  一発合格: ${qualityScore.validationPassedFirstTry ? 'Yes' : 'No'}`
