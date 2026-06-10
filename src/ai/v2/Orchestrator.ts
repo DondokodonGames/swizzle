@@ -97,6 +97,12 @@ export class Orchestrator {
       }
     }
 
+    // DRY_RUNはモック生成が決定的（同じ失敗を繰り返す）ため、
+    // 明示指定がなければリトライ上限を5に抑えて無限ループを防ぐ
+    if (config?.maxGameAttempts === undefined && this.config.dryRun) {
+      this.config.maxGameAttempts = 5;
+    }
+
     // Initialize logger
     this.logger = new GenerationLogger();
 

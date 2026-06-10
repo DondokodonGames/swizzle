@@ -103,9 +103,14 @@ async function main() {
   // 現在の進捗を表示
   showStatus();
 
+  const maxGameAttempts = process.env.MAX_GAME_ATTEMPTS
+    ? Math.max(1, parseInt(process.env.MAX_GAME_ATTEMPTS, 10))
+    : undefined;
+
   const orchestrator = new Orchestrator({
     targetGamesPerRun: count,
     maxRetries: 3,
+    ...(maxGameAttempts !== undefined ? { maxGameAttempts } : {}),
     dryRun,
     anthropicApiKey: anthropicKey,
     imageGeneration: { provider: 'mock' },  // バッチ生成はSVGアセットを使うためmock

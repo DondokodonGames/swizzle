@@ -14,6 +14,7 @@
  *   IMAGE_QA_MAX_RETRIES - QA不合格時の再生成上限（既定1、最大2）
  *   QUALITY_PUBLISH_THRESHOLD - このスコア未満は pending_review で未公開保存（既定70）
  *   SIMILARITY_GATE   - 'false' で類似度ゲートを無効化
+ *   MAX_GAME_ATTEMPTS - ゲーム1本あたりの再生成上限（既定: 無制限、DRY_RUN時は5）
  */
 
 import * as dotenv from 'dotenv';
@@ -56,10 +57,15 @@ async function main() {
   console.log(`Image provider: ${imageProvider}`);
   console.log('');
 
+  const maxGameAttempts = process.env.MAX_GAME_ATTEMPTS
+    ? Math.max(1, parseInt(process.env.MAX_GAME_ATTEMPTS, 10))
+    : undefined;
+
   // Create orchestrator
   const orchestrator = new Orchestrator({
     targetGamesPerRun: count,
     maxRetries: 3,
+    ...(maxGameAttempts !== undefined ? { maxGameAttempts } : {}),
     dryRun,
     anthropicApiKey: anthropicKey,
     imageGeneration: {

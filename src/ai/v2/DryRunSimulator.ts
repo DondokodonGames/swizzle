@@ -280,11 +280,14 @@ export class DryRunSimulator {
     }
 
     // 各成功ルールについて到達可能性を検証
+    // 失敗したattemptのblockersは最終報告のために蓄積する
+    const attemptBlockers: string[] = [];
     for (const successRule of successRules) {
       const pathResult = this.simulateToSuccess(output, initialState, successRule, issues);
       if (pathResult.reachable) {
         return pathResult;
       }
+      attemptBlockers.push(...pathResult.blockers.map(b => `[${successRule.id}] ${b}`));
     }
 
     // A: delay でラップされた success を "非同期成功パス" として検出
@@ -295,8 +298,14 @@ export class DryRunSimulator {
       return asyncSuccessPath;
     }
 
-    // 到達不能
-    const blockers = this.identifyBlockers(output, successRules, initialState);
+    // 到達不能 — シミュレーション中のblockersと静的分析のblockersをマージし、空のまま返さない
+    const blockers = [...new Set([
+      ...attemptBlockers,
+      ...this.identifyBlockers(output, successRules, initialState)
+    ])];
+    if (blockers.length === 0) {
+      blockers.push(`Success rule(s) ${successRules.map(r => r.id).join(', ')} could not be satisfied in simulation (no specific blocker identified)`);
+    }
     return {
       reachable: false,
       requiredTaps: -1,
@@ -407,33 +416,32 @@ export class DryRunSimulator {
           };
         }
 
-        const incrementRule = incrementRules[0];
+        // 複数のインクリメントルールを順に消化する。
+        // 「N個の別オブジェクトを各1回タップ（タップで自分が消える）」という推奨パターンでは、
+        // 各ルールのタップ後にターゲットがhideされるため、まだ可視なターゲットを持つ
+        // 次のルールへ進む必要がある（単一ルールの連打だけを想定すると誤って到達不能になる）。
+        let accumulated = 0;
+        let guard = 0;
+        while (accumulated < requiredIncrement && guard++ < 1000) {
+          const usable = incrementRules.find(r => {
+            const t = r.targetObjectId || this.findTapTarget(r);
+            if (t === null) return false;
+            if (t !== 'stage' && state.hiddenObjects.has(t)) return false;
+            // ゼロ以下の加算は前進しないので対象外（無限ループ防止）
+            return this.getIncrementValue(r, condition.counterName!) > 0;
+          });
 
-        // タップ対象を特定
-        const tapTarget = incrementRule.targetObjectId || this.findTapTarget(incrementRule);
-        if (!tapTarget) {
-          return {
-            reachable: false,
-            requiredTaps: -1,
-            estimatedSeconds: -1,
-            blockers: [`Cannot determine tap target for incrementing "${condition.counterName}"`]
-          };
-        }
-
-        // 必要なタップ数を積算
-        const incrementPerTap = this.getIncrementValue(incrementRule, condition.counterName);
-        const requiredTaps = Math.ceil(requiredIncrement / incrementPerTap);
-
-        for (let i = 0; i < requiredTaps; i++) {
-          // オブジェクトがhideされていないか確認
-          if (state.hiddenObjects.has(tapTarget)) {
+          if (!usable) {
             return {
               reachable: false,
               requiredTaps: -1,
               estimatedSeconds: -1,
-              blockers: [`Target "${tapTarget}" becomes hidden before reaching goal`]
+              blockers: [`All tap targets for counter "${condition.counterName}" become hidden after ${tapCount} tap(s) (need ${requiredIncrement} increments)`]
             };
           }
+
+          const tapTarget = usable.targetObjectId || this.findTapTarget(usable)!;
+          const incrementPerTap = this.getIncrementValue(usable, condition.counterName);
 
           steps.push({
             action: 'tap',
@@ -441,9 +449,19 @@ export class DryRunSimulator {
             result: `Counter ${condition.counterName} +${incrementPerTap}`
           });
           tapCount++;
+          accumulated += incrementPerTap;
 
-          // 状態を更新
-          this.applyRule(state, incrementRule);
+          // 状態を更新（hide self 等が反映され、次周回は別ルールが選ばれる）
+          this.applyRule(state, usable);
+        }
+
+        if (accumulated < requiredIncrement) {
+          return {
+            reachable: false,
+            requiredTaps: -1,
+            estimatedSeconds: -1,
+            blockers: [`Counter "${condition.counterName}" simulation exceeded ${guard} steps without reaching ${requiredIncrement} increments`]
+          };
         }
       } else if (condition.type === 'touch') {
         // タップ条件: プレイヤーが1回タップする必要がある
@@ -795,9 +813,11 @@ export class DryRunSimulator {
 
         for (const target of hideTargets) {
           // このターゲットをタップする他のルールがあるか
+          // 自分自身は除外: 「タップで自分が消える」は意図された正規パターン
           const dependentRules = rules.filter(r =>
-            r.targetObjectId === target ||
-            r.triggers?.conditions?.some(c => c.target === target)
+            r.id !== rule.id &&
+            (r.targetObjectId === target ||
+             r.triggers?.conditions?.some(c => c.target === target))
           );
 
           if (dependentRules.length > 0) {
@@ -879,8 +899,10 @@ export class DryRunSimulator {
 
     if (success.reachable) {
       parts.push(`Success reachable in ${success.requiredTaps} taps (~${success.estimatedSeconds.toFixed(1)}s)`);
-    } else {
+    } else if (success.blockers.length > 0) {
       parts.push(`Success NOT reachable: ${success.blockers.join(', ')}`);
+    } else {
+      parts.push('Success NOT reachable (no blocker details available)');
     }
 
     if (conflicts.length > 0) {
