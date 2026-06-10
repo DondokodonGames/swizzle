@@ -1956,6 +1956,12 @@ export class SpecificationGenerator {
       .replace('{{DESIGN}}', JSON.stringify(design, null, 2))
       .replace('{{ASSET_PLAN}}', assetPlan ? JSON.stringify(assetPlan, null, 2) : 'なし');
 
+    // 難易度をゲーム時間だけでなくメカニクスのパラメータに反映する
+    const difficultySection = this.buildDifficultyTuningSection(concept.difficulty);
+    if (difficultySection) {
+      prompt += difficultySection;
+    }
+
     if (feedback) {
       prompt += `\n\n⚠️ 前回の生成で以下の構造的エラーが発生しました。必ず修正してください:\n${feedback}`;
     }
@@ -2005,6 +2011,41 @@ export class SpecificationGenerator {
     });
 
     return spec;
+  }
+
+  /**
+   * 難易度チューニング節を生成
+   *
+   * concept.difficulty（強制メカニクス由来）を、判定の広さ・移動速度・
+   * 制限時間などの具体的なパラメータ指針に変換する。
+   */
+  private buildDifficultyTuningSection(difficulty?: 'easy' | 'normal' | 'hard'): string {
+    if (!difficulty) return '';
+
+    const tuning: Record<'easy' | 'normal' | 'hard', string> = {
+      easy: `
+# 🎚️ 難易度チューニング: easy（直感的にすぐできる）
+- ターゲットは大きめ（size: large または medium）、タップ判定に余裕を持たせる
+- movement.speed は遅め（2〜4）
+- 制限時間は余裕を持たせる（duration 7〜10秒）
+- 成功は1アクションで到達できる設計（複数ステップを要求しない）
+- 不正解の選択肢は明確に見分けがつくものにする`,
+      normal: `
+# 🎚️ 難易度チューニング: normal（少し集中が必要）
+- ターゲットは標準サイズ（size: medium）
+- movement.speed は標準（4〜7）
+- 制限時間は標準（duration 6〜8秒）
+- 成功までの操作は1〜2アクション`,
+      hard: `
+# 🎚️ 難易度チューニング: hard（シビアだが納得感がある）
+- タイミング窓・判定ゾーンは狭めに設計する（ただし人間が反応可能な範囲: 0.3秒以上）
+- movement.speed は速め（7〜10）
+- 制限時間は短め（duration 5〜7秒）
+- 失敗しやすいが「自分のミス」と納得できる判定にする（理不尽な即死は禁止）
+- 操作精度を要求してよいが、人間の限界（3タップ/秒）は超えないこと`
+    };
+
+    return `\n${tuning[difficulty]}\n`;
   }
 
   /**

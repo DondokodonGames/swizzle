@@ -120,8 +120,10 @@ export class GamePatternAnalyzer {
           play_count,
           created_at
         `)
-        .eq('is_published', true)
+        // 公開ゲートで pending_review のまま未公開のゲームも類似度コーパスに含める
+        // （除外すると審査待ちキューに近似ゲームが溜まり続ける）。rejected のみ除外。
         .eq('ai_generated', true)
+        .neq('review_status', 'rejected')
         .order('created_at', { ascending: false })
         .limit(limit);
 

@@ -23,12 +23,16 @@ const mechanicsPath = path.join(__dirname, 'mechanics-catalog.json');
 let LOADED_THEMES: string[] = [];
 let LOADED_TAGS: any = {};
 
-interface MechanicEntry {
+export interface MechanicEntry {
   id: string;
   name: string;
   description: string;
   playerOperationHint: string;
   editorNote?: string;
+  /** プレイヤー体感難易度（難易度ローテーションのフィルタに使用） */
+  difficulty?: 'easy' | 'normal' | 'hard';
+  /** 試されるスキル（timing/precision/observation/judgment/speed/memory/endurance/dexterity） */
+  skillTypes?: string[];
 }
 let LOADED_MECHANICS: MechanicEntry[] = [];
 
@@ -393,6 +397,7 @@ export class GameConceptGenerator {
   private usedMechanics: Map<string, number> = new Map();  // type → count (debug)
   private archetypeIndex: number = 0;
   private patternAnalyzer: GamePatternAnalyzer;
+  private lastForcedMechanic: MechanicEntry | null = null; // 失敗パターンのメカニクス別集計用
 
   constructor(config?: ConceptGeneratorConfig) {
     const providerType = config?.llmProvider || (process.env.LLM_PROVIDER as LLMProviderType) || 'anthropic';
@@ -505,9 +510,11 @@ ${archetype.examples.map(e => `- ${e}`).join('\n')}
 
     // ★ メカニクスを強制注入（カタログからローテーション）
     // テーマ強制と同じ方式。LLMが自由に選ぶとパターンが収束するため外部から指定する。
-    const forcedMechanic = this.selectForcedMechanic();
+    // 難易度を重み付け（easy 40% / normal 40% / hard 20%）で選び、メカニクス候補を絞る。
+    const targetDifficulty = this.selectTargetDifficulty();
+    const forcedMechanic = this.selectForcedMechanic(targetDifficulty);
     if (forcedMechanic) {
-      console.log(`      🎮 Forced mechanic: ${forcedMechanic.name} (${forcedMechanic.id})`);
+      console.log(`      🎮 Forced mechanic: ${forcedMechanic.name} (${forcedMechanic.id}, difficulty: ${forcedMechanic.difficulty ?? 'normal'})`);
       prompt += this.buildForcedMechanicSection(forcedMechanic, forcedTheme);
     }
 
@@ -537,7 +544,11 @@ ${archetype.examples.map(e => `- ${e}`).join('\n')}
 
     // テーマとメカニクスを記録
     this.usedThemes.add(concept.theme);
-    if (forcedMechanic) this.usedMechanicIds.add(forcedMechanic.id);
+    if (forcedMechanic) {
+      this.usedMechanicIds.add(forcedMechanic.id);
+      // 強制メカニクス由来の難易度を下流（SpecificationGenerator）に伝搬
+      concept.difficulty = forcedMechanic.difficulty ?? 'normal';
+    }
     const mechanicType = this.classifyMechanic(concept.playerOperation);
     this.usedMechanics.set(mechanicType, (this.usedMechanics.get(mechanicType) ?? 0) + 1);
 
@@ -701,23 +712,66 @@ JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n
   }
 
   /**
+   * 目標難易度を重み付けで選択（easy 40% / normal 40% / hard 20%）
+   * メカニクス選択を難易度で絞ることで、難易度がゲーム時間ではなく
+   * メカニクスの複雑さに連動するようにする。
+   */
+  private selectTargetDifficulty(): 'easy' | 'normal' | 'hard' {
+    const r = Math.random();
+    if (r < 0.4) return 'easy';
+    if (r < 0.8) return 'normal';
+    return 'hard';
+  }
+
+  /**
    * カタログからメカニクスをランダム選択（使用済みを避けてローテーション）
    * テーマ選択と同じ方式。全消化したらリセット。
+   *
+   * @param targetDifficulty 指定時は該当難易度のメカニクスに絞る（枯渇時は全体にフォールバック）
    */
-  private selectForcedMechanic(): MechanicEntry | null {
+  private selectForcedMechanic(targetDifficulty?: 'easy' | 'normal' | 'hard'): MechanicEntry | null {
     if (LOADED_MECHANICS.length === 0) return null;
-    const available = LOADED_MECHANICS.filter(m => !this.usedMechanicIds.has(m.id));
-    if (available.length === 0) {
-      this.usedMechanicIds.clear();
-      return LOADED_MECHANICS[Math.floor(Math.random() * LOADED_MECHANICS.length)];
+
+    let pool = LOADED_MECHANICS;
+    if (targetDifficulty) {
+      const filtered = LOADED_MECHANICS.filter(m => (m.difficulty ?? 'normal') === targetDifficulty);
+      if (filtered.length > 0) pool = filtered;
     }
-    return available[Math.floor(Math.random() * available.length)];
+
+    let available = pool.filter(m => !this.usedMechanicIds.has(m.id));
+    if (available.length === 0) {
+      // 難易度プール内を消化済み → プール全体から再抽選（全カタログ消化時はリセット）
+      if (LOADED_MECHANICS.every(m => this.usedMechanicIds.has(m.id))) {
+        this.usedMechanicIds.clear();
+      }
+      available = pool;
+    }
+    const selected = available[Math.floor(Math.random() * available.length)];
+    this.lastForcedMechanic = selected;
+    return selected;
+  }
+
+  /**
+   * 直近に強制したメカニクスを取得（失敗パターンのメカニクス別集計用）
+   */
+  getLastForcedMechanic(): MechanicEntry | null {
+    return this.lastForcedMechanic;
   }
 
   /**
    * メカニクス強制注入用のプロンプトセクションを生成
    */
   private buildForcedMechanicSection(mechanic: MechanicEntry, theme?: string): string {
+    const difficultyLabels: Record<string, string> = {
+      easy: 'easy（直感的にすぐできる。大きめのターゲット・余裕のある判定）',
+      normal: 'normal（少し集中が必要。標準的な判定）',
+      hard: 'hard（精度・タイミングがシビア。失敗しやすいが納得感がある）'
+    };
+    const difficulty = mechanic.difficulty ?? 'normal';
+    const skillLine = mechanic.skillTypes?.length
+      ? `\nこのメカニクスはプレイヤーの **${mechanic.skillTypes.join('・')}** を試すゲームです。`
+      : '';
+
     return `
 
 # ★★★ 今回のメカニクス（必ず実装してください）★★★
@@ -725,12 +779,15 @@ JSONのみを出力してください。${feedback ? `\n\n# 前回の問題点\n
 **${mechanic.name}**
 
 ${mechanic.description}
+${skillLine}
+**想定難易度: ${difficultyLabels[difficulty]}**
 
 **playerOperation フィールドは必ず次のガイドに沿って書いてください:**
 ${mechanic.playerOperationHint}
 
 このメカニクスをテーマ「${theme ?? ''}」の世界観で表現してください。
-メカニクスの本質（操作方法・判定方法）を変更・回避・別のもので代替しないでください。`;
+メカニクスの本質（操作方法・判定方法）を変更・回避・別のもので代替しないでください。
+成功条件・失敗条件の厳しさは想定難易度に合わせて設計してください。`;
   }
 
   /**

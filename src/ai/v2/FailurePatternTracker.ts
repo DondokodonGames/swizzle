@@ -13,6 +13,7 @@ export interface FailureRecord {
   count: number;
   gameExamples: string[];  // 失敗したゲームタイトル（最大5件）
   lastSeen: string;        // ISO timestamp
+  byMechanic: Record<string, number>;  // メカニクスID → 発生回数
 }
 
 export interface FailurePatternStore {
@@ -38,7 +39,12 @@ export class FailurePatternTracker {
   private load(): FailurePatternStore {
     if (fs.existsSync(this.storeFile)) {
       try {
-        return JSON.parse(fs.readFileSync(this.storeFile, 'utf-8'));
+        const store = JSON.parse(fs.readFileSync(this.storeFile, 'utf-8')) as FailurePatternStore;
+        // 後方互換: byMechanic が無い旧形式のレコードにデフォルトを埋める
+        for (const rec of Object.values(store.patterns ?? {})) {
+          if (!rec.byMechanic) rec.byMechanic = {};
+        }
+        return store;
       } catch {
         // 壊れている場合はリセット
       }
@@ -61,8 +67,10 @@ export class FailurePatternTracker {
 
   /**
    * 生成失敗を記録する
+   *
+   * @param mechanicId 失敗時の強制メカニクスID（メカニクス別の弱点分析に使用）
    */
-  recordFailure(errorCodes: string[], gameTitle: string): void {
+  recordFailure(errorCodes: string[], gameTitle: string, mechanicId?: string): void {
     this.store.totalAttempts++;
     for (const code of errorCodes) {
       if (!this.store.patterns[code]) {
@@ -70,7 +78,8 @@ export class FailurePatternTracker {
           errorCode: code,
           count: 0,
           gameExamples: [],
-          lastSeen: new Date().toISOString()
+          lastSeen: new Date().toISOString(),
+          byMechanic: {}
         };
       }
       const rec = this.store.patterns[code];
@@ -79,6 +88,8 @@ export class FailurePatternTracker {
       if (!rec.gameExamples.includes(gameTitle) && rec.gameExamples.length < 5) {
         rec.gameExamples.push(gameTitle);
       }
+      const mech = mechanicId ?? 'unknown';
+      rec.byMechanic[mech] = (rec.byMechanic[mech] ?? 0) + 1;
     }
     this.save();
   }
@@ -95,10 +106,20 @@ export class FailurePatternTracker {
   /**
    * 頻出エラーパターンを動的ヒントとしてプロンプトに追加する文字列を返す
    * SpecificationGenerator の prevFeedback に付加して使用する
+   *
+   * @param mechanicId 指定時はそのメカニクスでの発生回数を優先してソート
+   *                   （メカニクス固有の弱点に対するヒントが先頭に来る）
    */
-  generateDynamicHints(): string {
+  generateDynamicHints(mechanicId?: string): string {
     const sorted = Object.values(this.store.patterns)
-      .sort((a, b) => b.count - a.count)
+      .sort((a, b) => {
+        if (mechanicId) {
+          const aMech = a.byMechanic?.[mechanicId] ?? 0;
+          const bMech = b.byMechanic?.[mechanicId] ?? 0;
+          if (aMech !== bMech) return bMech - aMech;
+        }
+        return b.count - a.count;
+      })
       .slice(0, 5);
 
     if (sorted.length === 0) return '';
@@ -133,7 +154,8 @@ export class FailurePatternTracker {
       CONFLICTING_TERMINATION: '複数のルールで同じ条件が成功と失敗の両方を発火させている。targetObjectを分けること',
       COUNTER_UNREACHABLE: 'カウンター目標値がインクリメントルール数より多い。「同じ操作をN回」は不可。「N個の別オブジェクトを1回ずつ」に設計変更すること',
       OBJECT_NO_RULES: '全オブジェクトに最低1つのルールが必要。省略せず全件にルールを生成すること（block_1だけでなくblock_2, block_3も）',
-      SUCCESS_UNREACHABLE_TIME: 'time→successのみの成功条件は自動成功になる。touch/collisionを成功条件に使うか、time→failureにしてサバイバルゲームにすること'
+      SUCCESS_UNREACHABLE_TIME: 'time→successのみの成功条件は自動成功になる。touch/collisionを成功条件に使うか、time→failureにしてサバイバルゲームにすること',
+      CONCEPT_TOO_SIMILAR: '既存ゲームと類似しすぎている。テーマの切り口・操作方法・成功条件のいずれかを大きく変えて差別化すること'
     };
     return hints[code] || '';
   }
@@ -169,6 +191,29 @@ export class FailurePatternTracker {
       lines.push(`- 発生ゲーム例: ${rec.gameExamples.join(', ')}`);
       if (hint) {
         lines.push(`- 推奨修正: ${hint}`);
+      }
+      lines.push('');
+    }
+
+    // メカニクス別の失敗集計（どのメカニクスが系統的に壊れやすいかを可視化）
+    const mechanicTotals = new Map<string, number>();
+    for (const rec of sorted) {
+      for (const [mech, count] of Object.entries(rec.byMechanic ?? {})) {
+        mechanicTotals.set(mech, (mechanicTotals.get(mech) ?? 0) + count);
+      }
+    }
+    if (mechanicTotals.size > 0) {
+      lines.push('## メカニクス別失敗率');
+      lines.push('');
+      const sortedMechanics = [...mechanicTotals.entries()].sort((a, b) => b[1] - a[1]);
+      for (const [mech, total] of sortedMechanics) {
+        const topErrors = sorted
+          .filter(r => (r.byMechanic?.[mech] ?? 0) > 0)
+          .sort((a, b) => (b.byMechanic[mech] ?? 0) - (a.byMechanic[mech] ?? 0))
+          .slice(0, 3)
+          .map(r => `${r.errorCode}(${r.byMechanic[mech]})`)
+          .join(', ');
+        lines.push(`- **${mech}**: ${total}回 — 主因: ${topErrors}`);
       }
       lines.push('');
     }
