@@ -8,6 +8,7 @@ import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import { GameConcept, AssetPlan, GeneratedAssets, GeneratedObject, GeneratedSound, BgmPlan } from './types';
 import { GameDesign } from './GameDesignGenerator';
+import { ImageQualityChecker } from './ImageQualityChecker';
 
 // BGMプリセット（各ムードに対応した音楽パラメータ）
 const BGM_PRESETS: Record<string, { baseFreq: number; tempo: number; pattern: string }> = {
@@ -37,14 +38,40 @@ export interface AssetGeneratorConfig {
   imageProvider: 'openai' | 'mock' | 'claude-svg';
   openaiApiKey?: string;
   anthropicApiKey?: string;
+  /** Vision による画像QA（openai プロバイダ時のみ有効） */
+  imageQA?: {
+    enabled: boolean;
+    /** QA不合格時の再生成上限（既定1、コスト抑制のため2まで推奨） */
+    maxRetriesPerImage: number;
+  };
+}
+
+/**
+ * 環境変数から画像QA設定を解決する（run スクリプト用）
+ *
+ * IMAGE_QA: 'true' | 'false'（未設定時は openai プロバイダなら有効）
+ * IMAGE_QA_MAX_RETRIES: 再生成上限（既定1、上限2 — DALL-E再生成コスト抑制）
+ */
+export function resolveImageQAFromEnv(
+  provider: 'openai' | 'mock' | 'claude-svg'
+): { enabled: boolean; maxRetriesPerImage: number } {
+  const enabled = process.env.IMAGE_QA !== undefined
+    ? process.env.IMAGE_QA === 'true'
+    : provider === 'openai';
+  const envRetries = Number(process.env.IMAGE_QA_MAX_RETRIES);
+  const maxRetriesPerImage = Number.isFinite(envRetries) && process.env.IMAGE_QA_MAX_RETRIES
+    ? Math.max(0, Math.min(2, envRetries))
+    : 1;
+  return { enabled: enabled && provider === 'openai', maxRetriesPerImage };
 }
 
 export class AssetGenerator {
   private config: AssetGeneratorConfig;
   private openai?: OpenAI;
   private anthropic?: Anthropic;
+  private checker?: ImageQualityChecker;
 
-  constructor(config: AssetGeneratorConfig) {
+  constructor(config: AssetGeneratorConfig, checker?: ImageQualityChecker) {
     this.config = config;
 
     if (config.imageProvider === 'openai' && config.openaiApiKey) {
@@ -53,6 +80,17 @@ export class AssetGenerator {
     if (config.imageProvider === 'claude-svg' && config.anthropicApiKey) {
       this.anthropic = new Anthropic({ apiKey: config.anthropicApiKey });
     }
+
+    if (checker) {
+      this.checker = checker;
+    } else if (config.imageQA?.enabled && config.imageProvider === 'openai' && config.anthropicApiKey) {
+      this.checker = new ImageQualityChecker({ anthropicApiKey: config.anthropicApiKey });
+    }
+  }
+
+  /** Vision QA が実行可能か（openai プロバイダ + 有効 + checker あり） */
+  private qaEnabled(): boolean {
+    return !!(this.config.imageQA?.enabled && this.config.imageProvider === 'openai' && this.checker);
   }
 
   /**
@@ -69,7 +107,7 @@ export class AssetGenerator {
     const background = await this.generateBackground(concept, assetPlan.background);
 
     // オブジェクト生成
-    const objects = await this.generateObjects(concept, assetPlan.objects, design);
+    const { objects, regeneratedCount } = await this.generateObjects(concept, assetPlan.objects, design);
 
     // 効果音生成
     const sounds = this.generateSounds(assetPlan.sounds);
@@ -77,12 +115,62 @@ export class AssetGenerator {
     // BGM生成
     const bgm = assetPlan.bgm ? this.generateBGM(assetPlan.bgm) : undefined;
 
+    // 画像QAサマリー（背景は1回チェックのみ、再生成なし）
+    const imageQuality = await this.summarizeImageQuality(concept, background, objects, regeneratedCount);
+
     return {
       background,
       objects,
       sounds,
-      bgm
+      bgm,
+      imageQuality
     };
+  }
+
+  /**
+   * 画像QAサマリーを計算
+   * プレースホルダーは0点として平均に含める。
+   * QA無効・全チェックスキップ（SVG/QA障害）の場合は undefined（QualityScorer で中立扱い）。
+   */
+  private async summarizeImageQuality(
+    concept: GameConcept,
+    background: GeneratedAssets['background'],
+    objects: GeneratedObject[],
+    regeneratedCount: number
+  ): Promise<GeneratedAssets['imageQuality']> {
+    if (!this.qaEnabled()) return undefined;
+
+    const scores: number[] = [];
+    let checkedCount = 0;
+    let placeholderCount = 0;
+
+    for (const obj of objects) {
+      if (obj.isPlaceholder) {
+        placeholderCount++;
+        scores.push(0);
+      } else if (obj.imageScore !== undefined) {
+        checkedCount++;
+        scores.push(obj.imageScore);
+      }
+    }
+
+    if (background) {
+      const bgResult = await this.checker!.checkBackground(background.frames[0].dataUrl, concept);
+      if (!bgResult.skipped) {
+        checkedCount++;
+        scores.push(bgResult.score);
+        if (!bgResult.passed) {
+          console.log(`      ⚠️ Background QA: ${bgResult.score}/100 (${bgResult.issues.join('; ')})`);
+        }
+      }
+    }
+
+    if (scores.length === 0) return undefined;
+
+    const averageScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+    console.log(`      🔍 Image QA: 平均 ${averageScore}/100 (検査 ${checkedCount}件, プレースホルダー ${placeholderCount}件, 再生成 ${regeneratedCount}回)`);
+
+    return { averageScore, checkedCount, placeholderCount, regeneratedCount };
   }
 
   /**
@@ -235,53 +323,113 @@ ${objectList}
 
   /**
    * オブジェクト生成
+   *
+   * Vision QA 有効時は不合格画像を issues フィードバック付きで再生成し、
+   * ベストスコアの試行を採用する（上限 maxRetriesPerImage 回）。
    */
   private async generateObjects(
     concept: GameConcept,
     objectPlans: AssetPlan['objects'],
     design?: GameDesign
-  ): Promise<GeneratedObject[]> {
+  ): Promise<{ objects: GeneratedObject[]; regeneratedCount: number }> {
     const objects: GeneratedObject[] = [];
+    let regeneratedCount = 0;
 
     for (const plan of objectPlans) {
-      const prompt = this.buildObjectPrompt(concept, plan, design);
+      const basePrompt = this.buildObjectPrompt(concept, plan, design);
 
       if (this.config.imageProvider === 'openai' && this.openai) {
-        try {
-          const response = await this.openai.images.generate({
-            model: 'dall-e-3',
-            prompt,
-            n: 1,
-            size: '1024x1024',
-            style: 'vivid',
-            response_format: 'b64_json'
-          });
-
-          const imageData = response.data?.[0]?.b64_json;
-          if (!imageData) {
-            console.log(`      ⚠️ Object ${plan.id} generation returned no data`);
-            objects.push(this.createPlaceholderObject(plan));
-            continue;
-          }
-          const dataUrl = `data:image/png;base64,${imageData}`;
-
-          objects.push({
-            id: plan.id,
-            name: plan.name,
-            imageUrl: dataUrl,
-            frames: [{ dataUrl }]
-          });
-        } catch (error) {
-          console.log(`      ⚠️ Object ${plan.id} generation failed, using placeholder`);
-          objects.push(this.createPlaceholderObject(plan));
-        }
+        const result = await this.generateObjectWithQA(concept, plan, basePrompt);
+        objects.push(result.object);
+        regeneratedCount += result.regenerations;
       } else {
         objects.push(this.createPlaceholderObject(plan));
       }
     }
 
     console.log(`      ✅ ${objects.length} objects generated`);
-    return objects;
+    return { objects, regeneratedCount };
+  }
+
+  /**
+   * 1オブジェクトをDALL-Eで生成（QA有効時は再生成ループ付き）
+   */
+  private async generateObjectWithQA(
+    concept: GameConcept,
+    plan: AssetPlan['objects'][0],
+    basePrompt: string
+  ): Promise<{ object: GeneratedObject; regenerations: number }> {
+    const qa = this.qaEnabled();
+    const maxAttempts = qa ? 1 + Math.min(2, this.config.imageQA!.maxRetriesPerImage) : 1;
+    const styleSheet = this.buildStyleSheet(concept);
+
+    let best: { object: GeneratedObject; score: number } | null = null;
+    let feedbackIssues: string[] = [];
+    let regenerations = 0;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const prompt = feedbackIssues.length > 0
+        ? `${basePrompt}\n\nPREVIOUS ATTEMPT FAILED QA: ${feedbackIssues.join('; ')}. Fix these issues.`
+        : basePrompt;
+
+      let dataUrl: string;
+      try {
+        const response = await this.openai!.images.generate({
+          model: 'dall-e-3',
+          prompt,
+          n: 1,
+          size: '1024x1024',
+          style: 'vivid',
+          response_format: 'b64_json'
+        });
+
+        const imageData = response.data?.[0]?.b64_json;
+        if (!imageData) {
+          console.log(`      ⚠️ Object ${plan.id} generation returned no data`);
+          break;
+        }
+        dataUrl = `data:image/png;base64,${imageData}`;
+      } catch (error) {
+        console.log(`      ⚠️ Object ${plan.id} generation failed, using placeholder`);
+        break;
+      }
+
+      if (attempt > 0) regenerations++;
+
+      const object: GeneratedObject = {
+        id: plan.id,
+        name: plan.name,
+        imageUrl: dataUrl,
+        frames: [{ dataUrl }]
+      };
+
+      if (!qa) {
+        return { object, regenerations };
+      }
+
+      const check = await this.checker!.checkObjectImage(dataUrl, plan, concept, styleSheet);
+      if (check.skipped) {
+        return { object, regenerations };
+      }
+
+      object.imageScore = check.score;
+      if (!best || check.score > best.score) {
+        best = { object, score: check.score };
+      }
+
+      if (check.passed) {
+        return { object: best.object, regenerations };
+      }
+
+      feedbackIssues = check.issues;
+      console.log(`      ⚠️ Object ${plan.id} QA failed: ${check.score}/100 (${check.issues.join('; ')})`);
+    }
+
+    // 全試行QA不合格 → ベストスコアの試行を採用、生成自体の失敗ならプレースホルダー
+    if (best) {
+      return { object: best.object, regenerations };
+    }
+    return { object: this.createPlaceholderObject(plan), regenerations };
   }
 
   /**
@@ -669,7 +817,8 @@ Shape Language: ${concept.visualStyle.includes('かわいい') || concept.visual
       id: plan.id,
       name: plan.name,
       imageUrl: dataUrl,
-      frames: [{ dataUrl }]
+      frames: [{ dataUrl }],
+      isPlaceholder: true
     };
   }
 
