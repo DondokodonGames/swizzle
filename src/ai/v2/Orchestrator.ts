@@ -32,6 +32,7 @@ import { DryRunSimulator } from './DryRunSimulator';
 import { QualityScorer } from './QualityScorer';
 import { GenerationLogger } from './GenerationLogger';
 import { FailurePatternTracker } from './FailurePatternTracker';
+import { shouldAutoPublish } from './publishGate';
 import { SupabaseUploader } from '../publishers/SupabaseUploader';
 import {
   GameConcept,
@@ -53,13 +54,6 @@ const DEFAULT_CONFIG: OrchestratorConfig = {
     provider: 'mock'
   }
 };
-
-/**
- * 公開ゲート判定: スコアが閾値以上なら自動公開、未満なら審査キュー行き
- */
-export function shouldAutoPublish(score: number, threshold: number): boolean {
-  return score >= threshold;
-}
 
 export class Orchestrator {
   private config: OrchestratorConfig;
