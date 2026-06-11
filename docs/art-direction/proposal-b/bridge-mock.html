@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Swizzle Bridge — 案B JELLY POP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --primary:#FF5A8A; --primary-dk:#E0457A; --secondary:#3DD6C4; --secondary-dk:#28B5A4;
+    --accent:#FFC93C; --accent-dk:#E5A912; --bg:#FFF4EC; --surface:#FFFFFF;
+    --text:#2B2D42; --muted:#9094A6; --success:#2BC275; --sh:rgba(43,45,66,.14);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:#F2D9CB;font-family:'Nunito',sans-serif;padding:20px;}
+  .phone{position:relative;width:390px;height:844px;max-width:100%;border-radius:38px;overflow:hidden;
+    background:var(--bg);color:var(--text);box-shadow:0 30px 80px rgba(180,120,100,.4),0 0 0 8px #fff;display:flex;flex-direction:column;}
+  .bgwrap{position:absolute;inset:0;background:
+    radial-gradient(80% 50% at 50% 0%, #FFE3D0, transparent 70%),
+    linear-gradient(180deg,#FFF4EC 0%, #FFEFE2 100%);}
+  /* corner confetti */
+  .confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .confetti span{position:absolute;border-radius:4px;opacity:.9}
+  .c1{width:14px;height:14px;background:var(--primary);top:40px;left:30px;transform:rotate(20deg)}
+  .c2{width:10px;height:10px;background:var(--secondary);top:70px;right:46px;border-radius:50%}
+  .c3{width:16px;height:8px;background:var(--accent);top:30px;right:30px;transform:rotate(-15deg)}
+  .c4{width:9px;height:9px;background:var(--secondary);top:130px;left:54px;border-radius:50%}
+  .c5{width:12px;height:12px;background:var(--accent);top:120px;right:30px;transform:rotate(35deg)}
+  .content{position:relative;flex:1;overflow-y:auto;padding:24px 20px 176px;}
+
+  .result{text-align:center;margin:20px 0 6px}
+  .result .face{width:104px;height:104px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:56px;
+    background:#fff;box-shadow:0 10px 0 #FFE0E9, 0 18px 30px var(--sh);}
+  .result h1{font-family:'Fredoka';font-weight:700;font-size:26px;color:var(--primary)}
+
+  .score{margin:16px auto 4px;max-width:300px;text-align:center;background:#fff;border-radius:26px;padding:18px;
+    box-shadow:0 10px 0 #FFEFD3, 0 20px 34px var(--sh);}
+  .score .label{font-family:'Fredoka';font-weight:600;font-size:12px;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+  .score .num{font-family:'Baloo 2';font-weight:800;font-size:54px;line-height:1;color:var(--accent-dk);}
+  .score .stars{font-size:22px;margin-top:2px;letter-spacing:4px}
+  .score .best{display:inline-block;margin-top:8px;font-family:'Fredoka';font-weight:700;font-size:12px;color:#fff;
+    background:var(--accent);padding:4px 14px;border-radius:999px;box-shadow:0 3px 0 var(--accent-dk)}
+
+  .author{display:flex;align-items:center;gap:12px;margin:20px 0 14px;padding:14px;background:#fff;border-radius:24px;box-shadow:0 8px 22px var(--sh)}
+  .avatar{width:50px;height:50px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    font-family:'Fredoka';font-weight:700;font-size:22px;color:#fff;background:linear-gradient(135deg,var(--primary),#FF8FB0);box-shadow:0 5px 0 var(--primary-dk)}
+  .author .meta{flex:1;min-width:0}
+  .author .name{font-family:'Fredoka';font-weight:600;font-size:16px}
+  .author .title{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+  .like{display:flex;flex-direction:column;align-items:center;gap:1px;flex-shrink:0;border:none;cursor:pointer;
+    background:var(--primary);color:#fff;border-radius:16px;padding:9px 14px;box-shadow:0 4px 0 var(--primary-dk)}
+  .like .heart{font-size:18px}
+  .like .cnt{font-family:'Baloo 2';font-weight:700;font-size:13px}
+
+  .ad{margin-top:4px;border-radius:18px;height:84px;display:flex;align-items:center;justify-content:center;color:var(--muted);
+    font-family:'Fredoka';font-weight:600;font-size:12px;letter-spacing:1px;background:#FFEAD9;border:2px dashed #F4C9AE}
+
+  .actions{position:absolute;left:0;right:0;bottom:0;padding:16px 16px 22px;
+    background:linear-gradient(0deg,#FFF4EC 40%, rgba(255,244,236,.85) 75%, transparent)}
+  .next-strip{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:8px 10px;background:#fff;border-radius:18px;box-shadow:0 6px 18px var(--sh)}
+  .next-strip .thumb{width:42px;height:42px;border-radius:12px;flex-shrink:0;background:linear-gradient(135deg,var(--secondary),#7DE9DB);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 0 var(--secondary-dk)}
+  .next-strip .nx{flex:1;min-width:0}
+  .next-strip .nx small{font-family:'Fredoka';font-weight:600;font-size:10px;color:var(--secondary-dk);text-transform:uppercase;letter-spacing:1px}
+  .next-strip .nx p{font-family:'Fredoka';font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .next-strip .go{font-family:'Fredoka';font-weight:700;font-size:13px;color:#fff;background:var(--secondary);padding:8px 14px;border-radius:12px;box-shadow:0 3px 0 var(--secondary-dk)}
+  .btnrow{display:flex;gap:8px}
+  .btn{flex:1;border:none;border-radius:18px;padding:11px 0;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;
+    background:#fff;color:var(--text);font-family:'Fredoka';font-weight:600;box-shadow:0 5px 0 #ECD9C9}
+  .btn .ic{font-size:20px}.btn .lb{font-size:10px}
+  .btn.primary{background:var(--primary);color:#fff;box-shadow:0 5px 0 var(--primary-dk)}
+
+  .timebar{position:absolute;left:0;right:0;bottom:0;height:6px;background:#FFE0CF}
+  .timebar i{display:block;height:100%;width:64%;background:linear-gradient(90deg,var(--success),var(--secondary));border-radius:0 6px 6px 0}
+  .content::-webkit-scrollbar{width:0}
+  @media (max-width:430px){ body{padding:0} .phone{width:100%;height:100vh;height:100dvh;border-radius:0;box-shadow:none} }
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="bgwrap"></div>
+    <div class="confetti"><span class="c1"></span><span class="c2"></span><span class="c3"></span><span class="c4"></span><span class="c5"></span></div>
+    <div class="content">
+      <div class="result">
+        <div class="face">🥳</div>
+        <h1>Nice!</h1>
+      </div>
+
+      <div class="score">
+        <div class="label">Your Score</div>
+        <div class="num">1,240</div>
+        <div class="stars">⭐⭐⭐</div>
+        <span class="best">🏆 New Best!</span>
+      </div>
+
+      <div class="author">
+        <div class="avatar">M</div>
+        <div class="meta">
+          <div class="name">Mochi_Games</div>
+          <div class="title">Pop the Bubbles!</div>
+        </div>
+        <button class="like"><span class="heart">💖</span><span class="cnt">2.4k</span></button>
+      </div>
+
+      <div class="ad">Sponsored</div>
+    </div>
+
+    <div class="actions">
+      <div class="next-strip">
+        <div class="thumb">🍡</div>
+        <div class="nx"><small>Up Next</small><p>Sweet Stacker</p></div>
+        <span class="go">Play ▶</span>
+      </div>
+      <div class="btnrow">
+        <button class="btn"><span class="ic">📋</span><span class="lb">Copy</span></button>
+        <button class="btn primary"><span class="ic">🎮</span><span class="lb">Next</span></button>
+        <button class="btn"><span class="ic">🔄</span><span class="lb">Again</span></button>
+        <button class="btn"><span class="ic">🔗</span><span class="lb">Share</span></button>
+      </div>
+    </div>
+    <div class="timebar"><i></i></div>
+  </div>
+</body>
+</html>
