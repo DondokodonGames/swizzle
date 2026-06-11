@@ -293,7 +293,7 @@ export class GamePatternAnalyzer {
     // メカニクスの使用頻度を集計
     const mechanicCounts = new Map<string, number>();
     for (const pattern of patterns) {
-      const mechanic = this.extractMechanic(pattern.playerOperation);
+      const mechanic = GamePatternAnalyzer.extractMechanic(pattern.playerOperation);
       if (mechanic) {
         mechanicCounts.set(mechanic, (mechanicCounts.get(mechanic) || 0) + 1);
       }
@@ -346,8 +346,11 @@ export class GamePatternAnalyzer {
 
   /**
    * メカニクスを抽出（キーワードベース）
+   *
+   * static にして status-report.ts（多様性メトリクス）からも同じ分類ロジックを
+   * 再利用できるようにしている（キーワードリストの単一情報源）。
    */
-  private extractMechanic(operation: string): string | null {
+  static extractMechanic(operation: string): string | null {
     if (!operation) return null;
 
     const keywords = [
