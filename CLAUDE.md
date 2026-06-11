@@ -85,6 +85,10 @@ Concept → Design → AssetPlan → Spec → EditorMapper → LogicValidator �
 
 ---
 
+## `src/marketing/` is an unimplemented stub
+
+The `src/marketing/` tree (Discord / Twitter / Instagram / TikTok automation, etc.) and the `marketing:*` npm scripts are **stubs with no external API integration** — they return `success: false` or simulate failure. Treat them as a holding shelf for future work, **not** shipped functionality. Do not assume these features exist when estimating. See `src/marketing/README.md`. Deletion is deferred (pending external-API approval).
+
 ## Tests
 
 Test files live in `__tests__/` subdirectories co-located with source. Run all with `npm run test`.
