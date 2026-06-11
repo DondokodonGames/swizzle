@@ -1143,7 +1143,7 @@ export class LogicValidator {
     );
 
     // 直接プレイヤー操作条件を持つ成功ルール
-    let hasDirectPlayerAction = successRules.some(r =>
+    const hasDirectPlayerAction = successRules.some(r =>
       r.triggers?.conditions?.some(c => playerActionConditionTypes.includes(c.type))
     );
 

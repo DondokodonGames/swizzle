@@ -661,7 +661,7 @@ ${archetype!.examples.map(e => `- ${e}`).join('\n')}
 
     console.log(`      📖 Seed #${seed.id}: "${seed.title}"`);
 
-    let prompt = `あなたはスマホ向け超短時間ミニゲームのゲームデザイナーです。
+    const prompt = `あなたはスマホ向け超短時間ミニゲームのゲームデザイナーです。
 
 # ゲームの長さについて（重要）
 **WarioWareのような5〜10秒で終わる超短時間ゲームを設計してください。**

@@ -117,7 +117,7 @@ export class TwitterAutomation {
     }
 
     try {
-      let mediaIds: string[] = [];
+      const mediaIds: string[] = [];
 
       // メディアアップロード
       if (tweet.media && tweet.media.length > 0) {

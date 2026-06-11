@@ -75,7 +75,7 @@ describe('RuleExecutionControl – cooldown', () => {
     engine.addRule(alwaysRule('r', [{ type: 'addScore', points: 1 }], { cooldown: 0.5 }));
 
     // Frame 1: t=0 → fires (score=1)
-    let ctx = makeContext(0);
+    const ctx = makeContext(0);
     engine.evaluateAndExecuteRules(ctx);
     expect(ctx.gameState.score).toBe(1);
 
