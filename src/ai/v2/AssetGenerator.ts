@@ -9,6 +9,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { GameConcept, AssetPlan, GeneratedAssets, GeneratedObject, GeneratedSound, BgmPlan } from './types';
 import { GameDesign } from './GameDesignGenerator';
 import { ImageQualityChecker } from './ImageQualityChecker';
+import { artDirection, resolvePalette } from './artDirection';
 
 // BGMプリセット（各ムードに対応した音楽パラメータ）
 const BGM_PRESETS: Record<string, { baseFreq: number; tempo: number; pattern: string }> = {
@@ -244,6 +245,8 @@ export class AssetGenerator {
       return `  { "id": "${o.id}", "size": ${sz}, "name": "${o.name}", "visual": "${o.visualDescription}", "purpose": "${o.purpose}" }`;
     }).join(',\n');
 
+    const palette = resolvePalette(concept.visualStyle, concept.theme);
+
     return `あなたはモバイルゲーム用SVGアセットジェネレーターです。
 
 ゲーム情報:
@@ -252,14 +255,21 @@ export class AssetGenerator {
 - 説明: ${concept.description}
 - ビジュアルスタイル: ${concept.visualStyle}
 
+## アートディレクション「${artDirection.name}」（全アセット共通・厳守）
+- 描法: ${artDirection.rendering}
+- 形状言語: ${artDirection.shapeLanguage}
+- パレット: 無彩色（インク ${palette.secondary}）基調 + アクセント ${palette.accent} 1色のみ。背景紙 ${palette.neutralLight}
+- 禁止: ${palette.forbidden.join(', ')}. ${artDirection.promptFragments.negative}
+
 ## タスク
 以下のゲームアセットをSVGで一括生成し、JSON形式で返してください。
 
 ### 背景 (1080×1920, 縦型モバイル)
-- テーマに合ったグラデーション＋シンプルな図形で雰囲気を表現
-- 中央エリアはゲームオブジェクト配置のため比較的シンプルに
+${artDirection.promptFragments.backgroundStyle}
+${artDirection.background.centerPolicy}
 
 ### オブジェクト一覧
+各オブジェクトは: ${artDirection.promptFragments.objectStyle}
 [
 ${objectList}
 ]
@@ -274,9 +284,9 @@ ${objectList}
 
 ## SVGルール
 - SVG属性はシングルクォートを使用（JSONエスケープを避けるため）
-- 背景: width='1080' height='1920', グラデーションで全体を覆い、上下にテーマ装飾
-- オブジェクト: 各sizeに合わせたwidth/height, 背景なし（透明）, シンプルなシルエット＋色塗り
-- テーマに合った色を統一して使用
+- 背景: width='1080' height='1920', 無彩色の色面（紙 ${palette.neutralLight} もしくはインク ${palette.secondary}）。グラデーションは使わず余白を広く取り、中央は空ける
+- オブジェクト: 各sizeに合わせたwidth/height, 背景なし（透明）, インク ${palette.secondary} 主体のシンプルなシルエット + アクセント ${palette.accent} を1要素だけに使用
+- 影は付けない。線は細いか無し
 - コンパクトなSVGコード（1オブジェクト30行以内）`;
   }
 
@@ -591,60 +601,27 @@ FORBIDDEN:
 
   /**
    * 背景スタイルのバリエーション生成
-   * 固定的な背景ではなく、moodとstyleに基づいて多様な背景を生成
+   * 基調は art-direction.json（gallery 様式）が支配し、mood は温度差のニュアンスのみ加える。
    */
   private getBackgroundStyle(mood: string, visualStyle: string): string {
-    const moodStyles: Record<string, string> = {
-      '緊張': `
-- Dark, dramatic lighting with deep shadows
-- Muted color palette with occasional red or orange accents
-- Subtle vignette effect around edges
-- Architectural or industrial elements in background`,
-      '楽しい': `
-- Bright, cheerful colors with warm lighting
-- Playful shapes and patterns (polka dots, stripes, confetti)
-- Soft pastel or vivid saturated colors
-- Whimsical elements (clouds, stars, balloons) in corners`,
-      '神秘的': `
-- Deep blues and purples with glowing accents
-- Starfield or cosmic patterns
-- Ethereal mist or aurora effects
-- Ancient symbols or magical runes as subtle decoration`,
-      '和風': `
-- Traditional Japanese color palette (indigo, vermillion, gold)
-- Subtle paper texture or watercolor effect
-- Cherry blossoms, waves, or cloud patterns
-- Asymmetric composition with empty space (ma)`,
-      'ポップ': `
-- Bold, saturated colors with high contrast
-- Geometric patterns (circles, triangles, zigzags)
-- Gradient transitions between bright colors
-- Memphis-style decorative elements`,
-      'ナチュラル': `
-- Earthy tones with natural lighting
-- Organic textures (wood grain, stone, leaves)
-- Soft gradients mimicking sky or water
-- Nature elements (trees, flowers) at edges`,
-      'レトロ': `
-- Vintage color palette (orange, teal, cream)
-- Halftone dots or scan line effects
-- Retro typography-inspired patterns
-- Nostalgic textures (old paper, worn edges)`,
-      'サイバー': `
-- Neon colors on dark backgrounds
-- Digital grid or circuit patterns
-- Glowing lines and holographic effects
-- Futuristic cityscape silhouettes`,
+    // gallery 様式に整合する mood ニュアンス（基調は崩さず温度・密度だけ調整）
+    const moodNuance: Record<string, string> = {
+      '緊張': 'Lean toward the deep ink field variant; cool, austere, high contrast between ink and the single accent.',
+      '楽しい': 'Lean toward the warm off-white variant; light and airy, slightly larger accent shape.',
+      '神秘的': 'Deep ink field, vast negative space, one faint accent mark; quiet and contemplative.',
+      '和風': 'Warm off-white with a single thin rule line and asymmetric empty space (ma); restrained.',
+      'ポップ': 'Warm off-white, confident accent shape in a corner; still minimal, never busy.',
+      'ナチュラル': 'Warm off-white, soft neutral field, one small organic accent shape; calm.',
+      'レトロ': 'Warm off-white with a faint baseline grid; editorial, understated.',
+      'サイバー': 'Deep ink field with a faint grid and one accent line; minimal, never neon.',
     };
 
-    // moodまたはvisualStyleに基づいてスタイルを選択
-    const selectedStyle = moodStyles[mood] || moodStyles[visualStyle] ||
-      `- Soft gradients with subtle patterns
-- Muted, desaturated colors
-- Minimal decoration, focus on atmosphere
-- Clean, modern digital illustration style`;
+    const nuance = moodNuance[mood] || moodNuance[visualStyle] ||
+      'Balanced, calm, neutral temperature with vast negative space.';
 
-    return selectedStyle;
+    return `${artDirection.promptFragments.backgroundStyle}
+${artDirection.background.centerPolicy}
+MOOD NUANCE: ${nuance}`;
   }
 
   /**
@@ -660,17 +637,18 @@ FORBIDDEN:
                      objPlan.size === 'large' ? 'large prominent sprite (192px style)' :
                      'medium sized sprite (128px style)';
 
-    // スタイルシート情報を構築
+    // スタイルシート情報を構築（art-direction.json 由来）
     const styleSheet = this.buildStyleSheet(concept);
 
-    return `Flat cartoon game icon: ${objPlan.visualDescription}
+    return `Game object icon: ${objPlan.visualDescription}
 
-STYLE REQUIREMENTS:
-- Flat vector illustration / cartoon style — bold, clean, simple shapes
+ART DIRECTION STYLE:
+${artDirection.promptFragments.objectStyle}
+Rendering: ${artDirection.rendering}
+
+STRUCTURAL REQUIREMENTS:
 - Pure white background (#FFFFFF) — completely plain, no texture, no gradient
 - Single object only, centered and large in frame
-- Bold outline (2-4px), solid flat colors, minimal shading
-- Cute / stylized proportions — NOT photorealistic, NOT textured
 
 SIZE HINT: ${sizeDesc}
 THEME: ${concept.theme}, ${concept.visualStyle} style
@@ -680,56 +658,44 @@ ${styleSheet}
 COMPOSITION:
 - Object fills 70-80% of the frame
 - Perfectly centered
-- Slight shadow below the object only if it helps readability
+- No drop shadow (the art direction is shadow-free)
 
 STRICTLY FORBIDDEN:
 - NO background scenery, environment, floor, sky, or landscape
 - NO other characters, objects, or decorative elements around the main object
-- NO photorealistic texture or rendering
-- NO complex scenes or multi-element compositions
 - NO text or labels
-- NO multi-angle views`;
+- NO multi-angle views
+- ${artDirection.promptFragments.negative}`;
   }
 
   /**
    * スタイルシート生成
-   * 全オブジェクトで統一感を持たせるためのスタイル情報
+   * 全オブジェクトで統一感を持たせるためのスタイル情報。
+   * パレット・描法・形状言語・禁止事項は art-direction.json（単一定義源）から組み立てる。
+   * このスタイルシートは ImageQualityChecker にも渡され、生成側と採点側の様式が一致する。
    */
   private buildStyleSheet(concept: GameConcept): string {
-    // テーマに基づいた色パレットを提案
-    const colorPalettes: Record<string, string> = {
-      '和風': 'Primary: crimson red (#DC143C), Secondary: gold (#FFD700), Accent: deep navy (#1B2838)',
-      'ポップ': 'Primary: hot pink (#FF69B4), Secondary: cyan (#00FFFF), Accent: lime (#32CD32)',
-      'ファンタジー': 'Primary: royal purple (#7B68EE), Secondary: gold (#FFD700), Accent: emerald (#50C878)',
-      'レトロ': 'Primary: orange (#FF8C00), Secondary: teal (#008080), Accent: cream (#FFFDD0)',
-      'サイバー': 'Primary: neon blue (#00BFFF), Secondary: magenta (#FF00FF), Accent: black (#000000)',
-      'ナチュラル': 'Primary: forest green (#228B22), Secondary: earth brown (#8B4513), Accent: sky blue (#87CEEB)',
-    };
+    const palette = resolvePalette(concept.visualStyle, concept.theme);
 
-    // デフォルトパレット
-    const palette = colorPalettes[concept.visualStyle] ||
-      'Primary: bright and saturated, Secondary: complementary, Accent: contrasting';
-
-    return `STYLE SHEET (apply to ALL sprites in this game):
-Color Palette: ${palette}
-Line Style: ${concept.visualStyle.includes('フラット') ? 'no outlines, flat colors' : 'bold 2-3px outlines, clean edges'}
-Texture: ${concept.visualStyle.includes('リアル') ? 'subtle texture allowed' : 'flat colors, minimal gradients'}
-Shape Language: ${concept.visualStyle.includes('かわいい') || concept.visualStyle.includes('ポップ') ? 'rounded, soft curves' : 'geometric, clean shapes'}`;
+    return `STYLE SHEET — art direction "${artDirection.name}" (apply to ALL sprites in this game):
+Rendering: ${artDirection.rendering}
+Color Palette: near-monochrome ink (${palette.secondary}) base with a SINGLE accent (${palette.accent}); primary ${palette.primary}
+Shape Language: ${artDirection.shapeLanguage}
+Object Style: ${artDirection.promptFragments.objectStyle}
+Forbidden: ${palette.forbidden.join(', ')}. ${artDirection.promptFragments.negative}`;
   }
 
   /**
    * プレースホルダー背景生成
    */
   private createPlaceholderBackground(concept: GameConcept): GeneratedAssets['background'] {
-    // SVGプレースホルダー（テキストなし、グラデーション背景のみ）
+    // SVGプレースホルダー（gallery 様式: 無彩色の紙面 + 細い罫線 + 角に小さなアクセント）
+    const palette = resolvePalette(concept.visualStyle, concept.theme);
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
-      <defs>
-        <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" style="stop-color:#4a90d9;stop-opacity:1" />
-          <stop offset="100%" style="stop-color:#1a365d;stop-opacity:1" />
-        </linearGradient>
-      </defs>
-      <rect width="1080" height="1920" fill="url(#bg)"/>
+      <rect width="1080" height="1920" fill="${palette.neutralLight}"/>
+      <line x1="120" y1="240" x2="960" y2="240" stroke="${palette.line}" stroke-width="2"/>
+      <line x1="120" y1="1680" x2="960" y2="1680" stroke="${palette.line}" stroke-width="2"/>
+      <circle cx="912" cy="312" r="28" fill="${palette.accent}"/>
     </svg>`;
 
     const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
@@ -748,6 +714,7 @@ Shape Language: ${concept.visualStyle.includes('かわいい') || concept.visual
   private createPlaceholderObject(plan: AssetPlan['objects'][0]): GeneratedObject {
     const size = plan.size === 'small' ? 64 : plan.size === 'large' ? 192 : 128;
     const color = this.getColorFromName(plan.name);
+    const accent = resolvePalette().accent;
     const hint = `${plan.name} ${plan.purpose}`.toLowerCase();
 
     let svg: string;
@@ -758,7 +725,7 @@ Shape Language: ${concept.visualStyle.includes('かわいい') || concept.visual
       svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
         <circle cx="${cx}" cy="${cy}" r="${r}" fill="#222"/>
         <line x1="${cx}" y1="${size*0.18}" x2="${size*0.7}" y2="${size*0.05}" stroke="#888" stroke-width="${Math.max(2,size*0.04)}"/>
-        <circle cx="${size*0.7}" cy="${size*0.05}" r="${size*0.07}" fill="#ff6600"/>
+        <circle cx="${size*0.7}" cy="${size*0.05}" r="${size*0.07}" fill="${accent}"/>
       </svg>`;
     } else if (/star|コイン|star|medal/.test(hint)) {
       // star shape
@@ -823,15 +790,18 @@ Shape Language: ${concept.visualStyle.includes('かわいい') || concept.visual
   }
 
   /**
-   * 名前から色を生成
+   * 名前から色を選ぶ（art-direction.json のパレットにスナップ）
+   * gallery 様式に従い、多くはインク（secondary）、一部だけアクセント（accent）にして
+   * 「無彩色基調 + 1アクセント」の見えを保つ。決定的（同名なら同色）。
    */
   private getColorFromName(name: string): string {
+    const palette = resolvePalette();
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
       hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const hue = hash % 360;
-    return `hsl(${hue}, 70%, 50%)`;
+    // 約 1/3 をアクセント、残りはインク基調
+    return Math.abs(hash) % 3 === 0 ? palette.accent : palette.secondary;
   }
 
   /**

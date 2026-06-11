@@ -139,6 +139,33 @@ describe('AssetGenerator – QA再生成ループ', () => {
   });
 });
 
+describe('AssetGenerator – アートディレクション定義の読み込み', () => {
+  it('DALL-Eオブジェクトプロンプトに art-direction.json の様式文・パレット・禁止事項が入る', async () => {
+    const gen = new AssetGenerator({ imageProvider: 'openai', openaiApiKey: 'sk-test' });
+    await gen.generate(concept, makePlan(1));
+
+    const objectPrompt = generateMock.mock.calls
+      .map((c: unknown[]) => (c[0] as { prompt: string }).prompt)
+      .find((p: string) => p.includes('Game object icon'));
+
+    expect(objectPrompt).toBeDefined();
+    // 様式名・描法・パレット・禁止事項が art-direction.json から組み立てられている
+    expect(objectPrompt).toContain('GALLERY');
+    expect(objectPrompt).toContain('#FF3B1F'); // vermilion accent
+    expect(objectPrompt).toContain('flat vector'); // rendering
+    expect(objectPrompt).toMatch(/NOT neon/i); // negative
+  });
+
+  it('mock(SVG)プレースホルダーの配色がパレット色（インク/アクセント）にスナップする', async () => {
+    const gen = new AssetGenerator({ imageProvider: 'mock' });
+    const assets = await gen.generate(concept, makePlan(1));
+    const svg = Buffer.from(assets.objects[0].frames[0].dataUrl.split(',')[1], 'base64').toString();
+    // ランダムHSLではなくパレットのHEX（インク #111111 もしくはアクセント #FF3B1F 等）を使う
+    expect(svg).not.toContain('hsl(');
+    expect(svg).toMatch(/#[0-9A-Fa-f]{6}/);
+  });
+});
+
 describe('resolveImageQAFromEnv', () => {
   it('openai プロバイダはデフォルトで有効、他は無効', () => {
     delete process.env.IMAGE_QA;

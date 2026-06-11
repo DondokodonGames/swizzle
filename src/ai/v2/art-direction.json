@@ -1,0 +1,81 @@
+{
+  "version": "1.0",
+  "name": "GALLERY",
+  "description": "Minimal editorial art direction (WP21 proposal C). Restrained near-monochrome palette with a single vermilion accent. Content-first, gallery-quality. Single source of truth for AssetGenerator, ImageQualityChecker and SWIZZLE_JSON_SPEC.md.",
+  "rendering": "flat vector, clean thin or no outline, no drop shadow, minimal shading, generous negative space",
+  "shapeLanguage": "confident simple silhouettes, clean flat geometric shapes with calm proportions — not cute-overloaded, not busy, not gradient-heavy",
+  "palettes": {
+    "default": {
+      "primary": "#FF3B1F",
+      "secondary": "#111111",
+      "accent": "#FF3B1F",
+      "neutralLight": "#FAFAF7",
+      "neutralDark": "#111111",
+      "line": "#E6E6E0",
+      "forbidden": ["neon colors", "heavy gradients", "rainbow / multi-hue palettes", "drop shadows", "photorealistic texture"]
+    },
+    "和風": {
+      "primary": "#FF3B1F",
+      "secondary": "#111111",
+      "accent": "#FF3B1F",
+      "neutralLight": "#FAFAF7",
+      "neutralDark": "#111111",
+      "line": "#E6E6E0",
+      "forbidden": ["neon colors", "heavy gradients", "rainbow / multi-hue palettes", "drop shadows", "photorealistic texture"]
+    },
+    "ポップ": {
+      "primary": "#FF715B",
+      "secondary": "#111111",
+      "accent": "#FF715B",
+      "neutralLight": "#FAFAF7",
+      "neutralDark": "#111111",
+      "line": "#E6E6E0",
+      "forbidden": ["neon colors", "heavy gradients", "rainbow / multi-hue palettes", "drop shadows", "photorealistic texture"]
+    },
+    "ファンタジー": {
+      "primary": "#7A5CFF",
+      "secondary": "#111111",
+      "accent": "#7A5CFF",
+      "neutralLight": "#FAFAF7",
+      "neutralDark": "#111111",
+      "line": "#E6E6E0",
+      "forbidden": ["neon colors", "heavy gradients", "rainbow / multi-hue palettes", "drop shadows", "photorealistic texture"]
+    },
+    "レトロ": {
+      "primary": "#E0793A",
+      "secondary": "#111111",
+      "accent": "#E0793A",
+      "neutralLight": "#FAFAF7",
+      "neutralDark": "#111111",
+      "line": "#E6E6E0",
+      "forbidden": ["neon colors", "heavy gradients", "rainbow / multi-hue palettes", "drop shadows", "photorealistic texture"]
+    },
+    "サイバー": {
+      "primary": "#2EC4B6",
+      "secondary": "#111111",
+      "accent": "#2EC4B6",
+      "neutralLight": "#0E0E0E",
+      "neutralDark": "#F2F2EC",
+      "line": "#2A2A2A",
+      "forbidden": ["neon colors", "heavy gradients", "rainbow / multi-hue palettes", "drop shadows", "photorealistic texture"]
+    },
+    "ナチュラル": {
+      "primary": "#4C9A6B",
+      "secondary": "#111111",
+      "accent": "#4C9A6B",
+      "neutralLight": "#FAFAF7",
+      "neutralDark": "#111111",
+      "line": "#E6E6E0",
+      "forbidden": ["neon colors", "heavy gradients", "rainbow / multi-hue palettes", "drop shadows", "photorealistic texture"]
+    }
+  },
+  "background": {
+    "style": "Minimal editorial: warm off-white (#FAFAF7) or deep ink field, optional faint baseline grid or a single thin rule line, vast negative space. At most one small accent shape in a corner. Calm, premium, museum-wall mood.",
+    "centerPolicy": "Center MUST stay completely open and uncluttered (game sprites are overlaid on top)."
+  },
+  "promptFragments": {
+    "objectStyle": "Single game object on pure white (#FFFFFF). Bold simple flat silhouette, near-monochrome (ink #111111 on white) with a selective vermilion (#FF3B1F) accent on ONE key detail. Clean thin or no outline, no shadow, lots of breathing room. Large, centered, single object, no scene. Iconic and confident, gallery-quality.",
+    "backgroundStyle": "Minimal editorial background: warm off-white (#FAFAF7) or deep ink field, optional faint baseline grid or a single thin rule line, vast negative space. Center completely open. At most one small vermilion (#FF3B1F) accent shape in a corner. Calm, premium, museum-wall mood.",
+    "negative": "NOT busy, NOT neon, NOT cute-overloaded, NOT gradient-heavy. No rainbow / multi-hue palettes, no photorealistic texture, no drop shadows, no text or labels, no multi-element scene."
+  }
+}

@@ -88,6 +88,43 @@ describe('ImageQualityChecker – vision評価', () => {
   });
 });
 
+describe('ImageQualityChecker – アートディレクション採点基準', () => {
+  it('オブジェクトQAの採点基準文に art-direction.json の様式名・描法・パレット・禁止事項が含まれる', async () => {
+    const client = makeClient(JSON.stringify({
+      styleMatch: 8, singleObject: true, whiteBackground: true,
+      paletteAdherence: 8, overall: 85, issues: []
+    }));
+    const checker = new ImageQualityChecker({ client });
+    await checker.checkObjectImage(PNG_DATA_URL, objectPlan, concept, '');
+
+    const createMock = client.messages.create as ReturnType<typeof vi.fn>;
+    const sentText = createMock.mock.calls[0][0].messages[0].content
+      .find((c: { type: string; text?: string }) => c.type === 'text').text;
+
+    expect(sentText).toContain('GALLERY'); // 様式名
+    expect(sentText).toContain('flat vector'); // rendering
+    expect(sentText).toContain('#FF715B'); // ポップ派生パレットのアクセント
+    // 様式逸脱が styleMatch / paletteAdherence の減点に効くことが明示されている
+    expect(sentText).toMatch(/lower styleMatch and paletteAdherence/i);
+  });
+
+  it('背景QAの採点基準文にも様式（art-direction）が含まれる', async () => {
+    const client = makeClient(JSON.stringify({
+      styleMatch: 8, singleObject: true, whiteBackground: true,
+      paletteAdherence: 8, overall: 85, issues: []
+    }));
+    const checker = new ImageQualityChecker({ client });
+    await checker.checkBackground(PNG_DATA_URL, concept);
+
+    const createMock = client.messages.create as ReturnType<typeof vi.fn>;
+    const sentText = createMock.mock.calls[0][0].messages[0].content
+      .find((c: { type: string; text?: string }) => c.type === 'text').text;
+
+    expect(sentText).toContain('GALLERY');
+    expect(sentText).toMatch(/lower styleMatch and paletteAdherence/i);
+  });
+});
+
 describe('ImageQualityChecker – parseVerdict', () => {
   const checker = new ImageQualityChecker({ mock: true });
 

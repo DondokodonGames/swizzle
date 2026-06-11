@@ -15,6 +15,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { GameConcept, AssetPlan } from './types';
 import { robustParseJSON } from './jsonParser';
+import { artDirection, resolvePalette } from './artDirection';
 
 export interface ImageQualityResult {
   /** 総合 0-100 */
@@ -93,13 +94,20 @@ export class ImageQualityChecker {
     concept: GameConcept,
     styleSheet: string
   ): Promise<ImageQualityResult> {
+    const palette = resolvePalette(concept.visualStyle, concept.theme);
     const criteria = `This image was generated as a mobile game sprite with these REQUIREMENTS:
 - Depicts: ${plan.visualDescription} (role in game: ${plan.purpose})
 - Pure white background (#FFFFFF) — no texture, no gradient, no scenery
 - Single object only, centered, filling 70-80% of the frame
-- Flat vector / cartoon style with bold outlines and solid flat colors
 - NOT photorealistic, no text or labels, no multi-element composition
 - Theme: ${concept.theme}, visual style: ${concept.visualStyle}
+
+ART DIRECTION "${artDirection.name}" — the sprite MUST follow this house style:
+- Rendering: ${artDirection.rendering}
+- Palette: near-monochrome ink (${palette.secondary}) on white with a SINGLE accent (${palette.accent}); primary ${palette.primary}
+- Shape language: ${artDirection.shapeLanguage}
+- Forbidden: ${palette.forbidden.join(', ')}. ${artDirection.promptFragments.negative}
+Deviation from this art direction (neon, heavy gradients, multi-hue palettes, drop shadows, cute-overload, busy detail) MUST lower styleMatch and paletteAdherence.
 ${styleSheet}`;
 
     return this.runVisionCheck(dataUrl, criteria, /* isObject */ true);
@@ -109,12 +117,17 @@ ${styleSheet}`;
    * 背景画像のQA
    */
   async checkBackground(dataUrl: string, concept: GameConcept): Promise<ImageQualityResult> {
+    const palette = resolvePalette(concept.visualStyle, concept.theme);
     const criteria = `This image was generated as a mobile game BACKGROUND with these REQUIREMENTS:
 - Theme: ${concept.theme}, visual style: ${concept.visualStyle}
 - Central area must be OPEN and UNCLUTTERED (game sprites are overlaid on top)
 - Decorative elements only at edges/corners
 - Mood conveyed through color and texture only — no characters, no gameplay elements
-- No written text or labels, not photorealistic, not a busy scene`;
+- No written text or labels, not photorealistic, not a busy scene
+
+ART DIRECTION "${artDirection.name}": ${artDirection.promptFragments.backgroundStyle}
+Palette: near-monochrome with a single accent (${palette.accent}). Forbidden: ${palette.forbidden.join(', ')}.
+Deviation from this art direction MUST lower styleMatch and paletteAdherence.`;
 
     return this.runVisionCheck(dataUrl, criteria, /* isObject */ false);
   }
