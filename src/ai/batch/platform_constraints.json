@@ -245,7 +245,6 @@
     "description": "text",
     "template_id": "text (batch_arcade | batch_bar)",
     "category": "text (arcade | bar)",
-    "game_data": "jsonb (empty object {})",
     "project_data": "jsonb (full Swizzle JSON)",
     "is_published": "boolean (true for batch games)",
     "is_featured": "boolean (false for batch games)"

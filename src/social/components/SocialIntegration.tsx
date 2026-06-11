@@ -9,7 +9,6 @@ import React, {
   useCallback, 
   ReactNode 
 } from 'react';
-import { GameProject } from '../../types/editor/GameProject';
 import { SocialService } from '../services/SocialService';
 import { PublicGame, UserProfile, SocialStats } from '../types/SocialTypes';
 import { auth, database } from '../../lib/supabase';
@@ -46,7 +45,6 @@ interface SocialIntegrationActions {
   toggleNotifications: (enabled: boolean) => void;
   
   // プロジェクト連携
-  publishProjectToSocial: (project: GameProject) => Promise<string | null>;
   updateProjectSocialStats: (projectId: string, stats: Partial<SocialStats>) => Promise<void>;
   deleteProjectFromSocial: (projectId: string) => Promise<void>;
   
@@ -240,45 +238,6 @@ export const SocialIntegrationProvider: React.FC<SocialIntegrationProviderProps>
   // プロジェクト連携
   // ---------------------------------------------------------------------------
 
-  const publishProjectToSocial = useCallback(async (project: GameProject): Promise<string | null> => {
-    if (!state.socialEnabled || !state.user) {
-      throw new Error('ソーシャル機能が無効または未認証です');
-    }
-
-    setState(prev => ({ ...prev, loading: true, error: null }));
-
-    try {
-      // GameProject → PublicGame 変換
-      const gameData = {
-        id: project.id,
-        title: project.settings.name || project.name,
-        description: project.description || 'ユーザー作成ゲーム',
-        thumbnail: project.settings.preview?.thumbnailDataUrl || '',
-        creator_id: state.user.id,
-        template_id: 'custom', // エディターで作成されたゲーム
-        game_data: JSON.stringify(project), // プロジェクト全体をJSONで保存
-        is_published: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
-      // Supabaseに保存
-      const savedGame = await database.userGames.save(gameData);
-
-      setState(prev => ({ ...prev, loading: false }));
-      
-      return savedGame.id;
-    } catch (error: unknown) {
-      console.error('Failed to publish project to social:', error);
-      setState(prev => ({
-        ...prev,
-        error: 'ゲームの公開に失敗しました',
-        loading: false
-      }));
-      throw error;
-    }
-  }, [state.socialEnabled, state.user]);
-
   const updateProjectSocialStats = useCallback(async (
     projectId: string, 
     stats: Partial<SocialStats>
@@ -402,7 +361,6 @@ export const SocialIntegrationProvider: React.FC<SocialIntegrationProviderProps>
     syncAuthState,
     toggleSocialFeatures,
     toggleNotifications,
-    publishProjectToSocial,
     updateProjectSocialStats,
     deleteProjectFromSocial,
     refreshSocialData,
