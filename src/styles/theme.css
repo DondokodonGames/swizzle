@@ -1,0 +1,67 @@
+/* ============================================================
+   GALLERY アートディレクション — グローバルベース (WP22)
+   無彩色 + ヴァーミリオン(#FF3B1F)1アクセント。影を使わず罫線で構造を作る。
+   旧 arcade-theme.css を置き換え。data-theme スコープなし＝常時適用。
+   ============================================================ */
+
+:root {
+  /* パレット */
+  --gallery-ink: #111111;
+  --gallery-paper: #fafaf7;
+  --gallery-surface: #ffffff;
+  --gallery-accent: #ff3b1f;
+  --gallery-accent-strong: #c41c08;
+  --gallery-muted: #6b6b66;
+  --gallery-line: #e6e6e0;
+
+  /* タイポグラフィ */
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-numeric: 'Space Grotesk', 'Inter', sans-serif;
+}
+
+/* ベース: ペーパー背景・インク文字・Inter */
+body {
+  background-color: var(--gallery-paper);
+  color: var(--gallery-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* テキスト選択: 唯一のアクセント */
+::selection {
+  background: var(--gallery-accent);
+  color: #ffffff;
+}
+::-moz-selection {
+  background: var(--gallery-accent);
+  color: #ffffff;
+}
+
+/* スクロールバー: 無彩色・細身（装飾を足さない） */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--gallery-paper);
+}
+::-webkit-scrollbar-thumb {
+  background: #d4d4cc;
+  border: 2px solid var(--gallery-paper);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gallery-muted);
+}
+* {
+  scrollbar-color: #d4d4cc var(--gallery-paper);
+  scrollbar-width: thin;
+}
+
+/* フォーカスリング: アクセント */
+:focus-visible {
+  outline: 2px solid var(--gallery-accent);
+  outline-offset: 2px;
+}

@@ -452,16 +452,17 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       display: 'inline-block',
       width: '64px',
       height: '64px',
-      border: `2px solid transparent`,
-      borderTopColor: DESIGN_TOKENS.colors.purple[500],
-      borderBottomColor: DESIGN_TOKENS.colors.purple[500],
+      border: `2px solid ${DESIGN_TOKENS.colors.neutral[200]}`,
+      borderTopColor: DESIGN_TOKENS.colors.primary[500],
       borderRadius: DESIGN_TOKENS.borderRadius.full,
       animation: 'spin 1s linear infinite',
       margin: `0 auto ${DESIGN_TOKENS.spacing[4]}`
     },
     loadingText: {
-      color: DESIGN_TOKENS.colors.neutral[700],
-      fontSize: DESIGN_TOKENS.typography.fontSize.lg
+      color: DESIGN_TOKENS.colors.neutral[600],
+      fontFamily: DESIGN_TOKENS.typography.fontFamily.numeric.join(', '),
+      fontSize: DESIGN_TOKENS.typography.fontSize.sm,
+      letterSpacing: '1px'
     },
     errorContainer: {
       textAlign: 'center' as const,
@@ -475,9 +476,10 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       marginBottom: DESIGN_TOKENS.spacing[4]
     },
     errorTitle: {
-      color: DESIGN_TOKENS.colors.neutral[800],
+      color: DESIGN_TOKENS.colors.neutral[900],
+      fontFamily: DESIGN_TOKENS.typography.fontFamily.display.join(', '),
       fontSize: DESIGN_TOKENS.typography.fontSize['2xl'],
-      fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
       marginBottom: DESIGN_TOKENS.spacing[4]
     },
     errorMessage: {
@@ -486,15 +488,16 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       fontSize: DESIGN_TOKENS.typography.fontSize.base
     },
     button: (isHover: boolean) => ({
-      backgroundColor: isHover ? DESIGN_TOKENS.colors.purple[700] : DESIGN_TOKENS.colors.purple[600],
+      backgroundColor: isHover ? DESIGN_TOKENS.colors.primary[600] : DESIGN_TOKENS.colors.primary[500],
       color: DESIGN_TOKENS.colors.neutral[0],
       padding: `${DESIGN_TOKENS.spacing[3]} ${DESIGN_TOKENS.spacing[6]}`,
-      borderRadius: DESIGN_TOKENS.borderRadius.lg,
+      borderRadius: DESIGN_TOKENS.borderRadius.none,
       transition: `background-color ${DESIGN_TOKENS.animation.duration.normal}`,
       border: 'none',
       cursor: 'pointer',
+      fontFamily: DESIGN_TOKENS.typography.fontFamily.numeric.join(', '),
       fontSize: DESIGN_TOKENS.typography.fontSize.base,
-      fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
+      fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold
     }),
     noGamesIcon: {
       color: DESIGN_TOKENS.colors.neutral[400],
@@ -551,6 +554,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       pointerEvents: 'auto' as const,
       flex: 1,
       border: 'none',
+      borderRight: '1px solid rgba(255, 255, 255, 0.15)',
       background: bgColor,
       backdropFilter: 'blur(10px)',
       color: DESIGN_TOKENS.colors.neutral[0],
@@ -691,8 +695,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             }}
             style={styles.topBarButton(
               currentUser
-                ? 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)'
-                : 'rgba(59, 130, 246, 0.9)',
+                ? '#111111'
+                : 'rgba(17, 17, 17, 0.6)',
               false
             )}
             title={currentUser ? 'プロフィール' : 'ログイン'}
@@ -720,7 +724,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             onClick={() => {
               navigate('/about');
             }}
-            style={styles.topBarButton('rgba(16, 185, 129, 0.9)', false)}
+            style={styles.topBarButton('rgba(17, 17, 17, 0.6)', false)}
             title="About Us"
           >
             ℹ️
@@ -733,7 +737,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
                 onOpenFeed();
               }
             }}
-            style={styles.topBarButton('rgba(59, 130, 246, 0.9)', false)}
+            style={styles.topBarButton('rgba(17, 17, 17, 0.6)', false)}
             title="フィード"
           >
             📱
@@ -744,7 +748,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             onClick={() => {
               window.dispatchEvent(new CustomEvent('switchToEditor'));
             }}
-            style={styles.topBarButton('rgba(236, 72, 153, 0.9)', false)}
+            style={styles.topBarButton('rgba(17, 17, 17, 0.6)', false)}
             title="ゲームを作る"
           >
             🎨
@@ -755,7 +759,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
             onClick={() => {
               window.location.href = '/pricing';
             }}
-            style={styles.topBarButton('rgba(139, 92, 246, 0.9)', false)}
+            style={styles.topBarButton('rgba(17, 17, 17, 0.6)', false)}
             title="プレミアム"
           >
             💎
@@ -764,7 +768,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           {/* スキップ - ゲーム中はブリッジへ、ブリッジ中は次のゲームへ */}
           <button
             onClick={gameState === 'bridge' ? handleNextGame : handleSkipToBridge}
-            style={styles.topBarButton('rgba(239, 68, 68, 0.9)', false)}
+            style={styles.topBarButton('rgba(255, 59, 31, 0.92)', false)}
             title={gameState === 'bridge' ? '次のゲームへ' : 'スキップ'}
           >
             ⏭️

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
-import './styles/arcade-theme.css';
+import './styles/theme.css';
 
 import { EditorGameBridge } from './services/editor/EditorGameBridge';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
@@ -208,7 +208,7 @@ const SplashScreen: React.FC = () => {
       left: 0,
       right: 0,
       bottom: 0,
-      background: 'linear-gradient(135deg, #fce7ff 0%, #ccfbf1 50%, #fef3c7 100%)',
+      background: '#fafaf7',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -234,9 +234,9 @@ const SplashScreen: React.FC = () => {
       {/* ローディングインジケーター */}
       <div style={{
         width: '200px',
-        height: '4px',
-        backgroundColor: 'rgba(255, 255, 255, 0.3)',
-        borderRadius: '2px',
+        height: '2px',
+        backgroundColor: '#e6e6e0',
+        borderRadius: 0,
         overflow: 'hidden',
         position: 'relative'
       }}>
@@ -246,20 +246,23 @@ const SplashScreen: React.FC = () => {
           left: 0,
           height: '100%',
           width: '50%',
-          background: 'linear-gradient(90deg, #a855f7, #ec4899)',
-          borderRadius: '2px',
+          background: '#ff3b1f',
+          borderRadius: 0,
           animation: 'loading 1.5s ease-in-out infinite'
         }} />
       </div>
 
       {/* ローディングテキスト */}
       <p style={{
-        color: '#9ca3af',
-        fontSize: '14px',
+        color: '#6b6b66',
+        fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+        fontSize: '12px',
+        letterSpacing: '2px',
+        textTransform: 'uppercase',
         marginTop: '24px',
         animation: 'pulse 2s ease-in-out infinite'
       }}>
-        Loading your gaming experience...
+        Loading your gaming experience
       </p>
 
       {/* アニメーション定義 */}

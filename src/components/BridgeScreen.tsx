@@ -379,7 +379,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
     bottom: 0,
     width: '100%',
     height: '100%',
-    background: 'linear-gradient(180deg, #581c87 0%, #000000 100%)',
+    background: '#fafaf7',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -411,17 +411,41 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           paddingBottom: '160px', // ボタンエリアとの重なりを防ぐため増加
           WebkitOverflowScrolling: 'touch',
         }}>
-          {/* 結果アイコン */}
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ fontSize: '100px', marginBottom: '10px' }}>
+          {/* 結果アイコン + スコア（エディトリアル） */}
+          <div style={{ textAlign: 'center', padding: '20px 0 8px' }}>
+            <div style={{ fontSize: '72px', marginBottom: '4px' }}>
               {score?.success ? '😊' : '😢'}
             </div>
+            {score && (
+              <div style={{ marginTop: '8px' }}>
+                <div style={{
+                  fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+                  fontSize: '11px',
+                  letterSpacing: '3px',
+                  textTransform: 'uppercase',
+                  color: '#6b6b66',
+                }}>
+                  Score
+                </div>
+                <div style={{
+                  fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+                  fontWeight: 700,
+                  fontSize: '52px',
+                  lineHeight: 1,
+                  color: '#111111',
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {(score.points || 0).toLocaleString()}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 作成者情報 */}
           <div style={{
-            background: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: '20px',
+            background: '#ffffff',
+            border: '1px solid #e6e6e0',
+            borderRadius: '0',
             padding: '16px',
             marginBottom: '16px',
             display: 'flex',
@@ -446,22 +470,24 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
               <div style={{
                 width: '50px',
                 height: '50px',
-                background: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
+                background: '#111111',
                 borderRadius: '50%',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: 'white',
-                fontSize: '24px',
-                fontWeight: 'bold',
+                fontFamily: "'Fraunces', Georgia, serif",
+                fontSize: '22px',
+                fontWeight: 700,
                 flexShrink: 0,
               }}>
                 {currentGame.author.name.charAt(0).toUpperCase()}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{
-                  color: 'white',
-                  fontWeight: 'bold',
+                  color: '#111111',
+                  fontFamily: "'Fraunces', Georgia, serif",
+                  fontWeight: 600,
                   fontSize: '18px',
                   margin: 0,
                   overflow: 'hidden',
@@ -471,7 +497,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   {currentGame.author.name}
                 </p>
                 <p style={{
-                  color: '#9ca3af',
+                  color: '#6b6b66',
                   fontSize: '14px',
                   margin: 0,
                   overflow: 'hidden',
@@ -492,10 +518,10 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
               {/* 砂時計アイコン（常に表示してopacityで制御） */}
               <div style={{
                 fontSize: '12px',
-                color: '#9ca3af',
+                color: '#6b6b66',
                 padding: '4px 8px',
-                background: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: '8px',
+                background: '#f4f4f0',
+                borderRadius: '0',
                 opacity: profileClickEnabled ? 0 : 1,
                 visibility: profileClickEnabled ? 'hidden' : 'visible',
                 transition: 'opacity 0.3s ease, visibility 0.3s ease',
@@ -507,13 +533,14 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 disabled={isLiking}
                 style={{
                   padding: '10px 16px',
-                  borderRadius: '12px',
-                  fontWeight: 'bold',
-                  fontSize: '20px',
-                  border: 'none',
+                  borderRadius: '0',
+                  fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+                  fontWeight: 600,
+                  fontSize: '18px',
+                  border: `1px solid ${isLiked ? '#ff3b1f' : '#111111'}`,
                   cursor: isLiking ? 'not-allowed' : 'pointer',
-                  background: isLiked ? '#ef4444' : 'rgba(255, 255, 255, 0.2)',
-                  color: 'white',
+                  background: isLiked ? '#ff3b1f' : '#ffffff',
+                  color: isLiked ? '#ffffff' : '#111111',
                   opacity: isLiking ? 0.5 : 1,
                 }}
               >
@@ -538,12 +565,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           right: 0,
           bottom: '8px',
           padding: '0 20px 12px 20px',
-          background: 'linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 50%, rgba(0,0,0,0.4) 80%, transparent 100%)',
+          background: 'linear-gradient(0deg, #fafaf7 0%, #fafaf7 55%, rgba(250,250,247,0.85) 80%, transparent 100%)',
           pointerEvents: 'none', // グラデーション部分はクリック無効
         }}>
           <div style={{
             display: 'flex',
             gap: 0,
+            border: '1px solid #111111',
             pointerEvents: 'auto', // ボタンエリアはクリック有効
           }}>
             <button
@@ -553,8 +581,10 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 flex: 1,
                 padding: '16px 0',
                 border: 'none',
-                background: 'rgba(16, 185, 129, 0.9)',
-                color: 'white',
+                borderRight: '1px solid #111111',
+                background: '#ffffff',
+                color: '#111111',
+                fontFamily: "'Space Grotesk', 'Inter', sans-serif",
                 fontSize: '20px',
                 cursor: isCopying ? 'not-allowed' : 'pointer',
                 opacity: isCopying ? 0.5 : 1,
@@ -564,7 +594,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '2px',
-                borderRadius: '12px 0 0 12px',
+                borderRadius: '0',
               }}
               onMouseEnter={(e) => !isCopying && (e.currentTarget.style.opacity = '0.8')}
               onMouseLeave={(e) => !isCopying && (e.currentTarget.style.opacity = '1')}
@@ -579,8 +609,10 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 flex: 1,
                 padding: '16px 0',
                 border: 'none',
-                background: 'rgba(59, 130, 246, 0.9)',
+                borderRight: '1px solid #111111',
+                background: '#ff3b1f',
                 color: 'white',
+                fontFamily: "'Space Grotesk', 'Inter', sans-serif",
                 fontSize: '20px',
                 cursor: 'pointer',
                 transition: 'opacity 0.2s',
@@ -617,8 +649,10 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 flex: 1,
                 padding: '16px 0',
                 border: 'none',
-                background: 'rgba(236, 72, 153, 0.9)',
-                color: 'white',
+                borderRight: '1px solid #111111',
+                background: '#ffffff',
+                color: '#111111',
+                fontFamily: "'Space Grotesk', 'Inter', sans-serif",
                 fontSize: '20px',
                 cursor: 'pointer',
                 transition: 'opacity 0.2s',
@@ -641,8 +675,9 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 flex: 1,
                 padding: '16px 0',
                 border: 'none',
-                background: 'rgba(139, 92, 246, 0.9)',
-                color: 'white',
+                background: '#ffffff',
+                color: '#111111',
+                fontFamily: "'Space Grotesk', 'Inter', sans-serif",
                 fontSize: '20px',
                 cursor: 'pointer',
                 transition: 'opacity 0.2s',
@@ -651,7 +686,7 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '2px',
-                borderRadius: '0 12px 12px 0',
+                borderRadius: '0',
               }}
               onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
               onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
@@ -701,18 +736,19 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           padding: '20px',
         }}>
           <div style={{
-            background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-            borderRadius: '24px',
+            background: '#ffffff',
+            border: '1px solid #111111',
+            borderRadius: '0',
             padding: '32px',
             maxWidth: '400px',
             width: '100%',
             textAlign: 'center',
           }}>
             <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
-            <h2 style={{ color: 'white', fontSize: '28px', fontWeight: 'bold', marginBottom: '12px' }}>
+            <h2 style={{ color: '#111111', fontFamily: "'Fraunces', Georgia, serif", fontSize: '28px', fontWeight: 600, marginBottom: '12px' }}>
               {t('bridge.copySuccessTitle')}
             </h2>
-            <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '16px', marginBottom: '24px' }}>
+            <p style={{ color: '#6b6b66', fontSize: '16px', marginBottom: '24px' }}>
               {t('bridge.copySuccessMessage')}
             </p>
 
@@ -724,12 +760,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 }}
                 style={{
                   width: '100%',
-                  background: 'white',
-                  color: '#059669',
-                  fontWeight: 'bold',
+                  background: '#ff3b1f',
+                  color: 'white',
+                  fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+                  fontWeight: 600,
                   fontSize: '18px',
                   padding: '14px',
-                  borderRadius: '16px',
+                  borderRadius: '0',
                   border: 'none',
                   cursor: 'pointer',
                 }}
@@ -741,13 +778,14 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 onClick={() => setShowSuccessModal(false)}
                 style={{
                   width: '100%',
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  color: 'white',
-                  fontWeight: 'bold',
+                  background: '#ffffff',
+                  color: '#111111',
+                  fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+                  fontWeight: 600,
                   fontSize: '16px',
                   padding: '12px',
-                  borderRadius: '16px',
-                  border: 'none',
+                  borderRadius: '0',
+                  border: '1px solid #111111',
                   cursor: 'pointer',
                 }}
               >
@@ -779,25 +817,27 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
           }
         }}>
           <div style={{
-            background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
-            borderRadius: '24px',
+            background: '#ffffff',
+            border: '1px solid #111111',
+            borderRadius: '0',
             padding: '32px',
             maxWidth: '400px',
             width: '100%',
             textAlign: 'center',
           }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔗</div>
-            <h2 style={{ color: 'white', fontSize: '24px', fontWeight: 'bold', marginBottom: '8px' }}>
+            <h2 style={{ color: '#111111', fontFamily: "'Fraunces', Georgia, serif", fontSize: '24px', fontWeight: 600, marginBottom: '8px' }}>
               {t('bridge.share.title')}
             </h2>
             <p style={{
-              color: 'rgba(255, 255, 255, 0.8)',
-              fontSize: '14px',
+              color: '#6b6b66',
+              fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+              fontSize: '13px',
               marginBottom: '8px',
               wordBreak: 'break-all',
-              background: 'rgba(0, 0, 0, 0.2)',
+              background: '#f4f4f0',
               padding: '12px',
-              borderRadius: '12px',
+              borderRadius: '0',
             }}>
               {gameUrl}
             </p>
@@ -808,12 +848,13 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 onClick={handleCopyUrl}
                 style={{
                   width: '100%',
-                  background: urlCopied ? '#10b981' : 'white',
-                  color: urlCopied ? 'white' : '#7c3aed',
-                  fontWeight: 'bold',
+                  background: urlCopied ? '#111111' : '#ff3b1f',
+                  color: 'white',
+                  fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+                  fontWeight: 600,
                   fontSize: '16px',
                   padding: '14px',
-                  borderRadius: '16px',
+                  borderRadius: '0',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.3s ease',
@@ -1014,13 +1055,14 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                   onClick={handleNativeShare}
                   style={{
                     width: '100%',
-                    background: 'rgba(255, 255, 255, 0.2)',
-                    color: 'white',
-                    fontWeight: 'bold',
+                    background: '#ffffff',
+                    color: '#111111',
+                    fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+                    fontWeight: 600,
                     fontSize: '14px',
                     padding: '12px',
-                    borderRadius: '16px',
-                    border: 'none',
+                    borderRadius: '0',
+                    border: '1px solid #111111',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -1037,13 +1079,14 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
                 onClick={() => setShowShareModal(false)}
                 style={{
                   width: '100%',
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  color: 'white',
-                  fontWeight: 'bold',
+                  background: '#ffffff',
+                  color: '#6b6b66',
+                  fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+                  fontWeight: 600,
                   fontSize: '14px',
                   padding: '12px',
-                  borderRadius: '16px',
-                  border: 'none',
+                  borderRadius: '0',
+                  border: '1px solid #e6e6e0',
                   cursor: 'pointer',
                   marginTop: '8px',
                 }}
