@@ -10,6 +10,7 @@ import { RuleEngine, RuleExecutionContext } from '../rule-engine/RuleEngine';
 import { DelayScheduler } from '../rule-engine/DelayScheduler';
 import { InputZone } from '../../types/editor/GameScript';
 import { getBackgroundUrl, getAudioAssetUrl, getAssetFrameUrl, dataUrlToObjectUrl } from '../../utils/assetUrl';
+import { ListenerRegistry } from './ListenerRegistry';
 
 // ゲーム実行結果
 export interface GameExecutionResult {
@@ -46,12 +47,7 @@ export class EditorGameBridge {
   private currentRelaunch: (() => void) | null = null;
   private currentContext: RuleExecutionContext | null = null;
   private shouldStopGame: boolean = false;
-  private currentCanvas: HTMLCanvasElement | null = null;
-  private currentHandleInteraction: ((event: MouseEvent | TouchEvent) => void) | null = null;
-  private currentHandleMouseMove: ((event: MouseEvent) => void) | null = null;
-  private currentHandleMouseUp: ((event: MouseEvent) => void) | null = null;
-  private currentHandleTouchMove: ((event: TouchEvent) => void) | null = null;
-  private currentHandleTouchEnd: ((event: TouchEvent) => void) | null = null;
+  private listenerRegistry = new ListenerRegistry();
   private currentBgmAudio: HTMLAudioElement | null = null;
   private delayScheduler: DelayScheduler = new DelayScheduler();
   private inputZones: InputZone[] = [];
@@ -83,26 +79,8 @@ export class EditorGameBridge {
       this.gameLoopTimerId = null;
     }
 
-    // イベントリスナーを削除
-    if (this.currentCanvas) {
-      if (this.currentHandleInteraction) {
-        this.currentCanvas.removeEventListener('mousedown', this.currentHandleInteraction);
-        this.currentCanvas.removeEventListener('touchstart', this.currentHandleInteraction);
-      }
-      if (this.currentHandleTouchMove) {
-        this.currentCanvas.removeEventListener('touchmove', this.currentHandleTouchMove);
-      }
-      if (this.currentHandleTouchEnd) {
-        this.currentCanvas.removeEventListener('touchend', this.currentHandleTouchEnd);
-      }
-    }
-    // mousemove/mouseup are attached to document (M-2 fix)
-    if (this.currentHandleMouseMove) {
-      document.removeEventListener('mousemove', this.currentHandleMouseMove);
-    }
-    if (this.currentHandleMouseUp) {
-      document.removeEventListener('mouseup', this.currentHandleMouseUp);
-    }
+    // イベントリスナーを一括解除（ListenerRegistry が canvas + document 両方を管理）
+    this.listenerRegistry.disposeAll();
 
     // BGMを停止
     if (this.currentBgmAudio) {
@@ -113,12 +91,6 @@ export class EditorGameBridge {
 
     // コンテキストをクリア
     this.currentContext = null;
-    this.currentCanvas = null;
-    this.currentHandleInteraction = null;
-    this.currentHandleMouseMove = null;
-    this.currentHandleMouseUp = null;
-    this.currentHandleTouchMove = null;
-    this.currentHandleTouchEnd = null;
 
     console.log('✅ ゲーム停止完了');
   }
@@ -139,9 +111,11 @@ export class EditorGameBridge {
   ): Promise<GameExecutionResult> {
     console.log('🎮 ゲーム実行開始 (Phase H統合版):', project.name || project.settings.name);
 
+    // 二重起動時のリスナー孤児化を防ぐ防御的停止（冪等）
+    this.stopGame();
+
     // ゲーム停止フラグをリセット
     this.shouldStopGame = false;
-    this.currentCanvas = canvasElement;
     // restart アクション用に同条件での再実行クロージャを保持
     this.currentRelaunch = () => { void this.executeGame(project, canvasElement); };
 
@@ -1359,21 +1333,14 @@ export class EditorGameBridge {
         touchedObjectId = null;
       };
 
-      canvasElement.addEventListener('mousedown', handleInteraction);
       // M-2: mousemove/mouseup are attached to document so dragging outside the canvas
       // does not leave touchActive stuck as true.
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      canvasElement.addEventListener('touchstart', handleInteraction, { passive: false });
-      canvasElement.addEventListener('touchmove', handleTouchMove, { passive: false });
-      canvasElement.addEventListener('touchend', handleTouchEnd);
-
-      // 外部停止用にハンドラ参照を保存
-      this.currentHandleInteraction = handleInteraction;
-      this.currentHandleMouseMove = handleMouseMove;
-      this.currentHandleMouseUp = handleMouseUp;
-      this.currentHandleTouchMove = handleTouchMove;
-      this.currentHandleTouchEnd = handleTouchEnd;
+      this.listenerRegistry.register(canvasElement, 'mousedown', handleInteraction as EventListener);
+      this.listenerRegistry.register(document, 'mousemove', handleMouseMove as EventListener);
+      this.listenerRegistry.register(document, 'mouseup', handleMouseUp as EventListener);
+      this.listenerRegistry.register(canvasElement, 'touchstart', handleInteraction as EventListener, { passive: false });
+      this.listenerRegistry.register(canvasElement, 'touchmove', handleTouchMove as EventListener, { passive: false });
+      this.listenerRegistry.register(canvasElement, 'touchend', handleTouchEnd as EventListener);
 
       // 14. ゲーム開始
       console.log('🚀 ゲームループ開始');
@@ -1396,12 +1363,7 @@ export class EditorGameBridge {
         clearTimeout(this.gameLoopTimerId);
         this.gameLoopTimerId = null;
       }
-      canvasElement.removeEventListener('mousedown', handleInteraction);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      canvasElement.removeEventListener('touchstart', handleInteraction);
-      canvasElement.removeEventListener('touchmove', handleTouchMove);
-      canvasElement.removeEventListener('touchend', handleTouchEnd);
+      this.listenerRegistry.disposeAll();
       audioSystem.stopBGM();
 
       // 17. 結果計算

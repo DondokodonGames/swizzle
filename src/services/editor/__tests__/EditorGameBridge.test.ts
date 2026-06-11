@@ -13,7 +13,8 @@
  *      same event type for the same velocity / distance / duration values.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { EditorGameBridge } from '../EditorGameBridge';
 
 // ────────────────────────────────────────────────────────────
 // Shared utilities extracted verbatim from EditorGameBridge.ts
@@ -214,5 +215,36 @@ describe('EditorGameBridge – getDirection helper', () => {
     // |dx| >= |dy| → horizontal wins
     expect(getDirection(50, 50)).toBe('right');
     expect(getDirection(-50, 50)).toBe('left');
+  });
+});
+
+// ────────────────────────────────────────────────────────────
+// Tests: executeGame defensive stop (ListenerRegistry integration)
+// ────────────────────────────────────────────────────────────
+
+describe('EditorGameBridge – executeGame defensive stopGame', () => {
+  beforeEach(() => {
+    // Reset singleton between tests
+    (EditorGameBridge as unknown as { instance: null }).instance = null;
+  });
+
+  it('calls stopGame() at entry even when canvas context is unavailable', async () => {
+    const bridge = EditorGameBridge.getInstance();
+    const stopSpy = vi.spyOn(bridge, 'stopGame');
+
+    // Minimal canvas stub — getContext returns null to cause early exit
+    const mockCanvas = {
+      getContext: () => null,
+      width: 0,
+      height: 0,
+    } as unknown as HTMLCanvasElement;
+
+    const result = await bridge.executeGame(
+      { name: 'test', settings: { name: 'test' } } as any,
+      mockCanvas
+    );
+
+    expect(stopSpy).toHaveBeenCalled();
+    expect(result.success).toBe(false);
   });
 });
