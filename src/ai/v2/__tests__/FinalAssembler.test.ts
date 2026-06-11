@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { FinalAssembler } from '../FinalAssembler';
 import { LogicGeneratorOutput, GameConcept, GeneratedAssets } from '../types';
+import { CURRENT_SCHEMA_VERSION } from '../SchemaMigrator';
 
 const mockConcept: GameConcept = {
   title: 'Test Game', titleEn: 'Test Game', description: 'A test', duration: 5,
@@ -99,5 +100,13 @@ describe('FinalAssembler – フラグ初期化', () => {
     const result = assembler.assemble(mockConcept, output, mockAssets);
     const scriptFlags = result.project.script?.flags as unknown[] as unknown[];
     expect(scriptFlags?.length).toBeGreaterThan(0);
+  });
+});
+
+describe('FinalAssembler – schemaVersion', () => {
+  it('アセンブル済みプロジェクトに schemaVersion が付与される', () => {
+    const assembler = new FinalAssembler();
+    const result = assembler.assemble(mockConcept, makeLogicOutput(), mockAssets);
+    expect((result.project as Record<string, unknown>)['schemaVersion']).toBe(CURRENT_SCHEMA_VERSION);
   });
 });

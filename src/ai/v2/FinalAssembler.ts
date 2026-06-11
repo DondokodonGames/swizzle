@@ -6,6 +6,7 @@
  */
 
 import { GameProject, DEFAULT_PROJECT_METADATA } from '../../types/editor/GameProject';
+import { CURRENT_SCHEMA_VERSION } from './SchemaMigrator';
 import { GameDurationOption } from '../../constants/EditorLimits';
 import {
   GameConcept,
@@ -88,6 +89,7 @@ export class FinalAssembler {
       nameEn: concept.titleEn,
       description: concept.description,
       version: '1.0.0',
+      schemaVersion: CURRENT_SCHEMA_VERSION,
       createdAt: now,
       lastModified: now,
       assets: {
