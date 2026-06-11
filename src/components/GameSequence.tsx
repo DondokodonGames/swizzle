@@ -5,6 +5,7 @@ import EditorGameBridge from '../services/editor/EditorGameBridge';
 import { PublicGame } from '../social/types/SocialTypes';
 import { BridgeScreen } from './BridgeScreen';
 import { supabase } from '../lib/supabase';
+import { GameLoadingService } from '../services/GameLoadingService';
 import ProfileModal from './ProfileModal';
 import { DESIGN_TOKENS } from '../constants/DesignSystem';
 
@@ -165,20 +166,15 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
         // Step 2: 最初のゲームの project_data を取得してから開始
         const firstGame = initialResult.games[0];
-        const { data: firstData } = await supabase
-          .from('user_games')
-          .select('id, project_data')
-          .eq('id', firstGame.id)
-          .eq('is_published', true)
-          .single();
+        const firstProject = await GameLoadingService.loadPublishedProject(firstGame.id);
 
-        if (!firstData?.project_data) {
+        if (!firstProject) {
           setError('公開ゲームがありません。エディターでゲームを作成して公開してください。');
           setGameState('loading');
           return;
         }
 
-        const initialGame: PublicGame = { ...firstGame, projectData: firstData.project_data };
+        const initialGame: PublicGame = { ...firstGame, projectData: firstProject };
 
         // 一覧は project_data なしで保持（再生時にオンデマンド取得）
         setAllValidGames(initialResult.games);
@@ -218,14 +214,9 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     // project_data をバックグラウンドで先読み
     if (!candidate.projectData) {
       try {
-        const { data } = await supabase
-          .from('user_games')
-          .select('id, project_data')
-          .eq('id', candidate.id)
-          .eq('is_published', true)
-          .single();
-        if (data?.project_data) {
-          setNextGame({ ...candidate, projectData: data.project_data });
+        const project = await GameLoadingService.loadPublishedProject(candidate.id);
+        if (project) {
+          setNextGame({ ...candidate, projectData: project });
           return;
         }
       } catch {
@@ -313,16 +304,11 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       // project_data がない場合はオンデマンド取得
       if (!currentGame.projectData) {
         try {
-          const { data } = await supabase
-            .from('user_games')
-            .select('id, project_data')
-            .eq('id', currentGame.id)
-            .eq('is_published', true)
-            .single();
-          if (data?.project_data) {
-            currentGame.projectData = data.project_data;
+          const project = await GameLoadingService.loadPublishedProject(currentGame.id);
+          if (project) {
+            currentGame.projectData = project;
             setPublicGames(prev => prev.map(g =>
-              g.id === currentGame.id ? { ...g, projectData: data.project_data } : g
+              g.id === currentGame.id ? { ...g, projectData: project } : g
             ));
           } else {
             currentGameRef.current = null;
