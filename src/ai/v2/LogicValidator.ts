@@ -666,6 +666,16 @@ export class LogicValidator {
                 fix: `フラグIDを指定してください`
               });
             }
+            // flagValue混入チェック（WP33 §6）: トリガー条件の正典は condition('ON'|'OFF'|...) 形。
+            // flagValue は SuccessCondition 由来であり、エンジン（FlagManager）では評価されず常に false になる。
+            if ((condition as { flagValue?: unknown }).flagValue !== undefined) {
+              errors.push({
+                type: 'critical',
+                code: 'INVALID_FLAG_CONDITION_SHAPE',
+                message: `ルール "${ruleId}": flagトリガー条件に flagValue があります（エンジンで評価されません）`,
+                fix: `condition: 'ON' | 'OFF' | 'CHANGED' | 'ON_TO_OFF' | 'OFF_TO_ON' を使用してください`
+              });
+            }
             break;
 
           case 'position':

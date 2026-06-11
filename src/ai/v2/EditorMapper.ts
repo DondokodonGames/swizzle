@@ -1337,12 +1337,24 @@ export class EditorMapper {
           collisionType: (params.collisionType as TriggerCondition['collisionType']) || 'enter'
         }];
 
-      case 'flag':
+      case 'flag': {
+        // 正典（GameScript.ts）の flag トリガー条件は condition('ON'|'OFF'|...) 形。
+        // エンジン（FlagManager）は condition.condition を switch 評価するため、
+        // 旧来の flagValue 形は常に false になっていた（WP33 §6）。
+        const FLAG_CONDITIONS = ['ON', 'OFF', 'CHANGED', 'ON_TO_OFF', 'OFF_TO_ON'] as const;
+        const rawCondition = params.condition as string | undefined;
+        const flagCondition =
+          rawCondition && (FLAG_CONDITIONS as readonly string[]).includes(rawCondition)
+            ? (rawCondition as (typeof FLAG_CONDITIONS)[number])
+            : params.value === false
+              ? 'OFF'
+              : 'ON';
         return [{
           type: 'flag' as const,
           flagId: params.flagId as string,
-          ...(params.value !== undefined ? { flagValue: params.value as boolean } : {})
+          condition: flagCondition
         }];
+      }
 
       case 'position':
         return [{
