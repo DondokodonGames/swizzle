@@ -433,15 +433,15 @@ Review×2 ──►│ RuleEngine は破棄契約なし                         
 
 | ✓ | # | 項目 | 推奨 | 工数 | 判断（やる / 最小 / やらない） |
 |---|---|------|------|------|------|
-| ☐ | 6 | flag条件 恒久対応（EditorMapper正規化＋ガード＋偽互換削除） | **やる（最優先）** | S | |
-| ☐ | 1+2 | GameLoadingService 統一 ＋ `game_data` カラム廃止 | やる | M | |
-| ☐ | 4 | ReviewQueue を Supabase版に一本化・ローカルJSON版削除 | やる | S | |
-| ☐ | 3 | EditorGameBridge 分割（GameRuntime + ListenerRegistry） | やる（最小=リーク対策のみ可） | L / 最小S | |
-| ☐ | 7 | エディタ・アクション/条件エディタの共通化・分割 | 最小（DRY化）から | M–L | |
-| ☐ | 5 | AI v2 schemaVersion 導入 ＋ 大ファイル分割 | 版管理を先行 | L / 版管理M | |
-| ☐ | 8 | 改修経路へのスモークテスト同伴（hooks から） | 横断で実施 | M | |
-| ☐ | 9 | marketing スタブを保留棚として明記（削除は急がない） | 明記のみ | S | |
-| ☐ | N1 | 描画方針確定（Canvas2D継続 or PixiJS移行）＋ CLAUDE.md 修正 | 方針決定 | S | |
+| ✓ | 6 | flag条件 恒久対応（EditorMapper正規化＋ガード＋偽互換削除） | **やる（最優先）** | S | |
+| ✓ | 1+2 | GameLoadingService 統一 ＋ `game_data` カラム廃止 | やる | M | |
+| ✓ | 4 | ReviewQueue を Supabase版に一本化・ローカルJSON版削除 | やる | S | |
+| ✓ | 3 | EditorGameBridge 分割（GameRuntime + ListenerRegistry） | やる（最小=リーク対策のみ可） | L / 最小S | |
+| ✓ | 7 | エディタ・アクション/条件エディタの共通化・分割 | 最小（DRY化）から | M–L | |
+| ✓ | 5 | AI v2 schemaVersion 導入 ＋ 大ファイル分割 | 版管理を先行 | L / 版管理M | |
+| ✓ | 8 | 改修経路へのスモークテスト同伴（hooks から） | 横断で実施 | M | |
+| ✓ | 9 | marketing スタブを保留棚として明記（削除は急がない） | 明記のみ | S | |
+| Canvas2D継続 | N1 | 描画方針確定（Canvas2D継続 or PixiJS移行）＋ CLAUDE.md 修正 | 方針決定 | S | |
 
 > 承認後の WP33 は、チェック項目を上の依存グラフ順に S/M 単位で着手する。各改修には §8 のスモークテストを同伴し、WP31 の CI（tsc / test / lint）でガードする。
 
