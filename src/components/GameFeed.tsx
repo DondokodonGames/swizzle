@@ -229,6 +229,7 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
   const currentSection = sections.find(s => s.id === selectedSection);
 
   // ==================== スタイル ====================
+  // 🎨 GALLERY: 無彩色 + ヴァーミリオン1アクセント。影を使わず1px罫線で構造を作る
   const styles = {
     container: {
       position: 'fixed' as const,
@@ -236,15 +237,15 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: '#f8fafc',
+      backgroundColor: '#fafaf7',
       zIndex: 50,
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column' as const
     },
     header: {
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+      backgroundColor: '#fafaf7',
+      borderBottom: '1px solid #111111',
       padding: '16px 20px'
     },
     headerContent: {
@@ -258,32 +259,38 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      color: '#374151',
-      padding: '8px 12px',
-      borderRadius: '8px',
-      border: 'none',
-      background: '#e5e7eb',
+      color: '#111111',
+      padding: '8px 14px',
+      borderRadius: '0',
+      border: '1px solid #111111',
+      background: 'transparent',
       cursor: 'pointer',
-      fontSize: '14px'
+      fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+      fontWeight: 600,
+      fontSize: '13px'
     },
     title: {
-      color: '#1f2937',
-      fontWeight: 'bold',
-      fontSize: '20px',
+      color: '#111111',
+      fontFamily: "'Fraunces', Georgia, serif",
+      fontWeight: 600,
+      fontSize: '22px',
+      letterSpacing: '-0.5px',
       margin: 0
     },
     refreshButton: {
-      padding: '8px 12px',
-      borderRadius: '8px',
-      border: 'none',
-      background: '#e5e7eb',
-      color: '#374151',
+      padding: '8px 14px',
+      borderRadius: '0',
+      border: '1px solid #111111',
+      background: 'transparent',
+      color: '#111111',
       cursor: 'pointer',
-      fontSize: '14px'
+      fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+      fontWeight: 600,
+      fontSize: '13px'
     },
     tabs: {
-      backgroundColor: 'rgba(255, 255, 255, 0.8)',
-      borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
+      backgroundColor: '#fafaf7',
+      borderBottom: '1px solid #e6e6e0',
       padding: '12px 20px',
       overflowX: 'auto' as const
     },
@@ -298,15 +305,14 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       alignItems: 'center',
       gap: '8px',
       padding: '10px 16px',
-      borderRadius: '12px',
-      border: 'none',
-      background: isActive
-        ? 'linear-gradient(to right, #a855f7, #ec4899)'
-        : '#e5e7eb',
-      color: isActive ? 'white' : '#4b5563',
+      borderRadius: '0',
+      border: `1px solid ${isActive ? '#111111' : '#e6e6e0'}`,
+      background: isActive ? '#111111' : '#ffffff',
+      color: isActive ? '#ffffff' : '#4a4a45',
       cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: isActive ? 'bold' : 'normal',
+      fontFamily: "'Space Grotesk', 'Inter', sans-serif",
+      fontSize: '13px',
+      fontWeight: 600,
       whiteSpace: 'nowrap' as const
     }),
     content: {
@@ -325,16 +331,16 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
     },
     card: {
       backgroundColor: '#ffffff',
-      borderRadius: '16px',
+      borderRadius: '0',
       overflow: 'hidden',
-      border: '1px solid #e5e7eb',
+      border: '1px solid #e6e6e0',
       cursor: 'pointer',
-      transition: 'all 0.3s ease',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+      transition: 'all 0.2s ease',
+      boxShadow: 'none'
     },
     thumbnail: {
       aspectRatio: '16/9',
-      backgroundColor: '#f3e8ff',
+      backgroundColor: '#f4f4f0',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -350,16 +356,17 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       padding: '16px'
     },
     cardTitle: {
-      color: '#1f2937',
-      fontSize: '16px',
-      fontWeight: 'bold',
+      color: '#111111',
+      fontFamily: "'Fraunces', Georgia, serif",
+      fontSize: '17px',
+      fontWeight: 600,
       marginBottom: '8px',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap' as const
     },
     cardDescription: {
-      color: '#6b7280',
+      color: '#6b6b66',
       fontSize: '14px',
       marginBottom: '12px',
       display: '-webkit-box',
@@ -380,29 +387,31 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
     avatar: {
       width: '28px',
       height: '28px',
-      background: 'linear-gradient(to bottom right, #a855f7, #ec4899)',
-      borderRadius: '8px',
+      background: '#111111',
+      borderRadius: '50%',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       color: 'white',
-      fontSize: '12px',
-      fontWeight: 'bold'
+      fontFamily: "'Fraunces', Georgia, serif",
+      fontSize: '13px',
+      fontWeight: 700
     },
     authorName: {
-      color: '#6b7280',
+      color: '#6b6b66',
       fontSize: '13px'
     },
     stats: {
       display: 'flex',
       gap: '12px',
-      color: '#9ca3af',
+      color: '#a8a8a0',
+      fontFamily: "'Space Grotesk', 'Inter', sans-serif",
       fontSize: '12px'
     },
     loading: {
       textAlign: 'center' as const,
       padding: '60px 20px',
-      color: '#6b7280'
+      color: '#6b6b66'
     },
     empty: {
       textAlign: 'center' as const,
@@ -413,13 +422,14 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       marginBottom: '16px'
     },
     emptyTitle: {
-      color: '#1f2937',
-      fontSize: '20px',
-      fontWeight: 'bold',
+      color: '#111111',
+      fontFamily: "'Fraunces', Georgia, serif",
+      fontSize: '22px',
+      fontWeight: 600,
       marginBottom: '8px'
     },
     emptyText: {
-      color: '#6b7280',
+      color: '#6b6b66',
       fontSize: '14px'
     },
     error: {
@@ -431,25 +441,27 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
       marginBottom: '16px'
     },
     errorTitle: {
-      color: '#dc2626',
-      fontSize: '20px',
-      fontWeight: 'bold',
+      color: '#c41c08',
+      fontFamily: "'Fraunces', Georgia, serif",
+      fontSize: '22px',
+      fontWeight: 600,
       marginBottom: '8px'
     },
     errorText: {
-      color: '#6b7280',
+      color: '#6b6b66',
       fontSize: '14px',
       marginBottom: '16px'
     },
     retryButton: {
       padding: '10px 20px',
-      backgroundColor: '#3b82f6',
+      backgroundColor: '#ff3b1f',
       color: 'white',
       border: 'none',
-      borderRadius: '8px',
+      borderRadius: '0',
       cursor: 'pointer',
+      fontFamily: "'Space Grotesk', 'Inter', sans-serif",
       fontSize: '14px',
-      fontWeight: 'bold'
+      fontWeight: 600
     }
   };
 
@@ -551,14 +563,14 @@ export const GameFeed: React.FC<GameFeedProps> = ({ onGameSelect, onBack }) => {
                       style={styles.card}
                       onClick={() => onGameSelect(game)}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#a855f7';
-                        e.currentTarget.style.transform = 'translateY(-4px)';
-                        e.currentTarget.style.boxShadow = '0 10px 25px rgba(168, 85, 247, 0.2)';
+                        e.currentTarget.style.borderColor = '#111111';
+                        e.currentTarget.style.transform = 'translateY(-3px)';
+                        e.currentTarget.style.boxShadow = 'none';
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#e5e7eb';
+                        e.currentTarget.style.borderColor = '#e6e6e0';
                         e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+                        e.currentTarget.style.boxShadow = 'none';
                       }}
                     >
                       <div style={styles.thumbnail}>

@@ -8,19 +8,20 @@
 export const DESIGN_TOKENS = {
   colors: {
     // Primary Colors（ブランドカラー）
+    // 🎨 WP22 GALLERY: ヴァーミリオン(#FF3B1F)を唯一のアクセントとする無彩色+1アクセント方針
     primary: {
-      25: '#f0f9ff',    // 🆕 追加 - DragDropZone用
-      50: '#f0f9ff',
-      100: '#e0f2fe', 
-      200: '#bae6fd',
-      300: '#7dd3fc',
-      400: '#38bdf8',
-      500: '#0ea5e9',  // メインプライマリ
-      600: '#0284c7',
-      700: '#0369a1',
-      800: '#075985',
-      900: '#0c4a6e',
-      950: '#082f49'
+      25: '#fff6f4',    // DragDropZone用
+      50: '#fff1ed',
+      100: '#ffe2da',
+      200: '#ffc6b5',
+      300: '#ff9f85',
+      400: '#ff6e4d',
+      500: '#ff3b1f',  // メインプライマリ（ヴァーミリオン・アクセント）
+      600: '#ed2606',
+      700: '#c41c08',
+      800: '#9c1a0e',
+      900: '#7e1a0f',
+      950: '#440a04'
     },
     
     // Secondary Colors（アクセント）
@@ -81,19 +82,20 @@ export const DESIGN_TOKENS = {
     },
     
     // Neutral Colors（テキスト・背景）
+    // 🎨 WP22 GALLERY: クールスレート→ウォームグレーへ。paper(#FAFAF7)/ink(#111)基調。明度関係は維持
     neutral: {
-      0: '#ffffff',    // 純白
-      50: '#f8fafc',   // 極薄グレー
-      100: '#f1f5f9',  // 薄グレー
-      200: '#e2e8f0',  // ライトグレー
-      300: '#cbd5e1',  // ボーダー
-      400: '#94a3b8',  // プレースホルダー
-      500: '#64748b',  // セカンダリテキスト
-      600: '#475569',  // プライマリテキスト
-      700: '#334155',  // 濃いテキスト
-      800: '#1e293b',  // 最濃テキスト
-      900: '#0f172a',  // 黒に近い
-      950: '#020617'   // 純黒
+      0: '#ffffff',    // 純白（surface）
+      50: '#fafaf7',   // ペーパー（背景）
+      100: '#f4f4f0',  // 薄グレー
+      200: '#e6e6e0',  // 罫線（line）
+      300: '#d4d4cc',  // ボーダー
+      400: '#a8a8a0',  // プレースホルダー
+      500: '#6b6b66',  // セカンダリテキスト（muted）
+      600: '#4a4a45',  // プライマリテキスト
+      700: '#333330',  // 濃いテキスト
+      800: '#1c1c1a',  // 最濃テキスト
+      900: '#111111',  // インク
+      950: '#0a0a0a'   // 純黒
     }
   },
   
@@ -147,7 +149,10 @@ export const DESIGN_TOKENS = {
   // 📝 Typography（フォントシステム）
   typography: {
     fontFamily: {
+      // 🎨 WP22 GALLERY: 本文=Inter / 見出し=Fraunces(エディトリアル・セリフ) / 数字=Space Grotesk(等幅気味)
       sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'] as const,
+      display: ['Fraunces', 'Georgia', 'Times New Roman', 'serif'] as const,
+      numeric: ['Space Grotesk', 'Inter', 'sans-serif'] as const,
       mono: ['JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'monospace'] as const
     },
     fontSize: {
