@@ -1,13 +1,10 @@
 // src/components/editor/script/conditions/FlagConditionEditor.tsx
-// Phase C Step 1-2完了版: フラグ条件詳細設定コンポーネント
-// AdvancedRuleModal.tsx分割 - Step 2: 条件エディター分離
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { TriggerCondition, GameFlag } from '../../../../types/editor/GameScript';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
-import { ModernCard } from '../../../ui/ModernCard';
-import { ModernButton } from '../../../ui/ModernButton';
+import { EditorCard, FormLabel, OptionGrid, SummaryBox } from '../shared';
 import { FLAG_CONDITION_OPTIONS } from '../constants/TimeConstants';
 
 interface FlagConditionEditorProps {
@@ -25,42 +22,12 @@ export const FlagConditionEditor: React.FC<FlagConditionEditorProps> = ({
 }) => {
   const { t } = useTranslation();
   const flagCondition = condition;
-  
-  return (
-    <ModernCard 
-      variant="outlined" 
-      size="md"
-      style={{ 
-        backgroundColor: DESIGN_TOKENS.colors.purple[50],
-        border: `2px solid ${DESIGN_TOKENS.colors.purple[200]}`,
-        marginTop: DESIGN_TOKENS.spacing[4]
-      }}
-    >
-      <h5 style={{
-        fontSize: DESIGN_TOKENS.typography.fontSize.base,
-        fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
-        color: DESIGN_TOKENS.colors.purple[800],
-        margin: 0,
-        marginBottom: DESIGN_TOKENS.spacing[4],
-        display: 'flex',
-        alignItems: 'center',
-        gap: DESIGN_TOKENS.spacing[2]
-      }}>
-        <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🚩</span>
-        {t('editor.flagCondition.title')}
-      </h5>
 
+  return (
+    <EditorCard colorTheme="condition" icon="🚩" title={t('editor.flagCondition.title')}>
       {/* フラグ選択 */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-        <label style={{
-          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-          fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-          color: DESIGN_TOKENS.colors.purple[800],
-          marginBottom: DESIGN_TOKENS.spacing[2],
-          display: 'block'
-        }}>
-          {t('editor.flagCondition.targetFlagLabel')}
-        </label>
+        <FormLabel colorTheme="condition">{t('editor.flagCondition.targetFlagLabel')}</FormLabel>
         <select
           value={flagCondition.flagId}
           onChange={(e) => onUpdate(index, { flagId: e.target.value })}
@@ -71,7 +38,7 @@ export const FlagConditionEditor: React.FC<FlagConditionEditorProps> = ({
             border: `1px solid ${DESIGN_TOKENS.colors.purple[200]}`,
             borderRadius: DESIGN_TOKENS.borderRadius.lg,
             backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-            outline: 'none'
+            outline: 'none',
           }}
         >
           <option value="">{t('editor.flagCondition.selectFlag')}</option>
@@ -88,63 +55,23 @@ export const FlagConditionEditor: React.FC<FlagConditionEditorProps> = ({
 
       {/* フラグ条件タイプ選択 */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-        <label style={{
-          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-          fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-          color: DESIGN_TOKENS.colors.purple[800],
-          marginBottom: DESIGN_TOKENS.spacing[2],
-          display: 'block'
-        }}>
-          {t('editor.flagCondition.conditionTypeLabel')}
-        </label>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-          gap: DESIGN_TOKENS.spacing[2]
-        }}>
-          {FLAG_CONDITION_OPTIONS.map((option) => (
-            <ModernButton
-              key={option.value}
-              variant={flagCondition.condition === option.value ? 'primary' : 'outline'}
-              size="sm"
-              onClick={() => onUpdate(index, { condition: option.value as any })}
-              style={{
-                borderColor: flagCondition.condition === option.value 
-                  ? DESIGN_TOKENS.colors.purple[500] 
-                  : DESIGN_TOKENS.colors.purple[200],
-                backgroundColor: flagCondition.condition === option.value 
-                  ? DESIGN_TOKENS.colors.purple[500] 
-                  : 'transparent',
-                color: flagCondition.condition === option.value 
-                  ? DESIGN_TOKENS.colors.neutral[0] 
-                  : DESIGN_TOKENS.colors.purple[800],
-                padding: DESIGN_TOKENS.spacing[2],
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: DESIGN_TOKENS.spacing[1]
-              }}
-            >
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.base }}>{option.icon}</span>
-              <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.xs, fontWeight: DESIGN_TOKENS.typography.fontWeight.medium, textAlign: 'center' }}>
-                {option.label}
-              </span>
-            </ModernButton>
-          ))}
-        </div>
+        <FormLabel colorTheme="condition">{t('editor.flagCondition.conditionTypeLabel')}</FormLabel>
+        <OptionGrid
+          colorTheme="condition"
+          options={FLAG_CONDITION_OPTIONS as any}
+          selectedValue={flagCondition.condition}
+          onSelect={(v) => onUpdate(index, { condition: v as any })}
+          minWidth={120}
+          buttonPadding={DESIGN_TOKENS.spacing[2]}
+        />
       </div>
 
-      <div style={{
-        padding: DESIGN_TOKENS.spacing[3],
-        backgroundColor: DESIGN_TOKENS.colors.purple[100],
-        borderRadius: DESIGN_TOKENS.borderRadius.lg,
-        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-        color: DESIGN_TOKENS.colors.purple[800]
-      }}>
-        {t('editor.flagCondition.settingsSummaryTitle')}{FLAG_CONDITION_OPTIONS.find(f => f.value === flagCondition.condition)?.description}
+      <SummaryBox colorTheme="condition">
+        {t('editor.flagCondition.settingsSummaryTitle')}
+        {FLAG_CONDITION_OPTIONS.find(f => f.value === flagCondition.condition)?.description}
         {flagCondition.flagId && projectFlags.find(f => f.id === flagCondition.flagId) &&
           t('editor.flagCondition.withFlag', { name: projectFlags.find(f => f.id === flagCondition.flagId)?.name })}
-      </div>
-    </ModernCard>
+      </SummaryBox>
+    </EditorCard>
   );
 };
