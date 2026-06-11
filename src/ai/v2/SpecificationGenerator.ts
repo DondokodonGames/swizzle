@@ -14,6 +14,7 @@ import { robustParseJSON } from './jsonParser';
 import { GameDesign } from './GameDesignGenerator';
 import { EnhancedAssetPlan } from './AssetPlanner';
 import { GenerationLogger } from './GenerationLogger';
+import { getPromptStyle } from './promptStyle';
 
 /**
  * ゲーム仕様（詳細な動作定義）- 強化版
@@ -1944,6 +1945,123 @@ failureアクションの**直前**に必ず以下を入れる:
   "specDecisions": [...]
 }`;
 
+/**
+ * lean 版 SPEC_PROMPT（WP11: プロンプトダイエット）
+ *
+ * classic 版（2,300行超）のハード制約だけを箇条書き10項目以内に圧縮し、
+ * ソフト指針は「推奨」として短く例示、削除候補（使いすぎ禁止リスト・50パターン羅列・
+ * 重複警告・最終チェックリスト）は省く。壊れたゲームは検証層（LogicValidator /
+ * PhaseCompiler グラフ検証 / DryRunSimulator）が落とすため、発想を縛らない。
+ */
+const SPEC_PROMPT_LEAN = `あなたはゲームの仕様書を作成するエンジニアです。
+ゲームデザインを、このエンジンで実装可能な詳細仕様（JSON）に変換してください。
+
+# このゲームの定義（4つの明確性 — これは制約ではなくゲームの土台）
+1. 目標明確性: 何をすべきか一目でわかる
+2. 操作明確性: タップ/スワイプ/ドラッグ/長押しのどれで操作するか明確
+3. 判定明確性: 成功・失敗の基準が明確
+4. 納得感: 結果がプレイヤーの操作で決まり、理不尽でない
+
+# ハード制約（エンジン上の現実。これだけは必ず守る）
+1. 物理演算なし。自然落下・反発・転がり・流体・ドミノ連鎖は不可。動かすなら objects の movement（straight / wander / teleport / stop）か followDrag を使う。
+2. NPCのAI追尾なし。敵は固定配置か一定速度で流すだけ（向かってこない）。
+3. 入力はシングルタッチのみ（タップ / スワイプ / ドラッグ / 長押し）。連打の上限は duration（秒）×3（人間限界 3回/秒）。
+4. すべての座標・領域（position / region / targetPosition の x,y,width,height）は 0.0〜1.0 の範囲内。負・1.0超は不可。
+5. success アクションを持つルールが最低1つ必須。success は必ずプレイヤー操作（touch か collision）で発火させる（time / animation 単独の success は禁止＝即終了/自動成功になる）。
+6. failure も必須（時間切れ time→failure でも可）。生存・回避系は「collision→failure」を必ず1本置く（ないと自動成功になる）。
+7. 同一トリガー署名で success と failure を両方発火させない。複数選択肢は target に別オブジェクトID を指定して分ける（"self"/"stage" を複数ルールで共用しない）。スワイプ方向で分ける場合は direction を明示。
+8. 参照する ID・counterName・flagId・soundId はすべて定義してから使う（未定義参照はエラー）。targetId/target は objects に実在するIDのみ（"self"/"screen" 不可、カンマ区切り不可）。
+9. animation 条件から success/failure を発火しない（演出・サウンド専用）。
+10. 必須サウンド se_tap / se_success / se_failure を audio.sounds に含める。
+
+## 有効な型（これ以外は使わない）
+- trigger.type: touch, time, counter, collision, flag, gameState, position, animation, random, objectState, always
+- action.type: success, failure, hide, show, move, counter, addScore, effect, setFlag, toggleFlag, playSound, stopSound, playBGM, stopBGM, switchAnimation, playAnimation, followDrag, applyForce, applyImpulse, randomAction, pause, restart
+- comparison: equals, greaterOrEqual, greater, less, lessOrEqual
+- effect.type: flash, shake, scale, rotate, particles
+- movement.type: straight, teleport, wander, stop
+- timeType: exact, range, interval
+- 必須パラメータ: playSound→soundId / applyImpulse→impulse{x,y} / applyForce→force{x,y} / collision→target（実在ID。"any"/"all"不可）/ animation(frame)→frameNumber
+
+# 推奨パターン（出発点。組み合わせや新しい操作も歓迎）
+- タップ判定: 正解オブジェクト touch→success、不正解 touch→failure、time→failure
+- ドラッグ配置: draggable を touch(drag)→followDrag、draggable と target_zone の collision→success、time→failure（※位置合わせ系は collision で判定。position 条件での成功判定は避ける）
+- スワイプ方向: target に同一stage、direction:right→success / direction:left→failure
+- 長押しチャージ: button touch(hold)→success（または phases でチャージ→解放を表現）
+
+## フェーズ層を積極的に使ってよい（多段階のアイデアは自由に設計）
+2段階以上の明確な段階（待つ→今だ！ / 手順を踏む / 充電→解放 等）があるなら、トップレベルに "phases" を出力する。
+コンパイラがフラグ＋ルールへ決定的に変換し、グラフ検証（初期→success 到達可能か）が守るので、
+**多段階を恐れず phases で表現してよい**（フェーズ用の flags/rules を自前で二重に書かないこと）。
+形式:
+"phases": [
+  { "id": "wait", "initial": true, "transitions": [
+      { "afterSeconds": 2, "to": "active" },
+      { "when": { "type": "touch", "target": "obj", "touchType": "down" }, "to": "failure" } ] },
+  { "id": "active", "onEnter": [ { "type": "switchAnimation", "targetId": "obj", "animationIndex": 1 } ],
+    "transitions": [
+      { "when": { "type": "touch", "target": "obj", "touchType": "down" }, "to": "success" },
+      { "afterSeconds": 1, "to": "failure" } ] }
+]
+"to" は別フェーズID または "success"/"failure"。単段階のゲームでは phases を省略する。
+
+## 便利なプリミティブ（必要なら使う）
+- delay: 入力から相対秒後にアクション実行（delayId 必須）
+- rule.execution: { once:true } 初期化1回 / { cooldown:N } 連打防止 / { limit:N } 最大N回
+- setAnimationFromCounter: counter値をそのままフレーム番号へ（多数の switchAnimation を1つに）
+- InputZone: layout.inputZones に不可視のタッチ領域を定義（広い当たり判定・画面分割タップ）
+
+# 仕上げ（推奨）
+- 操作・成功・失敗には effect（scale/particles/flash/shake）+ playSound を添えると気持ちよくなる。
+- カウンター/フラグは必要な時だけ。初期値が最初から条件を満たさないようにする（即終了防止）。
+- オブジェクトの touchable / states はアセットプランの値を流用する（新規作成しない）。
+
+# 入力
+コンセプト（ゲームの「正解」）:
+{{CONCEPT}}
+
+ゲームデザイン:
+{{DESIGN}}
+
+アセットプラン（オブジェクトIDはこれに合わせる）:
+{{ASSET_PLAN}}
+
+# 出力形式（JSON。下記キーをすべて含める）
+{
+  "objects": [
+    { "id": "target_correct", "name": "正解", "visualDescription": "...", "initialPosition": { "x": 0.5, "y": 0.4 }, "size": "medium", "zIndex": 20, "initiallyVisible": true, "physicsEnabled": false, "touchable": true }
+  ],
+  "stateManagement": { "counters": [], "flags": [] },
+  "rules": [
+    { "id": "tap_correct", "name": "正解タップ", "description": "正解をタップで成功", "targetObject": "target_correct",
+      "trigger": { "type": "touch", "description": "正解タップ", "parameters": { "target": "target_correct", "touchType": "down" } },
+      "actions": [
+        { "type": "effect", "parameters": { "targetId": "target_correct", "effect": { "type": "particles", "duration": 1.0, "intensity": 1.5 } } },
+        { "type": "playSound", "parameters": { "soundId": "se_success" } },
+        { "type": "success", "parameters": {} } ],
+      "purpose": "win-condition" },
+    { "id": "timeout", "name": "時間切れ", "description": "時間切れで失敗",
+      "trigger": { "type": "time", "description": "5秒経過", "parameters": { "timeType": "exact", "seconds": 5 } },
+      "actions": [ { "type": "playSound", "parameters": { "soundId": "se_failure" } }, { "type": "failure", "parameters": {} } ],
+      "purpose": "lose-condition" }
+  ],
+  "audio": {
+    "sounds": [
+      { "id": "se_tap", "trigger": "タップ時", "type": "tap" },
+      { "id": "se_success", "trigger": "成功時", "type": "success" },
+      { "id": "se_failure", "trigger": "失敗時", "type": "failure" }
+    ],
+    "bgm": { "id": "bgm_main", "description": "...", "mood": "upbeat" }
+  },
+  "uiVisibility": { "touchTargetMinSize": "medium", "contrastRequirement": "high", "layoutStrategy": "distributed", "overlapPolicy": "prevent", "safeZone": { "top": 0.1, "bottom": 0.1, "left": 0.05, "right": 0.05 } },
+  "feedbackSpec": { "triggers": [ { "event": "tap", "visual": { "type": "scale", "intensity": "normal", "duration": 0.15 }, "audio": { "soundId": "se_tap", "volume": "normal" } } ] },
+  "endingSpec": { "success": { "duration": 1.5, "effects": ["confetti", "flash"], "soundId": "se_success" }, "failure": { "duration": 1.0, "effects": ["shake"], "soundId": "se_failure" }, "transitionDelay": 2.0 },
+  "priorityDesign": { "rulePriorities": [], "conflictResolution": "highest-priority", "notes": [] },
+  "successPath": { "steps": ["..."], "verification": "..." },
+  "phases": [ /* 任意: 2段階以上のゲームのみ */ ],
+  "specDecisions": [ { "aspect": "...", "decision": "...", "reasoning": "..." } ]
+}`;
+
 export interface SpecificationGeneratorConfig {
   model?: string;
   dryRun?: boolean;
@@ -1994,7 +2112,8 @@ export class SpecificationGenerator {
       return this.generateMockSpec(concept, design, assetPlan);
     }
 
-    let prompt = SPEC_PROMPT
+    const basePrompt = getPromptStyle() === 'lean' ? SPEC_PROMPT_LEAN : SPEC_PROMPT;
+    let prompt = basePrompt
       .replace('{{CONCEPT}}', JSON.stringify(concept, null, 2))
       .replace('{{DESIGN}}', JSON.stringify(design, null, 2))
       .replace('{{ASSET_PLAN}}', assetPlan ? JSON.stringify(assetPlan, null, 2) : 'なし');

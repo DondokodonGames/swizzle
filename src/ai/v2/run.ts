@@ -15,6 +15,8 @@
  *   QUALITY_PUBLISH_THRESHOLD - このスコア未満は pending_review で未公開保存（既定70）
  *   SIMILARITY_GATE   - 'false' で類似度ゲートを無効化
  *   MAX_GAME_ATTEMPTS - ゲーム1本あたりの再生成上限（既定: 無制限、DRY_RUN時は5）
+ *   PROMPT_STYLE      - 'classic'（既定）| 'lean'。lean は軽量プロンプトで発想を広げる
+ *                       （WP11。A/B手順は src/ai/v2/README.md 参照）
  */
 
 import * as dotenv from 'dotenv';
