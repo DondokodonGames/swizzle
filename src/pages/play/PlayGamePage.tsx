@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import EditorGameBridge from '../../services/editor/EditorGameBridge';
 import { GameProject } from '../../types/editor/GameProject';
+import { GameLoadingService } from '../../services/GameLoadingService';
 
 // =====================================================
 // 型定義
@@ -168,22 +169,17 @@ export function PlayGamePage() {
     }
 
     const load = async () => {
-      const { data: game, error: gameErr } = await supabase
-        .from('user_games')
-        .select('title, thumbnail_url, project_data')
-        .eq('id', gameId)
-        .eq('is_published', true)
-        .maybeSingle();
+      const game = await GameLoadingService.loadPublishedGameWithMeta(gameId);
 
-      if (gameErr || !game) {
+      if (!game) {
         setErrorMsg('ゲームが見つかりません');
         setPageState('error');
         return;
       }
 
       setGameTitle(game.title);
-      setThumbnailUrl(game.thumbnail_url ?? null);
-      setProjectData(game.project_data as GameProject);
+      setThumbnailUrl(game.thumbnailUrl);
+      setProjectData(game.project);
 
       const { data: cfg } = await supabase
         .from('game_payment_config')

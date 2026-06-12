@@ -2,12 +2,15 @@
 // Batch review queue for admin: load JSON files, play each, submit feedback, export CSV
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
-import { EditorGameBridge } from '../../services/editor/EditorGameBridge';
 import { ProjectStorageManager } from '../../services/ProjectStorageManager';
 import { database } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 import { ModernButton } from '../ui/ModernButton';
+import { reviewStyles } from './review/reviewShared';
+import { useReviewFeedback } from './review/useReviewFeedback';
+import { useGamePlayback } from './review/useGamePlayback';
+import { ReviewFeedbackPanel } from './review/ReviewFeedbackPanel';
 
 export interface ReviewResult {
   filename: string;
@@ -23,15 +26,6 @@ interface ReviewQueueProps {
   onDone: (results: ReviewResult[]) => void;
   onExit: () => void;
 }
-
-const ISSUE_OPTIONS = [
-  '動かない',
-  'タッチ反応しない',
-  '仕様違い',
-  'バランス悪い',
-  'ゲームにならない',
-  'その他',
-];
 
 // CSV injection prevention helper
 const escapeCsvCell = (value: string): string => {
@@ -84,14 +78,21 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
   const [parseError, setParseError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [phase, setPhase] = useState<'loading' | 'playing' | 'feedback' | 'done'>('loading');
-  const [rating, setRating] = useState<'pass' | 'fix' | 'fail' | null>(null);
-  const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
-  const [comment, setComment] = useState('');
+  const { rating, setRating, selectedIssues, toggleIssue, comment, setComment, reset: resetFeedback } = useReviewFeedback();
   const [results, setResults] = useState<ReviewResult[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [replayCount, setReplayCount] = useState(0);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const bridge = useRef(EditorGameBridge.getInstance());
+
+  const { stopGame } = useGamePlayback({
+    canvasRef,
+    project: projects[index]?.project,
+    active: phase === 'playing',
+    playKey: index,
+    replayCount,
+    onEnd: () => setPhase('feedback'),
+    onLaunchError: (err) => console.error('[ReviewQueue] ゲーム起動エラー:', err),
+  });
 
   // Parse all JSON files on mount
   useEffect(() => {
@@ -162,60 +163,17 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
     });
   }, [files]);
 
-  // Launch game when index or phase changes to 'playing'
-  useEffect(() => {
-    if (phase !== 'playing' || projects.length === 0) return;
-    const current = projects[index];
-    if (!current) return;
-
-    let cancelled = false;
-    bridge.current.stopGame();
-
-    // Wait for canvas to be in DOM and laid out
-    const launch = () => {
-      requestAnimationFrame(async () => {
-        if (cancelled || !canvasRef.current) return;
-        try {
-          await bridge.current.launchFullGame(
-            current.project,
-            canvasRef.current,
-            () => {
-              if (!cancelled) setPhase('feedback');
-            }
-          );
-        } catch (err) {
-          console.error('[ReviewQueue] ゲーム起動エラー:', err);
-          if (!cancelled) setPhase('feedback');
-        }
-      });
-    };
-    launch();
-
-    return () => {
-      cancelled = true;
-      bridge.current.stopGame();
-    };
-  }, [index, phase, projects, replayCount]);
-
   const handleReplay = useCallback(() => {
-    bridge.current.stopGame();
-    setRating(null);
-    setSelectedIssues([]);
-    setComment('');
+    stopGame();
+    resetFeedback();
     setPhase('playing');
     setReplayCount((c) => c + 1);
-  }, []);
+  }, [stopGame, resetFeedback]);
 
   const handleJudgeNow = useCallback(() => {
-    bridge.current.stopGame();
+    stopGame();
     setPhase('feedback');
-  }, []);
-
-  const handleToggleIssue = (issue: string) => {
-    setSelectedIssues((prev) =>
-      prev.includes(issue) ? prev.filter((i) => i !== issue) : [...prev, issue]
-    );
-  };
+  }, [stopGame]);
 
   const handleSubmit = useCallback(async () => {
     if (!rating) return;
@@ -263,12 +221,10 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
       setPhase('done');
     } else {
       setIndex(nextIndex);
-      setRating(null);
-      setSelectedIssues([]);
-      setComment('');
+      resetFeedback();
       setPhase('playing');
     }
-  }, [rating, projects, index, selectedIssues, comment, user]);
+  }, [rating, projects, index, selectedIssues, comment, user, resetFeedback]);
 
   const handleSkip = useCallback(() => {
     const current = projects[index];
@@ -282,18 +238,16 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
         comment: '',
       },
     ]);
-    bridge.current.stopGame();
+    stopGame();
     const nextIndex = index + 1;
     if (nextIndex >= projects.length) {
       setPhase('done');
     } else {
       setIndex(nextIndex);
-      setRating(null);
-      setSelectedIssues([]);
-      setComment('');
+      resetFeedback();
       setPhase('playing');
     }
-  }, [projects, index]);
+  }, [projects, index, stopGame, resetFeedback]);
 
   const exportCSV = useCallback(() => {
     const header = 'filename,projectName,rating,issues,comment,savedGameId';
@@ -408,78 +362,31 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
         {/* Feedback panel — shown after game ends */}
         {phase === 'feedback' && (
           <div style={styles.feedbackPanel}>
-            <div style={styles.feedbackTitle}>🎮 プレイ完了 — フィードバックを入力</div>
-
-            {authError && (
-              <div style={{
-                padding: '10px 14px',
-                backgroundColor: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: 8,
-                color: '#dc2626',
-                fontSize: 13,
-              }}>
-                {authError}
-              </div>
-            )}
-
-            {/* Rating */}
-            <div style={styles.ratingRow}>
-              {(['pass', 'fix', 'fail'] as const).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRating(r)}
-                  style={{
-                    ...styles.ratingBtn,
-                    background: rating === r
-                      ? r === 'pass' ? '#22c55e' : r === 'fix' ? '#f59e0b' : '#ef4444'
-                      : DESIGN_TOKENS.colors.neutral[700],
-                    color: '#fff',
-                    transform: rating === r ? 'scale(1.05)' : 'scale(1)',
-                  }}
-                >
-                  {r === 'pass' ? '✅ 合格（公開）' : r === 'fix' ? '🔄 要修正' : '❌ 不合格'}
-                </button>
-              ))}
-            </div>
-
-            {/* Issues */}
-            <div style={styles.issueRow}>
-              {ISSUE_OPTIONS.map((issue) => (
-                <button
-                  key={issue}
-                  onClick={() => handleToggleIssue(issue)}
-                  style={{
-                    ...styles.issueBtn,
-                    background: selectedIssues.includes(issue)
-                      ? DESIGN_TOKENS.colors.primary[600]
-                      : DESIGN_TOKENS.colors.neutral[700],
-                    color: '#fff',
-                  }}
-                >
-                  {issue}
-                </button>
-              ))}
-            </div>
-
-            {/* Comment */}
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Codexへのメモ（任意）"
-              style={styles.textarea}
-              rows={3}
+            <ReviewFeedbackPanel
+              title="🎮 プレイ完了 — フィードバックを入力"
+              rating={rating}
+              onRate={setRating}
+              selectedIssues={selectedIssues}
+              onToggleIssue={toggleIssue}
+              comment={comment}
+              onCommentChange={setComment}
+              commentPlaceholder="Codexへのメモ（任意）"
+              submitLabel={submitting ? '保存中...' : `次へ → (${index + 1}/${projects.length})`}
+              submitDisabled={!rating || submitting}
+              onSubmit={handleSubmit}
+              headerSlot={authError ? (
+                <div style={{
+                  padding: '10px 14px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: 8,
+                  color: '#dc2626',
+                  fontSize: 13,
+                }}>
+                  {authError}
+                </div>
+              ) : undefined}
             />
-
-            <ModernButton
-              variant="primary"
-              size="md"
-              onClick={handleSubmit}
-              disabled={!rating || submitting}
-              style={{ width: '100%' }}
-            >
-              {submitting ? '保存中...' : `次へ → (${index + 1}/${projects.length})`}
-            </ModernButton>
           </div>
         )}
       </div>
@@ -488,6 +395,8 @@ export const ReviewQueue: React.FC<ReviewQueueProps> = ({ files, onDone, onExit 
 };
 
 const styles: Record<string, React.CSSProperties> = {
+  // header / progressBar / progressFill / canvasArea / canvas / feedbackPanel は共有（reviewShared）
+  ...reviewStyles,
   root: {
     display: 'flex',
     flexDirection: 'column',
@@ -495,100 +404,6 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'relative' as const,
     backgroundColor: DESIGN_TOKENS.colors.neutral[900],
     color: '#fff',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '12px 20px',
-    backgroundColor: DESIGN_TOKENS.colors.neutral[800],
-    borderBottom: `1px solid ${DESIGN_TOKENS.colors.neutral[700]}`,
-    flexShrink: 0,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: DESIGN_TOKENS.colors.neutral[700],
-    flexShrink: 0,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: DESIGN_TOKENS.colors.primary[500],
-    transition: 'width 0.3s ease',
-  },
-  canvasArea: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    overflow: 'hidden',
-    backgroundColor: DESIGN_TOKENS.colors.neutral[900],
-    padding: 16,
-  },
-  canvas: {
-    width: '100%',
-    maxWidth: '360px',
-    height: '640px',
-    flexShrink: 0,
-    position: 'relative',
-    borderRadius: DESIGN_TOKENS.borderRadius.lg,
-    boxShadow: DESIGN_TOKENS.shadows.xl,
-    overflow: 'hidden',
-  },
-  feedbackPanel: {
-    width: 360,
-    height: '640px',
-    flexShrink: 0,
-    backgroundColor: DESIGN_TOKENS.colors.neutral[800],
-    borderRadius: DESIGN_TOKENS.borderRadius.lg,
-    border: `1px solid ${DESIGN_TOKENS.colors.neutral[700]}`,
-    padding: 20,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16,
-    overflowY: 'auto',
-  },
-  feedbackTitle: {
-    fontWeight: 600,
-    fontSize: 15,
-  },
-  ratingRow: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-  },
-  ratingBtn: {
-    padding: '10px 16px',
-    borderRadius: 8,
-    border: 'none',
-    cursor: 'pointer',
-    fontWeight: 600,
-    fontSize: 14,
-    transition: 'all 0.15s ease',
-  },
-  issueRow: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  issueBtn: {
-    padding: '5px 10px',
-    borderRadius: 20,
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: 12,
-    transition: 'background 0.15s',
-  },
-  textarea: {
-    width: '100%',
-    backgroundColor: DESIGN_TOKENS.colors.neutral[700],
-    border: `1px solid ${DESIGN_TOKENS.colors.neutral[600]}`,
-    borderRadius: 8,
-    color: '#fff',
-    padding: '10px 12px',
-    fontSize: 13,
-    resize: 'vertical',
-    boxSizing: 'border-box',
   },
   center: {
     display: 'flex',

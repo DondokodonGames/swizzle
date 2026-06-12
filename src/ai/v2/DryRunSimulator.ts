@@ -496,8 +496,9 @@ export class DryRunSimulator {
         }
       } else if (condition.type === 'flag' && condition.flagId) {
         // フラグ条件（PhaseCompiler のフェーズ遷移等）: 1段トレースで充足可能性を判定
-        // condition:'ON'（または旧 flagValue 形）は true 要求、'OFF' は false 要求として近似
-        const desired = condition.condition === 'OFF' || condition.flagValue === false ? false : true;
+        // 正典どおり condition:'ON' は true 要求、'OFF' は false 要求として近似する。
+        // （旧 flagValue 形の偽互換は撤去。エンジンで評価されない形を検出すり抜けさせない: WP33 §6）
+        const desired = condition.condition === 'OFF' ? false : true;
         const flagDef = output.script.flags?.find(f => f.id === condition.flagId);
         const initialValue = flagDef?.initialValue ?? false;
 

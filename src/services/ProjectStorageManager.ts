@@ -264,7 +264,6 @@ export class ProjectStorageManager {
         title: project.settings?.name || project.name || 'Untitled Game',
         description: project.settings?.description || '',
         template_id: 'editor_created',
-        game_data: {},
         project_data: project,
         is_published: project.status === 'published',
         thumbnail_url: project.metadata?.thumbnailUrl || null,

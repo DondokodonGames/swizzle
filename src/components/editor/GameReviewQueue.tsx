@@ -4,12 +4,15 @@
 // ゲームリストを Supabase から自動フェッチする。
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameProject } from '../../types/editor/GameProject';
-import { EditorGameBridge } from '../../services/editor/EditorGameBridge';
 import { supabase } from '../../lib/supabase';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
 import { ModernButton } from '../ui/ModernButton';
 import { useAuth } from '../../hooks/useAuth';
 import { useIsAdmin } from '../../hooks/useIsAdmin';
+import { reviewStyles } from './review/reviewShared';
+import { useReviewFeedback } from './review/useReviewFeedback';
+import { useGamePlayback } from './review/useGamePlayback';
+import { ReviewFeedbackPanel } from './review/ReviewFeedbackPanel';
 
 interface AiGame {
   id: string;
@@ -67,15 +70,6 @@ interface GameReviewQueueProps {
   onExit: () => void;
 }
 
-const ISSUE_OPTIONS = [
-  '動かない',
-  'タッチ反応しない',
-  '仕様違い',
-  'バランス悪い',
-  'ゲームにならない',
-  'その他',
-];
-
 const qualityColor = (score: number | null): string => {
   if (score === null) return DESIGN_TOKENS.colors.neutral[400];
   if (score >= 75) return '#22c55e';
@@ -99,15 +93,12 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
   const [updateError, setUpdateError] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<'list' | 'playing' | 'feedback' | 'done'>('list');
-  const [rating, setRating] = useState<'pass' | 'fix' | 'fail' | null>(null);
-  const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
-  const [comment, setComment] = useState('');
+  const { rating, setRating, selectedIssues, toggleIssue, comment, setComment, reset: resetFeedback } = useReviewFeedback();
   const [submitting, setSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [replayCount, setReplayCount] = useState(0);
   const [filterTab, setFilterTab] = useState<'pending' | 'low' | 'mid' | 'high'>('pending');
   const canvasRef = useRef<HTMLDivElement>(null);
-  const bridge = useRef(EditorGameBridge.getInstance());
 
   // Fetch all AI-generated games
   useEffect(() => {
@@ -139,31 +130,15 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
 
   const currentGame = filteredGames[index];
 
-  // Launch game when phase becomes 'playing'
-  useEffect(() => {
-    if (phase !== 'playing' || !currentGame) return;
-    let cancelled = false;
-    bridge.current.stopGame();
-
-    requestAnimationFrame(async () => {
-      if (cancelled || !canvasRef.current) return;
-      try {
-        await bridge.current.launchFullGame(
-          currentGame.project_data,
-          canvasRef.current,
-          () => { if (!cancelled) setPhase('feedback'); }
-        );
-      } catch {
-        if (!cancelled) setPhase('feedback');
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      bridge.current.stopGame();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [index, phase, replayCount]);
+  // ゲーム起動/停止のライフサイクルは共有フックに委譲（WP33 §4）
+  const { stopGame } = useGamePlayback({
+    canvasRef,
+    project: currentGame?.project_data,
+    active: phase === 'playing',
+    playKey: index,
+    replayCount,
+    onEnd: () => setPhase('feedback'),
+  });
 
   const handleStartReview = useCallback(() => {
     setIndex(0);
@@ -171,24 +146,16 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
   }, []);
 
   const handleReplay = useCallback(() => {
-    bridge.current.stopGame();
-    setRating(null);
-    setSelectedIssues([]);
-    setComment('');
+    stopGame();
+    resetFeedback();
     setPhase('playing');
     setReplayCount((c) => c + 1);
-  }, []);
+  }, [stopGame, resetFeedback]);
 
   const handleJudgeNow = useCallback(() => {
-    bridge.current.stopGame();
+    stopGame();
     setPhase('feedback');
-  }, []);
-
-  const handleToggleIssue = (issue: string) => {
-    setSelectedIssues((prev) =>
-      prev.includes(issue) ? prev.filter((i) => i !== issue) : [...prev, issue]
-    );
-  };
+  }, [stopGame]);
 
   const handleSubmit = useCallback(async () => {
     if (!rating || !currentGame) return;
@@ -235,26 +202,22 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
       setPhase('done');
     } else {
       setIndex(next);
-      setRating(null);
-      setSelectedIssues([]);
-      setComment('');
+      resetFeedback();
       setPhase('playing');
     }
-  }, [rating, currentGame, index, filteredGames.length, selectedIssues, comment, user]);
+  }, [rating, currentGame, index, filteredGames.length, selectedIssues, comment, user, resetFeedback]);
 
   const handleSkip = useCallback(() => {
-    bridge.current.stopGame();
+    stopGame();
     const next = index + 1;
     if (next >= filteredGames.length) {
       setPhase('done');
     } else {
       setIndex(next);
-      setRating(null);
-      setSelectedIssues([]);
-      setComment('');
+      resetFeedback();
       setPhase('playing');
     }
-  }, [index, filteredGames.length]);
+  }, [index, filteredGames.length, stopGame, resetFeedback]);
 
   // Inline publish/unpublish from list view
   const handleTogglePublish = useCallback(async (game: AiGame) => {
@@ -358,7 +321,7 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
             <ModernButton variant="outline" size="sm" onClick={handleSkip}>
               次へ →
             </ModernButton>
-            <ModernButton variant="secondary" size="sm" onClick={() => { bridge.current.stopGame(); setPhase('list'); setIndex(0); }}>
+            <ModernButton variant="secondary" size="sm" onClick={() => { stopGame(); setPhase('list'); setIndex(0); }}>
               リスト
             </ModernButton>
             <ModernButton variant="secondary" size="sm" onClick={onExit}>
@@ -376,101 +339,36 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
 
           {phase === 'feedback' && (
             <div style={styles.feedbackPanel}>
-              <div style={{ fontWeight: 600, fontSize: 15 }}>🎮 プレイ完了 — フィードバック</div>
-
-              {/* 画像プレビュー（プレイせず画像品質を判断できる） */}
-              {currentGame && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ fontSize: 12, color: DESIGN_TOKENS.colors.neutral[400] }}>
-                    🖼️ アセット
-                    {currentGame.ai_image_score !== null && (
-                      <span style={{ marginLeft: 8, color: qualityColor(currentGame.ai_image_score), fontWeight: 600 }}>
-                        画像QA {currentGame.ai_image_score}/100
-                      </span>
-                    )}
+              <ReviewFeedbackPanel
+                title="🎮 プレイ完了 — フィードバック"
+                rating={rating}
+                onRate={setRating}
+                selectedIssues={selectedIssues}
+                onToggleIssue={toggleIssue}
+                comment={comment}
+                onCommentChange={setComment}
+                commentPlaceholder="メモ（任意）"
+                submitLabel={submitting ? '保存中...' : `次へ → (${index + 1}/${filteredGames.length})`}
+                submitDisabled={!rating || submitting}
+                onSubmit={handleSubmit}
+                ratingLabels={{ pass: '✅ 合格（公開する）', fix: '🔄 要修正', fail: '❌ 不合格' }}
+                headerSlot={currentGame ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ fontSize: 12, color: DESIGN_TOKENS.colors.neutral[400] }}>
+                      🖼️ アセット
+                      {currentGame.ai_image_score !== null && (
+                        <span style={{ marginLeft: 8, color: qualityColor(currentGame.ai_image_score), fontWeight: 600 }}>
+                          画像QA {currentGame.ai_image_score}/100
+                        </span>
+                      )}
+                    </div>
+                    <AssetPreviewGrid project={currentGame.project_data} size={44} />
                   </div>
-                  <AssetPreviewGrid project={currentGame.project_data} size={44} />
-                </div>
-              )}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {(['pass', 'fix', 'fail'] as const).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setRating(r)}
-                    style={{
-                      padding: '10px 16px',
-                      borderRadius: 8,
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      fontSize: 14,
-                      transition: 'all 0.15s ease',
-                      background: rating === r
-                        ? r === 'pass' ? '#22c55e' : r === 'fix' ? '#f59e0b' : '#ef4444'
-                        : DESIGN_TOKENS.colors.neutral[700],
-                      color: '#fff',
-                      transform: rating === r ? 'scale(1.05)' : 'scale(1)',
-                    }}
-                  >
-                    {r === 'pass' ? '✅ 合格（公開する）' : r === 'fix' ? '🔄 要修正' : '❌ 不合格'}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {ISSUE_OPTIONS.map((issue) => (
-                  <button
-                    key={issue}
-                    onClick={() => handleToggleIssue(issue)}
-                    style={{
-                      padding: '5px 10px',
-                      borderRadius: 20,
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: 12,
-                      background: selectedIssues.includes(issue)
-                        ? DESIGN_TOKENS.colors.primary[600]
-                        : DESIGN_TOKENS.colors.neutral[700],
-                      color: '#fff',
-                    }}
-                  >
-                    {issue}
-                  </button>
-                ))}
-              </div>
-
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="メモ（任意）"
-                style={{
-                  width: '100%',
-                  backgroundColor: DESIGN_TOKENS.colors.neutral[700],
-                  border: `1px solid ${DESIGN_TOKENS.colors.neutral[600]}`,
-                  borderRadius: 8,
-                  color: '#fff',
-                  padding: '10px 12px',
-                  fontSize: 13,
-                  resize: 'vertical',
-                  boxSizing: 'border-box',
-                }}
-                rows={3}
+                ) : undefined}
+                errorSlot={updateError ? (
+                  <div style={{ color: '#ef4444', fontSize: 12 }}>{updateError}</div>
+                ) : undefined}
               />
-
-              {updateError && (
-                <div style={{ color: '#ef4444', fontSize: 12 }}>{updateError}</div>
-              )}
-
-              <ModernButton
-                variant="primary"
-                size="md"
-                onClick={handleSubmit}
-                disabled={!rating || submitting}
-                style={{ width: '100%' }}
-              >
-                {submitting ? '保存中...' : `次へ → (${index + 1}/${filteredGames.length})`}
-              </ModernButton>
             </div>
           )}
         </div>
@@ -628,64 +526,14 @@ export const GameReviewQueue: React.FC<GameReviewQueueProps> = ({ onExit }) => {
 };
 
 const styles: Record<string, React.CSSProperties> = {
+  // header / progressBar / progressFill / canvasArea / canvas / feedbackPanel は共有（reviewShared）
+  ...reviewStyles,
   root: {
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
     backgroundColor: DESIGN_TOKENS.colors.neutral[900],
     color: '#fff',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '12px 20px',
-    backgroundColor: DESIGN_TOKENS.colors.neutral[800],
-    borderBottom: `1px solid ${DESIGN_TOKENS.colors.neutral[700]}`,
-    flexShrink: 0,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: DESIGN_TOKENS.colors.neutral[700],
-    flexShrink: 0,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: DESIGN_TOKENS.colors.primary[500],
-    transition: 'width 0.3s ease',
-  },
-  canvasArea: {
-    flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    overflow: 'hidden',
-    backgroundColor: DESIGN_TOKENS.colors.neutral[900],
-    padding: 16,
-  },
-  canvas: {
-    width: '100%',
-    maxWidth: '360px',
-    height: '640px',
-    flexShrink: 0,
-    position: 'relative',
-    borderRadius: DESIGN_TOKENS.borderRadius.lg,
-    boxShadow: DESIGN_TOKENS.shadows.xl,
-    overflow: 'hidden',
-  },
-  feedbackPanel: {
-    width: 360,
-    height: '640px',
-    flexShrink: 0,
-    backgroundColor: DESIGN_TOKENS.colors.neutral[800],
-    borderRadius: DESIGN_TOKENS.borderRadius.lg,
-    border: `1px solid ${DESIGN_TOKENS.colors.neutral[700]}`,
-    padding: 20,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 16,
-    overflowY: 'auto',
   },
   center: {
     flex: 1,

@@ -65,7 +65,6 @@ export interface Database {
           title: string                       // ゲームタイトル
           description: string | null          // ゲーム説明
           template_id: string                 // テンプレートID
-          game_data: Json                     // ゲーム設定・カスタマイズデータ（旧）
           project_data: Json | null           // 🔧 追加: 完全なGameProjectデータ
           thumbnail_url: string | null        // サムネイル画像URL
           is_published: boolean               // 公開状態
@@ -81,7 +80,6 @@ export interface Database {
           title: string
           description?: string | null
           template_id: string
-          game_data: Json
           project_data?: Json | null          // 🔧 追加
           thumbnail_url?: string | null
           is_published?: boolean
@@ -97,7 +95,6 @@ export interface Database {
           title?: string
           description?: string | null
           template_id?: string
-          game_data?: Json
           project_data?: Json | null          // 🔧 追加
           thumbnail_url?: string | null
           is_published?: boolean

@@ -2,7 +2,9 @@
 
 Short mini-game platform (5–30 second games). Users play and create games. An AI pipeline (Claude/Codex) batch-generates games from "neta" idea JSON files.
 
-**Stack:** React + PixiJS 7.3 + Supabase (auth + DB) + Vite + TypeScript
+**Stack:** React + Canvas 2D + Supabase (auth + DB) + Vite + TypeScript
+
+> Rendering is **Canvas 2D** (`getContext('2d')`), not WebGL/PixiJS. The earlier `pixi.js` dependency was unused (zero imports in `src/`) and has been removed. If a future WebGL migration is planned, record it here first.
 
 ---
 
@@ -82,6 +84,10 @@ Concept → Design → AssetPlan → Spec → EditorMapper → LogicValidator �
 | `DRY_RUN` | `true` = skip LLM calls, use mock data |
 
 ---
+
+## `src/marketing/` is an unimplemented stub
+
+The `src/marketing/` tree (Discord / Twitter / Instagram / TikTok automation, etc.) and the `marketing:*` npm scripts are **stubs with no external API integration** — they return `success: false` or simulate failure. Treat them as a holding shelf for future work, **not** shipped functionality. Do not assume these features exist when estimating. See `src/marketing/README.md`. Deletion is deferred (pending external-API approval).
 
 ## Tests
 

@@ -244,8 +244,7 @@ export class SupabaseUploader {
       description: projectToSave.description || projectToSave.settings?.description || 'AI-generated game',
       template_id: resolvedTemplateId,
       category: options.category ?? null,
-      game_data: {},                           // 旧フィールド（空オブジェクト）
-      project_data: projectToSave,             // 新フィールド（Storage URL使用）
+      project_data: projectToSave,             // 完全な GameProject（Storage URL使用）
       thumbnail_url: thumbnailUrl,
       is_published: autoPublish,
       review_status: reviewStatus,
