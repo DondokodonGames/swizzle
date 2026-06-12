@@ -50,3 +50,41 @@
 1. `npm run dev` でプレイ→ブリッジ→いいねを操作し、analytics_eventsに行が入ることを確認
 2. queries.md の各クエリがSQL Editorでエラーなく実行できる
 3. 完了時: 成果サマリ5行+変更ファイル一覧を出力
+
+---
+
+## 方式比較 / 選択結果（人間ゲート）
+
+**選択: A案（自前イベントテーブル）** — 2026-06-12, makoto-isobe@ockhamgames.com が選択。
+
+| 観点 | A案: 自前テーブル（採用） | B案: PostHog 等の外部サービス |
+|---|---|---|
+| 追加コスト | ¥0（既存 Supabase に同居） | 無料枠あり・超過で課金 |
+| データ所有 | 完全に自社内、外部送信なし | イベントが外部に出る |
+| 可視化 | SQL Editor（queries.md）。UI は自作 | ファネル/リテンションが GUI で即見える |
+| ファネル/リテンション | SQL を書けば出せる | 設定するだけ・SQL 不要 |
+| 実装 | テーブル+RLS+フック+差し込み（全自前） | SDK 組み込み + 同じイベント設計 |
+| `ai_quality_score` 突合 | 同一 DB 内 SQL JOIN で容易 | export/送信の二度手間 |
+| ベンダーロック | なし | あり（履歴の持ち出しが必要） |
+
+**推奨理由（A案）:**
+1. **データ主権** — 課金・プレイ行動という事業の核データを初期段階で外部に出すリスクを負わない。
+2. **既存スタックとの親和性** — 受け入れ基準3（品質スコア突合）が同一 Supabase 内の SQL JOIN で完結。
+3. **追加コスト0・ベンダーロックなし** — 後で PostHog が必要になれば `analytics_events` からエクスポートして移行可能（逆は困難）。
+4. トレードオフ（GUI 探索の速さ）は queries.md + SQL Editor で当面十分。ダッシュボード UI は「効果が見えてから」の方針と一致。
+
+### 実装サマリ（A案）
+
+- マイグレーション: `supabase/migrations/20260612_analytics_events.sql`
+  （`analytics_events` テーブル / RLS: INSERT 全員可・SELECT は `is_admin()` のみ / 冪等 `DO $$ IF NOT EXISTS` スタイル）
+- 計測フック: `src/services/analytics/Analytics.ts`
+  （`track(eventType, props)` + `startSession()`、session_id は sessionStorage、バッチ送信、離脱時 keepalive フラッシュ、全パス try/catch でベストエフォート）
+- 計測ポイント（最小セット 10 種）の差し込み先:
+  - `session_start` / `play_start` / `play_end` / `bridge_next` → `GameSequence.tsx`
+  - `play_start` / `play_end` → `PlayGamePage.tsx`（単体プレイページ）
+  - `like` / `share` → `BridgeScreen.tsx`
+  - `signup` → `hooks/useAuth.ts`
+  - `topup_open` → `components/monetization/TopUpButton.tsx`
+  - `topup_complete` → `pages/ProfilePage.tsx`（`?topup=success`）
+  - `subscribe` → `pages/subscription/SubscriptionSuccess.tsx`
+- 集計クエリ集: `docs/analytics/queries.md`（DAU / ファネル / D1 リテンション / ゲーム別完走率・スキップ率 / 品質スコア相関 / 課金転換）

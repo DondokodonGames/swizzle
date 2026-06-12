@@ -6,12 +6,13 @@
  * - Tailwind CSSクラス → 完全インラインスタイル + DESIGN_TOKENS
  */
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSubscription } from '../../hooks/monetization/useSubscription';
 import { PremiumBadge } from '../../components/monetization/PremiumBadge';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
+import { track } from '../../services/analytics/Analytics';
 
 export function SubscriptionSuccess() {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ export function SubscriptionSuccess() {
   const location = useLocation();
   const { subscription, loading, refetch } = useSubscription();
   const [isRefreshing, setIsRefreshing] = useState(true);
+  const subscribeTrackedRef = useRef(false);
 
   // セキュリティ: Session IDをURLフラグメントから取得（ログ・キャッシュへの漏洩防止）
   const sessionId = useMemo(() => {
@@ -47,6 +49,11 @@ export function SubscriptionSuccess() {
     };
 
     if (sessionId) {
+      // サブスク成約（コンバージョン）を計測。リダイレクト 1 回につき 1 度のみ。
+      if (!subscribeTrackedRef.current) {
+        subscribeTrackedRef.current = true;
+        track('subscribe', { status: 'complete' });
+      }
       refreshSubscription();
     } else {
       setIsRefreshing(false);

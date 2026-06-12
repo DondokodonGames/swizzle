@@ -13,6 +13,7 @@ import { SocialService } from '../social/services/SocialService'
 import type { UserGame } from '../social/types/SocialTypes'
 import { supportedLanguages } from '../i18n'
 import { getErrorMessage } from '../utils/errorUtils'
+import { track } from '../services/analytics/Analytics'
 
 // 言語コードから表示名を取得するヘルパー関数
 const getLanguageDisplay = (code: string): string => {
@@ -56,6 +57,21 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ userId: propUserId }) 
       setCurrentUser(user)
     }
     fetchCurrentUser()
+  }, [])
+
+  // チャージ成功リダイレクト（/profile?topup=success）を計測し、URL を掃除する
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('topup') === 'success') {
+        track('topup_complete', { status: 'complete' })
+        params.delete('topup')
+        const qs = params.toString()
+        window.history.replaceState({}, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
+      }
+    } catch {
+      // 計測失敗はUXに影響させない
+    }
   }, [])
 
   // isOwnProfileを別途計算（profileとcurrentUserの両方が揃ったとき）

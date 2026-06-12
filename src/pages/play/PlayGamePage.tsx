@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import EditorGameBridge from '../../services/editor/EditorGameBridge';
 import { GameProject } from '../../types/editor/GameProject';
 import { GameLoadingService } from '../../services/GameLoadingService';
+import { track } from '../../services/analytics/Analytics';
 
 // =====================================================
 // 型定義
@@ -335,8 +336,19 @@ export function PlayGamePage() {
   useEffect(() => {
     if (pageState !== 'playing' || !projectData || !canvasRef.current) return;
 
+    // プレイ開始を計測（単体プレイページ経由）
+    const startedAt = Date.now();
+    track('play_start', { gameId, source: 'play_page' });
+
     bridge
-      .launchFullGame(projectData, canvasRef.current, () => {
+      .launchFullGame(projectData, canvasRef.current, (result: any) => {
+        // プレイ終了を計測（duration / result）
+        track('play_end', {
+          gameId,
+          source: 'play_page',
+          duration: (Date.now() - startedAt) / 1000,
+          result: result?.success ? 'success' : 'failure',
+        });
         setPageState('finished');
       })
       .catch((err: unknown) => {
@@ -348,7 +360,7 @@ export function PlayGamePage() {
     return () => {
       bridge.stopGame();
     };
-  }, [pageState, projectData, bridge]);
+  }, [pageState, projectData, bridge, gameId]);
 
   // =====================================================
   // UI

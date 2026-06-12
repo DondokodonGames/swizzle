@@ -8,6 +8,7 @@ import { ProjectStorageManager } from '../services/ProjectStorageManager';
 import { GameProject } from '../types/editor/GameProject';
 import { AdUnit } from './monetization/AdUnit';
 import { AdPlacement } from '../types/MonetizationTypes';
+import { track } from '../services/analytics/Analytics';
 
 // ゲームURLを生成するヘルパー関数
 const generateGameUrl = (gameId: string): string => {
@@ -107,6 +108,8 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
       }
 
       await socialService.toggleLike(currentGame.id, user.id);
+      // いいね操作を計測
+      track('like', { gameId: currentGame.id, liked: newLikeState });
     } catch (error) {
       console.error('❌ いいね更新エラー:', error);
       setIsLiked(!newLikeState);
@@ -359,6 +362,8 @@ export const BridgeScreen: React.FC<BridgeScreenProps> = ({
   }, [currentGame.title, currentGame.description, gameUrl, score, t]);
 
   const recordShare = async (platform: string) => {
+    // 共有を計測（匿名でも記録する。socialService 側はログイン時のみ）
+    track('share', { gameId: currentGame.id, platform });
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {

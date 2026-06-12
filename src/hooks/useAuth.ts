@@ -6,6 +6,7 @@ import { User, Session } from '@supabase/supabase-js'
 import { auth, database, SupabaseError } from '../lib/supabase'
 import type { Profile } from '../lib/database.types'
 import i18n from '../i18n'
+import { track } from '../services/analytics/Analytics'
 
 interface AuthState {
   user: User | null
@@ -272,6 +273,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Step 3: トリガーによる自動プロフィール作成完了
       // 複雑なリトライロジックは不要！
       console.log('User created successfully:', result.user?.id)
+
+      // 新規登録を計測（ファネル末端の獲得イベント）
+      track('signup', { language: options.language || 'ja' })
 
       setState(prev => ({ ...prev, loading: false }))
     } catch (error) {

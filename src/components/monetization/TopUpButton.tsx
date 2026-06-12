@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import type { TopUpOption } from '../../types/MonetizationTypes';
 import { redirectToTopUpCheckout } from '../../services/monetization/StripeService';
 import { DESIGN_TOKENS } from '../../constants/DesignSystem';
+import { track } from '../../services/analytics/Analytics';
 
 interface TopUpButtonProps {
   option: TopUpOption;
@@ -24,6 +25,8 @@ export function TopUpButton({ option, onSuccess, onError }: TopUpButtonProps) {
   const handleClick = async () => {
     try {
       setLoading(true);
+      // チャージ導線への進入を計測（ファネル: topup_open → topup_complete）
+      track('topup_open', { amountYen: option.amount_yen, games: option.games });
       await redirectToTopUpCheckout(option.amount_yen);
       onSuccess?.();
     } catch (err) {

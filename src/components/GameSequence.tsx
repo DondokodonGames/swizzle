@@ -8,6 +8,7 @@ import { supabase } from '../lib/supabase';
 import { GameLoadingService } from '../services/GameLoadingService';
 import ProfileModal from './ProfileModal';
 import { DESIGN_TOKENS } from '../constants/DesignSystem';
+import { track, startSession } from '../services/analytics/Analytics';
 
 /**
  * GameSequence.tsx - 完全レスポンシブ版（スマホ対応）
@@ -136,6 +137,9 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     const fetchInitialGame = async () => {
       setGameState('loading');
       setError(null);
+
+      // セッション開始を計測（1 セッション = 1 タブにつき 1 回のみ発火）
+      startSession();
 
       // タイムアウト付きでゲーム取得
       const timeoutPromise = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
@@ -323,7 +327,8 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       }
 
       // ゲーム時間トラッキング開始
-      setGameStartTime(Date.now());
+      const startedAt = Date.now();
+      setGameStartTime(startedAt);
       setGameTimeElapsed(0);
 
       // ゲーム制限時間を取得
@@ -332,6 +337,9 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
         : (currentGame.projectData.settings?.duration?.seconds || 15);
       setGameDuration(duration);
 
+      // プレイ開始を計測
+      track('play_start', { gameId: currentGame.id, index: currentIndex });
+
       try {
         await bridge.launchFullGame(
           currentGame.projectData,
@@ -339,6 +347,14 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
           (result: any) => {
             // ゲーム時間トラッキング停止
             setGameStartTime(null);
+
+            // プレイ終了を計測（duration / result）
+            track('play_end', {
+              gameId: currentGame.id,
+              duration: (Date.now() - startedAt) / 1000,
+              result: result.success ? 'success' : 'failure',
+              score: result.score || 0,
+            });
 
             // スコア記録
             setCurrentScore({
@@ -373,6 +389,12 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       bridgeTimerRef.current = null;
     }
 
+    // 連続プレイ（次のゲームへ進む）を計測 — セッションあたりの連続プレイ数 KPI の母数
+    track('bridge_next', {
+      gameId: publicGames[currentIndex]?.id ?? null,
+      nextGameId: nextGame?.id ?? null,
+    });
+
     if (nextGame) {
       setPublicGames([nextGame]);
       setCurrentIndex(0);
@@ -384,7 +406,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
 
     setGameState('playing');
     setCurrentScore(null);
-  }, [nextGame, publicGames.length]);
+  }, [nextGame, publicGames, currentIndex]);
 
   const handlePreviousGame = useCallback(() => {
     handleNextGame();
@@ -405,6 +427,13 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     // 実行中のゲームを停止
     bridge.stopGame();
 
+    // スキップを play_end(result: skip) として計測
+    track('play_end', {
+      gameId: publicGames[currentIndex]?.id ?? null,
+      duration: gameTimeElapsed,
+      result: 'skip',
+    });
+
     setCurrentScore({
       points: 0,
       time: 0,
@@ -412,7 +441,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
     });
 
     setGameState('bridge');
-  }, [bridge]);
+  }, [bridge, publicGames, currentIndex, gameTimeElapsed]);
 
   // ==================== スタイル定義（🔧 完全レスポンシブ対応） ====================
   const styles = {
