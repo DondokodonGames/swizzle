@@ -145,6 +145,7 @@ export interface GameProject {
   createdAt: string;                      // 作成日時（ISO文字列）
   lastModified: string;                   // 最終更新日時（ISO文字列）
   version: string;                        // プロジェクトバージョン
+  schemaVersion?: number;                 // JSONスキーマバージョン（欠落=v1）
   thumbnailDataUrl?: string;              // サムネイル画像
   
   // 作成者情報
