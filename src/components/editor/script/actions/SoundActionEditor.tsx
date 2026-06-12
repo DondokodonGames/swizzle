@@ -1,14 +1,12 @@
 // src/components/editor/script/actions/SoundActionEditor.tsx
-// Phase C Step 1-2完了版: 音再生アクション詳細設定コンポーネント
-// AdvancedRuleModal.tsx分割 - Step 3: アクションエディター分離
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { GameAction } from '../../../../types/editor/GameScript';
 import { GameProject } from '../../../../types/editor/GameProject';
 import { DESIGN_TOKENS } from '../../../../constants/DesignSystem';
-import { ModernCard } from '../../../ui/ModernCard';
 import { ModernButton } from '../../../ui/ModernButton';
+import { EditorCard, FormLabel, SummaryBox } from '../shared';
 
 interface SoundActionEditorProps {
   action: GameAction & { type: 'playSound' };
@@ -29,40 +27,10 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
   const soundAction = action;
 
   return (
-    <ModernCard 
-      variant="outlined" 
-      size="md"
-      style={{ 
-        backgroundColor: DESIGN_TOKENS.colors.success[50],
-        border: `2px solid ${DESIGN_TOKENS.colors.success[200]}`,
-        marginTop: DESIGN_TOKENS.spacing[3]
-      }}
-    >
-      <h5 style={{
-        fontSize: DESIGN_TOKENS.typography.fontSize.base,
-        fontWeight: DESIGN_TOKENS.typography.fontWeight.semibold,
-        color: DESIGN_TOKENS.colors.success[800],
-        margin: 0,
-        marginBottom: DESIGN_TOKENS.spacing[4],
-        display: 'flex',
-        alignItems: 'center',
-        gap: DESIGN_TOKENS.spacing[2]
-      }}>
-        <span style={{ fontSize: DESIGN_TOKENS.typography.fontSize.lg }}>🔊</span>
-        {t('editor.soundAction.title')}
-      </h5>
-
+    <EditorCard colorTheme="action" icon="🔊" title={t('editor.soundAction.title')}>
       {/* SE選択 */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-        <label style={{
-          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-          fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-          color: DESIGN_TOKENS.colors.success[800],
-          marginBottom: DESIGN_TOKENS.spacing[2],
-          display: 'block'
-        }}>
-          {t('editor.soundAction.soundSelectLabel')}
-        </label>
+        <FormLabel colorTheme="action">{t('editor.soundAction.soundSelectLabel')}</FormLabel>
         <select
           value={soundAction.soundId}
           onChange={(e) => onUpdate(index, { soundId: e.target.value })}
@@ -73,7 +41,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
             border: `1px solid ${DESIGN_TOKENS.colors.success[200]}`,
             borderRadius: DESIGN_TOKENS.borderRadius.lg,
             backgroundColor: DESIGN_TOKENS.colors.neutral[0],
-            outline: 'none'
+            outline: 'none',
           }}
         >
           <option value="">{t('editor.soundAction.selectSound')}</option>
@@ -87,15 +55,9 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
 
       {/* 音量調整 */}
       <div style={{ marginBottom: DESIGN_TOKENS.spacing[4] }}>
-        <label style={{
-          fontSize: DESIGN_TOKENS.typography.fontSize.sm,
-          fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
-          color: DESIGN_TOKENS.colors.success[800],
-          marginBottom: DESIGN_TOKENS.spacing[2],
-          display: 'block'
-        }}>
+        <FormLabel colorTheme="action">
           {t('editor.soundAction.volumeLabel', { volume: Math.round((soundAction.volume || 0.8) * 100) })}
-        </label>
+        </FormLabel>
         <input
           type="range"
           min="0"
@@ -109,7 +71,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
             backgroundColor: DESIGN_TOKENS.colors.success[200],
             borderRadius: DESIGN_TOKENS.borderRadius.full,
             outline: 'none',
-            cursor: 'pointer'
+            cursor: 'pointer',
           }}
         />
         <div style={{
@@ -117,7 +79,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
           justifyContent: 'space-between',
           fontSize: DESIGN_TOKENS.typography.fontSize.xs,
           color: DESIGN_TOKENS.colors.success[600],
-          marginTop: DESIGN_TOKENS.spacing[1]
+          marginTop: DESIGN_TOKENS.spacing[1],
         }}>
           <span>{t('editor.soundAction.minVolume')}</span>
           <span>{t('editor.soundAction.maxVolume')}</span>
@@ -129,12 +91,12 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
         display: 'flex',
         alignItems: 'center',
         gap: DESIGN_TOKENS.spacing[2],
-        marginBottom: DESIGN_TOKENS.spacing[4]
+        marginBottom: DESIGN_TOKENS.spacing[4],
       }}>
         <span style={{
           fontSize: DESIGN_TOKENS.typography.fontSize.xs,
           color: DESIGN_TOKENS.colors.success[800],
-          fontWeight: DESIGN_TOKENS.typography.fontWeight.medium
+          fontWeight: DESIGN_TOKENS.typography.fontWeight.medium,
         }}>
           {t('editor.soundAction.volumeLevelLabel')}
         </span>
@@ -143,13 +105,13 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
           height: '8px',
           backgroundColor: DESIGN_TOKENS.colors.neutral[200],
           borderRadius: DESIGN_TOKENS.borderRadius.full,
-          overflow: 'hidden'
+          overflow: 'hidden',
         }}>
           <div style={{
             height: '100%',
             width: `${(soundAction.volume || 0.8) * 100}%`,
             backgroundColor: DESIGN_TOKENS.colors.success[500],
-            transition: `width ${DESIGN_TOKENS.animation.duration.fast} ${DESIGN_TOKENS.animation.easing.inOut}`
+            transition: `width ${DESIGN_TOKENS.animation.duration.fast} ${DESIGN_TOKENS.animation.easing.inOut}`,
           }} />
         </div>
         <span style={{
@@ -157,7 +119,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
           color: DESIGN_TOKENS.colors.success[800],
           fontWeight: DESIGN_TOKENS.typography.fontWeight.bold,
           minWidth: '40px',
-          textAlign: 'right'
+          textAlign: 'right',
         }}>
           {t('editor.soundAction.volumePercent', { volume: Math.round((soundAction.volume || 0.8) * 100) })}
         </span>
@@ -168,10 +130,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
         <ModernButton
           variant="outline"
           size="sm"
-          onClick={() => {
-            // TODO: Phase C Step 2で実装予定
-            onShowNotification('info', t('editor.soundAction.previewNotice'));
-          }}
+          onClick={() => onShowNotification('info', t('editor.soundAction.previewNotice'))}
           style={{
             borderColor: DESIGN_TOKENS.colors.success[200],
             color: DESIGN_TOKENS.colors.success[600],
@@ -179,7 +138,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: DESIGN_TOKENS.spacing[2]
+            gap: DESIGN_TOKENS.spacing[2],
           }}
         >
           <span>▶️</span>
@@ -187,13 +146,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
         </ModernButton>
       </div>
 
-      <div style={{
-        padding: DESIGN_TOKENS.spacing[3],
-        backgroundColor: DESIGN_TOKENS.colors.success[100],
-        borderRadius: DESIGN_TOKENS.borderRadius.lg,
-        fontSize: DESIGN_TOKENS.typography.fontSize.xs,
-        color: DESIGN_TOKENS.colors.success[800]
-      }}>
+      <SummaryBox colorTheme="action">
         {t('editor.soundAction.settingsSummaryTitle')}
         {soundAction.soundId
           ? t('editor.soundAction.playSound', {
@@ -201,7 +154,7 @@ export const SoundActionEditor: React.FC<SoundActionEditorProps> = ({
               volume: Math.round((soundAction.volume || 0.8) * 100)
             })
           : t('editor.soundAction.selectSoundPrompt')}
-      </div>
-    </ModernCard>
+      </SummaryBox>
+    </EditorCard>
   );
 };
