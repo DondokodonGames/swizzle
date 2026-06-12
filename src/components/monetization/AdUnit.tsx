@@ -14,7 +14,8 @@ import type { AdUnitProps } from '../../types/MonetizationTypes';
 import { AdPlacement, getAdSlotId } from '../../types/MonetizationTypes';
 
 // AdSense Client ID (index.htmlと同じ)
-const ADSENSE_CLIENT_ID = 'ca-pub-5097371063240942';
+// 環境変数 VITE_ADSENSE_CLIENT_ID で上書き可能。未設定時は現行値にフォールバック。
+const ADSENSE_CLIENT_ID = import.meta.env.VITE_ADSENSE_CLIENT_ID || 'ca-pub-5097371063240942';
 
 // 広告フォーマット設定
 const AD_FORMATS: Record<AdPlacement, { style: React.CSSProperties }> = {
