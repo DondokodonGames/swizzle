@@ -7,8 +7,10 @@
  *   npm run ai:code:local      # LLM使用、Supabaseアップロードをスキップ
  *
  * 環境変数:
- *   ANTHROPIC_API_KEY   必須（DRY_RUN=true の場合は不要）
- *   IMAGE_PROVIDER      'mock'（既定）| 'claude-svg' | 'openai'
+ *   OPENAI_API_KEY      必須（DRY_RUN=true の場合は不要）
+ *   ANTHROPIC_API_KEY   任意（LLM_PROVIDER=anthropic 指定時）
+ *   LLM_PROVIDER        'openai'（既定）| 'anthropic'
+ *   IMAGE_PROVIDER      'openai'（既定）| 'claude-svg' | 'mock'
  *   DRY_RUN             'true' = LLM/APIコールをスキップ
  *   SKIP_UPLOAD         'true' = Supabaseアップロードをスキップ
  */
@@ -26,18 +28,22 @@ async function main() {
 
   const dryRun    = process.env.DRY_RUN     === 'true';
   const skipUp    = process.env.SKIP_UPLOAD === 'true';
-  const anthropic = process.env.ANTHROPIC_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const llmProv   = process.env.LLM_PROVIDER === 'anthropic' ? 'anthropic' : 'openai';
   const imgProv   = (process.env.IMAGE_PROVIDER as 'mock' | 'claude-svg' | 'openai' | undefined)
-    ?? (process.env.OPENAI_API_KEY ? 'openai' : 'mock');
+    ?? (openaiKey ? 'openai' : 'mock');
 
-  console.log(`🔑 ANTHROPIC_API_KEY: ${anthropic ? '設定済み' : '❌ 未設定'}`);
+  console.log(`🔑 OPENAI_API_KEY:   ${openaiKey ? '設定済み' : '❌ 未設定'}`);
+  console.log(`🤖 LLM_PROVIDER:     ${llmProv}`);
   console.log(`🖼️  IMAGE_PROVIDER:   ${imgProv}`);
   console.log(`🏃 DRY_RUN:          ${dryRun}`);
   console.log(`☁️  SKIP_UPLOAD:      ${skipUp}`);
 
-  if (!anthropic && !dryRun) {
-    console.error('\n❌ ANTHROPIC_API_KEY が設定されていません。');
-    console.error('   .env または .env.local に ANTHROPIC_API_KEY=sk-ant-... を設定してください。');
+  const activeKey = llmProv === 'anthropic' ? process.env.ANTHROPIC_API_KEY : openaiKey;
+  if (!activeKey && !dryRun) {
+    const keyName = llmProv === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
+    console.error(`\n❌ ${keyName} が設定されていません。`);
+    console.error(`   .env または .env.local に ${keyName}=... を設定してください。`);
     process.exit(1);
   }
 

@@ -82,7 +82,8 @@ export class CodeOrchestrator {
     const noUp   = this.config.skipUpload;
     const imgPro = this.config.imageProvider ?? 'mock';
 
-    const llm = createLLMProvider({ provider: 'anthropic' });
+    const llmProvider = (process.env.LLM_PROVIDER === 'anthropic' ? 'anthropic' : 'openai') as 'anthropic' | 'openai';
+    const llm = createLLMProvider({ provider: llmProvider });
 
     // ──────────────────────────────────────────
     // Step 1: GameConceptGenerator（既存を再利用）
