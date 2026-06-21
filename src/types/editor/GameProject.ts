@@ -138,6 +138,9 @@ export interface VersionHistory {
 
 // メインのGameProjectインターフェース
 export interface GameProject {
+  // ゲームエンジン種別: 'rules'=if-thenエンジン（既定）, 'code'=JSサンドボックス
+  gameType?: 'rules' | 'code';
+
   // 基本情報
   id: string;                             // UUID
   name: string;                           // プロジェクト名

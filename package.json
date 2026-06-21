@@ -60,7 +60,12 @@
     "ai:produce-games": "tsx src/ai/v2/run-produce-games.ts",
     "ai:produce-games:dry": "DRY_RUN=true tsx src/ai/v2/run-produce-games.ts",
     "ai:produce-games:mock": "IMAGE_PROVIDER=mock SKIP_UPLOAD=true tsx src/ai/v2/run-produce-games.ts",
-    "ai:status": "tsx src/ai/batch/status-report.ts"
+    "ai:status": "tsx src/ai/batch/status-report.ts",
+    "ai:code:1": "tsx src/ai/v2/run-code.ts 1",
+    "ai:code:10": "tsx src/ai/v2/run-code.ts 10",
+    "ai:code:dry": "DRY_RUN=true tsx src/ai/v2/run-code.ts 1",
+    "ai:code:local": "SKIP_UPLOAD=true tsx src/ai/v2/run-code.ts 1",
+    "ai:code:svg": "IMAGE_PROVIDER=claude-svg SKIP_UPLOAD=true tsx src/ai/v2/run-code.ts 1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",

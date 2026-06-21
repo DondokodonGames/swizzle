@@ -58,6 +58,8 @@ export interface UploadOptions {
   imageScore?: number;
   templateId?: string;
   category?: string;
+  /** 'rules'（既定）または 'code'（JSサンドボックスゲーム） */
+  gameType?: 'rules' | 'code';
 }
 
 /**
@@ -254,6 +256,7 @@ export class SupabaseUploader {
       ai_generated: true,
       ai_quality_score: qualityScore,
       ai_image_score: options.imageScore ?? null,
+      game_type: options.gameType ?? 'rules',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };

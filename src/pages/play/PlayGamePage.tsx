@@ -5,6 +5,8 @@ import EditorGameBridge from '../../services/editor/EditorGameBridge';
 import { GameProject } from '../../types/editor/GameProject';
 import { GameLoadingService } from '../../services/GameLoadingService';
 import { track } from '../../services/analytics/Analytics';
+import { CodeGamePlayer } from '../../components/code-game/CodeGamePlayer';
+import { CodeGameProject } from '../../types/code-game/SwizzleGameAPI';
 
 // =====================================================
 // 型定義
@@ -331,10 +333,12 @@ export function PlayGamePage() {
   }, [pageState, gameId, getStoredToken, TOKEN_KEY]);
 
   // =====================================================
-  // Step 4: ゲーム起動
+  // Step 4: ゲーム起動（rulesエンジンのみ）
   // =====================================================
   useEffect(() => {
     if (pageState !== 'playing' || !projectData || !canvasRef.current) return;
+    // コードゲームは CodeGamePlayer が担当するためスキップ
+    if (projectData.gameType === 'code') return;
 
     // プレイ開始を計測（単体プレイページ経由）
     const startedAt = Date.now();
@@ -449,7 +453,32 @@ export function PlayGamePage() {
     );
   }
 
-  // playing
+  // playing — コードゲーム
+  if (pageState === 'playing' && projectData?.gameType === 'code') {
+    return (
+      <div style={s.gameWrap}>
+        <CodeGamePlayer
+          project={projectData as unknown as CodeGameProject}
+          onEnd={(result) => {
+            track('play_end', { gameId, source: 'play_page', result: result.result });
+            setPageState('finished');
+          }}
+          onError={(msg) => {
+            console.error('[CodeGame]', msg);
+            setErrorMsg('ゲームの実行中にエラーが発生しました');
+            setPageState('error');
+          }}
+        />
+        {validation && (
+          <div style={s.playsBadge}>
+            残り {validation.plays_remaining} 回
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // playing — rulesエンジン
   return (
     <div style={s.gameWrap}>
       <div ref={canvasRef} style={s.canvas} />
