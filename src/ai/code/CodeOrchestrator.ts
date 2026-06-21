@@ -19,6 +19,8 @@ import { SupabaseUploader } from '../publishers/SupabaseUploader.js';
 import { shouldAutoPublish } from '../v2/publishGate.js';
 import { CodeAssetPlanner, CodeAssetPlan } from './CodeAssetPlanner.js';
 import { CodeGameGenerator } from './CodeGameGenerator.js';
+import { CodeGameValidator } from './CodeGameValidator.js';
+import { CodeQualityScorer } from './CodeQualityScorer.js';
 import { CodeGameProject } from '../../types/code-game/SwizzleGameAPI.js';
 import { GameConcept, AssetPlan, ObjectPlan, SoundPlan, BgmPlan } from '../v2/types.js';
 
@@ -154,6 +156,22 @@ export class CodeOrchestrator {
     console.log(`   ✅ コード生成完了 (${code.length} chars)`);
 
     // ──────────────────────────────────────────
+    // Step 3.5: バリデーション & 品質スコアリング
+    // ──────────────────────────────────────────
+    console.log('\n🔍 Step 3.5: コードバリデーション...');
+    const validator = new CodeGameValidator();
+    const validationResult = validator.validate(code);
+    validator.report(validationResult);
+
+    if (!validationResult.valid) {
+      return { success: false, error: `バリデーション失敗: ${validationResult.errors.map(e => e.message).join(', ')}`, concept, code };
+    }
+
+    const scorer = new CodeQualityScorer();
+    const qualityScore = scorer.score(code, concept, validationResult);
+    scorer.report(qualityScore);
+
+    // ──────────────────────────────────────────
     // Step 4: AssetGenerator（既存を再利用）
     // ──────────────────────────────────────────
     console.log('\n🖼️  Step 4: アセット生成...');
@@ -216,13 +234,13 @@ export class CodeOrchestrator {
 
     console.log('\n☁️  Step 5: Supabaseアップロード...');
     const threshold = this.config.qualityPublishThreshold ?? 70;
-    const autoPublish = shouldAutoPublish(75, threshold); // コードゲームは暫定75点
+    const autoPublish = shouldAutoPublish(qualityScore.total, threshold);
 
     const uploader = new SupabaseUploader();
     const uploadResult = await uploader.uploadGame(
       // CodeGameProject を GameProject キャストして渡す（JSONB として保存されるため問題なし）
       project as unknown as Parameters<typeof uploader.uploadGame>[0],
-      75,
+      qualityScore.total,
       { autoPublish, gameType: 'code', templateId: 'ai_code_generated' }
     );
 
