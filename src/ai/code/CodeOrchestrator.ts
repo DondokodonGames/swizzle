@@ -10,6 +10,7 @@
 
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import * as fs from 'fs';
 import { randomUUID } from 'crypto';
 
 import { createLLMProvider } from '../v2/llm/index.js';
@@ -51,12 +52,21 @@ function toAssetPlan(cap: CodeAssetPlan): AssetPlan {
   };
 }
 
+export interface NetaSeed {
+  id: number;
+  title: string;
+  idea: string;
+  mechanic?: string;
+  theme?: string;
+}
+
 export interface CodeGenerationResult {
   success: boolean;
   gameId?: string;
   concept?: GameConcept;
   code?: string;
   error?: string;
+  netaSeedId?: number;
 }
 
 export interface CodeOrchestratorConfig {
@@ -79,7 +89,7 @@ export class CodeOrchestrator {
     };
   }
 
-  async generateOne(): Promise<CodeGenerationResult> {
+  async generateOne(seed?: NetaSeed): Promise<CodeGenerationResult> {
     const isDry  = this.config.dryRun;
     const noUp   = this.config.skipUpload;
     const imgPro = this.config.imageProvider ?? 'mock';
@@ -95,15 +105,17 @@ export class CodeOrchestrator {
 
     if (isDry) {
       concept = {
-        title: 'テストゲーム', titleEn: 'Test Game', description: 'テスト用のゲーム',
-        duration: 10, theme: 'テスト', visualStyle: 'シンプル',
+        title: seed?.title ?? 'テストゲーム', titleEn: 'Test Game', description: seed?.idea ?? 'テスト用のゲーム',
+        duration: 10, theme: seed?.theme ?? 'テスト', visualStyle: 'シンプル',
         playerGoal: 'ターゲットをタップする', playerOperation: '画面をタップ',
         successCondition: 'ターゲットを1回タップ', failureCondition: '10秒経過',
         selfEvaluation: { goalClarity: 9, operationClarity: 9, judgmentClarity: 9, acceptance: 9, reasoning: 'dry run' }
       };
     } else {
       const conceptGen = new GameConceptGenerator();
-      concept = await conceptGen.generate();
+      concept = seed
+        ? await conceptGen.generateFromSeed(seed)
+        : await conceptGen.generate();
     }
 
     console.log(`   ✅ コンセプト: ${concept.title}`);
@@ -229,7 +241,7 @@ export class CodeOrchestrator {
       console.log('\n⏭️  アップロードをスキップ (SKIP_UPLOAD=true)');
       console.log('\n📋 生成コード プレビュー (最初の500文字):');
       console.log(code.slice(0, 500));
-      return { success: true, gameId, concept, code };
+      return { success: true, gameId, concept, code, netaSeedId: seed?.id };
     }
 
     console.log('\n☁️  Step 5: Supabaseアップロード...');
@@ -249,7 +261,7 @@ export class CodeOrchestrator {
     }
 
     console.log(`   ✅ アップロード完了: ${uploadResult.gameId}`);
-    return { success: true, gameId: uploadResult.gameId, concept, code };
+    return { success: true, gameId: uploadResult.gameId, concept, code, netaSeedId: seed?.id };
   }
 
   async generateBatch(count: number): Promise<{ succeeded: number; failed: number }> {
@@ -277,5 +289,65 @@ export class CodeOrchestrator {
     }
 
     return { succeeded, failed };
+  }
+
+  async runFromNeta(
+    netaFile: string,
+    count: number = 1
+  ): Promise<{ succeeded: number; failed: number; remaining: number }> {
+    const progressFile = path.join(path.dirname(netaFile), 'neta-code-progress.json');
+
+    const netaData: { totalCount: number; items: NetaSeed[] } = JSON.parse(
+      fs.readFileSync(netaFile, 'utf-8')
+    );
+
+    let processedIds = new Set<number>();
+    if (fs.existsSync(progressFile)) {
+      const saved = JSON.parse(fs.readFileSync(progressFile, 'utf-8'));
+      processedIds = new Set<number>((saved.processedIds ?? []) as number[]);
+    }
+
+    const pending = netaData.items.filter(item => !processedIds.has(item.id));
+    const toProcess = pending.slice(0, count);
+    const remaining = Math.max(0, pending.length - toProcess.length);
+
+    console.log(`\n📊 ネタ帳状況（コードゲーム）:`);
+    console.log(`   総件数: ${netaData.totalCount}`);
+    console.log(`   処理済: ${processedIds.size}`);
+    console.log(`   残り:   ${pending.length}`);
+    console.log(`   今回:   ${toProcess.length} 件を生成`);
+
+    let succeeded = 0;
+    let failed = 0;
+
+    for (let i = 0; i < toProcess.length; i++) {
+      const seed = toProcess[i];
+      console.log(`\n${'='.repeat(50)}`);
+      console.log(`🎮 ゲーム ${i + 1} / ${toProcess.length}  (ネタ #${seed.id}: ${seed.title})`);
+      console.log('='.repeat(50));
+
+      try {
+        const result = await this.generateOne(seed);
+        if (result.success) {
+          succeeded++;
+          console.log(`\n✅ 成功: ${result.concept?.title} (${result.gameId?.slice(0, 8)}...)`);
+        } else {
+          failed++;
+          console.error(`\n❌ 失敗: ${result.error}`);
+        }
+      } catch (err) {
+        failed++;
+        console.error(`\n❌ 例外: ${err}`);
+      }
+
+      // 成否にかかわらず処理済みとしてマーク
+      processedIds.add(seed.id);
+      fs.writeFileSync(progressFile, JSON.stringify(
+        { processedIds: Array.from(processedIds).sort((a, b) => a - b), lastUpdated: new Date().toISOString() },
+        null, 2
+      ));
+    }
+
+    return { succeeded, failed, remaining };
   }
 }

@@ -66,7 +66,11 @@
     "ai:code:dry": "DRY_RUN=true tsx src/ai/v2/run-code.ts 1",
     "ai:code:local": "SKIP_UPLOAD=true tsx src/ai/v2/run-code.ts 1",
     "ai:code:svg": "IMAGE_PROVIDER=claude-svg SKIP_UPLOAD=true tsx src/ai/v2/run-code.ts 1",
-    "ai:code:claude": "LLM_PROVIDER=anthropic IMAGE_PROVIDER=claude-svg SKIP_UPLOAD=true tsx src/ai/v2/run-code.ts 1"
+    "ai:code:claude": "LLM_PROVIDER=anthropic IMAGE_PROVIDER=claude-svg SKIP_UPLOAD=true tsx src/ai/v2/run-code.ts 1",
+    "ai:code:neta:1": "tsx src/ai/v2/run-code-neta.ts 1",
+    "ai:code:neta:5": "tsx src/ai/v2/run-code-neta.ts 5",
+    "ai:code:neta:dry": "DRY_RUN=true tsx src/ai/v2/run-code-neta.ts 1",
+    "ai:code:neta:local": "SKIP_UPLOAD=true tsx src/ai/v2/run-code-neta.ts 1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
