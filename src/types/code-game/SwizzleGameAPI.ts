@@ -80,7 +80,7 @@ export interface CodeGameProject {
     };
   };
   assets: CodeGameAssets;
-  generatedBy?: 'claude' | 'human';
+  generatedBy?: 'claude' | 'openai' | 'human';
   createdAt: string;
   lastModified: string;
 }

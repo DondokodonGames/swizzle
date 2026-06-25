@@ -149,18 +149,18 @@ export class CodeOrchestrator {
     // ──────────────────────────────────────────
     console.log('\n💻 Step 3: JSコード生成...');
     let code: string;
+    let codeGen: CodeGameGenerator | null = null;
 
     if (isDry) {
       // dry run時はサンプルゲームを使用
       try {
-        const fs = await import('fs');
         const exPath = new URL('./examples/tap-target.js', import.meta.url).pathname;
         code = fs.readFileSync(exPath, 'utf-8');
       } catch {
         code = '(function(game){\n  game.onStart(function(){});\n  game.onUpdate(function(dt){ game.end.success(0); });\n})(game);';
       }
     } else {
-      const codeGen = new CodeGameGenerator(llm);
+      codeGen = new CodeGameGenerator(llm);
       const result = await codeGen.generate(concept, assetPlan);
       code = result.code;
     }
@@ -172,8 +172,19 @@ export class CodeOrchestrator {
     // ──────────────────────────────────────────
     console.log('\n🔍 Step 3.5: コードバリデーション...');
     const validator = new CodeGameValidator();
-    const validationResult = validator.validate(code);
+    let validationResult = validator.validate(code);
     validator.report(validationResult);
+
+    // バリデーション失敗時に1回だけリトライ（dry runは除く）
+    if (!validationResult.valid && !isDry && codeGen) {
+      console.log('\n🔄 バリデーション失敗 — コード再生成を試みます...');
+      const errorSummary = validationResult.errors.map(e => e.message).join('; ');
+      const retryResult = await codeGen.generate(concept, assetPlan, { previousError: errorSummary });
+      code = retryResult.code;
+      console.log(`   ✅ 再生成完了 (${code.length} chars)`);
+      validationResult = validator.validate(code);
+      validator.report(validationResult);
+    }
 
     if (!validationResult.valid) {
       return { success: false, error: `バリデーション失敗: ${validationResult.errors.map(e => e.message).join(', ')}`, concept, code };
@@ -229,7 +240,7 @@ export class CodeOrchestrator {
           se: generatedAssets.sounds.map(s => ({ id: s.id, dataUrl: s.data })),
         },
       },
-      generatedBy: 'claude',
+      generatedBy: llmProvider === 'anthropic' ? 'claude' : 'openai',
       createdAt: now,
       lastModified: now,
     };

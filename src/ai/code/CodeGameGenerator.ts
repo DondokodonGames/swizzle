@@ -92,13 +92,21 @@ export class CodeGameGenerator {
     this.llm = llm;
   }
 
-  async generate(concept: GameConcept, assetPlan: CodeAssetPlan): Promise<CodeGameGeneratorResult> {
+  async generate(
+    concept: GameConcept,
+    assetPlan: CodeAssetPlan,
+    options?: { previousError?: string }
+  ): Promise<CodeGameGeneratorResult> {
     const assetSummary = [
       `背景: ${assetPlan.background.description}`,
       `オブジェクト: ${assetPlan.objects.map(o => `${o.id}(${o.name})`).join(', ')}`,
       `効果音: ${assetPlan.sounds.map(s => `${s.id}`).join(', ')}`,
       assetPlan.bgm ? `BGM: ${assetPlan.bgm.id}` : ''
     ].filter(Boolean).join('\n');
+
+    const retryNote = options?.previousError
+      ? `\n## ⚠️ 前回の生成でエラーが発生しました（必ず修正してください）\n${options.previousError}\n`
+      : '';
 
     const userPrompt = `以下のコンセプトとアセット計画に基づいてSwizzleミニゲームのJSコードを生成してください。
 
@@ -113,7 +121,7 @@ export class CodeGameGenerator {
 
 ## 利用可能なアセット
 ${assetSummary}
-
+${retryNote}
 JavaScriptコードだけを返してください（\`\`\`や説明文は不要）:`;
 
     const response = await this.llm.chat([
