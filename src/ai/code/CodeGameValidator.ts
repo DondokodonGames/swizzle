@@ -37,7 +37,14 @@ export class CodeGameValidator {
     const errors: CodeValidationError[] = [];
     const warnings: CodeValidationError[] = [];
 
-    // 1. 構文チェック
+    // 1. 禁止パターンチェック（import等は構文エラーを起こす前にキャッチする）
+    for (const { pattern, code: errCode, message } of FORBIDDEN_PATTERNS) {
+      if (pattern.test(code)) {
+        warnings.push({ code: errCode, message, severity: 'warning' });
+      }
+    }
+
+    // 2. 構文チェック
     try {
       // node.js環境での構文検証（new Functionでパース）
       // eslint-disable-next-line no-new-func
@@ -52,7 +59,7 @@ export class CodeGameValidator {
       return { valid: false, errors, warnings };
     }
 
-    // 2. game.end.success の存在チェック
+    // 3. game.end.success の存在チェック
     if (!code.includes('game.end.success')) {
       errors.push({
         code: 'NO_SUCCESS',
@@ -61,20 +68,13 @@ export class CodeGameValidator {
       });
     }
 
-    // 3. game.end.failure の存在チェック
+    // 4. game.end.failure の存在チェック
     if (!code.includes('game.end.failure')) {
       errors.push({
         code: 'NO_FAILURE',
         message: 'game.end.failure() が見つかりません。失敗条件を実装してください',
         severity: 'error',
       });
-    }
-
-    // 4. 禁止パターンチェック
-    for (const { pattern, code: errCode, message } of FORBIDDEN_PATTERNS) {
-      if (pattern.test(code)) {
-        warnings.push({ code: errCode, message, severity: 'warning' });
-      }
     }
 
     // 5. ゲームループのチェック（onUpdate がないと静的なゲームになる可能性）
