@@ -9,6 +9,8 @@ import { GameLoadingService } from '../services/GameLoadingService';
 import ProfileModal from './ProfileModal';
 import { DESIGN_TOKENS } from '../constants/DesignSystem';
 import { track, startSession } from '../services/analytics/Analytics';
+import { CodeGameRunner } from '../services/code-game/CodeGameRunner';
+import { CodeGameProject } from '../types/code-game/SwizzleGameAPI';
 
 /**
  * GameSequence.tsx - 完全レスポンシブ版（スマホ対応）
@@ -131,6 +133,7 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const currentGameRef = useRef<string | null>(null);
   const bridgeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const codeRunnerRef = useRef<CodeGameRunner | null>(null);
 
   // ==================== 公開ゲーム取得（超高速版: 1件取得→即開始→バックグラウンドで残り取得） ====================
   useEffect(() => {
@@ -340,42 +343,50 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
       // プレイ開始を計測
       track('play_start', { gameId: currentGame.id, index: currentIndex });
 
+      const onGameEnd = (result: { success?: boolean; score?: number; timeElapsed?: number }) => {
+        setGameStartTime(null);
+        track('play_end', {
+          gameId: currentGame.id,
+          duration: (Date.now() - startedAt) / 1000,
+          result: result.success ? 'success' : 'failure',
+          score: result.score || 0,
+        });
+        setCurrentScore({
+          points: result.score || 0,
+          time: result.timeElapsed || 0,
+          success: result.success || false
+        });
+        currentGameRef.current = null;
+        setGameState('bridge');
+      };
+
       try {
-        await bridge.launchFullGame(
-          currentGame.projectData,
-          canvasRef.current!,
-          (result: any) => {
-            // ゲーム時間トラッキング停止
-            setGameStartTime(null);
-
-            // プレイ終了を計測（duration / result）
-            track('play_end', {
-              gameId: currentGame.id,
-              duration: (Date.now() - startedAt) / 1000,
-              result: result.success ? 'success' : 'failure',
-              score: result.score || 0,
-            });
-
-            // スコア記録
-            setCurrentScore({
-              points: result.score || 0,
-              time: result.timeElapsed || 0,
-              success: result.success || false
-            });
-
-            currentGameRef.current = null;
-
-            // ブリッジ画面へ遷移
-            setGameState('bridge');
-          }
-        );
+        if ((currentGame.projectData as any)?.gameType === 'code') {
+          // コードゲームは CodeGameRunner で実行
+          const runner = new CodeGameRunner();
+          codeRunnerRef.current = runner;
+          runner.launch(
+            currentGame.projectData as unknown as CodeGameProject,
+            canvasRef.current!,
+            (r) => onGameEnd({ success: r.result === 'success', score: r.score }),
+            (errMsg) => {
+              console.error(`❌ コードゲームエラー: "${currentGame.title}"`, errMsg);
+              codeRunnerRef.current = null;
+              currentGameRef.current = null;
+              setTimeout(() => handleNextGame(), 2000);
+            }
+          );
+        } else {
+          await bridge.launchFullGame(
+            currentGame.projectData,
+            canvasRef.current!,
+            (result: any) => onGameEnd(result)
+          );
+        }
       } catch (err) {
         console.error(`❌ ゲーム実行エラー: "${currentGame.title}"`, err);
         currentGameRef.current = null;
-        
-        setTimeout(() => {
-          handleNextGame();
-        }, 2000);
+        setTimeout(() => { handleNextGame(); }, 2000);
       }
     };
 
@@ -424,8 +435,12 @@ const GameSequence: React.FC<GameSequenceProps> = ({ onExit, onOpenFeed }) => {
   }, []);
 
   const handleSkipToBridge = useCallback(() => {
-    // 実行中のゲームを停止
+    // 実行中のゲームを停止（rules / code 両対応）
     bridge.stopGame();
+    if (codeRunnerRef.current) {
+      codeRunnerRef.current.stop();
+      codeRunnerRef.current = null;
+    }
 
     // スキップを play_end(result: skip) として計測
     track('play_end', {
