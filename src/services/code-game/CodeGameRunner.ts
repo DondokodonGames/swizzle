@@ -67,9 +67,12 @@ export class CodeGameRunner {
 
     const iframe = document.createElement('iframe');
     iframe.setAttribute('sandbox', 'allow-scripts');
-    iframe.style.cssText = 'width:100%;height:100%;border:none;display:block;';
+    iframe.style.cssText = 'width:100%;height:100%;border:none;display:block;position:absolute;top:0;left:0;';
     iframe.srcdoc = html;
     this.iframe = iframe;
+
+    // Clear any leftover canvas/elements from a previous rules game
+    while (container.firstChild) container.removeChild(container.firstChild);
 
     this.messageHandler = (e: MessageEvent) => {
       const msg = e.data;
