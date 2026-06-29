@@ -71,7 +71,9 @@
     "ai:code:neta:5": "tsx src/ai/v2/run-code-neta.ts 5",
     "ai:code:neta:dry": "DRY_RUN=true tsx src/ai/v2/run-code-neta.ts 1",
     "ai:code:neta:local": "SKIP_UPLOAD=true tsx src/ai/v2/run-code-neta.ts 1",
-    "ai:code:status": "tsx src/ai/v2/run-code-status.ts"
+    "ai:code:status": "tsx src/ai/v2/run-code-status.ts",
+    "ai:upload:examples": "tsx src/ai/v2/run-upload-examples.ts",
+    "ai:upload:examples:dry": "DRY_RUN=true tsx src/ai/v2/run-upload-examples.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
