@@ -286,14 +286,15 @@ export function buildIframeHtml(gameCode: string, maxDurationMs: number): string
   }
 
   // ── Message handling ──────────────────────────────────────────────────────
+  // Signal parent that iframe is ready to receive INIT
+  parent.postMessage({ type: 'READY' }, '*');
+
   window.addEventListener('message', function(e) {
     var msg = e.data;
     if (!msg || !msg.type) return;
 
     if (msg.type === 'INIT') {
-      loadAssets(msg.assets || []).then(function() {
-        parent.postMessage({ type: 'READY' }, '*');
-      });
+      loadAssets(msg.assets || []);
     }
 
     if (msg.type === 'START') {
