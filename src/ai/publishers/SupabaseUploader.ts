@@ -255,7 +255,7 @@ export class SupabaseUploader {
       like_count: 0,
       ai_generated: true,
       ai_quality_score: qualityScore,
-      ai_image_score: options.imageScore ?? null,
+      ...(options.imageScore !== undefined ? { ai_image_score: options.imageScore } : {}),
       game_type: options.gameType ?? 'rules',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
