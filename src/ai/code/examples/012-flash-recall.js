@@ -1,230 +1,181 @@
 // 012-flash-recall.js
 // 一瞬の記憶 — チカッと光った場所を覚えて再現する挑戦
 // 操作: 光ったマスをタップして再現
-// 成功: 3ラウンド完璧に  失敗: 1つ間違える or 20秒
+// 成功: 1ラウンド完璧に  失敗: 1つ間違える or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#040816',
-    grid:    '#0f1f3a',
-    cell:    '#0a1428',
-    cellEdge:'#1e3a5f',
-    flash:   '#38bdf8',
-    flashHi: '#e0f2fe',
-    success: '#22c55e',
-    error:   '#ef4444',
-    recall:  '#7c3aed',
-    recallHi:'#a78bfa',
-    ui:      '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var COLS = 4;
-  var ROWS = 4;
-  var CELL_SIZE = 200;
-  var GAP = 12;
-  var GRID_W = COLS * CELL_SIZE + (COLS - 1) * GAP;
-  var GRID_H = ROWS * CELL_SIZE + (ROWS - 1) * GAP;
+  var GAME_TITLE  = 'FLASH RECALL';
+  var HOW_TO_PLAY = 'REPEAT THE FLASH';
+  var MAX_TIME = 20;
+  var NEEDED = 1;             // 修正2: 3ラウンド → 1
+  var FLASH_COUNT = 2;        // 修正2: 記憶セル 3 → 2
+  var COLS = 4, ROWS = 4, CELL = 220, GAP = 16;
+  var GRID_W = COLS * CELL + (COLS - 1) * GAP;
+  var GRID_H = ROWS * CELL + (ROWS - 1) * GAP;
   var GRID_X = (W - GRID_W) / 2;
-  var GRID_Y = (H - GRID_H) / 2 - 60;
+  var GRID_Y = (H - GRID_H) / 2;   // 修正1: 縦中央
+  var FLASH_DURATION = 1.2, HIDE_DURATION = 0.4;
 
-  var FLASH_COUNT = 3; // cells to memorize
-  var round = 0;
-  var needed = 3;
-  var timeLeft = 20;
-  var done = false;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var phase = 'flash'; // 'flash' | 'recall' | 'feedback'
-  var flashTimer = 0;
-  var FLASH_DURATION = 1.2;
-  var HIDE_DURATION = 0.4;
-  var feedbackTimer = 0;
-  var feedbackOk = false;
+  var round, timeLeft, done, phase, flashTimer, feedbackTimer, feedbackOk, targetCells, tappedCells, wrongCell;
 
-  var targetCells = [];   // which cells to remember
-  var tappedCells = [];   // player's picks so far
-  var wrongCell = -1;
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
+
+  function cellRect(idx) {
+    var col = idx % COLS, row = Math.floor(idx / COLS);
+    return { x: GRID_X + col * (CELL + GAP), y: GRID_Y + row * (CELL + GAP) };
+  }
+  function cellAtPos(tx, ty) {
+    for (var i = 0; i < COLS * ROWS; i++) {
+      var r = cellRect(i);
+      if (tx >= r.x && tx < r.x + CELL && ty >= r.y && ty < r.y + CELL) return i;
+    }
+    return -1;
+  }
 
   function chooseRound() {
-    // pick FLASH_COUNT unique random cells
     targetCells = [];
     var pool = [];
     for (var i = 0; i < COLS * ROWS; i++) pool.push(i);
     for (var j = 0; j < FLASH_COUNT; j++) {
       var idx = Math.floor(Math.random() * pool.length);
-      targetCells.push(pool[idx]);
-      pool.splice(idx, 1);
+      targetCells.push(pool[idx]); pool.splice(idx, 1);
     }
-    tappedCells = [];
-    wrongCell = -1;
-    phase = 'flash';
-    flashTimer = FLASH_DURATION;
+    tappedCells = []; wrongCell = -1; phase = 'flash'; flashTimer = FLASH_DURATION;
   }
 
-  function cellRect(idx) {
-    var col = idx % COLS;
-    var row = Math.floor(idx / COLS);
-    return {
-      x: GRID_X + col * (CELL_SIZE + GAP),
-      y: GRID_Y + row * (CELL_SIZE + GAP)
-    };
+  function initGame() {
+    round = 0; timeLeft = MAX_TIME; done = false; feedbackTimer = 0; feedbackOk = false;
+    chooseRound();
   }
 
-  function cellAtPos(tx, ty) {
-    for (var i = 0; i < COLS * ROWS; i++) {
-      var r = cellRect(i);
-      if (tx >= r.x && tx < r.x + CELL_SIZE && ty >= r.y && ty < r.y + CELL_SIZE) {
-        return i;
-      }
-    }
-    return -1;
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (round * 300 + Math.ceil(timeLeft) * 50) : round * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done || phase !== 'recall') return;
     var idx = cellAtPos(x, y);
-    if (idx === -1) return;
-    if (tappedCells.indexOf(idx) !== -1) return; // already tapped
-
+    if (idx === -1 || tappedCells.indexOf(idx) !== -1) return;
     tappedCells.push(idx);
     game.audio.play('se_tap', 0.7);
-
-    // check if correct
     var expected = targetCells[tappedCells.length - 1];
     if (idx !== expected) {
-      // wrong order or wrong cell
-      wrongCell = idx;
-      feedbackOk = false;
-      feedbackTimer = 0.8;
-      phase = 'feedback';
-      game.audio.play('se_failure', 0.7);
-      done = true;
-      setTimeout(function() { game.end.failure(); }, 900);
+      wrongCell = idx; feedbackOk = false; feedbackTimer = 0.8; phase = 'feedback';
+      finish(false);
       return;
     }
-
     if (tappedCells.length >= FLASH_COUNT) {
-      // round complete
-      round++;
-      feedbackOk = true;
-      feedbackTimer = 0.7;
-      phase = 'feedback';
-      game.audio.play('se_success', 0.8);
-      if (round >= needed) {
-        done = true;
-        setTimeout(function() {
-          game.end.success(round * 30 + Math.ceil(timeLeft) * 5);
-        }, 800);
-      }
+      round++; feedbackOk = true; feedbackTimer = 0.7; phase = 'feedback';
+      if (round >= NEEDED) finish(true);
     }
   });
 
-  game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
+  function background() { game.draw.clear(C.bg); }
 
-    if (phase === 'flash') {
-      flashTimer -= dt;
-      if (flashTimer < -HIDE_DURATION) {
-        phase = 'recall';
-      }
-    } else if (phase === 'feedback') {
-      feedbackTimer -= dt;
-      if (feedbackTimer <= 0 && !done) {
-        chooseRound();
-      }
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // timer bar
-    var ratio = Math.max(0, timeLeft / 20);
-    game.draw.rect(0, 0, W, 72, '#0a1020');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#0284c7' : C.error);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // round indicators
-    for (var r = 0; r < needed; r++) {
-      var rx = W / 2 + (r - (needed - 1) / 2) * 80;
-      game.draw.circle(rx, 128, 26, r < round ? C.success : '#0a1428');
-      if (r < round) game.draw.circle(rx, 128, 16, '#ffffff80');
-    }
-
-    // phase label
-    var phaseText = phase === 'flash' && flashTimer > 0 ? '覚えろ！' :
-                    phase === 'flash' ? '...' :
-                    phase === 'recall' ? 'どこだ？' : '';
-    if (phaseText) {
-      game.draw.text(phaseText, W / 2, 208, { size: 56, color: C.flash, bold: phase === 'flash' && flashTimer > 0 });
-    }
-
-    // grid cells
+  function drawGrid() {
     var isFlashing = phase === 'flash' && flashTimer > 0;
     for (var i = 0; i < COLS * ROWS; i++) {
       var cr = cellRect(i);
       var isTarget = targetCells.indexOf(i) !== -1;
       var isTapped = tappedCells.indexOf(i) !== -1;
       var isWrong = i === wrongCell;
-
-      // base cell
-      game.draw.rect(cr.x - 4, cr.y - 4, CELL_SIZE + 8, CELL_SIZE + 8, C.cellEdge);
-      game.draw.rect(cr.x, cr.y, CELL_SIZE, CELL_SIZE, C.cell);
-
-      // flashing highlight
-      if (isFlashing && isTarget) {
-        var fa = Math.min(1, flashTimer / 0.3); // fade in/out
-        game.draw.rect(cr.x, cr.y, CELL_SIZE, CELL_SIZE, C.flash, fa * 0.9);
-        game.draw.rect(cr.x + 12, cr.y + 12, CELL_SIZE - 24, CELL_SIZE - 24, C.flashHi, fa * 0.6);
-      }
-
-      // recall tapped
-      if (phase === 'recall' || phase === 'feedback') {
-        if (isTapped) {
-          game.draw.rect(cr.x, cr.y, CELL_SIZE, CELL_SIZE, isWrong ? C.error : C.recall, 0.9);
-          game.draw.rect(cr.x + 12, cr.y + 12, CELL_SIZE - 24, CELL_SIZE - 24, isWrong ? '#fca5a5' : C.recallHi, 0.5);
-        }
-      }
-
-      // feedback: reveal correct cells
-      if (phase === 'feedback' && !feedbackOk) {
-        if (isTarget) {
-          game.draw.rect(cr.x, cr.y, CELL_SIZE, CELL_SIZE, C.flash, 0.5);
-        }
-      }
+      game.draw.rect(cr.x, cr.y, CELL, CELL, C.d, 0.4);
+      game.draw.rect(cr.x + 6, cr.y + 6, CELL - 12, CELL - 12, '#0a0018');
+      if (isFlashing && isTarget) game.draw.rect(cr.x + 6, cr.y + 6, CELL - 12, CELL - 12, C.e);
+      if ((phase === 'recall' || phase === 'feedback') && isTapped)
+        game.draw.rect(cr.x + 6, cr.y + 6, CELL - 12, CELL - 12, isWrong ? C.a : C.b);
+      if (phase === 'feedback' && !feedbackOk && isTarget)
+        game.draw.rect(cr.x + 6, cr.y + 6, CELL - 12, CELL - 12, C.e, 0.5);
     }
-
-    // tap order hints (small numbers on tapped cells)
     for (var t = 0; t < tappedCells.length; t++) {
       var tcr = cellRect(tappedCells[t]);
-      game.draw.text('' + (t + 1), tcr.x + CELL_SIZE / 2, tcr.y + CELL_SIZE / 2,
-        { size: 72, color: '#fff', bold: true });
+      txt('' + (t + 1), tcr.x + CELL / 2, tcr.y + CELL / 2, 72, C.g);
+    }
+  }
+
+  game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      // デモ: 1セルが点滅
+      var demoIdx = Math.floor(game.time.elapsed) % (COLS * ROWS);
+      var dcr = cellRect(demoIdx);
+      for (var di = 0; di < COLS * ROWS; di++) {
+        var cr = cellRect(di);
+        game.draw.rect(cr.x, cr.y, CELL, CELL, C.d, 0.4);
+        game.draw.rect(cr.x + 6, cr.y + 6, CELL - 12, CELL - 12, '#0a0018');
+      }
+      if (Math.floor(game.time.elapsed * 4) % 2 === 0) game.draw.rect(dcr.x + 6, dcr.y + 6, CELL - 12, CELL - 12, C.e);
+      txt(GAME_TITLE,  W / 2, H * 0.12, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.2, 44, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.82, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.89, 52, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.95, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
     }
 
-    // progress within round
-    if (phase === 'recall') {
-      game.draw.text(tappedCells.length + ' / ' + FLASH_COUNT, W / 2, GRID_Y + GRID_H + 80,
-        { size: 52, color: C.recallHi, bold: true });
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (phase === 'flash') {
+        flashTimer -= dt;
+        if (flashTimer < -HIDE_DURATION) phase = 'recall';
+      } else if (phase === 'feedback') {
+        feedbackTimer -= dt;
+        if (feedbackTimer <= 0 && !done) chooseRound();
+      }
     }
 
-    // guide
-    game.draw.text(
-      phase === 'recall' ? '順番どおりにタップ！' : '光ったマスを覚えろ！',
-      W / 2, H - 180, { size: 48, color: C.ui }
-    );
+    // ---- draw ----
+    background();
+    drawGrid();
+    timeBar();
+    txt('SCORE ' + String(finalScore || round * 100).padStart(6, '0'), W / 2, 96, 40, C.g);
+    var label = phase === 'flash' && flashTimer > 0 ? 'MEMORIZE!' : phase === 'recall' ? 'REPEAT!' : '...';
+    txt(label, W / 2, H - 100, 56, C.c);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.35);
-    chooseRound();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

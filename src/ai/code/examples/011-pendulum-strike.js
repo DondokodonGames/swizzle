@@ -1,169 +1,150 @@
 // 011-pendulum-strike.js
 // 振り子ストライク — ちょうど真下に来た瞬間を狙う快感
 // 操作: 振り子が中央ゾーンにいる間にタップ
-// 成功: 5回ヒット  失敗: 3回ミス or 20秒
+// 成功: 1回ヒット  失敗: 3回ミス or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#10080a',
-    rod:      '#92400e',
-    ball:     '#fbbf24',
-    ballEdge: '#f59e0b',
-    zone:     '#22c55e',
-    zoneGlow: '#4ade80',
-    miss:     '#ef4444',
-    trail:    '#fcd34d',
-    ui:       '#78716c'
-  };
+  // ── パレット（クラシックアーケード） ──
+  var C = { bg:'#000011', a:'#0000ff', b:'#00ffff', c:'#ffffff', d:'#ffff00', e:'#ff0000', f:'#00ff00', g:'#ff00ff' };
 
-  var PIVOT_X = W / 2;
-  var PIVOT_Y = 180;
-  var ROD_LEN = 600;
+  var GAME_TITLE  = 'PENDULUM STRIKE';
+  var HOW_TO_PLAY = 'TAP AT THE CENTER';
+  var MAX_TIME = 20;
+  var NEEDED = 1;            // 修正2: 5 → ceil(5/10) = 1
+  var MAX_MISS = 3;
+  var PIVOT_X = W / 2, PIVOT_Y = 280, ROD_LEN = 1100; // 修正1: 縦長に振り子を伸ばす
+  var GRAVITY = 3.2;
+  var ZONE_HALF = 18 * Math.PI / 180;
 
-  var score = 0;
-  var needed = 5;
-  var misses = 0;
-  var maxMisses = 3;
-  var timeLeft = 20;
-  var done = false;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var angle = Math.PI / 4;    // initial angle (radians from vertical)
-  var angVel = 0;
-  var GRAVITY = 3.2;          // angular gravity constant
+  var score, misses, timeLeft, done, angle, angVel, feedback, feedbackOk;
 
-  var feedback = 0; // timer
-  var feedbackOk = false;
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var py = -r; py <= r; py += step)
+      for (var px = -r; px <= r; px += step)
+        if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
 
-  var trailAngles = [];
+  function initGame() {
+    score = 0; misses = 0; timeLeft = MAX_TIME; done = false;
+    angle = Math.PI / 4; angVel = 0; feedback = 0; feedbackOk = false;
+  }
 
-  // Zone: ±18 degrees around center (vertical)
-  var ZONE_HALF_DEG = 18 * Math.PI / 180;
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done) return;
     feedback = 0.4;
-    if (Math.abs(angle) <= ZONE_HALF_DEG) {
-      score++;
-      feedbackOk = true;
+    if (Math.abs(angle) <= ZONE_HALF) {
+      score++; feedbackOk = true;
       game.audio.play('se_tap', 1.0);
-      // speed up next swing
       angVel *= 0.85;
-      if (score >= needed) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() {
-          game.end.success(score * 20 + Math.ceil(timeLeft) * 4);
-        }, 500);
-      }
+      if (score >= NEEDED) finish(true);
     } else {
-      misses++;
-      feedbackOk = false;
+      misses++; feedbackOk = false;
       game.audio.play('se_failure', 0.5);
-      if (misses >= maxMisses && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      }
+      if (misses >= MAX_MISS) finish(false);
     }
   });
 
-  game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
+  function background() { game.draw.clear(C.bg); }
 
-    // pendulum physics: angular acceleration = -gravity * sin(angle)
-    var angAccel = -GRAVITY * Math.sin(angle);
-    angVel += angAccel * dt;
-    angVel *= 0.999; // tiny damping (keep swinging)
-    angle += angVel * dt;
-
-    trailAngles.unshift(angle);
-    if (trailAngles.length > 12) trailAngles.pop();
-
-    if (feedback > 0) feedback -= dt;
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // ceiling attachment
-    game.draw.rect(W / 2 - 40, 0, 80, PIVOT_Y + 20, '#1c1008');
-    game.draw.circle(PIVOT_X, PIVOT_Y, 24, '#6b3a0a');
-    game.draw.circle(PIVOT_X, PIVOT_Y, 14, '#92400e');
-
-    // timer bar
-    var ratio = Math.max(0, timeLeft / 20);
-    game.draw.rect(0, 0, W, 72, '#0d0608');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#92400e' : C.miss);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fcd34d', bold: true });
-
-    // score & misses
-    for (var s = 0; s < needed; s++) {
-      var sx = W / 2 + (s - (needed - 1) / 2) * 80;
-      game.draw.circle(sx, 128, 24, s < score ? C.ball : '#1c1008');
-      if (s < score) game.draw.circle(sx, 128, 14, '#ffffffaa');
-    }
-    for (var m = 0; m < maxMisses; m++) {
-      var mx = W / 2 + (m - (maxMisses - 1) / 2) * 64;
-      game.draw.circle(mx, 196, 18, m < misses ? C.miss : '#1c1008');
-    }
-
-    // target zone arc at bottom
+  function drawPendulum() {
     var arcY = PIVOT_Y + ROD_LEN + 40;
-    var arcR = 80;
-    // green zone
-    game.draw.rect(PIVOT_X - arcR, arcY - 24, arcR * 2, 48, C.zone, 0.3);
-    game.draw.rect(PIVOT_X - 8, arcY - 20, 16, 40, C.zone, 0.8);
-    // zone glow
-    var inZone = Math.abs(angle) <= ZONE_HALF_DEG;
-    if (inZone) {
-      game.draw.rect(PIVOT_X - arcR, arcY - 30, arcR * 2, 60, C.zoneGlow, 0.2 + 0.15 * Math.sin(game.time.elapsed * 12));
-    }
-
-    // trail (faint previous positions)
-    for (var t = trailAngles.length - 1; t >= 1; t--) {
-      var ta = trailAngles[t];
-      var tbx = PIVOT_X + Math.sin(ta) * ROD_LEN;
-      var tby = PIVOT_Y + Math.cos(ta) * ROD_LEN;
-      var alpha = (1 - t / trailAngles.length) * 0.35;
-      game.draw.circle(tbx, tby, 20 * (1 - t / trailAngles.length), C.trail, alpha);
-    }
-
-    // rod
+    var inZone = Math.abs(angle) <= ZONE_HALF;
+    // ゾーン
+    game.draw.rect(PIVOT_X - 90, arcY - 24, 180, 48, C.f, inZone ? 0.6 : 0.25);
+    game.draw.rect(PIVOT_X - 8, arcY - 40, 16, 80, C.f);
+    // 支点
+    game.draw.rect(snap(W / 2 - 40), 0, 80, PIVOT_Y, C.a);
+    drawPixelCircle(PIVOT_X, PIVOT_Y, 24, C.c, 1);
+    // ロッド + ボール
     var ballX = PIVOT_X + Math.sin(angle) * ROD_LEN;
     var ballY = PIVOT_Y + Math.cos(angle) * ROD_LEN;
-    game.draw.line(PIVOT_X, PIVOT_Y, ballX, ballY, C.rod, 10);
-    game.draw.line(PIVOT_X, PIVOT_Y, ballX, ballY, '#78350f', 4);
+    game.draw.line(PIVOT_X, PIVOT_Y, ballX, ballY, C.b, 8);
+    drawPixelCircle(ballX, ballY, 52, C.d, 1);
+    return { x: ballX, y: ballY };
+  }
 
-    // ball
-    game.draw.circle(ballX, ballY, 52, C.ballEdge);
-    game.draw.circle(ballX, ballY, 44, C.ball);
-    game.draw.circle(ballX - 14, ballY - 14, 16, '#fffbeb', 0.7);
-
-    // feedback
-    if (feedback > 0) {
-      var p = 1 - feedback / 0.4;
-      if (feedbackOk) {
-        game.draw.text('HIT!', W / 2, arcY - 120 - p * 80, { size: 80, color: C.zoneGlow, bold: true });
-        game.draw.circle(ballX, ballY, 52 + p * 60, C.zoneGlow, (1 - p) * 0.7);
-      } else {
-        game.draw.text('MISS', W / 2, arcY - 80, { size: 72, color: C.miss, bold: true });
+  game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      angle = Math.sin(game.time.elapsed * 1.6) * 0.6;
+      drawPendulum();
+      txt(GAME_TITLE,  W / 2, H * 0.16, 76, C.d);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 44, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.8, 72, C.g);
+        txt('TAP TO START', W / 2, H * 0.87, 52, C.c);
       }
+      txt('INSERT COIN', W / 2, H * 0.93, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.d : C.e);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.c);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
     }
 
-    // guide
-    game.draw.text('中央でタップ！', W / 2, H - 180, { size: 52, color: C.ui });
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      angVel += -GRAVITY * Math.sin(angle) * dt;
+      angVel *= 0.999;
+      angle += angVel * dt;
+      if (feedback > 0) feedback -= dt;
+    }
+
+    // ---- draw ----
+    background();
+    var ball = drawPendulum();
+    if (feedback > 0) {
+      if (feedbackOk) txt('HIT!', ball.x, ball.y - 100, 80, C.f);
+      else txt('MISS', W / 2, PIVOT_Y + ROD_LEN - 40, 72, C.e);
+    }
+    timeBar();
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 96, 48, C.c);
+    for (var m = 0; m < MAX_MISS; m++)
+      game.draw.rect(W / 2 + (m - 1) * 64 - 20, 150, 40, 40, m < misses ? C.e : '#330000');
+    txt(score + ' / ' + NEEDED, W / 2, H - 100, 56, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.4);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
