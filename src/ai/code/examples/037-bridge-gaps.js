@@ -86,9 +86,18 @@
     var psx = platLeft() + PLAYER_W / 2;
     if (phase === 'walking') psx = platRight() + playerWalkX;
     var bob = phase === 'walking' ? (Math.floor(game.time.elapsed * 12) % 2) * 8 : 0;
-    game.draw.rect(snap(psx - PLAYER_W / 2), snap(FLOOR_Y - PLAYER_H + bob), PLAYER_W, PLAYER_H, C.c);
-    game.draw.rect(snap(psx) - 18, snap(FLOOR_Y - PLAYER_H + bob) + 20, 14, 14, C.a);
-    game.draw.rect(snap(psx) + 6, snap(FLOOR_Y - PLAYER_H + bob) + 20, 14, 14, C.a);
+    drawRunner(psx, FLOOR_Y - PLAYER_H + bob, phase === 'walking');
+  }
+
+  // ── ドット絵スプライト: 渡り手（頭＋胴＋目＋足）。歩行中は足が動く ──
+  function drawRunner(x, topY, walking) {
+    var bx = snap(x), by = snap(topY), step = walking ? (Math.floor(game.time.elapsed * 12) % 2) : 0;
+    game.draw.rect(bx - 28, by, 56, 40, C.c);              // 頭
+    game.draw.rect(bx - 18, by + 12, 14, 14, C.a);         // 左目
+    game.draw.rect(bx + 4,  by + 12, 14, 14, C.a);         // 右目
+    game.draw.rect(bx - 24, by + 40, 48, 40, C.f);         // 胴
+    game.draw.rect(bx - 24, by + 80, 18, 16, C.d);         // 左足
+    game.draw.rect(bx + 6 + step * 4, by + 80, 18, 16, C.d); // 右足(歩行で動く)
   }
 
   game.onUpdate(function(dt) {

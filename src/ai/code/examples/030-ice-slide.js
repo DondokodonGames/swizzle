@@ -43,6 +43,18 @@
       for (var xx = -r; xx <= r; xx += step)
         if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
   }
+  // ── ドット絵スプライト: ペンギン（体＋お腹＋目＋くちばし＋足）──
+  function drawPenguin(x, y) {
+    var bx = snap(x), by = snap(y);
+    game.draw.rect(bx - 32, by - 40, 64, 80, '#001133');     // 体(黒っぽい青)
+    game.draw.rect(bx - 20, by - 16, 40, 48, C.c);           // お腹(白)
+    game.draw.rect(bx - 24, by - 40, 48, 16, '#001133');     // 頭
+    game.draw.rect(bx - 16, by - 32, 12, 12, C.c);           // 左目
+    game.draw.rect(bx + 4,  by - 32, 12, 12, C.c);           // 右目
+    game.draw.rect(bx - 6,  by - 20, 12, 8,  C.d);           // くちばし
+    game.draw.rect(bx - 24, by + 40, 16, 8,  C.d);           // 左足
+    game.draw.rect(bx + 8,  by + 40, 16, 8,  C.d);           // 右足
+  }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
@@ -114,7 +126,7 @@
       else game.draw.rect(cx, cy, CELL, CELL, C.b, 0.4);
       if (c === GOAL_COL && r === GOAL_ROW) { game.draw.rect(cx, cy, CELL, CELL, C.f, 0.6); txt('G', cx + CELL / 2, cy + CELL / 2, 64, C.g); }
     }
-    drawPixelCircle(playerX, playerY, CELL * 0.34, C.d, 1);
+    drawPenguin(playerX, playerY);
   }
 
   game.onUpdate(function(dt) {

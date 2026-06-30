@@ -26,17 +26,25 @@
   var sx, sy, svx, svy, score, misses, timeLeft, done, flashTimer, feedbackOk, cooldown;
 
   function snap(v) { return Math.round(v / 8) * 8; }
-  function drawPixelCircle(cx, cy, r, color, alpha) {
-    var step = 8; cx = snap(cx); cy = snap(cy);
-    for (var py = -r; py <= r; py += step)
-      for (var px = -r; px <= r; px += step)
-        if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
-  }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
   }
   function scanlines() { for (var sy2 = 0; sy2 < H; sy2 += 8) game.draw.rect(0, sy2, W, 2, '#000000', 0.18); }
+  // ── ドット絵スプライト: 被写体（羽ばたく虫）。羽はフレーム点滅 ──
+  function drawCritter(x, y, col) {
+    var bx = snap(x), by = snap(y), up = Math.floor(game.time.elapsed * 12) % 2 === 0;
+    game.draw.rect(bx - 24, by - 32, 48, 64, col);          // 胴体
+    game.draw.rect(bx - 16, by - 24, 32, 16, C.g, 0.5);     // 背ハイライト
+    game.draw.rect(bx - 12, by - 24, 12, 12, C.c);          // 目
+    game.draw.rect(bx + 2,  by - 24, 12, 12, C.c);
+    game.draw.rect(bx - 8,  by - 8,  16, 12, '#000000');    // 口
+    // 羽（上下に羽ばたく）
+    game.draw.rect(bx - 64, by - (up ? 28 : 8), 40, 24, C.b, 0.8);
+    game.draw.rect(bx + 24, by - (up ? 28 : 8), 40, 24, C.b, 0.8);
+    game.draw.rect(bx - 8,  by + 32, 6, 20, col);           // 触角/脚
+    game.draw.rect(bx + 2,  by + 32, 6, 20, col);
+  }
   function timeBar() {
     var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
     for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
@@ -93,7 +101,7 @@
     if (state === S.ATTRACT) {
       background();
       drawFrame();
-      drawPixelCircle(W / 2 + Math.cos(game.time.elapsed * 2) * 300, H / 2 + Math.sin(game.time.elapsed * 3) * 300, subR, C.f, 1);
+      drawCritter(W / 2 + Math.cos(game.time.elapsed * 2) * 300, H / 2 + Math.sin(game.time.elapsed * 3) * 300, C.f);
       txt(GAME_TITLE,  W / 2, H * 0.14, 80, C.d);
       txt(HOW_TO_PLAY, W / 2, H * 0.22, 42, C.b);
       if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
@@ -130,8 +138,7 @@
     // ---- draw ----
     background();
     drawFrame();
-    drawPixelCircle(sx, sy, subR, inFrame() ? C.f : C.e, 1);
-    drawPixelCircle(sx, sy, 16, C.c, 1);
+    drawCritter(sx, sy, inFrame() ? C.f : C.e);
     if (flashTimer > 0) {
       var fa = flashTimer / 0.3;
       game.draw.rect(0, 0, W, H, C.c, fa * 0.7);

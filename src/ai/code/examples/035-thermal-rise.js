@@ -71,12 +71,26 @@
     game.draw.rect(0, H - GROUND_H, W, GROUND_H, C.f, 0.5); txt('GROUND', W / 2, H - GROUND_H / 2, 40, C.g);
   }
 
+  // ── ドット絵スプライト: 熱気球（縞模様の球皮＋ロープ＋カゴ＋火炎）──
   function drawBalloon() {
-    var bx = W / 2;
-    if (isThrusting) game.draw.rect(snap(bx - 12), snap(balloonY + BALLOON_R + 48), 24, snap(60 + (Math.floor(game.time.elapsed * 16) % 2) * 24), C.f);
-    game.draw.rect(snap(bx - 44), snap(balloonY + BALLOON_R - 8), 88, 56, C.f);
-    drawPixelCircle(bx, balloonY, BALLOON_R, C.a, 1);
-    drawPixelCircle(bx - 24, balloonY - 28, 16, C.g, 0.6);
+    var bx = snap(W / 2), by = snap(balloonY);
+    // 火炎（噴射時、フレーム点滅）
+    if (isThrusting) game.draw.rect(bx - 12, snap(balloonY + BALLOON_R + 48), 24, snap(48 + (Math.floor(game.time.elapsed * 16) % 2) * 24), C.f);
+    // 球皮
+    drawPixelCircle(bx, by, BALLOON_R, C.a, 1);
+    // 縦縞（交互色）
+    for (var sx = -BALLOON_R; sx < BALLOON_R; sx += 32) {
+      var col = ((sx / 32) % 2 === 0) ? C.c : C.d;
+      var hh = Math.floor(Math.sqrt(Math.max(0, BALLOON_R * BALLOON_R - sx * sx)));
+      game.draw.rect(bx + sx, by - hh, 16, hh * 2, col, 0.5);
+    }
+    game.draw.rect(bx - 24, by - 32, 16, 16, C.g, 0.6);      // ハイライト
+    // ロープ
+    game.draw.line(bx - 32, by + BALLOON_R, bx - 36, balloonY + BALLOON_R + 48, C.g, 3);
+    game.draw.line(bx + 32, by + BALLOON_R, bx + 36, balloonY + BALLOON_R + 48, C.g, 3);
+    // カゴ
+    game.draw.rect(bx - 44, snap(balloonY + BALLOON_R + 40), 88, 56, C.f);
+    game.draw.rect(bx - 44, snap(balloonY + BALLOON_R + 40), 88, 12, C.c, 0.4);
   }
 
   game.onUpdate(function(dt) {

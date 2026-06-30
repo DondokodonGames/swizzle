@@ -38,6 +38,15 @@
     var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
     for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
+  // ── ドット絵スプライト: 隕石（岩塊＋クレーター＋ハイライト）──
+  function drawMeteor(x, y, r) {
+    var bx = snap(x), by = snap(y);
+    game.draw.rect(bx - r, by - r + 8, r * 2, r * 2 - 16, C.f);   // 岩塊
+    game.draw.rect(bx - r + 8, by - r, r * 2 - 16, r * 2, C.f);
+    game.draw.rect(bx - 12, by - 12, 16, 16, C.d, 0.6);          // クレーター
+    game.draw.rect(bx + 8, by + 4, 12, 12, C.d, 0.5);
+    game.draw.rect(bx - r + 8, by - r + 8, 12, 12, C.g, 0.4);    // ハイライト
+  }
 
   function spawnMeteor() {
     var ang = Math.random() * Math.PI * 2, dist = Math.max(W, H);
@@ -88,7 +97,7 @@
   }
 
   function drawScene() {
-    for (var mi = 0; mi < meteors.length; mi++) drawPixelCircle(meteors[mi].x, meteors[mi].y, meteors[mi].r, C.f, 1);
+    for (var mi = 0; mi < meteors.length; mi++) drawMeteor(meteors[mi].x, meteors[mi].y, meteors[mi].r);
     // 盾
     var shX = cx + Math.cos(shieldAngle) * SHIELD_R, shY = cy + Math.sin(shieldAngle) * SHIELD_R;
     var perp = shieldAngle + Math.PI / 2, half = SHIELD_LEN / 2;

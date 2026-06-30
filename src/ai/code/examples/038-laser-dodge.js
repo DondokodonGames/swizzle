@@ -23,12 +23,6 @@
   var playerCol, lasers, timeLeft, done, elapsed;
 
   function snap(v) { return Math.round(v / 8) * 8; }
-  function drawPixelCircle(px, py, r, color, alpha) {
-    var step = 8; px = snap(px); py = snap(py);
-    for (var yy = -r; yy <= r; yy += step)
-      for (var xx = -r; xx <= r; xx += step)
-        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
-  }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
@@ -37,6 +31,15 @@
   function timeBar() {
     var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
     for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
+  // ── ドット絵スプライト: 自機（小型機＋コックピット＋噴射）──
+  function drawShip(x, y) {
+    var bx = snap(x), by = snap(y), on = Math.floor(game.time.elapsed * 12) % 2 === 0;
+    game.draw.rect(bx - 8,  by - 40, 16, 56, C.b);   // 機首〜胴
+    game.draw.rect(bx - 40, by - 8,  80, 24, C.b);   // 主翼
+    game.draw.rect(bx - 16, by - 24, 32, 16, C.c);   // コックピット
+    game.draw.rect(bx - 8,  by - 24, 16, 8,  C.g);   // 窓ハイライト
+    game.draw.rect(bx - 8,  by + 16, 16, 16, on ? '#ff8800' : C.d); // 噴射
   }
 
   function spawnLaser() { lasers.push({ col: Math.floor(Math.random() * COL_COUNT), warnTimer: WARNING_TIME, activeTimer: 0, st: 'warn' }); }
@@ -87,7 +90,7 @@
     if (state === S.ATTRACT) {
       if (!lasers) initGame();
       background();
-      drawPixelCircle(1 * COL_W + COL_W / 2, PLAYER_Y, PLAYER_R, C.b, 1);
+      drawShip(1 * COL_W + COL_W / 2, PLAYER_Y);
       txt(GAME_TITLE,  W / 2, H * 0.18, 80, C.d);
       txt(HOW_TO_PLAY, W / 2, H * 0.26, 40, C.b);
       if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
@@ -123,7 +126,7 @@
     // ---- draw ----
     background();
     drawLasers();
-    drawPixelCircle(playerCol * COL_W + COL_W / 2, PLAYER_Y, PLAYER_R, C.b, 1);
+    drawShip(playerCol * COL_W + COL_W / 2, PLAYER_Y);
     timeBar();
     txt('SURVIVE ' + Math.ceil(timeLeft) + 's', W / 2, 96, 48, C.c);
     txt('SWIPE TO DODGE!', W / 2, H - 120, 48, C.b);
