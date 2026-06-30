@@ -79,16 +79,39 @@
     }
   });
 
-  function background() { game.draw.clear(C.bg); }
+  // 世界観: リズムマシン/ドラムパッド機材。光ったパッドの順をなぞる。
+  function background() {
+    game.draw.clear('#0a0010');
+    // 機材パネル
+    var px = PADS_X - 40, py = PADS_Y - 40, pw = PAD_SIZE * 2 + PAD_GAP + 80, ph = PAD_SIZE * 2 + PAD_GAP + 80;
+    game.draw.rect(px, py, pw, ph, '#1a0a2a');
+    game.draw.rect(px + 12, py + 12, pw - 24, ph - 24, '#0a0018');
+    // 機材の四隅ネジ
+    game.draw.rect(px + 24, py + 24, 16, 16, C.d); game.draw.rect(px + pw - 40, py + 24, 16, 16, C.d);
+    game.draw.rect(px + 24, py + ph - 40, 16, 16, C.d); game.draw.rect(px + pw - 40, py + ph - 40, 16, 16, C.d);
+    // VUメーター風の装飾ライン（上部）
+    for (var v = 0; v < 8; v++) {
+      var lit = Math.floor(game.time.elapsed * 6 + v) % 8 > v;
+      game.draw.rect(px + 40 + v * 36, py - 28, 28, 16, lit ? C.b : '#003322');
+    }
+  }
 
   function drawPads() {
     for (var p = 0; p < 4; p++) {
       var pad = PADS[p], isActive = p === activePad;
-      game.draw.rect(pad.x, pad.y, PAD_SIZE, PAD_SIZE, isActive ? PAD_COLORS[p] : '#0a0018');
-      game.draw.rect(pad.x, pad.y, PAD_SIZE, PAD_SIZE, PAD_COLORS[p], isActive ? 0 : 0.0);
-      game.draw.rect(pad.x, pad.y, PAD_SIZE, 8, PAD_COLORS[p], 0.6);
-      game.draw.rect(pad.x, pad.y, 8, PAD_SIZE, PAD_COLORS[p], 0.6);
-      if (isActive) game.draw.rect(pad.x + 16, pad.y + 16, PAD_SIZE - 32, PAD_SIZE / 3, C.g, 0.3);
+      // パッド台座（凹み）
+      game.draw.rect(pad.x - 8, pad.y - 8, PAD_SIZE + 16, PAD_SIZE + 16, '#000000');
+      game.draw.rect(pad.x, pad.y, PAD_SIZE, PAD_SIZE, isActive ? PAD_COLORS[p] : '#11061f');
+      // 発光縁
+      game.draw.rect(pad.x, pad.y, PAD_SIZE, 10, PAD_COLORS[p], isActive ? 1 : 0.5);
+      game.draw.rect(pad.x, pad.y + PAD_SIZE - 10, PAD_SIZE, 10, PAD_COLORS[p], isActive ? 1 : 0.5);
+      game.draw.rect(pad.x, pad.y, 10, PAD_SIZE, PAD_COLORS[p], isActive ? 1 : 0.5);
+      game.draw.rect(pad.x + PAD_SIZE - 10, pad.y, 10, PAD_SIZE, PAD_COLORS[p], isActive ? 1 : 0.5);
+      if (isActive) {
+        game.draw.rect(pad.x + 16, pad.y + 16, PAD_SIZE - 32, PAD_SIZE / 3, C.g, 0.3);  // 押下ハイライト
+        game.draw.rect(pad.x + PAD_SIZE / 2 - 24, pad.y + PAD_SIZE / 2 - 24, 48, 48, C.g, 0.5); // 中央光
+      }
+      txt('' + (p + 1), pad.x + PAD_SIZE - 36, pad.y + 36, 32, PAD_COLORS[p]); // パッド番号
     }
   }
 
