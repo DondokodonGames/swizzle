@@ -74,7 +74,11 @@
     game.draw.rect(snap(target.x), snap(TARGET_Y), target.w, 8, C.g, 0.6);
     if (ball.alive) {
       var stretch = 1 + Math.abs(ball.vy) / 3000, bH = snap(BALL_R * 2 * stretch);
-      game.draw.rect(snap(ball.x - BALL_R), snap(ball.y - BALL_R * stretch), BALL_R * 2, bH, C.f);
+      var bx = snap(ball.x - BALL_R), by = snap(ball.y - BALL_R * stretch);
+      game.draw.rect(bx, by, BALL_R * 2, bH, C.f);                    // 本体
+      game.draw.rect(bx + 12, by + 12, BALL_R - 8, 16, C.g, 0.5);     // ツヤ
+      game.draw.rect(bx + 24, snap(ball.y) - 8, 14, 14, '#000000');   // 左目
+      game.draw.rect(bx + BALL_R + 8, snap(ball.y) - 8, 14, 14, '#000000'); // 右目
     }
     for (var pp = 0; pp < particles.length; pp++) {
       var par = particles[pp];

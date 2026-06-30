@@ -27,6 +27,15 @@
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
   }
   function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  // ── ドット絵スプライト: 分銅（積み重ねた台形ブロック）──
+  function drawWeight(x, y, col) {
+    var bx = snap(x), by = snap(y);
+    game.draw.rect(bx - 48, by - 24, 96, 24, col);   // 下段(広)
+    game.draw.rect(bx - 36, by - 48, 72, 24, col);   // 中段
+    game.draw.rect(bx - 24, by - 68, 48, 20, col);   // 上段
+    game.draw.rect(bx - 12, by - 84, 24, 16, '#888888'); // 取っ手
+    game.draw.rect(bx - 36, by - 44, 72, 6, C.g, 0.4);   // ハイライト
+  }
   function timeBar() {
     var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
     for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
@@ -87,6 +96,9 @@
     var rHit = hitFeedback > 0 && hitSide === 1;
     game.draw.rect(snap(lx - pW / 2), snap(ly), pW, 32, lHit ? C.g : C.e);
     game.draw.rect(snap(rx - pW / 2), snap(ry), pW, 32, rHit ? C.g : C.f);
+    // ── ドット絵スプライト: 皿に載る分銅（台形状＋「重」）──
+    drawWeight(lx, ly - 8, C.e);
+    drawWeight(rx, ry - 8, C.f);
 
     // 角度メーター
     var indW = 600, indY = H - 320;

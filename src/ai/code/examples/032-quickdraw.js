@@ -72,11 +72,16 @@
     // 砂漠の地平
     game.draw.rect(0, H * 0.62, W, H * 0.38, C.d, 0.4);
     drawSun();
-    // ガンマンのシルエット
-    var px = W * 0.5, py = H * 0.62;
-    game.draw.rect(snap(px - 32), snap(py - 320), 64, 200, '#000022');
-    game.draw.rect(snap(px - 70), snap(py - 410), 140, 90, '#000022');
-    game.draw.rect(snap(px + 32), snap(py - 250), 90, 18, '#000022');
+    // ── ドット絵スプライト: カウボーイのシルエット ──
+    var px = snap(W * 0.5), py = snap(H * 0.62), sil = '#000033';
+    game.draw.rect(px - 16, py - 120, 16, 120, sil);   // 左脚
+    game.draw.rect(px + 4,  py - 120, 16, 120, sil);   // 右脚
+    game.draw.rect(px - 36, py - 280, 72, 168, sil);   // 胴
+    game.draw.rect(px + 36, py - 250, 96, 20, sil);    // 銃を構えた腕
+    game.draw.rect(px - 28, py - 360, 56, 80, sil);    // 頭
+    game.draw.rect(px - 56, py - 372, 112, 20, sil);   // ハットのつば
+    game.draw.rect(px - 32, py - 412, 64, 44, sil);    // ハットの山
+    game.draw.rect(px - 56, py - 366, 112, 6, C.f, 0.3); // つばハイライト
   }
   function drawSun() { game.draw.rect(snap(W * 0.7 - 110), snap(H * 0.34), 220, 220, C.f, 0.8); }
 

@@ -25,11 +25,21 @@
   var t, score, misses, timeLeft, done, feedbackTimer, feedbackOk;
 
   function snap(v) { return Math.round(v / 8) * 8; }
-  function drawPixelCircle(cx, cy, r, color, alpha) {
-    var step = 8; cx = snap(cx); cy = snap(cy);
-    for (var py = -r; py <= r; py += step)
-      for (var px = -r; px <= r; px += step)
-        if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
+  // ── ドット絵スプライト: ハート（鼓動でサイズが変わる）──
+  var HEART = [
+    [0,1,1,0,1,1,0],
+    [1,1,1,1,1,1,1],
+    [1,1,1,1,1,1,1],
+    [0,1,1,1,1,1,0],
+    [0,0,1,1,1,0,0],
+    [0,0,0,1,0,0,0]
+  ];
+  function drawHeart(cx, cy, b, color) {
+    b = snap(b); cx = snap(cx); cy = snap(cy);
+    for (var r = 0; r < HEART.length; r++)
+      for (var c = 0; c < 7; c++)
+        if (HEART[r][c]) game.draw.rect(cx + (c - 3) * b, cy + (r - 2) * b, b, b, color);
+    game.draw.rect(cx - 2 * b, cy - b, b, b, C.c, 0.6); // ハイライト
   }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
@@ -86,7 +96,7 @@
     if (state === S.ATTRACT) {
       background();
       var demoPulse = getPulseValue((game.time.elapsed / PERIOD) % 1);
-      drawPixelCircle(W / 2, CY, 180 + demoPulse * 100, C.a, 0.9);
+      drawHeart(W / 2, CY, (180 + demoPulse * 100) / 3.5, C.a);
       txt(GAME_TITLE,  W / 2, H * 0.16, 84, C.c);
       txt(HOW_TO_PLAY, W / 2, H * 0.26, 46, C.e);
       if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
@@ -118,9 +128,7 @@
     background();
     var pv = getPulseValue(t);
     var pulseR = 180 + pv * 120;
-    drawPixelCircle(W / 2, CY, pulseR + 32, C.a, 0.2 + pv * 0.2);
-    drawPixelCircle(W / 2, CY, pulseR, C.a, 0.95);
-    drawPixelCircle(W / 2, CY, pulseR * 0.4, C.c, 0.7);
+    drawHeart(W / 2, CY, pulseR / 3.5, C.a);
 
     if (feedbackTimer > 0) {
       if (feedbackOk) txt('♥ GOOD', W / 2, CY - 16, 96, C.b);

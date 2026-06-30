@@ -85,11 +85,21 @@
     // 支点
     game.draw.rect(snap(W / 2 - 40), 0, 80, PIVOT_Y, C.a);
     drawPixelCircle(PIVOT_X, PIVOT_Y, 24, C.c, 1);
-    // ロッド + ボール
+    // 鎖（ピボット→鉄球を結ぶリンク）
     var ballX = PIVOT_X + Math.sin(angle) * ROD_LEN;
     var ballY = PIVOT_Y + Math.cos(angle) * ROD_LEN;
-    game.draw.line(PIVOT_X, PIVOT_Y, ballX, ballY, C.b, 8);
-    drawPixelCircle(ballX, ballY, 52, C.d, 1);
+    for (var li = 1; li < 12; li++) {
+      var lt = li / 12;
+      game.draw.rect(snap(PIVOT_X + (ballX - PIVOT_X) * lt) - 8, snap(PIVOT_Y + (ballY - PIVOT_Y) * lt) - 8, 16, 16, li % 2 ? C.c : C.b);
+    }
+    // 鉄球（球体＋ボルト＋ハイライト）
+    drawPixelCircle(ballX, ballY, 56, C.d, 1);
+    drawPixelCircle(ballX, ballY, 56, C.f, 0.0);
+    var bx = snap(ballX), by = snap(ballY);
+    game.draw.rect(bx - 24, by - 24, 16, 16, C.g, 0.7);   // ハイライト
+    game.draw.rect(bx - 8,  by - 56, 16, 16, '#888888');  // 上ボルト(鎖接続)
+    game.draw.rect(bx + 24, by + 8,  12, 12, '#aa8800');  // ボルト
+    game.draw.rect(bx - 32, by + 16, 12, 12, '#aa8800');
     return { x: ballX, y: ballY };
   }
 

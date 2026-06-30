@@ -29,12 +29,6 @@
   var notes, spawnTimer, score, misses, timeLeft, done, feedback, pendingSwipe;
 
   function snap(v) { return Math.round(v / 8) * 8; }
-  function drawPixelCircle(px, py, r, color, alpha) {
-    var step = 8; px = snap(px); py = snap(py);
-    for (var yy = -r; yy <= r; yy += step)
-      for (var xx = -r; xx <= r; xx += step)
-        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
-  }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
@@ -43,6 +37,15 @@
   function timeBar() {
     var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
     for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
+  // ── ドット絵スプライト: 音符（符頭＋符幹＋旗）──
+  function drawNote(x, y, col) {
+    var bx = snap(x), by = snap(y);
+    game.draw.rect(bx - NOTE_R, by - 24, NOTE_R * 2, NOTE_R * 1.4, col);  // 符頭(丸み付き矩形)
+    game.draw.rect(bx - NOTE_R + 8, by - 16, NOTE_R * 2 - 16, NOTE_R, '#000000', 0.0);
+    game.draw.rect(bx + NOTE_R - 12, by - NOTE_R - 32, 16, NOTE_R + 40, col);  // 符幹
+    game.draw.rect(bx + NOTE_R - 12, by - NOTE_R - 32, 32, 20, col);           // 旗
+    game.draw.rect(bx - NOTE_R + 8, by - 16, 16, 12, C.g, 0.5);                // ハイライト
   }
 
   function laneY(lane) { return TRACK_Y + lane * LANE_H + LANE_H / 2; }
@@ -79,8 +82,8 @@
     game.draw.rect(snap(HIT_ZONE_X) - 4, TRACK_Y, 8, TOTAL_TRACK_H, C.d, 0.8);
     for (var n = 0; n < notes.length; n++) {
       var note = notes[n];
-      drawPixelCircle(note.x, laneY(note.lane), NOTE_R, NOTE_COLORS[note.dir], 1);
-      txt(ARROWS[note.dir], note.x, laneY(note.lane), 72, C.g);
+      drawNote(note.x, laneY(note.lane), NOTE_COLORS[note.dir]);
+      txt(ARROWS[note.dir], note.x, laneY(note.lane), 64, C.g);  // スワイプ方向
     }
     for (var fb = 0; fb < feedback.length; fb++) {
       var f2 = feedback[fb];
