@@ -28,6 +28,7 @@
 
   var round, timeLeft, done, phase, flashTimer, feedbackTimer, feedbackOk, targetCells, tappedCells, wrongCell;
 
+  function snap(v) { return Math.round(v / 8) * 8; }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
@@ -96,7 +97,21 @@
     }
   });
 
-  function background() { game.draw.clear(C.bg); }
+  // 世界観: ハッキング端末。点灯したメモリセルの並びを記憶して再入力する。
+  function background() {
+    game.draw.clear('#0a0014');
+    // 端末筐体（グリッドを囲む）
+    var fx = GRID_X - 40, fy = GRID_Y - 56, fw = GRID_W + 80, fh = GRID_H + 112;
+    game.draw.rect(fx, fy, fw, fh, '#1a0a2a');
+    game.draw.rect(fx + 12, fy + 12, fw - 24, fh - 24, '#05000f');
+    txt('MEMORY BANK', W / 2, fy + 32, 36, C.b);
+    // 流れるデータ列（装飾）
+    for (var i = 0; i < 8; i++) {
+      var yy = (game.time.elapsed * 90 + i * 240) % H;
+      game.draw.rect(40, snap(yy), 8, 48, C.b, 0.18);
+      game.draw.rect(W - 48, snap((yy + 360) % H), 8, 48, C.a, 0.18);
+    }
+  }
 
   function drawGrid() {
     var isFlashing = phase === 'flash' && flashTimer > 0;

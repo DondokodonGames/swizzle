@@ -23,6 +23,7 @@
 
   var values, target, selectedChannel, score, misses, timeLeft, done, feedback, feedbackOk;
 
+  function snap(v) { return Math.round(v / 8) * 8; }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
@@ -75,7 +76,21 @@
     }
   });
 
-  function background() { game.draw.clear(C.bg); }
+  // 世界観: 絵の具調合ラボ。RGBを混ぜて目標色を再現する。
+  function background() {
+    game.draw.clear('#0a0a14');
+    // 作業台
+    game.draw.rect(0, H * 0.22, W, H * 0.5, '#14141f');
+    game.draw.rect(0, H * 0.22, W, 8, C.g, 0.2);
+    // 棚のビーカー（装飾）
+    var jars = [C.a, C.b, C.e, C.f, C.c];
+    for (var j = 0; j < jars.length; j++) {
+      var jx = 60 + j * ((W - 120) / 5);
+      game.draw.rect(snap(jx), 120, 80, 80, '#000000');
+      game.draw.rect(snap(jx) + 8, 152, 64, 40, jars[j], 0.7);  // 中身
+    }
+    txt('MIXING LAB', W / 2, H * 0.2, 36, C.c);
+  }
 
   function drawPanels() {
     game.draw.rect(W * 0.1, H * 0.26, W * 0.34, W * 0.34, rgb(target[0], target[1], target[2]));

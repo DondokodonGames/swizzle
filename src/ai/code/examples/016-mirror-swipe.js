@@ -27,6 +27,7 @@
 
   var currentDir, score, misses, timeLeft, done, feedback, feedbackOk, waiting;
 
+  function snap(v) { return Math.round(v / 8) * 8; }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
@@ -70,9 +71,20 @@
     if (state === S.RESULT)  { state = S.ATTRACT; return; }
   });
 
+  // 世界観: 左右反転した鏡の異次元。鏡像に惑わされず逆方向へスワイプする。
   function background() {
-    game.draw.clear(C.bg);
-    game.draw.rect(W / 2 - 3, H * 0.2, 6, H * 0.6, C.d, 0.6);
+    game.draw.clear('#0a0020');
+    // 対称の床グリッド（鏡張りの空間）
+    for (var gy = 200; gy < H - 200; gy += 96) game.draw.rect(0, gy, W, 2, C.d, 0.2);
+    for (var gx = 0; gx <= W; gx += W / 6) game.draw.rect(snap(gx) - 1, 200, 2, H - 400, C.d, 0.15);
+    // 中央の鏡面（縦の割れ目）
+    game.draw.rect(W / 2 - 6, H * 0.18, 12, H * 0.64, C.e, 0.5);
+    game.draw.rect(W / 2 - 2, H * 0.18, 4, H * 0.64, C.g, 0.4);
+    // きらめき
+    for (var s = 0; s < 5; s++) {
+      var sy = (game.time.elapsed * 120 + s * 360) % (H * 0.64) + H * 0.18;
+      game.draw.rect(W / 2 - 10, snap(sy), 20, 16, C.g, 0.6);
+    }
   }
 
   game.onUpdate(function(dt) {

@@ -24,6 +24,7 @@
 
   var positions, tileState, nextToTap, timeLeft, done, wrongFlash;
 
+  function snap(v) { return Math.round(v / 8) * 8; }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
@@ -79,7 +80,19 @@
     }
   });
 
-  function background() { game.draw.clear(C.bg); }
+  // 世界観: 管制室のキーパッド。1→2→3 と順に押して認証する。
+  function background() {
+    game.draw.clear('#001018');
+    var fx = GRID_X - 40, fy = GRID_Y - 120, fw = GRID_W + 80, fh = GRID_H + 200;
+    game.draw.rect(fx, fy, fw, fh, '#0a1a28');           // 機器パネル
+    game.draw.rect(fx + 12, fy + 12, fw - 24, fh - 24, '#000810');
+    // 認証ステータス液晶
+    game.draw.rect(snap(W / 2 - 200), snap(fy + 36), 400, 64, '#000000');
+    txt('AUTH SEQUENCE', W / 2, fy + 68, 36, C.b);
+    // 四隅ネジ
+    game.draw.rect(fx + 24, fy + 24, 16, 16, C.d); game.draw.rect(fx + fw - 40, fy + 24, 16, 16, C.d);
+    game.draw.rect(fx + 24, fy + fh - 40, 16, 16, C.d); game.draw.rect(fx + fw - 40, fy + fh - 40, 16, 16, C.d);
+  }
 
   function drawTiles() {
     for (var n = 1; n <= TOTAL; n++) {
