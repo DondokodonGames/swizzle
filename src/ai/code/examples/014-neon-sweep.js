@@ -1,173 +1,142 @@
 // 014-neon-sweep.js
 // ネオンスウィープ — 光の帯がゾーンを通る瞬間を狙う爽快感
 // 操作: 光の帯がターゲットゾーンにいる間にタップ
-// 成功: 5回ヒット  失敗: 3回ミス or 18秒
+// 成功: 1回ヒット  失敗: 3回ミス or 18秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#040415',
-    track:    '#0a0a2e',
-    zone:     '#16a34a',
-    zoneHi:   '#4ade80',
-    beam:     '#e879f9',
-    beamHi:   '#f0abfc',
-    hit:      '#22c55e',
-    miss:     '#ef4444',
-    ui:       '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var TRACK_Y = H * 0.5;
-  var TRACK_H = 180;
-  var TRACK_W = W - 80;
-  var TRACK_X = 40;
+  var GAME_TITLE  = 'NEON SWEEP';
+  var HOW_TO_PLAY = 'TAP WHEN BEAM IS IN ZONE';
+  var MAX_TIME = 18;
+  var NEEDED = 1;            // 修正2: 5 → 1
+  var MAX_MISS = 3;
+  // 修正1: 縦トラック（全高をスイープ）
+  var TRACK_X = W / 2 - 200, TRACK_W = 400, TOP = 240, BOTTOM = H - 240;
+  var ZONE_Y = H / 2, ZONE_HALF = (BOTTOM - TOP) * 0.07;
+  var BEAM_H = 48, BEAM_SPEED = 700;
 
-  // Zone: centered, 12% of track width
-  var ZONE_HALF = TRACK_W * 0.06;
-  var ZONE_X = W / 2;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Beam
-  var BEAM_W = 40;
-  var beamX = TRACK_X;
-  var beamDir = 1;
-  var BEAM_SPEED = 560; // px/sec
+  var score, misses, timeLeft, done, beamY, beamDir, feedback, feedbackOk;
 
-  var score = 0;
-  var needed = 5;
-  var misses = 0;
-  var maxMisses = 3;
-  var timeLeft = 18;
-  var done = false;
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
 
-  var feedback = 0;
-  var feedbackOk = false;
-  var hitStreak = 0;
+  function getSpeed() { return BEAM_SPEED + score * 60; }
 
-  // Speed increases with streak and score
-  function getSpeed() {
-    return BEAM_SPEED + hitStreak * 30 + score * 15;
+  function initGame() {
+    score = 0; misses = 0; timeLeft = MAX_TIME; done = false;
+    beamY = TOP; beamDir = 1; feedback = 0; feedbackOk = false;
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done) return;
     feedback = 0.35;
-    var inZone = beamX > ZONE_X - ZONE_HALF - BEAM_W / 2 && beamX < ZONE_X + ZONE_HALF + BEAM_W / 2;
+    var inZone = beamY + BEAM_H / 2 > ZONE_Y - ZONE_HALF && beamY < ZONE_Y + ZONE_HALF;
     if (inZone) {
-      score++;
-      hitStreak++;
-      feedbackOk = true;
-      game.audio.play('se_tap', Math.min(1, 0.7 + hitStreak * 0.05));
-      if (score >= needed) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() {
-          game.end.success(score * 20 + hitStreak * 10 + Math.ceil(timeLeft) * 4);
-        }, 400);
-      }
+      score++; feedbackOk = true;
+      game.audio.play('se_tap', 1.0);
+      if (score >= NEEDED) finish(true);
     } else {
-      misses++;
-      hitStreak = 0;
-      feedbackOk = false;
+      misses++; feedbackOk = false;
       game.audio.play('se_failure', 0.5);
-      if (misses >= maxMisses && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 400);
-      }
+      if (misses >= MAX_MISS) finish(false);
     }
   });
 
+  function background() { game.draw.clear(C.bg); }
+
+  function drawTrack() {
+    game.draw.rect(snap(TRACK_X), TOP, TRACK_W, BOTTOM - TOP, '#0a0018');
+    // ゾーン
+    var inZone = beamY + BEAM_H / 2 > ZONE_Y - ZONE_HALF && beamY < ZONE_Y + ZONE_HALF;
+    game.draw.rect(snap(TRACK_X), snap(ZONE_Y - ZONE_HALF), TRACK_W, snap(ZONE_HALF * 2), C.b, inZone ? 0.5 : 0.25);
+    game.draw.rect(snap(TRACK_X), snap(ZONE_Y - ZONE_HALF), TRACK_W, 8, C.b);
+    game.draw.rect(snap(TRACK_X), snap(ZONE_Y + ZONE_HALF), TRACK_W, 8, C.b);
+    // ビーム
+    game.draw.rect(snap(TRACK_X), snap(beamY), TRACK_W, BEAM_H, C.a);
+    game.draw.rect(snap(TRACK_X), snap(beamY) + 16, TRACK_W, 12, C.g, 0.6);
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      beamY = TOP + (Math.sin(game.time.elapsed * 1.5) * 0.5 + 0.5) * (BOTTOM - TOP - BEAM_H);
+      drawTrack();
+      txt(GAME_TITLE,  W / 2, H * 0.14, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.21, 40, C.e);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.82, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.89, 52, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.95, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      beamY += beamDir * getSpeed() * dt;
+      if (beamY >= BOTTOM - BEAM_H) { beamY = BOTTOM - BEAM_H; beamDir = -1; }
+      if (beamY <= TOP) { beamY = TOP; beamDir = 1; }
+      if (feedback > 0) feedback -= dt;
     }
-
-    // Move beam
-    beamX += beamDir * getSpeed() * dt;
-    if (beamX >= TRACK_X + TRACK_W - BEAM_W) {
-      beamX = TRACK_X + TRACK_W - BEAM_W;
-      beamDir = -1;
-    }
-    if (beamX <= TRACK_X) {
-      beamX = TRACK_X;
-      beamDir = 1;
-    }
-
-    if (feedback > 0) feedback -= dt;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // background lines
-    for (var i = 0; i < 8; i++) {
-      var lineY = (game.time.elapsed * 40 + i * (H / 8)) % H;
-      game.draw.rect(0, lineY, W, 1, '#0a0a3a', 0.5);
-    }
-
-    // timer bar
-    var ratio = Math.max(0, timeLeft / 18);
-    game.draw.rect(0, 0, W, 72, '#0a0a20');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#7c3aed' : C.miss);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // score & misses
-    for (var s = 0; s < needed; s++) {
-      var sx = W / 2 + (s - (needed - 1) / 2) * 80;
-      game.draw.circle(sx, 128, 24, s < score ? C.hit : '#0a0a2e');
-      if (s < score) game.draw.circle(sx, 128, 14, '#ffffff80');
-    }
-    for (var m = 0; m < maxMisses; m++) {
-      var mx = W / 2 + (m - (maxMisses - 1) / 2) * 64;
-      game.draw.circle(mx, 196, 18, m < misses ? C.miss : '#0a0a2e');
-    }
-
-    // streak display
-    if (hitStreak >= 2) {
-      game.draw.text('×' + hitStreak + ' コンボ！', W / 2, 260, { size: 52, color: '#f0abfc', bold: true });
-    }
-
-    // track
-    game.draw.rect(TRACK_X - 8, TRACK_Y - TRACK_H / 2 - 8, TRACK_W + 16, TRACK_H + 16, '#07073a');
-    game.draw.rect(TRACK_X, TRACK_Y - TRACK_H / 2, TRACK_W, TRACK_H, C.track);
-
-    // zone
-    var zoneLeft = ZONE_X - ZONE_HALF;
-    var inZoneNow = beamX > zoneLeft - BEAM_W / 2 && beamX < ZONE_X + ZONE_HALF + BEAM_W / 2;
-    var zoneAlpha = inZoneNow ? 0.45 : 0.2;
-    game.draw.rect(zoneLeft, TRACK_Y - TRACK_H / 2, ZONE_HALF * 2, TRACK_H, C.zone, zoneAlpha);
-    game.draw.rect(zoneLeft - 4, TRACK_Y - TRACK_H / 2 - 20, 8, TRACK_H + 40, C.zoneHi, 0.8);
-    game.draw.rect(ZONE_X + ZONE_HALF - 4, TRACK_Y - TRACK_H / 2 - 20, 8, TRACK_H + 40, C.zoneHi, 0.8);
-    game.draw.text('⬇', ZONE_X, TRACK_Y - TRACK_H / 2 - 56, { size: 48, color: C.zoneHi, bold: true });
-
-    // beam
-    var beamGlow = 0.3 + 0.15 * Math.sin(game.time.elapsed * 12);
-    game.draw.rect(beamX - 8, TRACK_Y - TRACK_H / 2 - 8, BEAM_W + 16, TRACK_H + 16, C.beamHi, beamGlow);
-    game.draw.rect(beamX, TRACK_Y - TRACK_H / 2, BEAM_W, TRACK_H, C.beam);
-    game.draw.rect(beamX + BEAM_W * 0.25, TRACK_Y - TRACK_H / 2, BEAM_W * 0.35, TRACK_H, C.beamHi, 0.7);
-
-    // feedback
+    background();
+    drawTrack();
     if (feedback > 0) {
-      var p = 1 - feedback / 0.35;
-      if (feedbackOk) {
-        game.draw.text('HIT!', ZONE_X, TRACK_Y - 180 - p * 60, { size: 80, color: C.hit, bold: true });
-        game.draw.rect(ZONE_X - ZONE_HALF, TRACK_Y - TRACK_H / 2, ZONE_HALF * 2, TRACK_H, C.hit, (1 - p) * 0.5);
-      } else {
-        game.draw.text('MISS', beamX + BEAM_W / 2, TRACK_Y - 180, { size: 72, color: C.miss, bold: true });
-      }
+      if (feedbackOk) txt('HIT!', W / 2, ZONE_Y - 120, 80, C.b);
+      else txt('MISS', W / 2, beamY - 60, 72, C.a);
     }
-
-    // guide
-    game.draw.text('ゾーンでタップ！', W / 2, H - 180, { size: 52, color: C.ui });
+    timeBar();
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 96, 48, C.g);
+    for (var m = 0; m < MAX_MISS; m++)
+      game.draw.rect(W / 2 + (m - 1) * 64 - 20, 150, 40, 40, m < misses ? C.a : '#330011');
+    txt(score + ' / ' + NEEDED, W / 2, H - 100, 56, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.4);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

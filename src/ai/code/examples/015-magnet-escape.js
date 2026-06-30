@@ -1,192 +1,162 @@
 // 015-magnet-escape.js
 // 磁石逃亡 — 引き寄せる力に逆らいながら脱出する緊張感
 // 操作: スワイプで4方向に移動
-// 成功: 15秒間磁石に吸い込まれずに生き延びる  失敗: 磁石に触れる
+// 成功: 5秒間磁石に吸い込まれずに生き延びる  失敗: 磁石に触れる
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#0c0410',
-    fieldN:   '#ef4444',  // red = North
-    fieldS:   '#3b82f6',  // blue = South
-    player:   '#fbbf24',
-    playerGlow:'#fef3c7',
-    trail:    '#d97706',
-    repel:    '#22c55e',
-    danger:   '#ff0000',
-    ui:       '#6b7280'
-  };
+  // ── パレット（クラシックアーケード） ──
+  var C = { bg:'#000011', a:'#0000ff', b:'#00ffff', c:'#ffffff', d:'#ffff00', e:'#ff0000', f:'#00ff00', g:'#ff00ff' };
 
-  var player = { x: W / 2, y: H / 2 };
-  var PLAYER_R = 40;
-  var MOVE_STEP = 220;
-  var timeLeft = 15;
-  var done = false;
+  var GAME_TITLE  = 'MAGNET ESCAPE';
+  var HOW_TO_PLAY = 'SWIPE TO DODGE';
+  var MAX_TIME = 5;          // 修正2: 生存系 15s → 5s
+  var PLAYER_R = 44, MOVE_STEP = 240;
+  var TOP = 220, BOTTOM = H - 180;
 
-  var magnets = [];
-  var trailPts = [];
-  var magnetSpawnTimer = 2.0;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  var player, timeLeft, done, magnets, trailPts, magnetSpawnTimer;
+
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var py = -r; py <= r; py += step)
+      for (var px = -r; px <= r; px += step)
+        if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
+
+  function initGame() {
+    player = { x: W / 2, y: H / 2 };
+    timeLeft = MAX_TIME; done = false; magnets = []; trailPts = []; magnetSpawnTimer = 1.2;
+    spawnMagnet();
+  }
 
   function spawnMagnet() {
-    // spawn on edge
-    var edge = Math.floor(Math.random() * 4);
-    var mx, my;
-    if (edge === 0) { mx = game.random(80, W - 80); my = -80; }      // top
-    else if (edge === 1) { mx = W + 80; my = game.random(200, H - 200); } // right
-    else if (edge === 2) { mx = game.random(80, W - 80); my = H + 80; }   // bottom
-    else { mx = -80; my = game.random(200, H - 200); }                     // left
+    var edge = Math.floor(Math.random() * 4), mx, my;
+    if (edge === 0) { mx = game.random(80, W - 80); my = TOP - 80; }
+    else if (edge === 1) { mx = W + 80; my = game.random(TOP, BOTTOM); }
+    else if (edge === 2) { mx = game.random(80, W - 80); my = BOTTOM + 80; }
+    else { mx = -80; my = game.random(TOP, BOTTOM); }
+    magnets.push({ x: mx, y: my, r: 56, isNorth: Math.random() < 0.5,
+      vx: (W / 2 - mx) * 0.12, vy: (H / 2 - my) * 0.12, age: 0 });
+  }
 
-    var isNorth = Math.random() < 0.5;
-    magnets.push({
-      x: mx, y: my,
-      r: 56,
-      isNorth: isNorth,
-      vx: (W / 2 - mx) * 0.12,
-      vy: (H / 2 - my) * 0.12,
-      age: 0
-    });
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? 300 : 0;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onSwipe(function(dir) {
-    if (done) return;
+    if (state !== S.PLAYING || done) return;
     if (dir === 'left')  player.x = Math.max(PLAYER_R, player.x - MOVE_STEP);
     if (dir === 'right') player.x = Math.min(W - PLAYER_R, player.x + MOVE_STEP);
-    if (dir === 'up')    player.y = Math.max(200 + PLAYER_R, player.y - MOVE_STEP);
-    if (dir === 'down')  player.y = Math.min(H - PLAYER_R, player.y + MOVE_STEP);
+    if (dir === 'up')    player.y = Math.max(TOP + PLAYER_R, player.y - MOVE_STEP);
+    if (dir === 'down')  player.y = Math.min(BOTTOM - PLAYER_R, player.y + MOVE_STEP);
     game.audio.play('se_tap', 0.4);
   });
 
-  game.onUpdate(function(dt) {
-    if (done) {
-      drawScene();
-      return;
-    }
-
-    timeLeft -= dt;
-    if (timeLeft <= 0) {
-      done = true;
-      game.audio.play('se_success');
-      setTimeout(function() { game.end.success(200 + Math.floor(timeLeft * 0 + 200)); }, 300);
-      return;
-    }
-
-    // spawn magnets
-    magnetSpawnTimer -= dt;
-    if (magnetSpawnTimer <= 0 && magnets.length < 5) {
-      spawnMagnet();
-      magnetSpawnTimer = Math.max(1.2, 2.5 - (15 - timeLeft) * 0.08);
-    }
-
-    // move magnets toward player (gravity attraction)
-    for (var i = magnets.length - 1; i >= 0; i--) {
-      var mg = magnets[i];
-      mg.age += dt;
-
-      var dx = player.x - mg.x;
-      var dy = player.y - mg.y;
-      var dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < 1) dist = 1;
-
-      // attraction force (inverse square-ish)
-      var force = 60000 / (dist * dist + 1000);
-      var ux = dx / dist;
-      var uy = dy / dist;
-
-      mg.vx += ux * force * dt;
-      mg.vy += uy * force * dt;
-      mg.vx *= 0.98;
-      mg.vy *= 0.98;
-
-      mg.x += mg.vx * dt;
-      mg.y += mg.vy * dt;
-
-      // collision with player
-      if (dist < mg.r + PLAYER_R - 8) {
-        done = true;
-        game.audio.play('se_failure');
-        setTimeout(function() { game.end.failure(); }, 400);
-        return;
-      }
-
-      // remove if out of bounds for too long
-      if (mg.age > 12 || (mg.x < -200 || mg.x > W + 200 || mg.y < -200 || mg.y > H + 200)) {
-        magnets.splice(i, 1);
-      }
-    }
-
-    // trail
-    trailPts.unshift({ x: player.x, y: player.y });
-    if (trailPts.length > 8) trailPts.pop();
-
-    drawScene();
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
   });
 
-  function drawScene() {
-    game.draw.rect(0, 0, W, H, C.bg);
+  function background() { game.draw.clear(C.bg); }
 
-    // magnetic field lines (background)
-    for (var i = 0; i < magnets.length; i++) {
-      var mg = magnets[i];
-      for (var ring = 1; ring <= 3; ring++) {
-        game.draw.circle(mg.x, mg.y, mg.r * (1 + ring * 1.2), mg.isNorth ? C.fieldN : C.fieldS,
-          0.04 + 0.02 * Math.sin(game.time.elapsed * 3 - ring));
-      }
-    }
-
-    // timer bar
-    var ratio = Math.max(0, timeLeft / 15);
-    game.draw.rect(0, 0, W, 72, '#0a0210');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#7c3aed' : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // danger flash near magnets
-    var minDist = 9999;
-    for (var j = 0; j < magnets.length; j++) {
-      var dx = player.x - magnets[j].x;
-      var dy = player.y - magnets[j].y;
-      var d = Math.sqrt(dx*dx + dy*dy);
-      if (d < minDist) minDist = d;
-    }
-    var dangerLevel = Math.max(0, 1 - minDist / 300);
-    if (dangerLevel > 0) {
-      game.draw.rect(0, 0, W, H, C.danger, dangerLevel * 0.12 * (0.5 + 0.5 * Math.sin(game.time.elapsed * 12)));
-    }
-
-    // trail
-    for (var t = 0; t < trailPts.length; t++) {
-      var tp = trailPts[t];
-      var ta = (1 - t / trailPts.length) * 0.5;
-      game.draw.circle(tp.x, tp.y, PLAYER_R * 0.6 * (1 - t / trailPts.length), C.trail, ta);
-    }
-
-    // magnets
+  function drawMagnets() {
     for (var k = 0; k < magnets.length; k++) {
-      var mg2 = magnets[k];
-      var col = mg2.isNorth ? C.fieldN : C.fieldS;
-      var pulse = 0.85 + 0.15 * Math.sin(game.time.elapsed * 5 + k);
-      // outer ring
-      game.draw.circle(mg2.x, mg2.y, mg2.r * 1.3 * pulse, col, 0.25);
-      // body
-      game.draw.circle(mg2.x, mg2.y, mg2.r, col);
-      game.draw.circle(mg2.x, mg2.y, mg2.r * 0.6, '#ffffff', 0.3);
-      // N/S label
-      game.draw.text(mg2.isNorth ? 'N' : 'S', mg2.x, mg2.y, { size: 52, color: '#fff', bold: true });
+      var mg = magnets[k], col = mg.isNorth ? C.e : C.a;
+      drawPixelCircle(mg.x, mg.y, mg.r, col, 1);
+      txt(mg.isNorth ? 'N' : 'S', mg.x, mg.y, 48, C.g);
+    }
+  }
+
+  game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      drawPixelCircle(W / 2, H / 2, PLAYER_R, C.d, 1);
+      drawPixelCircle(W / 2 + Math.cos(game.time.elapsed * 2) * 300, H / 2 + Math.sin(game.time.elapsed * 2) * 300, 56, C.e, 1);
+      txt(GAME_TITLE,  W / 2, H * 0.2, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.28, 44, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.72, 72, C.g);
+        txt('TAP TO START', W / 2, H * 0.8, 52, C.c);
+      }
+      txt('INSERT COIN', W / 2, H * 0.9, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.d : C.e);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.c);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
     }
 
-    // player
-    game.draw.circle(player.x, player.y, PLAYER_R + 12, C.playerGlow, 0.3);
-    game.draw.circle(player.x, player.y, PLAYER_R, C.player);
-    game.draw.circle(player.x, player.y, PLAYER_R * 0.45, '#fff', 0.7);
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(true); return; }
 
-    // guide
-    game.draw.text('スワイプで逃げろ！', W / 2, H - 180, { size: 52, color: C.ui });
-  }
+      magnetSpawnTimer -= dt;
+      if (magnetSpawnTimer <= 0 && magnets.length < 5) {
+        spawnMagnet();
+        magnetSpawnTimer = Math.max(1.0, 2.0 - (MAX_TIME - timeLeft) * 0.15);
+      }
+
+      for (var i = magnets.length - 1; i >= 0; i--) {
+        var mg = magnets[i]; mg.age += dt;
+        var dx = player.x - mg.x, dy = player.y - mg.y;
+        var dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        var force = 60000 / (dist * dist + 1000);
+        mg.vx += (dx / dist) * force * dt; mg.vy += (dy / dist) * force * dt;
+        mg.vx *= 0.98; mg.vy *= 0.98;
+        mg.x += mg.vx * dt; mg.y += mg.vy * dt;
+        if (dist < mg.r + PLAYER_R - 8) { finish(false); return; }
+        if (mg.age > 12 || mg.x < -200 || mg.x > W + 200 || mg.y < -200 || mg.y > H + 200) magnets.splice(i, 1);
+      }
+
+      trailPts.unshift({ x: player.x, y: player.y });
+      if (trailPts.length > 6) trailPts.pop();
+    }
+
+    // ---- draw ----
+    background();
+    for (var t = 0; t < trailPts.length; t++) {
+      var tp = trailPts[t], ta = (1 - t / trailPts.length) * 0.4;
+      game.draw.rect(snap(tp.x) - 12, snap(tp.y) - 12, 24, 24, C.f, ta);
+    }
+    drawMagnets();
+    drawPixelCircle(player.x, player.y, PLAYER_R, C.d, 1);
+    timeBar();
+    txt('SURVIVE ' + Math.ceil(timeLeft) + 's', W / 2, 96, 48, C.c);
+    txt('SWIPE TO ESCAPE!', W / 2, H - 120, 48, C.f);
+    scanlines();
+  });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.35);
-    spawnMagnet();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
