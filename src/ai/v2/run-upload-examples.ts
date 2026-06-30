@@ -6,9 +6,16 @@
  * 中断後の再実行でも安全にリジュームできる。
  *
  * 使い方:
- *   npm run ai:upload:examples          # 全件アップロード
- *   npm run ai:upload:examples:dry      # Supabase 接続せずファイル一覧のみ表示
- *   SKIP_UPLOAD=true npm run ai:upload:examples   # 同上
+ *   npm run ai:upload:examples              # 未登録のみアップロード（リジューム）
+ *   OVERWRITE=true npm run ai:upload:examples   # 既存も含めて全件を上書き更新
+ *   npm run ai:upload:examples:dry          # Supabase 接続せずファイル一覧のみ表示
+ *   SKIP_UPLOAD=true npm run ai:upload:examples  # 同上
+ *
+ * OVERWRITE=true のとき:
+ *   - ローカル進捗ファイルの「登録済みスキップ」を無視して全件を処理する
+ *   - 同じ template_id の既存行を insert ではなく update で上書きする
+ *     （id / created_at / play_count / like_count は保持）
+ *   ゲームコードを書き直した後の再アップロードに使う。
  *
  * 必須環境変数:
  *   VITE_SUPABASE_URL
@@ -100,6 +107,7 @@ async function main() {
   console.log('====================================================\n');
 
   const skipUpload = process.env.SKIP_UPLOAD === 'true' || process.env.DRY_RUN === 'true';
+  const overwrite = process.env.OVERWRITE === 'true' || process.env.FORCE === 'true';
 
   // examples/ ディレクトリの .js ファイルを列挙（アルファベット順）
   const allFiles = fs.readdirSync(EXAMPLES_DIR)
@@ -123,7 +131,11 @@ async function main() {
   // 進捗ロード
   const progress = loadProgress();
   const uploadedSet = new Set(progress.uploadedTemplateIds);
-  console.log(`📊 前回までのアップロード済み: ${uploadedSet.size} 件\n`);
+  console.log(`📊 前回までのアップロード済み: ${uploadedSet.size} 件`);
+  if (overwrite) {
+    console.log('♻️  OVERWRITE モード — 既存行も含めて全件を上書き更新します');
+  }
+  console.log('');
 
   // アップローダー初期化
   let uploader: SupabaseUploader;
@@ -156,7 +168,8 @@ async function main() {
     const prefix = `[${String(i + 1).padStart(3)}/${allFiles.length}]`;
 
     // 進捗ファイルで既登録チェック（SupabaseUploader の重複チェックとは別のローカルキャッシュ）
-    if (uploadedSet.has(meta.templateId)) {
+    // OVERWRITE モードでは登録済みでもスキップせず上書き処理に進む。
+    if (!overwrite && uploadedSet.has(meta.templateId)) {
       console.log(`${prefix} ⏭️  ${meta.templateId} — 登録済み`);
       skipped++;
       continue;
@@ -205,11 +218,12 @@ async function main() {
           reviewStatus: 'approved' as const,
           gameType: 'code' as const,
           templateId: meta.templateId,
+          overwrite,
         }
       );
 
       if (result.success) {
-        console.log(`         ✅ 登録完了 — ID: ${result.gameId}`);
+        console.log(`         ✅ ${overwrite ? '上書き完了' : '登録完了'} — ID: ${result.gameId}`);
         succeeded++;
         uploadedSet.add(meta.templateId);
         progress.uploadedTemplateIds = Array.from(uploadedSet);

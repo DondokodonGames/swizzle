@@ -60,6 +60,12 @@ export interface UploadOptions {
   category?: string;
   /** 'rules'（既定）または 'code'（JSサンドボックスゲーム） */
   gameType?: 'rules' | 'code';
+  /**
+   * true なら同じ template_id の既存行をスキップせず上書き更新する（既定: false）。
+   * 既存の id / created_at / play_count / like_count は保持したまま
+   * project_data・コード・メタ情報のみ差し替える。
+   */
+  overwrite?: boolean;
 }
 
 /**
@@ -161,8 +167,12 @@ export class SupabaseUploader {
     console.log(`   📊 Project size: ${(fullSize / 1024).toFixed(1)} KB`);
 
     const resolvedTemplateId = options.templateId ?? 'ai_generated';
+    const overwrite = options.overwrite ?? false;
 
-    // 重複チェック（同じ template_id が既に存在する場合はスキップ）
+    // 重複チェック（同じ template_id が既に存在するか）
+    // overwrite=false → スキップして既存IDを返す
+    // overwrite=true  → 既存IDを保持して後段で UPDATE（上書き）する
+    let existingId: string | null = null;
     if (resolvedTemplateId !== 'ai_generated') {
       try {
         const { data: existing } = await this.supabase
@@ -171,19 +181,23 @@ export class SupabaseUploader {
           .eq('template_id', resolvedTemplateId)
           .eq('creator_id', this.masterUserId)
           .limit(1)
-          .single();
+          .maybeSingle();
         if (existing) {
-          console.log(`   ⏭️ Skip: template_id=${resolvedTemplateId} already exists (id=${existing.id})`);
-          return { success: true, gameId: existing.id };
+          if (!overwrite) {
+            console.log(`   ⏭️ Skip: template_id=${resolvedTemplateId} already exists (id=${existing.id})`);
+            return { success: true, gameId: existing.id };
+          }
+          existingId = existing.id;
+          console.log(`   ♻️ Overwrite: template_id=${resolvedTemplateId} 既存行を更新します (id=${existingId})`);
         }
       } catch {
-        // 存在しない場合は .single() がエラーを投げるので無視
+        // 取得失敗時は新規登録として続行
       }
     }
 
-    // ゲームIDを事前生成（Storageパスに必要）
-    const gameId = randomUUID();
-    console.log(`   🆔 Generated game ID: ${gameId.substring(0, 8)}...`);
+    // ゲームID: 上書き時は既存IDを再利用（Storageパス・参照を維持）、新規時は生成
+    const gameId = existingId ?? randomUUID();
+    console.log(`   🆔 Game ID: ${gameId.substring(0, 8)}... ${existingId ? '(既存=上書き)' : '(新規)'}`);
 
     let projectToSave = project;
 
@@ -275,15 +289,34 @@ export class SupabaseUploader {
           await sleep(delayMs);
         }
 
-        // user_gamesテーブルに挿入
-        const { data, error } = await this.supabase
-          .from('user_games')
-          .insert(gameData)
-          .select()
-          .single();
+        // user_gamesテーブルへ書き込み（新規=insert / 上書き=update）
+        let data: { id?: string } | null;
+        let error: { message: string } | null;
+        if (existingId) {
+          // 上書き: id / created_at / 統計値（play_count・like_count）は保持する
+          const {
+            id: _omitId,
+            created_at: _omitCreatedAt,
+            play_count: _omitPlayCount,
+            like_count: _omitLikeCount,
+            ...updateFields
+          } = gameData;
+          ({ data, error } = await this.supabase
+            .from('user_games')
+            .update(updateFields)
+            .eq('id', existingId)
+            .select()
+            .single());
+        } else {
+          ({ data, error } = await this.supabase
+            .from('user_games')
+            .insert(gameData)
+            .select()
+            .single());
+        }
 
         if (error) {
-          throw new Error(`Supabase insert error: ${error.message}`);
+          throw new Error(`Supabase ${existingId ? 'update' : 'insert'} error: ${error.message}`);
         }
 
         if (!data || !data.id) {
@@ -321,8 +354,11 @@ export class SupabaseUploader {
 
         if (!isRetryableError || attempt === RETRY_CONFIG.maxRetries) {
           console.error('Supabase upload error:', lastError.message.substring(0, 200));
-          // アップロード失敗時はStorageのアセットを削除
-          await this.storageUploader.deleteGameAssets(gameId).catch(() => {});
+          // 新規登録の失敗時のみStorageのアセットを削除する。
+          // 上書き(existingId)の場合は既存ゲームの資産を消さないようスキップ。
+          if (!existingId) {
+            await this.storageUploader.deleteGameAssets(gameId).catch(() => {});
+          }
           break;
         }
 
