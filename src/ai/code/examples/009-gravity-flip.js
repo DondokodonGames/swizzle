@@ -1,202 +1,162 @@
 // 009-gravity-flip.js
 // 重力反転 — タップで上下を逆転させて壁をすり抜ける驚き
 // 操作: タップで重力を反転
-// 成功: 3つのゲートをくぐり抜ける  失敗: 壁に当たる
+// 成功: 1つのゲートをくぐり抜ける  失敗: 壁に当たる
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#030c06',
-    wall:     '#166534',
-    wallEdge: '#15803d',
-    player:   '#4ade80',
-    playerGlow:'#bbf7d0',
-    gate:     '#86efac',
-    danger:   '#ef4444',
-    trail:    '#22c55e',
-    ui:       '#4b5563'
-  };
+  // ── パレット（グリーンCRT） ──
+  var C = { bg:'#001100', a:'#00ff41', b:'#008f11', c:'#003b00', d:'#00ff41', e:'#ffffff', f:'#ff0000', g:'#ffff00' };
 
-  var gravity = 1;           // 1 = fall down, -1 = fall up
-  var vy = 0;
-  var playerX = 200;
-  var playerY = H / 2;
-  var playerR = 36;
+  var GAME_TITLE  = 'GRAVITY FLIP';
+  var HOW_TO_PLAY = 'TAP TO FLIP GRAVITY';
+  var NEEDED = 1;            // 修正2: 3 → ceil(3/10) = 1
+  var WALL_H = 160;
   var ACCEL = 1800;
-
-  var gatesPassed = 0;
-  var needed = 3;
-  var done = false;
-  var dead = false;
-
-  // Scrolling obstacles (pairs of wall segments with gaps)
   var SCROLL_SPD = 380;
-  var obstacles = [];
-  var trailPoints = [];
-  var obSpawnX = W + 200;
 
-  // Wall thickness at top/bottom
-  var WALL_H = 140;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnObstacle() {
-    var gapCenter = game.random(WALL_H + 160, H - WALL_H - 160);
-    var gapH = game.random(260, 360);
-    obstacles.push({
-      x:    obSpawnX,
-      topH:  gapCenter - gapH / 2,
-      botY:  gapCenter + gapH / 2,
-      passed: false,
-      color: GATE_COLORS[gatesPassed % GATE_COLORS.length]
-    });
+  var gravity, vy, playerX, playerY, playerR, gatesPassed, done, obstacles, trailPoints, obTimer;
+
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var py = -r; py <= r; py += step)
+      for (var px = -r; px <= r; px += step)
+        if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+
+  function initGame() {
+    gravity = 1; vy = 0; playerX = 240; playerY = H / 2; playerR = 40;
+    gatesPassed = 0; done = false; obstacles = []; trailPoints = []; obTimer = 0.8;
+    spawnObstacle();
   }
 
-  var GATE_COLORS = ['#86efac', '#67e8f9', '#a78bfa', '#fcd34d'];
+  function spawnObstacle() {
+    var gapCenter = game.random(WALL_H + 200, H - WALL_H - 200);
+    var gapH = game.random(320, 440);
+    obstacles.push({ x: W + 120, topH: snap(gapCenter - gapH / 2), botY: snap(gapCenter + gapH / 2), passed: false });
+  }
 
-  var obTimer = 0;
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? gatesPassed * 500 : gatesPassed * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1500);
+  }
 
-  game.onTap(function() {
-    if (done || dead) return;
-    gravity = -gravity;
-    vy = 0;
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
+    if (done) return;
+    gravity = -gravity; vy = 0;
     game.audio.play('se_tap', 0.6);
   });
 
-  game.onUpdate(function(dt) {
-    if (done || dead) {
-      drawScene();
-      return;
-    }
+  function background() {
+    game.draw.clear(C.bg);
+    for (var gy = WALL_H; gy < H - WALL_H; gy += 80) game.draw.rect(0, gy, W, 2, C.c, 0.6);
+    game.draw.rect(0, 0, W, WALL_H, C.b);
+    game.draw.rect(0, WALL_H - 8, W, 8, C.a);
+    game.draw.rect(0, H - WALL_H, W, WALL_H, C.b);
+    game.draw.rect(0, H - WALL_H, W, 8, C.a);
+  }
 
-    // Physics
-    vy += gravity * ACCEL * dt;
-    vy = Math.max(-900, Math.min(900, vy));
-    playerY += vy * dt;
-
-    // trail
-    trailPoints.unshift({ x: playerX, y: playerY });
-    if (trailPoints.length > 10) trailPoints.pop();
-
-    // top/bottom walls
-    if (playerY - playerR < WALL_H || playerY + playerR > H - WALL_H) {
-      dead = true;
-      game.audio.play('se_failure');
-      setTimeout(function() { game.end.failure(); }, 400);
-      return;
-    }
-
-    // scroll obstacles
-    obTimer -= dt;
-    if (obTimer <= 0) {
-      spawnObstacle();
-      obTimer = 1.8 - gatesPassed * 0.15;
-    }
-
-    for (var i = obstacles.length - 1; i >= 0; i--) {
-      obstacles[i].x -= SCROLL_SPD * dt;
-
-      // collision
-      var ob = obstacles[i];
-      if (playerX + playerR > ob.x && playerX - playerR < ob.x + 60) {
-        if (playerY - playerR < ob.topH || playerY + playerR > ob.botY) {
-          dead = true;
-          game.audio.play('se_failure');
-          setTimeout(function() { game.end.failure(); }, 400);
-          return;
-        }
-        // passed gate
-        if (!ob.passed && playerX > ob.x + 30) {
-          ob.passed = true;
-          gatesPassed++;
-          game.audio.play('se_tap', 1.0);
-          if (gatesPassed >= needed) {
-            done = true;
-            game.audio.play('se_success');
-            setTimeout(function() {
-              game.end.success(gatesPassed * 50);
-            }, 400);
-          }
-        }
-      }
-
-      if (ob.x + 100 < 0) obstacles.splice(i, 1);
-    }
-
-    drawScene();
-  });
-
-  function drawScene() {
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // background grid lines (sci-fi feel)
-    for (var gy = WALL_H; gy < H - WALL_H; gy += 80) {
-      game.draw.rect(0, gy, W, 1, '#0d2a0d', 0.5);
-    }
-
-    // Top and bottom walls
-    game.draw.rect(0, 0, W, WALL_H, C.wall);
-    game.draw.rect(0, 0, W, 8, C.wallEdge);
-    game.draw.rect(0, WALL_H - 8, W, 8, C.wallEdge);
-
-    game.draw.rect(0, H - WALL_H, W, WALL_H, C.wall);
-    game.draw.rect(0, H - WALL_H, W, 8, C.wallEdge);
-    game.draw.rect(0, H - 8, W, 8, C.wallEdge);
-
-    // obstacles
+  function drawObstacles() {
     for (var i = 0; i < obstacles.length; i++) {
       var ob = obstacles[i];
-      var col = ob.color || C.wallEdge;
-      // top block
-      game.draw.rect(ob.x, WALL_H, 60, ob.topH - WALL_H, '#064e1e');
-      game.draw.rect(ob.x, WALL_H, 60, ob.topH - WALL_H - 12, '#0f5c20');
-      game.draw.rect(ob.x, ob.topH - 16, 60, 16, col);
-      // bottom block
-      game.draw.rect(ob.x, ob.botY, 60, H - WALL_H - ob.botY, '#064e1e');
-      game.draw.rect(ob.x, ob.botY + 12, 60, H - WALL_H - ob.botY - 12, '#0f5c20');
-      game.draw.rect(ob.x, ob.botY, 60, 16, col);
-      // gate glow
-      if (!ob.passed) {
-        game.draw.rect(ob.x + 8, ob.topH, 44, ob.botY - ob.topH, col, 0.1);
-      }
-    }
-
-    // trail
-    for (var t = 0; t < trailPoints.length; t++) {
-      var tp = trailPoints[t];
-      var ta = 1 - t / trailPoints.length;
-      game.draw.circle(tp.x, tp.y, playerR * 0.5 * ta, C.trail, ta * 0.5);
-    }
-
-    // Player
-    if (!dead) {
-      game.draw.circle(playerX, playerY, playerR + 10, C.playerGlow, 0.3);
-      game.draw.circle(playerX, playerY, playerR, C.player);
-      game.draw.circle(playerX, playerY, playerR * 0.45, C.playerGlow, 0.8);
-      // gravity indicator
-      var arrowDir = gravity > 0 ? 1 : -1;
-      var ay = playerY + arrowDir * (playerR + 24);
-      game.draw.text(gravity > 0 ? '▼' : '▲', playerX, ay, { size: 36, color: C.playerGlow, bold: true });
-    }
-
-    // UI
-    game.draw.text(gatesPassed + ' / ' + needed, W / 2, 50, { size: 48, color: '#4ade80', bold: true });
-
-    // gate indicators at top
-    for (var g = 0; g < needed; g++) {
-      var gx = W / 2 + (g - (needed - 1) / 2) * 80;
-      var gc = GATE_COLORS[g];
-      game.draw.circle(gx, 92, 22, g < gatesPassed ? gc : '#1a2e1a');
-    }
-
-    // guide
-    if (!dead && !done) {
-      game.draw.text('タップで反転！', W / 2, H - 180, { size: 52, color: C.ui });
+      game.draw.rect(snap(ob.x), WALL_H, 72, ob.topH - WALL_H, C.b);
+      game.draw.rect(snap(ob.x), ob.topH - 16, 72, 16, C.a);
+      game.draw.rect(snap(ob.x), ob.botY, 72, H - WALL_H - ob.botY, C.b);
+      game.draw.rect(snap(ob.x), ob.botY, 72, 16, C.a);
     }
   }
 
+  game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      var demoY = snap(H / 2 + Math.sin(game.time.elapsed * 2) * 300);
+      drawPixelCircle(W / 2, demoY, 40, C.a, 1);
+      txt(GAME_TITLE,  W / 2, H * 0.3, 84, C.g);
+      txt(HOW_TO_PLAY, W / 2, H * 0.4, 44, C.a);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.62, 72, C.e);
+        txt('TAP TO START', W / 2, H * 0.72, 52, C.e);
+      }
+      txt('INSERT COIN', W / 2, H * 0.9, 42, '#446644');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.g : C.f);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.e);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.a);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
+    if (!done) {
+      vy += gravity * ACCEL * dt;
+      vy = Math.max(-900, Math.min(900, vy));
+      playerY += vy * dt;
+
+      trailPoints.unshift({ x: playerX, y: playerY });
+      if (trailPoints.length > 8) trailPoints.pop();
+
+      if (playerY - playerR < WALL_H || playerY + playerR > H - WALL_H) { finish(false); return; }
+
+      obTimer -= dt;
+      if (obTimer <= 0) { spawnObstacle(); obTimer = 1.8; }
+
+      for (var i = obstacles.length - 1; i >= 0; i--) {
+        var ob = obstacles[i];
+        ob.x -= SCROLL_SPD * dt;
+        if (playerX + playerR > ob.x && playerX - playerR < ob.x + 72) {
+          if (playerY - playerR < ob.topH || playerY + playerR > ob.botY) { finish(false); return; }
+          if (!ob.passed && playerX > ob.x + 36) {
+            ob.passed = true; gatesPassed++;
+            game.audio.play('se_tap', 1.0);
+            if (gatesPassed >= NEEDED) { finish(true); return; }
+          }
+        }
+        if (ob.x + 100 < 0) obstacles.splice(i, 1);
+      }
+    }
+
+    // ---- draw ----
+    background();
+    drawObstacles();
+    for (var tI = 0; tI < trailPoints.length; tI++) {
+      var tp = trailPoints[tI];
+      var ta = 1 - tI / trailPoints.length;
+      game.draw.rect(snap(tp.x) - 12, snap(tp.y) - 12, 24, 24, C.a, ta * 0.4);
+    }
+    drawPixelCircle(playerX, playerY, playerR, C.a, 1);
+    txt(gravity > 0 ? '▼' : '▲', playerX, playerY + (gravity > 0 ? 1 : -1) * (playerR + 28), 36, C.g);
+
+    txt('GATE ' + gatesPassed + ' / ' + NEEDED, W / 2, 96, 48, C.g);
+    txt('TAP TO FLIP', W / 2, H - 80, 44, C.a);
+    scanlines();
+  });
+
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.35);
-    spawnObstacle();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

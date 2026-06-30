@@ -1,183 +1,144 @@
 // 008-pulse-tap.js
 // 心拍タップ — 脈打つリズムの頂点でタップする心地よさ
 // 操作: 円が最大に膨らんだ瞬間にタップ
-// 成功: 5回正確にタップ  失敗: タイミングを外しすぎると×（3回）
+// 成功: 1回正確にタップ  失敗: タイミングを外しすぎると×（3回）
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#0d0010',
-    core:     '#e11d48',
-    ring1:    '#f43f5e',
-    ring2:    '#fb7185',
-    good:     '#22c55e',
-    miss:     '#ef4444',
-    ecg:      '#f43f5e',
-    ui:       '#64748b'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var PERIOD = 1.4; // seconds per pulse
-  var t = 0;        // phase within period (0 to 1)
-  var score = 0;
-  var needed = 5;
-  var misses = 0;
-  var maxMisses = 3;
-  var timeLeft = 25;
-  var done = false;
+  var GAME_TITLE  = 'PULSE TAP';
+  var HOW_TO_PLAY = 'TAP AT THE PEAK';
+  var MAX_TIME = 25;
+  var NEEDED = 1;             // 修正2: 5 → ceil(5/10) = 1
+  var MAX_MISS = 3;
+  var PERIOD = 1.4;
+  var CY = H * 0.46;          // パルス円の中心（縦）
 
-  var feedbackTimer = 0;
-  var feedbackOk = false;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // ECG trail
-  var ecgPoints = [];
-  var ecgX = 0;
-  var ECG_W = W - 80;
+  var t, score, misses, timeLeft, done, feedbackTimer, feedbackOk;
 
-  function getPulseValue(phase) {
-    // sharp spike at phase = 0
-    if (phase < 0.12) return phase / 0.12;       // rise
-    if (phase < 0.22) return 1 - (phase - 0.12) / 0.10; // fall
-    if (phase < 0.35) return -0.2 * Math.sin((phase - 0.22) / 0.13 * Math.PI); // dip
-    return 0; // flat line
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var py = -r; py <= r; py += step)
+      for (var px = -r; px <= r; px += step)
+        if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
 
-  var lastPhase = 0;
-  var tapWindowOpen = false;
+  function getPulseValue(phase) {
+    if (phase < 0.12) return phase / 0.12;
+    if (phase < 0.22) return 1 - (phase - 0.12) / 0.10;
+    if (phase < 0.35) return -0.2 * Math.sin((phase - 0.22) / 0.13 * Math.PI);
+    return 0;
+  }
+
+  function initGame() {
+    t = 0; score = 0; misses = 0; timeLeft = MAX_TIME; done = false;
+    feedbackTimer = 0; feedbackOk = false;
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done) return;
-
-    // Window: peak of pulse = phase near 0.08-0.16
-    var atPeak = t > 0.06 && t < 0.20;
+    var atPeak = t > 0.04 && t < 0.22;
     feedbackTimer = 0.45;
-
     if (atPeak) {
-      score++;
-      feedbackOk = true;
+      score++; feedbackOk = true;
       game.audio.play('se_tap', 1.0);
-      if (score >= needed) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() {
-          game.end.success(score * 20 + Math.ceil(timeLeft) * 4);
-        }, 500);
-      }
+      if (score >= NEEDED) finish(true);
     } else {
-      misses++;
-      feedbackOk = false;
+      misses++; feedbackOk = false;
       game.audio.play('se_failure', 0.5);
-      if (misses >= maxMisses && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      }
+      if (misses >= MAX_MISS) finish(false);
     }
   });
 
+  function background() { game.draw.clear(C.bg); }
+
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
+    if (state === S.ATTRACT) {
+      background();
+      var demoPulse = getPulseValue((game.time.elapsed / PERIOD) % 1);
+      drawPixelCircle(W / 2, CY, 180 + demoPulse * 100, C.a, 0.9);
+      txt(GAME_TITLE,  W / 2, H * 0.16, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.26, 46, C.e);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.74, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.82, 52, C.g);
       }
+      txt('INSERT COIN', W / 2, H * 0.9, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
     }
 
-    // advance phase
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+    }
     t = (t + dt / PERIOD) % 1;
-
-    // ECG
-    var pulse = getPulseValue(t);
-    ecgX = (ecgX + dt * 120) % ECG_W;
-    ecgPoints.push({ x: 40 + ecgX, y: pulse });
-    if (ecgPoints.length > 320) ecgPoints.shift();
-
     if (feedbackTimer > 0) feedbackTimer -= dt;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
+    background();
+    var pv = getPulseValue(t);
+    var pulseR = 180 + pv * 120;
+    drawPixelCircle(W / 2, CY, pulseR + 32, C.a, 0.2 + pv * 0.2);
+    drawPixelCircle(W / 2, CY, pulseR, C.a, 0.95);
+    drawPixelCircle(W / 2, CY, pulseR * 0.4, C.c, 0.7);
 
-    // ECG background
-    var ecgY = H * 0.78;
-    var ecgH = 180;
-    game.draw.rect(20, ecgY - ecgH / 2, ECG_W + 20, ecgH + 4, '#0d0010');
-    game.draw.rect(20, ecgY, ECG_W + 20, 2, '#1a0020');
-
-    // ECG line
-    for (var i = 1; i < ecgPoints.length; i++) {
-      var ep = ecgPoints[i - 1];
-      var en = ecgPoints[i];
-      // only draw adjacent points (gap when x wraps)
-      if (Math.abs(en.x - ep.x) < 10) {
-        var a1 = Math.min(1, i / 20);
-        game.draw.line(
-          ep.x, ecgY - ep.y * 70,
-          en.x, ecgY - en.y * 70,
-          C.ecg, 3
-        );
-      }
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 25);
-    game.draw.rect(0, 0, W, 72, '#1a0020');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.ring1 : C.miss);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Score
-    for (var s = 0; s < needed; s++) {
-      var sx = W / 2 + (s - (needed - 1) / 2) * 76;
-      game.draw.circle(sx, 140, 26, s < score ? C.good : '#2d0030');
-      if (s < score) game.draw.circle(sx, 140, 16, '#ffffff80');
-    }
-
-    // Miss indicators
-    for (var mm = 0; mm < maxMisses; mm++) {
-      var mx = W / 2 + (mm - (maxMisses - 1) / 2) * 64;
-      game.draw.circle(mx, 208, 18, mm < misses ? C.miss : '#1a0020');
-    }
-
-    // Main pulse circle
-    var pulseVal = getPulseValue(t);
-    var baseR = 200;
-    var pulseR = baseR + pulseVal * 120;
-
-    // outer rings
-    game.draw.circle(W / 2, H * 0.44, pulseR + 40, C.ring1, 0.15 + pulseVal * 0.25);
-    game.draw.circle(W / 2, H * 0.44, pulseR + 80, C.ring2, 0.06 + pulseVal * 0.12);
-
-    // main
-    game.draw.circle(W / 2, H * 0.44, pulseR, C.core);
-    game.draw.circle(W / 2, H * 0.44, pulseR - 24, '#be123c');
-    game.draw.circle(W / 2, H * 0.44, pulseR * 0.4, C.ring2, 0.6);
-
-    // Feedback overlay
     if (feedbackTimer > 0) {
-      var progress = 1 - feedbackTimer / 0.45;
-      if (feedbackOk) {
-        game.draw.text('♥', W / 2, H * 0.44 - 20, { size: 120, color: C.good, bold: true });
-        game.draw.circle(W / 2, H * 0.44, pulseR * (1 + progress * 0.4), C.good, (1 - progress) * 0.5);
-      } else {
-        game.draw.text('✕', W / 2, H * 0.44 - 20, { size: 100, color: C.miss, bold: true });
-        game.draw.rect(0, 0, W, H, C.miss, (1 - progress) * 0.15);
-      }
+      if (feedbackOk) txt('♥ GOOD', W / 2, CY - 16, 96, C.b);
+      else txt('✕ MISS', W / 2, CY - 16, 88, C.a);
     }
 
-    // Guide
+    timeBar();
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 96, 48, C.g);
+    for (var m = 0; m < MAX_MISS; m++)
+      game.draw.rect(W / 2 + (m - 1) * 64 - 20, 150, 40, 40, m < misses ? C.a : '#330011');
     var peakNear = t > 0.02 && t < 0.25;
-    if (!done) {
-      game.draw.text(
-        peakNear ? '今！タップ！' : '脈動を感じろ',
-        W / 2, H - 200,
-        { size: peakNear ? 72 : 52, color: peakNear ? C.ring2 : C.ui, bold: peakNear }
-      );
-    }
+    txt(peakNear ? 'NOW!' : score + ' / ' + NEEDED, W / 2, H - 120, peakNear ? 72 : 56, peakNear ? C.c : C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

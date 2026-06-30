@@ -1,164 +1,149 @@
 // 005-balance-tilt.js
 // 天秤バランス — 傾く天秤を左右タップで水平に保つ緊張感
 // 操作: 傾いた側と逆をタップして重さを足す
-// 成功: 15秒間倒れずに生き延びる  失敗: 傾きが限界を超える
+// 成功: 5秒間倒れずに生き延びる  失敗: 傾きが限界を超える
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0c1220',
-    beam:    '#c8a96e',
-    pivot:   '#8b7355',
-    platL:   '#3b82f6',
-    platR:   '#f97316',
-    safe:    '#22c55e',
-    danger:  '#ef4444',
-    ui:      '#64748b',
-    glow:    '#fbbf24'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // angle: negative = tilts left (left side heavy), positive = right
-  var angle = (Math.random() - 0.5) * 0.1;
-  var angularVel = 0;
-  var timeLeft = 15;
-  var done = false;
-  var hitFeedback = 0;
-  var hitSide = 0; // -1 left, +1 right
+  var GAME_TITLE  = 'BALANCE BEAM';
+  var HOW_TO_PLAY = 'TAP THE RAISED SIDE';
+  var MAX_TIME = 5;            // 修正2: 生存系 15s → 5s（1/3）
+  var LIMIT = Math.PI / 4;     // 45度で失敗
 
-  // difficulty ramps up: angular acceleration base increases over time
-  function getGravity(elapsed) {
-    return 0.8 + elapsed * 0.06; // slow ramp
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  var angle, angularVel, timeLeft, done, hitFeedback, hitSide;
+
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
 
-  var LIMIT = Math.PI / 4; // 45 degrees = fail
+  function getGravity(elapsed) { return 0.8 + elapsed * 0.06; }
+
+  function initGame() {
+    angle = (Math.random() - 0.5) * 0.1;
+    angularVel = 0;
+    timeLeft = MAX_TIME;
+    done = false;
+    hitFeedback = 0;
+    hitSide = 0;
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? 200 : 0;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done) return;
-    if (x < W / 2) {
-      // tap left → add weight to left → pushes angle more negative... wait
-      // tap left side means "press down on left" → left gets heavier
-      // But we want to FIX the tilt: if left is low, tap RIGHT to press down right
-      // Intuitive: tap the RAISED side to push it down
-      angularVel -= 0.6; // push tilt toward left (negative)
-      hitSide = -1;
-    } else {
-      angularVel += 0.6;
-      hitSide = 1;
-    }
+    if (x < W / 2) { angularVel -= 0.6; hitSide = -1; }
+    else           { angularVel += 0.6; hitSide = 1; }
     hitFeedback = 0.25;
     game.audio.play('se_tap', 0.5);
   });
 
-  game.onUpdate(function(dt) {
-    if (done) {
-      drawScene();
-      return;
-    }
+  function background() { game.draw.clear(C.bg); }
 
-    timeLeft -= dt;
-    if (timeLeft <= 0) {
-      done = true;
-      game.audio.play('se_success');
-      setTimeout(function() { game.end.success(200); }, 400);
-      return;
-    }
-
-    // physics: gravity pulls toward whichever side is heavier
-    // Small random perturbations
-    var noise = (Math.random() - 0.5) * getGravity(15 - timeLeft) * dt;
-    angularVel += angle * getGravity(15 - timeLeft) * dt + noise;
-    angularVel *= 0.96; // damping
-    angle += angularVel * dt;
-
-    if (hitFeedback > 0) hitFeedback -= dt;
-
-    if (Math.abs(angle) >= LIMIT) {
-      done = true;
-      game.audio.play('se_failure');
-      setTimeout(function() { game.end.failure(); }, 300);
-    }
-
-    drawScene();
-  });
-
-  function drawScene() {
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // timer bar
-    var ratio = Math.max(0, timeLeft / 15);
-    game.draw.rect(0, 0, W, 72, '#111827');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.safe : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // danger indicator (red ring if near limit)
+  function drawBeam() {
+    var cx = W / 2, cy = H / 2, beamLen = 420;
+    // 危険時の赤フラッシュ
     var danger = Math.abs(angle) / LIMIT;
-    if (danger > 0.6) {
-      var da = (danger - 0.6) / 0.4;
-      game.draw.rect(0, 0, W, H, '#ef4444', da * 0.12);
+    if (danger > 0.6) game.draw.rect(0, 0, W, H, C.a, (danger - 0.6) / 0.4 * 0.15);
+
+    // 支柱（ドット）
+    game.draw.rect(snap(cx - 24), snap(cy + 20), 48, 320, C.d);
+    game.draw.rect(snap(cx - 80), snap(cy + 340), 160, 40, C.d);
+    game.draw.rect(snap(cx - 32), snap(cy - 32), 64, 64, C.c);
+
+    var cosA = Math.cos(angle), sinA = Math.sin(angle);
+    var lx = cx - beamLen * cosA, ly = cy - beamLen * sinA;
+    var rx = cx + beamLen * cosA, ry = cy + beamLen * sinA;
+    game.draw.line(cx, cy, lx, ly, C.c, 24);
+    game.draw.line(cx, cy, rx, ry, C.c, 24);
+
+    var pW = 220;
+    var lHit = hitFeedback > 0 && hitSide === -1;
+    var rHit = hitFeedback > 0 && hitSide === 1;
+    game.draw.rect(snap(lx - pW / 2), snap(ly), pW, 32, lHit ? C.g : C.e);
+    game.draw.rect(snap(rx - pW / 2), snap(ry), pW, 32, rHit ? C.g : C.f);
+
+    // 角度メーター
+    var indW = 600, indY = H - 320;
+    game.draw.rect(snap(cx - indW / 2), indY, indW, 48, '#003b00');
+    game.draw.rect(snap(cx - indW * 0.15), indY, snap(indW * 0.3), 48, C.b, 0.6);
+    var needleX = cx + (angle / LIMIT) * (indW / 2);
+    game.draw.rect(snap(needleX - 8), indY - 8, 16, 64, danger > 0.7 ? C.a : C.g);
+  }
+
+  game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (angle === undefined) initGame();
+      background();
+      angle = Math.sin(game.time.elapsed * 1.5) * 0.3; // デモ用に揺れる
+      drawBeam();
+      txt(GAME_TITLE,  W / 2, H * 0.18, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.28, 46, C.e);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.72, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.80, 52, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.9, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
     }
 
-    var cx = W / 2;
-    var cy = H / 2;
-    var beamLen = 380;
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(true); return; }
+      var noise = (Math.random() - 0.5) * getGravity(MAX_TIME - timeLeft) * dt;
+      angularVel += angle * getGravity(MAX_TIME - timeLeft) * dt + noise;
+      angularVel *= 0.96;
+      angle += angularVel * dt;
+      if (hitFeedback > 0) hitFeedback -= dt;
+      if (Math.abs(angle) >= LIMIT) { finish(false); return; }
+    }
 
-    // pivot stand
-    game.draw.rect(cx - 16, cy + 20, 32, 280, C.pivot);
-    game.draw.rect(cx - 60, cy + 300, 120, 32, C.pivot);
-
-    // pivot circle
-    game.draw.circle(cx, cy, 30, C.pivot);
-    game.draw.circle(cx, cy, 18, C.glow);
-
-    // rotating beam
-    var cosA = Math.cos(angle);
-    var sinA = Math.sin(angle);
-
-    var lx = cx - beamLen * cosA;
-    var ly = cy - beamLen * sinA;
-    var rx = cx + beamLen * cosA;
-    var ry = cy + beamLen * sinA;
-
-    // beam shadow
-    game.draw.line(cx, cy + 6, lx, ly + 6, '#00000040', 24);
-    game.draw.line(cx, cy + 6, rx, ry + 6, '#00000040', 24);
-    // beam
-    game.draw.line(cx, cy, lx, ly, C.beam, 20);
-    game.draw.line(cx, cy, rx, ry, C.beam, 20);
-
-    // platforms
-    var pW = 200;
-    var pBorder = 8;
-    var lIsHit = hitFeedback > 0 && hitSide === -1;
-    var rIsHit = hitFeedback > 0 && hitSide === 1;
-
-    // left platform
-    game.draw.rect(lx - pW / 2 - pBorder, ly - pBorder, pW + pBorder * 2, 24 + pBorder * 2, lIsHit ? '#fff' : '#1e3a5f');
-    game.draw.rect(lx - pW / 2, ly, pW, 24, lIsHit ? '#60a5fa' : C.platL);
-
-    // right platform
-    game.draw.rect(rx - pW / 2 - pBorder, ry - pBorder, pW + pBorder * 2, 24 + pBorder * 2, rIsHit ? '#fff' : '#7c2d12');
-    game.draw.rect(rx - pW / 2, ry, pW, 24, rIsHit ? '#fb923c' : C.platR);
-
-    // angle indicator bar
-    var indicatorY = H - 260;
-    var indW = 500;
-    var indH = 48;
-    game.draw.rect(cx - indW / 2, indicatorY, indW, indH, '#1e293b');
-    game.draw.rect(cx - indW / 2, indicatorY, indW, indH, '#374151', 0, 2);
-    // green safe zone
-    game.draw.rect(cx - indW * 0.15, indicatorY, indW * 0.3, indH, '#15803d', 0.5);
-    // needle
-    var needleX = cx + (angle / LIMIT) * (indW / 2);
-    game.draw.rect(needleX - 6, indicatorY - 8, 12, indH + 16, danger > 0.7 ? C.danger : '#ffffff');
-
-    // instructions
-    game.draw.text('← タップ  タップ →', W / 2, H - 160, { size: 48, color: C.ui });
-    game.draw.text('傾いた方向にタップして均衡を保て！', W / 2, H - 100, { size: 36, color: '#334155' });
-  }
+    background();
+    drawBeam();
+    timeBar();
+    txt('SURVIVE ' + Math.ceil(timeLeft) + 's', W / 2, 96, 48, C.c);
+    txt('← TAP    TAP →', W / 2, H - 120, 48, C.e);
+    scanlines();
+  });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.35);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
