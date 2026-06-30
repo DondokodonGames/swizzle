@@ -40,7 +40,7 @@
   }
 
   function initGame() {
-    player = { x: W / 2, y: H / 2 };
+    player = { x: W / 2, y: H * 0.72 };  // 修正1: 縦下3分の1始動
     timeLeft = MAX_TIME; done = false; magnets = []; trailPts = []; magnetSpawnTimer = 1.2;
     spawnMagnet();
   }

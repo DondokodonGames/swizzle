@@ -37,7 +37,8 @@
   function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
 
   function initGame() {
-    gravity = 1; vy = 0; playerX = 240; playerY = H / 2; playerR = 40;
+    // 修正1: プレイヤー初期位置を縦下3分の1に。重力は上向き(-1)始動で低位置から浮上させ可動域を確保
+    gravity = -1; vy = 0; playerX = 240; playerY = H * 0.72; playerR = 40;
     gatesPassed = 0; done = false; obstacles = []; trailPoints = []; obTimer = 0.8;
     spawnObstacle();
   }
