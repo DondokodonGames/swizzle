@@ -27,12 +27,6 @@
   var playerX, playerY, isJumping, jumpVy, enemies, spawnTimer, score, misses, timeLeft, done, splat;
 
   function snap(v) { return Math.round(v / 8) * 8; }
-  function drawPixelCircle(px, py, r, color, alpha) {
-    var step = 8; px = snap(px); py = snap(py);
-    for (var yy = -r; yy <= r; yy += step)
-      for (var xx = -r; xx <= r; xx += step)
-        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
-  }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
@@ -91,17 +85,38 @@
     game.draw.rect(0, GROUND_Y, W, 10, C.f);
   }
 
+  // ── ドット絵スプライト（8pxブロックの組み合わせ）──
+  function drawUFO(x, y) {
+    var bx = snap(x), by = snap(y), on = Math.floor(game.time.elapsed * 8) % 2 === 0;
+    game.draw.rect(bx - 24, by - 48, 48, 24, C.e);     // 上ドーム
+    game.draw.rect(bx - 16, by - 56, 32, 8, C.g);      // 天頂ハイライト
+    game.draw.rect(bx - 72, by - 24, 144, 24, C.b);    // 円盤
+    game.draw.rect(bx - 48, by, 96, 12, C.a);          // 下部
+    game.draw.rect(bx - 60, by - 20, 16, 16, on ? C.d : C.f);  // 点滅ライト
+    game.draw.rect(bx - 8,  by - 20, 16, 16, on ? C.f : C.d);
+    game.draw.rect(bx + 44, by - 20, 16, 16, on ? C.d : C.f);
+  }
+  function drawFrog(x, y, jumping) {
+    var bx = snap(x), by = snap(y), hop = jumping ? -8 : 0;
+    game.draw.rect(bx - 48, by - 40 + hop, 96, 72, C.b);       // 胴体
+    game.draw.rect(bx - 48, by - 40 + hop, 96, 12, C.g, 0.5);  // ハイライト
+    game.draw.rect(bx - 56, by + 24 + hop, 24, 16, C.b);       // 足
+    game.draw.rect(bx + 32, by + 24 + hop, 24, 16, C.b);
+    game.draw.rect(bx - 44, by - 68 + hop, 36, 36, C.g);       // 目(白)
+    game.draw.rect(bx + 8,  by - 68 + hop, 36, 36, C.g);
+    game.draw.rect(bx - 36, by - 60 + hop, 16, 16, '#000000'); // 瞳
+    game.draw.rect(bx + 16, by - 60 + hop, 16, 16, '#000000');
+    game.draw.rect(bx - 24, by + 8 + hop, 48, 8, '#000000');   // 口
+  }
+
   function drawScene() {
     for (var j = 0; j < enemies.length; j++) {
       var en = enemies[j]; if (!en.alive) continue;
-      drawPixelCircle(en.x, en.y, ENEMY_H * 0.5, C.f, 1);
-      game.draw.rect(snap(en.x) - 28, snap(en.y) - 8, 16, 16, C.g); game.draw.rect(snap(en.x) + 12, snap(en.y) - 8, 16, 16, C.g);
+      drawUFO(en.x, en.y);
     }
     for (var s = 0; s < splat.length; s++) game.draw.rect(snap(splat[s].x) - 8, snap(splat[s].y) - 8, 16, 16, C.d, splat[s].life / 0.6);
-    // プレイヤー
-    drawPixelCircle(playerX, playerY + PLAYER_H * 0.4, PLAYER_H * 0.45, C.b, 1);
-    game.draw.rect(snap(playerX) - 28, snap(playerY + PLAYER_H * 0.2) - 12, 18, 18, C.g);
-    game.draw.rect(snap(playerX) + 10, snap(playerY + PLAYER_H * 0.2) - 12, 18, 18, C.g);
+    // プレイヤー（カエル）
+    drawFrog(playerX, playerY + PLAYER_H * 0.45, isJumping);
   }
 
   game.onUpdate(function(dt) {
