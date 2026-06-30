@@ -30,6 +30,7 @@
 
   var targetShape, totalTarget, painted, curCol, curRow, paintedCorrect, paintedWrong, timeLeft, done;
 
+  function snap(v) { return Math.round(v / 8) * 8; }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
@@ -88,7 +89,19 @@
     if (state === S.RESULT)  { state = S.ATTRACT; return; }
   });
 
-  function background() { game.draw.clear(C.bg); }
+  // 世界観: ドット絵職人のキャンバス。お題のシルエットをなぞって描き上げる。
+  function background() {
+    game.draw.clear('#0a0a14');
+    // イーゼルの木枠
+    var fx = GRID_X - 36, fy = GRID_Y - 36, fw = GRID_W + 72, fh = GRID_H + 72;
+    game.draw.rect(fx, fy, fw, fh, '#4a2a14');
+    game.draw.rect(fx + 14, fy + 14, fw - 28, fh - 28, '#101018');
+    // パレット（下部の絵の具）
+    var paints = [C.a, C.b, C.c, C.d, C.e, C.f];
+    for (var p = 0; p < paints.length; p++)
+      game.draw.rect(snap(W / 2 - 180 + p * 64), GRID_Y + GRID_H + 40, 48, 48, paints[p]);
+    txt('PIXEL CANVAS', W / 2, fy - 8, 36, C.c);
+  }
 
   function drawGrid() {
     for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {

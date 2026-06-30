@@ -64,7 +64,21 @@
     else finish(false);
   });
 
-  function background() { game.draw.clear(C.bg); }
+  // 世界観: 酒場のバーカウンター。グラスをちょうど良い量で注ぎ止める。
+  function background() {
+    game.draw.clear('#08040c');
+    // 背後の棚（ボトルの列）
+    game.draw.rect(0, 140, W, 200, '#1a0e08');
+    for (var b = 0; b < 8; b++) {
+      var bx = 60 + b * ((W - 120) / 8);
+      game.draw.rect(snap(bx), 160, 56, 160, ['#ff2079', '#00ff9f', '#ffe600', '#00cfff'][b % 4], 0.6);
+      game.draw.rect(snap(bx) + 20, 130, 16, 40, '#888888');  // ボトル首
+    }
+    // カウンター天板
+    game.draw.rect(0, GLASS_Y + GLASS_H + 20, W, H, '#2a160a');
+    game.draw.rect(0, GLASS_Y + GLASS_H + 20, W, 10, C.f, 0.4);
+    txt('BAR', W / 2, 110, 36, C.c);
+  }
 
   function drawGlass() {
     game.draw.rect(snap(GLASS_X - 12), snap(GLASS_Y - 12), GLASS_W + 24, GLASS_H + 24, C.a);

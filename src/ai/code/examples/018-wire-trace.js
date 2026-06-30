@@ -23,6 +23,7 @@
 
   var path, playerIdx, done, won, timeLeft;
 
+  function snap(v) { return Math.round(v / 8) * 8; }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
@@ -95,7 +96,20 @@
     if (state === S.RESULT)  { state = S.ATTRACT; return; }
   });
 
-  function background() { game.draw.clear(C.bg); }
+  // 世界観: 爆弾の配線をたどる解体作業。回路を正しくなぞって起爆を止める。
+  function background() {
+    game.draw.clear('#0a0a02');
+    // 回路基板（緑のランド＋トレース）
+    var fx = GRID_X - 40, fy = GRID_Y - 40, fw = COLS * CELL + 80, fh = ROWS * CELL + 80;
+    game.draw.rect(fx, fy, fw, fh, '#0a2a0a');
+    game.draw.rect(fx + 12, fy + 12, fw - 24, fh - 24, '#031403');
+    // ランダムな飾りトレース
+    for (var i = 0; i < 6; i++) {
+      var ty = fy + 60 + i * (fh - 120) / 6;
+      game.draw.rect(fx + 20, snap(ty), fw - 40, 3, C.b, 0.2);
+    }
+    txt('DEFUSE WIRING', W / 2, fy - 8, 36, C.b);
+  }
 
   function drawWire() {
     for (var gc = 0; gc <= COLS; gc++)

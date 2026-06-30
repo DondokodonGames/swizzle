@@ -78,7 +78,22 @@
     startMovingBlock();
   });
 
-  function background() { game.draw.clear(C.bg); }
+  // 世界観: 高層ビルの建設現場。クレーンで鉄骨を吊り、ずれなく積み上げる。
+  function background() {
+    game.draw.clear('#0a0818');
+    // 奥のビル群（シルエット）
+    for (var b = 0; b < 6; b++) {
+      var bw = 120 + (b % 3) * 50, bx = b * (W / 6);
+      game.draw.rect(bx, FLOOR_Y - 200 - (b % 3) * 160, bw, H, '#12102a');
+      for (var wy = FLOOR_Y - 160; wy < H; wy += 80)
+        for (var wx2 = bx + 16; wx2 < bx + bw - 16; wx2 += 48)
+          game.draw.rect(snap(wx2), snap(wy), 24, 32, C.c, 0.08);
+    }
+    // クレーンのアーム（上部）
+    game.draw.rect(40, 140, W - 80, 16, '#888844');
+    game.draw.rect(W / 2 - 8, 140, 16, 120, '#888844');  // 吊りワイヤ
+    txt('CONSTRUCTION', W / 2, 110, 36, C.b);
+  }
 
   function drawStack() {
     for (var b = 0; b < stack.length; b++) {
