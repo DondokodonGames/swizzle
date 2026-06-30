@@ -86,19 +86,29 @@
     game.draw.rect(W - 8, 0, 8, H, C.f, 0.6);
   }
 
+  // ── ドット絵スプライト: 障害物（縞模様バリケード）──
   function drawObstacles() {
     for (var k = 0; k < obstacles.length; k++) {
-      var ob = obstacles[k], bx = LANE_W * ob.lane + (LANE_W - ob.w) / 2;
-      game.draw.rect(snap(bx), snap(ob.y), ob.w, ob.h, C.a);
-      game.draw.rect(snap(bx) + 20, snap(ob.y) + 20, ob.w - 40, 16, C.g, 0.5);
-      game.draw.rect(snap(bx) + 20, snap(ob.y) + ob.h - 40, ob.w - 40, 16, C.g, 0.5);
+      var ob = obstacles[k], bx = snap(LANE_W * ob.lane + (LANE_W - ob.w) / 2), by = snap(ob.y);
+      game.draw.rect(bx, by, ob.w, ob.h, C.a);                 // 本体
+      game.draw.rect(bx, by, ob.w, 16, C.g);                  // 上枠
+      game.draw.rect(bx, by + ob.h - 16, ob.w, 16, C.g);      // 下枠
+      for (var s = 0; s < ob.w; s += 48)                       // 警告縞
+        game.draw.rect(bx + s, by + ob.h * 0.4, 24, 24, C.c, 0.7);
     }
   }
 
+  // ── ドット絵スプライト: 自車（ボディ＋窓＋ライト＋タイヤ）──
   function drawCar() {
-    game.draw.rect(snap(carX - CAR_W / 2), snap(CAR_Y), CAR_W, CAR_H, C.f);
-    game.draw.rect(snap(carX - CAR_W / 2) + 24, snap(CAR_Y) + 30, CAR_W - 48, CAR_H * 0.45, C.c);
-    game.draw.rect(snap(carX - CAR_W / 2) + 32, snap(CAR_Y) + 44, CAR_W - 64, 72, C.e, 0.8);
+    var bx = snap(carX - CAR_W / 2), by = snap(CAR_Y), on = Math.floor(game.time.elapsed * 10) % 2 === 0;
+    game.draw.rect(bx - 12, by + 24, 16, 48, '#000000');         // 左タイヤ
+    game.draw.rect(bx + CAR_W - 4, by + 24, 16, 48, '#000000');  // 右タイヤ
+    game.draw.rect(bx - 12, by + CAR_H - 72, 16, 48, '#000000'); // 左後輪
+    game.draw.rect(bx + CAR_W - 4, by + CAR_H - 72, 16, 48, '#000000'); // 右後輪
+    game.draw.rect(bx, by, CAR_W, CAR_H, C.f);                   // ボディ
+    game.draw.rect(bx + 16, by + 12, CAR_W - 32, 28, on ? C.c : C.d); // ヘッドライト
+    game.draw.rect(bx + 24, by + 56, CAR_W - 48, 80, C.e, 0.85); // フロントガラス
+    game.draw.rect(bx + 24, by + CAR_H - 48, CAR_W - 48, 24, C.a); // リアスポイラー
   }
 
   game.onUpdate(function(dt) {

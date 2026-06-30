@@ -30,6 +30,15 @@
       for (var px = -r; px <= r; px += step)
         if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
   }
+  // ── ドット絵スプライト: 流れ星（4方向きらめき＋核）──
+  function drawStar(x, y, fade) {
+    var bx = snap(x), by = snap(y);
+    game.draw.rect(bx - 8,  by - 48, 16, 96, C.c, fade);   // 縦の光条
+    game.draw.rect(bx - 48, by - 8,  96, 16, C.c, fade);   // 横の光条
+    game.draw.rect(bx - 24, by - 24, 48, 48, C.d, fade);   // 本体(黄)
+    game.draw.rect(bx - 24, by - 24, 48, 8,  C.g, fade * 0.6); // ハイライト
+    game.draw.rect(bx - 8,  by - 8,  16, 16, C.g, fade);   // 核
+  }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
@@ -104,7 +113,7 @@
       // デモ: 流れ星が横切る
       var dx0 = snap((game.time.elapsed * 900) % (W + 200) - 100);
       var dy0 = snap(H * 0.5 + Math.sin(game.time.elapsed * 2) * 200);
-      drawPixelCircle(dx0, dy0, 40, C.d, 1);
+      drawStar(dx0, dy0, 1);
       txt(GAME_TITLE,  W / 2, H * 0.28, 88, C.d);
       txt(HOW_TO_PLAY, W / 2, H * 0.40, 50, C.b);
       if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
@@ -162,8 +171,7 @@
 
     if (star) {
       var fade = 1 - (star.fadeOut || 0);
-      drawPixelCircle(star.x, star.y, star.r, C.c, fade);
-      drawPixelCircle(star.x, star.y, 16, C.d, fade);
+      drawStar(star.x, star.y, fade);
     }
 
     if (hitFx) {

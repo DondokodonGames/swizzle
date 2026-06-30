@@ -97,19 +97,34 @@
     }
   }
 
+  // ── ドット絵スプライト: 隕石（岩塊＋クレーター＋炎の尾）──
+  function drawMeteor(x, y, ang, dir) {
+    var bx = snap(x), by = snap(y);
+    // 進行方向と逆に炎の尾
+    game.draw.rect(snap(bx - Math.cos(ang) * dir * 40) - 8, snap(by - Math.sin(ang) * dir * 40) - 8, 16, 16, C.d, 0.6);
+    game.draw.rect(bx - METEOR_R, by - METEOR_R + 8, METEOR_R * 2, METEOR_R * 2 - 16, C.f); // 岩塊
+    game.draw.rect(bx - METEOR_R + 8, by - METEOR_R, METEOR_R * 2 - 16, METEOR_R * 2, C.f);
+    game.draw.rect(bx - 16, by - 16, 16, 16, C.d, 0.6);   // クレーター
+    game.draw.rect(bx + 8, by + 4, 12, 12, C.d, 0.5);
+    game.draw.rect(bx - METEOR_R + 8, by - METEOR_R + 8, 12, 12, C.g, 0.4); // ハイライト
+  }
+
   function drawScene() {
     // 軌道リング（ドット）
     for (var d = 0; d < 48; d++) {
       var a = (d / 48) * Math.PI * 2;
       game.draw.rect(snap(cx + Math.cos(a) * ORBIT_R) - 4, snap(cy + Math.sin(a) * ORBIT_R) - 4, 8, 8, C.a, 0.6);
     }
-    // 惑星
+    // 惑星（本体＋大陸＋ハイライト）
     drawPixelCircle(cx, cy, 96, C.a, 1);
-    drawPixelCircle(cx, cy, 56, C.e, 1);
-    // 隕石
+    drawPixelCircle(cx, cy, 96, C.e, 0.0);
+    game.draw.rect(snap(cx) - 48, snap(cy) - 8, 40, 32, C.b, 0.5);
+    game.draw.rect(snap(cx) + 8, snap(cy) - 40, 32, 24, C.b, 0.5);
+    game.draw.rect(snap(cx) - 40, snap(cy) - 40, 24, 16, C.g, 0.4);
+    // 隕石（岩塊＋クレーター＋尾）
     for (var m = 0; m < meteors.length; m++) {
       var met = meteors[m]; if (!met.alive) continue;
-      drawPixelCircle(cx + Math.cos(met.angle) * ORBIT_R, cy + Math.sin(met.angle) * ORBIT_R, METEOR_R, C.f, 1);
+      drawMeteor(cx + Math.cos(met.angle) * ORBIT_R, cy + Math.sin(met.angle) * ORBIT_R, met.angle, met.dir);
     }
     // ビーム
     if (beamActive) {

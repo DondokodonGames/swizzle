@@ -78,12 +78,22 @@
 
   function background() { game.draw.clear(C.bg); }
 
+  // ── ドット絵スプライト: 爆弾（球体＋ハイライト＋導火線＋火花）──
+  function drawBomb(x, y, exploding) {
+    var bx = snap(x), by = snap(y);
+    drawPixelCircle(bx, by, BOMB_R, exploding ? C.e : C.a, 1);
+    game.draw.rect(bx - BOMB_R + 16, by - BOMB_R + 16, 16, 16, C.g, 0.6);  // ハイライト
+    game.draw.rect(bx - 6, by - BOMB_R - 28, 12, 32, C.d);                 // 導火線基部
+    game.draw.rect(bx + 6, by - BOMB_R - 40, 12, 16, C.d);                 // 導火線曲がり
+    var on = Math.floor(game.time.elapsed * 16) % 2 === 0;                 // 火花点滅
+    game.draw.rect(bx + 8, by - BOMB_R - 52, 16, 16, exploding || on ? C.f : '#ff8800');
+  }
+
   function drawScene() {
     for (var ex = 0; ex < explosions.length; ex++) { var exp = explosions[ex], ea = exp.life / 0.5; drawPixelCircle(exp.x, exp.y, exp.r, C.f, ea * 0.7); }
     for (var b = 0; b < bombs.length; b++) {
       var bomb = bombs[b]; if (!bomb.alive) continue;
-      drawPixelCircle(bomb.x, bomb.y, BOMB_R, bomb.exploding ? C.e : C.a, 1);
-      game.draw.rect(snap(bomb.x) - 4, snap(bomb.y - BOMB_R - 24), 8, 28, C.d);
+      drawBomb(bomb.x, bomb.y, bomb.exploding);
     }
   }
 

@@ -24,17 +24,24 @@
   var gravity, vy, playerX, playerY, playerR, gatesPassed, done, obstacles, trailPoints, obTimer;
 
   function snap(v) { return Math.round(v / 8) * 8; }
-  function drawPixelCircle(cx, cy, r, color, alpha) {
-    var step = 8; cx = snap(cx); cy = snap(cy);
-    for (var py = -r; py <= r; py += step)
-      for (var px = -r; px <= r; px += step)
-        if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
-  }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
   }
   function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+
+  // ── ドット絵スプライト: 自機（小型シャトル）。重力方向で炎の向きが反転 ──
+  function drawShip(x, y, grav) {
+    var bx = snap(x), by = snap(y);
+    game.draw.rect(bx - 8,  by - 32, 16, 64, C.a);   // 機首〜胴
+    game.draw.rect(bx - 32, by - 8,  64, 24, C.a);   // 主翼
+    game.draw.rect(bx - 16, by - 24, 32, 16, C.d);   // コックピット(黄)
+    game.draw.rect(bx - 8,  by - 24, 16, 8,  C.g);   // 窓ハイライト
+    // エンジン炎（重力と逆向き＝進行方向、フレーム点滅）
+    var on = Math.floor(game.time.elapsed * 12) % 2 === 0;
+    var fy = grav > 0 ? by - 48 : by + 32;
+    game.draw.rect(bx - 8, fy, 16, 16, on ? '#ff8800' : C.d);
+  }
 
   function initGame() {
     // 修正1: プレイヤー初期位置を縦下3分の1に。重力は上向き(-1)始動で低位置から浮上させ可動域を確保
@@ -90,7 +97,7 @@
     if (state === S.ATTRACT) {
       background();
       var demoY = snap(H / 2 + Math.sin(game.time.elapsed * 2) * 300);
-      drawPixelCircle(W / 2, demoY, 40, C.a, 1);
+      drawShip(W / 2, demoY, 1);
       txt(GAME_TITLE,  W / 2, H * 0.3, 84, C.g);
       txt(HOW_TO_PLAY, W / 2, H * 0.4, 44, C.a);
       if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
@@ -147,8 +154,7 @@
       var ta = 1 - tI / trailPoints.length;
       game.draw.rect(snap(tp.x) - 12, snap(tp.y) - 12, 24, 24, C.a, ta * 0.4);
     }
-    drawPixelCircle(playerX, playerY, playerR, C.a, 1);
-    txt(gravity > 0 ? '▼' : '▲', playerX, playerY + (gravity > 0 ? 1 : -1) * (playerR + 28), 36, C.g);
+    drawShip(playerX, playerY, gravity);
 
     txt('GATE ' + gatesPassed + ' / ' + NEEDED, W / 2, 96, 48, C.g);
     txt('TAP TO FLIP', W / 2, H - 80, 44, C.a);

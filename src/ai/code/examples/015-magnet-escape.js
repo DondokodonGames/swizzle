@@ -23,12 +23,6 @@
   var player, timeLeft, done, magnets, trailPts, magnetSpawnTimer;
 
   function snap(v) { return Math.round(v / 8) * 8; }
-  function drawPixelCircle(cx, cy, r, color, alpha) {
-    var step = 8; cx = snap(cx); cy = snap(cy);
-    for (var py = -r; py <= r; py += step)
-      for (var px = -r; px <= r; px += step)
-        if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
-  }
   function txt(str, x, y, sz, color, align) {
     game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
     game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
@@ -81,19 +75,32 @@
 
   function background() { game.draw.clear(C.bg); }
 
+  // ── ドット絵スプライト: U字マグネット（極の色＋N/S）と自機 ──
+  function drawMagnet(x, y, isNorth) {
+    var bx = snap(x), by = snap(y), col = isNorth ? C.e : C.a, oth = isNorth ? C.a : C.e;
+    game.draw.rect(bx - 48, by - 48, 32, 72, col);     // 左脚
+    game.draw.rect(bx + 16, by - 48, 32, 72, oth);     // 右脚
+    game.draw.rect(bx - 48, by - 48, 96, 32, '#888888'); // 上の弧(金属)
+    game.draw.rect(bx - 48, by + 24, 32, 24, C.g);     // 左極先端
+    game.draw.rect(bx + 16, by + 24, 32, 24, C.g);     // 右極先端
+    txt(isNorth ? 'N' : 'S', bx, by - 8, 36, C.g);
+  }
   function drawMagnets() {
-    for (var k = 0; k < magnets.length; k++) {
-      var mg = magnets[k], col = mg.isNorth ? C.e : C.a;
-      drawPixelCircle(mg.x, mg.y, mg.r, col, 1);
-      txt(mg.isNorth ? 'N' : 'S', mg.x, mg.y, 48, C.g);
-    }
+    for (var k = 0; k < magnets.length; k++) drawMagnet(magnets[k].x, magnets[k].y, magnets[k].isNorth);
+  }
+  function drawPlayerShip(x, y) {
+    var bx = snap(x), by = snap(y);
+    game.draw.rect(bx - 8,  by - 36, 16, 56, C.d);   // 機体
+    game.draw.rect(bx - 36, by - 4,  72, 20, C.d);   // 翼
+    game.draw.rect(bx - 12, by - 20, 24, 16, C.c);   // 窓
+    game.draw.rect(bx - 8,  by + 20, 16, 12, C.f);   // 噴射
   }
 
   game.onUpdate(function(dt) {
     if (state === S.ATTRACT) {
       background();
-      drawPixelCircle(W / 2, H / 2, PLAYER_R, C.d, 1);
-      drawPixelCircle(W / 2 + Math.cos(game.time.elapsed * 2) * 300, H / 2 + Math.sin(game.time.elapsed * 2) * 300, 56, C.e, 1);
+      drawPlayerShip(W / 2, H / 2);
+      drawMagnet(W / 2 + Math.cos(game.time.elapsed * 2) * 300, H / 2 + Math.sin(game.time.elapsed * 2) * 300, true);
       txt(GAME_TITLE,  W / 2, H * 0.2, 80, C.c);
       txt(HOW_TO_PLAY, W / 2, H * 0.28, 44, C.b);
       if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
@@ -147,7 +154,7 @@
       game.draw.rect(snap(tp.x) - 12, snap(tp.y) - 12, 24, 24, C.f, ta);
     }
     drawMagnets();
-    drawPixelCircle(player.x, player.y, PLAYER_R, C.d, 1);
+    drawPlayerShip(player.x, player.y);
     timeBar();
     txt('SURVIVE ' + Math.ceil(timeLeft) + 's', W / 2, 96, 48, C.c);
     txt('SWIPE TO ESCAPE!', W / 2, H - 120, 48, C.f);
