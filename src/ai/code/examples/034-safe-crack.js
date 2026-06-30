@@ -82,10 +82,39 @@
     if (!done) tryRotate(1);
   });
 
-  function background() { game.draw.clear(C.bg); }
+  // 世界観: 銀行の大型金庫の扉。ダイヤルを合わせて閂(かんぬき)を外し開錠する。
+  function rivet(x, y) {
+    game.draw.rect(snap(x) - 6, snap(y) - 6, 12, 12, '#8888aa');
+    game.draw.rect(snap(x) - 2, snap(y) - 2, 4, 4, C.g);
+  }
+  function background() {
+    game.draw.clear('#000018');
+    var dx = 60, dy = 200, dw = W - 120, dh = H - 460;
+    game.draw.rect(dx, dy, dw, dh, '#1a1a3a');          // 鋼鉄の扉
+    game.draw.rect(dx + 12, dy + 12, dw - 24, dh - 24, '#10102a');
+    // 縁のリベット列
+    var i;
+    for (i = 0; i <= 6; i++) { rivet(dx + 30 + i * (dw - 60) / 6, dy + 26); rivet(dx + 30 + i * (dw - 60) / 6, dy + dh - 26); }
+    for (i = 1; i < 8; i++) { rivet(dx + 26, dy + 30 + i * (dh - 60) / 8); rivet(dx + dw - 26, dy + 30 + i * (dh - 60) / 8); }
+    // 左のヒンジ柱
+    game.draw.rect(dx - 12, dy + 40, 44, dh - 80, '#333355');
+    game.draw.rect(dx - 12, dy + 90, 44, 56, '#555577');
+    game.draw.rect(dx - 12, dy + dh - 146, 44, 56, '#555577');
+    // 右の閂インジケータ（COMBO_COUNT個・解錠で引っ込み緑に）
+    for (i = 0; i < COMBO_COUNT; i++) {
+      var open = i < solved.length, by = dy + dh * 0.5 + (i - (COMBO_COUNT - 1) / 2) * 120;
+      game.draw.rect(dx + dw - 18, snap(by) - 24, open ? 8 : 52, 48, open ? C.f : C.e);
+    }
+    txt('VAULT', W / 2, dy + 56, 48, C.d);              // 銘板
+  }
 
   function drawDial() {
-    drawPixelCircle(dcx, dcy, dialR, '#000044', 1);
+    // ハンドル（4本スポーク）
+    for (var s = 0; s < 4; s++) {
+      var sa = s / 4 * Math.PI * 2 + dialPosition * 0.04;
+      game.draw.rect(snap(dcx + Math.cos(sa) * dialR * 0.6) - 12, snap(dcy + Math.sin(sa) * dialR * 0.6) - 12, 24, 24, '#555577');
+    }
+    drawPixelCircle(dcx, dcy, dialR, '#444466', 1);     // 金属台座
     drawPixelCircle(dcx, dcy, dialR - 16, C.a, 1);
     for (var n = 0; n < TOTAL_NOTCHES; n++) {
       var rotated = (n - dialPosition + TOTAL_NOTCHES) % TOTAL_NOTCHES;
