@@ -4,176 +4,132 @@
 // 成功: 全タイルを同じ色に揃える  失敗: 30秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0a0c10',
-    tileA:   '#6366f1',
-    tileAHi: '#a5b4fc',
-    tileB:   '#ec4899',
-    tileBHi: '#f9a8d4',
-    edge:    '#1e2030',
-    ui:      '#475569',
-    win:     '#22c55e'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var COLS = 5;
-  var ROWS = 5;
-  var TILE = 180;
-  var GAP = 8;
+  var GAME_TITLE  = 'TILE FLIP';
+  var HOW_TO_PLAY = 'TAP TO FLIP (NEIGHBORS TOO)';
+  var MAX_TIME = 30;
+  // 修正2: 5x5 → 3x3 + 1手スクランブルで易化
+  var COLS = 3, ROWS = 3, TILE = 280, GAP = 16, SCRAMBLE = 1;
   var GRID_W = COLS * TILE + (COLS - 1) * GAP;
   var GRID_H = ROWS * TILE + (ROWS - 1) * GAP;
-  var GRID_X = (W - GRID_W) / 2;
-  var GRID_Y = (H - GRID_H) / 2 - 60;
-
+  var GRID_X = (W - GRID_W) / 2, GRID_Y = (H - GRID_H) / 2;   // 修正1: 縦中央
   var TOTAL = COLS * ROWS;
-  var tiles = []; // 0 = A (indigo), 1 = B (pink)
-  var flipAnims = []; // per-tile flip animation progress
 
-  var timeLeft = 30;
-  var done = false;
-  var winFlash = 0;
-  var moves = 0;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function init() {
-    tiles = [];
-    flipAnims = [];
-    for (var i = 0; i < TOTAL; i++) {
-      tiles.push(Math.random() < 0.5 ? 0 : 1);
-      flipAnims.push(0);
-    }
-    // Ensure it's not already solved
-    var firstVal = tiles[0];
-    var allSame = tiles.every(function(t) { return t === firstVal; });
-    if (allSame) tiles[0] = 1 - tiles[0];
+  var tiles, timeLeft, done, moves;
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
 
   function idx(c, r) { return r * COLS + c; }
-
   function flip(col, row) {
-    // Flip this tile and orthogonal neighbors (Lights Out style)
-    var toFlip = [[col, row], [col-1, row], [col+1, row], [col, row-1], [col, row+1]];
-    for (var i = 0; i < toFlip.length; i++) {
-      var tc = toFlip[i][0], tr = toFlip[i][1];
-      if (tc >= 0 && tc < COLS && tr >= 0 && tr < ROWS) {
-        var ti = idx(tc, tr);
-        tiles[ti] = 1 - tiles[ti];
-        flipAnims[ti] = 0.25; // trigger flip animation
-      }
+    var nb = [[col, row], [col - 1, row], [col + 1, row], [col, row - 1], [col, row + 1]];
+    for (var i = 0; i < nb.length; i++) {
+      var tc = nb[i][0], tr = nb[i][1];
+      if (tc >= 0 && tc < COLS && tr >= 0 && tr < ROWS) { var ti = idx(tc, tr); tiles[ti] = 1 - tiles[ti]; }
     }
-    moves++;
+  }
+  function isSolved() { for (var i = 1; i < TOTAL; i++) if (tiles[i] !== tiles[0]) return false; return true; }
+
+  function initGame() {
+    tiles = []; for (var i = 0; i < TOTAL; i++) tiles.push(0);
+    moves = 0; timeLeft = MAX_TIME; done = false;
+    // 解けた状態から SCRAMBLE 回だけランダムにflip（必ず可解・易しい）
+    for (var s = 0; s < SCRAMBLE; s++) flip(Math.floor(Math.random() * COLS), Math.floor(Math.random() * ROWS));
+    if (isSolved()) flip(1, 1);
   }
 
-  function isSolved() {
-    var first = tiles[0];
-    for (var i = 1; i < TOTAL; i++) {
-      if (tiles[i] !== first) return false;
-    }
-    return true;
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? Math.max(100, (10 - moves) * 80 + Math.ceil(timeLeft) * 30) : 0;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done) return;
-    var col = Math.floor((x - GRID_X) / (TILE + GAP));
-    var row = Math.floor((y - GRID_Y) / (TILE + GAP));
+    var col = Math.floor((x - GRID_X) / (TILE + GAP)), row = Math.floor((y - GRID_Y) / (TILE + GAP));
     if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
-    // Verify tap is inside the tile (not in gap)
-    var tileX = GRID_X + col * (TILE + GAP);
-    var tileY = GRID_Y + row * (TILE + GAP);
-    if (x > tileX + TILE || y > tileY + TILE) return;
-
-    flip(col, row);
+    var tx = GRID_X + col * (TILE + GAP), ty = GRID_Y + row * (TILE + GAP);
+    if (x > tx + TILE || y > ty + TILE) return;
+    flip(col, row); moves++;
     game.audio.play('se_tap', 0.6);
-
-    if (isSolved()) {
-      done = true;
-      winFlash = 1.0;
-      game.audio.play('se_success');
-      setTimeout(function() {
-        game.end.success(Math.max(10, Math.ceil((30 - moves) * 8) + Math.ceil(timeLeft) * 5));
-      }, 800);
-    }
+    if (isSolved()) finish(true);
   });
 
+  function background() { game.draw.clear(C.bg); }
+
+  function drawTiles() {
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      var ti = idx(c, r), tx = GRID_X + c * (TILE + GAP), ty = GRID_Y + r * (TILE + GAP);
+      var col = tiles[ti] === 0 ? C.d : C.a;
+      game.draw.rect(tx, ty, TILE, TILE, col);
+      game.draw.rect(tx + 12, ty + 12, TILE - 24, TILE * 0.3, C.g, 0.3);
+    }
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!tiles) initGame();
+      background();
+      drawTiles();
+      txt(GAME_TITLE,  W / 2, H * 0.16, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 38, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.76, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.83, 52, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.9, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
     }
-
-    // Update flip animations
-    for (var i = 0; i < TOTAL; i++) {
-      if (flipAnims[i] > 0) flipAnims[i] -= dt * 2;
-    }
-    if (winFlash > 0) winFlash -= dt * 2;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Win flash
-    if (winFlash > 0) {
-      game.draw.rect(0, 0, W, H, C.win, winFlash * 0.3);
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 30);
-    game.draw.rect(0, 0, W, 72, '#0a0c10');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#4f46e5' : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Moves counter
-    game.draw.text('手数: ' + moves, W / 2, 128, { size: 52, color: '#a5b4fc', bold: true });
-
-    // Count of each color (progress gauge)
-    var countA = 0;
-    for (var j = 0; j < TOTAL; j++) { if (tiles[j] === 0) countA++; }
-    var countB = TOTAL - countA;
-    game.draw.text('■ ' + countA, W * 0.3, 200, { size: 44, color: C.tileA, bold: true });
-    game.draw.text('■ ' + countB, W * 0.7, 200, { size: 44, color: C.tileB, bold: true });
-
-    // Tiles
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        var ti = idx(c, r);
-        var tx = GRID_X + c * (TILE + GAP);
-        var ty = GRID_Y + r * (TILE + GAP);
-        var anim = flipAnims[ti]; // 0..0.25 remaining
-        var flipProg = 1 - Math.max(0, anim) / 0.25; // 0=mid-flip, 1=done
-
-        // squish during flip
-        var squish = anim > 0 ? Math.abs(Math.cos(flipProg * Math.PI)) : 1;
-        var tw = TILE * squish;
-        var offX = (TILE - tw) / 2;
-
-        var col2 = tiles[ti] === 0 ? C.tileA : C.tileB;
-        var colHi = tiles[ti] === 0 ? C.tileAHi : C.tileBHi;
-
-        // shadow
-        game.draw.rect(tx + offX + 6, ty + 8, tw, TILE, '#000', 0.3);
-        // edge
-        game.draw.rect(tx + offX - 4, ty - 4, tw + 8, TILE + 8, C.edge);
-        // body
-        game.draw.rect(tx + offX, ty, tw, TILE, col2);
-        // shine
-        if (squish > 0.1) {
-          game.draw.rect(tx + offX + 12, ty + 12, tw - 24, TILE * 0.3, colHi, 0.4);
-        }
-      }
-    }
-
-    // Guide
-    game.draw.text('タップで周囲も反転！', W / 2, H - 220, { size: 52, color: C.ui });
-    game.draw.text('全部同じ色に揃えろ', W / 2, H - 155, { size: 40, color: '#334155' });
+    background();
+    drawTiles();
+    timeBar();
+    txt('MOVES ' + String(moves).padStart(3, '0'), W / 2, 96, 48, C.g);
+    txt('MATCH ALL TILES!', W / 2, H - 120, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
-    init();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

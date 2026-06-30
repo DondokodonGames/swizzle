@@ -1,236 +1,151 @@
 // 026-squeeze-time.js
 // スクイーズタイム — ホールドで時間を遅くして絶妙なタイミングを作る
 // 操作: 長押しで「スローモーション」、離すと通常速度に戻る
-// 成功: 落下するボールをスロー中に的へ5回落とす  失敗: 3回外す or 20秒
+// 成功: 落下するボールをスロー中に的へ1回落とす  失敗: 3回外す or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0c0820',
-    slow:    '#1e1040',
-    ball:    '#f59e0b',
-    ballHi:  '#fef3c7',
-    target:  '#22c55e',
-    targetHi:'#86efac',
-    miss:    '#ef4444',
-    slow2:   '#818cf8',
-    ui:      '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Ball falls from top
-  var ball = { x: W / 2, y: -60, vy: 600, alive: true };
-  var BALL_R = 52;
+  var GAME_TITLE  = 'SQUEEZE TIME';
+  var HOW_TO_PLAY = 'HOLD = SLOW / RELEASE = NORMAL';
+  var MAX_TIME = 20;
+  var NEEDED = 1;            // 修正2: 5 → 1
+  var MAX_MISS = 3;
+  var BALL_R = 56, SLOW_FACTOR = 0.15;
+  var TARGET_Y = H * 0.78;   // 修正1: 的は下3分の1
 
-  // Target position (moves horizontally)
-  var target = { x: W / 2, w: 200, h: 32, y: H * 0.78 };
-  var targetVx = 340;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var isSlow = false;
-  var SLOW_FACTOR = 0.15;
+  var ball, target, targetVx, isSlow, score, misses, timeLeft, done, feedback, feedbackOk, particles;
 
-  var score = 0;
-  var needed = 5;
-  var misses = 0;
-  var maxMisses = 3;
-  var timeLeft = 20;
-  var done = false;
-
-  var feedback = 0;
-  var feedbackOk = false;
-  var particles = [];
-
-  function resetBall() {
-    ball.x = game.random(120, W - 120);
-    ball.y = -80;
-    ball.vy = 500 + score * 30;
-    ball.alive = true;
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
 
-  function addParticles(x, y, color) {
-    for (var i = 0; i < 8; i++) {
-      var angle = Math.random() * Math.PI * 2;
-      particles.push({
-        x: x, y: y,
-        vx: Math.cos(angle) * (150 + Math.random() * 200),
-        vy: Math.sin(angle) * (150 + Math.random() * 200),
-        life: 0.5, color: color
-      });
-    }
+  function resetBall() { ball = { x: snap(game.random(150, W - 150)), y: -80, vy: 500 + score * 30, alive: true }; }
+  function initGame() {
+    score = 0; misses = 0; timeLeft = MAX_TIME; done = false; isSlow = false; feedback = 0; feedbackOk = false; particles = [];
+    target = { x: W / 2 - 110, w: 220, h: 36 }; targetVx = 340;
+    resetBall();
   }
 
-  game.onHold(function(x, y, duration) {
-    isSlow = true;
-  });
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function landMiss() {
+    misses++; feedbackOk = false; feedback = 0.4;
+    game.audio.play('se_failure', 0.5);
+    if (misses >= MAX_MISS) finish(false); else if (!done) setTimeout(resetBall, 500);
+  }
+
+  game.onHold(function(x, y) { if (state === S.PLAYING && !done) isSlow = true; });
 
   game.onTap(function(x, y) {
-    isSlow = false;
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
+    isSlow = false;  // PLAYING: 離す＝通常速度
   });
 
-  game.onUpdate(function(dt) {
-    // Handle hold detection via time.elapsed (simplified: onHold sets isSlow)
-    // We'll check if user is currently holding by tracking touch state
-    // For simplicity, isSlow is toggled: hold=slow, tap=normal
-    // (In real implementation onHold fires repeatedly while held)
+  function background() { game.draw.clear(isSlow ? '#0a0018' : C.bg); }
 
-    if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
-
-    var speedMul = isSlow ? SLOW_FACTOR : 1.0;
-
-    // Move target
-    target.x += targetVx * speedMul * dt;
-    if (target.x + target.w > W - 40) { target.x = W - 40 - target.w; targetVx = -Math.abs(targetVx); }
-    if (target.x < 40) { target.x = 40; targetVx = Math.abs(targetVx); }
-
-    // Move ball
+  function drawScene() {
+    if (isSlow && Math.floor(game.time.elapsed * 8) % 2 === 0) txt('SLOW', W * 0.84, H * 0.5, 48, C.d);
+    game.draw.rect(snap(target.x), snap(TARGET_Y), target.w, target.h, C.b);
+    game.draw.rect(snap(target.x), snap(TARGET_Y), target.w, 8, C.g, 0.6);
     if (ball.alive) {
-      ball.vy += 900 * speedMul * dt; // gravity
-      ball.y += ball.vy * speedMul * dt;
-
-      // Check landing
-      if (ball.y + BALL_R >= target.y) {
-        ball.alive = false;
-        var ballCenterX = ball.x;
-        var inTarget = ballCenterX > target.x && ballCenterX < target.x + target.w;
-
-        if (inTarget) {
-          score++;
-          feedbackOk = true;
-          feedback = 0.4;
-          addParticles(ball.x, target.y, C.targetHi);
-          game.audio.play('se_tap', 0.9);
-          if (score >= needed) {
-            done = true;
-            game.audio.play('se_success');
-            setTimeout(function() {
-              game.end.success(score * 20 + Math.ceil(timeLeft) * 5);
-            }, 500);
-          } else {
-            setTimeout(resetBall, 500);
-          }
-        } else {
-          misses++;
-          feedbackOk = false;
-          feedback = 0.4;
-          addParticles(ball.x, ball.y + BALL_R, C.miss);
-          game.audio.play('se_failure', 0.5);
-          if (misses >= maxMisses && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
-          } else if (!done) {
-            setTimeout(resetBall, 500);
-          }
-        }
-      }
-
-      // Fell off screen without hitting target
-      if (ball.y > H + 100) {
-        ball.alive = false;
-        misses++;
-        feedbackOk = false;
-        feedback = 0.4;
-        game.audio.play('se_failure', 0.4);
-        if (misses >= maxMisses && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-        } else if (!done) {
-          setTimeout(resetBall, 400);
-        }
-      }
+      var stretch = 1 + Math.abs(ball.vy) / 3000, bH = snap(BALL_R * 2 * stretch);
+      game.draw.rect(snap(ball.x - BALL_R), snap(ball.y - BALL_R * stretch), BALL_R * 2, bH, C.f);
     }
-
-    // Update particles
-    for (var i = particles.length - 1; i >= 0; i--) {
-      var p = particles[i];
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vy += 300 * dt;
-      p.life -= dt;
-      if (p.life <= 0) particles.splice(i, 1);
-    }
-
-    if (feedback > 0) feedback -= dt;
-
-    // ---- draw ----
-    var bgColor = isSlow ? C.slow : C.bg;
-    game.draw.rect(0, 0, W, H, bgColor);
-
-    // Slow-mo vignette
-    if (isSlow) {
-      game.draw.rect(0, 0, W, H, C.slow2, 0.06 + 0.04 * Math.sin(game.time.elapsed * 8));
-      // Slow motion text
-      game.draw.text('SLOW', W * 0.85, H * 0.5, { size: 48, color: C.slow2, bold: true });
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 20);
-    game.draw.rect(0, 0, W, 72, '#0a0618');
-    game.draw.rect(0, 0, W * ratio, 72, isSlow ? C.slow2 : (ratio > 0.3 ? '#7c3aed' : C.miss));
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Score & misses
-    game.draw.text(score + ' / ' + needed, W / 2, 128, { size: 56, color: C.ball, bold: true });
-    for (var m = 0; m < maxMisses; m++) {
-      var mx = W / 2 + (m - (maxMisses - 1) / 2) * 60;
-      game.draw.circle(mx, 200, 18, m < misses ? C.miss : '#1e1040');
-    }
-
-    // Ball shadow (on floor if close)
-    if (ball.alive) {
-      var shadowAlpha = Math.max(0, 0.5 * (1 - (target.y - ball.y) / H));
-      game.draw.rect(ball.x - BALL_R * 0.7, target.y - 8, BALL_R * 1.4, 16, '#000', shadowAlpha);
-    }
-
-    // Target
-    var tPulse = feedbackOk && feedback > 0 ? 1.0 : (0.7 + 0.15 * Math.sin(game.time.elapsed * 4));
-    game.draw.rect(target.x, target.y, target.w, target.h, C.target, tPulse);
-    game.draw.rect(target.x + 8, target.y, target.w - 16, 8, C.targetHi, 0.6);
-    // Edge markers
-    game.draw.rect(target.x - 4, target.y - 20, 8, 52, C.targetHi, 0.5);
-    game.draw.rect(target.x + target.w - 4, target.y - 20, 8, 52, C.targetHi, 0.5);
-
-    // Ball
-    if (ball.alive) {
-      // Stretched by velocity
-      var stretch = 1 + Math.abs(ball.vy) / 3000;
-      var bH = BALL_R * 2 * stretch;
-      var bY = ball.y - BALL_R * stretch;
-      game.draw.rect(ball.x - BALL_R, bY, BALL_R * 2, bH, C.ball);
-      game.draw.rect(ball.x - BALL_R * 0.5, bY + 8, BALL_R, 20, C.ballHi, 0.6);
-    }
-
-    // Particles
     for (var pp = 0; pp < particles.length; pp++) {
       var par = particles[pp];
-      game.draw.circle(par.x, par.y, 10 * par.life / 0.5, par.color, par.life / 0.5);
+      game.draw.rect(snap(par.x) - 8, snap(par.y) - 8, 16, 16, par.color, par.life / 0.5);
     }
+  }
 
-    // Feedback
-    if (feedback > 0) {
-      var prog = 1 - feedback / 0.4;
-      if (feedbackOk) {
-        game.draw.text('ナイス！', W / 2, target.y - 160 - prog * 60, { size: 80, color: C.target, bold: true });
-      } else {
-        game.draw.text('ズレた！', W / 2, H * 0.5, { size: 76, color: C.miss, bold: true });
+  game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!ball) initGame();
+      background();
+      ball.y = TARGET_Y - 200 + Math.sin(game.time.elapsed * 3) * 150; ball.vy = 0; ball.alive = true;
+      drawScene();
+      txt(GAME_TITLE,  W / 2, H * 0.12, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.2, 38, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.5, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.58, 52, C.g);
       }
+      txt('INSERT COIN', W / 2, H * 0.66, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
     }
 
-    // Guide
-    game.draw.text('長押し→スロー、離す→通常', W / 2, H - 220, { size: 44, color: C.ui });
-    game.draw.text('スロー中に的に落とせ！', W / 2, H - 155, { size: 48, color: '#6b7280' });
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      var mul = isSlow ? SLOW_FACTOR : 1.0;
+      target.x += targetVx * mul * dt;
+      if (target.x + target.w > W - 40) { target.x = W - 40 - target.w; targetVx = -Math.abs(targetVx); }
+      if (target.x < 40) { target.x = 40; targetVx = Math.abs(targetVx); }
+      if (ball.alive) {
+        ball.vy += 900 * mul * dt; ball.y += ball.vy * mul * dt;
+        if (ball.y + BALL_R >= TARGET_Y) {
+          ball.alive = false;
+          if (ball.x > target.x && ball.x < target.x + target.w) {
+            score++; feedbackOk = true; feedback = 0.4;
+            for (var k = 0; k < 8; k++) { var ang = Math.random() * Math.PI * 2; particles.push({ x: ball.x, y: TARGET_Y, vx: Math.cos(ang) * 250, vy: Math.sin(ang) * 250, life: 0.5, color: C.b }); }
+            game.audio.play('se_tap', 0.9);
+            if (score >= NEEDED) finish(true); else if (!done) setTimeout(resetBall, 500);
+          } else landMiss();
+        } else if (ball.y > H + 100) { ball.alive = false; landMiss(); }
+      }
+      for (var i = particles.length - 1; i >= 0; i--) { var p = particles[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt; if (p.life <= 0) particles.splice(i, 1); }
+      if (feedback > 0) feedback -= dt;
+    }
+
+    // ---- draw ----
+    background();
+    drawScene();
+    if (feedback > 0) { if (feedbackOk) txt('NICE!', W / 2, TARGET_Y - 140, 80, C.b); else txt('MISS!', W / 2, H * 0.5, 76, C.a); }
+    timeBar();
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 96, 48, C.g);
+    for (var m = 0; m < MAX_MISS; m++)
+      game.draw.rect(W / 2 + (m - 1) * 64 - 20, 150, 40, 40, m < misses ? C.a : '#330011');
+    txt('HOLD TO SLOW!', W / 2, H - 120, 48, C.d);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.35);
-    resetBall();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
