@@ -1,211 +1,134 @@
 // 024-voltage-surge.js
 // ボルテージサージ — 電力過負荷寸前の綱渡り、上げすぎたら終わり
 // 操作: タップでパワーを追加、過負荷になる前に止める
-// 成功: 許容範囲内で5秒キープ  失敗: 過負荷 or 電力不足 or 20秒
+// 成功: 許容範囲内で2秒キープ  失敗: 過負荷 or 電力不足 or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#040810',
-    panel:   '#0a1020',
-    ok:      '#22c55e',
-    warn:    '#f59e0b',
-    danger:  '#ef4444',
-    elec:    '#38bdf8',
-    elecHi:  '#bae6fd',
-    ui:      '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Power level: 0.0 to 1.0
-  // Safe zone: 0.45 - 0.85
-  var power = 0.2;
-  var DRAIN_RATE = 0.06;  // power drops over time (per second)
-  var TAP_BOOST = 0.14;   // each tap adds this much
+  var GAME_TITLE  = 'VOLTAGE SURGE';
+  var HOW_TO_PLAY = 'TAP TO CHARGE / HOLD IN OK ZONE';
+  var MAX_TIME = 20;
+  var NEEDED_SAFE = 2;       // 修正2: 生存系 5s → 2s
+  var DRAIN_RATE = 0.06, TAP_BOOST = 0.14;
+  var MIN_SAFE = 0.45, MAX_SAFE = 0.85, MAX_POWER = 1.0;
+  // 修正1: 縦に長いゲージで全高活用
+  var GAUGE_X = W * 0.32, GAUGE_Y = 320, GAUGE_W = W * 0.36, GAUGE_H = H - 700;
 
-  var MIN_SAFE = 0.45;
-  var MAX_SAFE = 0.85;
-  var MAX_POWER = 1.0;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var safeTimer = 0;   // time spent in safe zone
-  var NEEDED_SAFE = 5; // seconds in safe zone to win
-  var timeLeft = 20;
-  var done = false;
+  var power, safeTimer, timeLeft, done, tapFlash;
 
-  var sparkParticles = [];
-  var tapFlash = 0;
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
 
-  function addSpark(x, y) {
-    for (var i = 0; i < 5; i++) {
-      var angle = Math.random() * Math.PI * 2;
-      var spd = 200 + Math.random() * 300;
-      sparkParticles.push({
-        x: x, y: y,
-        vx: Math.cos(angle) * spd,
-        vy: Math.sin(angle) * spd,
-        life: 0.3 + Math.random() * 0.2
-      });
-    }
+  function initGame() { power = 0.2; safeTimer = 0; timeLeft = MAX_TIME; done = false; tapFlash = 0; }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (Math.ceil(safeTimer * 100) + Math.ceil(timeLeft) * 40) : Math.floor(power * 100);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done) return;
-    power += TAP_BOOST;
-    tapFlash = 0.12;
-    addSpark(x, y);
+    power += TAP_BOOST; tapFlash = 0.12;
     game.audio.play('se_tap', 0.6);
-
-    if (power > MAX_POWER) {
-      power = MAX_POWER;
-      done = true;
-      game.audio.play('se_failure');
-      setTimeout(function() { game.end.failure(); }, 500);
-    }
+    if (power > MAX_POWER) { power = MAX_POWER; finish(false); }
   });
 
+  function background() {
+    game.draw.clear(C.bg);
+    for (var gy = 120; gy < H; gy += 80) game.draw.rect(0, gy, W, 2, C.d, 0.3);
+  }
+
+  function drawGauge() {
+    game.draw.rect(snap(GAUGE_X - 12), snap(GAUGE_Y - 12), GAUGE_W + 24, GAUGE_H + 24, C.d);
+    game.draw.rect(snap(GAUGE_X), snap(GAUGE_Y), GAUGE_W, GAUGE_H, '#0a0018');
+    var szY1 = GAUGE_Y + GAUGE_H * (1 - MAX_SAFE), szY2 = GAUGE_Y + GAUGE_H * (1 - MIN_SAFE);
+    game.draw.rect(snap(GAUGE_X), snap(szY1), GAUGE_W, snap(szY2 - szY1), C.b, 0.3);
+    game.draw.rect(snap(GAUGE_X) - 24, snap(szY1) - 4, 24, 8, C.b);
+    game.draw.rect(snap(GAUGE_X) - 24, snap(szY2) - 4, 24, 8, C.b);
+    txt('OK', GAUGE_X - 70, (szY1 + szY2) / 2, 36, C.b);
+    var fillH = GAUGE_H * power, fillY = GAUGE_Y + GAUGE_H - fillH;
+    var col = power > MAX_SAFE ? C.a : (power >= MIN_SAFE ? C.b : C.f);
+    game.draw.rect(snap(GAUGE_X), snap(fillY), GAUGE_W, snap(fillH), col);
+    txt(Math.floor(power * 100) + '%', W / 2, GAUGE_Y + GAUGE_H + 70, 64, col);
+    if (power >= MAX_SAFE && Math.floor(game.time.elapsed * 10) % 2 === 0) game.draw.rect(0, 0, W, H, C.a, 0.12);
+  }
+
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
+    if (state === S.ATTRACT) {
+      background();
+      power = 0.5 + 0.3 * Math.sin(game.time.elapsed * 2); safeTimer = 0;
+      drawGauge();
+      txt(GAME_TITLE,  W / 2, H * 0.1, 76, C.c);
+      txt('TAP TO CHARGE', W / 2, H * 0.17, 42, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.92, 52, C.g);
       }
-
-      // Drain
-      power -= DRAIN_RATE * dt;
-      if (power < 0) power = 0;
-
-      // Check safe zone
-      if (power >= MIN_SAFE && power <= MAX_SAFE) {
-        safeTimer += dt;
-        if (safeTimer >= NEEDED_SAFE) {
-          done = true;
-          game.audio.play('se_success');
-          setTimeout(function() {
-            game.end.success(Math.ceil(safeTimer * 20) + Math.ceil(timeLeft) * 8);
-          }, 400);
-          return;
-        }
-      } else {
-        safeTimer = Math.max(0, safeTimer - dt * 0.5); // slowly drain safe timer if out of range
-        if (power < 0.1 && safeTimer <= 0) {
-          // power failure
-          done = true;
-          game.audio.play('se_failure');
-          setTimeout(function() { game.end.failure(); }, 400);
-          return;
-        }
-      }
+      txt('INSERT COIN', W / 2, H * 0.97, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
     }
 
-    if (tapFlash > 0) tapFlash -= dt;
-
-    // Update sparks
-    for (var i = sparkParticles.length - 1; i >= 0; i--) {
-      var s = sparkParticles[i];
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
-      s.vx *= 0.9;
-      s.vy *= 0.9;
-      s.life -= dt;
-      if (s.life <= 0) sparkParticles.splice(i, 1);
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      power -= DRAIN_RATE * dt;
+      if (power < 0) power = 0;
+      if (power >= MIN_SAFE && power <= MAX_SAFE) {
+        safeTimer += dt;
+        if (safeTimer >= NEEDED_SAFE) { finish(true); return; }
+      } else {
+        safeTimer = Math.max(0, safeTimer - dt * 0.5);
+        if (power < 0.1 && safeTimer <= 0) { finish(false); return; }
+      }
+      if (tapFlash > 0) tapFlash -= dt;
     }
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Background grid (circuit board feel)
-    for (var gx = 0; gx < W; gx += 80) {
-      game.draw.rect(gx, 0, 1, H, '#0a1830', 0.4);
-    }
-    for (var gy = 0; gy < H; gy += 80) {
-      game.draw.rect(0, gy, W, 1, '#0a1830', 0.4);
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 20);
-    game.draw.rect(0, 0, W, 72, '#04080e');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.elec : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Safe timer progress ring
-    var safePct = Math.min(1, safeTimer / NEEDED_SAFE);
-    var ringR = 160;
-    var ringX = W / 2, ringY = H * 0.25;
-    game.draw.circle(ringX, ringY, ringR, '#0f1a2a');
-    // Draw arc approximation as sectors
-    var arcSegs = Math.floor(safePct * 32);
-    for (var seg = 0; seg < arcSegs; seg++) {
-      var ang1 = (seg / 32) * Math.PI * 2 - Math.PI / 2;
-      var ang2 = ((seg + 1) / 32) * Math.PI * 2 - Math.PI / 2;
-      var mx1 = ringX + Math.cos(ang1) * ringR;
-      var my1 = ringY + Math.sin(ang1) * ringR;
-      var mx2 = ringX + Math.cos(ang2) * ringR;
-      var my2 = ringY + Math.sin(ang2) * ringR;
-      game.draw.line(mx1, my1, mx2, my2, C.ok, 20);
-    }
-    game.draw.circle(ringX, ringY, ringR - 18, C.bg);
-    game.draw.text(Math.ceil(NEEDED_SAFE - safeTimer) + 's', ringX, ringY, {
-      size: 100, color: safePct > 0.5 ? C.ok : C.ui, bold: true
-    });
-
-    // Main power gauge (vertical bar)
-    var GAUGE_X = W * 0.35;
-    var GAUGE_Y = H * 0.42;
-    var GAUGE_W = W * 0.3;
-    var GAUGE_H = H * 0.35;
-
-    game.draw.rect(GAUGE_X - 12, GAUGE_Y - 12, GAUGE_W + 24, GAUGE_H + 24, '#1e293b');
-    game.draw.rect(GAUGE_X, GAUGE_Y, GAUGE_W, GAUGE_H, C.panel);
-
-    // Safe zone marker
-    var szY1 = GAUGE_Y + GAUGE_H * (1 - MAX_SAFE);
-    var szY2 = GAUGE_Y + GAUGE_H * (1 - MIN_SAFE);
-    game.draw.rect(GAUGE_X, szY1, GAUGE_W, szY2 - szY1, C.ok, 0.15);
-    game.draw.rect(GAUGE_X - 20, szY1, 20, 4, C.ok);
-    game.draw.rect(GAUGE_X - 20, szY2 - 4, 20, 4, C.ok);
-    game.draw.text('OK', GAUGE_X - 54, (szY1 + szY2) / 2, { size: 32, color: C.ok, bold: true });
-
-    // Power fill
-    var fillH = GAUGE_H * power;
-    var fillY = GAUGE_Y + GAUGE_H - fillH;
-    var fillColor = power > MAX_SAFE ? C.danger : (power >= MIN_SAFE ? C.ok : (power >= MIN_SAFE * 0.5 ? C.warn : C.danger));
-    game.draw.rect(GAUGE_X, fillY, GAUGE_W, fillH, fillColor);
-    // Shine
-    game.draw.rect(GAUGE_X + 8, fillY + 4, 20, fillH - 8, '#fff', 0.2);
-
-    // Danger zone flash
-    if (power >= MAX_SAFE) {
-      var flashA = 0.15 + 0.1 * Math.sin(game.time.elapsed * 20);
-      game.draw.rect(0, 0, W, H, C.danger, flashA);
-    }
-
-    // Electric bolt display
-    if (tapFlash > 0) {
-      game.draw.rect(0, 0, W, H, C.elec, tapFlash / 0.12 * 0.15);
-    }
-
-    // Sparks
-    for (var sp = 0; sp < sparkParticles.length; sp++) {
-      var spark = sparkParticles[sp];
-      var sa = spark.life / 0.5;
-      game.draw.circle(spark.x, spark.y, 6, C.elecHi, sa);
-    }
-
-    // Power number
-    game.draw.text(Math.floor(power * 100) + '%', W / 2, GAUGE_Y + GAUGE_H + 80, {
-      size: 64, color: fillColor, bold: true
-    });
-
-    // Guide
-    game.draw.text('タップで電力チャージ！', W / 2, H - 220, { size: 52, color: C.ui });
-    game.draw.text('OKゾーンを5秒キープ', W / 2, H - 155, { size: 40, color: '#334155' });
+    background();
+    drawGauge();
+    timeBar();
+    txt('KEEP ' + Math.ceil(NEEDED_SAFE - safeTimer) + 's', W / 2, 96, 48, safeTimer > 0 ? C.b : C.g);
+    txt('TAP TO CHARGE!', W / 2, H - 120, 48, C.f);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
