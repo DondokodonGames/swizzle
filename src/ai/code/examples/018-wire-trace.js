@@ -4,193 +4,157 @@
 // 成功: 終点まで到達  失敗: ワイヤーから外れる or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#080c10',
-    track:   '#0f1a26',
-    wire:    '#22d3ee',
-    wireHi:  '#67e8f9',
-    player:  '#fbbf24',
-    playerGlow:'#fef3c7',
-    success: '#22c55e',
-    danger:  '#ef4444',
-    ui:      '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Grid-based path: a sequence of (col, row) steps
-  // 0=right, 1=down, 2=left, 3=up
-  var CELL = 220;
-  var COLS = 4;
-  var ROWS = 7;
-  var GRID_X = (W - COLS * CELL) / 2;
-  var GRID_Y = 220;
+  var GAME_TITLE  = 'WIRE TRACE';
+  var HOW_TO_PLAY = 'SWIPE ALONG THE WIRE';
+  var MAX_TIME = 20;
+  // 修正2: 経路を短く（ROWS 7 → 3）。修正1: 縦グリッドを全域に
+  var CELL = 240, COLS = 3, ROWS = 5;
+  var GRID_X = (W - COLS * CELL) / 2, GRID_Y = 320;
 
-  // Random path from top-left to bottom-right area
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  var path, playerIdx, done, won, timeLeft;
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
+
   function buildPath() {
-    var path = [{ c: 0, r: 0 }];
-    var c = 0, r = 0;
-    var visited = {};
-    visited['0,0'] = true;
-
+    var p = [{ c: 0, r: 0 }], c = 0, r = 0, visited = { '0,0': true };
     while (c < COLS - 1 || r < ROWS - 1) {
       var options = [];
       if (c < COLS - 1) options.push({ dc: 1, dr: 0 });
       if (r < ROWS - 1) options.push({ dc: 0, dr: 1 });
-      if (c > 0 && path.length > 2) options.push({ dc: -1, dr: 0 });
-      if (r > 0 && path.length > 2) options.push({ dc: 0, dr: -1 });
-
-      // Filter to avoid revisit and dead ends
       var valid = options.filter(function(o) {
         var nc = c + o.dc, nr = r + o.dr;
-        return nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS && !visited[nc + ',' + nr];
+        return nc < COLS && nr < ROWS && !visited[nc + ',' + nr];
       });
-
       if (valid.length === 0) break;
-      // Prefer moving toward goal
       valid.sort(function() { return Math.random() - 0.5; });
-      var chosen = valid[0];
-      c += chosen.dc;
-      r += chosen.dr;
-      visited[c + ',' + r] = true;
-      path.push({ c: c, r: r });
+      c += valid[0].dc; r += valid[0].dr; visited[c + ',' + r] = true;
+      p.push({ c: c, r: r });
     }
-    return path;
+    return p;
   }
 
-  var path = buildPath();
-  var playerIdx = 0; // which node of path the player is on
-  var done = false;
-  var timeLeft = 20;
-  var won = false;
-
   function nodePos(idx) {
-    var node = path[idx];
-    return {
-      x: GRID_X + node.c * CELL + CELL / 2,
-      y: GRID_Y + node.r * CELL + CELL / 2
-    };
+    var n = path[idx];
+    return { x: GRID_X + n.c * CELL + CELL / 2, y: GRID_Y + n.r * CELL + CELL / 2 };
+  }
+
+  function initGame() { path = buildPath(); playerIdx = 0; done = false; won = false; timeLeft = MAX_TIME; }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success; won = success;
+    finalScore = success ? (500 + Math.ceil(timeLeft) * 20) : playerIdx * 50;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onSwipe(function(dir) {
-    if (done) return;
+    if (state !== S.PLAYING || done) return;
     var dc = 0, dr = 0;
-    if (dir === 'right') dc = 1;
-    if (dir === 'left')  dc = -1;
-    if (dir === 'down')  dr = 1;
-    if (dir === 'up')    dr = -1;
-
-    var cur = path[playerIdx];
-    var nc = cur.c + dc, nr = cur.r + dr;
-
-    // Check if this move follows the wire path
+    if (dir === 'right') dc = 1; if (dir === 'left') dc = -1;
+    if (dir === 'down') dr = 1; if (dir === 'up') dr = -1;
+    var cur = path[playerIdx], nc = cur.c + dc, nr = cur.r + dr;
     if (playerIdx + 1 < path.length) {
-      var next = path[playerIdx + 1];
-      if (next.c === nc && next.r === nr) {
+      var nx = path[playerIdx + 1];
+      if (nx.c === nc && nx.r === nr) {
         playerIdx++;
         game.audio.play('se_tap', 0.5);
-        if (playerIdx >= path.length - 1) {
-          done = true;
-          won = true;
-          game.audio.play('se_success');
-          setTimeout(function() {
-            game.end.success(300 + Math.ceil(timeLeft) * 10);
-          }, 500);
-        }
+        if (playerIdx >= path.length - 1) finish(true);
         return;
       }
     }
-    // Also allow going back on path
     if (playerIdx - 1 >= 0) {
-      var prev = path[playerIdx - 1];
-      if (prev.c === nc && prev.r === nr) {
-        playerIdx--;
-        game.audio.play('se_tap', 0.3);
-        return;
-      }
+      var pv = path[playerIdx - 1];
+      if (pv.c === nc && pv.r === nr) { playerIdx--; game.audio.play('se_tap', 0.3); return; }
     }
-
-    // Wrong direction = off wire
-    done = true;
-    game.audio.play('se_failure');
-    setTimeout(function() { game.end.failure(); }, 500);
+    finish(false);
   });
 
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
+  });
+
+  function background() { game.draw.clear(C.bg); }
+
+  function drawWire() {
+    for (var gc = 0; gc <= COLS; gc++)
+      for (var gr = 0; gr <= ROWS; gr++)
+        game.draw.rect(GRID_X + gc * CELL - 4, GRID_Y + gr * CELL - 4, 8, 8, C.d, 0.5);
+    for (var i = 0; i < path.length - 1; i++) {
+      var p1 = nodePos(i), p2 = nodePos(i + 1);
+      var traveled = i < playerIdx;
+      game.draw.line(p1.x, p1.y, p2.x, p2.y, traveled ? C.b : C.e, traveled ? 16 : 10);
+    }
+    var sp = nodePos(0), ep = nodePos(path.length - 1);
+    game.draw.rect(sp.x - 24, sp.y - 24, 48, 48, C.b); txt('S', sp.x, sp.y, 36, C.g);
+    game.draw.rect(ep.x - 24, ep.y - 24, 48, 48, won ? C.b : C.f); txt('G', ep.x, ep.y, 36, C.g);
+    var pp = nodePos(playerIdx);
+    game.draw.rect(pp.x - 32, pp.y - 32, 64, 64, C.c);
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!path) initGame();
+      background();
+      drawWire();
+      txt(GAME_TITLE,  W / 2, H * 0.12, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.2, 42, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.82, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.89, 52, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.95, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
     }
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Grid dots
-    for (var gc = 0; gc <= COLS; gc++) {
-      for (var gr = 0; gr <= ROWS; gr++) {
-        var gx = GRID_X + gc * CELL;
-        var gy = GRID_Y + gr * CELL;
-        game.draw.circle(gx, gy, 6, '#1a2a3a');
-      }
-    }
-
-    // Wire path (thick lines between nodes)
-    for (var i = 0; i < path.length - 1; i++) {
-      var p1 = nodePos(i);
-      var p2 = nodePos(i + 1);
-      var traveled = i < playerIdx;
-      var wireColor = traveled ? C.wireHi : C.wire;
-      var wireAlpha = traveled ? 1.0 : 0.35;
-      // thick wire
-      game.draw.line(p1.x, p1.y, p2.x, p2.y, wireColor, traveled ? 14 : 10);
-      if (traveled) {
-        // glow
-        game.draw.line(p1.x, p1.y, p2.x, p2.y, '#fff', 3);
-      }
-    }
-
-    // Path nodes (endpoints)
-    var startPos = nodePos(0);
-    var endPos = nodePos(path.length - 1);
-    game.draw.circle(startPos.x, startPos.y, 28, '#1e3a2a');
-    game.draw.circle(startPos.x, startPos.y, 20, C.success);
-    game.draw.text('S', startPos.x, startPos.y, { size: 36, color: '#fff', bold: true });
-
-    var ep = won ? C.success : C.wire;
-    game.draw.circle(endPos.x, endPos.y, 28, '#0f2040');
-    game.draw.circle(endPos.x, endPos.y, 20, ep);
-    game.draw.text('G', endPos.x, endPos.y, { size: 36, color: '#fff', bold: true });
-
-    // Player
-    var pp = nodePos(playerIdx);
-    var glow = 0.3 + 0.15 * Math.sin(game.time.elapsed * 6);
-    game.draw.circle(pp.x, pp.y, 44, C.playerGlow, glow);
-    game.draw.circle(pp.x, pp.y, 32, C.player);
-    game.draw.circle(pp.x, pp.y, 16, '#fff', 0.7);
-
-    // Progress
-    var pct = Math.floor(playerIdx / (path.length - 1) * 100);
-    game.draw.rect(W * 0.1, GRID_Y + ROWS * CELL + 40, W * 0.8 * pct / 100, 24, C.wireHi);
-    game.draw.rect(W * 0.1, GRID_Y + ROWS * CELL + 40, W * 0.8, 24, C.wire, 0.2);
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 20);
-    game.draw.rect(0, 0, W, 72, '#080c14');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#0e7490' : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Guide
-    game.draw.text('ワイヤーを たどれ！', W / 2, H - 200, { size: 52, color: C.ui });
-    game.draw.text('光る線の通りに', W / 2, H - 140, { size: 38, color: '#334d5a' });
+    background();
+    drawWire();
+    timeBar();
+    txt('SCORE ' + String(playerIdx * 50).padStart(6, '0'), W / 2, 96, 48, C.g);
+    txt('FOLLOW THE WIRE!', W / 2, H - 100, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

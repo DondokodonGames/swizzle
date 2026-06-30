@@ -1,166 +1,126 @@
 // 017-countdown-stop.js
 // カウントダウン止め — 数字が0に近づく瞬間を狙う緊張の一発勝負
 // 操作: カウントが1のときにタップ
-// 成功: 5回「1」でピタリと止める  失敗: 0になるか、2以上でタップ
+// 成功: 1回「1」でピタリと止める  失敗: 0になるか、2以上でタップ
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0a0f0a',
-    dark:    '#0d1a0d',
-    good:    '#22c55e',
-    danger:  '#ef4444',
-    warn:    '#f59e0b',
-    num:     '#dcfce7',
-    ui:      '#475569',
-    glow:    '#86efac'
-  };
+  // ── パレット（グリーンCRT） ──
+  var C = { bg:'#001100', a:'#00ff41', b:'#008f11', c:'#003b00', d:'#00ff41', e:'#ffffff', f:'#ff0000', g:'#ffff00' };
 
-  var count = 9;          // starts at 9, counts down
-  var tickRate = 1.2;     // seconds per tick
-  var tickTimer = tickRate;
-  var score = 0;
-  var needed = 5;
-  var done = false;
-  var totalTime = 0;
-  var maxTime = 30;
+  var GAME_TITLE  = 'COUNTDOWN STOP';
+  var HOW_TO_PLAY = 'TAP WHEN IT HITS 1';
+  var MAX_TIME = 30;
+  var NEEDED = 1;            // 修正2: 5 → 1
+  var CY = H * 0.45;
 
-  var feedback = 0;
-  var feedbackOk = false;
-  var shakeX = 0;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var phase = 'counting'; // 'counting' | 'wait'
-  var waitTimer = 0;
+  var count, tickRate, tickTimer, score, done, totalTime, feedback, feedbackOk, phase, waitTimer;
 
-  function startCount() {
-    count = 9;
-    tickTimer = tickRate;
-    phase = 'counting';
-    // speed up a bit with each success
-    tickRate = Math.max(0.4, 1.2 - score * 0.08);
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil((MAX_TIME - totalTime) / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.a : '#330000');
+  }
+
+  function startCount() { count = 9; tickRate = Math.max(0.4, 1.2 - score * 0.08); tickTimer = tickRate; phase = 'counting'; }
+  function initGame() { score = 0; done = false; totalTime = 0; feedback = 0; feedbackOk = false; phase = 'counting'; waitTimer = 0; startCount(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.max(0, Math.floor((MAX_TIME - totalTime) * 30))) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done || phase !== 'counting') return;
-
     feedback = 0.45;
     if (count === 1) {
-      score++;
-      feedbackOk = true;
+      score++; feedbackOk = true;
       game.audio.play('se_tap', 0.9);
-      if (score >= needed) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() {
-          game.end.success(score * 20 + Math.max(0, Math.floor((maxTime - totalTime) * 4)));
-        }, 500);
-        return;
-      }
-      phase = 'wait';
-      waitTimer = 0.5;
+      if (score >= NEEDED) { finish(true); return; }
+      phase = 'wait'; waitTimer = 0.5;
     } else {
       feedbackOk = false;
-      shakeX = 18;
       game.audio.play('se_failure', 0.6);
-      done = true;
-      setTimeout(function() { game.end.failure(); }, 600);
+      finish(false);
     }
   });
 
+  function background() { game.draw.clear(C.bg); }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      var demoN = 9 - (Math.floor(game.time.elapsed) % 9);
+      txt(String(demoN), W / 2, CY, 460, demoN === 1 ? C.g : C.a);
+      txt(GAME_TITLE,  W / 2, H * 0.14, 76, C.g);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 42, C.a);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.78, 72, C.e);
+        txt('TAP TO START', W / 2, H * 0.85, 52, C.e);
+      }
+      txt('INSERT COIN', W / 2, H * 0.92, 42, '#446644');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.g : C.f);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.e);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.a);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       totalTime += dt;
-      if (totalTime >= maxTime) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
-
-    if (phase === 'wait') {
-      waitTimer -= dt;
-      if (waitTimer <= 0) startCount();
-    } else if (phase === 'counting' && !done) {
-      tickTimer -= dt;
-      if (tickTimer <= 0) {
-        count--;
-        tickTimer = tickRate;
-        if (count <= 0) {
-          // reached 0 — failed
-          done = true;
-          feedback = 0.4;
-          feedbackOk = false;
-          shakeX = 22;
-          game.audio.play('se_failure');
-          setTimeout(function() { game.end.failure(); }, 600);
+      if (totalTime >= MAX_TIME) { finish(false); return; }
+      if (phase === 'wait') { waitTimer -= dt; if (waitTimer <= 0) startCount(); }
+      else if (phase === 'counting') {
+        tickTimer -= dt;
+        if (tickTimer <= 0) {
+          count--; tickTimer = tickRate;
+          if (count <= 0) { feedbackOk = false; finish(false); return; }
         }
       }
+      if (feedback > 0) feedback -= dt;
     }
-
-    if (feedback > 0) feedback -= dt;
-    if (shakeX > 0) shakeX *= 0.8;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // concentric rings pulse with countdown urgency
-    var urgency = 1 - (count - 1) / 8;
-    var pulseR = 360 + 20 * Math.sin(game.time.elapsed * (3 + urgency * 5));
-    game.draw.circle(W / 2, H * 0.45, pulseR, count <= 2 ? C.danger : C.good, 0.06 + urgency * 0.08);
-    game.draw.circle(W / 2, H * 0.45, pulseR * 0.65, count <= 2 ? C.danger : C.good, 0.04);
-
-    // timer bar (remaining time)
-    var timeRatio = Math.max(0, 1 - totalTime / maxTime);
-    game.draw.rect(0, 0, W, 72, '#0d150d');
-    game.draw.rect(0, 0, W * timeRatio, 72, timeRatio > 0.3 ? '#166534' : C.danger);
-    game.draw.text(Math.ceil(maxTime - totalTime) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // score pips
-    for (var s = 0; s < needed; s++) {
-      var sx = W / 2 + (s - (needed - 1) / 2) * 80;
-      game.draw.circle(sx, 128, 26, s < score ? C.good : C.dark);
-      if (s < score) game.draw.circle(sx, 128, 14, '#fff', 0.5);
-    }
-
-    // big number
-    var ox = shakeX * (Math.random() - 0.5) * 2;
-    var numColor = count <= 1 ? C.good : (count <= 3 ? C.warn : (count <= 2 ? C.danger : C.num));
-    if (count <= 2) numColor = C.danger;
-    if (count === 1) numColor = C.good;
-
-    var numSize = 520 + (count === 1 ? 40 * Math.sin(game.time.elapsed * 10) : 0);
-    game.draw.text(count > 0 ? String(count) : '0', W / 2 + ox, H * 0.45, {
-      size: numSize,
-      color: numColor,
-      bold: true
-    });
-
-    // speed indicator (tick rate bar at bottom)
-    var speedFill = (tickRate - 0.4) / (1.2 - 0.4);
-    game.draw.rect(W * 0.15, H - 310, W * 0.7, 20, '#1a2a1a');
-    game.draw.rect(W * 0.15, H - 310, W * 0.7 * speedFill, 20, C.ui);
-    game.draw.text('スピード', W / 2, H - 340, { size: 36, color: C.ui });
-
-    // feedback
+    background();
+    var numCol = count === 1 ? C.g : (count <= 3 ? C.f : C.a);
+    var blink = count === 1 && Math.floor(game.time.elapsed * 8) % 2 === 0;
+    txt(String(Math.max(0, count)), W / 2, CY, blink ? 500 : 460, numCol);
     if (feedback > 0) {
-      var prog = 1 - feedback / 0.45;
-      if (feedbackOk) {
-        game.draw.text('ピタリ！', W / 2, H * 0.45 - 400 - prog * 80, { size: 88, color: C.good, bold: true });
-      } else {
-        game.draw.text('ハズレ！', W / 2 + ox, H * 0.45 - 360, { size: 80, color: C.danger, bold: true });
-      }
+      if (feedbackOk) txt('STOP!', W / 2, CY - 380, 88, C.g);
+      else txt('MISS!', W / 2, CY - 380, 80, C.f);
     }
-
-    // guide
-    game.draw.text('「1」でタップ！', W / 2, H - 220, { size: 56, color: C.ui });
-    game.draw.text('0になったら失敗', W / 2, H - 155, { size: 38, color: '#334d33' });
+    timeBar();
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 96, 48, C.e);
+    txt('TAP ON 1!', W / 2, H - 100, 56, C.a);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
-    startCount();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
