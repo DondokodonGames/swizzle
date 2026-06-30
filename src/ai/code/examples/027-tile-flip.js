@@ -77,7 +77,22 @@
     if (isSolved()) finish(true);
   });
 
-  function background() { game.draw.clear(C.bg); }
+  // 世界観: 古代の魔法パネル。ルーンを反転させて全石を同色に揃え封印を解く。
+  function background() {
+    game.draw.clear('#0a0518');
+    // 石枠
+    var fx = GRID_X - 48, fy = GRID_Y - 48, fw = GRID_W + 96, fh = GRID_H + 96;
+    game.draw.rect(fx, fy, fw, fh, '#2a1a3a');
+    game.draw.rect(fx + 14, fy + 14, fw - 28, fh - 28, '#0a0518');
+    // 四隅のルーン宝石
+    game.draw.rect(fx + 20, fy + 20, 28, 28, C.c); game.draw.rect(fx + fw - 48, fy + 20, 28, 28, C.c);
+    game.draw.rect(fx + 20, fy + fh - 48, 28, 28, C.c); game.draw.rect(fx + fw - 48, fy + fh - 48, 28, 28, C.c);
+    // 周囲の魔力ライン（点滅）
+    var on = Math.floor(game.time.elapsed * 3) % 2 === 0;
+    game.draw.rect(fx + 8, fy + 8, fw - 16, 4, on ? C.d : C.a, 0.6);
+    game.draw.rect(fx + 8, fy + fh - 12, fw - 16, 4, on ? C.a : C.d, 0.6);
+    txt('RUNE SEAL', W / 2, fy - 8, 36, C.b);
+  }
 
   function drawTiles() {
     for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {

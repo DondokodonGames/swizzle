@@ -79,9 +79,20 @@
     }
   });
 
+  // 世界観: 工場のプレス成形ライン。落ちる部材を型(影)にぴたりと重ねる。
   function background() {
-    game.draw.clear(C.bg);
-    game.draw.rect(0, FLOOR_Y + SHADOW_H + 8, W, H, C.d, 0.15);
+    game.draw.clear('#000814');
+    // 左右のガイドレール
+    game.draw.rect(40, 200, 24, H - 400, '#333355');
+    game.draw.rect(W - 64, 200, 24, H - 400, '#333355');
+    for (var ry = 240; ry < H - 220; ry += 120) { game.draw.rect(40, ry, 24, 12, '#8888aa'); game.draw.rect(W - 64, ry, 24, 12, '#8888aa'); }
+    // 床(コンベア) + ハザード帯
+    game.draw.rect(0, FLOOR_Y + SHADOW_H + 8, W, H, '#0a0a18');
+    for (var hx = 0; hx < W; hx += 96) {
+      game.draw.rect(hx, FLOOR_Y + SHADOW_H + 8, 48, 20, C.d, 0.4);
+      game.draw.rect(hx + 48, FLOOR_Y + SHADOW_H + 8, 48, 20, '#000000', 0.4);
+    }
+    txt('PRESS LINE', W / 2, 150, 36, C.b);
   }
 
   game.onUpdate(function(dt) {

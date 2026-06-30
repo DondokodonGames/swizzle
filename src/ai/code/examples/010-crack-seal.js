@@ -102,9 +102,18 @@
       drawPixelCircle(c.x, c.y, c.r * 0.5, C.a, 0.2);
   }
 
+  // 世界観: 水圧がかかるダムの壁。広がるひびを塞いで決壊を防ぐ。
   function background() {
-    game.draw.clear(C.bg);
-    for (var gy = 120; gy < H; gy += 160) game.draw.rect(0, gy, W, 2, C.d, 0.3);
+    game.draw.clear('#001028');
+    // 壁の石組み（レンガ目地）
+    for (var gy = 120; gy < H; gy += 120) {
+      game.draw.rect(0, gy, W, 3, '#0a2244', 0.6);
+      var off = ((gy / 120) % 2) ? 0 : 180;
+      for (var gx = off; gx < W; gx += 360) game.draw.rect(snap(gx), gy, 3, 120, '#0a2244', 0.5);
+    }
+    // 上部の水位（青い圧）
+    game.draw.rect(0, 80, W, 40, C.e, 0.4);
+    txt('DAM WALL', W / 2, 60, 32, C.b);
   }
 
   game.onUpdate(function(dt) {

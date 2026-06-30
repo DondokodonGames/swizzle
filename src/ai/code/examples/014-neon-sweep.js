@@ -71,7 +71,17 @@
     }
   });
 
-  function background() { game.draw.clear(C.bg); }
+  // 世界観: 金庫のセキュリティ。走査ビームがゾーンに重なった瞬間にロック解除。
+  function background() {
+    game.draw.clear('#0a0014');
+    // 防壁パネル
+    game.draw.rect(TRACK_X - 60, TOP - 60, TRACK_W + 120, BOTTOM - TOP + 120, '#1a0a2a');
+    game.draw.rect(TRACK_X - 48, TOP - 48, TRACK_W + 96, BOTTOM - TOP + 96, '#05000f');
+    // 四隅センサー
+    game.draw.rect(TRACK_X - 56, TOP - 56, 20, 20, C.a); game.draw.rect(TRACK_X + TRACK_W + 36, TOP - 56, 20, 20, C.a);
+    game.draw.rect(TRACK_X - 56, BOTTOM + 36, 20, 20, C.a); game.draw.rect(TRACK_X + TRACK_W + 36, BOTTOM + 36, 20, 20, C.a);
+    txt('SECURITY LOCK', W / 2, TOP - 90, 36, C.b);
+  }
 
   function drawTrack() {
     game.draw.rect(snap(TRACK_X), TOP, TRACK_W, BOTTOM - TOP, '#0a0018');
