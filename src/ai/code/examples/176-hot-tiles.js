@@ -1,214 +1,162 @@
 // 176-hot-tiles.js
-// 熱板渡り — 次々と熱くなるタイルから素早く離れ、安全なタイルに乗り続ける緊張感
-// 操作: タップで移動先のタイルを選ぶ
-// 成功: 30秒生き延びる  失敗: 熱いタイルに乗ったまま
+// 熱板渡り — 熱くなるタイルから素早く離れ、安全なタイルに乗り続ける緊張感
+// 操作: タップで隣の安全なタイルへ移動
+// 成功: 7秒生き延びる  失敗: 熱いタイルに乗ったまま
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#06040a',
-    cool:   '#164e63',
-    coolHi: '#0891b2',
-    warm:   '#92400e',
-    warmHi: '#d97706',
-    hot:    '#7f1d1d',
-    hotHi:  '#ef4444',
-    player: '#a78bfa',
-    playerHi:'#ddd6fe',
-    danger: '#ef4444',
-    safe:   '#22c55e',
-    ui:     '#334155'
-  };
+  // ── パレット（ネオンアーケード、溶鉱炉） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var COLS = 4;
-  var ROWS = 6;
-  var CELL_W = (W - 80) / COLS;
-  var CELL_H = 200;
-  var GRID_X = 40;
-  var GRID_Y = H * 0.12;
-  var PAD = 10;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'HOT TILES';
+  var HOW_TO_PLAY = 'TAP AN ADJACENT COOL TILE TO HOP';
+  var NEEDED   = 7;              // 修正2: 30 → 7（サバイバル短縮）
+  var COLS = 4, ROWS = 5, PAD = 10;
+  var CELL_W = snap((W - 80) / COLS), CELL_H = 200, GX = snap(40), GY = snap(300);
+  var HEAT_INTERVAL = 1.8, HEAT_TIME = 2.2, COOL_TIME = 2.5;
 
-  var tiles = [];
-  for (var r = 0; r < ROWS; r++) {
-    for (var c = 0; c < COLS; c++) {
-      tiles.push({ row: r, col: c, heat: 0, heating: false, heatTimer: 0 });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var tiles, playerRow, playerCol, heatTimer, survived, timeLeft, done, shakeX;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
     }
   }
 
-  var playerRow = ROWS - 1;
-  var playerCol = Math.floor(COLS / 2);
-  var playerMoving = false;
-  var playerTargetRow = playerRow, playerTargetCol = playerCol;
-
-  var heatTimer = 0;
-  var HEAT_INTERVAL = 1.6;
-  var HEAT_TIME = 2.0; // how long until tile becomes dangerous
-  var survived = 0;
-  var NEEDED = 30;
-  var timeLeft = NEEDED;
-  var done = false;
-  var feedback = 0;
-  var shakeX = 0;
-
-  function getTile(r, c) {
-    return tiles[r * COLS + c];
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function heatRandomTile() {
-    var cool = tiles.filter(function(t) {
-      return t.heat < 0.5 && !(t.row === playerRow && t.col === playerCol);
-    });
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / NEEDED * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function getTile(r, c) { return tiles[r * COLS + c]; }
+
+  function heatRandom() {
+    var cool = tiles.filter(function(t) { return t.heat < 0.4 && !t.heating && t.coolTimer <= 0 && !(t.row === playerRow && t.col === playerCol); });
     if (cool.length === 0) return;
     var t = cool[Math.floor(Math.random() * cool.length)];
-    t.heating = true;
-    t.heatTimer = 0;
+    t.heating = true; t.heatTimer = 0;
   }
 
-  game.onTap(function(tx, ty) {
+  function drawTile(t, ox) {
+    var cx = GX + t.col * CELL_W + PAD + ox, cy = GY + t.row * CELL_H + PAD, cw = CELL_W - PAD * 2, ch = CELL_H - PAD * 2;
+    var col = t.heat < 0.3 ? C.e : (t.heat < 0.7 ? C.c : C.a);
+    game.draw.rect(cx, cy, cw, ch, col, 0.85);
+    game.draw.rect(cx, cy, cw, 10, C.g, 0.3);
+    if (t.heat > 0.1) game.draw.rect(cx, cy + ch - t.heat * ch, cw, t.heat * ch, col, t.heat * 0.6);
+    if (t.heat > 0.6) {
+      var on = Math.floor(game.time.elapsed * 8) % 2 === 0;
+      // ピクセル炎
+      game.draw.rect(cx + cw / 2 - 12, cy + ch / 2 - 8, 24, 24, on ? C.c : C.f);
+      game.draw.rect(cx + cw / 2 - 8, cy + ch / 2 - 24, 16, 16, C.a);
+    } else if (t.heat > 0.3) txt('!', cx + cw / 2, cy + ch / 2 - 8, 48, C.c);
+    if (t.row === playerRow && t.col === playerCol) { pc(cx + cw / 2, cy + ch / 2 - 16, 42, C.b, 1); game.draw.rect(cx + cw / 2 - 14, cy + ch / 2 - 24, 10, 10, C.bg); game.draw.rect(cx + cw / 2 + 4, cy + ch / 2 - 24, 10, 10, C.bg); }
+  }
+
+  function initGame() {
+    tiles = [];
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) tiles.push({ row: r, col: c, heat: 0, heating: false, heatTimer: 0, coolTimer: 0 });
+    playerRow = ROWS - 1; playerCol = Math.floor(COLS / 2);
+    heatTimer = 0.5; survived = 0; timeLeft = NEEDED; done = false; shakeX = 0;
+  }
+
+  function finish(success) {
     if (done) return;
-    var col = Math.floor((tx - GRID_X) / CELL_W);
-    var row = Math.floor((ty - GRID_Y) / CELL_H);
+    done = true; resultSuccess = success;
+    finalScore = success ? (600 + Math.round(survived) * 100) : Math.round(survived * 120);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var col = Math.floor((x - GX) / CELL_W), row = Math.floor((y - GY) / CELL_H);
     if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
-    // Must be adjacent
-    var dr = Math.abs(row - playerRow), dc = Math.abs(col - playerCol);
-    if (dr + dc !== 1) return; // not adjacent
-    playerRow = row;
-    playerCol = col;
+    if (Math.abs(row - playerRow) + Math.abs(col - playerCol) !== 1) return;
+    playerRow = row; playerCol = col;
     game.audio.play('se_tap', 0.3);
-    // Check if moved to hot tile
-    var t = getTile(row, col);
-    if (t.heat > 0.85 && !done) {
-      done = true;
-      shakeX = 24;
-      game.audio.play('se_failure');
-      setTimeout(function() { game.end.failure(); }, 500);
-    }
+    if (getTile(row, col).heat > 0.85) { shakeX = 24; finish(false); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      tiles = tiles || [];
+      for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) { var idx = r * COLS + c; tiles[idx] = tiles[idx] || { row: r, col: c, heat: 0, heating: false, coolTimer: 0 }; tiles[idx].heat = ((r + c + Math.floor(game.time.elapsed)) % 4 === 0) ? 0.9 : 0; }
+      playerRow = ROWS - 1; playerCol = 1;
+      for (var t = 0; t < tiles.length; t++) drawTile(tiles[t], 0);
+      txt(GAME_TITLE, W / 2, H * 0.14, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.90, 30, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄  TAP TO START', W / 2, H * 0.95, 44, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SURVIVED!' : 'BURNED', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      survived += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() { game.end.success(Math.ceil(survived) * 60 + 500); }, 400);
-        return;
+      timeLeft -= dt; survived += dt;
+      if (timeLeft <= 0) { finish(true); return; }
+      heatTimer -= dt;
+      var prog = survived / NEEDED;
+      if (heatTimer <= 0) { heatTimer = HEAT_INTERVAL * Math.max(0.6, 1 - prog * 0.3); heatRandom(); if (prog > 0.5) heatRandom(); }
+      for (var ti = 0; ti < tiles.length; ti++) {
+        var t = tiles[ti];
+        if (t.heating) { t.heatTimer += dt; t.heat = Math.min(1, t.heatTimer / HEAT_TIME); if (t.heat >= 1) { t.heating = false; t.coolTimer = COOL_TIME; } }
+        else if (t.coolTimer > 0) { t.coolTimer -= dt; if (t.coolTimer <= 0) { t.heat = 0; t.heatTimer = 0; } }
       }
+      if (getTile(playerRow, playerCol).heat > 0.85) { shakeX = 24; finish(false); return; }
     }
     if (shakeX > 0) shakeX *= 0.7;
-
-    // Heat tiles
-    heatTimer -= dt;
-    var progress = survived / NEEDED;
-    if (heatTimer <= 0) {
-      heatTimer = HEAT_INTERVAL * Math.max(0.5, 1 - progress * 0.4);
-      heatRandomTile();
-      if (progress > 0.4) heatRandomTile();
-      if (progress > 0.7) heatRandomTile();
-    }
-
-    for (var ti = 0; ti < tiles.length; ti++) {
-      var t = tiles[ti];
-      if (t.heating) {
-        t.heatTimer += dt;
-        t.heat = Math.min(1, t.heatTimer / HEAT_TIME);
-        if (t.heat >= 1) {
-          t.heating = false;
-          // Auto cool after a bit
-          setTimeout((function(tile) {
-            return function() {
-              tile.heat = 0;
-              tile.heating = false;
-              tile.heatTimer = 0;
-            };
-          })(t), 2000 + Math.random() * 1000);
-        }
-      }
-    }
-
-    // Check current tile heat
-    var curTile = getTile(playerRow, playerCol);
-    if (curTile.heat > 0.85 && !done) {
-      done = true;
-      shakeX = 24;
-      game.audio.play('se_failure');
-      setTimeout(function() { game.end.failure(); }, 500);
-    }
-
     var ox = (Math.random() - 0.5) * shakeX * 2;
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background();
+    for (var ti2 = 0; ti2 < tiles.length; ti2++) drawTile(tiles[ti2], ox);
 
-    // Tiles
-    for (var ti2 = 0; ti2 < tiles.length; ti2++) {
-      var t2 = tiles[ti2];
-      var cx = GRID_X + t2.col * CELL_W + PAD + ox;
-      var cy = GRID_Y + t2.row * CELL_H + PAD;
-      var cw = CELL_W - PAD * 2;
-      var ch = CELL_H - PAD * 2;
-      var isPlayer = t2.row === playerRow && t2.col === playerCol;
-
-      var heat = t2.heat;
-      var tileCol, tileHi;
-      if (heat < 0.3) {
-        tileCol = C.cool; tileHi = C.coolHi;
-      } else if (heat < 0.7) {
-        tileCol = C.warm; tileHi = C.warmHi;
-      } else {
-        tileCol = C.hot; tileHi = C.hotHi;
-      }
-
-      // Base tile
-      game.draw.rect(cx, cy, cw, ch, tileCol, 0.9);
-      game.draw.rect(cx, cy, cw, 10, tileHi, 0.5);
-
-      // Heat indicator
-      if (heat > 0.1) {
-        var heatAlpha = heat * 0.5;
-        game.draw.rect(cx, cy + ch - heat * ch, cw, heat * ch, tileHi, heatAlpha);
-      }
-
-      // Danger warning animation
-      if (heat > 0.6) {
-        var pulse = 0.3 + 0.4 * Math.abs(Math.sin(survived * 8 + ti2));
-        game.draw.rect(cx, cy, cw, ch, C.hotHi, pulse * 0.3);
-        game.draw.text('🔥', cx + cw / 2, cy + ch / 2 - 10, { size: 52, color: C.hotHi });
-      } else if (heat > 0.3) {
-        game.draw.text('⚠', cx + cw / 2, cy + ch / 2, { size: 48, color: C.warmHi });
-      }
-
-      // Adjacent highlight
-      if (!isPlayer) {
-        var dr = Math.abs(t2.row - playerRow), dc = Math.abs(t2.col - playerCol);
-        if (dr + dc === 1 && heat < 0.85) {
-          game.draw.rect(cx - 4, cy - 4, cw + 8, ch + 8, C.safe, 0.08);
-        }
-      }
-
-      // Player
-      if (isPlayer) {
-        game.draw.circle(cx + cw / 2, cy + ch / 2 - 20, 50, C.playerHi, 0.2);
-        game.draw.circle(cx + cw / 2, cy + ch / 2 - 20, 38, C.player, 0.95);
-      }
-    }
-
-    game.draw.text('隣のマスをタップ', W / 2 + ox, H * 0.91, { size: 40, color: C.ui });
-
-    // Survival time display
-    var ratio = Math.max(0, timeLeft / NEEDED);
-    game.draw.text(timeLeft.toFixed(1), W / 2, 148, { size: 64, color: '#f1f5f9', bold: true });
-
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.coolHi : C.hotHi);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(timeLeft.toFixed(1) + 's', W / 2, 96, 44, C.g);
+    txt('HOP TO SAFETY!', W / 2, 168, 40, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.25);
-    setTimeout(function() { heatRandomTile(); heatRandomTile(); }, 500);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

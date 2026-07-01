@@ -1,194 +1,174 @@
 // 178-arc-throw.js
-// 放物線投石 — 変化する発射角度を見極めてタップ、的に石を当て続ける爽快感
+// 放物線投石 — 変化する発射角度を見極めてタップ、的に石を当てる爽快感
 // 操作: タップで発射
-// 成功: 10発命中  失敗: 8発外す or 45秒
+// 成功: 1発命中  失敗: 8発外す or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#060a06',
-    ground:  '#0f2010',
-    target:  '#ef4444',
-    targetHi:'#fca5a5',
-    stone:   '#9ca3af',
-    stoneHi: '#e5e7eb',
-    arc:     '#374151',
-    launch:  '#22c55e',
-    hit:     '#22c55e',
-    wrong:   '#ef4444',
-    ui:      '#334155'
-  };
+  // ── パレット（ネオンアーケード、投擲場） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var LAUNCH_X = W * 0.12;
-  var LAUNCH_Y = H * 0.78;
-  var TARGET_X = W * 0.82;
-  var TARGET_Y = H * 0.72;
-  var TARGET_R = 56;
-  var STONE_R = 20;
-  var STONE_SPEED = 880;
-  var GRAVITY = 1800;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ARC THROW';
+  var HOW_TO_PLAY = 'TAP TO FLING THE STONE AT ●';
+  var MAX_TIME = 15;             // 修正2: 45 → 15
+  var NEEDED   = 1;              // 修正2: 10 → 1
+  var MAX_MISS = 8;
+  var LX = snap(W * 0.14), LY = snap(H * 0.72), TX = snap(W * 0.82), TY = snap(H * 0.66), TARGET_R = 60, STONE_R = 22;
+  var STONE_SPEED = 880, GRAVITY = 1800, AIM_SPEED = 1.1, MIN_A = -Math.PI * 0.85, MAX_A = -Math.PI * 0.12;
 
-  // Rotating angle selector
-  var aimAngle = -Math.PI * 0.6; // start pointing up-right
-  var AIM_SPEED = 1.2; // rad/sec
-  var aimDir = 1;
-  var MIN_ANGLE = -Math.PI * 0.85;
-  var MAX_ANGLE = -Math.PI * 0.1;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var stone = null;
-  var arcPoints = [];
-  var score = 0;
-  var needed = 10;
-  var misses = 0;
-  var maxMisses = 8;
-  var timeLeft = 45;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var particles = [];
+  // ── ゲーム変数 ──
+  var aimAngle, aimDir, stone, arc, score, misses, timeLeft, done, feedback, feedbackOk, particles;
 
-  function computeArcPoints(angle) {
-    var pts = [];
-    var vx = Math.cos(angle) * STONE_SPEED;
-    var vy = Math.sin(angle) * STONE_SPEED;
-    var x = LAUNCH_X, y = LAUNCH_Y;
-    for (var t = 0; t < 1.8; t += 0.04) {
-      x = LAUNCH_X + vx * t;
-      y = LAUNCH_Y + vy * t + 0.5 * GRAVITY * t * t;
-      pts.push({ x: x, y: y });
-      if (y > H + 50) break;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
     }
+  }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(0, snap(H * 0.86), W, H, C.d, 0.4);
+    game.draw.rect(0, snap(H * 0.86), W, 8, C.b);
+  }
+
+  function computeArc(angle) {
+    var pts = [], vx = Math.cos(angle) * STONE_SPEED, vy = Math.sin(angle) * STONE_SPEED;
+    for (var t = 0; t < 1.8; t += 0.05) { var x = LX + vx * t, y = LY + vy * t + 0.5 * GRAVITY * t * t; pts.push({ x: x, y: y }); if (y > H + 50) break; }
     return pts;
   }
 
+  function drawTarget() {
+    var on = Math.floor(game.time.elapsed * 8) % 2 === 0;
+    pc(TX, TY, TARGET_R, C.a, on ? 0.95 : 0.8);
+    pc(TX, TY, TARGET_R * 0.6, C.g, 0.9);
+    pc(TX, TY, 12, C.a, 1);
+  }
+
+  function drawLauncher() {
+    game.draw.rect(LX - 60, LY + STONE_R, 120, 60, C.d, 0.9);
+    game.draw.rect(LX - 60, LY + STONE_R, 120, 8, C.e);
+  }
+
+  function initGame() {
+    aimAngle = -Math.PI * 0.6; aimDir = 1; stone = null; arc = [];
+    score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedback = 0; particles = [];
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 30) : score * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
   game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || stone) return;
-    stone = {
-      x: LAUNCH_X,
-      y: LAUNCH_Y,
-      vx: Math.cos(aimAngle) * STONE_SPEED,
-      vy: Math.sin(aimAngle) * STONE_SPEED
-    };
+    stone = { x: LX, y: LY, vx: Math.cos(aimAngle) * STONE_SPEED, vy: Math.sin(aimAngle) * STONE_SPEED };
     game.audio.play('se_tap', 0.7);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawTarget(); drawLauncher();
+      aimAngle += AIM_SPEED * aimDir * dt; if (aimAngle > MAX_A) { aimAngle = MAX_A; aimDir = -1; } if (aimAngle < MIN_A) { aimAngle = MIN_A; aimDir = 1; }
+      arc = computeArc(aimAngle);
+      for (var ai = 0; ai < arc.length; ai++) { if (arc[ai].y > H * 0.86) break; game.draw.rect(snap(arc[ai].x) - 4, snap(arc[ai].y) - 4, 8, 8, C.c, (1 - ai / arc.length) * 0.5); }
+      pc(LX, LY, STONE_R, C.g, 1);
+      txt(GAME_TITLE, W / 2, H * 0.16, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 30, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ON TARGET!' : 'MISSED OUT', W / 2, H * 0.35, 74, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      aimAngle += AIM_SPEED * aimDir * dt; if (aimAngle > MAX_A) { aimAngle = MAX_A; aimDir = -1; } if (aimAngle < MIN_A) { aimAngle = MIN_A; aimDir = 1; }
+      arc = computeArc(aimAngle);
+      if (stone) {
+        stone.vy += GRAVITY * dt; stone.x += stone.vx * dt; stone.y += stone.vy * dt;
+        if (Math.hypot(stone.x - TX, stone.y - TY) < STONE_R + TARGET_R) {
+          score++; feedbackOk = true; feedback = 0.4;
+          game.audio.play('se_success', 0.9);
+          for (var pi = 0; pi < 10; pi++) { var ang = Math.random() * Math.PI * 2; particles.push({ x: TX, y: TY, vx: Math.cos(ang) * 220, vy: Math.sin(ang) * 220, life: 0.5 }); }
+          stone = null;
+          if (score >= NEEDED) { finish(true); return; }
+        } else if (stone && (stone.y > H + 50 || stone.x > W + 50)) {
+          misses++; feedbackOk = false; feedback = 0.35; stone = null;
+          game.audio.play('se_failure', 0.4);
+          if (misses >= MAX_MISS) { finish(false); return; }
+        }
+      }
     }
+    for (var p = 0; p < particles.length; p++) { particles[p].x += particles[p].vx * dt; particles[p].y += particles[p].vy * dt; particles[p].vy += 400 * dt; particles[p].life -= dt; }
+    particles = particles.filter(function(pt) { return pt.life > 0; });
     if (feedback > 0) feedback -= dt;
 
-    // Rotate aim
-    aimAngle += AIM_SPEED * aimDir * dt;
-    if (aimAngle > MAX_ANGLE) { aimAngle = MAX_ANGLE; aimDir = -1; }
-    if (aimAngle < MIN_ANGLE) { aimAngle = MIN_ANGLE; aimDir = 1; }
-    arcPoints = computeArcPoints(aimAngle);
+    // ---- 描画 ----
+    background();
+    for (var ai2 = 0; ai2 < arc.length; ai2++) { if (arc[ai2].y > H * 0.86) break; game.draw.rect(snap(arc[ai2].x) - 4, snap(arc[ai2].y) - 4, 8, 8, C.c, (1 - ai2 / arc.length) * 0.5); }
+    drawTarget(); drawLauncher();
+    if (!stone) pc(LX, LY, STONE_R, C.g, 1); else pc(stone.x, stone.y, STONE_R, C.g, 1);
+    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 5, snap(particles[pp].y) - 5, 10, 10, C.b, particles[pp].life * 2);
+    if (feedback > 0) game.draw.rect(0, 0, W, H, feedbackOk ? C.b : C.a, feedback * 0.12);
 
-    // Move stone
-    if (stone) {
-      stone.vy += GRAVITY * dt;
-      stone.x += stone.vx * dt;
-      stone.y += stone.vy * dt;
-
-      // Check target hit
-      var dx = stone.x - TARGET_X, dy = stone.y - TARGET_Y;
-      if (Math.sqrt(dx * dx + dy * dy) < STONE_R + TARGET_R) {
-        score++;
-        feedbackOk = true; feedback = 0.4;
-        game.audio.play('se_success', 0.9);
-        for (var pi = 0; pi < 10; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: TARGET_X, y: TARGET_Y, vx: Math.cos(ang) * 220, vy: Math.sin(ang) * 220, life: 0.5 });
-        }
-        stone = null;
-        if (score >= needed && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(score * 70 + Math.ceil(timeLeft) * 20); }, 400);
-        }
-        return;
-      }
-
-      // Off screen
-      if (stone.y > H + 50 || stone.x > W + 50) {
-        misses++;
-        feedbackOk = false; feedback = 0.35;
-        game.audio.play('se_failure', 0.4);
-        stone = null;
-        if (misses >= maxMisses && !done) { done = true; setTimeout(function() { game.end.failure(); }, 400); }
-      }
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 44, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) {
+      var mx = snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 44);
+      game.draw.rect(mx - 8, 208, 16, 16, mm < misses ? C.a : '#2a0a3a');
     }
-
-    for (var pi2 = 0; pi2 < particles.length; pi2++) {
-      particles[pi2].x += particles[pi2].vx * dt; particles[pi2].y += particles[pi2].vy * dt;
-      particles[pi2].vy += 400 * dt; particles[pi2].life -= dt;
-    }
-    particles = particles.filter(function(p) { return p.life > 0; });
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Ground
-    game.draw.rect(0, H * 0.88, W, H * 0.12, C.ground, 0.9);
-    game.draw.rect(0, H * 0.88, W, 8, '#14532d', 0.8);
-
-    // Arc preview
-    for (var ai = 0; ai < arcPoints.length; ai++) {
-      var pt = arcPoints[ai];
-      if (pt.y > H * 0.88) break;
-      var alpha = (1 - ai / arcPoints.length) * 0.35;
-      game.draw.circle(pt.x, pt.y, 5, C.arc, alpha);
-    }
-    // Aim line
-    game.draw.line(LAUNCH_X, LAUNCH_Y,
-      LAUNCH_X + Math.cos(aimAngle) * 100,
-      LAUNCH_Y + Math.sin(aimAngle) * 100,
-      C.launch, 5);
-
-    // Target
-    game.draw.circle(TARGET_X, TARGET_Y, TARGET_R + 12, C.targetHi, 0.15);
-    game.draw.circle(TARGET_X, TARGET_Y, TARGET_R, C.target, 0.85);
-    game.draw.circle(TARGET_X, TARGET_Y, TARGET_R * 0.55, C.targetHi, 0.5);
-    game.draw.circle(TARGET_X, TARGET_Y, 12, '#fff', 0.8);
-
-    // Launch platform
-    game.draw.rect(LAUNCH_X - 60, LAUNCH_Y + STONE_R, 120, 60, '#1a2e1a', 0.9);
-    game.draw.circle(LAUNCH_X, LAUNCH_Y + STONE_R, 40, '#2d4a2d', 0.8);
-
-    // Stone (when not flying)
-    if (!stone) {
-      game.draw.circle(LAUNCH_X, LAUNCH_Y, STONE_R + 4, C.stoneHi, 0.3);
-      game.draw.circle(LAUNCH_X, LAUNCH_Y, STONE_R, C.stone, 0.9);
-    } else {
-      game.draw.circle(stone.x, stone.y, STONE_R + 4, C.stoneHi, 0.3);
-      game.draw.circle(stone.x, stone.y, STONE_R, C.stone, 0.9);
-      // Trailing dust
-      game.draw.circle(stone.x - stone.vx * 0.03, stone.y - stone.vy * 0.03, STONE_R * 0.7, C.stone, 0.3);
-    }
-
-    // Particles
-    for (var pp = 0; pp < particles.length; pp++) {
-      var part = particles[pp];
-      game.draw.circle(part.x, part.y, 10 * part.life * 2, C.hit, part.life);
-    }
-
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? C.hit : C.wrong, feedback * 0.12);
-    }
-
-    if (!stone) game.draw.text('タップで投げる！', W / 2, H * 0.92, { size: 46, color: C.ui });
-    game.draw.text(score + ' / ' + needed, W / 2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    for (var mi = 0; mi < maxMisses; mi++) {
-      game.draw.circle(W * 0.1 + mi * 42, 218, 14, mi < misses ? C.wrong : '#0a1020');
-    }
-
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.launch : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    scanlines();
   });
 
-  game.onStart(function() { game.audio.bgm('bgm_main', 0.3); });
+  game.onStart(function() {
+    game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
+  });
 })(game);
