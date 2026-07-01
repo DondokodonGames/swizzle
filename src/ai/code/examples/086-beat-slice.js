@@ -1,232 +1,164 @@
 // 086-beat-slice.js
-// ビートスライス — リズムに合わせて流れてくるブロックをスワイプで斬る爽快感
-// 操作: スワイプでブロックを斬る（方向は矢印で指示）
-// 成功: 16ブロック斬る  失敗: 4回ミス or 30秒
+// ビートスライス — リズムに合わせて流れるブロックを指定方向にスワイプで斬る
+// 操作: ブロックの矢印方向にスワイプ
+// 成功: 2ブロック斬る  失敗: 3回ミス or 30秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#080410',
-    blockR:  '#ef4444',
-    blockB:  '#3b82f6',
-    slashR:  '#fca5a5',
-    slashB:  '#93c5fd',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    beat:    '#8b5cf6',
-    ui:      '#334155'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var BPM = 130;
-  var BEAT = 60 / BPM;
-  var LANE_XS = [W * 0.25, W * 0.5, W * 0.75];
-
-  var blocks = []; // { x, y, dir, color, hit, hitTimer }
-  var beatTimer = 0;
-  var beatCount = 0;
-  var beatFlash = 0;
-
-  var score = 0;
-  var needed = 16;
-  var misses = 0;
-  var maxMisses = 4;
-  var timeLeft = 30;
-  var done = false;
-  var slashTrail = []; // { x1,y1,x2,y2, life, color }
-  var lastSwipeDir = null;
-  var feedback = 0;
-  var feedbackOk = false;
-
+  var GAME_TITLE  = 'BEAT SLICE';
+  var HOW_TO_PLAY = 'SWIPE THE ARROW DIRECTION';
+  var MAX_TIME = 30;
+  var NEEDED = 2;           // 修正2: 16 → 2
+  var MAX_MISS = 3;         // 修正2: 4 → 3
+  var BPM = 120, BEAT = 60 / BPM, HIT_Y = H * 0.62;
+  var LANES = [W * 0.28, W * 0.5, W * 0.72];
   var DIRS = ['up', 'down', 'left', 'right'];
-  var DIR_ARROWS = { up: '↑', down: '↓', left: '←', right: '→' };
 
-  function spawnBlock() {
-    var lane = LANE_XS[Math.floor(Math.random() * LANE_XS.length)];
-    var dir = DIRS[Math.floor(Math.random() * DIRS.length)];
-    var color = (Math.random() > 0.5) ? 'R' : 'B';
-    blocks.push({
-      x: lane, y: -80, dir: dir, color: color,
-      speed: 500 + score * 15, hit: false, hitTimer: 0
-    });
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  var blocks, score, misses, timeLeft, done, feedback, feedbackOk, beatTimer, beatCount, beatFlash, slashes;
+
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks2 = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks2);
+    for (var i = 0; i < blocks2; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
 
-  game.onSwipe(function(dir) {
+  function drawArrow(cx, cy, dir, color) {
+    cx = snap(cx); cy = snap(cy);
+    var parts;
+    if (dir === 'up')    parts = [[-24, -8, 48, 8], [-16, -16, 32, 8], [-8, -24, 16, 8], [-8, 0, 16, 32]];
+    if (dir === 'down')  parts = [[-24, 8, 48, 8], [-16, 16, 32, 8], [-8, 24, 16, 8], [-8, -32, 16, 32]];
+    if (dir === 'left')  parts = [[-8, -24, 8, 48], [-16, -16, 8, 32], [-24, -8, 8, 16], [0, -8, 32, 16]];
+    if (dir === 'right') parts = [[0, -24, 8, 48], [8, -16, 8, 32], [16, -8, 8, 16], [-32, -8, 32, 16]];
+    for (var i = 0; i < parts.length; i++) game.draw.rect(cx + parts[i][0], cy + parts[i][1], parts[i][2], parts[i][3], color);
+  }
+
+  function spawnBlock() {
+    blocks.push({ x: LANES[Math.floor(Math.random() * 3)], y: -80, dir: DIRS[Math.floor(Math.random() * 4)], color: Math.random() > 0.5 ? C.a : C.e, speed: 460, hit: false, hitTimer: 0 });
+  }
+  function initGame() { blocks = []; score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedback = 0; feedbackOk = false; beatTimer = BEAT * 2; beatCount = 0; beatFlash = 0; slashes = []; }
+
+  function finish(success) {
     if (done) return;
-    lastSwipeDir = dir;
-    // Find the first hittable block in range
-    var hit = false;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function addMiss() { misses++; feedbackOk = false; feedback = 0.35; game.audio.play('se_failure', 0.6); if (misses >= MAX_MISS) finish(false); }
+
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
+  });
+  game.onSwipe(function(dir) {
+    if (state !== S.PLAYING || done) return;
     for (var i = 0; i < blocks.length; i++) {
       var b = blocks[i];
       if (b.hit) continue;
-      if (b.y > H * 0.35 && b.y < H * 0.75) {
+      if (b.y > H * 0.42 && b.y < H * 0.82) {
         if (b.dir === dir) {
-          b.hit = true;
-          b.hitTimer = 0.3;
-          score++;
-          feedbackOk = true;
-          feedback = 0.25;
-          game.audio.play('se_tap', 1.0);
-          // Slash trail
-          slashTrail.push({
-            x1: b.x - 100, y1: b.y,
-            x2: b.x + 100, y2: b.y,
-            life: 0.3, maxLife: 0.3,
-            color: b.color === 'R' ? C.slashR : C.slashB
-          });
-          if (score >= needed && !done) {
-            done = true;
-            game.audio.play('se_success');
-            setTimeout(function() { game.end.success(score * 25 + Math.ceil(timeLeft) * 8); }, 400);
-          }
-          hit = true;
-          break;
-        } else {
-          // Wrong direction
-          misses++;
-          feedbackOk = false;
-          feedback = 0.35;
-          game.audio.play('se_failure', 0.7);
-          if (misses >= maxMisses && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 350);
-          }
-          hit = true;
-          break;
-        }
+          b.hit = true; b.hitTimer = 0.3; score++; feedbackOk = true; feedback = 0.25; game.audio.play('se_tap', 1.0);
+          slashes.push({ x: b.x, y: b.y, dir: dir, life: 0.3, color: b.color });
+          if (score >= NEEDED) finish(true);
+        } else addMiss();
+        return;
       }
     }
   });
 
-  game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
+  // 世界観: ネオンの斬撃道場。流れるブロックを矢印通りに斬る。
+  function background() {
+    game.draw.clear('#0a0018');
+    if (beatFlash > 0) game.draw.rect(0, 0, W, H, C.d, beatFlash / 0.1 * 0.08);
+    for (var l = 0; l < LANES.length; l++) game.draw.rect(snap(LANES[l]) - 2, 300, 4, H - 500, C.d, 0.25);
+    game.draw.rect(0, snap(HIT_Y) - 4, W, 8, C.b, 0.6);
+    txt('SLICE ZONE', W / 2, HIT_Y - 40, 32, C.b);
+    txt('BEAT DOJO', W / 2, 250, 34, C.b);
+  }
 
-    // Beat
-    beatTimer -= dt;
-    if (beatTimer <= 0) {
-      beatTimer = BEAT;
-      beatCount++;
-      beatFlash = 0.1;
-      // Spawn on every 2 beats
-      if (beatCount % 2 === 0) spawnBlock();
-    }
-    if (beatFlash > 0) beatFlash -= dt;
-
-    // Update blocks
-    var toRemove = [];
-    for (var i = 0; i < blocks.length; i++) {
-      var b = blocks[i];
-      if (!b.hit) {
-        b.y += b.speed * dt;
-        // Missed if passed the zone
-        if (b.y > H * 0.78) {
-          toRemove.push(i);
-          misses++;
-          feedbackOk = false;
-          feedback = 0.3;
-          game.audio.play('se_failure', 0.4);
-          if (misses >= maxMisses && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 300);
-          }
-        }
-      } else {
-        b.hitTimer -= dt;
-        if (b.hitTimer <= 0) toRemove.push(i);
-      }
-    }
-    for (var j = toRemove.length - 1; j >= 0; j--) blocks.splice(toRemove[j], 1);
-
-    // Update slash trails
-    for (var k = 0; k < slashTrail.length; k++) {
-      slashTrail[k].life -= dt;
-    }
-    slashTrail = slashTrail.filter(function(s) { return s.life > 0; });
-
-    if (feedback > 0) feedback -= dt;
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Beat flash
-    if (beatFlash > 0) {
-      game.draw.rect(0, 0, W, H, C.beat, beatFlash / 0.1 * 0.07);
-    }
-
-    // Lane lines
-    for (var l = 0; l < LANE_XS.length; l++) {
-      game.draw.line(LANE_XS[l], 0, LANE_XS[l], H, C.ui, 2);
-    }
-
-    // Hit zone
-    game.draw.rect(0, H * 0.52, W, 8, C.beat, 0.5);
-    game.draw.text('↓ HIT ZONE ↓', W / 2, H * 0.50, { size: 36, color: C.beat });
-
-    // Blocks
+  function drawScene() {
     for (var bi = 0; bi < blocks.length; bi++) {
       var b = blocks[bi];
-      var bColor = b.color === 'R' ? C.blockR : C.blockB;
-      if (b.hit) {
-        var frac = b.hitTimer / 0.3;
-        var explodeR = 80 * (1 - frac);
-        game.draw.circle(b.x, b.y, 48 + explodeR, bColor, frac * 0.5);
-        game.draw.circle(b.x, b.y, 24 * frac, '#fff', frac);
-      } else {
-        // Block body
-        game.draw.rect(b.x - 56, b.y - 56, 112, 112, bColor);
-        game.draw.rect(b.x - 48, b.y - 48, 96, 96, '#000', 0.3);
-        // Direction arrow
-        game.draw.text(DIR_ARROWS[b.dir], b.x, b.y, { size: 68, color: '#fff', bold: true });
-        // Glow when in hit zone
-        if (b.y > H * 0.45 && b.y < H * 0.65) {
-          game.draw.rect(b.x - 60, b.y - 60, 120, 120, bColor, 0.2);
-        }
+      if (b.hit) { var fr = b.hitTimer / 0.3; game.draw.rect(snap(b.x) - 56, snap(b.y) - 56, 112, 112, b.color, fr * 0.5); }
+      else { game.draw.rect(snap(b.x) - 56, snap(b.y) - 56, 112, 112, b.color); game.draw.rect(snap(b.x) - 44, snap(b.y) - 44, 88, 88, '#000000', 0.25); drawArrow(b.x, b.y, b.dir, C.g); }
+    }
+    for (var si = 0; si < slashes.length; si++) {
+      var s = slashes[si], fr = s.life / 0.3, horiz = s.dir === 'left' || s.dir === 'right';
+      if (horiz) game.draw.rect(snap(s.x) - 120, snap(s.y) - 6, 240, 12, C.g, fr);
+      else game.draw.rect(snap(s.x) - 6, snap(s.y) - 120, 12, 240, C.g, fr);
+    }
+  }
+
+  game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!blocks) initGame();
+      background();
+      txt(GAME_TITLE,  W / 2, H * 0.14, 80, C.a);
+      txt(HOW_TO_PLAY, W / 2, H * 0.195, 30, C.b);
+      drawArrow(W / 2, H * 0.42, DIRS[Math.floor(game.time.elapsed) % 4], C.c);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.8, 66, C.a);
+        txt('TAP TO START', W / 2, H * 0.85, 48, C.g);
       }
+      txt('INSERT COIN', W / 2, H * 0.9, 40, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
     }
 
-    // Slash trails
-    for (var si = 0; si < slashTrail.length; si++) {
-      var sl = slashTrail[si];
-      var slFrac = sl.life / sl.maxLife;
-      game.draw.line(sl.x1, sl.y1, sl.x2, sl.y2, sl.color, 12 * slFrac);
-      game.draw.line(sl.x1, sl.y1 - 8, sl.x2, sl.y2 + 8, '#fff', 4 * slFrac);
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      beatTimer -= dt;
+      if (beatTimer <= 0) { beatTimer = BEAT; beatCount++; beatFlash = 0.1; if (beatCount % 2 === 0) spawnBlock(); }
+      if (beatFlash > 0) beatFlash -= dt;
+      for (var i = blocks.length - 1; i >= 0; i--) {
+        var b = blocks[i];
+        if (!b.hit) { b.y += b.speed * dt; if (b.y > H * 0.85) { blocks.splice(i, 1); addMiss(); } }
+        else { b.hitTimer -= dt; if (b.hitTimer <= 0) blocks.splice(i, 1); }
+      }
+      for (var k = slashes.length - 1; k >= 0; k--) { slashes[k].life -= dt; if (slashes[k].life <= 0) slashes.splice(k, 1); }
+      if (feedback > 0) feedback -= dt;
     }
 
-    // Feedback
-    if (feedback > 0) {
-      game.draw.text(feedbackOk ? 'スライス！' : '方向違い！', W / 2, H * 0.28, {
-        size: 72, color: feedbackOk ? C.correct : C.wrong, bold: true
-      });
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 30);
-    game.draw.rect(0, 0, W, 72, '#080410');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.beat : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Score + misses
-    for (var s = 0; s < needed; s++) {
-      var sx = W / 2 + (s - (needed - 1) / 2) * 56;
-      game.draw.circle(sx, 128, 18, s < score ? C.correct : '#0a0418');
-    }
-    for (var mi = 0; mi < maxMisses; mi++) {
-      var mx = W / 2 + (mi - (maxMisses - 1) / 2) * 56;
-      game.draw.circle(mx, 192, 18, mi < misses ? C.wrong : '#0a0418');
-    }
+    // ---- draw ----
+    background();
+    drawScene();
+    if (feedback > 0) txt(feedbackOk ? 'SLICE!' : 'MISS!', W / 2, H * 0.3, 72, feedbackOk ? C.b : C.a);
+    timeBar();
+    txt('SLICE ' + score + ' / ' + NEEDED, W / 2, 96, 44, C.c);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(W / 2 + (mi - 1) * 64 - 20, 150, 40, 40, mi < misses ? C.a : '#330011');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.4);
-    beatTimer = BEAT * 2; // slight delay before first block
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
