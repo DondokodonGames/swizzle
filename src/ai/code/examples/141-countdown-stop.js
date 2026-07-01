@@ -1,198 +1,176 @@
 // 141-countdown-stop.js
 // カウントダウン止め — 0になる寸前でタップする究極の「待つ」緊張感
-// 操作: タップで止める（0.3秒以内なら成功）
-// 成功: 8回成功  失敗: 4回ミス or 45秒
+// 操作: タップでスタート、0に近づけてもう一度タップで止める
+// 成功: 1回ジャストで止める  失敗: 4回ミス or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#06040a',
-    ring:    '#1e1a2e',
-    ringHi:  '#6d28d9',
-    fill:    '#7c3aed',
-    safe:    '#22c55e',
-    danger:  '#ef4444',
-    warn:    '#f59e0b',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    ui:      '#334155'
-  };
+  // ── パレット（ネオンアーケード、タイマー装置） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var DIAL_X = W / 2;
-  var DIAL_Y = H * 0.48;
-  var DIAL_R = 220;
-  var SAFE_WINDOW = 0.3; // seconds
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'COUNTDOWN STOP';
+  var HOW_TO_PLAY = 'STOP THE TIMER JUST BEFORE ZERO';
+  var MAX_TIME = 15;             // 修正2: 45 → 15
+  var NEEDED   = 1;              // 修正2: 8 → 1
+  var MAX_MISS = 4;
+  var SAFE_WINDOW = 0.4;         // 修正2: 判定を甘めに
+  var DIAL_X = W / 2, DIAL_Y = snap(H * 0.46), DIAL_R = 260;
 
-  var countdown = 0;
-  var COUNTDOWN_MAX = 0;
-  var running = false;
-  var stopped = false;
-  var stopTime = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var score = 0;
-  var needed = 8;
-  var misses = 0;
-  var maxMisses = 4;
-  var timeLeft = 45;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var level = 0;
+  // ── ゲーム変数 ──
+  var countdown, cdMax, running, stopped, stopTime, level;
+  var score, misses, timeLeft, done, feedback, feedbackOk;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  // ── ダイヤル（8pxブロックの円弧） ──
+  function drawDial(ratio, col) {
+    // 外周リング
+    for (var a = 0; a < Math.PI * 2; a += 0.1) {
+      game.draw.rect(snap(DIAL_X + Math.cos(a) * DIAL_R) - 6, snap(DIAL_Y + Math.sin(a) * DIAL_R) - 6, 12, 12, C.d, 0.5);
+    }
+    // 残量スイープ（12時起点）
+    var end = -Math.PI / 2 + ratio * Math.PI * 2;
+    for (var b = -Math.PI / 2; b < end; b += 0.08) {
+      for (var rr = DIAL_R - 80; rr <= DIAL_R - 16; rr += 16) {
+        game.draw.rect(snap(DIAL_X + Math.cos(b) * rr) - 8, snap(DIAL_Y + Math.sin(b) * rr) - 8, 16, 16, col, 0.9);
+      }
+    }
+    // セーフゾーン印（0付近＝12時のすぐ手前）
+    var sa = -Math.PI / 2 - 0.2;
+    game.draw.rect(snap(DIAL_X + Math.cos(sa) * DIAL_R) - 8, snap(DIAL_Y + Math.sin(sa) * DIAL_R) - 8, 16, 16, C.b);
+  }
 
   function newRound() {
     level++;
-    // Gets faster each round
-    COUNTDOWN_MAX = 4.5 - level * 0.2;
-    if (COUNTDOWN_MAX < 1.8) COUNTDOWN_MAX = 1.8;
-    countdown = COUNTDOWN_MAX;
-    running = true;
-    stopped = false;
+    cdMax = Math.max(2.0, 4.0 - level * 0.2);
+    countdown = cdMax;
+    running = true; stopped = false;
   }
 
-  game.onTap(function() {
-    if (done) return;
-    if (!running && !stopped) {
-      newRound();
-      return;
-    }
-    if (stopped) return;
-    // Stop the countdown
-    running = false;
-    stopped = true;
-    stopTime = countdown;
+  function initGame() {
+    level = 0; score = 0; misses = 0;
+    timeLeft = MAX_TIME; done = false; feedback = 0;
+    running = false; stopped = false; countdown = 0; cdMax = 4; stopTime = 0;
+  }
 
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 25) : score * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function registerMiss() {
+    misses++; feedbackOk = false; feedback = 0.7;
+    game.audio.play('se_failure');
+    running = false; stopped = true;
+    if (misses >= MAX_MISS) { finish(false); return; }
+    setTimeout(function() { if (state === S.PLAYING && !done) newRound(); }, 800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (!running && !stopped) { newRound(); return; }
+    if (stopped) return;
+    running = false; stopped = true; stopTime = countdown;
     if (countdown <= SAFE_WINDOW) {
-      score++;
-      feedbackOk = true;
-      feedback = 0.8;
+      score++; feedbackOk = true; feedback = 0.8;
       game.audio.play('se_success');
-      if (score >= needed && !done) {
-        done = true;
-        setTimeout(function() { game.end.success(score*80 + Math.ceil(timeLeft)*15); }, 600);
-        return;
-      }
-      setTimeout(function() { newRound(); }, 900);
+      if (score >= NEEDED) { finish(true); return; }
+      setTimeout(function() { if (state === S.PLAYING && !done) newRound(); }, 800);
     } else {
-      misses++;
-      feedbackOk = false;
-      feedback = 0.8;
-      game.audio.play('se_failure');
-      if (misses >= maxMisses && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 600);
-        return;
-      }
-      setTimeout(function() { newRound(); }, 900);
+      registerMiss();
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
+    if (state === S.ATTRACT) {
+      background();
+      drawDial((Math.sin(game.time.elapsed) + 1) / 2, C.e);
+      txt(GAME_TITLE, W / 2, H * 0.14, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.78, 32, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.85, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.91, 48, C.g);
       }
+      txt('INSERT COIN', W / 2, H * 0.96, 40, '#886699');
+      scanlines();
+      return;
     }
 
-    if (running) {
-      countdown -= dt;
-      if (countdown <= 0) {
-        // Time's up — missed
-        countdown = 0;
-        running = false;
-        stopped = true;
-        misses++;
-        feedbackOk = false;
-        feedback = 0.8;
-        game.audio.play('se_failure');
-        if (misses >= maxMisses && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 600);
-        } else {
-          setTimeout(function() { newRound(); }, 900);
-        }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'PERFECT!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (running) {
+        countdown -= dt;
+        if (countdown <= 0) { countdown = 0; registerMiss(); }
       }
     }
     if (feedback > 0) feedback -= dt;
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
+    background();
+    var ratio = (running || stopped) ? Math.max(0, countdown / cdMax) : 1;
+    var col = ratio < (SAFE_WINDOW / cdMax + 0.05) ? C.b : (ratio < 0.35 ? C.c : C.e);
+    drawDial(ratio, col);
+    // 中央数字
+    var disp = running ? countdown.toFixed(1) : (stopped ? stopTime.toFixed(1) : 'GO');
+    txt(disp, DIAL_X, DIAL_Y, 100, col);
+    if (feedback > 0) txt(feedbackOk ? 'PERFECT!' : 'TOO EARLY', W / 2, H * 0.20, 72, feedbackOk ? C.b : C.a);
+    if (!running && !stopped && Math.floor(game.time.elapsed * 8) % 2 === 0) txt('TAP TO START', W / 2, H * 0.80, 48, C.c);
+    else if (running) txt('STOP NEAR ZERO!', W / 2, H * 0.80, 44, ratio < 0.25 ? C.a : C.e);
 
-    // Dial ring
-    game.draw.circle(DIAL_X, DIAL_Y, DIAL_R + 20, C.ring, 0.5);
-    game.draw.circle(DIAL_X, DIAL_Y, DIAL_R, C.ring, 0.9);
-
-    // Fill arc (simulate with many small rects — draw as swept line indicator)
-    var ratio = (running || stopped) ? countdown / COUNTDOWN_MAX : 1;
-    var sweepColor = ratio < (SAFE_WINDOW / COUNTDOWN_MAX + 0.05) ? C.safe : (ratio < 0.35 ? C.warn : C.fill);
-    // Draw arc via multiple lines from center
-    var steps = 60;
-    var startAngle = -Math.PI / 2;
-    var endAngle = startAngle + (1 - ratio) * Math.PI * 2;
-    for (var s = 0; s < steps; s++) {
-      var ang = startAngle + (s / steps) * (endAngle - startAngle + Math.PI * 2 * ratio - Math.PI * 2);
-      // Fill remaining (countdown ratio)
-      var ang2 = startAngle + (s / steps) * ratio * Math.PI * 2;
-      var ox = Math.cos(ang2) * DIAL_R * 0.8;
-      var oy = Math.sin(ang2) * DIAL_R * 0.8;
-      game.draw.line(DIAL_X, DIAL_Y, DIAL_X + Math.cos(ang2)*DIAL_R, DIAL_Y + Math.sin(ang2)*DIAL_R, sweepColor, 8);
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) {
+      var mx = snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 56);
+      game.draw.rect(mx - 12, 216, 24, 24, mm < misses ? C.a : '#2a0a3a');
     }
-
-    // Center
-    game.draw.circle(DIAL_X, DIAL_Y, 80, C.bg);
-    game.draw.circle(DIAL_X, DIAL_Y, 60, sweepColor, 0.2);
-
-    // Countdown number
-    var dispNum = running ? countdown.toFixed(1) : (stopped ? stopTime.toFixed(1) : '---');
-    game.draw.text(dispNum, DIAL_X, DIAL_Y, { size: 100, color: sweepColor, bold: true });
-
-    // Safe zone indicator
-    var safeAngle = -Math.PI/2 + (1 - SAFE_WINDOW / COUNTDOWN_MAX) * Math.PI * 2;
-    game.draw.line(
-      DIAL_X + Math.cos(safeAngle) * (DIAL_R - 40),
-      DIAL_Y + Math.sin(safeAngle) * (DIAL_R - 40),
-      DIAL_X + Math.cos(safeAngle) * (DIAL_R + 20),
-      DIAL_Y + Math.sin(safeAngle) * (DIAL_R + 20),
-      C.safe, 6
-    );
-    game.draw.text('HERE!', DIAL_X + Math.cos(safeAngle) * (DIAL_R + 60), DIAL_Y + Math.sin(safeAngle) * (DIAL_R + 60), { size: 36, color: C.safe, bold: true });
-
-    // State text
-    if (!running && !stopped) {
-      var pulse = 0.6 + 0.4 * Math.abs(Math.sin(timeLeft * 2));
-      game.draw.text('タップでスタート', W/2, H * 0.82, { size: 52, color: C.ringHi, bold: true });
-      game.draw.circle(W/2, H * 0.82 + 60, 20, C.ringHi, pulse * 0.5);
-    } else if (running) {
-      var urgency = ratio < 0.25 ? C.danger : C.ui;
-      game.draw.text('0に近づけてタップ！', W/2, H * 0.82, { size: 44, color: urgency });
-    }
-
-    // Feedback
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? C.correct : C.wrong, feedback * 0.15);
-      game.draw.text(feedbackOk ? '完璧！' : 'まだ早い！', W/2, H * 0.2, {
-        size: 80, color: feedbackOk ? C.correct : C.wrong, bold: true
-      });
-    }
-
-    // Score
-    game.draw.text(score + ' / ' + needed, W/2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    for (var mi = 0; mi < maxMisses; mi++) {
-      game.draw.circle(W/2+(mi-(maxMisses-1)/2)*52, 218, 18, mi < misses ? C.wrong : '#0a1020');
-    }
-
-    var tratio = Math.max(0, timeLeft/45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*tratio, 72, tratio > 0.3 ? C.fill : C.wrong);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
