@@ -1,239 +1,248 @@
 // 133-boomerang.js
 // ブーメラン — 投げたブーメランが戻ってくるタイミングでキャッチする間合いゲーム
 // 操作: タップで投げる、戻ってきたらもう一度タップでキャッチ
-// 成功: 10回キャッチ  失敗: 5回ミス or 35秒
+// 成功: 1回キャッチ  失敗: 5回ミス or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#04080c',
-    thrower: '#3b82f6',
-    throwerHi:'#93c5fd',
-    boom:    '#f59e0b',
-    boomHi:  '#fbbf24',
-    trail:   '#d97706',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    ui:      '#334155'
-  };
+  // ── パレット（ネオンアーケード、荒野） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var THROWER_X = W * 0.18;
-  var THROWER_Y = H * 0.5;
-  var CATCH_R = 60;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'BOOMERANG';
+  var HOW_TO_PLAY = 'TAP TO THROW · TAP AGAIN TO CATCH';
+  var MAX_TIME = 15;             // 修正2: 35 → 15
+  var NEEDED   = 1;              // 修正2: 10 → 1
+  var MAX_MISS = 5;
+  var TOP    = 220;
+  var BOTTOM = H - 180;
 
-  var state = 'ready'; // 'ready' | 'flying' | 'returning' | 'catching'
-  var boomX = THROWER_X, boomY = THROWER_Y;
-  var boomAngle = 0;
-  var boomPhase = 0; // 0-1 in arc path
-  var FLIGHT_TIME = 1.4;
-  var flightTimer = 0;
+  var THROWER_X = snap(W * 0.5);
+  var THROWER_Y = snap(H * 0.74);  // 下部三分の一
+  var CATCH_R = 72;
+  var FLIGHT_TIME = 1.5;           // 修正2: 少し長めで間合いを取りやすく
+  var peakX = snap(W * 0.82), peakY = snap(TOP + 120);
 
-  // Arc path: parabolic throw to right side and back
-  var peakX = W * 0.8;
-  var peakY = H * 0.25;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var score = 0;
-  var needed = 10;
-  var misses = 0;
-  var maxMisses = 5;
-  var timeLeft = 35;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var trail = [];
-  var catchWindow = false; // true when boom is near thrower on return
-  var catchWindowTimer = 0;
-  var CATCH_WINDOW = 0.28;
+  // ── ゲーム変数 ──
+  var phase, boomX, boomY, boomAngle, boomPhase, flightTimer;
+  var score, misses, timeLeft, done, feedback, feedbackOk, trail, catchWindow;
 
-  function throwBoom() {
-    state = 'flying';
-    flightTimer = 0;
-    trail = [];
-    boomPhase = 0;
-    game.audio.play('se_tap', 0.7);
-  }
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  function getBoomPos(phase, returning) {
-    // Forward arc: THROWER → peak → far point
-    // Return arc: far point → peak-low → THROWER
-    var t = phase;
-    if (!returning) {
-      var farX = W * 0.85;
-      var farY = H * 0.55;
-      // Quadratic bezier: thrower → peak → far
-      var bx = (1-t)*(1-t)*THROWER_X + 2*(1-t)*t*peakX + t*t*farX;
-      var by = (1-t)*(1-t)*THROWER_Y + 2*(1-t)*t*peakY + t*t*farY;
-      return {x: bx, y: by};
-    } else {
-      var farX2 = W * 0.85;
-      var farY2 = H * 0.55;
-      var retPeakX = W * 0.5;
-      var retPeakY = H * 0.72;
-      var bx2 = (1-t)*(1-t)*farX2 + 2*(1-t)*t*retPeakX + t*t*THROWER_X;
-      var by2 = (1-t)*(1-t)*farY2 + 2*(1-t)*t*retPeakY + t*t*THROWER_Y;
-      return {x: bx2, y: by2};
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8;
+    cx = snap(cx); cy = snap(cy);
+    for (var py = -r; py <= r; py += step) {
+      for (var px = -r; px <= r; px += step) {
+        if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
+      }
     }
   }
 
-  game.onTap(function() {
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+
+  function scanlines() {
+    for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18);
+  }
+
+  function timeBar() {
+    var blocks = 12;
+    var lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    // 地平線と荒野
+    game.draw.rect(0, snap(H * 0.82), W, H, C.d, 0.4);
+    game.draw.rect(0, snap(H * 0.82), W, 8, C.f);
+  }
+
+  function getBoomPos(t, returning) {
+    var farX = W * 0.85, farY = H * 0.55;
+    if (!returning) {
+      return {
+        x: (1 - t) * (1 - t) * THROWER_X + 2 * (1 - t) * t * peakX + t * t * farX,
+        y: (1 - t) * (1 - t) * THROWER_Y + 2 * (1 - t) * t * peakY + t * t * farY
+      };
+    }
+    var rpx = W * 0.4, rpy = H * 0.9;
+    return {
+      x: (1 - t) * (1 - t) * farX + 2 * (1 - t) * t * rpx + t * t * THROWER_X,
+      y: (1 - t) * (1 - t) * farY + 2 * (1 - t) * t * rpy + t * t * THROWER_Y
+    };
+  }
+
+  // ── スプライト（多矩形でキャラクター性） ──
+  function drawBoomerang(x, y, ang) {
+    // 「く」の字の2本腕
+    var c = Math.cos(ang), s = Math.sin(ang);
+    for (var i = -3; i <= 3; i++) {
+      game.draw.rect(snap(x + c * i * 8) - 4, snap(y + s * i * 8) - 4, 8, 8, C.c);
+      game.draw.rect(snap(x - s * i * 8) - 4, snap(y + c * i * 8 + Math.abs(i) * 4 - 12) - 4, 8, 8, C.f);
+    }
+    game.draw.rect(snap(x) - 6, snap(y) - 6, 12, 12, C.g);
+  }
+
+  function drawThrower(active) {
+    // 投げ手キャラ（頭・胴・腕）
+    var y = THROWER_Y;
+    pc(THROWER_X, y, 36, C.e, 1);                 // 頭
+    game.draw.rect(THROWER_X - 12, y - 8, 8, 8, C.g);
+    game.draw.rect(THROWER_X + 4, y - 8, 8, 8, C.g);
+    game.draw.rect(THROWER_X - 28, y + 32, 56, 64, C.e);   // 胴
+    game.draw.rect(THROWER_X - 28, y + 32, 56, 8, C.b);
+    game.draw.rect(THROWER_X + 20, y + 40, 40, 12, C.e);   // 腕
+    // キャッチゾーン
+    var on = active && Math.floor(game.time.elapsed * 8) % 2 === 0;
+    for (var a = 0; a < Math.PI * 2; a += 0.2) {
+      game.draw.rect(snap(THROWER_X + Math.cos(a) * CATCH_R) - 4, snap(y + Math.sin(a) * CATCH_R) - 4, 8, 8, on ? C.b : C.d, active ? 0.9 : 0.4);
+    }
+  }
+
+  function initGame() {
+    phase = 'ready';
+    boomX = THROWER_X; boomY = THROWER_Y; boomAngle = 0; boomPhase = 0; flightTimer = 0;
+    score = 0; misses = 0;
+    timeLeft = MAX_TIME; done = false; feedback = 0;
+    trail = []; catchWindow = false;
+  }
+
+  function finish(success) {
     if (done) return;
-    if (state === 'ready') {
-      throwBoom();
-    } else if (state === 'returning') {
-      // Try to catch
-      var dx = boomX - THROWER_X, dy = boomY - THROWER_Y;
-      var dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist < CATCH_R + 24) {
-        // Caught!
-        score++;
-        feedbackOk = true;
-        feedback = 0.4;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 20) : score * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function missCatch() {
+    misses++; feedbackOk = false; feedback = 0.4;
+    game.audio.play('se_failure', 0.6);
+    phase = 'ready'; boomX = THROWER_X; boomY = THROWER_Y;
+    if (misses >= MAX_MISS) finish(false);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (phase === 'ready') {
+      phase = 'flying'; flightTimer = 0; trail = []; boomPhase = 0;
+      game.audio.play('se_tap', 0.7);
+    } else if (phase === 'returning') {
+      var d = Math.hypot(boomX - THROWER_X, boomY - THROWER_Y);
+      if (d < CATCH_R + 24) {
+        score++; feedbackOk = true; feedback = 0.4;
         game.audio.play('se_success');
-        state = 'ready';
-        boomX = THROWER_X; boomY = THROWER_Y;
-        if (score >= needed && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(score*50 + Math.ceil(timeLeft)*12); }, 400);
-        }
+        phase = 'ready'; boomX = THROWER_X; boomY = THROWER_Y;
+        if (score >= NEEDED) finish(true);
       } else {
-        // Missed
-        misses++;
-        feedbackOk = false;
-        feedback = 0.4;
-        game.audio.play('se_failure', 0.6);
-        if (misses >= maxMisses && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
+        missCatch();
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
+    if (state === S.ATTRACT) {
+      background();
+      boomAngle += 8 * dt;
+      drawThrower(false);
+      var dp = getBoomPos((game.time.elapsed % 3) / 3, false);
+      drawBoomerang(dp.x, dp.y, boomAngle);
+      txt(GAME_TITLE,  W / 2, H * 0.16, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 32, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.40, 64, C.a);
+        txt('TAP TO START', W / 2, H * 0.47, 50, C.g);
       }
+      txt('INSERT COIN', W / 2, H * 0.54, 40, '#886699');
+      scanlines();
+      return;
     }
 
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CAUGHT!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
+    if (!done) { timeLeft -= dt; if (timeLeft <= 0) { finish(false); return; } }
     boomAngle += 8 * dt;
 
-    if (state === 'flying') {
+    if (!done && phase === 'flying') {
       flightTimer += dt;
       boomPhase = Math.min(1, flightTimer / FLIGHT_TIME);
-      var pos = getBoomPos(boomPhase, false);
-      boomX = pos.x; boomY = pos.y;
-      trail.push({x: boomX, y: boomY, age: 0});
-      if (boomPhase >= 1) {
-        state = 'returning';
-        flightTimer = 0;
-        boomPhase = 0;
-      }
-    } else if (state === 'returning') {
+      var p = getBoomPos(boomPhase, false);
+      boomX = p.x; boomY = p.y;
+      trail.push({ x: boomX, y: boomY, age: 0 });
+      if (boomPhase >= 1) { phase = 'returning'; flightTimer = 0; boomPhase = 0; }
+    } else if (!done && phase === 'returning') {
       flightTimer += dt;
       boomPhase = Math.min(1, flightTimer / FLIGHT_TIME);
-      var pos2 = getBoomPos(boomPhase, true);
-      boomX = pos2.x; boomY = pos2.y;
-      trail.push({x: boomX, y: boomY, age: 0});
-      // Check if passed thrower without catching
-      if (boomPhase >= 1) {
-        misses++;
-        feedbackOk = false;
-        feedback = 0.4;
-        game.audio.play('se_failure', 0.5);
-        state = 'ready';
-        boomX = THROWER_X; boomY = THROWER_Y;
-        if (misses >= maxMisses && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-      }
+      var p2 = getBoomPos(boomPhase, true);
+      boomX = p2.x; boomY = p2.y;
+      trail.push({ x: boomX, y: boomY, age: 0 });
+      if (boomPhase >= 1) { missCatch(); }
     }
 
     for (var ti = 0; ti < trail.length; ti++) trail[ti].age += dt;
     trail = trail.filter(function(t) { return t.age < 0.3; });
-
-    // Catch window detection
-    if (state === 'returning') {
-      var dx2 = boomX - THROWER_X, dy2 = boomY - THROWER_Y;
-      catchWindow = Math.sqrt(dx2*dx2 + dy2*dy2) < CATCH_R + 40;
-    } else {
-      catchWindow = false;
-    }
-
+    catchWindow = (phase === 'returning') && Math.hypot(boomX - THROWER_X, boomY - THROWER_Y) < CATCH_R + 40;
     if (feedback > 0) feedback -= dt;
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Arc guide dots
-    for (var ai = 0; ai <= 12; ai++) {
-      var ap = ai / 12;
-      var gpos = getBoomPos(ap, false);
-      game.draw.circle(gpos.x, gpos.y, 5, '#1a2a3a', 0.5);
+    // ---- 描画 ----
+    background();
+    // 軌道ガイド
+    for (var g = 0; g <= 12; g++) {
+      var gp = getBoomPos(g / 12, false);
+      game.draw.rect(snap(gp.x) - 3, snap(gp.y) - 3, 6, 6, C.d, 0.5);
+      var gp2 = getBoomPos(g / 12, true);
+      game.draw.rect(snap(gp2.x) - 3, snap(gp2.y) - 3, 6, 6, C.a, 0.3);
     }
-    for (var ai2 = 0; ai2 <= 12; ai2++) {
-      var ap2 = ai2 / 12;
-      var gpos2 = getBoomPos(ap2, true);
-      game.draw.circle(gpos2.x, gpos2.y, 5, '#2a1a1a', 0.5);
-    }
-
-    // Trail
     for (var tri = 0; tri < trail.length; tri++) {
       var tr = trail[tri];
       var tf = 1 - tr.age / 0.3;
-      game.draw.circle(tr.x, tr.y, 12 * tf, C.trail, tf * 0.4);
+      game.draw.rect(snap(tr.x) - 4, snap(tr.y) - 4, 8, 8, C.f, tf * 0.5);
     }
+    drawThrower(catchWindow);
+    if (phase !== 'ready') drawBoomerang(boomX, boomY, boomAngle);
+    if (catchWindow && Math.floor(game.time.elapsed * 8) % 2 === 0) txt('NOW!', THROWER_X, THROWER_Y - 110, 64, C.b);
+    if (feedback > 0) txt(feedbackOk ? 'CATCH!' : 'MISS', W / 2, H * 0.5, 72, feedbackOk ? C.b : C.a);
 
-    // Boomerang
-    if (state !== 'ready') {
-      var b1x = boomX + Math.cos(boomAngle) * 28;
-      var b1y = boomY + Math.sin(boomAngle) * 8;
-      var b2x = boomX - Math.cos(boomAngle) * 28;
-      var b2y = boomY - Math.sin(boomAngle) * 8;
-      game.draw.circle(b1x, b1y, 14, C.boom);
-      game.draw.circle(b2x, b2y, 14, C.boom);
-      game.draw.circle(boomX, boomY, 10, C.boomHi, 0.6);
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) {
+      var mx = snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 56);
+      game.draw.rect(mx - 12, 216, 24, 24, mm < misses ? C.a : '#2a0a3a');
     }
-
-    // Thrower / catch zone
-    var catchPulse = catchWindow ? (0.5 + 0.5 * Math.abs(Math.sin(timeLeft * 12))) : 0.2;
-    game.draw.circle(THROWER_X, THROWER_Y, CATCH_R, catchWindow ? C.correct : '#1a2a3a', catchPulse * 0.4);
-    game.draw.circle(THROWER_X, THROWER_Y, 36, C.thrower, 0.9);
-    game.draw.circle(THROWER_X - 10, THROWER_Y - 10, 12, C.throwerHi, 0.5);
-
-    if (catchWindow) {
-      game.draw.text('今！', THROWER_X, THROWER_Y - 80, { size: 72, color: C.correct, bold: true });
-    }
-
-    // Feedback
-    if (feedback > 0) {
-      game.draw.text(feedbackOk ? 'キャッチ！' : 'ミス！', W/2, H*0.75, {
-        size: 72, color: feedbackOk ? C.correct : C.wrong, bold: true
-      });
-    }
-
-    var phaseText = state === 'ready' ? 'タップで投げる' : (state === 'returning' ? 'タップでキャッチ！' : '...');
-    game.draw.text(phaseText, W/2, H*0.88, { size: 48, color: catchWindow ? C.correct : C.ui });
-
-    game.draw.text(score + ' / ' + needed, W/2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    for (var mi = 0; mi < maxMisses; mi++) {
-      game.draw.circle(W/2+(mi-2)*52, 218, 18, mi < misses ? C.wrong : '#0a1020');
-    }
-
-    var ratio = Math.max(0, timeLeft/35);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*ratio, 72, ratio > 0.3 ? C.boom : C.wrong);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    txt(phase === 'ready' ? 'TAP TO THROW' : (phase === 'returning' ? 'TAP TO CATCH!' : '...'), W / 2, H - 130, 44, catchWindow ? C.b : C.c);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
