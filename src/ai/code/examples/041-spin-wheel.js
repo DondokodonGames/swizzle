@@ -1,181 +1,164 @@
 // 041-spin-wheel.js
 // スピンホイール — 回転するルーレットを狙った色で止める賭けの緊張感
 // 操作: タップで回転を止める（目標セクターに止まれば成功）
-// 成功: 5回目標セクターに止める  失敗: 3回外す or 20秒
+// 成功: 1回目標セクターに止める  失敗: 3回外す or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:    '#0a0814',
-    ui:    '#475569',
-    good:  '#22c55e',
-    miss:  '#ef4444'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var WHEEL_COLORS = [C.a, C.f, C.c, C.b, C.e, C.d];
 
-  var WHEEL_COLORS = ['#ef4444','#f97316','#fbbf24','#22c55e','#3b82f6','#8b5cf6'];
-  var WHEEL_R = 280;
-  var cx = W / 2, cy = H * 0.43;
-  var SECTORS = WHEEL_COLORS.length;
-  var SECTOR_ANGLE = (Math.PI * 2) / SECTORS;
+  var GAME_TITLE  = 'SPIN WHEEL';
+  var HOW_TO_PLAY = 'TAP TO STOP ON TARGET';
+  var MAX_TIME = 20;
+  var NEEDED = 1;            // 修正2: 5 → 1
+  var MAX_MISS = 3;
+  var WHEEL_R = 340, cx = W / 2, cy = H * 0.46;   // 修正1: 大きく縦中央寄り
+  var SECTORS = WHEEL_COLORS.length, SECTOR_ANGLE = (Math.PI * 2) / SECTORS;
 
-  var angle = 0;
-  var angVel = 5.0; // radians/sec
-  var spinning = true;
-  var targetSector = 0;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var score = 0;
-  var needed = 5;
-  var misses = 0;
-  var maxMisses = 3;
-  var timeLeft = 20;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var waitTimer = 0;
+  var angle, angVel, spinning, targetSector, score, misses, timeLeft, done, feedback, feedbackOk, waitTimer;
 
-  function newRound() {
-    targetSector = Math.floor(Math.random() * SECTORS);
-    angVel = 4.0 + Math.random() * 3.0 + score * 0.4;
-    spinning = true;
-    waitTimer = 0;
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(px, py, r, color, alpha) {
+    var step = 8; px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step)
+        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
 
-  function getTopSector() {
-    // Top of wheel = -π/2 (12 o'clock)
-    // Sector 0 starts at angle 0, going clockwise
-    var topAngle = (-Math.PI / 2 - angle + Math.PI * 100) % (Math.PI * 2);
-    return Math.floor(topAngle / SECTOR_ANGLE) % SECTORS;
+  function newRound() { targetSector = Math.floor(Math.random() * SECTORS); angVel = 5.0 + Math.random() * 3.0 + score * 0.4; spinning = true; waitTimer = 0; }
+  function initGame() { angle = 0; score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedback = 0; feedbackOk = false; newRound(); }
+  function getTopSector() { var topAngle = (-Math.PI / 2 - angle + Math.PI * 100) % (Math.PI * 2); return Math.floor(topAngle / SECTOR_ANGLE) % SECTORS; }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done || !spinning || waitTimer > 0) return;
-
-    spinning = false;
-    var landedSector = getTopSector();
-    feedback = 0.5;
-
-    if (landedSector === targetSector) {
-      score++;
-      feedbackOk = true;
+    spinning = false; feedback = 0.5;
+    if (getTopSector() === targetSector) {
+      score++; feedbackOk = true;
       game.audio.play('se_tap', 1.0);
-      if (score >= needed) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() {
-          game.end.success(score * 20 + Math.ceil(timeLeft) * 5);
-        }, 600);
-        return;
-      }
+      if (score >= NEEDED) { finish(true); return; }
     } else {
-      misses++;
-      feedbackOk = false;
+      misses++; feedbackOk = false;
       game.audio.play('se_failure', 0.6);
-      if (misses >= maxMisses && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 600);
-        return;
-      }
+      if (misses >= MAX_MISS) { finish(false); return; }
     }
     waitTimer = 0.6;
   });
 
-  game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
+  // 世界観: カジノのルーレット台。狙った色で止める賭け。
+  function background() {
+    game.draw.clear('#0a0018');
+    // フェルト台（放射状の装飾）
+    for (var d = 0; d < 24; d++) {
+      var a = d / 24 * Math.PI * 2;
+      game.draw.rect(snap(cx + Math.cos(a) * (WHEEL_R + 80)) - 4, snap(cy + Math.sin(a) * (WHEEL_R + 80)) - 4, 8, 8, C.d, 0.4);
     }
+    txt('CASINO', W / 2, H * 0.1, 40, C.c);
+  }
 
-    if (waitTimer > 0) {
-      waitTimer -= dt;
-      if (waitTimer <= 0) newRound();
-    }
-
-    if (spinning) {
-      angVel *= (1 - 0.01 * dt * 60); // very slight drag
-      angle += angVel * dt;
-    }
-    if (feedback > 0) feedback -= dt;
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 20);
-    game.draw.rect(0, 0, W, 72, '#0a0814');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#7c3aed' : C.miss);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Score & misses
-    game.draw.text(score + ' / ' + needed, W / 2, 128, { size: 56, color: '#c4b5fd', bold: true });
-    for (var m = 0; m < maxMisses; m++) {
-      var mx = W / 2 + (m - (maxMisses-1)/2) * 60;
-      game.draw.circle(mx, 196, 18, m < misses ? C.miss : '#1a1024');
-    }
-
-    // Target indicator (which color to stop on)
-    var tColor = WHEEL_COLORS[targetSector];
-    game.draw.text('目標:', W * 0.15, H * 0.28, { size: 44, color: '#9ca3af' });
-    game.draw.circle(W * 0.36, H * 0.27, 50, tColor);
-    game.draw.circle(W * 0.36, H * 0.27, 34, '#fff', 0.2);
-
-    // Wheel sectors
+  function drawWheel() {
+    // セクター（各色をドット扇形で塗る）
     for (var s = 0; s < SECTORS; s++) {
       var sAngle = angle + s * SECTOR_ANGLE;
-      // Draw sector as a pie slice using line approximations
-      var steps = 16;
-      for (var step = 0; step <= steps; step++) {
-        var a1 = sAngle + (step / steps) * SECTOR_ANGLE;
-        var a2 = sAngle + ((step + 1) / steps) * SECTOR_ANGLE;
-        var x1 = cx + Math.cos(a1) * WHEEL_R;
-        var y1 = cy + Math.sin(a1) * WHEEL_R;
-        var x2 = cx + Math.cos(a2) * WHEEL_R;
-        var y2 = cy + Math.sin(a2) * WHEEL_R;
-        game.draw.line(cx, cy, x1, y1, WHEEL_COLORS[s], 2);
+      for (var rr = 40; rr <= WHEEL_R; rr += 24) {
+        var arcSteps = Math.max(3, Math.floor(rr / 20));
+        for (var st = 0; st <= arcSteps; st++) {
+          var aa = sAngle + (st / arcSteps) * SECTOR_ANGLE;
+          game.draw.rect(snap(cx + Math.cos(aa) * rr) - 8, snap(cy + Math.sin(aa) * rr) - 8, 16, 16, WHEEL_COLORS[s]);
+        }
       }
-      // Filled-ish: draw as layered circles with clip (approximate via rect strips)
-      // Better: draw thin triangles using many lines
-      for (var r2 = 20; r2 <= WHEEL_R; r2 += 16) {
-        var midAngle = sAngle + SECTOR_ANGLE / 2;
-        var px2 = cx + Math.cos(midAngle) * r2;
-        var py2 = cy + Math.sin(midAngle) * r2;
-        game.draw.circle(px2, py2, 10, WHEEL_COLORS[s]);
+      game.draw.line(cx, cy, cx + Math.cos(sAngle) * WHEEL_R, cy + Math.sin(sAngle) * WHEEL_R, '#000000', 5);
+    }
+    drawPixelCircle(cx, cy, 40, '#333355', 1);
+    drawPixelCircle(cx, cy, 16, C.g, 1);
+    // ポインタ（上部の針）
+    game.draw.rect(snap(cx) - 8, snap(cy - WHEEL_R - 48), 16, 56, C.c);
+    game.draw.rect(snap(cx) - 24, snap(cy - WHEEL_R - 16), 48, 20, C.c);
+  }
+
+  game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (angle === undefined) initGame();
+      background();
+      angle = game.time.elapsed * 2;
+      drawWheel();
+      txt(GAME_TITLE,  W / 2, H * 0.16, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 40, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.82, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.88, 52, C.g);
       }
-      // Sector divider lines
-      game.draw.line(cx, cy, cx + Math.cos(sAngle) * WHEEL_R, cy + Math.sin(sAngle) * WHEEL_R, '#000', 4);
+      txt('INSERT COIN', W / 2, H * 0.94, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
     }
 
-    // Wheel center hub
-    game.draw.circle(cx, cy, 36, '#111');
-    game.draw.circle(cx, cy, 24, '#333');
-    game.draw.circle(cx, cy, 12, '#555');
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (waitTimer > 0) { waitTimer -= dt; if (waitTimer <= 0) newRound(); }
+      if (spinning) { angVel *= (1 - 0.01 * dt * 60); angle += angVel * dt; }
+      if (feedback > 0) feedback -= dt;
+    }
 
-    // Pointer (arrow at top)
-    game.draw.rect(cx - 8, cy - WHEEL_R - 48, 16, 52, '#fbbf24');
-    game.draw.rect(cx - 20, cy - WHEEL_R - 20, 40, 24, '#fbbf24');
-
-    // Feedback
+    // ---- draw ----
+    background();
+    // 目標色の提示（読みやすさ）
+    game.draw.rect(snap(W * 0.12), snap(H * 0.2), 100, 100, WHEEL_COLORS[targetSector]);
+    txt('TARGET', W * 0.12 + 50, H * 0.2 - 40, 32, C.g, 'center');
+    drawWheel();
     if (feedback > 0) {
-      var prog = 1 - feedback / 0.5;
-      if (feedbackOk) {
-        game.draw.text('ピタリ！', W / 2, cy - WHEEL_R - 120 - prog * 60, { size: 88, color: C.good, bold: true });
-      } else {
-        game.draw.text('ハズレ！', W / 2, cy - WHEEL_R - 100, { size: 80, color: C.miss, bold: true });
-      }
+      if (feedbackOk) txt('WIN!', W / 2, cy - WHEEL_R - 110, 88, C.b);
+      else txt('MISS!', W / 2, cy - WHEEL_R - 110, 80, C.a);
     }
-
-    // Guide
-    game.draw.text(spinning ? 'タップで止める！' : '...', W / 2, H - 200, { size: 56, color: C.ui });
+    timeBar();
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 96, 44, C.g);
+    for (var m = 0; m < MAX_MISS; m++)
+      game.draw.rect(W / 2 + (m - 1) * 64 - 20, 150, 40, 40, m < misses ? C.a : '#330011');
+    txt(spinning ? 'TAP TO STOP!' : '...', W / 2, H - 100, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
-    newRound();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

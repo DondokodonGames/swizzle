@@ -1,213 +1,169 @@
 // 043-pressure-test.js
 // プレッシャーテスト — 連打を見せてから同じ回数ちょうど押す計数力
 // 操作: 示された回数と同じ回数タップしてENTER（スワイプ上）
-// 成功: 5回正確に一致  失敗: 3回ミス or 25秒
+// 成功: 1回正確に一致  失敗: 3回ミス or 25秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0c0a18',
-    panel:   '#12102a',
-    dot:     '#6366f1',
-    dotHi:   '#a5b4fc',
-    dotGone: '#1e1c3a',
-    good:    '#22c55e',
-    bad:     '#ef4444',
-    ui:      '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var MAX_SHOW = 9;
-  var MIN_SHOW = 3;
-  var targetCount = 0;
-  var playerCount = 0;
+  var GAME_TITLE  = 'PRESSURE TEST';
+  var HOW_TO_PLAY = 'TAP THE COUNT, SWIPE UP TO ENTER';
+  var MAX_TIME = 25;
+  var NEEDED = 1;            // 修正2: 5 → 1
+  var MAX_MISS = 3;
+  var MAX_SHOW = 6, MIN_SHOW = 3;    // 修正2: 提示数を軽く
+  var SHOW_DOT_TIME = 0.28;
+  var DOT_COLS = 3, DOT_ROWS = 3, DOT_R = 80, DOT_GAP = 56;
+  var GRID_W = DOT_COLS * (DOT_R * 2 + DOT_GAP) - DOT_GAP, GRID_H = DOT_ROWS * (DOT_R * 2 + DOT_GAP) - DOT_GAP;
+  var GRID_X = (W - GRID_W) / 2, GRID_Y = (H - GRID_H) / 2 - 120;   // 修正1: 縦中央寄り
 
-  var phase = 'show';    // 'show' | 'input' | 'feedback'
-  var showTimer = 0;
-  var SHOW_DOT_TIME = 0.25;  // each dot flashes for this long
-  var showDotIdx = 0;        // which dot is currently flashing
-  var showedDots = [];       // indices of dots shown
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var score = 0;
-  var needed = 5;
-  var misses = 0;
-  var maxMisses = 3;
-  var timeLeft = 25;
-  var done = false;
-  var feedbackTimer = 0;
-  var feedbackOk = false;
+  var targetCount, playerCount, phase, showTimer, showDotIdx, showedDots, score, misses, timeLeft, done, feedbackTimer, feedbackOk;
 
-  // Grid of dots display
-  var DOT_COLS = 3;
-  var DOT_ROWS = 3;
-  var DOT_R = 60;
-  var DOT_GAP = 50;
-  var GRID_W2 = DOT_COLS * (DOT_R * 2 + DOT_GAP) - DOT_GAP;
-  var GRID_H2 = DOT_ROWS * (DOT_R * 2 + DOT_GAP) - DOT_GAP;
-  var GRID_X2 = (W - GRID_W2) / 2;
-  var GRID_Y2 = H * 0.3;
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(px, py, r, color, alpha) {
+    var step = 8; px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step)
+        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
 
   function dotPos(idx) {
-    var c = idx % DOT_COLS;
-    var r = Math.floor(idx / DOT_COLS);
-    return {
-      x: GRID_X2 + c * (DOT_R * 2 + DOT_GAP) + DOT_R,
-      y: GRID_Y2 + r * (DOT_R * 2 + DOT_GAP) + DOT_R
-    };
+    var c = idx % DOT_COLS, r = Math.floor(idx / DOT_COLS);
+    return { x: GRID_X + c * (DOT_R * 2 + DOT_GAP) + DOT_R, y: GRID_Y + r * (DOT_R * 2 + DOT_GAP) + DOT_R };
   }
 
   function startRound() {
     targetCount = MIN_SHOW + Math.floor(Math.random() * (MAX_SHOW - MIN_SHOW + 1));
-    playerCount = 0;
-    showDotIdx = 0;
-    showedDots = [];
-    // Shuffle order
-    var allDots = [];
-    for (var i = 0; i < DOT_COLS * DOT_ROWS; i++) allDots.push(i);
-    for (var j = DOT_COLS * DOT_ROWS - 1; j > 0; j--) {
-      var k = Math.floor(Math.random() * (j + 1));
-      var tmp = allDots[j]; allDots[j] = allDots[k]; allDots[k] = tmp;
-    }
-    showedDots = allDots.slice(0, targetCount);
-    showTimer = SHOW_DOT_TIME;
-    phase = 'show';
+    playerCount = 0; showDotIdx = 0;
+    var all = []; for (var i = 0; i < DOT_COLS * DOT_ROWS; i++) all.push(i);
+    for (var j = all.length - 1; j > 0; j--) { var k = Math.floor(Math.random() * (j + 1)); var t = all[j]; all[j] = all[k]; all[k] = t; }
+    showedDots = all.slice(0, targetCount);
+    showTimer = SHOW_DOT_TIME; phase = 'show';
+  }
+  function initGame() { score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedbackTimer = 0; feedbackOk = false; startRound(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done || phase !== 'input') return;
-    playerCount++;
-    game.audio.play('se_tap', 0.5);
+    playerCount++; game.audio.play('se_tap', 0.5);
   });
 
   game.onSwipe(function(dir) {
-    if (done || phase !== 'input') return;
-    if (dir === 'up') {
-      // Confirm answer
-      feedbackOk = (playerCount === targetCount);
-      feedbackTimer = 0.7;
-      phase = 'feedback';
-
-      if (feedbackOk) {
-        score++;
-        game.audio.play('se_tap', 1.0);
-        if (score >= needed) {
-          done = true;
-          game.audio.play('se_success');
-          setTimeout(function() {
-            game.end.success(score * 25 + Math.ceil(timeLeft) * 4);
-          }, 800);
-        }
-      } else {
-        misses++;
-        game.audio.play('se_failure', 0.6);
-        if (misses >= maxMisses && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 800);
-        }
-      }
-    }
+    if (state !== S.PLAYING || done || phase !== 'input' || dir !== 'up') return;
+    feedbackOk = (playerCount === targetCount); feedbackTimer = 0.7; phase = 'feedback';
+    if (feedbackOk) { score++; game.audio.play('se_tap', 1.0); if (score >= NEEDED) finish(true); }
+    else { misses++; game.audio.play('se_failure', 0.6); if (misses >= MAX_MISS) finish(false); }
   });
 
+  // 世界観: 計測ラボの反応テスト装置。光った回数だけ正確に押す。
+  function background() {
+    game.draw.clear('#0a0018');
+    var fx = GRID_X - 48, fy = GRID_Y - 96, fw = GRID_W + 96, fh = GRID_H + 320;
+    game.draw.rect(fx, fy, fw, fh, '#12102a');       // 装置パネル
+    game.draw.rect(fx + 12, fy + 12, fw - 24, fh - 24, '#05000f');
+    game.draw.rect(fx + 24, fy + 24, 16, 16, C.d); game.draw.rect(fx + fw - 40, fy + 24, 16, 16, C.d);
+    txt('REACTION TEST', W / 2, fy + 48, 36, C.b);
+  }
+
+  function drawDots() {
+    for (var d = 0; d < DOT_COLS * DOT_ROWS; d++) {
+      var dp = dotPos(d), si = showedDots ? showedDots.indexOf(d) : -1;
+      if (phase === 'show' && si >= 0) {
+        if (si < showDotIdx) drawPixelCircle(dp.x, dp.y, DOT_R, C.d, 0.4);
+        else if (si === showDotIdx) drawPixelCircle(dp.x, dp.y, DOT_R, C.c, 1);
+        else drawPixelCircle(dp.x, dp.y, DOT_R, '#1a0a2a', 1);
+      } else drawPixelCircle(dp.x, dp.y, DOT_R, '#1a0a2a', 1);
+    }
+  }
+
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
+    if (state === S.ATTRACT) {
+      if (!showedDots) initGame();
+      background();
+      drawDots();
+      txt(GAME_TITLE,  W / 2, H * 0.12, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.19, 34, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.84, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.9, 52, C.g);
       }
+      txt('INSERT COIN', W / 2, H * 0.96, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
     }
 
-    if (phase === 'show') {
-      showTimer -= dt;
-      if (showTimer <= 0) {
-        showDotIdx++;
-        if (showDotIdx >= targetCount) {
-          // Show phase over
-          setTimeout(function() { phase = 'input'; }, 400);
-        } else {
-          showTimer = SHOW_DOT_TIME + (showDotIdx === targetCount - 1 ? 0.2 : 0);
-          game.audio.play('se_tap', 0.35);
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (phase === 'show') {
+        showTimer -= dt;
+        if (showTimer <= 0) {
+          showDotIdx++;
+          if (showDotIdx >= targetCount) { phase = 'wait'; showTimer = 0.4; }
+          else { showTimer = SHOW_DOT_TIME; game.audio.play('se_tap', 0.35); }
         }
-      }
-    } else if (phase === 'feedback') {
-      feedbackTimer -= dt;
-      if (feedbackTimer <= 0 && !done) startRound();
+      } else if (phase === 'wait') { showTimer -= dt; if (showTimer <= 0) phase = 'input'; }
+      else if (phase === 'feedback') { feedbackTimer -= dt; if (feedbackTimer <= 0 && !done) startRound(); }
     }
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 25);
-    game.draw.rect(0, 0, W, 72, '#0c0a18');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#4f46e5' : C.bad);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Score pips
-    for (var s = 0; s < needed; s++) {
-      var sx = W / 2 + (s - (needed-1)/2) * 80;
-      game.draw.circle(sx, 128, 26, s < score ? C.good : C.panel);
-      if (s < score) game.draw.circle(sx, 128, 14, '#86efac', 0.5);
-    }
-    for (var m = 0; m < maxMisses; m++) {
-      var mx = W / 2 + (m - (maxMisses-1)/2) * 60;
-      game.draw.circle(mx, 200, 18, m < misses ? C.bad : C.panel);
-    }
-
-    // Dots grid
-    for (var d = 0; d < DOT_COLS * DOT_ROWS; d++) {
-      var dp = dotPos(d);
-      var isDotShown = showedDots.indexOf(d) !== -1;
-      var showIdx = showedDots.indexOf(d);
-
-      if (phase === 'show') {
-        // Show dots one by one
-        if (showIdx < showDotIdx) {
-          // Already shown
-          game.draw.circle(dp.x, dp.y, DOT_R, C.dotGone);
-          game.draw.circle(dp.x, dp.y, 20, C.dot, 0.3);
-        } else if (showIdx === showDotIdx) {
-          // Currently showing
-          var flash = 0.7 + 0.3 * Math.sin(game.time.elapsed * 30);
-          game.draw.circle(dp.x, dp.y, DOT_R + 12, C.dotHi, flash * 0.4);
-          game.draw.circle(dp.x, dp.y, DOT_R, C.dotHi, flash);
-        } else {
-          game.draw.circle(dp.x, dp.y, DOT_R, C.dotGone);
-        }
-      } else {
-        // Input phase: hide which were shown
-        game.draw.circle(dp.x, dp.y, DOT_R, C.dotGone);
-      }
-    }
-
-    // Phase display
-    if (phase === 'show') {
-      game.draw.text('覚えろ！', W / 2, GRID_Y2 - 60, { size: 60, color: C.dotHi, bold: true });
-    } else if (phase === 'input') {
-      game.draw.text('↑で確定', W / 2, GRID_Y2 + GRID_H2 + 60, { size: 48, color: C.ui });
-      // Player count display
-      game.draw.text(playerCount + '', W / 2, H * 0.45, { size: 200, color: C.dot, bold: true });
-      game.draw.text('タップ回数', W / 2, H * 0.65, { size: 48, color: C.ui });
+    background();
+    drawDots();
+    if (phase === 'show') txt('WATCH!', W / 2, GRID_Y - 40, 56, C.c);
+    else if (phase === 'input') {
+      txt(playerCount + '', W / 2, GRID_Y + GRID_H + 120, 160, C.e);
+      txt('SWIPE UP TO ENTER', W / 2, GRID_Y + GRID_H + 240, 44, C.b);
     } else if (phase === 'feedback') {
-      var prog = 1 - feedbackTimer / 0.7;
-      if (feedbackOk) {
-        game.draw.text('正解！ ' + targetCount + '回', W / 2, H * 0.5 - prog * 40, { size: 88, color: C.good, bold: true });
-      } else {
-        game.draw.text('目標: ' + targetCount + '  入力: ' + playerCount, W / 2, H * 0.5, { size: 60, color: C.bad, bold: true });
-      }
+      if (feedbackOk) txt('MATCH! ' + targetCount, W / 2, H * 0.5, 88, C.b);
+      else txt('WANT ' + targetCount + ' GOT ' + playerCount, W / 2, H * 0.5, 56, C.a);
     }
-
-    // Guide
-    if (phase === 'input') {
-      game.draw.text('光った数だけタップ！', W / 2, H - 200, { size: 52, color: C.ui });
-    }
+    timeBar();
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 96, 44, C.g);
+    for (var m = 0; m < MAX_MISS; m++)
+      game.draw.rect(W / 2 + (m - 1) * 64 - 20, 150, 40, 40, m < misses ? C.a : '#330011');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
-    startRound();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
