@@ -1,234 +1,178 @@
 // 082-conveyor-sort.js
-// コンベアソート — ベルトコンベアで流れてくるアイテムを正しいシュートに振り分ける
+// コンベアソート — 流れてくるアイテムを正しいシュートに振り分ける仕分け工場
 // 操作: スワイプ左右で振り分け先を切り替え、タップで排出
-// 成功: 20個正しく仕分け  失敗: 5回ミス or 35秒
+// 成功: 2個正しく仕分け  失敗: 3回ミス or 35秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0c0c10',
-    belt:    '#1e293b',
-    beltHi:  '#334155',
-    ui:      '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+
+  var GAME_TITLE  = 'CONVEYOR SORT';
+  var HOW_TO_PLAY = 'SWIPE TO AIM, TAP TO EJECT';
+  var MAX_TIME = 35;
+  var NEEDED = 2;           // 修正2: 20 → 2
+  var MAX_MISS = 3;         // 修正2: 5 → 3
+  var BELT_Y = H * 0.4, BELT_SPEED = 190, LAND_Y = H * 0.78;
+  var SPAWN_INTERVAL = 1.8;
 
   var TYPES = [
-    { id: 'circle', color: '#ef4444', label: '●' },
-    { id: 'square', color: '#3b82f6', label: '■' },
-    { id: 'tri',    color: '#22c55e', label: '▲' }
+    { id: 0, color: C.a, sym: 'O' },
+    { id: 1, color: C.e, sym: 'S' },
+    { id: 2, color: C.b, sym: 'T' }
   ];
+  var BIN_X = [W * 0.2, W * 0.5, W * 0.8];
 
-  var BIN_X = [W * 0.2, W * 0.5, W * 0.8]; // 3 bins at bottom
-  var BIN_LABELS = ['●', '■', '▲'];
-  var BIN_COLORS = ['#ef4444', '#3b82f6', '#22c55e'];
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var BELT_Y = H * 0.45;
-  var BELT_SPEED = 200; // px/s
+  var items, selectedBin, score, misses, timeLeft, done, spawnTimer, feedback, feedbackOk;
 
-  var items = []; // { x, type, launched, launchVx, launchVy }
-  var selectedBin = 1; // 0,1,2
-  var score = 0;
-  var needed = 20;
-  var misses = 0;
-  var maxMisses = 5;
-  var timeLeft = 35;
-  var done = false;
-  var spawnTimer = 0;
-  var SPAWN_INTERVAL = 1.6;
-  var feedback = 0;
-  var feedbackOk = false;
-
-  function spawnItem() {
-    var type = TYPES[Math.floor(Math.random() * TYPES.length)];
-    items.push({ x: -60, type: type, launched: false, launchVx: 0, launchVy: 0, vy: 0 });
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(px, py, r, color, alpha) {
+    var step = 8; px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step)
+        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
 
-  game.onSwipe(function(dir) {
+  function spawnItem() { items.push({ x: -60, y: BELT_Y, type: TYPES[Math.floor(Math.random() * TYPES.length)], launched: false, vx: 0, vy: 0, targetBin: 0 }); }
+  function initGame() { items = []; selectedBin = 1; score = 0; misses = 0; timeLeft = MAX_TIME; done = false; spawnTimer = 0.6; feedback = 0; feedbackOk = false; spawnItem(); }
+
+  function finish(success) {
     if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function addMiss() { misses++; feedbackOk = false; feedback = 0.35; game.audio.play('se_failure', 0.5); if (misses >= MAX_MISS) finish(false); }
+
+  game.onSwipe(function(dir) {
+    if (state !== S.PLAYING || done) return;
     if (dir === 'left') selectedBin = Math.max(0, selectedBin - 1);
     if (dir === 'right') selectedBin = Math.min(2, selectedBin + 1);
     game.audio.play('se_tap', 0.3);
   });
-
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done) return;
-    // Launch the front-most (rightmost ready) item toward selected bin
-    var candidates = items.filter(function(it) {
-      return !it.launched && it.x > 40 && it.x < W * 0.75;
-    });
-    if (candidates.length === 0) return;
-
-    // Sort by rightmost first
-    candidates.sort(function(a, b) { return b.x - a.x; });
-    var item = candidates[0];
-
-    var targetX = BIN_X[selectedBin];
-    var targetY = H * 0.82;
-    var dx = targetX - item.x;
-    var dy = targetY - BELT_Y;
-    var t = 0.5; // flight time
-    item.launchVx = dx / t;
-    item.launchVy = dy / t - 0.5 * 900 * t;
-    item.launched = true;
-    item.vy = item.launchVy;
-    item.targetBin = selectedBin;
-
+    var cand = items.filter(function(it) { return !it.launched && it.x > 40 && it.x < W * 0.75; });
+    if (!cand.length) return;
+    cand.sort(function(a, b) { return b.x - a.x; });
+    var item = cand[0], tx = BIN_X[selectedBin], t = 0.5;
+    item.vx = (tx - item.x) / t; item.vy = (LAND_Y - BELT_Y) / t - 0.5 * 900 * t;
+    item.launched = true; item.targetBin = selectedBin;
     game.audio.play('se_tap', 0.6);
   });
 
+  // 世界観: 自動仕分け工場。ベルトの部品を形ごとに正しいシュートへ落とす。
+  function background() {
+    game.draw.clear('#0a0018');
+    game.draw.rect(0, snap(BELT_Y) - 48, W, 96, '#221040');
+    game.draw.rect(0, snap(BELT_Y) - 48, W, 8, C.d);
+    game.draw.rect(0, snap(BELT_Y) + 40, W, 8, C.d);
+    var off = (game.time.elapsed * BELT_SPEED) % 80;
+    for (var s = -80; s < W + 80; s += 80) { var bx = snap((s + off)); game.draw.rect(bx, snap(BELT_Y) - 40, 6, 80, C.d, 0.4); }
+    txt('SORTING FACTORY', W / 2, 250, 34, C.b);
+  }
+
+  function drawItem(it) {
+    var col = it.type.color;
+    if (it.type.id === 0) drawPixelCircle(it.x, it.y, 36, col, 1);
+    else if (it.type.id === 1) game.draw.rect(snap(it.x) - 32, snap(it.y) - 32, 64, 64, col);
+    else { game.draw.rect(snap(it.x) - 8, snap(it.y) - 32, 16, 16, col); game.draw.rect(snap(it.x) - 24, snap(it.y) - 16, 48, 16, col); game.draw.rect(snap(it.x) - 40, snap(it.y), 80, 16, col); }
+  }
+
+  function drawBins() {
+    for (var b = 0; b < 3; b++) {
+      var bx = BIN_X[b], sel = b === selectedBin, col = TYPES[b].color;
+      game.draw.rect(snap(bx) - 80, snap(LAND_Y) + 20, 160, 130, sel ? col : '#221040');
+      game.draw.rect(snap(bx) - 88, snap(LAND_Y), 176, 16, sel ? col : '#332255');
+      txt(TYPES[b].sym, bx, LAND_Y + 90, 60, sel ? C.g : col);
+      if (sel) txt('▼', bx, LAND_Y - 30, 44, col);
+    }
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!items) initGame();
+      background();
+      drawBins();
+      drawItem({ x: W / 2, y: BELT_Y, type: TYPES[Math.floor(game.time.elapsed) % 3] });
+      txt(GAME_TITLE,  W / 2, H * 0.16, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.215, 30, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.6, 66, C.a);
+        txt('TAP TO START', W / 2, H * 0.65, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.7, 40, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
-
-    // Spawn
-    spawnTimer -= dt;
-    if (spawnTimer <= 0) {
-      spawnTimer = SPAWN_INTERVAL - score * 0.04;
-      if (spawnTimer < 0.9) spawnTimer = 0.9;
-      spawnItem();
-    }
-
-    // Update items
-    var toRemove = [];
-    for (var i = 0; i < items.length; i++) {
-      var it = items[i];
-      if (!it.launched) {
-        it.x += BELT_SPEED * dt;
-        // Item falls off right side
-        if (it.x > W + 60) {
-          toRemove.push(i);
-          misses++;
-          feedbackOk = false;
-          feedback = 0.3;
-          game.audio.play('se_failure', 0.5);
-          if (misses >= maxMisses && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 300);
-          }
-        }
-      } else {
-        it.vy += 900 * dt;
-        it.x += it.launchVx * dt;
-        it.launchY = (it.launchY || BELT_Y) + it.vy * dt;
-        it.y = it.launchY;
-        // Landed at bin?
-        if (it.y > H * 0.82) {
-          toRemove.push(i);
-          // Check correct bin
-          var correctBin = TYPES.indexOf(it.type);
-          if (it.targetBin === correctBin) {
-            score++;
-            feedbackOk = true;
-            feedback = 0.3;
-            game.audio.play('se_tap', 0.9);
-            if (score >= needed && !done) {
-              done = true;
-              game.audio.play('se_success');
-              setTimeout(function() { game.end.success(score * 20 + Math.ceil(timeLeft) * 5); }, 400);
-            }
-          } else {
-            misses++;
-            feedbackOk = false;
-            feedback = 0.35;
-            game.audio.play('se_failure', 0.5);
-            if (misses >= maxMisses && !done) {
-              done = true;
-              setTimeout(function() { game.end.failure(); }, 300);
-            }
+      if (timeLeft <= 0) { finish(false); return; }
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) { spawnTimer = Math.max(1.2, SPAWN_INTERVAL - score * 0.1); spawnItem(); }
+      for (var i = items.length - 1; i >= 0; i--) {
+        var it = items[i];
+        if (!it.launched) {
+          it.x += BELT_SPEED * dt;
+          if (it.x > W + 60) { items.splice(i, 1); addMiss(); }
+        } else {
+          it.vy += 900 * dt; it.x += it.vx * dt; it.y += it.vy * dt;
+          if (it.y > LAND_Y) {
+            items.splice(i, 1);
+            if (it.targetBin === it.type.id) { score++; feedbackOk = true; feedback = 0.3; game.audio.play('se_tap', 0.9); if (score >= NEEDED) { finish(true); return; } }
+            else addMiss();
           }
         }
       }
+      if (feedback > 0) feedback -= dt;
     }
-
-    // Remove in reverse order
-    for (var j = toRemove.length - 1; j >= 0; j--) {
-      items.splice(toRemove[j], 1);
-    }
-
-    if (feedback > 0) feedback -= dt;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Belt
-    game.draw.rect(0, BELT_Y - 40, W, 80, C.belt);
-    game.draw.rect(0, BELT_Y - 40, W, 6, C.beltHi);
-    game.draw.rect(0, BELT_Y + 34, W, 6, C.beltHi);
-    // Belt stripes
-    var beltOffset = (game.time.elapsed * BELT_SPEED) % 80;
-    for (var s = -80; s < W + 80; s += 80) {
-      var bx = (s + beltOffset) % (W + 80) - 40;
-      game.draw.line(bx, BELT_Y - 40, bx + 40, BELT_Y + 40, C.beltHi, 3);
-    }
-
-    // Items on belt or in flight
-    for (var k = 0; k < items.length; k++) {
-      var item = items[k];
-      var ix = item.x;
-      var iy = item.launched ? item.y : BELT_Y;
-      var t2 = item.type;
-
-      if (t2.id === 'circle') {
-        game.draw.circle(ix, iy, 36, t2.color);
-        game.draw.circle(ix - 10, iy - 10, 12, '#fff', 0.3);
-      } else if (t2.id === 'square') {
-        game.draw.rect(ix - 36, iy - 36, 72, 72, t2.color);
-        game.draw.rect(ix - 28, iy - 28, 24, 12, '#fff', 0.3);
-      } else {
-        // Triangle (approximated with lines)
-        game.draw.circle(ix, iy - 10, 38, t2.color);
-        game.draw.text(t2.label, ix, iy - 4, { size: 56, color: '#fff', bold: true });
-      }
-    }
-
-    // Bins at bottom
-    for (var b = 0; b < 3; b++) {
-      var bx2 = BIN_X[b];
-      var isSelected = b === selectedBin;
-      var bColor = BIN_COLORS[b];
-      game.draw.rect(bx2 - 72, H * 0.82, 144, 120, isSelected ? bColor : '#0f172a');
-      game.draw.rect(bx2 - 80, H * 0.78, 160, 12, isSelected ? bColor : '#334155');
-      game.draw.text(BIN_LABELS[b], bx2, H * 0.88, { size: 64, color: isSelected ? '#fff' : bColor, bold: true });
-      if (isSelected) {
-        game.draw.text('▼', bx2, H * 0.74, { size: 48, color: bColor, bold: true });
-      }
-    }
-
-    // Selector arrows
-    game.draw.text('← →スワイプ', W / 2, H * 0.95, { size: 40, color: C.ui });
-
-    // Feedback
-    if (feedback > 0) {
-      game.draw.text(feedbackOk ? '正解！' : 'ミス！', W / 2, H * 0.35, {
-        size: 72, color: feedbackOk ? '#22c55e' : '#ef4444', bold: true
-      });
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 35);
-    game.draw.rect(0, 0, W, 72, '#0c0c10');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#6d28d9' : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Score + misses
-    game.draw.text(score + ' / ' + needed, W / 2, 136, { size: 52, color: '#f1f5f9', bold: true });
-    for (var m2 = 0; m2 < maxMisses; m2++) {
-      var mx = W / 2 + (m2 - (maxMisses - 1) / 2) * 56;
-      game.draw.circle(mx, 204, 18, m2 < misses ? '#ef4444' : '#0a1428');
-    }
+    background();
+    drawBins();
+    for (var k = 0; k < items.length; k++) drawItem(items[k]);
+    if (feedback > 0) txt(feedbackOk ? 'SORTED!' : 'WRONG!', W / 2, H * 0.32, 72, feedbackOk ? C.b : C.a);
+    timeBar();
+    txt('SORT ' + score + ' / ' + NEEDED, W / 2, 96, 44, C.c);
+    for (var m = 0; m < MAX_MISS; m++) game.draw.rect(W / 2 + (m - 1) * 64 - 20, 150, 40, 40, m < misses ? C.a : '#330011');
+    txt('◄ SWIPE ►  TAP TO DROP', W / 2, H - 90, 40, C.d);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.35);
-    spawnItem();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
