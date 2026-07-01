@@ -1,192 +1,148 @@
 // 077-ripple-sync.js
-// リップルシンク — 複数の波紋が同期した瞬間にタップする共鳴感
+// リップルシンク — 複数の波紋が同期した瞬間にタップする共鳴装置
 // 操作: 全ての波紋が重なった瞬間にタップ
-// 成功: 5回シンク成功  失敗: 5回外す or 25秒
+// 成功: 1回シンク成功  失敗: 3回外す or 25秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#030812',
-    ring1:   '#3b82f6',
-    ring2:   '#8b5cf6',
-    ring3:   '#06b6d4',
-    sync:    '#22c55e',
-    syncHi:  '#86efac',
-    miss:    '#ef4444',
-    ui:      '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Three oscillators with different periods
+  var GAME_TITLE  = 'RIPPLE SYNC';
+  var HOW_TO_PLAY = 'TAP WHEN ALL RINGS ALIGN';
+  var MAX_TIME = 25;
+  var NEEDED = 1;             // 修正2: 5 → 1
+  var MAX_MISS = 3;
+  var CENTER_X = W / 2, CENTER_Y = H * 0.44, MAX_R = 280, SYNC_TOL = 0.12;
+
   var RINGS = [
-    { period: 1.8, phase: 0, color: C.ring1, cx: W / 2 - 80, cy: H * 0.42 },
-    { period: 2.4, phase: 0.6, color: C.ring2, cx: W / 2 + 80, cy: H * 0.42 },
-    { period: 1.5, phase: 1.1, color: C.ring3, cx: W / 2, cy: H * 0.48 }
+    { period: 1.8, phase: 0.0, color: C.e },
+    { period: 2.4, phase: 0.6, color: C.d },
+    { period: 1.5, phase: 1.1, color: C.a }
   ];
 
-  var score = 0;
-  var needed = 5;
-  var misses = 0;
-  var maxMisses = 5;
-  var timeLeft = 25;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var syncFlash = 0;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // "Sync" = all rings at same phase (within tolerance)
-  var SYNC_TOLERANCE = 0.12; // fraction of period
+  var score, misses, timeLeft, done, feedback, feedbackOk, syncFlash;
 
-  function getSyncPhases() {
-    return RINGS.map(function(r) {
-      var t = game.time.elapsed;
-      return ((t + r.phase) % r.period) / r.period; // 0-1
-    });
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(px, py, r, color, alpha) {
+    var step = 8; px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step)
+        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
+  }
+  function drawPixelRing(px, py, r, color, alpha) {
+    var step = 8, r2o = r * r, r2i = (r - 12) * (r - 12); px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step) { var d = xx * xx + yy * yy; if (d <= r2o && d >= r2i) game.draw.rect(px + xx, py + yy, step, step, color, alpha); }
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
 
-  function isSynced() {
-    var phases = getSyncPhases();
-    // Sync happens when all phases are near 0.5 (ring at max expansion)
-    return phases.every(function(p) { return Math.abs(p - 0.5) < SYNC_TOLERANCE; });
+  function phases() { var t = game.time.elapsed; return RINGS.map(function(r) { return ((t + r.phase) % r.period) / r.period; }); }
+  function isSynced() { return phases().every(function(p) { return Math.abs(p - 0.5) < SYNC_TOL; }); }
+
+  function initGame() { score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedback = 0; feedbackOk = false; syncFlash = 0; }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (400 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done) return;
-    if (isSynced()) {
-      score++;
-      feedbackOk = true;
-      feedback = 0.5;
-      syncFlash = 0.3;
-      game.audio.play('se_tap', 1.0);
-      if (score >= needed && !done) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() { game.end.success(score * 40 + Math.ceil(timeLeft) * 8); }, 400);
-      }
-    } else {
-      misses++;
-      feedbackOk = false;
-      feedback = 0.4;
-      game.audio.play('se_failure', 0.6);
-      if (misses >= maxMisses && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 400);
-      }
-    }
+    if (isSynced()) { score++; feedbackOk = true; feedback = 0.5; syncFlash = 0.3; game.audio.play('se_tap', 1.0); if (score >= NEEDED) finish(true); }
+    else { misses++; feedbackOk = false; feedback = 0.4; game.audio.play('se_failure', 0.6); if (misses >= MAX_MISS) finish(false); }
   });
 
+  // 世界観: 共鳴チャンバー。3つの発振器の波紋が中央で重なる瞬間を捉える。
+  function background() {
+    game.draw.clear('#0a0018');
+    if (syncFlash > 0) game.draw.rect(0, 0, W, H, C.b, syncFlash / 0.3 * 0.2);
+    game.draw.rect(snap(CENTER_X) - MAX_R - 24, snap(CENTER_Y) - MAX_R - 24, (MAX_R + 24) * 2, (MAX_R + 24) * 2, '#12002a');
+    txt('RESONANCE CHAMBER', W / 2, 250, 34, C.b);
+  }
+
+  function drawScene() {
+    var ph = phases(), synced = isSynced();
+    for (var i = 0; i < RINGS.length; i++) {
+      var p = ph[i], r = 40 + p * MAX_R, alpha = (1 - p) * (synced ? 1.0 : 0.7);
+      if (r > 20) drawPixelRing(CENTER_X, CENTER_Y, r, RINGS[i].color, alpha);
+    }
+    if (synced) { drawPixelCircle(CENTER_X, CENTER_Y, 72, C.b, 0.5 + 0.3 * Math.sin(game.time.elapsed * 12)); txt('NOW!', CENTER_X, CENTER_Y, 56, C.g); }
+    else drawPixelCircle(CENTER_X, CENTER_Y, 36, '#334', 1);
+    // 同期率バー
+    var minDiff = 0; for (var k = 0; k < ph.length; k++) minDiff = Math.max(minDiff, Math.abs(ph[k] - 0.5));
+    var pct = Math.max(0, 1 - minDiff / SYNC_TOL), bw = 500;
+    game.draw.rect(snap(W / 2 - bw / 2), snap(H * 0.82), bw, 40, '#12002a');
+    game.draw.rect(snap(W / 2 - bw / 2), snap(H * 0.82), snap(bw * pct), 40, synced ? C.b : C.e);
+    txt('SYNC ' + Math.floor(pct * 100) + '%', W / 2, H * 0.82 - 40, 36, C.c);
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (score === undefined) initGame();
+      background();
+      drawScene();
+      txt(GAME_TITLE,  W / 2, H * 0.12, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.175, 32, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.9, 64, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (feedback > 0) feedback -= dt;
+      if (syncFlash > 0) syncFlash -= dt;
     }
-
-    if (feedback > 0) feedback -= dt;
-    if (syncFlash > 0) syncFlash -= dt;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    var phases = getSyncPhases();
-    var synced = isSynced();
-
-    // Sync flash
-    if (syncFlash > 0) {
-      game.draw.rect(0, 0, W, H, C.sync, syncFlash / 0.3 * 0.2);
-    }
-
-    // Draw rings
-    var CENTER_X = W / 2;
-    var CENTER_Y = H * 0.45;
-    var MAX_R = 200;
-
-    for (var i = 0; i < RINGS.length; i++) {
-      var ring = RINGS[i];
-      var p = phases[i];
-      var r = p * MAX_R;
-
-      // Pulse: bright at start (r=0), fades as expands
-      var alpha = (1 - p) * (synced ? 1.0 : 0.7);
-      var lineW = 8 - p * 4;
-
-      // Outer glow
-      game.draw.circle(CENTER_X, CENTER_Y, r + 8, ring.color, alpha * 0.15);
-      // Main ring
-      game.draw.circle(CENTER_X, CENTER_Y, r, ring.color, alpha * 0.6);
-      game.draw.circle(CENTER_X, CENTER_Y, r - 4, '#030812', alpha * 0.5);
-    }
-
-    // Center node
-    var centerPulse = 0.3 + 0.3 * Math.sin(game.time.elapsed * 10);
-    if (synced) {
-      game.draw.circle(CENTER_X, CENTER_Y, 80, C.sync, centerPulse);
-      game.draw.text('NOW!', CENTER_X, CENTER_Y, { size: 56, color: '#fff', bold: true });
-    } else {
-      game.draw.circle(CENTER_X, CENTER_Y, 40, '#1e293b');
-      game.draw.circle(CENTER_X, CENTER_Y, 24, '#334155');
-    }
-
-    // Individual phase bars (showing when each ring peaks)
-    for (var j = 0; j < RINGS.length; j++) {
-      var barX = 80 + j * 80;
-      var barY = H * 0.72;
-      var barH = 160;
-      var p2 = phases[j];
-      var ring2 = RINGS[j];
-      game.draw.rect(barX - 16, barY, 32, barH, '#0a1428');
-      game.draw.rect(barX - 12, barY + barH * (1 - p2), 24, barH * p2, ring2.color, 0.8);
-      // Peak marker
-      game.draw.rect(barX - 20, barY + barH * 0.5 - 3, 40, 6, C.syncHi, 0.4);
-    }
-    game.draw.text('↑タップ', W * 0.18, H * 0.72 + 180, { size: 32, color: '#334155' });
-
-    // Phase alignment indicator
-    var minDiff = 0;
-    for (var k = 0; k < phases.length - 1; k++) {
-      minDiff = Math.max(minDiff, Math.abs(phases[k] - 0.5));
-    }
-    var syncPct = Math.max(0, 1 - minDiff / SYNC_TOLERANCE);
-    var syncBarW = 400;
-    game.draw.rect(W / 2 - syncBarW / 2, H * 0.88, syncBarW, 24, '#0a1428');
-    game.draw.rect(W / 2 - syncBarW / 2, H * 0.88, syncBarW * syncPct, 24, synced ? C.sync : C.ring1, 0.8);
-    game.draw.text('同期率', W / 2, H * 0.88 - 36, { size: 36, color: '#64748b' });
-
-    // Feedback
-    if (feedback > 0) {
-      if (feedbackOk) {
-        game.draw.text('シンク！', W / 2, H * 0.28, { size: 88, color: C.sync, bold: true });
-      } else {
-        game.draw.text('ズレた！', W / 2, H * 0.28, { size: 88, color: C.miss, bold: true });
-      }
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 25);
-    game.draw.rect(0, 0, W, 72, '#030812');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.ring1 : C.miss);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Score
-    for (var s = 0; s < needed; s++) {
-      var sx = W / 2 + (s - (needed - 1) / 2) * 80;
-      game.draw.circle(sx, 128, 28, s < score ? C.sync : '#0a1428');
-    }
-    for (var m = 0; m < maxMisses; m++) {
-      var mx = W / 2 + (m - (maxMisses - 1) / 2) * 56;
-      game.draw.circle(mx, 200, 18, m < misses ? C.miss : '#0a1428');
-    }
-
-    // Guide
-    game.draw.text('波紋が重なった瞬間にタップ！', W / 2, H - 200, { size: 44, color: C.ui });
+    background();
+    drawScene();
+    if (feedback > 0) txt(feedbackOk ? 'SYNC!' : 'MISS!', W / 2, H * 0.28, 88, feedbackOk ? C.b : C.a);
+    timeBar();
+    txt('SYNC ' + score + ' / ' + NEEDED, W / 2, 96, 44, C.c);
+    for (var m = 0; m < MAX_MISS; m++) game.draw.rect(W / 2 + (m - 1) * 64 - 20, 150, 40, 40, m < misses ? C.a : '#330011');
+    txt('TAP WHEN RINGS ALIGN!', W / 2, H - 90, 42, C.e);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
