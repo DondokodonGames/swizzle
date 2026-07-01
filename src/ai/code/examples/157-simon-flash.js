@@ -1,189 +1,165 @@
 // 157-simon-flash.js
-// サイモンフラッシュ — 光るパターンを記憶して同じ順に再現する、増えるたびに脳が焦る
+// サイモンフラッシュ — 光るパターンを記憶して同じ順に再現する記憶ゲーム
 // 操作: タップで色を選ぶ
-// 成功: 8ラウンドクリア  失敗: 1回ミス or 40秒
+// 成功: 1ラウンドクリア  失敗: 1回ミス or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#06040e',
-    ui:     '#334155',
-    wrong:  '#ef4444',
-    correct:'#22c55e'
-  };
-
-  var COLORS = [
-    { base: '#ef4444', hi: '#fca5a5', name: '赤' },
-    { base: '#3b82f6', hi: '#93c5fd', name: '青' },
-    { base: '#22c55e', hi: '#86efac', name: '緑' },
-    { base: '#f59e0b', hi: '#fde68a', name: '黄' }
+  // ── パレット（ネオンアーケード、記憶端末） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var PADS = [
+    { base: C.e, hi: C.g }, { base: C.a, hi: C.g },
+    { base: C.f, hi: C.g }, { base: C.c, hi: C.g }
   ];
 
-  var BTN_SIZE = 260;
-  var BTN_GAP = 20;
-  var CX = W / 2;
-  var CY = H * 0.52;
-
-  var BUTTONS = [
-    { x: CX - BTN_SIZE - BTN_GAP / 2, y: CY - BTN_SIZE - BTN_GAP / 2, idx: 0 }, // top-left
-    { x: CX + BTN_GAP / 2,             y: CY - BTN_SIZE - BTN_GAP / 2, idx: 1 }, // top-right
-    { x: CX - BTN_SIZE - BTN_GAP / 2, y: CY + BTN_GAP / 2,             idx: 2 }, // bottom-left
-    { x: CX + BTN_GAP / 2,             y: CY + BTN_GAP / 2,             idx: 3 }  // bottom-right
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SIMON FLASH';
+  var HOW_TO_PLAY = 'WATCH · THEN REPEAT THE ORDER';
+  var MAX_TIME = 15;             // 修正2: 40 → 15
+  var NEEDED   = 1;              // 修正2: 8 → 1
+  var BTN = 300, GAP = 24;
+  var CX = snap(W / 2), CY = snap(H * 0.5);
+  var LAYOUT = [
+    { x: CX - BTN - GAP / 2, y: CY - BTN - GAP / 2 }, { x: CX + GAP / 2, y: CY - BTN - GAP / 2 },
+    { x: CX - BTN - GAP / 2, y: CY + GAP / 2 }, { x: CX + GAP / 2, y: CY + GAP / 2 }
   ];
+  var SHOW_ON = 0.5, SHOW_OFF = 0.25;
 
-  var sequence = [];
-  var playerSeq = [];
-  var round = 0;
-  var needed = 8;
-  var phase = 'showing'; // 'showing' | 'input'
-  var showIdx = 0;
-  var showTimer = 0;
-  var SHOW_ON = 0.5;
-  var SHOW_OFF = 0.2;
-  var showOn = false;
-  var litBtn = -1;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var timeLeft = 40;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var pressedBtn = -1;
-  var pressTimer = 0;
+  // ── ゲーム変数 ──
+  var sequence, playerSeq, round, phase, showIdx, showTimer, showOn, litBtn;
+  var timeLeft, done, feedback, feedbackOk, pressedBtn, pressTimer;
 
-  function addToSequence() {
-    sequence.push(Math.floor(Math.random() * 4));
-    round++;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function startShowing() {
-    phase = 'showing';
-    showIdx = 0;
-    showTimer = 0.4; // initial pause
-    showOn = false;
-    litBtn = -1;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
   }
 
-  game.onTap(function(tx, ty) {
+  function drawPad(bi, isLit) {
+    var l = LAYOUT[bi], col = PADS[bi];
+    game.draw.rect(l.x, l.y, BTN, BTN, col.base, isLit ? 1 : 0.4);
+    game.draw.rect(l.x, l.y, BTN, 12, col.hi, isLit ? 0.7 : 0.2);
+    game.draw.rect(l.x, l.y + BTN - 12, BTN, 12, '#000000', 0.3);
+    if (isLit) { game.draw.rect(l.x + 40, l.y + 40, BTN - 80, BTN - 80, col.hi, 0.4); }
+  }
+
+  function addToSequence() { sequence.push(Math.floor(Math.random() * 4)); round++; }
+
+  function startShowing() { phase = 'showing'; showIdx = 0; showTimer = 0.4; showOn = false; litBtn = -1; }
+
+  function initGame() {
+    sequence = []; playerSeq = []; round = 0;
+    phase = 'showing'; showIdx = 0; showTimer = 0.4; showOn = false; litBtn = -1;
+    timeLeft = MAX_TIME; done = false; feedback = 0; pressedBtn = -1; pressTimer = 0;
+    addToSequence();
+    setTimeout(function() { if (state === S.PLAYING && !done) startShowing(); }, 500);
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (round * 400 + Math.ceil(timeLeft) * 30) : round * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || phase !== 'input') return;
-    for (var bi = 0; bi < BUTTONS.length; bi++) {
-      var btn = BUTTONS[bi];
-      if (tx >= btn.x && tx <= btn.x + BTN_SIZE && ty >= btn.y && ty <= btn.y + BTN_SIZE) {
-        pressedBtn = bi;
-        pressTimer = 0.2;
-        playerSeq.push(bi);
+    for (var bi = 0; bi < LAYOUT.length; bi++) {
+      var l = LAYOUT[bi];
+      if (x >= l.x && x <= l.x + BTN && y >= l.y && y <= l.y + BTN) {
+        pressedBtn = bi; pressTimer = 0.2; playerSeq.push(bi);
         game.audio.play('se_tap', 0.5);
-
-        if (playerSeq[playerSeq.length - 1] !== sequence[playerSeq.length - 1]) {
-          // Wrong!
-          feedbackOk = false; feedback = 0.5;
-          game.audio.play('se_failure');
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-          return;
-        }
-
+        if (playerSeq[playerSeq.length - 1] !== sequence[playerSeq.length - 1]) { feedbackOk = false; feedback = 0.5; finish(false); return; }
         if (playerSeq.length === sequence.length) {
-          // Correct complete!
           feedbackOk = true; feedback = 0.5;
           game.audio.play('se_success');
-          if (round >= needed) {
-            done = true;
-            setTimeout(function() { game.end.success(round * 150 + Math.ceil(timeLeft) * 30); }, 500);
-            return;
-          }
+          if (round >= NEEDED) { finish(true); return; }
           playerSeq = [];
-          setTimeout(function() {
-            addToSequence();
-            startShowing();
-          }, 600);
+          setTimeout(function() { if (state === S.PLAYING && !done) { addToSequence(); startShowing(); } }, 600);
         }
         return;
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      game.draw.clear(C.bg);
+      for (var bi = 0; bi < 4; bi++) drawPad(bi, Math.floor(game.time.elapsed * 2) % 4 === bi);
+      txt(GAME_TITLE, W / 2, H * 0.12, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 32, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.84, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.90, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.95, 40, '#886699');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      game.draw.clear(C.bg);
+      txt(resultSuccess ? 'MEMORIZED!' : 'GAME OVER', W / 2, H * 0.35, 78, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-    if (feedback > 0) feedback -= dt;
-    if (pressTimer > 0) pressTimer -= dt;
-    if (pressTimer <= 0) pressedBtn = -1;
-
-    if (phase === 'showing') {
-      showTimer -= dt;
-      if (showTimer <= 0) {
-        if (!showOn) {
-          // Light up next
-          litBtn = sequence[showIdx];
-          showOn = true;
-          showTimer = SHOW_ON;
-          game.audio.play('se_tap', 0.4);
-        } else {
-          // Turn off
-          litBtn = -1;
-          showOn = false;
-          showIdx++;
-          if (showIdx >= sequence.length) {
-            phase = 'input';
-            playerSeq = [];
-            litBtn = -1;
-          } else {
-            showTimer = SHOW_OFF;
-          }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (pressTimer > 0) pressTimer -= dt; if (pressTimer <= 0) pressedBtn = -1;
+      if (phase === 'showing') {
+        showTimer -= dt;
+        if (showTimer <= 0) {
+          if (!showOn) { litBtn = sequence[showIdx]; showOn = true; showTimer = SHOW_ON; game.audio.play('se_tap', 0.4); }
+          else { litBtn = -1; showOn = false; showIdx++; if (showIdx >= sequence.length) { phase = 'input'; playerSeq = []; } else showTimer = SHOW_OFF; }
         }
       }
     }
+    if (feedback > 0) feedback -= dt;
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    game.draw.clear(C.bg);
+    for (var bi2 = 0; bi2 < 4; bi2++) drawPad(bi2, litBtn === bi2 || pressedBtn === bi2);
+    // 中央ラウンド表示
+    game.draw.rect(CX - 60, CY - 60, 120, 120, '#0a0018', 0.9);
+    txt(round + '', CX, CY - 12, 56, C.g);
+    if (feedback > 0) game.draw.rect(0, 0, W, H, feedbackOk ? C.b : C.a, feedback * 0.15);
 
-    // Center divider
-    game.draw.circle(CX, CY, 80, '#1e1b30', 0.9);
-    game.draw.circle(CX, CY, 60, '#2d2850', 0.8);
-    game.draw.text(round + '', CX, CY, { size: 52, color: '#64748b', bold: true });
-
-    // Buttons
-    for (var bi = 0; bi < BUTTONS.length; bi++) {
-      var btn = BUTTONS[bi];
-      var col = COLORS[btn.idx];
-      var isLit = litBtn === bi || pressedBtn === bi;
-      var alpha = isLit ? 0.95 : 0.35;
-      var hiAlpha = isLit ? 0.6 : 0.15;
-      game.draw.rect(btn.x - 8, btn.y - 8, BTN_SIZE + 16, BTN_SIZE + 16, isLit ? col.hi : col.base, 0.12);
-      game.draw.rect(btn.x, btn.y, BTN_SIZE, BTN_SIZE, col.base, alpha);
-      game.draw.rect(btn.x, btn.y, BTN_SIZE, 16, col.hi, hiAlpha);
-      game.draw.rect(btn.x, btn.y + BTN_SIZE - 16, BTN_SIZE, 16, '#000', 0.3);
-      if (isLit) {
-        game.draw.circle(btn.x + BTN_SIZE / 2, btn.y + BTN_SIZE / 2, BTN_SIZE * 0.3, col.hi, 0.3);
-      }
-    }
-
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? C.correct : C.wrong, feedback * 0.15);
-    }
-
-    // Phase indicator
-    if (phase === 'showing') {
-      game.draw.text('よく見て！', W / 2, H * 0.88, { size: 48, color: '#94a3b8' });
-    } else {
-      game.draw.text('同じ順に！ ' + playerSeq.length + '/' + sequence.length, W / 2, H * 0.88, { size: 44, color: C.correct });
-    }
-
-    game.draw.text('ラウンド ' + round + ' / ' + needed, W / 2, 148, { size: 56, color: '#f1f5f9', bold: true });
-
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? COLORS[1].base : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(phase === 'showing' ? 'WATCH!' : 'REPEAT ' + playerSeq.length + '/' + sequence.length, W / 2, 168, 44, phase === 'showing' ? C.c : C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.25);
-    addToSequence();
-    setTimeout(function() { startShowing(); }, 600);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
