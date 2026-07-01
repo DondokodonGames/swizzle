@@ -1,191 +1,143 @@
 // 092-bubble-level.js
-// 水準器 — スマホを傾けるように画面をタップして気泡を中心に保ち続ける操作感
+// 水準器 — 左右タップで傾きを操作し、気泡を中央に保ち続けるバランス
 // 操作: 左タップで左に傾け、右タップで右に傾ける
-// 成功: 15秒気泡を中心±5%以内に保つ  失敗: 気泡が外れる
+// 成功: 4秒気泡を中央に保つ  失敗: 気泡が外れる or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0e1c14',
-    tube:    '#0f2a1a',
-    tubeHi:  '#166534',
-    water:   '#0ea5e9',
-    waterHi: '#7dd3fc',
-    bubble:  '#e0f2fe',
-    bubbleHi:'#fff',
-    center:  '#22c55e',
-    danger:  '#ef4444',
-    ui:      '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var TUBE_W = 800;
-  var TUBE_H = 120;
-  var TUBE_X = (W - TUBE_W) / 2;
-  var TUBE_Y = H * 0.42;
-  var BUBBLE_R = 44;
-  var CENTER_ZONE = 0.05; // 5% of half-tube width = 20px
+  var GAME_TITLE  = 'BUBBLE LEVEL';
+  var HOW_TO_PLAY = 'TAP L/R TO KEEP BUBBLE CENTERED';
+  var MAX_TIME = 20;
+  var NEEDED_HOLD = 4;      // 修正2: 生存15s → 4s
+  var TUBE_W = 820, TUBE_H = 140, TUBE_X = (W - 820) / 2, TUBE_Y = H * 0.5, BUBBLE_R = 44, CENTER_ZONE = 0.06;
 
-  var tilt = 0;      // -1 (left down) to 1 (right down)
-  var tiltVel = 0;
-  var bubblePos = 0; // -1 to 1 along tube
-  var bubbleVel = 0;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var TILT_FORCE = 0.8;
-  var TILT_DAMP = 0.94;
-  var BUBBLE_GRAVITY = 2.5; // bubble moves against tilt (floats to high side)
-  var BUBBLE_DAMP = 0.96;
+  var tilt, tiltVel, bubblePos, bubbleVel, timeInCenter, timeLeft, done, successFlash, dangerFlash, perturbTimer;
 
-  var timeInCenter = 0;
-  var needed = 15; // seconds
-  var timeLeft = 30; // total game time
-  var done = false;
-  var successFlash = 0;
-  var dangerFlash = 0;
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(px, py, r, color, alpha) {
+    var step = 8; px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step)
+        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
 
-  // Natural perturbations
-  var perturbTimer = 0;
+  function initGame() { tilt = 0; tiltVel = (Math.random() - 0.5) * 0.5; bubblePos = 0; bubbleVel = 0; timeInCenter = 0; timeLeft = MAX_TIME; done = false; successFlash = 0; dangerFlash = 0; perturbTimer = 0; }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (400 + Math.ceil(timeLeft) * 40) : Math.floor(timeInCenter * 80);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
   game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done) return;
-    // Tap left → tilt left (left side goes down, bubble moves right)
-    // Tap right → tilt right (right side goes down, bubble moves left)
-    var pushDir = tx < W / 2 ? -1 : 1;
-    tiltVel += pushDir * 0.5;
-    game.audio.play('se_tap', 0.3);
+    tiltVel += (tx < W / 2 ? -1 : 1) * 0.5; game.audio.play('se_tap', 0.3);
   });
 
+  // 世界観: 精密水準器。気泡を左右タップの傾き操作で中央の目盛に収め続ける。
+  function background() {
+    game.draw.clear('#0a0018');
+    if (successFlash > 0) game.draw.rect(0, 0, W, H, C.b, successFlash / 0.6 * 0.3);
+    if (dangerFlash > 0) game.draw.rect(0, 0, W, H, C.a, dangerFlash / 0.1 * 0.2);
+    txt('SPIRIT LEVEL', W / 2, 250, 34, C.b);
+  }
+
+  function drawScene() {
+    // チューブ
+    game.draw.rect(snap(TUBE_X) - 16, snap(TUBE_Y - TUBE_H / 2) - 16, TUBE_W + 32, TUBE_H + 32, '#221040');
+    game.draw.rect(snap(TUBE_X), snap(TUBE_Y - TUBE_H / 2), TUBE_W, TUBE_H, '#12002a');
+    game.draw.rect(snap(TUBE_X), snap(TUBE_Y - TUBE_H / 2) + 8, TUBE_W, TUBE_H - 16, C.e, 0.15);
+    // 中央ゾーン
+    var cw = TUBE_W * CENTER_ZONE;
+    game.draw.rect(snap(W / 2 - cw) - 3, snap(TUBE_Y - TUBE_H / 2), 6, TUBE_H, C.b, 0.7);
+    game.draw.rect(snap(W / 2 + cw) - 3, snap(TUBE_Y - TUBE_H / 2), 6, TUBE_H, C.b, 0.7);
+    // 気泡
+    var bx = W / 2 + bubblePos * (TUBE_W / 2 - BUBBLE_R - 8), inC = Math.abs(bubblePos) < CENTER_ZONE;
+    drawPixelCircle(bx, TUBE_Y, BUBBLE_R, inC ? C.b : (Math.abs(bubblePos) > 0.75 ? C.a : C.g), 0.9);
+    game.draw.rect(snap(bx) - 16, snap(TUBE_Y) - 16, 12, 12, C.g, 0.7);
+    // 保持バー
+    var hf = Math.min(1, timeInCenter / NEEDED_HOLD), bw = 600;
+    game.draw.rect(snap(W / 2 - bw / 2), snap(H * 0.66), bw, 24, '#221040');
+    game.draw.rect(snap(W / 2 - bw / 2), snap(H * 0.66), snap(bw * hf), 24, C.b);
+    txt('HOLD ' + timeInCenter.toFixed(1) + ' / ' + NEEDED_HOLD + 's', W / 2, H * 0.62, 40, hf > 0.5 ? C.b : C.c);
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (tilt === undefined) initGame();
+      background();
+      bubblePos = 0.5 * Math.sin(game.time.elapsed * 1.5);
+      drawScene();
+      txt(GAME_TITLE,  W / 2, H * 0.16, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 30, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.8, 64, C.a);
+        txt('TAP TO START', W / 2, H * 0.85, 46, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.9, 40, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      perturbTimer -= dt;
+      if (perturbTimer <= 0) { perturbTimer = 1.5 + Math.random() * 1.5; tiltVel += (Math.random() - 0.5) * 0.8; }
+      tiltVel *= 0.94; tilt += tiltVel * dt; tilt = Math.max(-1, Math.min(1, tilt));
+      bubbleVel += (-tilt * 2.5) * dt; bubbleVel *= 0.96; bubblePos += bubbleVel * dt; bubblePos = Math.max(-1, Math.min(1, bubblePos));
+      if (Math.abs(bubblePos) < CENTER_ZONE) { timeInCenter += dt; if (timeInCenter >= NEEDED_HOLD) { successFlash = 0.6; finish(true); return; } }
+      else { timeInCenter = Math.max(0, timeInCenter - dt * 0.5); if (Math.abs(bubblePos) > 0.85) dangerFlash = 0.1; }
+      if (successFlash > 0) successFlash -= dt;
+      if (dangerFlash > 0) dangerFlash -= dt;
     }
-
-    // Random perturbations
-    perturbTimer -= dt;
-    if (perturbTimer <= 0) {
-      perturbTimer = 1.5 + Math.random() * 1.5;
-      tiltVel += (Math.random() - 0.5) * 0.8;
-    }
-
-    // Tilt physics
-    tiltVel *= TILT_DAMP;
-    tilt += tiltVel * dt;
-    tilt = Math.max(-1, Math.min(1, tilt));
-
-    // Bubble physics: bubble floats to the HIGH side (opposite tilt)
-    // If tilt < 0 (left side down), bubble moves right (+)
-    // If tilt > 0 (right side down), bubble moves left (-)
-    var bubbleAccel = -tilt * BUBBLE_GRAVITY;
-    bubbleVel += bubbleAccel * dt;
-    bubbleVel *= BUBBLE_DAMP;
-    bubblePos += bubbleVel * dt;
-    bubblePos = Math.max(-1, Math.min(1, bubblePos));
-
-    // Check center zone
-    var inCenter = Math.abs(bubblePos) < CENTER_ZONE;
-    if (inCenter && !done) {
-      timeInCenter += dt;
-      if (timeInCenter >= needed) {
-        done = true;
-        successFlash = 0.6;
-        game.audio.play('se_success');
-        setTimeout(function() { game.end.success(300 + Math.ceil(timeLeft) * 20); }, 700);
-      }
-    } else {
-      timeInCenter = Math.max(0, timeInCenter - dt * 0.5); // decay slowly when out
-      if (Math.abs(bubblePos) > 0.85) {
-        dangerFlash = 0.1;
-      }
-    }
-
-    if (successFlash > 0) successFlash -= dt;
-    if (dangerFlash > 0) dangerFlash -= dt;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Tube background
-    game.draw.rect(TUBE_X - 16, TUBE_Y - TUBE_H / 2 - 16, TUBE_W + 32, TUBE_H + 32, C.tubeHi, 0.5);
-    game.draw.rect(TUBE_X, TUBE_Y - TUBE_H / 2, TUBE_W, TUBE_H, C.tube);
-
-    // Water fill
-    var waterFill = TUBE_H * 0.7;
-    game.draw.rect(TUBE_X + 4, TUBE_Y - waterFill / 2 + 4, TUBE_W - 8, waterFill - 8, C.water, 0.3);
-    // Water surface ripple
-    for (var wx = TUBE_X + 8; wx < TUBE_X + TUBE_W - 8; wx += 40) {
-      var wy = TUBE_Y - waterFill / 2 + 4 + Math.sin(game.time.elapsed * 3 + wx * 0.02) * 4;
-      game.draw.rect(wx, wy, 28, 4, C.waterHi, 0.2);
-    }
-
-    // Center zone markers
-    var centerW = TUBE_W * CENTER_ZONE;
-    game.draw.rect(W / 2 - centerW - 3, TUBE_Y - TUBE_H / 2, 6, TUBE_H, C.center, 0.6);
-    game.draw.rect(W / 2 + centerW - 3, TUBE_Y - TUBE_H / 2, 6, TUBE_H, C.center, 0.6);
-    game.draw.rect(W / 2 - centerW, TUBE_Y - TUBE_H / 2, centerW * 2, TUBE_H, C.center, 0.08);
-
-    // Tube end caps
-    game.draw.circle(TUBE_X, TUBE_Y, TUBE_H / 2, C.tubeHi);
-    game.draw.circle(TUBE_X + TUBE_W, TUBE_Y, TUBE_H / 2, C.tubeHi);
-
-    // Bubble
-    var bubbleX = W / 2 + bubblePos * (TUBE_W / 2 - BUBBLE_R - 8);
-    var bubbleInCenter = Math.abs(bubblePos) < CENTER_ZONE;
-    var bubbleColor = bubbleInCenter ? C.center : (Math.abs(bubblePos) > 0.75 ? C.danger : C.bubble);
-    var bPulse = 0.8 + 0.2 * Math.abs(Math.sin(game.time.elapsed * 3));
-    game.draw.circle(bubbleX, TUBE_Y, BUBBLE_R + 4, bubbleColor, bPulse * 0.2);
-    game.draw.circle(bubbleX, TUBE_Y, BUBBLE_R, C.bubble, 0.85);
-    game.draw.circle(bubbleX - BUBBLE_R * 0.3, TUBE_Y - BUBBLE_R * 0.3, BUBBLE_R * 0.25, '#fff', 0.6);
-
-    // Level crosshair
-    game.draw.circle(W / 2, TUBE_Y, 16, C.center, 0.6);
-
-    // Tilt indicator (below tube)
-    var tiltBarW = 300;
-    var tiltX = W / 2 + tilt * tiltBarW / 2;
-    game.draw.rect(W / 2 - tiltBarW / 2, TUBE_Y + 90, tiltBarW, 12, '#0a1a10');
-    game.draw.rect(W / 2, TUBE_Y + 90, tilt * tiltBarW / 2, 12, tilt < 0 ? '#3b82f6' : '#3b82f6');
-    game.draw.circle(tiltX, TUBE_Y + 96, 16, '#3b82f6');
-    game.draw.text(tilt > 0.1 ? '→傾' : (tilt < -0.1 ? '←傾' : '水平'), W / 2, TUBE_Y + 140, {
-      size: 36, color: '#64748b'
-    });
-
-    // Hold time progress
-    var holdFrac = Math.min(1, timeInCenter / needed);
-    var holdW = 600;
-    game.draw.rect(W / 2 - holdW / 2, H * 0.6, holdW, 24, '#0a1a10');
-    game.draw.rect(W / 2 - holdW / 2, H * 0.6, holdW * holdFrac, 24, C.center);
-    game.draw.text('保持: ' + Math.floor(timeInCenter) + 's / ' + needed + 's', W / 2, H * 0.64, {
-      size: 40, color: holdFrac > 0.5 ? C.center : '#64748b'
-    });
-
-    // Tap guides
-    game.draw.text('←タップ', W * 0.18, TUBE_Y, { size: 40, color: C.ui, bold: true });
-    game.draw.text('タップ→', W * 0.82, TUBE_Y, { size: 40, color: C.ui, bold: true });
-
-    // Flashes
-    if (successFlash > 0) {
-      game.draw.rect(0, 0, W, H, C.center, successFlash / 0.6 * 0.3);
-    }
-    if (dangerFlash > 0) {
-      game.draw.rect(0, 0, W, H, C.danger, dangerFlash / 0.1 * 0.2);
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 30);
-    game.draw.rect(0, 0, W, 72, '#0e1c14');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.tubeHi : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    background();
+    drawScene();
+    timeBar();
+    txt('KEEP BUBBLE CENTERED', W / 2, 96, 42, C.c);
+    txt('◄ TAP', W * 0.16, TUBE_Y, 44, C.d);
+    txt('TAP ►', W * 0.84, TUBE_Y, 44, C.d);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.25);
-    tiltVel = (Math.random() - 0.5) * 0.5;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
