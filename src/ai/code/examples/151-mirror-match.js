@@ -1,166 +1,178 @@
 // 151-mirror-match.js
-// 鏡文字 — 左右反転した文字・図形を見て正しいものを選ぶ空間認識ゲーム
+// 鏡文字 — 左右反転した図形を見て正しい向きのものを選ぶ空間認識ゲーム
 // 操作: タップで左右どちらかを選択
-// 成功: 15問正解  失敗: 4回ミス or 40秒
+// 成功: 2問正解  失敗: 4回ミス or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#04060e',
-    panel:   '#0d1a2e',
-    panelHi: '#1e3a5f',
-    mirror:  '#06b6d4',
-    mirrorHi:'#67e8f9',
-    choose:  '#7c3aed',
-    chooseHi:'#a78bfa',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    ui:      '#334155'
-  };
+  // ── パレット（ネオンアーケード、鏡の間） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Shapes defined as draw commands, each with a "mirror" flag
-  // Each challenge: show a target shape on top, two choices below (one mirrored, one not)
-  // Player picks which choice matches the target (not mirrored)
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'MIRROR MATCH';
+  var HOW_TO_PLAY = 'PICK THE ONE MATCHING THE TOP';
+  var MAX_TIME = 15;             // 修正2: 40 → 15
+  var NEEDED   = 2;              // 修正2: 15 → 2
+  var MAX_MISS = 4;
+  var TOP    = 220;
 
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pl(x1, y1, x2, y2, color, w) {
+    var steps = Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 8);
+    for (var i = 0; i <= steps; i++) { var t = i / steps; game.draw.rect(snap(x1 + (x2 - x1) * t) - w / 2, snap(y1 + (y2 - y1) * t) - w / 2, w, w, color, 1); }
+  }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var py = -r; py <= r; py += step) for (var px = -r; px <= r; px += step) {
+      if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
+    }
+  }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  // ── 図形（ピクセル線で描画、mirrorで左右反転） ──
   var SHAPES = [
-    { name: 'J', draw: function(cx, cy, size, mirror) {
-      var m = mirror ? -1 : 1;
-      game.draw.line(cx, cy-size*0.5, cx, cy+size*0.3, '#f1f5f9', 8);
-      game.draw.line(cx, cy+size*0.3, cx+m*size*0.3, cy+size*0.3, '#f1f5f9', 8);
-      game.draw.circle(cx+m*size*0.3, cy+size*0.15, size*0.18, '#f1f5f9', 0.9);
-    }},
-    { name: 'arrow', draw: function(cx, cy, size, mirror) {
-      var m = mirror ? -1 : 1;
-      game.draw.line(cx-m*size*0.4, cy, cx+m*size*0.4, cy, '#f1f5f9', 8);
-      game.draw.line(cx+m*size*0.1, cy-size*0.25, cx+m*size*0.4, cy, '#f1f5f9', 8);
-      game.draw.line(cx+m*size*0.1, cy+size*0.25, cx+m*size*0.4, cy, '#f1f5f9', 8);
-    }},
-    { name: 'L', draw: function(cx, cy, size, mirror) {
-      var m = mirror ? -1 : 1;
-      game.draw.line(cx-m*size*0.15, cy-size*0.4, cx-m*size*0.15, cy+size*0.4, '#f1f5f9', 8);
-      game.draw.line(cx-m*size*0.15, cy+size*0.4, cx+m*size*0.35, cy+size*0.4, '#f1f5f9', 8);
-    }},
-    { name: 'F', draw: function(cx, cy, size, mirror) {
-      var m = mirror ? -1 : 1;
-      game.draw.line(cx-m*size*0.15, cy-size*0.4, cx-m*size*0.15, cy+size*0.4, '#f1f5f9', 8);
-      game.draw.line(cx-m*size*0.15, cy-size*0.4, cx+m*size*0.3, cy-size*0.4, '#f1f5f9', 8);
-      game.draw.line(cx-m*size*0.15, cy, cx+m*size*0.2, cy, '#f1f5f9', 8);
-    }},
-    { name: 'p', draw: function(cx, cy, size, mirror) {
-      var m = mirror ? -1 : 1;
-      game.draw.line(cx-m*size*0.2, cy-size*0.4, cx-m*size*0.2, cy+size*0.4, '#f1f5f9', 8);
-      game.draw.circle(cx+m*size*0.05, cy-size*0.15, size*0.28, '#f1f5f9', 0.0);
-      game.draw.line(cx-m*size*0.2, cy-size*0.4, cx+m*size*0.15, cy-size*0.4, '#f1f5f9', 8);
-      game.draw.line(cx+m*size*0.15, cy-size*0.4, cx+m*size*0.3, cy-size*0.15, '#f1f5f9', 8);
-      game.draw.line(cx+m*size*0.3, cy-size*0.15, cx+m*size*0.15, cy, '#f1f5f9', 8);
-      game.draw.line(cx+m*size*0.15, cy, cx-m*size*0.2, cy, '#f1f5f9', 8);
-    }},
-    { name: 'zigzag', draw: function(cx, cy, size, mirror) {
-      var m = mirror ? -1 : 1;
-      game.draw.line(cx-m*size*0.35, cy-size*0.3, cx+m*size*0.1, cy, '#f1f5f9', 8);
-      game.draw.line(cx+m*size*0.1, cy, cx-m*size*0.35, cy+size*0.3, '#f1f5f9', 8);
-      game.draw.line(cx-m*size*0.35, cy+size*0.3, cx+m*size*0.35, cy+size*0.3, '#f1f5f9', 8);
-    }}
+    function(cx, cy, s, m) { m = m ? -1 : 1; pl(cx, cy - s * 0.5, cx, cy + s * 0.3, C.c, 12); pl(cx, cy + s * 0.3, cx + m * s * 0.3, cy + s * 0.3, C.c, 12); pc(cx + m * s * 0.3, cy + s * 0.18, s * 0.14, C.c, 1); }, // J
+    function(cx, cy, s, m) { m = m ? -1 : 1; pl(cx - m * s * 0.4, cy, cx + m * s * 0.4, cy, C.c, 12); pl(cx + m * s * 0.1, cy - s * 0.25, cx + m * s * 0.4, cy, C.c, 12); pl(cx + m * s * 0.1, cy + s * 0.25, cx + m * s * 0.4, cy, C.c, 12); }, // arrow
+    function(cx, cy, s, m) { m = m ? -1 : 1; pl(cx - m * s * 0.15, cy - s * 0.4, cx - m * s * 0.15, cy + s * 0.4, C.c, 12); pl(cx - m * s * 0.15, cy + s * 0.4, cx + m * s * 0.35, cy + s * 0.4, C.c, 12); }, // L
+    function(cx, cy, s, m) { m = m ? -1 : 1; pl(cx - m * s * 0.15, cy - s * 0.4, cx - m * s * 0.15, cy + s * 0.4, C.c, 12); pl(cx - m * s * 0.15, cy - s * 0.4, cx + m * s * 0.3, cy - s * 0.4, C.c, 12); pl(cx - m * s * 0.15, cy, cx + m * s * 0.2, cy, C.c, 12); }, // F
+    function(cx, cy, s, m) { m = m ? -1 : 1; pl(cx - m * s * 0.35, cy - s * 0.3, cx + m * s * 0.1, cy, C.c, 12); pl(cx + m * s * 0.1, cy, cx - m * s * 0.35, cy + s * 0.3, C.c, 12); pl(cx - m * s * 0.35, cy + s * 0.3, cx + m * s * 0.35, cy + s * 0.3, C.c, 12); } // zigzag
   ];
 
-  var currentShape = null;
-  var correctSide = 0; // 0=left, 1=right
-  var score = 0;
-  var needed = 15;
-  var misses = 0;
-  var maxMisses = 4;
-  var timeLeft = 40;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var feedbackSide = -1;
+  // ── ゲーム変数 ──
+  var shapeFn, correctSide, score, misses, timeLeft, done, feedback, feedbackOk, feedbackSide;
 
   function newRound() {
-    currentShape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+    shapeFn = SHAPES[Math.floor(Math.random() * SHAPES.length)];
     correctSide = Math.random() < 0.5 ? 0 : 1;
     feedback = 0;
   }
 
-  game.onTap(function(tx) {
+  function initGame() {
+    score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedback = 0; feedbackSide = -1;
+    newRound();
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 25) : score * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || feedback > 0) return;
-    var pickedLeft = tx < W / 2;
+    var pickedLeft = x < W / 2;
     var correct = (pickedLeft && correctSide === 0) || (!pickedLeft && correctSide === 1);
+    feedbackSide = pickedLeft ? 0 : 1;
     if (correct) {
       score++; feedbackOk = true; feedback = 0.6;
-      feedbackSide = pickedLeft ? 0 : 1;
       game.audio.play('se_success');
-      if (score >= needed && !done) {
-        done = true;
-        setTimeout(function() { game.end.success(score*40+Math.ceil(timeLeft)*15); }, 600);
-        return;
-      }
-      setTimeout(function() { newRound(); }, 650);
+      if (score >= NEEDED) { finish(true); return; }
+      setTimeout(function() { if (state === S.PLAYING && !done) newRound(); }, 650);
     } else {
       misses++; feedbackOk = false; feedback = 0.6;
-      feedbackSide = pickedLeft ? 0 : 1;
       game.audio.play('se_failure');
-      if (misses >= maxMisses && !done) { done = true; setTimeout(function() { game.end.failure(); }, 600); return; }
-      setTimeout(function() { newRound(); }, 650);
+      if (misses >= MAX_MISS) { finish(false); return; }
+      setTimeout(function() { if (state === S.PLAYING && !done) newRound(); }, 650);
     }
   });
 
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(0, TOP, W, H - TOP - 180, C.d, 0.12);
+  }
+
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+    if (state === S.ATTRACT) {
+      background();
+      SHAPES[Math.floor(game.time.elapsed) % SHAPES.length](W / 2, H * 0.4, 160, false);
+      txt(GAME_TITLE, W / 2, H * 0.14, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.60, 32, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.80, 64, C.a);
+        txt('TAP TO START', W / 2, H * 0.86, 50, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.92, 40, '#886699');
+      scanlines();
+      return;
     }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SHARP EYE!' : 'GAME OVER', W / 2, H * 0.35, 78, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
+    if (!done) { timeLeft -= dt; if (timeLeft <= 0) { finish(false); return; } }
     if (feedback > 0) feedback -= dt;
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
+    background();
+    // お手本（上）
+    var ty = H * 0.30;
+    game.draw.rect(W / 2 - 160, ty - 120, 320, 240, '#0a0018', 0.8);
+    game.draw.rect(W / 2 - 160, ty - 120, 320, 8, C.e);
+    txt('MATCH THIS', W / 2, ty - 150, 40, C.e);
+    shapeFn(W / 2, ty, 120, false);
 
-    if (!currentShape) { newRound(); return; }
+    // 選択肢（下）
+    var cy = H * 0.62;
+    var leftMirror = correctSide === 1, rightMirror = correctSide === 0;
+    var lCol = feedback > 0 && feedbackSide === 0 ? (feedbackOk ? C.b : C.a) : C.d;
+    var rCol = feedback > 0 && feedbackSide === 1 ? (feedbackOk ? C.b : C.a) : C.d;
+    game.draw.rect(48, cy - 120, W / 2 - 72, 240, lCol, 0.6);
+    game.draw.rect(48, cy - 120, W / 2 - 72, 8, C.e);
+    shapeFn(W / 4, cy, 96, leftMirror);
+    game.draw.rect(W / 2 + 24, cy - 120, W / 2 - 72, 240, rCol, 0.6);
+    game.draw.rect(W / 2 + 24, cy - 120, W / 2 - 72, 8, C.e);
+    shapeFn(W * 3 / 4, cy, 96, rightMirror);
 
-    // Target (top center)
-    var targetY = H * 0.3;
-    game.draw.rect(W/2-140, targetY-100, 280, 200, C.panel, 0.8);
-    game.draw.rect(W/2-140, targetY-100, 280, 8, C.mirrorHi, 0.6);
-    game.draw.text('これは？', W/2, targetY-130, { size: 40, color: C.mirrorHi });
-    currentShape.draw(W/2, targetY, 100, false);
+    txt('◄ LEFT', W * 0.25, H - 130, 40, C.c);
+    txt('RIGHT ►', W * 0.75, H - 130, 40, C.c);
 
-    // Divider
-    game.draw.line(W/2, H*0.52, W/2, H*0.78, C.ui, 2);
-
-    // Two choices
-    var choiceY = H * 0.65;
-    var leftMirrored = correctSide === 1; // left is mirror if correct is right
-    var rightMirrored = correctSide === 0;
-
-    // Left panel
-    var leftCol = feedback > 0 && feedbackSide === 0 ? (feedbackOk ? C.correct : C.wrong) : C.panel;
-    game.draw.rect(40, choiceY-100, W/2-60, 200, leftCol, feedback > 0 && feedbackSide === 0 ? 0.4 : 0.7);
-    game.draw.rect(40, choiceY-100, W/2-60, 8, C.chooseHi, 0.5);
-    currentShape.draw(W/4, choiceY, 80, leftMirrored);
-
-    // Right panel
-    var rightCol = feedback > 0 && feedbackSide === 1 ? (feedbackOk ? C.correct : C.wrong) : C.panel;
-    game.draw.rect(W/2+20, choiceY-100, W/2-60, 200, rightCol, feedback > 0 && feedbackSide === 1 ? 0.4 : 0.7);
-    game.draw.rect(W/2+20, choiceY-100, W/2-60, 8, C.chooseHi, 0.5);
-    currentShape.draw(W*3/4, choiceY, 80, rightMirrored);
-
-    // Mirror label on the mirrored one
-    var mirrorX = leftMirrored ? W/4 : W*3/4;
-    game.draw.text('⟷', mirrorX, choiceY + 80, { size: 36, color: C.mirrorHi, bold: true });
-
-    // Labels
-    game.draw.text('← 左を選択', W*0.25, H*0.87, { size: 40, color: C.ui });
-    game.draw.text('右を選択 →', W*0.75, H*0.87, { size: 40, color: C.ui });
-
-    game.draw.text(score + ' / ' + needed, W/2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    for (var mi = 0; mi < maxMisses; mi++) game.draw.circle(W/2+(mi-(maxMisses-1)/2)*52, 218, 18, mi < misses ? C.wrong : '#0a1020');
-
-    var ratio = Math.max(0, timeLeft/40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*ratio, 72, ratio > 0.3 ? C.mirror : C.wrong);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) {
+      var mx = snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 56);
+      game.draw.rect(mx - 12, 208, 24, 24, mm < misses ? C.a : '#2a0a3a');
+    }
+    scanlines();
   });
 
-  game.onStart(function() { game.audio.bgm('bgm_main', 0.3); newRound(); });
+  game.onStart(function() {
+    game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
+  });
 })(game);
