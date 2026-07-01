@@ -1,200 +1,257 @@
 // 116-rocket-landing.js
 // ロケット着陸 — 燃料を節約しながらゆっくり降下してパッドに着地する精密制御の快感
-// 操作: タップ長押しでスラスター点火（燃料消費）
-// 成功: 着地速度 < 120でパッドに着地  失敗: 燃料切れ or 速度オーバー or 30秒
+// 操作: タップでスラスター点火/停止（燃料消費）
+// 成功: 着地速度 < 260でパッドに着地  失敗: 速度オーバー or 場外 or 8秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#000208',
-    stars:  '#1a2440',
-    pad:    '#22c55e',
-    padHi:  '#86efac',
-    rocket: '#94a3b8',
-    rocketHi:'#e2e8f0',
-    flame:  '#f97316',
-    flameHi:'#fbbf24',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    ui:     '#334155',
-    fuel:   '#3b82f6'
-  };
+  // ── パレット（クラシックアーケード、宇宙） ──
+  var C = { bg:'#000011', a:'#0000ff', b:'#00ffff', c:'#ffffff', d:'#ffff00', e:'#ff0000', f:'#00ff00', g:'#ff00ff' };
 
-  var ROCKET_W = 52;
-  var ROCKET_H = 100;
-  var rocketX = W / 2;
-  var rocketY = H * 0.12;
-  var rocketVX = 20; // slight drift
-  var rocketVY = 0;
-  var GRAVITY = 180;
-  var THRUST = 480;
-  var thrusting = false;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ROCKET LANDING';
+  var HOW_TO_PLAY = 'TAP TO FIRE THRUSTER · LAND SOFTLY';
+  var MAX_TIME = 8;               // 修正2: 30 → 8（精密制御なので短め）
+  var TOP    = 220;
+  var BOTTOM = H - 180;
 
-  var fuel = 100; // percent
-  var FUEL_RATE = 28; // %/s
+  var ROCKET_W = 48, ROCKET_H = 112;
+  var GRAVITY = 130;              // 修正2: 降下をゆるやかに
+  var THRUST  = 340;
+  var SAFE_SPEED = 260;           // 修正2: 許容着地速度を上げて易化
+  var PAD_W = 280;                // 修正2: パッドを広く
+  var FUEL_RATE = 22;
 
-  var PAD_W = 200;
-  var PAD_X = W / 2 + (Math.random() > 0.5 ? 1 : -1) * (80 + Math.random() * 160);
-  var PAD_X_CLAMPED = Math.max(PAD_W / 2 + 40, Math.min(W - PAD_W / 2 - 40, PAD_X));
-  var PAD_Y = H * 0.82;
-  var SAFE_SPEED = 120;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var done = false;
-  var timeLeft = 30;
-  var feedback = '';
-  var feedbackTimer = 0;
-  var stars = [];
-  var flameFlicker = 0;
+  // ── ゲーム変数 ──
+  var rocketX, rocketY, rocketVX, rocketVY, fuel, thrusting;
+  var padX, padY, timeLeft, done, flash, stars;
 
-  for (var si = 0; si < 60; si++) {
-    stars.push({ x: Math.random() * W, y: Math.random() * H * 0.85, r: 1 + Math.random() * 3 });
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function drawPixelCircle(cx, cy, r, color, alpha) {
+    var step = 8;
+    cx = snap(cx); cy = snap(cy);
+    for (var py = -r; py <= r; py += step) {
+      for (var px = -r; px <= r; px += step) {
+        if (px * px + py * py <= r * r) {
+          game.draw.rect(cx + px, cy + py, step, step, color, alpha);
+        }
+      }
+    }
   }
 
-  game.onTap(function() {
-    if (done) return;
-    if (fuel > 0) {
-      thrusting = true;
-      flameFlicker = 0;
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+
+  function scanlines() {
+    for (var sy = 0; sy < H; sy += 8) {
+      game.draw.rect(0, sy, W, 2, '#000000', 0.18);
     }
+  }
+
+  function timeBar() {
+    var blocks = 12;
+    var lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) {
+      game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#001133');
+    }
+  }
+
+  // ── 星空背景 ──
+  function background() {
+    game.draw.clear(C.bg);
+    for (var i = 0; i < stars.length; i++) {
+      var st = stars[i];
+      var blink = Math.floor((game.time.elapsed + st.o) * 8) % 2 === 0 ? 0.9 : 0.35;
+      game.draw.rect(st.x, st.y, st.s, st.s, C.c, blink);
+    }
+  }
+
+  // ── スプライト（多矩形でキャラクター性） ──
+  function drawRocket(cx, cy, flame) {
+    cx = snap(cx);
+    var top = snap(cy - ROCKET_H / 2);
+    // ノーズ（先細り）
+    game.draw.rect(cx - 8,  top,      16, 16, C.e);
+    game.draw.rect(cx - 16, top + 16, 32, 16, C.e);
+    // 胴体
+    game.draw.rect(cx - 24, top + 32, 48, 56, C.c);
+    game.draw.rect(cx - 24, top + 32, 48, 8,  C.b);   // ハイライト帯
+    // 窓
+    drawPixelCircle(cx, top + 56, 12, C.a, 1);
+    game.draw.rect(cx - 8, top + 48, 16, 8, C.b, 0.8);
+    // フィン
+    game.draw.rect(cx - 40, top + 72, 16, 24, C.e);
+    game.draw.rect(cx + 24, top + 72, 16, 24, C.e);
+    // 基部
+    game.draw.rect(cx - 16, top + 88, 32, 16, C.a);
+    // 炎（フレーム刻み点滅）
+    if (flame && Math.floor(game.time.elapsed * 8) % 2 === 0) {
+      game.draw.rect(cx - 12, top + 104, 24, 16, C.d);
+      game.draw.rect(cx - 8,  top + 120, 16, 16, C.e);
+    } else if (flame) {
+      game.draw.rect(cx - 8, top + 104, 16, 24, C.d);
+    }
+  }
+
+  function drawPad(px, py) {
+    px = snap(px); py = snap(py);
+    // 天板
+    game.draw.rect(px - PAD_W / 2, py, PAD_W, 16, C.f);
+    game.draw.rect(px - PAD_W / 2, py, PAD_W, 8, C.b);
+    // 脚
+    game.draw.rect(px - PAD_W / 2 + 16, py + 16, 16, 40, C.a);
+    game.draw.rect(px + PAD_W / 2 - 32, py + 16, 16, 40, C.a);
+    // 誘導灯（フレーム刻み点滅）
+    var on = Math.floor(game.time.elapsed * 8) % 2 === 0;
+    game.draw.rect(px - PAD_W / 2,      py - 8, 16, 8, on ? C.d : '#332200');
+    game.draw.rect(px + PAD_W / 2 - 16, py - 8, 16, 8, on ? C.d : '#332200');
+    txt('PAD', px, py + 40, 28, C.b);
+  }
+
+  // ── 初期化 ──
+  function initGame() {
+    done = false;
+    timeLeft = MAX_TIME;
+    rocketX = snap(W / 2);
+    rocketY = snap(TOP + 100);
+    rocketVX = game.random(-30, 30);
+    rocketVY = 0;
+    fuel = 100;
+    thrusting = false;
+    flash = 0;
+    padY = snap(BOTTOM - 60);
+    padX = snap(Math.max(PAD_W / 2 + 60, Math.min(W - PAD_W / 2 - 60,
+           W / 2 + (Math.random() > 0.5 ? 1 : -1) * game.random(80, 220))));
+    stars = [];
+    for (var i = 0; i < 48; i++) {
+      stars.push({ x: snap(game.random(0, W)), y: snap(game.random(0, BOTTOM)), s: 8, o: Math.random() });
+    }
+  }
+
+  // ── 終了処理 ──
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success
+      ? Math.round(300 + (SAFE_SPEED - Math.abs(rocketVY)) + fuel * 3 + Math.ceil(timeLeft) * 10)
+      : Math.round(fuel);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() {
+      if (success) game.end.success(finalScore);
+      else         game.end.failure();
+    }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) {
+      game.audio.play('se_tap', 1.0);
+      state = S.PLAYING;
+      initGame();
+      return;
+    }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    // PLAYING: スラスター点火切替
+    if (done) return;
+    if (fuel > 0) { thrusting = !thrusting; game.audio.play('se_tap', 0.5); }
   });
 
-  // Holding: we simulate hold by checking if tap is still active
-  var tapDown = false;
-  game.onTap(function() {
-    tapDown = !tapDown; // toggle (approximate hold)
-  });
-
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      drawRocket(W / 2, H * 0.5, true);
+      drawPad(W / 2, H * 0.68);
+      txt(GAME_TITLE,  W / 2, H * 0.24, 88, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.34, 38, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.80, 68, C.d);
+        txt('TAP TO START', W / 2, H * 0.87, 50, C.c);
+      }
+      txt('INSERT COIN', W / 2, H * 0.93, 40, '#8888aa');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      drawPad(padX, padY);
+      txt(resultSuccess ? 'SAFE LANDING!' : 'CRASHED', W / 2, H * 0.35, 80, resultSuccess ? C.f : C.e);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.c);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) {
+        txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.b);
+      }
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
+      if (timeLeft <= 0) { finish(false); return; }
+
+      if (thrusting && fuel > 0) {
+        rocketVY -= THRUST * dt;
+        fuel -= FUEL_RATE * dt;
+        if (fuel <= 0) { fuel = 0; thrusting = false; }
+      }
+      rocketVY += GRAVITY * dt;
+      rocketY += rocketVY * dt;
+      rocketX += rocketVX * dt;
+      rocketVX *= Math.pow(0.98, dt * 60);
+
+      if (rocketX < ROCKET_W / 2) { rocketX = ROCKET_W / 2; rocketVX = Math.abs(rocketVX) * 0.5; }
+      if (rocketX > W - ROCKET_W / 2) { rocketX = W - ROCKET_W / 2; rocketVX = -Math.abs(rocketVX) * 0.5; }
+
+      var rocketBottom = rocketY + ROCKET_H / 2;
+      if (rocketBottom >= padY) {
+        var onPad = rocketX > padX - PAD_W / 2 && rocketX < padX + PAD_W / 2;
+        flash = 0.4;
+        if (onPad && Math.abs(rocketVY) < SAFE_SPEED) finish(true);
+        else finish(false);
         return;
       }
     }
+    if (flash > 0) flash -= dt;
 
-    flameFlicker += dt;
+    // ---- 描画 ----
+    background();
+    drawPad(padX, padY);
+    // 地面
+    game.draw.rect(0, padY + 56, W, H - padY - 56, C.a, 0.4);
+    drawRocket(rocketX, rocketY, thrusting && fuel > 0);
 
-    // Simple toggle thrust (tap once to start, tap again to stop)
-    if (thrusting && fuel > 0) {
-      rocketVY -= THRUST * dt;
-      fuel -= FUEL_RATE * dt;
-      if (fuel <= 0) { fuel = 0; thrusting = false; }
-    }
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.c, flash);
 
-    // Gravity
-    rocketVY += GRAVITY * dt;
-    rocketY += rocketVY * dt;
-    rocketX += rocketVX * dt;
-
-    // Drift dampen
-    rocketVX *= Math.pow(0.98, dt * 60);
-
-    // Wall bounce
-    if (rocketX < ROCKET_W / 2) { rocketX = ROCKET_W / 2; rocketVX = Math.abs(rocketVX) * 0.5; }
-    if (rocketX > W - ROCKET_W / 2) { rocketX = W - ROCKET_W / 2; rocketVX = -Math.abs(rocketVX) * 0.5; }
-
-    // Landing check
-    var rocketBottom = rocketY + ROCKET_H / 2;
-    if (rocketBottom >= PAD_Y) {
-      var onPad = rocketX > PAD_X_CLAMPED - PAD_W / 2 && rocketX < PAD_X_CLAMPED + PAD_W / 2;
-      if (!done) {
-        done = true;
-        if (onPad && Math.abs(rocketVY) < SAFE_SPEED) {
-          feedback = '安全着陸！';
-          game.audio.play('se_success');
-          var bonus = Math.round((SAFE_SPEED - Math.abs(rocketVY)) * 2 + fuel * 3);
-          setTimeout(function() { game.end.success(300 + bonus + Math.ceil(timeLeft) * 10); }, 700);
-        } else if (!onPad) {
-          feedback = '着陸失敗';
-          game.audio.play('se_failure');
-          setTimeout(function() { game.end.failure(); }, 600);
-        } else {
-          feedback = '速度超過！';
-          game.audio.play('se_failure');
-          setTimeout(function() { game.end.failure(); }, 600);
-        }
-        feedbackTimer = 0.8;
-      }
-    }
-
-    if (feedbackTimer > 0) feedbackTimer -= dt;
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Stars
-    for (var si2 = 0; si2 < stars.length; si2++) {
-      var s = stars[si2];
-      var blink = 0.3 + 0.7 * Math.abs(Math.sin(timeLeft * 1.3 + si2 * 0.7));
-      game.draw.circle(s.x, s.y, s.r, '#ffffff', blink * 0.5);
-    }
-
-    // Landing pad
-    game.draw.rect(PAD_X_CLAMPED - PAD_W / 2, PAD_Y, PAD_W, 16, C.pad);
-    game.draw.rect(PAD_X_CLAMPED - PAD_W / 2, PAD_Y, PAD_W, 4, C.padHi);
-    // Pad beacon lights
-    for (var pi = 0; pi < 5; pi++) {
-      var bx = PAD_X_CLAMPED - PAD_W / 2 + (pi / 4) * PAD_W;
-      var blink2 = Math.abs(Math.sin(timeLeft * 4 + pi * 1.2));
-      game.draw.circle(bx, PAD_Y, 10, C.padHi, blink2 * 0.8);
-    }
-    // Ground
-    game.draw.rect(0, PAD_Y + 16, W, H - PAD_Y - 16, '#030a14');
-
-    // Rocket flame
-    if (thrusting && fuel > 0) {
-      var fSize = 40 + 30 * Math.abs(Math.sin(flameFlicker * 20));
-      game.draw.circle(rocketX, rocketY + ROCKET_H / 2 + fSize * 0.5, fSize * 0.6, C.flame, 0.9);
-      game.draw.circle(rocketX, rocketY + ROCKET_H / 2 + fSize * 0.3, fSize * 0.35, C.flameHi, 0.8);
-    }
-
-    // Rocket body
-    game.draw.rect(rocketX - ROCKET_W / 2, rocketY - ROCKET_H / 2, ROCKET_W, ROCKET_H, C.rocket);
-    game.draw.rect(rocketX - ROCKET_W / 2, rocketY - ROCKET_H / 2, ROCKET_W, 8, C.rocketHi);
-    // Nose
-    game.draw.circle(rocketX, rocketY - ROCKET_H / 2 - 20, 30, C.rocketHi);
-    // Window
-    game.draw.circle(rocketX, rocketY - 16, 22, '#1a3a5c');
-    game.draw.circle(rocketX, rocketY - 16, 14, '#3b82f6', 0.6);
-    // Legs
-    game.draw.line(rocketX - ROCKET_W / 2, rocketY + ROCKET_H / 2, rocketX - ROCKET_W * 0.8, rocketY + ROCKET_H / 2 + 30, C.rocket, 8);
-    game.draw.line(rocketX + ROCKET_W / 2, rocketY + ROCKET_H / 2, rocketX + ROCKET_W * 0.8, rocketY + ROCKET_H / 2 + 30, C.rocket, 8);
-
-    // Speed indicator
+    // 燃料バー（下部）
     var speed = Math.round(Math.abs(rocketVY));
-    var speedColor = speed < SAFE_SPEED ? C.correct : '#ef4444';
-    game.draw.text('速度: ' + speed, W * 0.25, 148, { size: 44, color: speedColor, bold: true });
+    var fuelW = 400;
+    game.draw.rect(W / 2 - fuelW / 2, H - 120, fuelW, 32, '#001133');
+    game.draw.rect(W / 2 - fuelW / 2, H - 120, snap(fuelW * (fuel / 100)), 32, fuel > 25 ? C.f : C.e);
+    txt('FUEL ' + Math.round(fuel), W / 2, H - 148, 40, C.c);
+    txt('SPD ' + speed, W / 2, H - 76, 44, speed < SAFE_SPEED ? C.b : C.e);
 
-    // Fuel bar
-    var fuelW = 300;
-    game.draw.rect(W * 0.5 - fuelW / 2, 120, fuelW, 28, '#0a1428');
-    game.draw.rect(W * 0.5 - fuelW / 2, 120, fuelW * (fuel / 100), 28, C.fuel);
-    game.draw.text('燃料', W * 0.5 - fuelW / 2 - 60, 134, { size: 36, color: C.ui });
-
-    // Thrust indicator
-    if (thrusting && fuel > 0) {
-      game.draw.text('● 噴射中', W / 2, H * 0.88, { size: 44, color: C.flame, bold: true });
-    } else {
-      game.draw.text('タップで噴射切替', W / 2, H * 0.88, { size: 44, color: C.ui });
-    }
-
-    // Feedback
-    if (feedbackTimer > 0) {
-      game.draw.text(feedback, W / 2, H * 0.5, { size: 88, color: feedback === '安全着陸！' ? C.correct : C.wrong, bold: true });
-    }
-
-    var ratio = Math.max(0, timeLeft / 30);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.fuel : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.c);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
