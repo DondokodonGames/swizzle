@@ -1,204 +1,157 @@
 // 173-light-switch.js
-// 電球パターン — 光っているパターンを覚えて、消えたあとに同じ状態を再現する記憶力
-// 操作: タップでマスのON/OFFを切り替え、確定タップ
-// 成功: 6問正解  失敗: 3回ミス or 45秒
+// 電球パターン — 光ったパターンを覚えて、消えたあとに同じ状態を再現する記憶力
+// 操作: タップでマスをON/OFF、確定ボタンで判定
+// 成功: 1問正解  失敗: 3回ミス or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#04060a',
-    off:    '#0f1928',
-    offHi:  '#1e2d40',
-    on:     '#fef08a',
-    onHi:   '#fbbf24',
-    onGlow: '#f59e0b',
-    submit: '#22c55e',
-    wrong:  '#ef4444',
-    ui:     '#334155'
-  };
+  // ── パレット（ネオンアーケード、配電盤） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var GRID_COLS = 4;
-  var GRID_ROWS = 4;
-  var CELL_SIZE = 200;
-  var CELL_PAD = 12;
-  var GRID_X = (W - GRID_COLS * CELL_SIZE) / 2;
-  var GRID_Y = H * 0.25;
-  var SUBMIT_BTN_Y = H * 0.82;
-
-  var targetPattern = [];
-  var playerPattern = [];
-  var phase = 'show'; // 'show' | 'input' | 'result'
-  var showTimer = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'LIGHT SWITCH';
+  var HOW_TO_PLAY = 'MEMORIZE THE LIT PATTERN · REPRODUCE IT';
+  var MAX_TIME = 15;             // 修正2: 45 → 15
+  var NEEDED   = 1;              // 修正2: 6 → 1
+  var MAX_MISS = 3;
+  var COLS = 4, ROWS = 4, CELL = 200, PAD = 12;
+  var GX = snap((W - COLS * CELL) / 2), GY = snap(300), SUBMIT_Y = snap(H * 0.82);
   var SHOW_TIME = 1.8;
-  var resultTimer = 0;
 
-  var score = 0;
-  var needed = 6;
-  var misses = 0;
-  var maxMisses = 3;
-  var timeLeft = 45;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function newRound() {
-    targetPattern = [];
-    playerPattern = [];
-    // Generate random lit pattern (40-60% lit)
-    var litCount = 6 + Math.floor(Math.random() * 5);
-    for (var i = 0; i < GRID_COLS * GRID_ROWS; i++) {
-      playerPattern.push(false);
-      targetPattern.push(false);
-    }
-    for (var li = 0; li < litCount; li++) {
-      var idx;
-      do { idx = Math.floor(Math.random() * GRID_COLS * GRID_ROWS); } while (targetPattern[idx]);
-      targetPattern[idx] = true;
-    }
-    phase = 'show';
-    showTimer = SHOW_TIME;
+  // ── ゲーム変数 ──
+  var target, player, phase, showTimer, resultTimer, score, misses, timeLeft, done, feedback, feedbackOk;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
-    if (phase === 'show') return;
-    if (phase === 'result') return;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-    // Submit button
-    if (ty > SUBMIT_BTN_Y - 60 && ty < SUBMIT_BTN_Y + 60 && tx > W / 2 - 200 && tx < W / 2 + 200) {
-      // Check answer
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function drawCell(cx, cy, cw, ch, on, hint) {
+    if (on) { game.draw.rect(cx - 4, cy - 4, cw + 8, ch + 8, C.c, 0.25); game.draw.rect(cx, cy, cw, ch, C.c, 0.95); game.draw.rect(cx + cw / 2 - 8, cy + ch / 2 - 8, 16, 16, C.g, 0.6); }
+    else { game.draw.rect(cx, cy, cw, ch, C.d, 0.5); game.draw.rect(cx, cy, cw, 8, C.a, 0.5); }
+    if (hint) { game.draw.rect(cx + cw / 2 - 6, cy + ch / 2 - 6, 12, 12, C.b, 1); }
+  }
+
+  function newRound() {
+    target = []; player = [];
+    for (var i = 0; i < COLS * ROWS; i++) { target.push(false); player.push(false); }
+    var litCount = 3 + Math.floor(Math.random() * 2);   // 修正2: 少なめで易化
+    for (var l = 0; l < litCount; l++) { var idx; do { idx = Math.floor(Math.random() * COLS * ROWS); } while (target[idx]); target[idx] = true; }
+    phase = 'show'; showTimer = SHOW_TIME;
+  }
+
+  function initGame() {
+    score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedback = 0; resultTimer = 0;
+    newRound();
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 30) : score * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || phase !== 'input') return;
+    if (y > SUBMIT_Y - 60 && y < SUBMIT_Y + 60 && x > W / 2 - 200 && x < W / 2 + 200) {
       var correct = true;
-      for (var i = 0; i < targetPattern.length; i++) {
-        if (targetPattern[i] !== playerPattern[i]) { correct = false; break; }
+      for (var i = 0; i < target.length; i++) if (target[i] !== player[i]) { correct = false; break; }
+      if (correct) { score++; feedbackOk = true; feedback = 0.6; game.audio.play('se_success'); if (score >= NEEDED) { finish(true); return; } }
+      else { misses++; feedbackOk = false; feedback = 0.6; game.audio.play('se_failure'); if (misses >= MAX_MISS) { finish(false); return; } }
+      phase = 'result'; resultTimer = 0.9;
+      return;
+    }
+    var col = Math.floor((x - GX) / CELL), row = Math.floor((y - GY) / CELL);
+    if (col >= 0 && col < COLS && row >= 0 && row < ROWS) { player[row * COLS + col] = !player[row * COLS + col]; game.audio.play('se_tap', 0.3); }
+  });
+
+  // ── 更新 & 描画 ──
+  function drawGrid(showMode) {
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      var idx = r * COLS + c, cx = GX + c * CELL + PAD, cy = GY + r * CELL + PAD, cw = CELL - PAD * 2, ch = CELL - PAD * 2;
+      if (phase === 'result') drawCell(cx, cy, cw, ch, player[idx], target[idx]);
+      else drawCell(cx, cy, cw, ch, showMode === 'target' ? target[idx] : player[idx], false);
+    }
+  }
+
+  game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      phase = 'show';
+      target = target || []; for (var i = 0; i < 16; i++) target[i] = ((i + Math.floor(game.time.elapsed)) % 5 === 0);
+      drawGrid('target');
+      txt(GAME_TITLE, W / 2, H * 0.12, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.80, 30, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.87, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 48, C.g);
       }
-      if (correct) {
-        score++;
-        feedbackOk = true; feedback = 0.6;
-        game.audio.play('se_success');
-        if (score >= needed && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(score * 100 + Math.ceil(timeLeft) * 30); }, 600);
-          return;
-        }
-      } else {
-        misses++;
-        feedbackOk = false; feedback = 0.6;
-        game.audio.play('se_failure');
-        if (misses >= maxMisses && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 600);
-          return;
-        }
-      }
-      phase = 'result';
-      resultTimer = 0.8;
+      scanlines();
       return;
     }
 
-    // Grid tap
-    var col = Math.floor((tx - GRID_X) / CELL_SIZE);
-    var row = Math.floor((ty - GRID_Y) / CELL_SIZE);
-    if (col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS) {
-      var idx2 = row * GRID_COLS + col;
-      playerPattern[idx2] = !playerPattern[idx2];
-      game.audio.play('se_tap', 0.3);
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'MATCHED!' : 'GAME OVER', W / 2, H * 0.35, 78, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
-  });
 
-  game.onUpdate(function(dt) {
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (phase === 'show') { showTimer -= dt; if (showTimer <= 0) phase = 'input'; }
+      else if (phase === 'result') { resultTimer -= dt; if (resultTimer <= 0) newRound(); }
     }
     if (feedback > 0) feedback -= dt;
 
-    if (phase === 'show') {
-      showTimer -= dt;
-      if (showTimer <= 0) phase = 'input';
+    background();
+    txt(phase === 'show' ? 'MEMORIZE!' : (phase === 'input' ? 'REPRODUCE!' : (feedbackOk ? 'CORRECT!' : 'WRONG')), W / 2, GY - 50, 52, phase === 'show' ? C.c : (phase === 'input' ? C.b : (feedbackOk ? C.b : C.a)));
+    drawGrid(phase === 'show' ? 'target' : 'player');
+    if (phase === 'input') { game.draw.rect(W / 2 - 200, SUBMIT_Y - 60, 400, 120, C.b, 0.85); game.draw.rect(W / 2 - 200, SUBMIT_Y - 60, 400, 12, C.g, 0.6); txt('SUBMIT', W / 2, SUBMIT_Y - 8, 52, C.bg); }
+    if (feedback > 0) game.draw.rect(0, 0, W, H, feedbackOk ? C.b : C.a, feedback * 0.14);
+
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 44, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) {
+      var mx = snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 56);
+      game.draw.rect(mx - 12, 208, 24, 24, mm < misses ? C.a : '#2a0a3a');
     }
-
-    if (phase === 'result') {
-      resultTimer -= dt;
-      if (resultTimer <= 0) newRound();
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Title
-    if (phase === 'show') {
-      game.draw.text('覚えて！', W / 2, GRID_Y - 60, { size: 52, color: C.onHi, bold: true });
-    } else if (phase === 'input') {
-      game.draw.text('再現して！', W / 2, GRID_Y - 60, { size: 52, color: C.submit, bold: true });
-    } else {
-      var revealCol = feedbackOk ? C.submit : C.wrong;
-      game.draw.text(feedbackOk ? '正解！' : '違う...', W / 2, GRID_Y - 60, { size: 56, color: revealCol, bold: true });
-    }
-
-    // Grid
-    for (var r = 0; r < GRID_ROWS; r++) {
-      for (var c = 0; c < GRID_COLS; c++) {
-        var idx3 = r * GRID_COLS + c;
-        var cx2 = GRID_X + c * CELL_SIZE + CELL_PAD;
-        var cy2 = GRID_Y + r * CELL_SIZE + CELL_PAD;
-        var cw = CELL_SIZE - CELL_PAD * 2;
-        var ch = CELL_SIZE - CELL_PAD * 2;
-
-        var showOn, correctOn;
-        if (phase === 'show') {
-          showOn = targetPattern[idx3];
-        } else if (phase === 'input') {
-          showOn = playerPattern[idx3];
-        } else {
-          // Result: show both
-          correctOn = targetPattern[idx3];
-          showOn = playerPattern[idx3];
-        }
-
-        if (phase === 'result') {
-          // Show target vs player
-          var isRight = targetPattern[idx3] === playerPattern[idx3];
-          var cellCol = isRight ? C.submit : C.wrong;
-          game.draw.rect(cx2, cy2, cw, ch, isRight ? C.off : C.wrong, isRight ? 0.7 : 0.3);
-          if (targetPattern[idx3]) {
-            game.draw.circle(cx2 + cw / 2, cy2 + ch / 2, cw * 0.35, C.onGlow, 0.8);
-          }
-        } else {
-          if (showOn) {
-            game.draw.rect(cx2 - 4, cy2 - 4, cw + 8, ch + 8, C.onGlow, 0.2);
-            game.draw.rect(cx2, cy2, cw, ch, C.on, 0.95);
-            game.draw.circle(cx2 + cw / 2, cy2 + ch / 2, cw * 0.2, '#fff', 0.5);
-          } else {
-            game.draw.rect(cx2, cy2, cw, ch, C.off, 0.85);
-            game.draw.rect(cx2, cy2, cw, 8, C.offHi, 0.4);
-          }
-        }
-      }
-    }
-
-    // Submit button (input phase only)
-    if (phase === 'input') {
-      game.draw.rect(W / 2 - 200, SUBMIT_BTN_Y - 60, 400, 120, C.submit, 0.85);
-      game.draw.rect(W / 2 - 200, SUBMIT_BTN_Y - 60, 400, 12, '#86efac', 0.6);
-      game.draw.text('確定！', W / 2, SUBMIT_BTN_Y, { size: 56, color: '#fff', bold: true });
-    }
-
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? C.submit : C.wrong, feedback * 0.14);
-    }
-
-    game.draw.text(score + ' / ' + needed, W / 2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    for (var mi = 0; mi < maxMisses; mi++) {
-      game.draw.circle(W / 2 + (mi - 1) * 52, 218, 18, mi < misses ? C.wrong : '#0a1020');
-    }
-
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.onHi : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    scanlines();
   });
 
-  game.onStart(function() { game.audio.bgm('bgm_main', 0.2); newRound(); });
+  game.onStart(function() {
+    game.audio.bgm('bgm_main', 0.2);
+    state = S.ATTRACT;
+    initGame();
+  });
 })(game);

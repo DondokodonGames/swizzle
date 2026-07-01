@@ -1,197 +1,182 @@
 // 174-catch-rain.js
-// 雨水収穫 — 落ちてくる雨粒を移動バケツで受け止め、特定の組み合わせを集める集中力
+// 雨水収穫 — 落ちてくる雨粒を移動バケツで受け止め、各色を集める集中力
 // 操作: スワイプ/タップで3つのバケツを左右移動
-// 成功: 3色各10滴ずつ  失敗: 間違ったバケツに20滴 or 50秒
+// 成功: 3色を各2滴ずつ集める  失敗: 間違いを20滴 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#020810',
-    sky:    '#040c18',
-    rain:   ['#06b6d4', '#a855f7', '#f59e0b'],
-    bucket: ['#164e63', '#4c1d95', '#78350f'],
-    bucketHi:['#0891b2', '#7c3aed', '#d97706'],
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    ui:     '#334155'
-  };
+  // ── パレット（ネオンアーケード、雨の街） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var RAIN = [C.e, C.b, C.f];
 
-  var BUCKET_W = 160;
-  var BUCKET_H = 120;
-  var BUCKET_Y = H * 0.82;
-  var BUCKET_GAP = 20;
-  var RAIN_R = 20;
-  var RAIN_SPEED = 300;
-
-  // 3 buckets, each associated with 1 color
-  var bucketX = [W * 0.2, W * 0.5, W * 0.8]; // positions (can shift)
-  var bucketColors = [0, 1, 2]; // which rain color each bucket accepts
-  var SHIFT = W * 0.3; // how far buckets move per swipe
-
-  var drops = [];
-  var spawnTimer = 0;
-  var SPAWN_INTERVAL = 0.35;
-
-  var collected = [0, 0, 0]; // count per color
-  var wrong = 0;
-  var NEEDED_EACH = 10;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'CATCH RAIN';
+  var HOW_TO_PLAY = 'TAP ◄► TO SLIDE BUCKETS UNDER DROPS';
+  var MAX_TIME = 15;             // 修正2: 50 → 15
+  var NEEDED_EACH = 2;           // 修正2: 10 → 2
   var MAX_WRONG = 20;
-  var timeLeft = 50;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var particles = [];
+  var BUCKET_W = 176, BUCKET_H = 130, BUCKET_Y = snap(H * 0.76), RAIN_R = 24, RAIN_SPEED = 300, SHIFT = W * 0.3;
 
-  function spawnDrop() {
-    var colorIdx = Math.floor(Math.random() * 3);
-    drops.push({
-      x: 60 + Math.random() * (W - 120),
-      y: -RAIN_R,
-      color: colorIdx,
-      speed: RAIN_SPEED + Math.random() * 80
-    });
-  }
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function shiftBuckets(delta) {
-    for (var bi = 0; bi < bucketX.length; bi++) {
-      bucketX[bi] = Math.max(BUCKET_W / 2 + 20, Math.min(W - BUCKET_W / 2 - 20, bucketX[bi] + delta));
+  // ── ゲーム変数 ──
+  var bucketX, drops, particles, spawnTimer, collected, wrong, timeLeft, done, feedback, feedbackOk;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
     }
   }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function drawBucket(x, colorIdx) {
+    game.draw.rect(x - BUCKET_W / 2, BUCKET_Y, BUCKET_W, BUCKET_H, C.d, 0.9);
+    game.draw.rect(x - BUCKET_W / 2, BUCKET_Y, BUCKET_W, 12, C.g, 0.4);
+    var fill = Math.min(1, collected[colorIdx] / NEEDED_EACH), fh = snap((BUCKET_H - 16) * fill);
+    if (fh > 0) game.draw.rect(x - BUCKET_W / 2 + 8, BUCKET_Y + BUCKET_H - fh - 8, BUCKET_W - 16, fh, RAIN[colorIdx], 0.7);
+    pc(x, BUCKET_Y - 32, 24, RAIN[colorIdx], 0.9);
+    txt(collected[colorIdx] + '/' + NEEDED_EACH, x, BUCKET_Y + BUCKET_H + 30, 34, RAIN[colorIdx]);
+  }
+
+  function drawDrop(d) {
+    pc(d.x, d.y, RAIN_R, RAIN[d.color], 0.95);
+    pc(d.x, d.y - RAIN_R * 0.5, 8, C.g, 0.4);
+    game.draw.rect(snap(d.x) - 3, snap(d.y) - RAIN_R - 16, 6, 16, RAIN[d.color], 0.4);
+  }
+
+  function shift(delta) { for (var i = 0; i < bucketX.length; i++) bucketX[i] = snap(Math.max(BUCKET_W / 2 + 20, Math.min(W - BUCKET_W / 2 - 20, bucketX[i] + delta))); }
+
+  function initGame() {
+    bucketX = [snap(W * 0.2), snap(W * 0.5), snap(W * 0.8)];
+    drops = []; particles = []; spawnTimer = 0.3; collected = [0, 0, 0]; wrong = 0;
+    timeLeft = MAX_TIME; done = false; feedback = 0;
+    spawnDrop();
+  }
+
+  function spawnDrop() { drops.push({ x: snap(60 + Math.random() * (W - 120)), y: -RAIN_R, color: Math.floor(Math.random() * 3), speed: RAIN_SPEED + Math.random() * 80 }); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    var total = collected[0] + collected[1] + collected[2];
+    finalScore = success ? (total * 80 + Math.ceil(timeLeft) * 30) : total * 30;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    shift(x < W / 2 ? -SHIFT : SHIFT); game.audio.play('se_tap', 0.3);
+  });
 
   game.onSwipe(function(dir) {
-    if (done) return;
-    if (dir === 'left') { shiftBuckets(-SHIFT); game.audio.play('se_tap', 0.3); }
-    else if (dir === 'right') { shiftBuckets(SHIFT); game.audio.play('se_tap', 0.3); }
+    if (state !== S.PLAYING || done) return;
+    if (dir === 'left') { shift(-SHIFT); game.audio.play('se_tap', 0.3); }
+    else if (dir === 'right') { shift(SHIFT); game.audio.play('se_tap', 0.3); }
   });
 
-  game.onTap(function(tx) {
-    if (done) return;
-    if (tx < W / 2) { shiftBuckets(-SHIFT); game.audio.play('se_tap', 0.3); }
-    else { shiftBuckets(SHIFT); game.audio.play('se_tap', 0.3); }
-  });
-
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      for (var b = 0; b < 3; b++) { collected = [0, 0, 0]; drawBucket(snap(W * (0.2 + b * 0.3)), b); }
+      drawDrop({ x: W / 2, y: H * 0.4 + Math.sin(game.time.elapsed * 2) * 60, color: 0 });
+      txt(GAME_TITLE, W / 2, H * 0.14, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 30, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.52, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.58, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.64, 40, '#886699');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'HARVEST!' : 'GAME OVER', W / 2, H * 0.35, 78, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) { spawnTimer = 0.45 * (0.7 + Math.random() * 0.6); spawnDrop(); }
+      for (var di = drops.length - 1; di >= 0; di--) {
+        var d = drops[di];
+        d.y += d.speed * dt;
+        if (d.y + RAIN_R > BUCKET_Y) {
+          var caught = false;
+          for (var bi = 0; bi < bucketX.length; bi++) {
+            if (d.x > bucketX[bi] - BUCKET_W / 2 && d.x < bucketX[bi] + BUCKET_W / 2) {
+              caught = true;
+              if (bi === d.color) {
+                collected[d.color]++; feedbackOk = true; feedback = 0.2;
+                game.audio.play('se_success', 0.5);
+                for (var pi = 0; pi < 4; pi++) { var ang = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI; particles.push({ x: d.x, y: BUCKET_Y, vx: Math.cos(ang) * 120, vy: Math.sin(ang) * 120 - 60, life: 0.4, color: d.color }); }
+              } else { wrong++; feedbackOk = false; feedback = 0.3; game.audio.play('se_failure', 0.4); if (wrong >= MAX_WRONG) { finish(false); return; } }
+              break;
+            }
+          }
+          if (!caught) wrong++;
+          drops.splice(di, 1);
+          continue;
+        }
+        if (d.y > H + 40) { drops.splice(di, 1); wrong++; }
+      }
+      if (collected[0] >= NEEDED_EACH && collected[1] >= NEEDED_EACH && collected[2] >= NEEDED_EACH) { finish(true); return; }
     }
+    for (var p = 0; p < particles.length; p++) { particles[p].x += particles[p].vx * dt; particles[p].y += particles[p].vy * dt; particles[p].vy += 300 * dt; particles[p].life -= dt; }
+    particles = particles.filter(function(pt) { return pt.life > 0; });
     if (feedback > 0) feedback -= dt;
 
-    spawnTimer -= dt;
-    if (spawnTimer <= 0) { spawnTimer = SPAWN_INTERVAL * (0.7 + Math.random() * 0.6); spawnDrop(); }
+    // ---- 描画 ----
+    background();
+    for (var di2 = 0; di2 < drops.length; di2++) drawDrop(drops[di2]);
+    for (var bi2 = 0; bi2 < bucketX.length; bi2++) drawBucket(bucketX[bi2], bi2);
+    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 4, snap(particles[pp].y) - 4, 8, 8, RAIN[particles[pp].color], particles[pp].life * 2.5);
+    if (feedback > 0) game.draw.rect(0, 0, W, H, feedbackOk ? C.b : C.a, feedback * 0.1);
 
-    for (var di = drops.length - 1; di >= 0; di--) {
-      var d = drops[di];
-      d.y += d.speed * dt;
-
-      // Check bucket catch
-      if (d.y + RAIN_R > BUCKET_Y) {
-        var caught = false;
-        for (var bi = 0; bi < bucketX.length; bi++) {
-          var bLeft = bucketX[bi] - BUCKET_W / 2;
-          var bRight = bucketX[bi] + BUCKET_W / 2;
-          if (d.x > bLeft && d.x < bRight) {
-            if (bucketColors[bi] === d.color) {
-              collected[d.color]++;
-              feedbackOk = true; feedback = 0.2;
-              game.audio.play('se_success', 0.5);
-              for (var pi = 0; pi < 4; pi++) {
-                var ang = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI;
-                particles.push({ x: d.x, y: BUCKET_Y, vx: Math.cos(ang) * 120, vy: Math.sin(ang) * 120 - 60, life: 0.4, color: d.color });
-              }
-            } else {
-              wrong++;
-              feedbackOk = false; feedback = 0.3;
-              game.audio.play('se_failure', 0.4);
-              if (wrong >= MAX_WRONG && !done) { done = true; setTimeout(function() { game.end.failure(); }, 400); }
-            }
-            caught = true;
-            break;
-          }
-        }
-        if (!caught) wrong++; // missed entirely
-        drops.splice(di, 1);
-        continue;
-      }
-      if (d.y > H + 40) { drops.splice(di, 1); wrong++; }
-    }
-
-    // Check win
-    var allDone = collected[0] >= NEEDED_EACH && collected[1] >= NEEDED_EACH && collected[2] >= NEEDED_EACH;
-    if (allDone && !done) {
-      done = true;
-      game.audio.play('se_success');
-      setTimeout(function() { game.end.success((collected[0] + collected[1] + collected[2]) * 10 + Math.ceil(timeLeft) * 20); }, 400);
-    }
-
-    for (var pi2 = 0; pi2 < particles.length; pi2++) {
-      particles[pi2].x += particles[pi2].vx * dt; particles[pi2].y += particles[pi2].vy * dt;
-      particles[pi2].vy += 300 * dt; particles[pi2].life -= dt;
-    }
-    particles = particles.filter(function(p) { return p.life > 0; });
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Rain drops (falling)
-    for (var di2 = 0; di2 < drops.length; di2++) {
-      var d2 = drops[di2];
-      var dCol = C.rain[d2.color];
-      game.draw.circle(d2.x, d2.y, RAIN_R, dCol, 0.9);
-      game.draw.circle(d2.x, d2.y - RAIN_R * 0.5, RAIN_R * 0.4, '#fff', 0.3);
-      // Trailing streaks
-      for (var si = 1; si <= 3; si++) {
-        game.draw.circle(d2.x, d2.y - si * 20, RAIN_R * (1 - si * 0.25), dCol, 0.15 * (1 - si / 4));
-      }
-    }
-
-    // Buckets
-    for (var bi2 = 0; bi2 < bucketX.length; bi2++) {
-      var bx2 = bucketX[bi2];
-      var bc = bucketColors[bi2];
-      var bCol = C.bucket[bc];
-      var bHi = C.bucketHi[bc];
-      var rCol = C.rain[bc];
-
-      // Bucket body
-      game.draw.rect(bx2 - BUCKET_W / 2, BUCKET_Y, BUCKET_W, BUCKET_H, bCol, 0.9);
-      game.draw.rect(bx2 - BUCKET_W / 2, BUCKET_Y, BUCKET_W, 12, bHi, 0.7);
-      // Water level
-      var fillRatio = Math.min(1, collected[bc] / NEEDED_EACH);
-      var fillH = (BUCKET_H - 16) * fillRatio;
-      if (fillH > 0) {
-        game.draw.rect(bx2 - BUCKET_W / 2 + 6, BUCKET_Y + BUCKET_H - fillH - 6, BUCKET_W - 12, fillH, rCol, 0.7);
-      }
-      // Color indicator
-      game.draw.circle(bx2, BUCKET_Y - 36, 28, rCol, 0.85);
-      // Count
-      game.draw.text(collected[bc] + '/' + NEEDED_EACH, bx2, BUCKET_Y + BUCKET_H + 44, { size: 36, color: bHi });
-    }
-
-    // Particles
-    for (var pp = 0; pp < particles.length; pp++) {
-      var part = particles[pp];
-      game.draw.circle(part.x, part.y, 8 * part.life * 2, C.rain[part.color], part.life);
-    }
-
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? C.correct : C.wrong, feedback * 0.1);
-    }
-
-    // Wrong counter
-    var wrongRatio = wrong / MAX_WRONG;
-    game.draw.rect(W - 160, H * 0.1, 120, 32, C.wrong, wrongRatio * 0.6 + 0.1);
-    game.draw.text('NG: ' + wrong, W - 100, H * 0.1 + 16, { size: 32, color: '#fff' });
-
-    game.draw.text('← タップ  タップ →', W / 2, H * 0.93, { size: 38, color: C.ui });
-
-    var ratio = Math.max(0, timeLeft / 50);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.rain[2] : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('NG ' + wrong + '/' + MAX_WRONG, W / 2, 168, 40, C.a);
+    scanlines();
   });
 
-  game.onStart(function() { game.audio.bgm('bgm_main', 0.3); spawnDrop(); });
+  game.onStart(function() {
+    game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
+  });
 })(game);
