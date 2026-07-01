@@ -1,180 +1,141 @@
 // 050-color-flood.js
 // カラーフラッド — 左上から色を塗り広げて盤面を制覇する洪水パズル
-// 操作: スワイプ上下左右で次の色を選択（5色循環）
-// 成功: 25手以内に全マス同色  失敗: 25手超過
+// 操作: スワイプ上下左右で次の色を選択（3色循環）
+// 成功: 10手以内に全マス同色  失敗: 10手超過
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6'];
-  var COLOR_NAMES = ['赤', 'オレンジ', '黄', '緑', '青'];
-  var BG = '#0a0f1a';
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var COLORS = [C.a, C.b, C.e];   // 修正2: 5色 → 3色
 
-  var COLS = 8;
-  var ROWS = 8;
-  var CELL = 100;
-  var GRID_X = (W - COLS * CELL) / 2;
-  var GRID_Y = H * 0.25;
+  var GAME_TITLE  = 'COLOR FLOOD';
+  var HOW_TO_PLAY = 'SWIPE TO PICK COLOR, FLOOD ALL';
+  var COLS = 4, ROWS = 4, CELL = 200, MAX_MOVES = 10;   // 修正2: 8x8/25手 → 4x4/10手
+  var GRID_X = (W - COLS * CELL) / 2, GRID_Y = (H - ROWS * CELL) / 2;   // 修正1: 縦中央
 
-  var grid = [];
-  var flooded = []; // boolean grid: is this cell part of flood?
-  var currentColor = 0;
-  var moves = 0;
-  var maxMoves = 25;
-  var done = false;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  var grid, flooded, currentColor, moves, done;
+
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
 
   function initGrid() {
-    grid = [];
-    for (var r = 0; r < ROWS; r++) {
-      var row = [];
-      for (var c = 0; c < COLS; c++) {
-        row.push(Math.floor(Math.random() * COLORS.length));
-      }
-      grid.push(row);
-    }
-    flooded = [];
-    for (var r2 = 0; r2 < ROWS; r2++) {
-      var frow = [];
-      for (var c2 = 0; c2 < COLS; c2++) {
-        frow.push(false);
-      }
-      flooded.push(frow);
-    }
-    // Flood starts from top-left
-    flooded[0][0] = true;
-    currentColor = grid[0][0];
-    // Expand initial flood region (all connected same-color from top-left)
-    expandFlood(currentColor, true);
+    grid = []; flooded = [];
+    for (var r = 0; r < ROWS; r++) { var row = [], frow = []; for (var c = 0; c < COLS; c++) { row.push(Math.floor(Math.random() * COLORS.length)); frow.push(false); } grid.push(row); flooded.push(frow); }
+    flooded[0][0] = true; currentColor = grid[0][0]; expandFlood(currentColor); moves = 0; done = false;
   }
 
-  function expandFlood(newColor, initial) {
-    // BFS flood fill from all currently flooded cells
+  function expandFlood(newColor) {
     var queue = [];
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        if (flooded[r][c]) {
-          grid[r][c] = newColor;
-          queue.push([r, c]);
-        }
-      }
-    }
-    var visited = [];
-    for (var r2 = 0; r2 < ROWS; r2++) {
-      visited.push([]);
-      for (var c2 = 0; c2 < COLS; c2++) visited[r2].push(false);
-    }
-    var dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) if (flooded[r][c]) { grid[r][c] = newColor; queue.push([r, c]); }
+    var dirs = [[0, 1], [0, -1], [1, 0], [-1, 0]];
     while (queue.length > 0) {
       var cur = queue.shift();
-      var cr = cur[0], cc = cur[1];
-      for (var d = 0; d < dirs.length; d++) {
-        var nr = cr + dirs[d][0];
-        var nc = cc + dirs[d][1];
-        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && !flooded[nr][nc] && !visited[nr][nc]) {
-          if (grid[nr][nc] === newColor) {
-            flooded[nr][nc] = true;
-            visited[nr][nc] = true;
-            queue.push([nr, nc]);
-          }
-        }
+      for (var d = 0; d < 4; d++) {
+        var nr = cur[0] + dirs[d][0], nc = cur[1] + dirs[d][1];
+        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && !flooded[nr][nc] && grid[nr][nc] === newColor) { flooded[nr][nc] = true; queue.push([nr, nc]); }
       }
     }
     currentColor = newColor;
   }
+  function countFlooded() { var n = 0; for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) if (flooded[r][c]) n++; return n; }
 
-  function countFlooded() {
-    var count = 0;
-    for (var r = 0; r < ROWS; r++)
-      for (var c = 0; c < COLS; c++)
-        if (flooded[r][c]) count++;
-    return count;
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? Math.max(100, (MAX_MOVES - moves) * 200 + 300) : countFlooded() * 30;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
-
-  function isComplete() {
-    return countFlooded() === ROWS * COLS;
-  }
-
-  // Preview: which cells would be newly flooded with this color?
-  var previewColor = -1;
 
   game.onSwipe(function(dir) {
-    if (done) return;
-    var nextColor = currentColor;
-    if (dir === 'up') nextColor = (currentColor + 1) % COLORS.length;
-    if (dir === 'down') nextColor = (currentColor + COLORS.length - 1) % COLORS.length;
-    if (dir === 'left') nextColor = (currentColor + COLORS.length - 1) % COLORS.length;
-    if (dir === 'right') nextColor = (currentColor + 1) % COLORS.length;
-
-    if (nextColor === currentColor) return; // no change
-
-    moves++;
-    game.audio.play('se_tap', 0.4);
-    expandFlood(nextColor, false);
-
-    if (isComplete()) {
-      done = true;
-      game.audio.play('se_success');
-      var bonus = Math.max(0, maxMoves - moves);
-      setTimeout(function() { game.end.success(200 + bonus * 20); }, 400);
-    } else if (moves >= maxMoves && !done) {
-      done = true;
-      game.audio.play('se_failure');
-      setTimeout(function() { game.end.failure(); }, 400);
-    }
+    if (state !== S.PLAYING || done) return;
+    var next = currentColor;
+    if (dir === 'up' || dir === 'right') next = (currentColor + 1) % COLORS.length;
+    if (dir === 'down' || dir === 'left') next = (currentColor + COLORS.length - 1) % COLORS.length;
+    if (next === currentColor) return;
+    moves++; game.audio.play('se_tap', 0.4); expandFlood(next);
+    if (countFlooded() === ROWS * COLS) finish(true);
+    else if (moves >= MAX_MOVES) finish(false);
   });
 
-  game.onUpdate(function(dt) {
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, BG);
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGrid(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
+  });
 
-    // Grid
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        var gx = GRID_X + c * CELL;
-        var gy = GRID_Y + r * CELL;
-        var col = COLORS[grid[r][c]];
-        var isFlood = flooded[r][c];
-        game.draw.rect(gx + 2, gy + 2, CELL - 4, CELL - 4, col, isFlood ? 1.0 : 0.5);
-        if (isFlood) {
-          game.draw.rect(gx + 6, gy + 6, CELL - 12, 16, '#fff', 0.15);
-        }
-      }
+  // 世界観: インクの領土制圧。左上から色を流し込み盤面を一色に染める。
+  function background() {
+    game.draw.clear('#0a0018');
+    var fx = GRID_X - 32, fy = GRID_Y - 32, fw = COLS * CELL + 64, fh = ROWS * CELL + 64;
+    game.draw.rect(fx, fy, fw, fh, '#12102a');
+    game.draw.rect(fx + 12, fy + 12, fw - 24, fh - 24, '#05000f');
+    txt('INK FLOOD', W / 2, fy - 4, 36, C.b);
+  }
+
+  function drawGrid() {
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      var gx = GRID_X + c * CELL, gy = GRID_Y + r * CELL, col = COLORS[grid[r][c]], fl = flooded[r][c];
+      game.draw.rect(gx + 4, gy + 4, CELL - 8, CELL - 8, col, fl ? 1 : 0.45);
+      if (fl) game.draw.rect(gx + 12, gy + 12, CELL - 24, 16, C.g, 0.2);
     }
-
-    // Flood border glow
-    game.draw.rect(GRID_X - 6, GRID_Y - 6, COLS * CELL + 12, ROWS * CELL + 12, COLORS[currentColor], 0.15);
-
-    // Moves left
-    var movesLeft = maxMoves - moves;
-    var ratio = Math.max(0, movesLeft / maxMoves);
-    game.draw.rect(0, 0, W, 72, BG);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.4 ? '#3b82f6' : '#ef4444');
-    game.draw.text('残り ' + movesLeft + ' 手', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Flood count
-    var fc = countFlooded();
-    game.draw.text(fc + ' / ' + (ROWS * COLS), W / 2, 140, { size: 52, color: '#94a3b8', bold: true });
-
-    // Color selector
-    var selY = GRID_Y + ROWS * CELL + 100;
+    // 色セレクタ
     for (var ci = 0; ci < COLORS.length; ci++) {
-      var cx = W / 2 + (ci - 2) * 140;
-      var isCurrent = ci === currentColor;
-      game.draw.circle(cx, selY, isCurrent ? 52 : 40, COLORS[ci], isCurrent ? 1.0 : 0.5);
-      if (isCurrent) {
-        game.draw.circle(cx, selY, 36, '#fff', 0.3);
-        game.draw.rect(cx - 28, selY + 56, 56, 10, COLORS[ci]);
+      var sx = W / 2 + (ci - (COLORS.length - 1) / 2) * 160, sel = ci === currentColor;
+      game.draw.rect(snap(sx) - (sel ? 56 : 40), snap(GRID_Y + ROWS * CELL + 60), sel ? 112 : 80, sel ? 112 : 80, COLORS[ci], sel ? 1 : 0.5);
+    }
+  }
+
+  game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!grid) initGrid();
+      background();
+      drawGrid();
+      txt(GAME_TITLE,  W / 2, H * 0.16, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.23, 36, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.78, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.85, 52, C.g);
       }
+      txt('INSERT COIN', W / 2, H * 0.92, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
     }
 
-    // Guide
-    game.draw.text('スワイプで色選択→洪水！', W / 2, H - 200, { size: 48, color: '#475569' });
-    game.draw.text('全マスを同じ色に！', W / 2, H - 140, { size: 40, color: '#334155' });
+    // PLAYING
+    background();
+    drawGrid();
+    // 手数バー
+    var blocks = MAX_MOVES, left = MAX_MOVES - moves;
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 100, 20, 88, 40, i < left ? C.b : '#330011');
+    txt('MOVES LEFT ' + left, W / 2, 96, 44, C.c);
+    txt(countFlooded() + ' / ' + (ROWS * COLS), W / 2, H - 100, 52, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
     initGrid();
   });
 })(game);
