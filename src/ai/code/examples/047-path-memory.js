@@ -1,216 +1,149 @@
 // 047-path-memory.js
 // パスメモリー — 光ったルートを記憶して同じ経路をスワイプで再現
 // 操作: 表示されたスワイプシーケンスを再現する
-// 成功: 4ラウンドクリア  失敗: 1ミスで即失敗 or 25秒
+// 成功: 1ラウンドクリア  失敗: 1ミスで即失敗 or 25秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#080c10',
-    path:    '#1e3a5f',
-    pathHi:  '#3b82f6',
-    arrow:   '#60a5fa',
-    arrowHi: '#bfdbfe',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    ui:      '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
+  var GAME_TITLE  = 'PATH MEMORY';
+  var HOW_TO_PLAY = 'REPEAT THE ROUTE BY SWIPING';
+  var MAX_TIME = 25;
+  var NEEDED = 1;            // 修正2: 4 → 1
+  var SEQ_BASE = 2;         // 修正2: 基本長 3 → 2
   var DIRS = ['up', 'down', 'left', 'right'];
   var ARROWS = { up: '↑', down: '↓', left: '←', right: '→' };
-  var DIR_COLORS = { up: '#818cf8', down: '#fb923c', left: '#34d399', right: '#f472b6' };
+  var ARROW_Y = H * 0.5, ARROW_GAP = 200;
+  var SHOW_STEP_TIME = 0.55, SHOW_GAP = 0.15;
 
-  var round = 0;
-  var needed = 4;
-  var timeLeft = 25;
-  var done = false;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var sequence = [];
-  var playerSeq = [];
-  var phase = 'show';    // 'show' | 'input' | 'feedback'
-  var showIdx = 0;
-  var showTimer = 0;
-  var SHOW_STEP_TIME = 0.55;
-  var SHOW_GAP = 0.15;
-  var isShowOn = false;
-  var feedbackOk = false;
-  var feedbackTimer = 0;
+  var round, sequence, playerSeq, phase, showIdx, showTimer, isShowOn, feedbackOk, feedbackTimer, timeLeft, done;
 
-  // Arrow positions for the display
-  var ARROW_Y = H * 0.45;
-  var ARROW_GAP = 160;
-
-  function buildSequence() {
-    // Round 1: 3, Round 2: 4, Round 3: 5, Round 4: 6
-    var len = 3 + round;
-    var seq = [];
-    for (var i = 0; i < len; i++) {
-      seq.push(DIRS[Math.floor(Math.random() * 4)]);
-    }
-    return seq;
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(px, py, r, color, alpha) {
+    var step = 8; px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step)
+        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
 
-  function startRound() {
-    sequence = buildSequence();
-    playerSeq = [];
-    showIdx = 0;
-    showTimer = 0.4; // lead-in
-    isShowOn = false;
-    phase = 'show';
+  function buildSequence() { var len = SEQ_BASE + round, s = []; for (var i = 0; i < len; i++) s.push(DIRS[Math.floor(Math.random() * 4)]); return s; }
+  function startRound() { sequence = buildSequence(); playerSeq = []; showIdx = 0; showTimer = 0.4; isShowOn = false; phase = 'show'; }
+  function initGame() { round = 0; timeLeft = MAX_TIME; done = false; feedbackOk = false; feedbackTimer = 0; startRound(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (round * 400 + Math.ceil(timeLeft) * 40) : round * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onSwipe(function(dir) {
-    if (done || phase !== 'input') return;
-
+    if (state !== S.PLAYING || done || phase !== 'input') return;
     var expected = sequence[playerSeq.length];
-    playerSeq.push(dir);
-    game.audio.play('se_tap', 0.6);
+    playerSeq.push(dir); game.audio.play('se_tap', 0.6);
+    if (dir !== expected) { feedbackOk = false; feedbackTimer = 0.8; phase = 'feedback'; finish(false); return; }
+    if (playerSeq.length >= sequence.length) { round++; feedbackOk = true; feedbackTimer = 0.7; phase = 'feedback'; if (round >= NEEDED) finish(true); }
+  });
 
-    if (dir !== expected) {
-      feedbackOk = false;
-      feedbackTimer = 0.8;
-      phase = 'feedback';
-      game.audio.play('se_failure', 0.7);
-      done = true;
-      setTimeout(function() { game.end.failure(); }, 900);
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
+  });
+
+  // 世界観: 神経回路のルート再現。光ったノードの順路を辿る。
+  function background() {
+    game.draw.clear('#0a0018');
+    for (var gy = 200; gy < H - 200; gy += 96) game.draw.rect(0, gy, W, 2, C.d, 0.2);
+    txt('NEURAL ROUTE', W / 2, H * 0.12, 36, C.b);
+  }
+
+  function drawSeq() {
+    var seqLen = sequence.length, startX = W / 2 - (seqLen - 1) / 2 * ARROW_GAP;
+    for (var s = 0; s < seqLen; s++) {
+      var ax = startX + s * ARROW_GAP, dir = sequence[s];
+      if (phase === 'show') {
+        if (s < showIdx) { drawPixelCircle(ax, ARROW_Y, 64, '#1a0a2a', 1); txt(ARROWS[dir], ax, ARROW_Y, 56, C.d); }
+        else if (s === showIdx && isShowOn) { drawPixelCircle(ax, ARROW_Y, 64, C.e, 1); txt(ARROWS[dir], ax, ARROW_Y, 72, C.g); }
+        else drawPixelCircle(ax, ARROW_Y, 64, '#1a0a2a', 1);
+      } else if (phase === 'input') {
+        if (s < playerSeq.length) { var ok = playerSeq[s] === sequence[s]; drawPixelCircle(ax, ARROW_Y, 64, ok ? C.b : C.a, 1); txt(ARROWS[playerSeq[s]], ax, ARROW_Y, 72, C.g); }
+        else if (s === playerSeq.length && Math.floor(game.time.elapsed * 6) % 2 === 0) drawPixelCircle(ax, ARROW_Y, 64, C.c, 0.6);
+        else drawPixelCircle(ax, ARROW_Y, 64, '#1a0a2a', 1);
+      } else { drawPixelCircle(ax, ARROW_Y, 64, feedbackOk ? C.b : C.a, 0.5); txt(ARROWS[dir], ax, ARROW_Y, 56, feedbackOk ? C.b : C.a); }
+    }
+  }
+
+  game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!sequence) initGame();
+      background();
+      txt(ARROWS[DIRS[Math.floor(game.time.elapsed) % 4]], W / 2, ARROW_Y, 200, C.e);
+      txt(GAME_TITLE,  W / 2, H * 0.2, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.28, 40, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.78, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.85, 52, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.92, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
       return;
     }
 
-    if (playerSeq.length >= sequence.length) {
-      round++;
-      feedbackOk = true;
-      feedbackTimer = 0.7;
-      phase = 'feedback';
-      game.audio.play('se_success', 0.8);
-      if (round >= needed) {
-        done = true;
-        setTimeout(function() {
-          game.end.success(round * 40 + Math.ceil(timeLeft) * 5);
-        }, 800);
-      }
-    }
-  });
-
-  game.onUpdate(function(dt) {
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
-
-    if (phase === 'show') {
-      showTimer -= dt;
-      if (showTimer <= 0) {
-        if (isShowOn) {
-          isShowOn = false;
-          showTimer = SHOW_GAP;
-          showIdx++;
-          if (showIdx >= sequence.length) {
-            // All shown — switch to input after brief pause
-            setTimeout(function() { phase = 'input'; }, 300);
-          }
-        } else {
-          isShowOn = true;
-          showTimer = SHOW_STEP_TIME;
-          game.audio.play('se_tap', 0.5);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (phase === 'show') {
+        showTimer -= dt;
+        if (showTimer <= 0) {
+          if (isShowOn) { isShowOn = false; showTimer = SHOW_GAP; showIdx++; if (showIdx >= sequence.length) phase = 'input'; }
+          else { isShowOn = true; showTimer = SHOW_STEP_TIME; game.audio.play('se_tap', 0.5); }
         }
-      }
-    } else if (phase === 'feedback') {
-      feedbackTimer -= dt;
-      if (feedbackTimer <= 0 && !done) startRound();
+      } else if (phase === 'feedback') { feedbackTimer -= dt; if (feedbackTimer <= 0 && !done) startRound(); }
     }
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 25);
-    game.draw.rect(0, 0, W, 72, '#080c10');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#1d4ed8' : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Round pips
-    for (var r = 0; r < needed; r++) {
-      var rx = W / 2 + (r - (needed-1)/2) * 80;
-      game.draw.circle(rx, 128, 26, r < round ? C.correct : '#1a2030');
-      if (r < round) game.draw.circle(rx, 128, 14, '#86efac', 0.5);
-    }
-
-    // Sequence display
-    var visibleLen = phase === 'input' ? playerSeq.length : (isShowOn ? showIdx + 1 : showIdx);
-    var seqLen = sequence.length;
-    var startX = W / 2 - (seqLen - 1) / 2 * ARROW_GAP;
-
-    for (var s = 0; s < seqLen; s++) {
-      var ax = startX + s * ARROW_GAP;
-      var ay = ARROW_Y;
-      var dir2 = sequence[s];
-      var dirColor = DIR_COLORS[dir2];
-
-      if (phase === 'show') {
-        if (s < showIdx) {
-          // Already shown, dimmed
-          game.draw.circle(ax, ay, 54, '#0a1428');
-          game.draw.text(ARROWS[dir2], ax, ay, { size: 56, color: '#1e3a5f' });
-        } else if (s === showIdx && isShowOn) {
-          // Currently showing
-          game.draw.circle(ax, ay, 64, dirColor, 0.3);
-          game.draw.circle(ax, ay, 54, dirColor);
-          game.draw.text(ARROWS[dir2], ax, ay, { size: 72, color: '#fff', bold: true });
-        } else {
-          game.draw.circle(ax, ay, 54, '#0a1428');
-        }
-      } else if (phase === 'input') {
-        if (s < playerSeq.length) {
-          // Player has entered this one
-          var isMatch = playerSeq[s] === sequence[s];
-          game.draw.circle(ax, ay, 54, isMatch ? C.correct : C.wrong);
-          game.draw.text(ARROWS[playerSeq[s]], ax, ay, { size: 72, color: '#fff', bold: true });
-        } else if (s === playerSeq.length) {
-          // Current to enter (pulsing)
-          var pulse = 0.3 + 0.3 * Math.sin(game.time.elapsed * 8);
-          game.draw.circle(ax, ay, 60, C.arrowHi, pulse);
-          game.draw.circle(ax, ay, 54, C.path);
-        } else {
-          game.draw.circle(ax, ay, 54, '#0a1428');
-        }
-      } else {
-        // Feedback
-        game.draw.circle(ax, ay, 54, feedbackOk ? C.correct : C.wrong, 0.4);
-        game.draw.text(ARROWS[dir2], ax, ay, { size: 56, color: feedbackOk ? C.correct : C.wrong });
-      }
-    }
-
-    // Phase label
-    if (phase === 'show') {
-      game.draw.text(showIdx < seqLen ? '覚えろ！' : '...', W / 2, ARROW_Y - 120, {
-        size: 60, color: C.arrowHi, bold: true
-      });
-    } else if (phase === 'input') {
-      game.draw.text(playerSeq.length + ' / ' + seqLen, W / 2, ARROW_Y - 120, {
-        size: 52, color: '#a5b4fc', bold: true
-      });
-      game.draw.text('再現しろ！', W / 2, ARROW_Y + 140, { size: 56, color: C.arrowHi, bold: true });
-    } else if (phase === 'feedback') {
-      if (feedbackOk) {
-        game.draw.text('完璧！', W / 2, ARROW_Y + 140, { size: 88, color: C.correct, bold: true });
-      } else {
-        game.draw.text('ミス！', W / 2, ARROW_Y + 140, { size: 88, color: C.wrong, bold: true });
-      }
-    }
-
-    // Guide
-    game.draw.text(phase === 'input' ? 'スワイプで再現！' : '光る矢印を覚えろ！', W / 2, H - 200, { size: 52, color: C.ui });
+    background();
+    drawSeq();
+    var label = phase === 'show' ? 'WATCH!' : (phase === 'input' ? (playerSeq.length + ' / ' + sequence.length) : (feedbackOk ? 'PERFECT!' : 'MISS!'));
+    txt(label, W / 2, ARROW_Y - 140, 56, C.c);
+    timeBar();
+    txt('SCORE ' + String(round * 100).padStart(6, '0'), W / 2, 96, 44, C.g);
+    txt(phase === 'input' ? 'SWIPE THE ROUTE!' : '...', W / 2, H - 100, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
-    startRound();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
