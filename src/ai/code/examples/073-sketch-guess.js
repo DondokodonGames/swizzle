@@ -1,260 +1,153 @@
 // 073-sketch-guess.js
 // スケッチゲス — 少しずつ現れるスケッチが何かを当てる早押しクイズ
 // 操作: 3択からタップで回答
-// 成功: 5問正解  失敗: 3問不正解 or 25秒
+// 成功: 1問正解  失敗: 3問不正解 or 25秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#060a10',
-    sketch:  '#e2e8f0',
-    card:    '#0f172a',
-    cardHi:  '#1e293b',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    ui:      '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Each puzzle: draw instructions + 3 answers (1 correct)
+  var GAME_TITLE  = 'SKETCH GUESS';
+  var HOW_TO_PLAY = 'GUESS THE DRAWING (3 CHOICES)';
+  var MAX_TIME = 25;
+  var NEEDED = 1;           // 修正2: 5 → 1
+  var MAX_WRONG = 3, REVEAL_TIME = 3.0;
+  var SCX = W / 2, SCY = H * 0.4, BTN_Y = H * 0.72;
+
   var PUZZLES = [
-    {
-      answer: 0,
-      choices: ['太陽', '月', '星'],
-      draw: function(t, cx, cy) {
-        // Sun: big circle with rays
-        game.draw.circle(cx, cy, 60 * t, '#fbbf24', t);
-        for (var i = 0; i < 8; i++) {
-          var ang = (i / 8) * Math.PI * 2;
-          var r0 = 70, r1 = 90 + 20 * t;
-          game.draw.line(cx + Math.cos(ang) * r0 * t, cy + Math.sin(ang) * r0 * t,
-                        cx + Math.cos(ang) * r1 * t, cy + Math.sin(ang) * r1 * t, '#fbbf24', 5 * t);
-        }
-      }
-    },
-    {
-      answer: 1,
-      choices: ['魚', 'クジラ', 'イルカ'],
-      draw: function(t, cx, cy) {
-        // Whale body (horizontal oval)
-        for (var r = 0; r < 80; r++) {
-          var rw = (1 - Math.pow((r - 40) / 40, 2)) * 140 * t;
-          game.draw.rect(cx - rw, cy - 80 * t + r * 2 * t, rw * 2, 2 * t, '#3b82f6', 0.9 * t);
-        }
-        // Tail
-        game.draw.line(cx - 130 * t, cy, cx - 180 * t, cy - 60 * t, '#3b82f6', 8 * t);
-        game.draw.line(cx - 130 * t, cy, cx - 180 * t, cy + 60 * t, '#3b82f6', 8 * t);
-        // Eye
-        game.draw.circle(cx + 60 * t, cy - 20 * t, 10 * t, '#fff', t);
-      }
-    },
-    {
-      answer: 2,
-      choices: ['自動車', '飛行機', '電車'],
-      draw: function(t, cx, cy) {
-        // Train: rectangular body with windows
-        game.draw.rect(cx - 130 * t, cy - 60 * t, 260 * t, 100 * t, '#1d4ed8', t);
-        // Windows
-        for (var w = 0; w < 3; w++) {
-          game.draw.rect(cx - 100 * t + w * 84 * t, cy - 44 * t, 56 * t, 40 * t, '#bfdbfe', t * 0.9);
-        }
-        // Wheels
-        game.draw.circle(cx - 70 * t, cy + 44 * t, 24 * t, '#374151', t);
-        game.draw.circle(cx + 70 * t, cy + 44 * t, 24 * t, '#374151', t);
-        // Front nose
-        game.draw.rect(cx + 130 * t, cy - 60 * t, 40 * t, 100 * t, '#1e40af', t);
-      }
-    },
-    {
-      answer: 0,
-      choices: ['リンゴ', 'バナナ', 'ブドウ'],
-      draw: function(t, cx, cy) {
-        // Apple: red circle with leaf
-        game.draw.circle(cx, cy + 10 * t, 80 * t, '#ef4444', t);
-        game.draw.circle(cx - 20 * t, cy - 20 * t, 28 * t, '#ef4444', t);
-        // Leaf
-        game.draw.line(cx, cy - 80 * t, cx, cy - 120 * t, '#22c55e', 6 * t);
-        game.draw.circle(cx + 20 * t, cy - 100 * t, 20 * t, '#22c55e', t);
-        // Shine
-        game.draw.circle(cx + 24 * t, cy - 24 * t, 16 * t, '#fff', 0.5 * t);
-      }
-    },
-    {
-      answer: 1,
-      choices: ['テント', '山', '三角定規'],
-      draw: function(t, cx, cy) {
-        // Mountain: triangle
-        for (var row = 0; row < 140; row++) {
-          var rw = (row / 140) * 220 * t;
-          game.draw.rect(cx - rw, cy - 140 * t + row * 2 * t, rw * 2, 2 * t + 1, '#475569', t * 0.9);
-        }
-        // Snow cap
-        for (var sr = 0; sr < 35; sr++) {
-          var srw = (sr / 35) * 56 * t;
-          game.draw.rect(cx - srw, cy - 140 * t + sr * 2 * t, srw * 2, 2 * t + 1, '#fff', t);
-        }
-      }
-    },
-    {
-      answer: 2,
-      choices: ['時計', 'コンパス', '虫眼鏡'],
-      draw: function(t, cx, cy) {
-        // Magnifying glass
-        game.draw.circle(cx - 20 * t, cy - 20 * t, 70 * t, '#94a3b8', 0.4 * t);
-        game.draw.circle(cx - 20 * t, cy - 20 * t, 60 * t, '#1e3a5f', t);
-        game.draw.circle(cx - 20 * t, cy - 20 * t, 60 * t, '#bfdbfe', 0.15 * t);
-        // Handle
-        game.draw.line(cx + 24 * t, cy + 24 * t, cx + 90 * t, cy + 90 * t, '#94a3b8', 18 * t);
-        game.draw.circle(cx - 32 * t, cy - 32 * t, 16 * t, '#fff', 0.4 * t);
-      }
-    }
+    { answer: 0, choices: ['SUN', 'MOON', 'STAR'], draw: function(t) {
+        game.draw.rect(SCX - 60 * t, SCY - 60 * t, 120 * t, 120 * t, C.c);
+        for (var i = 0; i < 8; i++) { var a = i / 8 * Math.PI * 2; game.draw.line(SCX + Math.cos(a) * 80 * t, SCY + Math.sin(a) * 80 * t, SCX + Math.cos(a) * 120 * t, SCY + Math.sin(a) * 120 * t, C.d, 6 * t); } } },
+    { answer: 2, choices: ['CAR', 'PLANE', 'TRAIN'], draw: function(t) {
+        game.draw.rect(SCX - 130 * t, SCY - 60 * t, 260 * t, 100 * t, C.e);
+        for (var w = 0; w < 3; w++) game.draw.rect(SCX - 100 * t + w * 84 * t, SCY - 44 * t, 56 * t, 40 * t, C.g);
+        game.draw.rect(SCX - 90 * t, SCY + 40 * t, 40 * t, 40 * t, C.d); game.draw.rect(SCX + 50 * t, SCY + 40 * t, 40 * t, 40 * t, C.d); } },
+    { answer: 0, choices: ['APPLE', 'GRAPE', 'LEMON'], draw: function(t) {
+        game.draw.rect(SCX - 80 * t, SCY - 60 * t, 160 * t, 150 * t, C.a);
+        game.draw.rect(SCX - 8 * t, SCY - 120 * t, 16 * t, 60 * t, C.f); game.draw.rect(SCX + 8 * t, SCY - 120 * t, 40 * t, 24 * t, C.b); } },
+    { answer: 1, choices: ['TENT', 'MOUNTAIN', 'ARROW'], draw: function(t) {
+        for (var row = 0; row < 140; row += 8) { var rw = row / 140 * 220 * t; game.draw.rect(SCX - rw, SCY - 140 * t + row * t, rw * 2, 8 * t + 1, '#888888'); }
+        for (var sr = 0; sr < 40; sr += 8) { var srw = sr / 40 * 56 * t; game.draw.rect(SCX - srw, SCY - 140 * t + sr * t, srw * 2, 8 * t + 1, C.g); } } }
   ];
 
-  var currentPuzzle = 0;
-  var revealTimer = 0;
-  var REVEAL_TIME = 3.0; // seconds to fully reveal
-  var phase = 'reveal';  // 'reveal' | 'choose' | 'feedback'
-  var selectedAnswer = -1;
-  var feedbackTimer = 0;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var score = 0;
-  var needed = 5;
-  var wrongs = 0;
-  var maxWrongs = 3;
-  var timeLeft = 25;
-  var done = false;
+  var puzzles, cur, revealTimer, phase, selected, feedbackTimer, score, wrongs, timeLeft, done;
 
-  var shuffledPuzzles = [];
-
-  function initGame() {
-    // Shuffle puzzles
-    shuffledPuzzles = PUZZLES.slice();
-    for (var s = shuffledPuzzles.length - 1; s > 0; s--) {
-      var r = Math.floor(Math.random() * (s + 1));
-      var tmp = shuffledPuzzles[s]; shuffledPuzzles[s] = shuffledPuzzles[r]; shuffledPuzzles[r] = tmp;
-    }
-    currentPuzzle = 0;
-    revealTimer = 0;
-    phase = 'reveal';
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
 
-  function nextPuzzle() {
-    currentPuzzle = (currentPuzzle + 1) % shuffledPuzzles.length;
-    revealTimer = 0;
-    phase = 'reveal';
-    selectedAnswer = -1;
+  function initGame() {
+    puzzles = PUZZLES.slice();
+    for (var s = puzzles.length - 1; s > 0; s--) { var r = Math.floor(Math.random() * (s + 1)); var t = puzzles[s]; puzzles[s] = puzzles[r]; puzzles[r] = t; }
+    cur = 0; revealTimer = 0; phase = 'reveal'; selected = -1; feedbackTimer = 0; score = 0; wrongs = 0; timeLeft = MAX_TIME; done = false;
+  }
+  function nextPuzzle() { cur = (cur + 1) % puzzles.length; revealTimer = 0; phase = 'reveal'; selected = -1; }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done || phase !== 'choose') return;
-    // Three buttons at bottom
     for (var i = 0; i < 3; i++) {
       var bx = W / 2 + (i - 1) * 300;
-      var by = H * 0.78;
-      if (Math.abs(x - bx) < 120 && y >= by && y <= by + 160) {
-        selectedAnswer = i;
-        var puzz = shuffledPuzzles[currentPuzzle];
-        if (i === puzz.answer) {
-          score++;
-          game.audio.play('se_tap', 0.9);
-        } else {
-          wrongs++;
-          game.audio.play('se_failure', 0.6);
-        }
-        phase = 'feedback';
-        feedbackTimer = 0.7;
-        if (score >= needed && !done) {
-          done = true;
-          game.audio.play('se_success');
-          setTimeout(function() { game.end.success(score * 40 + Math.ceil(timeLeft) * 6); }, 700);
-        } else if (wrongs >= maxWrongs && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 700);
-        }
+      if (Math.abs(x - bx) < 130 && y >= BTN_Y - 20 && y <= BTN_Y + 180) {
+        selected = i; var pz = puzzles[cur];
+        if (i === pz.answer) { score++; game.audio.play('se_tap', 0.9); } else { wrongs++; game.audio.play('se_failure', 0.6); }
+        phase = 'feedback'; feedbackTimer = 0.7;
+        if (score >= NEEDED) finish(true); else if (wrongs >= MAX_WRONG) finish(false);
         break;
       }
     }
   });
 
+  // 世界観: お絵かきクイズ番組。少しずつ現れる線画の正体を3択で当てる。
+  function background() {
+    game.draw.clear('#0a0018');
+    game.draw.rect(100, H * 0.2, W - 200, H * 0.42, '#12102a');
+    game.draw.rect(112, H * 0.2 + 12, W - 224, H * 0.42 - 24, '#05000f');
+    txt('QUIZ SHOW', W / 2, H * 0.16, 34, C.b);
+  }
+
+  function drawButtons() {
+    var pz = puzzles[cur];
+    txt('WHAT IS IT?', W / 2, H * 0.66, 52, C.c);
+    for (var i = 0; i < 3; i++) {
+      var bx = W / 2 + (i - 1) * 300, sel = selected === i;
+      var ok = phase === 'feedback' && i === pz.answer, ng = phase === 'feedback' && sel && i !== pz.answer;
+      var col = ok ? C.b : (ng ? C.a : (sel ? C.d : '#1a0a2a'));
+      game.draw.rect(bx - 120, BTN_Y, 240, 170, col);
+      txt(pz.choices[i], bx, BTN_Y + 90, 44, C.g);
+    }
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!puzzles) initGame();
+      background();
+      puzzles[cur].draw(1);
+      txt(GAME_TITLE,  W / 2, H * 0.68, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.74, 34, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 64, C.a);
+        txt('TAP TO START', W / 2, H * 0.91, 48, C.g);
+      }
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (phase === 'reveal') { revealTimer += dt; if (revealTimer >= REVEAL_TIME) { phase = 'choose'; game.audio.play('se_tap', 0.3); } }
+      else if (phase === 'feedback') { feedbackTimer -= dt; if (feedbackTimer <= 0 && !done) nextPuzzle(); }
     }
-
-    if (phase === 'reveal') {
-      revealTimer += dt;
-      if (revealTimer >= REVEAL_TIME) {
-        phase = 'choose';
-        game.audio.play('se_tap', 0.3);
-      }
-    } else if (phase === 'feedback') {
-      feedbackTimer -= dt;
-      if (feedbackTimer <= 0 && !done) nextPuzzle();
-    }
-
-    var t = Math.min(1, revealTimer / REVEAL_TIME);
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Sketch area
-    var sketchCX = W / 2;
-    var sketchCY = H * 0.42;
-    game.draw.rect(80, H * 0.22, W - 160, H * 0.38, '#030712');
-
-    // Draw current puzzle
-    var puzz = shuffledPuzzles[currentPuzzle];
-    puzz.draw(t, sketchCX, sketchCY);
-
-    // Reveal progress bar
-    if (phase === 'reveal') {
-      game.draw.rect(80, H * 0.63, (W - 160) * t, 12, '#3b82f6', 0.7);
-      game.draw.text('解明中...', W / 2, H * 0.67, { size: 40, color: '#475569' });
-    }
-
-    // Choice buttons
-    if (phase === 'choose' || phase === 'feedback') {
-      game.draw.text('これは何？', W / 2, H * 0.72, { size: 52, color: '#94a3b8', bold: true });
-      for (var i = 0; i < 3; i++) {
-        var bx = W / 2 + (i - 1) * 300;
-        var by = H * 0.78;
-        var choice = puzz.choices[i];
-        var isSelected = selectedAnswer === i;
-        var isCorrect = phase === 'feedback' && i === puzz.answer;
-        var isWrong = phase === 'feedback' && isSelected && i !== puzz.answer;
-        var btnColor = isCorrect ? C.correct : (isWrong ? C.wrong : '#1e293b');
-        game.draw.rect(bx - 120, by, 240, 160, btnColor);
-        game.draw.rect(bx - 108, by + 12, 216, 20, '#fff', 0.06);
-        game.draw.text(choice, bx, by + 80, { size: 52, color: '#fff', bold: isCorrect || isWrong });
-      }
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 25);
-    game.draw.rect(0, 0, W, 72, '#060a10');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#1d4ed8' : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Score
-    for (var s = 0; s < needed; s++) {
-      var sx = W / 2 + (s - (needed - 1) / 2) * 80;
-      game.draw.circle(sx, 128, 28, s < score ? C.correct : '#0f172a');
-    }
-    for (var w = 0; w < maxWrongs; w++) {
-      var wx = W / 2 + (w - 1) * 60;
-      game.draw.circle(wx, 200, 18, w < wrongs ? C.wrong : '#0f172a');
-    }
+    background();
+    var t = Math.min(1, revealTimer / REVEAL_TIME);
+    puzzles[cur].draw(t);
+    if (phase === 'reveal') { game.draw.rect(112, H * 0.63, (W - 224) * t, 12, C.e, 0.7); txt('REVEALING...', W / 2, H * 0.66, 40, '#555577'); }
+    else drawButtons();
+    timeBar();
+    for (var s = 0; s < NEEDED; s++) game.draw.rect(W / 2 - 20, 130, 40, 40, s < score ? C.b : '#113322');
+    for (var w = 0; w < MAX_WRONG; w++) game.draw.rect(W / 2 + (w - 1) * 64 - 20, 190, 40, 40, w < wrongs ? C.a : '#330011');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
     initGame();
   });
 })(game);

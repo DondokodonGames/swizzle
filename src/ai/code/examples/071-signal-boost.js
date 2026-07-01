@@ -1,177 +1,128 @@
 // 071-signal-boost.js
 // シグナルブースト — 弱まる電波信号を連打でブーストし続けるサバイバル
 // 操作: タップで信号を増幅、ただし過剰増幅（100%）はクラッシュ
-// 成功: 30秒間信号を維持  失敗: 信号が0%以下 or 3回100%超過
+// 成功: 8秒間信号を維持  失敗: 信号が0%以下 or 3回100%超過
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#030810',
-    sigLow:   '#ef4444',
-    sigMid:   '#eab308',
-    sigHigh:  '#22c55e',
-    sigOver:  '#ef4444',
-    wave:     '#3b82f6',
-    waveHi:   '#93c5fd',
-    crash:    '#ef4444',
-    ui:       '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var signal = 0.5; // 0.0 to 1.0
-  var BOOST_AMOUNT = 0.08;
-  var DECAY_RATE = 0.04; // per second
-  var SAFE_MAX = 0.85; // above this, getting dangerous
-  var CRASH_MAX = 1.0;
+  var GAME_TITLE  = 'SIGNAL BOOST';
+  var HOW_TO_PLAY = 'TAP TO BOOST, KEEP UNDER 100%';
+  var MAX_TIME = 8;          // 修正2: 生存系 30s → 8s
+  var BOOST = 0.08, DECAY = 0.04, SAFE_MAX = 0.85, MAX_OVER = 3;
+  var GX = W / 2 - 120, GY = 360, GW = 240, GH = H - 900;   // 修正1: 縦に長いゲージ
 
-  var overloads = 0;
-  var maxOverloads = 3;
-  var timeLeft = 30;
-  var done = false;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var wavePhase = 0;
-  var crashFlash = 0;
-  var lastBoostTime = 0;
-  var boostPulse = 0;
+  var signal, overloads, timeLeft, done, boostPulse, crashFlash;
 
-  var waveHistory = []; // signal history for visualization
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
+
+  function initGame() { signal = 0.5; overloads = 0; timeLeft = MAX_TIME; done = false; boostPulse = 0; crashFlash = 0; }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (300 + Math.ceil(timeLeft) * 40) : Math.floor(signal * 100);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done) return;
-    signal += BOOST_AMOUNT;
-    boostPulse = 0.15;
-    game.audio.play('se_tap', 0.4);
-    if (signal >= CRASH_MAX) {
-      signal = 0.6;
-      overloads++;
-      crashFlash = 0.5;
-      game.audio.play('se_failure', 0.8);
-      if (overloads >= maxOverloads && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      }
-    }
+    signal += BOOST; boostPulse = 0.15; game.audio.play('se_tap', 0.4);
+    if (signal >= 1.0) { signal = 0.6; overloads++; crashFlash = 0.5; game.audio.play('se_failure', 0.8); if (overloads >= MAX_OVER) finish(false); }
   });
 
+  // 世界観: 電波塔の信号制御。減衰する信号を連打で維持しつつ過負荷を避ける。
+  function background() {
+    game.draw.clear('#0a0018');
+    if (crashFlash > 0) game.draw.rect(0, 0, W, H, C.a, crashFlash * 0.3);
+    // 電波塔
+    game.draw.rect(snap(W / 2) - 8, 140, 16, 200, C.d);
+    for (var r = 1; r <= 3; r++) { var rr = r * 40 + (Math.floor(game.time.elapsed * 4) % 2) * 8; game.draw.rect(snap(W / 2 - rr), 150, 4, 4, C.b, 0.6); game.draw.rect(snap(W / 2 + rr), 150, 4, 4, C.b, 0.6); }
+    txt('RADIO TOWER', W / 2, 120, 34, C.b);
+  }
+
+  function drawGauge() {
+    game.draw.rect(snap(GX) - 8, snap(GY) - 8, GW + 16, GH + 16, '#333355');
+    game.draw.rect(snap(GX), snap(GY), GW, GH, '#05000f');
+    // 安全上限ライン
+    game.draw.rect(snap(GX) - 16, snap(GY + GH * (1 - SAFE_MAX)), GW + 32, 6, C.a);
+    txt('MAX', GX - 60, GY + GH * (1 - SAFE_MAX), 30, C.a);
+    var fillH = GH * signal, fillY = GY + GH - fillH;
+    var col = signal < 0.3 ? C.a : (signal < SAFE_MAX ? C.b : C.f);
+    game.draw.rect(snap(GX), snap(fillY), GW, snap(fillH), col);
+    if (boostPulse > 0) game.draw.rect(snap(GX), snap(GY), GW, GH, C.g, boostPulse / 0.15 * 0.4);
+    if (signal > SAFE_MAX && Math.floor(game.time.elapsed * 10) % 2 === 0) game.draw.rect(snap(GX), snap(GY), GW, GH * 0.12, C.a);
+    txt(Math.floor(signal * 100) + '%', W / 2, GY + GH + 60, 64, col);
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (signal === undefined) initGame();
+      background();
+      signal = 0.5 + 0.3 * Math.sin(game.time.elapsed * 2);
+      drawGauge();
+      txt(GAME_TITLE,  W / 2, H * 0.86, 72, C.c);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.92, 64, C.a);
+        txt('TAP TO START', W / 2, H * 0.97, 44, C.g);
+      }
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() { game.end.success(200 + Math.ceil(signal * 100)); }, 300);
-        return;
-      }
+      if (timeLeft <= 0) { finish(true); return; }
+      signal -= DECAY * (1 + (MAX_TIME - timeLeft) * 0.06) * dt;
+      if (signal <= 0) { signal = 0; finish(false); return; }
+      if (boostPulse > 0) boostPulse -= dt;
+      if (crashFlash > 0) crashFlash -= dt;
     }
-
-    // Signal decays faster over time
-    var decayMult = 1 + (30 - timeLeft) * 0.04;
-    signal -= DECAY_RATE * decayMult * dt;
-    if (signal < 0) {
-      signal = 0;
-      if (!done) {
-        done = true;
-        game.audio.play('se_failure');
-        setTimeout(function() { game.end.failure(); }, 400);
-      }
-    }
-
-    wavePhase += dt * 3;
-    if (boostPulse > 0) boostPulse -= dt;
-    if (crashFlash > 0) crashFlash -= dt;
-
-    // Track signal history
-    waveHistory.push(signal);
-    if (waveHistory.length > 200) waveHistory.shift();
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    if (crashFlash > 0) {
-      game.draw.rect(0, 0, W, H, C.crash, crashFlash * 0.3);
-    }
-
-    // Signal wave visualization
-    var WH_X = 80;
-    var WH_Y = H * 0.22;
-    var WH_W = W - 160;
-    var WH_H = H * 0.3;
-    game.draw.rect(WH_X - 4, WH_Y - 4, WH_W + 8, WH_H + 8, '#050d18');
-    game.draw.rect(WH_X, WH_Y, WH_W, WH_H, '#020608');
-
-    // Draw signal history as wave
-    for (var i = 1; i < waveHistory.length && i < WH_W; i++) {
-      var x1 = WH_X + (i - 1) / waveHistory.length * WH_W;
-      var x2 = WH_X + i / waveHistory.length * WH_W;
-      var y1 = WH_Y + WH_H * (1 - waveHistory[i - 1]);
-      var y2 = WH_Y + WH_H * (1 - waveHistory[i]);
-      var col = waveHistory[i] < 0.3 ? C.sigLow : (waveHistory[i] < 0.7 ? C.sigMid : C.sigHigh);
-      game.draw.line(x1, y1, x2, y2, col, 4);
-    }
-
-    // Current signal line (rightmost)
-    var curX = WH_X + WH_W;
-    var curY = WH_Y + WH_H * (1 - signal);
-    game.draw.circle(curX, curY, 12, '#fff', 0.8);
-
-    // Safe zone markers
-    game.draw.line(WH_X, WH_Y + WH_H * (1 - SAFE_MAX), WH_X + WH_W, WH_Y + WH_H * (1 - SAFE_MAX), C.sigOver, 2);
-    game.draw.text('MAX', WH_X - 60, WH_Y + WH_H * (1 - SAFE_MAX), { size: 28, color: '#ef4444' });
-    game.draw.line(WH_X, WH_Y + WH_H * 0.7, WH_X + WH_W, WH_Y + WH_H * 0.7, C.sigMid, 2);
-    game.draw.text('MIN', WH_X - 60, WH_Y + WH_H * 0.7, { size: 28, color: '#eab308' });
-
-    // Big signal gauge
-    var GAUGE_X = W / 2 - 80;
-    var GAUGE_Y = H * 0.6;
-    var GAUGE_W = 160;
-    var GAUGE_H = H * 0.22;
-    game.draw.rect(GAUGE_X - 8, GAUGE_Y - 8, GAUGE_W + 16, GAUGE_H + 16, '#050d18');
-    game.draw.rect(GAUGE_X, GAUGE_Y, GAUGE_W, GAUGE_H, '#020608');
-
-    var fillH = GAUGE_H * signal;
-    var fillY = GAUGE_Y + GAUGE_H - fillH;
-    var gaugeColor = signal < 0.3 ? C.sigLow : (signal < SAFE_MAX ? C.sigHigh : C.sigOver);
-    if (fillH > 0) {
-      game.draw.rect(GAUGE_X, fillY, GAUGE_W, fillH, gaugeColor);
-      game.draw.rect(GAUGE_X + 12, fillY + 8, GAUGE_W - 24, 12, '#fff', 0.2);
-    }
-
-    // Boost pulse
-    if (boostPulse > 0) {
-      game.draw.rect(GAUGE_X, GAUGE_Y, GAUGE_W, GAUGE_H, '#fff', boostPulse / 0.15 * 0.4);
-    }
-
-    // Signal percentage
-    game.draw.text(Math.floor(signal * 100) + '%', W / 2, GAUGE_Y + GAUGE_H + 60, {
-      size: 64, color: gaugeColor, bold: true
-    });
-
-    // Danger animation when near max
-    if (signal > SAFE_MAX) {
-      var oPulse = 0.5 + 0.5 * Math.sin(game.time.elapsed * 16);
-      game.draw.rect(GAUGE_X, GAUGE_Y, GAUGE_W, GAUGE_H * 0.1, C.crash, oPulse * 0.5);
-      game.draw.text('危険！', W / 2, H * 0.58, { size: 56, color: C.crash, bold: true });
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 30);
-    game.draw.rect(0, 0, W, 72, '#030810');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.wave : C.sigLow);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Overload pips
-    for (var o = 0; o < maxOverloads; o++) {
-      var ox = W / 2 + (o - 1) * 64;
-      game.draw.circle(ox, 140, 20, o < overloads ? C.crash : '#0a1428');
-    }
-
-    // Guide
-    game.draw.text('連打で信号を維持！(~85%)', W / 2, H - 200, { size: 48, color: C.ui });
-    game.draw.text('100%でクラッシュ！', W / 2, H - 140, { size: 40, color: '#334155' });
+    background();
+    drawGauge();
+    timeBar();
+    txt('KEEP SIGNAL ' + Math.ceil(timeLeft) + 's', W / 2, 96, 44, C.c);
+    for (var o = 0; o < MAX_OVER; o++) game.draw.rect(W / 2 + (o - 1) * 64 - 20, 150, 40, 40, o < overloads ? C.a : '#330011');
+    txt('TAP! DONT OVERLOAD!', W / 2, H - 90, 44, C.f);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
