@@ -1,230 +1,209 @@
 // 144-traffic-cross.js
 // 交差点横断 — 車が途切れた瞬間を見極めてキャラを渡らせる瞬時判断ゲーム
-// 操作: タップでキャラを前進させる（2回タップで渡り切る）
-// 成功: 10回渡る  失敗: 3回轢かれる or 40秒
+// 操作: タップでキャラを前進（2回で渡り切る）
+// 成功: 1回渡る  失敗: 3回轢かれる or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0a0c10',
-    road:    '#1a1f2e',
-    roadHi:  '#2d3347',
-    lane:    '#334155',
-    dash:    '#f1f5f9',
-    car1:    '#ef4444',
-    car2:    '#3b82f6',
-    car3:    '#f59e0b',
-    player:  '#22c55e',
-    playerHi:'#86efac',
-    sidewalk:'#1e3a5f',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    ui:      '#334155'
-  };
+  // ── パレット（クラシックアーケード、夜の道路） ──
+  var C = { bg:'#000011', a:'#0000ff', b:'#00ffff', c:'#ffffff', d:'#ffff00', e:'#ff0000', f:'#00ff00', g:'#ff00ff' };
 
-  // Two lanes: left lane goes left, right lane goes right
-  var LANE_Y = [H * 0.42, H * 0.58];
-  var LANE_DIR = [-1, 1]; // -1=left, 1=right
-  var CAR_W = 160, CAR_H = 64;
-  var CAR_SPEED = [320, 280];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'TRAFFIC CROSS';
+  var HOW_TO_PLAY = 'TAP TO STEP FORWARD · DODGE CARS';
+  var MAX_TIME = 15;             // 修正2: 40 → 15
+  var NEEDED   = 1;              // 修正2: 10 → 1
+  var MAX_HIT  = 3;
+  var TOP    = 220;
 
-  var SIDEWALK_Y1 = H * 0.28;
-  var SIDEWALK_Y2 = H * 0.74;
-  var MIDPOINT_Y = H * 0.50;
+  var LANE_Y = [snap(H * 0.44), snap(H * 0.58)];
+  var LANE_DIR = [-1, 1];
+  var CAR_W = 176, CAR_H = 72;
+  var CAR_SPEED = [300, 260];
+  var CAR_COLORS = [];
+  var SIDE_Y1 = snap(H * 0.30), SIDE_Y2 = snap(H * 0.72), MID_Y = snap(H * 0.51);
+  var POSITIONS = [SIDE_Y2, MID_Y, SIDE_Y1];
+  var PLAYER_X = snap(W / 2);
 
-  // Player positions: 0=bottom, 1=middle, 2=top (safe zones or crossing)
-  var PLAYER_X = W / 2;
-  var PLAYER_POSITIONS = [SIDEWALK_Y2, MIDPOINT_Y, SIDEWALK_Y1];
-  var playerPos = 0;
-  var playerY = PLAYER_POSITIONS[0];
-  var targetY = PLAYER_POSITIONS[0];
-  var moving = false;
-  var moveSpeed = 600;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var cars = [];
-  var SPAWN_INTERVAL = [1.2, 1.4];
-  var spawnTimers = [0, 0];
-  var CAR_COLORS = [C.car1, C.car2, C.car3];
+  // ── ゲーム変数 ──
+  var cars, spawnTimers, playerPos, playerY, targetY, moving, score, hits, timeLeft, done, feedback, feedbackOk, hitFlash;
 
-  var score = 0;
-  var needed = 10;
-  var hits = 0;
-  var maxHits = 3;
-  var timeLeft = 40;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var hitFlash = 0;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  function spawnCar(laneIdx) {
-    var dir = LANE_DIR[laneIdx];
-    var x = dir > 0 ? -CAR_W : W + CAR_W;
-    var col = CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)];
-    cars.push({ x: x, y: LANE_Y[laneIdx], dir: dir, lane: laneIdx, color: col, speed: CAR_SPEED[laneIdx] + (Math.random()-0.5)*60 });
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var py = -r; py <= r; py += step) for (var px = -r; px <= r; px += step) {
+      if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
+    }
   }
 
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#001133');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    // 歩道
+    game.draw.rect(0, SIDE_Y1 - 64, W, 64, C.a, 0.5);
+    game.draw.rect(0, SIDE_Y2, W, 64, C.a, 0.5);
+    // 道路
+    game.draw.rect(0, SIDE_Y1, W, SIDE_Y2 - SIDE_Y1, '#000022');
+    game.draw.rect(0, SIDE_Y1, W, 6, C.d, 0.6);
+    game.draw.rect(0, SIDE_Y2 - 6, W, 6, C.d, 0.6);
+    // 中央破線
+    for (var x = 0; x < W; x += 96) game.draw.rect(x, MID_Y - 4, 48, 8, C.d, 0.5);
+  }
+
+  // ── スプライト（多矩形でキャラクター性） ──
+  function drawCar(car) {
+    game.draw.rect(car.x - CAR_W / 2, car.y - CAR_H / 2, CAR_W, CAR_H, car.color);
+    game.draw.rect(car.x - CAR_W / 2, car.y - CAR_H / 2, CAR_W, 12, C.g, 0.4);   // 屋根光
+    game.draw.rect(car.x - CAR_W / 2 + 24, car.y - CAR_H / 2 + 16, 48, 24, C.b, 0.7); // 窓
+    game.draw.rect(car.x + CAR_W / 2 * car.dir - 16 * car.dir, car.y - 8, 16, 16, C.c); // ヘッドライト
+    pc(car.x - CAR_W * 0.3, car.y + CAR_H / 2 - 4, 14, '#000000', 0.9);
+    pc(car.x + CAR_W * 0.3, car.y + CAR_H / 2 - 4, 14, '#000000', 0.9);
+  }
+
+  function drawPlayer() {
+    pc(PLAYER_X, playerY - 20, 24, C.f, 1);              // 頭
+    game.draw.rect(PLAYER_X - 8, playerY - 24, 8, 8, C.bg);   // 目
+    game.draw.rect(PLAYER_X + 4, playerY - 24, 8, 8, C.bg);
+    game.draw.rect(PLAYER_X - 20, playerY + 4, 40, 40, C.b);  // 胴
+    game.draw.rect(PLAYER_X - 16, playerY + 44, 12, 24, C.f); // 脚
+    game.draw.rect(PLAYER_X + 4, playerY + 44, 12, 24, C.f);
+  }
+
+  function spawnCar(lane) {
+    var dir = LANE_DIR[lane];
+    cars.push({ x: dir > 0 ? -CAR_W : W + CAR_W, y: LANE_Y[lane], dir: dir, color: CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], speed: CAR_SPEED[lane] + game.random(-40, 40) });
+  }
+
+  function initGame() {
+    CAR_COLORS = [C.e, C.a, C.g];
+    cars = []; spawnTimers = [0.3, 0.8];
+    playerPos = 0; playerY = POSITIONS[0]; targetY = POSITIONS[0]; moving = false;
+    score = 0; hits = 0;
+    timeLeft = MAX_TIME; done = false; feedback = 0; hitFlash = 0;
+    spawnCar(0); spawnCar(1);
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 400 + Math.ceil(timeLeft) * 30) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
   game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || moving) return;
-    if (playerPos < 2) {
-      playerPos++;
-      targetY = PLAYER_POSITIONS[playerPos];
-      moving = true;
-      game.audio.play('se_tap', 0.5);
-    }
+    if (playerPos < 2) { playerPos++; targetY = POSITIONS[playerPos]; moving = true; game.audio.play('se_tap', 0.5); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      drawCar({ x: W * 0.6, y: LANE_Y[0], dir: -1, color: C.e });
+      drawCar({ x: W * 0.4, y: LANE_Y[1], dir: 1, color: C.a });
+      playerY = POSITIONS[0];
+      drawPlayer();
+      txt(GAME_TITLE, W / 2, H * 0.14, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.84, 32, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 62, C.d);
+        txt('TAP TO START', W / 2, H * 0.95, 48, C.c);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'MADE IT!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.f : C.e);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.c);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
-
-    // Move player
-    if (moving) {
-      var diff = targetY - playerY;
-      var step = moveSpeed * dt * (diff < 0 ? -1 : 1);
-      if (Math.abs(step) >= Math.abs(diff)) {
-        playerY = targetY;
-        moving = false;
-        // Reached top — success!
-        if (playerPos === 2) {
-          score++;
-          feedbackOk = true;
-          feedback = 0.5;
-          game.audio.play('se_success');
-          if (score >= needed && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(score*50 + Math.ceil(timeLeft)*15); }, 500);
-            return;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (moving) {
+        var diff = targetY - playerY, step = 700 * dt * (diff < 0 ? -1 : 1);
+        if (Math.abs(step) >= Math.abs(diff)) {
+          playerY = targetY; moving = false;
+          if (playerPos === 2) {
+            score++; feedbackOk = true; feedback = 0.5;
+            game.audio.play('se_success');
+            if (score >= NEEDED) { finish(true); return; }
+            playerPos = 0; targetY = POSITIONS[0]; playerY = POSITIONS[0];
           }
-          // Reset to bottom
-          setTimeout(function() {
-            playerPos = 0;
-            targetY = PLAYER_POSITIONS[0];
-            playerY = PLAYER_POSITIONS[0];
-          }, 400);
+        } else playerY += step;
+      }
+      for (var li = 0; li < 2; li++) {
+        spawnTimers[li] -= dt;
+        if (spawnTimers[li] <= 0) { spawnTimers[li] = (li === 0 ? 1.4 : 1.6) * (0.8 + Math.random() * 0.6); spawnCar(li); }
+      }
+      for (var ci = 0; ci < cars.length; ci++) cars[ci].x += cars[ci].dir * cars[ci].speed * dt;
+      cars = cars.filter(function(c) { return c.x > -CAR_W * 2 && c.x < W + CAR_W * 2; });
+      for (var ci2 = 0; ci2 < cars.length; ci2++) {
+        var car = cars[ci2];
+        if (Math.abs(playerY - car.y) < 44 && Math.abs(PLAYER_X - car.x) < CAR_W / 2 + 28) {
+          hits++; hitFlash = 0.5; feedbackOk = false; feedback = 0.5;
+          game.audio.play('se_failure');
+          playerPos = 0; playerY = POSITIONS[0]; targetY = POSITIONS[0]; moving = false; cars = [];
+          if (hits >= MAX_HIT) { finish(false); return; }
+          break;
         }
-      } else {
-        playerY += step;
       }
     }
-
-    // Spawn cars
-    for (var li = 0; li < 2; li++) {
-      spawnTimers[li] -= dt;
-      if (spawnTimers[li] <= 0) {
-        spawnTimers[li] = SPAWN_INTERVAL[li] * (0.7 + Math.random() * 0.6);
-        spawnCar(li);
-      }
-    }
-
-    // Move cars
-    for (var ci = 0; ci < cars.length; ci++) {
-      cars[ci].x += cars[ci].dir * cars[ci].speed * dt;
-    }
-    cars = cars.filter(function(c) { return c.x > -CAR_W*2 && c.x < W + CAR_W*2; });
-
-    // Collision detection
-    for (var ci2 = 0; ci2 < cars.length; ci2++) {
-      var car = cars[ci2];
-      var dy = Math.abs(playerY - car.y);
-      var dx = Math.abs(PLAYER_X - car.x);
-      if (dy < 40 && dx < CAR_W/2 + 28) {
-        // Hit!
-        hits++;
-        hitFlash = 0.5;
-        feedbackOk = false;
-        feedback = 0.5;
-        game.audio.play('se_failure');
-        playerPos = 0;
-        playerY = PLAYER_POSITIONS[0];
-        targetY = PLAYER_POSITIONS[0];
-        moving = false;
-        // Remove all cars for moment
-        cars = [];
-        if (hits >= maxHits && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-        break;
-      }
-    }
-
     if (feedback > 0) feedback -= dt;
     if (hitFlash > 0) hitFlash -= dt;
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background();
+    for (var ci3 = 0; ci3 < cars.length; ci3++) drawCar(cars[ci3]);
+    drawPlayer();
+    if (hitFlash > 0) game.draw.rect(0, 0, W, H, C.e, hitFlash * 0.3);
+    if (!moving && playerPos < 2 && Math.floor(game.time.elapsed * 8) % 2 === 0) txt('▲ TAP', PLAYER_X, playerY - 80, 40, C.c);
+    if (feedback > 0) txt(feedbackOk ? 'SAFE!' : 'HIT!', W / 2, H * 0.20, 72, feedbackOk ? C.f : C.e);
 
-    // Sidewalks
-    game.draw.rect(0, SIDEWALK_Y1 - 60, W, 60, C.sidewalk);
-    game.draw.rect(0, SIDEWALK_Y2, W, 60, C.sidewalk);
-
-    // Road
-    game.draw.rect(0, SIDEWALK_Y1, W, SIDEWALK_Y2 - SIDEWALK_Y1, C.road);
-    // Center dashed line
-    for (var dx2 = 0; dx2 < W; dx2 += 80) {
-      game.draw.rect(dx2, (LANE_Y[0]+LANE_Y[1])/2 - 4, 48, 8, C.dash, 0.4);
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.c);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var hi = 0; hi < MAX_HIT; hi++) {
+      var hx = snap(W / 2 + (hi - (MAX_HIT - 1) / 2) * 56);
+      game.draw.rect(hx - 12, 208, 24, 24, hi < hits ? C.e : '#001133');
     }
-    // Lane edges
-    game.draw.rect(0, SIDEWALK_Y1, W, 6, C.lane);
-    game.draw.rect(0, SIDEWALK_Y2 - 6, W, 6, C.lane);
-
-    // Cars
-    for (var ci3 = 0; ci3 < cars.length; ci3++) {
-      var car2 = cars[ci3];
-      game.draw.rect(car2.x - CAR_W/2, car2.y - CAR_H/2, CAR_W, CAR_H, car2.color, 0.9);
-      game.draw.rect(car2.x - CAR_W/2, car2.y - CAR_H/2, CAR_W, 10, '#fff', 0.25);
-      // Wheels
-      game.draw.circle(car2.x - CAR_W*0.32, car2.y + CAR_H/2 - 4, 14, '#000', 0.8);
-      game.draw.circle(car2.x + CAR_W*0.32, car2.y + CAR_H/2 - 4, 14, '#000', 0.8);
-    }
-
-    // Player
-    game.draw.circle(PLAYER_X, playerY, 36, C.player, 0.9);
-    game.draw.circle(PLAYER_X, playerY, 24, C.playerHi, 0.8);
-    game.draw.text('🚶', PLAYER_X, playerY, { size: 36, color: '#fff' });
-
-    // Hit flash
-    if (hitFlash > 0) {
-      game.draw.rect(0, 0, W, H, C.wrong, hitFlash * 0.3);
-    }
-
-    // Tap hint
-    if (!moving && playerPos < 2) {
-      var pulse = 0.5 + 0.4 * Math.abs(Math.sin(timeLeft * 2));
-      game.draw.text('▲ タップで前進', W/2, playerY - 70, { size: 40, color: C.playerHi, bold: true });
-    }
-
-    // Feedback
-    if (feedback > 0) {
-      game.draw.text(feedbackOk ? '渡り切った！' : 'はねられた！', W/2, H * 0.2, {
-        size: 72, color: feedbackOk ? C.correct : C.wrong, bold: true
-      });
-    }
-
-    // Score
-    game.draw.text(score + ' / ' + needed, W/2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    for (var hi = 0; hi < maxHits; hi++) {
-      game.draw.circle(W/2+(hi-1)*52, 218, 18, hi < hits ? C.wrong : '#0a1020');
-    }
-
-    var ratio = Math.max(0, timeLeft/40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*ratio, 72, ratio > 0.3 ? C.player : C.wrong);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
-    spawnCar(0);
-    spawnCar(1);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
