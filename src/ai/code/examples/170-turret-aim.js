@@ -1,226 +1,190 @@
 // 170-turret-aim.js
 // 回転砲台 — ゆっくり回る砲口が的を向いた瞬間に撃て、狙い待ちの緊張感
 // 操作: タップで発射
-// 成功: 8発命中  失敗: 5発外す or 45秒
+// 成功: 1発命中  失敗: 5発外す or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#060408',
-    gun:     '#374151',
-    gunHi:   '#6b7280',
-    barrel:  '#4b5563',
-    shot:    '#fef08a',
-    shotHi:  '#f59e0b',
-    target:  '#22c55e',
-    targetHi:'#86efac',
-    wrong:   '#ef4444',
-    ui:      '#334155'
-  };
+  // ── パレット（ネオンアーケード、射撃場） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var GUN_X = W / 2;
-  var GUN_Y = H * 0.78;
-  var GUN_R = 72;
-  var BARREL_LEN = 140;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'TURRET AIM';
+  var HOW_TO_PLAY = 'TAP TO FIRE WHEN AIMED AT ●';
+  var MAX_TIME = 15;             // 修正2: 45 → 15
+  var NEEDED   = 1;              // 修正2: 8 → 1
+  var MAX_MISS = 5;
+  var TOP    = 220;
+  var GUN_X = snap(W / 2), GUN_Y = snap(H * 0.76), GUN_R = 72, BARREL_LEN = 150;
+  var BULLET_SPEED = 1100, BULLET_R = 16, TARGET_R = 60, TARGET_COUNT = 4;
+  var GUN_SPEED = 1.0, MIN_ANG = -Math.PI * 0.9, MAX_ANG = -Math.PI * 0.1;
 
-  var gunAngle = -Math.PI / 2; // pointing up
-  var GUN_SPEED = 1.1; // radians per second
-  var gunDir = 1;
-  var MIN_ANG = -Math.PI * 0.9;
-  var MAX_ANG = -Math.PI * 0.1;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var bullet = null;
-  var BULLET_SPEED = 1200;
-  var BULLET_R = 14;
+  // ── ゲーム変数 ──
+  var gunAngle, gunDir, bullet, targets, spawnTimer, score, misses, timeLeft, done, feedback, feedbackOk, particles;
 
-  var targets = [];
-  var TARGET_R = 60;
-  var TARGET_COUNT = 5;
-  var targetSpawnTimer = 0;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  var score = 0;
-  var needed = 8;
-  var misses = 0;
-  var maxMisses = 5;
-  var timeLeft = 45;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var particles = [];
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
+  }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function drawTarget(t) {
+    if (!t.alive) { if (t.hitTimer > 0) pc(t.x, t.y, TARGET_R, C.b, t.hitTimer); return; }
+    pc(t.x, t.y, TARGET_R, C.a, 0.9);
+    pc(t.x, t.y, TARGET_R * 0.6, C.g, 0.9);
+    pc(t.x, t.y, 12, C.a, 1);
+  }
+
+  function drawGun() {
+    // アーム
+    for (var i = 0; i < 10; i++) game.draw.rect(snap(GUN_X + Math.cos(gunAngle) * (GUN_R + i * 8)) - 12, snap(GUN_Y + Math.sin(gunAngle) * (GUN_R + i * 8)) - 12, 24, 24, C.e);
+    pc(GUN_X, GUN_Y, GUN_R, C.d, 1);
+    pc(GUN_X, GUN_Y, GUN_R * 0.5, C.b, 0.7);
+    game.draw.rect(GUN_X - 12, GUN_Y - 12, 24, 24, C.g);
+  }
 
   function spawnTarget() {
     if (targets.length >= TARGET_COUNT) return;
-    var tx = TARGET_R + 60 + Math.random() * (W - (TARGET_R + 60) * 2);
-    var ty = H * 0.1 + Math.random() * H * 0.5;
-    // Move target
-    var speed = 60 + Math.random() * 120;
-    targets.push({ x: tx, y: ty, vx: (Math.random() < 0.5 ? 1 : -1) * speed, alive: true, hitTimer: 0 });
+    targets.push({ x: snap(TARGET_R + 60 + Math.random() * (W - (TARGET_R + 60) * 2)), y: snap(TOP + 40 + Math.random() * (H * 0.4)), vx: (Math.random() < 0.5 ? 1 : -1) * game.random(60, 160), alive: true, hitTimer: 0 });
   }
 
+  function initGame() {
+    gunAngle = -Math.PI / 2; gunDir = 1; bullet = null;
+    targets = []; spawnTimer = 0; score = 0; misses = 0;
+    timeLeft = MAX_TIME; done = false; feedback = 0; particles = [];
+    spawnTarget(); spawnTarget(); spawnTarget();
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 25) : score * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
   game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || bullet) return;
-    var tipX = GUN_X + Math.cos(gunAngle) * BARREL_LEN;
-    var tipY = GUN_Y + Math.sin(gunAngle) * BARREL_LEN;
-    bullet = {
-      x: tipX,
-      y: tipY,
-      vx: Math.cos(gunAngle) * BULLET_SPEED,
-      vy: Math.sin(gunAngle) * BULLET_SPEED
-    };
+    bullet = { x: GUN_X + Math.cos(gunAngle) * BARREL_LEN, y: GUN_Y + Math.sin(gunAngle) * BARREL_LEN, vx: Math.cos(gunAngle) * BULLET_SPEED, vy: Math.sin(gunAngle) * BULLET_SPEED };
     game.audio.play('se_tap', 0.8);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      gunAngle += GUN_SPEED * gunDir * dt; if (gunAngle > MAX_ANG) { gunAngle = MAX_ANG; gunDir = -1; } if (gunAngle < MIN_ANG) { gunAngle = MIN_ANG; gunDir = 1; }
+      drawTarget({ x: W * 0.35, y: H * 0.35, alive: true }); drawTarget({ x: W * 0.7, y: H * 0.3, alive: true });
+      drawGun();
+      txt(GAME_TITLE, W / 2, H * 0.14, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 32, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 48, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'DIRECT HIT!' : 'OUT OF SHOTS', W / 2, H * 0.35, 70, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      gunAngle += GUN_SPEED * gunDir * dt; if (gunAngle > MAX_ANG) { gunAngle = MAX_ANG; gunDir = -1; } if (gunAngle < MIN_ANG) { gunAngle = MIN_ANG; gunDir = 1; }
+      spawnTimer -= dt; if (spawnTimer <= 0 && targets.length < TARGET_COUNT) { spawnTimer = 0.8 + Math.random() * 0.5; spawnTarget(); }
+      for (var ti = 0; ti < targets.length; ti++) {
+        var t = targets[ti];
+        if (!t.alive) { t.hitTimer -= dt; continue; }
+        t.x += t.vx * dt;
+        if (t.x < TARGET_R || t.x > W - TARGET_R) { t.vx *= -1; t.x = Math.max(TARGET_R, Math.min(W - TARGET_R, t.x)); }
+      }
+      targets = targets.filter(function(t) { return t.alive || t.hitTimer > 0; });
+      if (bullet) {
+        bullet.x += bullet.vx * dt; bullet.y += bullet.vy * dt;
+        for (var ti2 = 0; ti2 < targets.length; ti2++) {
+          var t2 = targets[ti2];
+          if (!t2.alive) continue;
+          if (Math.hypot(bullet.x - t2.x, bullet.y - t2.y) < BULLET_R + TARGET_R) {
+            t2.alive = false; t2.hitTimer = 0.5; score++;
+            feedbackOk = true; feedback = 0.4;
+            game.audio.play('se_success', 0.9);
+            for (var pi = 0; pi < 10; pi++) { var ang = Math.random() * Math.PI * 2; particles.push({ x: t2.x, y: t2.y, vx: Math.cos(ang) * 240, vy: Math.sin(ang) * 240, life: 0.5 }); }
+            bullet = null;
+            if (score >= NEEDED) { finish(true); return; }
+            break;
+          }
+        }
+        if (bullet && (bullet.x < -20 || bullet.x > W + 20 || bullet.y < -20 || bullet.y > H + 20)) {
+          bullet = null; misses++; feedbackOk = false; feedback = 0.35;
+          game.audio.play('se_failure', 0.4);
+          if (misses >= MAX_MISS) { finish(false); return; }
+        }
+      }
     }
+    for (var p = 0; p < particles.length; p++) { particles[p].x += particles[p].vx * dt; particles[p].y += particles[p].vy * dt; particles[p].vy += 400 * dt; particles[p].life -= dt; }
+    particles = particles.filter(function(pt) { return pt.life > 0; });
     if (feedback > 0) feedback -= dt;
 
-    // Rotate gun
-    gunAngle += GUN_SPEED * gunDir * dt;
-    if (gunAngle > MAX_ANG) { gunAngle = MAX_ANG; gunDir = -1; }
-    if (gunAngle < MIN_ANG) { gunAngle = MIN_ANG; gunDir = 1; }
+    // ---- 描画 ----
+    background();
+    for (var ti3 = 0; ti3 < targets.length; ti3++) drawTarget(targets[ti3]);
+    for (var gl = 0; gl < 6; gl++) game.draw.rect(snap(GUN_X + Math.cos(gunAngle) * (BARREL_LEN + gl * 90)) - 4, snap(GUN_Y + Math.sin(gunAngle) * (BARREL_LEN + gl * 90)) - 4, 8, 8, C.c, 0.4 * (1 - gl / 6));
+    if (bullet) pc(bullet.x, bullet.y, BULLET_R, C.c, 1);
+    drawGun();
+    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 5, snap(particles[pp].y) - 5, 10, 10, C.b, particles[pp].life * 2);
+    if (feedback > 0) game.draw.rect(0, 0, W, H, feedbackOk ? C.b : C.a, feedback * 0.1);
 
-    // Spawn targets
-    targetSpawnTimer -= dt;
-    if (targetSpawnTimer <= 0 && targets.length < TARGET_COUNT) {
-      targetSpawnTimer = 0.8 + Math.random() * 0.5;
-      spawnTarget();
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 44, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) {
+      var mx = snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 56);
+      game.draw.rect(mx - 12, 208, 24, 24, mm < misses ? C.a : '#2a0a3a');
     }
-
-    // Move targets
-    for (var ti = 0; ti < targets.length; ti++) {
-      var t = targets[ti];
-      if (!t.alive) {
-        t.hitTimer -= dt;
-        continue;
-      }
-      t.x += t.vx * dt;
-      if (t.x < TARGET_R || t.x > W - TARGET_R) {
-        t.vx *= -1;
-        t.x = Math.max(TARGET_R, Math.min(W - TARGET_R, t.x));
-      }
-    }
-    targets = targets.filter(function(t) { return t.alive || t.hitTimer > 0; });
-
-    // Move bullet
-    if (bullet) {
-      bullet.x += bullet.vx * dt;
-      bullet.y += bullet.vy * dt;
-
-      // Check hits
-      for (var ti2 = 0; ti2 < targets.length; ti2++) {
-        var t2 = targets[ti2];
-        if (!t2.alive) continue;
-        var dx = bullet.x - t2.x, dy = bullet.y - t2.y;
-        if (Math.sqrt(dx * dx + dy * dy) < BULLET_R + TARGET_R) {
-          t2.alive = false; t2.hitTimer = 0.5;
-          score++;
-          feedbackOk = true; feedback = 0.4;
-          game.audio.play('se_success', 0.9);
-          for (var pi = 0; pi < 10; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: t2.x, y: t2.y, vx: Math.cos(ang) * 240, vy: Math.sin(ang) * 240, life: 0.5 });
-          }
-          bullet = null;
-          if (score >= needed && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(score * 80 + Math.ceil(timeLeft) * 20); }, 400);
-          }
-          break;
-        }
-      }
-
-      // Off screen
-      if (bullet && (bullet.x < -20 || bullet.x > W + 20 || bullet.y < -20 || bullet.y > H + 20)) {
-        bullet = null;
-        misses++;
-        feedbackOk = false; feedback = 0.35;
-        game.audio.play('se_failure', 0.4);
-        if (misses >= maxMisses && !done) { done = true; setTimeout(function() { game.end.failure(); }, 400); }
-      }
-    }
-
-    for (var pi2 = 0; pi2 < particles.length; pi2++) {
-      particles[pi2].x += particles[pi2].vx * dt; particles[pi2].y += particles[pi2].vy * dt;
-      particles[pi2].vy += 400 * dt; particles[pi2].life -= dt;
-    }
-    particles = particles.filter(function(p) { return p.life > 0; });
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Targets
-    for (var ti3 = 0; ti3 < targets.length; ti3++) {
-      var t3 = targets[ti3];
-      if (!t3.alive) {
-        if (t3.hitTimer > 0) {
-          game.draw.circle(t3.x, t3.y, TARGET_R, C.wrong, t3.hitTimer);
-          game.draw.text('★', t3.x, t3.y, { size: 64, color: C.shot, bold: true });
-        }
-        continue;
-      }
-      game.draw.circle(t3.x, t3.y, TARGET_R + 10, C.targetHi, 0.2);
-      game.draw.circle(t3.x, t3.y, TARGET_R, C.target, 0.85);
-      game.draw.circle(t3.x, t3.y, TARGET_R * 0.55, C.targetHi, 0.6);
-      game.draw.circle(t3.x, t3.y, 12, '#fff', 0.8);
-    }
-
-    // Aim line
-    var tipX = GUN_X + Math.cos(gunAngle) * BARREL_LEN;
-    var tipY = GUN_Y + Math.sin(gunAngle) * BARREL_LEN;
-    for (var gl = 0; gl < 6; gl++) {
-      var gd = 80 + gl * 100;
-      var gx = GUN_X + Math.cos(gunAngle) * gd;
-      var gy = GUN_Y + Math.sin(gunAngle) * gd;
-      game.draw.circle(gx, gy, 6, C.shot, 0.15 * (1 - gl / 6));
-    }
-
-    // Gun base
-    game.draw.circle(GUN_X, GUN_Y, GUN_R + 12, C.gunHi, 0.2);
-    game.draw.circle(GUN_X, GUN_Y, GUN_R, C.gun, 0.95);
-    game.draw.circle(GUN_X, GUN_Y, GUN_R * 0.5, C.gunHi, 0.5);
-
-    // Barrel
-    var bx2 = GUN_X + Math.cos(gunAngle) * BARREL_LEN;
-    var by2 = GUN_Y + Math.sin(gunAngle) * BARREL_LEN;
-    game.draw.line(GUN_X, GUN_Y, bx2, by2, C.barrel, 32);
-    game.draw.line(GUN_X, GUN_Y, bx2, by2, C.gunHi, 10);
-    game.draw.circle(bx2, by2, 20, C.gunHi, 0.7);
-
-    // Bullet
-    if (bullet) {
-      game.draw.circle(bullet.x, bullet.y, BULLET_R + 6, C.shotHi, 0.4);
-      game.draw.circle(bullet.x, bullet.y, BULLET_R, C.shot, 0.95);
-    }
-
-    // Particles
-    for (var pp = 0; pp < particles.length; pp++) {
-      var part = particles[pp];
-      game.draw.circle(part.x, part.y, 10 * part.life * 2, C.target, part.life);
-    }
-
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? C.target : C.wrong, feedback * 0.1);
-    }
-
-    if (!bullet) game.draw.text('タップで撃て！', W / 2, H * 0.9, { size: 48, color: C.ui });
-    game.draw.text(score + ' / ' + needed, W / 2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    for (var mi = 0; mi < maxMisses; mi++) {
-      game.draw.circle(W / 2 + (mi - 2) * 52, 218, 18, mi < misses ? C.wrong : '#0a1020');
-    }
-
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.gun : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
-    spawnTarget(); spawnTarget(); spawnTarget();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

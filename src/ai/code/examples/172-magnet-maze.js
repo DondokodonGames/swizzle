@@ -1,217 +1,174 @@
 // 172-magnet-maze.js
-// 磁石迷路 — 磁力で引き寄せられる玉を壁に触れずゴールまで導く吸いつき感
-// 操作: タップでN/S極を切り替え(引き寄せ/押し出し)
-// 成功: ゴール到達  失敗: 壁に当たる or 30秒
+// 磁石迷路 — 磁力で引き寄せられる玉を壁で弾きながらゴールへ導く吸いつき感
+// 操作: タップした位置に磁石を置き、N/S極を切り替え
+// 成功: ゴール到達  失敗: 20秒以内に着かない
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#04070f',
-    wall:    '#1e3a5f',
-    wallHi:  '#2563eb',
-    ball:    '#06b6d4',
-    ballHi:  '#67e8f9',
-    magN:    '#ef4444',
-    magS:    '#3b82f6',
-    goal:    '#22c55e',
-    goalHi:  '#86efac',
-    trail:   '#0891b2',
-    ui:      '#334155'
-  };
+  // ── パレット（ネオンアーケード、電磁ラボ） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var CELL = 120;
-  var COLS = 8;
-  var ROWS = 14;
-  var MAZE_X = (W - COLS * CELL) / 2;
-  var MAZE_Y = H * 0.08;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'MAGNET MAZE';
+  var HOW_TO_PLAY = 'TAP TO PLACE MAGNET · GUIDE BALL TO G';
+  var MAX_TIME = 20;             // 修正2: 30 → 20
+  var CELL = 120, COLS = 8, ROWS = 12;
+  var MAZE_X = snap((W - COLS * CELL) / 2), MAZE_Y = snap(260);
+  var BALL_R = 30, FRICTION = 0.88, MAG_FORCE = 800, MAG_DIST = 360;
 
-  // Maze: 0=open, 1=wall
+  // 修正2: 壁を減らしたやさしい迷路
   var MAZE = [
     [0,0,0,0,0,0,0,0],
-    [0,1,1,0,1,1,0,0],
-    [0,0,1,0,1,0,0,0],
-    [0,0,1,1,1,0,1,0],
-    [0,0,0,0,0,0,1,0],
-    [1,0,1,1,0,1,1,0],
-    [0,0,0,1,0,0,0,0],
-    [0,1,0,0,0,1,0,0],
-    [0,1,1,0,1,1,0,0],
-    [0,0,0,0,0,0,0,0],
     [0,1,0,1,0,1,0,0],
+    [0,0,0,0,0,0,0,0],
+    [0,1,0,1,1,0,1,0],
+    [0,0,0,0,0,0,0,0],
+    [0,0,1,0,1,0,0,0],
     [0,1,0,0,0,0,1,0],
     [0,0,0,1,0,0,0,0],
+    [0,1,0,0,0,1,0,0],
+    [0,0,0,1,0,0,0,0],
+    [0,1,0,0,0,1,0,0],
     [0,0,0,0,0,0,0,0]
   ];
 
-  var BALL_R = 28;
-  var bx = MAZE_X + CELL * 0.5; // start top-left
-  var by = MAZE_Y + CELL * 0.5;
-  var bvx = 0, bvy = 0;
-  var FRICTION = 0.88;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Magnet: position and polarity
-  var magX = W / 2;
-  var magY = H / 2;
-  var magPole = 1; // 1=attract, -1=repel
-  var MAG_FORCE = 900;
-  var MAG_DIST = 350;
+  // ── ゲーム変数 ──
+  var bx, by, bvx, bvy, magX, magY, magPole, goalX, goalY, trail, timeLeft, done;
 
-  var goalX = MAZE_X + CELL * (COLS - 0.5);
-  var goalY = MAZE_Y + CELL * (ROWS - 0.5);
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  var timeLeft = 30;
-  var done = false;
-  var trail = [];
-  var feedback = 0;
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
+  }
 
-  game.onTap(function(tx, ty) {
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    for (var mr = 0; mr < ROWS; mr++) for (var mc = 0; mc < COLS; mc++) {
+      var wx = MAZE_X + mc * CELL, wy = MAZE_Y + mr * CELL;
+      if (MAZE[mr][mc] === 1) { game.draw.rect(wx, wy, CELL, CELL, C.d, 0.9); game.draw.rect(wx, wy, CELL, 8, C.a); }
+      else game.draw.rect(wx, wy, CELL, CELL, '#0a0018', 0.4);
+    }
+  }
+
+  function initGame() {
+    bx = MAZE_X + CELL * 0.5; by = MAZE_Y + CELL * 0.5; bvx = 0; bvy = 0;
+    magX = W / 2; magY = H / 2; magPole = 1;
+    goalX = MAZE_X + CELL * (COLS - 0.5); goalY = MAZE_Y + CELL * (ROWS - 0.5);
+    trail = []; timeLeft = MAX_TIME; done = false;
+  }
+
+  function finish(success) {
     if (done) return;
-    magPole *= -1; // toggle attract/repel
-    magX = tx; magY = ty; // move magnet to tap
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.ceil(timeLeft) * 80 + 500) : 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    magPole *= -1; magX = x; magY = y;
     game.audio.play('se_tap', 0.3);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-    if (feedback > 0) feedback -= dt;
-
-    // Magnetic force
-    var dx = magX - bx, dy = magY - by;
-    var dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist < MAG_DIST && dist > 10) {
-      var force = MAG_FORCE * magPole * (1 - dist / MAG_DIST);
-      bvx += (dx / dist) * force * dt;
-      bvy += (dy / dist) * force * dt;
-    }
-
-    // Friction
-    bvx *= Math.pow(FRICTION, dt * 60);
-    bvy *= Math.pow(FRICTION, dt * 60);
-
-    // Move
-    var nbx = bx + bvx * dt;
-    var nby = by + bvy * dt;
-
-    // Wall collision
-    var col = Math.floor((nbx - MAZE_X) / CELL);
-    var row = Math.floor((nby - MAZE_Y) / CELL);
-    var hitWall = false;
-
-    // Check nearby cells for collision
-    for (var r = Math.max(0, row - 1); r <= Math.min(ROWS - 1, row + 1); r++) {
-      for (var c = Math.max(0, col - 1); c <= Math.min(COLS - 1, col + 1); c++) {
-        if (MAZE[r] && MAZE[r][c] === 1) {
-          var wx = MAZE_X + c * CELL;
-          var wy = MAZE_Y + r * CELL;
-          var cx2 = Math.max(wx, Math.min(wx + CELL, nbx));
-          var cy2 = Math.max(wy, Math.min(wy + CELL, nby));
-          var ddx = nbx - cx2, ddy = nby - cy2;
-          var dd = Math.sqrt(ddx * ddx + ddy * ddy);
-          if (dd < BALL_R) {
-            hitWall = true;
-            break;
-          }
-        }
+    if (state === S.ATTRACT) {
+      background();
+      pc(goalX, goalY, 36, C.b, 0.8); txt('G', goalX, goalY - 8, 36, C.g);
+      pc(MAZE_X + CELL * 0.5, MAZE_Y + CELL * 0.5, BALL_R, C.e, 0.9);
+      txt(GAME_TITLE, W / 2, H * 0.14, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.86, 28, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.91, 58, C.a);
+        txt('TAP TO START', W / 2, H * 0.96, 44, C.g);
       }
-      if (hitWall) break;
-    }
-
-    if (hitWall && !done) {
-      done = true;
-      game.audio.play('se_failure');
-      setTimeout(function() { game.end.failure(); }, 400);
+      scanlines();
       return;
     }
 
-    // Boundary
-    nbx = Math.max(MAZE_X + BALL_R, Math.min(MAZE_X + COLS * CELL - BALL_R, nbx));
-    nby = Math.max(MAZE_Y + BALL_R, Math.min(MAZE_Y + ROWS * CELL - BALL_R, nby));
-
-    bx = nbx; by = nby;
-    trail.push({ x: bx, y: by, life: 0.4 });
-    for (var ti = trail.length - 1; ti >= 0; ti--) {
-      trail[ti].life -= dt;
-      if (trail[ti].life <= 0) trail.splice(ti, 1);
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'REACHED G!' : 'TIME OUT', W / 2, H * 0.35, 76, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
 
-    // Goal check
-    var gdx = bx - goalX, gdy = by - goalY;
-    if (Math.sqrt(gdx * gdx + gdy * gdy) < BALL_R + 40 && !done) {
-      done = true;
-      game.audio.play('se_success');
-      setTimeout(function() { game.end.success(Math.ceil(timeLeft) * 80 + 500); }, 400);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Maze walls
-    for (var mr = 0; mr < ROWS; mr++) {
-      for (var mc = 0; mc < COLS; mc++) {
-        var wx2 = MAZE_X + mc * CELL;
-        var wy2 = MAZE_Y + mr * CELL;
-        if (MAZE[mr] && MAZE[mr][mc] === 1) {
-          game.draw.rect(wx2, wy2, CELL, CELL, C.wall, 0.9);
-          game.draw.rect(wx2, wy2, CELL, 8, C.wallHi, 0.5);
-        } else {
-          game.draw.rect(wx2, wy2, CELL, CELL, '#060d18', 0.5);
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      var dx = magX - bx, dy = magY - by, dist = Math.hypot(dx, dy);
+      if (dist < MAG_DIST && dist > 10) { var force = MAG_FORCE * magPole * (1 - dist / MAG_DIST); bvx += (dx / dist) * force * dt; bvy += (dy / dist) * force * dt; }
+      bvx *= Math.pow(FRICTION, dt * 60); bvy *= Math.pow(FRICTION, dt * 60);
+      var nbx = bx + bvx * dt, nby = by + bvy * dt;
+      // 壁は弾く（即死しない＝易化）
+      var col = Math.floor((nbx - MAZE_X) / CELL), row = Math.floor((nby - MAZE_Y) / CELL);
+      var hit = false;
+      for (var r = Math.max(0, row - 1); r <= Math.min(ROWS - 1, row + 1); r++) for (var c = Math.max(0, col - 1); c <= Math.min(COLS - 1, col + 1); c++) {
+        if (MAZE[r] && MAZE[r][c] === 1) {
+          var wx = MAZE_X + c * CELL, wy = MAZE_Y + r * CELL;
+          var cx2 = Math.max(wx, Math.min(wx + CELL, nbx)), cy2 = Math.max(wy, Math.min(wy + CELL, nby));
+          if (Math.hypot(nbx - cx2, nby - cy2) < BALL_R) { hit = true; break; }
         }
       }
-    }
-    // Grid lines
-    for (var gr = 0; gr <= ROWS; gr++) {
-      game.draw.line(MAZE_X, MAZE_Y + gr * CELL, MAZE_X + COLS * CELL, MAZE_Y + gr * CELL, C.wall, 1);
-    }
-    for (var gc = 0; gc <= COLS; gc++) {
-      game.draw.line(MAZE_X + gc * CELL, MAZE_Y, MAZE_X + gc * CELL, MAZE_Y + ROWS * CELL, C.wall, 1);
-    }
-
-    // Goal
-    game.draw.circle(goalX, goalY, 44, C.goalHi, 0.3);
-    game.draw.circle(goalX, goalY, 32, C.goal, 0.8);
-    game.draw.text('G', goalX, goalY, { size: 36, color: '#fff', bold: true });
-
-    // Trail
-    for (var ti2 = 0; ti2 < trail.length; ti2++) {
-      var t = trail[ti2];
-      game.draw.circle(t.x, t.y, BALL_R * t.life * 2, C.trail, t.life * 0.4);
+      if (hit) { bvx *= -0.5; bvy *= -0.5; nbx = bx; nby = by; game.audio.play('se_tap', 0.15); }
+      bx = Math.max(MAZE_X + BALL_R, Math.min(MAZE_X + COLS * CELL - BALL_R, nbx));
+      by = Math.max(MAZE_Y + BALL_R, Math.min(MAZE_Y + ROWS * CELL - BALL_R, nby));
+      trail.push({ x: bx, y: by, life: 0.4 });
+      for (var ti = trail.length - 1; ti >= 0; ti--) { trail[ti].life -= dt; if (trail[ti].life <= 0) trail.splice(ti, 1); }
+      if (Math.hypot(bx - goalX, by - goalY) < BALL_R + 40) { finish(true); return; }
     }
 
-    // Magnet
-    var mCol = magPole > 0 ? C.magN : C.magS;
-    var mLabel = magPole > 0 ? 'N' : 'S';
-    game.draw.circle(magX, magY, 50, mCol, 0.25);
-    game.draw.circle(magX, magY, 36, mCol, 0.6);
-    game.draw.text(mLabel, magX, magY, { size: 40, color: '#fff', bold: true });
-    // Magnetic field lines
-    for (var fi = 0; fi < 8; fi++) {
-      var fa = fi * Math.PI / 4;
-      for (var fd = 0; fd < 3; fd++) {
-        var fr = 80 + fd * 70;
-        var fxx = magX + Math.cos(fa) * fr;
-        var fyy = magY + Math.sin(fa) * fr;
-        game.draw.circle(fxx, fyy, 6, mCol, 0.15 * (1 - fd / 3));
-      }
-    }
+    // ---- 描画 ----
+    background();
+    pc(goalX, goalY, 36, C.b, Math.floor(game.time.elapsed * 8) % 2 === 0 ? 0.9 : 0.6); txt('G', goalX, goalY - 8, 36, C.g);
+    for (var ti2 = 0; ti2 < trail.length; ti2++) pc(trail[ti2].x, trail[ti2].y, BALL_R * trail[ti2].life * 1.5, C.e, trail[ti2].life * 0.4);
+    // 磁石
+    var mcol = magPole > 0 ? C.a : C.e;
+    pc(magX, magY, 36, mcol, 0.8); txt(magPole > 0 ? 'N' : 'S', magX, magY - 8, 40, C.g);
+    for (var fi = 0; fi < 8; fi++) { var fa = fi * Math.PI / 4; game.draw.rect(snap(magX + Math.cos(fa) * 80) - 4, snap(magY + Math.sin(fa) * 80) - 4, 8, 8, mcol, 0.4); }
+    // 玉
+    pc(bx, by, BALL_R, C.e, 1); pc(bx - 10, by - 10, 8, C.g, 0.8);
 
-    // Ball
-    game.draw.circle(bx, by, BALL_R + 8, C.ballHi, 0.25);
-    game.draw.circle(bx, by, BALL_R, C.ball, 0.9);
-    game.draw.circle(bx - BALL_R * 0.3, by - BALL_R * 0.3, BALL_R * 0.25, '#fff', 0.5);
-
-    game.draw.text('タップで磁石切り替え', W / 2, H * 0.94, { size: 36, color: C.ui });
-    game.draw.text(mLabel + '極: ' + (magPole > 0 ? '引き寄せ' : '押し出し'), W / 2, H * 0.9, { size: 38, color: mCol });
-
-    var ratio = Math.max(0, timeLeft / 30);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.wallHi : C.magN);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(magPole > 0 ? 'N: PULL' : 'S: PUSH', W / 2, 168, 44, mcol);
+    scanlines();
   });
 
-  game.onStart(function() { game.audio.bgm('bgm_main', 0.2); });
+  game.onStart(function() {
+    game.audio.bgm('bgm_main', 0.2);
+    state = S.ATTRACT;
+    initGame();
+  });
 })(game);
