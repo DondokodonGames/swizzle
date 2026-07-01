@@ -1,197 +1,148 @@
 // 114-pendulum-swing.js
-// 振り子の弧 — 完璧なタイミングで手を離して的に飛び込む空中ブランコの緊張感
+// 振り子の弧 — 完璧なタイミングで手を離して的の足場に飛び込む空中ブランコ
 // 操作: タップで手を離してジャンプ
-// 成功: 8回的に着地  失敗: 5回外す or 40秒
+// 成功: 1回的に着地  失敗: 3回外す or 40秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#030812',
-    rope:     '#475569',
-    swinger:  '#f97316',
-    swingerHi:'#fed7aa',
-    target:   '#22c55e',
-    targetHi: '#86efac',
-    wrong:    '#ef4444',
-    correct:  '#22c55e',
-    ui:       '#334155'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var PIVOT_X = W / 2;
-  var PIVOT_Y = H * 0.08;
-  var ROPE_L = 480;
-  var angle = -Math.PI / 3; // start left
-  var angVel = 0;
-  var GRAVITY = 9.8;
-  var swinging = true;
-  var released = false;
+  var GAME_TITLE  = 'PENDULUM SWING';
+  var HOW_TO_PLAY = 'TAP TO RELEASE AND LAND';
+  var MAX_TIME = 40;
+  var NEEDED = 1;           // 修正2: 8 → 1
+  var MAX_MISS = 3;         // 修正2: 5 → 3
+  var PIVOT_X = W / 2, PIVOT_Y = H * 0.14, ROPE_L = 480, TARGET_R = 90, PERSON_R = 32;
 
-  // Projectile after release
-  var projX = 0, projY = 0, projVX = 0, projVY = 0;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var targets = []; // { x, y, r, hit }
-  var TARGET_R = 70;
-  var PERSON_R = 28;
+  var angle, angVel, swinging, released, projX, projY, projVX, projVY, target, score, misses, timeLeft, done, feedback, feedbackOk;
 
-  var score = 0;
-  var needed = 8;
-  var misses = 0;
-  var maxMisses = 5;
-  var timeLeft = 40;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var round = 0;
-
-  function placePlatform() {
-    var side = Math.random() > 0.5 ? 1 : -1;
-    var tx = W / 2 + side * (160 + Math.random() * 280);
-    var ty = H * 0.5 + Math.random() * H * 0.2;
-    targets = [{ x: tx, y: ty, r: TARGET_R, hit: false }];
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(px, py, r, color, alpha) {
+    var step = 8; px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step)
+        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
 
-  function resetSwing() {
-    angle = (Math.random() > 0.5 ? -1 : 1) * (Math.PI / 4 + Math.random() * Math.PI / 6);
-    angVel = 0;
-    swinging = true;
-    released = false;
-    round++;
+  function placeTarget() { var side = Math.random() > 0.5 ? 1 : -1; target = { x: W / 2 + side * (200 + Math.random() * 200), y: H * 0.6 + Math.random() * H * 0.15, r: TARGET_R }; }
+  function resetSwing() { if (state !== S.PLAYING || done) return; angle = (Math.random() > 0.5 ? -1 : 1) * (Math.PI / 4 + Math.random() * Math.PI / 6); angVel = 0; swinging = true; released = false; }
+  function initGame() { score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedback = 0; feedbackOk = false; placeTarget(); angle = -Math.PI / 3; angVel = 0; swinging = true; released = false; }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (400 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    setTimeout(function() { state = S.RESULT; }, 600);
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
-  game.onTap(function() {
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done || !swinging) return;
-    // Release
-    swinging = false;
-    released = true;
-    var sx = PIVOT_X + Math.sin(angle) * ROPE_L;
-    var sy = PIVOT_Y + Math.cos(angle) * ROPE_L;
-    // Velocity from angular velocity
-    projX = sx; projY = sy;
-    projVX = angVel * ROPE_L * Math.cos(angle);
-    projVY = angVel * ROPE_L * -Math.sin(angle);
+    swinging = false; released = true;
+    projX = PIVOT_X + Math.sin(angle) * ROPE_L; projY = PIVOT_Y + Math.cos(angle) * ROPE_L;
+    projVX = angVel * ROPE_L * Math.cos(angle); projVY = angVel * ROPE_L * -Math.sin(angle);
     game.audio.play('se_tap', 0.7);
   });
 
+  // 世界観: 空中ブランコのサーカス。振り子の勢いで的の足場へ飛び移る。
+  function background() {
+    game.draw.clear('#0a0018');
+    game.draw.rect(0, snap(H * 0.9), W, H * 0.1, '#221040');
+    txt('TRAPEZE SHOW', W / 2, 250, 34, C.b);
+  }
+
+  function drawScene() {
+    var lit = Math.floor(game.time.elapsed * 4) % 2 === 0;
+    drawPixelCircle(target.x, target.y, target.r, C.b, lit ? 0.4 : 0.25);
+    drawPixelCircle(target.x, target.y, target.r * 0.5, C.b, 0.8);
+    if (swinging) {
+      var sx = PIVOT_X + Math.sin(angle) * ROPE_L, sy = PIVOT_Y + Math.cos(angle) * ROPE_L;
+      game.draw.line(PIVOT_X, PIVOT_Y, sx, sy, '#556', 6);
+      drawPixelCircle(PIVOT_X, PIVOT_Y, 18, C.d, 1);
+      drawPixelCircle(sx, sy, PERSON_R, C.f, 1);
+      game.draw.rect(snap(sx) - 10, snap(sy) - 10, 8, 8, C.g); game.draw.rect(snap(sx) + 4, snap(sy) - 10, 8, 8, C.g);
+    }
+    if (released) { drawPixelCircle(projX, projY, PERSON_R, C.f, 1); game.draw.rect(snap(projX) - 10, snap(projY) - 10, 8, 8, C.g); }
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!target) initGame();
+      background();
+      angle = 0.6 * Math.sin(game.time.elapsed * 1.5);
+      drawScene();
+      txt(GAME_TITLE,  W / 2, H * 0.3, 72, C.f);
+      txt(HOW_TO_PLAY, W / 2, H * 0.355, 30, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.82, 64, C.a);
+        txt('TAP TO START', W / 2, H * 0.87, 46, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.92, 40, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'PERFECT LANDING!' : 'GAME OVER', W / 2, H * 0.35, 72, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
-
-    if (swinging) {
-      // Pendulum physics
-      var accel = -(GRAVITY / (ROPE_L / 100)) * Math.sin(angle);
-      angVel += accel * dt * 3;
-      angVel *= 0.999; // very light damping
-      angle += angVel * dt;
-    }
-
-    if (released) {
-      projVY += 1600 * dt;
-      projX += projVX * dt;
-      projY += projVY * dt;
-
-      // Check hit
-      if (targets.length > 0) {
-        var t = targets[0];
-        var dx = projX - t.x, dy = projY - t.y;
-        if (Math.sqrt(dx * dx + dy * dy) < TARGET_R + PERSON_R) {
-          score++;
-          feedbackOk = true;
-          feedback = 0.5;
-          game.audio.play('se_success');
-          released = false;
-          placePlatform();
-          if (score >= needed && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(score * 60 + Math.ceil(timeLeft) * 10); }, 600);
-            return;
-          }
-          setTimeout(function() { resetSwing(); }, 600);
-          return;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (swinging) { angVel += -(9.8 / (ROPE_L / 100)) * Math.sin(angle) * dt * 3; angVel *= 0.999; angle += angVel * dt; }
+      if (released) {
+        projVY += 1600 * dt; projX += projVX * dt; projY += projVY * dt;
+        if (Math.sqrt((projX - target.x) * (projX - target.x) + (projY - target.y) * (projY - target.y)) < TARGET_R + PERSON_R) {
+          score++; feedbackOk = true; feedback = 0.5; game.audio.play('se_success'); released = false;
+          if (score >= NEEDED) { finish(true); return; } placeTarget(); setTimeout(resetSwing, 600); return;
+        }
+        if (projY > H + 100 || projX < -100 || projX > W + 100) {
+          misses++; feedbackOk = false; feedback = 0.5; game.audio.play('se_failure'); released = false;
+          if (misses >= MAX_MISS) { finish(false); return; } setTimeout(resetSwing, 600);
         }
       }
-
-      // Miss (fell off screen)
-      if (projY > H + 100) {
-        misses++;
-        feedbackOk = false;
-        feedback = 0.5;
-        game.audio.play('se_failure');
-        released = false;
-        if (misses >= maxMisses && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 600);
-          return;
-        }
-        setTimeout(function() { resetSwing(); }, 600);
-      }
+      if (feedback > 0) feedback -= dt;
     }
-
-    if (feedback > 0) feedback -= dt;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Target platform
-    if (targets.length > 0) {
-      var t2 = targets[0];
-      var tPulse = 0.5 + 0.4 * Math.abs(Math.sin(timeLeft * 2));
-      game.draw.circle(t2.x, t2.y, t2.r + 16, C.targetHi, tPulse * 0.2);
-      game.draw.circle(t2.x, t2.y, t2.r, C.target, 0.5);
-      game.draw.circle(t2.x, t2.y, t2.r * 0.5, C.target, 0.8);
-      game.draw.circle(t2.x, t2.y, 16, C.targetHi);
-    }
-
-    if (swinging) {
-      var sx2 = PIVOT_X + Math.sin(angle) * ROPE_L;
-      var sy2 = PIVOT_Y + Math.cos(angle) * ROPE_L;
-      // Rope
-      game.draw.line(PIVOT_X, PIVOT_Y, sx2, sy2, C.rope, 6);
-      // Pivot
-      game.draw.circle(PIVOT_X, PIVOT_Y, 20, '#1e2d45');
-      game.draw.circle(PIVOT_X, PIVOT_Y, 12, C.rope);
-      // Swinger
-      game.draw.circle(sx2, sy2, PERSON_R + 6, C.swingerHi, 0.3);
-      game.draw.circle(sx2, sy2, PERSON_R, C.swinger);
-    }
-
-    if (released) {
-      game.draw.circle(projX, projY, PERSON_R + 6, C.swingerHi, 0.3);
-      game.draw.circle(projX, projY, PERSON_R, C.swinger);
-    }
-
-    // Feedback
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? C.correct : C.wrong, feedback * 0.2);
-      game.draw.text(feedbackOk ? '着地！' : '落下…', W / 2, H * 0.3, {
-        size: 88, color: feedbackOk ? C.correct : C.wrong, bold: true
-      });
-    }
-
-    // Score & misses
-    game.draw.text(score + ' / ' + needed, W / 2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    for (var mi = 0; mi < maxMisses; mi++) {
-      game.draw.circle(W / 2 + (mi - 2) * 56, 216, 18, mi < misses ? C.wrong : '#0a1428');
-    }
-
-    game.draw.text('タップで手を離す！', W / 2, H * 0.9, { size: 48, color: C.ui });
-
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.swinger : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    background();
+    drawScene();
+    if (feedback > 0) txt(feedbackOk ? 'LANDED!' : 'MISSED!', W / 2, H * 0.28, 80, feedbackOk ? C.b : C.a);
+    timeBar();
+    txt('LAND ' + score + ' / ' + NEEDED, W / 2, 96, 44, C.c);
+    for (var m = 0; m < MAX_MISS; m++) game.draw.rect(W / 2 + (m - 1) * 64 - 20, 150, 40, 40, m < misses ? C.a : '#330011');
+    if (swinging) txt('TAP TO RELEASE!', W / 2, H - 90, 44, C.f);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
-    placePlatform();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
