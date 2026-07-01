@@ -1,213 +1,142 @@
 // 068-timing-gate.js
 // タイミングゲート — 左右に往復するゲートが全開になった瞬間にボールを通す
 // 操作: タップでボールをリリース
-// 成功: 8回ゲートを通過  失敗: 4回ゲートに当たる or 20秒
+// 成功: 1回ゲートを通過  失敗: 4回ゲートに当たる or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#04080c',
-    gate:     '#1e3a5f',
-    gateHi:   '#2563eb',
-    ball:     '#fbbf24',
-    ballHi:   '#fef3c7',
-    safe:     '#22c55e',
-    danger:   '#ef4444',
-    trail:    '#f97316',
-    ui:       '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Gate at a fixed Y position, two halves sliding in from left and right
-  var GATE_Y = H * 0.45;
-  var GATE_H = 48;
-  var GATE_SPEED = 2.8; // radians/sec (gate oscillation)
-  var MIN_GAP = 80; // minimum gap between gate halves
-  var MAX_HALF = (W - MIN_GAP) / 2; // max extent of each half
+  var GAME_TITLE  = 'TIMING GATE';
+  var HOW_TO_PLAY = 'TAP TO RELEASE WHEN OPEN';
+  var MAX_TIME = 20;
+  var NEEDED = 1;            // 修正2: 8 → 1
+  var MAX_HIT = 4;
+  var GATE_Y = H * 0.42, GATE_H = 56, GATE_SPEED = 2.8, MIN_GAP = 120;
+  var MAX_HALF = (W - MIN_GAP) / 2;
+  var BALL_R = 44, BALL_START_X = W / 2, BALL_START_Y = H * 0.78, BALL_UP = -1200;   // 修正1: 発射は下、ゲートは上
 
-  // Gate phase: 0 = fully open, π = fully closed
-  var gatePhase = Math.PI; // start closed
-  var gateDir = 1; // speed direction
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Ball
-  var ball = null; // {x,y,vy}
-  var BALL_R = 36;
-  var BALL_START_X = W / 2;
-  var BALL_START_Y = H * 0.72;
-  var BALL_SPEED_UP = -1100;
-  var trails = [];
+  var gatePhase, ball, passed, score, hits, timeLeft, done, feedback, feedbackOk;
 
-  var score = 0;
-  var needed = 8;
-  var hits = 0;
-  var maxHits = 4;
-  var timeLeft = 20;
-  var done = false;
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(px, py, r, color, alpha) {
+    var step = 8; px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step)
+        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
 
-  var feedback = 0;
-  var feedbackOk = false;
+  function gateExtent() { return (Math.cos(gatePhase) + 1) / 2 * MAX_HALF; }
+  function initGame() { gatePhase = Math.PI; ball = null; passed = false; score = 0; hits = 0; timeLeft = MAX_TIME; done = false; feedback = 0; feedbackOk = false; }
 
-  function getGateExtent() {
-    // gatePhase 0=open, π=closed
-    var closed = (Math.cos(gatePhase) + 1) / 2; // 0=open, 1=closed
-    return closed * MAX_HALF;
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done || ball) return;
-    ball = { x: BALL_START_X, y: BALL_START_Y, vy: BALL_SPEED_UP };
-    trails = [];
-    game.audio.play('se_tap', 0.6);
+    ball = { x: BALL_START_X, y: BALL_START_Y, vy: BALL_UP }; passed = false; game.audio.play('se_tap', 0.6);
   });
 
+  // 世界観: セキュリティゲート。開いた瞬間にボールを打ち上げて通す。
+  function background() {
+    game.draw.clear('#0a0018');
+    txt('GATE', W / 2, H * 0.1, 36, C.b);
+  }
+
+  function drawGate() {
+    var ext = gateExtent(), leftX = W / 2 - ext, rightX = W / 2 + ext, openR = 1 - ext / MAX_HALF;
+    var col = openR > 0.65 ? C.b : (openR > 0.35 ? C.e : C.a);
+    game.draw.rect(0, snap(GATE_Y - GATE_H / 2), snap(leftX), GATE_H, C.d);
+    game.draw.rect(snap(leftX) - 12, snap(GATE_Y - GATE_H / 2) - 8, 12, GATE_H + 16, col);
+    game.draw.rect(snap(rightX), snap(GATE_Y - GATE_H / 2), W - snap(rightX), GATE_H, C.d);
+    game.draw.rect(snap(rightX), snap(GATE_Y - GATE_H / 2) - 8, 12, GATE_H + 16, col);
+    if (openR > 0.5) game.draw.rect(snap(leftX), snap(GATE_Y - GATE_H / 2) - 20, snap(rightX - leftX), GATE_H + 40, col, openR * 0.2);
+    txt('GAP ' + Math.floor(rightX - leftX), W / 2, GATE_Y + GATE_H / 2 + 50, 36, col);
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (gatePhase === undefined) initGame();
+      background();
+      gatePhase += GATE_SPEED * dt;
+      drawGate();
+      drawPixelCircle(BALL_START_X, BALL_START_Y, BALL_R, C.c, 1);
+      txt(GAME_TITLE,  W / 2, H * 0.18, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.26, 40, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 52, C.g);
+      }
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
-
-    // Oscillate gate
-    gatePhase += GATE_SPEED * dt;
-    if (gatePhase > Math.PI * 2) gatePhase -= Math.PI * 2;
-
-    // Ball
-    if (ball) {
-      ball.vy += 1600 * dt; // gravity
-      ball.y += ball.vy * dt;
-      trails.unshift({ x: ball.x, y: ball.y });
-      if (trails.length > 10) trails.pop();
-
-      // Check gate collision
-      if (ball.y + BALL_R >= GATE_Y - GATE_H / 2 && ball.y - BALL_R <= GATE_Y + GATE_H / 2) {
-        var ext = getGateExtent();
-        var leftGate = W / 2 - ext;
-        var rightGate = W / 2 + ext;
-        var gapLeft = leftGate;
-        var gapRight = rightGate;
-
-        if (ball.x - BALL_R < gapLeft || ball.x + BALL_R > gapRight) {
-          // Hit gate wall
-          hits++;
-          feedbackOk = false;
-          feedback = 0.5;
-          ball = null;
-          game.audio.play('se_failure', 0.7);
-          if (hits >= maxHits && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 400);
-          }
-        } else if (ball.y < GATE_Y && ball.vy < 0) {
-          // Passed through gate!
-          // (will be confirmed when ball exits above gate)
+      if (timeLeft <= 0) { finish(false); return; }
+      gatePhase += GATE_SPEED * dt; if (gatePhase > Math.PI * 2) gatePhase -= Math.PI * 2;
+      if (ball) {
+        ball.vy += 1600 * dt; ball.y += ball.vy * dt;
+        if (!passed && ball.y + BALL_R >= GATE_Y - GATE_H / 2 && ball.y - BALL_R <= GATE_Y + GATE_H / 2 && ball.vy < 0) {
+          var ext = gateExtent(), leftX = W / 2 - ext, rightX = W / 2 + ext;
+          if (ball.x - BALL_R < leftX || ball.x + BALL_R > rightX) { hits++; feedbackOk = false; feedback = 0.5; ball = null; game.audio.play('se_failure', 0.7); if (hits >= MAX_HIT) { finish(false); return; } }
         }
+        if (ball && !passed && ball.y < GATE_Y - GATE_H / 2 - BALL_R && ball.vy < 0) { passed = true; score++; feedbackOk = true; feedback = 0.5; game.audio.play('se_tap', 1.0); if (score >= NEEDED) { finish(true); return; } }
+        if (ball && ball.y > H + 80) ball = null;
       }
-
-      // Ball passed through gate (now above)
-      if (ball && ball.y < GATE_Y - GATE_H / 2 - BALL_R * 2 && ball.vy < 0) {
-        score++;
-        feedbackOk = true;
-        feedback = 0.5;
-        game.audio.play('se_tap', 1.0);
-        if (score >= needed && !done) {
-          done = true;
-          game.audio.play('se_success');
-          setTimeout(function() { game.end.success(score * 20 + Math.ceil(timeLeft) * 10); }, 400);
-        }
-        // Ball continues up and falls back down
-      }
-
-      // Reset when ball exits screen bottom
-      if (ball && ball.y > H + 80) {
-        ball = null;
-      }
+      if (feedback > 0) feedback -= dt;
     }
-
-    if (feedback > 0) feedback -= dt;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    var ext = getGateExtent();
-    var leftX = W / 2 - ext;
-    var rightX = W / 2 + ext;
-    var openRatio = 1 - ext / MAX_HALF; // 0=closed, 1=open
-
-    // Gate open indicator
-    var gateColor = openRatio > 0.65 ? C.safe : (openRatio > 0.35 ? C.gateHi : C.danger);
-
-    // Left gate half
-    game.draw.rect(0, GATE_Y - GATE_H / 2, leftX, GATE_H, C.gate);
-    game.draw.rect(leftX - 16, GATE_Y - GATE_H / 2 - 8, 16, GATE_H + 16, gateColor, 0.8);
-    game.draw.rect(0, GATE_Y - GATE_H / 2, leftX, 12, C.gateHi, 0.3);
-
-    // Right gate half
-    game.draw.rect(rightX, GATE_Y - GATE_H / 2, W - rightX, GATE_H, C.gate);
-    game.draw.rect(rightX, GATE_Y - GATE_H / 2 - 8, 16, GATE_H + 16, gateColor, 0.8);
-    game.draw.rect(rightX, GATE_Y - GATE_H / 2, W - rightX, 12, C.gateHi, 0.3);
-
-    // Gap glow
-    if (openRatio > 0.5) {
-      game.draw.rect(leftX, GATE_Y - GATE_H / 2 - 24, rightX - leftX, GATE_H + 48, gateColor, openRatio * 0.15);
-    }
-
-    // Gap width text
-    var gapW = rightX - leftX;
-    game.draw.text('GAP: ' + Math.floor(gapW), W / 2, GATE_Y + GATE_H / 2 + 52, {
-      size: 36, color: gateColor, bold: true
-    });
-
-    // Ball trail
-    for (var tr = 0; tr < trails.length; tr++) {
-      var ta = (1 - tr / trails.length) * 0.5;
-      game.draw.circle(trails[tr].x, trails[tr].y, BALL_R * 0.6 * (1 - tr / trails.length), C.trail, ta);
-    }
-
-    // Ball
-    if (ball) {
-      game.draw.circle(ball.x, ball.y, BALL_R + 8, C.ballHi, 0.2);
-      game.draw.circle(ball.x, ball.y, BALL_R, C.ball);
-      game.draw.circle(ball.x - 10, ball.y - 10, BALL_R * 0.35, '#fff', 0.5);
-    } else if (!done) {
-      // Launch indicator
-      var pulse = 0.3 + 0.3 * Math.sin(game.time.elapsed * 5);
-      game.draw.circle(BALL_START_X, BALL_START_Y, BALL_R + 12, C.ballHi, pulse);
-      game.draw.circle(BALL_START_X, BALL_START_Y, BALL_R, C.ball, 0.7);
-      game.draw.text('↑', BALL_START_X, BALL_START_Y - BALL_R - 40, { size: 48, color: C.ball, bold: true });
-    }
-
-    // Feedback
-    if (feedback > 0) {
-      if (feedbackOk) {
-        game.draw.text('通過！', W / 2, GATE_Y - 100, { size: 80, color: C.safe, bold: true });
-      } else {
-        game.draw.text('当たった！', W / 2, GATE_Y - 100, { size: 80, color: C.danger, bold: true });
-      }
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 20);
-    game.draw.rect(0, 0, W, 72, '#04080c');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.gateHi : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Score & hits
-    game.draw.text(score + ' / ' + needed, W / 2, 140, { size: 56, color: C.ballHi, bold: true });
-    for (var h = 0; h < maxHits; h++) {
-      var hx = W / 2 + (h - (maxHits - 1) / 2) * 64;
-      game.draw.circle(hx, 212, 20, h < hits ? C.danger : '#0a1428');
-    }
-
-    // Guide
-    game.draw.text('ゲートが開いたらタップ！', W / 2, H - 200, { size: 52, color: C.ui });
+    background();
+    drawGate();
+    if (ball) drawPixelCircle(ball.x, ball.y, BALL_R, C.c, 1);
+    else if (Math.floor(game.time.elapsed * 5) % 2 === 0) drawPixelCircle(BALL_START_X, BALL_START_Y, BALL_R, C.c, 0.7);
+    if (feedback > 0) txt(feedbackOk ? 'PASS!' : 'HIT!', W / 2, GATE_Y - 100, 80, feedbackOk ? C.b : C.a);
+    timeBar();
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 96, 44, C.g);
+    for (var h = 0; h < MAX_HIT; h++) game.draw.rect(W / 2 + (h - 1.5) * 56, 150, 40, 40, h < hits ? C.a : '#330011');
+    if (!ball) txt('TAP TO RELEASE!', W / 2, H - 90, 44, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
