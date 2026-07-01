@@ -1,196 +1,167 @@
 // 159-tug-of-war.js
 // 綱引き — 連打で綱を引き、相手チームを引きずり込む筋肉の燃え感
 // 操作: タップ連打で引く
-// 成功: 3本先取  失敗: 3本取られる or 60秒
+// 成功: 1本先取  失敗: 1本取られる or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0605',
-    rope:   '#92400e',
-    ropeHi: '#d97706',
-    player: '#3b82f6',
-    playerHi:'#93c5fd',
-    enemy:  '#ef4444',
-    enemyHi:'#fca5a5',
-    center: '#fef08a',
-    danger: '#ef4444',
-    win:    '#22c55e',
-    ui:     '#334155'
-  };
+  // ── パレット（クラシックアーケード、競技場） ──
+  var C = { bg:'#000011', a:'#0000ff', b:'#00ffff', c:'#ffffff', d:'#ffff00', e:'#ff0000', f:'#00ff00', g:'#ff00ff' };
 
-  var ROPE_Y = H * 0.5;
-  var CENTER_X = W / 2;
-  var WIN_DIST = 320; // how far rope must be pulled to win a round
-  var MARKER_W = 16;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'TUG OF WAR';
+  var HOW_TO_PLAY = 'MASH TAP TO PULL THE ROPE';
+  var MAX_TIME = 15;             // 修正2: 60 → 15
+  var MAX_WINS = 1;              // 修正2: 3 → 1
+  var WIN_DIST = 300;
+  var ROPE_Y = snap(H * 0.5), CENTER_X = snap(W / 2);
+  var TAP_BOOST = 26, TAP_DECAY = 0.88, AI_POWER = 11, AI_INTERVAL = 0.08;
 
-  var ropeOffset = 0; // positive = player side winning
-  var tapPower = 0;   // player tap energy
-  var TAP_BOOST = 22;
-  var TAP_DECAY = 0.88;
-  var AI_POWER_BASE = 14;
-  var AI_VARIATION = 8;
-  var aiTimer = 0;
-  var AI_INTERVAL = 0.08;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var playerWins = 0;
-  var enemyWins = 0;
-  var MAX_WINS = 3;
-  var roundOver = false;
-  var roundTimer = 0;
+  // ── ゲーム変数 ──
+  var ropeOffset, tapPower, aiTimer, playerWins, enemyWins, roundOver, roundTimer, timeLeft, done, shakeX;
 
-  var timeLeft = 60;
-  var done = false;
-  var shakeX = 0;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  function resetRound() {
-    ropeOffset = 0;
-    tapPower = 0;
-    roundOver = false;
-    aiTimer = 0;
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
   }
 
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#001133');
+  }
+
+  function background(ox) {
+    game.draw.clear(C.bg);
+    game.draw.rect(0, ROPE_Y - 220, W, 440, C.a, 0.15);
+    game.draw.rect(0, ROPE_Y - 3, W, 6, C.a, 0.4);
+    game.draw.rect(CENTER_X + WIN_DIST - 4, ROPE_Y - 180, 8, 360, C.a);
+    game.draw.rect(CENTER_X - WIN_DIST - 4, ROPE_Y - 180, 8, 360, C.e);
+  }
+
+  function drawTeam(cx, color, hi, armDir) {
+    cx = snap(cx);
+    var y = ROPE_Y;
+    pc(cx, y - 96, 32, color, 1);                       // 頭
+    game.draw.rect(cx - 24, y - 128, 48, 8, hi);        // 鉢巻
+    game.draw.rect(cx - 28 - armDir * 8, y - 60, 56, 72, color); // 胴
+    game.draw.rect(cx, y - 40, armDir * 60, 14, color); // 腕
+    game.draw.rect(cx - 20, y + 12, 16, 48, color);     // 脚
+    game.draw.rect(cx + 4, y + 12, 16, 48, color);
+  }
+
+  function drawRope(ox) {
+    for (var x = snap(64); x <= W - 64; x += 8) game.draw.rect(x, ROPE_Y - 10 + ox, 8, 20, C.d);
+    var mx = snap(CENTER_X + ropeOffset);
+    pc(mx, ROPE_Y + ox, 28, C.c, 1);
+    game.draw.rect(mx - 4, ROPE_Y - 60 + ox, 8, 52, C.g); // 旗竿
+    game.draw.rect(mx + 4, ROPE_Y - 60 + ox, 36, 24, C.d);
+  }
+
+  function resetRound() { ropeOffset = 0; tapPower = 0; roundOver = false; aiTimer = 0; }
+
+  function initGame() {
+    ropeOffset = 0; tapPower = 0; aiTimer = 0; playerWins = 0; enemyWins = 0;
+    roundOver = false; roundTimer = 0; timeLeft = MAX_TIME; done = false; shakeX = 0;
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (500 + Math.ceil(timeLeft) * 40) : 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
   game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || roundOver) return;
-    tapPower += TAP_BOOST;
-    if (tapPower > 120) tapPower = 120;
+    tapPower = Math.min(120, tapPower + TAP_BOOST);
     game.audio.play('se_tap', 0.25);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(0);
+      drawRope(0); drawTeam(150, C.a, C.b, 1); drawTeam(W - 150, C.e, C.g, -1);
+      txt(GAME_TITLE, W / 2, H * 0.20, 88, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.28, 34, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.78, 64, C.d);
+        txt('TAP TO START', W / 2, H * 0.84, 50, C.c);
+      }
+      txt('INSERT COIN', W / 2, H * 0.90, 40, '#8888aa');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background(0);
+      txt(resultSuccess ? 'YOU WIN!' : 'YOU LOSE', W / 2, H * 0.35, 84, resultSuccess ? C.f : C.e);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.c);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
+      if (timeLeft <= 0) { finish(ropeOffset > 0); return; }
+      if (roundOver) { roundTimer -= dt; if (roundTimer <= 0) resetRound(); }
+      else {
+        tapPower *= Math.pow(TAP_DECAY, dt * 60);
+        ropeOffset += tapPower * dt;
+        aiTimer -= dt;
+        if (aiTimer <= 0) { aiTimer = AI_INTERVAL; ropeOffset -= (AI_POWER + Math.random() * 6); }
+        if (ropeOffset >= WIN_DIST) { playerWins++; roundOver = true; roundTimer = 1.2; shakeX = 18; game.audio.play('se_success'); if (playerWins >= MAX_WINS) { finish(true); return; } }
+        else if (ropeOffset <= -WIN_DIST) { enemyWins++; roundOver = true; roundTimer = 1.2; game.audio.play('se_failure', 0.7); if (enemyWins >= MAX_WINS) { finish(false); return; } }
       }
     }
-
-    if (roundOver) {
-      roundTimer -= dt;
-      if (roundTimer <= 0) resetRound();
-    } else {
-      // Player pulling
-      tapPower *= Math.pow(TAP_DECAY, dt * 60);
-      ropeOffset += tapPower * dt;
-
-      // AI pulling
-      aiTimer -= dt;
-      if (aiTimer <= 0) {
-        aiTimer = AI_INTERVAL;
-        var difficulty = 1 + (playerWins - enemyWins) * 0.15; // adapts
-        var aiForce = (AI_POWER_BASE + Math.random() * AI_VARIATION) * difficulty;
-        ropeOffset -= aiForce;
-      }
-
-      // Check win
-      if (ropeOffset >= WIN_DIST) {
-        playerWins++;
-        roundOver = true;
-        roundTimer = 1.2;
-        game.audio.play('se_success');
-        shakeX = 18;
-        if (playerWins >= MAX_WINS && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(playerWins * 200 + Math.ceil(timeLeft) * 30); }, 1200);
-        }
-      } else if (ropeOffset <= -WIN_DIST) {
-        enemyWins++;
-        roundOver = true;
-        roundTimer = 1.2;
-        game.audio.play('se_failure', 0.7);
-        if (enemyWins >= MAX_WINS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 1200);
-        }
-      }
-    }
-
     if (shakeX > 0) shakeX *= 0.75;
-
-    // ---- draw ----
     var ox = Math.random() * shakeX * 2 - shakeX;
-    game.draw.rect(0, 0, W, H, C.bg);
 
-    // Arena
-    game.draw.rect(0, ROPE_Y - 200, W, 400, '#0d0a08', 0.8);
-    game.draw.line(0, ROPE_Y - 200, W, ROPE_Y - 200, C.rope, 2);
-    game.draw.line(0, ROPE_Y + 200, W, ROPE_Y + 200, C.rope, 2);
+    // ---- 描画 ----
+    background(ox);
+    drawRope(ox);
+    drawTeam(150 + ropeOffset * 0.4, C.a, C.b, 1);
+    drawTeam(W - 150 + ropeOffset * 0.4, C.e, C.g, -1);
+    if (roundOver) { var won = ropeOffset >= WIN_DIST; txt(won ? 'WIN!' : 'LOSE!', W / 2, H / 2 - 260, 80, won ? C.f : C.e); }
+    // パワーバー
+    game.draw.rect(W / 2 - 200, H - 130, 400, 28, '#001133');
+    game.draw.rect(W / 2 - 200, H - 130, snap(400 * tapPower / 120), 28, C.b, 0.9);
+    if (!roundOver) txt('MASH TAP!', W / 2, H - 80, 44, C.d);
 
-    // Pit indicators
-    game.draw.rect(0, ROPE_Y - 200, 80, 400, C.player, 0.08);
-    game.draw.rect(W - 80, ROPE_Y - 200, 80, 400, C.enemy, 0.08);
-
-    // Rope
-    var ropeX = CENTER_X + ropeOffset;
-    for (var ri = 0; ri < 16; ri++) {
-      var rx = MARKER_W * 2 + ri * ((W - MARKER_W * 4) / 15);
-      var ropeAlpha = 0.7;
-      var segColor = C.rope;
-      game.draw.line(MARKER_W * 2, ROPE_Y + ox, W - MARKER_W * 2, ROPE_Y + ox, C.rope, 28);
-      game.draw.line(MARKER_W * 2, ROPE_Y + ox, W - MARKER_W * 2, ROPE_Y + ox, C.ropeHi, 8);
-    }
-
-    // Center marker on rope
-    var markerX = ropeX + ox;
-    game.draw.circle(markerX, ROPE_Y + ox, 32, C.center, 0.9);
-    game.draw.circle(markerX, ROPE_Y + ox, 16, '#fff', 0.8);
-
-    // Win zone lines
-    game.draw.line(CENTER_X + WIN_DIST, ROPE_Y - 160, CENTER_X + WIN_DIST, ROPE_Y + 160, C.player, 6);
-    game.draw.line(CENTER_X - WIN_DIST, ROPE_Y - 160, CENTER_X - WIN_DIST, ROPE_Y + 160, C.enemy, 6);
-
-    // Team figures
-    // Player team (left side)
-    for (var pi = 0; pi < 3; pi++) {
-      var pex = 80 + ropeOffset * 0.4 + ox + pi * 60;
-      game.draw.circle(pex, ROPE_Y - 80, 36, C.playerHi, 0.3);
-      game.draw.circle(pex, ROPE_Y - 80, 28, C.player, 0.85);
-      game.draw.circle(pex, ROPE_Y - 120, 22, C.playerHi, 0.8);
-      // Lean angle based on effort
-      var lean = Math.min(tapPower / 60, 1) * 20;
-      game.draw.line(pex, ROPE_Y - 70, pex - lean, ROPE_Y + 40, C.player, 10);
-    }
-    // Enemy team (right side)
-    for (var ei = 0; ei < 3; ei++) {
-      var eex = W - 80 + ropeOffset * 0.4 + ox - ei * 60;
-      game.draw.circle(eex, ROPE_Y - 80, 36, C.enemyHi, 0.3);
-      game.draw.circle(eex, ROPE_Y - 80, 28, C.enemy, 0.85);
-      game.draw.circle(eex, ROPE_Y - 120, 22, C.enemyHi, 0.8);
-      game.draw.line(eex, ROPE_Y - 70, eex + 16, ROPE_Y + 40, C.enemy, 10);
-    }
-
-    // Round result banner
-    if (roundOver) {
-      var won = ropeOffset >= WIN_DIST;
-      game.draw.rect(W / 2 - 300, H / 2 - 80, 600, 160, won ? C.win : C.danger, 0.9);
-      game.draw.text(won ? '勝ち！' : '負け！', W / 2, H / 2, { size: 80, color: '#fff', bold: true });
-    }
-
-    // Score
-    game.draw.text('あなた', W * 0.2, H * 0.2, { size: 38, color: C.playerHi });
-    game.draw.text('相手', W * 0.8, H * 0.2, { size: 38, color: C.enemyHi });
-    for (var wi = 0; wi < MAX_WINS; wi++) {
-      game.draw.circle(W * 0.15 + wi * 60, H * 0.26, 20, wi < playerWins ? C.player : '#1e293b', 0.9);
-      game.draw.circle(W * 0.85 - wi * 60, H * 0.26, 20, wi < enemyWins ? C.enemy : '#1e293b', 0.9);
-    }
-
-    // Tap power bar
-    var powerRatio = tapPower / 120;
-    game.draw.rect(W / 2 - 200, H * 0.82, 400, 28, '#1e293b', 0.8);
-    game.draw.rect(W / 2 - 200, H * 0.82, 400 * powerRatio, 28, C.playerHi, 0.9);
-
-    if (!roundOver) game.draw.text('タップ連打！', W / 2, H * 0.91, { size: 48, color: C.ui });
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.rope : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.c);
+    scanlines();
   });
 
-  game.onStart(function() { game.audio.bgm('bgm_main', 0.35); });
+  game.onStart(function() {
+    game.audio.bgm('bgm_main', 0.35);
+    state = S.ATTRACT;
+    initGame();
+  });
 })(game);

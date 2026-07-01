@@ -1,238 +1,205 @@
 // 160-ice-slide.js
 // 氷上スライド — 摩擦のない氷の上でパックを操り、ゴールに滑り込ませる精密さ
-// 操作: スワイプで押す方向と強さを決める
-// 成功: 8ゴール  失敗: 5回外す or 50秒
+// 操作: ゴール方向をタップして蹴る（強さは距離で決まる）
+// 成功: 1ゴール  失敗: 5回外す or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#040c18',
-    ice:     '#0c2a40',
-    iceHi:   '#164e63',
-    puck:    '#94a3b8',
-    puckHi:  '#e2e8f0',
-    goal:    '#22c55e',
-    goalHi:  '#86efac',
-    wall:    '#1e3a5f',
-    wallHi:  '#2563eb',
-    danger:  '#ef4444',
-    ui:      '#334155'
-  };
+  // ── パレット（クラシックアーケード、リンク） ──
+  var C = { bg:'#000011', a:'#0000ff', b:'#00ffff', c:'#ffffff', d:'#ffff00', e:'#ff0000', f:'#00ff00', g:'#ff00ff' };
 
-  var ICE_X = 80;
-  var ICE_Y = H * 0.15;
-  var ICE_W = W - 160;
-  var ICE_H = H * 0.65;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ICE SLIDE';
+  var HOW_TO_PLAY = 'TAP TOWARD THE GOAL TO SHOOT';
+  var MAX_TIME = 15;             // 修正2: 50 → 15
+  var NEEDED   = 1;              // 修正2: 8 → 1
+  var MAX_MISS = 5;
+  var ICE_X = snap(80), ICE_Y = snap(H * 0.16), ICE_W = snap(W - 160), ICE_H = snap(H * 0.6);
+  var PUCK_R = 40, GOAL_W = 140, GOAL_H = 40, FRICTION = 0.985;
 
-  var GOAL_W = 120;
-  var GOAL_H = 36;
-  var goalX, goalY;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var PUCK_R = 36;
-  var puckX = ICE_X + ICE_W / 2;
-  var puckY = ICE_Y + ICE_H * 0.75;
-  var pvx = 0, pvy = 0;
-  var FRICTION = 0.985; // Very low friction (ice!)
-  var puckMoving = false;
-  var swipeStart = null;
+  // ── ゲーム変数 ──
+  var puckX, puckY, pvx, pvy, puckMoving, goalX, goalY, goalHoriz, particles, score, misses, timeLeft, done, feedback, feedbackOk;
 
-  var score = 0;
-  var needed = 8;
-  var misses = 0;
-  var maxMisses = 5;
-  var timeLeft = 50;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var particles = [];
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
+  }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#001133');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(ICE_X, ICE_Y, ICE_W, ICE_H, C.a, 0.35);
+    for (var ix = 0; ix <= 4; ix++) game.draw.rect(ICE_X + ix * ICE_W / 4, ICE_Y, 2, ICE_H, C.b, 0.2);
+    for (var iy = 0; iy <= 4; iy++) game.draw.rect(ICE_X, ICE_Y + iy * ICE_H / 4, ICE_W, 2, C.b, 0.2);
+    game.draw.rect(ICE_X, ICE_Y, ICE_W, 8, C.b);
+    game.draw.rect(ICE_X, ICE_Y + ICE_H - 8, ICE_W, 8, C.b);
+    game.draw.rect(ICE_X, ICE_Y, 8, ICE_H, C.b);
+    game.draw.rect(ICE_X + ICE_W - 8, ICE_Y, 8, ICE_H, C.b);
+  }
+
+  function goalRect() {
+    var gW = goalHoriz ? GOAL_W : GOAL_H, gH = goalHoriz ? GOAL_H : GOAL_W;
+    return { x: goalX, y: goalY, w: gW, h: gH, cx: goalX + gW / 2, cy: goalY + gH / 2 };
+  }
+
+  function drawGoal() {
+    var g = goalRect();
+    var on = Math.floor(game.time.elapsed * 8) % 2 === 0;
+    game.draw.rect(g.x, g.y, g.w, g.h, on ? C.f : C.d, 0.9);
+    game.draw.rect(g.x, g.y, g.w, 8, C.g);
+    txt('GOAL', g.cx, g.cy - 8, 28, C.c);
+  }
+
+  function drawPuck() {
+    game.draw.rect(snap(puckX) - PUCK_R, snap(puckY) + 6, PUCK_R * 2, 8, '#000000', 0.4);
+    pc(puckX, puckY, PUCK_R, C.c, 1);
+    pc(puckX, puckY, PUCK_R - 12, C.b, 0.5);
+    pc(puckX - 12, puckY - 12, 8, C.g, 0.8);
+  }
 
   function placeGoal() {
-    var margin = 80;
-    // Goals on any wall: top, left, right
-    var side = Math.floor(Math.random() * 3);
-    if (side === 0) { // top
-      goalX = ICE_X + margin + Math.random() * (ICE_W - margin * 2 - GOAL_W);
-      goalY = ICE_Y - GOAL_H / 2;
-    } else if (side === 1) { // left
-      goalX = ICE_X - GOAL_H / 2;
-      goalY = ICE_Y + margin + Math.random() * (ICE_H - margin * 2 - GOAL_W);
-    } else { // right
-      goalX = ICE_X + ICE_W - GOAL_H / 2;
-      goalY = ICE_Y + margin + Math.random() * (ICE_H - margin * 2 - GOAL_W);
-    }
+    var margin = 100, side = Math.floor(Math.random() * 3);
+    if (side === 0) { goalX = snap(ICE_X + margin + Math.random() * (ICE_W - margin * 2 - GOAL_W)); goalY = snap(ICE_Y - GOAL_H / 2); goalHoriz = true; }
+    else if (side === 1) { goalX = snap(ICE_X - GOAL_H / 2); goalY = snap(ICE_Y + margin + Math.random() * (ICE_H - margin * 2 - GOAL_W)); goalHoriz = false; }
+    else { goalX = snap(ICE_X + ICE_W - GOAL_H / 2); goalY = snap(ICE_Y + margin + Math.random() * (ICE_H - margin * 2 - GOAL_W)); goalHoriz = false; }
   }
 
   function resetPuck() {
-    puckX = ICE_X + ICE_W / 2 + (Math.random() - 0.5) * 200;
-    puckY = ICE_Y + ICE_H * 0.72 + (Math.random() - 0.5) * 100;
-    pvx = 0; pvy = 0;
-    puckMoving = false;
+    puckX = snap(ICE_X + ICE_W / 2 + game.random(-160, 160));
+    puckY = snap(ICE_Y + ICE_H * 0.72 + game.random(-60, 60));
+    pvx = 0; pvy = 0; puckMoving = false;
   }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
-    if (done || puckMoving) return;
-    var dx = x2 - x1, dy = y2 - y1;
-    var len = Math.sqrt(dx * dx + dy * dy);
-    if (len < 20) return;
-    var power = Math.min(len * 2.5, 900);
-    pvx = (dx / len) * power;
-    pvy = (dy / len) * power;
-    puckMoving = true;
-    game.audio.play('se_tap', 0.5);
-  });
+  function initGame() {
+    particles = []; score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedback = 0;
+    placeGoal(); resetPuck();
+  }
 
-  game.onTap(function(tx, ty) {
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 25) : score * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function registerMiss() {
+    misses++; feedbackOk = false; feedback = 0.4;
+    game.audio.play('se_failure', 0.5);
+    if (misses >= MAX_MISS) { finish(false); return; }
+    setTimeout(function() { if (state === S.PLAYING && !done) resetPuck(); }, 450);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || puckMoving) return;
-    // Tap to aim from puck toward tap point
-    var dx = tx - puckX, dy = ty - puckY;
-    var len = Math.sqrt(dx * dx + dy * dy);
+    var dx = x - puckX, dy = y - puckY, len = Math.hypot(dx, dy);
     if (len < 10) return;
     var power = Math.min(len * 1.8, 800);
-    pvx = (dx / len) * power;
-    pvy = (dy / len) * power;
-    puckMoving = true;
+    pvx = (dx / len) * power; pvy = (dy / len) * power; puckMoving = true;
     game.audio.play('se_tap', 0.5);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawGoal(); puckX = ICE_X + ICE_W / 2; puckY = ICE_Y + ICE_H * 0.7; drawPuck();
+      txt(GAME_TITLE, W / 2, H * 0.06, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.82, 32, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 62, C.d);
+        txt('TAP TO START', W / 2, H * 0.93, 48, C.c);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'GOAL!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.f : C.e);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.c);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-    if (feedback > 0) feedback -= dt;
-
-    if (puckMoving) {
-      pvx *= Math.pow(FRICTION, dt * 60);
-      pvy *= Math.pow(FRICTION, dt * 60);
-      puckX += pvx * dt;
-      puckY += pvy * dt;
-
-      // Wall bounces
-      if (puckX - PUCK_R < ICE_X) { puckX = ICE_X + PUCK_R; pvx = Math.abs(pvx) * 0.8; game.audio.play('se_tap', 0.1); }
-      if (puckX + PUCK_R > ICE_X + ICE_W) { puckX = ICE_X + ICE_W - PUCK_R; pvx = -Math.abs(pvx) * 0.8; game.audio.play('se_tap', 0.1); }
-      if (puckY - PUCK_R < ICE_Y) { puckY = ICE_Y + PUCK_R; pvy = Math.abs(pvy) * 0.8; game.audio.play('se_tap', 0.1); }
-      if (puckY + PUCK_R > ICE_Y + ICE_H) {
-        // Bottom = miss
-        puckY = ICE_Y + ICE_H - PUCK_R; pvy = 0; pvx = 0;
-        puckMoving = false;
-        misses++;
-        feedbackOk = false; feedback = 0.4;
-        game.audio.play('se_failure', 0.5);
-        if (misses >= maxMisses && !done) { done = true; setTimeout(function() { game.end.failure(); }, 400); return; }
-        setTimeout(function() { resetPuck(); }, 500);
-      }
-
-      // Goal check
-      var isHoriz = (goalY < ICE_Y + 10 || goalY > ICE_Y + ICE_H - 10);
-      var gCX = goalX + (isHoriz ? GOAL_W / 2 : GOAL_H / 2);
-      var gCY = goalY + (isHoriz ? GOAL_H / 2 : GOAL_W / 2);
-      var distGoal = Math.sqrt((puckX - gCX) * (puckX - gCX) + (puckY - gCY) * (puckY - gCY));
-      if (distGoal < PUCK_R + Math.max(GOAL_W, GOAL_H) / 2 - 20) {
-        // Scored!
-        score++;
-        feedbackOk = true; feedback = 0.4;
-        game.audio.play('se_success', 0.9);
-        for (var pi = 0; pi < 12; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: puckX, y: puckY, vx: Math.cos(ang) * 260, vy: Math.sin(ang) * 260, life: 0.5 });
-        }
-        pvx = 0; pvy = 0; puckMoving = false;
-        placeGoal();
-        if (score >= needed && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(score * 70 + Math.ceil(timeLeft) * 25); }, 400);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (puckMoving) {
+        pvx *= Math.pow(FRICTION, dt * 60); pvy *= Math.pow(FRICTION, dt * 60);
+        puckX += pvx * dt; puckY += pvy * dt;
+        if (puckX - PUCK_R < ICE_X) { puckX = ICE_X + PUCK_R; pvx = Math.abs(pvx) * 0.8; }
+        if (puckX + PUCK_R > ICE_X + ICE_W) { puckX = ICE_X + ICE_W - PUCK_R; pvx = -Math.abs(pvx) * 0.8; }
+        if (puckY - PUCK_R < ICE_Y) { puckY = ICE_Y + PUCK_R; pvy = Math.abs(pvy) * 0.8; }
+        if (puckY + PUCK_R > ICE_Y + ICE_H) { puckY = ICE_Y + ICE_H - PUCK_R; pvx = 0; pvy = 0; puckMoving = false; registerMiss(); return; }
+        var g = goalRect();
+        if (Math.hypot(puckX - g.cx, puckY - g.cy) < PUCK_R + Math.max(GOAL_W, GOAL_H) / 2 - 20) {
+          score++; feedbackOk = true; feedback = 0.4;
+          game.audio.play('se_success', 0.9);
+          for (var pi = 0; pi < 12; pi++) { var ang = Math.random() * Math.PI * 2; particles.push({ x: puckX, y: puckY, vx: Math.cos(ang) * 260, vy: Math.sin(ang) * 260, life: 0.5 }); }
+          pvx = 0; pvy = 0; puckMoving = false;
+          if (score >= NEEDED) { finish(true); return; }
+          placeGoal(); setTimeout(function() { if (state === S.PLAYING && !done) resetPuck(); }, 400);
           return;
         }
-        setTimeout(function() { resetPuck(); }, 400);
-      }
-
-      // Stop when very slow
-      if (Math.abs(pvx) < 8 && Math.abs(pvy) < 8) {
-        pvx = 0; pvy = 0; puckMoving = false;
-        if (!done) {
-          misses++;
-          feedbackOk = false; feedback = 0.35;
-          game.audio.play('se_failure', 0.4);
-          if (misses >= maxMisses && !done) { done = true; setTimeout(function() { game.end.failure(); }, 400); return; }
-          setTimeout(function() { resetPuck(); }, 400);
-        }
+        if (Math.abs(pvx) < 8 && Math.abs(pvy) < 8) { pvx = 0; pvy = 0; puckMoving = false; registerMiss(); return; }
       }
     }
+    for (var p = 0; p < particles.length; p++) { particles[p].x += particles[p].vx * dt; particles[p].y += particles[p].vy * dt; particles[p].vy += 200 * dt; particles[p].life -= dt; }
+    particles = particles.filter(function(pt) { return pt.life > 0; });
+    if (feedback > 0) feedback -= dt;
 
-    for (var pi2 = 0; pi2 < particles.length; pi2++) {
-      particles[pi2].x += particles[pi2].vx * dt; particles[pi2].y += particles[pi2].vy * dt;
-      particles[pi2].vy += 200 * dt; particles[pi2].life -= dt;
-    }
-    particles = particles.filter(function(p) { return p.life > 0; });
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Ice surface
-    game.draw.rect(ICE_X, ICE_Y, ICE_W, ICE_H, C.ice, 0.9);
-    // Ice grid lines
-    for (var ix = 0; ix < 5; ix++) {
-      game.draw.line(ICE_X + ix * ICE_W / 4, ICE_Y, ICE_X + ix * ICE_W / 4, ICE_Y + ICE_H, C.iceHi, 1);
-    }
-    for (var iy = 0; iy < 5; iy++) {
-      game.draw.line(ICE_X, ICE_Y + iy * ICE_H / 4, ICE_X + ICE_W, ICE_Y + iy * ICE_H / 4, C.iceHi, 1);
-    }
-    // Ice border
-    game.draw.rect(ICE_X, ICE_Y, ICE_W, 8, C.wallHi, 0.8);
-    game.draw.rect(ICE_X, ICE_Y + ICE_H - 8, ICE_W, 8, C.wallHi, 0.8);
-    game.draw.rect(ICE_X, ICE_Y, 8, ICE_H, C.wallHi, 0.8);
-    game.draw.rect(ICE_X + ICE_W - 8, ICE_Y, 8, ICE_H, C.wallHi, 0.8);
-
-    // Goal
-    var isHoriz2 = (goalY < ICE_Y + 10 || goalY > ICE_Y + ICE_H - 10);
-    var gW = isHoriz2 ? GOAL_W : GOAL_H;
-    var gH = isHoriz2 ? GOAL_H : GOAL_W;
-    game.draw.rect(goalX, goalY, gW, gH, C.goalHi, 0.3);
-    game.draw.rect(goalX, goalY, gW, gH, C.goal, 0.7);
-    game.draw.text('GOAL', goalX + gW / 2, goalY + gH / 2, { size: 30, color: '#fff', bold: true });
-
-    // Aim guide (when not moving)
+    // ---- 描画 ----
+    background(); drawGoal();
     if (!puckMoving) {
-      var gCX2 = goalX + gW / 2;
-      var gCY2 = goalY + gH / 2;
-      var aimDx = gCX2 - puckX, aimDy = gCY2 - puckY;
-      var aimLen = Math.sqrt(aimDx * aimDx + aimDy * aimDy);
-      game.draw.line(puckX, puckY, puckX + (aimDx / aimLen) * 120, puckY + (aimDy / aimLen) * 120, C.goalHi, 3);
+      var g = goalRect(), aimDx = g.cx - puckX, aimDy = g.cy - puckY, aimLen = Math.max(1, Math.hypot(aimDx, aimDy));
+      for (var t = 40; t < 160; t += 16) game.draw.rect(snap(puckX + aimDx / aimLen * t) - 4, snap(puckY + aimDy / aimLen * t) - 4, 8, 8, C.f, 0.6);
     }
+    drawPuck();
+    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 5, snap(particles[pp].y) - 5, 10, 10, C.f, particles[pp].life * 2);
+    if (feedback > 0) game.draw.rect(0, 0, W, H, feedbackOk ? C.f : C.e, feedback * 0.12);
 
-    // Puck
-    game.draw.circle(puckX + 6, puckY + 6, PUCK_R, '#000', 0.4);
-    game.draw.circle(puckX, puckY, PUCK_R + 6, C.puckHi, 0.15);
-    game.draw.circle(puckX, puckY, PUCK_R, C.puck, 0.95);
-    game.draw.circle(puckX - PUCK_R * 0.3, puckY - PUCK_R * 0.3, PUCK_R * 0.2, '#fff', 0.5);
-
-    // Particles
-    for (var pp = 0; pp < particles.length; pp++) {
-      var part = particles[pp];
-      game.draw.circle(part.x, part.y, 10 * part.life * 2, C.goal, part.life);
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.c);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) {
+      var mx = snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 56);
+      game.draw.rect(mx - 12, H - 96, 24, 24, mm < misses ? C.e : '#001133');
     }
-
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? C.goal : C.danger, feedback * 0.12);
-    }
-
-    if (!puckMoving) game.draw.text('スワイプorタップで蹴る', W / 2, H * 0.87, { size: 38, color: C.ui });
-
-    game.draw.text(score + ' / ' + needed, W / 2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    for (var mi = 0; mi < maxMisses; mi++) {
-      game.draw.circle(W / 2 + (mi - 2) * 52, 218, 18, mi < misses ? C.danger : '#0a1020');
-    }
-
-    var ratio = Math.max(0, timeLeft / 50);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.iceHi : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.25);
-    placeGoal();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
