@@ -1,231 +1,158 @@
 // 066-heat-seeker.js
 // ヒートシーカー — 熱源に向かって自動追尾するミサイルをスワイプで撃ち落とす
 // 操作: スワイプ方向にシールドを展開（上下左右から選ぶ）
-// 成功: 10機撃墜  失敗: 3機が基地に到達 or 20秒
+// 成功: 1機撃墜  失敗: 3機が基地に到達 or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#04080c',
-    base:    '#1d4ed8',
-    baseHi:  '#60a5fa',
-    missile: '#ef4444',
-    missileHi:'#fca5a5',
-    shield:  '#22c55e',
-    shieldHi:'#86efac',
-    exhaust: '#f97316',
-    ui:      '#475569'
-  };
+  // ── パレット（クラシックアーケード） ──
+  var C = { bg:'#000011', a:'#0000ff', b:'#00ffff', c:'#ffffff', d:'#ffff00', e:'#ff0000', f:'#00ff00', g:'#ff00ff' };
 
-  var BASE_X = W / 2;
-  var BASE_Y = H * 0.8;
-  var BASE_R = 80;
-  var MISSILE_R = 28;
-  var SHIELD_R = 160;
+  var GAME_TITLE  = 'HEAT SEEKER';
+  var HOW_TO_PLAY = 'SWIPE TO RAISE THE SHIELD';
+  var MAX_TIME = 20;
+  var NEEDED = 1;            // 修正2: 10 → 1
+  var MAX_HIT = 3;
+  var BASE_X = W / 2, BASE_Y = H * 0.78, BASE_R = 90, MISSILE_R = 32, SHIELD_R = 200;   // 修正1: 基地を下部
+  var SHIELD_DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }, SHIELD_DURATION = 0.45;
 
-  var missiles = [];
-  var shield = null; // {dir, timer}
-  var SHIELD_DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
-  var SHIELD_DURATION = 0.45;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var kills = 0;
-  var needed = 10;
-  var hits = 0;
-  var maxHits = 3;
-  var timeLeft = 20;
-  var done = false;
-  var killFlash = 0;
+  var missiles, shield, kills, hits, timeLeft, done, killFlash, spawnTimer, stars;
 
-  var spawnTimer = 0;
-  var SPAWN_INTERVAL = 1.2;
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(px, py, r, color, alpha) {
+    var step = 8; px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step)
+        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
 
   function spawnMissile() {
-    var side = Math.floor(Math.random() * 4);
-    var x, y, vx, vy;
-    var speed = 280 + kills * 15;
+    var side = Math.floor(Math.random() * 3), x, y, speed = 300 + kills * 20;
     if (side === 0) { x = Math.random() * W; y = -40; }
-    else if (side === 1) { x = Math.random() * W; y = H + 40; }
-    else if (side === 2) { x = -40; y = H * 0.1 + Math.random() * H * 0.8; }
-    else { x = W + 40; y = H * 0.1 + Math.random() * H * 0.8; }
-    var dx = BASE_X - x, dy = BASE_Y - y;
-    var dist = Math.sqrt(dx * dx + dy * dy);
-    vx = (dx / dist) * speed;
-    vy = (dy / dist) * speed;
-    missiles.push({ x: x, y: y, vx: vx, vy: vy, trail: [] });
+    else if (side === 1) { x = -40; y = Math.random() * H * 0.6; }
+    else { x = W + 40; y = Math.random() * H * 0.6; }
+    var dx = BASE_X - x, dy = BASE_Y - y, dist = Math.sqrt(dx * dx + dy * dy);
+    missiles.push({ x: x, y: y, vx: dx / dist * speed, vy: dy / dist * speed, trail: [] });
+  }
+  function initGame() { missiles = []; shield = null; kills = 0; hits = 0; timeLeft = MAX_TIME; done = false; killFlash = 0; spawnTimer = 0.5; stars = []; for (var i = 0; i < 40; i++) stars.push({ x: snap(Math.random() * W), y: snap(Math.random() * H), s: 8 * Math.ceil(Math.random() * 2), ph: Math.floor(Math.random() * 4) }); spawnMissile(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (kills * 300 + Math.ceil(timeLeft) * 40) : kills * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onSwipe(function(dir) {
-    if (done) return;
-    shield = { dir: dir, timer: SHIELD_DURATION };
-    game.audio.play('se_tap', 0.5);
+    if (state !== S.PLAYING || done || !SHIELD_DIRS[dir]) return;
+    shield = { dir: dir, timer: SHIELD_DURATION }; game.audio.play('se_tap', 0.5);
   });
 
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
+  });
+
+  // 世界観: 追尾ミサイルから拠点を守る防空基地。スワイプ方向にシールドを張る。
+  function background() {
+    game.draw.clear('#000011');
+    for (var i = 0; i < stars.length; i++) { var st = stars[i], a = Math.floor(game.time.elapsed * 3 + st.ph) % 2 === 0 ? 0.8 : 0.3; game.draw.rect(st.x, st.y, st.s, st.s, C.c, a); }
+    game.draw.rect(0, BASE_Y + 60, W, H, '#0a0a22');
+  }
+
+  function drawScene() {
+    for (var j = 0; j < missiles.length; j++) {
+      var m = missiles[j];
+      for (var tr = 0; tr < m.trail.length; tr++) game.draw.rect(snap(m.trail[tr].x) - 8, snap(m.trail[tr].y) - 8, 16, 16, C.f, (1 - tr / m.trail.length) * 0.5);
+      drawPixelCircle(m.x, m.y, MISSILE_R, C.e, 1); game.draw.rect(snap(m.x) - 8, snap(m.y) - 8, 12, 12, C.g);
+    }
+    if (shield && shield.timer > 0) {
+      var sa = shield.timer / SHIELD_DURATION, sv = SHIELD_DIRS[shield.dir];
+      drawPixelCircle(BASE_X + sv[0] * SHIELD_R, BASE_Y + sv[1] * SHIELD_R, 70 * sa, C.b, sa);
+    }
+    if (killFlash > 0) drawPixelCircle(BASE_X, BASE_Y, BASE_R + 24, C.c, killFlash / 0.2 * 0.5);
+    drawPixelCircle(BASE_X, BASE_Y, BASE_R, C.a, 1); drawPixelCircle(BASE_X, BASE_Y, BASE_R * 0.5, C.b, 1);
+    // 方向ガイド
+    var arr = [['up', W / 2, BASE_Y - 260, '↑'], ['left', BASE_X - 260, BASE_Y, '←'], ['right', BASE_X + 260, BASE_Y, '→']];
+    for (var a = 0; a < arr.length; a++) txt(arr[a][3], arr[a][1], arr[a][2], 52, shield && shield.dir === arr[a][0] ? C.b : '#333366');
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!missiles) initGame();
+      background();
+      drawScene();
+      txt(GAME_TITLE,  W / 2, H * 0.14, 76, C.d);
+      txt(HOW_TO_PLAY, W / 2, H * 0.21, 38, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.5, 72, C.g);
+        txt('TAP TO START', W / 2, H * 0.57, 52, C.c);
+      }
+      txt('INSERT COIN', W / 2, H * 0.64, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.d : C.e);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.c);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
-
-    spawnTimer -= dt;
-    if (spawnTimer <= 0) {
-      spawnMissile();
-      spawnTimer = Math.max(0.5, SPAWN_INTERVAL - kills * 0.04);
-    }
-
-    if (shield && shield.timer > 0) {
-      shield.timer -= dt;
-      if (shield.timer <= 0) shield = null;
-    }
-
-    // Shield direction vector
-    var sdx = 0, sdy = 0;
-    if (shield) {
-      var sv = SHIELD_DIRS[shield.dir];
-      sdx = sv[0]; sdy = sv[1];
-    }
-
-    for (var i = missiles.length - 1; i >= 0; i--) {
-      var m = missiles[i];
-      // Homing: adjust toward base
-      var dx = BASE_X - m.x, dy = BASE_Y - m.y;
-      var dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      var speed = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
-      m.vx = m.vx * 0.92 + (dx / dist) * speed * 0.08;
-      m.vy = m.vy * 0.92 + (dy / dist) * speed * 0.08;
-      m.x += m.vx * dt;
-      m.y += m.vy * dt;
-      m.trail.unshift({ x: m.x, y: m.y });
-      if (m.trail.length > 8) m.trail.pop();
-
-      // Shield intercept check
-      if (shield && shield.timer > 0) {
-        var sx = BASE_X + sdx * SHIELD_R;
-        var sy = BASE_Y + sdy * SHIELD_R;
-        var sdist = Math.sqrt((m.x - sx) * (m.x - sx) + (m.y - sy) * (m.y - sy));
-        // Shield covers a wide arc in that direction
-        var shieldCoverX = BASE_X + sdx * 80;
-        var shieldCoverY = BASE_Y + sdy * 80;
-        var mAngle = Math.atan2(m.y - BASE_Y, m.x - BASE_X);
-        var sAngle = Math.atan2(sdy, sdx);
-        var angleDiff = Math.abs(mAngle - sAngle);
-        if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
-
-        if (angleDiff < Math.PI * 0.6 && dist < SHIELD_R + MISSILE_R + 40) {
-          kills++;
-          killFlash = 0.2;
-          game.audio.play('se_tap', 0.8);
-          missiles.splice(i, 1);
-          if (kills >= needed && !done) {
-            done = true;
-            game.audio.play('se_success');
-            setTimeout(function() { game.end.success(kills * 20 + Math.ceil(timeLeft) * 10); }, 400);
-          }
-          continue;
+      if (timeLeft <= 0) { finish(false); return; }
+      spawnTimer -= dt; if (spawnTimer <= 0) { spawnMissile(); spawnTimer = Math.max(0.5, 1.2 - kills * 0.05); }
+      if (shield && shield.timer > 0) { shield.timer -= dt; if (shield.timer <= 0) shield = null; }
+      for (var i = missiles.length - 1; i >= 0; i--) {
+        var m = missiles[i];
+        var dx = BASE_X - m.x, dy = BASE_Y - m.y, dist = Math.sqrt(dx * dx + dy * dy) || 1, speed = Math.sqrt(m.vx * m.vx + m.vy * m.vy);
+        m.vx = m.vx * 0.92 + dx / dist * speed * 0.08; m.vy = m.vy * 0.92 + dy / dist * speed * 0.08;
+        m.x += m.vx * dt; m.y += m.vy * dt; m.trail.unshift({ x: m.x, y: m.y }); if (m.trail.length > 6) m.trail.pop();
+        if (shield && shield.timer > 0) {
+          var sv = SHIELD_DIRS[shield.dir], mAng = Math.atan2(m.y - BASE_Y, m.x - BASE_X), sAng = Math.atan2(sv[1], sv[0]);
+          var ad = Math.abs(mAng - sAng); if (ad > Math.PI) ad = Math.PI * 2 - ad;
+          if (ad < Math.PI * 0.6 && dist < SHIELD_R + MISSILE_R + 60) { kills++; killFlash = 0.2; game.audio.play('se_tap', 0.8); missiles.splice(i, 1); if (kills >= NEEDED) { finish(true); return; } continue; }
         }
+        if (dist < BASE_R + MISSILE_R) { hits++; game.audio.play('se_failure', 0.7); missiles.splice(i, 1); if (hits >= MAX_HIT) { finish(false); return; } }
       }
-
-      // Hit base
-      var bd = Math.sqrt((m.x - BASE_X) * (m.x - BASE_X) + (m.y - BASE_Y) * (m.y - BASE_Y));
-      if (bd < BASE_R + MISSILE_R) {
-        hits++;
-        game.audio.play('se_failure', 0.7);
-        missiles.splice(i, 1);
-        if (hits >= maxHits && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-        }
-      }
+      if (killFlash > 0) killFlash -= dt;
     }
-
-    if (killFlash > 0) killFlash -= dt;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Stars
-    for (var s = 0; s < 20; s++) {
-      var sa = ((s * 137 + game.time.elapsed * 20) % 360) / 360;
-      game.draw.circle(
-        (s * 197 + 40) % (W - 80) + 40,
-        (s * 83 + 60) % (H - 120) + 60,
-        2 + s % 2, '#fff', sa * 0.5
-      );
-    }
-
-    // Missile trails and bodies
-    for (var j = 0; j < missiles.length; j++) {
-      var m2 = missiles[j];
-      for (var tr = 0; tr < m2.trail.length; tr++) {
-        var ta = (1 - tr / m2.trail.length) * 0.6;
-        game.draw.circle(m2.trail[tr].x, m2.trail[tr].y, MISSILE_R * 0.6 * (1 - tr / m2.trail.length), C.exhaust, ta);
-      }
-      game.draw.circle(m2.x, m2.y, MISSILE_R + 8, C.missileHi, 0.3);
-      game.draw.circle(m2.x, m2.y, MISSILE_R, C.missile);
-      game.draw.circle(m2.x - 8, m2.y - 8, MISSILE_R * 0.3, '#fff', 0.4);
-    }
-
-    // Shield
-    if (shield && shield.timer > 0) {
-      var sa2 = shield.timer / SHIELD_DURATION;
-      var sv2 = SHIELD_DIRS[shield.dir];
-      var shx = BASE_X + sv2[0] * SHIELD_R;
-      var shy = BASE_Y + sv2[1] * SHIELD_R;
-      game.draw.circle(shx, shy, 90 * sa2, C.shieldHi, sa2 * 0.3);
-      game.draw.circle(shx, shy, 60 * sa2, C.shield, sa2 * 0.7);
-      // Arc
-      game.draw.line(BASE_X + sv2[0] * 80, BASE_Y + sv2[1] * 80,
-                     BASE_X + sv2[0] * 200, BASE_Y + sv2[1] * 200,
-                     C.shieldHi, 8 * sa2);
-    }
-
-    // Base
-    if (killFlash > 0) {
-      game.draw.circle(BASE_X, BASE_Y, BASE_R + 24, '#fff', killFlash / 0.2 * 0.5);
-    }
-    game.draw.circle(BASE_X, BASE_Y, BASE_R + 16, C.baseHi, 0.15);
-    game.draw.circle(BASE_X, BASE_Y, BASE_R, C.base);
-    game.draw.circle(BASE_X, BASE_Y, BASE_R * 0.6, C.baseHi, 0.3);
-    game.draw.circle(BASE_X - 24, BASE_Y - 24, BASE_R * 0.2, '#fff', 0.4);
-
-    // Shield direction arrows
-    var arrowDirs = [
-      {dir:'up', x:W/2, y:BASE_Y-220, label:'↑'},
-      {dir:'down', x:W/2, y:BASE_Y+220, label:'↓'},
-      {dir:'left', x:BASE_X-220, y:BASE_Y, label:'←'},
-      {dir:'right', x:BASE_X+220, y:BASE_Y, label:'→'}
-    ];
-    for (var ad = 0; ad < arrowDirs.length; ad++) {
-      var adir = arrowDirs[ad];
-      var isActive = shield && shield.dir === adir.dir;
-      game.draw.text(adir.label, adir.x, adir.y, { size: 52, color: isActive ? C.shieldHi : '#1e3a5f', bold: isActive });
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 20);
-    game.draw.rect(0, 0, W, 72, '#04080c');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.base : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Kills & hits
-    game.draw.text(kills + ' / ' + needed, W / 2, 140, { size: 56, color: C.shieldHi, bold: true });
-    for (var h = 0; h < maxHits; h++) {
-      var hx = W / 2 + (h - 1) * 64;
-      game.draw.circle(hx, 212, 20, h < hits ? '#ef4444' : '#0a1428');
-    }
-
-    // Guide
-    game.draw.text('スワイプでシールドを展開！', W / 2, H - 200, { size: 48, color: C.ui });
+    background();
+    drawScene();
+    timeBar();
+    txt('SHOT DOWN ' + kills + ' / ' + NEEDED, W / 2, 96, 48, C.c);
+    for (var h = 0; h < MAX_HIT; h++) game.draw.rect(W / 2 + (h - 1) * 64 - 20, 150, 40, 40, h < hits ? C.e : '#330000');
+    txt('SWIPE TO SHIELD!', W / 2, H - 60, 44, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.35);
-    spawnTimer = 0.5;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
