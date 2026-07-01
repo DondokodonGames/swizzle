@@ -1,84 +1,147 @@
 // 129-tower-defense-mini.js
-// ミニ防衛 — 限られたタップで敵の波を食い止める瞬間判断のタワーディフェンス
-// 操作: タップで砲台を向けて発射（自動的に近くの敵を狙う）
-// 成功: 5波防衛  失敗: 敵がゴールに3体到達 or 45秒
+// ミニ防衛 — 砲塔を向けて敵の波を食い止める瞬間判断のタワーディフェンス
+// 操作: タップで砲台を向ける（近くの敵を自動で狙い撃つ）
+// 成功: 1波防衛  失敗: 敵がゴールに3体到達 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#030810',
-    path:    '#0f1a2e',
-    pathHi:  '#1a2a42',
-    tower:   '#475569',
-    towerHi: '#94a3b8',
-    cannon:  '#facc15',
-    enemy:   '#ef4444',
-    enemyHi: '#fca5a5',
-    bullet:  '#fbbf24',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    ui:      '#334155'
-  };
+  // ── パレット（グリーンCRT、防衛レーダー） ──
+  var C = { bg:'#001100', a:'#00ff41', b:'#66ff66', c:'#ccffcc', d:'#009922', e:'#ffcc00', f:'#ff3300', g:'#ffffff' };
 
-  // Path waypoints (enemies walk through these)
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'MINI DEFENSE';
+  var HOW_TO_PLAY = 'TAP TO AIM · AUTO-FIRE AT ENEMIES';
+  var MAX_TIME = 15;             // 修正2: 45 → 15
+  var TOTAL_WAVES = 1;           // 修正2: 5 → 1
+  var MAX_BREACH = 3;
+  var TOP    = 220;
+  var BOTTOM = H - 180;
+
   var PATH = [
-    {x: 0, y: H*0.3},
-    {x: W*0.3, y: H*0.3},
-    {x: W*0.3, y: H*0.6},
-    {x: W*0.7, y: H*0.6},
-    {x: W*0.7, y: H*0.3},
-    {x: W, y: H*0.3}
+    { x: 0,        y: snap(H * 0.30) },
+    { x: snap(W * 0.30), y: snap(H * 0.30) },
+    { x: snap(W * 0.30), y: snap(H * 0.52) },
+    { x: snap(W * 0.70), y: snap(H * 0.52) },
+    { x: snap(W * 0.70), y: snap(H * 0.30) },
+    { x: W,        y: snap(H * 0.30) }
   ];
 
-  var TOWER_X = W/2;
-  var TOWER_Y = H*0.75;
-  var TOWER_R = 44;
-  var CANNON_L = 60;
-  var cannonAngle = -Math.PI/2;
-  var FIRE_RATE = 1.2; // shots/second
-  var fireTimer = 0;
-  var BULLET_SPEED = 700;
-  var BULLET_R = 12;
+  var TOWER_X = snap(W / 2);
+  var TOWER_Y = snap(H * 0.74);   // 下部三分の一
+  var TOWER_R = 48;
+  var CANNON_L = 64;
+  var FIRE_RATE = 1.6;
+  var BULLET_SPEED = 720;
+  var BULLET_R = 14;
+  var ENEMY_R = 32;
+  var ENEMY_SPEED = 80;
+  var WAVE_SIZE = 3;
 
-  var bullets = [];
-  var enemies = []; // { pathIdx, progress, hp, x, y }
-  var ENEMY_R = 28;
-  var ENEMY_SPEED = 90; // px/s along path
-  var ENEMY_HP = 2;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var wave = 0;
-  var TOTAL_WAVES = 5;
-  var waveTimer = 0;
-  var waveSpawnCount = 0;
-  var WAVE_SIZE = 4;
-  var SPAWN_INTERVAL = 0.8;
-  var enemiesInWave = 0;
-  var waveActive = false;
-  var breachCount = 0;
-  var MAX_BREACH = 3;
-  var kills = 0;
+  // ── ゲーム変数 ──
+  var bullets, enemies, cannonAngle, fireTimer, wave, waveTimer, waveSpawnCount;
+  var enemiesInWave, waveActive, breachCount, kills, timeLeft, done, particles;
 
-  var timeLeft = 45;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var particles = [];
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  function getPathPoint(pathIdx, progress) {
-    var p1 = PATH[pathIdx];
-    var p2 = PATH[pathIdx + 1];
-    return {
-      x: p1.x + (p2.x - p1.x) * progress,
-      y: p1.y + (p2.y - p1.y) * progress
-    };
+  function drawPixelCircle(cx, cy, r, color, alpha) {
+    var step = 8;
+    cx = snap(cx); cy = snap(cy);
+    for (var py = -r; py <= r; py += step) {
+      for (var px = -r; px <= r; px += step) {
+        if (px * px + py * py <= r * r) {
+          game.draw.rect(cx + px, cy + py, step, step, color, alpha);
+        }
+      }
+    }
+  }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+
+  function scanlines() {
+    for (var sy = 0; sy < H; sy += 8) {
+      game.draw.rect(0, sy, W, 2, '#000000', 0.18);
+    }
+  }
+
+  function timeBar() {
+    var blocks = 12;
+    var lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) {
+      game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.a : '#003300');
+    }
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    // レーダーグリッド
+    for (var gx = 0; gx < W; gx += 120) game.draw.rect(gx, TOP, 2, BOTTOM - TOP, C.d, 0.2);
+    for (var gy = TOP; gy < BOTTOM; gy += 120) game.draw.rect(0, gy, W, 2, C.d, 0.2);
+  }
+
+  function getPathPoint(idx, prog) {
+    var p1 = PATH[idx], p2 = PATH[idx + 1];
+    return { x: p1.x + (p2.x - p1.x) * prog, y: p1.y + (p2.y - p1.y) * prog };
   }
 
   function getSegLen(idx) {
-    var p1 = PATH[idx], p2 = PATH[idx+1];
-    var dx = p2.x-p1.x, dy = p2.y-p1.y;
-    return Math.sqrt(dx*dx+dy*dy);
+    var p1 = PATH[idx], p2 = PATH[idx + 1];
+    return Math.sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y));
+  }
+
+  // ── スプライト（多矩形でキャラクター性） ──
+  function drawEnemy(pt, e) {
+    // 侵入者：本体＋目＋脚
+    drawPixelCircle(pt.x, pt.y, ENEMY_R, C.f, 0.9);
+    game.draw.rect(pt.x - 16, pt.y - 8, 12, 12, C.g);
+    game.draw.rect(pt.x + 4,  pt.y - 8, 12, 12, C.g);
+    game.draw.rect(pt.x - 12, pt.y - 4, 4, 4, C.bg);
+    game.draw.rect(pt.x + 8,  pt.y - 4, 4, 4, C.bg);
+    game.draw.rect(pt.x - ENEMY_R, pt.y + ENEMY_R - 8, 12, 12, C.f); // 脚
+    game.draw.rect(pt.x + ENEMY_R - 12, pt.y + ENEMY_R - 8, 12, 12, C.f);
+    // HPバー
+    var hpW = ENEMY_R * 2 * (e.hp / e.maxHp);
+    game.draw.rect(pt.x - ENEMY_R, pt.y - ENEMY_R - 16, ENEMY_R * 2, 8, '#003300');
+    game.draw.rect(pt.x - ENEMY_R, pt.y - ENEMY_R - 16, hpW, 8, C.a);
+  }
+
+  function drawTower() {
+    var cx2 = TOWER_X + Math.cos(cannonAngle) * (TOWER_R + CANNON_L);
+    var cy2 = TOWER_Y + Math.sin(cannonAngle) * (TOWER_R + CANNON_L);
+    // 砲身
+    for (var t = 0; t < 8; t++) {
+      var bx = TOWER_X + Math.cos(cannonAngle) * (TOWER_R + t * 8);
+      var by = TOWER_Y + Math.sin(cannonAngle) * (TOWER_R + t * 8);
+      game.draw.rect(snap(bx) - 8, snap(by) - 8, 16, 16, C.e);
+    }
+    // 基部（多矩形の砲台）
+    drawPixelCircle(TOWER_X, TOWER_Y, TOWER_R, C.d, 1);
+    drawPixelCircle(TOWER_X, TOWER_Y, TOWER_R - 12, C.a, 0.8);
+    game.draw.rect(TOWER_X - 12, TOWER_Y - 12, 24, 24, C.c);
+    game.draw.rect(TOWER_X - TOWER_R, TOWER_Y + TOWER_R - 8, TOWER_R * 2, 12, C.d);
+    // 未使用変数を避けるための描画
+    game.draw.rect(snap(cx2) - 4, snap(cy2) - 4, 8, 8, C.e, 0);
+  }
+
+  // ── 初期化 ──
+  function initGame() {
+    bullets = []; enemies = []; particles = [];
+    cannonAngle = -Math.PI / 2;
+    fireTimer = 0;
+    wave = 0; waveTimer = 1.2; waveSpawnCount = 0; enemiesInWave = 0;
+    waveActive = false; breachCount = 0; kills = 0;
+    timeLeft = MAX_TIME;
+    done = false;
   }
 
   function startWave() {
@@ -89,206 +152,194 @@
     waveTimer = 0;
   }
 
-  game.onTap(function(tx, ty) {
+  // ── 終了処理 ──
+  function finish(success) {
     if (done) return;
-    // Aim toward tap
-    var dx = tx - TOWER_X, dy = ty - TOWER_Y;
-    cannonAngle = Math.atan2(dy, dx);
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (kills * 60 + wave * 200 + Math.ceil(timeLeft) * 20) : kills * 40;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() {
+      if (success) game.end.success(finalScore);
+      else         game.end.failure();
+    }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) {
+      game.audio.play('se_tap', 1.0);
+      state = S.PLAYING;
+      initGame();
+      return;
+    }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    // PLAYING
+    if (done) return;
+    cannonAngle = Math.atan2(y - TOWER_Y, x - TOWER_X);
     game.audio.play('se_tap', 0.4);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      drawPath();
+      drawTower();
+      drawEnemy(getPathPoint(1, (game.time.elapsed * 0.3) % 1), { hp: 2, maxHp: 2 });
+      txt(GAME_TITLE,  W / 2, H * 0.80, 78, C.b);
+      txt(HOW_TO_PLAY, W / 2, H * 0.86, 30, C.c);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.10, 60, C.e);
+        txt('TAP TO START', W / 2, H * 0.16, 48, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'DEFENDED!' : 'BREACHED', W / 2, H * 0.35, 80, resultSuccess ? C.a : C.f);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.c);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) {
+        txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.b);
+      }
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
+      if (timeLeft <= 0) { finish(false); return; }
 
-    // Wave management
-    if (!waveActive) {
-      if (wave < TOTAL_WAVES) {
+      if (!waveActive) {
+        if (wave < TOTAL_WAVES) {
+          waveTimer -= dt;
+          if (waveTimer <= 0) startWave();
+        } else if (enemies.length === 0) {
+          finish(true); return;
+        }
+      } else {
         waveTimer -= dt;
-        if (waveTimer <= 0) startWave();
-      } else if (enemies.length === 0 && !done) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() { game.end.success(kills * 30 + wave * 100 + Math.ceil(timeLeft) * 10); }, 400);
+        if (waveTimer <= 0 && waveSpawnCount < enemiesInWave) {
+          waveTimer = 0.9;
+          waveSpawnCount++;
+          enemies.push({ pathIdx: 0, progress: 0, hp: 1 + wave, maxHp: 1 + wave });
+        }
+        if (waveSpawnCount >= enemiesInWave && enemies.length === 0) {
+          waveActive = false;
+          waveTimer = 1.0;
+        }
       }
-    }
 
-    if (waveActive) {
-      waveTimer -= dt;
-      if (waveTimer <= 0 && waveSpawnCount < enemiesInWave) {
-        waveTimer = SPAWN_INTERVAL;
-        waveSpawnCount++;
-        enemies.push({ pathIdx: 0, progress: 0, hp: ENEMY_HP + wave - 1, maxHp: ENEMY_HP + wave - 1 });
+      // 自動発射
+      fireTimer -= dt;
+      if (fireTimer <= 0 && enemies.length > 0) {
+        fireTimer = 1 / FIRE_RATE;
+        var closest = null, cd = 1e9;
+        for (var i = 0; i < enemies.length; i++) {
+          var pt = getPathPoint(enemies[i].pathIdx, enemies[i].progress);
+          var d = Math.hypot(pt.x - TOWER_X, pt.y - TOWER_Y);
+          if (d < cd) { cd = d; closest = pt; }
+        }
+        if (closest) {
+          cannonAngle = Math.atan2(closest.y - TOWER_Y, closest.x - TOWER_X);
+          bullets.push({
+            x: TOWER_X + Math.cos(cannonAngle) * (TOWER_R + 10),
+            y: TOWER_Y + Math.sin(cannonAngle) * (TOWER_R + 10),
+            vx: Math.cos(cannonAngle) * BULLET_SPEED,
+            vy: Math.sin(cannonAngle) * BULLET_SPEED
+          });
+          game.audio.play('se_tap', 0.3);
+        }
       }
-      if (waveSpawnCount >= enemiesInWave && enemies.length === 0) {
-        waveActive = false;
-        waveTimer = 2.0;
-        feedbackOk = true;
-        feedback = 0.7;
-        game.audio.play('se_success');
-      }
-    }
 
-    // Auto-fire toward closest enemy
-    fireTimer -= dt;
-    if (fireTimer <= 0 && enemies.length > 0) {
-      fireTimer = 1 / FIRE_RATE;
-      // Find closest enemy
-      var closest = null, closestDist = 9999;
-      for (var i = 0; i < enemies.length; i++) {
-        var e = enemies[i];
-        var pt = getPathPoint(e.pathIdx, e.progress);
-        var dx2 = pt.x - TOWER_X, dy2 = pt.y - TOWER_Y;
-        var d = Math.sqrt(dx2*dx2 + dy2*dy2);
-        if (d < closestDist) { closestDist = d; closest = { e: e, pt: pt }; }
-      }
-      if (closest) {
-        var tdx = closest.pt.x - TOWER_X, tdy = closest.pt.y - TOWER_Y;
-        var td = Math.sqrt(tdx*tdx + tdy*tdy);
-        cannonAngle = Math.atan2(tdy, tdx);
-        bullets.push({
-          x: TOWER_X + Math.cos(cannonAngle) * (TOWER_R + 10),
-          y: TOWER_Y + Math.sin(cannonAngle) * (TOWER_R + 10),
-          vx: Math.cos(cannonAngle) * BULLET_SPEED,
-          vy: Math.sin(cannonAngle) * BULLET_SPEED,
-          r: BULLET_R
-        });
-        game.audio.play('se_tap', 0.3);
-      }
-    }
-
-    // Move enemies
-    for (var i2 = 0; i2 < enemies.length; i2++) {
-      var en = enemies[i2];
-      if (en.pathIdx >= PATH.length - 1) continue;
-      var segLen = getSegLen(en.pathIdx);
-      en.progress += (ENEMY_SPEED * (1 + wave * 0.1)) / segLen * dt;
-      if (en.progress >= 1) {
-        en.pathIdx++;
-        en.progress -= 1;
-        if (en.pathIdx >= PATH.length - 1) {
-          // Reached goal
-          en.reachedGoal = true;
-          breachCount++;
-          feedbackOk = false;
-          feedback = 0.4;
-          game.audio.play('se_failure', 0.6);
-          if (breachCount >= MAX_BREACH && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
+      // 敵移動
+      for (var i2 = 0; i2 < enemies.length; i2++) {
+        var en = enemies[i2];
+        if (en.pathIdx >= PATH.length - 1) continue;
+        en.progress += (ENEMY_SPEED * (1 + wave * 0.1)) / getSegLen(en.pathIdx) * dt;
+        if (en.progress >= 1) {
+          en.pathIdx++; en.progress -= 1;
+          if (en.pathIdx >= PATH.length - 1) {
+            en.reachedGoal = true;
+            breachCount++;
+            game.audio.play('se_failure', 0.6);
+            if (breachCount >= MAX_BREACH) { finish(false); return; }
           }
         }
       }
-    }
-    enemies = enemies.filter(function(e) { return !e.reachedGoal && e.hp > 0; });
 
-    // Move bullets
-    for (var bi = 0; bi < bullets.length; bi++) {
-      var b = bullets[bi];
-      b.x += b.vx * dt; b.y += b.vy * dt;
-      // Hit check
-      for (var ei = 0; ei < enemies.length; ei++) {
-        var en2 = enemies[ei];
-        var pt2 = getPathPoint(en2.pathIdx, en2.progress);
-        var dx3 = b.x - pt2.x, dy3 = b.y - pt2.y;
-        if (Math.sqrt(dx3*dx3 + dy3*dy3) < BULLET_R + ENEMY_R) {
-          en2.hp--;
-          b.hit = true;
-          if (en2.hp <= 0) {
-            kills++;
-            for (var pi = 0; pi < 6; pi++) {
-              var ang = Math.random() * Math.PI * 2;
-              particles.push({ x: pt2.x, y: pt2.y, vx: Math.cos(ang)*120, vy: Math.sin(ang)*120, life: 0.3 });
+      // 弾移動＆命中
+      for (var bi = 0; bi < bullets.length; bi++) {
+        var b = bullets[bi];
+        b.x += b.vx * dt; b.y += b.vy * dt;
+        for (var ei = 0; ei < enemies.length; ei++) {
+          var en2 = enemies[ei];
+          var pt2 = getPathPoint(en2.pathIdx, en2.progress);
+          if (Math.hypot(b.x - pt2.x, b.y - pt2.y) < BULLET_R + ENEMY_R) {
+            en2.hp--; b.hit = true;
+            if (en2.hp <= 0) {
+              kills++;
+              for (var pi = 0; pi < 6; pi++) {
+                var ang = Math.random() * Math.PI * 2;
+                particles.push({ x: pt2.x, y: pt2.y, vx: Math.cos(ang) * 140, vy: Math.sin(ang) * 140, life: 0.35 });
+              }
             }
+            break;
           }
-          break;
         }
       }
+      bullets = bullets.filter(function(b) { return !b.hit && b.x > -50 && b.x < W + 50 && b.y > -50 && b.y < H + 50; });
+      enemies = enemies.filter(function(e) { return !e.reachedGoal && e.hp > 0; });
     }
-    bullets = bullets.filter(function(b) { return !b.hit && b.x > -50 && b.x < W+50 && b.y > -50 && b.y < H+50; });
 
-    // Particles
-    for (var pi2 = 0; pi2 < particles.length; pi2++) {
-      particles[pi2].x += particles[pi2].vx * dt;
-      particles[pi2].y += particles[pi2].vy * dt;
-      particles[pi2].life -= dt;
+    for (var k = 0; k < particles.length; k++) {
+      particles[k].x += particles[k].vx * dt; particles[k].y += particles[k].vy * dt; particles[k].life -= dt;
     }
     particles = particles.filter(function(p) { return p.life > 0; });
-    if (feedback > 0) feedback -= dt;
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Path
-    for (var pi3 = 0; pi3 < PATH.length - 1; pi3++) {
-      var p1 = PATH[pi3], p2 = PATH[pi3+1];
-      game.draw.line(p1.x, p1.y, p2.x, p2.y, C.path, 60);
-      game.draw.line(p1.x, p1.y, p2.x, p2.y, C.pathHi, 4);
-    }
-    // Goal marker
-    game.draw.circle(PATH[PATH.length-1].x, PATH[PATH.length-1].y, 32, C.wrong, 0.7);
-    game.draw.text('×', PATH[PATH.length-1].x, PATH[PATH.length-1].y, { size: 48, color: '#fff', bold: true });
-
-    // Enemies
+    // ---- 描画 ----
+    background();
+    drawPath();
     for (var ei2 = 0; ei2 < enemies.length; ei2++) {
-      var en3 = enemies[ei2];
-      var pt3 = getPathPoint(en3.pathIdx, en3.progress);
-      game.draw.circle(pt3.x, pt3.y, ENEMY_R + 4, C.enemyHi, 0.3);
-      game.draw.circle(pt3.x, pt3.y, ENEMY_R, C.enemy, 0.8);
-      // HP bar
-      var hpW = ENEMY_R * 2 * (en3.hp / en3.maxHp);
-      game.draw.rect(pt3.x - ENEMY_R, pt3.y - ENEMY_R - 16, ENEMY_R * 2, 8, '#0a0a0a');
-      game.draw.rect(pt3.x - ENEMY_R, pt3.y - ENEMY_R - 16, hpW, 8, C.correct);
+      drawEnemy(getPathPoint(enemies[ei2].pathIdx, enemies[ei2].progress), enemies[ei2]);
     }
-
-    // Bullets
     for (var bi2 = 0; bi2 < bullets.length; bi2++) {
-      game.draw.circle(bullets[bi2].x, bullets[bi2].y, BULLET_R, C.bullet);
+      drawPixelCircle(bullets[bi2].x, bullets[bi2].y, BULLET_R, C.e, 1);
     }
-
-    // Tower
-    var cx2 = TOWER_X + Math.cos(cannonAngle) * (TOWER_R + CANNON_L);
-    var cy2 = TOWER_Y + Math.sin(cannonAngle) * (TOWER_R + CANNON_L);
-    game.draw.line(TOWER_X, TOWER_Y, cx2, cy2, C.cannon, 14);
-    game.draw.circle(TOWER_X, TOWER_Y, TOWER_R + 8, C.towerHi, 0.2);
-    game.draw.circle(TOWER_X, TOWER_Y, TOWER_R, C.tower);
-    game.draw.circle(TOWER_X, TOWER_Y, TOWER_R - 12, C.towerHi, 0.4);
-
-    // Particles
+    drawTower();
     for (var pp = 0; pp < particles.length; pp++) {
-      game.draw.circle(particles[pp].x, particles[pp].y, 6*particles[pp].life*2, C.enemy, particles[pp].life);
+      game.draw.rect(snap(particles[pp].x) - 4, snap(particles[pp].y) - 4, 8, 8, C.f, particles[pp].life * 3);
     }
 
-    // Feedback
-    if (feedback > 0) {
-      game.draw.text(feedbackOk ? '波を撃退！' : '突破された！', W/2, H*0.6, {
-        size: 64, color: feedbackOk ? C.correct : C.wrong, bold: true
-      });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.c);
+    txt('WAVE ' + Math.max(1, wave) + '/' + TOTAL_WAVES, W / 2, 168, 48, C.b);
+    // 突破ドット
+    for (var bd = 0; bd < MAX_BREACH; bd++) {
+      var bx = snap(W / 2 + (bd - (MAX_BREACH - 1) / 2) * 56);
+      game.draw.rect(bx - 12, 208, 24, 24, bd < breachCount ? C.f : '#003300');
     }
-
-    // HUD
-    game.draw.text('Wave ' + wave + '/' + TOTAL_WAVES, W/2, 148, { size: 52, color: '#f1f5f9', bold: true });
-    for (var bi3 = 0; bi3 < MAX_BREACH; bi3++) {
-      game.draw.circle(W/2 + (bi3-1)*52, 216, 18, bi3 < breachCount ? C.wrong : '#0a1020');
-    }
-
-    game.draw.text('タップで砲塔を向ける', W/2, H*0.88, { size: 40, color: C.ui });
-
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*ratio, 72, ratio > 0.3 ? C.cannon : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: '#fff', bold: true });
+    scanlines();
   });
+
+  function drawPath() {
+    for (var i = 0; i < PATH.length - 1; i++) {
+      var p1 = PATH[i], p2 = PATH[i + 1];
+      game.draw.line(p1.x, p1.y, p2.x, p2.y, C.d, 56);
+      game.draw.line(p1.x, p1.y, p2.x, p2.y, C.a, 4);
+    }
+    var goal = PATH[PATH.length - 1];
+    drawPixelCircle(goal.x - 16, goal.y, 28, C.f, 0.8);
+    txt('EXIT', goal.x - 40, goal.y - 60, 32, C.f);
+  }
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
-    waveTimer = 1.5;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
