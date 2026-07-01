@@ -1,226 +1,201 @@
 // 164-morse-code.js
 // モールス信号 — 点と線の組み合わせを解読して文字を当てる暗号ゲーム
-// 操作: タップで点(短押し)・線(長押し)を入力... 実装: タップ左=点 右=線
-// 成功: 8文字正解  失敗: 3回ミス or 45秒
+// 操作: タップ左=点(•) 右=線(—)
+// 成功: 1文字正解  失敗: 3回ミス or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#04080a',
-    dot:     '#06b6d4',
-    dotHi:   '#67e8f9',
-    dash:    '#0891b2',
-    panel:   '#0c2230',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    ui:      '#334155',
-    gold:    '#f59e0b'
-  };
+  // ── パレット（ネオンアーケード、無線室） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var MORSE = {
-    'A': ['•', '—'],
-    'B': ['—', '•', '•', '•'],
-    'C': ['—', '•', '—', '•'],
-    'D': ['—', '•', '•'],
-    'E': ['•'],
-    'F': ['•', '•', '—', '•'],
-    'G': ['—', '—', '•'],
-    'H': ['•', '•', '•', '•'],
-    'I': ['•', '•'],
-    'J': ['•', '—', '—', '—'],
-    'K': ['—', '•', '—'],
-    'L': ['•', '—', '•', '•'],
-    'M': ['—', '—'],
-    'N': ['—', '•'],
-    'O': ['—', '—', '—'],
-    'P': ['•', '—', '—', '•'],
-    'R': ['•', '—', '•'],
-    'S': ['•', '•', '•'],
-    'T': ['—'],
-    'U': ['•', '•', '—'],
-    'V': ['•', '•', '•', '—'],
-    'W': ['•', '—', '—']
-  };
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'MORSE CODE';
+  var HOW_TO_PLAY = 'READ THE SIGNAL · LEFT=• RIGHT=—';
+  var MAX_TIME = 15;             // 修正2: 45 → 15
+  var NEEDED   = 1;              // 修正2: 8 → 1
+  var MAX_MISS = 3;
+  var TOP    = 220;
+
+  // 短い符号の文字だけ使用（易化）
+  var MORSE = { 'E': ['•'], 'T': ['—'], 'A': ['•', '—'], 'N': ['—', '•'], 'I': ['•', '•'], 'M': ['—', '—'] };
   var LETTERS = Object.keys(MORSE);
+  var DISPLAY_INTERVAL = 0.55;
 
-  var currentLetter = '';
-  var currentCode = [];
-  var inputCode = [];
-  var score = 0;
-  var needed = 8;
-  var misses = 0;
-  var maxMisses = 3;
-  var timeLeft = 45;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var signalT = 0; // for animated signal display
-  var displayIdx = 0;
-  var displayTimer = 0;
-  var DISPLAY_INTERVAL = 0.5;
-  var showingCode = true;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var letter, code, input, score, misses, timeLeft, done, feedback, feedbackOk, displayIdx, displayTimer, showing;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
+  }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function drawSignalPanel() {
+    var py = H * 0.28;
+    game.draw.rect(80, py - 90, W - 160, 180, '#0a0018', 0.9);
+    game.draw.rect(80, py - 90, W - 160, 8, C.e);
+    var n = code.length, sw = 96, total = n * sw + (n - 1) * 24, sx = W / 2 - total / 2;
+    for (var i = 0; i < n; i++) {
+      var x = sx + i * (sw + 24) + sw / 2;
+      var active = showing && i === displayIdx, shown = !showing || i < displayIdx;
+      var alpha = shown ? 0.9 : (active ? 1 : 0.2);
+      if (code[i] === '•') pc(x, py, active ? 32 : 24, C.c, alpha);
+      else game.draw.rect(snap(x) - 48, snap(py) - 16, 96, 32, C.c, alpha);
+    }
+  }
+
+  function drawButtons() {
+    var by = H * 0.56, bh = 220;
+    game.draw.rect(60, by, W / 2 - 80, bh, C.d, 0.7);
+    game.draw.rect(60, by, W / 2 - 80, 8, C.e);
+    pc(W / 4, by + bh / 2, 44, C.b, 1);
+    txt('DOT', W / 4, by + bh / 2 + 80, 40, C.b);
+    game.draw.rect(W / 2 + 20, by, W / 2 - 80, bh, C.d, 0.7);
+    game.draw.rect(W / 2 + 20, by, W / 2 - 80, 8, C.e);
+    game.draw.rect(snap(W * 0.75) - 90, snap(by + bh / 2) - 16, 180, 32, C.f, 1);
+    txt('DASH', W * 0.75, by + bh / 2 + 80, 40, C.f);
+  }
 
   function newRound() {
-    currentLetter = LETTERS[Math.floor(Math.random() * LETTERS.length)];
-    currentCode = MORSE[currentLetter];
-    inputCode = [];
-    showingCode = true;
-    displayIdx = 0;
-    displayTimer = 0.8;
-    signalT = 0;
+    letter = LETTERS[Math.floor(Math.random() * LETTERS.length)];
+    code = MORSE[letter]; input = [];
+    showing = true; displayIdx = 0; displayTimer = 0.8;
   }
 
   function checkAnswer() {
-    if (inputCode.length !== currentCode.length) return false;
-    for (var i = 0; i < currentCode.length; i++) {
-      if (inputCode[i] !== currentCode[i]) return false;
-    }
+    if (input.length !== code.length) return false;
+    for (var i = 0; i < code.length; i++) if (input[i] !== code[i]) return false;
     return true;
   }
 
-  game.onTap(function(tx) {
-    if (done || showingCode) return;
-    var isDash = tx >= W / 2;
-    inputCode.push(isDash ? '—' : '•');
-    game.audio.play('se_tap', 0.4);
+  function initGame() {
+    score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedback = 0;
+    newRound();
+  }
 
-    if (inputCode.length === currentCode.length) {
-      // Check
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 30) : score * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || showing) return;
+    input.push(x >= W / 2 ? '—' : '•');
+    game.audio.play('se_tap', 0.4);
+    if (input.length === code.length) {
       if (checkAnswer()) {
-        score++;
-        feedbackOk = true; feedback = 0.7;
+        score++; feedbackOk = true; feedback = 0.7;
         game.audio.play('se_success');
-        if (score >= needed && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(score * 100 + Math.ceil(timeLeft) * 25); }, 700);
-          return;
-        }
-        setTimeout(function() { newRound(); }, 750);
+        if (score >= NEEDED) { finish(true); return; }
+        setTimeout(function() { if (state === S.PLAYING && !done) newRound(); }, 700);
       } else {
-        misses++;
-        feedbackOk = false; feedback = 0.6;
+        misses++; feedbackOk = false; feedback = 0.6;
         game.audio.play('se_failure');
-        if (misses >= maxMisses && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 600);
-          return;
-        }
-        setTimeout(function() { newRound(); }, 700);
+        if (misses >= MAX_MISS) { finish(false); return; }
+        setTimeout(function() { if (state === S.PLAYING && !done) newRound(); }, 700);
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      drawSignalPanel();
+      txt(GAME_TITLE, W / 2, H * 0.10, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.84, 30, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 48, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'DECODED!' : 'GAME OVER', W / 2, H * 0.35, 78, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-    if (feedback > 0) feedback -= dt;
-    signalT += dt;
-
-    if (showingCode) {
-      displayTimer -= dt;
-      if (displayTimer <= 0) {
-        displayIdx++;
-        if (displayIdx >= currentCode.length) {
-          showingCode = false;
-        } else {
-          displayTimer = DISPLAY_INTERVAL;
-          game.audio.play('se_tap', currentCode[displayIdx] === '•' ? 0.3 : 0.5);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (showing) {
+        displayTimer -= dt;
+        if (displayTimer <= 0) {
+          displayIdx++;
+          if (displayIdx >= code.length) showing = false;
+          else { displayTimer = DISPLAY_INTERVAL; game.audio.play('se_tap', code[displayIdx] === '•' ? 0.3 : 0.5); }
         }
       }
     }
+    if (feedback > 0) feedback -= dt;
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Signal display panel
-    var panelY = H * 0.25;
-    game.draw.rect(80, panelY - 80, W - 160, 160, C.panel, 0.9);
-    game.draw.rect(80, panelY - 80, W - 160, 8, C.dotHi, 0.3);
-
-    // Show morse signal being played
-    var codeLen = currentCode.length;
-    var symbolW = 80;
-    var totalW = codeLen * symbolW + (codeLen - 1) * 20;
-    var startX = W / 2 - totalW / 2;
-    for (var ci = 0; ci < codeLen; ci++) {
-      var symX = startX + ci * (symbolW + 20) + symbolW / 2;
-      var isActive = showingCode && ci === displayIdx;
-      var wasShown = !showingCode || ci < displayIdx;
-      var alpha = wasShown ? 0.85 : (isActive ? 0.95 : 0.2);
-      var sym = currentCode[ci];
-      if (sym === '•') {
-        game.draw.circle(symX, panelY, isActive ? 32 : 24, C.dotHi, alpha);
-      } else {
-        game.draw.rect(symX - 48, panelY - 16, 96, 32, C.dotHi, alpha);
-      }
+    // ---- 描画 ----
+    background();
+    drawSignalPanel();
+    drawButtons();
+    // 入力済み
+    var iy = H * 0.80, itot = code.length * 88, isx = W / 2 - itot / 2;
+    for (var ii = 0; ii < code.length; ii++) {
+      var ix = isx + ii * 88 + 44;
+      if (ii < input.length) { if (input[ii] === '•') pc(ix, iy, 24, C.b, 0.9); else game.draw.rect(snap(ix) - 40, snap(iy) - 12, 80, 24, C.b, 0.9); }
+      else game.draw.rect(snap(ix) - 6, snap(iy) - 6, 12, 12, C.d, 0.5);
     }
+    if (feedback > 0 && !feedbackOk) txt(letter, W / 2, H * 0.16, 72, C.a);
+    if (feedback > 0) game.draw.rect(0, 0, W, H, feedbackOk ? C.b : C.a, feedback * 0.14);
+    txt(showing ? 'READ THE SIGNAL!' : 'INPUT THE CODE', W / 2, H * 0.72, 40, showing ? C.c : C.b);
 
-    // Letter answer (shown after success/fail)
-    if (feedback > 0 && !feedbackOk) {
-      game.draw.text(currentLetter, W / 2, panelY - 140, { size: 72, color: C.wrong, bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 44, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) {
+      var mx = snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 56);
+      game.draw.rect(mx - 12, 200, 24, 24, mm < misses ? C.a : '#2a0a3a');
     }
-
-    // Input buttons
-    var btnY = H * 0.55;
-    var btnH = 200;
-    // Dot button (left)
-    game.draw.rect(60, btnY, W / 2 - 80, btnH, C.panel, 0.8);
-    game.draw.rect(60, btnY, W / 2 - 80, 8, C.dotHi, 0.5);
-    game.draw.circle(W / 4, btnY + btnH / 2, 40, C.dotHi, 0.9);
-    game.draw.text('点 (•)', W / 4, btnY + btnH / 2 + 70, { size: 40, color: C.dotHi });
-
-    // Dash button (right)
-    game.draw.rect(W / 2 + 20, btnY, W / 2 - 80, btnH, C.panel, 0.8);
-    game.draw.rect(W / 2 + 20, btnY, W / 2 - 80, 8, C.dotHi, 0.5);
-    game.draw.rect(W * 0.63, btnY + btnH / 2 - 16, 200, 32, C.dotHi, 0.9);
-    game.draw.text('線 (—)', W * 0.75, btnY + btnH / 2 + 70, { size: 40, color: C.dotHi });
-
-    // Player input so far
-    var inputY = H * 0.74;
-    game.draw.text('入力済み:', W / 2, inputY, { size: 36, color: C.ui });
-    var inTotalW = inputCode.length * 80;
-    var inStartX = W / 2 - inTotalW / 2;
-    for (var ii = 0; ii < inputCode.length; ii++) {
-      var inX = inStartX + ii * 80 + 40;
-      if (inputCode[ii] === '•') {
-        game.draw.circle(inX, inputY + 60, 24, C.correct, 0.85);
-      } else {
-        game.draw.rect(inX - 40, inputY + 48, 80, 24, C.correct, 0.85);
-      }
-    }
-    // Remaining slots
-    for (var ri = inputCode.length; ri < currentCode.length; ri++) {
-      var rX = inStartX + ri * 80 + 40;
-      game.draw.circle(rX, inputY + 60, 8, C.ui, 0.4);
-    }
-
-    if (showingCode) {
-      game.draw.text('信号を読め！', W / 2, H * 0.87, { size: 46, color: C.dotHi, bold: true });
-    } else {
-      game.draw.text('左=点  右=線', W / 2, H * 0.87, { size: 42, color: C.ui });
-    }
-
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? C.correct : C.wrong, feedback * 0.14);
-    }
-
-    game.draw.text(score + ' / ' + needed, W / 2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    for (var mi = 0; mi < maxMisses; mi++) {
-      game.draw.circle(W / 2 + (mi - 1) * 52, 218, 18, mi < misses ? C.wrong : '#0a1020');
-    }
-
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.dot : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    setTimeout(function() { newRound(); }, 500);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

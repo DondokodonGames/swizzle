@@ -1,208 +1,181 @@
 // 165-beat-step.js
 // ビートステップ — 音楽のビートが光るタイミングで踏むリズム感ゲーム
 // 操作: 光ったパネルをタップ
-// 成功: 30回ジャストタイミング  失敗: 8回ミス or 40秒
+// 成功: 3回ジャストタイミング  失敗: 8回ミス or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#060414',
-    panel:  '#1a1040',
-    panelHi:'#2d1a6e',
-    active: '#7c3aed',
-    activeHi:'#a78bfa',
-    perfect:'#fef08a',
-    hit:    '#22c55e',
-    hitHi:  '#86efac',
-    wrong:  '#ef4444',
-    ui:     '#334155'
-  };
+  // ── パレット（ネオンアーケード、ダンスフロア） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var COLS = 4;
-  var ROWS = 4;
-  var CELL_W = (W - 120) / COLS;
-  var CELL_H = 200;
-  var GRID_X = 60;
-  var GRID_Y = H * 0.3;
-  var CELL_PAD = 12;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'BEAT STEP';
+  var HOW_TO_PLAY = 'TAP THE GLOWING PANELS';
+  var MAX_TIME = 15;             // 修正2: 40 → 15
+  var NEEDED   = 3;              // 修正2: 30 → 3
+  var MAX_MISS = 8;
+  var COLS = 4, ROWS = 3, PAD = 12;
+  var CELL_W = snap((W - 120) / COLS), CELL_H = 240, GRID_X = snap(60), GRID_Y = snap(300);
+  var BPM = 110, BEAT = 60 / 110;
 
-  var BPM = 110;
-  var BEAT = 60 / BPM;
-  var beatTimer = 0;
-  var beatCount = 0;
-  var beatFlash = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Each cell has a "schedule" - lights on beat X, off on beat X+1
-  var cells = [];
-  for (var r = 0; r < ROWS; r++) {
-    for (var c = 0; c < COLS; c++) {
-      cells.push({
-        x: GRID_X + c * CELL_W,
-        y: GRID_Y + r * CELL_H,
-        lit: false,
-        hitTimer: 0,
-        missTimer: 0,
-        litBeat: -1
-      });
-    }
+  // ── ゲーム変数 ──
+  var cells, particles, beatTimer, beatCount, beatFlash, score, misses, timeLeft, done;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  var score = 0;
-  var needed = 30;
-  var misses = 0;
-  var maxMisses = 8;
-  var timeLeft = 40;
-  var done = false;
-  var particles = [];
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-  function activateRandomCell() {
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    if (beatFlash > 0) for (var a = 0; a < Math.PI * 2; a += 0.2) game.draw.rect(snap(W / 2 + Math.cos(a) * 500) - 6, snap(H / 2 + Math.sin(a) * 500) - 6, 12, 12, C.d, beatFlash * 0.5);
+  }
+
+  function drawCell(cell) {
+    var cx = cell.x + PAD / 2, cy = cell.y + PAD / 2, cw = CELL_W - PAD, ch = CELL_H - PAD;
+    if (cell.hitTimer > 0) { game.draw.rect(cx, cy, cw, ch, C.b, cell.hitTimer * 1.2); txt('!', cx + cw / 2, cy + ch / 2 - 8, 80, C.g); }
+    else if (cell.missTimer > 0) game.draw.rect(cx, cy, cw, ch, C.a, cell.missTimer * 1.5);
+    else if (cell.lit) {
+      var pulse = Math.floor(game.time.elapsed * 8) % 2 === 0 ? 0.95 : 0.7;
+      game.draw.rect(cx - 4, cy - 4, cw + 8, ch + 8, C.c, 0.3);
+      game.draw.rect(cx, cy, cw, ch, C.f, pulse);
+      game.draw.rect(cx, cy, cw, 12, C.c, 0.6);
+    } else { game.draw.rect(cx, cy, cw, ch, C.d, 0.4); game.draw.rect(cx, cy, cw, 8, C.d, 0.6); }
+  }
+
+  function activateCell() {
     var unlit = cells.filter(function(c) { return !c.lit && c.hitTimer <= 0 && c.missTimer <= 0; });
     if (unlit.length === 0) return;
-    var count = Math.min(Math.floor(1 + score / 8), 3);
-    for (var i = 0; i < count && i < unlit.length; i++) {
-      var cell = unlit[Math.floor(Math.random() * unlit.length)];
-      unlit.splice(unlit.indexOf(cell), 1);
-      cell.lit = true;
-      cell.litBeat = beatCount;
+    var count = Math.min(1 + Math.floor(score / 2), 2);
+    for (var i = 0; i < count && unlit.length > 0; i++) {
+      var idx = Math.floor(Math.random() * unlit.length);
+      unlit[idx].lit = true; unlit[idx].litBeat = beatCount; unlit.splice(idx, 1);
     }
   }
 
-  function deactivateOldCells() {
+  function deactivateOld() {
     for (var ci = 0; ci < cells.length; ci++) {
       var c = cells[ci];
       if (c.lit && beatCount > c.litBeat + 2) {
-        c.lit = false;
-        misses++;
-        c.missTimer = 0.35;
+        c.lit = false; misses++; c.missTimer = 0.35;
         game.audio.play('se_failure', 0.3);
-        if (misses >= maxMisses && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-        }
+        if (misses >= MAX_MISS) { finish(false); return; }
       }
     }
   }
 
-  game.onTap(function(tx, ty) {
+  function initGame() {
+    cells = []; particles = [];
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) cells.push({ x: GRID_X + c * CELL_W, y: GRID_Y + r * CELL_H, lit: false, hitTimer: 0, missTimer: 0, litBeat: -1 });
+    beatTimer = 0; beatCount = 0; beatFlash = 0;
+    score = 0; misses = 0; timeLeft = MAX_TIME; done = false;
+  }
+
+  function finish(success) {
     if (done) return;
-    var hitAny = false;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 30) : score * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
     for (var ci = 0; ci < cells.length; ci++) {
       var c = cells[ci];
       if (!c.lit) continue;
-      if (tx >= c.x && tx <= c.x + CELL_W - CELL_PAD &&
-          ty >= c.y && ty <= c.y + CELL_H - CELL_PAD) {
-        c.lit = false;
-        c.hitTimer = 0.4;
-        score++;
-        hitAny = true;
-        // Perfect timing bonus
-        var beatPhase = beatTimer / BEAT;
-        var isPerfect = beatPhase < 0.2 || beatPhase > 0.8;
-        game.audio.play('se_success', isPerfect ? 1.0 : 0.6);
-        for (var pi = 0; pi < (isPerfect ? 12 : 6); pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: c.x + CELL_W / 2, y: c.y + CELL_H / 2, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200 - 80, life: 0.5, perfect: isPerfect });
-        }
-        if (score >= needed && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(score * 30 + Math.ceil(timeLeft) * 25); }, 400);
-        }
-        break;
+      if (x >= c.x && x <= c.x + CELL_W - PAD && y >= c.y && y <= c.y + CELL_H - PAD) {
+        c.lit = false; c.hitTimer = 0.4; score++;
+        game.audio.play('se_success', 0.8);
+        for (var pi = 0; pi < 8; pi++) { var ang = Math.random() * Math.PI * 2; particles.push({ x: c.x + CELL_W / 2, y: c.y + CELL_H / 2, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200 - 80, life: 0.5 }); }
+        if (score >= NEEDED) { finish(true); return; }
+        return;
       }
     }
-    if (!hitAny) {
-      misses++;
-      game.audio.play('se_failure', 0.4);
-      if (misses >= maxMisses && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 400);
-      }
-    }
+    misses++;
+    game.audio.play('se_failure', 0.4);
+    if (misses >= MAX_MISS) { finish(false); return; }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      for (var ci = 0; ci < 12; ci++) {
+        var r = Math.floor(ci / COLS), c = ci % COLS;
+        drawCell({ x: GRID_X + c * CELL_W, y: GRID_Y + r * CELL_H, lit: Math.floor(game.time.elapsed * 2) % 12 === ci, hitTimer: 0, missTimer: 0 });
+      }
+      txt(GAME_TITLE, W / 2, H * 0.14, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 32, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 48, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'IN RHYTHM!' : 'GAME OVER', W / 2, H * 0.35, 78, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    beatTimer += dt;
-    if (beatTimer >= BEAT) {
-      beatTimer -= BEAT;
-      beatCount++;
-      beatFlash = 0.18;
-      deactivateOldCells();
-      if (beatCount % 2 === 0) activateRandomCell();
+      if (timeLeft <= 0) { finish(false); return; }
+      beatTimer += dt;
+      if (beatTimer >= BEAT) { beatTimer -= BEAT; beatCount++; beatFlash = 0.18; deactivateOld(); if (done) return; if (beatCount % 2 === 0) activateCell(); }
+      for (var ci = 0; ci < cells.length; ci++) { if (cells[ci].hitTimer > 0) cells[ci].hitTimer -= dt; if (cells[ci].missTimer > 0) cells[ci].missTimer -= dt; }
     }
     if (beatFlash > 0) beatFlash -= dt;
+    for (var p = 0; p < particles.length; p++) { particles[p].x += particles[p].vx * dt; particles[p].y += particles[p].vy * dt; particles[p].vy += 400 * dt; particles[p].life -= dt; }
+    particles = particles.filter(function(pt) { return pt.life > 0; });
 
-    for (var ci = 0; ci < cells.length; ci++) {
-      if (cells[ci].hitTimer > 0) cells[ci].hitTimer -= dt;
-      if (cells[ci].missTimer > 0) cells[ci].missTimer -= dt;
+    // ---- 描画 ----
+    background();
+    for (var ci2 = 0; ci2 < cells.length; ci2++) drawCell(cells[ci2]);
+    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 5, snap(particles[pp].y) - 5, 10, 10, C.c, particles[pp].life * 2);
+    for (var bd = 0; bd < 4; bd++) game.draw.rect(snap(W / 2 + (bd - 1.5) * 64) - 10, H - 100, 20, 20, beatCount % 4 === bd ? C.b : '#2a0a3a');
+
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 44, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) {
+      var mx = snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 44);
+      game.draw.rect(mx - 8, 208, 16, 16, mm < misses ? C.a : '#2a0a3a');
     }
-    for (var pi2 = 0; pi2 < particles.length; pi2++) {
-      particles[pi2].x += particles[pi2].vx * dt; particles[pi2].y += particles[pi2].vy * dt;
-      particles[pi2].vy += 400 * dt; particles[pi2].life -= dt;
-    }
-    particles = particles.filter(function(p) { return p.life > 0; });
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Beat pulse
-    if (beatFlash > 0) {
-      game.draw.circle(W / 2, H / 2, 600, C.activeHi, beatFlash * 0.08);
-    }
-
-    // Grid cells
-    for (var ci2 = 0; ci2 < cells.length; ci2++) {
-      var cell = cells[ci2];
-      var cx = cell.x + CELL_PAD / 2;
-      var cy = cell.y + CELL_PAD / 2;
-      var cw = CELL_W - CELL_PAD;
-      var ch = CELL_H - CELL_PAD;
-
-      if (cell.hitTimer > 0) {
-        game.draw.rect(cx, cy, cw, ch, C.hit, cell.hitTimer * 1.2);
-        game.draw.text('✓', cx + cw / 2, cy + ch / 2, { size: 80, color: C.hitHi, bold: true });
-      } else if (cell.missTimer > 0) {
-        game.draw.rect(cx, cy, cw, ch, C.wrong, cell.missTimer * 1.5);
-      } else if (cell.lit) {
-        var beatPhase2 = beatTimer / BEAT;
-        var pulse = 0.6 + 0.4 * Math.abs(Math.sin(beatPhase2 * Math.PI));
-        game.draw.rect(cx - 4, cy - 4, cw + 8, ch + 8, C.activeHi, 0.2);
-        game.draw.rect(cx, cy, cw, ch, C.active, pulse * 0.9);
-        game.draw.rect(cx, cy, cw, 12, C.activeHi, 0.6);
-      } else {
-        game.draw.rect(cx, cy, cw, ch, C.panel, 0.7);
-        game.draw.rect(cx, cy, cw, 8, C.panelHi, 0.4);
-      }
-    }
-
-    // Particles
-    for (var pp = 0; pp < particles.length; pp++) {
-      var part = particles[pp];
-      game.draw.circle(part.x, part.y, 10 * part.life * 2, part.perfect ? C.perfect : C.hit, part.life);
-    }
-
-    // Beat dots
-    for (var bi = 0; bi < 4; bi++) {
-      var pulse2 = beatCount % 4 === bi ? 1.0 : 0.3;
-      game.draw.circle(W / 2 + (bi - 1.5) * 64, H * 0.91, 18, C.activeHi, pulse2);
-    }
-
-    game.draw.text(score + ' / ' + needed, W / 2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    for (var mi = 0; mi < maxMisses; mi++) {
-      game.draw.circle(W / 2 + (mi - 3.5) * 40, 218, 14, mi < misses ? C.wrong : '#0a1020');
-    }
-
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.active : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    scanlines();
   });
 
-  game.onStart(function() { game.audio.bgm('bgm_main', 0.4); });
+  game.onStart(function() {
+    game.audio.bgm('bgm_main', 0.4);
+    state = S.ATTRACT;
+    initGame();
+  });
 })(game);
