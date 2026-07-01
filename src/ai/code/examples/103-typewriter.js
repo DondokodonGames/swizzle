@@ -1,243 +1,161 @@
 // 103-typewriter.js
-// タイプライター — 表示される文字をスワイプ方向で正確に入力するキーパッドゲーム
-// 操作: 4方向スワイプで文字セットを選択してタップで確定
-// 成功: 8文字正確に入力  失敗: 3回ミス or 40秒
+// タイプライター — スワイプでパネルを選びタップで文字を打ち、単語を綴る入力端末
+// 操作: 4方向スワイプで文字パネルを選び、タップで文字を確定
+// 成功: 1単語入力  失敗: 3回ミス or 40秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#070608',
-    key:     '#1a1820',
-    keyHi:   '#2d2a38',
-    active:  '#6d28d9',
-    activeHi:'#8b5cf6',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    letter:  '#e2e8f0',
-    ui:      '#475569'
-  };
+  // ── パレット（グリーンCRT） ──
+  var C = { bg:'#001100', a:'#00ff41', b:'#66ff66', c:'#ccffcc', d:'#009922', e:'#ffcc00', f:'#ff3300', g:'#ffffff' };
 
-  // 4 panels, each with 3 characters (12 total options)
-  // Panel accessed by swipe direction, letter selected by position (tap area)
-  var PANELS = {
-    up:    { chars: ['A', 'E', 'I'], label: '↑' },
-    right: { chars: ['O', 'U', 'T'], label: '→' },
-    down:  { chars: ['N', 'S', 'R'], label: '↓' },
-    left:  { chars: ['L', 'H', 'M'], label: '←' }
-  };
+  var GAME_TITLE  = 'TYPEWRITER';
+  var HOW_TO_PLAY = 'SWIPE A PANEL, TAP THE LETTER';
+  var MAX_TIME = 40;
+  var NEEDED = 1;           // 修正2: 8 → 1
+  var MAX_MISS = 3;
 
-  var WORDS = ['STONE','LIGHT','FLAME','CLOUD','BLAST','TOWER','STORM','ARROW',
-               'ROUTE','LUNAR','HEART','SOLAR'];
+  var PANELS = { up: ['A', 'E', 'I'], right: ['O', 'U', 'T'], down: ['N', 'S', 'R'], left: ['L', 'H', 'M'] };
+  var PANEL_LABEL = { up: 'UP', right: 'RIGHT', down: 'DOWN', left: 'LEFT' };
+  var WORDS = ['SUN', 'STAR', 'MOON', 'RAIN', 'LION', 'ROSE', 'IRON', 'HERO'];
+  var PANEL_Y = H * 0.62, SLOT_W = W / 3, SLOT_H = 200;
 
-  var currentWord = '';
-  var targetIdx = 0;
-  var activePanel = null;
-  var typed = [];
-  var score = 0;
-  var needed = 8;
-  var misses = 0;
-  var maxMisses = 3;
-  var timeLeft = 40;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var usedWords = {};
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function pickWord() {
-    var available = WORDS.filter(function(w) { return !usedWords[w]; });
-    if (available.length === 0) { usedWords = {}; available = WORDS.slice(); }
-    var word = available[Math.floor(Math.random() * available.length)];
-    usedWords[word] = true;
-    return word;
+  var word, targetIdx, activePanel, score, misses, timeLeft, done, feedback, feedbackOk;
+
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.a : '#003b00');
   }
 
-  function nextWord() {
-    currentWord = pickWord();
-    targetIdx = 0;
-    typed = [];
-    activePanel = null;
-  }
+  function wordHasLetters(w) { for (var i = 0; i < w.length; i++) { var found = false; for (var dir in PANELS) if (PANELS[dir].indexOf(w[i]) >= 0) found = true; if (!found) return false; } return true; }
+  function pickWord() { var ok = WORDS.filter(wordHasLetters); return ok[Math.floor(Math.random() * ok.length)]; }
+  function nextWord() { if (state !== S.PLAYING || done) return; word = pickWord(); targetIdx = 0; activePanel = null; }
+  function targetChar() { return word[targetIdx] || ''; }
+  function findPanel(ch) { for (var dir in PANELS) { var p = PANELS[dir]; for (var i = 0; i < p.length; i++) if (p[i] === ch) return { dir: dir, pos: i }; } return null; }
 
-  function getTargetChar() {
-    return currentWord[targetIdx] || '';
-  }
+  function initGame() { score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedback = 0; feedbackOk = false; nextWord(); }
 
-  function findCharPanel(ch) {
-    for (var dir in PANELS) {
-      var p = PANELS[dir];
-      for (var i = 0; i < p.chars.length; i++) {
-        if (p.chars[i] === ch) return { dir: dir, pos: i };
-      }
-    }
-    return null;
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (400 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   game.onSwipe(function(dir) {
-    if (done) return;
-    if (PANELS[dir]) {
-      activePanel = dir;
-      game.audio.play('se_tap', 0.3);
-    }
+    if (state !== S.PLAYING || done) return;
+    if (PANELS[dir]) { activePanel = dir; game.audio.play('se_tap', 0.3); }
   });
-
-  // Panel layout: center = 3 big tap zones
-  var PANEL_Y = H * 0.48;
-  var SLOT_W = W / 3;
-  var SLOT_H = 180;
-
   game.onTap(function(tx, ty) {
-    if (done) return;
-    if (!activePanel) return;
-    // Determine which slot was tapped (left/center/right)
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
+    if (done || !activePanel) return;
     var slot = -1;
-    if (ty > PANEL_Y - SLOT_H / 2 && ty < PANEL_Y + SLOT_H / 2) {
-      if (tx < SLOT_W) slot = 0;
-      else if (tx < SLOT_W * 2) slot = 1;
-      else slot = 2;
-    }
+    if (ty > PANEL_Y - SLOT_H / 2 && ty < PANEL_Y + SLOT_H / 2) { if (tx < SLOT_W) slot = 0; else if (tx < SLOT_W * 2) slot = 1; else slot = 2; }
     if (slot < 0) { activePanel = null; return; }
+    var ch = PANELS[activePanel][slot];
+    if (ch === targetChar()) {
+      targetIdx++; feedbackOk = true; feedback = 0.2; game.audio.play('se_tap', 0.8); activePanel = null;
+      if (targetIdx >= word.length) { score++; game.audio.play('se_success'); if (score >= NEEDED) { finish(true); return; } setTimeout(nextWord, 400); }
+    } else { misses++; feedbackOk = false; feedback = 0.4; activePanel = null; game.audio.play('se_failure', 0.6); if (misses >= MAX_MISS) { finish(false); return; } }
+  });
 
-    var ch = PANELS[activePanel].chars[slot];
-    var target = getTargetChar();
+  // 世界観: レトロ入力端末。スワイプで文字パネルを呼び出しタップで綴る。
+  function background() {
+    game.draw.clear('#001100');
+    game.draw.rect(120, snap(H * 0.18), W - 240, 200, '#002200');
+    game.draw.rect(120, snap(H * 0.18), W - 240, 12, C.d);
+    txt('INPUT TERMINAL', W / 2, 250, 34, C.b);
+  }
 
-    if (ch === target) {
-      typed.push(ch);
-      targetIdx++;
-      feedbackOk = true;
-      feedback = 0.2;
-      game.audio.play('se_tap', 0.8);
-      activePanel = null;
+  function drawWord() {
+    var wy = H * 0.28;
+    for (var ci = 0; ci < word.length; ci++) {
+      var cx = W / 2 + (ci - (word.length - 1) / 2) * 120, typed = ci < targetIdx, next = ci === targetIdx;
+      game.draw.rect(snap(cx) - 48, snap(wy) - 52, 96, 100, typed ? '#003300' : (next ? '#004400' : '#001a00'));
+      txt(word[ci], cx, wy, 76, typed ? C.a : (next ? C.e : C.d));
+    }
+    var nc = targetChar(), loc = nc && findPanel(nc);
+    if (loc) txt('SWIPE ' + PANEL_LABEL[loc.dir] + ' FOR "' + nc + '"', W / 2, H * 0.4, 40, C.b);
+  }
 
-      if (targetIdx >= currentWord.length) {
-        // Word complete
-        score++;
-        game.audio.play('se_success');
-        if (score >= needed && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(score * 50 + Math.ceil(timeLeft) * 10); }, 400);
-          return;
-        }
-        setTimeout(nextWord, 400);
-      }
-    } else {
-      // Wrong letter
-      misses++;
-      feedbackOk = false;
-      feedback = 0.4;
-      activePanel = null;
-      game.audio.play('se_failure', 0.6);
-      if (misses >= maxMisses && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 400);
+  function drawPanels() {
+    var dirs = ['up', 'right', 'down', 'left'], dx = [W / 2, W * 0.82, W / 2, W * 0.18], dy = [H * 0.5, H * 0.55, H * 0.6, H * 0.55];
+    for (var di = 0; di < dirs.length; di++) {
+      var dir = dirs[di], act = activePanel === dir;
+      game.draw.rect(snap(dx[di]) - 70, snap(dy[di]) - 40, 140, 80, act ? '#004400' : '#002200');
+      txt(PANEL_LABEL[dir], dx[di], dy[di] - 12, 24, act ? C.a : C.d);
+      txt(PANELS[dir].join(''), dx[di], dy[di] + 16, 24, act ? C.b : C.d);
+    }
+    if (activePanel) {
+      var nc = targetChar();
+      for (var si = 0; si < 3; si++) {
+        var sx = SLOT_W * si + SLOT_W / 2;
+        game.draw.rect(SLOT_W * si + 8, snap(PANEL_Y - SLOT_H / 2), SLOT_W - 16, SLOT_H, '#002a00');
+        game.draw.rect(SLOT_W * si + 8, snap(PANEL_Y - SLOT_H / 2), SLOT_W - 16, 8, C.d, 0.6);
+        txt(PANELS[activePanel][si], sx, PANEL_Y, 96, PANELS[activePanel][si] === nc ? C.e : C.a);
       }
     }
-  });
+  }
 
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!word) initGame();
+      background();
+      txt(GAME_TITLE,  W / 2, H * 0.14, 76, C.a);
+      txt(HOW_TO_PLAY, W / 2, H * 0.2, 28, C.b);
+      drawPanels();
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 60, C.e);
+        txt('TAP TO START', W / 2, H * 0.91, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'WORD DONE!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.a : C.f);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.c);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (feedback > 0) feedback -= dt;
     }
-
-    if (feedback > 0) feedback -= dt;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Target word display
-    var wordY = H * 0.25;
-    for (var ci = 0; ci < currentWord.length; ci++) {
-      var cx = W / 2 + (ci - (currentWord.length - 1) / 2) * 100;
-      var isTyped = ci < targetIdx;
-      var isNext = ci === targetIdx;
-      game.draw.rect(cx - 40, wordY - 52, 80, 80, isTyped ? '#0f2d18' : (isNext ? '#2d1f3d' : '#0a0a12'));
-      game.draw.text(currentWord[ci], cx, wordY, {
-        size: 72,
-        color: isTyped ? '#22c55e' : (isNext ? '#a78bfa' : '#334155'),
-        bold: true
-      });
-      if (isNext) {
-        var pulse = 0.5 + 0.5 * Math.abs(Math.sin(game.time.elapsed * 4));
-        game.draw.rect(cx - 40, wordY - 52, 80, 80, '#8b5cf6', pulse * 0.2);
-      }
-    }
-
-    // Next char hint
-    var nextChar = getTargetChar();
-    if (nextChar) {
-      var loc = findCharPanel(nextChar);
-      if (loc) {
-        game.draw.text('→ ' + PANELS[loc.dir].label + ' スワイプして「' + nextChar + '」を選べ', W / 2, H * 0.35, {
-          size: 36, color: '#6d28d9'
-        });
-      }
-    }
-
-    // Keyboard panel (center area)
-    var dirs = ['up', 'right', 'down', 'left'];
-    var dirX = [W / 2, W * 0.85, W / 2, W * 0.15];
-    var dirY = [H * 0.42, H * 0.5, H * 0.58, H * 0.5];
-
-    for (var di = 0; di < dirs.length; di++) {
-      var dir2 = dirs[di];
-      var panel = PANELS[dir2];
-      var isActive = activePanel === dir2;
-      var px = dirX[di], py = dirY[di];
-      var pColor = isActive ? C.active : C.key;
-      game.draw.circle(px, py, isActive ? 60 : 48, pColor);
-      game.draw.text(panel.label, px, py - 8, { size: 36, color: isActive ? '#fff' : '#4a4560' });
-      game.draw.text(panel.chars.join(''), px, py + 24, { size: 24, color: isActive ? C.activeHi : '#4a4560' });
-    }
-
-    // If panel active, show 3 slots
-    if (activePanel) {
-      var ap = PANELS[activePanel];
-      for (var si = 0; si < 3; si++) {
-        var slotX = SLOT_W * si + SLOT_W / 2;
-        game.draw.rect(SLOT_W * si + 8, PANEL_Y - SLOT_H / 2, SLOT_W - 16, SLOT_H, C.keyHi);
-        game.draw.rect(SLOT_W * si + 8, PANEL_Y - SLOT_H / 2, SLOT_W - 16, 6, C.activeHi, 0.5);
-        game.draw.text(ap.chars[si], slotX, PANEL_Y, {
-          size: 96, color: ap.chars[si] === nextChar ? C.active : C.letter, bold: true
-        });
-      }
-    }
-
-    // Feedback
-    if (feedback > 0) {
-      game.draw.text(feedbackOk ? '✓' : '✗', W * 0.9, H * 0.25, {
-        size: 72, color: feedbackOk ? C.correct : C.wrong, bold: true
-      });
-    }
-
-    // Score + misses
-    for (var s = 0; s < needed; s++) {
-      var sx = W / 2 + (s - (needed - 1) / 2) * 72;
-      game.draw.circle(sx, 140, 22, s < score ? C.correct : '#0a0a12');
-    }
-    for (var m = 0; m < maxMisses; m++) {
-      var mx2 = W / 2 + (m - (maxMisses - 1) / 2) * 56;
-      game.draw.circle(mx2, 204, 18, m < misses ? C.wrong : '#0a0a12');
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, '#070608');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.active : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Guide bottom
-    game.draw.text('スワイプでパネル選択 → タップで文字', W / 2, H * 0.91, { size: 36, color: C.ui });
+    background();
+    drawWord();
+    drawPanels();
+    if (feedback > 0) txt(feedbackOk ? 'OK' : 'X', W * 0.88, H * 0.28, 72, feedbackOk ? C.a : C.f);
+    timeBar();
+    txt('LETTER ' + targetIdx + ' / ' + word.length, W / 2, 96, 40, C.c);
+    for (var m = 0; m < MAX_MISS; m++) game.draw.rect(W / 2 + (m - 1) * 64 - 20, 150, 40, 40, m < misses ? C.f : '#002200');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
-    nextWord();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
