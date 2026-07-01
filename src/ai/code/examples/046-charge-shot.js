@@ -1,225 +1,164 @@
 // 046-charge-shot.js
 // チャージショット — 溜めて放つ一撃の快感、過充電に注意
-// 操作: 長押し（または連打）でチャージ、離すorスワイプで発射
-// 成功: 5回ベストゾーン(60-90%)でヒット  失敗: 過充電3回 or 15秒
+// 操作: 長押し（または連打）でチャージ、スワイプ上で発射
+// 成功: 1回ベストゾーン(60-90%)でヒット  失敗: 過充電3回 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#050510',
-    charge0:  '#1e293b',
-    charge1:  '#0ea5e9',
-    charge2:  '#22d3ee',
-    chargeMax:'#ef4444',
-    best:     '#22c55e',
-    bestHi:   '#86efac',
-    shot:     '#fbbf24',
-    target:   '#f97316',
-    ui:       '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var charge = 0.0;     // 0.0..1.0
-  var CHARGE_RATE = 0.7; // per second while held
-  var DRAIN_RATE = 0.2;  // per second when not held
-  var isCharging = false;
+  var GAME_TITLE  = 'CHARGE SHOT';
+  var HOW_TO_PLAY = 'HOLD TO CHARGE, SWIPE UP TO FIRE';
+  var MAX_TIME = 15;
+  var NEEDED = 1;            // 修正2: 5 → 1
+  var MAX_OVER = 3;
+  var CHARGE_RATE = 0.7, DRAIN_RATE = 0.2, BEST_MIN = 0.60, BEST_MAX = 0.90;
+  var TARGET_Y = H * 0.3, TARGET_R = 80;
+  var GAUGE_X = W * 0.1, GAUGE_Y = H * 0.32, GAUGE_W = 72, GAUGE_H = H * 0.42;
 
-  var BEST_MIN = 0.60;
-  var BEST_MAX = 0.90;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Target moves horizontally
-  var targetX = W / 2;
-  var targetVx = 280;
-  var TARGET_Y = H * 0.32;
-  var TARGET_R = 70;
+  var charge, isCharging, targetX, targetVx, score, overcharges, timeLeft, done, shotAnim, chargeFlash;
 
-  var score = 0;
-  var needed = 5;
-  var overcharges = 0;
-  var maxOvercharges = 3;
-  var timeLeft = 15;
-  var done = false;
-  var shotAnim = 0; // shot animation timer
-  var shotX = 0;
-  var feedbackOk = false;
-  var chargeFlash = 0;
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(px, py, r, color, alpha) {
+    var step = 8; px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step)
+        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
 
-  game.onHold(function(x, y, duration) {
-    isCharging = true;
-  });
+  function initGame() { charge = 0; isCharging = false; targetX = W / 2; targetVx = 300; score = 0; overcharges = 0; timeLeft = MAX_TIME; done = false; shotAnim = 0; chargeFlash = 0; }
 
-  game.onTap(function(x, y) {
-    if (!isCharging) isCharging = true;
-    else isCharging = false; // toggle
-  });
-
-  game.onSwipe(function(dir) {
+  function finish(success) {
     if (done) return;
-    if (dir === 'up') {
-      // Fire!
-      isCharging = false;
-      var chargeLevel = charge;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-      if (chargeLevel >= 1.0) {
-        // Overcharge!
-        overcharges++;
-        feedbackOk = false;
-        chargeFlash = 0.5;
-        game.audio.play('se_failure', 0.7);
-        charge = 0;
-        if (overcharges >= maxOvercharges && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-        return;
-      }
-
-      shotAnim = 0.4;
-      shotX = W / 2;
-      charge = 0;
-
-      var inBest = chargeLevel >= BEST_MIN && chargeLevel <= BEST_MAX;
-      feedbackOk = inBest;
-
-      // Check if target is in shot path (simplified: target near center X)
-      var hitTarget = Math.abs(targetX - W / 2) < TARGET_R + 40;
-
-      if (inBest && hitTarget) {
-        score++;
-        game.audio.play('se_tap', 1.0);
-        if (score >= needed) {
-          done = true;
-          game.audio.play('se_success');
-          setTimeout(function() {
-            game.end.success(score * 25 + Math.ceil(timeLeft) * 6);
-          }, 500);
-        }
-      } else {
-        feedbackOk = false;
-        game.audio.play('se_failure', 0.4);
-      }
-    }
+  game.onHold(function(x, y) { if (state === S.PLAYING && !done) isCharging = true; });
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
+    isCharging = !isCharging;  // PLAYING: 連打/トグルでチャージ
   });
+  game.onSwipe(function(dir) {
+    if (state !== S.PLAYING || done || dir !== 'up') return;
+    isCharging = false;
+    var lvl = charge; charge = 0;
+    if (lvl >= 1.0) { overcharges++; chargeFlash = 0.5; game.audio.play('se_failure', 0.7); if (overcharges >= MAX_OVER) finish(false); return; }
+    shotAnim = 0.4;
+    var inBest = lvl >= BEST_MIN && lvl <= BEST_MAX, hit = Math.abs(targetX - W / 2) < TARGET_R + 40;
+    if (inBest && hit) { score++; game.audio.play('se_tap', 1.0); if (score >= NEEDED) finish(true); }
+    else game.audio.play('se_failure', 0.4);
+  });
+
+  // 世界観: 対空砲台。チャージを最適域で放ち、上空を横切る標的を撃つ。
+  function background() {
+    game.draw.clear('#0a0018');
+    for (var gy = 120; gy < H; gy += 96) game.draw.rect(0, gy, W, 2, C.d, 0.2);
+    // 砲台（下部中央）
+    game.draw.rect(snap(W / 2 - 60), H - 220, 120, 120, '#333355');
+    game.draw.rect(snap(W / 2 - 20), H - 320, 40, 120, '#555577');  // 砲身
+  }
+
+  function drawTarget() {
+    var col = Math.abs(targetX - W / 2) < TARGET_R + 40 ? C.f : C.a;
+    drawPixelCircle(targetX, TARGET_Y, TARGET_R, col, 1);
+    drawPixelCircle(targetX, TARGET_Y, TARGET_R * 0.5, C.g, 0.6);
+    game.draw.rect(snap(targetX) - TARGET_R, snap(TARGET_Y) - 2, TARGET_R * 2, 4, C.c, 0.6);
+    game.draw.rect(snap(targetX) - 2, snap(TARGET_Y) - TARGET_R, 4, TARGET_R * 2, C.c, 0.6);
+  }
+
+  function drawGauge() {
+    game.draw.rect(snap(GAUGE_X) - 6, snap(GAUGE_Y) - 6, GAUGE_W + 12, GAUGE_H + 12, '#333355');
+    game.draw.rect(snap(GAUGE_X), snap(GAUGE_Y), GAUGE_W, GAUGE_H, '#0a0018');
+    var by1 = GAUGE_Y + GAUGE_H * (1 - BEST_MAX), by2 = GAUGE_Y + GAUGE_H * (1 - BEST_MIN);
+    game.draw.rect(snap(GAUGE_X), snap(by1), GAUGE_W, snap(by2 - by1), C.b, 0.3);
+    game.draw.rect(snap(GAUGE_X), snap(by1), GAUGE_W, 6, C.b);
+    game.draw.rect(snap(GAUGE_X), snap(by2) - 6, GAUGE_W, 6, C.b);
+    txt('OK', GAUGE_X - 44, (by1 + by2) / 2, 32, C.b);
+    var fillH = GAUGE_H * charge, fillY = GAUGE_Y + GAUGE_H - fillH;
+    var col = charge >= 1.0 ? C.a : (charge >= BEST_MIN ? C.b : C.e);
+    game.draw.rect(snap(GAUGE_X), snap(fillY), GAUGE_W, snap(fillH), col);
+    if (charge >= 0.95 && Math.floor(game.time.elapsed * 10) % 2 === 0) game.draw.rect(snap(GAUGE_X), snap(GAUGE_Y), GAUGE_W, GAUGE_H * 0.12, C.a);
+    txt(Math.floor(charge * 100) + '%', GAUGE_X + GAUGE_W / 2, GAUGE_Y + GAUGE_H + 44, 40, col);
+  }
 
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (charge === undefined) initGame();
+      background();
+      targetX = W / 2 + Math.sin(game.time.elapsed) * 300; charge = 0.5 + 0.4 * Math.sin(game.time.elapsed * 2);
+      drawTarget(); drawGauge();
+      txt(GAME_TITLE,  W / 2, H * 0.12, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.19, 34, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.62, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.7, 52, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.78, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      targetX += targetVx * dt;
+      if (targetX + TARGET_R > W - 40) { targetX = W - 40 - TARGET_R; targetVx = -Math.abs(targetVx); }
+      if (targetX - TARGET_R < 40) { targetX = 40 + TARGET_R; targetVx = Math.abs(targetVx); }
+      if (isCharging) { charge += CHARGE_RATE * dt; if (charge > 1.0) charge = 1.0; }
+      else { charge -= DRAIN_RATE * dt; if (charge < 0) charge = 0; }
+      if (shotAnim > 0) shotAnim -= dt;
+      if (chargeFlash > 0) chargeFlash -= dt;
     }
-
-    // Move target
-    targetX += targetVx * dt;
-    if (targetX + TARGET_R > W - 40) { targetX = W - 40 - TARGET_R; targetVx = -Math.abs(targetVx); }
-    if (targetX - TARGET_R < 40) { targetX = 40 + TARGET_R; targetVx = Math.abs(targetVx); }
-
-    // Charge
-    if (isCharging && !done) {
-      charge += CHARGE_RATE * dt;
-      if (charge > 1.0) charge = 1.0;
-    } else {
-      charge -= DRAIN_RATE * dt;
-      if (charge < 0) charge = 0;
-    }
-
-    if (shotAnim > 0) shotAnim -= dt;
-    if (chargeFlash > 0) chargeFlash -= dt;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Target
-    var targetAlpha = Math.abs(targetX - W / 2) < TARGET_R + 40 ? 1.0 : 0.6;
-    game.draw.circle(targetX, TARGET_Y, TARGET_R + 16, C.target, 0.2);
-    game.draw.circle(targetX, TARGET_Y, TARGET_R, C.target, targetAlpha);
-    game.draw.circle(targetX, TARGET_Y, TARGET_R * 0.5, '#fff', 0.3);
-    game.draw.circle(targetX, TARGET_Y, TARGET_R * 0.25, C.shot, 0.6);
-    // Target crosshair
-    game.draw.line(targetX - TARGET_R, TARGET_Y, targetX + TARGET_R, TARGET_Y, '#fff', 2);
-    game.draw.line(targetX, TARGET_Y - TARGET_R, targetX, TARGET_Y + TARGET_R, '#fff', 2);
-
-    // Shot laser (while charging, faint beam)
-    if (isCharging) {
-      var beamAlpha = charge * 0.5;
-      game.draw.line(W / 2, H * 0.85, W / 2, TARGET_Y, C.charge1, 4 + charge * 12);
-      game.draw.rect(W / 2 - 4, TARGET_Y, 8, H * 0.85 - TARGET_Y, C.charge2, beamAlpha);
-    }
-
-    // Shot animation
-    if (shotAnim > 0) {
-      var sa = shotAnim / 0.4;
-      var shotY = H * 0.85 - (H * 0.85 - TARGET_Y) * (1 - sa);
-      game.draw.circle(W / 2, shotY, 24 + sa * 20, C.shot, sa);
-      game.draw.rect(W / 2 - 6, shotY, 12, H * 0.85 - shotY, C.shot, sa * 0.8);
-    }
-
-    // Overcharge flash
-    if (chargeFlash > 0) {
-      game.draw.rect(0, 0, W, H, C.chargeMax, chargeFlash * 0.3);
-    }
-
-    // Charge gauge (big vertical bar)
-    var GAUGE_X = W * 0.08;
-    var GAUGE_Y = H * 0.25;
-    var GAUGE_W = 48;
-    var GAUGE_H = H * 0.45;
-
-    game.draw.rect(GAUGE_X - 4, GAUGE_Y - 4, GAUGE_W + 8, GAUGE_H + 8, '#1e293b');
-    game.draw.rect(GAUGE_X, GAUGE_Y, GAUGE_W, GAUGE_H, '#080818');
-
-    // Best zone marker
-    var bestY1 = GAUGE_Y + GAUGE_H * (1 - BEST_MAX);
-    var bestY2 = GAUGE_Y + GAUGE_H * (1 - BEST_MIN);
-    game.draw.rect(GAUGE_X, bestY1, GAUGE_W, bestY2 - bestY1, C.best, 0.3);
-    game.draw.rect(GAUGE_X - 20, bestY1, 20, 4, C.best);
-    game.draw.rect(GAUGE_X - 20, bestY2 - 4, 20, 4, C.best);
-    game.draw.text('OK', GAUGE_X - 44, (bestY1 + bestY2) / 2, { size: 30, color: C.best, bold: true });
-
-    // Charge fill
-    var fillH = GAUGE_H * charge;
-    var fillY = GAUGE_Y + GAUGE_H - fillH;
-    var fillColor = charge >= 1.0 ? C.chargeMax : (charge >= BEST_MIN ? C.charge2 : C.charge1);
-    if (fillH > 0) {
-      game.draw.rect(GAUGE_X, fillY, GAUGE_W, fillH, fillColor);
-      game.draw.rect(GAUGE_X + 6, fillY + 4, GAUGE_W - 12, 12, '#fff', 0.25);
-    }
-
-    // Pulse at top if overcharge
-    if (charge >= 0.95) {
-      var oFlash = 0.5 + 0.5 * Math.sin(game.time.elapsed * 20);
-      game.draw.rect(GAUGE_X, GAUGE_Y, GAUGE_W, GAUGE_H * 0.1, C.chargeMax, oFlash * 0.6);
-    }
-
-    // Charge %
-    game.draw.text(Math.floor(charge * 100) + '%', GAUGE_X + GAUGE_W / 2, GAUGE_Y + GAUGE_H + 52, {
-      size: 40, color: fillColor, bold: true
-    });
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 15);
-    game.draw.rect(0, 0, W, 72, '#050510');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.charge1 : C.chargeMax);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Score & overcharges
-    game.draw.text(score + ' / ' + needed, W / 2, 128, { size: 56, color: C.bestHi, bold: true });
-    for (var oc = 0; oc < maxOvercharges; oc++) {
-      var ocx = W / 2 + (oc - (maxOvercharges-1)/2) * 64;
-      game.draw.circle(ocx, 200, 18, oc < overcharges ? C.chargeMax : '#1e293b');
-    }
-
-    // Guide
-    var guideText = isCharging ? '↑スワイプで発射！' : '長押し/タップでチャージ';
-    game.draw.text(guideText, W / 2, H - 200, { size: 52, color: C.ui });
-    game.draw.text('60〜90%で的を狙え', W / 2, H - 135, { size: 40, color: '#334155' });
+    background();
+    if (isCharging) game.draw.rect(snap(W / 2) - 6, snap(TARGET_Y), 12, snap(H - 320 - TARGET_Y), C.e, charge * 0.5);
+    if (shotAnim > 0) { var sa = shotAnim / 0.4; game.draw.rect(snap(W / 2) - 8, snap(TARGET_Y), 16, snap(H - 320 - TARGET_Y), C.c, sa); }
+    drawTarget();
+    drawGauge();
+    if (chargeFlash > 0) game.draw.rect(0, 0, W, H, C.a, chargeFlash * 0.3);
+    timeBar();
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 96, 44, C.g);
+    for (var oc = 0; oc < MAX_OVER; oc++)
+      game.draw.rect(W / 2 + (oc - 1) * 64 - 20, 150, 40, 40, oc < overcharges ? C.a : '#330011');
+    txt('SWIPE UP TO FIRE!', W / 2, H - 90, 44, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.35);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

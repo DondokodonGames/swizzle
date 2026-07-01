@@ -1,212 +1,151 @@
 // 045-drop-zone.js
 // ドロップゾーン — 落下するアイテムを正しい容器に振り分ける仕分け師の判断力
 // 操作: スワイプ左右で容器を選ぶ、タップで受け取り確定
-// 成功: 10個正しく分類  失敗: 3回誤分類 or 20秒
+// 成功: 1個正しく分類  失敗: 3回誤分類 or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#0a0810',
-    binA:     '#1d4ed8',
-    binAHi:   '#60a5fa',
-    binB:     '#166534',
-    binBHi:   '#4ade80',
-    itemA:    '#3b82f6',
-    itemAHi:  '#93c5fd',
-    itemB:    '#22c55e',
-    itemBHi:  '#86efac',
-    correct:  '#22c55e',
-    wrong:    '#ef4444',
-    ui:       '#475569'
-  };
+  // ── パレット（クラシックアーケード） ──
+  var C = { bg:'#000011', a:'#0000ff', b:'#00ffff', c:'#ffffff', d:'#ffff00', e:'#ff0000', f:'#00ff00', g:'#ff00ff' };
 
-  // Two bins: left=A (blue), right=B (green)
-  // Items: circles are A, squares are B
-  var BIN_W = 320;
-  var BIN_H = 200;
-  var BIN_Y = H * 0.73;
-  var BIN_A_X = W * 0.18 - BIN_W / 2;
-  var BIN_B_X = W * 0.82 - BIN_W / 2;
+  var GAME_TITLE  = 'DROP ZONE';
+  var HOW_TO_PLAY = 'SWIPE L/R, TAP TO SORT';
+  var MAX_TIME = 20;
+  var NEEDED = 1;            // 修正2: 10 → 1
+  var MAX_MISS = 3;
+  var BIN_W = 340, BIN_H = 220, BIN_Y = H * 0.76;   // 修正1: 容器は下部
+  var BIN_A_X = W * 0.2 - BIN_W / 2, BIN_B_X = W * 0.8 - BIN_W / 2;
+  var ITEM_R = 68, DROP_SPEED = 440;
 
-  var ITEM_R = 64;
-  var DROP_SPEED = 440;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Current item
-  var item = null;
-  var activeBin = 0; // 0=left(A), 1=right(B)
+  var item, activeBin, score, misses, timeLeft, done, feedback, feedbackOk, feedbackX;
 
-  var score = 0;
-  var needed = 10;
-  var misses = 0;
-  var maxMisses = 3;
-  var timeLeft = 20;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var feedbackX = W / 2;
-
-  function spawnItem() {
-    var type = Math.random() < 0.5 ? 'A' : 'B'; // A=circle, B=square
-    item = {
-      x: W * 0.3 + Math.random() * W * 0.4,
-      y: -ITEM_R * 2,
-      vy: DROP_SPEED,
-      type: type
-    };
-    activeBin = 0; // reset to left bin
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(px, py, r, color, alpha) {
+    var step = 8; px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step)
+        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
 
+  function initGame() { score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedback = 0; feedbackOk = false; feedbackX = W / 2; spawnItem(); }
+  function spawnItem() { item = { x: W * 0.3 + Math.random() * W * 0.4, y: -ITEM_R * 2, vy: DROP_SPEED, type: Math.random() < 0.5 ? 'A' : 'B' }; activeBin = 0; }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function registerMiss() { misses++; feedback = 0.4; feedbackOk = false; feedbackX = item ? item.x : W / 2; game.audio.play('se_failure', 0.6); item = null; if (misses >= MAX_MISS) finish(false); else setTimeout(spawnItem, 400); }
+
   game.onSwipe(function(dir) {
-    if (done || !item) return;
-    if (dir === 'left') activeBin = 0;
-    if (dir === 'right') activeBin = 1;
+    if (state !== S.PLAYING || done || !item) return;
+    if (dir === 'left') activeBin = 0; if (dir === 'right') activeBin = 1;
     game.audio.play('se_tap', 0.35);
   });
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done || !item) return;
-
-    var correctBin = item.type === 'A' ? 0 : 1;
-    var wasCorrect = activeBin === correctBin;
-
-    feedback = 0.4;
-    feedbackOk = wasCorrect;
-    feedbackX = item.x;
-
-    if (wasCorrect) {
-      score++;
-      game.audio.play('se_tap', 0.8);
-      if (score >= needed) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() {
-          game.end.success(score * 15 + Math.ceil(timeLeft) * 5);
-        }, 500);
-        return;
-      }
-    } else {
-      misses++;
-      game.audio.play('se_failure', 0.6);
-      if (misses >= maxMisses && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-        return;
-      }
-    }
-    item = null;
-    setTimeout(spawnItem, 400);
+    var correct = (item.type === 'A' ? 0 : 1) === activeBin;
+    feedback = 0.4; feedbackOk = correct; feedbackX = item.x;
+    if (correct) { score++; game.audio.play('se_tap', 0.8); if (score >= NEEDED) { finish(true); return; } item = null; setTimeout(spawnItem, 400); }
+    else registerMiss();
   });
 
+  // 世界観: 仕分け工場のコンベア。●は左箱(A)、■は右箱(B)へ振り分ける。
+  function background() {
+    game.draw.clear('#000011');
+    // コンベアの支柱
+    for (var gx = 0; gx < W; gx += 120) game.draw.rect(gx, BIN_Y - 40, 8, 40, '#333355');
+    game.draw.rect(0, BIN_Y - 8, W, 8, C.d, 0.3);
+    txt('SORTING PLANT', W / 2, H * 0.1, 36, C.b);
+  }
+
+  function drawBin(x, isActive, col, sym, label) {
+    game.draw.rect(snap(x), snap(BIN_Y), BIN_W, BIN_H, col, isActive ? 0.9 : 0.4);
+    game.draw.rect(snap(x), snap(BIN_Y), BIN_W, 12, C.g, isActive ? 1 : 0.4);
+    txt(sym, x + BIN_W / 2, BIN_Y + BIN_H / 2, 90, C.g);
+    txt(label, x + BIN_W / 2, BIN_Y + BIN_H - 40, 44, C.g);
+    if (isActive) game.draw.rect(snap(x), snap(BIN_Y) - 16, BIN_W, 12, C.c);
+  }
+
+  function drawItem() {
+    if (!item) return;
+    if (item.type === 'A') { drawPixelCircle(item.x, item.y, ITEM_R, C.e, 1); drawPixelCircle(item.x - 20, item.y - 20, 12, C.g, 0.6); }
+    else { game.draw.rect(snap(item.x - ITEM_R), snap(item.y - ITEM_R), ITEM_R * 2, ITEM_R * 2, C.f); game.draw.rect(snap(item.x - ITEM_R) + 12, snap(item.y - ITEM_R) + 12, 16, 16, C.g, 0.6); }
+    var binCX = activeBin === 0 ? W * 0.2 : W * 0.8;
+    game.draw.line(item.x, item.y + ITEM_R, binCX, BIN_Y, activeBin === 0 ? C.a : C.f, 3);
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!item) initGame();
+      background();
+      drawBin(BIN_A_X, true, C.a, '●', 'A'); drawBin(BIN_B_X, false, C.f, '■', 'B');
+      txt(GAME_TITLE,  W / 2, H * 0.18, 80, C.d);
+      txt(HOW_TO_PLAY, W / 2, H * 0.26, 40, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.5, 72, C.g);
+        txt('TAP TO START', W / 2, H * 0.58, 52, C.c);
+      }
+      txt('INSERT COIN', W / 2, H * 0.66, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.d : C.e);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.c);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (item) { item.vy += 200 * dt; item.y += item.vy * dt; if (item.y > BIN_Y + BIN_H) registerMiss(); }
+      if (feedback > 0) feedback -= dt;
     }
-
-    if (item) {
-      item.vy += 200 * dt; // gravity
-      item.y += item.vy * dt;
-      // If item falls off screen without tap
-      if (item.y > BIN_Y + BIN_H) {
-        // Auto-miss
-        misses++;
-        game.audio.play('se_failure', 0.3);
-        feedback = 0.4;
-        feedbackOk = false;
-        feedbackX = item.x;
-        item = null;
-        if (misses >= maxMisses && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        } else if (!done) {
-          setTimeout(spawnItem, 400);
-        }
-      }
-    }
-
-    if (feedback > 0) feedback -= dt;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 20);
-    game.draw.rect(0, 0, W, 72, '#0a0810');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#7c3aed' : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Score & misses
-    game.draw.text(score + ' / ' + needed, W / 2, 128, { size: 56, color: C.correct, bold: true });
-    for (var m = 0; m < maxMisses; m++) {
-      var mx = W / 2 + (m - (maxMisses-1)/2) * 60;
-      game.draw.circle(mx, 200, 18, m < misses ? C.wrong : '#1a1020');
-    }
-
-    // Bins
-    // Left bin (A = circles)
-    var aAlpha = activeBin === 0 ? 1.0 : 0.5;
-    game.draw.rect(BIN_A_X - 8, BIN_Y - 8, BIN_W + 16, BIN_H + 16, '#1e3a8a', aAlpha * 0.5);
-    game.draw.rect(BIN_A_X, BIN_Y, BIN_W, BIN_H, C.binA, aAlpha * 0.7);
-    game.draw.rect(BIN_A_X + 20, BIN_Y + 20, BIN_W - 40, 8, C.binAHi, 0.4);
-    game.draw.text('●', W * 0.18, BIN_Y + BIN_H / 2, { size: 80, color: C.binAHi, bold: true });
-    game.draw.text('A', W * 0.18, BIN_Y + BIN_H * 0.82, { size: 48, color: C.binAHi, bold: true });
-    if (activeBin === 0) {
-      game.draw.rect(BIN_A_X, BIN_Y - 12, BIN_W, 12, C.binAHi);
-    }
-
-    // Right bin (B = squares)
-    var bAlpha = activeBin === 1 ? 1.0 : 0.5;
-    game.draw.rect(BIN_B_X - 8, BIN_Y - 8, BIN_W + 16, BIN_H + 16, '#14532d', bAlpha * 0.5);
-    game.draw.rect(BIN_B_X, BIN_Y, BIN_W, BIN_H, C.binB, bAlpha * 0.7);
-    game.draw.rect(BIN_B_X + 20, BIN_Y + 20, BIN_W - 40, 8, C.binBHi, 0.4);
-    game.draw.text('■', W * 0.82, BIN_Y + BIN_H / 2, { size: 80, color: C.binBHi, bold: true });
-    game.draw.text('B', W * 0.82, BIN_Y + BIN_H * 0.82, { size: 48, color: C.binBHi, bold: true });
-    if (activeBin === 1) {
-      game.draw.rect(BIN_B_X, BIN_Y - 12, BIN_W, 12, C.binBHi);
-    }
-
-    // Falling item
-    if (item) {
-      if (item.type === 'A') {
-        game.draw.circle(item.x, item.y, ITEM_R + 10, C.itemAHi, 0.2);
-        game.draw.circle(item.x, item.y, ITEM_R, C.itemA);
-        game.draw.circle(item.x - 18, item.y - 18, ITEM_R * 0.3, '#fff', 0.4);
-        game.draw.text('●', item.x, item.y, { size: 60, color: C.itemAHi });
-      } else {
-        game.draw.rect(item.x - ITEM_R - 8, item.y - ITEM_R - 8, ITEM_R*2+16, ITEM_R*2+16, C.itemBHi, 0.2);
-        game.draw.rect(item.x - ITEM_R, item.y - ITEM_R, ITEM_R*2, ITEM_R*2, C.itemB);
-        game.draw.rect(item.x - ITEM_R + 12, item.y - ITEM_R + 12, ITEM_R*2 - 24, ITEM_R * 0.4, '#fff', 0.3);
-        game.draw.text('■', item.x, item.y, { size: 60, color: C.itemBHi });
-      }
-
-      // Active bin indicator line
-      var binCX = activeBin === 0 ? W * 0.18 : W * 0.82;
-      game.draw.line(item.x, item.y + ITEM_R, binCX, BIN_Y, activeBin === 0 ? C.binAHi : C.binBHi, 3);
-    }
-
-    // Feedback
-    if (feedback > 0) {
-      var prog = 1 - feedback / 0.4;
-      if (feedbackOk) {
-        game.draw.text('✓', feedbackX, H * 0.6 - prog * 60, { size: 100, color: C.correct, bold: true });
-      } else {
-        game.draw.text('✗', feedbackX, H * 0.6, { size: 100, color: C.wrong, bold: true });
-      }
-    }
-
-    // Guide
-    game.draw.text('L/Rスワイプで選択→タップ！', W / 2, H - 200, { size: 44, color: C.ui });
+    background();
+    drawBin(BIN_A_X, activeBin === 0, C.a, '●', 'A');
+    drawBin(BIN_B_X, activeBin === 1, C.f, '■', 'B');
+    drawItem();
+    if (feedback > 0) txt(feedbackOk ? 'OK' : 'NG', feedbackX, H * 0.6, 100, feedbackOk ? C.b : C.e);
+    timeBar();
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 96, 44, C.c);
+    for (var m = 0; m < MAX_MISS; m++)
+      game.draw.rect(W / 2 + (m - 1) * 64 - 20, 150, 40, 40, m < misses ? C.e : '#330000');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
-    spawnItem();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
