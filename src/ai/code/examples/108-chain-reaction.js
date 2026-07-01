@@ -1,252 +1,164 @@
 // 108-chain-reaction.js
-// チェーンリアクション — 1つの爆発が次々と連鎖し画面中の球体を一掃する爽快感
-// 操作: タップで爆発を起こす（大きい球を狙うほど連鎖しやすい）
-// 成功: 20個以上連鎖で消滅させる  失敗: 足りない数しか消えない（3回チャレンジ）
+// チェーンリアクション — 1つの爆発が連鎖して球体を巻き込む一掃の爽快感
+// 操作: タップで爆発を起こす（連鎖で球を巻き込む）
+// 成功: 3個以上を連鎖爆破  失敗: 3回チャレンジ失敗 or 30秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#040608',
-    ui:      '#334155',
-    correct: '#22c55e',
-    wrong:   '#ef4444'
-  };
+  // ── パレット（クラシックアーケード） ──
+  var C = { bg:'#000011', a:'#0000ff', b:'#00ffff', c:'#ffffff', d:'#ffff00', e:'#ff0000', f:'#00ff00', g:'#ff00ff' };
 
-  var BALL_COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#3b82f6','#8b5cf6'];
-  var NUM_BALLS = 30;
-  var TARGET_CHAIN = 20;
+  var GAME_TITLE  = 'CHAIN REACTION';
+  var HOW_TO_PLAY = 'TAP TO START A CHAIN BLAST';
+  var MAX_TIME = 30;
+  var NUM_BALLS = 14;
+  var TARGET_CHAIN = 3;     // 修正2: 20 → 3
+  var BALL_COLORS = [C.e, C.f, C.d, C.b, C.a, C.g];
 
-  var balls = []; // { x, y, vx, vy, r, color, exploding, explodeR, explodeMax }
-  var attempts = 3;
-  var score = 0;
-  var bestChain = 0;
-  var timeLeft = 30;
-  var done = false;
-  var chainCount = 0;
-  var phase = 'ready'; // 'ready' | 'exploding' | 'result'
-  var resultTimer = 0;
-  var resultOk = false;
-  var particles = [];
-  var totalExploded = 0;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  var balls, attempts, timeLeft, done, phase, resultTimer, resultOk, particles, totalExploded;
+
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(px, py, r, color, alpha) {
+    var step = 8; px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step)
+        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
 
   function initBalls() {
     balls = [];
     for (var i = 0; i < NUM_BALLS; i++) {
-      var r = 20 + Math.random() * 30;
-      var x = r + Math.random() * (W - r * 2);
-      var y = H * 0.15 + Math.random() * (H * 0.65);
-      var spd = 40 + Math.random() * 80;
-      var ang = Math.random() * Math.PI * 2;
-      balls.push({
-        x: x, y: y,
-        vx: Math.cos(ang) * spd,
-        vy: Math.sin(ang) * spd,
-        r: r,
-        color: BALL_COLORS[Math.floor(Math.random() * BALL_COLORS.length)],
-        exploding: false,
-        explodeR: 0,
-        explodeMax: 0,
-        exploded: false
-      });
+      var r = 32 + Math.random() * 32, spd = 40 + Math.random() * 80, ang = Math.random() * Math.PI * 2;
+      balls.push({ x: r + Math.random() * (W - r * 2), y: H * 0.22 + Math.random() * (H * 0.5), vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, r: r, color: BALL_COLORS[Math.floor(Math.random() * BALL_COLORS.length)], exploding: false, exploded: false, explodeR: 0, explodeMax: 0 });
     }
-    totalExploded = 0;
-    chainCount = 0;
-    phase = 'ready';
+    totalExploded = 0; phase = 'ready';
   }
+  function initGame() { attempts = 3; timeLeft = MAX_TIME; done = false; resultTimer = 0; resultOk = false; particles = []; initBalls(); }
 
-  function triggerExplosion(ball) {
-    if (ball.exploding || ball.exploded) return;
-    ball.exploding = true;
-    ball.explodeR = ball.r;
-    ball.explodeMax = ball.r * 3.5;
-    totalExploded++;
-    // Particles
-    for (var p = 0; p < 8; p++) {
-      var ang = Math.random() * Math.PI * 2;
-      var spd = 100 + Math.random() * 200;
-      particles.push({ x: ball.x, y: ball.y, vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd, life: 0.5, color: ball.color });
-    }
+  function triggerExplosion(b) {
+    if (b.exploding || b.exploded) return;
+    b.exploding = true; b.explodeR = b.r; b.explodeMax = b.r * 4; totalExploded++;
+    for (var p = 0; p < 8; p++) { var ang = Math.random() * Math.PI * 2, spd = 120 + Math.random() * 200; particles.push({ x: b.x, y: b.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 0.5, color: b.color }); }
     game.audio.play('se_tap', 0.5);
   }
 
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (totalExploded * 60 + Math.ceil(timeLeft) * 40) : 0;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    setTimeout(function() { state = S.RESULT; }, 1000);
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
   game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done || phase !== 'ready') return;
-    // Find ball under tap
-    for (var i = 0; i < balls.length; i++) {
-      var b = balls[i];
-      if (b.exploded || b.exploding) continue;
-      var dx = tx - b.x, dy = ty - b.y;
-      if (Math.sqrt(dx * dx + dy * dy) < b.r + 16) {
-        triggerExplosion(b);
-        phase = 'exploding';
-        return;
-      }
-    }
-    // Tap empty space — direct explosion
+    for (var i = 0; i < balls.length; i++) { var b = balls[i]; if (b.exploded || b.exploding) continue; if (Math.sqrt((tx - b.x) * (tx - b.x) + (ty - b.y) * (ty - b.y)) < b.r + 16) { triggerExplosion(b); phase = 'exploding'; return; } }
     phase = 'exploding';
-    // Create a small explosion at tap point
-    particles.push({ x: tx, y: ty, vx: 0, vy: 0, life: 0.3, color: '#fff' });
-    // Check if any ball nearby
-    for (var j = 0; j < balls.length; j++) {
-      var b2 = balls[j];
-      if (b2.exploded || b2.exploding) continue;
-      var dx2 = tx - b2.x, dy2 = ty - b2.y;
-      if (Math.sqrt(dx2 * dx2 + dy2 * dy2) < b2.r + 60) {
-        triggerExplosion(b2);
-      }
-    }
+    for (var j = 0; j < balls.length; j++) { var b2 = balls[j]; if (b2.exploded || b2.exploding) continue; if (Math.sqrt((tx - b2.x) * (tx - b2.x) + (ty - b2.y) * (ty - b2.y)) < b2.r + 70) triggerExplosion(b2); }
   });
 
+  // 世界観: 爆発連鎖チャンバー。1つの爆発が周囲の球を巻き込み連鎖する。
+  function background() {
+    game.draw.clear('#000011');
+    for (var i = 0; i < 20; i++) { var sx = snap((i * 149) % W), sy = snap((i * 211) % H); game.draw.rect(sx, sy, 6, 6, C.c, 0.12); }
+    txt('BLAST CHAMBER', W / 2, 250, 34, C.b);
+  }
+
+  function drawScene() {
+    for (var bi = 0; bi < balls.length; bi++) {
+      var b = balls[bi]; if (b.exploded) continue;
+      if (b.exploding) { var ef = b.explodeR / b.explodeMax; drawPixelCircle(b.x, b.y, b.explodeR, b.color, (1 - ef) * 0.6); }
+      else { drawPixelCircle(b.x, b.y, b.r, b.color, 1); game.draw.rect(snap(b.x) - b.r * 0.3, snap(b.y) - b.r * 0.3, 10, 10, C.g, 0.4); }
+    }
+    for (var pp = 0; pp < particles.length; pp++) { var p = particles[pp]; game.draw.rect(snap(p.x) - 6, snap(p.y) - 6, 12, 12, p.color, p.life * 2); }
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!balls) initGame();
+      background();
+      drawScene();
+      txt(GAME_TITLE,  W / 2, H * 0.14, 72, C.d);
+      txt(HOW_TO_PLAY, W / 2, H * 0.195, 28, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.82, 64, C.g);
+        txt('TAP TO START', W / 2, H * 0.87, 48, C.c);
+      }
+      txt('INSERT COIN', W / 2, H * 0.92, 40, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CHAIN CLEAR!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.d : C.e);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.c);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
-
-    // Move balls
-    for (var i = 0; i < balls.length; i++) {
-      var b = balls[i];
-      if (b.exploded) continue;
-      if (!b.exploding) {
-        b.x += b.vx * dt;
-        b.y += b.vy * dt;
-        // Bounce
-        if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx); }
-        if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx); }
-        if (b.y - b.r < H * 0.12) { b.y = H * 0.12 + b.r; b.vy = Math.abs(b.vy); }
-        if (b.y + b.r > H * 0.88) { b.y = H * 0.88 - b.r; b.vy = -Math.abs(b.vy); }
-      } else {
-        // Expand explosion
-        b.explodeR += (b.explodeMax - b.r) * 3 * dt;
-        // Check chain: any non-exploded ball inside explosion radius?
-        for (var j = 0; j < balls.length; j++) {
-          if (i === j || balls[j].exploded || balls[j].exploding) continue;
-          var dx = b.x - balls[j].x, dy = b.y - balls[j].y;
-          if (Math.sqrt(dx * dx + dy * dy) < b.explodeR + balls[j].r) {
-            triggerExplosion(balls[j]);
-          }
-        }
-        if (b.explodeR >= b.explodeMax) {
-          b.exploding = false;
-          b.exploded = true;
-        }
-      }
-    }
-
-    // Update particles
-    for (var pi = 0; pi < particles.length; pi++) {
-      var p = particles[pi];
-      p.x += p.vx * dt; p.y += p.vy * dt;
-      p.vy += 200 * dt; p.life -= dt;
-    }
-    particles = particles.filter(function(p) { return p.life > 0; });
-
-    // Check if chain finished
-    if (phase === 'exploding') {
-      var anyActive = balls.some(function(b) { return b.exploding; });
-      if (!anyActive) {
-        // Chain complete
-        phase = 'result';
-        resultOk = totalExploded >= TARGET_CHAIN;
-        if (resultOk) {
-          score++;
-          game.audio.play('se_success');
-          if (score >= 1 && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(totalExploded * 15 + Math.ceil(timeLeft) * 10); }, 1200);
-            return;
-          }
+      if (timeLeft <= 0) { finish(false); return; }
+      for (var i = 0; i < balls.length; i++) {
+        var b = balls[i]; if (b.exploded) continue;
+        if (!b.exploding) {
+          b.x += b.vx * dt; b.y += b.vy * dt;
+          if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx); } if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx); }
+          if (b.y - b.r < H * 0.18) { b.y = H * 0.18 + b.r; b.vy = Math.abs(b.vy); } if (b.y + b.r > H * 0.86) { b.y = H * 0.86 - b.r; b.vy = -Math.abs(b.vy); }
         } else {
-          game.audio.play('se_failure', 0.6);
-          attempts--;
-          if (attempts <= 0 && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 1200);
-            return;
-          }
+          b.explodeR += (b.explodeMax - b.r) * 3 * dt;
+          for (var j = 0; j < balls.length; j++) { if (i === j || balls[j].exploded || balls[j].exploding) continue; if (Math.sqrt((b.x - balls[j].x) * (b.x - balls[j].x) + (b.y - balls[j].y) * (b.y - balls[j].y)) < b.explodeR + balls[j].r) triggerExplosion(balls[j]); }
+          if (b.explodeR >= b.explodeMax) { b.exploding = false; b.exploded = true; }
         }
-        bestChain = Math.max(bestChain, totalExploded);
-        resultTimer = 1.2;
       }
-    }
-
-    if (phase === 'result') {
-      resultTimer -= dt;
-      if (resultTimer <= 0) {
-        initBalls();
+      for (var pi = 0; pi < particles.length; pi++) { var p = particles[pi]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 200 * dt; p.life -= dt; }
+      particles = particles.filter(function(p) { return p.life > 0; });
+      if (phase === 'exploding' && !balls.some(function(b) { return b.exploding; })) {
+        resultOk = totalExploded >= TARGET_CHAIN;
+        if (resultOk) { finish(true); return; }
+        attempts--; game.audio.play('se_failure', 0.6);
+        if (attempts <= 0) { finish(false); return; }
+        phase = 'result'; resultTimer = 1.0;
       }
+      if (phase === 'result') { resultTimer -= dt; if (resultTimer <= 0) initBalls(); }
     }
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Balls
-    for (var bi = 0; bi < balls.length; bi++) {
-      var ball = balls[bi];
-      if (ball.exploded) continue;
-      if (ball.exploding) {
-        var ef = ball.explodeR / ball.explodeMax;
-        game.draw.circle(ball.x, ball.y, ball.explodeR, ball.color, (1 - ef) * 0.5);
-        game.draw.circle(ball.x, ball.y, ball.explodeR * 0.6, ball.color, (1 - ef) * 0.8);
-      } else {
-        game.draw.circle(ball.x, ball.y, ball.r + 4, ball.color, 0.2);
-        game.draw.circle(ball.x, ball.y, ball.r, ball.color);
-        game.draw.circle(ball.x - ball.r * 0.3, ball.y - ball.r * 0.3, ball.r * 0.25, '#fff', 0.4);
-      }
-    }
-
-    // Particles
-    for (var pp = 0; pp < particles.length; pp++) {
-      var part = particles[pp];
-      game.draw.circle(part.x, part.y, 8 * part.life * 2, part.color, part.life);
-    }
-
-    // Counter
-    if (phase === 'exploding' || phase === 'result') {
-      game.draw.text(totalExploded + '/' + TARGET_CHAIN, W / 2, H * 0.5, {
-        size: 88, color: totalExploded >= TARGET_CHAIN ? C.correct : '#f1f5f9', bold: true
-      });
-    }
-
-    // Result overlay
-    if (phase === 'result') {
-      game.draw.rect(0, 0, W, H, '#000', 0.4);
-      game.draw.text(resultOk ? '連鎖成功！' : '連鎖不足…', W / 2, H * 0.4, {
-        size: 88, color: resultOk ? C.correct : C.wrong, bold: true
-      });
-      game.draw.text(totalExploded + ' 個爆破！', W / 2, H * 0.52, { size: 56, color: '#f1f5f9' });
-      if (attempts > 0) {
-        game.draw.text('残り' + attempts + '回', W / 2, H * 0.63, { size: 48, color: '#64748b' });
-      }
-    }
-
-    // Guide
-    if (phase === 'ready') {
-      game.draw.text('球をタップして連鎖爆発！', W / 2, H * 0.9, { size: 48, color: C.ui });
-      game.draw.text(TARGET_CHAIN + '個以上爆破せよ', W / 2, H * 0.95, { size: 36, color: '#475569' });
-    }
-
-    // Attempts
-    for (var ai = 0; ai < 3; ai++) {
-      game.draw.circle(W / 2 + (ai - 1) * 64, 148, 24, ai < attempts ? '#fbbf24' : '#0a1428');
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 30);
-    game.draw.rect(0, 0, W, 72, '#040608');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#8b5cf6' : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    background();
+    drawScene();
+    if (phase === 'exploding' || phase === 'result') txt(totalExploded + ' / ' + TARGET_CHAIN, W / 2, H * 0.5, 88, totalExploded >= TARGET_CHAIN ? C.f : C.c);
+    if (phase === 'result') txt('CHAIN SHORT! ' + attempts + ' LEFT', W / 2, H * 0.62, 48, C.e);
+    timeBar();
+    txt('BLAST ' + TARGET_CHAIN + '+ BALLS', W / 2, 96, 44, C.c);
+    for (var a = 0; a < 3; a++) game.draw.rect(W / 2 + (a - 1) * 64 - 20, 150, 40, 40, a < attempts ? C.d : '#332200');
+    if (phase === 'ready') txt('TAP A BALL!', W / 2, H - 90, 44, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
-    initBalls();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
