@@ -1,190 +1,130 @@
 // 059-window-washer.js
-// ウィンドウウォッシャー — 汚れた窓をスワイプで拭いてピカピカにする清掃ゲーム
-// 操作: スワイプで汚れを拭く
-// 成功: 90%以上クリーン  失敗: 25秒で制限
+// ウィンドウウォッシャー — 汚れた窓をタップ/長押しで拭いてピカピカにする清掃ゲーム
+// 操作: タップ/長押しで汚れを拭く
+// 成功: 30%以上クリーン  失敗: 25秒で制限
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#0c1420',
-    window:   '#1e3a5f',
-    glass:    '#1a4a6e',
-    dirt:     '#3d2a1a',
-    dirtHi:   '#6b4226',
-    clean:    '#0ea5e9',
-    cleanHi:  '#7dd3fc',
-    frame:    '#92400e',
-    frameHi:  '#d97706',
-    ui:       '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var COLS = 10;
-  var ROWS = 14;
-  var CELL = 84;
-  var WIN_X = (W - COLS * CELL) / 2;
-  var WIN_Y = H * 0.17;
+  var GAME_TITLE  = 'WINDOW WASHER';
+  var HOW_TO_PLAY = 'TAP / HOLD TO WIPE';
+  var MAX_TIME = 25;
+  var WIN_THRESHOLD = 0.30;   // 修正2: 90% → 30%
+  var COLS = 8, ROWS = 12, CELL = 116;
+  var WIN_X = (W - COLS * CELL) / 2, WIN_Y = (H - ROWS * CELL) / 2;   // 修正1: 縦中央
 
-  // Grid: 0=dirty, 1=clean
-  var grid = [];
-  var totalDirty = 0;
-  var cleanCount = 0;
-  var timeLeft = 25;
-  var done = false;
-  var WIN_THRESHOLD = 0.90;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Swipe wash: track swipe to clean cells along path
-  var isWiping = false;
-  var lastWipeCell = -1;
+  var grid, cleanCount, timeLeft, done, lastWipeCell;
+
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
 
   function initGrid() {
-    grid = [];
-    totalDirty = 0;
-    cleanCount = 0;
-    for (var r = 0; r < ROWS; r++) {
-      var row = [];
-      for (var c = 0; c < COLS; c++) {
-        var dirty = Math.random() < 0.85;
-        row.push(dirty ? 0 : 1);
-        if (dirty) totalDirty++;
-        else cleanCount++;
-      }
-      grid.push(row);
-    }
+    grid = []; cleanCount = 0;
+    for (var r = 0; r < ROWS; r++) { var row = []; for (var c = 0; c < COLS; c++) { var dirty = Math.random() < 0.85; row.push(dirty ? 0 : 1); if (!dirty) cleanCount++; } grid.push(row); }
+    timeLeft = MAX_TIME; done = false; lastWipeCell = -1;
   }
+  function posToCell(x, y) { var c = Math.floor((x - WIN_X) / CELL), r = Math.floor((y - WIN_Y) / CELL); if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return -1; return r * COLS + c; }
+  function wipeCell(idx) { if (idx < 0) return; var r = Math.floor(idx / COLS), c = idx % COLS; if (grid[r][c] === 0) { grid[r][c] = 1; cleanCount++; game.audio.play('se_tap', 0.2); } lastWipeCell = idx; }
+  function cleanRatio() { return cleanCount / (COLS * ROWS); }
 
-  function posToCell(x, y) {
-    var c = Math.floor((x - WIN_X) / CELL);
-    var r = Math.floor((y - WIN_Y) / CELL);
-    if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return -1;
-    return r * COLS + c;
-  }
-
-  function wipeCell(idx) {
-    if (idx < 0 || idx === lastWipeCell) return;
-    var r = Math.floor(idx / COLS);
-    var c = idx % COLS;
-    if (grid[r][c] === 0) {
-      grid[r][c] = 1;
-      cleanCount++;
-      game.audio.play('se_tap', 0.2);
-    }
-    lastWipeCell = idx;
-  }
-
-  game.onSwipe(function(dir) {
-    // Swipe is handled via onUpdate tracking — this is supplementary
-  });
-
-  game.onHold(function(x, y, dur) {
+  function finish(success) {
     if (done) return;
-    var idx = posToCell(x, y);
-    wipeCell(idx);
-  });
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (Math.floor(cleanRatio() * 400) + Math.ceil(timeLeft) * 30) : Math.floor(cleanRatio() * 200);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
+  game.onHold(function(x, y) { if (state === S.PLAYING && !done) wipeCell(posToCell(x, y)); });
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGrid(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done) return;
-    var idx = posToCell(x, y);
-    wipeCell(idx);
-    lastWipeCell = -1; // reset so same cell can be re-wiped after tap
+    wipeCell(posToCell(x, y));
+    if (cleanRatio() >= WIN_THRESHOLD) finish(true);
   });
 
-  var lastPos = null;
+  // 世界観: 高層ビルの窓拭き。ゴンドラから汚れ窓をスクイジーで磨く。
+  function background() {
+    game.draw.clear('#0a0018');
+    // ビルの外壁
+    game.draw.rect(WIN_X - 40, WIN_Y - 40, COLS * CELL + 80, ROWS * CELL + 80, C.f);
+    game.draw.rect(WIN_X - 40, WIN_Y - 40, COLS * CELL + 80, 16, C.d, 0.4);
+    // 桟
+    game.draw.rect(WIN_X, WIN_Y + ROWS * CELL / 2 - 8, COLS * CELL, 16, C.f);
+    game.draw.rect(WIN_X + COLS * CELL / 2 - 8, WIN_Y, 16, ROWS * CELL, C.f);
+    txt('SKYSCRAPER', W / 2, WIN_Y - 70, 34, C.b);
+  }
+
+  function drawGrid() {
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      var gx = WIN_X + c * CELL, gy = WIN_Y + r * CELL;
+      if (grid[r][c] === 0) { game.draw.rect(gx, gy, CELL - 2, CELL - 2, '#3a2a10'); if ((r + c) % 3 === 0) game.draw.rect(gx + 40, gy + 30, 24, 24, '#5a4020'); }
+      else { game.draw.rect(gx, gy, CELL - 2, CELL - 2, C.e, 0.7); game.draw.rect(gx + 8, gy + 8, 16, CELL * 0.4, C.g, 0.2); }
+    }
+    if (lastWipeCell >= 0) { var lr = Math.floor(lastWipeCell / COLS), lc = lastWipeCell % COLS; game.draw.rect(WIN_X + lc * CELL, WIN_Y + lr * CELL, CELL, CELL, C.g, 0.3); }
+  }
 
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        var ratio2 = cleanCount / (COLS * ROWS);
-        if (ratio2 >= WIN_THRESHOLD) {
-          game.audio.play('se_success');
-          game.end.success(Math.floor(ratio2 * 200));
-        } else {
-          game.audio.play('se_failure');
-          game.end.failure();
-        }
-        return;
+    if (state === S.ATTRACT) {
+      if (!grid) initGrid();
+      background();
+      drawGrid();
+      txt(GAME_TITLE,  W / 2, H * 0.1, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.17, 38, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.84, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.9, 52, C.g);
       }
+      txt('INSERT COIN', W / 2, H * 0.96, 42, '#888888');
+      scanlines();
+      return;
     }
-
-    var ratio = cleanCount / (COLS * ROWS);
-    if (ratio >= WIN_THRESHOLD && !done) {
-      done = true;
-      game.audio.play('se_success');
-      setTimeout(function() { game.end.success(Math.floor(ratio * 200) + Math.ceil(timeLeft) * 5); }, 300);
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
       return;
     }
 
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(cleanRatio() >= WIN_THRESHOLD); return; }
+    }
+
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Window frame
-    var frameX = WIN_X - 24;
-    var frameY = WIN_Y - 24;
-    var frameW = COLS * CELL + 48;
-    var frameH = ROWS * CELL + 48;
-    game.draw.rect(frameX, frameY, frameW, frameH, C.frame);
-    game.draw.rect(frameX + 8, frameY + 8, frameW - 16, 16, C.frameHi, 0.4);
-    // Cross bars
-    game.draw.rect(frameX, WIN_Y + ROWS * CELL / 2 - 8, frameW, 16, C.frame);
-    game.draw.rect(WIN_X + COLS * CELL / 2 - 8, frameY, 16, frameH, C.frame);
-
-    // Grid cells
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        var gx = WIN_X + c * CELL;
-        var gy = WIN_Y + r * CELL;
-        if (grid[r][c] === 0) {
-          // Dirty
-          game.draw.rect(gx, gy, CELL, CELL, C.dirt);
-          // Dirt texture spots
-          if ((r + c) % 3 === 0) {
-            game.draw.circle(gx + CELL * 0.6, gy + CELL * 0.4, 12, C.dirtHi, 0.6);
-          }
-        } else {
-          // Clean
-          game.draw.rect(gx, gy, CELL, CELL, C.glass);
-          // Glass sheen
-          if ((r + c) % 4 === 0) {
-            game.draw.rect(gx + 8, gy + 8, 16, CELL * 0.4, '#fff', 0.08);
-          }
-        }
-      }
-    }
-
-    // Squeegee at last wiped position
-    if (lastWipeCell >= 0) {
-      var lr = Math.floor(lastWipeCell / COLS);
-      var lc = lastWipeCell % COLS;
-      var lx = WIN_X + lc * CELL + CELL / 2;
-      var ly = WIN_Y + lr * CELL + CELL / 2;
-      game.draw.circle(lx, ly, 40, C.clean, 0.4);
-      game.draw.circle(lx, ly, 28, C.cleanHi, 0.6);
-    }
-
-    // Cleanliness bar
-    game.draw.rect(WIN_X, WIN_Y + ROWS * CELL + 40, COLS * CELL, 40, '#0a1428');
-    game.draw.rect(WIN_X, WIN_Y + ROWS * CELL + 40, COLS * CELL * ratio, 40, ratio >= WIN_THRESHOLD ? C.clean : C.cleanHi);
-    game.draw.text(Math.floor(ratio * 100) + '%', W / 2, WIN_Y + ROWS * CELL + 110, { size: 48, color: C.cleanHi, bold: true });
-
-    // Threshold marker
-    var threshX = WIN_X + COLS * CELL * WIN_THRESHOLD;
-    game.draw.line(threshX, WIN_Y + ROWS * CELL + 32, threshX, WIN_Y + ROWS * CELL + 56, '#22c55e', 4);
-
-    // Timer bar
-    var tRatio = Math.max(0, timeLeft / 25);
-    game.draw.rect(0, 0, W, 72, '#0c1420');
-    game.draw.rect(0, 0, W * tRatio, 72, tRatio > 0.3 ? C.window : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Guide
-    game.draw.text('スワイプで拭いて90%クリアへ！', W / 2, H - 200, { size: 44, color: C.ui });
+    background();
+    drawGrid();
+    timeBar();
+    txt('CLEAN ' + Math.floor(cleanRatio() * 100) + '% / ' + Math.floor(WIN_THRESHOLD * 100) + '%', W / 2, 96, 44, C.b);
+    txt('WIPE THE GLASS!', W / 2, H - 100, 44, C.c);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
     initGrid();
   });
 })(game);
