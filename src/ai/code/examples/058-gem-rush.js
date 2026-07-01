@@ -1,191 +1,144 @@
 // 058-gem-rush.js
 // ジェムラッシュ — 特定の色の宝石だけを素早くタップして集める採掘レース
 // 操作: タップで宝石を収集（ターゲット色のみ）、違う色は-1点
-// 成功: 15個収集  失敗: -5点 or 15秒
+// 成功: 2個収集  失敗: -5点 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:    '#0a0610',
-    ui:    '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var GEM_COLORS = [C.a, C.f, C.c, C.b, C.e, C.d];
 
-  var GEM_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899'];
-  var GEM_NAMES  = ['赤', 'オレン', '黄', '緑', '青', '紫', 'ピンク'];
-  var GEM_R = 52;
-  var MAX_GEMS = 12;
+  var GAME_TITLE  = 'GEM RUSH';
+  var HOW_TO_PLAY = 'TAP ONLY THE TARGET GEM';
+  var MAX_TIME = 15;
+  var NEEDED = 2;           // 修正2: 15 → ceil(15/10) = 2
+  var MAX_PENALTY = 5;
+  var GEM_R = 60, MAX_GEMS = 12, TOP = 460, BOTTOM = H - 200;   // 修正1: 縦全域に散布
 
-  var targetColor = 0; // index into GEM_COLORS
-  var gems = [];
-  var score = 0;
-  var needed = 15;
-  var penalties = 0;
-  var maxPenalties = 5;
-  var timeLeft = 15;
-  var done = false;
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var feedback = [];
+  var targetColor, gems, score, penalties, timeLeft, done, colorTimer, floaters;
 
-  function spawnGem() {
-    var margin = GEM_R + 40;
-    var x = margin + Math.random() * (W - margin * 2);
-    var y = 280 + Math.random() * (H * 0.62);
-    var colorIdx = Math.floor(Math.random() * GEM_COLORS.length);
-    var lifespan = 1.8 + Math.random() * 1.4;
-    gems.push({
-      x: x, y: y,
-      colorIdx: colorIdx,
-      life: lifespan,
-      maxLife: lifespan,
-      scale: 0
-    });
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawGemSprite(x, y, col, r) {
+    var bx = snap(x), by = snap(y);
+    game.draw.rect(bx - r, by - 8, r * 2, 16, col);          // 中段(広)
+    game.draw.rect(bx - r + 16, by - r + 8, r * 2 - 32, r * 2 - 16, col); // 本体
+    game.draw.rect(bx - r + 8, by - r + 16, 16, 16, C.g, 0.6);  // 輝き
+    game.draw.rect(bx - 8, by + r - 24, 16, 16, col);        // 底の先端
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
   }
 
-  // Rotate target color every 4 seconds
-  var colorTimer = 4;
+  function spawnGem() { gems.push({ x: snap(GEM_R + 40 + Math.random() * (W - (GEM_R + 40) * 2)), y: snap(TOP + Math.random() * (BOTTOM - TOP)), colorIdx: Math.floor(Math.random() * GEM_COLORS.length), life: 1.8 + Math.random() * 1.4, maxLife: 3.2, scale: 1 }); }
+  function initGame() { targetColor = Math.floor(Math.random() * GEM_COLORS.length); gems = []; score = 0; penalties = 0; timeLeft = MAX_TIME; done = false; colorTimer = 4; floaters = []; for (var i = 0; i < 6; i++) spawnGem(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done) return;
     for (var i = gems.length - 1; i >= 0; i--) {
-      var g = gems[i];
-      var dx = x - g.x, dy = y - g.y;
-      if (Math.sqrt(dx * dx + dy * dy) < GEM_R + 16) {
-        if (g.colorIdx === targetColor) {
-          score++;
-          feedback.push({ x: g.x, y: g.y, text: '+1', color: '#22c55e', life: 0.6 });
-          game.audio.play('se_tap', 0.7);
-          gems.splice(i, 1);
-          if (score >= needed && !done) {
-            done = true;
-            game.audio.play('se_success');
-            setTimeout(function() { game.end.success(score * 15 + Math.ceil(timeLeft) * 8); }, 400);
-          }
-        } else {
-          penalties++;
-          feedback.push({ x: g.x, y: g.y, text: '-1', color: '#ef4444', life: 0.6 });
-          game.audio.play('se_failure', 0.4);
-          gems.splice(i, 1);
-          if (penalties >= maxPenalties && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 400);
-          }
-        }
+      var g = gems[i], dx = x - g.x, dy = y - g.y;
+      if (Math.sqrt(dx * dx + dy * dy) < GEM_R + 20) {
+        if (g.colorIdx === targetColor) { score++; floaters.push({ x: g.x, y: g.y, t: '+1', col: C.b, life: 0.6 }); game.audio.play('se_tap', 0.7); gems.splice(i, 1); if (score >= NEEDED) finish(true); }
+        else { penalties++; floaters.push({ x: g.x, y: g.y, t: '-1', col: C.a, life: 0.6 }); game.audio.play('se_failure', 0.4); gems.splice(i, 1); if (penalties >= MAX_PENALTY) finish(false); }
         break;
       }
     }
   });
 
+  // 世界観: 鉱脈のジェム採掘レース。指定色のジェムだけを素早く掘り集める。
+  function background() {
+    game.draw.clear('#0a0018');
+    for (var gy = 400; gy < H; gy += 120) game.draw.rect(0, gy, W, 2, C.d, 0.2);
+    txt('GEM MINE', W / 2, H * 0.06, 36, C.b);
+  }
+
+  function drawGems() {
+    for (var j = 0; j < gems.length; j++) {
+      var g = gems[j], col = GEM_COLORS[g.colorIdx], a = Math.min(1, g.life / 0.6);
+      if (g.colorIdx === targetColor && Math.floor(game.time.elapsed * 8) % 2 === 0) drawGemSprite(g.x, g.y, C.g, GEM_R + 8);
+      if (a < 1) game.draw.rect(snap(g.x) - GEM_R, snap(g.y) - GEM_R, GEM_R * 2, GEM_R * 2, col, a);
+      else drawGemSprite(g.x, g.y, col, GEM_R);
+    }
+    for (var f = 0; f < floaters.length; f++) txt(floaters[f].t, floaters[f].x, floaters[f].y, 56, floaters[f].col);
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!gems) initGame();
+      background();
+      drawGems();
+      txt(GAME_TITLE,  W / 2, H * 0.14, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.21, 40, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.92, 52, C.g);
+      }
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
-
-    // Cycle target color
-    colorTimer -= dt;
-    if (colorTimer <= 0) {
-      targetColor = (targetColor + 1) % GEM_COLORS.length;
-      colorTimer = 4;
-      game.audio.play('se_tap', 0.3);
-    }
-
-    // Manage gems
-    if (gems.length < MAX_GEMS) {
-      spawnGem();
-    }
-    for (var i = gems.length - 1; i >= 0; i--) {
-      gems[i].life -= dt;
-      if (gems[i].scale < 1) gems[i].scale = Math.min(1, gems[i].scale + dt * 5);
-      if (gems[i].life <= 0) gems.splice(i, 1);
-    }
-
-    // Feedback floaters
-    for (var f = feedback.length - 1; f >= 0; f--) {
-      feedback[f].life -= dt;
-      feedback[f].y -= 80 * dt;
-      if (feedback[f].life <= 0) feedback.splice(f, 1);
+      if (timeLeft <= 0) { finish(false); return; }
+      colorTimer -= dt;
+      if (colorTimer <= 0) { targetColor = (targetColor + 1) % GEM_COLORS.length; colorTimer = 4; game.audio.play('se_tap', 0.3); }
+      if (gems.length < MAX_GEMS) spawnGem();
+      for (var i = gems.length - 1; i >= 0; i--) { gems[i].life -= dt; if (gems[i].life <= 0) gems.splice(i, 1); }
+      for (var f = floaters.length - 1; f >= 0; f--) { floaters[f].life -= dt; floaters[f].y -= 80 * dt; if (floaters[f].life <= 0) floaters.splice(f, 1); }
     }
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Gems
-    for (var j = 0; j < gems.length; j++) {
-      var g = gems[j];
-      var col = GEM_COLORS[g.colorIdx];
-      var isTarget = g.colorIdx === targetColor;
-      var alpha = g.life / g.maxLife;
-      var s = g.scale;
-      var r = GEM_R * s;
-
-      if (isTarget) {
-        // Pulsing glow for target gems
-        var gPulse = 0.2 + 0.2 * Math.sin(game.time.elapsed * 8);
-        game.draw.circle(g.x, g.y, r + 20, col, gPulse * alpha);
-      }
-
-      game.draw.circle(g.x, g.y, r, col, alpha);
-
-      // Diamond facets
-      if (r > 20) {
-        game.draw.circle(g.x - r * 0.3, g.y - r * 0.3, r * 0.25, '#fff', alpha * 0.4);
-        game.draw.line(g.x - r * 0.5, g.y, g.x + r * 0.5, g.y, '#fff', 2);
-        game.draw.line(g.x, g.y - r * 0.5, g.x, g.y + r * 0.5, '#fff', 2);
-      }
-
-      // Fade warning
-      if (alpha < 0.3) {
-        game.draw.circle(g.x, g.y, r + 8, '#ef4444', 0.3 * (1 - alpha / 0.3));
-      }
-    }
-
-    // Feedback floaters
-    for (var fp = 0; fp < feedback.length; fp++) {
-      var fb = feedback[fp];
-      game.draw.text(fb.text, fb.x, fb.y, { size: 56, color: fb.color, bold: true });
-    }
-
-    // Target color display (big prominent indicator)
-    var targetPulse = 0.6 + 0.4 * Math.sin(game.time.elapsed * 4);
-    game.draw.rect(0, 168, W, 192, GEM_COLORS[targetColor], 0.08);
-    game.draw.circle(W / 2, 256, 64, GEM_COLORS[targetColor], targetPulse);
-    game.draw.circle(W / 2 - 18, 244, 22, '#fff', 0.4);
-    game.draw.text(GEM_NAMES[targetColor] + ' を集めろ！', W / 2, 360, { size: 52, color: GEM_COLORS[targetColor], bold: true });
-
-    // Color timer bar (how long until color changes)
-    var ctRatio = Math.max(0, colorTimer / 4);
-    game.draw.rect(0, 388, W, 16, '#0a0610');
-    game.draw.rect(0, 388, W * ctRatio, 16, GEM_COLORS[targetColor], 0.7);
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 15);
-    game.draw.rect(0, 0, W, 72, '#0a0610');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#6d28d9' : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Score
-    game.draw.text(score + ' / ' + needed, W / 2, 140, { size: 56, color: '#a78bfa', bold: true });
-
-    // Penalty pips
-    for (var p = 0; p < maxPenalties; p++) {
-      var px = W / 2 + (p - 2) * 56;
-      game.draw.circle(px, 136, 16, p < penalties ? '#ef4444' : '#1a0f28');
-    }
-
-    // Guide
-    game.draw.text('正しい色だけタップ！', W / 2, H - 200, { size: 52, color: C.ui });
+    background();
+    // ターゲット色の提示
+    game.draw.rect(0, 380, W, 160, GEM_COLORS[targetColor], 0.1);
+    drawGemSprite(W / 2, 460, GEM_COLORS[targetColor], 56);
+    txt('COLLECT THIS!', W / 2, 400, 40, GEM_COLORS[targetColor]);
+    game.draw.rect(0, 540, W * Math.max(0, colorTimer / 4), 12, GEM_COLORS[targetColor], 0.7);
+    drawGems();
+    timeBar();
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 150, 40, C.b);
+    for (var p = 0; p < MAX_PENALTY; p++)
+      game.draw.rect(W / 2 + (p - 2) * 56 - 16, 200, 32, 32, p < penalties ? C.a : '#330011');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.35);
-    targetColor = Math.floor(Math.random() * GEM_COLORS.length);
-    for (var i = 0; i < 6; i++) spawnGem();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

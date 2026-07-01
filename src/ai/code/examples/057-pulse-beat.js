@@ -1,181 +1,138 @@
 // 057-pulse-beat.js
 // パルスビート — 画面の鼓動に合わせてタップするリズム同期の快感
 // 操作: 画面の波紋が最大になった瞬間にタップ
-// 成功: 10回ジャストタイミング  失敗: 5回外れる or 20秒
+// 成功: 1回ジャストタイミング  失敗: 5回外れる or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#050208',
-    pulse:   '#8b5cf6',
-    pulseHi: '#c4b5fd',
-    hit:     '#22c55e',
-    miss:    '#ef4444',
-    ring:    '#4c1d95',
-    ui:      '#475569'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var BPM = 90; // beats per minute
-  var BEAT_INTERVAL = 60 / BPM; // seconds per beat
-  var beatTimer = 0;
-  var beatPhase = 0; // 0-1 within current beat
-  var beatNum = 0;
+  var GAME_TITLE  = 'PULSE BEAT';
+  var HOW_TO_PLAY = 'TAP WHEN THE RING PEAKS';
+  var MAX_TIME = 20;
+  var NEEDED = 1;            // 修正2: 10 → 1
+  var MAX_MISS = 5;
+  var BPM = 90, BEAT_INTERVAL = 60 / 90, HIT_WINDOW = 0.15, CY = H * 0.46;
 
-  // Ring animation
-  var rings = [];
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var score = 0;
-  var needed = 10;
-  var misses = 0;
-  var maxMisses = 5;
-  var timeLeft = 20;
-  var done = false;
-  var lastTapBeat = -1; // prevent double-tap on same beat
+  var beatTimer, beatPhase, beatNum, rings, score, misses, timeLeft, done, lastTapBeat, feedback, feedbackOk, tapFlash;
 
-  var feedback = 0;
-  var feedbackOk = false;
-  var tapFlash = 0;
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function drawPixelCircle(px, py, r, color, alpha) {
+    var step = 8; px = snap(px); py = snap(py);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step)
+        if (xx * xx + yy * yy <= r * r) game.draw.rect(px + xx, py + yy, step, step, color, alpha);
+  }
+  function pixelRing(cx, cy, r, color, alpha) {
+    var step = 8, r2 = r * r, ri2 = (r - 12) * (r - 12); cx = snap(cx); cy = snap(cy);
+    for (var yy = -r; yy <= r; yy += step)
+      for (var xx = -r; xx <= r; xx += step) { var d = xx * xx + yy * yy; if (d <= r2 && d >= ri2) game.draw.rect(cx + xx, cy + yy, step, step, color, alpha); }
+  }
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x,     y,     { size: sz, color: color,     bold: true, align: align || 'center' });
+  }
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+  function timeBar() {
+    var blocks = 12, lit = Math.ceil(timeLeft / MAX_TIME * blocks);
+    for (var i = 0; i < blocks; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#003b00');
+  }
 
-  // Hit window: center of beat ±15% of beat interval
-  var HIT_WINDOW = 0.15;
+  function initGame() { beatTimer = BEAT_INTERVAL * 0.3; beatPhase = 0; beatNum = 0; rings = []; score = 0; misses = 0; timeLeft = MAX_TIME; done = false; lastTapBeat = -1; feedback = 0; feedbackOk = false; tapFlash = 0; }
+
+  function finish(success) {
+    if (done) return;
+    done = true;
+    resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 40) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
   game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT)  { state = S.ATTRACT; return; }
     if (done) return;
-
-    // Check if we're in the hit window (beatPhase near 0 or near 1 = peak)
-    var distToCenter = Math.abs(beatPhase - 0.5);
-    var inWindow = distToCenter < HIT_WINDOW;
-
-    if (lastTapBeat === beatNum && !inWindow) return; // still on same beat
-
+    var inWindow = Math.abs(beatPhase - 0.5) < HIT_WINDOW;
+    if (lastTapBeat === beatNum && !inWindow) return;
     if (inWindow) {
-      if (lastTapBeat !== beatNum) {
-        score++;
-        feedbackOk = true;
-        feedback = 0.35;
-        tapFlash = 0.2;
-        lastTapBeat = beatNum;
-        game.audio.play('se_tap', 1.0);
-        if (score >= needed && !done) {
-          done = true;
-          game.audio.play('se_success');
-          setTimeout(function() { game.end.success(score * 25 + Math.ceil(timeLeft) * 8); }, 400);
-        }
-      }
-    } else {
-      misses++;
-      feedbackOk = false;
-      feedback = 0.3;
-      game.audio.play('se_failure', 0.6);
-      if (misses >= maxMisses && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 400);
-      }
-    }
+      if (lastTapBeat !== beatNum) { score++; feedbackOk = true; feedback = 0.35; tapFlash = 0.2; lastTapBeat = beatNum; game.audio.play('se_tap', 1.0); if (score >= NEEDED) finish(true); }
+    } else { misses++; feedbackOk = false; feedback = 0.3; game.audio.play('se_failure', 0.6); if (misses >= MAX_MISS) finish(false); }
   });
 
+  // 世界観: 巨大な音響コアの鼓動。波紋が最大になる拍にタップして同期する。
+  function background() { game.draw.clear('#0a0018'); }
+
+  function drawPulse() {
+    var mp = Math.sin(beatPhase * Math.PI);
+    for (var r = 0; r < rings.length; r++) pixelRing(W / 2, CY, rings[r].r, C.d, (rings[r].life / (BEAT_INTERVAL * 0.9)) * 0.5);
+    var orbR = 100 + mp * 90;
+    drawPixelCircle(W / 2, CY, orbR, C.a, 0.9);
+    drawPixelCircle(W / 2, CY, orbR * 0.5, C.c, 0.6);
+    var inWin = Math.abs(beatPhase - 0.5) < HIT_WINDOW;
+    if (inWin) { pixelRing(W / 2, CY, orbR + 40, C.b, 0.8); txt('NOW!', W / 2, CY + orbR + 120, 64, C.b); }
+    if (tapFlash > 0) game.draw.rect(0, 0, W, H, C.g, tapFlash / 0.2 * 0.15);
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (beatTimer === undefined) initGame();
+      background();
+      beatPhase = (game.time.elapsed % BEAT_INTERVAL) / BEAT_INTERVAL; rings = [];
+      drawPulse();
+      txt(GAME_TITLE,  W / 2, H * 0.16, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 40, C.b);
+      if (Math.floor(game.time.elapsed * 1.67) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.8, 72, C.a);
+        txt('TAP TO START', W / 2, H * 0.86, 52, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.92, 42, '#888888');
+      scanlines();
+      return;
+    }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CONGRATULATIONS!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.c : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 64, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 54, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      beatTimer += dt;
+      if (beatTimer >= BEAT_INTERVAL) { beatTimer -= BEAT_INTERVAL; beatNum++; rings.push({ r: 40, maxR: 440, life: BEAT_INTERVAL * 0.9 }); game.audio.play('se_tap', 0.2); }
+      beatPhase = beatTimer / BEAT_INTERVAL;
+      for (var i = rings.length - 1; i >= 0; i--) { rings[i].life -= dt; rings[i].r = (1 - rings[i].life / (BEAT_INTERVAL * 0.9)) * rings[i].maxR; if (rings[i].life <= 0) rings.splice(i, 1); }
+      if (feedback > 0) feedback -= dt;
+      if (tapFlash > 0) tapFlash -= dt;
     }
-
-    beatTimer += dt;
-    if (beatTimer >= BEAT_INTERVAL) {
-      beatTimer -= BEAT_INTERVAL;
-      beatNum++;
-      // Spawn ring on beat
-      rings.push({ r: 40, maxR: 400, life: BEAT_INTERVAL * 0.9 });
-      game.audio.play('se_tap', 0.2); // subtle tick
-    }
-    beatPhase = beatTimer / BEAT_INTERVAL; // 0=beat start, 0.5=halfway, 1=next beat
-
-    // Update rings
-    for (var i = rings.length - 1; i >= 0; i--) {
-      rings[i].life -= dt;
-      rings[i].r = (1 - rings[i].life / (BEAT_INTERVAL * 0.9)) * rings[i].maxR;
-      if (rings[i].life <= 0) rings.splice(i, 1);
-    }
-
-    if (feedback > 0) feedback -= dt;
-    if (tapFlash > 0) tapFlash -= dt;
 
     // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Background pulse glow
-    var mainPulse = Math.sin(beatPhase * Math.PI); // 0 at start/end, 1 at midpoint
-    game.draw.circle(W / 2, H / 2, 280 + mainPulse * 120, C.pulse, mainPulse * 0.15);
-    game.draw.circle(W / 2, H / 2, 160 + mainPulse * 80, C.pulse, mainPulse * 0.2);
-
-    // Rings expanding from center
-    for (var r = 0; r < rings.length; r++) {
-      var ring = rings[r];
-      var age = 1 - ring.life / (BEAT_INTERVAL * 0.9);
-      game.draw.circle(W / 2, H / 2, ring.r, C.pulse, (1 - age) * 0.5);
-    }
-
-    // Center orb — biggest at beatPhase=0.5
-    var orbR = 80 + mainPulse * 60;
-    game.draw.circle(W / 2, H / 2, orbR + 20, C.pulseHi, mainPulse * 0.3);
-    game.draw.circle(W / 2, H / 2, orbR, C.pulse);
-    game.draw.circle(W / 2 - orbR * 0.25, H / 2 - orbR * 0.25, orbR * 0.25, '#fff', 0.4);
-
-    // Hit window indicator (arc showing when to tap)
-    // Draw small arc indicators at beat peak position
-    var beatStr = Math.floor(mainPulse * 100) + '%';
-    game.draw.text(beatStr, W / 2, H / 2 + orbR + 80, { size: 48, color: C.pulseHi, bold: true });
-
-    // In hit window highlight
-    var inWin = Math.abs(beatPhase - 0.5) < HIT_WINDOW;
-    if (inWin) {
-      game.draw.circle(W / 2, H / 2, orbR + 36, '#22c55e', 0.4);
-      game.draw.text('NOW!', W / 2, H / 2 + orbR + 160, { size: 56, color: C.hit, bold: true });
-    }
-
-    // Tap flash
-    if (tapFlash > 0) {
-      game.draw.circle(W / 2, H / 2, 500, '#fff', tapFlash / 0.2 * 0.15);
-    }
-
-    // Feedback
-    if (feedback > 0) {
-      if (feedbackOk) {
-        game.draw.text('ジャスト！', W / 2, H * 0.25, { size: 72, color: C.hit, bold: true });
-      } else {
-        game.draw.text('ズレた！', W / 2, H * 0.25, { size: 72, color: C.miss, bold: true });
-      }
-    }
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 20);
-    game.draw.rect(0, 0, W, 72, '#050208');
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.pulse : C.miss);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Score & misses
-    for (var s = 0; s < needed; s++) {
-      var sx = W / 2 + (s - (needed - 1) / 2) * 84;
-      game.draw.circle(sx, 128, 28, s < score ? C.hit : '#1a0f28');
-    }
-    for (var m = 0; m < maxMisses; m++) {
-      var mx = W / 2 + (m - (maxMisses - 1) / 2) * 64;
-      game.draw.circle(mx, 200, 20, m < misses ? C.miss : '#150d1e');
-    }
-
-    // Guide
-    game.draw.text('波紋が最大の時にタップ！', W / 2, H - 200, { size: 48, color: C.ui });
+    background();
+    drawPulse();
+    if (feedback > 0) txt(feedbackOk ? 'JUST!' : 'MISS!', W / 2, H * 0.24, 72, feedbackOk ? C.b : C.a);
+    timeBar();
+    txt('SCORE ' + String(score).padStart(6, '0'), W / 2, 96, 44, C.g);
+    for (var m = 0; m < MAX_MISS; m++)
+      game.draw.rect(W / 2 + (m - 2) * 56, 150, 40, 40, m < misses ? C.a : '#330011');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.4);
-    beatTimer = BEAT_INTERVAL * 0.3; // slight delay before first beat
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
