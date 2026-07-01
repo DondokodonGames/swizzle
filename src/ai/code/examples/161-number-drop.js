@@ -1,174 +1,158 @@
 // 161-number-drop.js
-// 数字落下 — 落ちてくる数字を昇順にタップする、頭が追いつかない瞬間の焦り
+// 数字落下 — 落ちてくる数字を昇順にタップする、頭が追いつかない焦り
 // 操作: タップで数字を選ぶ
-// 成功: 1〜15を順番に全タップ  失敗: 順番を間違える or 40秒
+// 成功: 1〜3を順番に全タップ  失敗: 順番を間違える or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#040a10',
-    num:    '#3b82f6',
-    numHi:  '#93c5fd',
-    next:   '#22c55e',
-    nextHi: '#86efac',
-    wrong:  '#ef4444',
-    done2:  '#374151',
-    ui:     '#334155'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var TOTAL = 15;
-  var NUM_R = 60;
-  var DROP_SPEED_BASE = 100;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'NUMBER DROP';
+  var HOW_TO_PLAY = 'TAP NUMBERS IN ORDER 1-3';
+  var MAX_TIME = 15;             // 修正2: 40 → 15
+  var TOTAL   = 3;               // 修正2: 15 → 3
+  var TOP    = 220;
+  var NUM_R = 72, DROP_SPEED = 90;
 
-  var numbers = [];
-  var nextTarget = 1;
-  var score = 0;
-  var timeLeft = 40;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var particles = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnNumber(n) {
-    var x = NUM_R + 40 + Math.random() * (W - (NUM_R + 40) * 2);
-    numbers.push({
-      n: n,
-      x: x,
-      y: -NUM_R,
-      vy: DROP_SPEED_BASE + Math.random() * 80,
-      tapped: false,
-      tapTimer: 0
-    });
+  // ── ゲーム変数 ──
+  var numbers, particles, nextTarget, score, timeLeft, done, feedback, feedbackOk;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
   }
 
-  function initNumbers() {
-    // Spawn all numbers with varied delays
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function drawNumber(n, isNext) {
+    if (n.tapTimer > 0) { pc(n.x, n.y, NUM_R + 16, C.b, n.tapTimer * 1.5); return; }
+    var col = isNext ? C.b : C.e;
+    if (isNext) pc(n.x, n.y, NUM_R + 16, C.b, 0.2);
+    pc(n.x, n.y, NUM_R, col, 1);
+    pc(n.x, n.y, NUM_R - 12, C.g, 0.2);
+    txt(n.n + '', n.x, n.y - 8, 64, C.g);
+  }
+
+  function initGame() {
+    numbers = []; particles = [];
     for (var i = 1; i <= TOTAL; i++) {
-      spawnNumber(i);
+      numbers.push({ n: i, x: snap(NUM_R + 60 + Math.random() * (W - (NUM_R + 60) * 2)), y: -NUM_R - Math.random() * H * 0.7, vy: DROP_SPEED + Math.random() * 60 + i * 8, tapped: false, tapTimer: 0 });
     }
-    // Randomize initial positions
-    for (var j = 0; j < numbers.length; j++) {
-      numbers[j].y = -NUM_R - Math.random() * H * 0.8;
-      numbers[j].vy = DROP_SPEED_BASE + Math.random() * 120 + j * 5;
-    }
+    nextTarget = 1; score = 0; timeLeft = MAX_TIME; done = false; feedback = 0;
   }
 
-  game.onTap(function(tx, ty) {
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 30) : score * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done) return;
     for (var ni = 0; ni < numbers.length; ni++) {
       var n = numbers[ni];
       if (n.tapped) continue;
-      var dx = tx - n.x, dy = ty - n.y;
-      if (Math.sqrt(dx * dx + dy * dy) < NUM_R + 16) {
+      if (Math.hypot(x - n.x, y - n.y) < NUM_R + 16) {
         if (n.n === nextTarget) {
-          n.tapped = true;
-          n.tapTimer = 0.4;
-          nextTarget++;
-          score++;
+          n.tapped = true; n.tapTimer = 0.4; nextTarget++; score++;
           feedbackOk = true; feedback = 0.2;
           game.audio.play('se_success', 0.6);
-          for (var pi = 0; pi < 8; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: n.x, y: n.y, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.4 });
-          }
-          if (score >= TOTAL && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(TOTAL * 40 + Math.ceil(timeLeft) * 30); }, 400);
-          }
-        } else {
-          feedbackOk = false; feedback = 0.4;
-          game.audio.play('se_failure', 0.5);
-          // Penalty: reset to nearest past number if tapped wrong
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
+          for (var pi = 0; pi < 8; pi++) { var ang = Math.random() * Math.PI * 2; particles.push({ x: n.x, y: n.y, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.4 }); }
+          if (score >= TOTAL) { finish(true); return; }
+        } else { feedbackOk = false; feedback = 0.4; finish(false); return; }
         return;
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      drawNumber({ n: 1, x: W * 0.3, y: H * 0.4, tapTimer: 0 }, true);
+      drawNumber({ n: 2, x: W * 0.6, y: H * 0.55, tapTimer: 0 }, false);
+      txt(GAME_TITLE, W / 2, H * 0.16, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 32, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.80, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.86, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.92, 40, '#886699');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'PERFECT ORDER!' : 'WRONG ORDER', W / 2, H * 0.35, 68, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      for (var ni = 0; ni < numbers.length; ni++) {
+        var n = numbers[ni];
+        if (n.tapTimer > 0) { n.tapTimer -= dt; continue; }
+        if (!n.tapped) { n.y += n.vy * dt; if (n.y > H + NUM_R) { n.y = -NUM_R; n.x = snap(NUM_R + 60 + Math.random() * (W - (NUM_R + 60) * 2)); } }
+      }
     }
+    for (var p = 0; p < particles.length; p++) { particles[p].x += particles[p].vx * dt; particles[p].y += particles[p].vy * dt; particles[p].vy += 300 * dt; particles[p].life -= dt; }
+    particles = particles.filter(function(pt) { return pt.life > 0; });
     if (feedback > 0) feedback -= dt;
 
-    for (var ni = 0; ni < numbers.length; ni++) {
-      var n = numbers[ni];
-      if (n.tapTimer > 0) {
-        n.tapTimer -= dt;
-        continue;
-      }
-      if (!n.tapped) {
-        n.y += n.vy * dt;
-        // Bounce off bottom
-        if (n.y > H + NUM_R) {
-          n.y = -NUM_R;
-          n.x = NUM_R + 40 + Math.random() * (W - (NUM_R + 40) * 2);
-        }
-      }
-    }
+    // ---- 描画 ----
+    background();
+    for (var ni2 = 0; ni2 < numbers.length; ni2++) { if (!numbers[ni2].tapped || numbers[ni2].tapTimer > 0) drawNumber(numbers[ni2], numbers[ni2].n === nextTarget); }
+    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 4, snap(particles[pp].y) - 4, 8, 8, C.b, particles[pp].life * 2.5);
+    if (feedback > 0) game.draw.rect(0, 0, W, H, feedbackOk ? C.b : C.a, feedback * 0.15);
 
-    for (var pi2 = 0; pi2 < particles.length; pi2++) {
-      particles[pi2].x += particles[pi2].vx * dt; particles[pi2].y += particles[pi2].vy * dt;
-      particles[pi2].vy += 300 * dt; particles[pi2].life -= dt;
-    }
-    particles = particles.filter(function(p) { return p.life > 0; });
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Numbers
-    for (var ni2 = 0; ni2 < numbers.length; ni2++) {
-      var n2 = numbers[ni2];
-      if (n2.tapTimer > 0) {
-        // Flash on tap
-        game.draw.circle(n2.x, n2.y, NUM_R + 20, C.nextHi, n2.tapTimer * 1.5);
-        continue;
-      }
-      if (n2.tapped) continue;
-
-      var isNext = (n2.n === nextTarget);
-      var col = isNext ? C.next : C.num;
-      var hiCol = isNext ? C.nextHi : C.numHi;
-
-      // Glow for next target
-      if (isNext) {
-        game.draw.circle(n2.x, n2.y, NUM_R + 24, C.next, 0.2);
-        game.draw.circle(n2.x, n2.y, NUM_R + 12, C.next, 0.15);
-      }
-
-      game.draw.circle(n2.x, n2.y, NUM_R + 6, hiCol, 0.2);
-      game.draw.circle(n2.x, n2.y, NUM_R, col, 0.85);
-      game.draw.text(n2.n + '', n2.x, n2.y, { size: 60, color: '#fff', bold: true });
-    }
-
-    // Particles
-    for (var pp = 0; pp < particles.length; pp++) {
-      var part = particles[pp];
-      game.draw.circle(part.x, part.y, 10 * part.life * 2, C.next, part.life);
-    }
-
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? C.next : C.wrong, feedback * 0.15);
-    }
-
-    // Next target indicator
-    game.draw.text('次: ' + nextTarget, W / 2, H * 0.9, { size: 52, color: C.nextHi, bold: true });
-
-    game.draw.text(score + ' / ' + TOTAL, W / 2, 148, { size: 60, color: '#f1f5f9', bold: true });
-
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.num : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + TOTAL, W / 2, 168, 48, C.b);
+    txt('NEXT: ' + Math.min(nextTarget, TOTAL), W / 2, H - 120, 52, C.c);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.3);
-    initNumbers();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
