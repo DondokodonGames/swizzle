@@ -1,208 +1,176 @@
 // 168-chain-reaction.js
-// 連鎖爆発 — 最初の一発から爆発が広がっていく達成感、最大連鎖を狙え
+// 連鎖爆発 — 最初の一発から爆発が広がる達成感、最大連鎖を狙え
 // 操作: タップで爆発を開始する位置を選ぶ
-// 成功: 爆発が全ボムの80%以上に連鎖  失敗: 50%未満 or 20秒考えた
+// 成功: 爆発が40%以上に連鎖  失敗: 40%未満 or 10秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#04060a',
-    bomb:    '#374151',
-    bombHi:  '#6b7280',
-    fuse:    '#f59e0b',
-    boom:    '#ef4444',
-    boomHi:  '#fbbf24',
-    shockwave:'#f97316',
-    success: '#22c55e',
-    ui:      '#334155'
-  };
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var BOMB_R = 44;
-  var CHAIN_RADIUS = 180; // explosion radius to ignite neighbors
-  var BOMB_COUNT = 24;
-  var bombs = [];
-  var explosions = []; // { x, y, r, maxR, timer }
-  var gamePhase = 'aim'; // 'aim' | 'exploding' | 'result'
-  var aimX = W / 2, aimY = H / 2;
-  var explodeCount = 0;
-  var resultTimer = 0;
-  var thinkTime = 0;
-  var MAX_THINK = 20;
-  var timeLeft = MAX_THINK;
-  var done = false;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'CHAIN REACTION';
+  var HOW_TO_PLAY = 'TAP TO START THE BLAST · CHAIN THEM ALL';
+  var MAX_TIME = 10;             // 修正2: 20 → 10
+  var SUCCESS_PCT = 0.40;        // 修正2: 0.80 → 0.40
+  var BOMB_R = 44, CHAIN_RADIUS = 240, BOMB_COUNT = 16;   // 修正2: 半径拡大・数減
+  var TOP    = 220, BOTTOM = H - 180;
 
-  function initBombs() {
-    bombs = [];
-    var tries = 0;
-    while (bombs.length < BOMB_COUNT && tries < 500) {
-      tries++;
-      var bx = BOMB_R + 60 + Math.random() * (W - (BOMB_R + 60) * 2);
-      var by = H * 0.12 + Math.random() * (H * 0.76);
-      var overlap = false;
-      for (var bi = 0; bi < bombs.length; bi++) {
-        var dx = bx - bombs[bi].x, dy = by - bombs[bi].y;
-        if (Math.sqrt(dx * dx + dy * dy) < BOMB_R * 2 + 16) { overlap = true; break; }
-      }
-      if (!overlap) bombs.push({ x: bx, y: by, exploded: false, explodeTimer: -1, chainTimer: -1 });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var bombs, explosions, phase, explodeCount, timeLeft, done;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
     }
   }
 
-  function triggerExplosion(b, delay) {
-    b.chainTimer = delay;
-    b.exploded = true;
+  function ring(cx, cy, r, color, alpha) {
+    for (var a = 0; a < Math.PI * 2; a += 0.1) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha);
+  }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(Math.max(0, timeLeft) / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function drawBomb(b) {
+    if (b.exploded && b.chainTimer < 0) { pc(b.x, b.y, BOMB_R, '#3a2a4a', 0.6); return; }
+    if (b.exploded) {
+      pc(b.x, b.y, BOMB_R, '#222222', 1);
+      var on = Math.floor(game.time.elapsed * 8) % 2 === 0;
+      game.draw.rect(snap(b.x) - 6, snap(b.y) - BOMB_R - 16, 12, 12, on ? C.c : C.f);
+    } else {
+      pc(b.x, b.y, BOMB_R, '#222222', 1);
+      pc(b.x - 12, b.y - 12, 8, C.g, 0.6);
+      game.draw.rect(snap(b.x) - 4, snap(b.y) - BOMB_R - 16, 8, 16, C.f);
+    }
+  }
+
+  function initBombs() {
+    bombs = []; var tries = 0;
+    while (bombs.length < BOMB_COUNT && tries < 500) {
+      tries++;
+      var bx = snap(BOMB_R + 60 + Math.random() * (W - (BOMB_R + 60) * 2));
+      var by = snap(TOP + 40 + Math.random() * (BOTTOM - TOP - 80));
+      var overlap = false;
+      for (var i = 0; i < bombs.length; i++) if (Math.hypot(bx - bombs[i].x, by - bombs[i].y) < BOMB_R * 2 + 16) { overlap = true; break; }
+      if (!overlap) bombs.push({ x: bx, y: by, exploded: false, chainTimer: -1 });
+    }
   }
 
   function startChain(cx, cy) {
-    explosions.push({ x: cx, y: cy, r: 0, maxR: CHAIN_RADIUS, timer: 0.6 });
+    explosions.push({ x: cx, y: cy, r: 0, timer: 0.6 });
     explodeCount++;
-    // Trigger nearby bombs
-    for (var bi = 0; bi < bombs.length; bi++) {
-      var b = bombs[bi];
+    for (var i = 0; i < bombs.length; i++) {
+      var b = bombs[i];
       if (b.exploded) continue;
-      var dx = cx - b.x, dy = cy - b.y;
-      var dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < CHAIN_RADIUS) {
-        triggerExplosion(b, dist / CHAIN_RADIUS * 0.4);
-      }
+      var dist = Math.hypot(cx - b.x, cy - b.y);
+      if (dist < CHAIN_RADIUS) { b.exploded = true; b.chainTimer = dist / CHAIN_RADIUS * 0.4; }
     }
   }
 
-  game.onTap(function(tx, ty) {
+  function initGame() {
+    explosions = []; phase = 'aim'; explodeCount = 0; timeLeft = MAX_TIME; done = false;
+    initBombs();
+  }
+
+  function finish(success) {
     if (done) return;
-    if (gamePhase === 'aim') {
-      gamePhase = 'exploding';
-      timeLeft = -1; // stop countdown
-      startChain(tx, ty);
-    }
+    done = true; resultSuccess = success;
+    var pct = explodeCount / BOMB_COUNT;
+    finalScore = success ? Math.round(pct * 800 + 300) : Math.round(pct * 300);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (phase === 'aim') { phase = 'exploding'; game.audio.play('se_tap', 0.6); startChain(x, y); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (gamePhase === 'aim') {
+    if (state === S.ATTRACT) {
+      background();
+      for (var b = 0; b < 8; b++) drawBomb({ x: W * (0.2 + (b % 4) * 0.2), y: H * (0.35 + Math.floor(b / 4) * 0.15), exploded: false, chainTimer: -1 });
+      txt(GAME_TITLE, W / 2, H * 0.14, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 30, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.80, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.86, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.92, 40, '#886699');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      var pct = Math.round(explodeCount / BOMB_COUNT * 100);
+      txt(resultSuccess ? 'BIG CHAIN!' : 'FIZZLED', W / 2, H * 0.32, 76, resultSuccess ? C.b : C.a);
+      txt(pct + '% (' + explodeCount + '/' + BOMB_COUNT + ')', W / 2, H * 0.44, 54, C.c);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.54, 56, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.66, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
+    if (phase === 'aim' && !done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
+      if (timeLeft <= 0) { finish(false); return; }
+    }
+    if (phase === 'exploding') {
+      var pending = false;
+      for (var i = 0; i < bombs.length; i++) {
+        var b = bombs[i];
+        if (b.exploded && b.chainTimer >= 0) { b.chainTimer -= dt; if (b.chainTimer <= 0) { b.chainTimer = -1; startChain(b.x, b.y); game.audio.play('se_tap', 0.2); } pending = true; }
       }
+      var expanding = false;
+      for (var ei = explosions.length - 1; ei >= 0; ei--) { explosions[ei].r += 600 * dt; explosions[ei].timer -= dt; if (explosions[ei].timer <= 0) explosions.splice(ei, 1); else expanding = true; }
+      if (!pending && !expanding) { finish(explodeCount / BOMB_COUNT >= SUCCESS_PCT); return; }
     }
 
-    if (gamePhase === 'exploding') {
-      // Update chain timers
-      var anyPending = false;
-      for (var bi = 0; bi < bombs.length; bi++) {
-        var b = bombs[bi];
-        if (b.exploded && b.chainTimer >= 0) {
-          b.chainTimer -= dt;
-          if (b.chainTimer <= 0) {
-            b.chainTimer = -1;
-            startChain(b.x, b.y);
-            game.audio.play('se_tap', 0.2);
-          }
-          anyPending = true;
-        }
-        if (!b.exploded) anyPending = true;
-      }
+    // ---- 描画 ----
+    background();
+    for (var ei2 = 0; ei2 < explosions.length; ei2++) { var ex = explosions[ei2]; ring(ex.x, ex.y, ex.r, C.f, (ex.timer / 0.6) * 0.7); }
+    for (var bi = 0; bi < bombs.length; bi++) drawBomb(bombs[bi]);
 
-      // Check if any explosion still expanding
-      var anyExplosion = false;
-      for (var ei = explosions.length - 1; ei >= 0; ei--) {
-        explosions[ei].r += 600 * dt;
-        explosions[ei].timer -= dt;
-        if (explosions[ei].timer <= 0) {
-          explosions.splice(ei, 1);
-        } else {
-          anyExplosion = true;
-        }
-      }
-
-      // All done?
-      if (!anyPending && !anyExplosion) {
-        gamePhase = 'result';
-        resultTimer = 1.5;
-        var ratio = explodeCount / BOMB_COUNT;
-        if (ratio >= 0.8) {
-          game.audio.play('se_success');
-          done = true;
-          setTimeout(function() { game.end.success(Math.round(ratio * 1000) + 300); }, 1500);
-        } else {
-          game.audio.play('se_failure');
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 1500);
-        }
-      }
-    }
-
-    if (gamePhase === 'result') resultTimer -= dt;
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Explosions (shockwaves)
-    for (var ei2 = 0; ei2 < explosions.length; ei2++) {
-      var ex = explosions[ei2];
-      var alpha = ex.timer / 0.6;
-      game.draw.circle(ex.x, ex.y, ex.r, C.shockwave, alpha * 0.15);
-      game.draw.circle(ex.x, ex.y, ex.r * 0.6, C.boomHi, alpha * 0.12);
-    }
-
-    // Bombs
-    for (var bi2 = 0; bi2 < bombs.length; bi2++) {
-      var b2 = bombs[bi2];
-      if (b2.exploded && b2.chainTimer < 0) {
-        // Exploded - show as smoke
-        game.draw.circle(b2.x, b2.y, BOMB_R + 16, C.boom, 0.15);
-        game.draw.circle(b2.x, b2.y, BOMB_R, '#4b5563', 0.5);
-      } else if (b2.exploded) {
-        // About to explode - fuse burning
-        game.draw.circle(b2.x, b2.y, BOMB_R + 8, C.fuse, 0.5);
-        game.draw.circle(b2.x, b2.y, BOMB_R, C.bomb, 0.9);
-        // Fuse spark
-        var fX = b2.x + 16, fY = b2.y - BOMB_R - 16;
-        game.draw.circle(fX, fY, 10, C.fuse, 0.9);
-        game.draw.circle(fX + (Math.random() - 0.5) * 20, fY - 16, 6, C.boomHi, 0.8);
-      } else {
-        // Normal bomb
-        game.draw.circle(b2.x, b2.y, BOMB_R, C.bomb, 0.9);
-        game.draw.circle(b2.x, b2.y, BOMB_R - 8, C.bombHi, 0.4);
-        // Fuse
-        game.draw.line(b2.x + 16, b2.y - BOMB_R + 4, b2.x + 28, b2.y - BOMB_R - 20, C.fuse, 4);
-      }
-    }
-
-    // Aim phase overlay
-    if (gamePhase === 'aim') {
-      // Chain radius preview
-      game.draw.circle(aimX, aimY, CHAIN_RADIUS, C.boomHi, 0.06);
-      game.draw.circle(aimX, aimY, CHAIN_RADIUS, C.boomHi, 0.06);
-      game.draw.circle(aimX, aimY, 30, C.boom, 0.5);
-      game.draw.text('タップで爆発！', W / 2, H * 0.9, { size: 46, color: C.ui });
-      game.draw.text('どこから始める?', W / 2, H * 0.84, { size: 40, color: C.ui });
-    }
-
-    // Result
-    if (gamePhase === 'result' || done) {
-      var ratio2 = explodeCount / BOMB_COUNT;
-      var pct = Math.round(ratio2 * 100);
-      var resultCol = ratio2 >= 0.8 ? C.success : C.boom;
-      game.draw.text(pct + '% 連鎖！', W / 2, H * 0.5, { size: 80, color: resultCol, bold: true });
-      game.draw.text(explodeCount + ' / ' + BOMB_COUNT + ' 爆発', W / 2, H * 0.57, { size: 48, color: '#f1f5f9' });
-    }
-
-    var ratio3 = Math.max(0, timeLeft / MAX_THINK);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    if (gamePhase === 'aim') {
-      game.draw.rect(0, 0, W * ratio3, 72, ratio3 > 0.3 ? C.fuse : C.boom);
-      game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-    } else {
-      game.draw.text('連鎖中...', W / 2, 36, { size: 44, color: C.boomHi, bold: true });
-    }
+    timeBar();
+    txt(Math.ceil(Math.max(0, timeLeft)) + '', W / 2, 96, 44, C.g);
+    txt(explodeCount + ' / ' + BOMB_COUNT, W / 2, 168, 44, C.b);
+    txt(phase === 'aim' ? 'TAP WHERE TO IGNITE!' : 'CHAINING...', W / 2, H - 120, 44, phase === 'aim' ? C.c : C.f);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.25);
-    initBombs();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
