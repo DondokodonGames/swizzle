@@ -1,253 +1,227 @@
 // 137-ant-highway.js
-// アリの道 — 行列を乱す障害物をタップで除去してアリたちをゴールへ導く誘導ゲーム
+// アリの道 — 行列を乱す障害物をタップで除去してアリをゴールへ導く誘導ゲーム
 // 操作: タップで障害物を除去（障害物は自動再生成）
-// 成功: 50匹のアリをゴールへ  失敗: 20匹が迷子 or 40秒
+// 成功: 5匹のアリをゴールへ  失敗: 20匹が迷子 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#030804',
-    path:    '#0a1808',
-    pathHi:  '#14280c',
-    ant:     '#22c55e',
-    antHead: '#86efac',
-    block:   '#ef4444',
-    blockHi: '#fca5a5',
-    goal:    '#facc15',
-    goalHi:  '#fef08a',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    ui:      '#334155'
-  };
+  // ── パレット（グリーンCRT、巣穴） ──
+  var C = { bg:'#001100', a:'#00ff41', b:'#66ff66', c:'#ccffcc', d:'#009922', e:'#ffcc00', f:'#ff3300', g:'#ffffff' };
 
-  // Path is a winding route from left to right
-  var PATH_POINTS = [
-    {x: 0, y: H*0.5},
-    {x: W*0.2, y: H*0.5},
-    {x: W*0.2, y: H*0.3},
-    {x: W*0.5, y: H*0.3},
-    {x: W*0.5, y: H*0.65},
-    {x: W*0.8, y: H*0.65},
-    {x: W*0.8, y: H*0.4},
-    {x: W, y: H*0.4}
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ANT HIGHWAY';
+  var HOW_TO_PLAY = 'TAP TO CLEAR OBSTACLES · GUIDE THE ANTS';
+  var MAX_TIME = 15;             // 修正2: 40 → 15
+  var NEEDED   = 5;              // 修正2: 50 → 5
+  var MAX_LOST = 20;
+  var TOP    = 220;
+  var BOTTOM = H - 180;
+
+  var PATH = [
+    { x: 0, y: snap(H * 0.5) }, { x: snap(W * 0.2), y: snap(H * 0.5) },
+    { x: snap(W * 0.2), y: snap(H * 0.34) }, { x: snap(W * 0.5), y: snap(H * 0.34) },
+    { x: snap(W * 0.5), y: snap(H * 0.64) }, { x: snap(W * 0.8), y: snap(H * 0.64) },
+    { x: snap(W * 0.8), y: snap(H * 0.42) }, { x: W, y: snap(H * 0.42) }
   ];
+  var ANT_SPEED = 0.12, SPAWN_INTERVAL = 0.35, BLOCK_R = 32, MAX_BLOCKS = 4, BLOCK_RESPAWN = 3.0;
 
-  function getPathAt(t) {
-    // t: 0-1 along total path
-    var totalLen = 0;
-    var segLens = [];
-    for (var i = 0; i < PATH_POINTS.length-1; i++) {
-      var dx = PATH_POINTS[i+1].x - PATH_POINTS[i].x;
-      var dy = PATH_POINTS[i+1].y - PATH_POINTS[i].y;
-      var l = Math.sqrt(dx*dx+dy*dy);
-      segLens.push(l);
-      totalLen += l;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var ants, blocks, particles, spawnTimer, blockTimer, arrived, lost, totalSpawned, timeLeft, done;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8;
+    cx = snap(cx); cy = snap(cy);
+    for (var py = -r; py <= r; py += step) for (var px = -r; px <= r; px += step) {
+      if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
     }
-    var target = t * totalLen;
-    var cumLen = 0;
-    for (var i2 = 0; i2 < segLens.length; i2++) {
-      if (cumLen + segLens[i2] >= target) {
-        var frac = (target - cumLen) / segLens[i2];
-        return {
-          x: PATH_POINTS[i2].x + (PATH_POINTS[i2+1].x - PATH_POINTS[i2].x) * frac,
-          y: PATH_POINTS[i2].y + (PATH_POINTS[i2+1].y - PATH_POINTS[i2].y) * frac
-        };
-      }
-      cumLen += segLens[i2];
-    }
-    return PATH_POINTS[PATH_POINTS.length-1];
   }
 
-  var ants = []; // { t: 0-1 progress, speed, lost }
-  var ANT_SPEED = 0.08; // t/second
-  var SPAWN_INTERVAL = 0.4;
-  var spawnTimer = 0;
-  var ANT_R = 10;
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
 
-  var blocks = []; // { t: position on path, r }
-  var BLOCK_R = 28;
-  var MAX_BLOCKS = 4;
-  var blockRespawnTimer = 0;
-  var BLOCK_RESPAWN = 3.0;
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
 
-  var arrived = 0;
-  var lost = 0;
-  var needed = 50;
-  var maxLost = 20;
-  var totalSpawned = 0;
-  var timeLeft = 40;
-  var done = false;
-  var particles = [];
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.a : '#003300');
+  }
+
+  function getPathAt(t) {
+    var total = 0, segs = [];
+    for (var i = 0; i < PATH.length - 1; i++) {
+      var l = Math.hypot(PATH[i + 1].x - PATH[i].x, PATH[i + 1].y - PATH[i].y);
+      segs.push(l); total += l;
+    }
+    var target = t * total, cum = 0;
+    for (var j = 0; j < segs.length; j++) {
+      if (cum + segs[j] >= target) {
+        var f = (target - cum) / segs[j];
+        return { x: PATH[j].x + (PATH[j + 1].x - PATH[j].x) * f, y: PATH[j].y + (PATH[j + 1].y - PATH[j].y) * f };
+      }
+      cum += segs[j];
+    }
+    return PATH[PATH.length - 1];
+  }
 
   function spawnBlock() {
     if (blocks.length >= MAX_BLOCKS) return;
     var t = 0.1 + Math.random() * 0.8;
-    // Don't overlap existing blocks
-    for (var bi = 0; bi < blocks.length; bi++) {
-      if (Math.abs(blocks[bi].t - t) < 0.1) return;
-    }
-    blocks.push({ t: t, r: BLOCK_R });
+    for (var i = 0; i < blocks.length; i++) if (Math.abs(blocks[i].t - t) < 0.1) return;
+    blocks.push({ t: t });
   }
 
-  game.onTap(function(tx, ty) {
+  function background() {
+    game.draw.clear(C.bg);
+    for (var i = 0; i < PATH.length - 1; i++) {
+      game.draw.line(PATH[i].x, PATH[i].y, PATH[i + 1].x, PATH[i + 1].y, C.d, 44);
+      game.draw.line(PATH[i].x, PATH[i].y, PATH[i + 1].x, PATH[i + 1].y, C.a, 4);
+    }
+    var goal = PATH[PATH.length - 1];
+    pc(goal.x - 24, goal.y, 32, C.e, Math.floor(game.time.elapsed * 8) % 2 === 0 ? 0.9 : 0.5);
+    txt('NEST', goal.x - 40, goal.y - 56, 30, C.e);
+  }
+
+  function drawAnt(pos) {
+    pc(pos.x, pos.y, 12, C.a, 1);
+    pc(pos.x, pos.y - 14, 8, C.b, 1);          // 頭
+    game.draw.rect(snap(pos.x) - 16, snap(pos.y), 8, 4, C.a);   // 脚
+    game.draw.rect(snap(pos.x) + 8, snap(pos.y), 8, 4, C.a);
+  }
+
+  function drawBlock(pos) {
+    pc(pos.x, pos.y, BLOCK_R, C.f, 0.9);
+    game.draw.rect(snap(pos.x) - 20, snap(pos.y) - 4, 40, 8, C.g);
+    game.draw.rect(snap(pos.x) - 4, snap(pos.y) - 20, 8, 40, C.g);
+  }
+
+  function initGame() {
+    ants = []; blocks = []; particles = [];
+    spawnTimer = 0.3; blockTimer = BLOCK_RESPAWN;
+    arrived = 0; lost = 0; totalSpawned = 0;
+    timeLeft = MAX_TIME; done = false;
+    spawnBlock(); spawnBlock();
+  }
+
+  function finish(success) {
     if (done) return;
-    for (var bi = blocks.length-1; bi >= 0; bi--) {
-      var b = blocks[bi];
-      var bPos = getPathAt(b.t);
-      var dx = tx - bPos.x, dy = ty - bPos.y;
-      if (Math.sqrt(dx*dx+dy*dy) < b.r + 24) {
-        blocks.splice(bi, 1);
+    done = true; resultSuccess = success;
+    finalScore = success ? (arrived * 100 + Math.ceil(timeLeft) * 20) : arrived * 40;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    for (var i = blocks.length - 1; i >= 0; i--) {
+      var bp = getPathAt(blocks[i].t);
+      if (Math.hypot(x - bp.x, y - bp.y) < BLOCK_R + 40) {
+        blocks.splice(i, 1);
         game.audio.play('se_tap', 0.7);
-        // Small particles
         for (var pi = 0; pi < 6; pi++) {
           var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: bPos.x, y: bPos.y, vx: Math.cos(ang)*100, vy: Math.sin(ang)*100, life: 0.3 });
+          particles.push({ x: bp.x, y: bp.y, vx: Math.cos(ang) * 100, vy: Math.sin(ang) * 100, life: 0.3 });
         }
         return;
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      for (var d = 0; d < 4; d++) drawAnt(getPathAt((game.time.elapsed * 0.15 + d * 0.12) % 1));
+      txt(GAME_TITLE, W / 2, H * 0.12, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.82, 30, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.e);
+        txt('TAP TO START', W / 2, H * 0.93, 48, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'HOME SAFE!' : 'LOST TRAIL', W / 2, H * 0.35, 76, resultSuccess ? C.a : C.f);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.c);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.b);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
+      if (timeLeft <= 0) { finish(false); return; }
+
+      spawnTimer -= dt;
+      if (spawnTimer <= 0 && totalSpawned < NEEDED + MAX_LOST) {
+        spawnTimer = SPAWN_INTERVAL;
+        ants.push({ t: 0, speed: ANT_SPEED * (0.8 + Math.random() * 0.4), lost: false, done: false });
+        totalSpawned++;
       }
-    }
+      blockTimer -= dt;
+      if (blockTimer <= 0) { blockTimer = BLOCK_RESPAWN; spawnBlock(); }
 
-    // Spawn ants
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && totalSpawned < needed + maxLost) {
-      spawnTimer = SPAWN_INTERVAL;
-      ants.push({ t: 0, speed: ANT_SPEED * (0.8 + Math.random() * 0.4), lost: false });
-      totalSpawned++;
-    }
-
-    // Block respawn
-    blockRespawnTimer -= dt;
-    if (blockRespawnTimer <= 0) {
-      blockRespawnTimer = BLOCK_RESPAWN;
-      spawnBlock();
-    }
-
-    // Move ants
-    for (var ai = ants.length-1; ai >= 0; ai--) {
-      var ant = ants[ai];
-      if (ant.lost) continue;
-      // Check if blocked
-      var blocked = false;
-      for (var bi = 0; bi < blocks.length; bi++) {
-        if (Math.abs(ant.t - blocks[bi].t) < 0.04) {
-          blocked = true;
-          break;
-        }
+      for (var ai = 0; ai < ants.length; ai++) {
+        var ant = ants[ai];
+        if (ant.lost || ant.done) continue;
+        var blocked = false;
+        for (var bi = 0; bi < blocks.length; bi++) if (Math.abs(ant.t - blocks[bi].t) < 0.045) { blocked = true; break; }
+        if (!blocked) ant.t += ant.speed * dt;
+        if (ant.t >= 1) { ant.done = true; arrived++; if (arrived >= NEEDED) { finish(true); return; } }
       }
-      if (!blocked) ant.t += ant.speed * dt;
-      if (ant.t >= 1) {
-        ant.t = 1;
-        arrived++;
-        ant.done = true;
-        if (arrived >= needed && !done) {
-          done = true;
-          game.audio.play('se_success');
-          setTimeout(function() { game.end.success(arrived*10 + Math.ceil(timeLeft)*8); }, 400);
-        }
-      }
-      // If ant has been stuck too long... (simple: check if t not advanced)
-    }
-
-    // Ants that are waiting too long get lost (simplified: lost ones that fall behind spawn point)
-    // Actually count stragglers: ants that are stuck at blocks too long
-    // Simple: check if any ant has been at same t for > 8s (approximated by counting blocked ants at very low t)
-    var stuckCount = ants.filter(function(a) { return !a.lost && !a.done && a.t < 0.05; }).length;
-    if (stuckCount > 5) {
-      // Some ants get lost
-      for (var ai2 = 0; ai2 < ants.length; ai2++) {
-        if (!ants[ai2].lost && !ants[ai2].done && ants[ai2].t < 0.05) {
-          ants[ai2].lost = true;
-          lost++;
-          if (lost >= maxLost && !done) {
-            done = true;
-            game.audio.play('se_failure');
-            setTimeout(function() { game.end.failure(); }, 400);
+      var stuck = ants.filter(function(a) { return !a.lost && !a.done && a.t < 0.05; }).length;
+      if (stuck > 5) {
+        for (var k = 0; k < ants.length; k++) {
+          if (!ants[k].lost && !ants[k].done && ants[k].t < 0.05) {
+            ants[k].lost = true; lost++;
+            if (lost >= MAX_LOST) { finish(false); return; }
           }
         }
       }
+      ants = ants.filter(function(a) { return !a.done && !a.lost; });
     }
 
-    ants = ants.filter(function(a) { return !a.done; });
-
     for (var pi = 0; pi < particles.length; pi++) {
-      particles[pi].x += particles[pi].vx * dt;
-      particles[pi].y += particles[pi].vy * dt;
-      particles[pi].life -= dt;
+      particles[pi].x += particles[pi].vx * dt; particles[pi].y += particles[pi].vy * dt; particles[pi].life -= dt;
     }
     particles = particles.filter(function(p) { return p.life > 0; });
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Path
-    for (var pi2 = 0; pi2 < PATH_POINTS.length-1; pi2++) {
-      game.draw.line(PATH_POINTS[pi2].x, PATH_POINTS[pi2].y, PATH_POINTS[pi2+1].x, PATH_POINTS[pi2+1].y, C.path, 48);
-      game.draw.line(PATH_POINTS[pi2].x, PATH_POINTS[pi2].y, PATH_POINTS[pi2+1].x, PATH_POINTS[pi2+1].y, C.pathHi, 4);
-    }
-
-    // Goal
-    var goalPos = PATH_POINTS[PATH_POINTS.length-1];
-    var gPulse = 0.5 + 0.4 * Math.abs(Math.sin(timeLeft*2));
-    game.draw.circle(goalPos.x, goalPos.y, 40, C.goal, gPulse*0.5);
-    game.draw.circle(goalPos.x, goalPos.y, 24, C.goalHi, 0.9);
-    game.draw.text('▶', goalPos.x, goalPos.y, { size: 32, color: '#000', bold: true });
-
-    // Ants
-    for (var ai3 = 0; ai3 < ants.length; ai3++) {
-      var ant2 = ants[ai3];
-      if (ant2.lost) continue;
-      var pos = getPathAt(ant2.t);
-      // Ant body (2 circles)
-      game.draw.circle(pos.x, pos.y, ANT_R, C.ant, 0.9);
-      game.draw.circle(pos.x, pos.y - ANT_R, ANT_R * 0.7, C.antHead, 0.8);
-    }
-
-    // Blocks
-    for (var bi2 = 0; bi2 < blocks.length; bi2++) {
-      var bPos2 = getPathAt(blocks[bi2].t);
-      var bPulse = 0.6 + 0.4 * Math.abs(Math.sin(timeLeft*3 + bi2));
-      game.draw.circle(bPos2.x, bPos2.y, BLOCK_R + 8, C.blockHi, bPulse * 0.25);
-      game.draw.circle(bPos2.x, bPos2.y, BLOCK_R, C.block, 0.85);
-      game.draw.text('✕', bPos2.x, bPos2.y, { size: 36, color: '#fff', bold: true });
-    }
-
-    // Particles
+    // ---- 描画 ----
+    background();
+    for (var a2 = 0; a2 < ants.length; a2++) if (!ants[a2].lost) drawAnt(getPathAt(ants[a2].t));
+    for (var b2 = 0; b2 < blocks.length; b2++) drawBlock(getPathAt(blocks[b2].t));
     for (var pp = 0; pp < particles.length; pp++) {
-      var part = particles[pp];
-      game.draw.circle(part.x, part.y, 6*part.life*3, C.block, part.life);
+      game.draw.rect(snap(particles[pp].x) - 4, snap(particles[pp].y) - 4, 8, 8, C.f, particles[pp].life * 3);
     }
 
-    // Score
-    game.draw.text(arrived + ' / ' + needed, W/2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    for (var li = 0; li < 5; li++) {
-      game.draw.circle(W/2+(li-2)*52, 218, 18, li < Math.floor(lost/4) ? C.wrong : '#0a1020');
-    }
-
-    game.draw.text('障害物をタップで除去！', W/2, H*0.88, { size: 44, color: C.ui });
-
-    var ratio = Math.max(0, timeLeft/40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*ratio, 72, ratio > 0.3 ? C.ant : C.wrong);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.c);
+    txt(arrived + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.25);
-    spawnBlock();
-    spawnBlock();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
