@@ -1,224 +1,192 @@
 // 152-slingshot.js
 // パチンコ — ゴムの張力を感じながら狙いを定めて放つ爽快感
-// 操作: スワイプで引っ張る方向と強さを決め放つ
-// 成功: 10個の的を割る  失敗: 15発撃ち尽くす or 45秒
+// 操作: 的の方向をタップして発射（引く強さは距離で決まる）
+// 成功: 1個の的を割る  失敗: 8発撃ち尽くす or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#04080c',
-    fork:    '#6b4c1a',
-    forkHi:  '#d97706',
-    band:    '#dc2626',
-    ball:    '#f59e0b',
-    ballHi:  '#fef08a',
-    target:  '#22c55e',
-    targetHi:'#86efac',
-    broken:  '#374151',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    ui:      '#334155'
-  };
+  // ── パレット（ネオンアーケード、射的場） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var FORK_X = W / 2;
-  var FORK_Y = H * 0.72;
-  var FORK_ARM = 80; // half-width of fork
-  var MAX_PULL = 160;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SLINGSHOT';
+  var HOW_TO_PLAY = 'TAP TOWARD A TARGET TO FIRE';
+  var MAX_TIME = 15;             // 修正2: 45 → 15
+  var NEEDED   = 1;              // 修正2: 10 → 1
+  var MAX_AMMO = 8;              // 修正2: 15 → 8
+  var TOP    = 220;
+  var FORK_X = snap(W / 2), FORK_Y = snap(H * 0.72), FORK_ARM = 88;
+  var BALL_R = 26, TARGET_R = 44, GRAVITY = 600;
 
-  var ball = { x: FORK_X, y: FORK_Y, vx: 0, vy: 0, flying: false, r: 22 };
-  var pulling = false;
-  var pullX = FORK_X, pullY = FORK_Y;
-  var swipeStart = null;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Targets arranged in rows
-  var targets = [];
-  var TARGET_R = 36;
-  function makeTargets() {
-    targets = [];
-    for (var r = 0; r < 3; r++) {
-      for (var c = 0; c < 4; c++) {
-        if (Math.random() > 0.65) continue;
-        targets.push({ x: 100 + c * 260, y: H*0.12 + r * 110, r: TARGET_R, alive: true, hitTimer: 0 });
-      }
-    }
-    // Ensure at least 10
-    while (targets.length < 10) {
-      targets.push({ x: 80 + Math.random()*(W-160), y: H*0.08 + Math.random()*H*0.28, r: TARGET_R, alive: true, hitTimer: 0 });
+  // ── ゲーム変数 ──
+  var ball, targets, particles, ammo, score, timeLeft, done, feedback, feedbackOk;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var py = -r; py <= r; py += step) for (var px = -r; px <= r; px += step) {
+      if (px * px + py * py <= r * r) game.draw.rect(cx + px, cy + py, step, step, color, alpha);
     }
   }
 
-  var ammo = 15;
-  var score = 0;
-  var needed = 10;
-  var timeLeft = 45;
-  var done = false;
-  var feedback = 0;
-  var feedbackOk = false;
-  var particles = [];
+  function pl(x1, y1, x2, y2, color, w) {
+    var steps = Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 8);
+    for (var i = 0; i <= steps; i++) { var t = i / steps; game.draw.rect(snap(x1 + (x2 - x1) * t) - w / 2, snap(y1 + (y2 - y1) * t) - w / 2, w, w, color, 1); }
+  }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
-    if (done || ball.flying) return;
-    // Swipe to set pull direction and launch
-    var dx = x2 - x1, dy = y2 - y1;
-    var len = Math.sqrt(dx*dx+dy*dy);
-    if (len < 20) return;
-    var power = Math.min(len / 2, MAX_PULL);
-    // Launch opposite to swipe direction
-    ball.vx = -(dx/len) * power * 5.5;
-    ball.vy = -(dy/len) * power * 5.5;
-    ball.x = FORK_X;
-    ball.y = FORK_Y;
-    ball.flying = true;
-    ammo--;
-    game.audio.play('se_tap', 0.8);
-    if (ammo <= 0 && score < needed && !done) {
-      // Will check after ball lands
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var sy = 0; sy < H; sy += 8) game.draw.rect(0, sy, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(0, FORK_Y + 140, W, H - FORK_Y - 140, C.d, 0.3);
+  }
+
+  // ── スプライト（多矩形でキャラクター性） ──
+  function drawFork(flying) {
+    pl(FORK_X, FORK_Y, FORK_X - FORK_ARM, FORK_Y - FORK_ARM, C.f, 20);
+    pl(FORK_X, FORK_Y, FORK_X + FORK_ARM, FORK_Y - FORK_ARM, C.f, 20);
+    game.draw.rect(FORK_X - 12, FORK_Y, 24, 140, C.f);
+    game.draw.rect(FORK_X - 12, FORK_Y, 24, 8, C.c);
+    if (!flying) {
+      pl(FORK_X - FORK_ARM, FORK_Y - FORK_ARM, FORK_X, FORK_Y, C.a, 6);
+      pl(FORK_X + FORK_ARM, FORK_Y - FORK_ARM, FORK_X, FORK_Y, C.a, 6);
+      pc(FORK_X, FORK_Y, BALL_R, C.c, 1);
     }
-    // Show pull visual
-    pullX = FORK_X + (dx/len) * power * 0.5;
-    pullY = FORK_Y + (dy/len) * power * 0.5;
-  });
+  }
 
-  game.onTap(function(tx, ty) {
+  function drawTarget(t) {
+    if (!t.alive) { if (t.hitTimer > 0) { pc(t.x, t.y, TARGET_R, '#333333', t.hitTimer); txt('X', t.x, t.y - 8, 40, C.e); } return; }
+    pc(t.x, t.y, TARGET_R, C.b, 1);
+    pc(t.x, t.y, TARGET_R - 12, C.g, 0.9);
+    pc(t.x, t.y, 12, C.a, 1);
+  }
+
+  function makeTargets() {
+    targets = [];
+    for (var i = 0; i < 5; i++) targets.push({ x: snap(game.random(120, W - 120)), y: snap(TOP + 40 + game.random(0, H * 0.32)), alive: true, hitTimer: 0 });
+  }
+
+  function initGame() {
+    ball = { x: FORK_X, y: FORK_Y, vx: 0, vy: 0, flying: false };
+    particles = []; ammo = MAX_AMMO; score = 0;
+    timeLeft = MAX_TIME; done = false; feedback = 0;
+    makeTargets();
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 300 + ammo * 40 + Math.ceil(timeLeft) * 20) : score * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || ball.flying) return;
-    // Tap sets aim and shoots based on tap position relative to fork
-    var dx = tx - FORK_X, dy = ty - FORK_Y;
-    var len = Math.sqrt(dx*dx+dy*dy);
+    var dx = x - FORK_X, dy = y - FORK_Y, len = Math.hypot(dx, dy);
     if (len < 10) return;
-    var power = Math.min(len, MAX_PULL);
-    ball.vx = -(dx/len) * power * 4;
-    ball.vy = -(dy/len) * power * 4;
-    ball.x = FORK_X;
-    ball.y = FORK_Y;
-    ball.flying = true;
-    ammo--;
+    var power = Math.min(len, 200);
+    ball.vx = (dx / len) * power * 4.5; ball.vy = (dy / len) * power * 4.5;
+    ball.x = FORK_X; ball.y = FORK_Y; ball.flying = true; ammo--;
     game.audio.play('se_tap', 0.8);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      drawTarget({ x: W * 0.3, y: H * 0.35, alive: true }); drawTarget({ x: W * 0.7, y: H * 0.3, alive: true });
+      drawFork(false);
+      txt(GAME_TITLE, W / 2, H * 0.14, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 32, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.92, 48, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'BULLSEYE!' : 'OUT OF AMMO', W / 2, H * 0.35, 72, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    if (ball.flying) {
-      ball.vy += 600 * dt; // gravity
-      ball.x += ball.vx * dt;
-      ball.y += ball.vy * dt;
-
-      // Check target collisions
-      for (var ti = 0; ti < targets.length; ti++) {
-        var t = targets[ti];
-        if (!t.alive) continue;
-        var dx = ball.x - t.x, dy = ball.y - t.y;
-        if (Math.sqrt(dx*dx+dy*dy) < ball.r + t.r) {
-          t.alive = false;
-          t.hitTimer = 0.6;
-          score++;
-          feedbackOk = true;
-          feedback = 0.4;
-          game.audio.play('se_success', 0.7);
-          for (var pi = 0; pi < 10; pi++) {
-            var ang = Math.random()*Math.PI*2;
-            particles.push({ x: t.x, y: t.y, vx: Math.cos(ang)*220, vy: Math.sin(ang)*220-100, life: 0.5 });
+      if (timeLeft <= 0) { finish(false); return; }
+      if (ball.flying) {
+        ball.vy += GRAVITY * dt; ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+        for (var ti = 0; ti < targets.length; ti++) {
+          var t = targets[ti];
+          if (!t.alive) continue;
+          if (Math.hypot(ball.x - t.x, ball.y - t.y) < BALL_R + TARGET_R) {
+            t.alive = false; t.hitTimer = 0.6; score++;
+            feedbackOk = true; feedback = 0.4;
+            game.audio.play('se_success', 0.7);
+            for (var pi = 0; pi < 10; pi++) { var ang = Math.random() * Math.PI * 2; particles.push({ x: t.x, y: t.y, vx: Math.cos(ang) * 220, vy: Math.sin(ang) * 220 - 100, life: 0.5 }); }
+            ball.flying = false; ball.x = FORK_X; ball.y = FORK_Y;
+            if (score >= NEEDED) { finish(true); return; }
+            break;
           }
-          ball.flying = false;
-          ball.x = FORK_X; ball.y = FORK_Y;
-          if (score >= needed && !done) {
-            done = true;
-            game.audio.play('se_success');
-            setTimeout(function() { game.end.success(score*50+Math.ceil(timeLeft)*15+(ammo*20)); }, 400);
-          }
-          break;
+        }
+        if (ball.flying && (ball.x < -80 || ball.x > W + 80 || ball.y > H + 80)) {
+          ball.flying = false; ball.x = FORK_X; ball.y = FORK_Y; feedbackOk = false; feedback = 0.3;
+          if (ammo <= 0) { finish(false); return; }
         }
       }
-
-      // Ball off screen
-      if (ball.x < -80 || ball.x > W+80 || ball.y > H+80) {
-        ball.flying = false;
-        ball.x = FORK_X; ball.y = FORK_Y;
-        feedbackOk = false; feedback = 0.3;
-        if (ammo <= 0 && score < needed && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-      }
+      for (var ti2 = 0; ti2 < targets.length; ti2++) if (targets[ti2].hitTimer > 0) targets[ti2].hitTimer -= dt;
     }
-
-    for (var ti2 = 0; ti2 < targets.length; ti2++) {
-      if (targets[ti2].hitTimer > 0) targets[ti2].hitTimer -= dt;
-    }
-    for (var pi2 = 0; pi2 < particles.length; pi2++) {
-      particles[pi2].x += particles[pi2].vx*dt; particles[pi2].y += particles[pi2].vy*dt;
-      particles[pi2].vy += 600*dt; particles[pi2].life -= dt;
-    }
-    particles = particles.filter(function(p) { return p.life > 0; });
+    for (var p = 0; p < particles.length; p++) { particles[p].x += particles[p].vx * dt; particles[p].y += particles[p].vy * dt; particles[p].vy += 600 * dt; particles[p].life -= dt; }
+    particles = particles.filter(function(pt) { return pt.life > 0; });
     if (feedback > 0) feedback -= dt;
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background();
+    for (var ti3 = 0; ti3 < targets.length; ti3++) drawTarget(targets[ti3]);
+    drawFork(ball.flying);
+    if (ball.flying) pc(ball.x, ball.y, BALL_R, C.c, 1);
+    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 4, snap(particles[pp].y) - 4, 8, 8, C.b, particles[pp].life * 2.5);
+    if (feedback > 0) game.draw.rect(0, 0, W, H, feedbackOk ? C.b : C.a, feedback * 0.12);
 
-    // Targets
-    for (var ti3 = 0; ti3 < targets.length; ti3++) {
-      var t2 = targets[ti3];
-      if (!t2.alive && t2.hitTimer <= 0) continue;
-      if (!t2.alive) {
-        game.draw.circle(t2.x, t2.y, t2.r, C.broken, t2.hitTimer * 0.8);
-        game.draw.text('✕', t2.x, t2.y, { size: 40, color: C.wrong, bold: true });
-      } else {
-        game.draw.circle(t2.x, t2.y, t2.r+8, C.targetHi, 0.25);
-        game.draw.circle(t2.x, t2.y, t2.r, C.target, 0.9);
-        game.draw.circle(t2.x, t2.y, t2.r*0.5, C.targetHi, 0.6);
-        game.draw.circle(t2.x, t2.y, 8, '#fff', 0.8);
-      }
-    }
-
-    // Fork frame
-    game.draw.line(FORK_X, FORK_Y, FORK_X-FORK_ARM, FORK_Y-FORK_ARM*0.8, C.fork, 20);
-    game.draw.line(FORK_X, FORK_Y, FORK_X+FORK_ARM, FORK_Y-FORK_ARM*0.8, C.fork, 20);
-    game.draw.circle(FORK_X-FORK_ARM, FORK_Y-FORK_ARM*0.8, 14, C.forkHi, 0.9);
-    game.draw.circle(FORK_X+FORK_ARM, FORK_Y-FORK_ARM*0.8, 14, C.forkHi, 0.9);
-    game.draw.line(FORK_X, FORK_Y, FORK_X, FORK_Y+120, C.fork, 24);
-
-    // Rubber band (when not flying)
-    if (!ball.flying) {
-      game.draw.line(FORK_X-FORK_ARM, FORK_Y-FORK_ARM*0.8, FORK_X, FORK_Y, C.band, 6);
-      game.draw.line(FORK_X+FORK_ARM, FORK_Y-FORK_ARM*0.8, FORK_X, FORK_Y, C.band, 6);
-      // Ball on sling
-      game.draw.circle(FORK_X, FORK_Y, ball.r+6, C.ballHi, 0.3);
-      game.draw.circle(FORK_X, FORK_Y, ball.r, C.ball, 0.9);
-    } else {
-      // Flying ball
-      game.draw.circle(ball.x, ball.y, ball.r+6, C.ballHi, 0.4);
-      game.draw.circle(ball.x, ball.y, ball.r, C.ball, 0.9);
-      game.draw.circle(ball.x-ball.r*0.3, ball.y-ball.r*0.3, ball.r*0.25, '#fff', 0.5);
-    }
-
-    // Particles
-    for (var pp = 0; pp < particles.length; pp++) {
-      var part = particles[pp];
-      game.draw.circle(part.x, part.y, 8*part.life*3, C.target, part.life);
-    }
-
-    // HUD
-    if (!ball.flying) {
-      game.draw.text('タップで発射！', W/2, H*0.9, { size: 44, color: C.ui });
-    }
-    game.draw.text('残り弾数: ' + ammo, W*0.25, H*0.92, { size: 36, color: ammo < 5 ? C.wrong : C.ui });
-
-    game.draw.text(score + ' / ' + needed, W/2, 148, { size: 60, color: '#f1f5f9', bold: true });
-
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? C.correct : C.wrong, feedback * 0.12);
-    }
-
-    var ratio = Math.max(0, timeLeft/45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*ratio, 72, ratio > 0.3 ? C.ball : C.wrong);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    txt('AMMO ' + ammo, W / 2, H - 120, 44, ammo < 3 ? C.a : C.e);
+    scanlines();
   });
 
-  game.onStart(function() { game.audio.bgm('bgm_main', 0.3); makeTargets(); });
+  game.onStart(function() {
+    game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
+  });
 })(game);
