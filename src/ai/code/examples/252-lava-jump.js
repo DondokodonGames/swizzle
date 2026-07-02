@@ -1,235 +1,149 @@
 // 252-lava-jump.js
-// ラバジャンプ — 上昇する溶岩から逃げるために石柱を渡り歩く
-// 操作: タップで次の石柱へジャンプ
-// 成功: 高度50m到達  失敗: 溶岩に落ちる or 45秒
+// ラバジャンプ — 迫り上がる溶岩から逃れ、石柱から石柱へ飛び移って高みへ登り続ける
+// 操作: タップで上の石柱へジャンプ
+// 成功: 高度12m到達  失敗: 溶岩に落ちる or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0300',
-    lava:   '#ef4444',
-    lavaHi: '#f97316',
-    lavaLo: '#7f1d1d',
-    pillar: '#44403c',
-    pilHi:  '#78716c',
-    top:    '#57534e',
-    player: '#fde68a',
-    plrHi:  '#fff',
-    sky:    '#1c0700',
-    smoke:  '#4a1008',
-    ui:     '#78716c'
-  };
+  // ── パレット（ネオンアーケード、溶岩洞窟） ──
+  var C = { bg:'#0a0300', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var pillars = [];
-  var PILLAR_W = 140;
-  var playerPillar = 0;
-  var playerX = 0, playerY = 0;
-  var lavaY = H + 100; // lava surface y (rises)
-  var lavaSpeed = 30;
-  var scrollOffset = 0;
-  var altitudeGained = 0;
-  var GOAL = 50 * 60; // 50m in pixels
-  var jumping = false;
-  var jumpAnim = 0, jumpDur = 0.4;
-  var jumpFromX, jumpFromY, jumpToX, jumpToY;
-  var jumpTargetPillar = -1;
-  var done = false;
-  var timeLeft = 45;
-  var elapsed = 0;
-  var particles = [];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'LAVA JUMP';
+  var HOW_TO_PLAY = 'TAP A PILLAR ABOVE TO LEAP UP';
+  var MAX_TIME = 15;
+  var TOP = 220, PILLAR_W = 150, GOAL = 12 * 70;
+  var COLSX = [W * 0.22, W * 0.5, W * 0.78];
 
-  function pillarTopY(p) {
-    return p.baseY - p.height;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var pillars, pp, pjumping, jumpAnim, jfx, jfy, jtx, jty, jtarget, lavaY, lavaSpeed, altitude, timeLeft, done, particles;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
   }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#2a1000');
+  }
+
+  function background() { game.draw.clear(C.bg); }
 
   function initPillars() {
     pillars = [];
-    var cols = [W * 0.2, W * 0.5, W * 0.8];
-    for (var i = 0; i < 15; i++) {
-      var col = cols[i % 3];
-      var py = H * 0.7 - i * 140;
-      var height = 200 + Math.random() * 200;
-      pillars.push({ x: col - PILLAR_W / 2, cx: col, baseY: H + 100, height: height, topY: py, r: PILLAR_W / 2 });
-      pillars[i].baseY = py + height;
-    }
-    playerPillar = 0;
-    playerX = pillars[0].cx;
-    playerY = pillars[0].topY - 30;
+    for (var i = 0; i < 12; i++) { var col = COLSX[i % 3], py = snap(H * 0.72 - i * 150), h = 200 + Math.random() * 180; pillars.push({ cx: snap(col), topY: py, baseY: py + h, h: h }); }
+    pp = 0;
   }
 
-  game.onTap(function(tx, ty) {
-    if (done || jumping) return;
+  function drawPillar(p) {
+    game.draw.rect(snap(p.cx - PILLAR_W / 2), snap(p.topY), PILLAR_W, Math.max(0, p.baseY - p.topY), C.d, 0.8);
+    game.draw.rect(snap(p.cx - PILLAR_W / 2) - 8, snap(p.topY), PILLAR_W + 16, 14, C.f, 0.9);
+  }
 
-    var curPillar = pillars[playerPillar];
+  function initGame() { initPillars(); px(); pjumping = false; jumpAnim = 0; jtarget = -1; lavaY = H * 0.9; lavaSpeed = 40; altitude = 0; timeLeft = MAX_TIME; done = false; particles = []; }
+  var playerX, playerY;
+  function px() { playerX = pillars[0].cx; playerY = pillars[0].topY - 30; }
 
-    // Find tapped pillar
-    var target = -1;
-    var bestDist = Infinity;
-    for (var pi = 0; pi < pillars.length; pi++) {
-      if (pi === playerPillar) continue;
-      var p = pillars[pi];
-      var dx = tx - p.cx, dy = ty - p.topY;
-      if (Math.abs(dx) < PILLAR_W / 2 + 20) {
-        var dist = Math.abs(p.topY - curPillar.topY);
-        if (dist < bestDist) { bestDist = dist; target = pi; }
-      }
-    }
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (600 + Math.ceil(timeLeft) * 100) : Math.floor(altitude / 70) * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    if (target < 0) {
-      // Tap anywhere — jump to nearest adjacent pillar above
-      for (var pi2 = 0; pi2 < pillars.length; pi2++) {
-        if (pi2 === playerPillar) continue;
-        var p2 = pillars[pi2];
-        var dy2 = curPillar.topY - p2.topY;
-        if (dy2 > 20 && dy2 < 400) {
-          var dx2 = Math.abs(tx - p2.cx);
-          if (dx2 < W / 2) { target = pi2; break; }
-        }
-      }
-    }
+  function drawLava() { for (var xi = 0; xi < W; xi += 16) game.draw.rect(xi, snap(lavaY + Math.sin(xi * 0.03 + game.time.elapsed * 4) * 12), 16, H - lavaY, C.a, 0.9); game.draw.rect(0, snap(lavaY), W, 8, C.f, 0.9); }
+  function drawPlayer() { pc(playerX, playerY, 26, C.c, 0.95); game.draw.rect(snap(playerX) - 8, snap(playerY) - 8, 6, 6, '#000'); game.draw.rect(snap(playerX) + 2, snap(playerY) - 8, 6, 6, '#000'); }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || pjumping) return;
+    var cur = pillars[pp], target = -1, bestY = Infinity;
+    for (var pi = 0; pi < pillars.length; pi++) { if (pi === pp) continue; var p = pillars[pi]; var dy = cur.topY - p.topY; if (dy > 20 && dy < 420 && Math.abs(x - p.cx) < PILLAR_W && dy < bestY) { bestY = dy; target = pi; } }
     if (target < 0) return;
-
-    var tp = pillars[target];
-    jumping = true;
-    jumpAnim = 0;
-    jumpFromX = playerX;
-    jumpFromY = playerY;
-    jumpToX = tp.cx;
-    jumpToY = tp.topY - 30;
-    jumpTargetPillar = target;
-    game.audio.play('se_tap', 0.4);
+    var tp = pillars[target]; pjumping = true; jumpAnim = 0; jfx = playerX; jfy = playerY; jtx = tp.cx; jty = tp.topY - 30; jtarget = target; game.audio.play('se_tap', 0.4);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    // Rise lava
-    var rise = lavaSpeed * dt;
-    lavaY -= rise;
-    scrollOffset += rise;
-    altitudeGained += rise;
-    lavaSpeed = 30 + altitudeGained / GOAL * 50;
-
-    // Scroll pillars down (camera follows lava rise)
-    for (var pi = 0; pi < pillars.length; pi++) {
-      pillars[pi].topY += rise * 0.6;
-      pillars[pi].baseY += rise * 0.6;
-    }
-    if (!jumping) {
-      playerY += rise * 0.6;
-    } else {
-      jumpFromY += rise * 0.6;
-      jumpToY += rise * 0.6;
-    }
-    lavaY += rise * 0.4; // lava rises relative to camera
-
-    // Check win
-    if (altitudeGained >= GOAL && !done) {
-      done = true;
-      game.audio.play('se_success');
-      setTimeout(function() { game.end.success(Math.floor(altitudeGained / 60) * 100 + Math.ceil(timeLeft) * 80); }, 400);
+    if (state === S.ATTRACT) {
+      if (!pillars) initGame(); background(); for (var i = 0; i < pillars.length; i++) drawPillar(pillars[i]); drawPlayer(); drawLava();
+      txt(GAME_TITLE, W / 2, H * 0.14, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 26, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.80, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.86, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.91, 40, '#664433');
+      scanlines();
       return;
     }
 
-    // Generate new pillars as player climbs
-    var highest = Infinity;
-    for (var pi2 = 0; pi2 < pillars.length; pi2++) {
-      if (pillars[pi2].topY < highest) highest = pillars[pi2].topY;
-    }
-    var cols = [W * 0.2, W * 0.5, W * 0.8];
-    while (highest > H * 0.15) {
-      highest -= 140;
-      var height = 200 + Math.random() * 200;
-      var col2 = cols[Math.floor(Math.random() * 3)];
-      pillars.push({ x: col2 - PILLAR_W / 2, cx: col2, topY: highest, baseY: highest + height, height: height, r: PILLAR_W / 2 });
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ESCAPED!' : 'MELTED', W / 2, H * 0.35, 82, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
 
-    // Jump animation
-    if (jumping) {
-      jumpAnim += dt / jumpDur;
-      if (jumpAnim >= 1) { jumpAnim = 1; jumping = false; playerPillar = jumpTargetPillar; }
-      var t = jumpAnim;
-      var arc = Math.sin(t * Math.PI) * -100;
-      playerX = jumpFromX + (jumpToX - jumpFromX) * t;
-      playerY = jumpFromY + (jumpToY - jumpFromY) * t + arc;
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      var rise = lavaSpeed * dt; altitude += rise; lavaSpeed = 40 + altitude / GOAL * 50;
+      for (var pi2 = 0; pi2 < pillars.length; pi2++) { pillars[pi2].topY += rise * 0.6; pillars[pi2].baseY += rise * 0.6; }
+      if (!pjumping) playerY += rise * 0.6; else { jfy += rise * 0.6; jty += rise * 0.6; }
+      lavaY += rise * 0.4;
+      if (altitude >= GOAL) { finish(true); return; }
+      var hi = Infinity; for (var pi3 = 0; pi3 < pillars.length; pi3++) if (pillars[pi3].topY < hi) hi = pillars[pi3].topY;
+      while (hi > TOP - 150) { hi -= 150; var col = COLSX[Math.floor(Math.random() * 3)], h = 200 + Math.random() * 180; pillars.push({ cx: snap(col), topY: hi, baseY: hi + h, h: h }); }
+      if (pjumping) { jumpAnim += dt / 0.4; if (jumpAnim >= 1) { jumpAnim = 1; pjumping = false; pp = jtarget; game.audio.play('se_tap', 0.3); } var t = jumpAnim, arc = Math.sin(t * Math.PI) * -110; playerX = jfx + (jtx - jfx) * t; playerY = jfy + (jty - jfy) * t + arc; }
+      if (playerY > lavaY - 10) { finish(false); return; }
+      if (Math.random() < 0.3) particles.push({ x: Math.random() * W, y: lavaY, vx: game.random(-60, 60), vy: -(80 + Math.random() * 100), life: 0.6, size: 8 + Math.random() * 10 });
+      for (var pp2 = particles.length - 1; pp2 >= 0; pp2--) { var p = particles[pp2]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 200 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp2, 1); }
     }
 
-    // Check lava collision
-    if (!done && playerY > lavaY - 10) {
-      done = true;
-      game.audio.play('se_failure');
-      setTimeout(function() { game.end.failure(); }, 400);
-    }
+    // ---- 描画 ----
+    background();
+    for (var pi4 = 0; pi4 < pillars.length; pi4++) drawPillar(pillars[pi4]);
+    drawPlayer();
+    for (var pp3 = 0; pp3 < particles.length; pp3++) pc(particles[pp3].x, particles[pp3].y, particles[pp3].size * particles[pp3].life, particles[pp3].life > 0.3 ? C.f : C.a, particles[pp3].life * 1.2);
+    drawLava();
 
-    // Lava particles
-    if (Math.random() < 0.3) {
-      particles.push({ x: Math.random() * W, y: lavaY, vx: (Math.random() - 0.5) * 60, vy: -80 - Math.random() * 100, life: 0.6, size: 8 + Math.random() * 12 });
-    }
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 200 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Sky gradient (smoke near lava)
-    game.draw.rect(0, 0, W, H, C.smoke, Math.min(0.3, lavaY > H ? 0 : (1 - lavaY / H) * 0.5));
-
-    // Pillars
-    for (var pi3 = 0; pi3 < pillars.length; pi3++) {
-      var p3 = pillars[pi3];
-      if (p3.topY > H + 100 || p3.baseY < -100) continue;
-      // Pillar body
-      game.draw.rect(p3.x, p3.topY, PILLAR_W, Math.max(0, p3.baseY - p3.topY), C.pillar, 0.9);
-      // Top cap
-      game.draw.rect(p3.x - 10, p3.topY, PILLAR_W + 20, 16, C.top, 0.9);
-      game.draw.rect(p3.x, p3.topY, PILLAR_W, 4, C.pilHi, 0.6);
-    }
-
-    // Player
-    game.draw.circle(playerX, playerY, 24, C.plrHi, 0.3);
-    game.draw.circle(playerX, playerY, 22, C.player, 0.95);
-    game.draw.circle(playerX - 7, playerY - 7, 7, '#fff', 0.5);
-
-    // Lava surface
-    var lavaBaseY = Math.max(lavaY, H - 200);
-    for (var xi = 0; xi < W; xi += 4) {
-      var waveH = Math.sin(xi * 0.03 + elapsed * 4) * 12;
-      game.draw.rect(xi, lavaY + waveH, 4, H - lavaY, C.lava, 0.95);
-    }
-    game.draw.rect(0, lavaY, W, 8, C.lavaHi, 0.9);
-
-    // Lava particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p4 = particles[pp2];
-      var alpha = p4.life / 0.6;
-      var col3 = p4.life > 0.3 ? C.lavaHi : C.lava;
-      game.draw.circle(p4.x, p4.y, p4.size * alpha, col3, alpha * 0.8);
-    }
-
-    // Height indicator
-    var meters = Math.floor(altitudeGained / 60);
-    game.draw.text(meters + 'm / 50m', W / 2, H * 0.9, { size: 50, color: C.player, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.lavaHi : C.lava);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(Math.floor(altitude / 70) + ' / 12m', W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    initPillars();
-    lavaY = H * 0.9;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
