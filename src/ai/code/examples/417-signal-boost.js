@@ -1,204 +1,143 @@
 // 417-signal-boost.js
-// 電波増幅 — アンテナを調整して電波強度を最大にキープ
-// 操作: 上下スワイプでアンテナ角度を調整
-// 成功: 累計60秒のうち45秒間を最適範囲でキープ  失敗: 時間切れ
+// 電波増幅 — 動く最適角度にアンテナを合わせ、強い電波を出し続けて必要な受信時間を稼ぐ
+// 操作: 上下スワイプ／画面上下タップでアンテナ角度を調整（緑の狙いに合わせる）
+// 成功: 良好受信を合計8秒 貯める  失敗: 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#040810',
-    sky:    '#080f1e',
-    tower:  '#374151',
-    towerHi:'#4b5563',
-    antenna:'#94a3b8',
-    antennaHi:'#e2e8f0',
-    signal0:'#ef4444',
-    signal1:'#f97316',
-    signal2:'#eab308',
-    signal3:'#22c55e',
-    signalMax:'#22d3ee',
-    wave:   '#3b82f6',
-    waveHi: '#93c5fd',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（グリーンCRT、通信塔） ──
+  var C = { bg:'#020a04', a:'#ff3300', b:'#00ff41', c:'#ffe600', d:'#00cc33', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var antennaAngle = 0;  // -PI/2 to PI/2, 0 = horizontal
-  var OPTIMAL_ANGLE_MIN = -0.3;  // radians
-  var OPTIMAL_ANGLE_MAX = 0.3;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SIGNAL BOOST';
+  var HOW_TO_PLAY = 'MATCH THE ANTENNA TO THE GREEN AIM · HOLD A STRONG SIGNAL';
+  var MAX_TIME = 15;
+  var GOAL_GOOD = 8;         // 修正2: 45秒 → 8秒
+  var TOW_X = snap(W * 0.35), TOW_Y = snap(H * 0.60), ANT_Y = snap(H * 0.60) - 240;
 
-  // Optimal angle changes over time
-  var targetAngle = 0;
-  var targetShift = 0;
-  var targetShiftInterval = 4;
-  var targetShiftTimer = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var signalStrength = 0;  // 0-1
-  var goodTime = 0;  // accumulated good signal time
-  var NEEDED_GOOD = 45;
-  var totalTime = 60;
-  var done = false;
-  var timeLeft = totalTime;
-  var elapsed = 0;
-  var particles = [];
-  var waveRings = [];
-  var signalPulse = 0;
-  var currentGoodPeriod = false;
+  // ── ゲーム変数 ──
+  var antAngle, targetAngle, targetShift, shiftInt, shiftTimer, signal, goodTime, timeLeft, done, particles, waves, pulse;
 
-  game.onSwipe(function(dir) {
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.12) game.draw.rect(snap(cx + Math.cos(a) * r) - 3, snap(cy + Math.sin(a) * r) - 3, 6, 6, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function goodBar() {
+    var t = Math.ceil(Math.min(1, goodTime / GOAL_GOOD) * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1a0c');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(0, TOW_Y, W, H, '#061006', 0.9); game.draw.rect(0, TOW_Y, W, 3, C.d, 0.5); }
+
+  function initGame() { antAngle = 0; targetAngle = 0; targetShift = 0; shiftInt = 3; shiftTimer = 0; signal = 0; goodTime = 0; timeLeft = MAX_TIME; done = false; particles = []; waves = []; pulse = 0; }
+
+  function finish(success) {
     if (done) return;
-    var step = 0.15;
-    if (dir === 'up') antennaAngle = Math.max(-Math.PI/2, antennaAngle - step);
-    else if (dir === 'down') antennaAngle = Math.min(Math.PI/2, antennaAngle + step);
-    game.audio.play('se_tap', 0.2);
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.round(goodTime) * 400 + Math.ceil(timeLeft) * 100 + 1000) : Math.round(goodTime * 200);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawTower() {
+    pline(TOW_X, TOW_Y, TOW_X, ANT_Y, '#2a4a2a', 0.9, 20);
+    for (var cb = 0; cb < 4; cb++) pline(TOW_X - 30, TOW_Y - 60 - cb * 50, TOW_X + 30, TOW_Y - 60 - cb * 50, '#2a4a2a', 0.6, 4);
+    // 最適の狙い
+    pline(TOW_X, ANT_Y, TOW_X + Math.cos(targetAngle - Math.PI / 2) * 200, ANT_Y + Math.sin(targetAngle - Math.PI / 2) * 200, C.d, 0.5, 4);
+    ring(TOW_X + Math.cos(targetAngle - Math.PI / 2) * 200, ANT_Y + Math.sin(targetAngle - Math.PI / 2) * 200, 16, C.b, 0.5);
+    // アンテナ
+    var tx = TOW_X + Math.cos(antAngle - Math.PI / 2) * 180, ty = ANT_Y + Math.sin(antAngle - Math.PI / 2) * 180;
+    pline(TOW_X, ANT_Y, tx, ty, C.g, 0.9, 8); pc(TOW_X, ANT_Y, 14, C.g, 0.9); pc(tx, ty, 12, C.c, 0.5 + signal * 0.5);
+    for (var wi = 0; wi < waves.length; wi++) ring(waves[wi].x, waves[wi].y, waves[wi].r, waves[wi].col, waves[wi].life * 0.3);
+    // 強度メーター
+    var mx = W * 0.68, my = snap(H * 0.24), mh = snap(H * 0.4); game.draw.rect(mx - 20, my, 40, mh, '#0a1a0c', 0.9); game.draw.rect(mx - 24, my + mh * 0.25, 48, mh * 0.5, C.d, 0.15);
+    var sc = signal > 0.75 ? C.b : signal > 0.4 ? C.c : C.a; game.draw.rect(mx - 20, my + mh * (1 - signal), 40, mh * signal, sc, 0.9); txt(Math.round(signal * 100) + '%', mx, my + mh + 40, 36, sc);
+  }
+
+  function adjust(delta) { antAngle = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, antAngle + delta)); game.audio.play('se_tap', 0.15); }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return; adjust(y < H / 2 ? -0.1 : 0.1);
   });
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
-    // Tap top/bottom half for fine adjustment
-    if (ty < H/2) antennaAngle = Math.max(-Math.PI/2, antennaAngle - 0.08);
-    else antennaAngle = Math.min(Math.PI/2, antennaAngle + 0.08);
-    game.audio.play('se_tap', 0.15);
+  game.onSwipe(function(d) {
+    if (state !== S.PLAYING || done) return;
+    if (d === 'up') adjust(-0.18); else if (d === 'down') adjust(0.18);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    pulse += dt * 5;
+    if (state === S.ATTRACT) {
+      if (antAngle === undefined) initGame(); background(); drawTower();
+      txt(GAME_TITLE, W / 2, H * 0.14, 74, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SIGNAL LOCKED!' : 'LOST SIGNAL', W / 2, H * 0.35, 64, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        if (goodTime >= NEEDED_GOOD) {
-          game.audio.play('se_success', 0.8);
-          game.end.success(Math.round(goodTime*100));
-        } else {
-          game.audio.play('se_failure', 0.6);
-          game.end.failure();
-        }
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      shiftTimer += dt; if (shiftTimer > shiftInt) { targetShift = (Math.random() - 0.5) * 1.2; shiftInt = 2 + Math.random() * 2; shiftTimer = 0; }
+      targetAngle += (targetShift - targetAngle) * 2 * dt;
+      var rel = antAngle - targetAngle; signal = Math.pow(Math.max(0, 1 - Math.abs(rel) / (Math.PI / 2) * 2), 0.5);
+      if (signal > 0.75) { goodTime += dt; if (goodTime >= GOAL_GOOD) { finish(true); return; } }
+      if (signal > 0.3 && Math.random() < signal * 0.5) { var tx = TOW_X + Math.cos(antAngle - Math.PI / 2) * 180, ty = ANT_Y + Math.sin(antAngle - Math.PI / 2) * 180; waves.push({ x: tx, y: ty, r: 10, maxR: 200 + signal * 200, life: 1.0, col: signal > 0.75 ? C.b : C.d }); }
+      for (var wi = waves.length - 1; wi >= 0; wi--) { waves[wi].r += (waves[wi].maxR - 10) * dt; waves[wi].life -= dt * 1.5; if (waves[wi].life <= 0) waves.splice(wi, 1); }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    signalPulse += dt * 5;
+    // ---- 描画 ----
+    background(); drawTower();
+    var gr = Math.min(1, goodTime / GOAL_GOOD); game.draw.rect(60, snap(H * 0.80), W - 120, 24, '#0a1a0c', 0.8); game.draw.rect(60, snap(H * 0.80), (W - 120) * gr, 24, C.b, 0.85);
 
-    // Shift optimal angle
-    targetShiftTimer += dt;
-    if (targetShiftTimer > targetShiftInterval) {
-      targetShift = (Math.random()-0.5)*1.2;
-      targetShiftInterval = 3+Math.random()*3;
-      targetShiftTimer = 0;
-    }
-    targetAngle = targetShift;
-
-    // Calculate relative angle from optimal
-    var relAngle = antennaAngle - targetAngle;
-    // Signal strength drops off away from optimal
-    var maxDiff = Math.PI/2;
-    signalStrength = Math.max(0, 1 - Math.abs(relAngle) / maxDiff * 2);
-    signalStrength = Math.pow(signalStrength, 0.5);  // smoother
-
-    var isGood = signalStrength > 0.75;
-    if (isGood) {
-      goodTime += dt;
-      currentGoodPeriod = true;
-    } else {
-      currentGoodPeriod = false;
-    }
-
-    if (goodTime >= NEEDED_GOOD && !done) {
-      done = true;
-      game.audio.play('se_success', 0.8);
-      setTimeout(function(){ game.end.success(Math.round(goodTime*100)+Math.ceil(timeLeft)*80); }, 500);
-    }
-
-    // Wave rings from antenna
-    if (signalStrength > 0.3 && Math.random() < signalStrength * 0.5) {
-      var antX = W*0.35;
-      var antY = H*0.45;
-      var tipX = antX + Math.cos(antennaAngle - Math.PI/2)*180;
-      var tipY = antY + Math.sin(antennaAngle - Math.PI/2)*180;
-      waveRings.push({ x:tipX, y:tipY, r:10, maxR:200+signalStrength*200, life:1.0, col: isGood ? C.signalMax : C.wave });
-    }
-    for (var wi = waveRings.length-1; wi >= 0; wi--) {
-      waveRings[wi].r += (waveRings[wi].maxR - 10) * dt;
-      waveRings[wi].life -= dt * 1.5;
-      if (waveRings[wi].life <= 0) waveRings.splice(wi,1);
-    }
-
-    for (var pp = particles.length-1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx*dt;
-      particles[pp].y += particles[pp].vy*dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp,1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, H, C.sky, 0.7);
-
-    // Ground
-    game.draw.rect(0, H*0.65, W, H*0.35, '#0a1020', 0.9);
-    game.draw.line(0, H*0.65, W, H*0.65, C.towerHi, 3);
-
-    // Wave rings
-    for (var wi2 = 0; wi2 < waveRings.length; wi2++) {
-      var wr = waveRings[wi2];
-      game.draw.circle(wr.x, wr.y, wr.r, wr.col, wr.life*0.25);
-    }
-
-    // Tower
-    var towX = W*0.35;
-    var towY = H*0.65;
-    game.draw.rect(towX-16, towY-240, 32, 240, C.tower, 0.9);
-    game.draw.rect(towX-12, towY-240, 8, 240, C.towerHi, 0.3);
-    // Cross beams
-    for (var cb = 0; cb < 4; cb++) {
-      var cbY = towY - 60 - cb*50;
-      game.draw.line(towX-30, cbY, towX+30, cbY, C.towerHi, 4);
-    }
-
-    // Antenna (rotatable)
-    var antX = towX;
-    var antY = towY - 240;
-    var antTipX = antX + Math.cos(antennaAngle - Math.PI/2) * 180;
-    var antTipY = antY + Math.sin(antennaAngle - Math.PI/2) * 180;
-    game.draw.line(antX, antY, antTipX, antTipY, C.antenna, 10);
-    game.draw.line(antX, antY, antTipX, antTipY, C.antennaHi, 4);
-    game.draw.circle(antX, antY, 18, C.antennaHi, 0.9);
-    game.draw.circle(antTipX, antTipY, 12, C.signalMax, signalStrength*0.9);
-
-    // Optimal angle indicator
-    var optTipX = antX + Math.cos(targetAngle - Math.PI/2) * 200;
-    var optTipY = antY + Math.sin(targetAngle - Math.PI/2) * 200;
-    game.draw.line(antX, antY, optTipX, optTipY, C.signal3, 3);
-    game.draw.circle(optTipX, optTipY, 16, C.signal3, 0.5);
-
-    // Signal meter
-    var meterX = W*0.65, meterY = H*0.2;
-    var meterH = H*0.45;
-    game.draw.rect(meterX-20, meterY, 40, meterH, '#0a1020', 0.9);
-    var sigCol = signalStrength > 0.75 ? C.signalMax : signalStrength > 0.5 ? C.signal3 : signalStrength > 0.25 ? C.signal2 : C.signal0;
-    game.draw.rect(meterX-20, meterY+meterH*(1-signalStrength), 40, meterH*signalStrength, sigCol, 0.9);
-    // Optimal zone indicator
-    game.draw.rect(meterX-24, meterY+meterH*0.25, 48, meterH*0.5, C.signal3, 0.12);
-    game.draw.text('強度', meterX, meterY-30, { size: 36, color: C.ui });
-    game.draw.text(Math.round(signalStrength*100)+'%', meterX, meterY+meterH+40, { size: 40, color: sigCol, bold: true });
-
-    // Good time bar
-    var goodRatio = goodTime / NEEDED_GOOD;
-    game.draw.rect(60, H*0.79, W-120, 28, '#0a1020', 0.8);
-    game.draw.rect(60, H*0.79, (W-120)*Math.min(1,goodRatio), 28, C.signal3, 0.85);
-    game.draw.text('達成: '+Math.round(goodTime)+'秒 / '+NEEDED_GOOD+'秒', W/2, H*0.83, { size: 36, color: C.text });
-
-    game.draw.text(Math.ceil(timeLeft)+'秒', W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft/totalTime);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*(1-ratio), 72, ratio > 0.3 ? C.signal3 : C.signal0);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    goodBar();
+    txt(goodTime.toFixed(1) + 's', W / 2, 96, 44, C.g);
+    txt(goodTime.toFixed(1) + ' / ' + GOAL_GOOD + 's', W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
