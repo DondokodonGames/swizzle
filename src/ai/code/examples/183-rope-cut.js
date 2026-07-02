@@ -1,215 +1,182 @@
 // 183-rope-cut.js
-// ロープカット — ぶら下がるボムが揺れている、正しいロープを切って目標に届かせる
-// 操作: スワイプでロープを切る
-// 成功: 10個のボムをゴールに届ける  失敗: 7個外す or 50秒
+// ロープカット — 揺れるボムのロープを切って、狙いのゴールに届かせる
+// 操作: 揺れるボムをタップしてロープを切る
+// 成功: 1個のボムをゴールに届ける  失敗: 7個外す or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#060810',
-    rope:    '#92400e',
-    ropeHi:  '#d97706',
-    bomb:    '#1f2937',
-    bombHi:  '#4b5563',
-    fuse:    '#ef4444',
-    goal:    '#22c55e',
-    goalHi:  '#86efac',
-    wrong:   '#ef4444',
-    ui:      '#334155'
-  };
+  // ── パレット（ネオンアーケード、仕掛け部屋） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var GOAL_X = W / 2;
-  var GOAL_Y = H * 0.75;
-  var GOAL_R = 80;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ROPE CUT';
+  var HOW_TO_PLAY = 'TAP THE SWINGING BOMB TO CUT THE ROPE';
+  var MAX_TIME = 15;             // 修正2: 50 → 15
+  var NEEDED   = 1;              // 修正2: 10 → 1
+  var MAX_MISS = 7;
+  var GOAL_X = snap(W / 2), GOAL_Y = snap(H * 0.74), GOAL_R = 90;
+  var ANCHOR_X = snap(W / 2), ANCHOR_Y = snap(260), ROPE_LEN = 360;
 
-  var score = 0;
-  var needed = 10;
-  var misses = 0;
-  var maxMisses = 7;
-  var done = false;
-  var timeLeft = 50;
-  var feedback = 0;
-  var feedbackOk = false;
-  var particles = [];
-  var elapsed = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Bomb with rope physics
-  var ropes = [];
-  var ROPE_SEGMENTS = 1; // simple pendulum
-  var ROPE_ANCHOR_X = W / 2;
-  var ROPE_ANCHOR_Y = H * 0.08;
-  var ROPE_LEN = 340;
+  // ── ゲーム変数 ──
+  var rope, score, misses, timeLeft, done, feedback, feedbackOk, particles;
 
-  function resetBomb() {
-    var startAngle = (Math.random() - 0.5) * Math.PI * 0.5;
-    ropes = [{
-      anchorX: ROPE_ANCHOR_X,
-      anchorY: ROPE_ANCHOR_Y,
-      len: ROPE_LEN,
-      angle: startAngle,
-      avel: (Math.random() > 0.5 ? 1 : -1) * (1.5 + Math.random()),
-      cut: false,
-      // ball attached at end
-      bx: 0, by: 0,
-      falling: false,
-      vx: 0, vy: 0
-    }];
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
   }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
+  function pl(x1, y1, x2, y2, color, w) {
+    var steps = Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 8);
+    for (var i = 0; i <= steps; i++) { var t = i / steps; game.draw.rect(snap(x1 + (x2 - x1) * t) - w / 2, snap(y1 + (y2 - y1) * t) - w / 2, w, w, color, 1); }
+  }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#2a0a3a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function drawGoal() {
+    var on = Math.floor(game.time.elapsed * 8) % 2 === 0;
+    pc(GOAL_X, GOAL_Y, GOAL_R, C.b, on ? 0.4 : 0.25);
+    pc(GOAL_X, GOAL_Y, GOAL_R - 24, C.b, 0.7);
+    txt('IN', GOAL_X, GOAL_Y - 8, 44, C.g);
+  }
+
+  function drawBomb(r) {
+    if (!r.falling) { pl(r.anchorX, r.anchorY, r.bx, r.by, C.f, 8); pc(r.anchorX, r.anchorY, 14, C.f, 1); }
+    pc(r.bx, r.by, 40, '#222222', 1);
+    pc(r.bx - 12, r.by - 12, 8, C.g, 0.6);
+    var spark = Math.floor(game.time.elapsed * 8) % 2 === 0;
+    game.draw.rect(snap(r.bx) - 4, snap(r.by) - 56, 8, 20, C.f);
+    game.draw.rect(snap(r.bx) - 6, snap(r.by) - 62, 12, 12, spark ? C.c : C.a);
+  }
+
+  function resetBomb() {
+    rope = { anchorX: ANCHOR_X, anchorY: ANCHOR_Y, len: ROPE_LEN, angle: (Math.random() - 0.5) * Math.PI * 0.5, avel: (Math.random() > 0.5 ? 1 : -1) * (1.4 + Math.random()), cut: false, bx: ANCHOR_X, by: ANCHOR_Y + ROPE_LEN, falling: false, vx: 0, vy: 0 };
+  }
+
+  function initGame() {
+    score = 0; misses = 0; timeLeft = MAX_TIME; done = false; feedback = 0; particles = [];
+    resetBomb();
+  }
+
+  function finish(success) {
     if (done) return;
-    // Check if swipe crosses rope
-    for (var ri = 0; ri < ropes.length; ri++) {
-      var r = ropes[ri];
-      if (r.falling || r.cut) continue;
-      // Rope line: from anchor to ball
-      var rx1 = r.anchorX, ry1 = r.anchorY;
-      var rx2 = r.bx, ry2 = r.by;
-      // Line-line intersection
-      var d = (x2 - x1) * (ry2 - ry1) - (y2 - y1) * (rx2 - rx1);
-      if (Math.abs(d) < 0.001) continue;
-      var t = ((rx1 - x1) * (ry2 - ry1) - (ry1 - y1) * (rx2 - rx1)) / d;
-      var s = ((rx1 - x1) * (y2 - y1) - (ry1 - y1) * (x2 - x1)) / d;
-      if (t >= 0 && t <= 1 && s >= 0 && s <= 1) {
-        r.cut = true;
-        r.falling = true;
-        r.vx = r.avel * r.len * 0.3;
-        r.vy = 0;
-        game.audio.play('se_tap', 0.7);
-        return;
-      }
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 400 + Math.ceil(timeLeft) * 30) : score * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function cut() {
+    if (rope.falling || rope.cut) return;
+    rope.cut = true; rope.falling = true; rope.vx = rope.avel * rope.len * 0.3; rope.vy = 0;
+    game.audio.play('se_tap', 0.7);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || rope.falling) return;
+    if (Math.hypot(x - rope.bx, y - rope.by) < 90) cut();
   });
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
-    for (var ri = 0; ri < ropes.length; ri++) {
-      var r = ropes[ri];
-      if (r.falling || r.cut) continue;
-      var dx = tx - r.bx, dy = ty - r.by;
-      if (Math.sqrt(dx * dx + dy * dy) < 60) {
-        r.cut = true;
-        r.falling = true;
-        r.vx = r.avel * r.len * 0.3;
-        r.vy = 0;
-        game.audio.play('se_tap', 0.7);
-        return;
-      }
-    }
-  });
+  game.onSwipe(function() { if (state === S.PLAYING && !done && !rope.falling) cut(); });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawGoal();
+      rope = rope || { anchorX: ANCHOR_X, anchorY: ANCHOR_Y, len: ROPE_LEN, falling: false };
+      rope.bx = ANCHOR_X + Math.sin(game.time.elapsed) * 180; rope.by = ANCHOR_Y + Math.cos(Math.sin(game.time.elapsed)) * ROPE_LEN;
+      drawBomb(rope);
+      txt(GAME_TITLE, W / 2, H * 0.50, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.58, 30, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.92, 48, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ON TARGET!' : 'GAME OVER', W / 2, H * 0.35, 74, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-    if (feedback > 0) feedback -= dt;
-
-    for (var ri = 0; ri < ropes.length; ri++) {
-      var r = ropes[ri];
-      if (!r.falling) {
-        // Pendulum physics
-        var gravity = 9.8 * 3.5;
-        r.avel += (-gravity / r.len) * Math.sin(r.angle) * dt;
-        r.avel *= 0.995;
-        r.angle += r.avel * dt;
-        r.bx = r.anchorX + Math.sin(r.angle) * r.len;
-        r.by = r.anchorY + Math.cos(r.angle) * r.len;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (!rope.falling) {
+        rope.avel += (-9.8 * 3.5 / rope.len) * Math.sin(rope.angle) * dt; rope.avel *= 0.995; rope.angle += rope.avel * dt;
+        rope.bx = rope.anchorX + Math.sin(rope.angle) * rope.len; rope.by = rope.anchorY + Math.cos(rope.angle) * rope.len;
       } else {
-        r.vy += 1200 * dt;
-        r.bx += r.vx * dt;
-        r.by += r.vy * dt;
-
-        var dx2 = r.bx - GOAL_X, dy2 = r.by - GOAL_Y;
-        if (Math.sqrt(dx2 * dx2 + dy2 * dy2) < GOAL_R + 30) {
-          score++;
-          feedbackOk = true; feedback = 0.4;
+        rope.vy += 1200 * dt; rope.bx += rope.vx * dt; rope.by += rope.vy * dt;
+        if (Math.hypot(rope.bx - GOAL_X, rope.by - GOAL_Y) < GOAL_R + 30) {
+          score++; feedbackOk = true; feedback = 0.4;
           game.audio.play('se_success', 0.9);
-          for (var pi = 0; pi < 8; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: GOAL_X, y: GOAL_Y, vx: Math.cos(ang) * 180, vy: Math.sin(ang) * 180, life: 0.5 });
-          }
-          ropes.splice(ri, 1); ri--;
-          if (score >= needed && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(score * 100 + Math.ceil(timeLeft) * 30); }, 400);
-          } else {
-            setTimeout(resetBomb, 300);
-          }
-        } else if (r.by > H + 50 || r.bx < -50 || r.bx > W + 50) {
-          misses++;
-          feedbackOk = false; feedback = 0.4;
+          for (var pi = 0; pi < 10; pi++) { var ang = Math.random() * Math.PI * 2; particles.push({ x: GOAL_X, y: GOAL_Y, vx: Math.cos(ang) * 180, vy: Math.sin(ang) * 180, life: 0.5 }); }
+          if (score >= NEEDED) { finish(true); return; }
+          resetBomb();
+        } else if (rope.by > H + 50 || rope.bx < -50 || rope.bx > W + 50) {
+          misses++; feedbackOk = false; feedback = 0.4;
           game.audio.play('se_failure', 0.4);
-          ropes.splice(ri, 1); ri--;
-          if (misses >= maxMisses && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 400);
-          } else {
-            setTimeout(resetBomb, 300);
-          }
+          if (misses >= MAX_MISS) { finish(false); return; }
+          resetBomb();
         }
       }
     }
+    for (var p = 0; p < particles.length; p++) { particles[p].x += particles[p].vx * dt; particles[p].y += particles[p].vy * dt; particles[p].vy += 400 * dt; particles[p].life -= dt; }
+    particles = particles.filter(function(pt) { return pt.life > 0; });
+    if (feedback > 0) feedback -= dt;
 
-    for (var pi2 = 0; pi2 < particles.length; pi2++) {
-      particles[pi2].x += particles[pi2].vx * dt; particles[pi2].y += particles[pi2].vy * dt;
-      particles[pi2].vy += 400 * dt; particles[pi2].life -= dt;
+    // ---- 描画 ----
+    background(); drawGoal(); drawBomb(rope);
+    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 5, snap(particles[pp].y) - 5, 10, 10, C.b, particles[pp].life * 2);
+    if (feedback > 0) game.draw.rect(0, 0, W, H, feedbackOk ? C.b : C.a, feedback * 0.1);
+
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 44, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) {
+      var mx = snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 44);
+      game.draw.rect(mx - 8, 208, 16, 16, mm < misses ? C.a : '#2a0a3a');
     }
-    particles = particles.filter(function(p) { return p.life > 0; });
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Goal
-    var goalPulse = 0.6 + 0.4 * Math.abs(Math.sin(elapsed * 2));
-    game.draw.circle(GOAL_X, GOAL_Y, GOAL_R + 20, C.goalHi, goalPulse * 0.15);
-    game.draw.circle(GOAL_X, GOAL_Y, GOAL_R, C.goal, 0.8);
-    game.draw.circle(GOAL_X, GOAL_Y, GOAL_R * 0.5, C.goalHi, 0.5);
-    game.draw.text('★', GOAL_X, GOAL_Y, { size: 72, color: '#fff', bold: true });
-
-    // Ropes + bombs
-    for (var ri2 = 0; ri2 < ropes.length; ri2++) {
-      var r2 = ropes[ri2];
-      if (!r2.falling) {
-        game.draw.line(r2.anchorX, r2.anchorY, r2.bx, r2.by, C.rope, 8);
-        game.draw.line(r2.anchorX, r2.anchorY, r2.bx, r2.by, C.ropeHi, 3);
-        game.draw.circle(r2.anchorX, r2.anchorY, 16, C.ropeHi, 0.9);
-      }
-      // Bomb
-      game.draw.circle(r2.bx, r2.by, 40, C.bombHi, 0.3);
-      game.draw.circle(r2.bx, r2.by, 36, C.bomb, 0.95);
-      // Fuse
-      game.draw.line(r2.bx, r2.by - 36, r2.bx + 12, r2.by - 56, C.ropeHi, 5);
-      game.draw.circle(r2.bx + 12, r2.by - 56, 8, C.fuse, Math.abs(Math.sin(elapsed * 8)) * 0.8 + 0.2);
-    }
-
-    // Particles
-    for (var pp = 0; pp < particles.length; pp++) {
-      var part = particles[pp];
-      game.draw.circle(part.x, part.y, 12 * part.life * 2, C.goal, part.life);
-    }
-
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? C.goal : C.wrong, feedback * 0.1);
-    }
-
-    game.draw.text('スワイプでロープを切る', W / 2, H * 0.88, { size: 38, color: C.ui });
-    game.draw.text(score + ' / ' + needed, W / 2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    for (var mi = 0; mi < maxMisses; mi++) {
-      game.draw.circle(W * 0.1 + mi * 44, 218, 15, mi < misses ? C.wrong : '#0a1020');
-    }
-
-    var ratio = Math.max(0, timeLeft / 50);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.goal : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.25);
-    resetBomb();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

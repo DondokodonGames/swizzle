@@ -1,168 +1,161 @@
 // 184-color-flood.js
 // カラーフラッド — 左上から色を広げて全マスを同色に染める、少ない手数が勝ち
-// 操作: タップで色を選択して広げる
-// 成功: 20手以内に全マスを染める  失敗: 20手使い切る
+// 操作: 下の色ボタンをタップして左上から塗り広げる
+// 成功: 手数以内に全マスを染める  失敗: 手数切れ or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var COLS = 8;
-  var ROWS = 8;
-  var CELL = 112;
-  var GAP = 4;
-  var GW = COLS * CELL + (COLS - 1) * GAP;
-  var GH = ROWS * CELL + (ROWS - 1) * GAP;
-  var GX = (W - GW) / 2;
-  var GY = H * 0.22;
+  // ── パレット（ネオンアーケード） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var TILES = [C.e, C.c, C.b, C.a, C.f];   // 5色（判別しやすく）
 
-  var COLORS = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7'];
-  var COLOR_NAMES = ['赤', '橙', '緑', '青', '紫'];
-  var C = {
-    bg:  '#06080c',
-    ui:  '#334155',
-    panel: '#0f1420'
-  };
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'COLOR FLOOD';
+  var HOW_TO_PLAY = 'TAP A COLOR TO FLOOD FROM TOP-LEFT';
+  var MAX_TIME = 20;
+  var MAX_MOVES = 15;            // 修正2: 盤を6x6に縮小＋手数15で易化
+  var COLS = 6, ROWS = 6, CELL = 152, GAP = 6;
+  var GW = COLS * CELL + (COLS - 1) * GAP, GH = ROWS * CELL + (ROWS - 1) * GAP;
+  var GX = snap((W - GW) / 2), GY = snap(300);
+  var BTN_W = 160, BTN_H = 120, BTN_GAP = 24;
+  var BTN_TOTAL = TILES.length * BTN_W + (TILES.length - 1) * BTN_GAP;
+  var BTN_X = snap((W - BTN_TOTAL) / 2), BTN_Y = snap(GY + GH + 60);
 
-  var grid = [];
-  var moves = 0;
-  var MAX_MOVES = 20;
-  var done = false;
-  var floodColor = 0;
-  var elapsed = 0;
-  var particles = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var grid, moves, floodColor, timeLeft, done;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#2a0a3a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
 
   function initGrid() {
     grid = [];
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        grid.push(Math.floor(Math.random() * COLORS.length));
-      }
-    }
+    for (var i = 0; i < COLS * ROWS; i++) grid.push(Math.floor(Math.random() * TILES.length));
     floodColor = grid[0];
   }
 
-  function flood(newColor) {
-    if (newColor === floodColor) return;
-    var oldColor = floodColor;
-    floodColor = newColor;
-    // BFS from (0,0) replacing oldColor with newColor
-    var visited = new Array(COLS * ROWS).fill(false);
-    var q = [0];
-    visited[0] = true;
-    grid[0] = newColor;
-    while (q.length > 0) {
-      var idx = q.shift();
-      var r = Math.floor(idx / COLS);
-      var c = idx % COLS;
-      var neighbors = [];
-      if (r > 0) neighbors.push((r - 1) * COLS + c);
-      if (r < ROWS - 1) neighbors.push((r + 1) * COLS + c);
-      if (c > 0) neighbors.push(r * COLS + (c - 1));
-      if (c < COLS - 1) neighbors.push(r * COLS + (c + 1));
-      for (var ni = 0; ni < neighbors.length; ni++) {
-        var nidx = neighbors[ni];
-        if (!visited[nidx] && grid[nidx] === oldColor) {
-          visited[nidx] = true;
-          grid[nidx] = newColor;
-          q.push(nidx);
-        }
-      }
+  function flood(nc) {
+    if (nc === floodColor) return;
+    var oc = floodColor; floodColor = nc;
+    var seen = new Array(COLS * ROWS).fill(false), q = [0]; seen[0] = true; grid[0] = nc;
+    while (q.length) {
+      var idx = q.shift(), r = Math.floor(idx / COLS), c = idx % COLS, nb = [];
+      if (r > 0) nb.push((r - 1) * COLS + c); if (r < ROWS - 1) nb.push((r + 1) * COLS + c);
+      if (c > 0) nb.push(r * COLS + c - 1); if (c < COLS - 1) nb.push(r * COLS + c + 1);
+      for (var ni = 0; ni < nb.length; ni++) if (!seen[nb[ni]] && grid[nb[ni]] === oc) { seen[nb[ni]] = true; grid[nb[ni]] = nc; q.push(nb[ni]); }
     }
   }
 
-  function checkWin() {
-    for (var i = 0; i < grid.length; i++) {
-      if (grid[i] !== floodColor) return false;
+  function checkWin() { for (var i = 0; i < grid.length; i++) if (grid[i] !== floodColor) return false; return true; }
+
+  function drawGrid() {
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      var idx = r * COLS + c, cx = GX + c * (CELL + GAP), cy = GY + r * (CELL + GAP);
+      game.draw.rect(cx, cy, CELL, CELL, TILES[grid[idx]], 0.92);
+      game.draw.rect(cx, cy, CELL, 8, C.g, 0.2);
     }
-    return true;
   }
 
-  var BTN_Y = GY + GH + 80;
-  var BTN_W = 140;
-  var BTN_H = 100;
-  var BTN_GAP = 28;
-  var BTN_TOTAL_W = COLORS.length * BTN_W + (COLORS.length - 1) * BTN_GAP;
-  var BTN_X = (W - BTN_TOTAL_W) / 2;
+  function drawButtons() {
+    for (var ci = 0; ci < TILES.length; ci++) {
+      var bx = BTN_X + ci * (BTN_W + BTN_GAP), active = ci === floodColor;
+      game.draw.rect(bx - 4, BTN_Y - 4, BTN_W + 8, BTN_H + 8, active ? C.g : '#2a0a3a', 0.9);
+      game.draw.rect(bx, BTN_Y, BTN_W, BTN_H, TILES[ci], 0.95);
+      if (active) game.draw.rect(bx + BTN_W / 2 - 8, BTN_Y - 24, 16, 16, C.g);
+    }
+  }
 
-  game.onTap(function(tx, ty) {
+  function initGame() {
+    initGrid(); moves = 0; timeLeft = MAX_TIME; done = false;
+  }
+
+  function finish(success) {
     if (done) return;
-    for (var ci = 0; ci < COLORS.length; ci++) {
+    done = true; resultSuccess = success;
+    finalScore = success ? ((MAX_MOVES - moves + 1) * 200 + Math.ceil(timeLeft) * 20) : moves * 40;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    for (var ci = 0; ci < TILES.length; ci++) {
       var bx = BTN_X + ci * (BTN_W + BTN_GAP);
-      if (tx >= bx && tx <= bx + BTN_W && ty >= BTN_Y && ty <= BTN_Y + BTN_H) {
+      if (x >= bx && x <= bx + BTN_W && y >= BTN_Y && y <= BTN_Y + BTN_H) {
         if (ci === floodColor) return;
-        moves++;
-        flood(ci);
-        game.audio.play('se_tap', 0.4);
-        if (checkWin()) {
-          done = true;
-          game.audio.play('se_success');
-          var bonusScore = (MAX_MOVES - moves + 1) * 150 + 500;
-          setTimeout(function() { game.end.success(bonusScore); }, 400);
-        } else if (moves >= MAX_MOVES) {
-          done = true;
-          game.audio.play('se_failure');
-          setTimeout(function() { game.end.failure(); }, 400);
-        }
+        moves++; flood(ci); game.audio.play('se_tap', 0.4);
+        if (checkWin()) { finish(true); return; }
+        if (moves >= MAX_MOVES) { finish(false); return; }
         return;
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    elapsed += dt;
-    if (feedback > 0) feedback -= dt;
-
-    for (var pi = 0; pi < particles.length; pi++) {
-      particles[pi].x += particles[pi].vx * dt; particles[pi].y += particles[pi].vy * dt;
-      particles[pi].life -= dt;
-    }
-    particles = particles.filter(function(p) { return p.life > 0; });
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Grid
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        var idx = r * COLS + c;
-        var cx = GX + c * (CELL + GAP);
-        var cy = GY + r * (CELL + GAP);
-        game.draw.rect(cx, cy, CELL, CELL, COLORS[grid[idx]], 0.9);
-        // Highlight top-left flooded region subtly
-        if (grid[idx] === floodColor && (r + c) % 2 === 0) {
-          game.draw.rect(cx + 8, cy + 8, CELL - 16, 16, '#ffffff', 0.1);
-        }
+    if (state === S.ATTRACT) {
+      background();
+      grid = grid || []; for (var i = 0; i < COLS * ROWS; i++) grid[i] = (i + Math.floor(game.time.elapsed)) % TILES.length;
+      drawGrid(); floodColor = 0; drawButtons();
+      txt(GAME_TITLE, W / 2, H * 0.12, 82, C.c);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 58, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 44, C.g);
       }
+      scanlines();
+      return;
     }
 
-    // Color buttons
-    for (var ci2 = 0; ci2 < COLORS.length; ci2++) {
-      var bx2 = BTN_X + ci2 * (BTN_W + BTN_GAP);
-      var isActive = ci2 === floodColor;
-      game.draw.rect(bx2 - 4, BTN_Y - 4, BTN_W + 8, BTN_H + 8, isActive ? '#fff' : '#1a1f2e', 0.9);
-      game.draw.rect(bx2, BTN_Y, BTN_W, BTN_H, COLORS[ci2], 0.9);
-      if (isActive) {
-        game.draw.rect(bx2, BTN_Y, BTN_W, BTN_H, '#fff', 0.2);
-        game.draw.text('▲', bx2 + BTN_W / 2, BTN_Y - 24, { size: 32, color: '#fff' });
-      }
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'FLOODED!' : 'OUT OF MOVES', W / 2, H * 0.35, 72, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
 
-    var movesLeft = MAX_MOVES - moves;
-    var movesColor = movesLeft <= 5 ? '#ef4444' : '#f1f5f9';
-    game.draw.text('残り ' + movesLeft + ' 手', W / 2, BTN_Y + BTN_H + 60, { size: 52, color: movesColor, bold: true });
-    game.draw.text('全マスを同じ色に！', W / 2, H * 0.93, { size: 38, color: C.ui });
+    // PLAYING
+    if (!done) { timeLeft -= dt; if (timeLeft <= 0) { finish(false); return; } }
 
-    game.draw.rect(0, 0, W, 72, C.bg);
-    var ratio = movesLeft / MAX_MOVES;
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#22c55e' : '#ef4444');
-    game.draw.text(moves + ' / ' + MAX_MOVES, W / 2, 36, { size: 44, color: '#fff', bold: true });
+    background();
+    drawGrid();
+    drawButtons();
+
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('MOVES ' + (MAX_MOVES - moves), W / 2, 168, 44, (MAX_MOVES - moves) <= 4 ? C.a : C.b);
+    txt(HOW_TO_PLAY, W / 2, BTN_Y + BTN_H + 60, 32, C.b);
+    scanlines();
   });
-
-  var feedback = 0;
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    initGrid();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
