@@ -1,210 +1,136 @@
 // 326-orbit-catch.js
-// オービットキャッチ — 軌道を周回する宇宙船でデブリをキャッチ
-// 操作: タップで軌道切り替え（内側↔外側）
-// 成功: 25個キャッチ  失敗: 8個逃す or 40秒
+// オービットキャッチ — 軌道を周回する船をタップで内外に乗り換え、同じ軌道のデブリを回収する
+// 操作: タップで軌道を切り替える（内→中→外→内）
+// 成功: 3個キャッチ  失敗: 3個逃す or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#020614',
-    star:   '#e2e8f0',
-    orbit1: '#1e3a5f',
-    orbit2: '#1a2a4a',
-    orbit3: '#152236',
-    ship:   '#60a5fa',
-    shipHi: '#bfdbfe',
-    debris: '#f59e0b',
-    debrisHi:'#fde68a',
-    danger: '#ef4444',
-    dangerHi:'#fca5a5',
-    caught: '#22c55e',
-    caughtHi:'#86efac',
-    ui:     '#475569',
-    text:   '#f1f5f9'
-  };
+  // ── パレット（アイスブルー、宇宙ステーション） ──
+  var C = { bg:'#020614', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var cx = W / 2, cy = H * 0.5;
-  var ORBITS = [180, 300, 420]; // radii
-  var shipOrbit = 1; // which orbit (0=inner, 1=mid, 2=outer)
-  var shipAngle = -Math.PI / 2; // start at top
-  var SHIP_SPEED = 1.8; // rad/sec
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ORBIT CATCH';
+  var HOW_TO_PLAY = 'TAP TO SWITCH ORBIT · COLLECT THE DEBRIS';
+  var MAX_TIME = 15;
+  var NEEDED   = 3;          // 修正2: 25 → 3
+  var MAX_MISS = 3;          // 修正2: 8 → 3
+  var CX = snap(W / 2), CY = snap(H * 0.48), ORBITS = [snap(W * 0.20), snap(W * 0.32), snap(W * 0.44)];
 
-  var debris = [];
-  var spawnTimer = 0;
-  var caught = 0;
-  var NEEDED = 25;
-  var missed = 0;
-  var MAX_MISS = 8;
-  var done = false;
-  var timeLeft = 40;
-  var elapsed = 0;
-  var particles = [];
-  var stars = [];
-  var switchAnim = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Init starfield
-  for (var s = 0; s < 60; s++) {
-    stars.push({ x: Math.random() * W, y: Math.random() * H, r: 1 + Math.random() * 2, twinkle: Math.random() * Math.PI * 2 });
+  // ── ゲーム変数 ──
+  var shipOrbit, shipAngle, debris, caught, missed, timeLeft, done, spawnTimer, particles, stars, switchAnim;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.16) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function spawnDebris() {
-    var orbitIdx = Math.floor(Math.random() * 3);
-    var startAngle = Math.random() * Math.PI * 2;
-    // Travel speed (opposite or same direction as ship)
-    var dir = Math.random() < 0.5 ? 1 : -1;
-    debris.push({
-      orbitIdx: orbitIdx,
-      angle: startAngle,
-      speed: (0.8 + Math.random() * 0.8) * dir,
-      r: 22,
-      collected: false
-    });
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1428');
   }
 
-  game.onTap(function() {
+  function background() { game.draw.clear(C.bg); for (var i = 0; i < stars.length; i++) game.draw.rect(stars[i].x, stars[i].y, stars[i].s, stars[i].s, C.g, Math.floor(game.time.elapsed * 3 + i) % 3 === 0 ? 0.7 : 0.25); }
+
+  function spawnDebris() { var oi = Math.floor(Math.random() * 3), dir = Math.random() < 0.5 ? 1 : -1; debris.push({ orbit: oi, angle: Math.random() * Math.PI * 2, speed: (0.8 + Math.random() * 0.6) * dir, age: 0, r: 22 }); }
+
+  function initGame() { shipOrbit = 1; shipAngle = -Math.PI / 2; debris = []; caught = 0; missed = 0; timeLeft = MAX_TIME; done = false; spawnTimer = 0.4; particles = []; switchAnim = 0; stars = []; for (var i = 0; i < 60; i++) stars.push({ x: snap(Math.random() * W), y: snap(Math.random() * H), s: 8 }); }
+
+  function finish(success) {
     if (done) return;
-    shipOrbit = (shipOrbit + 1) % 3;
-    switchAnim = 0.3;
-    game.audio.play('se_tap', 0.25);
+    done = true; resultSuccess = success;
+    finalScore = success ? (caught * 500 + Math.ceil(timeLeft) * 100) : caught * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    pc(CX, CY, 70, C.d, 0.9); pc(CX - 16, CY - 16, 24, C.e, 0.6);
+    for (var oi = 0; oi < 3; oi++) ring(CX, CY, ORBITS[oi], oi === shipOrbit ? C.e : '#1a3050', oi === shipOrbit ? 0.5 : 0.3);
+    for (var di = 0; di < debris.length; di++) { var d = debris[di], dr = ORBITS[d.orbit], dx = CX + Math.cos(d.angle) * dr, dy = CY + Math.sin(d.angle) * dr; pc(dx, dy, 20, d.orbit === shipOrbit ? C.c : C.f, 0.9); pc(dx - 6, dy - 6, 6, C.g, 0.5); }
+    var sr = ORBITS[shipOrbit], sx = CX + Math.cos(shipAngle) * sr, sy = CY + Math.sin(shipAngle) * sr;
+    if (switchAnim > 0) ring(sx, sy, 40 + switchAnim * 30, C.g, switchAnim);
+    pc(sx, sy, 28, C.b, 0.95); pc(sx - 8, sy - 8, 8, C.g, 0.7);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    shipOrbit = (shipOrbit + 1) % 3; switchAnim = 0.3; game.audio.play('se_tap', 0.25);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!stars) initGame(); background(); shipAngle += dt * 1.8; drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.14, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SALVAGED!' : 'DRIFTED OFF', W / 2, H * 0.35, 74, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    if (switchAnim > 0) switchAnim -= dt * 2;
-
-    // Move ship
-    shipAngle += SHIP_SPEED * dt;
-
-    // Spawn debris
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && !done) {
-      spawnDebris();
-      spawnTimer = 0.8 - Math.min(0.5, caught * 0.02);
-    }
-
-    // Update debris
-    var shipR = ORBITS[shipOrbit];
-    var shipX = cx + Math.cos(shipAngle) * shipR;
-    var shipY = cy + Math.sin(shipAngle) * shipR;
-
-    for (var di = debris.length - 1; di >= 0; di--) {
-      var d = debris[di];
-      d.angle += d.speed * dt;
-
-      var dr = ORBITS[d.orbitIdx];
-      var dx = cx + Math.cos(d.angle) * dr;
-      var dy = cy + Math.sin(d.angle) * dr;
-      d.x = dx; d.y = dy;
-
-      // Catch check
-      if (Math.hypot(dx - shipX, dy - shipY) < shipR * 0.12 + d.r + 20) {
-        caught++;
-        game.audio.play('se_success', 0.4);
-        for (var pi = 0; pi < 6; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: dx, y: dy, vx: Math.cos(ang) * 160, vy: Math.sin(ang) * 160, life: 0.4, col: C.debrisHi });
-        }
-        debris.splice(di, 1);
-        if (caught >= NEEDED && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(caught * 120 + Math.ceil(timeLeft) * 80); }, 400);
-        }
-        continue;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (switchAnim > 0) switchAnim -= dt * 2;
+      shipAngle += 1.8 * dt;
+      spawnTimer -= dt; if (spawnTimer <= 0) { spawnDebris(); spawnTimer = 1.0 - Math.min(0.4, caught * 0.1); }
+      var sr = ORBITS[shipOrbit], sx = CX + Math.cos(shipAngle) * sr, sy = CY + Math.sin(shipAngle) * sr;
+      for (var di = debris.length - 1; di >= 0; di--) {
+        var d = debris[di]; d.angle += d.speed * dt; d.age += dt;
+        var dr = ORBITS[d.orbit], dx = CX + Math.cos(d.angle) * dr, dy = CY + Math.sin(d.angle) * dr;
+        if (Math.hypot(dx - sx, dy - sy) < 50) { caught++; game.audio.play('se_success', 0.4); for (var k = 0; k < 6; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: dx, y: dy, vx: Math.cos(a) * 160, vy: Math.sin(a) * 160, life: 0.4, col: C.c }); } debris.splice(di, 1); if (caught >= NEEDED) { finish(true); return; } continue; }
+        if (d.age > 6) { debris.splice(di, 1); missed++; game.audio.play('se_failure', 0.4); if (missed >= MAX_MISS) { finish(false); return; } }
       }
-
-      // Remove if old (after 3 full rotations)
-      if (Math.abs(d.angle) > Math.PI * 7 || (d.angle > Math.PI * 7)) {
-        missed++;
-        debris.splice(di, 1);
-        if (missed >= MAX_MISS && !done) {
-          done = true;
-          game.audio.play('se_failure', 0.5);
-          setTimeout(function() { game.end.failure(); }, 400);
-        }
-      }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Stars
-    for (var si = 0; si < stars.length; si++) {
-      var st = stars[si];
-      var bri = 0.4 + 0.3 * Math.sin(elapsed * 2 + st.twinkle);
-      game.draw.circle(st.x, st.y, st.r, C.star, bri);
-    }
-
-    // Planet
-    game.draw.circle(cx, cy, 80, '#1e3a5f', 0.9);
-    game.draw.circle(cx, cy, 60, '#1d4ed8', 0.8);
-    game.draw.circle(cx - 20, cy - 20, 25, '#3b82f6', 0.5);
-
-    // Orbit rings
-    for (var oi = 0; oi < 3; oi++) {
-      var isActive = oi === shipOrbit;
-      game.draw.circle(cx, cy, ORBITS[oi], isActive ? C.ship : C.orbit1, isActive ? 0.25 : 0.15);
-    }
-
-    // Debris
-    for (var di2 = 0; di2 < debris.length; di2++) {
-      var d2 = debris[di2];
-      if (!d2.x) continue;
-      var dCol = d2.orbitIdx === shipOrbit ? C.debris : C.debrisHi;
-      game.draw.circle(d2.x, d2.y, d2.r + 6, dCol, 0.2);
-      game.draw.circle(d2.x, d2.y, d2.r, dCol, 0.8);
-      game.draw.circle(d2.x - 6, d2.y - 6, 6, '#fff', 0.4);
-    }
-
-    // Ship
-    var sR = ORBITS[shipOrbit];
-    var sX = cx + Math.cos(shipAngle) * sR;
-    var sY = cy + Math.sin(shipAngle) * sR;
-    if (switchAnim > 0) {
-      game.draw.circle(sX, sY, 40 + switchAnim * 30, C.shipHi, switchAnim * 0.4);
-    }
-    game.draw.circle(sX, sY, 32, C.ship, 0.9);
-    game.draw.circle(sX - 8, sY - 8, 10, C.shipHi, 0.7);
-    // Engine glow
-    var trailAngle = shipAngle + Math.PI;
-    game.draw.circle(sX + Math.cos(trailAngle) * 28, sY + Math.sin(trailAngle) * 28, 16, C.ship, 0.4);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    // Miss dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 20 + mi * 40, H * 0.9, 12, mi < missed ? C.danger : '#020614');
-    }
-
-    game.draw.text('タップで軌道変更', W / 2, H * 0.87, { size: 38, color: C.ui });
-
-    game.draw.text(caught + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.ship : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(caught + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < missed ? C.a : '#0a1428');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    spawnTimer = 0.5;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
