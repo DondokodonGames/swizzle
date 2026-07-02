@@ -1,229 +1,180 @@
 // 288-neon-snake.js
-// ネオンスネーク — ネオンカラーの蛇を操って光る果実を集める
+// ネオンスネーク — ネオンの蛇をスワイプで操って光る果実を集める、壁と自分に当たると即アウト
 // 操作: スワイプで進む方向を変える
-// 成功: 20個のフルーツを食べる  失敗: 壁または自分に当たる
+// 成功: 5個のフルーツを食べる  失敗: 壁または自分に当たる or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#020108',
-    head:   '#22c55e',
-    headHi: '#86efac',
-    body:   '#166534',
-    bodyHi: '#15803d',
-    fruit:  '#f59e0b',
-    frtHi:  '#fde68a',
-    wall:   '#1e1b4b',
-    wallHi: '#312e81',
-    ui:     '#475569',
-    text:   '#f1f5f9'
-  };
+  // ── パレット（ネオンアーケード、グリッドフィールド） ──
+  var C = { bg:'#020108', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var FRUIT_COLS = [C.c, C.a, C.d, C.e];
 
-  var CELL = 60;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'NEON SNAKE';
+  var HOW_TO_PLAY = 'SWIPE TO TURN · EAT THE GLOWING FRUIT';
+  var MAX_TIME = 20;
+  var NEEDED   = 5;           // 修正2: 20 → 5
+  var CELL = 88;
   var COLS = Math.floor(W / CELL);
-  var ROWS = Math.floor(H * 0.78 / CELL);
-  var OX = Math.floor((W - COLS * CELL) / 2);
-  var OY = H * 0.14;
+  var ROWS = Math.floor(H * 0.62 / CELL);
+  var OX = snap((W - COLS * CELL) / 2), OY = snap(H * 0.22);
 
-  var snake = [];
-  var dir = { dx: 1, dy: 0 };
-  var nextDir = { dx: 1, dy: 0 };
-  var fruits = [];
-  var eaten = 0;
-  var NEEDED = 20;
-  var done = false;
-  var timeLeft = 60; // not the real constraint — collisions end it
-  var elapsed = 0;
-  var moveTimer = 0;
-  var MOVE_INTERVAL = 0.18;
-  var particles = [];
-  var bodyColors = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var FRUIT_COLORS = [C.fruit, '#ef4444', '#a855f7', '#3b82f6'];
+  // ── ゲーム変数 ──
+  var snake, dir, nextDir, fruits, eaten, timeLeft, done, moveTimer, particles;
 
-  function initSnake() {
-    snake = [];
-    for (var i = 4; i >= 0; i--) {
-      snake.push({ x: i, y: Math.floor(ROWS / 2) });
-    }
-    bodyColors = [];
-    for (var j = 0; j < snake.length; j++) {
-      bodyColors.push(0);
-    }
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1020');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    for (var r = 0; r <= ROWS; r++) game.draw.rect(OX, OY + r * CELL, COLS * CELL, 2, '#0a1a14', 0.6);
+    for (var c = 0; c <= COLS; c++) game.draw.rect(OX + c * CELL, OY, 2, ROWS * CELL, '#0a1a14', 0.6);
+    // 外壁
+    game.draw.rect(OX - 8, OY - 8, COLS * CELL + 16, 8, C.d, 0.9);
+    game.draw.rect(OX - 8, OY + ROWS * CELL, COLS * CELL + 16, 8, C.d, 0.9);
+    game.draw.rect(OX - 8, OY - 8, 8, ROWS * CELL + 16, C.d, 0.9);
+    game.draw.rect(OX + COLS * CELL, OY - 8, 8, ROWS * CELL + 16, C.d, 0.9);
+  }
+
+  function initSnake() { snake = []; for (var i = 3; i >= 0; i--) snake.push({ x: i, y: Math.floor(ROWS / 2) }); dir = { dx: 1, dy: 0 }; nextDir = { dx: 1, dy: 0 }; }
 
   function spawnFruit() {
-    var attempts = 0;
-    while (attempts < 50) {
-      var fx = Math.floor(Math.random() * COLS);
-      var fy = Math.floor(Math.random() * ROWS);
-      var onSnake = false;
-      for (var si = 0; si < snake.length; si++) {
-        if (snake[si].x === fx && snake[si].y === fy) { onSnake = true; break; }
-      }
-      var onFruit = false;
-      for (var fi = 0; fi < fruits.length; fi++) {
-        if (fruits[fi].x === fx && fruits[fi].y === fy) { onFruit = true; break; }
-      }
-      if (!onSnake && !onFruit) {
-        fruits.push({ x: fx, y: fy, col: FRUIT_COLORS[Math.floor(Math.random() * FRUIT_COLORS.length)], pulse: Math.random() * Math.PI * 2 });
-        return;
-      }
-      attempts++;
+    for (var t = 0; t < 60; t++) {
+      var fx = Math.floor(Math.random() * COLS), fy = Math.floor(Math.random() * ROWS), ok = true;
+      for (var si = 0; si < snake.length; si++) if (snake[si].x === fx && snake[si].y === fy) { ok = false; break; }
+      for (var fi = 0; ok && fi < fruits.length; fi++) if (fruits[fi].x === fx && fruits[fi].y === fy) { ok = false; break; }
+      if (ok) { fruits.push({ x: fx, y: fy, col: FRUIT_COLS[Math.floor(Math.random() * FRUIT_COLS.length)] }); return; }
     }
   }
 
-  game.onSwipe(function(dir2, x1, y1, x2, y2) {
+  function initGame() { initSnake(); fruits = []; eaten = 0; timeLeft = MAX_TIME; done = false; moveTimer = 0; particles = []; spawnFruit(); spawnFruit(); }
+
+  function finish(success) {
     if (done) return;
-    if (dir2 === 'left' && dir.dx !== 1) nextDir = { dx: -1, dy: 0 };
-    else if (dir2 === 'right' && dir.dx !== -1) nextDir = { dx: 1, dy: 0 };
-    else if (dir2 === 'up' && dir.dy !== 1) nextDir = { dx: 0, dy: -1 };
-    else if (dir2 === 'down' && dir.dy !== -1) nextDir = { dx: 0, dy: 1 };
+    done = true; resultSuccess = success;
+    finalScore = success ? (eaten * 300 + Math.ceil(timeLeft) * 80) : eaten * 120;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function cellCX(gx) { return OX + gx * CELL + CELL / 2; }
+  function cellCY(gy) { return OY + gy * CELL + CELL / 2; }
+
+  function drawFruit(fr, pulse) {
+    var r = CELL * 0.34 + 4 * (Math.floor(game.time.elapsed * 8) % 2);
+    pc(cellCX(fr.x), cellCY(fr.y), r, fr.col, 0.9);
+    pc(cellCX(fr.x) - 8, cellCY(fr.y) - 8, 8, C.g, 0.7);
+  }
+
+  function drawSnake() {
+    for (var i = snake.length - 1; i >= 0; i--) {
+      var seg = snake[i], head = i === 0, col = head ? C.b : C.b;
+      var sx = OX + seg.x * CELL, sy = OY + seg.y * CELL, m = head ? 6 : 10;
+      game.draw.rect(sx + m, sy + m, CELL - m * 2, CELL - m * 2, col, head ? 0.95 : 0.55);
+      game.draw.rect(sx + m, sy + m, CELL - m * 2, 6, C.g, 0.3);
+      if (head) { game.draw.rect(sx + CELL * 0.6, sy + CELL * 0.28, 12, 12, C.g, 0.95); game.draw.rect(sx + CELL * 0.6 + dir.dx * 4, sy + CELL * 0.28 + dir.dy * 4, 6, 6, C.bg, 1); }
+    }
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
   });
 
+  game.onSwipe(function(d) {
+    if (state !== S.PLAYING || done) return;
+    if (d === 'left' && dir.dx !== 1) nextDir = { dx: -1, dy: 0 };
+    else if (d === 'right' && dir.dx !== -1) nextDir = { dx: 1, dy: 0 };
+    else if (d === 'up' && dir.dy !== 1) nextDir = { dx: 0, dy: -1 };
+    else if (d === 'down' && dir.dy !== -1) nextDir = { dx: 0, dy: 1 };
+  });
+
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!snake) initGame(); background(); for (var fi = 0; fi < fruits.length; fi++) drawFruit(fruits[fi]); drawSnake();
+      txt(GAME_TITLE, W / 2, H * 0.13, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.185, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'FEAST!' : 'CRASHED', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      // No time-based failure here — but add a very long one as fallback
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    for (var fi2 = 0; fi2 < fruits.length; fi2++) {
-      fruits[fi2].pulse += dt * 4;
-    }
-
-    moveTimer -= dt;
-    if (moveTimer <= 0 && !done) {
-      moveTimer = Math.max(0.1, MOVE_INTERVAL - eaten * 0.003);
-      dir = nextDir;
-
-      var head = snake[0];
-      var nx = head.x + dir.dx;
-      var ny = head.y + dir.dy;
-
-      // Wall collision
-      if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) {
-        done = true;
-        game.audio.play('se_failure');
-        setTimeout(function() { game.end.failure(); }, 400);
-        return;
+      if (timeLeft <= 0) { finish(false); return; }
+      moveTimer -= dt;
+      if (moveTimer <= 0) {
+        moveTimer = Math.max(0.11, 0.20 - eaten * 0.01);
+        dir = nextDir;
+        var head = snake[0], nx = head.x + dir.dx, ny = head.y + dir.dy;
+        if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) { finish(false); return; }
+        for (var si = 0; si < snake.length; si++) if (snake[si].x === nx && snake[si].y === ny) { finish(false); return; }
+        var ate = -1;
+        for (var fi2 = 0; fi2 < fruits.length; fi2++) if (fruits[fi2].x === nx && fruits[fi2].y === ny) { ate = fi2; break; }
+        snake.unshift({ x: nx, y: ny });
+        if (ate >= 0) {
+          eaten++;
+          for (var pk = 0; pk < 8; pk++) { var a = Math.random() * Math.PI * 2; particles.push({ x: cellCX(nx), y: cellCY(ny), vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, life: 0.5, col: fruits[ate].col }); }
+          fruits.splice(ate, 1); game.audio.play('se_success', 0.45);
+          if (eaten >= NEEDED) { finish(true); return; }
+          spawnFruit();
+        } else { snake.pop(); }
       }
-
-      // Self collision
-      for (var si2 = 0; si2 < snake.length; si2++) {
-        if (snake[si2].x === nx && snake[si2].y === ny) {
-          done = true;
-          game.audio.play('se_failure');
-          setTimeout(function() { game.end.failure(); }, 400);
-          return;
-        }
-      }
-
-      // Check fruit
-      var ateIdx = -1;
-      for (var fi3 = 0; fi3 < fruits.length; fi3++) {
-        if (fruits[fi3].x === nx && fruits[fi3].y === ny) { ateIdx = fi3; break; }
-      }
-
-      snake.unshift({ x: nx, y: ny });
-      bodyColors.unshift(ateIdx >= 0 ? 1 : 0);
-
-      if (ateIdx >= 0) {
-        eaten++;
-        var fx2 = OX + fruits[ateIdx].x * CELL + CELL / 2;
-        var fy2 = OY + fruits[ateIdx].y * CELL + CELL / 2;
-        for (var pi = 0; pi < 6; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: fx2, y: fy2, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.5, col: fruits[ateIdx].col });
-        }
-        fruits.splice(ateIdx, 1);
-        game.audio.play('se_success', 0.4);
-        if (eaten >= NEEDED && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(eaten * 100 + Math.ceil(timeLeft) * 60); }, 400);
-          return;
-        }
-        spawnFruit();
-      } else {
-        snake.pop();
-        bodyColors.pop();
-      }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background();
+    for (var fi3 = 0; fi3 < fruits.length; fi3++) drawFruit(fruits[fi3]);
+    drawSnake();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.8);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Grid lines
-    for (var ri = 0; ri <= ROWS; ri++) {
-      game.draw.line(OX, OY + ri * CELL, OX + COLS * CELL, OY + ri * CELL, '#0a0818', 1);
-    }
-    for (var ci2 = 0; ci2 <= COLS; ci2++) {
-      game.draw.line(OX + ci2 * CELL, OY, OX + ci2 * CELL, OY + ROWS * CELL, '#0a0818', 1);
-    }
-
-    // Wall border
-    game.draw.rect(OX - 6, OY - 6, COLS * CELL + 12, 6, C.wall, 0.9);
-    game.draw.rect(OX - 6, OY + ROWS * CELL, COLS * CELL + 12, 6, C.wall, 0.9);
-    game.draw.rect(OX - 6, OY - 6, 6, ROWS * CELL + 12, C.wall, 0.9);
-    game.draw.rect(OX + COLS * CELL, OY - 6, 6, ROWS * CELL + 12, C.wall, 0.9);
-
-    // Fruits
-    for (var fi4 = 0; fi4 < fruits.length; fi4++) {
-      var fr = fruits[fi4];
-      var fx3 = OX + fr.x * CELL + CELL / 2;
-      var fy3 = OY + fr.y * CELL + CELL / 2;
-      var r3 = CELL * 0.35 + 4 * Math.sin(fr.pulse);
-      game.draw.circle(fx3, fy3, r3 + 6, fr.col, 0.2);
-      game.draw.circle(fx3, fy3, r3, fr.col, 0.9);
-      game.draw.circle(fx3 - r3 * 0.3, fy3 - r3 * 0.3, r3 * 0.25, C.frtHi, 0.6);
-    }
-
-    // Snake body
-    for (var si3 = snake.length - 1; si3 >= 0; si3--) {
-      var seg = snake[si3];
-      var sx = OX + seg.x * CELL;
-      var sy = OY + seg.y * CELL;
-      var isHead = si3 === 0;
-      var col2 = isHead ? C.head : C.body;
-      var hiCol2 = isHead ? C.headHi : C.bodyHi;
-      var margin = isHead ? 4 : 6;
-      game.draw.rect(sx + margin, sy + margin, CELL - margin * 2, CELL - margin * 2, col2, 0.9);
-      game.draw.rect(sx + margin, sy + margin, CELL - margin * 2, 6, hiCol2, 0.4);
-      if (isHead) {
-        // Eye
-        game.draw.circle(sx + CELL * 0.7, sy + CELL * 0.35, 7, '#fff', 0.9);
-        game.draw.circle(sx + CELL * 0.7 + dir.dx * 3, sy + CELL * 0.35 + dir.dy * 3, 4, C.bg, 0.9);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    game.draw.text(eaten + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    game.draw.text('スワイプで方向転換', W / 2, H * 0.93, { size: 36, color: C.ui });
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.head : C.fruit);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(eaten + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    initSnake();
-    for (var i = 0; i < 3; i++) spawnFruit();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
