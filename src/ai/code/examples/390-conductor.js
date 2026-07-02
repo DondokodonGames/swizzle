@@ -1,212 +1,141 @@
 // 390-conductor.js
-// 指揮者 — オーケストラのテンポに合わせて指揮棒を振る
-// 操作: 上下スワイプでテンポを合わせる
-// 成功: 30小節完奏  失敗: テンポが大きくズレて演奏停止 or 60秒
+// 指揮者 — オーケストラのビートに合わせて上下スワイプで指揮し、演奏を止めずに小節を重ねる
+// 操作: ビートの瞬間に上下スワイプ（合えば精度上昇、外すと低下）
+// 成功: 4小節 完奏  失敗: 精度が尽きて演奏停止 or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0c0a18',
-    hall:   '#1a1025',
-    hallHi: '#2d1a40',
-    stage:  '#150f20',
-    baton:  '#fef3c7',
-    batonHi:'#fff',
-    musician:'#4f46e5',
-    musicianHi:'#818cf8',
-    note:   '#f0abfc',
-    noteHi: '#fae8ff',
-    beat:   '#22c55e',
-    offbeat:'#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、コンサートホール） ──
+  var C = { bg:'#0c0a1c', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var TEMPO = 1.2;   // seconds per beat
-  var beatTimer = 0;
-  var measureCount = 0;
-  var BEATS_PER_MEASURE = 4;
-  var beatInMeasure = 0;
-  var NEEDED_MEASURES = 30;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'CONDUCTOR';
+  var HOW_TO_PLAY = 'SWIPE UP/DOWN ON EACH BEAT · KEEP THE ORCHESTRA PLAYING';
+  var MAX_TIME = 20;
+  var TEMPO = 1.0, BEATS = 4, NEEDED_MEASURES = 4;   // 修正2: 30小節 → 4小節
 
-  var batonY = H * 0.4;
-  var batonVY = 0;
-  var BATON_X = W / 2;
-  var accuracy = 1.0;  // 0-1
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var notes = [];
-  var beatFlash = 0;
-  var conductorSwung = false;
-  var lastSwingTime = -99;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Musicians - rows of dots
-  var musicians = [];
-  for (var mi = 0; mi < 20; mi++) {
-    var row = Math.floor(mi / 5);
-    var col = mi % 5;
-    musicians.push({
-      x: W * 0.1 + col * (W * 0.8 / 4),
-      y: H * 0.55 + row * 80,
-      phase: Math.random() * Math.PI * 2,
-      active: true
-    });
+  // ── ゲーム変数 ──
+  var beatTimer, measures, beatInM, accuracy, batonY, batonVY, timeLeft, done, particles, notes, beatFlash, lastSwing, musicians;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onSwipe(function(dir) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a1030');
+  }
+
+  function background() { game.draw.clear(C.bg); if (beatFlash > 0) game.draw.rect(0, 0, W, H, C.b, beatFlash * 0.06); game.draw.rect(60, snap(H * 0.56), W - 120, snap(H * 0.4), '#150f28', 0.9); }
+
+  function initMusicians() { musicians = []; for (var mi = 0; mi < 15; mi++) { var row = Math.floor(mi / 5), col = mi % 5; musicians.push({ x: snap(W * 0.14 + col * (W * 0.72 / 4)), y: snap(H * 0.62 + row * 90), phase: Math.random() * Math.PI * 2 }); } }
+
+  function initGame() { beatTimer = 0; measures = 0; beatInM = 0; accuracy = 0.7; batonY = H * 0.44; batonVY = 0; timeLeft = MAX_TIME; done = false; particles = []; notes = []; beatFlash = 0; lastSwing = 0; }
+
+  function finish(success) {
     if (done) return;
-    if (dir !== 'up' && dir !== 'down') return;
-    // Check timing against beat
-    var beatPhase = (elapsed % TEMPO) / TEMPO;
-    var distFromBeat = Math.min(beatPhase, 1 - beatPhase);
-    var hitAccuracy = 1 - distFromBeat * 4;  // 1 at perfect, 0 at off
-    hitAccuracy = Math.max(-0.2, hitAccuracy);
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.round(accuracy * 2000) + Math.ceil(timeLeft) * 100) : measures * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    lastSwingTime = elapsed;
-    conductorSwung = true;
+  function drawScene() {
+    for (var mi = 0; mi < musicians.length; mi++) { var m = musicians[mi], wave = Math.sin(game.time.elapsed * 4 / TEMPO + m.phase) * 0.5 + 0.5; pc(m.x, m.y, 20, C.d, 0.85); pc(m.x, m.y - 8, 12, C.e, 0.8); if (wave > 0.7) pc(m.x, m.y, 26, C.g, wave * 0.2); }
+    for (var ni = 0; ni < notes.length; ni++) { var n = notes[ni]; pc(n.x, n.y, 8 * n.life, C.a, n.life * 0.8); game.draw.rect(snap(n.x) + 4, snap(n.y) - 16 * n.life, 4, 16 * n.life, C.a, n.life * 0.8); }
+    var bp = beatTimer / TEMPO, bxx = W / 2 + Math.sin(bp * Math.PI * 2) * 70;
+    pc(bxx, snap(H * 0.40), 34, C.c, 0.85); pc(bxx, snap(H * 0.40), 22, C.g, 0.9);
+    pline(bxx, H * 0.44, bxx + 70, batonY, C.g, 0.9, 8); pc(bxx + 70, batonY, 12, C.c, 0.9);
+  }
 
-    if (hitAccuracy > 0.5) {
-      // Good timing
-      accuracy = Math.min(1, accuracy + 0.05);
-      beatFlash = 0.5;
-      game.audio.play('se_tap', 0.4);
-      // Spawn notes from musicians
-      for (var pi = 0; pi < 6; pi++) {
-        var m = musicians[Math.floor(Math.random() * musicians.length)];
-        notes.push({ x: m.x, y: m.y, vx: (Math.random()-0.5)*60, vy: -80-Math.random()*80, life: 0.8, col: C.note });
-      }
-    } else {
-      // Bad timing
-      accuracy = Math.max(0, accuracy - 0.12);
-      game.audio.play('se_failure', 0.3);
-    }
-
-    // Baton animation
-    batonVY = dir === 'down' ? 400 : -400;
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
   });
 
+  game.onSwipe(function(d) {
+    if (state !== S.PLAYING || done || (d !== 'up' && d !== 'down')) return;
+    var bp = (game.time.elapsed % TEMPO) / TEMPO, dist = Math.min(bp, 1 - bp), acc = Math.max(-0.2, 1 - dist * 4);
+    lastSwing = game.time.elapsed;
+    if (acc > 0.5) { accuracy = Math.min(1, accuracy + 0.06); beatFlash = 0.5; game.audio.play('se_tap', 0.4); for (var p = 0; p < 6; p++) { var m = musicians[Math.floor(Math.random() * musicians.length)]; notes.push({ x: m.x, y: m.y, vx: (Math.random() - 0.5) * 60, vy: -80 - Math.random() * 80, life: 0.8 }); } }
+    else { accuracy = Math.max(0, accuracy - 0.12); game.audio.play('se_failure', 0.3); }
+    batonVY = d === 'down' ? 400 : -400;
+  });
+
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!musicians) { initMusicians(); initGame(); } background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background(); drawScene();
+      txt(resultSuccess ? 'BRAVO!' : 'SILENCE', W / 2, H * 0.30, 82, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.42, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.52, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (beatFlash > 0) beatFlash -= dt * 2;
+      beatTimer += dt;
+      if (beatTimer >= TEMPO) { beatTimer -= TEMPO; beatInM++; if (beatInM >= BEATS) { beatInM = 0; measures++; if (measures >= NEEDED_MEASURES) { finish(true); return; } } }
+      if (game.time.elapsed - lastSwing > TEMPO * 1.5) accuracy = Math.max(0, accuracy - dt * 0.15);
+      if (accuracy <= 0) { finish(false); return; }
+      batonY += batonVY * dt; batonVY *= (1 - 5 * dt); batonY = Math.max(H * 0.30, Math.min(H * 0.52, batonY));
+      for (var ni = notes.length - 1; ni >= 0; ni--) { notes[ni].x += notes[ni].vx * dt; notes[ni].y += notes[ni].vy * dt; notes[ni].life -= dt; if (notes[ni].life <= 0) notes.splice(ni, 1); }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (beatFlash > 0) beatFlash -= dt * 2;
+    // ---- 描画 ----
+    background(); drawScene();
+    // ビートマーカー
+    for (var bi = 0; bi < BEATS; bi++) { var bx = W / 2 - (BEATS - 1) * 46 + bi * 92, cur = bi === beatInM; pc(bx, snap(H * 0.30), cur ? 22 : 14, cur ? C.b : '#334', 0.9); }
+    // 精度バー
+    var aw = 500, ax = W / 2 - aw / 2, ay = snap(H * 0.35); game.draw.rect(ax, ay, aw, 20, '#1a1030', 0.8); game.draw.rect(ax, ay, aw * accuracy, 20, accuracy > 0.4 ? C.b : C.a, 0.9);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, C.c, particles[pp2].life * 1.6);
 
-    // Beat counter
-    beatTimer += dt;
-    if (beatTimer >= TEMPO) {
-      beatTimer -= TEMPO;
-      beatInMeasure++;
-      if (beatInMeasure >= BEATS_PER_MEASURE) {
-        beatInMeasure = 0;
-        measureCount++;
-        if (measureCount >= NEEDED_MEASURES && !done) {
-          done = true;
-          game.audio.play('se_success', 0.8);
-          game.end.success(Math.round(accuracy * 2000) + Math.ceil(timeLeft) * 80);
-        }
-      }
-    }
-
-    // Accuracy drain if not conducting
-    if (elapsed - lastSwingTime > TEMPO * 1.5) {
-      accuracy = Math.max(0, accuracy - dt * 0.15);
-    }
-
-    if (accuracy <= 0 && !done) {
-      done = true;
-      game.audio.play('se_failure', 0.7);
-      setTimeout(function() { game.end.failure(); }, 500);
-    }
-
-    // Baton physics
-    batonY += batonVY * dt;
-    batonVY *= (1 - 5 * dt);
-    batonY = Math.max(H * 0.28, Math.min(H * 0.52, batonY));
-
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Notes
-    for (var ni = notes.length - 1; ni >= 0; ni--) {
-      notes[ni].x += notes[ni].vx * dt;
-      notes[ni].y += notes[ni].vy * dt;
-      notes[ni].life -= dt;
-      if (notes[ni].life <= 0) notes.splice(ni, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, H, C.hall, 0.8);
-
-    if (beatFlash > 0) game.draw.rect(0, 0, W, H, C.beat, beatFlash * 0.06);
-
-    // Stage
-    game.draw.rect(60, H * 0.5, W - 120, H * 0.45, C.stage, 0.9);
-    game.draw.rect(60, H * 0.5, W - 120, 10, C.hallHi, 0.7);
-
-    // Musicians
-    for (var mi2 = 0; mi2 < musicians.length; mi2++) {
-      var m = musicians[mi2];
-      var wave = Math.sin(elapsed * 4 / TEMPO + m.phase) * 0.5 + 0.5;
-      game.draw.circle(m.x, m.y, 22, C.musician, 0.85);
-      game.draw.circle(m.x, m.y - 10, 14, C.musicianHi, 0.8);
-      // Instrument glow based on beat
-      if (wave > 0.7) {
-        game.draw.circle(m.x, m.y, 30, C.musicianHi, wave * 0.2 * accuracy);
-      }
-    }
-
-    // Notes
-    for (var ni2 = 0; ni2 < notes.length; ni2++) {
-      var n = notes[ni2];
-      game.draw.circle(n.x, n.y, 10 * n.life, n.col, n.life * 0.8);
-      game.draw.text('♪', n.x, n.y, { size: Math.round(20 * n.life), color: C.noteHi });
-    }
-
-    // Conductor (baton)
-    var beatPhase2 = beatTimer / TEMPO;
-    var batonX2 = BATON_X + Math.sin(beatPhase2 * Math.PI * 2) * 80;
-    game.draw.circle(batonX2 - 20, H * 0.36, 44, C.musicianHi, 0.85);  // head
-    game.draw.circle(batonX2 - 20, H * 0.36, 30, '#fde68a', 0.9);       // face
-    game.draw.line(batonX2, H * 0.4, batonX2 + 80, batonY, C.baton, 8); // baton
-    game.draw.circle(batonX2 + 80, batonY, 14, C.batonHi, 0.9);
-
-    // Beat markers
-    for (var bi = 0; bi < BEATS_PER_MEASURE; bi++) {
-      var bx = W / 2 - (BEATS_PER_MEASURE-1)*44 + bi*88;
-      var isCurrent = bi === beatInMeasure;
-      game.draw.circle(bx, H * 0.18, isCurrent ? 24 : 16, isCurrent ? C.beat : C.ui, 0.9);
-    }
-
-    // Accuracy bar
-    var accW = 500;
-    var accX = W / 2 - accW / 2;
-    var accY = H * 0.24;
-    game.draw.rect(accX, accY, accW, 20, '#1a1025', 0.8);
-    game.draw.rect(accX, accY, accW * accuracy, 20, accuracy > 0.4 ? C.beat : C.offbeat, 0.9);
-
-    // Measure progress
-    game.draw.text(measureCount + ' / ' + NEEDED_MEASURES, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.musician : C.offbeat);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(measures + ' / ' + NEEDED_MEASURES, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.15);
-    lastSwingTime = 0;
+    state = S.ATTRACT;
+    initMusicians();
+    initGame();
   });
 })(game);
