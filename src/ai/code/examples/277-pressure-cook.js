@@ -1,218 +1,148 @@
 // 277-pressure-cook.js
-// プレッシャークック — 圧力鍋の蒸気を管理してレシピ通りに調理
-// 操作: タップで蒸気弁を開閉して圧力をコントロール
-// 成功: 3品を丁度よく調理  失敗: 爆発2回 or 50秒
+// プレッシャークック — 圧力鍋の弁をタップで開閉し、レシピの適正圧を保って料理を仕上げる
+// 操作: 弁をタップで開閉（閉で上昇、開で降下）
+// 成功: 2品を調理  失敗: 爆発2回 or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#04020a',
-    pot:     '#334155',
-    potHi:   '#64748b',
-    potDark: '#1e293b',
-    steam:   '#94a3b8',
-    steamHi: '#e2e8f0',
-    safe:    '#22c55e',
-    safeHi:  '#86efac',
-    danger:  '#ef4444',
-    danHi:   '#fca5a5',
-    warning: '#f59e0b',
-    warnHi:  '#fde68a',
-    ui:      '#475569',
-    text:    '#f1f5f9'
-  };
-
-  var pressure = 0; // 0-100
-  var valve = false; // valve open = pressure decreasing
-  var recipe = null;
-  var cookTimer = 0;
-  var cooked = 0;
-  var NEEDED = 3;
-  var explosions = 0;
-  var MAX_EXPLODE = 2;
-  var done = false;
-  var timeLeft = 50;
-  var elapsed = 0;
-  var feedback = '';
-  var feedbackCol = '#fff';
-  var feedbackTimer = 0;
-  var steamParticles = [];
-  var explosionFlash = 0;
-  var shakeX = 0;
-
+  // ── パレット（ネオンアーケード、調理場） ──
+  var C = { bg:'#04020a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
   var RECIPES = [
-    { name: '白米', minP: 55, maxP: 75, cookTime: 5 },
-    { name: '豚肉', minP: 65, maxP: 80, cookTime: 4 },
-    { name: 'ポテト', minP: 40, maxP: 60, cookTime: 3.5 },
-    { name: '卵', minP: 30, maxP: 50, cookTime: 3 },
-    { name: 'カレー', minP: 70, maxP: 85, cookTime: 6 }
+    { name: 'RICE', min: 55, max: 75, time: 3.5 }, { name: 'PORK', min: 65, max: 82, time: 3 },
+    { name: 'POTATO', min: 40, max: 60, time: 3 }, { name: 'EGG', min: 30, max: 50, time: 2.5 }, { name: 'CURRY', min: 70, max: 88, time: 4 }
   ];
 
-  function nextRecipe() {
-    recipe = RECIPES[Math.floor(Math.random() * RECIPES.length)];
-    cookTimer = 0;
-    pressure = 20 + Math.random() * 15;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'PRESSURE COOK';
+  var HOW_TO_PLAY = 'TAP THE VALVE · HOLD PRESSURE IN RANGE';
+  var MAX_TIME = 20;
+  var NEEDED   = 2;           // 修正2: 3 → 2
+  var MAX_EXPLODE = 2;
+  var GX = snap(W * 0.24), GY = snap(H * 0.42), GR = 130, VX = snap(W / 2), VY = snap(H * 0.72);
+
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var pressure, valve, recipe, cookTimer, cooked, explosions, timeLeft, done, steam, flash, fbText, fbCol, fbTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a1030');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function nextRecipe() { recipe = RECIPES[Math.floor(Math.random() * RECIPES.length)]; cookTimer = 0; pressure = 20 + Math.random() * 15; }
+
+  function drawGauge() {
+    var ang = function(p) { return -Math.PI * 1.2 + p / 100 * Math.PI * 1.4; };
+    pc(GX, GY, GR, '#12102a', 0.9);
+    for (var s = 0; s < 20; s++) { var a1 = ang(recipe.min) + (ang(recipe.max) - ang(recipe.min)) * s / 20; game.draw.rect(snap(GX + Math.cos(a1) * (GR - 30)) - 6, snap(GY + Math.sin(a1) * (GR - 30)) - 6, 12, 12, C.b, 0.8); }
+    var na = ang(pressure), col = pressure >= 100 ? C.a : (pressure >= recipe.min && pressure <= recipe.max ? C.b : C.f);
+    for (var r = 0; r < GR - 30; r += 8) game.draw.rect(snap(GX + Math.cos(na) * r) - 5, snap(GY + Math.sin(na) * r) - 5, 10, 10, col, 0.9);
+    pc(GX, GY, 12, C.g, 0.9); txt(Math.round(pressure), GX, GY + GR * 0.5, 44, col);
+  }
+
+  function drawPot(sx) {
+    game.draw.rect(snap(W / 2 - 170) + sx, snap(H * 0.52), 340, 300, C.d, 0.6);
+    game.draw.rect(snap(W / 2 - 180) + sx, snap(H * 0.49), 360, 30, C.d, 0.9);
+    var vc = valve ? C.b : C.a; pc(VX + sx, VY, 56, vc, 0.9); txt(valve ? 'OPEN' : 'SHUT', VX + sx, VY + 14, 34, '#000');
+  }
+
+  function initGame() { valve = false; nextRecipe(); cooked = 0; explosions = 0; timeLeft = MAX_TIME; done = false; steam = []; flash = 0; fbText = ''; fbCol = C.g; fbTimer = 0; }
+
+  function finish(success) {
     if (done) return;
-    var vx = W / 2, vy = H * 0.42;
-    var dx = tx - vx, dy = ty - vy;
-    if (dx * dx + dy * dy < 90 * 90) {
-      valve = !valve;
-      game.audio.play('se_tap', 0.3);
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (cooked * 600 + Math.ceil(timeLeft) * 50) : cooked * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if ((x - VX) * (x - VX) + (y - VY) * (y - VY) < 90 * 90) { valve = !valve; game.audio.play('se_tap', 0.3); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); recipe = RECIPES[0]; pressure = 60; valve = false; drawPot(0); drawGauge();
+      txt(GAME_TITLE, W / 2, H * 0.14, 74, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'DINNER READY!' : 'KABOOM', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (fbTimer > 0) fbTimer -= dt; if (flash > 0) flash -= dt;
+      if (valve) { pressure -= 42 * dt; if (Math.random() < 0.4) steam.push({ x: VX + game.random(-30, 30), y: VY - 40, vy: -(120 + Math.random() * 60), r: 8 + Math.random() * 8, life: 0.6 }); }
+      else pressure += 24 * dt;
+      pressure = Math.max(0, Math.min(110, pressure));
+      if (pressure >= 100) { explosions++; pressure = 30; valve = false; flash = 0.5; fbText = 'BOOM!'; fbCol = C.a; fbTimer = 1.0; game.audio.play('se_failure', 0.8); if (explosions >= MAX_EXPLODE) { finish(false); return; } }
+      if (pressure >= recipe.min && pressure <= recipe.max) { cookTimer += dt; if (cookTimer >= recipe.time) { cooked++; fbText = recipe.name + ' DONE!'; fbCol = C.b; fbTimer = 1.0; game.audio.play('se_success', 0.7); valve = false; if (cooked >= NEEDED) { finish(true); return; } nextRecipe(); } }
+      for (var sp = steam.length - 1; sp >= 0; sp--) { var s = steam[sp]; s.y += s.vy * dt; s.r += dt * 8; s.life -= dt; if (s.life <= 0) steam.splice(sp, 1); }
     }
 
-    if (feedbackTimer > 0) feedbackTimer -= dt;
-    if (explosionFlash > 0) explosionFlash -= dt;
-    shakeX *= 0.85;
+    // ---- 描画 ----
+    var sx = flash > 0 ? game.random(-20, 20) : 0;
+    background();
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.a, flash * 0.3);
+    for (var sp2 = 0; sp2 < steam.length; sp2++) pc(steam[sp2].x + sx, steam[sp2].y, steam[sp2].r * steam[sp2].life, C.g, steam[sp2].life * 0.4);
+    drawPot(sx); drawGauge();
+    // レシピ表示
+    var prog = Math.min(1, cookTimer / recipe.time);
+    game.draw.rect(snap(W * 0.52), snap(H * 0.56), snap(W * 0.36), 22, C.d, 0.4); game.draw.rect(snap(W * 0.52), snap(H * 0.56), snap(W * 0.36 * prog), 22, C.b, 0.9);
+    txt(recipe.name + '  ' + recipe.min + '-' + recipe.max, W * 0.7, H * 0.53, 36, C.c);
+    if (fbTimer > 0) txt(fbText, W / 2, H * 0.86, 48, fbCol);
 
-    if (!recipe) { nextRecipe(); return; }
-
-    // Pressure dynamics
-    var heatRate = 22; // pressure rise per second
-    var releaseRate = 40; // pressure drop when valve open
-    if (valve) {
-      pressure -= releaseRate * dt;
-      // Steam particles
-      if (Math.random() < 0.4) {
-        steamParticles.push({ x: W / 2, y: H * 0.36, vx: (Math.random() - 0.5) * 80, vy: -120 - Math.random() * 60, life: 0.5 + Math.random() * 0.3, r: 8 + Math.random() * 8 });
-      }
-    } else {
-      pressure += heatRate * dt;
-    }
-    pressure = Math.max(0, Math.min(110, pressure));
-
-    // Explosion
-    if (pressure >= 100 && !done) {
-      explosions++;
-      pressure = 30;
-      valve = false;
-      explosionFlash = 0.5;
-      shakeX = 30;
-      game.audio.play('se_failure', 0.8);
-      feedback = '爆発！ (' + explosions + '/' + MAX_EXPLODE + ')';
-      feedbackCol = C.danger;
-      feedbackTimer = 1.0;
-      if (explosions >= MAX_EXPLODE) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-        return;
-      }
-    }
-
-    // Cook in safe range
-    if (pressure >= recipe.minP && pressure <= recipe.maxP) {
-      cookTimer += dt;
-      if (cookTimer >= recipe.cookTime) {
-        cooked++;
-        feedback = recipe.name + ' 完成！ ' + cooked + '/' + NEEDED;
-        feedbackCol = C.safeHi;
-        feedbackTimer = 1.0;
-        game.audio.play('se_success', 0.7);
-        valve = false;
-        nextRecipe();
-        if (cooked >= NEEDED && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(cooked * 300 + Math.ceil(timeLeft) * 100); }, 500);
-          return;
-        }
-      }
-    }
-
-    for (var sp = steamParticles.length - 1; sp >= 0; sp--) {
-      steamParticles[sp].x += steamParticles[sp].vx * dt;
-      steamParticles[sp].y += steamParticles[sp].vy * dt;
-      steamParticles[sp].vx *= (1 - dt * 2);
-      steamParticles[sp].vy *= (1 - dt * 1.5);
-      steamParticles[sp].r += dt * 8;
-      steamParticles[sp].life -= dt;
-      if (steamParticles[sp].life <= 0) steamParticles.splice(sp, 1);
-    }
-
-    // ---- draw ----
-    var sx = explosionFlash > 0 ? (Math.random() - 0.5) * shakeX : 0;
-    game.draw.rect(0, 0, W, H, C.bg);
-    if (explosionFlash > 0) game.draw.rect(0, 0, W, H, C.danger, explosionFlash * 0.4);
-
-    // Pot body
-    game.draw.rect(sx + W / 2 - 180, H * 0.52, 360, 300, C.pot, 0.9);
-    game.draw.rect(sx + W / 2 - 180, H * 0.52, 360, 16, C.potHi, 0.7);
-    game.draw.rect(sx + W / 2 - 180, H * 0.52 + 280, 360, 20, C.potDark, 0.6);
-    // Handles
-    game.draw.rect(sx + W / 2 - 230, H * 0.55, 50, 80, C.pot, 0.8);
-    game.draw.rect(sx + W / 2 + 180, H * 0.55, 50, 80, C.pot, 0.8);
-
-    // Lid
-    game.draw.rect(sx + W / 2 - 190, H * 0.49, 380, 36, C.potHi, 0.9);
-
-    // Valve button
-    var vCol = valve ? C.safe : C.danger;
-    var vHiCol = valve ? C.safeHi : C.danHi;
-    game.draw.circle(sx + W / 2, H * 0.42, 60, vCol, 0.9);
-    game.draw.circle(sx + W / 2, H * 0.42, 60, vHiCol, 0.25);
-    game.draw.text(valve ? '開' : '閉', sx + W / 2, H * 0.43, { size: 52, color: '#fff', bold: true });
-
-    // Steam particles
-    for (var sp2 = 0; sp2 < steamParticles.length; sp2++) {
-      var spt = steamParticles[sp2];
-      game.draw.circle(sx + spt.x, spt.y, spt.r, C.steam, spt.life * 0.4);
-    }
-
-    // Pressure gauge
-    var gaugeX = W * 0.15, gaugeY = H * 0.55, gaugeR = 90;
-    game.draw.circle(gaugeX, gaugeY, gaugeR, C.potDark, 0.9);
-    game.draw.circle(gaugeX, gaugeY, gaugeR, C.potHi, 0.3);
-    // Gauge zones
-    var zoneAngle = function(p) { return -Math.PI * 1.2 + p / 100 * Math.PI * 1.4; };
-    var minA = zoneAngle(recipe.minP), maxA = zoneAngle(recipe.maxP);
-    var segs = 20;
-    for (var sg = 0; sg < segs; sg++) {
-      var a1 = minA + (maxA - minA) * sg / segs;
-      var a2 = minA + (maxA - minA) * (sg + 1) / segs;
-      game.draw.line(gaugeX + Math.cos(a1) * 50, gaugeY + Math.sin(a1) * 50,
-                     gaugeX + Math.cos(a2) * 50, gaugeY + Math.sin(a2) * 50, C.safe, 14);
-    }
-    // Needle
-    var needleA = zoneAngle(pressure);
-    game.draw.line(gaugeX, gaugeY, gaugeX + Math.cos(needleA) * 72, gaugeY + Math.sin(needleA) * 72,
-      pressure >= 100 ? C.danger : (pressure >= recipe.minP && pressure <= recipe.maxP ? C.safe : C.warning), 6);
-    game.draw.circle(gaugeX, gaugeY, 12, C.steamHi, 0.9);
-    game.draw.text(Math.round(pressure), gaugeX, gaugeY + 32, { size: 32, color: C.text, bold: true });
-
-    // Cook progress
-    if (recipe) {
-      var prog = Math.min(1, cookTimer / recipe.cookTime);
-      game.draw.rect(W * 0.55, H * 0.55, W * 0.35, 20, C.ui, 0.3);
-      game.draw.rect(W * 0.55, H * 0.55, W * 0.35 * prog, 20, C.safe, 0.9);
-      game.draw.text(recipe.name, W * 0.72, H * 0.59, { size: 36, color: C.text, bold: true });
-      game.draw.text(recipe.minP + '〜' + recipe.maxP + 'kPa', W * 0.72, H * 0.63, { size: 30, color: C.ui });
-    }
-
-    if (feedbackTimer > 0) {
-      game.draw.text(feedback, W / 2, H * 0.87, { size: 46, color: feedbackCol, bold: true });
-    }
-
-    game.draw.text(cooked + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 50);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.safe : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(cooked + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var ei = 0; ei < MAX_EXPLODE; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_EXPLODE - 1) / 2) * 56) - 10, 224, 20, 20, ei < explosions ? C.a : '#1a1030');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.15);
-    nextRecipe();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
