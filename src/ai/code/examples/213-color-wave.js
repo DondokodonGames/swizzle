@@ -1,170 +1,149 @@
 // 213-color-wave.js
-// カラーウェーブ — うねる色の波が来る前に同じ色のゾーンに移動する判断ゲーム
+// カラーウェーブ — 押し寄せる色の洪水が来る前に、その色のゾーンから別ゾーンへ逃げる判断ゲーム
 // 操作: タップで4つのゾーンを移動
-// 成功: 25秒生き残る  失敗: 間違った色のゾーンで波に飲まれる
+// 成功: 8秒生き残る  失敗: 警告色のゾーンで波に飲まれる
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var ZONE_COLORS = ['#ef4444', '#22c55e', '#3b82f6', '#f59e0b'];
-  var ZONE_HI = ['#fca5a5', '#86efac', '#93c5fd', '#fde68a'];
-  var ZONE_NAMES = ['赤', '緑', '青', '黄'];
+  // ── パレット（ネオンアーケード、色彩チャンバー） ──
+  var C = { bg:'#040608', g:'#ffffff' };
+  var ZC = ['#ff2079', '#00ff9f', '#00cfff', '#ffe600'];
+  var ZN = ['R', 'G', 'B', 'Y'];
 
-  var C = {
-    bg:  '#040608',
-    ui:  '#334155',
-    wave:'#ffffff'
-  };
-
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'COLOR WAVE';
+  var HOW_TO_PLAY = 'TAP TO FLEE THE WARNED COLOR ZONE';
+  var NEEDED   = 8;           // 修正2: 25 → 8（サバイバル短縮）
+  var TOP = 220, BOT = H - 180;
   var ZONES = [
-    { x: 0, y: 0, w: W / 2, h: H / 2, colorIdx: 0 },
-    { x: W / 2, y: 0, w: W / 2, h: H / 2, colorIdx: 1 },
-    { x: 0, y: H / 2, w: W / 2, h: H / 2, colorIdx: 2 },
-    { x: W / 2, y: H / 2, w: W / 2, h: H / 2, colorIdx: 3 }
+    { x: 0, y: TOP, w: W / 2, h: (BOT - TOP) / 2, colorIdx: 0 },
+    { x: W / 2, y: TOP, w: W / 2, h: (BOT - TOP) / 2, colorIdx: 1 },
+    { x: 0, y: TOP + (BOT - TOP) / 2, w: W / 2, h: (BOT - TOP) / 2, colorIdx: 2 },
+    { x: W / 2, y: TOP + (BOT - TOP) / 2, w: W / 2, h: (BOT - TOP) / 2, colorIdx: 3 }
   ];
+  var ANNOUNCE = 1.3, INCOMING = 0.9, STRIKE = 0.5, WAIT = 1.2;
 
-  var playerZone = 0; // start in red zone
-  var waveColor = -1;
-  var wavePhase = 'wait'; // 'announce' | 'incoming' | 'strike' | 'wait'
-  var waveTimer = 0;
-  var ANNOUNCE_TIME = 1.5;
-  var INCOMING_TIME = 1.0;
-  var STRIKE_TIME = 0.5;
-  var WAIT_TIME = 1.5;
-  var waveAlpha = 0;
-  var survived = 0;
-  var NEEDED = 25;
-  var done = false;
-  var elapsed = 0;
-  var feedback = 0;
-  var feedbackOk = false;
-  var strikes = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function startWave() {
-    waveColor = Math.floor(Math.random() * 4);
-    wavePhase = 'announce';
-    waveTimer = ANNOUNCE_TIME;
+  // ── ゲーム変数 ──
+  var playerZone, waveColor, wavePhase, waveTimer, waveAlpha, survived, timeLeft, done, feedback, feedbackOk;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
   }
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / NEEDED * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.g : '#1a1a2a');
+  }
+
+  function drawZones() {
     for (var zi = 0; zi < ZONES.length; zi++) {
-      var z = ZONES[zi];
-      if (tx >= z.x && tx < z.x + z.w && ty >= z.y && ty < z.y + z.h) {
-        if (zi !== playerZone) {
-          playerZone = zi;
-          game.audio.play('se_tap', 0.3);
-        }
-        break;
-      }
+      var z = ZONES[zi], isPlayer = zi === playerZone, isWave = z.colorIdx === waveColor;
+      game.draw.rect(z.x + 4, z.y + 4, z.w - 8, z.h - 8, ZC[z.colorIdx], isPlayer ? 0.5 : 0.22);
+      if (isWave && wavePhase !== 'wait' && waveAlpha > 0) game.draw.rect(z.x + 4, z.y + 4, z.w - 8, z.h - 8, C.g, waveAlpha * (Math.floor(game.time.elapsed * 8) % 2 ? 0.7 : 0.4));
+      txt(ZN[z.colorIdx], z.x + z.w / 2, z.y + z.h / 2 - 40, 96, ZC[z.colorIdx]);
+      if (isPlayer) { pc(z.x + z.w / 2, z.y + z.h * 0.72, 36, C.g, 0.9); game.draw.rect(snap(z.x + z.w / 2) - 12, snap(z.y + z.h * 0.72) - 4, 6, 6, '#000'); game.draw.rect(snap(z.x + z.w / 2) + 6, snap(z.y + z.h * 0.72) - 4, 6, 6, '#000'); }
     }
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function startWave() { waveColor = Math.floor(Math.random() * 4); wavePhase = 'announce'; waveTimer = ANNOUNCE; }
+
+  function initGame() { playerZone = 0; waveColor = -1; wavePhase = 'wait'; waveTimer = 1.0; waveAlpha = 0; survived = 0; timeLeft = NEEDED; done = false; feedback = 0; feedbackOk = false; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (600 + Math.ceil(survived) * 120) : Math.round(survived * 150);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    for (var zi = 0; zi < ZONES.length; zi++) { var z = ZONES[zi]; if (x >= z.x && x < z.x + z.w && y >= z.y && y < z.y + z.h) { if (zi !== playerZone) { playerZone = zi; game.audio.play('se_tap', 0.3); } break; } }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      survived += dt;
-      elapsed += dt;
-      if (survived >= NEEDED) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() { game.end.success(Math.ceil(survived) * 60 + 500); }, 400);
-        return;
+    if (state === S.ATTRACT) {
+      background(); playerZone = Math.floor(game.time.elapsed) % 4; waveColor = -1; drawZones();
+      txt(GAME_TITLE, W / 2, H * 0.12, 80, C.g);
+      txt(HOW_TO_PLAY, W / 2, H * 0.17, 28, ZC[1]);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, ZC[0]);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
       }
+      scanlines();
+      return;
     }
-    if (feedback > 0) feedback -= dt;
 
-    waveTimer -= dt;
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SURVIVED!' : 'FLOODED', W / 2, H * 0.35, 82, resultSuccess ? ZC[1] : ZC[0]);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, ZC[3]);
+      scanlines();
+      return;
+    }
 
-    if (wavePhase === 'announce') {
-      waveAlpha = (ANNOUNCE_TIME - waveTimer) / ANNOUNCE_TIME * 0.3;
-      if (waveTimer <= 0) {
-        wavePhase = 'incoming';
-        waveTimer = INCOMING_TIME;
-      }
-    } else if (wavePhase === 'incoming') {
-      waveAlpha = 0.3 + (INCOMING_TIME - waveTimer) / INCOMING_TIME * 0.5;
-      if (waveTimer <= 0) {
-        wavePhase = 'strike';
-        waveTimer = STRIKE_TIME;
-        // Check: player in same color zone as wave?
-        if (ZONES[playerZone].colorIdx === waveColor) {
-          // Danger!
-          feedbackOk = false; feedback = 0.4;
-          game.audio.play('se_failure', 0.5);
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-        } else {
-          feedbackOk = true; feedback = 0.3;
-          game.audio.play('se_success', 0.4);
+    // PLAYING
+    if (!done) {
+      survived += dt; timeLeft -= dt;
+      if (timeLeft <= 0) { finish(true); return; }
+      if (feedback > 0) feedback -= dt;
+      waveTimer -= dt;
+      if (wavePhase === 'announce') { waveAlpha = (ANNOUNCE - waveTimer) / ANNOUNCE * 0.3; if (waveTimer <= 0) { wavePhase = 'incoming'; waveTimer = INCOMING; } }
+      else if (wavePhase === 'incoming') {
+        waveAlpha = 0.3 + (INCOMING - waveTimer) / INCOMING * 0.5;
+        if (waveTimer <= 0) {
+          wavePhase = 'strike'; waveTimer = STRIKE;
+          if (ZONES[playerZone].colorIdx === waveColor) { feedbackOk = false; feedback = 0.4; finish(false); return; }
+          else { feedbackOk = true; feedback = 0.3; game.audio.play('se_success', 0.4); }
         }
       }
-    } else if (wavePhase === 'strike') {
-      waveAlpha = Math.max(0, waveAlpha - dt * 2);
-      if (waveTimer <= 0) {
-        wavePhase = 'wait';
-        waveTimer = WAIT_TIME * (0.6 + Math.random() * 0.8);
-        waveColor = -1;
-      }
-    } else if (wavePhase === 'wait') {
-      if (waveTimer <= 0) {
-        startWave();
-      }
+      else if (wavePhase === 'strike') { waveAlpha = Math.max(0, waveAlpha - dt * 2); if (waveTimer <= 0) { wavePhase = 'wait'; waveTimer = WAIT * (0.6 + Math.random() * 0.6); waveColor = -1; } }
+      else if (wavePhase === 'wait') { if (waveTimer <= 0) startWave(); }
     }
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background(); drawZones();
+    if (wavePhase === 'announce' || wavePhase === 'incoming') txt('AVOID  ' + ZN[waveColor], W / 2, TOP + (BOT - TOP) / 2, 76, ZC[waveColor]);
+    if (feedback > 0) game.draw.rect(0, 0, W, H, feedbackOk ? ZC[1] : ZC[0], feedback * 0.1);
 
-    // Zones
-    for (var zi2 = 0; zi2 < ZONES.length; zi2++) {
-      var z2 = ZONES[zi2];
-      var isPlayer = zi2 === playerZone;
-      var isWave = z2.colorIdx === waveColor;
-      var zCol = ZONE_COLORS[z2.colorIdx];
-      var zHi = ZONE_HI[z2.colorIdx];
-
-      var alpha = isPlayer ? 0.45 : 0.2;
-      game.draw.rect(z2.x, z2.y, z2.w, z2.h, zCol, alpha);
-
-      // Wave danger flash
-      if (isWave && wavePhase !== 'wait' && waveAlpha > 0) {
-        game.draw.rect(z2.x, z2.y, z2.w, z2.h, '#fff', waveAlpha * 0.6);
-      }
-
-      // Zone label
-      game.draw.text(ZONE_NAMES[z2.colorIdx], z2.x + z2.w / 2, z2.y + z2.h / 2, { size: 88, color: zHi, bold: true });
-
-      // Player indicator
-      if (isPlayer) {
-        var pulse = 0.5 + 0.5 * Math.abs(Math.sin(elapsed * 4));
-        game.draw.circle(z2.x + z2.w / 2, z2.y + z2.h * 0.7, 50, '#fff', pulse * 0.4);
-        game.draw.circle(z2.x + z2.w / 2, z2.y + z2.h * 0.7, 36, '#fff', 0.8);
-        game.draw.text('★', z2.x + z2.w / 2, z2.y + z2.h * 0.7, { size: 44, color: zCol, bold: true });
-      }
-    }
-
-    // Zone dividers
-    game.draw.line(W / 2, 0, W / 2, H, '#000', 4);
-    game.draw.line(0, H / 2, W, H / 2, '#000', 4);
-
-    // Wave announcement
-    if (wavePhase === 'announce' || wavePhase === 'incoming') {
-      var warnAlpha = wavePhase === 'incoming' ? 0.9 : 0.5 + 0.3 * Math.sin(elapsed * 8);
-      game.draw.text('避けろ：' + ZONE_NAMES[waveColor] + '！', W / 2, H / 2, { size: 72, color: ZONE_COLORS[waveColor], bold: true });
-    }
-
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? '#22c55e' : '#ef4444', feedback * 0.1);
-    }
-
-    var ratio = Math.min(1, survived / NEEDED);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, '#22c55e');
-    game.draw.text(survived.toFixed(1) + 's', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(timeLeft.toFixed(1) + 's', W / 2, 96, 44, C.g);
+    txt('FLEE THE WARNED COLOR', W / 2, H - 100, 38, C.g);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.25);
-    setTimeout(startWave, 1500);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
