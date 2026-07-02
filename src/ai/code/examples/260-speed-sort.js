@@ -1,172 +1,122 @@
 // 260-speed-sort.js
-// スピードソート — 降ってくる数字を大きい順・小さい順にソートするリフレックスゲーム
-// 操作: スワイプ上で「大きい方」、スワイプ下で「小さい方」をスタックに追加
-// 成功: 20問正しくソート  失敗: 5回ミス or 40秒
+// スピードソート — 並んだ2つの数字のうち大きい方を上スワイプで仕分ける、瞬間比較のリフレックス
+// 操作: 大きい方の数字を上へスワイプ
+// 成功: 3問正解  失敗: 3回ミス or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#030508',
-    card:   '#1e293b',
-    cardHi: '#334155',
-    big:    '#f59e0b',
-    bigHi:  '#fde68a',
-    small:  '#3b82f6',
-    smlHi:  '#93c5fd',
-    correct:'#22c55e',
-    corHi:  '#86efac',
-    wrong:  '#ef4444',
-    wrnHi:  '#fca5a5',
-    ui:     '#475569',
-    text:   '#f1f5f9'
-  };
+  // ── パレット（ネオンアーケード、数値端末） ──
+  var C = { bg:'#030508', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Present two numbers — player must pick which goes BIG stack or SMALL stack
-  var leftNum = 0;
-  var rightNum = 0;
-  var bigStack = [];
-  var smallStack = [];
-  var sorted = 0;
-  var NEEDED = 20;
-  var mistakes = 0;
-  var MAX_MISS = 5;
-  var done = false;
-  var timeLeft = 40;
-  var elapsed = 0;
-  var feedback = '';
-  var feedbackCol = '#fff';
-  var feedbackTimer = 0;
-  var particles = [];
-  var animCard = null; // { num, targetX, targetY, startX, startY, timer, dur }
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SPEED SORT';
+  var HOW_TO_PLAY = 'SWIPE UP ON THE BIGGER NUMBER';
+  var MAX_TIME = 15;
+  var NEEDED   = 3;           // 修正2: 20 → 3
+  var MAX_MISS = 3;          // 修正2: 5 → 3
 
-  function generatePair() {
-    leftNum = Math.floor(Math.random() * 98) + 1;
-    do { rightNum = Math.floor(Math.random() * 98) + 1; } while (rightNum === leftNum);
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var leftNum, rightNum, sorted, mistakes, timeLeft, done, particles, fbText, fbCol, fbTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
-    if (done || feedbackTimer > 0.1) return;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-    // Determine which number was swiped
-    var swipedNum, otherNum;
-    if (x1 < W / 2) { swipedNum = leftNum; otherNum = rightNum; }
-    else { swipedNum = rightNum; otherNum = leftNum; }
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1420');
+  }
 
-    var isBigSwipe = dir === 'up';
-    var isCorrect = isBigSwipe ? (swipedNum > otherNum) : (swipedNum < otherNum);
+  function background() { game.draw.clear(C.bg); game.draw.rect(W / 2 - 2, snap(H * 0.4), 4, snap(H * 0.36), C.d, 0.5); }
 
-    if (isCorrect) {
-      sorted++;
-      if (isBigSwipe) bigStack.push(swipedNum);
-      else smallStack.push(swipedNum);
-      feedback = '正解！';
-      feedbackCol = C.correct;
-      feedbackTimer = 0.4;
-      game.audio.play('se_success', 0.6);
-      for (var pi = 0; pi < 5; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        particles.push({ x: x1, y: y1, vx: Math.cos(ang) * 140, vy: Math.sin(ang) * 140, life: 0.4 });
-      }
-      if (sorted >= NEEDED && !done) {
-        done = true;
-        setTimeout(function() { game.end.success(sorted * 80 + Math.ceil(timeLeft) * 60); }, 400);
-        return;
-      }
-      generatePair();
-    } else {
-      mistakes++;
-      feedback = '違う！';
-      feedbackCol = C.wrong;
-      feedbackTimer = 0.5;
-      game.audio.play('se_failure', 0.5);
-      if (mistakes >= MAX_MISS && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      }
-    }
+  function genPair() { leftNum = Math.floor(Math.random() * 98) + 1; do { rightNum = Math.floor(Math.random() * 98) + 1; } while (rightNum === leftNum); }
+
+  function drawCards() {
+    game.draw.rect(snap(W * 0.06), snap(H * 0.44), snap(W * 0.4), snap(H * 0.3), C.d, 0.4); game.draw.rect(snap(W * 0.06), snap(H * 0.44), snap(W * 0.4), 8, C.e, 0.5); txt(leftNum + '', W * 0.26, H * 0.6, 130, C.g);
+    game.draw.rect(snap(W * 0.54), snap(H * 0.44), snap(W * 0.4), snap(H * 0.3), C.d, 0.4); game.draw.rect(snap(W * 0.54), snap(H * 0.44), snap(W * 0.4), 8, C.f, 0.5); txt(rightNum + '', W * 0.74, H * 0.6, 130, C.g);
+  }
+
+  function initGame() { sorted = 0; mistakes = 0; timeLeft = MAX_TIME; done = false; particles = []; fbText = ''; fbCol = C.g; fbTimer = 0; genPair(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (sorted * 400 + Math.ceil(timeLeft) * 60) : sorted * 120;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
   });
 
+  game.onSwipe(function(dir, x1, y1, x2, y2) {
+    if (state !== S.PLAYING || done || fbTimer > 0.1) return;
+    if (dir !== 'up') return;
+    var swiped = x1 < W / 2 ? leftNum : rightNum, other = x1 < W / 2 ? rightNum : leftNum;
+    if (swiped > other) { sorted++; fbText = 'CORRECT!'; fbCol = C.b; fbTimer = 0.4; game.audio.play('se_success', 0.6); for (var pi = 0; pi < 5; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: x1 || W / 2, y: y1 || H / 2, vx: Math.cos(a) * 140, vy: Math.sin(a) * 140, life: 0.4 }); } if (sorted >= NEEDED) { finish(true); return; } genPair(); }
+    else { mistakes++; fbText = 'WRONG'; fbCol = C.a; fbTimer = 0.5; game.audio.play('se_failure', 0.5); if (mistakes >= MAX_MISS) { finish(false); return; } }
+  });
+
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+    if (state === S.ATTRACT) {
+      background(); leftNum = 42; rightNum = 17; drawCards();
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 28, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.92, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.97, 40, '#445566');
+      scanlines();
+      return;
     }
 
-    if (feedbackTimer > 0) feedbackTimer -= dt;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SORTED!' : 'MISSORT', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
+    // PLAYING
+    if (!done) { timeLeft -= dt; if (timeLeft <= 0) { finish(false); return; } if (fbTimer > 0) fbTimer -= dt; for (var pi = particles.length - 1; pi >= 0; pi--) { var p = particles[pi]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pi, 1); } }
 
-    // Stack displays
-    // Big stack (right side)
-    game.draw.rect(W * 0.6, H * 0.15, W * 0.35, H * 0.22, '#0a1a08', 0.7);
-    game.draw.text('大きい方 ↑', W * 0.775, H * 0.18, { size: 34, color: C.bigHi });
-    for (var bi = 0; bi < Math.min(bigStack.length, 5); bi++) {
-      game.draw.text(bigStack[bigStack.length - 1 - bi] + '', W * 0.775, H * 0.21 + bi * 32, { size: 28, color: C.big });
-    }
+    // ---- 描画 ----
+    background(); drawCards();
+    txt('SWIPE UP THE BIGGER', W / 2, H * 0.80, 36, C.c);
+    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 5, snap(particles[pp].y) - 5, 10, 10, C.b, particles[pp].life * 2.5);
+    if (fbTimer > 0) txt(fbText, W / 2, H * 0.86, 52, fbCol);
 
-    // Small stack (left side)
-    game.draw.rect(W * 0.05, H * 0.15, W * 0.35, H * 0.22, '#000a1a', 0.7);
-    game.draw.text('小さい方 ↑', W * 0.225, H * 0.18, { size: 34, color: C.smlHi });
-    for (var si = 0; si < Math.min(smallStack.length, 5); si++) {
-      game.draw.text(smallStack[smallStack.length - 1 - si] + '', W * 0.225, H * 0.21 + si * 32, { size: 28, color: C.small });
-    }
-
-    // Divider
-    game.draw.line(W / 2, H * 0.42, W / 2, H * 0.78, C.ui, 3);
-
-    // Number cards
-    var leftPulse = 0.9 + 0.1 * Math.abs(Math.sin(elapsed * 3));
-    var rightPulse = 0.9 + 0.1 * Math.abs(Math.sin(elapsed * 3 + 1));
-
-    game.draw.rect(W * 0.05, H * 0.44, W * 0.4, H * 0.28, C.card, 0.8);
-    game.draw.rect(W * 0.05, H * 0.44, W * 0.4, 8, C.smlHi, 0.4);
-    game.draw.text(leftNum + '', W * 0.25, H * 0.58 + 20, { size: 120, color: C.text, bold: true });
-
-    game.draw.rect(W * 0.55, H * 0.44, W * 0.4, H * 0.28, C.card, 0.8);
-    game.draw.rect(W * 0.55, H * 0.44, W * 0.4, 8, C.bigHi, 0.4);
-    game.draw.text(rightNum + '', W * 0.75, H * 0.58 + 20, { size: 120, color: C.text, bold: true });
-
-    // Instructions
-    game.draw.text('↑ スワイプ: この数を「大きい」スタックへ', W / 2, H * 0.76, { size: 30, color: C.big });
-    game.draw.text('大きい数を上に、小さい数は無視', W / 2, H * 0.8, { size: 32, color: C.ui });
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * (p.life / 0.4), C.corHi, p.life);
-    }
-
-    // Feedback
-    if (feedbackTimer > 0) {
-      game.draw.text(feedback, W / 2, H * 0.86, { size: 56, color: feedbackCol, bold: true });
-    }
-
-    // Mistake dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 28 + mi * 56, H * 0.92, 16, mi < mistakes ? C.wrong : '#050810');
-    }
-
-    game.draw.text(sorted + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(sorted + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) game.draw.rect(snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mm < mistakes ? C.a : '#0a1420');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    generatePair();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
