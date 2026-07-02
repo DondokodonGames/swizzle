@@ -1,217 +1,161 @@
 // 250-wire-cut.js
-// ワイヤーカット — 爆弾解除！正しいワイヤーだけを切っていく緊張感
-// 操作: スワイプでワイヤーを切る
-// 成功: 赤ワイヤーだけを5本切る  失敗: 青・黄・白を切る or 25秒
+// ワイヤーカット — 爆弾解除、赤いワイヤーだけをスワイプで切る。他の色を切れば即爆発
+// 操作: スワイプでワイヤーを切る（赤だけ）
+// 成功: 赤ワイヤーを2本切る  失敗: 他色を切る or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0800',
-    bomb:   '#1a1a10',
-    bombHi: '#2d2d18',
-    red:    '#ef4444',
-    redHi:  '#fca5a5',
-    blue:   '#3b82f6',
-    blueHi: '#93c5fd',
-    yellow: '#f59e0b',
-    yelHi:  '#fde68a',
-    white:  '#e2e8f0',
-    whiHi:  '#fff',
-    green:  '#22c55e',
-    cut:    '#94a3b8',
-    ui:     '#475569',
-    timer:  '#ef4444'
-  };
-
-  var WIRE_COLORS = [
-    { name: '赤', col: C.red, hi: C.redHi, correct: true },
-    { name: '青', col: C.blue, hi: C.blueHi, correct: false },
-    { name: '黄', col: C.yellow, hi: C.yelHi, correct: false },
-    { name: '白', col: C.white, hi: C.whiHi, correct: false }
+  // ── パレット（ネオンアーケード、爆弾解除） ──
+  var C = { bg:'#0a0800', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var WIRE = [
+    { col: C.a, name: 'RED', correct: true },
+    { col: C.e, name: 'BLUE', correct: false },
+    { col: C.c, name: 'YEL', correct: false },
+    { col: C.g, name: 'WHT', correct: false }
   ];
 
-  var WIRE_COUNT = 6;
-  var wires = [];
-  var cutCount = 0;
-  var NEEDED = 5;
-  var done = false;
-  var timeLeft = 25;
-  var elapsed = 0;
-  var feedback = '';
-  var feedbackCol = '#fff';
-  var feedbackTimer = 0;
-  var sparks = [];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'WIRE CUT';
+  var HOW_TO_PLAY = 'SWIPE TO CUT ONLY THE RED WIRES';
+  var MAX_TIME = 15;
+  var NEEDED   = 2;           // 修正2: 5 → 2
+  var WIRE_COUNT = 6, TOP = 240;
+
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var wires, cutCount, timeLeft, done, sparks, fbText, fbCol, fbTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pline(x1, y1, x2, y2, color, alpha) {
+    var len = Math.hypot(x2 - x1, y2 - y1), n = Math.max(1, Math.round(len / 10));
+    for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + (x2 - x1) * i / n) - 5, snap(y1 + (y2 - y1) * i / n) - 5, 10, 10, color, alpha);
+  }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#2a1a00');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(snap(W * 0.06), TOP, snap(W * 0.88), snap(H * 0.62), '#1a1408', 0.9);
+    game.draw.rect(snap(W * 0.06), TOP, snap(W * 0.12), snap(H * 0.62), '#0f0c04', 0.9);
+    game.draw.rect(snap(W * 0.82), TOP, snap(W * 0.12), snap(H * 0.62), '#0f0c04', 0.9);
+  }
 
   function initWires() {
     wires = [];
-    var positions = [];
-    for (var i = 0; i < WIRE_COUNT; i++) positions.push(i);
-
-    // Shuffle
-    for (var j = positions.length - 1; j > 0; j--) {
-      var k = Math.floor(Math.random() * (j + 1));
-      var tmp = positions[j]; positions[j] = positions[k]; positions[k] = tmp;
-    }
-
-    // Assign colors ensuring 2-3 red wires
-    var redCount = 2 + Math.floor(Math.random() * 2);
-    var colorAssign = [];
-    for (var ri = 0; ri < redCount; ri++) colorAssign.push(0); // red
-    while (colorAssign.length < WIRE_COUNT) colorAssign.push(1 + Math.floor(Math.random() * 3));
-
-    // Shuffle color assignment
-    for (var ci = colorAssign.length - 1; ci > 0; ci--) {
-      var cj = Math.floor(Math.random() * (ci + 1));
-      var ctmp = colorAssign[ci]; colorAssign[ci] = colorAssign[cj]; colorAssign[cj] = ctmp;
-    }
-
+    var redCount = Math.max(NEEDED, 2 + Math.floor(Math.random() * 2)), assign = [];
+    for (var i = 0; i < redCount; i++) assign.push(0);
+    while (assign.length < WIRE_COUNT) assign.push(1 + Math.floor(Math.random() * 3));
+    for (var j = assign.length - 1; j > 0; j--) { var k = Math.floor(Math.random() * (j + 1)); var t = assign[j]; assign[j] = assign[k]; assign[k] = t; }
     for (var wi = 0; wi < WIRE_COUNT; wi++) {
-      var wc = WIRE_COLORS[colorAssign[wi]];
-      var yPos = H * 0.28 + wi * 120;
-      // Wire goes from left panel to right panel with a slight curve
-      var midX = W * 0.3 + Math.random() * W * 0.4;
-      var midY = yPos + (Math.random() - 0.5) * 40;
-      wires.push({
-        color: wc,
-        x1: W * 0.08, y1: yPos,
-        mx: midX, my: midY,
-        x2: W * 0.92, y2: yPos,
-        cut: false,
-        cutX: 0, cutY: 0
-      });
+      var y = snap(TOP + 80 + wi * ((H * 0.62 - 140) / (WIRE_COUNT - 1)));
+      wires.push({ color: WIRE[assign[wi]], x1: snap(W * 0.1), y1: y, mx: snap(W * 0.3 + Math.random() * W * 0.4), my: snap(y + game.random(-30, 30)), x2: snap(W * 0.9), y2: y, cut: false, cx: 0, cy: 0 });
     }
   }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
+  function initGame() { initWires(); cutCount = 0; timeLeft = MAX_TIME; done = false; sparks = []; fbText = ''; fbCol = C.g; fbTimer = 0; }
+
+  function finish(success) {
     if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (cutCount * 500 + Math.ceil(timeLeft) * 80) : cutCount * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    // Check which wire the swipe crosses
+  function drawWires() {
     for (var wi = 0; wi < wires.length; wi++) {
-      var wire = wires[wi];
-      if (wire.cut) continue;
+      var w = wires[wi];
+      if (!w.cut) { pline(w.x1, w.y1, w.mx, w.my, w.color.col, 0.95); pline(w.mx, w.my, w.x2, w.y2, w.color.col, 0.95); }
+      else { pline(w.x1, w.y1, w.cx - 18, w.cy, '#556', 0.7); pline(w.cx + 18, w.cy, w.x2, w.y2, '#556', 0.7); }
+    }
+  }
 
-      // Check if swipe line crosses the wire segment (simplified: check distance to midpoint)
-      var wx = wire.mx, wy = wire.my;
-      var sdx = x2 - x1, sdy = y2 - y1;
-      var slen = Math.sqrt(sdx * sdx + sdy * sdy);
-      if (slen < 1) continue;
-      var tx2 = wx - x1, ty2 = wy - y1;
-      var proj = (tx2 * sdx + ty2 * sdy) / slen;
-      var perp = Math.abs(tx2 * sdy - ty2 * sdx) / slen;
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+  });
 
-      if (perp < 30 && proj >= 0 && proj <= slen) {
-        wire.cut = true;
-        wire.cutX = wx;
-        wire.cutY = wy;
-
-        if (wire.color.correct) {
-          cutCount++;
-          feedback = '赤を切った！ (' + cutCount + '/' + NEEDED + ')';
-          feedbackCol = C.green;
-          feedbackTimer = 0.6;
-          game.audio.play('se_success', 0.7);
-          for (var si = 0; si < 8; si++) {
-            var ang = Math.random() * Math.PI * 2;
-            sparks.push({ x: wx, y: wy, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.5, col: wire.color.hi });
-          }
-          if (cutCount >= NEEDED && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(cutCount * 200 + Math.ceil(timeLeft) * 100); }, 500);
-          }
-        } else {
-          feedback = '間違い！爆発！';
-          feedbackCol = C.red;
-          feedbackTimer = 0.8;
-          game.audio.play('se_failure', 0.8);
-          for (var si2 = 0; si2 < 20; si2++) {
-            var ang2 = Math.random() * Math.PI * 2;
-            sparks.push({ x: wx, y: wy, vx: Math.cos(ang2) * 350, vy: Math.sin(ang2) * 350, life: 0.8, col: C.red });
-          }
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 800);
-        }
+  game.onSwipe(function(dir, x1, y1, x2, y2) {
+    if (state !== S.PLAYING || done || x1 === undefined) return;
+    var sdx = x2 - x1, sdy = y2 - y1, slen = Math.hypot(sdx, sdy); if (slen < 1) return;
+    for (var wi = 0; wi < wires.length; wi++) {
+      var w = wires[wi]; if (w.cut) continue;
+      var proj = ((w.mx - x1) * sdx + (w.my - y1) * sdy) / slen, perp = Math.abs((w.mx - x1) * sdy - (w.my - y1) * sdx) / slen;
+      if (perp < 34 && proj >= 0 && proj <= slen) {
+        w.cut = true; w.cx = w.mx; w.cy = w.my;
+        if (w.color.correct) { cutCount++; fbText = 'RED CUT!'; fbCol = C.b; fbTimer = 0.6; game.audio.play('se_success', 0.7); for (var si = 0; si < 8; si++) { var a = Math.random() * Math.PI * 2; sparks.push({ x: w.cx, y: w.cy, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.5, col: C.c }); } if (cutCount >= NEEDED) { finish(true); return; } }
+        else { fbText = 'WRONG WIRE!'; fbCol = C.a; fbTimer = 0.8; for (var si2 = 0; si2 < 20; si2++) { var a2 = Math.random() * Math.PI * 2; sparks.push({ x: w.cx, y: w.cy, vx: Math.cos(a2) * 350, vy: Math.sin(a2) * 350, life: 0.8, col: C.a }); } finish(false); return; }
         return;
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!wires) initGame(); background(); drawWires();
+      txt(GAME_TITLE, W / 2, H * 0.15, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.21, 26, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'DEFUSED!' : 'BOOM!', W / 2, H * 0.35, 82, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-    if (feedbackTimer > 0) feedbackTimer -= dt;
-
-    for (var si = sparks.length - 1; si >= 0; si--) {
-      sparks[si].x += sparks[si].vx * dt;
-      sparks[si].y += sparks[si].vy * dt;
-      sparks[si].vy += 300 * dt;
-      sparks[si].life -= dt;
-      if (sparks[si].life <= 0) sparks.splice(si, 1);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (fbTimer > 0) fbTimer -= dt;
+      for (var si = sparks.length - 1; si >= 0; si--) { var s = sparks[si]; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 300 * dt; s.life -= dt; if (s.life <= 0) sparks.splice(si, 1); }
     }
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background(); drawWires();
+    for (var si2 = 0; si2 < sparks.length; si2++) game.draw.rect(snap(sparks[si2].x) - 5, snap(sparks[si2].y) - 5, 10, 10, sparks[si2].col, sparks[si2].life * 1.6);
+    txt('CUT THE RED WIRES', W / 2, H * 0.18, 40, C.a);
+    if (fbTimer > 0) txt(fbText, W / 2, H * 0.90, 48, fbCol);
 
-    // Bomb body
-    game.draw.rect(W * 0.06, H * 0.18, W * 0.88, H * 0.72, C.bomb, 0.9);
-    game.draw.rect(W * 0.06, H * 0.18, W * 0.88, 8, C.bombHi, 0.7);
-    // Panels
-    game.draw.rect(W * 0.06, H * 0.18, W * 0.14, H * 0.72, '#111008', 0.9);
-    game.draw.rect(W * 0.8, H * 0.18, W * 0.14, H * 0.72, '#111008', 0.9);
-
-    // Timer display on bomb
-    var urgency = timeLeft < 10 ? 0.5 + 0.5 * Math.abs(Math.sin(elapsed * 8)) : 1;
-    game.draw.rect(W * 0.25, H * 0.2, W * 0.5, 80, '#0a0600', 0.9);
-    game.draw.text(timeLeft.toFixed(1), W / 2, H * 0.24 + 28, { size: 56, color: C.timer, bold: true });
-
-    // Wires
-    for (var wi2 = 0; wi2 < wires.length; wi2++) {
-      var wire = wires[wi2];
-      var wCol = wire.cut ? C.cut : wire.color.col;
-      if (!wire.cut) {
-        // Full wire
-        game.draw.line(wire.x1, wire.y1, wire.mx, wire.my, wCol, 10);
-        game.draw.line(wire.mx, wire.my, wire.x2, wire.y2, wCol, 10);
-        // Highlight dot at mid
-        game.draw.circle(wire.mx, wire.my, 8, wire.color.hi, 0.4);
-      } else {
-        // Cut wire: two halves with gap
-        game.draw.line(wire.x1, wire.y1, wire.cutX - 15, wire.cutY, C.cut, 10);
-        game.draw.line(wire.cutX + 15, wire.cutY, wire.x2, wire.y2, C.cut, 10);
-        // Frayed ends
-        game.draw.circle(wire.cutX - 15, wire.cutY, 6, wire.color.hi, 0.5);
-        game.draw.circle(wire.cutX + 15, wire.cutY, 6, wire.color.hi, 0.5);
-      }
-    }
-
-    // Color legend
-    game.draw.text('赤を切れ！', W / 2, H * 0.14, { size: 44, color: C.red, bold: true });
-
-    // Sparks
-    for (var si3 = 0; si3 < sparks.length; si3++) {
-      var sp = sparks[si3];
-      game.draw.circle(sp.x, sp.y, 5 * sp.life / 0.5, sp.col, sp.life * 0.9);
-    }
-
-    // Feedback
-    if (feedbackTimer > 0) {
-      game.draw.text(feedback, W / 2, H * 0.93, { size: 44, color: feedbackCol, bold: true });
-    }
-
-    game.draw.text(cutCount + ' / ' + NEEDED, W / 2, 148, { size: 60, color: '#f1f5f9', bold: true });
-
-    var ratio = Math.max(0, timeLeft / 25);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.green : C.red);
-    game.draw.text(timeLeft.toFixed(1), W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(timeLeft.toFixed(1) + 's', W / 2, 96, 44, timeLeft < 5 ? C.a : C.g);
+    txt(cutCount + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    initWires();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

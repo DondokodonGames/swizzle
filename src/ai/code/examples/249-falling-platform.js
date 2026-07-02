@@ -1,236 +1,146 @@
 // 249-falling-platform.js
-// フォールプラットフォーム — 次々と落ちる足場を渡って高く登り続ける
-// 操作: タップで着地先の足場を選ぶ（左右）
-// 成功: 高度30m到達  失敗: 落下 or 30秒
+// フォールプラットフォーム — 崩れ落ちる足場を左右に飛び移り、迫り上がる奈落から高く登り続ける
+// 操作: 左右タップで上の足場へ飛ぶ
+// 成功: 高度10m到達  失敗: 落下 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#06080f',
-    plat:   '#1e3a5f',
-    platHi: '#3b82f6',
-    safe:   '#22c55e',
-    safeHi: '#86efac',
-    danger: '#ef4444',
-    player: '#fde68a',
-    plrHi:  '#fff',
-    ui:     '#475569',
-    sky:    '#0a1628'
-  };
+  // ── パレット（ネオンアーケード、崩落タワー） ──
+  var C = { bg:'#06080f', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var PLAT_W = 280;
-  var PLAT_H = 20;
-  var platforms = [];
-  var scrollSpeed = 60; // pixels/sec rising
-  var scrollTotal = 0;
-  var GOAL_HEIGHT = 30 * 80; // 30 meters at 80px/m
-  var player = { x: W / 2, y: H * 0.6, vy: 0, onPlatform: -1, jumping: false, jumpTimer: 0 };
-  var done = false;
-  var timeLeft = 30;
-  var elapsed = 0;
-  var particles = [];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'FALLING PLATFORM';
+  var HOW_TO_PLAY = 'TAP LEFT / RIGHT TO LEAP UPWARD';
+  var MAX_TIME = 15;
+  var TOP = 220, PLAT_W = 300, PLAT_H = 22, GOAL_H = 10 * 80;
 
-  function generatePlatform(y) {
-    var x = Math.random() < 0.5 ? W * 0.25 - PLAT_W / 2 : W * 0.75 - PLAT_W / 2;
-    var falling = Math.random() < 0.3; // some platforms fall shortly after stepped on
-    platforms.push({ x: x, y: y, w: PLAT_W, h: PLAT_H, vy: 0, falling: falling, fallTimer: 0, active: true });
-  }
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function initPlatforms() {
-    platforms = [];
-    // Starting platform
-    platforms.push({ x: W / 2 - PLAT_W / 2, y: H * 0.65, w: PLAT_W, h: PLAT_H, vy: 0, falling: false, fallTimer: 0, active: true });
-    for (var i = 1; i <= 12; i++) {
-      generatePlatform(H * 0.65 - i * 140);
+  // ── ゲーム変数 ──
+  var platforms, player, scrollSpeed, scrollTotal, timeLeft, done, particles;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
     }
   }
 
-  game.onTap(function(tx, ty) {
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1424');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function genPlatform(y) { var x = Math.random() < 0.5 ? W * 0.25 - PLAT_W / 2 : W * 0.75 - PLAT_W / 2; platforms.push({ x: snap(x), y: y, w: PLAT_W, h: PLAT_H, vy: 0, falling: Math.random() < 0.3, fallTimer: 0, active: true }); }
+
+  function initPlatforms() { platforms = []; platforms.push({ x: snap(W / 2 - PLAT_W / 2), y: snap(H * 0.7), w: PLAT_W, h: PLAT_H, vy: 0, falling: false, fallTimer: 0, active: true }); for (var i = 1; i <= 10; i++) genPlatform(snap(H * 0.7 - i * 150)); }
+
+  function initGame() { initPlatforms(); player = { x: W / 2, y: H * 0.7 - 30, onPlatform: 0, jumping: false, jumpTimer: 0 }; scrollSpeed = 60; scrollTotal = 0; timeLeft = MAX_TIME; done = false; particles = []; }
+
+  function finish(success) {
     if (done) return;
-    if (!player.jumping && player.onPlatform >= 0) {
-      // Jump to nearest platform above that's on the tapped side
-      var targetSide = tx < W / 2 ? 'left' : 'right';
-      var best = -1, bestY = Infinity;
-      for (var pi = 0; pi < platforms.length; pi++) {
-        var pl = platforms[pi];
-        if (!pl.active) continue;
-        var side = pl.x + pl.w / 2 < W / 2 ? 'left' : 'right';
-        if (side !== targetSide) continue;
-        var dy = player.y - pl.y;
-        if (dy > 30 && dy < bestY) { bestY = dy; best = pi; }
-      }
-      if (best >= 0) {
-        var target = platforms[best];
-        player.jumping = true;
-        player.onPlatform = -1;
-        player.jumpTimer = 0;
-        player.startX = player.x;
-        player.startY = player.y;
-        player.targetX = target.x + target.w / 2;
-        player.targetY = target.y - 30;
-        player.jumpDur = 0.35;
-        player.landPlatform = best;
-        game.audio.play('se_tap', 0.4);
-      }
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (600 + Math.ceil(timeLeft) * 100) : Math.floor(scrollTotal / 80) * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawPlatform(p) { var fall = p.vy > 0; game.draw.rect(p.x, snap(p.y), p.w, p.h, fall ? C.a : C.e, 0.85); game.draw.rect(p.x, snap(p.y), p.w, 6, C.g, 0.4); if (p.falling && p.fallTimer > 0) game.draw.rect(p.x, snap(p.y), snap(p.w * p.fallTimer / 0.5), 4, C.f, 0.8); }
+
+  function drawPlayer() { pc(player.x, player.y, 28, C.c, 0.95); game.draw.rect(snap(player.x) - 10, snap(player.y) - 8, 8, 8, '#000'); game.draw.rect(snap(player.x) + 2, snap(player.y) - 8, 8, 8, '#000'); }
+
+  // ── 入力 ──
+  game.onTap(function(x) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || player.jumping || player.onPlatform < 0) return;
+    var side = x < W / 2 ? 'left' : 'right', best = -1, bestY = Infinity;
+    for (var pi = 0; pi < platforms.length; pi++) { var pl = platforms[pi]; if (!pl.active) continue; var s = pl.x + pl.w / 2 < W / 2 ? 'left' : 'right'; if (s !== side) continue; var dy = player.y - pl.y; if (dy > 30 && dy < bestY) { bestY = dy; best = pi; } }
+    if (best >= 0) { var t = platforms[best]; player.jumping = true; player.onPlatform = -1; player.jumpTimer = 0; player.sx = player.x; player.sy = player.y; player.tx = t.x + t.w / 2; player.ty = t.y - 30; player.land = best; game.audio.play('se_tap', 0.4); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!platforms) initGame(); background(); for (var i = 0; i < platforms.length; i++) drawPlatform(platforms[i]); drawPlayer();
+      txt(GAME_TITLE, W / 2, H * 0.14, 72, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 26, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.92, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.97, 40, '#445566');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SUMMIT!' : 'FELL', W / 2, H * 0.35, 82, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    // Scroll everything up
-    var scroll = scrollSpeed * dt;
-    scrollTotal += scroll;
-    for (var pi2 = 0; pi2 < platforms.length; pi2++) {
-      platforms[pi2].y += scroll;
-    }
-    player.y += scroll;
-    if (player.jumping) {
-      player.startY += scroll;
-      player.targetY += scroll;
-    }
-
-    // Check win
-    if (scrollTotal >= GOAL_HEIGHT && !done) {
-      done = true;
-      game.audio.play('se_success');
-      setTimeout(function() { game.end.success(Math.floor(scrollTotal / 80) * 100 + Math.ceil(timeLeft) * 80); }, 400);
-      return;
-    }
-
-    // Increase scroll speed
-    scrollSpeed = 60 + scrollTotal / GOAL_HEIGHT * 80;
-
-    // Player jump animation
-    if (player.jumping) {
-      player.jumpTimer += dt;
-      var t = Math.min(1, player.jumpTimer / player.jumpDur);
-      var arc = Math.sin(t * Math.PI) * -120;
-      player.x = player.startX + (player.targetX - player.startX) * t;
-      player.y = player.startY + (player.targetY - player.startY) * t + arc;
-      if (t >= 1) {
-        player.jumping = false;
-        player.onPlatform = player.landPlatform;
-        var lp = platforms[player.landPlatform];
-        if (lp && lp.falling) {
-          lp.fallTimer = 0.5; // starts falling after 0.5s
-        }
-        game.audio.play('se_tap', 0.3);
-        for (var pi3 = 0; pi3 < 4; pi3++) {
-          var ang = Math.random() * Math.PI + Math.PI; // downward
-          particles.push({ x: player.x, y: player.y, vx: Math.cos(ang) * 80, vy: Math.sin(ang) * 80, life: 0.3 });
-        }
+      if (timeLeft <= 0) { finish(false); return; }
+      var scroll = scrollSpeed * dt; scrollTotal += scroll;
+      for (var pi2 = 0; pi2 < platforms.length; pi2++) platforms[pi2].y += scroll;
+      player.y += scroll; if (player.jumping) { player.sy += scroll; player.ty += scroll; }
+      if (scrollTotal >= GOAL_H) { finish(true); return; }
+      scrollSpeed = 60 + scrollTotal / GOAL_H * 60;
+      if (player.jumping) {
+        player.jumpTimer += dt; var t = Math.min(1, player.jumpTimer / 0.35), arc = Math.sin(t * Math.PI) * -120;
+        player.x = player.sx + (player.tx - player.sx) * t; player.y = player.sy + (player.ty - player.sy) * t + arc;
+        if (t >= 1) { player.jumping = false; player.onPlatform = player.land; var lp = platforms[player.land]; if (lp && lp.falling) lp.fallTimer = 0.5; game.audio.play('se_tap', 0.3); }
       }
+      for (var pi3 = 0; pi3 < platforms.length; pi3++) { var pl2 = platforms[pi3]; if (!pl2.active) continue; if (pl2.falling && pl2.fallTimer > 0) { pl2.fallTimer -= dt; if (pl2.fallTimer <= 0) pl2.vy = 320; } if (pl2.vy > 0) pl2.y += pl2.vy * dt; }
+      if (!player.jumping && player.onPlatform >= 0) { var onp = platforms[player.onPlatform]; if (!onp || !onp.active || onp.y > H + 100) player.onPlatform = -1; else player.y = onp.y - 30; }
+      if (player.y > H + 100) { finish(false); return; }
+      for (var pi5 = platforms.length - 1; pi5 >= 0; pi5--) if (platforms[pi5].y > H + 60) platforms.splice(pi5, 1);
+      var hi = Infinity; for (var pi6 = 0; pi6 < platforms.length; pi6++) if (platforms[pi6].y < hi) hi = platforms[pi6].y;
+      while (hi > TOP - 150) { hi -= 150; genPlatform(hi); }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Falling platforms
-    for (var pi4 = 0; pi4 < platforms.length; pi4++) {
-      var pl2 = platforms[pi4];
-      if (!pl2.active) continue;
-      if (pl2.falling && pl2.fallTimer > 0) {
-        pl2.fallTimer -= dt;
-        if (pl2.fallTimer <= 0) {
-          pl2.vy = 300; // start falling down
-        }
-      }
-      if (pl2.vy > 0) {
-        pl2.y += pl2.vy * dt;
-      }
-    }
+    // ---- 描画 ----
+    background();
+    for (var pi7 = 0; pi7 < platforms.length; pi7++) drawPlatform(platforms[pi7]);
+    drawPlayer();
 
-    // Update player Y if on platform
-    if (!player.jumping && player.onPlatform >= 0) {
-      var onPl = platforms[player.onPlatform];
-      if (!onPl || !onPl.active || onPl.y > H + 100) {
-        // Fell off
-        player.onPlatform = -1;
-      } else {
-        player.y = onPl.y - 30;
-      }
-    }
-
-    // Check if player fell off screen
-    if (player.y > H + 100 && !done) {
-      done = true;
-      game.audio.play('se_failure');
-      setTimeout(function() { game.end.failure(); }, 400);
-      return;
-    }
-
-    // Remove off-screen platforms and generate new ones
-    for (var pi5 = platforms.length - 1; pi5 >= 0; pi5--) {
-      if (platforms[pi5].y > H + 60) platforms.splice(pi5, 1);
-    }
-    var highestY = Infinity;
-    for (var pi6 = 0; pi6 < platforms.length; pi6++) {
-      if (platforms[pi6].y < highestY) highestY = platforms[pi6].y;
-    }
-    while (highestY > 140) {
-      highestY -= 140;
-      generatePlatform(highestY);
-    }
-
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Platforms
-    for (var pi7 = 0; pi7 < platforms.length; pi7++) {
-      var pl3 = platforms[pi7];
-      var isFalling = pl3.vy > 0;
-      var col = isFalling ? C.danger : C.plat;
-      var hiCol = isFalling ? '#fca5a5' : C.platHi;
-      game.draw.rect(pl3.x, pl3.y, pl3.w, pl3.h, col, 0.85);
-      game.draw.rect(pl3.x, pl3.y, pl3.w, 5, hiCol, 0.6);
-      if (pl3.falling && pl3.fallTimer > 0) {
-        game.draw.rect(pl3.x, pl3.y, pl3.w * (pl3.fallTimer / 0.5), 3, C.danger, 0.8);
-      }
-    }
-
-    // Player
-    var px = player.x;
-    var py = player.y;
-    var arc2 = player.jumping ? Math.sin((player.jumpTimer / player.jumpDur) * Math.PI) * 0.3 : 0;
-    game.draw.circle(px, py, 26 + arc2 * 10, C.plrHi, 0.3);
-    game.draw.circle(px, py, 26, C.player, 0.9);
-    game.draw.circle(px - 8, py - 8, 8, '#fff', 0.5);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 6 * p.life / 0.3, C.safeHi, p.life * 0.8);
-    }
-
-    // Height display
     var meters = Math.floor(scrollTotal / 80);
-    game.draw.text(meters + 'm / 30m', W / 2, H * 0.9, { size: 50, color: C.safe, bold: true });
-
-    var heightRatio = Math.min(1, scrollTotal / GOAL_HEIGHT);
-    game.draw.rect(W - 20, H * 0.1, 12, H * 0.78, C.ui, 0.3);
-    game.draw.rect(W - 20, H * 0.1 + H * 0.78 * (1 - heightRatio), 12, H * 0.78 * heightRatio, C.safe, 0.8);
-
-    var ratio = Math.max(0, timeLeft / 30);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.safe : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    game.draw.rect(W - 20, TOP, 12, H - TOP - 180, C.d, 0.3);
+    game.draw.rect(W - 20, TOP + (H - TOP - 180) * (1 - Math.min(1, scrollTotal / GOAL_H)), 12, (H - TOP - 180) * Math.min(1, scrollTotal / GOAL_H), C.b, 0.8);
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(meters + ' / 10m', W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    initPlatforms();
-    player.onPlatform = 0;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
