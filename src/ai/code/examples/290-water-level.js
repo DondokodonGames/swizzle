@@ -1,225 +1,161 @@
 // 290-water-level.js
-// ウォーターレベル — 水位を調整して魚を正しい深さに誘導する
-// 操作: タップで水を増やす/減らすボタンを操作
-// 成功: 10匹の魚をそれぞれ指定の深さに届ける  失敗: 3回溢れる or 50秒
+// ウォーターレベル — 注水/排水で水位を操り、沈む魚をターゲット深度ラインまで導く水槽パズル
+// 操作: 左ボタンで注水、右ボタンで排水（トグル）
+// 成功: 3匹を指定深度へ届ける  失敗: 3回あふれる or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#020a0f',
-    water:   '#0369a1',
-    waterHi: '#0ea5e9',
-    waterLo: '#0c4a6e',
-    fish:    '#f59e0b',
-    fishHi:  '#fde68a',
-    target:  '#22c55e',
-    tgtHi:   '#86efac',
-    tank:    '#1e293b',
-    tankHi:  '#334155',
-    overflow:'#ef4444',
-    ovHi:    '#fca5a5',
-    ui:      '#475569',
-    text:    '#f1f5f9'
-  };
+  // ── パレット（ネオンアーケード、アクアラボ） ──
+  var C = { bg:'#02080f', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var TANK_X = W * 0.15, TANK_Y = H * 0.2;
-  var TANK_W = W * 0.7, TANK_H = H * 0.55;
-  var WATER_MAX = TANK_H;
-  var waterLevel = TANK_H * 0.5; // water height (from bottom)
-  var waterVel = 0;
-  var FILL_RATE = 80; // pixels per second when filling
-  var DRAIN_RATE = 60;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'WATER LEVEL';
+  var HOW_TO_PLAY = 'FILL / DRAIN TO GUIDE THE FISH TO THE LINE';
+  var MAX_TIME = 15;
+  var NEEDED   = 3;          // 修正2: 10 → 3
+  var MAX_OVER = 3;
+  var TANK_X = snap(W * 0.14), TANK_Y = snap(H * 0.22), TANK_W = snap(W * 0.72), TANK_H = snap(H * 0.50);
+  var FILL_RATE = 90, DRAIN_RATE = 70;
 
-  var fish = null;
-  var targetDepth = 0; // from top of water
-  var delivered = 0;
-  var NEEDED = 10;
-  var overflows = 0;
-  var MAX_OVERFLOW = 3;
-  var done = false;
-  var timeLeft = 50;
-  var elapsed = 0;
-  var filling = false;
-  var draining = false;
-  var feedback = '';
-  var feedbackCol = '#fff';
-  var feedbackTimer = 0;
-  var bubbles = [];
-  var fishAnim = 0;
-  var successFlash = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnFish() {
-    targetDepth = 50 + Math.random() * (TANK_H - 150);
-    fish = {
-      y: 0, // relative to water surface (0=surface, positive=deeper)
-      targetY: targetDepth,
-      tailWag: 0,
-      delivered: false
-    };
-    feedback = '深さ ' + Math.round(targetDepth) + 'px に誘導せよ';
-    feedbackCol = C.tgtHi;
-    feedbackTimer = 1.2;
+  // ── ゲーム変数 ──
+  var waterLevel, fish, targetY, delivered, overflows, timeLeft, done, filling, draining, bubbles, flash, deliverLock;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1a28');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function spawnFish() { targetY = snap(TANK_Y + 80 + Math.random() * (TANK_H - 160)); fish = { y: TANK_Y + 30, wag: 0 }; deliverLock = false; }
+
+  function initGame() { waterLevel = TANK_H * 0.5; delivered = 0; overflows = 0; timeLeft = MAX_TIME; done = false; filling = false; draining = false; bubbles = []; flash = 0; spawnFish(); }
+
+  function finish(success) {
     if (done) return;
-    var btnY = H * 0.83;
-    if (ty >= btnY && ty <= btnY + 80) {
-      if (tx < W / 2) filling = !filling;
-      else draining = !draining;
-      game.audio.play('se_tap', 0.2);
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (delivered * 400 + Math.ceil(timeLeft) * 80) : delivered * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawTank() {
+    game.draw.rect(TANK_X - 8, TANK_Y - 8, TANK_W + 16, TANK_H + 16, C.d, 0.9);
+    game.draw.rect(TANK_X, TANK_Y, TANK_W, TANK_H, '#040c14', 0.95);
+    var wy = snap(TANK_Y + TANK_H - waterLevel);
+    game.draw.rect(TANK_X, wy, TANK_W, snap(waterLevel), C.e, 0.35);
+    game.draw.rect(TANK_X, wy, TANK_W, 8, C.e, 0.7);
+  }
+
+  function drawFish() {
+    if (!fish) return;
+    var fx = snap(TANK_X + TANK_W / 2), fy = snap(fish.y), wag = Math.floor(game.time.elapsed * 8) % 2 ? 8 : -8;
+    pc(fx, fy, 26, C.f, 0.95);
+    game.draw.rect(fx + 22, fy - 4 + wag, 20, 8, C.f, 0.9);
+    game.draw.rect(fx + 22, fy - 12 + wag, 12, 8, C.f, 0.9);
+    game.draw.rect(fx + 8, fy - 8, 10, 10, C.g, 0.95); game.draw.rect(fx + 12, fy - 6, 5, 5, C.bg, 1);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var by = snap(H * 0.82);
+    if (y >= by && y <= by + 100) { if (x < W / 2) { filling = !filling; draining = false; } else { draining = !draining; filling = false; } game.audio.play('se_tap', 0.3); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (fish === undefined || fish === null) initGame(); background(); drawTank();
+      game.draw.rect(TANK_X, snap(targetY), TANK_W, 6, C.b, 0.8); txt('>', TANK_X + TANK_W + 24, targetY + 12, 40, C.b);
+      drawFish();
+      txt(GAME_TITLE, W / 2, H * 0.13, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.185, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.94, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.98, 44, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ALL SAFE!' : 'FLOODED', W / 2, H * 0.35, 76, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    if (feedbackTimer > 0) feedbackTimer -= dt;
-    if (successFlash > 0) successFlash -= dt;
-
-    // Water dynamics
-    if (filling) waterLevel += FILL_RATE * dt;
-    if (draining) waterLevel -= DRAIN_RATE * dt;
-    waterLevel += waterVel * dt;
-    waterVel *= (1 - dt * 3);
-    waterLevel = Math.max(0, waterLevel);
-
-    // Overflow check
-    if (waterLevel >= WATER_MAX) {
-      waterLevel = WATER_MAX;
-      if (filling) {
-        overflows++;
-        filling = false;
-        feedback = '溢れた！ (' + overflows + '/' + MAX_OVERFLOW + ')';
-        feedbackCol = C.overflow;
-        feedbackTimer = 0.8;
-        game.audio.play('se_failure', 0.6);
-        if (overflows >= MAX_OVERFLOW && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt;
+      if (filling) waterLevel += FILL_RATE * dt;
+      if (draining) waterLevel -= DRAIN_RATE * dt;
+      waterLevel = Math.max(0, waterLevel);
+      if (waterLevel >= TANK_H) { waterLevel = TANK_H; if (filling) { overflows++; filling = false; game.audio.play('se_failure', 0.5); if (overflows >= MAX_OVER) { finish(false); return; } } }
+      // 魚は水面につれて沈む（水位が高いほど深く漂う）
+      if (fish && !deliverLock) {
+        var surfaceY = TANK_Y + TANK_H - waterLevel;
+        fish.y = Math.min(fish.y + 40 * dt, Math.max(surfaceY + 40, TANK_Y + 40));
+        if (Math.abs(fish.y - targetY) < 22) {
+          deliverLock = true; delivered++; flash = 0.5; game.audio.play('se_success', 0.5);
+          if (delivered >= NEEDED) { finish(true); return; }
+          setTimeout(function() { if (!done) spawnFish(); }, 700);
         }
       }
+      if (filling && Math.random() < 0.3) bubbles.push({ x: snap(TANK_X + Math.random() * TANK_W), y: TANK_Y + TANK_H - waterLevel, life: 1.0 });
+      for (var bi = bubbles.length - 1; bi >= 0; bi--) { bubbles[bi].y -= 100 * dt; bubbles[bi].life -= dt; if (bubbles[bi].life <= 0 || bubbles[bi].y < TANK_Y) bubbles.splice(bi, 1); }
     }
 
-    // Fish update
-    if (fish && !fish.delivered) {
-      fish.tailWag += dt * 5;
-      // Fish floats at surface then gradually sinks
-      fish.y = Math.min(fish.y + 30 * dt, waterLevel - 40);
-      // Check if fish is at target depth
-      var fishDepthFromBottom = waterLevel - fish.y;
-      var targetFromBottom = waterLevel - fish.targetY;
-      if (Math.abs(fish.y - fish.targetY) < 20) {
-        fish.delivered = true;
-        delivered++;
-        successFlash = 0.6;
-        game.audio.play('se_success', 0.6);
-        feedback = '届いた！ ' + delivered + '/' + NEEDED;
-        feedbackCol = C.tgtHi;
-        feedbackTimer = 0.8;
-        waterVel = -20;
-        if (delivered >= NEEDED && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(delivered * 200 + Math.ceil(timeLeft) * 80); }, 500);
-          return;
-        }
-        setTimeout(function() { if (!done) spawnFish(); }, 1000);
-        fish = null;
-      }
-    }
+    // ---- 描画 ----
+    background(); drawTank();
+    game.draw.rect(TANK_X, snap(targetY), TANK_W, 6, C.b, 0.8 + 0.2 * (Math.floor(game.time.elapsed * 4) % 2)); txt('>', TANK_X + TANK_W + 24, targetY + 12, 40, C.b);
+    for (var bi2 = 0; bi2 < bubbles.length; bi2++) game.draw.rect(snap(bubbles[bi2].x) - 4, snap(bubbles[bi2].y) - 4, 8, 8, C.e, bubbles[bi2].life * 0.6);
+    drawFish();
+    if (flash > 0) game.draw.rect(TANK_X, TANK_Y, TANK_W, TANK_H, C.b, flash * 0.4);
 
-    // Bubbles
-    if (filling && Math.random() < 0.3) {
-      bubbles.push({ x: TANK_X + Math.random() * TANK_W, y: TANK_Y + TANK_H - waterLevel + Math.random() * 30, r: 4 + Math.random() * 6, vy: -60 - Math.random() * 40, life: 1.0 });
-    }
-    for (var bi = bubbles.length - 1; bi >= 0; bi--) {
-      bubbles[bi].y += bubbles[bi].vy * dt;
-      bubbles[bi].life -= dt;
-      if (bubbles[bi].life <= 0 || bubbles[bi].y < TANK_Y) bubbles.splice(bi, 1);
-    }
+    // コントロールボタン
+    var by = snap(H * 0.82);
+    game.draw.rect(40, by, W / 2 - 60, 100, filling ? C.e : '#0a1a28', 0.9); txt(filling ? 'FILL [ON]' : 'FILL', W * 0.25, by + 62, 40, filling ? '#000' : C.g);
+    game.draw.rect(W / 2 + 20, by, W / 2 - 60, 100, draining ? C.a : '#0a1a28', 0.9); txt(draining ? 'DRAIN [ON]' : 'DRAIN', W * 0.75, by + 62, 40, draining ? '#000' : C.g);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Tank
-    game.draw.rect(TANK_X - 8, TANK_Y - 8, TANK_W + 16, TANK_H + 16, C.tank, 0.9);
-    game.draw.rect(TANK_X, TANK_Y, TANK_W, TANK_H, '#050d14', 0.95);
-
-    // Water
-    var waterY = TANK_Y + TANK_H - waterLevel;
-    game.draw.rect(TANK_X, waterY, TANK_W, waterLevel, C.water, 0.8);
-    game.draw.rect(TANK_X, waterY, TANK_W, 12, C.waterHi, 0.5);
-    game.draw.rect(TANK_X, waterY + 12, TANK_W, waterLevel - 12, C.waterLo, 0.3);
-
-    // Target line
-    if (fish) {
-      var tgtY = TANK_Y + TANK_H - fish.targetY;
-      game.draw.line(TANK_X, tgtY, TANK_X + TANK_W, tgtY, C.target, 4);
-      game.draw.circle(TANK_X + TANK_W - 20, tgtY, 14, C.target, 0.9);
-      game.draw.text('▶', TANK_X + TANK_W + 20, tgtY + 8, { size: 28, color: C.tgtHi });
-    }
-
-    // Bubbles
-    for (var bi2 = 0; bi2 < bubbles.length; bi2++) {
-      var b = bubbles[bi2];
-      game.draw.circle(b.x, b.y, b.r, C.waterHi, b.life * 0.5);
-    }
-
-    // Fish
-    if (fish) {
-      var fy = TANK_Y + TANK_H - fish.y;
-      if (fy >= TANK_Y && fy <= TANK_Y + TANK_H) {
-        var wag = Math.sin(fish.tailWag) * 12;
-        game.draw.circle(TANK_X + TANK_W / 2, fy, 28, C.fish, 0.9);
-        game.draw.circle(TANK_X + TANK_W / 2 - 15, fy - 8, 10, C.fishHi, 0.6);
-        // Tail
-        game.draw.line(TANK_X + TANK_W / 2 + 28, fy, TANK_X + TANK_W / 2 + 50, fy - 20 + wag, C.fish, 10);
-        game.draw.line(TANK_X + TANK_W / 2 + 28, fy, TANK_X + TANK_W / 2 + 50, fy + 20 + wag, C.fish, 10);
-        // Eye
-        game.draw.circle(TANK_X + TANK_W / 2 + 14, fy - 8, 7, '#fff', 0.9);
-        game.draw.circle(TANK_X + TANK_W / 2 + 16, fy - 8, 4, C.bg, 0.9);
-      }
-    }
-
-    if (successFlash > 0) {
-      game.draw.rect(TANK_X, TANK_Y, TANK_W, TANK_H, C.target, successFlash * 0.3);
-    }
-
-    // Water level indicator
-    game.draw.text(Math.round(waterLevel) + 'px', TANK_X - 70, TANK_Y + TANK_H - waterLevel + 16, { size: 28, color: C.waterHi });
-
-    // Control buttons
-    var btnY2 = H * 0.83;
-    game.draw.rect(40, btnY2, W / 2 - 60, 70, filling ? C.waterHi : C.tank, 0.9);
-    game.draw.text('注水 ' + (filling ? '■' : '▶'), W * 0.25, btnY2 + 40, { size: 38, color: filling ? C.bg : C.text, bold: true });
-    game.draw.rect(W / 2 + 20, btnY2, W / 2 - 60, 70, draining ? C.overflow : C.tank, 0.9);
-    game.draw.text('排水 ' + (draining ? '■' : '▶'), W * 0.75, btnY2 + 40, { size: 38, color: draining ? '#fff' : C.text, bold: true });
-
-    if (feedbackTimer > 0) {
-      game.draw.text(feedback, W / 2, H * 0.91, { size: 38, color: feedbackCol, bold: true });
-    }
-
-    // Overflow dots
-    for (var oi = 0; oi < MAX_OVERFLOW; oi++) {
-      game.draw.circle(W / 2 - (MAX_OVERFLOW - 1) * 28 + oi * 56, H * 0.95, 15, oi < overflows ? C.overflow : '#050d14');
-    }
-
-    game.draw.text(delivered + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 50);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.water : C.overflow);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(delivered + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var oi = 0; oi < MAX_OVER; oi++) game.draw.rect(snap(W / 2 + (oi - (MAX_OVER - 1) / 2) * 56) - 10, 224, 20, 20, oi < overflows ? C.a : '#0a1a28');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.15);
-    spawnFish();
+    state = S.ATTRACT;
+    fish = null;
+    initGame();
   });
 })(game);
