@@ -1,226 +1,146 @@
 // 312-tornado-dodge.js
-// 竜巻ドッジ — 渦巻く竜巻を左右スワイプで避けながら生き残れ
-// 操作: 左右スワイプで避ける（竜巻は予測不可能に方向転換する）
-// 成功: 30秒生き残る  失敗: 竜巻に3回触れる
+// 竜巻ドッジ — 予測不能に蛇行して迫る竜巻を左右スワイプでレーン移動して避け続けるサバイバル
+// 操作: 左右スワイプでレーン移動して竜巻を避ける
+// 成功: 10秒生き残る  失敗: 竜巻に3回触れる
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0614',
-    sky:    '#120a28',
-    ground: '#1a1008',
-    groundHi:'#2d1a10',
-    player: '#22c55e',
-    playerHi:'#86efac',
-    tornado:'#8b5cf6',
-    tornado2:'#6d28d9',
-    tornado3:'#4c1d95',
-    debris: '#a78bfa',
-    danger: '#ef4444',
-    safe:   '#22c55e',
-    ui:     '#475569',
-    text:   '#f1f5f9'
-  };
+  // ── パレット（ネオンアーケード、嵐の荒野） ──
+  var C = { bg:'#0a0614', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff', ground:'#1a1008' };
 
-  var playerX = W / 2;
-  var playerY = H * 0.8;
-  var playerTargetX = playerX;
-  var PLAYER_LANES = 5;
-  var LANE_W = W / PLAYER_LANES;
-  var playerLane = 2;
-  var playerMoveSpeed = 600;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'TORNADO DODGE';
+  var HOW_TO_PLAY = 'SWIPE LEFT / RIGHT TO DODGE THE TWISTERS';
+  var NEEDED   = 10;         // 修正2: サバイバル 30s → 10s
+  var MAX_HIT  = 3;
+  var LANES = 5, LANE_W = snap(W / 5), PLAYER_Y = snap(H * 0.80), GROUND_Y = snap(H * 0.85);
 
-  var tornadoes = [];
-  var debris = [];
-  var survived = 0;
-  var SURVIVE_TIME = 30;
-  var hits = 0;
-  var MAX_HIT = 3;
-  var done = false;
-  var elapsed = 0;
-  var particles = [];
-  var spawnTimer = 0;
-  var hitFlash = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var lane, px, targetX, tornados, survived, hits, timeLeft, done, spawnTimer, particles, hitFlash;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / NEEDED * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#120828');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(0, GROUND_Y, W, H, C.ground, 0.9); game.draw.rect(0, GROUND_Y, W, 8, C.f, 0.5); }
+
+  function laneX(l) { return snap(LANE_W * (l + 0.5)); }
 
   function spawnTornado() {
-    var lane = Math.floor(Math.random() * PLAYER_LANES);
-    var speed = 200 + Math.random() * 150 + survived * 4;
-    tornadoes.push({
-      x: LANE_W * (lane + 0.5),
-      y: -100,
-      vy: speed,
-      r: 60 + Math.random() * 30,
-      wobbleX: (Math.random() - 0.5) * 80,
-      wobbleSpeed: 1 + Math.random(),
-      wobbleAngle: 0,
-      spin: 0
-    });
+    var l = Math.floor(Math.random() * LANES), spd = 260 + Math.random() * 140 + (NEEDED - timeLeft) * 20;
+    tornados.push({ x: laneX(l), y: -100, vy: spd, r: 62, wob: (Math.random() - 0.5) * 100, ws: 1 + Math.random(), wa: 0, spin: 0 });
   }
 
-  function spawnDebris() {
-    debris.push({
-      x: Math.random() * W,
-      y: -30,
-      vx: (Math.random() - 0.5) * 200,
-      vy: 300 + Math.random() * 200,
-      r: 8 + Math.random() * 14,
-      rot: Math.random() * Math.PI * 2
-    });
-  }
+  function initGame() { lane = 2; px = laneX(2); targetX = px; tornados = []; survived = 0; hits = 0; timeLeft = NEEDED; done = false; spawnTimer = 0.5; particles = []; hitFlash = 0; }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
+  function finish(success) {
     if (done) return;
-    if (dir === 'left' && playerLane > 0) {
-      playerLane--;
-      playerTargetX = LANE_W * (playerLane + 0.5);
-      game.audio.play('se_tap', 0.2);
-    } else if (dir === 'right' && playerLane < PLAYER_LANES - 1) {
-      playerLane++;
-      playerTargetX = LANE_W * (playerLane + 0.5);
-      game.audio.play('se_tap', 0.2);
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.round(survived) * 300 + (MAX_HIT - hits) * 500) : Math.round(survived) * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawTornado(t) {
+    for (var r = 0; r < 5; r++) { var rr = t.r * (0.3 + r * 0.16), col = r < 2 ? C.d : r < 4 ? C.a : '#4c1d95'; pc(t.x + Math.cos(t.spin + r * 1.2) * rr * 0.3, t.y + r * 22, rr, col, 0.55 - r * 0.07); }
+    pc(t.x, t.y, 14, C.g, 0.8);
+  }
+
+  function drawPlayer() { pc(px, PLAYER_Y, 30, C.b, 0.95); pc(px, PLAYER_Y - 16, 12, C.g, 0.7); game.draw.rect(snap(px) - 30, GROUND_Y, 60, 8, '#000', 0.3); }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
   });
 
+  game.onSwipe(function(d) {
+    if (state !== S.PLAYING || done) return;
+    if (d === 'left' && lane > 0) { lane--; targetX = laneX(lane); game.audio.play('se_tap', 0.2); }
+    else if (d === 'right' && lane < LANES - 1) { lane++; targetX = laneX(lane); game.audio.play('se_tap', 0.2); }
+  });
+
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawTornado({ x: W * 0.5, y: H * 0.4, r: 62, spin: game.time.elapsed * 4 }); drawPlayer();
+      txt(GAME_TITLE, W / 2, H * 0.14, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.62, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.67, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SURVIVOR!' : 'SWEPT AWAY', W / 2, H * 0.35, 74, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      elapsed += dt;
-      survived = Math.min(elapsed, SURVIVE_TIME);
-      if (elapsed >= SURVIVE_TIME) {
-        done = true;
-        game.audio.play('se_success', 0.7);
-        setTimeout(function() { game.end.success(Math.round(survived * 100) + (MAX_HIT - hits) * 500); }, 400);
-        return;
-      }
-    }
-
-    if (hitFlash > 0) hitFlash -= dt;
-
-    // Move player
-    playerX += (playerTargetX - playerX) * Math.min(1, playerMoveSpeed * dt / Math.max(1, Math.abs(playerTargetX - playerX)));
-
-    // Spawn tornadoes
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && !done) {
-      spawnTornado();
-      if (Math.random() < 0.4) spawnDebris();
-      spawnTimer = 0.8 - Math.min(0.5, elapsed * 0.01);
-    }
-
-    // Update tornadoes
-    for (var ti = tornadoes.length - 1; ti >= 0; ti--) {
-      var t = tornadoes[ti];
-      t.wobbleAngle += dt * t.wobbleSpeed;
-      t.x += Math.sin(t.wobbleAngle) * t.wobbleX * dt;
-      // Keep in bounds
-      t.x = Math.max(t.r, Math.min(W - t.r, t.x));
-      t.y += t.vy * dt;
-      t.spin += dt * 4;
-
-      // Collision with player
-      var dx = playerX - t.x, dy = playerY - t.y;
-      if (Math.hypot(dx, dy) < t.r + 25) {
-        hits++;
-        hitFlash = 0.5;
-        game.audio.play('se_failure', 0.6);
-        // Push player away
-        playerLane = Math.floor(Math.random() * PLAYER_LANES);
-        playerTargetX = LANE_W * (playerLane + 0.5);
-        for (var pi = 0; pi < 10; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: playerX, y: playerY, vx: Math.cos(ang) * 250, vy: Math.sin(ang) * 250, life: 0.6, col: C.danger });
+      timeLeft -= dt; survived = NEEDED - Math.max(0, timeLeft);
+      if (timeLeft <= 0) { finish(true); return; }
+      if (hitFlash > 0) hitFlash -= dt;
+      px += (targetX - px) * Math.min(1, 12 * dt);
+      spawnTimer -= dt; if (spawnTimer <= 0) { spawnTornado(); spawnTimer = Math.max(0.35, 0.8 - survived * 0.03); }
+      for (var ti = tornados.length - 1; ti >= 0; ti--) {
+        var t = tornados[ti]; t.wa += dt * t.ws; t.x += Math.sin(t.wa) * t.wob * dt; t.x = Math.max(t.r, Math.min(W - t.r, t.x)); t.y += t.vy * dt; t.spin += dt * 4;
+        if (Math.hypot(px - t.x, PLAYER_Y - t.y) < t.r + 24) {
+          hits++; hitFlash = 0.5; game.audio.play('se_failure', 0.6);
+          lane = Math.floor(Math.random() * LANES); targetX = laneX(lane);
+          for (var k = 0; k < 10; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: px, y: PLAYER_Y, vx: Math.cos(a) * 250, vy: Math.sin(a) * 250, life: 0.6, col: C.a }); }
+          tornados.splice(ti, 1); if (hits >= MAX_HIT) { finish(false); return; } continue;
         }
-        tornadoes.splice(ti, 1);
-        if (hits >= MAX_HIT && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-        }
-        continue;
+        if (t.y > H + 120) tornados.splice(ti, 1);
       }
-
-      if (t.y > H + 120) tornadoes.splice(ti, 1);
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Update debris
-    for (var di = debris.length - 1; di >= 0; di--) {
-      debris[di].x += debris[di].vx * dt;
-      debris[di].y += debris[di].vy * dt;
-      debris[di].rot += dt * 3;
-      if (debris[di].y > H + 50) debris.splice(di, 1);
-    }
+    // ---- 描画 ----
+    background();
+    for (var ti2 = 0; ti2 < tornados.length; ti2++) drawTornado(tornados[ti2]);
+    drawPlayer();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (hitFlash > 0) game.draw.rect(0, 0, W, H, C.a, hitFlash * 0.25);
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, H * 0.85, C.sky, 0.6);
-    game.draw.rect(0, H * 0.85, W, H * 0.15, C.ground, 0.9);
-    game.draw.rect(0, H * 0.85, W, 8, C.groundHi, 0.7);
-
-    // Hit flash
-    if (hitFlash > 0) game.draw.rect(0, 0, W, H, C.danger, hitFlash * 0.3);
-
-    // Debris
-    for (var di2 = 0; di2 < debris.length; di2++) {
-      var d = debris[di2];
-      game.draw.circle(d.x, d.y, d.r, '#6b7280', 0.6);
-      game.draw.rect(d.x - d.r * 0.5, d.y - d.r * 0.5, d.r, d.r, '#374151', 0.7);
-    }
-
-    // Tornadoes
-    for (var ti2 = 0; ti2 < tornadoes.length; ti2++) {
-      var t2 = tornadoes[ti2];
-      // Draw as spiral rings
-      for (var ring = 0; ring < 5; ring++) {
-        var rr = t2.r * (0.3 + ring * 0.18);
-        var alpha = 0.5 - ring * 0.08;
-        var col = ring < 2 ? C.tornado : (ring < 4 ? C.tornado2 : C.tornado3);
-        game.draw.circle(t2.x + Math.cos(t2.spin + ring * 1.2) * rr * 0.3, t2.y + ring * 20, rr, col, alpha);
-      }
-      // Top funnel tip
-      game.draw.circle(t2.x, t2.y, 15, C.debris, 0.8);
-      // Warning zone
-      game.draw.circle(t2.x, t2.y, t2.r + 20, C.danger, 0.08);
-    }
-
-    // Player
-    var pGlow = 5 * Math.sin(elapsed * 4);
-    game.draw.circle(playerX, playerY, 32 + pGlow + 8, C.player, 0.15);
-    game.draw.circle(playerX, playerY, 32 + pGlow, C.player, 0.9);
-    game.draw.circle(playerX, playerY - 16, 14, C.playerHi, 0.7);
-    // Shadow
-    game.draw.circle(playerX, H * 0.85, 36 * 0.6, '#000', 0.3);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    // Survive time progress
-    game.draw.text('生存中... ' + Math.ceil(SURVIVE_TIME - survived) + '秒', W / 2, H * 0.89, { size: 44, color: C.ui });
-
-    // Hit dots
-    for (var hi = 0; hi < MAX_HIT; hi++) {
-      game.draw.circle(W / 2 - (MAX_HIT - 1) * 30 + hi * 60, H * 0.94, 18, hi < hits ? C.danger : '#0a0614');
-    }
-
-    game.draw.text(Math.round(survived) + 's', W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    var ratio = Math.max(0, survived / SURVIVE_TIME);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio < 0.7 ? C.tornado : C.safe);
-    game.draw.text(Math.ceil(SURVIVE_TIME - survived) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('SURVIVE ' + Math.floor(survived) + ' / ' + NEEDED + 's', W / 2, 168, 46, C.b);
+    for (var hi = 0; hi < MAX_HIT; hi++) game.draw.rect(snap(W / 2 + (hi - (MAX_HIT - 1) / 2) * 56) - 10, 224, 20, 20, hi < hits ? C.a : '#120828');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    spawnTimer = 0.5;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
