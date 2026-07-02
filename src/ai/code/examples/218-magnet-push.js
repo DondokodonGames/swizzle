@@ -1,201 +1,170 @@
 // 218-magnet-push.js
-// マグネットプッシュ — 同極が反発する磁石の力で金属球をゴールに押し込む物理パズル
-// 操作: タップで自分の磁石を配置（反発で球を押す）
-// 成功: 球をゴールに入れる  失敗: 60秒
+// マグネットプッシュ — 同極が反発する磁力で金属球を押し、ゴールへねじ込む物理パズル
+// 操作: タップで磁石を配置（N/S交互・反発と吸引で球を動かす）
+// 成功: 球をゴールに入れる  失敗: 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0f1a',
-    ball:   '#94a3b8',
-    ballHi: '#cbd5e1',
-    magN:   '#ef4444',
-    magNHi: '#fca5a5',
-    magS:   '#3b82f6',
-    magSHi: '#93c5fd',
-    goal:   '#22c55e',
-    goalHi: '#86efac',
-    wall:   '#1e293b',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、磁力実験場） ──
+  var C = { bg:'#0a0f1a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Ball
-  var ballX = W * 0.5;
-  var ballY = H * 0.7;
-  var ballVX = 0;
-  var ballVY = 0;
-  var BALL_R = 32;
-  var FRICTION = 0.97;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'MAGNET PUSH';
+  var HOW_TO_PLAY = 'TAP TO DROP MAGNETS · PUSH THE BALL TO GOAL';
+  var MAX_TIME = 20;
+  var TOP = 220, WALL = 32;
+  var BALL_R = 36, FRICTION = 0.97, MAX_MAG = 3;
+  var GOAL_R = 60, goalX = snap(W * 0.5), goalY = snap(TOP + 120);
 
-  // Goal
-  var goalX = W * 0.5;
-  var goalY = H * 0.18;
-  var GOAL_R = 50;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Player magnet (placed by tap)
-  var magnets = []; // { x, y, polarity: 1(N) or -1(S) }
-  var MAX_MAGNETS = 3;
-  var polarity = 1; // toggle with each tap sequence
-
-  // Walls
-  var walls = [
-    { x: 0, y: 0, w: W, h: 30 },
-    { x: 0, y: H - 30, w: W, h: 30 },
-    { x: 0, y: 0, w: 30, h: H },
-    { x: W - 30, y: 0, w: 30, h: H }
-  ];
-
-  // Inner obstacle walls
+  // ── ゲーム変数 ──
+  var ballX, ballY, ballVX, ballVY, magnets, polarity, timeLeft, done, trail;
   var obstacles = [
-    { x: W * 0.2, y: H * 0.35, w: W * 0.25, h: 20 },
-    { x: W * 0.55, y: H * 0.5, w: W * 0.25, h: 20 },
-    { x: W * 0.15, y: H * 0.62, w: W * 0.3, h: 20 }
+    { x: snap(W * 0.18), y: snap(H * 0.42), w: snap(W * 0.28), h: 24 },
+    { x: snap(W * 0.54), y: snap(H * 0.56), w: snap(W * 0.28), h: 24 },
+    { x: snap(W * 0.14), y: snap(H * 0.70), w: snap(W * 0.32), h: 24 }
   ];
 
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var trail = [];
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  function collideBallWall(wx, wy, ww, wh) {
-    var left = wx, right = wx + ww, top = wy, bottom = wy + wh;
-    var bLeft = ballX - BALL_R, bRight = ballX + BALL_R;
-    var bTop = ballY - BALL_R, bBottom = ballY + BALL_R;
-    if (bRight > left && bLeft < right && bBottom > top && bTop < bottom) {
-      // push out shortest axis
-      var overlapX = Math.min(bRight - left, right - bLeft);
-      var overlapY = Math.min(bBottom - top, bottom - bTop);
-      if (overlapX < overlapY) {
-        if (ballX < wx + ww / 2) { ballX -= overlapX; ballVX = -Math.abs(ballVX) * 0.6; }
-        else { ballX += overlapX; ballVX = Math.abs(ballVX) * 0.6; }
-      } else {
-        if (ballY < wy + wh / 2) { ballY -= overlapY; ballVY = -Math.abs(ballVY) * 0.6; }
-        else { ballY += overlapY; ballVY = Math.abs(ballVY) * 0.6; }
-      }
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
     }
   }
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
-    // Don't place magnet too close to goal or inside walls
-    var dx = tx - goalX, dy = ty - goalY;
-    if (Math.sqrt(dx * dx + dy * dy) < GOAL_R + 30) return;
+  function ring(cx, cy, r, color, alpha) {
+    for (var a = 0; a < Math.PI * 2; a += 0.35) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha);
+  }
 
-    if (magnets.length >= MAX_MAGNETS) magnets.shift();
-    magnets.push({ x: tx, y: ty, pol: polarity });
-    polarity = -polarity; // alternate N/S
-    game.audio.play('se_tap', 0.3);
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#101828');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(0, TOP, W, WALL, C.d, 0.6); game.draw.rect(0, H - 180 - WALL, W, WALL, C.d, 0.6);
+    game.draw.rect(0, TOP, WALL, H - 180 - TOP, C.d, 0.6); game.draw.rect(W - WALL, TOP, WALL, H - 180 - TOP, C.d, 0.6);
+    for (var oi = 0; oi < obstacles.length; oi++) { var o = obstacles[oi]; game.draw.rect(o.x, o.y, o.w, o.h, C.d, 0.8); game.draw.rect(o.x, o.y, o.w, 6, C.g, 0.3); }
+  }
+
+  function collide(o) {
+    var bL = ballX - BALL_R, bR = ballX + BALL_R, bT = ballY - BALL_R, bB = ballY + BALL_R;
+    if (bR > o.x && bL < o.x + o.w && bB > o.y && bT < o.y + o.h) {
+      var ox = Math.min(bR - o.x, o.x + o.w - bL), oy = Math.min(bB - o.y, o.y + o.h - bT);
+      if (ox < oy) { if (ballX < o.x + o.w / 2) { ballX -= ox; ballVX = -Math.abs(ballVX) * 0.6; } else { ballX += ox; ballVX = Math.abs(ballVX) * 0.6; } }
+      else { if (ballY < o.y + o.h / 2) { ballY -= oy; ballVY = -Math.abs(ballVY) * 0.6; } else { ballY += oy; ballVY = Math.abs(ballVY) * 0.6; } }
+    }
+  }
+
+  function drawGoal() { ring(goalX, goalY, GOAL_R, C.b, 0.5 + 0.3 * (Math.floor(game.time.elapsed * 4) % 2)); pc(goalX, goalY, GOAL_R * 0.5, C.b, 0.4); txt('IN', goalX, goalY + 14, 40, C.g); }
+
+  function drawMagnet(m) {
+    var col = m.pol > 0 ? C.a : C.e;
+    ring(m.x, m.y, 44, col, 0.4);
+    pc(m.x, m.y, 30, col, 0.9); txt(m.pol > 0 ? 'N' : 'S', m.x, m.y + 12, 34, '#000000');
+  }
+
+  function drawBall() { pc(ballX, ballY, BALL_R, C.c, 0.9); pc(ballX - 12, ballY - 12, 8, C.g, 0.6); }
+
+  function initGame() { ballX = snap(W * 0.5); ballY = snap(H * 0.72); ballVX = 0; ballVY = 0; magnets = []; polarity = 1; timeLeft = MAX_TIME; done = false; trail = []; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (600 + Math.ceil(timeLeft) * 120) : Math.ceil(MAX_TIME - timeLeft) * 30;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (Math.hypot(x - goalX, y - goalY) < GOAL_R + 30) return;
+    if (magnets.length >= MAX_MAG) magnets.shift();
+    magnets.push({ x: snap(x), y: snap(y), pol: polarity });
+    polarity = -polarity; game.audio.play('se_tap', 0.3);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawGoal(); drawBall(); drawMagnet({ x: W * 0.4, y: H * 0.6, pol: 1 });
+      txt(GAME_TITLE, W / 2, H * 0.12, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.18, 26, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'GOAL!' : 'TIME OUT', W / 2, H * 0.35, 82, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    // Magnetic force from each magnet (same polarity = repulsion)
-    for (var mi = 0; mi < magnets.length; mi++) {
-      var mag = magnets[mi];
-      var dx = ballX - mag.x;
-      var dy = ballY - mag.y;
-      var dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 8) continue;
-      // Ball has N polarity; N magnets repel, S attract
-      var force = mag.pol * 120000 / (dist * dist);
-      ballVX += (dx / dist) * force * dt;
-      ballVY += (dy / dist) * force * dt;
-    }
-
-    // Speed cap
-    var spd = Math.sqrt(ballVX * ballVX + ballVY * ballVY);
-    if (spd > 900) { ballVX = ballVX / spd * 900; ballVY = ballVY / spd * 900; }
-
-    ballX += ballVX * dt;
-    ballY += ballVY * dt;
-    ballVX *= FRICTION;
-    ballVY *= FRICTION;
-
-    // Wall collisions
-    for (var wi = 0; wi < walls.length; wi++) collideBallWall(walls[wi].x, walls[wi].y, walls[wi].w, walls[wi].h);
-    for (var oi = 0; oi < obstacles.length; oi++) collideBallWall(obstacles[oi].x, obstacles[oi].y, obstacles[oi].w, obstacles[oi].h);
-
-    // Check goal
-    var gDx = ballX - goalX, gDy = ballY - goalY;
-    if (Math.sqrt(gDx * gDx + gDy * gDy) < GOAL_R && !done) {
-      done = true;
-      game.audio.play('se_success');
-      setTimeout(function() { game.end.success(Math.ceil(timeLeft) * 100 + 800); }, 400);
-    }
-
-    // Trail
-    trail.push({ x: ballX, y: ballY, life: 0.3 });
-    for (var ti = trail.length - 1; ti >= 0; ti--) {
-      trail[ti].life -= dt;
-      if (trail[ti].life <= 0) trail.splice(ti, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Walls
-    for (var wi2 = 0; wi2 < walls.length; wi2++) {
-      var w = walls[wi2];
-      game.draw.rect(w.x, w.y, w.w, w.h, C.wall, 0.9);
-    }
-    for (var oi2 = 0; oi2 < obstacles.length; oi2++) {
-      var o = obstacles[oi2];
-      game.draw.rect(o.x, o.y, o.w, o.h, C.wall, 0.8);
-      game.draw.rect(o.x, o.y, o.w, 6, '#475569', 0.5);
-    }
-
-    // Goal
-    var gPulse = 0.5 + 0.5 * Math.abs(Math.sin(elapsed * 3));
-    game.draw.circle(goalX, goalY, GOAL_R + 15, C.goalHi, gPulse * 0.3);
-    game.draw.circle(goalX, goalY, GOAL_R, C.goal, 0.4);
-    game.draw.text('★', goalX, goalY, { size: 60, color: C.goalHi, bold: true });
-
-    // Magnets
-    for (var mi2 = 0; mi2 < magnets.length; mi2++) {
-      var mag2 = magnets[mi2];
-      var col = mag2.pol > 0 ? C.magN : C.magS;
-      var hi = mag2.pol > 0 ? C.magNHi : C.magSHi;
-      var label = mag2.pol > 0 ? 'N' : 'S';
-      // Field lines
-      for (var a = 0; a < Math.PI * 2; a += Math.PI / 4) {
-        game.draw.line(mag2.x, mag2.y, mag2.x + Math.cos(a) * 60, mag2.y + Math.sin(a) * 60, col, 2);
+      if (timeLeft <= 0) { finish(false); return; }
+      for (var mi = 0; mi < magnets.length; mi++) {
+        var m = magnets[mi], dx = ballX - m.x, dy = ballY - m.y, dist = Math.hypot(dx, dy);
+        if (dist < 8) continue;
+        var force = m.pol * 120000 / (dist * dist);
+        ballVX += dx / dist * force * dt; ballVY += dy / dist * force * dt;
       }
-      game.draw.circle(mag2.x, mag2.y, 28, col, 0.85);
-      game.draw.text(label, mag2.x, mag2.y, { size: 32, color: '#fff', bold: true });
+      var spd = Math.hypot(ballVX, ballVY); if (spd > 900) { ballVX = ballVX / spd * 900; ballVY = ballVY / spd * 900; }
+      ballX += ballVX * dt; ballY += ballVY * dt; ballVX *= FRICTION; ballVY *= FRICTION;
+      if (ballX < WALL + BALL_R) { ballX = WALL + BALL_R; ballVX = Math.abs(ballVX) * 0.6; }
+      if (ballX > W - WALL - BALL_R) { ballX = W - WALL - BALL_R; ballVX = -Math.abs(ballVX) * 0.6; }
+      if (ballY < TOP + WALL + BALL_R) { ballY = TOP + WALL + BALL_R; ballVY = Math.abs(ballVY) * 0.6; }
+      if (ballY > H - 180 - WALL - BALL_R) { ballY = H - 180 - WALL - BALL_R; ballVY = -Math.abs(ballVY) * 0.6; }
+      for (var oi = 0; oi < obstacles.length; oi++) collide(obstacles[oi]);
+      if (Math.hypot(ballX - goalX, ballY - goalY) < GOAL_R) { finish(true); return; }
+      trail.push({ x: ballX, y: ballY, life: 0.3 });
+      for (var ti = trail.length - 1; ti >= 0; ti--) { trail[ti].life -= dt; if (trail[ti].life <= 0) trail.splice(ti, 1); }
     }
 
-    // Trail
-    for (var ti2 = 0; ti2 < trail.length; ti2++) {
-      var t = trail[ti2];
-      game.draw.circle(t.x, t.y, BALL_R * t.life, C.ballHi, t.life * 0.3);
-    }
+    // ---- 描画 ----
+    background(); drawGoal();
+    for (var t2 = 0; t2 < trail.length; t2++) game.draw.rect(snap(trail[t2].x) - 6, snap(trail[t2].y) - 6, 12, 12, C.c, trail[t2].life * 0.5);
+    for (var mi2 = 0; mi2 < magnets.length; mi2++) drawMagnet(magnets[mi2]);
+    drawBall();
 
-    // Ball
-    game.draw.circle(ballX, ballY, BALL_R + 6, C.ballHi, 0.25);
-    game.draw.circle(ballX, ballY, BALL_R, C.ball, 0.9);
-    game.draw.circle(ballX - 10, ballY - 10, 10, '#fff', 0.4);
-    game.draw.text('N', ballX, ballY, { size: 26, color: '#0f172a', bold: true });
-
-    // Next polarity indicator
-    var nextCol = polarity > 0 ? C.magN : C.magS;
-    var nextLabel = polarity > 0 ? 'N' : 'S';
-    game.draw.text('次: ' + nextLabel + ' 磁石', W / 2, H * 0.93, { size: 38, color: nextCol, bold: true });
-    game.draw.text('磁石は' + MAX_MAGNETS + '個まで', W / 2, H * 0.96, { size: 30, color: C.ui });
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.goal : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('NEXT ' + (polarity > 0 ? 'N' : 'S') + '  (MAX ' + MAX_MAG + ')', W / 2, H - 100, 40, polarity > 0 ? C.a : C.e);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
