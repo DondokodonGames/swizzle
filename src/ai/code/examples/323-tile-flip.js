@@ -1,123 +1,97 @@
 // 323-tile-flip.js
-// タイルフリップ — 記憶力ゲーム：同じ絵柄のタイルを2枚ずつ見つけ出す
+// タイルフリップ — 裏返しのタイルを2枚めくり、同じ色マークのペアを記憶で揃える神経衰弱
 // 操作: タップでタイルをめくる（2枚ずつ）
-// 成功: 全ペア発見  失敗: 30回ミス or 60秒
+// 成功: 全4ペアを揃える  失敗: 4回ミス or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0f0c1e',
-    tile:   '#1e1b4b',
-    tileHi: '#312e81',
-    tileOpen:'#3730a3',
-    match:  '#22c55e',
-    matchHi:'#86efac',
-    wrong:  '#ef4444',
-    wrongHi:'#fca5a5',
-    ui:     '#475569',
-    text:   '#f1f5f9'
-  };
+  // ── パレット（ネオンアーケード、記憶盤） ──
+  var C = { bg:'#0f0c1e', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var SYM = [C.a, C.e, C.b, C.c];   // 4ペア分の色マーク
 
-  // 4x4 grid = 16 tiles = 8 pairs
-  var GRID_COLS = 4;
-  var GRID_ROWS = 4;
-  var TILE_W = 220;
-  var TILE_H = 220;
-  var GAP = 20;
-  var GRID_LEFT = (W - GRID_COLS * TILE_W - (GRID_COLS - 1) * GAP) / 2;
-  var GRID_TOP = H * 0.22;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'TILE FLIP';
+  var HOW_TO_PLAY = 'FLIP TWO TILES · MATCH THE COLOR PAIRS';
+  var MAX_TIME = 15;
+  var MAX_MISS = 4;          // 修正2: 30 → 4
+  var COLS = 4, ROWS = 2, PAIRS = COLS * ROWS / 2;
+  var TW = snap((W - 100) / COLS) - 16, TH = TW, GAP = 16;
+  var GX = snap((W - (COLS * TW + (COLS - 1) * GAP)) / 2), GY = snap(H * 0.34);
 
-  var SYMBOLS = ['★', '♥', '♦', '♣', '☀', '☽', '♪', '✦'];
-  var SYMBOL_COLORS = ['#fbbf24', '#ef4444', '#3b82f6', '#22c55e', '#f97316', '#a78bfa', '#06b6d4', '#f472b6'];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var tiles = [];
-  var flipped = []; // indices of currently face-up unmatched tiles
-  var matched = [];
-  var mistakes = 0;
-  var MAX_MISTAKES = 30;
-  var totalPairs = GRID_COLS * GRID_ROWS / 2;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var lockTimer = 0; // lock input during flip-back animation
-  var particles = [];
+  // ── ゲーム変数 ──
+  var tiles, flipped, matchedCount, misses, timeLeft, done, lockTimer, particles;
 
-  function initTiles() {
-    var pairs = [];
-    for (var i = 0; i < totalPairs; i++) {
-      pairs.push(i, i);
-    }
-    // Shuffle
-    for (var s = pairs.length - 1; s > 0; s--) {
-      var j = Math.floor(Math.random() * (s + 1));
-      var t = pairs[s]; pairs[s] = pairs[j]; pairs[j] = t;
-    }
-    tiles = [];
-    for (var r = 0; r < GRID_ROWS; r++) {
-      for (var c = 0; c < GRID_COLS; c++) {
-        var idx = r * GRID_COLS + c;
-        tiles.push({
-          x: GRID_LEFT + c * (TILE_W + GAP),
-          y: GRID_TOP + r * (TILE_H + GAP),
-          symbol: pairs[idx],
-          faceUp: false,
-          matched: false,
-          flipAnim: 0 // 0=face-down, 1=face-up
-        });
-      }
-    }
-    flipped = [];
-    matched = [];
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
-    if (done || lockTimer > 0) return;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-    // Find tapped tile
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a1030');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function initTiles() {
+    var pool = []; for (var i = 0; i < PAIRS; i++) pool.push(i, i);
+    for (var s = pool.length - 1; s > 0; s--) { var j = Math.floor(Math.random() * (s + 1)); var t = pool[s]; pool[s] = pool[j]; pool[j] = t; }
+    tiles = [];
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) { var idx = r * COLS + c; tiles.push({ x: GX + c * (TW + GAP), y: GY + r * (TH + GAP), sym: pool[idx], up: false, matched: false }); }
+    flipped = []; matchedCount = 0;
+  }
+
+  function initGame() { initTiles(); misses = 0; timeLeft = MAX_TIME; done = false; lockTimer = 0; particles = []; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (PAIRS * 400 - misses * 100 + Math.ceil(timeLeft) * 100) : matchedCount * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(Math.max(0, finalScore)); else game.end.failure(); }, 1800);
+  }
+
+  function drawTile(t) {
+    if (t.matched) { game.draw.rect(t.x, t.y, TW, TH, '#0a2018', 0.9); pc(t.x + TW / 2, t.y + TH / 2, TW * 0.28, SYM[t.sym], 0.9); }
+    else if (t.up) { game.draw.rect(t.x, t.y, TW, TH, '#241a3a', 0.95); game.draw.rect(t.x + 4, t.y + 4, TW - 8, 8, C.g, 0.2); pc(t.x + TW / 2, t.y + TH / 2, TW * 0.28, SYM[t.sym], 0.95); }
+    else { game.draw.rect(t.x, t.y, TW, TH, '#161028', 0.95); game.draw.rect(t.x + 4, t.y + 4, TW - 8, 8, C.d, 0.4); txt('?', t.x + TW / 2, t.y + TH / 2 + 24, 72, C.d); }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || lockTimer > 0) return;
     for (var ti = 0; ti < tiles.length; ti++) {
       var t = tiles[ti];
-      if (t.matched || t.faceUp) continue;
-      if (tx >= t.x && tx <= t.x + TILE_W && ty >= t.y && ty <= t.y + TILE_H) {
-        t.faceUp = true;
-        t.flipAnim = 1;
-        flipped.push(ti);
-        game.audio.play('se_tap', 0.25);
-
+      if (t.matched || t.up) continue;
+      if (x >= t.x && x <= t.x + TW && y >= t.y && y <= t.y + TH) {
+        t.up = true; flipped.push(ti); game.audio.play('se_tap', 0.25);
         if (flipped.length === 2) {
-          var a = tiles[flipped[0]];
-          var b = tiles[flipped[1]];
-          if (a.symbol === b.symbol) {
-            // Match!
-            a.matched = true;
-            b.matched = true;
-            matched.push(flipped[0], flipped[1]);
-            game.audio.play('se_success', 0.5);
-            for (var pi = 0; pi < 6; pi++) {
-              var ang = Math.random() * Math.PI * 2;
-              particles.push({ x: (a.x + b.x) / 2 + TILE_W / 2, y: (a.y + b.y) / 2 + TILE_H / 2, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.6, col: SYMBOL_COLORS[a.symbol] });
-            }
-            flipped = [];
-            if (matched.length === tiles.length && !done) {
-              done = true;
-              setTimeout(function() { game.end.success((totalPairs * 200) - mistakes * 30 + Math.ceil(timeLeft) * 100); }, 600);
-            }
+          var a = tiles[flipped[0]], b = tiles[flipped[1]];
+          if (a.sym === b.sym) {
+            a.matched = true; b.matched = true; matchedCount++; game.audio.play('se_success', 0.5);
+            for (var k = 0; k < 6; k++) { var an = Math.random() * Math.PI * 2; particles.push({ x: (a.x + b.x) / 2 + TW / 2, y: (a.y + b.y) / 2 + TH / 2, vx: Math.cos(an) * 200, vy: Math.sin(an) * 200, life: 0.6, col: SYM[a.sym] }); }
+            flipped = []; if (matchedCount >= PAIRS) { finish(true); return; }
           } else {
-            // No match
-            mistakes++;
-            game.audio.play('se_failure', 0.25);
-            var savedFlipped = flipped.slice();
-            flipped = [];
-            lockTimer = 1.2;
-            setTimeout(function() {
-              tiles[savedFlipped[0]].faceUp = false;
-              tiles[savedFlipped[1]].faceUp = false;
-              if (mistakes >= MAX_MISTAKES && !done) {
-                done = true;
-                setTimeout(function() { game.end.failure(); }, 300);
-              }
-            }, 1000);
+            misses++; game.audio.play('se_failure', 0.25); var sv = flipped.slice(); flipped = []; lockTimer = 1.0;
+            setTimeout(function() { tiles[sv[0]].up = false; tiles[sv[1]].up = false; }, 900);
+            if (misses >= MAX_MISS) { setTimeout(function() { finish(false); }, 300); return; }
           }
         }
         return;
@@ -125,65 +99,52 @@
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!tiles) initGame(); background(); for (var i = 0; i < tiles.length; i++) drawTile({ x: tiles[i].x, y: tiles[i].y, matched: false, up: false, sym: 0 });
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ALL MATCHED!' : 'FORGOTTEN', W / 2, H * 0.35, 74, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(Math.max(0, finalScore)).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (lockTimer > 0) lockTimer -= dt;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (lockTimer > 0) lockTimer -= dt;
+    // ---- 描画 ----
+    background();
+    for (var ti2 = 0; ti2 < tiles.length; ti2++) drawTile(tiles[ti2]);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Tiles
-    for (var ti2 = 0; ti2 < tiles.length; ti2++) {
-      var tile = tiles[ti2];
-      var tx2 = tile.x, ty2 = tile.y;
-
-      if (tile.matched) {
-        game.draw.rect(tx2 + 4, ty2 + 4, TILE_W - 8, TILE_H - 8, C.match, 0.3);
-        game.draw.rect(tx2, ty2, TILE_W, TILE_H, C.matchHi, 0.15);
-        game.draw.text(SYMBOLS[tile.symbol], tx2 + TILE_W / 2, ty2 + TILE_H / 2 + 28, { size: 80, color: SYMBOL_COLORS[tile.symbol], bold: true });
-      } else if (tile.faceUp || flipped.indexOf(ti2) >= 0) {
-        game.draw.rect(tx2, ty2, TILE_W, TILE_H, C.tileOpen, 0.9);
-        game.draw.rect(tx2 + 4, ty2 + 4, TILE_W - 8, TILE_H - 8, C.tileHi, 0.3);
-        game.draw.text(SYMBOLS[tile.symbol], tx2 + TILE_W / 2, ty2 + TILE_H / 2 + 28, { size: 80, color: SYMBOL_COLORS[tile.symbol], bold: true });
-      } else {
-        game.draw.rect(tx2, ty2, TILE_W, TILE_H, C.tile, 0.9);
-        game.draw.rect(tx2 + 4, ty2 + 4, TILE_W - 8, TILE_H - 8, C.tileHi, 0.2);
-        game.draw.text('?', tx2 + TILE_W / 2, ty2 + TILE_H / 2 + 22, { size: 72, color: C.tileHi, bold: true });
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    var pairsLeft = totalPairs - matched.length / 2;
-    game.draw.text('残り ' + pairsLeft + ' ペア', W / 2, H * 0.88, { size: 44, color: C.ui });
-    game.draw.text('ミス: ' + mistakes, W / 2, H * 0.92, { size: 36, color: mistakes > 20 ? C.wrong : C.ui });
-
-    game.draw.text(matched.length / 2 + ' / ' + totalPairs, W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.tileOpen : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(matchedCount + ' / ' + PAIRS, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < misses ? C.a : '#1a1030');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.15);
-    initTiles();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
