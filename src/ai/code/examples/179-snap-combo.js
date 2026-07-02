@@ -1,198 +1,175 @@
 // 179-snap-combo.js
 // スナップコンボ — 次々と出現するターゲットをテンポよく叩きコンボを繋げる快感
 // 操作: タップで出現したターゲットを叩く
-// 成功: コンボ20を達成  失敗: コンボが3回途切れる or 35秒
+// 成功: コンボ2を達成  失敗: コンボが3回途切れる or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#060408',
-    spot:    '#1a0a2e',
-    target:  '#7c3aed',
-    targetHi:'#a78bfa',
-    hit:     '#22c55e',
-    hitHi:   '#86efac',
-    miss:    '#ef4444',
-    combo:   '#fef08a',
-    ui:      '#334155'
-  };
+  // ── パレット（ネオンアーケード、モグラ叩き） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var SPOT_R = 80; // clickable radius
-  var APPEAR_TIME = 0.7; // how long target stays visible
-  var spots = [];
-  var spawnTimer = 0;
-  var SPAWN_INTERVAL = 0.55;
-  var SPOTS_X = [];
-  var SPOTS_Y = [];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SNAP COMBO';
+  var HOW_TO_PLAY = 'TAP TARGETS FAST · BUILD YOUR COMBO';
+  var MAX_TIME = 15;             // 修正2: 35 → 15
+  var NEEDED   = 2;              // 修正2: 20 → 2
+  var MAX_BREAK = 3;
+  var TOP    = 220;
+  var SPOT_R = 80, APPEAR_TIME = 0.9, SPAWN_INTERVAL = 0.7;
 
-  // Pre-defined positions
-  for (var i = 0; i < 9; i++) {
-    SPOTS_X.push(W * (0.2 + (i % 3) * 0.3));
-    SPOTS_Y.push(H * (0.22 + Math.floor(i / 3) * 0.22));
+  var SPOTS_X = [], SPOTS_Y = [];
+  for (var i = 0; i < 9; i++) { SPOTS_X.push(snap(W * (0.22 + (i % 3) * 0.28))); SPOTS_Y.push(snap(TOP + 160 + Math.floor(i / 3) * 300)); }
+
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var spots, particles, spawnTimer, combo, maxCombo, breakCount, timeLeft, done;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
   }
 
-  var combo = 0;
-  var maxCombo = 0;
-  var needed = 20;
-  var breakCount = 0;
-  var maxBreaks = 3;
-  var timeLeft = 35;
-  var done = false;
-  var particles = [];
-  var pulseT = 0;
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var lit = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < lit ? C.b : '#2a0a3a');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    for (var i = 0; i < 9; i++) pc(SPOTS_X[i], SPOTS_Y[i], SPOT_R, C.d, 0.4);
+  }
+
+  function drawSpot(s) {
+    var prog = s.life / APPEAR_TIME;
+    if (s.hit) { pc(s.x, s.y, SPOT_R, C.b, 0.7); txt('!', s.x, s.y - 8, 60, C.g); return; }
+    var urg = 1 - prog, col = urg > 0.6 ? C.a : C.f;
+    // カウントダウンリング
+    var steps = Math.floor(prog * 16);
+    for (var rs = 0; rs < steps; rs++) { var ra = -Math.PI / 2 + (rs / 16) * Math.PI * 2; game.draw.rect(snap(s.x + Math.cos(ra) * (SPOT_R - 12)) - 5, snap(s.y + Math.sin(ra) * (SPOT_R - 12)) - 5, 10, 10, C.c, 0.7); }
+    pc(s.x, s.y, SPOT_R - 20, col, 0.9);
+    pc(s.x, s.y, SPOT_R - 44, C.g, 0.5);
+  }
 
   function spawnSpot() {
     var avail = [];
-    for (var si = 0; si < 9; si++) {
-      var taken = false;
-      for (var sj = 0; sj < spots.length; sj++) {
-        if (spots[sj].spotIdx === si) { taken = true; break; }
-      }
-      if (!taken) avail.push(si);
-    }
+    for (var si = 0; si < 9; si++) { var taken = false; for (var sj = 0; sj < spots.length; sj++) if (spots[sj].idx === si) { taken = true; break; } if (!taken) avail.push(si); }
     if (avail.length === 0) return;
     var idx = avail[Math.floor(Math.random() * avail.length)];
-    spots.push({ spotIdx: idx, x: SPOTS_X[idx], y: SPOTS_Y[idx], life: APPEAR_TIME, hit: false });
+    spots.push({ idx: idx, x: SPOTS_X[idx], y: SPOTS_Y[idx], life: APPEAR_TIME, hit: false });
   }
 
-  game.onTap(function(tx, ty) {
+  function initGame() {
+    spots = []; particles = []; spawnTimer = 0.3; combo = 0; maxCombo = 0; breakCount = 0;
+    timeLeft = MAX_TIME; done = false;
+  }
+
+  function finish(success) {
     if (done) return;
-    var hitAny = false;
+    done = true; resultSuccess = success;
+    finalScore = success ? (maxCombo * 300 + Math.ceil(timeLeft) * 30) : maxCombo * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function registerBreak() {
+    combo = 0; breakCount++;
+    game.audio.play('se_failure', 0.4);
+    if (breakCount >= MAX_BREAK) finish(false);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
     for (var si = 0; si < spots.length; si++) {
       var s = spots[si];
       if (s.hit) continue;
-      var dx = tx - s.x, dy = ty - s.y;
-      if (Math.sqrt(dx * dx + dy * dy) < SPOT_R) {
-        s.hit = true;
-        combo++;
-        if (combo > maxCombo) maxCombo = combo;
-        hitAny = true;
-        game.audio.play('se_success', Math.min(1, 0.4 + combo * 0.04));
-        for (var pi = 0; pi < 8; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: s.x, y: s.y, vx: Math.cos(ang) * (150 + combo * 10), vy: Math.sin(ang) * (150 + combo * 10), life: 0.4 });
-        }
-        if (combo >= needed && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(maxCombo * 60 + Math.ceil(timeLeft) * 25); }, 400);
-        }
-        break;
+      if (Math.hypot(x - s.x, y - s.y) < SPOT_R) {
+        s.hit = true; s.life = 0.15; combo++; if (combo > maxCombo) maxCombo = combo;
+        game.audio.play('se_success', Math.min(1, 0.4 + combo * 0.1));
+        for (var pi = 0; pi < 8; pi++) { var ang = Math.random() * Math.PI * 2; particles.push({ x: s.x, y: s.y, vx: Math.cos(ang) * 180, vy: Math.sin(ang) * 180, life: 0.4 }); }
+        if (combo >= NEEDED) { finish(true); return; }
+        return;
       }
     }
-    if (!hitAny) {
-      // Miss
-      combo = 0;
-      breakCount++;
-      game.audio.play('se_failure', 0.4);
-      if (breakCount >= maxBreaks && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 400);
-      }
-    }
+    registerBreak();
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      drawSpot({ x: SPOTS_X[4], y: SPOTS_Y[4], life: APPEAR_TIME * (0.5 + 0.5 * Math.sin(game.time.elapsed * 3)), hit: false });
+      txt(GAME_TITLE, W / 2, H * 0.12, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.86, 30, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄  TAP TO START', W / 2, H * 0.92, 44, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'COMBO!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-    pulseT += dt;
-
-    spawnTimer -= dt;
-    var speedMult = Math.max(0.4, 1 - combo * 0.03);
-    if (spawnTimer <= 0) {
-      spawnTimer = SPAWN_INTERVAL * speedMult;
-      spawnSpot();
-    }
-
-    // Update spots
-    for (var si = spots.length - 1; si >= 0; si--) {
-      var s = spots[si];
-      s.life -= dt;
-      if (s.hit && s.life < APPEAR_TIME - 0.05) {
-        spots.splice(si, 1);
-      } else if (s.life <= 0 && !s.hit) {
-        // Missed
-        combo = 0;
-        breakCount++;
-        game.audio.play('se_failure', 0.35);
-        spots.splice(si, 1);
-        if (breakCount >= maxBreaks && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-        }
+      if (timeLeft <= 0) { finish(false); return; }
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) { spawnTimer = SPAWN_INTERVAL; spawnSpot(); }
+      for (var si = spots.length - 1; si >= 0; si--) {
+        var s = spots[si];
+        s.life -= dt;
+        if (s.hit && s.life <= 0) spots.splice(si, 1);
+        else if (!s.hit && s.life <= 0) { spots.splice(si, 1); registerBreak(); if (done) return; }
       }
     }
+    for (var p = 0; p < particles.length; p++) { particles[p].x += particles[p].vx * dt; particles[p].y += particles[p].vy * dt; particles[p].vy += 300 * dt; particles[p].life -= dt; }
+    particles = particles.filter(function(pt) { return pt.life > 0; });
 
-    for (var pi2 = 0; pi2 < particles.length; pi2++) {
-      particles[pi2].x += particles[pi2].vx * dt; particles[pi2].y += particles[pi2].vy * dt;
-      particles[pi2].vy += 300 * dt; particles[pi2].life -= dt;
+    // ---- 描画 ----
+    background();
+    for (var si2 = 0; si2 < spots.length; si2++) drawSpot(spots[si2]);
+    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 5, snap(particles[pp].y) - 5, 10, 10, C.b, particles[pp].life * 2.5);
+
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('COMBO ' + combo + ' / ' + NEEDED, W / 2, 168, 48, combo > 0 ? C.c : C.b);
+    for (var bd = 0; bd < MAX_BREAK; bd++) {
+      var bx = snap(W / 2 + (bd - (MAX_BREAK - 1) / 2) * 56);
+      game.draw.rect(bx - 12, H - 96, 24, 24, bd < breakCount ? C.a : '#2a0a3a');
     }
-    particles = particles.filter(function(p) { return p.life > 0; });
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Spot positions (background dots)
-    for (var si2 = 0; si2 < 9; si2++) {
-      game.draw.circle(SPOTS_X[si2], SPOTS_Y[si2], SPOT_R, C.spot, 0.6);
-    }
-
-    // Active spots
-    for (var si3 = 0; si3 < spots.length; si3++) {
-      var s2 = spots[si3];
-      var progress = s2.life / APPEAR_TIME;
-      if (s2.hit) {
-        game.draw.circle(s2.x, s2.y, SPOT_R * 1.3, C.hitHi, 0.3);
-        game.draw.circle(s2.x, s2.y, SPOT_R, C.hit, 0.7);
-        game.draw.text('✓', s2.x, s2.y, { size: 60, color: '#fff', bold: true });
-        continue;
-      }
-      // Urgency pulse
-      var pulse = 0.5 + 0.5 * Math.abs(Math.sin(pulseT * 6));
-      var urgency = 1 - progress;
-      var col = urgency > 0.6 ? C.miss : C.target;
-      var hiCol = urgency > 0.6 ? '#fca5a5' : C.targetHi;
-
-      // Countdown ring
-      var steps = Math.floor(progress * 20);
-      for (var rs = 0; rs < steps; rs++) {
-        var ra = -Math.PI / 2 + (rs / 20) * Math.PI * 2;
-        game.draw.circle(s2.x + Math.cos(ra) * (SPOT_R - 16), s2.y + Math.sin(ra) * (SPOT_R - 16), 8, hiCol, 0.6);
-      }
-
-      game.draw.circle(s2.x, s2.y, SPOT_R * 1.1, col, 0.15 + urgency * 0.2);
-      game.draw.circle(s2.x, s2.y, SPOT_R, col, 0.8 + urgency * 0.15);
-      game.draw.circle(s2.x, s2.y, SPOT_R * 0.4, hiCol, pulse * 0.6);
-    }
-
-    // Particles
-    for (var pp = 0; pp < particles.length; pp++) {
-      var part = particles[pp];
-      game.draw.circle(part.x, part.y, 10 * part.life * 2, C.hit, part.life);
-    }
-
-    // Combo display
-    var comboCol = combo > 10 ? C.combo : (combo > 5 ? C.hit : '#f1f5f9');
-    if (combo > 0) {
-      game.draw.text('コンボ ' + combo + '!', W / 2, H * 0.84, { size: combo > 15 ? 72 : 56, color: comboCol, bold: true });
-    }
-
-    // Break indicators
-    game.draw.text('中断: ', W * 0.3, H * 0.91, { size: 36, color: C.ui });
-    for (var bi = 0; bi < maxBreaks; bi++) {
-      game.draw.circle(W * 0.55 + bi * 48, H * 0.915, 18, bi < breakCount ? C.miss : '#0a1020');
-    }
-
-    game.draw.text('目標コンボ: ' + needed, W / 2, 148, { size: 52, color: '#f1f5f9', bold: true });
-
-    var ratio = Math.max(0, timeLeft / 35);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.target : C.miss);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    scanlines();
   });
 
-  game.onStart(function() { game.audio.bgm('bgm_main', 0.3); });
+  game.onStart(function() {
+    game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
+  });
 })(game);
