@@ -1,223 +1,146 @@
 // 371-tower-defense-solo.js
-// タワーディフェンス1人 — タップで弾を撃って侵入者を全滅させる
-// 操作: タップで砲台を向けて発射
-// 成功: 30体倒す  失敗: 5体通過 or 40秒
+// タワーディフェンス1人 — 画面下の砲台をタップの方向に撃ち、迫る侵入者を全滅させる
+// 操作: 撃ちたい方向をタップして弾を発射（1体につき2発）
+// 成功: 6体 倒す  失敗: 3体 通過 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0d1117',
-    path:   '#1e2a3a',
-    pathHi: '#263445',
-    tower:  '#334155',
-    towerHi:'#475569',
-    cannon: '#64748b',
-    bullet: '#fbbf24',
-    bulletHi:'#fef3c7',
-    enemy:  '#ef4444',
-    enemyHi:'#fca5a5',
-    base:   '#22c55e',
-    baseHi: '#86efac',
-    danger: '#dc2626',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（グリーンCRT、要塞防衛） ──
+  var C = { bg:'#020a04', a:'#ff3300', b:'#00ff41', c:'#ffe600', d:'#00cc33', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var TOWER_X = W / 2;
-  var TOWER_Y = H * 0.75;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'TURRET DEFENSE';
+  var HOW_TO_PLAY = 'TAP TO AIM AND FIRE · WIPE OUT THE INVADERS';
+  var MAX_TIME = 15;
+  var NEEDED   = 6;          // 修正2: 30 → 6
+  var MAX_LEAK = 3;          // 修正2: 5 → 3
+  var TX = snap(W / 2), TY = snap(H * 0.74);
 
-  var enemies = [];
-  var bullets = [];
-  var particles = [];
-  var spawnTimer = 0;
-  var killed = 0;
-  var NEEDED = 30;
-  var leaked = 0;
-  var MAX_LEAK = 5;
-  var done = false;
-  var timeLeft = 40;
-  var elapsed = 0;
-  var cannonAngle = -Math.PI / 2;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnEnemy() {
-    var side = Math.floor(Math.random() * 4);
-    var x, y, vx, vy;
-    var speed = 180 + Math.random() * 80;
-    if (side === 0) { x = Math.random() * W; y = -50; vx = 0; vy = speed; }
-    else if (side === 1) { x = W + 50; y = Math.random() * H * 0.6; vx = -speed; vy = 0; }
-    else if (side === 2) { x = -50; y = Math.random() * H * 0.6; vx = speed; vy = 0; }
-    else { x = Math.random() * W; y = -50; vx = 0; vy = speed; }
-    enemies.push({ x: x, y: y, vx: vx, vy: vy, hp: 2, maxHp: 2, r: 28 });
+  // ── ゲーム変数 ──
+  var enemies, bullets, particles, spawnTimer, killed, leaked, timeLeft, done, cannonA;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1a0c');
+  }
+
+  function background() { game.draw.clear(C.bg); for (var gx = 0; gx < W; gx += 96) game.draw.rect(gx, 0, 2, H, C.d, 0.12); for (var gy = 0; gy < H; gy += 96) game.draw.rect(0, gy, W, 2, C.d, 0.12); }
+
+  function spawnEnemy() { var side = Math.floor(Math.random() * 3), x, y, spd = 90 + Math.random() * 50; if (side === 0) { x = snap(Math.random() * W); y = -50; } else if (side === 1) { x = -50; y = snap(Math.random() * H * 0.5); } else { x = W + 50; y = snap(Math.random() * H * 0.5); } enemies.push({ x: x, y: y, spd: spd, hp: 2, maxHp: 2, r: 30 }); }
+
+  function initGame() { enemies = []; bullets = []; particles = []; spawnTimer = 0.4; killed = 0; leaked = 0; timeLeft = MAX_TIME; done = false; cannonA = -Math.PI / 2; }
+
+  function finish(success) {
     if (done) return;
-    // Aim cannon and shoot
-    var dx = tx - TOWER_X;
-    var dy = ty - TOWER_Y;
-    cannonAngle = Math.atan2(dy, dx);
-    // Fire bullet
-    var speed = 900;
-    bullets.push({
-      x: TOWER_X + Math.cos(cannonAngle) * 60,
-      y: TOWER_Y + Math.sin(cannonAngle) * 60,
-      vx: Math.cos(cannonAngle) * speed,
-      vy: Math.sin(cannonAngle) * speed,
-      life: 1.2
-    });
+    done = true; resultSuccess = success;
+    finalScore = success ? (killed * 300 + Math.ceil(timeLeft) * 100) : killed * 120;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawTurret() {
+    pc(TX, TY, 48, C.d, 0.9); pc(TX, TY, 32, C.b, 0.85);
+    pline(TX, TY, TX + Math.cos(cannonA) * 70, TY + Math.sin(cannonA) * 70, C.g, 0.9, 20);
+    pc(TX, TY, 18, C.g, 0.9);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    cannonA = Math.atan2(y - TY, x - TX);
+    bullets.push({ x: TX + Math.cos(cannonA) * 60, y: TY + Math.sin(cannonA) * 60, vx: Math.cos(cannonA) * 900, vy: Math.sin(cannonA) * 900, life: 1.2 });
     game.audio.play('se_tap', 0.3);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawTurret();
+      txt(GAME_TITLE, W / 2, H * 0.16, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'DEFENDED!' : 'OVERRUN', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    // Spawn
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && !done) {
-      spawnEnemy();
-      spawnTimer = 0.6 + Math.random() * 0.5 - Math.min(0.3, elapsed * 0.005);
-    }
-
-    // Update enemies
-    for (var ei = enemies.length - 1; ei >= 0; ei--) {
-      var e = enemies[ei];
-      // Steer toward tower
-      var dx = TOWER_X - e.x, dy = TOWER_Y - e.y;
-      var dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist > 60) {
-        var spd = Math.sqrt(e.vx * e.vx + e.vy * e.vy);
-        e.vx = (dx / dist) * spd;
-        e.vy = (dy / dist) * spd;
+      if (timeLeft <= 0) { finish(false); return; }
+      spawnTimer -= dt; if (spawnTimer <= 0 && enemies.length < 8) { spawnEnemy(); spawnTimer = 0.7 + Math.random() * 0.5; }
+      for (var ei = enemies.length - 1; ei >= 0; ei--) {
+        var e = enemies[ei], dx = TX - e.x, dy = TY - e.y, d = Math.max(1, Math.hypot(dx, dy));
+        e.x += dx / d * e.spd * dt; e.y += dy / d * e.spd * dt;
+        if (d < 54) { leaked++; game.audio.play('se_failure', 0.4); for (var k = 0; k < 6; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: e.x, y: e.y, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, life: 0.4, col: C.a }); } enemies.splice(ei, 1); if (leaked >= MAX_LEAK) { finish(false); return; } }
       }
-      e.x += e.vx * dt;
-      e.y += e.vy * dt;
-      // Reached tower?
-      if (dist < 50) {
-        leaked++;
-        for (var pi2 = 0; pi2 < 6; pi2++) {
-          var ang2 = Math.random() * Math.PI * 2;
-          particles.push({ x: e.x, y: e.y, vx: Math.cos(ang2)*150, vy: Math.sin(ang2)*150, life:0.4, col: C.baseHi });
-        }
-        enemies.splice(ei, 1);
-        game.audio.play('se_failure', 0.3);
-        if (leaked >= MAX_LEAK && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-          return;
-        }
-      }
-    }
-
-    // Update bullets
-    for (var bi = bullets.length - 1; bi >= 0; bi--) {
-      var b = bullets[bi];
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-      b.life -= dt;
-      if (b.life <= 0 || b.x < -50 || b.x > W + 50 || b.y < -50 || b.y > H + 50) {
-        bullets.splice(bi, 1);
-        continue;
-      }
-      // Hit enemies
-      for (var ei2 = enemies.length - 1; ei2 >= 0; ei2--) {
-        if (Math.hypot(b.x - enemies[ei2].x, b.y - enemies[ei2].y) < enemies[ei2].r) {
-          enemies[ei2].hp--;
-          for (var pi3 = 0; pi3 < 4; pi3++) {
-            var ang3 = Math.random() * Math.PI * 2;
-            particles.push({ x: enemies[ei2].x, y: enemies[ei2].y, vx: Math.cos(ang3)*120, vy: Math.sin(ang3)*120, life:0.3, col: C.enemyHi });
+      for (var bi = bullets.length - 1; bi >= 0; bi--) {
+        var b = bullets[bi]; b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+        if (b.life <= 0 || b.x < -40 || b.x > W + 40 || b.y < -40 || b.y > H + 40) { bullets.splice(bi, 1); continue; }
+        for (var ej = enemies.length - 1; ej >= 0; ej--) {
+          if (Math.hypot(b.x - enemies[ej].x, b.y - enemies[ej].y) < enemies[ej].r) {
+            enemies[ej].hp--; bullets.splice(bi, 1);
+            for (var k2 = 0; k2 < 4; k2++) { var a2 = Math.random() * Math.PI * 2; particles.push({ x: enemies[ej].x, y: enemies[ej].y, vx: Math.cos(a2) * 120, vy: Math.sin(a2) * 120, life: 0.3, col: C.f }); }
+            if (enemies[ej].hp <= 0) { killed++; game.audio.play('se_success', 0.3); for (var k3 = 0; k3 < 8; k3++) { var a3 = Math.random() * Math.PI * 2; particles.push({ x: enemies[ej].x, y: enemies[ej].y, vx: Math.cos(a3) * 200, vy: Math.sin(a3) * 200, life: 0.5, col: C.c }); } enemies.splice(ej, 1); if (killed >= NEEDED) { finish(true); return; } }
+            break;
           }
-          if (enemies[ei2].hp <= 0) {
-            killed++;
-            game.audio.play('se_success', 0.3);
-            for (var pi4 = 0; pi4 < 8; pi4++) {
-              var ang4 = Math.random() * Math.PI * 2;
-              particles.push({ x: enemies[ei2].x, y: enemies[ei2].y, vx: Math.cos(ang4)*200, vy: Math.sin(ang4)*200, life:0.5, col: C.bullet });
-            }
-            enemies.splice(ei2, 1);
-            if (killed >= NEEDED && !done) {
-              done = true;
-              game.end.success(killed * 200 + Math.ceil(timeLeft) * 80);
-            }
-          }
-          bullets.splice(bi, 1);
-          break;
         }
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background();
+    for (var ei2 = 0; ei2 < enemies.length; ei2++) { var e2 = enemies[ei2]; pc(e2.x, e2.y, e2.r, C.a, 0.9); pc(e2.x - e2.r * 0.3, e2.y - e2.r * 0.3, e2.r * 0.25, C.f, 0.7); game.draw.rect(snap(e2.x - 24), snap(e2.y - e2.r - 14), 48, 6, '#331', 0.8); game.draw.rect(snap(e2.x - 24), snap(e2.y - e2.r - 14), 48 * (e2.hp / e2.maxHp), 6, C.b, 0.9); }
+    drawTurret();
+    for (var bi2 = 0; bi2 < bullets.length; bi2++) pc(bullets[bi2].x, bullets[bi2].y, 10, C.c, 0.95);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.8);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Path grid
-    for (var gx = 0; gx < W; gx += 80) {
-      game.draw.line(gx, 0, gx, H, C.path, 1);
-    }
-    for (var gy = 0; gy < H; gy += 80) {
-      game.draw.line(0, gy, W, gy, C.path, 1);
-    }
-
-    // Tower base
-    game.draw.circle(TOWER_X, TOWER_Y, 60, C.tower, 0.9);
-    game.draw.circle(TOWER_X, TOWER_Y, 44, C.towerHi, 0.85);
-    // Cannon
-    var canLen = 80;
-    game.draw.line(TOWER_X, TOWER_Y,
-      TOWER_X + Math.cos(cannonAngle) * canLen,
-      TOWER_Y + Math.sin(cannonAngle) * canLen,
-      C.cannon, 24);
-    game.draw.circle(TOWER_X, TOWER_Y, 24, C.cannon, 0.9);
-
-    // Base HP indicators
-    for (var li = 0; li < MAX_LEAK; li++) {
-      game.draw.circle(W / 2 - (MAX_LEAK - 1) * 40 + li * 80, TOWER_Y + 80, 18, li < leaked ? C.danger : C.base, 0.9);
-    }
-
-    // Enemies
-    for (var ei3 = 0; ei3 < enemies.length; ei3++) {
-      var e2 = enemies[ei3];
-      game.draw.circle(e2.x, e2.y, e2.r + 6, C.enemy, 0.2);
-      game.draw.circle(e2.x, e2.y, e2.r, C.enemy, 0.9);
-      // HP bar
-      var hpFrac = e2.hp / e2.maxHp;
-      game.draw.rect(e2.x - 24, e2.y - e2.r - 14, 48, 8, '#333', 0.8);
-      game.draw.rect(e2.x - 24, e2.y - e2.r - 14, 48 * hpFrac, 8, C.enemyHi, 0.9);
-    }
-
-    // Bullets
-    for (var bi2 = 0; bi2 < bullets.length; bi2++) {
-      var b2 = bullets[bi2];
-      game.draw.circle(b2.x, b2.y, 10, C.bullet, 0.9);
-      game.draw.circle(b2.x - b2.vx * 0.02, b2.y - b2.vy * 0.02, 6, C.bulletHi, 0.5);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 7 * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    game.draw.text(killed + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.base : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(killed + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var li = 0; li < MAX_LEAK; li++) game.draw.rect(snap(W / 2 + (li - (MAX_LEAK - 1) / 2) * 56) - 10, 224, 20, 20, li < leaked ? C.a : '#0a1a0c');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.15);
-    spawnTimer = 0.5;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

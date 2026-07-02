@@ -1,209 +1,154 @@
 // 373-memory-tiles.js
-// メモリータイル — 光ったタイルの順番を記憶してタップ再現
-// 操作: タップでタイルを選ぶ
-// 成功: レベル8クリア  失敗: 3回間違える or 60秒
+// メモリータイル — 光ったタイルの順番を記憶し、同じ順にタップして再現するサイモン式記憶ゲーム
+// 操作: 光る順番を覚え、消えたら同じ順にタイルをタップ
+// 成功: レベル3 クリア  失敗: 3回 間違える or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0a1e',
-    tile:   '#1e1b4b',
-    tileHi: '#312e81',
-    tileLit:'#818cf8',
-    tileLitHi:'#c7d2fe',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、記憶パネル） ──
+  var C = { bg:'#080618', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var GRID = 4;
-  var TILE_SIZE = 200;
-  var GAP = 16;
-  var OX = (W - (GRID * TILE_SIZE + (GRID - 1) * GAP)) / 2;
-  var OY = H * 0.28;
-
-  var level = 1;
-  var MAX_LEVEL = 8;
-  var sequence = [];
-  var playerInput = [];
-  var showing = false;
-  var showIdx = 0;
-  var showTimer = 0;
-  var SHOW_DURATION = 0.55;
-  var litTile = -1;
-  var inputEnabled = false;
-  var mistakes = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'MEMORY TILES';
+  var HOW_TO_PLAY = 'WATCH THE FLASHES · REPEAT THE ORDER';
+  var MAX_TIME = 20;
+  var MAX_LEVEL = 3;         // 修正2: 8 → 3
   var MAX_MISTAKES = 3;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var flashTile = -1;
-  var flashCol = C.correct;
-  var flashTimer = 0;
-  var particles = [];
+  var GRID = 3, CELL = snap(W * 0.82 / GRID), OX = snap((W - GRID * CELL) / 2), OY = snap(H * 0.34);
 
-  function generateSequence(len) {
-    sequence = [];
-    for (var i = 0; i < len; i++) {
-      sequence.push(Math.floor(Math.random() * (GRID * GRID)));
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var level, seq, input, showing, showIdx, showTimer, litTile, inputOn, mistakes, timeLeft, done, flashTile, flashCol, flashTimer, particles;
+  var SHOW_DUR = 0.5;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#181030');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function genSeq(len) { seq = []; for (var i = 0; i < len; i++) seq.push(Math.floor(Math.random() * (GRID * GRID))); }
+
+  function startLevel() { genSeq(level + 1); input = []; inputOn = false; showing = true; showIdx = 0; showTimer = SHOW_DUR * 0.5; litTile = -1; }
+
+  function initGame() { level = 1; mistakes = 0; timeLeft = MAX_TIME; done = false; flashTile = -1; flashCol = C.b; flashTimer = 0; particles = []; startLevel(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (level * 600 + Math.ceil(timeLeft) * 100) : (level - 1) * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function tileXY(idx) { return { x: OX + (idx % GRID) * CELL, y: OY + Math.floor(idx / GRID) * CELL }; }
+
+  function drawTiles() {
+    for (var idx = 0; idx < GRID * GRID; idx++) {
+      var p = tileXY(idx), lit = litTile === idx, fl = flashTile === idx && flashTimer > 0;
+      var col = fl ? flashCol : lit ? C.e : C.d;
+      game.draw.rect(p.x + 6, p.y + 6, CELL - 12, CELL - 12, col, lit || fl ? 0.95 : 0.5);
+      if (lit || fl) game.draw.rect(p.x + 14, p.y + 14, CELL - 28, 6, C.g, 0.5);
     }
   }
 
-  function startLevel() {
-    var seqLen = level + 2;
-    generateSequence(seqLen);
-    playerInput = [];
-    inputEnabled = false;
-    showing = true;
-    showIdx = 0;
-    showTimer = SHOW_DURATION * 0.4;
-    litTile = -1;
-  }
-
-  game.onTap(function(tx, ty) {
-    if (done || !inputEnabled) return;
-    var col = Math.floor((tx - OX) / (TILE_SIZE + GAP));
-    var row = Math.floor((ty - OY) / (TILE_SIZE + GAP));
-    if (col < 0 || col >= GRID || row < 0 || row >= GRID) return;
-    var idx = row * GRID + col;
-    playerInput.push(idx);
-    var expected = sequence[playerInput.length - 1];
-    if (idx === expected) {
-      game.audio.play('se_tap', 0.4);
-      flashTile = idx;
-      flashCol = C.correct;
-      flashTimer = 0.35;
-      if (playerInput.length === sequence.length) {
-        // Level complete!
-        inputEnabled = false;
-        for (var pi = 0; pi < 12; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: W/2, y: H*0.5, vx: Math.cos(ang)*200, vy: Math.sin(ang)*200, life:0.7, col: C.tileLitHi });
-        }
-        game.audio.play('se_success', 0.6);
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || !inputOn) return;
+    var c = Math.floor((x - OX) / CELL), r = Math.floor((y - OY) / CELL);
+    if (c < 0 || c >= GRID || r < 0 || r >= GRID) return;
+    var idx = r * GRID + c; input.push(idx);
+    if (idx === seq[input.length - 1]) {
+      game.audio.play('se_tap', 0.4); flashTile = idx; flashCol = C.b; flashTimer = 0.3;
+      if (input.length === seq.length) {
+        inputOn = false; game.audio.play('se_success', 0.6);
+        for (var k = 0; k < 12; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: OY + GRID * CELL / 2, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, life: 0.7, col: C.c }); }
         level++;
-        if (level > MAX_LEVEL && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(level * 500 + Math.ceil(timeLeft) * 80); }, 1000);
-        } else if (!done) {
-          setTimeout(function() { startLevel(); }, 1200);
-        }
+        if (level > MAX_LEVEL) { finish(true); return; }
+        setTimeout(function() { if (!done && state === S.PLAYING) startLevel(); }, 1100);
       }
     } else {
-      mistakes++;
-      flashTile = idx;
-      flashCol = C.wrong;
-      flashTimer = 0.4;
-      game.audio.play('se_failure', 0.4);
-      // Show correct tile briefly
-      setTimeout(function() {
-        flashTile = expected;
-        flashCol = C.tileLit;
-        flashTimer = 0.5;
-      }, 300);
-      playerInput = [];
-      if (mistakes >= MAX_MISTAKES && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 600);
-        return;
-      }
-      // Retry same level
-      setTimeout(function() {
-        if (!done) startLevel();
-      }, 1000);
+      mistakes++; flashTile = idx; flashCol = C.a; flashTimer = 0.4; game.audio.play('se_failure', 0.4);
+      input = [];
+      if (mistakes >= MAX_MISTAKES) { finish(false); return; }
+      setTimeout(function() { if (!done && state === S.PLAYING) startLevel(); }, 900);
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); if (level === undefined) { level = 1; genSeq(2); litTile = -1; } drawTiles();
+      txt(GAME_TITLE, W / 2, H * 0.16, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'RECALL!' : 'FORGOT', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    if (flashTimer > 0) flashTimer -= dt * 2;
-
-    // Show sequence animation
-    if (showing) {
-      showTimer -= dt;
-      if (showTimer <= 0) {
-        if (litTile >= 0) {
-          litTile = -1;
-          showTimer = SHOW_DURATION * 0.3;
-          showIdx++;
-        } else if (showIdx < sequence.length) {
-          litTile = sequence[showIdx];
-          showTimer = SHOW_DURATION;
-          game.audio.play('se_tap', 0.2);
-        } else {
-          showing = false;
-          litTile = -1;
-          inputEnabled = true;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flashTimer > 0) flashTimer -= dt * 2;
+      if (showing) {
+        showTimer -= dt;
+        if (showTimer <= 0) {
+          if (litTile >= 0) { litTile = -1; showTimer = SHOW_DUR * 0.3; showIdx++; }
+          else if (showIdx < seq.length) { litTile = seq[showIdx]; showTimer = SHOW_DUR; game.audio.play('se_tap', 0.2); }
+          else { showing = false; litTile = -1; inputOn = true; }
         }
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawTiles();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    txt(showing ? 'WATCH...' : (inputOn ? 'REPEAT  ' + input.length + ' / ' + seq.length : 'GOOD!'), W / 2, snap(H * 0.74), 46, showing ? C.e : C.b);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Level and progress
-    game.draw.text('レベル ' + level + ' / ' + MAX_LEVEL, W / 2, 160, { size: 52, color: C.text, bold: true });
-    game.draw.text(showing ? '覚えて...' : (inputEnabled ? '入力！ (' + (playerInput.length) + '/' + sequence.length + ')' : ''), W / 2, 230, { size: 38, color: showing ? C.tileLitHi : C.correct });
-
-    // Tiles
-    for (var r = 0; r < GRID; r++) {
-      for (var c = 0; c < GRID; c++) {
-        var idx = r * GRID + c;
-        var tx = OX + c * (TILE_SIZE + GAP);
-        var ty = OY + r * (TILE_SIZE + GAP);
-        var isLit = litTile === idx;
-        var isFlash = flashTile === idx && flashTimer > 0;
-        var col;
-        if (isFlash) {
-          col = flashCol;
-        } else if (isLit) {
-          col = C.tileLit;
-        } else {
-          col = C.tile;
-        }
-        game.draw.rect(tx, ty, TILE_SIZE, TILE_SIZE, col, isLit || isFlash ? 0.95 : 0.8);
-        if (isLit) {
-          game.draw.rect(tx + 8, ty + 8, TILE_SIZE - 16, TILE_SIZE - 16, C.tileLitHi, 0.3);
-        }
-        // Tile number (subtle)
-        game.draw.text((idx + 1) + '', tx + TILE_SIZE / 2, ty + TILE_SIZE / 2 + 12, { size: 36, color: isLit ? C.tileLitHi : C.tileHi });
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life, p.col, p.life * 0.8);
-    }
-
-    // Mistake dots
-    for (var mi = 0; mi < MAX_MISTAKES; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISTAKES - 1) * 32 + mi * 64, H * 0.93, 16, mi < mistakes ? C.wrong : C.tile, 0.9);
-    }
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.tileLit : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('LV ' + Math.min(level, MAX_LEVEL) + ' / ' + MAX_LEVEL, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISTAKES; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISTAKES - 1) / 2) * 56) - 10, 224, 20, 20, mi < mistakes ? C.a : '#181030');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    startLevel();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

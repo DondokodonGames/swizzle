@@ -1,228 +1,153 @@
 // 372-puddle-jump.js
-// 水たまりジャンプ — 雨の中、白線をはみ出さずに水たまりを避けて前進
-// 操作: タップで左右レーンに移動
-// 成功: 200m前進  失敗: 水たまりを3回踏む or 30秒
+// 水たまりジャンプ — 雨の路上、3レーンを移動して迫る水たまりを避けながらゴールまで走る
+// 操作: タップ左右／スワイプでレーン移動
+// 成功: 80m 前進  失敗: 水たまりを3回 踏む or 12秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0f172a',
-    road:   '#1e293b',
-    lane:   '#334155',
-    line:   '#e2e8f0',
-    puddle: '#1d4ed8',
-    puddleHi:'#60a5fa',
-    puddleShine:'#bfdbfe',
-    char:   '#fbbf24',
-    charHi: '#fef3c7',
-    rain:   '#7dd3fc',
-    splash: '#93c5fd',
-    danger: '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（アイスブルー、雨の路上） ──
+  var C = { bg:'#050a18', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff', road:'#12203a' };
 
-  var LANES = 3;
-  var LANE_W = W / LANES;
-  var playerLane = 1;
-  var playerY = H * 0.78;
-  var playerX = LANE_W * playerLane + LANE_W / 2;
-  var targetX = playerX;
-
-  var distance = 0;
-  var GOAL = 200;
-  var speed = 280;
-  var splashCount = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'PUDDLE JUMP';
+  var HOW_TO_PLAY = 'MOVE LANES · DODGE THE PUDDLES · REACH THE GOAL';
+  var MAX_TIME = 12;
+  var GOAL = 80;             // 修正2: 200m → 80m
   var MAX_SPLASH = 3;
-  var done = false;
-  var timeLeft = 30;
-  var elapsed = 0;
-  var particles = [];
-  var raindrops = [];
-  var puddles = [];
-  var spawnTimer = 0;
-  var jumpAnim = 0;
+  var LANES = 3, LANE_W = snap(W / 3), PY = snap(H * 0.76), SPEED = 300;
 
-  // Road scroll offset
-  var roadOffset = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnPuddle() {
-    var lane = Math.floor(Math.random() * LANES);
-    puddles.push({
-      lane: lane,
-      y: -80,
-      w: LANE_W * 0.7,
-      h: 50,
-      active: true
-    });
+  // ── ゲーム変数 ──
+  var lane, px, tx, dist, splash, timeLeft, done, particles, rain, puddles, spawnTimer, roadOff, jump;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function distBar() {
+    var t = Math.ceil(Math.min(1, dist / GOAL) * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1428');
+  }
+
+  function background() {
+    game.draw.clear(C.bg); game.draw.rect(0, 0, W, H, C.road, 0.9);
+    for (var li = 1; li < LANES; li++) { var lx = LANE_W * li; for (var seg = -1; seg < H / 120 + 1; seg++) { var ly = snap(seg * 120 + roadOff % 120); game.draw.rect(lx - 4, ly, 8, 60, C.g, 0.5); } }
+  }
+
+  function laneX(l) { return snap(LANE_W * l + LANE_W / 2); }
+
+  function spawnPuddle() { puddles.push({ lane: Math.floor(Math.random() * LANES), y: -80, active: true }); }
+
+  function initGame() { lane = 1; px = laneX(1); tx = px; dist = 0; splash = 0; timeLeft = MAX_TIME; done = false; particles = []; rain = []; puddles = []; spawnTimer = 0.5; roadOff = 0; jump = 0; }
+
+  function finish(success) {
     if (done) return;
-    if (tx < W / 2) {
-      playerLane = Math.max(0, playerLane - 1);
-    } else {
-      playerLane = Math.min(LANES - 1, playerLane + 1);
-    }
-    targetX = LANE_W * playerLane + LANE_W / 2;
-    game.audio.play('se_tap', 0.3);
-    jumpAnim = 0.2;
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.round(dist) * 60 + (MAX_SPLASH - splash) * 400 + Math.ceil(timeLeft) * 100) : Math.round(dist) * 30;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function move(dir) { lane = Math.max(0, Math.min(LANES - 1, lane + dir)); tx = laneX(lane); jump = 0.2; game.audio.play('se_tap', 0.3); }
+
+  function drawPlayer() {
+    var bob = jump > 0 ? -24 * (jump / 0.2) : Math.sin(game.time.elapsed * 8) * 4;
+    pc(px, PY + bob, 40, C.c, 0.9); pc(px, PY - 52 + bob, 28, C.g, 0.9);
+    game.draw.rect(snap(px - 28), snap(PY + 30 + bob), 22, 14, C.f, 0.9); game.draw.rect(snap(px + 6), snap(PY + 30 + bob), 22, 14, C.f, 0.9);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return; move(x < W / 2 ? -1 : 1);
   });
 
-  game.onSwipe(function(dir) {
-    if (done) return;
-    if (dir === 'left') playerLane = Math.max(0, playerLane - 1);
-    if (dir === 'right') playerLane = Math.min(LANES - 1, playerLane + 1);
-    targetX = LANE_W * playerLane + LANE_W / 2;
-    game.audio.play('se_tap', 0.3);
-    jumpAnim = 0.2;
+  game.onSwipe(function(d) {
+    if (state !== S.PLAYING || done) return;
+    if (d === 'left') move(-1); else if (d === 'right') move(1);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    if (jumpAnim > 0) jumpAnim -= dt * 4;
-
-    // Move player horizontally
-    playerX += (targetX - playerX) * 8 * dt;
-
-    // Advance distance
-    distance += speed * dt / 8;
-    if (distance >= GOAL && !done) {
-      done = true;
-      game.audio.play('se_success', 0.7);
-      game.end.success(Math.round(distance * 20) + Math.ceil(timeLeft) * 80);
+    if (state === S.ATTRACT) {
+      if (roadOff === undefined) roadOff = 0; roadOff += SPEED * dt; if (roadOff > 120) roadOff -= 120;
+      if (!puddles) initGame(); background(); drawPlayer();
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
       return;
     }
 
-    roadOffset += speed * dt;
-    if (roadOffset > 120) roadOffset -= 120;
-
-    // Spawn puddles
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && !done) {
-      spawnPuddle();
-      if (Math.random() < 0.35) spawnPuddle();
-      spawnTimer = 0.5 + Math.random() * 0.4;
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'MADE IT!' : 'SOAKED', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
 
-    // Update puddles
-    for (var pi = puddles.length - 1; pi >= 0; pi--) {
-      puddles[pi].y += speed * dt;
-      if (puddles[pi].y > H + 100) {
-        puddles.splice(pi, 1);
-        continue;
-      }
-      // Collision with player
-      if (puddles[pi].active) {
-        var puddleX = LANE_W * puddles[pi].lane + LANE_W / 2;
-        var distX = Math.abs(playerX - puddleX);
-        var distY = Math.abs(playerY - puddles[pi].y);
-        if (distX < LANE_W * 0.35 && distY < 50) {
-          puddles[pi].active = false;
-          splashCount++;
-          game.audio.play('se_failure', 0.4);
-          for (var spi = 0; spi < 8; spi++) {
-            var ang = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI;
-            particles.push({ x: playerX, y: playerY, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.5, col: C.splash });
-          }
-          if (splashCount >= MAX_SPLASH && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
-          }
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (jump > 0) jump -= dt;
+      px += (tx - px) * 10 * dt;
+      dist += SPEED * dt / 12;
+      if (dist >= GOAL) { finish(true); return; }
+      roadOff += SPEED * dt; if (roadOff > 120) roadOff -= 120;
+      spawnTimer -= dt; if (spawnTimer <= 0) { spawnPuddle(); if (Math.random() < 0.3) spawnPuddle(); spawnTimer = 0.5 + Math.random() * 0.4; }
+      for (var pi = puddles.length - 1; pi >= 0; pi--) {
+        puddles[pi].y += SPEED * dt;
+        if (puddles[pi].y > H + 100) { puddles.splice(pi, 1); continue; }
+        if (puddles[pi].active && Math.abs(px - laneX(puddles[pi].lane)) < LANE_W * 0.4 && Math.abs(PY - puddles[pi].y) < 48) {
+          puddles[pi].active = false; splash++; game.audio.play('se_failure', 0.4);
+          for (var k = 0; k < 8; k++) { var a = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI; particles.push({ x: px, y: PY, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.5, col: C.e }); }
+          if (splash >= MAX_SPLASH) { finish(false); return; }
         }
       }
+      if (Math.random() < dt * 24) rain.push({ x: snap(Math.random() * W), y: 0, vy: 700 + Math.random() * 300, life: 2 });
+      for (var ri = rain.length - 1; ri >= 0; ri--) { rain[ri].y += rain[ri].vy * dt; rain[ri].life -= dt; if (rain[ri].life <= 0 || rain[ri].y > H) rain.splice(ri, 1); }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 400 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Rain
-    if (Math.random() < dt * 20) {
-      raindrops.push({ x: Math.random() * W, y: 0, vy: 600 + Math.random() * 400, life: H / 600 });
-    }
-    for (var ri = raindrops.length - 1; ri >= 0; ri--) {
-      raindrops[ri].y += raindrops[ri].vy * dt;
-      raindrops[ri].life -= dt;
-      if (raindrops[ri].life <= 0) raindrops.splice(ri, 1);
-    }
+    // ---- 描画 ----
+    background();
+    for (var pui = 0; pui < puddles.length; pui++) { var pd = puddles[pui], pdx = laneX(pd.lane); if (pd.active) { pc(pdx, pd.y, 52, C.d, 0.85); pc(pdx - 16, pd.y - 12, 14, C.e, 0.5); } else pc(pdx, pd.y, 52, C.e, 0.25); }
+    for (var ri2 = 0; ri2 < rain.length; ri2++) game.draw.rect(rain[ri2].x, snap(rain[ri2].y), 3, 22, C.e, 0.6);
+    drawPlayer();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 400 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Road
-    game.draw.rect(0, 0, W, H, C.road, 0.9);
-
-    // Lane lines
-    for (var li = 1; li < LANES; li++) {
-      var lx = LANE_W * li;
-      for (var seg = -1; seg < H / 120 + 1; seg++) {
-        var lineY = seg * 120 + roadOffset % 120;
-        game.draw.rect(lx - 4, lineY, 8, 60, C.line, 0.6);
-      }
-    }
-
-    // Puddles
-    for (var pui = 0; pui < puddles.length; pui++) {
-      var pud = puddles[pui];
-      var px = LANE_W * pud.lane + LANE_W / 2;
-      if (pud.active) {
-        game.draw.rect(px - pud.w / 2, pud.y - pud.h / 2, pud.w, pud.h, C.puddle, 0.85);
-        game.draw.rect(px - pud.w * 0.35, pud.y - pud.h * 0.25, pud.w * 0.4, pud.h * 0.3, C.puddleShine, 0.4);
-      } else {
-        // Splash remnant
-        game.draw.rect(px - pud.w / 2, pud.y - pud.h / 2, pud.w, pud.h, C.puddleHi, 0.3);
-      }
-    }
-
-    // Rain
-    for (var ri2 = 0; ri2 < raindrops.length; ri2++) {
-      var rd = raindrops[ri2];
-      game.draw.line(rd.x, rd.y, rd.x - 4, rd.y + 24, C.rain, 2);
-    }
-
-    // Player
-    var bobY = jumpAnim > 0 ? -20 * jumpAnim : Math.sin(elapsed * 8) * 4;
-    // Body
-    game.draw.circle(playerX, playerY + bobY, 44, C.char, 0.9);
-    // Head
-    game.draw.circle(playerX, playerY - 56 + bobY, 32, C.charHi, 0.9);
-    // Boots
-    game.draw.rect(playerX - 28, playerY + 34 + bobY, 24, 16, '#78350f', 0.9);
-    game.draw.rect(playerX + 4, playerY + 34 + bobY, 24, 16, '#78350f', 0.9);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var pt = particles[pp2];
-      game.draw.circle(pt.x, pt.y, 8 * pt.life, pt.col, pt.life * 0.9);
-    }
-
-    // Splash counter
-    for (var sc = 0; sc < MAX_SPLASH; sc++) {
-      game.draw.circle(W / 2 - (MAX_SPLASH - 1) * 32 + sc * 64, H * 0.92, 16, sc < splashCount ? C.danger : C.lane, 0.9);
-    }
-
-    // Progress
-    var prog = Math.min(1, distance / GOAL);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * prog, 72, C.puddleHi);
-    game.draw.text(Math.round(distance) + 'm / ' + GOAL + 'm', W / 2, 36, { size: 40, color: '#fff', bold: true });
-    game.draw.text(Math.ceil(timeLeft) + 's', W * 0.88, 36, { size: 36, color: '#fff', bold: true });
+    distBar();
+    txt(Math.round(dist) + 'm', W / 2, 96, 44, C.c);
+    txt(Math.round(dist) + ' / ' + GOAL + 'm   ' + Math.ceil(timeLeft) + 's', W / 2, 168, 44, C.b);
+    for (var si = 0; si < MAX_SPLASH; si++) game.draw.rect(snap(W / 2 + (si - (MAX_SPLASH - 1) / 2) * 56) - 10, 224, 20, 20, si < splash ? C.a : '#0a1428');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.15);
-    spawnTimer = 0.8;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
