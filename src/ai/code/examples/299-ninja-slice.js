@@ -1,223 +1,158 @@
 // 299-ninja-slice.js
-// 忍者スライス — 空中に浮かぶ的をスワイプで斬る、爆弾は絶対に避けよ
-// 操作: スワイプで的を斬る（爆弾をスワイプするとダメージ）
-// 成功: 40個斬る  失敗: 爆弾3回 or 45秒
+// 忍者スライス — 宙に舞う的をスワイプで斬り、黒い爆弾は絶対に斬らない道場アクション
+// 操作: スワイプで的を斬る（爆弾を斬るとダメージ）
+// 成功: 的を5個斬る  失敗: 爆弾を3回斬る or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0208',
-    target1:'#ef4444',
-    tgt1Hi: '#fca5a5',
-    target2:'#f59e0b',
-    tgt2Hi: '#fde68a',
-    target3:'#22c55e',
-    tgt3Hi: '#86efac',
-    bomb:   '#1e1b4b',
-    bombHi: '#312e81',
-    fuse:   '#f59e0b',
-    slash:  '#e2e8f0',
-    slashHi:'#f8fafc',
-    danger: '#ef4444',
-    ui:     '#475569',
-    text:   '#f1f5f9'
-  };
+  // ── パレット（ネオンアーケード、忍者道場） ──
+  var C = { bg:'#0a0208', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var TCOLS = [C.a, C.c, C.b, C.e];
 
-  var objects = []; // {x,y,vx,vy,r,type:'target'|'bomb',col,hiCol,sliced,sliceAnim}
-  var sliced = 0;
-  var NEEDED = 40;
-  var bombHits = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'NINJA SLICE';
+  var HOW_TO_PLAY = 'SWIPE TO SLICE TARGETS · NEVER CUT THE BOMB';
+  var MAX_TIME = 15;
+  var NEEDED   = 5;          // 修正2: 40 → 5
   var MAX_BOMB = 3;
-  var done = false;
-  var timeLeft = 45;
-  var elapsed = 0;
-  var spawnTimer = 0;
-  var particles = [];
-  var slashTrail = []; // {x,y,alpha}
-  var lastSwipe = null;
-  var lastSwipeTimer = 0;
-  var bgSlashes = [];
 
-  function spawnObject() {
-    var isBomb = Math.random() < 0.22;
-    var fromLeft = Math.random() < 0.5;
-    var x = fromLeft ? -80 : W + 80;
-    var y = H * (0.3 + Math.random() * 0.5);
-    var speed = 600 + Math.random() * 400;
-    var vx = fromLeft ? speed * (0.4 + Math.random() * 0.4) : -speed * (0.4 + Math.random() * 0.4);
-    var vy = -400 - Math.random() * 400;
-    var r = isBomb ? 55 : 45 + Math.random() * 25;
-    var cols = [[C.target1, C.tgt1Hi], [C.target2, C.tgt2Hi], [C.target3, C.tgt3Hi]];
-    var col = cols[Math.floor(Math.random() * cols.length)];
-    objects.push({ x: x, y: y, vx: vx, vy: vy, r: r, type: isBomb ? 'bomb' : 'target', col: isBomb ? C.bomb : col[0], hiCol: isBomb ? C.bombHi : col[1], sliced: false, sliceAnim: 0, fuseAnim: 0 });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var objs, sliced, bombHits, timeLeft, done, spawnTimer, particles, trail, trailTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.24) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a0a12');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function spawnObj() {
+    var isBomb = Math.random() < 0.22, fromLeft = Math.random() < 0.5;
+    var x = fromLeft ? -80 : W + 80, y = snap(H * (0.4 + Math.random() * 0.4)), spd = 550 + Math.random() * 350;
+    var vx = fromLeft ? spd * (0.4 + Math.random() * 0.4) : -spd * (0.4 + Math.random() * 0.4);
+    objs.push({ x: x, y: y, vx: vx, vy: -560 - Math.random() * 360, r: isBomb ? 54 : 48, bomb: isBomb, col: isBomb ? '#181828' : TCOLS[Math.floor(Math.random() * TCOLS.length)], sliced: false, anim: 0 });
+  }
+
+  function initGame() { objs = []; sliced = 0; bombHits = 0; timeLeft = MAX_TIME; done = false; spawnTimer = 0.3; particles = []; trail = []; trailTimer = 0; }
+
+  function finish(success) {
     if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (sliced * 400 + Math.ceil(timeLeft) * 100) : sliced * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    // Trail
-    slashTrail = [];
-    var steps = 10;
-    for (var si = 0; si <= steps; si++) {
-      slashTrail.push({ x: x1 + (x2 - x1) * si / steps, y: y1 + (y2 - y1) * si / steps, alpha: 1 - si / steps });
+  function drawObj(o) {
+    if (o.sliced) { pc(o.x - 18 * (1 - o.anim), o.y, o.r * o.anim, o.col, o.anim * 0.8); pc(o.x + 18 * (1 - o.anim), o.y, o.r * o.anim, o.col, o.anim * 0.8); return; }
+    if (o.bomb) {
+      ring(o.x, o.y, o.r + 8, C.a, 0.5); pc(o.x, o.y, o.r, o.col, 0.95); pc(o.x - o.r * 0.3, o.y - o.r * 0.3, o.r * 0.25, C.d, 0.5);
+      pline(o.x + o.r * 0.4, o.y - o.r, o.x + o.r * 0.4 + 10, o.y - o.r - 24, C.f, 0.9, 6);
+      pc(o.x + o.r * 0.4 + 12, o.y - o.r - 30, 8 + 4 * (Math.floor(game.time.elapsed * 8) % 2), C.c, 0.9);
+    } else {
+      ring(o.x, o.y, o.r + 6, o.col, 0.4); pc(o.x, o.y, o.r, o.col, 0.9); pc(o.x - o.r * 0.3, o.y - o.r * 0.3, o.r * 0.22, C.g, 0.5);
     }
-    lastSwipeTimer = 0.15;
-    lastSwipe = { x1: x1, y1: y1, x2: x2, y2: y2 };
+  }
 
-    // Check hits
-    for (var oi = objects.length - 1; oi >= 0; oi--) {
-      var obj = objects[oi];
-      if (obj.sliced) continue;
-      // Check if swipe line passes near obj center
-      var dx = x2 - x1, dy = y2 - y1;
-      var len = Math.hypot(dx, dy);
-      if (len < 1) continue;
-      var t = ((obj.x - x1) * dx + (obj.y - y1) * dy) / (len * len);
-      t = Math.max(0, Math.min(1, t));
-      var cx2 = x1 + t * dx, cy2 = y1 + t * dy;
-      var dist = Math.hypot(obj.x - cx2, obj.y - cy2);
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+  });
 
-      if (dist < obj.r + 20) {
-        obj.sliced = true;
-        obj.sliceAnim = 1;
-        if (obj.type === 'target') {
-          sliced++;
-          game.audio.play('se_success', 0.35);
-          // Slice particles
-          for (var pi = 0; pi < 8; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: obj.x, y: obj.y, vx: Math.cos(ang) * 250, vy: Math.sin(ang) * 250 - 50, life: 0.5, col: obj.hiCol, r: 10 });
-          }
-          if (sliced >= NEEDED && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(sliced * 80 + Math.ceil(timeLeft) * 120); }, 400);
-          }
-        } else {
-          bombHits++;
-          game.audio.play('se_failure', 0.7);
-          for (var pi2 = 0; pi2 < 12; pi2++) {
-            var ang2 = Math.random() * Math.PI * 2;
-            particles.push({ x: obj.x, y: obj.y, vx: Math.cos(ang2) * 300, vy: Math.sin(ang2) * 300 - 100, life: 0.7, col: '#f97316', r: 14 });
-          }
-          if (bombHits >= MAX_BOMB && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
-          }
-        }
+  game.onSwipe(function(d, x1, y1, x2, y2) {
+    if (state !== S.PLAYING || done) return;
+    trail = { x1: x1, y1: y1, x2: x2, y2: y2 }; trailTimer = 0.15;
+    for (var oi = objs.length - 1; oi >= 0; oi--) {
+      var o = objs[oi]; if (o.sliced) continue;
+      var dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy); if (len < 1) continue;
+      var t = Math.max(0, Math.min(1, ((o.x - x1) * dx + (o.y - y1) * dy) / (len * len)));
+      var cx = x1 + t * dx, cy = y1 + t * dy, dist = Math.hypot(o.x - cx, o.y - cy);
+      if (dist < o.r + 20) {
+        o.sliced = true; o.anim = 1;
+        if (o.bomb) { bombHits++; game.audio.play('se_failure', 0.7); for (var k = 0; k < 12; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: o.x, y: o.y, vx: Math.cos(a) * 300, vy: Math.sin(a) * 300 - 100, life: 0.7, col: C.f }); } if (bombHits >= MAX_BOMB) { finish(false); return; } }
+        else { sliced++; game.audio.play('se_success', 0.35); for (var k2 = 0; k2 < 8; k2++) { var a2 = Math.random() * Math.PI * 2; particles.push({ x: o.x, y: o.y, vx: Math.cos(a2) * 250, vy: Math.sin(a2) * 250 - 50, life: 0.5, col: o.col }); } if (sliced >= NEEDED) { finish(true); return; } }
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawObj({ x: W * 0.35, y: H * 0.5, r: 48, bomb: false, col: C.c, sliced: false }); drawObj({ x: W * 0.65, y: H * 0.55, r: 54, bomb: true, col: '#181828', sliced: false });
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'MASTER CUT!' : 'BOOM!', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    if (lastSwipeTimer > 0) lastSwipeTimer -= dt;
-
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && !done) {
-      var spawnCount = Math.random() < 0.3 ? 2 : 1;
-      for (var si2 = 0; si2 < spawnCount; si2++) spawnObject();
-      spawnTimer = 0.6 + Math.random() * 0.5;
-    }
-
-    for (var oi2 = objects.length - 1; oi2 >= 0; oi2--) {
-      var obj2 = objects[oi2];
-      if (!obj2.sliced) {
-        obj2.x += obj2.vx * dt;
-        obj2.y += obj2.vy * dt;
-        obj2.vy += 700 * dt; // gravity
-        obj2.fuseAnim += dt * 5;
-      } else {
-        obj2.sliceAnim -= dt * 2;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (trailTimer > 0) trailTimer -= dt;
+      spawnTimer -= dt; if (spawnTimer <= 0) { var n = Math.random() < 0.3 ? 2 : 1; for (var s = 0; s < n; s++) spawnObj(); spawnTimer = 0.7 + Math.random() * 0.5; }
+      for (var oi = objs.length - 1; oi >= 0; oi--) {
+        var o = objs[oi];
+        if (!o.sliced) { o.x += o.vx * dt; o.y += o.vy * dt; o.vy += 700 * dt; } else { o.anim -= dt * 2; }
+        if (o.y > H + 120 || o.x < -220 || o.x > W + 220 || o.anim < 0) objs.splice(oi, 1);
       }
-      if (obj2.y > H + 100 || obj2.x < -200 || obj2.x > W + 200 || obj2.sliceAnim < 0) {
-        objects.splice(oi2, 1);
-      }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 400 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 400 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background();
+    for (var oi2 = 0; oi2 < objs.length; oi2++) drawObj(objs[oi2]);
+    if (trailTimer > 0 && trail.x1 !== undefined) pline(trail.x1, trail.y1, trail.x2, trail.y2, C.g, trailTimer / 0.15, 8);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Background atmosphere
-    for (var bi = 0; bi < bgSlashes.length; bi++) {
-      bgSlashes[bi].alpha -= dt * 0.5;
-    }
-    bgSlashes = bgSlashes.filter(function(b) { return b.alpha > 0; });
-
-    // Objects
-    for (var oi3 = 0; oi3 < objects.length; oi3++) {
-      var o = objects[oi3];
-      if (o.sliced) {
-        // Slice effect: two halves flying apart
-        var sa = o.sliceAnim;
-        game.draw.circle(o.x - 20 * (1 - sa), o.y, o.r * sa, o.col, sa * 0.8);
-        game.draw.circle(o.x + 20 * (1 - sa), o.y, o.r * sa, o.col, sa * 0.8);
-        continue;
-      }
-      if (o.type === 'target') {
-        game.draw.circle(o.x, o.y, o.r + 8, o.col, 0.2);
-        game.draw.circle(o.x, o.y, o.r, o.col, 0.9);
-        game.draw.circle(o.x, o.y, o.r * 0.6, o.hiCol, 0.4);
-        game.draw.circle(o.x, o.y, o.r * 0.25, '#fff', 0.6);
-      } else {
-        // Bomb: dark circle with fuse
-        game.draw.circle(o.x, o.y, o.r + 10, C.bombHi, 0.15);
-        game.draw.circle(o.x, o.y, o.r, C.bomb, 0.95);
-        game.draw.circle(o.x, o.y, o.r * 0.5, C.bombHi, 0.2);
-        // Fuse sparks
-        var fuseX = o.x + o.r * 0.5;
-        var fuseY = o.y - o.r;
-        game.draw.line(fuseX, fuseY, fuseX + 10, fuseY - 30 + Math.sin(o.fuseAnim) * 10, C.fuse, 4);
-        game.draw.circle(fuseX + 10 + Math.sin(o.fuseAnim) * 8, fuseY - 40, 8, C.fuse, 0.9);
-        game.draw.text('💣', o.x, o.y + 12, { size: 48, color: '#fff' });
-      }
-    }
-
-    // Slash trail
-    if (lastSwipeTimer > 0 && slashTrail.length > 1) {
-      for (var st = 0; st < slashTrail.length - 1; st++) {
-        var alpha2 = slashTrail[st].alpha * lastSwipeTimer / 0.15;
-        game.draw.line(slashTrail[st].x, slashTrail[st].y, slashTrail[st + 1].x, slashTrail[st + 1].y, C.slash, 8 * alpha2);
-        game.draw.line(slashTrail[st].x, slashTrail[st].y, slashTrail[st + 1].x, slashTrail[st + 1].y, C.slashHi, 3 * alpha2);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, p.r * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    game.draw.text('スワイプで斬れ！', W / 2, H * 0.89, { size: 40, color: C.ui });
-    game.draw.text(sliced + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    // Bomb dots
-    for (var bi2 = 0; bi2 < MAX_BOMB; bi2++) {
-      game.draw.circle(W / 2 - (MAX_BOMB - 1) * 28 + bi2 * 56, H * 0.93, 16, bi2 < bombHits ? C.danger : '#08020a');
-    }
-
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.target1 : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(sliced + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var bi = 0; bi < MAX_BOMB; bi++) game.draw.rect(snap(W / 2 + (bi - (MAX_BOMB - 1) / 2) * 56) - 10, 224, 20, 20, bi < bombHits ? C.a : '#1a0a12');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    spawnTimer = 0.3;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
