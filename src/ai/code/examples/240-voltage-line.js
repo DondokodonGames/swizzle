@@ -1,206 +1,143 @@
 // 240-voltage-line.js
-// ボルテージライン — 導線をつなぎ直して電気を流す回路パズル
-// 操作: タップで導線のパーツを回転させる
-// 成功: 全回路に電気を通す  失敗: 30秒
+// ボルテージライン — 導線パーツをタップで回転させ、電源からランプまで電気を通す回路パズル
+// 操作: タップで導線を90度回転
+// 成功: ランプまで通電  失敗: 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#030508',
-    tile:   '#0f172a',
-    tileHi: '#1e293b',
-    wire:   '#64748b',
-    wireOn: '#22c55e',
-    wireHi: '#86efac',
-    source: '#f59e0b',
-    lamp:   '#fde68a',
-    lampOff:'#374151',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、配電盤） ──
+  var C = { bg:'#030508', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var COLS = 5;
-  var ROWS = 7;
-  var CELL = Math.min(Math.floor((W - 80) / COLS), Math.floor((H * 0.75) / ROWS));
-  var OX = Math.floor((W - COLS * CELL) / 2);
-  var OY = Math.floor(H * 0.1);
-
-  // Piece types — bitmask: bit0=up, bit1=right, bit2=down, bit3=left
-  // 0110 (6) = right+down (corner)
-  // 0101 (5) = up+down (straight vertical)
-  // 0011 (3) = up+right (corner)
-  // 1001 (9) = up+left (corner)
-  // 1010 (10) = right+left (straight horizontal)
-  // 1100 (12) = left+down (corner)
-
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'VOLTAGE LINE';
+  var HOW_TO_PLAY = 'TAP WIRES TO ROTATE · POWER THE LAMP';
+  var MAX_TIME = 20;
+  var COLS = 4, ROWS = 5;     // 修正2: 5x7 → 4x5（易化）
+  var CELL = Math.min(snap((W - 80) / COLS), snap((H * 0.55) / ROWS));
+  var OX = snap((W - COLS * CELL) / 2), OY = snap(H * 0.3);
   var PIECE_TYPES = [3, 5, 6, 9, 10, 12];
+  var SOURCE = { col: 0, row: 2 }, LAMP = { col: COLS - 1, row: 2 };
 
-  var grid = [];
-  var powered = [];
-  var done = false;
-  var timeLeft = 30;
-  var elapsed = 0;
-  var SOURCE = { col: 0, row: Math.floor(ROWS / 2) };
-  var LAMP = { col: COLS - 1, row: Math.floor(ROWS / 2) };
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function initGrid() {
-    grid = [];
-    powered = [];
-    for (var r = 0; r < ROWS; r++) {
-      grid[r] = [];
-      powered[r] = [];
-      for (var c = 0; c < COLS; c++) {
-        powered[r][c] = false;
-        if (c === SOURCE.col && r === SOURCE.row) {
-          grid[r][c] = { type: 10, rot: 0 }; // horizontal straight (source exits right)
-        } else if (c === LAMP.col && r === LAMP.row) {
-          grid[r][c] = { type: 10, rot: 0 }; // horizontal straight (enters from left)
-        } else {
-          var typeIdx = Math.floor(Math.random() * PIECE_TYPES.length);
-          var rot = Math.floor(Math.random() * 4);
-          grid[r][c] = { type: PIECE_TYPES[typeIdx], rot: rot };
-        }
-      }
-    }
+  // ── ゲーム変数 ──
+  var grid, powered, timeLeft, done;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function getConnections(r, c) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1420');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(OX - 16, OY - 16, COLS * CELL + 32, ROWS * CELL + 32, C.d, 0.3); }
+
+  function initGrid() {
+    grid = []; powered = [];
+    for (var r = 0; r < ROWS; r++) { grid[r] = []; powered[r] = []; for (var c = 0; c < COLS; c++) { powered[r][c] = false; if (c === SOURCE.col && r === SOURCE.row) grid[r][c] = { type: 10, rot: 0 }; else if (c === LAMP.col && r === LAMP.row) grid[r][c] = { type: 10, rot: 0 }; else grid[r][c] = { type: PIECE_TYPES[Math.floor(Math.random() * PIECE_TYPES.length)], rot: Math.floor(Math.random() * 4) }; } }
+  }
+
+  function connections(r, c) {
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return 0;
-    var piece = grid[r][c];
-    var t = piece.type;
-    // Rotate the bitmask by rot * 90 degrees
-    var rot = piece.rot % 4;
-    for (var i = 0; i < rot; i++) {
-      // Rotate: bit0(up)->bit1(right)->bit2(down)->bit3(left)->bit0
-      var newT = 0;
-      if (t & 1) newT |= 2;  // up -> right
-      if (t & 2) newT |= 4;  // right -> down
-      if (t & 4) newT |= 8;  // down -> left
-      if (t & 8) newT |= 1;  // left -> up
-      t = newT;
-    }
+    var t = grid[r][c].type, rot = grid[r][c].rot % 4;
+    for (var i = 0; i < rot; i++) { var n = 0; if (t & 1) n |= 2; if (t & 2) n |= 4; if (t & 4) n |= 8; if (t & 8) n |= 1; t = n; }
     return t;
   }
 
-  function floodPower() {
-    for (var r = 0; r < ROWS; r++) {
-      powered[r] = [];
-      for (var c = 0; c < COLS; c++) powered[r][c] = false;
-    }
-    var queue = [{ r: SOURCE.row, c: SOURCE.col }];
-    powered[SOURCE.row][SOURCE.col] = true;
-    var dirs = [[-1,0,1,2],[0,1,2,3],[1,0,4,0],[0,-1,8,1]]; // [dr, dc, myBit, neighborBit]
-    // myBit: which side I connect, neighborBit: which side neighbor needs
-    var DIRS = [
-      { dr: -1, dc: 0, myBit: 1, nbBit: 4 },  // up
-      { dr: 0,  dc: 1, myBit: 2, nbBit: 8 },  // right
-      { dr: 1,  dc: 0, myBit: 4, nbBit: 1 },  // down
-      { dr: 0,  dc: -1, myBit: 8, nbBit: 2 }  // left
-    ];
-    while (queue.length > 0) {
-      var cur = queue.shift();
-      var myConn = getConnections(cur.r, cur.c);
-      for (var di = 0; di < DIRS.length; di++) {
-        var d = DIRS[di];
-        var nr = cur.r + d.dr, nc = cur.c + d.dc;
-        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
-        if (powered[nr][nc]) continue;
-        if (!(myConn & d.myBit)) continue; // I don't connect that way
-        var nbConn = getConnections(nr, nc);
-        if (!(nbConn & d.nbBit)) continue; // neighbor doesn't connect back
-        powered[nr][nc] = true;
-        queue.push({ r: nr, c: nc });
-      }
-    }
+  function flood() {
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) powered[r][c] = false;
+    var q = [{ r: SOURCE.row, c: SOURCE.col }]; powered[SOURCE.row][SOURCE.col] = true;
+    var D = [{ dr: -1, dc: 0, my: 1, nb: 4 }, { dr: 0, dc: 1, my: 2, nb: 8 }, { dr: 1, dc: 0, my: 4, nb: 1 }, { dr: 0, dc: -1, my: 8, nb: 2 }];
+    while (q.length) { var cur = q.shift(), mc = connections(cur.r, cur.c); for (var di = 0; di < D.length; di++) { var d = D[di], nr = cur.r + d.dr, nc = cur.c + d.dc; if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS || powered[nr][nc]) continue; if (!(mc & d.my)) continue; if (!(connections(nr, nc) & d.nb)) continue; powered[nr][nc] = true; q.push({ r: nr, c: nc }); } }
     return powered[LAMP.row][LAMP.col];
   }
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
-    var c = Math.floor((tx - OX) / CELL);
-    var r = Math.floor((ty - OY) / CELL);
-    if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return;
-    // Don't rotate source or lamp
-    if ((c === SOURCE.col && r === SOURCE.row) || (c === LAMP.col && r === LAMP.row)) return;
-    grid[r][c].rot = (grid[r][c].rot + 1) % 4;
-    game.audio.play('se_tap', 0.3);
-
-    if (floodPower() && !done) {
-      done = true;
-      game.audio.play('se_success');
-      setTimeout(function() { game.end.success(Math.ceil(timeLeft) * 200 + 500); }, 400);
+  function drawGrid() {
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      var gx = OX + c * CELL, gy = OY + r * CELL, cx = gx + CELL / 2, cy = gy + CELL / 2, on = powered[r][c], conn = connections(r, c), col = on ? C.b : '#455';
+      game.draw.rect(gx + 2, gy + 2, CELL - 4, CELL - 4, '#0f1a28', 0.8);
+      if (conn & 1) for (var y = cy; y > gy; y -= 8) game.draw.rect(snap(cx) - 4, snap(y) - 4, 8, 8, col, 0.9);
+      if (conn & 4) for (var y2 = cy; y2 < gy + CELL; y2 += 8) game.draw.rect(snap(cx) - 4, snap(y2) - 4, 8, 8, col, 0.9);
+      if (conn & 2) for (var x = cx; x < gx + CELL; x += 8) game.draw.rect(snap(x) - 4, snap(cy) - 4, 8, 8, col, 0.9);
+      if (conn & 8) for (var x2 = cx; x2 > gx; x2 -= 8) game.draw.rect(snap(x2) - 4, snap(cy) - 4, 8, 8, col, 0.9);
+      game.draw.rect(snap(cx) - 6, snap(cy) - 6, 12, 12, on ? C.c : col, 0.9);
+      if (c === SOURCE.col && r === SOURCE.row) { game.draw.rect(snap(cx) - 16, snap(cy) - 16, 32, 32, C.f, 0.9); txt('PWR', cx, cy + 10, 22, '#000'); }
+      if (c === LAMP.col && r === LAMP.row) { game.draw.rect(snap(cx) - 16, snap(cy) - 16, 32, 32, on ? C.c : '#333', 0.9); txt(on ? 'ON' : 'OFF', cx, cy + 10, 20, on ? '#000' : '#666'); }
     }
+  }
+
+  function initGame() { initGrid(); timeLeft = MAX_TIME; done = false; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (600 + Math.ceil(timeLeft) * 100) : 0;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var c = Math.floor((x - OX) / CELL), r = Math.floor((y - OY) / CELL);
+    if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return;
+    if ((c === SOURCE.col && r === SOURCE.row) || (c === LAMP.col && r === LAMP.row)) return;
+    grid[r][c].rot = (grid[r][c].rot + 1) % 4; game.audio.play('se_tap', 0.3);
+    if (flood()) finish(true);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    floodPower();
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        var gx = OX + c * CELL;
-        var gy = OY + r * CELL;
-        var cx2 = gx + CELL / 2;
-        var cy2 = gy + CELL / 2;
-        var isPowered = powered[r][c];
-
-        // Background
-        game.draw.rect(gx + 2, gy + 2, CELL - 4, CELL - 4, C.tile, 0.8);
-
-        var conn = getConnections(r, c);
-        var wireCol = isPowered ? C.wireOn : C.wire;
-        var wireW = 6;
-
-        // Draw wire segments
-        if (conn & 1) game.draw.line(cx2, cy2, cx2, gy, wireCol, wireW);          // up
-        if (conn & 2) game.draw.line(cx2, cy2, gx + CELL, cy2, wireCol, wireW);  // right
-        if (conn & 4) game.draw.line(cx2, cy2, cx2, gy + CELL, wireCol, wireW);  // down
-        if (conn & 8) game.draw.line(cx2, cy2, gx, cy2, wireCol, wireW);          // left
-
-        // Center dot
-        game.draw.circle(cx2, cy2, wireW / 2, isPowered ? C.wireHi : wireCol, 0.9);
-
-        // Source
-        if (c === SOURCE.col && r === SOURCE.row) {
-          game.draw.circle(cx2, cy2, 18, C.source, 0.9);
-          game.draw.text('⚡', cx2, cy2, { size: 24, color: '#fff' });
-        }
-
-        // Lamp
-        if (c === LAMP.col && r === LAMP.row) {
-          var lampCol = isPowered ? C.lamp : C.lampOff;
-          game.draw.circle(cx2, cy2, 18, lampCol, 0.9);
-          if (isPowered) {
-            var pulse = 0.4 + 0.4 * Math.abs(Math.sin(elapsed * 6));
-            game.draw.circle(cx2, cy2, 30, C.lamp, pulse * 0.4);
-          }
-          game.draw.text('●', cx2, cy2, { size: 24, color: isPowered ? '#fff' : '#666' });
-        }
+    if (state === S.ATTRACT) {
+      if (!grid) initGame(); flood(); background(); drawGrid();
+      txt(GAME_TITLE, W / 2, H * 0.16, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 26, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
       }
+      scanlines();
+      return;
     }
 
-    // Lamp status
-    var lampOn = powered[LAMP.row] && powered[LAMP.row][LAMP.col];
-    game.draw.text(lampOn ? '回路接続中！' : '回路をつなげ！', W / 2, H * 0.9, { size: 44, color: lampOn ? C.wireOn : C.ui, bold: lampOn });
-    game.draw.text('タップで回転', W / 2, H * 0.94, { size: 34, color: C.ui });
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CIRCUIT LIVE!' : 'NO POWER', W / 2, H * 0.35, 68, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
 
-    var ratio = Math.max(0, timeLeft / 30);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.wireOn : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    // PLAYING
+    if (!done) { timeLeft -= dt; if (timeLeft <= 0) { finish(false); return; } flood(); }
+
+    background(); drawGrid();
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('CONNECT PWR → LAMP', W / 2, H - 120, 40, C.c);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    initGrid();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

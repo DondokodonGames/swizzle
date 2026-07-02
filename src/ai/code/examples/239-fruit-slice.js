@@ -1,206 +1,153 @@
 // 239-fruit-slice.js
-// フルーツスライス — 飛んでくるフルーツをスワイプで切る爽快感、爆弾は切らない
-// 操作: スワイプで切る
-// 成功: 20個切る  失敗: 爆弾を切る or フルーツを5個落とす
+// フルーツスライス — 放り上がるフルーツをスワイプで斬る爽快感、爆弾だけは斬ってはいけない
+// 操作: スワイプで斬る（爆弾は避ける）
+// 成功: 5個斬る  失敗: 爆弾を斬る or フルーツを3個落とす or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#060208',
-    apple:  '#ef4444',
-    appleHi:'#fca5a5',
-    orange: '#f97316',
-    orgHi:  '#fed7aa',
-    melon:  '#22c55e',
-    melHi:  '#86efac',
-    banana: '#f59e0b',
-    banHi:  '#fde68a',
-    bomb:   '#1e293b',
-    bombHi: '#374151',
-    slash:  '#fff',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、屋台の果物斬り） ──
+  var C = { bg:'#060208', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var FRUITS = [C.a, C.f, C.b, C.c];
 
-  var FRUITS = [
-    { col: C.apple,  hi: C.appleHi,  label: '●', r: 44 },
-    { col: C.orange, hi: C.orgHi,    label: '◆', r: 40 },
-    { col: C.melon,  hi: C.melHi,    label: '▲', r: 46 },
-    { col: C.banana, hi: C.banHi,    label: '★', r: 42 }
-  ];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'FRUIT SLICE';
+  var HOW_TO_PLAY = 'SWIPE TO SLICE · NEVER SLICE THE BOMB';
+  var MAX_TIME = 15;
+  var NEEDED   = 5;           // 修正2: 20 → 5
+  var MAX_DROP = 3;          // 修正2: 5 → 3
+  var TOP = 220;
 
-  var items = [];
-  var slashTrail = []; // recent swipe points
-  var sliceEffects = [];
-  var score = 0;
-  var NEEDED = 20;
-  var dropped = 0;
-  var MAX_DROP = 5;
-  var done = false;
-  var timeLeft = 40;
-  var elapsed = 0;
-  var spawnTimer = 0;
-  var SPAWN_INTERVAL = 0.7;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnItem() {
-    var isBomb = Math.random() < 0.2;
-    var side = Math.random() < 0.5 ? 'left' : 'right';
-    var x = side === 'left' ? -50 : W + 50;
-    var y = H * 0.3 + Math.random() * H * 0.5;
-    var speed = 400 + Math.random() * 200;
-    var vx = side === 'left' ? speed : -speed;
-    var vy = -(300 + Math.random() * 200);
-    var ft = isBomb ? null : FRUITS[Math.floor(Math.random() * FRUITS.length)];
-    items.push({
-      x: x, y: y,
-      vx: vx, vy: vy,
-      isBomb: isBomb,
-      fruit: ft,
-      r: isBomb ? 40 : ft.r,
-      sliced: false,
-      sliceTimer: 0,
-      age: 0
-    });
+  // ── ゲーム変数 ──
+  var items, effects, score, dropped, timeLeft, done, spawnTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
   }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a0a1a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function spawnItem() {
+    var isBomb = Math.random() < 0.22, side = Math.random() < 0.5 ? -1 : 1;
+    var x = side < 0 ? -50 : W + 50, y = snap(game.random(H * 0.45, H * 0.7)), speed = 400 + Math.random() * 180;
+    items.push({ x: x, y: y, vx: side < 0 ? speed : -speed, vy: -(350 + Math.random() * 180), isBomb: isBomb, col: isBomb ? '#222' : FRUITS[Math.floor(Math.random() * FRUITS.length)], r: 46, sliced: false, st: 0 });
+  }
+
+  function drawItem(it) {
+    if (it.isBomb) { pc(it.x, it.y, it.r, '#222', it.sliced ? it.st / 0.4 : 0.95); pc(it.x, it.y, it.r * 0.4, C.a, 0.5); game.draw.rect(snap(it.x) - 4, snap(it.y) - it.r - 12, 8, 12, C.f); }
+    else { pc(it.x, it.y, it.r, it.col, it.sliced ? it.st / 0.4 : 0.95); pc(it.x - 14, it.y - 14, 8, C.g, 0.7); if (!it.sliced) game.draw.rect(snap(it.x) - 4, snap(it.y) - it.r - 8, 8, 10, C.b); }
+  }
+
+  function initGame() { items = []; effects = []; score = 0; dropped = 0; timeLeft = MAX_TIME; done = false; spawnTimer = 0.3; }
+
+  function finish(success) {
     if (done) return;
-    // Check if swipe line crosses any item
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 300 + Math.ceil(timeLeft) * 50) : score * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+  });
+
+  game.onSwipe(function(dir, x1, y1, x2, y2) {
+    if (state !== S.PLAYING || done) return;
+    if (x1 === undefined) return;
+    var dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy); if (len < 1) return;
     for (var ii = items.length - 1; ii >= 0; ii--) {
-      var item = items[ii];
-      if (item.sliced) continue;
-
-      // Check proximity to swipe line
-      var dx = x2 - x1, dy = y2 - y1;
-      var len = Math.sqrt(dx * dx + dy * dy);
-      if (len < 1) continue;
-      var tx = item.x - x1, ty = item.y - y1;
-      var proj = (tx * dx + ty * dy) / len;
-      var perp = Math.abs(tx * dy - ty * dx) / len;
-
-      if (perp < item.r + 10 && proj >= 0 && proj <= len) {
-        item.sliced = true;
-        item.sliceTimer = 0.4;
-
-        if (item.isBomb) {
-          done = true;
-          game.audio.play('se_failure');
-          sliceEffects.push({ x: item.x, y: item.y, life: 0.8, col: '#ff0000', big: true });
-          setTimeout(function() { game.end.failure(); }, 500);
-          return;
-        } else {
-          score++;
-          game.audio.play('se_success', 0.5);
-          sliceEffects.push({ x: item.x, y: item.y, life: 0.5, col: item.fruit.hi, big: false });
-          // Slash particles
-          for (var pi = 0; pi < 6; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            sliceEffects.push({ x: item.x + Math.cos(ang) * 20, y: item.y + Math.sin(ang) * 20, life: 0.3, col: item.fruit.col, big: false });
-          }
-          if (score >= NEEDED && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(score * 80 + Math.ceil(timeLeft) * 30); }, 400);
-          }
-        }
+      var it = items[ii]; if (it.sliced) continue;
+      var proj = ((it.x - x1) * dx + (it.y - y1) * dy) / len, perp = Math.abs((it.x - x1) * dy - (it.y - y1) * dx) / len;
+      if (perp < it.r + 12 && proj >= 0 && proj <= len) {
+        it.sliced = true; it.st = 0.4;
+        if (it.isBomb) { effects.push({ x: it.x, y: it.y, life: 0.6, col: C.a, big: true }); finish(false); return; }
+        score++; game.audio.play('se_success', 0.5);
+        for (var pi = 0; pi < 6; pi++) { var a = Math.random() * Math.PI * 2; effects.push({ x: it.x + Math.cos(a) * 20, y: it.y + Math.sin(a) * 20, life: 0.4, col: it.col, big: false }); }
+        if (score >= NEEDED) { finish(true); return; }
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); pc(W * 0.3, H * 0.45, 46, C.a, 0.9); pc(W * 0.55, H * 0.55, 46, C.b, 0.9); pc(W * 0.72, H * 0.4, 40, '#222', 0.9);
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 26, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.92, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.97, 40, '#665566');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SLICED!' : 'GAME OVER', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    spawnTimer -= dt;
-    if (spawnTimer <= 0) {
-      spawnItem();
-      spawnTimer = SPAWN_INTERVAL * (0.6 + Math.random() * 0.8);
-    }
-
-    for (var ii = items.length - 1; ii >= 0; ii--) {
-      var item = items[ii];
-      item.x += item.vx * dt;
-      item.y += item.vy * dt;
-      item.vy += 500 * dt; // gravity
-      item.age += dt;
-
-      if (item.sliced) {
-        item.sliceTimer -= dt;
-        if (item.sliceTimer <= 0) {
-          items.splice(ii, 1);
-          continue;
-        }
-      } else if (item.y > H + 80) {
-        // Fell off
-        if (!item.isBomb) {
-          dropped++;
-          if (dropped >= MAX_DROP && !done) {
-            done = true;
-            game.audio.play('se_failure');
-            setTimeout(function() { game.end.failure(); }, 400);
-          }
-        }
-        items.splice(ii, 1);
+      if (timeLeft <= 0) { finish(false); return; }
+      spawnTimer -= dt; if (spawnTimer <= 0) { spawnItem(); spawnTimer = 0.7 * (0.6 + Math.random() * 0.7); }
+      for (var ii = items.length - 1; ii >= 0; ii--) {
+        var it = items[ii]; it.x += it.vx * dt; it.y += it.vy * dt; it.vy += 500 * dt;
+        if (it.sliced) { it.st -= dt; if (it.st <= 0) items.splice(ii, 1); }
+        else if (it.y > H + 80) { if (!it.isBomb) { dropped++; if (dropped >= MAX_DROP) { finish(false); return; } } items.splice(ii, 1); }
       }
+      for (var ei = effects.length - 1; ei >= 0; ei--) { effects[ei].life -= dt; if (effects[ei].life <= 0) effects.splice(ei, 1); }
     }
 
-    for (var ei = sliceEffects.length - 1; ei >= 0; ei--) {
-      sliceEffects[ei].life -= dt;
-      if (sliceEffects[ei].life <= 0) sliceEffects.splice(ei, 1);
-    }
+    // ---- 描画 ----
+    background();
+    for (var ii2 = 0; ii2 < items.length; ii2++) drawItem(items[ii2]);
+    for (var ei2 = 0; ei2 < effects.length; ei2++) { var ef = effects[ei2]; pc(ef.x, ef.y, (ef.big ? 70 : 26) * (1 + (0.5 - ef.life)), ef.col, ef.life * 1.4); }
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Items
-    for (var ii2 = 0; ii2 < items.length; ii2++) {
-      var item2 = items[ii2];
-      var alpha = item2.sliced ? item2.sliceTimer / 0.4 : 0.9;
-
-      if (item2.isBomb) {
-        game.draw.circle(item2.x, item2.y, item2.r + 8, C.bombHi, 0.2);
-        game.draw.circle(item2.x, item2.y, item2.r, C.bomb, alpha);
-        game.draw.circle(item2.x, item2.y, item2.r * 0.4, '#ef4444', 0.3);
-        game.draw.text('✕', item2.x, item2.y, { size: 36, color: '#ef4444', bold: true });
-        // Fuse
-        game.draw.line(item2.x, item2.y - item2.r, item2.x + 10, item2.y - item2.r - 20, '#f59e0b', 3);
-      } else {
-        var ft = item2.fruit;
-        game.draw.circle(item2.x, item2.y, ft.r + 6, ft.hi, 0.2);
-        game.draw.circle(item2.x, item2.y, ft.r, ft.col, alpha);
-        game.draw.circle(item2.x - ft.r * 0.3, item2.y - ft.r * 0.3, ft.r * 0.2, '#fff', 0.4);
-        if (!item2.sliced) {
-          game.draw.text(ft.label, item2.x, item2.y, { size: 36, color: '#fff', bold: true });
-        }
-      }
-    }
-
-    // Slice effects
-    for (var ei2 = 0; ei2 < sliceEffects.length; ei2++) {
-      var ef = sliceEffects[ei2];
-      var r2 = ef.big ? 80 : 30;
-      game.draw.circle(ef.x, ef.y, r2 * (1 + (0.5 - ef.life)), ef.col, ef.life * 0.7);
-    }
-
-    // Drop counter
-    for (var di = 0; di < MAX_DROP; di++) {
-      game.draw.circle(W / 2 - (MAX_DROP - 1) * 26 + di * 52, H * 0.88, 16, di < dropped ? '#ef4444' : '#1e293b');
-    }
-
-    game.draw.text(score + ' / ' + NEEDED, W / 2, 148, { size: 60, color: '#f1f5f9', bold: true });
-    game.draw.text('スワイプで切る！ 爆弾は×', W / 2, H * 0.93, { size: 38, color: C.ui });
-
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.melon : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var dd = 0; dd < MAX_DROP; dd++) game.draw.rect(snap(W / 2 + (dd - (MAX_DROP - 1) / 2) * 56) - 10, 224, 20, 20, dd < dropped ? C.a : '#1a0a1a');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.25);
-    spawnTimer = 0.3;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
