@@ -1,201 +1,157 @@
 // 232-countdown-catch.js
-// カウントダウンキャッチ — ゼロになる直前のボールを捕まえる判断力ゲーム
-// 操作: タップでキャッチ（残り時間1秒以内でのみ有効）
-// 成功: 10個キャッチ  失敗: 5回早すぎ・遅すぎ or 45秒
+// カウントダウンキャッチ — ゼロ直前まで数える爆弾を、残り1秒以内でタップして掴む度胸
+// 操作: 残り1秒以内のボールをタップ（早すぎ・時間切れはミス）
+// 成功: 3個キャッチ  失敗: 3回ミス or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#04060a',
-    ball:   '#3b82f6',
-    ballHi: '#93c5fd',
-    timer:  '#f59e0b',
-    timerDanger: '#ef4444',
-    catchZone: '#22c55e',
-    miss:   '#ef4444',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、時限装置） ──
+  var C = { bg:'#04060a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var balls = [];
-  var caught = 0;
-  var NEEDED = 10;
-  var misses = 0;
-  var MAX_MISS = 5;
-  var done = false;
-  var timeLeft = 45;
-  var elapsed = 0;
-  var spawnTimer = 0;
-  var SPAWN_INTERVAL = 1.8;
-  var BALL_R = 50;
-  var CATCH_WINDOW = 1.0; // seconds remaining to trigger catch
-  var feedback = '';
-  var feedbackCol = '#fff';
-  var feedbackTimer = 0;
-  var particles = [];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'COUNTDOWN CATCH';
+  var HOW_TO_PLAY = 'TAP A BALL ONLY IN ITS LAST SECOND';
+  var MAX_TIME = 15;
+  var NEEDED   = 3;           // 修正2: 10 → 3
+  var MAX_MISS = 3;          // 修正2: 5 → 3
+  var TOP = 260, BOT = H - 200, BALL_R = 56, WINDOW = 1.0;
 
-  function spawnBall() {
-    var countFrom = 3.0 + Math.random() * 3.0; // 3-6 second countdown
-    balls.push({
-      x: 80 + Math.random() * (W - 160),
-      y: H * 0.2 + Math.random() * H * 0.6,
-      timer: countFrom,
-      totalTimer: countFrom,
-      r: BALL_R,
-      phase: 'counting', // 'counting' | 'caught' | 'expired'
-      vx: (Math.random() - 0.5) * 60,
-      vy: (Math.random() - 0.5) * 60
-    });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var balls, caught, misses, timeLeft, done, spawnTimer, feedback, feedbackCol, feedbackTimer, particles;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
   }
 
-  game.onTap(function(tx, ty) {
+  function ring(cx, cy, r, color, alpha) {
+    for (var a = 0; a < Math.PI * 2; a += 0.15) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha);
+  }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a0a14');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function spawnBall() {
+    var cf = 2.5 + Math.random() * 2.5;
+    balls.push({ x: snap(game.random(100, W - 100)), y: snap(game.random(TOP + 40, BOT - 40)), timer: cf, total: cf, r: BALL_R, phase: 'counting', vx: game.random(-60, 60), vy: game.random(-60, 60) });
+  }
+
+  function drawBall(b) {
+    var win = b.phase === 'counting' && b.timer <= WINDOW, col = b.phase === 'expired' ? C.d : win ? C.b : C.e;
+    if (win) ring(b.x, b.y, b.r + 16, C.b, 0.4 + 0.3 * (Math.floor(game.time.elapsed * 10) % 2));
+    pc(b.x, b.y, b.r, col, b.phase === 'expired' ? 0.3 : 0.85);
+    if (b.phase === 'counting') txt(b.timer.toFixed(1), b.x, b.y + 14, 44, win ? C.a : b.timer <= 2 ? C.c : C.g);
+  }
+
+  function initGame() { balls = []; caught = 0; misses = 0; timeLeft = MAX_TIME; done = false; spawnTimer = 0.4; feedback = ''; feedbackCol = C.g; feedbackTimer = 0; particles = []; }
+
+  function finish(success) {
     if (done) return;
-    var hit = false;
+    done = true; resultSuccess = success;
+    finalScore = success ? (caught * 400 + Math.ceil(timeLeft) * 50) : caught * 120;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function addMiss(msg) { misses++; feedback = msg; feedbackCol = C.a; feedbackTimer = 0.7; game.audio.play('se_failure', 0.4); if (misses >= MAX_MISS) finish(false); }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
     for (var bi = balls.length - 1; bi >= 0; bi--) {
-      var b = balls[bi];
-      if (b.phase !== 'counting') continue;
-      var dx = tx - b.x, dy = ty - b.y;
-      if (Math.sqrt(dx * dx + dy * dy) < b.r + 30) {
-        if (b.timer <= CATCH_WINDOW) {
-          // Valid catch!
-          b.phase = 'caught';
-          caught++;
-          feedback = 'CATCH! (' + b.timer.toFixed(2) + 's)';
-          feedbackCol = C.catchZone;
-          feedbackTimer = 0.6;
-          game.audio.play('se_success', 0.7);
-          for (var pi = 0; pi < 8; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: b.x, y: b.y, vx: Math.cos(ang) * 180, vy: Math.sin(ang) * 180, life: 0.5 });
-          }
-          if (caught >= NEEDED && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(caught * 100 + Math.ceil(timeLeft) * 30); }, 400);
-          }
-        } else {
-          // Too early!
-          misses++;
-          feedback = 'TOO EARLY! (' + b.timer.toFixed(2) + 's)';
-          feedbackCol = C.miss;
-          feedbackTimer = 0.7;
-          game.audio.play('se_failure', 0.5);
-          if (misses >= MAX_MISS && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 400);
-          }
-        }
-        hit = true;
-        break;
+      var b = balls[bi]; if (b.phase !== 'counting') continue;
+      if (Math.hypot(x - b.x, y - b.y) < b.r + 30) {
+        if (b.timer <= WINDOW) { b.phase = 'caught'; caught++; feedback = 'CATCH!'; feedbackCol = C.b; feedbackTimer = 0.6; game.audio.play('se_success', 0.7); for (var pi = 0; pi < 8; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: b.x, y: b.y, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180, life: 0.5 }); } if (caught >= NEEDED) { finish(true); return; } }
+        else { addMiss('TOO EARLY!'); if (done) return; }
+        return;
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawBall({ x: W * 0.35, y: H * 0.45, r: BALL_R, phase: 'counting', timer: 2.5 }); drawBall({ x: W * 0.68, y: H * 0.55, r: BALL_R, phase: 'counting', timer: 0.7 });
+      txt(GAME_TITLE, W / 2, H * 0.14, 72, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 28, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.92, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.97, 40, '#445566');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'DEFUSED!' : 'BOOM', W / 2, H * 0.35, 82, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-    if (feedbackTimer > 0) feedbackTimer -= dt;
-
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && !done) {
-      spawnBall();
-      spawnTimer = SPAWN_INTERVAL * (0.7 + Math.random() * 0.6);
-    }
-
-    for (var bi = balls.length - 1; bi >= 0; bi--) {
-      var b = balls[bi];
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-      b.x = Math.max(b.r, Math.min(W - b.r, b.x));
-      b.y = Math.max(b.r + 80, Math.min(H - b.r - 100, b.y));
-      if (b.x <= b.r || b.x >= W - b.r) b.vx = -b.vx;
-      if (b.y <= b.r + 80 || b.y >= H - b.r - 100) b.vy = -b.vy;
-
-      if (b.phase === 'counting') {
-        b.timer -= dt;
-        if (b.timer <= 0) {
-          b.phase = 'expired';
-          misses++;
-          game.audio.play('se_failure', 0.3);
-          if (misses >= MAX_MISS && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 400);
-          }
-          setTimeout(function() { }, 400);
-        }
-      } else if (b.phase === 'caught') {
-        b.r += 200 * dt;
-        b.r > 200 && balls.splice(bi, 1);
-      } else if (b.phase === 'expired') {
-        b.r -= 100 * dt;
-        if (b.r <= 0) balls.splice(bi, 1);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (feedbackTimer > 0) feedbackTimer -= dt;
+      spawnTimer -= dt; if (spawnTimer <= 0) { spawnBall(); spawnTimer = 1.6 * (0.7 + Math.random() * 0.6); }
+      for (var bi = balls.length - 1; bi >= 0; bi--) {
+        var b = balls[bi]; b.x += b.vx * dt; b.y += b.vy * dt;
+        if (b.x < b.r || b.x > W - b.r) b.vx = -b.vx; if (b.y < TOP + b.r || b.y > BOT - b.r) b.vy = -b.vy;
+        b.x = Math.max(b.r, Math.min(W - b.r, b.x)); b.y = Math.max(TOP + b.r, Math.min(BOT - b.r, b.y));
+        if (b.phase === 'counting') { b.timer -= dt; if (b.timer <= 0) { b.phase = 'expired'; addMiss('TOO LATE!'); if (done) return; } }
+        else if (b.phase === 'caught') { b.r += 200 * dt; if (b.r > 200) balls.splice(bi, 1); }
+        else if (b.phase === 'expired') { b.r -= 120 * dt; if (b.r <= 0) balls.splice(bi, 1); }
       }
+      for (var pi = particles.length - 1; pi >= 0; pi--) { var p = particles[pi]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 200 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pi, 1); }
     }
 
-    for (var pi = particles.length - 1; pi >= 0; pi--) {
-      particles[pi].x += particles[pi].vx * dt;
-      particles[pi].y += particles[pi].vy * dt;
-      particles[pi].vy += 200 * dt;
-      particles[pi].life -= dt;
-      if (particles[pi].life <= 0) particles.splice(pi, 1);
-    }
+    // ---- 描画 ----
+    background();
+    for (var bi2 = 0; bi2 < balls.length; bi2++) drawBall(balls[bi2]);
+    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 5, snap(particles[pp].y) - 5, 10, 10, C.b, particles[pp].life * 2);
+    if (feedbackTimer > 0) txt(feedback, W / 2, H * 0.16, 48, feedbackCol);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Balls
-    for (var bi2 = 0; bi2 < balls.length; bi2++) {
-      var b2 = balls[bi2];
-      var inWindow = b2.phase === 'counting' && b2.timer <= CATCH_WINDOW;
-      var col = b2.phase === 'expired' ? '#334155' : inWindow ? C.catchZone : C.ball;
-      var hi = inWindow ? '#86efac' : C.ballHi;
-
-      if (inWindow) {
-        var pulse = 0.5 + 0.5 * Math.abs(Math.sin(elapsed * 10));
-        game.draw.circle(b2.x, b2.y, b2.r + 20, hi, pulse * 0.5);
-      }
-      game.draw.circle(b2.x, b2.y, b2.r + 6, hi, 0.2);
-      game.draw.circle(b2.x, b2.y, b2.r, col, b2.phase === 'expired' ? 0.3 : 0.85);
-      game.draw.circle(b2.x - b2.r * 0.3, b2.y - b2.r * 0.3, b2.r * 0.2, '#fff', 0.4);
-
-      if (b2.phase === 'counting') {
-        var tColor = b2.timer <= CATCH_WINDOW ? C.timerDanger : b2.timer <= 2 ? C.timer : '#f1f5f9';
-        game.draw.text(b2.timer.toFixed(1), b2.x, b2.y, { size: 44, color: tColor, bold: true });
-      }
-    }
-
-    // Particles
-    for (var pp = 0; pp < particles.length; pp++) {
-      var p = particles[pp];
-      game.draw.circle(p.x, p.y, 10 * p.life * 2, C.catchZone, p.life);
-    }
-
-    // Feedback
-    if (feedbackTimer > 0) {
-      game.draw.text(feedback, W / 2, H * 0.14, { size: 46, color: feedbackCol, bold: true });
-    }
-
-    // Catch window hint
-    game.draw.text('残り1秒以内でキャッチ！', W / 2, H * 0.9, { size: 38, color: C.ui });
-
-    // Miss dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 28 + mi * 56, H * 0.94, 18, mi < misses ? C.miss : '#0a0a14');
-    }
-
-    game.draw.text(caught + ' / ' + NEEDED, W / 2, 148, { size: 60, color: '#f1f5f9', bold: true });
-
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.ball : C.timerDanger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(caught + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) game.draw.rect(snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mm < misses ? C.a : '#0a0a14');
+    txt('CATCH IN THE LAST SECOND', W / 2, H - 100, 36, C.c);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    spawnTimer = 0.5;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

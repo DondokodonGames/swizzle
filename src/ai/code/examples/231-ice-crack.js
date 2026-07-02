@@ -1,226 +1,158 @@
 // 231-ice-crack.js
-// アイスクラック — 割れていく氷の上を素早く渡りきるスリル
-// 操作: タップで移動先を指定（氷の上のみ）
-// 成功: 右端まで渡る  失敗: 氷が割れて落ちる or 30秒
+// アイスクラック — 踏むたびに割れていく氷原を、崩れる前に右端まで渡り切るスリル
+// 操作: 隣接する氷マスをタップして移動
+// 成功: 右端に到達  失敗: 氷が割れて落ちる or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#02080f',
-    ice:    '#7dd3fc',
-    iceHi:  '#bae6fd',
-    iceDim: '#1e3a5f',
-    crack:  '#0ea5e9',
-    water:  '#0c1a3a',
-    waterHi:'#1e40af',
-    player: '#f59e0b',
-    plrHi:  '#fde68a',
-    goal:   '#22c55e',
-    ui:     '#475569'
-  };
+  // ── パレット（アイスブルー、極寒の湖） ──
+  var C = { bg:'#02080f', a:'#ff4d6d', b:'#5ef0ff', c:'#aef7ff', d:'#0c1a3a', e:'#7fdcff', f:'#ffe600', g:'#ffffff' };
 
-  var COLS = 8;
-  var ROWS = 10;
-  var CELL = Math.floor((W - 40) / COLS);
-  var OX = 20;
-  var OY = H * 0.1;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ICE CRACK';
+  var HOW_TO_PLAY = 'STEP ACROSS THE ICE BEFORE IT SHATTERS';
+  var MAX_TIME = 15;
+  var COLS = 5, ROWS = 8;     // 修正2: 8x10 → 5x8（横断短縮）
+  var CELL = snap((W - 40) / COLS), OX = 20, OY = snap(H * 0.26);
 
-  // Grid: health 0=water, 1-3=ice (cracks on tap near)
-  var grid = [];
-  var playerCol = 0;
-  var playerRow = Math.floor(ROWS / 2);
-  var done = false;
-  var timeLeft = 30;
-  var elapsed = 0;
-  var crackEffects = [];
-  var splashes = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var grid, pCol, pRow, timeLeft, done, cracks, splashes;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
+  }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1a2a');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(0, OY, W, ROWS * CELL, C.d, 0.8); }
 
   function initGrid() {
     grid = [];
-    for (var r = 0; r < ROWS; r++) {
-      grid[r] = [];
-      for (var c = 0; c < COLS; c++) {
-        // Rightmost column is goal
-        if (c === COLS - 1) { grid[r][c] = 3; continue; }
-        // Random ice health 1-3, some water holes
-        grid[r][c] = Math.random() < 0.15 ? 0 : 1 + Math.floor(Math.random() * 3);
-      }
-    }
-    // Ensure start cell is solid
-    grid[playerRow][0] = 3;
-    // Ensure a path exists (simple: set a few cells to 3 along middle)
-    for (var c2 = 0; c2 < COLS; c2++) {
-      var mid = Math.floor(ROWS / 2);
-      if (grid[mid][c2] === 0) grid[mid][c2] = 1;
-    }
+    for (var r = 0; r < ROWS; r++) { grid[r] = []; for (var c = 0; c < COLS; c++) grid[r][c] = c === COLS - 1 ? 3 : (Math.random() < 0.12 ? 0 : 1 + Math.floor(Math.random() * 3)); }
+    pRow = Math.floor(ROWS / 2); pCol = 0; grid[pRow][0] = 3;
+    for (var c2 = 0; c2 < COLS; c2++) if (grid[pRow][c2] === 0) grid[pRow][c2] = 1;
   }
 
   function crackAround(col, row) {
-    // Weaken nearby ice
-    for (var dr = -1; dr <= 1; dr++) {
-      for (var dc = -1; dc <= 1; dc++) {
-        var nr = row + dr, nc = col + dc;
-        if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
-        if (grid[nr][nc] > 0) {
-          grid[nr][nc]--;
-          if (grid[nr][nc] === 0) {
-            // Ice broke
-            splashes.push({ x: OX + nc * CELL + CELL / 2, y: OY + nr * CELL + CELL / 2, life: 0.6 });
-          }
-        }
-      }
+    for (var dr = -1; dr <= 1; dr++) for (var dc = -1; dc <= 1; dc++) {
+      var nr = row + dr, nc = col + dc; if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+      if (grid[nr][nc] > 0 && grid[nr][nc] < 3) { grid[nr][nc]--; if (grid[nr][nc] === 0) splashes.push({ x: OX + nc * CELL + CELL / 2, y: OY + nr * CELL + CELL / 2, life: 0.6 }); }
     }
-    crackEffects.push({ col: col, row: row, life: 0.4 });
+    cracks.push({ col: col, row: row, life: 0.4 });
   }
 
-  game.onTap(function(tx, ty) {
+  function initGame() { initGrid(); timeLeft = MAX_TIME; done = false; cracks = []; splashes = []; }
+
+  function finish(success) {
     if (done) return;
-    var tc = Math.floor((tx - OX) / CELL);
-    var tr = Math.floor((ty - OY) / CELL);
+    done = true; resultSuccess = success;
+    finalScore = success ? (600 + Math.ceil(timeLeft) * 120) : pCol * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawGrid() {
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      var gx = OX + c * CELL, gy = OY + r * CELL, hp = grid[r][c]; if (hp === 0) continue;
+      var goal = c === COLS - 1, col = goal ? C.b : C.e;
+      game.draw.rect(gx + 2, gy + 2, CELL - 4, CELL - 4, col, goal ? 0.8 : hp / 3 * 0.6 + 0.15);
+      game.draw.rect(gx + 2, gy + 2, CELL - 4, 6, C.c, 0.4);
+      if (hp === 1) game.draw.rect(gx + CELL / 2 - 2, gy + 8, 4, CELL - 16, C.a, 0.6);
+      if (goal) txt('OUT', gx + CELL / 2, gy + CELL / 2 + 10, 34, '#000');
+    }
+    // 隣接ハイライト
+    var adj = [[0,1],[0,-1],[1,0],[-1,0]];
+    for (var ai = 0; ai < adj.length; ai++) { var nc = pCol + adj[ai][0], nr = pRow + adj[ai][1]; if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue; if (grid[nr][nc] > 0) game.draw.rect(OX + nc * CELL + 2, OY + nr * CELL + 2, CELL - 4, CELL - 4, C.g, 0.1 + 0.1 * (Math.floor(game.time.elapsed * 4) % 2)); }
+  }
+
+  function drawPlayer() { var x = OX + pCol * CELL + CELL / 2, y = OY + pRow * CELL + CELL / 2; pc(x, y, CELL / 2 - 8, C.f, 0.95); game.draw.rect(snap(x) - 6, snap(y) - 6, 8, 8, C.g); }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var tc = Math.floor((x - OX) / CELL), tr = Math.floor((y - OY) / CELL);
     if (tc < 0 || tc >= COLS || tr < 0 || tr >= ROWS) return;
+    if (Math.abs(tc - pCol) + Math.abs(tr - pRow) !== 1) return;
+    if (grid[tr][tc] === 0) return;
+    pCol = tc; pRow = tr; game.audio.play('se_tap', 0.4);
+    if (pCol === COLS - 1) { finish(true); return; }
+    crackAround(pCol, pRow);
+    if (grid[pRow][pCol] === 0) { splashes.push({ x: OX + pCol * CELL + CELL / 2, y: OY + pRow * CELL + CELL / 2, life: 0.8, big: true }); finish(false); return; }
+  });
 
-    // Must be adjacent to player
-    var dc = Math.abs(tc - playerCol), dr = Math.abs(tr - playerRow);
-    if (dc + dr !== 1) return; // only cardinal adjacent
-    if (dc > 1 || dr > 1) return;
-
-    if (grid[tr][tc] === 0) return; // water — can't step there
-
-    // Move player
-    playerCol = tc;
-    playerRow = tr;
-    game.audio.play('se_tap', 0.4);
-
-    // Crack ice around stepped cell
-    crackAround(playerCol, playerRow);
-
-    // Check if current cell is now water (broke under player)
-    if (grid[playerRow][playerCol] === 0 && !done) {
-      done = true;
-      game.audio.play('se_failure');
-      splashes.push({ x: OX + playerCol * CELL + CELL / 2, y: OY + playerRow * CELL + CELL / 2, life: 0.8, big: true });
-      setTimeout(function() { game.end.failure(); }, 600);
+  // ── 更新 & 描画 ──
+  game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!grid) initGame(); background(); drawGrid(); drawPlayer();
+      txt(GAME_TITLE, W / 2, H * 0.14, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 26, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
       return;
     }
 
-    // Check goal
-    if (playerCol === COLS - 1 && !done) {
-      done = true;
-      game.audio.play('se_success');
-      setTimeout(function() { game.end.success(Math.ceil(timeLeft) * 150 + 500); }, 400);
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CROSSED!' : 'SPLASH!', W / 2, H * 0.35, 82, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
-  });
 
-  game.onUpdate(function(dt) {
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (Math.random() < dt * 0.5) { var rc = Math.floor(Math.random() * (COLS - 1)), rr = Math.floor(Math.random() * ROWS); if (grid[rr][rc] > 0 && grid[rr][rc] < 3 && !(rr === pRow && rc === pCol)) grid[rr][rc]--; }
+      for (var ci = cracks.length - 1; ci >= 0; ci--) { cracks[ci].life -= dt; if (cracks[ci].life <= 0) cracks.splice(ci, 1); }
+      for (var si = splashes.length - 1; si >= 0; si--) { splashes[si].life -= dt; if (splashes[si].life <= 0) splashes.splice(si, 1); }
     }
 
-    // Random ice degrades over time
-    if (Math.random() < dt * 0.5) {
-      var rc = Math.floor(Math.random() * COLS);
-      var rr = Math.floor(Math.random() * ROWS);
-      if (grid[rr][rc] > 0 && !(rr === playerRow && rc === playerCol)) {
-        grid[rr][rc]--;
-      }
-    }
+    // ---- 描画 ----
+    background(); drawGrid();
+    for (var ce = 0; ce < cracks.length; ce++) pc(OX + cracks[ce].col * CELL + CELL / 2, OY + cracks[ce].row * CELL + CELL / 2, CELL * cracks[ce].life, C.g, cracks[ce].life * 0.4);
+    for (var sp = 0; sp < splashes.length; sp++) pc(splashes[sp].x, splashes[sp].y, (splashes[sp].big ? 70 : 36) * (1 - splashes[sp].life), C.b, splashes[sp].life * 0.6);
+    drawPlayer();
 
-    for (var ci = crackEffects.length - 1; ci >= 0; ci--) {
-      crackEffects[ci].life -= dt;
-      if (crackEffects[ci].life <= 0) crackEffects.splice(ci, 1);
-    }
-    for (var si = splashes.length - 1; si >= 0; si--) {
-      splashes[si].life -= dt;
-      if (splashes[si].life <= 0) splashes.splice(si, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, OY, W, ROWS * CELL, C.water, 0.8);
-
-    // Water ripple
-    for (var a = 0; a < 5; a++) {
-      var wx = (elapsed * 60 + a * W / 4) % W;
-      game.draw.line(wx, OY + ROWS * CELL / 2, wx + W / 8, OY + ROWS * CELL / 2 + 10, C.waterHi, 3);
-    }
-
-    // Grid
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        var gx = OX + c * CELL;
-        var gy = OY + r * CELL;
-        var health = grid[r][c];
-        if (health === 0) continue; // water
-
-        var iceAlpha = health / 3;
-        var col = c === COLS - 1 ? C.goal : C.ice;
-        var hi = c === COLS - 1 ? '#86efac' : C.iceHi;
-
-        game.draw.rect(gx + 2, gy + 2, CELL - 4, CELL - 4, col, iceAlpha * 0.7 + 0.15);
-        game.draw.rect(gx + 2, gy + 2, CELL - 4, 6, hi, iceAlpha * 0.4);
-
-        // Cracks based on health
-        if (health === 1) {
-          game.draw.line(gx + 10, gy + 10, gx + CELL - 10, gy + CELL - 10, C.crack, 3);
-          game.draw.line(gx + CELL / 2, gy + 5, gx + 10, gy + CELL - 5, C.crack, 2);
-        } else if (health === 2) {
-          game.draw.line(gx + CELL / 2, gy + 5, gx + CELL / 2, gy + CELL - 5, C.crack, 2);
-        }
-
-        // Goal indicator
-        if (c === COLS - 1) {
-          game.draw.text('→', gx + CELL / 2, gy + CELL / 2, { size: 44, color: '#22c55e', bold: true });
-        }
-      }
-    }
-
-    // Crack effects
-    for (var ce = 0; ce < crackEffects.length; ce++) {
-      var fx = OX + crackEffects[ce].col * CELL + CELL / 2;
-      var fy = OY + crackEffects[ce].row * CELL + CELL / 2;
-      game.draw.circle(fx, fy, CELL * crackEffects[ce].life * 2, '#fff', crackEffects[ce].life * 0.4);
-    }
-
-    // Splashes
-    for (var sp = 0; sp < splashes.length; sp++) {
-      var s = splashes[sp];
-      var r = s.big ? 60 : 30;
-      game.draw.circle(s.x, s.y, r * (1 - s.life) * 2, C.waterHi, s.life * 0.6);
-    }
-
-    // Player
-    var gx2 = OX + playerCol * CELL;
-    var gy2 = OY + playerRow * CELL;
-    var px2 = gx2 + CELL / 2;
-    var py2 = gy2 + CELL / 2;
-    game.draw.circle(px2, py2, CELL / 2 - 4 + 8, C.plrHi, 0.3);
-    game.draw.circle(px2, py2, CELL / 2 - 6, C.player, 0.9);
-    game.draw.circle(px2 - 6, py2 - 6, 8, '#fff', 0.5);
-
-    // Adjacent cell highlights
-    var adjCells = [[0,1],[0,-1],[1,0],[-1,0]];
-    for (var ai = 0; ai < adjCells.length; ai++) {
-      var nc2 = playerCol + adjCells[ai][0];
-      var nr2 = playerRow + adjCells[ai][1];
-      if (nc2 < 0 || nc2 >= COLS || nr2 < 0 || nr2 >= ROWS) continue;
-      if (grid[nr2][nc2] > 0) {
-        game.draw.rect(OX + nc2 * CELL + 2, OY + nr2 * CELL + 2, CELL - 4, CELL - 4, '#fff', 0.1 + 0.08 * Math.abs(Math.sin(elapsed * 4)));
-      }
-    }
-
-    var ratio = Math.max(0, timeLeft / 30);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.ice : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-    game.draw.text('→ タップで移動', W / 2, H * 0.93, { size: 38, color: C.ui });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('REACH THE RIGHT EDGE →', W / 2, H - 100, 38, C.c);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    initGrid();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
