@@ -1,221 +1,132 @@
 // 284-beat-boxer.js
-// ビートボクサー — リズムに合わせてパンチとキックを繰り出す格闘リズムゲーム
-// 操作: 左タップでパンチ、右タップでキック
-// 成功: 30コンボ  失敗: 10回外す or 40秒
+// ビートボクサー — ビートで現れるパンチ/キックの合図を、左右タップで正しく叩き込む格闘リズム
+// 操作: 左タップでパンチ、右タップでキック（合図の種類に合わせて）
+// 成功: 3コンボ  失敗: 3回外す or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#040208',
-    ring:   '#1a1025',
-    ringHi: '#2d1b4e',
-    fighter:'#f59e0b',
-    fgtHi:  '#fde68a',
-    enemy:  '#ef4444',
-    enHi:   '#fca5a5',
-    punch:  '#3b82f6',
-    punchHi:'#93c5fd',
-    kick:   '#22c55e',
-    kickHi: '#86efac',
-    hit:    '#fde68a',
-    miss:   '#ef4444',
-    ui:     '#475569',
-    text:   '#f1f5f9'
-  };
+  // ── パレット（ネオンアーケード、格闘リング） ──
+  var C = { bg:'#040208', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var BEAT_INTERVAL = 0.5; // seconds per beat
-  var beatTimer = 0;
-  var beat = 0;
-  var combo = 0;
-  var NEEDED = 30;
-  var misses = 0;
-  var MAX_MISS = 10;
-  var done = false;
-  var timeLeft = 40;
-  var elapsed = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'BEAT BOXER';
+  var HOW_TO_PLAY = 'TAP ◄ PUNCH · KICK ► ON THE CUE';
+  var MAX_TIME = 15;
+  var NEEDED   = 3;           // 修正2: 30 → 3
+  var MAX_MISS = 3;          // 修正2: 10 → 3
+  var BEAT = 0.7, CUE_LIFE = 1.0, TOP = 220;
 
-  // Cues: objects that appear on beat and must be tapped before they expire
-  var cues = [];
-  var CUE_LIFE = 0.8;
-  var particles = [];
-  var feedback = '';
-  var feedbackCol = '#fff';
-  var feedbackTimer = 0;
-  var beatFlash = 0;
-  var lastAction = null;
-  var actionTimer = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnCue() {
-    var type = Math.random() < 0.5 ? 'punch' : 'kick';
-    var x = type === 'punch' ? W * 0.3 : W * 0.7;
-    var y = H * 0.55 + (Math.random() - 0.5) * 200;
-    cues.push({ type: type, x: x, y: y, life: CUE_LIFE, maxLife: CUE_LIFE });
+  // ── ゲーム変数 ──
+  var beatTimer, beat, combo, misses, cues, timeLeft, done, particles, fbText, fbCol, fbTimer, lastAct, actTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.25) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
-    var side = tx < W / 2 ? 'punch' : 'kick';
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-    // Find matching cue
-    var found = false;
-    for (var i = cues.length - 1; i >= 0; i--) {
-      var cue = cues[i];
-      if (cue.type === side && cue.life > 0.1) {
-        combo++;
-        found = true;
-        feedback = side === 'punch' ? 'パンチ！' : 'キック！';
-        feedbackCol = side === 'punch' ? C.punchHi : C.kickHi;
-        feedbackTimer = 0.4;
-        game.audio.play('se_success', 0.5);
-        lastAction = side;
-        actionTimer = 0.3;
-        for (var pi = 0; pi < 6; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: cue.x, y: cue.y, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.4, col: feedbackCol });
-        }
-        cues.splice(i, 1);
-        if (combo >= NEEDED && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(combo * 80 + Math.ceil(timeLeft) * 100); }, 400);
-        }
-        return;
-      }
-    }
-    if (!found) {
-      misses++;
-      combo = 0;
-      feedback = 'ミス！';
-      feedbackCol = C.miss;
-      feedbackTimer = 0.4;
-      game.audio.play('se_failure', 0.4);
-      if (misses >= MAX_MISS && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 400);
-      }
-    }
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a1030');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(0, H * 0.5, W / 2, H * 0.36, C.e, 0.05); game.draw.rect(W / 2, H * 0.5, W / 2, H * 0.36, C.b, 0.05); }
+
+  function drawCue(cue) { var lr = cue.life / CUE_LIFE, col = cue.type === 'punch' ? C.e : C.b, r = 60 * (0.5 + 0.5 * lr); ring(cue.x, cue.y, r + 14, col, lr * 0.6); pc(cue.x, cue.y, r, col, 0.85 * lr); txt(cue.type === 'punch' ? 'P' : 'K', cue.x, cue.y + 16, 52, '#000'); }
+
+  function spawnCue() { var type = Math.random() < 0.5 ? 'punch' : 'kick'; cues.push({ type: type, x: type === 'punch' ? W * 0.3 : W * 0.7, y: snap(game.random(H * 0.5, H * 0.72)), life: CUE_LIFE }); }
+
+  function initGame() { beatTimer = 0.5; beat = 0; combo = 0; misses = 0; cues = []; timeLeft = MAX_TIME; done = false; particles = []; fbText = ''; fbCol = C.g; fbTimer = 0; lastAct = null; actTimer = 0; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (combo * 500 + Math.ceil(timeLeft) * 60) : combo * 120;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function addMiss() { misses++; combo = 0; fbText = 'MISS'; fbCol = C.a; fbTimer = 0.4; game.audio.play('se_failure', 0.4); if (misses >= MAX_MISS) finish(false); }
+
+  // ── 入力 ──
+  game.onTap(function(x) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var side = x < W / 2 ? 'punch' : 'kick';
+    lastAct = side; actTimer = 0.3;
+    for (var i = cues.length - 1; i >= 0; i--) { var cue = cues[i]; if (cue.type === side && cue.life > 0.1) { combo++; fbText = side === 'punch' ? 'PUNCH!' : 'KICK!'; fbCol = side === 'punch' ? C.e : C.b; fbTimer = 0.4; game.audio.play('se_success', 0.5); for (var pk = 0; pk < 6; pk++) { var a = Math.random() * Math.PI * 2; particles.push({ x: cue.x, y: cue.y, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.4, col: fbCol }); } cues.splice(i, 1); if (combo >= NEEDED) { finish(true); return; } return; } }
+    addMiss();
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawCue({ type: 'punch', x: W * 0.3, y: H * 0.55, life: CUE_LIFE }); drawCue({ type: 'kick', x: W * 0.7, y: H * 0.6, life: CUE_LIFE });
+      txt(GAME_TITLE, W / 2, H * 0.14, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 26, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'KO COMBO!' : 'DOWN', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (fbTimer > 0) fbTimer -= dt; if (actTimer > 0) actTimer -= dt;
+      beatTimer -= dt; if (beatTimer <= 0) { beatTimer = BEAT; beat++; spawnCue(); }
+      for (var i = cues.length - 1; i >= 0; i--) { cues[i].life -= dt; if (cues[i].life <= 0) { cues.splice(i, 1); addMiss(); if (done) return; } }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (feedbackTimer > 0) feedbackTimer -= dt;
-    if (beatFlash > 0) beatFlash -= dt;
-    if (actionTimer > 0) actionTimer -= dt;
+    // ---- 描画 ----
+    background();
+    var fx = W / 2 + (lastAct === 'punch' && actTimer > 0 ? -30 : lastAct === 'kick' && actTimer > 0 ? 30 : 0);
+    game.draw.rect(snap(fx) - 24, snap(H * 0.62), 48, 90, C.f, 0.9); pc(fx, H * 0.62 - 24, 30, C.c, 0.9);
+    for (var i2 = 0; i2 < cues.length; i2++) drawCue(cues[i2]);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 2);
+    if (fbTimer > 0) txt(fbText, W / 2, H * 0.4, 56, fbCol);
+    txt('◄ PUNCH', W * 0.25, H - 90, 40, C.e); txt('KICK ►', W * 0.75, H - 90, 40, C.b);
 
-    beatTimer += dt;
-    if (beatTimer >= BEAT_INTERVAL) {
-      beatTimer -= BEAT_INTERVAL;
-      beat++;
-      beatFlash = 0.15;
-      // Spawn 1-2 cues per beat
-      var numCues = beat % 4 === 0 ? 2 : 1;
-      for (var n = 0; n < numCues; n++) spawnCue();
-    }
-
-    // Expire cues
-    for (var i = cues.length - 1; i >= 0; i--) {
-      cues[i].life -= dt;
-      if (cues[i].life <= 0) {
-        misses++;
-        feedback = '遅い！';
-        feedbackCol = C.miss;
-        feedbackTimer = 0.4;
-        game.audio.play('se_failure', 0.35);
-        cues.splice(i, 1);
-        if (misses >= MAX_MISS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-        }
-      }
-    }
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-    if (beatFlash > 0) game.draw.rect(0, 0, W, H, '#ffffff', beatFlash * 0.08);
-
-    // Ring
-    game.draw.rect(0, H * 0.45, W, H * 0.45, C.ring, 0.9);
-    game.draw.rect(0, H * 0.45, W, 8, C.ringHi, 0.7);
-    game.draw.rect(0, H * 0.88, W, 8, C.ringHi, 0.5);
-
-    // Side zones
-    game.draw.rect(0, H * 0.45, W / 2, H * 0.43, C.punch, 0.06);
-    game.draw.rect(W / 2, H * 0.45, W / 2, H * 0.43, C.kick, 0.06);
-    game.draw.text('パンチ', W * 0.25, H * 0.9, { size: 42, color: lastAction === 'punch' && actionTimer > 0 ? C.punchHi : C.ui });
-    game.draw.text('キック', W * 0.75, H * 0.9, { size: 42, color: lastAction === 'kick' && actionTimer > 0 ? C.kickHi : C.ui });
-
-    // Fighter (center)
-    var fx = W / 2 + (lastAction === 'punch' && actionTimer > 0 ? -30 : lastAction === 'kick' && actionTimer > 0 ? 30 : 0);
-    var fy = H * 0.6;
-    game.draw.rect(fx - 24, fy - 60, 48, 90, C.fighter, 0.9);
-    game.draw.circle(fx, fy - 86, 34, C.fgtHi, 0.9);
-    if (lastAction === 'punch' && actionTimer > 0) {
-      game.draw.line(fx - 24, fy - 30, fx - 80, fy - 50, C.punch, 20);
-      game.draw.circle(fx - 80, fy - 50, 18, C.punchHi, 0.9);
-    }
-    if (lastAction === 'kick' && actionTimer > 0) {
-      game.draw.line(fx + 24, fy + 20, fx + 80, fy + 50, C.kick, 18);
-      game.draw.circle(fx + 80, fy + 50, 18, C.kickHi, 0.9);
-    }
-
-    // Cues
-    for (var i2 = 0; i2 < cues.length; i2++) {
-      var cue2 = cues[i2];
-      var lifeRatio = cue2.life / cue2.maxLife;
-      var cueCol = cue2.type === 'punch' ? C.punch : C.kick;
-      var cueHi = cue2.type === 'punch' ? C.punchHi : C.kickHi;
-      var r2 = 60 * (0.5 + 0.5 * lifeRatio);
-      game.draw.circle(cue2.x, cue2.y, r2 + 8, cueCol, 0.2);
-      game.draw.circle(cue2.x, cue2.y, r2, cueCol, 0.8 * lifeRatio);
-      game.draw.text(cue2.type === 'punch' ? '👊' : '🦵', cue2.x, cue2.y + 14, { size: 48 });
-      // Countdown ring
-      var segs = 12;
-      for (var sg = 0; sg < segs * lifeRatio; sg++) {
-        var a1 = -Math.PI / 2 + (sg / segs) * Math.PI * 2;
-        var a2 = -Math.PI / 2 + ((sg + 1) / segs) * Math.PI * 2;
-        game.draw.line(cue2.x + Math.cos(a1) * (r2 + 14), cue2.y + Math.sin(a1) * (r2 + 14),
-                       cue2.x + Math.cos(a2) * (r2 + 14), cue2.y + Math.sin(a2) * (r2 + 14), cueHi, 5);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life * 2.5, p.col, p.life * 0.7);
-    }
-
-    if (feedbackTimer > 0) {
-      game.draw.text(feedback, W / 2, H * 0.36, { size: 56, color: feedbackCol, bold: true });
-    }
-
-    // Miss dots
-    for (var mi = 0; mi < 5; mi++) {
-      game.draw.circle(W / 2 - 4 * 28 + mi * 56, H * 0.94, 14, mi < Math.min(5, misses) ? C.miss : '#08040e');
-    }
-
-    game.draw.text(combo + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.fighter : C.miss);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('COMBO ' + combo + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) game.draw.rect(snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mm < misses ? C.a : '#1a1030');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.25);
-    beatTimer = BEAT_INTERVAL * 0.8; // Start first beat soon
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
