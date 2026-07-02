@@ -1,192 +1,143 @@
 // 334-mirror-dodge.js
-// ミラードッジ — 鏡像で動く危険なボールを避ける
-// 操作: スワイプで移動（左スワイプすると鏡の自分は右に動く）
-// 成功: 30秒生存  失敗: 3回当たる
+// ミラードッジ — 左半分の自機をスワイプで動かし、跳ね回るボールを避けて生き残る（右は鏡像世界）
+// 操作: 4方向スワイプで自機を移動してボールを避ける
+// 成功: 10秒生き残る  失敗: 3回当たる
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#060010',
-    mirror: '#0d0020',
-    mirrorLine:'#4c1d95',
-    player: '#60a5fa',
-    playerHi:'#bfdbfe',
-    mirror_player:'#a78bfa',
-    mirror_playerHi:'#c4b5fd',
-    ball:   '#ef4444',
-    ballHi: '#fca5a5',
-    mball:  '#f97316',
-    mballHi:'#fed7aa',
-    hit:    '#fbbf24',
-    ui:     '#475569',
-    text:   '#f1f5f9'
-  };
+  // ── パレット（ネオンアーケード、鏡界） ──
+  var C = { bg:'#060010', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var NEEDED_TIME = 30;
-  var HALF_W = W / 2;
-
-  // Player (left half)
-  var playerX = W * 0.22;
-  var playerY = H * 0.5;
-  var PLAYER_R = 28;
-
-  // Balls (left half)
-  var balls = [];
-  var spawnTimer = 0;
-  var survived = 0;
-  var hits = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'MIRROR DODGE';
+  var HOW_TO_PLAY = 'SWIPE TO MOVE · DODGE THE BALLS · SURVIVE';
+  var NEEDED   = 10;         // 修正2: サバイバル 30s → 10s
   var MAX_HITS = 3;
-  var done = false;
-  var timeLeft = 0;
-  var elapsed = 0;
-  var GOAL = NEEDED_TIME;
-  var particles = [];
-  var hitAnim = 0;
-  var invincible = 0;
+  var HALF = snap(W / 2), PR = 28;
 
-  function spawnBall() {
-    var side = Math.random() < 0.5 ? -1 : 1;
-    var spd = 160 + elapsed * 4;
-    balls.push({
-      x: HALF_W * 0.5,
-      y: H * 0.2 + Math.random() * H * 0.6,
-      vx: (Math.random() * spd + 60) * side,
-      vy: (Math.random() - 0.5) * spd,
-      r: 22
-    });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var px, py, balls, survived, hits, timeLeft, done, spawnTimer, particles, hitAnim, invin;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onSwipe(function(dir) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / NEEDED * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#100820');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(HALF, 0, HALF, H, '#0a0020', 0.9);
+    game.draw.rect(HALF - 2, 0, 4, H, C.d, 0.6);
+    for (var ml = 0; ml < H; ml += 100) game.draw.rect(HALF - 4, snap(ml + 50) - 4, 8, 8, C.d, 0.6);
+  }
+
+  function spawnBall() { var side = Math.random() < 0.5 ? -1 : 1, spd = 180 + survived * 20; balls.push({ x: HALF * 0.5, y: snap(H * 0.2 + Math.random() * H * 0.6), vx: (Math.random() * spd + 60) * side, vy: (Math.random() - 0.5) * spd, r: 22 }); }
+
+  function initGame() { px = snap(HALF * 0.4); py = snap(H * 0.5); balls = []; survived = 0; hits = 0; timeLeft = NEEDED; done = false; spawnTimer = 0.5; particles = []; hitAnim = 0; invin = 0; }
+
+  function finish(success) {
     if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.round(survived) * 300 + (MAX_HITS - hits) * 500) : Math.round(survived) * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    for (var bi = 0; bi < balls.length; bi++) { var b = balls[bi]; pc(b.x, b.y, b.r, C.a, 0.9); pc(W - b.x, b.y, b.r, C.f, 0.7); }
+    var al = invin > 0 ? (Math.floor(game.time.elapsed * 16) % 2 ? 0.4 : 0.9) : 0.9;
+    pc(px, py, PR, C.e, al); pc(px - 8, py - 8, 8, C.g, 0.6 * al);
+    pc(W - px, py, PR, C.d, al * 0.85); pc(W - px + 8, py - 8, 8, C.g, 0.5 * al);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+  });
+
+  game.onSwipe(function(d) {
+    if (state !== S.PLAYING || done) return;
     var step = 140;
-    if (dir === 'left') playerX = Math.max(PLAYER_R + 20, playerX - step);
-    if (dir === 'right') playerX = Math.min(HALF_W - PLAYER_R - 20, playerX + step);
-    if (dir === 'up') playerY = Math.max(PLAYER_R + 100, playerY - step);
-    if (dir === 'down') playerY = Math.min(H - PLAYER_R - 60, playerY + step);
+    if (d === 'left') px = Math.max(PR + 20, px - step);
+    else if (d === 'right') px = Math.min(HALF - PR - 20, px + step);
+    else if (d === 'up') py = Math.max(PR + 100, py - step);
+    else if (d === 'down') py = Math.min(H - PR - 60, py + step);
     game.audio.play('se_tap', 0.15);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      elapsed += dt;
-      survived = elapsed;
-      if (elapsed >= GOAL) { done = true; game.audio.play('se_success', 0.7); setTimeout(function() { game.end.success(Math.round(elapsed * 100) + (MAX_HITS - hits) * 500); }, 400); return; }
-    }
-
-    if (hitAnim > 0) hitAnim -= dt * 2;
-    if (invincible > 0) invincible -= dt;
-
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && !done) {
-      spawnBall();
-      spawnTimer = 0.7 - Math.min(0.45, elapsed * 0.015);
-    }
-
-    // Mirror player position (mirrored = reflected across the center line)
-    var mirrorX = W - playerX; // right half
-    var mirrorY = playerY;
-
-    for (var bi = balls.length - 1; bi >= 0; bi--) {
-      var b = balls[bi];
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-
-      // Bounce off walls (left half)
-      if (b.x < b.r + 20) { b.x = b.r + 20; b.vx = Math.abs(b.vx); }
-      if (b.x > HALF_W - b.r - 20) { b.x = HALF_W - b.r - 20; b.vx = -Math.abs(b.vx); }
-      if (b.y < b.r + 100) { b.y = b.r + 100; b.vy = Math.abs(b.vy); }
-      if (b.y > H - b.r - 60) { b.y = H - b.r - 60; b.vy = -Math.abs(b.vy); }
-
-      // Collision with player
-      if (invincible <= 0 && Math.hypot(b.x - playerX, b.y - playerY) < PLAYER_R + b.r) {
-        hits++;
-        hitAnim = 0.6;
-        invincible = 1.5;
-        game.audio.play('se_failure', 0.5);
-        for (var pi = 0; pi < 8; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: playerX, y: playerY, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.5, col: C.hit });
-        }
-        if (hits >= MAX_HITS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-        }
+    if (state === S.ATTRACT) {
+      if (!balls) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.14, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
       }
+      scanlines();
+      return;
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SURVIVOR!' : 'SHATTERED', W / 2, H * 0.35, 74, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Left half background
-    game.draw.rect(0, 0, HALF_W, H, '#060018', 0.5);
-    // Right half (mirror world)
-    game.draw.rect(HALF_W, 0, HALF_W, H, C.mirror, 0.9);
-
-    // Mirror divider
-    game.draw.line(HALF_W, 0, HALF_W, H, C.mirrorLine, 6);
-    game.draw.line(HALF_W, 0, HALF_W, H, C.mirrorLine, 2);
-    for (var ml = 0; ml < H; ml += 100) {
-      game.draw.circle(HALF_W, ml + 50, 6, C.mirrorLine, 0.6);
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt; survived = NEEDED - Math.max(0, timeLeft);
+      if (timeLeft <= 0) { finish(true); return; }
+      if (hitAnim > 0) hitAnim -= dt * 2; if (invin > 0) invin -= dt;
+      spawnTimer -= dt; if (spawnTimer <= 0) { spawnBall(); spawnTimer = Math.max(0.35, 0.8 - survived * 0.04); }
+      for (var bi = balls.length - 1; bi >= 0; bi--) {
+        var b = balls[bi]; b.x += b.vx * dt; b.y += b.vy * dt;
+        if (b.x < b.r + 20) { b.x = b.r + 20; b.vx = Math.abs(b.vx); } if (b.x > HALF - b.r - 20) { b.x = HALF - b.r - 20; b.vx = -Math.abs(b.vx); }
+        if (b.y < b.r + 100) { b.y = b.r + 100; b.vy = Math.abs(b.vy); } if (b.y > H - b.r - 60) { b.y = H - b.r - 60; b.vy = -Math.abs(b.vy); }
+        if (invin <= 0 && Math.hypot(b.x - px, b.y - py) < PR + b.r) { hits++; hitAnim = 0.6; invin = 1.5; game.audio.play('se_failure', 0.5); for (var k = 0; k < 8; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: px, y: py, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.5, col: C.c }); } if (hits >= MAX_HITS) { finish(false); return; } }
+      }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Left balls
-    for (var bi2 = 0; bi2 < balls.length; bi2++) {
-      var b2 = balls[bi2];
-      game.draw.circle(b2.x, b2.y, b2.r + 6, C.ball, 0.2);
-      game.draw.circle(b2.x, b2.y, b2.r, C.ball, 0.9);
-      // Mirror ball (reflected)
-      var mbx = W - b2.x;
-      game.draw.circle(mbx, b2.y, b2.r + 6, C.mball, 0.15);
-      game.draw.circle(mbx, b2.y, b2.r, C.mball, 0.7);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    if (hitAnim > 0) game.draw.rect(0, 0, W, H, C.a, hitAnim * 0.2);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
 
-    // Player
-    var pAlpha = invincible > 0 ? (Math.sin(elapsed * 20) * 0.4 + 0.5) : 0.9;
-    game.draw.circle(playerX, playerY, PLAYER_R + 8, C.playerHi, 0.2 * pAlpha);
-    game.draw.circle(playerX, playerY, PLAYER_R, C.player, pAlpha);
-    game.draw.circle(playerX - 8, playerY - 8, 8, C.playerHi, 0.6 * pAlpha);
-
-    // Mirror player
-    var mpx = W - playerX;
-    game.draw.circle(mpx, mirrorY, PLAYER_R + 8, C.mirror_playerHi, 0.2 * pAlpha);
-    game.draw.circle(mpx, mirrorY, PLAYER_R, C.mirror_player, pAlpha * 0.8);
-    game.draw.circle(mpx + 8, mirrorY - 8, 8, C.mirror_playerHi, 0.5 * pAlpha);
-
-    // Hit flash
-    if (hitAnim > 0) {
-      game.draw.rect(0, 0, W, H, C.ball, hitAnim * 0.2);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    // Hit dots
-    for (var hi = 0; hi < MAX_HITS; hi++) {
-      game.draw.circle(W / 2 - (MAX_HITS - 1) * 28 + hi * 56, H * 0.92, 16, hi < hits ? C.ball : '#060010');
-    }
-
-    // Time progress
-    var ratio = Math.min(1, elapsed / GOAL);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio < 0.7 ? C.player : C.hit);
-    game.draw.text(Math.ceil(GOAL - elapsed) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-    game.draw.text(Math.floor(elapsed) + 's / ' + GOAL + 's', W / 2, 148, { size: 52, color: C.text, bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('SURVIVE ' + Math.floor(survived) + ' / ' + NEEDED + 's', W / 2, 168, 46, C.b);
+    for (var hi = 0; hi < MAX_HITS; hi++) game.draw.rect(snap(W / 2 + (hi - (MAX_HITS - 1) / 2) * 56) - 10, 224, 20, 20, hi < hits ? C.a : '#100820');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    spawnTimer = 0.5;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
