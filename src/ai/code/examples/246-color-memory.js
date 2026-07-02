@@ -1,189 +1,135 @@
 // 246-color-memory.js
-// カラーメモリー — 一瞬だけ見せた色の組み合わせを記憶して再現する
-// 操作: 記憶した順に色パネルをタップ
-// 成功: 8ラウンドクリア  失敗: 2回ミス
+// カラーメモリー — 一瞬光る色パネルの並びを記憶し、同じ順にタップして再現する記憶ゲーム
+// 操作: 光った順に色パネルをタップ
+// 成功: 3ラウンドクリア  失敗: 2回ミス or 30秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#050508',
-    ui:     '#475569',
-    text:   '#f1f5f9',
-    correct:'#22c55e',
-    wrong:  '#ef4444'
-  };
-
-  var COLORS = [
-    { name: '赤', col: '#ef4444', hi: '#fca5a5' },
-    { name: '青', col: '#3b82f6', hi: '#93c5fd' },
-    { name: '緑', col: '#22c55e', hi: '#86efac' },
-    { name: '黄', col: '#f59e0b', hi: '#fde68a' },
-    { name: '紫', col: '#a855f7', hi: '#d8b4fe' },
-    { name: '白', col: '#e2e8f0', hi: '#fff' }
+  // ── パレット（ネオンアーケード、記憶パネル） ──
+  var C = { bg:'#050508', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var PANELS = [
+    { col: C.a, name: 'R' }, { col: C.e, name: 'B' }, { col: C.b, name: 'G' },
+    { col: C.c, name: 'Y' }, { col: C.d, name: 'P' }, { col: C.f, name: 'O' }
   ];
 
-  var GRID = 2; // 2×3 = 6 panels
-  var PANEL_W = (W - 80) / 3;
-  var PANEL_H = 260;
-  var PANEL_MARGIN = 20;
-  var PANEL_START_Y = H * 0.45;
-
-  var STATE = 'SHOW'; // SHOW, INPUT
-  var sequence = [];
-  var round = 0;
-  var TOTAL_ROUNDS = 8;
-  var inputIdx = 0;
-  var showIdx = 0;
-  var showTimer = 0;
-  var SHOW_INTERVAL = 0.6;
-  var misses = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'COLOR MEMORY';
+  var HOW_TO_PLAY = 'WATCH THE FLASHES · REPEAT THE ORDER';
+  var MAX_TIME = 30;
+  var NEEDED   = 3;           // 修正2: 8 → 3
   var MAX_MISS = 2;
-  var done = false;
-  var elapsed = 0;
-  var flashCol = '';
-  var flashTimer = 0;
-  var highlightPanel = -1;
-  var highlightTimer = 0;
+  var PW = snap((W - 80) / 3), PH = 240, PM = 20, PY0 = snap(H * 0.44);
 
-  function startRound() {
-    round++;
-    sequence = [];
-    var seqLen = 2 + Math.floor(round * 0.7);
-    for (var i = 0; i < seqLen; i++) {
-      sequence.push(Math.floor(Math.random() * COLORS.length));
-    }
-    STATE = 'SHOW';
-    showIdx = -1;
-    showTimer = 0.6;
-    inputIdx = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var phase, sequence, round, inputIdx, showIdx, showTimer, misses, timeLeft, done, flash, flashCol, hi, hiTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function panelIndex(tx, ty) {
-    for (var col = 0; col < 3; col++) {
-      for (var row = 0; row < 2; row++) {
-        var px = 40 + col * (PANEL_W + PANEL_MARGIN);
-        var py = PANEL_START_Y + row * (PANEL_H + PANEL_MARGIN);
-        if (tx >= px && tx < px + PANEL_W && ty >= py && ty < py + PANEL_H) {
-          return row * 3 + col;
-        }
-      }
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function roundBar() { for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < Math.ceil(round / NEEDED * 12) ? C.b : '#1a1a2a'); }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function panelXY(idx) { var col = idx % 3, row = Math.floor(idx / 3); return { x: 40 + col * (PW + PM), y: PY0 + row * (PH + PM) }; }
+
+  function panelAt(x, y) { for (var i = 0; i < 6; i++) { var p = panelXY(i); if (x >= p.x && x < p.x + PW && y >= p.y && y < p.y + PH) return i; } return -1; }
+
+  function drawPanels() {
+    for (var i = 0; i < 6; i++) {
+      var p = panelXY(i), lit = (phase === 'show' && showIdx >= 0 && sequence[showIdx] === i) || (hi === i && hiTimer > 0);
+      game.draw.rect(p.x, p.y, PW, PH, PANELS[i].col, lit ? 1 : 0.3);
+      game.draw.rect(p.x, p.y, PW, 8, C.g, lit ? 0.6 : 0.2);
+      txt(PANELS[i].name, p.x + PW / 2, p.y + PH / 2 + 18, 60, '#000');
     }
-    return -1;
   }
 
-  game.onTap(function(tx, ty) {
-    if (done || STATE !== 'INPUT') return;
-    var idx = panelIndex(tx, ty);
-    if (idx < 0) return;
+  function startRound() { round++; sequence = []; var len = 1 + round; for (var i = 0; i < len; i++) sequence.push(Math.floor(Math.random() * 6)); phase = 'show'; showIdx = -1; showTimer = 0.6; inputIdx = 0; }
 
-    highlightPanel = idx;
-    highlightTimer = 0.2;
+  function initGame() { round = 0; misses = 0; timeLeft = MAX_TIME; done = false; flash = 0; flashCol = C.b; hi = -1; hiTimer = 0; startRound(); }
 
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (round * 500 + (misses === 0 ? 500 : 0)) : (round - 1) * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || phase !== 'input') return;
+    var idx = panelAt(x, y); if (idx < 0) return;
+    hi = idx; hiTimer = 0.2;
     if (idx === sequence[inputIdx]) {
-      game.audio.play('se_tap', 0.4);
-      inputIdx++;
-      if (inputIdx >= sequence.length) {
-        flashCol = C.correct;
-        flashTimer = 0.3;
-        game.audio.play('se_success', 0.6);
-        if (round >= TOTAL_ROUNDS && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(round * 200 + misses === 0 ? 500 : 0); }, 600);
-        } else {
-          setTimeout(function() { if (!done) startRound(); }, 700);
-          STATE = 'WAIT';
-        }
-      }
-    } else {
-      misses++;
-      flashCol = C.wrong;
-      flashTimer = 0.4;
-      game.audio.play('se_failure', 0.5);
-      if (misses >= MAX_MISS && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 600);
-      } else {
-        setTimeout(function() { if (!done) startRound(); }, 700);
-        STATE = 'WAIT';
-      }
-    }
+      game.audio.play('se_tap', 0.4); inputIdx++;
+      if (inputIdx >= sequence.length) { flash = 0.3; flashCol = C.b; game.audio.play('se_success', 0.6); if (round >= NEEDED) { finish(true); return; } phase = 'wait'; setTimeout(function() { if (!done && state === S.PLAYING) startRound(); }, 700); }
+    } else { misses++; flash = 0.4; flashCol = C.a; game.audio.play('se_failure', 0.5); if (misses >= MAX_MISS) { finish(false); return; } phase = 'wait'; setTimeout(function() { if (!done && state === S.PLAYING) startRound(); }, 700); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) elapsed += dt;
-    if (flashTimer > 0) flashTimer -= dt;
-    if (highlightTimer > 0) highlightTimer -= dt;
-
-    if (STATE === 'SHOW') {
-      showTimer -= dt;
-      if (showTimer <= 0) {
-        showIdx++;
-        if (showIdx >= sequence.length) {
-          STATE = 'INPUT';
-          showIdx = -1;
-        } else {
-          showTimer = SHOW_INTERVAL;
-          game.audio.play('se_tap', 0.25);
-        }
+    if (state === S.ATTRACT) {
+      background(); phase = 'attract'; hi = Math.floor(game.time.elapsed * 2) % 6; hiTimer = 1; drawPanels();
+      txt(GAME_TITLE, W / 2, H * 0.16, 74, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 26, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
       }
+      scanlines();
+      return;
     }
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    if (flashTimer > 0) {
-      game.draw.rect(0, 0, W, H, flashCol, flashTimer * 0.3);
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'PERFECT RECALL!' : 'FORGOTTEN', W / 2, H * 0.35, 58, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
 
-    // Panels
-    for (var col = 0; col < 3; col++) {
-      for (var row = 0; row < 2; row++) {
-        var idx = row * 3 + col;
-        var color = COLORS[idx];
-        var px = 40 + col * (PANEL_W + PANEL_MARGIN);
-        var py = PANEL_START_Y + row * (PANEL_H + PANEL_MARGIN);
-        var lit = (STATE === 'SHOW' && showIdx >= 0 && sequence[showIdx] === idx);
-        var tapped = (STATE === 'INPUT' && highlightPanel === idx && highlightTimer > 0);
-        var alpha = lit || tapped ? 1.0 : 0.35;
-        game.draw.rect(px, py, PANEL_W, PANEL_H, color.col, alpha);
-        if (lit || tapped) {
-          game.draw.rect(px, py, PANEL_W, 8, color.hi, 0.7);
-          game.draw.rect(px, py + PANEL_H - 8, PANEL_W, 8, color.hi, 0.7);
-        }
-        game.draw.text(color.name, px + PANEL_W / 2, py + PANEL_H / 2 + 12, { size: 48, color: '#fff', bold: true });
-      }
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt; if (hiTimer > 0) hiTimer -= dt;
+      if (phase === 'show') { showTimer -= dt; if (showTimer <= 0) { showIdx++; if (showIdx >= sequence.length) { phase = 'input'; showIdx = -1; } else { showTimer = 0.6; game.audio.play('se_tap', 0.25); } } }
     }
 
-    // Show sequence progress
-    if (STATE === 'SHOW') {
-      var seqStr = '';
-      for (var si = 0; si < sequence.length; si++) {
-        seqStr += (si === showIdx ? '●' : (si < showIdx ? '○' : '·'));
-      }
-      game.draw.text(seqStr, W / 2, H * 0.4, { size: 44, color: C.ui });
-      game.draw.text('覚えろ！', W / 2, H * 0.35, { size: 56, color: C.text, bold: true });
-    } else if (STATE === 'INPUT') {
-      game.draw.text(inputIdx + ' / ' + sequence.length, W / 2, H * 0.38, { size: 48, color: C.correct });
-      game.draw.text('入力！', W / 2, H * 0.34, { size: 56, color: C.text, bold: true });
-    }
+    // ---- 描画 ----
+    background();
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.3);
+    drawPanels();
+    if (phase === 'show') txt('WATCH', W / 2, H * 0.36, 56, C.c);
+    else if (phase === 'input') txt('REPEAT  ' + inputIdx + ' / ' + sequence.length, W / 2, H * 0.36, 48, C.b);
 
-    // Misses
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 30 + mi * 60, H * 0.93, 18, mi < misses ? C.wrong : '#1a1a2e');
-    }
-
-    game.draw.text('ROUND ' + round + ' / ' + TOTAL_ROUNDS, W / 2, 148, { size: 54, color: C.text, bold: true });
-
-    var ratio = Math.max(0, 1 - elapsed / 120);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(Math.max(0, 120 - elapsed)) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    roundBar();
+    txt('ROUND ' + round + ' / ' + NEEDED, W / 2, 100, 44, C.g);
+    for (var mm = 0; mm < MAX_MISS; mm++) game.draw.rect(snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 56) - 10, 168, 20, 20, mm < misses ? C.a : '#1a1a2a');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    startRound();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

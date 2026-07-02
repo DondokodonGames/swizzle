@@ -1,237 +1,155 @@
 // 245-tower-defense-micro.js
-// マイクロタワー — 1本の道を進む敵に砲台を置いてせき止める超ミニタワーディフェンス
-// 操作: タップで砲台を設置（3個まで）
-// 成功: 20体の敵を全員倒す  失敗: 5体逃がす or 60秒
+// マイクロタワー — 曲がりくねる一本道を進む敵に砲台を置いて食い止める超小型防衛
+// 操作: 道以外をタップで砲台を設置（3基まで）
+// 成功: 敵を3体倒す  失敗: 3体逃がす or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#060a0c',
-    path:   '#1e293b',
-    pathHi: '#334155',
-    tower:  '#22c55e',
-    twrHi:  '#86efac',
-    bullet: '#fde68a',
-    enemy:  '#ef4444',
-    enmHi:  '#fca5a5',
-    life:   '#22c55e',
-    dead:   '#475569',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、防衛拠点） ──
+  var C = { bg:'#060a0c', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Path waypoints
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'MICRO TOWER';
+  var HOW_TO_PLAY = 'TAP OFF-PATH TO PLACE TURRETS (MAX 3)';
+  var MAX_TIME = 20;
+  var NEEDED   = 3;           // 修正2: 20 → 3
+  var MAX_ESCAPE = 3;        // 修正2: 5 → 3
+  var MAX_TOWERS = 3, TOP = 220, TOTAL_SPAWN = 6;
   var PATH = [
-    { x: -60, y: H * 0.25 },
-    { x: W * 0.25, y: H * 0.25 },
-    { x: W * 0.25, y: H * 0.55 },
-    { x: W * 0.75, y: H * 0.55 },
-    { x: W * 0.75, y: H * 0.25 },
-    { x: W + 60, y: H * 0.25 }
+    { x: -60, y: snap(H * 0.32) }, { x: snap(W * 0.25), y: snap(H * 0.32) }, { x: snap(W * 0.25), y: snap(H * 0.58) },
+    { x: snap(W * 0.75), y: snap(H * 0.58) }, { x: snap(W * 0.75), y: snap(H * 0.32) }, { x: W + 60, y: snap(H * 0.32) }
   ];
 
-  var towers = [];
-  var MAX_TOWERS = 3;
-  var enemies = [];
-  var bullets = [];
-  var killed = 0;
-  var escaped = 0;
-  var NEEDED = 20;
-  var MAX_ESCAPE = 5;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var spawnTimer = 0;
-  var SPAWN_INTERVAL = 1.8;
-  var spawnedCount = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnEnemy() {
-    enemies.push({
-      x: PATH[0].x,
-      y: PATH[0].y,
-      waypoint: 1,
-      speed: 90 + spawnedCount * 2,
-      hp: 2 + Math.floor(spawnedCount / 5),
-      maxHp: 2 + Math.floor(spawnedCount / 5),
-      r: 22
-    });
-    spawnedCount++;
+  // ── ゲーム変数 ──
+  var towers, enemies, bullets, killed, escaped, spawnTimer, spawned, timeLeft, done;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
+  }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1420');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    for (var pi = 0; pi < PATH.length - 1; pi++) { game.draw.line(PATH[pi].x, PATH[pi].y, PATH[pi + 1].x, PATH[pi + 1].y, C.d, 84); game.draw.line(PATH[pi].x, PATH[pi].y, PATH[pi + 1].x, PATH[pi + 1].y, '#1a2e10', 6); }
   }
 
   function isOnPath(x, y) {
-    for (var i = 0; i < PATH.length - 1; i++) {
-      var ax = PATH[i].x, ay = PATH[i].y;
-      var bx = PATH[i + 1].x, by = PATH[i + 1].y;
-      var dx = bx - ax, dy = by - ay;
-      var len = Math.sqrt(dx * dx + dy * dy);
-      var nx = -dy / len, ny = dx / len;
-      var px = x - ax, py = y - ay;
-      var dist = Math.abs(px * nx + py * ny);
-      if (dist < 60) return true;
-    }
+    for (var i = 0; i < PATH.length - 1; i++) { var ax = PATH[i].x, ay = PATH[i].y, dx = PATH[i + 1].x - ax, dy = PATH[i + 1].y - ay, len = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len)); if (Math.hypot(x - (ax + t * dx), y - (ay + t * dy)) < 60) return true; }
     return false;
   }
 
-  game.onTap(function(tx, ty) {
+  function drawTower(t) { game.draw.circle(t.x, t.y, t.range, C.b, 0.04); pc(t.x, t.y, 28, C.b, 0.9); game.draw.rect(snap(t.x) - 6, snap(t.y) - 6, 12, 12, C.g, 0.8); }
+  function drawEnemy(e) { pc(e.x, e.y, e.r, C.a, 0.9); game.draw.rect(snap(e.x) - 10, snap(e.y) - 4, 6, 6, C.g); game.draw.rect(snap(e.x) + 4, snap(e.y) - 4, 6, 6, C.g); game.draw.rect(snap(e.x) - e.r, snap(e.y) - e.r - 12, e.r * 2, 6, '#333', 0.8); game.draw.rect(snap(e.x) - e.r, snap(e.y) - e.r - 12, snap(e.r * 2 * e.hp / e.maxHp), 6, C.b); }
+
+  function spawnEnemy() { enemies.push({ x: PATH[0].x, y: PATH[0].y, wp: 1, speed: 90 + spawned * 6, hp: 2 + Math.floor(spawned / 3), maxHp: 2 + Math.floor(spawned / 3), r: 24 }); spawned++; }
+
+  function initGame() { towers = []; enemies = []; bullets = []; killed = 0; escaped = 0; spawnTimer = 1; spawned = 0; timeLeft = MAX_TIME; done = false; }
+
+  function finish(success) {
     if (done) return;
-    // Don't place on path
-    if (isOnPath(tx, ty)) return;
-    if (towers.length >= MAX_TOWERS) return;
-    if (ty < 160 || ty > H - 40) return;
-    towers.push({ x: tx, y: ty, range: 200, fireRate: 1.2, fireTimer: 0 });
-    game.audio.play('se_tap', 0.3);
+    done = true; resultSuccess = success;
+    finalScore = success ? (killed * 300 + Math.ceil(timeLeft) * 60) : killed * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || y < TOP) return;
+    if (isOnPath(x, y) || towers.length >= MAX_TOWERS) { game.audio.play('se_failure', 0.2); return; }
+    towers.push({ x: snap(x), y: snap(y), range: 220, rate: 1.0, fireTimer: 0 }); game.audio.play('se_tap', 0.4);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawTower({ x: W * 0.5, y: H * 0.45, range: 200 }); drawEnemy({ x: W * 0.25, y: H * 0.32, r: 24, hp: 2, maxHp: 2 });
+      txt(GAME_TITLE, W / 2, H * 0.14, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 26, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.92, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.97, 40, '#556677');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'HELD THE LINE!' : 'OVERRUN', W / 2, H * 0.35, 66, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    // Spawn
-    if (!done && spawnedCount < 25) {
-      spawnTimer -= dt;
-      if (spawnTimer <= 0) {
-        spawnEnemy();
-        spawnTimer = SPAWN_INTERVAL;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (spawned < TOTAL_SPAWN) { spawnTimer -= dt; if (spawnTimer <= 0) { spawnEnemy(); spawnTimer = 1.8; } }
+      for (var ei = enemies.length - 1; ei >= 0; ei--) {
+        var e = enemies[ei]; if (e.wp >= PATH.length) { escaped++; enemies.splice(ei, 1); game.audio.play('se_failure', 0.3); if (escaped >= MAX_ESCAPE) { finish(false); return; } continue; }
+        var tg = PATH[e.wp], dx = tg.x - e.x, dy = tg.y - e.y, d = Math.hypot(dx, dy);
+        if (d < 10) e.wp++; else { e.x += dx / d * e.speed * dt; e.y += dy / d * e.speed * dt; }
+      }
+      for (var ti = 0; ti < towers.length; ti++) {
+        var t = towers[ti]; t.fireTimer -= dt; if (t.fireTimer > 0) continue;
+        var near = null, nd = t.range; for (var ej = 0; ej < enemies.length; ej++) { var dd = Math.hypot(t.x - enemies[ej].x, t.y - enemies[ej].y); if (dd < nd) { nd = dd; near = enemies[ej]; } }
+        if (near) { var bdx = near.x - t.x, bdy = near.y - t.y, bl = Math.hypot(bdx, bdy) || 1; bullets.push({ x: t.x, y: t.y, vx: bdx / bl * 600, vy: bdy / bl * 600, life: 0.7 }); t.fireTimer = t.rate; game.audio.play('se_tap', 0.15); }
+      }
+      for (var bi = bullets.length - 1; bi >= 0; bi--) {
+        var b = bullets[bi]; b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt; var hit = false;
+        for (var ek = enemies.length - 1; ek >= 0; ek--) { if (Math.hypot(b.x - enemies[ek].x, b.y - enemies[ek].y) < enemies[ek].r + 8) { enemies[ek].hp--; hit = true; if (enemies[ek].hp <= 0) { killed++; enemies.splice(ek, 1); if (killed >= NEEDED) { finish(true); return; } } break; } }
+        if (hit || b.life <= 0) bullets.splice(bi, 1);
       }
     }
 
-    // Move enemies
-    for (var ei = enemies.length - 1; ei >= 0; ei--) {
-      var e = enemies[ei];
-      if (e.waypoint >= PATH.length) {
-        // Escaped
-        escaped++;
-        enemies.splice(ei, 1);
-        game.audio.play('se_failure', 0.3);
-        if (escaped >= MAX_ESCAPE && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-        }
-        continue;
-      }
-      var target = PATH[e.waypoint];
-      var dx = target.x - e.x;
-      var dy = target.y - e.y;
-      var dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 8) {
-        e.waypoint++;
-      } else {
-        e.x += (dx / dist) * e.speed * dt;
-        e.y += (dy / dist) * e.speed * dt;
-      }
-    }
+    // ---- 描画 ----
+    background();
+    for (var ti2 = 0; ti2 < towers.length; ti2++) drawTower(towers[ti2]);
+    for (var bi2 = 0; bi2 < bullets.length; bi2++) game.draw.rect(snap(bullets[bi2].x) - 5, snap(bullets[bi2].y) - 5, 10, 10, C.c);
+    for (var ei2 = 0; ei2 < enemies.length; ei2++) drawEnemy(enemies[ei2]);
 
-    // Towers shoot
-    for (var ti = 0; ti < towers.length; ti++) {
-      var t = towers[ti];
-      t.fireTimer -= dt;
-      if (t.fireTimer > 0) continue;
-      // Find nearest enemy in range
-      var nearest = null;
-      var nearDist = Infinity;
-      for (var ei2 = 0; ei2 < enemies.length; ei2++) {
-        var e2 = enemies[ei2];
-        var ddx = t.x - e2.x, ddy = t.y - e2.y;
-        var d = Math.sqrt(ddx * ddx + ddy * ddy);
-        if (d < t.range && d < nearDist) { nearDist = d; nearest = e2; }
-      }
-      if (nearest) {
-        var bdx = nearest.x - t.x, bdy = nearest.y - t.y;
-        var blen = Math.sqrt(bdx * bdx + bdy * bdy);
-        bullets.push({ x: t.x, y: t.y, vx: (bdx / blen) * 400, vy: (bdy / blen) * 400, life: 0.6 });
-        t.fireTimer = 1 / t.fireRate;
-        game.audio.play('se_tap', 0.15);
-      }
-    }
-
-    // Move bullets
-    for (var bi = bullets.length - 1; bi >= 0; bi--) {
-      var b = bullets[bi];
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-      b.life -= dt;
-      var hit = false;
-      for (var ei3 = enemies.length - 1; ei3 >= 0; ei3--) {
-        var e3 = enemies[ei3];
-        var ddx2 = b.x - e3.x, ddy2 = b.y - e3.y;
-        if (ddx2 * ddx2 + ddy2 * ddy2 < (e3.r + 6) * (e3.r + 6)) {
-          e3.hp--;
-          hit = true;
-          if (e3.hp <= 0) {
-            killed++;
-            enemies.splice(ei3, 1);
-            if (killed >= NEEDED && !done) {
-              done = true;
-              game.audio.play('se_success');
-              setTimeout(function() { game.end.success(killed * 80 + Math.ceil(timeLeft) * 60); }, 400);
-            }
-          }
-          break;
-        }
-      }
-      if (hit || b.life <= 0) bullets.splice(bi, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Draw path
-    for (var pi = 0; pi < PATH.length - 1; pi++) {
-      var ax = PATH[pi].x, ay = PATH[pi].y;
-      var bx = PATH[pi + 1].x, by = PATH[pi + 1].y;
-      game.draw.line(ax, ay, bx, by, C.path, 100);
-      game.draw.line(ax, ay, bx, by, C.pathHi, 4);
-    }
-
-    // Towers
-    for (var ti2 = 0; ti2 < towers.length; ti2++) {
-      var t2 = towers[ti2];
-      game.draw.circle(t2.x, t2.y, t2.range, C.twrHi, 0.06);
-      game.draw.circle(t2.x, t2.y, 28, C.tower, 0.9);
-      game.draw.circle(t2.x, t2.y, 12, '#fff', 0.5);
-    }
-
-    // Tower slots indicator
-    game.draw.text('砲台: ' + towers.length + '/' + MAX_TOWERS, W * 0.5, H * 0.85, { size: 40, color: C.ui });
-    if (towers.length < MAX_TOWERS) {
-      game.draw.text('タップで設置', W * 0.5, H * 0.9, { size: 36, color: C.twrHi });
-    }
-
-    // Enemies
-    for (var ei4 = 0; ei4 < enemies.length; ei4++) {
-      var e4 = enemies[ei4];
-      game.draw.circle(e4.x, e4.y, e4.r + 4, C.enmHi, 0.2);
-      game.draw.circle(e4.x, e4.y, e4.r, C.enemy, 0.9);
-      var hpW = e4.r * 2 * (e4.hp / e4.maxHp);
-      game.draw.rect(e4.x - e4.r, e4.y - e4.r - 10, e4.r * 2, 6, '#333', 0.8);
-      game.draw.rect(e4.x - e4.r, e4.y - e4.r - 10, hpW, 6, C.life, 0.9);
-    }
-
-    // Bullets
-    for (var bi2 = 0; bi2 < bullets.length; bi2++) {
-      var b2 = bullets[bi2];
-      game.draw.circle(b2.x, b2.y, 7, C.bullet, 0.9);
-    }
-
-    // Escaped dots
-    for (var esc = 0; esc < MAX_ESCAPE; esc++) {
-      game.draw.circle(W * 0.1 + esc * 44, H * 0.96, 14, esc < escaped ? C.enemy : '#111');
-    }
-
-    game.draw.text(killed + ' / ' + NEEDED, W / 2, 148, { size: 60, color: '#f1f5f9', bold: true });
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.tower : C.enemy);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('KILLED ' + killed + ' / ' + NEEDED, W / 2, 168, 46, C.b);
+    txt('TURRETS ' + towers.length + ' / ' + MAX_TOWERS, W / 2, H - 150, 38, C.c);
+    for (var es = 0; es < MAX_ESCAPE; es++) game.draw.rect(snap(W / 2 + (es - (MAX_ESCAPE - 1) / 2) * 56) - 10, H - 100, 20, 20, es < escaped ? C.a : '#0a1420');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    spawnTimer = 1.0;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
