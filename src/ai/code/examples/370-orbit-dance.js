@@ -1,206 +1,161 @@
 // 370-orbit-dance.js
-// オービットダンス — 軌道上の惑星を衝突させずにスワイプで方向転換
-// 操作: スワイプで全惑星の回転方向を反転
-// 成功: 90秒生き延びる  失敗: 惑星同士が衝突
+// オービットダンス — 軌道を回る惑星をタップ/スワイプで一斉に反転させ、衝突させずに耐える
+// 操作: タップまたはスワイプで全惑星の回転方向を反転
+// 成功: 10秒 生き延びる  失敗: 惑星同士が衝突
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#020212',
-    star:   '#f1f5f9',
-    sun:    '#fbbf24',
-    sunHi:  '#fef3c7',
-    p1:     '#3b82f6',
-    p1Hi:   '#93c5fd',
-    p2:     '#ef4444',
-    p2Hi:   '#fca5a5',
-    p3:     '#22c55e',
-    p3Hi:   '#86efac',
-    p4:     '#a855f7',
-    p4Hi:   '#d8b4fe',
-    trail:  '#475569',
-    danger: '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、宇宙） ──
+  var C = { bg:'#020210', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var PCOL = [C.e, C.a, C.b, C.d];
 
-  var cx = W / 2;
-  var cy = H * 0.48;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ORBIT DANCE';
+  var HOW_TO_PLAY = 'TAP OR SWIPE TO REVERSE ALL ORBITS · AVOID CRASHES';
+  var GOAL = 10;             // 修正2: 90秒 → 10秒
 
-  var planets = [
-    { r: 200, angle: 0,        speed: 1.2,  size: 36, col: C.p1, hi: C.p1Hi },
-    { r: 320, angle: Math.PI,  speed: 0.9,  size: 44, col: C.p2, hi: C.p2Hi },
-    { r: 420, angle: Math.PI/2, speed: 0.65, size: 38, col: C.p3, hi: C.p3Hi },
-    { r: 520, angle: Math.PI*1.5, speed: 0.45, size: 30, col: C.p4, hi: C.p4Hi }
-  ];
+  var CX = snap(W / 2), CY = snap(H * 0.46);
 
-  var dir = 1;        // +1 or -1 for all planets
-  var survived = 0;
-  var GOAL = 90;
-  var done = false;
-  var elapsed = 0;
-  var timeLeft = 90;
-  var particles = [];
-  var stars = [];
-  var trails = [];
-  var collisionFlash = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Star field
-  for (var si = 0; si < 80; si++) {
-    stars.push({ x: Math.random() * W, y: Math.random() * H, r: 1 + Math.random() * 2 });
+  // ── ゲーム変数 ──
+  var planets, dir, survived, done, particles, stars, flash, fbTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.12) game.draw.rect(snap(cx + Math.cos(a) * r) - 3, snap(cy + Math.sin(a) * r) - 3, 6, 6, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function initTrails() {
-    trails = planets.map(function() { return []; });
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function survBar() {
+    var t = Math.ceil(Math.min(1, survived / GOAL) * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#101028');
   }
+
+  function background() {
+    game.draw.clear(C.bg);
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.a, flash * 0.2);
+    for (var si = 0; si < stars.length; si++) game.draw.rect(stars[si].x, stars[si].y, stars[si].r, stars[si].r, C.g, 0.3 + Math.sin(game.time.elapsed * 2 + si) * 0.2);
+  }
+
+  function initStars() { stars = []; for (var i = 0; i < 60; i++) stars.push({ x: snap(Math.random() * W), y: snap(Math.random() * H), r: Math.random() < 0.5 ? 4 : 8 }); }
+
+  function initGame() {
+    planets = [
+      { r: 180, angle: 0, speed: 1.3, size: 30, col: PCOL[0] },
+      { r: 300, angle: Math.PI, speed: 1.0, size: 38, col: PCOL[1] },
+      { r: 420, angle: Math.PI / 2, speed: 0.7, size: 32, col: PCOL[2] },
+      { r: 520, angle: Math.PI * 1.5, speed: 0.5, size: 26, col: PCOL[3] }
+    ];
+    dir = 1; survived = 0; done = false; particles = []; flash = 0; fbTimer = 0;
+  }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.round(survived) * 500 + 2000) : Math.round(survived * 200);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function reverse() { dir *= -1; fbTimer = 0.3; game.audio.play('se_tap', 0.4); for (var k = 0; k < 6; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: CX, y: CY, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180, life: 0.4, col: C.c }); } }
+
+  function drawScene() {
+    // 軌道
+    for (var oi = 0; oi < planets.length; oi++) ring(CX, CY, planets[oi].r, '#20203a', 0.7);
+    // 太陽
+    pc(CX, CY, 48, C.c, 0.9); pc(CX, CY, 30, C.g, 0.8); pc(CX, CY, 60, C.f, 0.12 + Math.sin(game.time.elapsed * 3) * 0.05);
+    // 惑星
+    for (var pi = 0; pi < planets.length; pi++) {
+      var p = planets[pi], px = CX + Math.cos(p.angle) * p.r, py = CY + Math.sin(p.angle) * p.r;
+      p.x = px; p.y = py;
+      pc(px, py, p.size + 8, p.col, 0.15); pc(px, py, p.size, p.col, 0.95); pc(px - p.size * 0.3, py - p.size * 0.3, p.size * 0.3, C.g, 0.5);
+    }
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return; reverse();
+  });
 
   game.onSwipe(function() {
-    if (done) return;
-    dir *= -1;
-    game.audio.play('se_tap', 0.3);
-    for (var pi = 0; pi < 4; pi++) {
-      var ang2 = Math.random() * Math.PI * 2;
-      particles.push({ x: cx, y: cy, vx: Math.cos(ang2)*180, vy: Math.sin(ang2)*180, life:0.4, col: C.sun });
-    }
+    if (state !== S.PLAYING || done) return; reverse();
   });
 
-  game.onTap(function() {
-    if (done) return;
-    dir *= -1;
-    game.audio.play('se_tap', 0.3);
-  });
-
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!planets) initGame(); background();
+      for (var pi = 0; pi < planets.length; pi++) planets[pi].angle += planets[pi].speed * dir * dt * 0.4;
+      drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.14, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.91, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background(); drawScene();
+      txt(resultSuccess ? 'SURVIVED!' : 'CRASH!', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      survived = elapsed;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_success', 0.8);
-        game.end.success(Math.round(survived * 100));
-        return;
-      }
-    }
-
-    if (collisionFlash > 0) collisionFlash -= dt * 4;
-
-    // Update planets
-    for (var pi2 = 0; pi2 < planets.length; pi2++) {
-      planets[pi2].angle += planets[pi2].speed * dir * dt;
-      var px = cx + Math.cos(planets[pi2].angle) * planets[pi2].r;
-      var py = cy + Math.sin(planets[pi2].angle) * planets[pi2].r;
-      planets[pi2].x = px;
-      planets[pi2].y = py;
-      // Trail
-      trails[pi2].push({ x: px, y: py, life: 0.6 });
-      if (trails[pi2].length > 30) trails[pi2].shift();
-    }
-
-    // Update trails
-    for (var ti = 0; ti < trails.length; ti++) {
-      for (var tj = trails[ti].length - 1; tj >= 0; tj--) {
-        trails[ti][tj].life -= dt * 1.5;
-        if (trails[ti][tj].life <= 0) trails[ti].splice(tj, 1);
-      }
-    }
-
-    // Collision detection
-    for (var a = 0; a < planets.length; a++) {
-      for (var b = a + 1; b < planets.length; b++) {
-        var dist = Math.hypot(planets[a].x - planets[b].x, planets[a].y - planets[b].y);
-        if (dist < planets[a].size + planets[b].size) {
-          // Collision!
-          collisionFlash = 1;
-          game.audio.play('se_failure', 0.8);
-          for (var pi3 = 0; pi3 < 20; pi3++) {
-            var ang3 = Math.random() * Math.PI * 2;
-            particles.push({ x: (planets[a].x + planets[b].x) / 2, y: (planets[a].y + planets[b].y) / 2, vx: Math.cos(ang3)*300, vy: Math.sin(ang3)*300, life:0.8, col: C.danger });
-          }
-          if (!done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 800);
-          }
-          return;
+      survived += dt;
+      if (survived >= GOAL) { finish(true); return; }
+      if (flash > 0) flash -= dt * 4; if (fbTimer > 0) fbTimer -= dt;
+      for (var pi2 = 0; pi2 < planets.length; pi2++) planets[pi2].angle += planets[pi2].speed * dir * dt;
+      // 衝突判定
+      for (var a = 0; a < planets.length; a++) for (var b = a + 1; b < planets.length; b++) {
+        var pa = planets[a], pb = planets[b], pax = CX + Math.cos(pa.angle) * pa.r, pay = CY + Math.sin(pa.angle) * pa.r, pbx = CX + Math.cos(pb.angle) * pb.r, pby = CY + Math.sin(pb.angle) * pb.r;
+        if (Math.hypot(pax - pbx, pay - pby) < pa.size + pb.size) {
+          flash = 1; game.audio.play('se_failure', 0.8);
+          for (var k = 0; k < 18; k++) { var ang = Math.random() * Math.PI * 2; particles.push({ x: (pax + pbx) / 2, y: (pay + pby) / 2, vx: Math.cos(ang) * 300, vy: Math.sin(ang) * 300, life: 0.8, col: C.a }); }
+          finish(false); return;
         }
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (fbTimer > 0) txt(dir > 0 ? 'CW >>' : '<< CCW', W / 2, snap(H * 0.80), 48, C.c);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    if (collisionFlash > 0) game.draw.rect(0, 0, W, H, C.danger, collisionFlash * 0.2);
-
-    // Stars
-    for (var si2 = 0; si2 < stars.length; si2++) {
-      var s = stars[si2];
-      game.draw.circle(s.x, s.y, s.r, C.star, 0.4 + Math.sin(elapsed * 2 + si2) * 0.2);
-    }
-
-    // Orbits
-    for (var oi = 0; oi < planets.length; oi++) {
-      // Approximate circle with lines
-      for (var oa = 0; oa < 60; oa++) {
-        var aA = oa / 60 * Math.PI * 2;
-        var aB = (oa + 1) / 60 * Math.PI * 2;
-        game.draw.line(
-          cx + Math.cos(aA) * planets[oi].r, cy + Math.sin(aA) * planets[oi].r,
-          cx + Math.cos(aB) * planets[oi].r, cy + Math.sin(aB) * planets[oi].r,
-          C.ui, 1
-        );
-      }
-    }
-
-    // Sun
-    game.draw.circle(cx, cy, 60, C.sun, 0.9);
-    game.draw.circle(cx, cy, 44, C.sunHi, 0.8);
-    game.draw.circle(cx, cy, 80, C.sun, 0.1 + Math.sin(elapsed * 3) * 0.05);
-
-    // Trails
-    for (var ti2 = 0; ti2 < trails.length; ti2++) {
-      var col = planets[ti2].col;
-      for (var tj2 = 0; tj2 < trails[ti2].length; tj2++) {
-        var t = trails[ti2][tj2];
-        game.draw.circle(t.x, t.y, 6 * t.life, col, t.life * 0.4);
-      }
-    }
-
-    // Planets
-    for (var pi4 = 0; pi4 < planets.length; pi4++) {
-      var p2 = planets[pi4];
-      game.draw.circle(p2.x, p2.y, p2.size + 8, p2.col, 0.15);
-      game.draw.circle(p2.x, p2.y, p2.size, p2.col, 0.9);
-      game.draw.circle(p2.x - p2.size * 0.35, p2.y - p2.size * 0.35, p2.size * 0.3, p2.hi, 0.6);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var pt = particles[pp2];
-      game.draw.circle(pt.x, pt.y, 7 * pt.life, pt.col, pt.life * 0.8);
-    }
-
-    // Direction hint
-    game.draw.text(dir > 0 ? '→ 時計回り' : '← 反時計回り', W / 2, H * 0.87, { size: 38, color: C.ui });
-    game.draw.text('タップ/スワイプで反転', W / 2, H * 0.92, { size: 32, color: C.trail });
-
-    // Progress
-    var prog = Math.min(1, survived / GOAL);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * prog, 72, prog < 0.7 ? C.p1 : C.p3);
-    game.draw.text(Math.round(survived) + 's / ' + GOAL + 's', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    survBar();
+    txt(survived.toFixed(1) + 's', W / 2, 96, 44, C.g);
+    txt(survived.toFixed(1) + ' / ' + GOAL + 's', W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    initTrails();
+    state = S.ATTRACT;
+    initStars();
+    initGame();
   });
 })(game);

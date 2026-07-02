@@ -1,229 +1,154 @@
 // 368-sand-timer.js
-// サンドタイマー — 砂時計を傾けてぴったり10秒で砂を落としきる
-// 操作: タップで砂時計を逆さにする
-// 成功: 目標秒数ぴったりに砂が落ちきる  失敗: 大幅にズレる or 60秒
+// サンドタイマー — 砂時計を傾け、表示された目標秒ぴったりで砂を落としきる体内時計ゲーム
+// 操作: タップで砂時計を逆さにして計測開始、落ちきったタイミングを狙う
+// 成功: 3ラウンドこなす  失敗: 18秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0c0a1e',
-    glass:  '#93c5fd',
-    glassHi:'#dbeafe',
-    sandT:  '#f59e0b',
-    sandB:  '#d97706',
-    sandFall:'#fbbf24',
-    frame:  '#78350f',
-    frameHi:'#92400e',
-    text:   '#f1f5f9',
-    ui:     '#475569',
-    good:   '#22c55e',
-    bad:    '#ef4444'
-  };
+  // ── パレット（アイスブルー、砂時計） ──
+  var C = { bg:'#04081a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var TARGETS = [10, 8, 12, 15, 6];
-  var targetIdx = 0;
-  var TARGET_TIME = TARGETS[targetIdx];
-  var round = 0;
-  var ROUNDS = 5;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SAND TIMER';
+  var HOW_TO_PLAY = 'TAP TO FLIP · STOP THE SAND AT THE TARGET TIME';
+  var MAX_TIME = 18;
+  var TARGETS  = [4, 6, 5];   // 修正2: 60s台 → 短い目標、5ラウンド → 3ラウンド
+  var NEEDED   = 3;
 
-  var flipped = false;       // is hourglass flipped (sand falls from top to bottom)?
-  var topSand = 1.0;         // 0.0 to 1.0
-  var bottomSand = 0.0;
-  var flowRate = 0;          // fraction per second
-  var fallParticles = [];
-  var flipAnim = 0;          // 0 = normal, 1 = flipped, animates between
-  var elapsed = 0;
-  var timeLeft = 60;
-  var done = false;
-  var roundScore = 0;
-  var resultText = '';
-  var resultAnim = 0;
-  var resultCol = C.good;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var measuring = false;     // currently timing a flow
-  var measureStart = 0;
+  // ── ゲーム変数 ──
+  var round, target, topSand, botSand, flowRate, measuring, measureStart, timeLeft, done, particles, fbText, fbCol, fbTimer, roundScore;
 
-  function startRound() {
-    TARGET_TIME = TARGETS[targetIdx % TARGETS.length];
-    topSand = 1.0;
-    bottomSand = 0.0;
-    flowRate = 1.0 / TARGET_TIME;
-    flipped = false;
-    flipAnim = 0;
-    measuring = false;
-    measureStart = 0;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function finishRound(measuredTime) {
-    var diff = Math.abs(measuredTime - TARGET_TIME);
-    var score = Math.max(0, 500 - Math.round(diff * 80));
-    roundScore += score;
-    if (diff < 1.5) {
-      resultText = '完璧！ +' + score;
-      resultCol = C.good;
-      game.audio.play('se_success', 0.6);
-    } else if (diff < 3) {
-      resultText = 'まあまあ +' + score;
-      resultCol = C.sandT;
-      game.audio.play('se_tap', 0.4);
-    } else {
-      resultText = 'ズレた +' + score;
-      resultCol = C.bad;
-      game.audio.play('se_failure', 0.4);
-    }
-    resultAnim = 1.5;
-    round++;
-    targetIdx++;
-    if (round >= ROUNDS && !done) {
-      done = true;
-      setTimeout(function() { game.end.success(roundScore); }, 1200);
-    } else if (!done) {
-      setTimeout(function() { startRound(); }, 1500);
-    }
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1430');
   }
 
-  game.onTap(function() {
+  function background() { game.draw.clear(C.bg); }
+
+  function startRound() { target = TARGETS[round % TARGETS.length]; topSand = 1.0; botSand = 0.0; flowRate = 1.0 / target; measuring = false; measureStart = 0; }
+
+  function initGame() { round = 0; roundScore = 0; timeLeft = MAX_TIME; done = false; particles = []; fbText = ''; fbCol = C.g; fbTimer = 0; startRound(); }
+
+  function finish(success) {
     if (done) return;
-    flipped = !flipped;
-    flipAnim = flipped ? 1 : 0;
-    game.audio.play('se_tap', 0.3);
+    done = true; resultSuccess = success;
+    finalScore = success ? (roundScore + Math.ceil(timeLeft) * 100) : roundScore;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    if (flipped) {
-      // Start measuring: sand will now flow from "top" (which was bottom) to "bottom"
-      // Reset: top=bottomSand, bottom=topSand
-      var tmp = topSand;
-      topSand = bottomSand;
-      bottomSand = tmp;
-      measuring = true;
-      measureStart = elapsed;
-    } else {
-      // Flip back — not counting
-      var tmp2 = topSand;
-      topSand = bottomSand;
-      bottomSand = tmp2;
-      measuring = false;
-    }
+  function finishRound(measured) {
+    var diff = Math.abs(measured - target), sc = Math.max(0, 500 - Math.round(diff * 120));
+    roundScore += sc;
+    if (diff < 0.6) { fbText = 'PERFECT! +' + sc; fbCol = C.b; game.audio.play('se_success', 0.6); }
+    else if (diff < 1.4) { fbText = 'GOOD +' + sc; fbCol = C.c; game.audio.play('se_tap', 0.5); }
+    else { fbText = 'OFF +' + sc; fbCol = C.a; game.audio.play('se_failure', 0.4); }
+    fbTimer = 1.2;
+    for (var k = 0; k < 8; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: H * 0.5, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180, life: 0.6, col: fbCol }); }
+    round++;
+    if (round >= NEEDED) { finish(true); return; }
+    setTimeout(function() { if (!done && state === S.PLAYING) startRound(); }, 1300);
+  }
+
+  function drawGlass(cx, cy) {
+    var gW = 200, gH = 360, topY = cy - gH / 2, midY = cy, botY = cy + gH / 2;
+    // 枠
+    game.draw.rect(snap(cx - gW / 2 - 24), snap(topY - 34), gW + 48, 30, '#5c3a20', 0.95);
+    game.draw.rect(snap(cx - gW / 2 - 24), snap(botY + 4), gW + 48, 30, '#5c3a20', 0.95);
+    pline(cx - gW / 2 - 8, topY, cx - gW / 2 - 8, botY, '#5c3a20', 0.9, 10);
+    pline(cx + gW / 2 + 8, topY, cx + gW / 2 + 8, botY, '#5c3a20', 0.9, 10);
+    // ガラス輪郭
+    pline(cx - gW / 2, topY, cx - 10, midY, C.e, 0.6, 4); pline(cx + gW / 2, topY, cx + 10, midY, C.e, 0.6, 4);
+    pline(cx - 10, midY, cx - gW / 2, botY, C.e, 0.6, 4); pline(cx + 10, midY, cx + gW / 2, botY, C.e, 0.6, 4);
+    // 上の砂（三角錐を段で）
+    if (topSand > 0) { var th = topSand * (gH / 2 - 16); for (var y = 0; y < th; y += 8) { var w = (gW / 2) * (1 - y / (gH / 2 - 16)) * topSand + 8; game.draw.rect(snap(cx - w), snap(midY - 16 - y), snap(w * 2), 8, C.c, 0.9); } }
+    // 下の砂（山盛り）
+    if (botSand > 0) { var bh = botSand * (gH / 2 - 16); for (var y2 = 0; y2 < bh; y2 += 8) { var w2 = (gW / 2) * (y2 / (gH / 2 - 16)) * (0.4 + 0.6 * botSand) + 8; game.draw.rect(snap(cx - w2), snap(botY - 16 - y2), snap(w2 * 2), 8, C.f, 0.9); } }
+    // 落ちる砂
+    if (topSand > 0 && measuring) { pline(cx, midY - 8, cx, midY + snap(gH * 0.28), C.c, 0.8, 6); pc(cx, midY + snap(gH * 0.28), 8, C.c, 0.9); }
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || measuring) return;
+    // 逆さにして計測開始
+    var tmp = topSand; topSand = botSand === 0 ? 1.0 : botSand; botSand = tmp; topSand = 1.0; botSand = 0.0;
+    measuring = true; measureStart = MAX_TIME - timeLeft; game.audio.play('se_tap', 0.4);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawGlass(W / 2, H * 0.5);
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ON TIME!' : 'TIME OUT', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (fbTimer > 0) fbTimer -= dt;
+      if (measuring && topSand > 0) { var flow = Math.min(flowRate * dt, topSand); topSand -= flow; botSand += flow; if (topSand <= 0) { measuring = false; finishRound((MAX_TIME - timeLeft) - measureStart); } }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (resultAnim > 0) resultAnim -= dt;
+    // ---- 描画 ----
+    background(); drawGlass(W / 2, H * 0.5);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    txt('TARGET  ' + target + 's', W / 2, snap(H * 0.74), 52, C.e);
+    if (measuring) txt(((MAX_TIME - timeLeft) - measureStart).toFixed(1) + 's', W / 2, snap(H * 0.80), 56, C.c);
+    else txt('TAP TO FLIP', W / 2, snap(H * 0.80), 44, C.g);
+    if (fbTimer > 0) txt(fbText, W / 2, snap(H * 0.86), 50, fbCol);
 
-    // Flow sand
-    if (topSand > 0) {
-      var flow = flowRate * dt;
-      flow = Math.min(flow, topSand);
-      topSand -= flow;
-      bottomSand += flow;
-
-      // Fall particles
-      if (Math.random() < dt * 12) {
-        fallParticles.push({ life: 0.3 + Math.random() * 0.2 });
-      }
-    } else if (measuring) {
-      // Sand finished flowing
-      var measured = elapsed - measureStart;
-      measuring = false;
-      finishRound(measured);
-    }
-
-    for (var i = fallParticles.length - 1; i >= 0; i--) {
-      fallParticles[i].life -= dt;
-      if (fallParticles[i].life <= 0) fallParticles.splice(i, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Title
-    game.draw.text('目標: ' + TARGET_TIME + '秒', W / 2, 160, { size: 52, color: C.text, bold: true });
-    game.draw.text('ラウンド ' + (round + 1) + ' / ' + ROUNDS, W / 2, 240, { size: 38, color: C.ui });
-
-    // Hourglass
-    var cx = W / 2;
-    var cy = H * 0.48;
-    var glassH = 380;
-    var glassW = 220;
-
-    // Frame
-    game.draw.rect(cx - glassW / 2 - 24, cy - glassH / 2 - 40, glassW + 48, 40, C.frame, 0.9);
-    game.draw.rect(cx - glassW / 2 - 24, cy + glassH / 2, glassW + 48, 40, C.frame, 0.9);
-    game.draw.line(cx - glassW / 2 - 12, cy - glassH / 2 - 40, cx - glassW / 2 - 12, cy + glassH / 2 + 40, C.frame, 16);
-    game.draw.line(cx + glassW / 2 + 12, cy - glassH / 2 - 40, cx + glassW / 2 + 12, cy + glassH / 2 + 40, C.frame, 16);
-
-    // Top half (trapezoid via lines)
-    var topY = cy - glassH / 2;
-    var midY = cy;
-    var botY = cy + glassH / 2;
-
-    // Glass outline top half
-    game.draw.line(cx - glassW / 2, topY, cx - 12, midY, C.glass, 4);
-    game.draw.line(cx + glassW / 2, topY, cx + 12, midY, C.glass, 4);
-    game.draw.line(cx - glassW / 2, topY, cx + glassW / 2, topY, C.glass, 4);
-
-    // Glass outline bottom half
-    game.draw.line(cx - 12, midY, cx - glassW / 2, botY, C.glass, 4);
-    game.draw.line(cx + 12, midY, cx + glassW / 2, botY, C.glass, 4);
-    game.draw.line(cx - glassW / 2, botY, cx + glassW / 2, botY, C.glass, 4);
-
-    // Top sand fill
-    if (topSand > 0) {
-      var tSandH = topSand * (glassH / 2 - 20);
-      var tSandY = topY + 8;
-      var tWide = glassW / 2 - (topSand < 1 ? (1 - topSand) * glassW / 2 : 0);
-      game.draw.rect(cx - tWide, tSandY, tWide * 2, tSandH, C.sandT, 0.85);
-    }
-
-    // Bottom sand fill
-    if (bottomSand > 0) {
-      var bSandH = bottomSand * (glassH / 2 - 20);
-      var bSandY = botY - bSandH - 8;
-      var bWide = glassW / 2 * (0.2 + 0.8 * bottomSand);
-      game.draw.rect(cx - bWide, bSandY, bWide * 2, bSandH, C.sandB, 0.85);
-    }
-
-    // Falling sand stream
-    if (topSand > 0) {
-      for (var fp = 0; fp < fallParticles.length; fp++) {
-        var frac = 1 - fallParticles[fp].life / 0.5;
-        var fy = midY + frac * (glassH / 2 * 0.7);
-        game.draw.circle(cx + (Math.random() - 0.5) * 8, fy, 4, C.sandFall, fallParticles[fp].life * 2);
-      }
-      // Center stream
-      game.draw.line(cx, midY, cx, midY + 30, C.sandFall, 5);
-    }
-
-    // Hourglass flip hint
-    if (!measuring && !done) {
-      game.draw.text('タップで逆さに', W / 2, H * 0.82, { size: 42, color: flipped ? C.glassHi : C.ui });
-    } else if (measuring) {
-      var prog = 1 - topSand;
-      game.draw.text((elapsed - measureStart).toFixed(1) + 's', W / 2, H * 0.82, { size: 52, color: C.sandT, bold: true });
-    }
-
-    if (resultAnim > 0) {
-      game.draw.text(resultText, W / 2, H * 0.9, { size: 52, color: resultCol, bold: true });
-    }
-
-    // Score
-    game.draw.text('Score: ' + roundScore, W / 2, 140, { size: 44, color: C.text, bold: true });
-
-    // Timer bar
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.glass : C.bad);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(round + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
-    game.audio.bgm('bgm_main', 0.1);
-    startRound();
+    game.audio.bgm('bgm_main', 0.12);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
