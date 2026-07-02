@@ -1,255 +1,146 @@
 // 421-hot-potato.js
-// ホットポテト — 燃えるじゃがいもを素早く投げ渡す
-// 操作: スワイプ方向にじゃがいもを投げる、3人の間でパスし続ける
-// 成功: 30回パス成功  失敗: 持ちすぎて爆発 or 60秒
+// ホットポテト — 熱を持つポテトが爆発する前に、3人の間でスワイプ／タップして手早くパスし続ける
+// 操作: 持っている人からパス先の方向へスワイプ、または相手をタップして投げる
+// 成功: 6回 パス成功  失敗: 持ちすぎて爆発 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0f0500',
-    hot0:   '#f97316',
-    hot1:   '#ef4444',
-    hot2:   '#dc2626',
-    hot3:   '#7f1d1d',
-    potato: '#92400e',
-    potatoHi:'#d97706',
-    person: '#4ade80',
-    personHi:'#86efac',
-    active: '#fbbf24',
-    flame:  '#fef08a',
-    text:   '#f1f5f9',
-    ui:     '#475569',
-    wrong:  '#ef4444'
-  };
+  // ── パレット（ネオンアーケード、パーティ） ──
+  var C = { bg:'#150800', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // 3 people positions
-  var people = [
-    { x: W*0.5, y: H*0.2, name: 'A', hasPotato: true, heat: 0 },
-    { x: W*0.15, y: H*0.7, name: 'B', hasPotato: false, heat: 0 },
-    { x: W*0.85, y: H*0.7, name: 'C', hasPotato: false, heat: 0 }
-  ];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'HOT POTATO';
+  var HOW_TO_PLAY = 'PASS THE POTATO BEFORE IT BLOWS · SWIPE OR TAP A PLAYER';
+  var MAX_TIME = 15;
+  var NEEDED   = 6;          // 修正2: 30 → 6
+  var MAX_HEAT = 3.0, HEAT_RATE = 1.0;
 
-  var MAX_HEAT = 4.0;  // seconds before explosion
-  var HEAT_RATE = 1.0;  // heat per second
-  var passes = 0;
-  var NEEDED = 30;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0;
-  var flashCol = C.active;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Potato in flight
-  var potato = null;  // { x, y, tx, ty, vx, vy, fromIdx, toIdx }
+  // ── ゲーム変数 ──
+  var people, potato, passes, timeLeft, done, particles, flash;
 
-  function getHolder() {
-    for (var i = 0; i < people.length; i++) {
-      if (people[i].hasPotato) return i;
-    }
-    return -1;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function throwTo(fromIdx, toIdx) {
-    var from = people[fromIdx];
-    var to = people[toIdx];
-    from.hasPotato = false;
-    var dx = to.x - from.x;
-    var dy = to.y - from.y;
-    var dist = Math.sqrt(dx*dx + dy*dy);
-    var speed = dist * 2.5;
-    potato = {
-      x: from.x, y: from.y,
-      vx: dx/dist * speed,
-      vy: dy/dist * speed,
-      toIdx: toIdx,
-      heat: from.heat
-    };
-    from.heat = 0;
-    passes++;
-    game.audio.play('se_tap', 0.4);
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-    if (passes >= NEEDED && !done) {
-      done = true;
-      game.audio.play('se_success', 0.9);
-      setTimeout(function() { game.end.success(passes * 200 + Math.ceil(timeLeft) * 80); }, 500);
-    }
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#2a1000');
   }
 
-  game.onSwipe(function(dir) {
-    if (done || potato) return;
-    var holderIdx = getHolder();
-    if (holderIdx < 0) return;
+  function background() { game.draw.clear(C.bg); }
 
-    var holder = people[holderIdx];
+  function initGame() { people = [{ x: snap(W * 0.5), y: snap(H * 0.28), name: 'A', has: true, heat: 0 }, { x: snap(W * 0.18), y: snap(H * 0.66), name: 'B', has: false, heat: 0 }, { x: snap(W * 0.82), y: snap(H * 0.66), name: 'C', has: false, heat: 0 }]; potato = null; passes = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; }
 
-    // Determine target based on swipe direction and holder
-    var targetIdx = -1;
-    if (holderIdx === 0) {
-      // Top person — left goes to B, right goes to C
-      if (dir === 'left' || dir === 'down') targetIdx = 1;
-      else if (dir === 'right') targetIdx = 2;
-    } else if (holderIdx === 1) {
-      // Bottom left — right goes to C, up goes to A
-      if (dir === 'right') targetIdx = 2;
-      else if (dir === 'up') targetIdx = 0;
-    } else if (holderIdx === 2) {
-      // Bottom right — left goes to B, up goes to A
-      if (dir === 'left') targetIdx = 1;
-      else if (dir === 'up') targetIdx = 0;
-    }
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (passes * 400 + Math.ceil(timeLeft) * 100) : passes * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    if (targetIdx >= 0) throwTo(holderIdx, targetIdx);
+  function holder() { for (var i = 0; i < people.length; i++) if (people[i].has) return i; return -1; }
+
+  function throwTo(fi, ti) {
+    var from = people[fi], to = people[ti]; from.has = false;
+    var dx = to.x - from.x, dy = to.y - from.y, d = Math.max(1, Math.hypot(dx, dy)), sp = d * 2.5;
+    potato = { x: from.x, y: from.y, vx: dx / d * sp, vy: dy / d * sp, toIdx: ti, heat: from.heat }; from.heat = 0; passes++; game.audio.play('se_tap', 0.4);
+    if (passes >= NEEDED) { finish(true); }
+  }
+
+  function drawPerson(p) {
+    var hot = p.has, col = hot ? C.c : C.b;
+    pc(p.x, p.y, 62, col, hot ? 0.8 + Math.sin(game.time.elapsed * 8) * 0.1 : 0.6); pc(p.x, p.y - 50, 34, col, 0.8); pc(p.x - 12, p.y - 58, 12, C.g, 0.5);
+    txt(p.name, p.x, p.y + 18, 50, hot ? C.c : C.g);
+    if (hot) { var hr = p.heat / MAX_HEAT; game.draw.rect(snap(p.x - 60), snap(p.y + 74), 120, 18, '#1a0a00', 0.9); game.draw.rect(snap(p.x - 60), snap(p.y + 74), snap(120 * hr), 18, hr > 0.7 ? C.a : hr > 0.4 ? C.f : C.c, 0.9); }
+  }
+
+  function drawPotato(x, y, heat) { pc(x, y, 32, C.f, 0.9); pc(x - 8, y - 12, 12, C.c, 0.5); var fr = 16 + heat / MAX_HEAT * 26; pc(x, y - 26, fr, C.f, 0.7); pc(x, y - 34, fr * 0.6, C.c, 0.6); }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || potato) return; var hi = holder(); if (hi < 0) return;
+    var best = -1, bd = 999999; for (var i = 0; i < people.length; i++) { if (i === hi) continue; var d = Math.hypot(x - people[i].x, y - people[i].y); if (d < bd) { bd = d; best = i; } }
+    if (best >= 0 && bd < 300) throwTo(hi, best);
   });
 
-  game.onTap(function(tx, ty) {
-    if (done || potato) return;
-    var holderIdx = getHolder();
-    if (holderIdx < 0) return;
-
-    // Find nearest person that isn't holder
-    var best = -1;
-    var bestDist = 999999;
-    for (var i = 0; i < people.length; i++) {
-      if (i === holderIdx) continue;
-      var dx = tx - people[i].x;
-      var dy = ty - people[i].y;
-      var d = Math.sqrt(dx*dx + dy*dy);
-      if (d < bestDist) { bestDist = d; best = i; }
-    }
-    if (best >= 0 && bestDist < 280) throwTo(holderIdx, best);
+  game.onSwipe(function(d) {
+    if (state !== S.PLAYING || done || potato) return; var hi = holder(); if (hi < 0) return; var ti = -1;
+    if (hi === 0) { if (d === 'left' || d === 'down') ti = 1; else if (d === 'right') ti = 2; }
+    else if (hi === 1) { if (d === 'right') ti = 2; else if (d === 'up') ti = 0; }
+    else { if (d === 'left') ti = 1; else if (d === 'up') ti = 0; }
+    if (ti >= 0) throwTo(hi, ti);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!people) initGame(); background(); for (var pi0 = 0; pi0 < people.length; pi0++) drawPerson(people[pi0]); drawPotato(people[0].x, people[0].y - 80, 0);
+      txt(GAME_TITLE, W / 2, H * 0.10, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.15, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'HOT HANDS!' : 'BOOM!', W / 2, H * 0.35, 82, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2;
+      var hi = holder();
+      if (hi >= 0) { var h = people[hi]; h.heat += HEAT_RATE * dt * (1 + passes * 0.06); if (h.heat >= MAX_HEAT) { for (var k = 0; k < 20; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: h.x, y: h.y, vx: Math.cos(a) * 300, vy: Math.sin(a) * 300 - 100, life: 0.9, col: Math.random() < 0.5 ? C.f : C.c }); } game.audio.play('se_failure', 0.9); finish(false); return; } }
+      if (potato) { potato.x += potato.vx * dt; potato.y += potato.vy * dt; var t = people[potato.toIdx]; if (Math.hypot(t.x - potato.x, t.y - potato.y) < 60) { t.has = true; t.heat = potato.heat; potato = null; flash = 0.3; } }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 400 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 2;
+    // ---- 描画 ----
+    background();
+    for (var pi = 0; pi < people.length; pi++) drawPerson(people[pi]);
+    var h2 = holder(); if (h2 >= 0 && !potato) drawPotato(people[h2].x, people[h2].y - 80, people[h2].heat);
+    if (potato) drawPotato(potato.x, potato.y, potato.heat);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.c, flash * 0.08);
 
-    // Heat up holder
-    var holderIdx = getHolder();
-    if (holderIdx >= 0) {
-      var holder = people[holderIdx];
-      holder.heat += HEAT_RATE * dt * (1 + passes * 0.02);  // gets faster
-      if (holder.heat >= MAX_HEAT && !done) {
-        done = true;
-        // Explosion
-        for (var pi = 0; pi < 20; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: holder.x, y: holder.y, vx: Math.cos(ang)*300, vy: Math.sin(ang)*300-100, life: 0.9, col: Math.random() < 0.5 ? C.hot0 : C.flame });
-        }
-        game.audio.play('se_failure', 0.9);
-        setTimeout(function() { game.end.failure(); }, 800);
-      }
-    }
-
-    // Potato in flight
-    if (potato) {
-      potato.x += potato.vx * dt;
-      potato.y += potato.vy * dt;
-      var target = people[potato.toIdx];
-      var dx = target.x - potato.x;
-      var dy = target.y - potato.y;
-      if (Math.sqrt(dx*dx + dy*dy) < 60) {
-        target.hasPotato = true;
-        target.heat = potato.heat;
-        potato = null;
-        flashCol = C.active;
-        flashAnim = 0.3;
-      }
-    }
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 400 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // People
-    for (var pi2 = 0; pi2 < people.length; pi2++) {
-      var p = people[pi2];
-      var isHolder = p.hasPotato;
-      var heatRatio = isHolder ? p.heat / MAX_HEAT : 0;
-      var personCol = isHolder ? C.active : C.person;
-      var bodyR = 70;
-
-      // Body
-      game.draw.circle(p.x, p.y, bodyR + 8, personCol, 0.1);
-      game.draw.circle(p.x, p.y, bodyR, personCol, isHolder ? 0.8 + Math.sin(elapsed*8)*0.1 : 0.6);
-      game.draw.circle(p.x, p.y - 55, 38, personCol, 0.8);
-      game.draw.circle(p.x - 15, p.y - 65, 15, '#fff', 0.5);
-
-      // Name
-      game.draw.text(p.name, p.x, p.y + 20, { size: 52, color: isHolder ? C.active : C.personHi, bold: true });
-
-      // Heat indicator
-      if (isHolder) {
-        game.draw.rect(p.x - 60, p.y + bodyR + 16, 120, 20, '#1a0a00', 0.9);
-        var heatCol = heatRatio > 0.7 ? C.hot1 : heatRatio > 0.4 ? C.hot0 : '#fbbf24';
-        game.draw.rect(p.x - 60, p.y + bodyR + 16, 120 * heatRatio, 20, heatCol, 0.9);
-      }
-    }
-
-    // Flying potato
-    if (potato) {
-      var heatR = potato.heat / MAX_HEAT;
-      game.draw.circle(potato.x, potato.y, 36, C.potato, 0.9);
-      game.draw.circle(potato.x - 10, potato.y - 14, 14, C.potatoHi, 0.5);
-      // Flame
-      var fR = 20 + heatR * 30;
-      game.draw.circle(potato.x, potato.y - 20, fR, C.hot0, 0.7);
-      game.draw.circle(potato.x, potato.y - 30, fR * 0.6, C.flame, 0.5);
-    }
-
-    // Potato on holder
-    var h = getHolder();
-    if (h >= 0 && !potato) {
-      var hp = people[h];
-      var hr2 = hp.heat / MAX_HEAT;
-      game.draw.circle(hp.x, hp.y - 80, 36, C.potato, 0.9);
-      game.draw.circle(hp.x - 10, hp.y - 94, 14, C.potatoHi, 0.5);
-      if (hr2 > 0.2) {
-        var fR2 = 15 + hr2 * 35;
-        game.draw.circle(hp.x, hp.y - 116, fR2, C.hot0, hr2 * 0.8);
-        game.draw.circle(hp.x, hp.y - 130, fR2 * 0.6, C.flame, hr2 * 0.6);
-        // Sparks
-        for (var si = 0; si < 3; si++) {
-          game.draw.circle(hp.x + (Math.sin(elapsed * 5 + si * 2))*20, hp.y - 130 - si*10, 4, C.flame, hr2);
-        }
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p2 = particles[pp2];
-      game.draw.circle(p2.x, p2.y, 12 * p2.life, p2.col, p2.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.08);
-
-    game.draw.text(passes + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.hot0 : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(passes + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.12);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

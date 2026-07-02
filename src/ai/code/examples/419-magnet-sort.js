@@ -1,243 +1,144 @@
 // 419-magnet-sort.js
-// 磁石選別 — 磁石で金属ボールだけを引き寄せる
-// 操作: スワイプで磁石を動かしてボールを引き付け、ゴールへ誘導
-// 成功: 金属10個をゴールへ  失敗: ガラス玉3個を誤ってゴールへ or 60秒
+// 磁石選別 — 磁石を動かして金属ボールだけを引き寄せ、ゴールへ運ぶ。ガラス玉は入れてはいけない
+// 操作: タップ／スワイプで磁石を移動（金属だけが引き寄せられる）
+// 成功: 金属4個を ゴールへ  失敗: ガラス玉3個を 誤投入 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0f1a',
-    magnet: '#dc2626',
-    magnetHi:'#fca5a5',
-    metal:  '#94a3b8',
-    metalHi:'#e2e8f0',
-    glass:  '#67e8f9',
-    glassHi:'#a5f3fc',
-    goal:   '#22c55e',
-    goalHi: '#86efac',
-    wrong:  '#ef4444',
-    track:  '#1e293b',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（アイスブルー、選別ライン） ──
+  var C = { bg:'#0a0f1a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var magnetX = W / 2;
-  var magnetY = H * 0.35;
-  var MAGNET_R = 70;
-  var PULL_RANGE = 280;
-
-  var balls = [];
-  var GOAL_X = W * 0.5;
-  var GOAL_Y = H * 0.85;
-  var GOAL_R = 90;
-
-  var metalGot = 0;
-  var NEEDED = 10;
-  var wrongGot = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'MAGNET SORT';
+  var HOW_TO_PLAY = 'DRAG THE MAGNET · PULL METAL TO THE GOAL · AVOID GLASS';
+  var MAX_TIME = 15;
+  var NEEDED   = 4;          // 修正2: 10 → 4
   var MAX_WRONG = 3;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var flashCol = C.goal;
-  var particles = [];
-  var spawnTimer = 0;
-  var spawnInterval = 2.5;
+  var MAG_R = 64, PULL = 280, GOAL_X = snap(W * 0.5), GOAL_Y = snap(H * 0.80), GOAL_R = 90;
 
-  function spawnBall() {
-    var isMetal = Math.random() < 0.6;
-    var side = Math.random() < 0.5 ? 0 : 1;
-    var x = side < 0.5 ? 80 + Math.random() * 200 : W - 80 - Math.random() * 200;
-    balls.push({
-      x: x,
-      y: 150 + Math.random() * (H * 0.5),
-      vx: (Math.random() - 0.5) * 80,
-      vy: (Math.random() - 0.5) * 80,
-      r: isMetal ? 28 + Math.random() * 12 : 22 + Math.random() * 10,
-      metal: isMetal,
-      attracted: 0,
-      scored: false
-    });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var magX, magY, balls, metalGot, wrongGot, timeLeft, done, particles, spawnTimer, flash, flashCol;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.14) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#141c2a');
+  }
+
+  function background() { game.draw.clear(C.bg); ring(GOAL_X, GOAL_Y, GOAL_R, C.b, 0.4); pc(GOAL_X, GOAL_Y, GOAL_R - 20, C.b, 0.12); txt('GOAL', GOAL_X, GOAL_Y + 10, 40, C.b); }
+
+  function spawnBall() { var metal = Math.random() < 0.6, side = Math.random() < 0.5; balls.push({ x: snap(side ? 80 + Math.random() * 200 : W - 80 - Math.random() * 200), y: snap(220 + Math.random() * (H * 0.42)), vx: (Math.random() - 0.5) * 80, vy: (Math.random() - 0.5) * 80, r: metal ? 28 + Math.random() * 10 : 24, metal: metal, att: 0, scored: false }); }
+
+  function initGame() { magX = W / 2; magY = H * 0.36; balls = []; metalGot = 0; wrongGot = 0; timeLeft = MAX_TIME; done = false; particles = []; spawnTimer = 0; flash = 0; flashCol = C.b; for (var i = 0; i < 4; i++) spawnBall(); }
+
+  function finish(success) {
     if (done) return;
-    if (x2 !== undefined) {
-      magnetX = x2;
-      magnetY = y2;
-    } else {
-      var step = 120;
-      if (dir === 'left') magnetX = Math.max(MAGNET_R, magnetX - step);
-      else if (dir === 'right') magnetX = Math.min(W - MAGNET_R, magnetX + step);
-      else if (dir === 'up') magnetY = Math.max(MAGNET_R + 80, magnetY - step);
-      else if (dir === 'down') magnetY = Math.min(H * 0.75, magnetY + step);
-    }
-    magnetX = Math.max(MAGNET_R, Math.min(W - MAGNET_R, magnetX));
-    magnetY = Math.max(MAGNET_R + 80, Math.min(H * 0.75, magnetY));
+    done = true; resultSuccess = success;
+    finalScore = success ? (metalGot * 500 + Math.ceil(timeLeft) * 100) : metalGot * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawBall(b) { var col = b.metal ? C.e : C.d; if (b.metal && b.att > 0.1) ring(b.x, b.y, b.r + 8, col, b.att * 0.4); pc(b.x, b.y, b.r, col, b.metal ? 0.9 : 0.6); pc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.3, C.g, b.metal ? 0.2 : 0.5); }
+
+  function drawMagnet() { ring(magX, magY, PULL, C.a, 0.08); pc(magX, magY, MAG_R, C.a, 0.9); pc(magX - 18, magY - 20, MAG_R * 0.3, C.g, 0.4); txt('N', magX - 22, magY + 12, 34, C.g); txt('S', magX + 22, magY + 12, 34, C.e); }
+
+  function setMag(x, y) { magX = Math.max(MAG_R, Math.min(W - MAG_R, x)); magY = Math.max(MAG_R + 80, Math.min(H * 0.72, y)); }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return; setMag(x, y);
   });
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
-    magnetX = tx;
-    magnetY = Math.max(MAGNET_R + 80, Math.min(H * 0.75, ty));
+  game.onSwipe(function(d, x1, y1, x2, y2) {
+    if (state !== S.PLAYING || done) return; if (x2 !== undefined) setMag(x2, y2);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!balls) initGame(); background(); for (var bi0 = 0; bi0 < balls.length; bi0++) drawBall(balls[bi0]); drawMagnet();
+      txt(GAME_TITLE, W / 2, H * 0.12, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.17, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.92, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.96, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SORTED!' : 'CONTAMINATED', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-
-    if (flashAnim > 0) flashAnim -= dt * 2;
-
-    // Spawn
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && balls.length < 12) {
-      spawnBall();
-      spawnInterval = Math.max(1.2, 2.5 - elapsed * 0.02);
-      spawnTimer = spawnInterval;
-    }
-
-    // Update balls
-    for (var bi = balls.length - 1; bi >= 0; bi--) {
-      var b = balls[bi];
-      if (b.scored) { balls.splice(bi, 1); continue; }
-
-      var dx = magnetX - b.x;
-      var dy = magnetY - b.y;
-      var dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (b.metal && dist < PULL_RANGE) {
-        var force = (1 - dist / PULL_RANGE) * 600;
-        b.vx += (dx / dist) * force * dt;
-        b.vy += (dy / dist) * force * dt;
-        b.attracted = Math.min(1, b.attracted + dt * 3);
-      } else {
-        b.attracted = Math.max(0, b.attracted - dt * 2);
-      }
-
-      // Drift
-      b.vx *= (1 - dt * 1.5);
-      b.vy *= (1 - dt * 1.5);
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-
-      // Bounce off walls
-      if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.7; }
-      if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.7; }
-      if (b.y < b.r + 80) { b.y = b.r + 80; b.vy = Math.abs(b.vy) * 0.7; }
-      if (b.y > H * 0.8) { b.y = H * 0.8; b.vy = -Math.abs(b.vy) * 0.7; }
-
-      // Check if in goal
-      var gdx = b.x - GOAL_X;
-      var gdy = b.y - GOAL_Y;
-      if (Math.sqrt(gdx * gdx + gdy * gdy) < GOAL_R - b.r/2) {
-        b.scored = true;
-        if (b.metal) {
-          metalGot++;
-          flashCol = C.goal;
-          flashAnim = 0.6;
-          game.audio.play('se_success', 0.5);
-          for (var pi = 0; pi < 8; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: b.x, y: b.y, vx: Math.cos(ang) * 150, vy: Math.sin(ang) * 150, life: 0.5, col: C.metalHi });
-          }
-          if (metalGot >= NEEDED && !done) {
-            done = true;
-            game.audio.play('se_success', 0.9);
-            setTimeout(function() { game.end.success(metalGot * 400 + Math.ceil(timeLeft) * 80); }, 500);
-          }
-        } else {
-          wrongGot++;
-          flashCol = C.wrong;
-          flashAnim = 0.7;
-          game.audio.play('se_failure', 0.5);
-          for (var pi2 = 0; pi2 < 8; pi2++) {
-            var ang2 = Math.random() * Math.PI * 2;
-            particles.push({ x: b.x, y: b.y, vx: Math.cos(ang2) * 150, vy: Math.sin(ang2) * 150, life: 0.5, col: C.wrong });
-          }
-          if (wrongGot >= MAX_WRONG && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
-          }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2;
+      spawnTimer -= dt; if (spawnTimer <= 0 && balls.length < 10) { spawnBall(); spawnTimer = 1.5 + Math.random() * 1.0; }
+      for (var bi = balls.length - 1; bi >= 0; bi--) {
+        var b = balls[bi]; if (b.scored) { balls.splice(bi, 1); continue; }
+        var dx = magX - b.x, dy = magY - b.y, d = Math.max(1, Math.hypot(dx, dy));
+        if (b.metal && d < PULL) { var force = (1 - d / PULL) * 600; b.vx += dx / d * force * dt; b.vy += dy / d * force * dt; b.att = Math.min(1, b.att + dt * 3); } else b.att = Math.max(0, b.att - dt * 2);
+        b.vx *= (1 - dt * 1.5); b.vy *= (1 - dt * 1.5); b.x += b.vx * dt; b.y += b.vy * dt;
+        if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.7; } if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 0.7; }
+        if (b.y < b.r + 80) { b.y = b.r + 80; b.vy = Math.abs(b.vy) * 0.7; } if (b.y > H * 0.9) { b.y = H * 0.9; b.vy = -Math.abs(b.vy) * 0.7; }
+        if (Math.hypot(b.x - GOAL_X, b.y - GOAL_Y) < GOAL_R - b.r / 2) {
+          b.scored = true;
+          if (b.metal) { metalGot++; flash = 0.6; flashCol = C.b; game.audio.play('se_success', 0.5); for (var k = 0; k < 8; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: b.x, y: b.y, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, life: 0.5, col: C.e }); } if (metalGot >= NEEDED) { finish(true); return; } }
+          else { wrongGot++; flash = 0.7; flashCol = C.a; game.audio.play('se_failure', 0.5); for (var k2 = 0; k2 < 8; k2++) { var a2 = Math.random() * Math.PI * 2; particles.push({ x: b.x, y: b.y, vx: Math.cos(a2) * 150, vy: Math.sin(a2) * 150, life: 0.5, col: C.a }); } if (wrongGot >= MAX_WRONG) { finish(false); return; } }
         }
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background();
+    for (var bi2 = 0; bi2 < balls.length; bi2++) drawBall(balls[bi2]);
+    drawMagnet();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.08);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Goal zone
-    game.draw.circle(GOAL_X, GOAL_Y, GOAL_R + 12, C.goal, 0.12);
-    game.draw.circle(GOAL_X, GOAL_Y, GOAL_R, C.goalHi, 0.25);
-    game.draw.text('GOAL', GOAL_X, GOAL_Y + 12, { size: 44, color: C.goalHi, bold: true });
-
-    // Balls
-    for (var bi2 = 0; bi2 < balls.length; bi2++) {
-      var b2 = balls[bi2];
-      var col = b2.metal ? C.metal : C.glass;
-      var hi = b2.metal ? C.metalHi : C.glassHi;
-      if (b2.metal && b2.attracted > 0.1) {
-        game.draw.circle(b2.x, b2.y, b2.r + 8, col, b2.attracted * 0.3);
-      }
-      game.draw.circle(b2.x, b2.y, b2.r, col, b2.metal ? 0.85 : 0.6);
-      game.draw.circle(b2.x - b2.r*0.3, b2.y - b2.r*0.3, b2.r * 0.35, '#fff', b2.metal ? 0.2 : 0.5);
-      if (!b2.metal) {
-        // Glass transparency
-        game.draw.circle(b2.x, b2.y, b2.r, hi, 0.12);
-      }
-    }
-
-    // Magnet
-    game.draw.circle(magnetX, magnetY, MAGNET_R + 10, C.magnet, 0.15);
-    game.draw.circle(magnetX, magnetY, MAGNET_R, C.magnet, 0.9);
-    game.draw.circle(magnetX - 20, magnetY - 22, MAGNET_R * 0.35, C.magnetHi, 0.5);
-    game.draw.text('N', magnetX - 24, magnetY + 14, { size: 40, color: C.magnetHi, bold: true });
-    game.draw.text('S', magnetX + 24, magnetY + 14, { size: 40, color: '#60a5fa', bold: true });
-
-    // Pull range indicator
-    game.draw.circle(magnetX, magnetY, PULL_RANGE, C.magnet, 0.06);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.08);
-
-    // Wrong dots
-    for (var wi = 0; wi < MAX_WRONG; wi++) {
-      game.draw.circle(W/2 - (MAX_WRONG-1)*44 + wi*88, H*0.935, 18, wi < wrongGot ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(metalGot + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.goal : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(metalGot + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var wi = 0; wi < MAX_WRONG; wi++) game.draw.rect(snap(W / 2 + (wi - (MAX_WRONG - 1) / 2) * 56) - 10, 224, 20, 20, wi < wrongGot ? C.a : '#141c2a');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.12);
-    spawnBall();
-    spawnBall();
-    spawnBall();
-    spawnTimer = 2.0;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
