@@ -1,204 +1,137 @@
 // 266-virus-hunter.js
-// ウイルスハンター — 体内に侵入したウイルスをタップして退治、免疫細胞と区別して
-// 操作: タップでウイルス（赤・鋭角）を撃退、白血球（白・丸）は避ける
-// 成功: 30体退治  失敗: 白血球5体誤射 or 40秒
+// ウイルスハンター — 体内を漂うウイルス（トゲ付き赤）だけをタップ、丸い白血球は撃ってはいけない
+// 操作: ウイルスをタップ（白血球は避ける）
+// 成功: 3体退治  失敗: 白血球を3回撃つ or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#04020a',
-    vessel: '#1a0a1e',
-    vesHi:  '#2d1838',
-    virus:  '#ef4444',
-    virHi:  '#fca5a5',
-    wbc:    '#e2e8f0',
-    wbcHi:  '#ffffff',
-    kill:   '#22c55e',
-    kilHi:  '#86efac',
-    wrong:  '#f59e0b',
-    ui:     '#475569',
-    text:   '#f1f5f9'
-  };
+  // ── パレット（ネオンアーケード、体内マクロ） ──
+  var C = { bg:'#04020a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var entities = [];
-  var killed = 0;
-  var NEEDED = 30;
-  var mistakes = 0;
-  var MAX_MISS = 5;
-  var done = false;
-  var timeLeft = 40;
-  var elapsed = 0;
-  var feedback = '';
-  var feedbackCol = '#fff';
-  var feedbackTimer = 0;
-  var particles = [];
-  var spawnTimer = 0;
-  var SPAWN_INTERVAL = 0.5;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'VIRUS HUNTER';
+  var HOW_TO_PLAY = 'TAP SPIKY VIRUSES · SPARE ROUND CELLS';
+  var MAX_TIME = 15;
+  var NEEDED   = 3;           // 修正2: 30 → 3
+  var MAX_MISS = 3;          // 修正2: 5 → 3
+  var TOP = 220;
 
-  function spawnEntity() {
-    var isVirus = Math.random() < 0.55;
-    var x = Math.random() * W;
-    var y = Math.random() < 0.5 ? -50 : H + 50;
-    var vx = (Math.random() - 0.5) * 80;
-    var vy = y < 0 ? 40 + Math.random() * 60 : -(40 + Math.random() * 60);
-    entities.push({
-      x: x, y: y,
-      vx: vx, vy: vy,
-      r: isVirus ? 28 + Math.random() * 14 : 32 + Math.random() * 16,
-      isVirus: isVirus,
-      wobble: Math.random() * Math.PI * 2,
-      wobbleSpeed: 1 + Math.random() * 2,
-      hitFlash: 0,
-      spikes: isVirus ? 5 + Math.floor(Math.random() * 3) : 0,
-      age: 0
-    });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var entities, killed, mistakes, timeLeft, done, particles, spawnTimer, fbText, fbCol, fbTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a0a1a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function drawEntity(e) {
+    if (e.isVirus) {
+      pc(e.x, e.y, e.r, e.flash > 0 ? C.g : C.a, 0.9);
+      for (var si = 0; si < e.spikes; si++) { var a = si / e.spikes * Math.PI * 2 + e.wobble * 0.3; game.draw.rect(snap(e.x + Math.cos(a) * (e.r + 12)) - 5, snap(e.y + Math.sin(a) * (e.r + 12)) - 5, 10, 10, C.f, 0.9); }
+    } else { pc(e.x, e.y, e.r, e.flash > 0 ? C.f : C.g, 0.9); pc(e.x - 8, e.y - 8, e.r * 0.3, C.e, 0.6); }
+  }
+
+  function spawnEntity() {
+    var isVirus = Math.random() < 0.6, y = Math.random() < 0.5 ? TOP - 40 : H + 40;
+    entities.push({ x: snap(game.random(80, W - 80)), y: y, vx: game.random(-60, 60), vy: y < TOP ? (50 + Math.random() * 50) : -(50 + Math.random() * 50), r: isVirus ? 32 : 38, isVirus: isVirus, wobble: Math.random() * Math.PI * 2, spikes: 6, flash: 0 });
+  }
+
+  function initGame() { entities = []; killed = 0; mistakes = 0; timeLeft = MAX_TIME; done = false; particles = []; spawnTimer = 0.3; fbText = ''; fbCol = C.g; fbTimer = 0; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (killed * 400 + Math.ceil(timeLeft) * 60) : killed * 120;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
     for (var i = entities.length - 1; i >= 0; i--) {
-      var e = entities[i];
-      var dx = tx - e.x, dy = ty - e.y;
-      if (dx * dx + dy * dy < (e.r + 10) * (e.r + 10)) {
-        if (e.isVirus) {
-          killed++;
-          feedback = '退治！ ' + killed + '/' + NEEDED;
-          feedbackCol = C.kilHi;
-          feedbackTimer = 0.4;
-          game.audio.play('se_success', 0.5);
-          for (var pi = 0; pi < 6; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: e.x, y: e.y, vx: Math.cos(ang) * 150, vy: Math.sin(ang) * 150, life: 0.5, col: C.virHi });
-          }
-          entities.splice(i, 1);
-          if (killed >= NEEDED && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(killed * 80 + Math.ceil(timeLeft) * 60); }, 400);
-          }
-        } else {
-          mistakes++;
-          feedback = '白血球を攻撃！ (' + mistakes + '/' + MAX_MISS + ')';
-          feedbackCol = C.wrong;
-          feedbackTimer = 0.6;
-          game.audio.play('se_failure', 0.5);
-          e.hitFlash = 0.4;
-          if (mistakes >= MAX_MISS && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
-          }
-        }
+      var e = entities[i]; if ((x - e.x) * (x - e.x) + (y - e.y) * (y - e.y) < (e.r + 12) * (e.r + 12)) {
+        if (e.isVirus) { killed++; fbText = 'ELIMINATED!'; fbCol = C.b; fbTimer = 0.4; game.audio.play('se_success', 0.5); for (var pi = 0; pi < 6; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: e.x, y: e.y, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, life: 0.5 }); } entities.splice(i, 1); if (killed >= NEEDED) { finish(true); return; } }
+        else { mistakes++; fbText = 'HIT A CELL!'; fbCol = C.f; fbTimer = 0.5; e.flash = 0.4; game.audio.play('se_failure', 0.5); if (mistakes >= MAX_MISS) { finish(false); return; } }
         return;
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawEntity({ x: W * 0.35, y: H * 0.45, r: 32, isVirus: true, wobble: game.time.elapsed * 2, spikes: 6, flash: 0 }); drawEntity({ x: W * 0.65, y: H * 0.5, r: 38, isVirus: false, flash: 0 });
+      txt(GAME_TITLE, W / 2, H * 0.14, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.92, 46, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.97, 40, '#664455');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'IMMUNE!' : 'INFECTED', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (fbTimer > 0) fbTimer -= dt;
+      spawnTimer -= dt; if (spawnTimer <= 0 && entities.length < 10) { spawnEntity(); spawnTimer = 0.5 * (0.6 + Math.random() * 0.7); }
+      for (var i = entities.length - 1; i >= 0; i--) { var e = entities[i]; e.wobble += dt * 2; if (e.flash > 0) e.flash -= dt; e.x += (e.vx + Math.cos(e.wobble) * 20) * dt; e.y += e.vy * dt; if (e.x < -100 || e.x > W + 100 || e.y < TOP - 100 || e.y > H + 100) entities.splice(i, 1); }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (feedbackTimer > 0) feedbackTimer -= dt;
+    // ---- 描画 ----
+    background();
+    for (var i2 = 0; i2 < entities.length; i2++) drawEntity(entities[i2]);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, C.a, particles[pp2].life * 1.6);
+    if (fbTimer > 0) txt(fbText, W / 2, H * 0.86, 48, fbCol);
 
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && !done && entities.length < 12) {
-      spawnEntity();
-      spawnTimer = SPAWN_INTERVAL * (0.6 + Math.random() * 0.8);
-    }
-
-    for (var i = entities.length - 1; i >= 0; i--) {
-      var e = entities[i];
-      e.wobble += e.wobbleSpeed * dt;
-      e.age += dt;
-      if (e.hitFlash > 0) e.hitFlash -= dt;
-      e.x += (e.vx + Math.cos(e.wobble) * 20) * dt;
-      e.y += e.vy * dt;
-      if (e.x < -100 || e.x > W + 100 || e.y < -100 || e.y > H + 100) {
-        entities.splice(i, 1);
-      }
-    }
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Blood vessel background
-    for (var vi = 0; vi < 6; vi++) {
-      var vx2 = vi * W / 5;
-      game.draw.rect(vx2, 0, W / 6, H, C.vessel, 0.3);
-    }
-
-    // Entities
-    for (var i2 = 0; i2 < entities.length; i2++) {
-      var e2 = entities[i2];
-      var flash = e2.hitFlash > 0;
-
-      if (e2.isVirus) {
-        var vcol = flash ? C.wbcHi : C.virus;
-        var vhiCol = flash ? C.wrong : C.virHi;
-        game.draw.circle(e2.x, e2.y, e2.r, vcol, 0.85);
-        // Spikes
-        for (var si = 0; si < e2.spikes; si++) {
-          var sang = (si / e2.spikes) * Math.PI * 2 + e2.wobble * 0.3;
-          var sx = e2.x + Math.cos(sang) * (e2.r + 14);
-          var sy = e2.y + Math.sin(sang) * (e2.r + 14);
-          game.draw.line(e2.x + Math.cos(sang) * e2.r, e2.y + Math.sin(sang) * e2.r, sx, sy, vhiCol, 6);
-          game.draw.circle(sx, sy, 5, vhiCol, 0.9);
-        }
-        game.draw.circle(e2.x - e2.r * 0.3, e2.y - e2.r * 0.3, e2.r * 0.2, '#fff', 0.4);
-      } else {
-        var wcol = flash ? C.wrong : C.wbc;
-        var pulse = 0.85 + 0.15 * Math.abs(Math.sin(e2.age * 2));
-        game.draw.circle(e2.x, e2.y, e2.r * pulse + 6, C.wbcHi, 0.1);
-        game.draw.circle(e2.x, e2.y, e2.r * pulse, wcol, 0.85);
-        // Nucleus
-        game.draw.circle(e2.x - 8, e2.y - 8, e2.r * 0.3, '#94a3b8', 0.7);
-        game.draw.circle(e2.x - e2.r * 0.3, e2.y - e2.r * 0.3, e2.r * 0.15, '#fff', 0.5);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * (p.life / 0.5), p.col, p.life * 0.9);
-    }
-
-    // Legend
-    game.draw.circle(50, H * 0.15, 18, C.virus, 0.9);
-    game.draw.text('ウイルス → タップ', 200, H * 0.154, { size: 32, color: C.virHi });
-    game.draw.circle(50, H * 0.2, 18, C.wbc, 0.85);
-    game.draw.text('白血球 → 避ける', 200, H * 0.204, { size: 32, color: C.ui });
-
-    // Feedback
-    if (feedbackTimer > 0) {
-      game.draw.text(feedback, W / 2, H * 0.88, { size: 44, color: feedbackCol, bold: true });
-    }
-
-    // Mistake dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 28 + mi * 56, H * 0.93, 16, mi < mistakes ? C.wrong : '#04020a');
-    }
-
-    game.draw.text(killed + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.kill : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(killed + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) game.draw.rect(snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mm < mistakes ? C.f : '#1a0a1a');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.15);
-    spawnTimer = 0.3;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
