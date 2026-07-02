@@ -1,180 +1,156 @@
 // 217-letter-rain.js
-// レターレイン — 降ってくる文字から指定の文字だけ素早くタップする反射神経
-// 操作: タップで文字を叩く
-// 成功: 30個正解  失敗: 10個誤タップ or 40秒
+// レターレイン — 降ってくる文字群から、指定された文字だけを素早く叩き落とす反射神経
+// 操作: 指定文字をタップ
+// 成功: 5個正解  失敗: 5回誤タップ or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#060410',
-    target: '#22c55e',
-    tarHi:  '#86efac',
-    decoy:  '#3b82f6',
-    decHi:  '#93c5fd',
-    wrong:  '#ef4444',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、文字コード雨） ──
+  var C = { bg:'#060410', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var TARGETS = ['A', 'S', 'D', 'F']; // 4 target letters
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'LETTER RAIN';
+  var HOW_TO_PLAY = 'TAP ONLY THE TARGET LETTER';
+  var MAX_TIME = 15;
+  var NEEDED   = 5;           // 修正2: 30 → 5
+  var MAX_WRONG = 5;         // 修正2: 10 → 5
+  var TARGETS = ['A', 'S', 'D', 'F'];
   var DECOYS = ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', 'G', 'H', 'J', 'K'];
-  var currentTarget = TARGETS[0];
+  var TOP = 240, LR = 60;
 
-  var letters = [];
-  var score = 0;
-  var NEEDED = 30;
-  var wrongs = 0;
-  var MAX_WRONG = 10;
-  var done = false;
-  var timeLeft = 40;
-  var elapsed = 0;
-  var spawnTimer = 0;
-  var SPAWN_INTERVAL = 0.55;
-  var feedback = 0;
-  var feedbackOk = false;
-  var targetChangeTimer = 6.0;
-  var targetIdx = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnLetter() {
-    var isTarget = Math.random() < 0.35;
-    var ch = isTarget ? currentTarget : DECOYS[Math.floor(Math.random() * DECOYS.length)];
-    letters.push({
-      x: 80 + Math.random() * (W - 160),
-      y: -40,
-      ch: ch,
-      isTarget: isTarget,
-      vy: 200 + Math.random() * 120,
-      r: 44,
-      hit: false,
-      hitTimer: 0
-    });
+  // ── ゲーム変数 ──
+  var letters, currentTarget, targetIdx, score, wrongs, timeLeft, done, spawnTimer, targetTimer, feedback, feedbackOk;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
   }
 
-  game.onTap(function(tx, ty) {
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a1030');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function drawLetter(l) {
+    var isT = l.ch === currentTarget, col = isT ? C.b : C.e;
+    if (l.hit) pc(l.x, l.y, LR + 12, isT ? C.b : C.a, l.hitTimer * 2);
+    pc(l.x, l.y, LR, col, l.hit ? 0.3 : 0.85);
+    txt(l.ch, l.x, l.y + 18, 56, '#000000');
+  }
+
+  function spawnLetter() {
+    var isTarget = Math.random() < 0.4, ch = isTarget ? currentTarget : DECOYS[Math.floor(Math.random() * DECOYS.length)];
+    letters.push({ x: snap(game.random(90, W - 90)), y: TOP - 40, ch: ch, isTarget: ch === currentTarget, vy: 240 + Math.random() * 100, hit: false, hitTimer: 0 });
+  }
+
+  function initGame() { letters = []; targetIdx = 0; currentTarget = TARGETS[0]; score = 0; wrongs = 0; timeLeft = MAX_TIME; done = false; spawnTimer = 0.3; targetTimer = 5; feedback = 0; feedbackOk = false; }
+
+  function finish(success) {
     if (done) return;
-    var hitSomething = false;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 400 + Math.ceil(timeLeft) * 50) : score * 120;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function addWrong() { wrongs++; feedbackOk = false; feedback = 0.3; game.audio.play('se_failure', 0.3); if (wrongs >= MAX_WRONG) finish(false); }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
     for (var li = letters.length - 1; li >= 0; li--) {
-      var l = letters[li];
-      if (l.hit) continue;
-      var dx = tx - l.x, dy = ty - l.y;
-      if (Math.sqrt(dx * dx + dy * dy) < l.r + 20) {
-        l.hit = true;
-        l.hitTimer = 0.3;
-        hitSomething = true;
-        if (l.isTarget) {
-          score++;
-          feedbackOk = true; feedback = 0.2;
-          game.audio.play('se_success', 0.5);
-          if (score >= NEEDED && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(score * 60 + Math.ceil(timeLeft) * 20); }, 400);
-          }
-        } else {
-          wrongs++;
-          feedbackOk = false; feedback = 0.3;
-          game.audio.play('se_failure', 0.4);
-          if (wrongs >= MAX_WRONG && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 400);
-          }
-        }
-        break;
+      var l = letters[li]; if (l.hit) continue;
+      if (Math.hypot(x - l.x, y - l.y) < LR + 16) {
+        l.hit = true; l.hitTimer = 0.3;
+        if (l.isTarget) { score++; feedbackOk = true; feedback = 0.2; game.audio.play('se_success', 0.5); if (score >= NEEDED) { finish(true); return; } }
+        else { addWrong(); if (done) return; }
+        return;
       }
     }
-    if (!hitSomething) {
-      // Miss tap
-      wrongs++;
-      feedbackOk = false; feedback = 0.2;
-      game.audio.play('se_failure', 0.2);
-      if (wrongs >= MAX_WRONG && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 400);
-      }
-    }
+    addWrong();
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      drawLetter({ x: W * 0.3, y: H * 0.4, ch: 'A', hit: false }); drawLetter({ x: W * 0.7, y: H * 0.5, ch: 'Q', hit: false });
+      txt(GAME_TITLE, W / 2, H * 0.14, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 30, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.84, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.90, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.96, 40, '#554466');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CLEARED!' : 'GLITCHED', W / 2, H * 0.35, 82, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-    if (feedback > 0) feedback -= dt;
-
-    // Change target letter
-    targetChangeTimer -= dt;
-    if (targetChangeTimer <= 0) {
-      targetIdx = (targetIdx + 1) % TARGETS.length;
-      currentTarget = TARGETS[targetIdx];
-      targetChangeTimer = 5.0 + Math.random() * 3.0;
-    }
-
-    spawnTimer -= dt;
-    if (spawnTimer <= 0) {
-      spawnLetter();
-      spawnTimer = SPAWN_INTERVAL * (0.7 + Math.random() * 0.6);
-    }
-
-    for (var li = letters.length - 1; li >= 0; li--) {
-      var l = letters[li];
-      l.y += l.vy * dt;
-      if (l.hit) {
-        l.hitTimer -= dt;
-        if (l.hitTimer <= 0) letters.splice(li, 1);
-      } else if (l.y > H + 60) {
-        letters.splice(li, 1);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (feedback > 0) feedback -= dt;
+      targetTimer -= dt; if (targetTimer <= 0) { targetIdx = (targetIdx + 1) % TARGETS.length; currentTarget = TARGETS[targetIdx]; targetTimer = 5 + Math.random() * 3; for (var u = 0; u < letters.length; u++) letters[u].isTarget = letters[u].ch === currentTarget; }
+      spawnTimer -= dt; if (spawnTimer <= 0) { spawnLetter(); spawnTimer = 0.55 * (0.7 + Math.random() * 0.6); }
+      for (var li = letters.length - 1; li >= 0; li--) {
+        var l = letters[li]; l.y += l.vy * dt;
+        if (l.hit) { l.hitTimer -= dt; if (l.hitTimer <= 0) letters.splice(li, 1); }
+        else if (l.y > H + 60) letters.splice(li, 1);
       }
     }
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background();
+    // ターゲット表示
+    pc(W / 2, H * 0.135, 70, C.b, 0.3 + 0.2 * (Math.floor(game.time.elapsed * 4) % 2));
+    txt('HIT', W / 2, 130, 34, C.b); txt(currentTarget, W / 2, 200, 80, C.c);
+    for (var li2 = 0; li2 < letters.length; li2++) drawLetter(letters[li2]);
+    if (feedback > 0) game.draw.rect(0, 0, W, H, feedbackOk ? C.b : C.a, feedback * 0.1);
 
-    // Target display
-    var pulse = 0.6 + 0.4 * Math.abs(Math.sin(elapsed * 3));
-    game.draw.rect(W / 2 - 120, H * 0.12, 240, 120, C.target, pulse * 0.3);
-    game.draw.text('たたけ！', W / 2, H * 0.12 + 36, { size: 36, color: C.tarHi });
-    game.draw.text(currentTarget, W / 2, H * 0.12 + 90, { size: 88, color: C.target, bold: true });
-
-    // Letters
-    for (var li2 = 0; li2 < letters.length; li2++) {
-      var l2 = letters[li2];
-      var isT = l2.ch === currentTarget;
-      var col = isT ? C.target : C.decoy;
-      var hi = isT ? C.tarHi : C.decHi;
-      var alpha = l2.hit ? 0.3 : 0.85;
-
-      if (l2.hit && l2.isTarget) {
-        // Flash green
-        game.draw.circle(l2.x, l2.y, l2.r + 20, C.tarHi, l2.hitTimer * 2);
-      } else if (l2.hit && !l2.isTarget) {
-        game.draw.circle(l2.x, l2.y, l2.r + 10, C.wrong, l2.hitTimer * 2);
-      }
-
-      game.draw.circle(l2.x, l2.y, l2.r + 6, hi, isT ? 0.2 : 0.1);
-      game.draw.circle(l2.x, l2.y, l2.r, col, alpha);
-      game.draw.text(l2.ch, l2.x, l2.y, { size: 52, color: '#fff', bold: true });
-    }
-
-    if (feedback > 0) {
-      game.draw.rect(0, 0, W, H, feedbackOk ? '#22c55e' : '#ef4444', feedback * 0.12);
-    }
-
-    // Wrong counter
-    for (var wi = 0; wi < MAX_WRONG; wi++) {
-      game.draw.circle(W / 2 - (MAX_WRONG - 1) * 26 + wi * 52, H * 0.88, 16, wi < wrongs ? C.wrong : '#1a1a2e');
-    }
-
-    game.draw.text(score + ' / ' + NEEDED, W / 2, H * 0.92, { size: 56, color: '#f1f5f9', bold: true });
-
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#22c55e' : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2 - 200, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2 + 200, 96, 44, C.b);
+    for (var mm = 0; mm < MAX_WRONG; mm++) game.draw.rect(snap(W / 2 + (mm - (MAX_WRONG - 1) / 2) * 52) - 10, H - 120, 20, 20, mm < wrongs ? C.a : '#1a1030');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.25);
-    spawnTimer = 0.3;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
