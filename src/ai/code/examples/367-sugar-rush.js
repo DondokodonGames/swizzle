@@ -1,242 +1,164 @@
 // 367-sugar-rush.js
-// シュガーラッシュ — キャンディを並べて3つ揃えたらクリア
-// 操作: タップで隣接するキャンディを選択・スワップ
-// 成功: 20回揃える  失敗: 45秒
+// シュガーラッシュ — 隣り合うキャンディをタップ/スワイプで入れ替え、同色3つ以上を並べて消すマッチ3
+// 操作: キャンディをタップで選び、隣をタップ（またはスワイプ）で入れ替える
+// 成功: 3回そろえる  失敗: 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#1a0520',
-    panel:  '#2d1044',
-    ui:     '#a855f7',
-    text:   '#f0abfc',
-    match:  '#fbbf24',
-    matchHi:'#fef3c7'
-  };
+  // ── パレット（ネオンアーケード、キャンディ工場） ──
+  var C = { bg:'#1a0520', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var CANDY = [C.a, C.b, C.e, C.c, C.f];
 
-  var CANDY_COLORS = ['#ef4444','#22c55e','#3b82f6','#f59e0b','#ec4899'];
-  var GRID = 6;
-  var CELL = 154;
-  var OX = (W - GRID * CELL) / 2;
-  var OY = 270;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SUGAR RUSH';
+  var HOW_TO_PLAY = 'SWAP ADJACENT CANDIES · LINE UP 3+ OF A COLOR';
+  var MAX_TIME = 15;
+  var NEEDED   = 3;          // 修正2: 20 → 3
+  var GN = 5, CELL = snap(W * 0.84 / GN), OX = snap((W - GN * CELL) / 2), OY = snap(H * 0.30);
 
-  var grid = [];
-  var selected = null;
-  var matches = 0;
-  var NEEDED = 20;
-  var done = false;
-  var elapsed = 0;
-  var timeLeft = 45;
-  var particles = [];
-  var flashCells = [];
-  var swapping = false;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function initGrid() {
-    grid = [];
-    for (var r = 0; r < GRID; r++) {
-      grid.push([]);
-      for (var c = 0; c < GRID; c++) {
-        grid[r].push(Math.floor(Math.random() * CANDY_COLORS.length));
-      }
-    }
+  // ── ゲーム変数 ──
+  var grid, selected, matches, timeLeft, done, particles, flashCells, swapping;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.2) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#2d1044');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function initGrid() { grid = []; for (var r = 0; r < GN; r++) { grid[r] = []; for (var c = 0; c < GN; c++) grid[r][c] = Math.floor(Math.random() * CANDY.length); } }
 
   function findMatches() {
-    var matched = [];
-    // Horizontal
-    for (var r = 0; r < GRID; r++) {
-      for (var c = 0; c < GRID - 2; c++) {
-        if (grid[r][c] === grid[r][c+1] && grid[r][c] === grid[r][c+2]) {
-          matched.push([r,c],[r,c+1],[r,c+2]);
-        }
-      }
-    }
-    // Vertical
-    for (var r2 = 0; r2 < GRID - 2; r2++) {
-      for (var c2 = 0; c2 < GRID; c2++) {
-        if (grid[r2][c2] === grid[r2+1][c2] && grid[r2][c2] === grid[r2+2][c2]) {
-          matched.push([r2,c2],[r2+1,c2],[r2+2,c2]);
-        }
-      }
-    }
-    return matched;
+    var m = [];
+    for (var r = 0; r < GN; r++) for (var c = 0; c < GN - 2; c++) if (grid[r][c] >= 0 && grid[r][c] === grid[r][c + 1] && grid[r][c] === grid[r][c + 2]) m.push([r, c], [r, c + 1], [r, c + 2]);
+    for (var r2 = 0; r2 < GN - 2; r2++) for (var c2 = 0; c2 < GN; c2++) if (grid[r2][c2] >= 0 && grid[r2][c2] === grid[r2 + 1][c2] && grid[r2][c2] === grid[r2 + 2][c2]) m.push([r2, c2], [r2 + 1, c2], [r2 + 2, c2]);
+    return m;
   }
 
-  function removeMatches(matched) {
-    var count = 0;
-    var removed = {};
-    for (var i = 0; i < matched.length; i++) {
-      var key = matched[i][0] + ',' + matched[i][1];
-      if (!removed[key]) {
-        removed[key] = true;
-        count++;
-        var cx = OX + matched[i][1] * CELL + CELL / 2;
-        var cy = OY + matched[i][0] * CELL + CELL / 2;
-        for (var pi = 0; pi < 5; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: cx, y: cy, vx: Math.cos(ang)*160, vy: Math.sin(ang)*160, life:0.5, col: CANDY_COLORS[grid[matched[i][0]][matched[i][1]]] });
-        }
-        flashCells.push({ r: matched[i][0], c: matched[i][1], life: 0.5 });
-        grid[matched[i][0]][matched[i][1]] = -1;
-      }
-    }
-    return count;
+  function removeMatches(m) {
+    var seen = {}, cnt = 0;
+    for (var i = 0; i < m.length; i++) { var k = m[i][0] + ',' + m[i][1]; if (seen[k]) continue; seen[k] = 1; cnt++; var cx = OX + m[i][1] * CELL + CELL / 2, cy = OY + m[i][0] * CELL + CELL / 2; flashCells.push({ r: m[i][0], c: m[i][1], life: 0.5 }); for (var p = 0; p < 4; p++) { var a = Math.random() * Math.PI * 2; particles.push({ x: cx, y: cy, vx: Math.cos(a) * 160, vy: Math.sin(a) * 160, life: 0.5, col: CANDY[grid[m[i][0]][m[i][1]]] }); } grid[m[i][0]][m[i][1]] = -1; }
+    return cnt;
   }
 
-  function dropAndFill() {
-    // Drop existing candies
-    for (var c = 0; c < GRID; c++) {
-      var write = GRID - 1;
-      for (var r = GRID - 1; r >= 0; r--) {
-        if (grid[r][c] >= 0) {
-          grid[write][c] = grid[r][c];
-          if (write !== r) grid[r][c] = -1;
-          write--;
-        }
-      }
-      // Fill top
-      for (var r2 = write; r2 >= 0; r2--) {
-        grid[r2][c] = Math.floor(Math.random() * CANDY_COLORS.length);
-      }
-    }
-  }
+  function dropFill() { for (var c = 0; c < GN; c++) { var w = GN - 1; for (var r = GN - 1; r >= 0; r--) if (grid[r][c] >= 0) { grid[w][c] = grid[r][c]; if (w !== r) grid[r][c] = -1; w--; } for (var r2 = w; r2 >= 0; r2--) grid[r2][c] = Math.floor(Math.random() * CANDY.length); } }
 
   function processMatches() {
-    var matched = findMatches();
-    if (matched.length === 0) return;
-    var count = removeMatches(matched);
-    matches += Math.floor(count / 3);
-    game.audio.play('se_success', 0.5);
-    if (matches >= NEEDED && !done) {
-      done = true;
-      setTimeout(function() { game.end.success(matches * 200 + Math.ceil(timeLeft) * 80); }, 600);
-      return;
-    }
-    setTimeout(function() {
-      if (!done) {
-        dropAndFill();
-        processMatches();
-      }
-    }, 300);
+    var m = findMatches(); if (m.length === 0) return;
+    var cnt = removeMatches(m); matches += Math.floor(cnt / 3); game.audio.play('se_success', 0.5);
+    if (matches >= NEEDED) { finish(true); return; }
+    setTimeout(function() { if (!done && state === S.PLAYING) { dropFill(); processMatches(); } }, 250);
+  }
+
+  function initGame() { initGrid(); var m = findMatches(); while (m.length) { dropFill(); m = findMatches(); } selected = null; matches = 0; timeLeft = MAX_TIME; done = false; particles = []; flashCells = []; swapping = false; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (matches * 700 + Math.ceil(timeLeft) * 100) : matches * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   function trySwap(r1, c1, r2, c2) {
-    if (swapping) return;
-    if (r2 < 0 || r2 >= GRID || c2 < 0 || c2 >= GRID) return;
-    swapping = true;
-    var tmp = grid[r1][c1];
-    grid[r1][c1] = grid[r2][c2];
-    grid[r2][c2] = tmp;
-    game.audio.play('se_tap', 0.3);
-    var matched = findMatches();
-    if (matched.length === 0) {
-      // Swap back
-      var tmp2 = grid[r1][c1];
-      grid[r1][c1] = grid[r2][c2];
-      grid[r2][c2] = tmp2;
-    } else {
-      processMatches();
-    }
-    setTimeout(function() { swapping = false; }, 350);
+    if (swapping || r2 < 0 || r2 >= GN || c2 < 0 || c2 >= GN) return;
+    swapping = true; var t = grid[r1][c1]; grid[r1][c1] = grid[r2][c2]; grid[r2][c2] = t; game.audio.play('se_tap', 0.3);
+    if (findMatches().length === 0) { var t2 = grid[r1][c1]; grid[r1][c1] = grid[r2][c2]; grid[r2][c2] = t2; } else processMatches();
+    setTimeout(function() { swapping = false; }, 300);
   }
 
-  game.onTap(function(tx, ty) {
-    if (done || swapping) return;
-    var c = Math.floor((tx - OX) / CELL);
-    var r = Math.floor((ty - OY) / CELL);
-    if (c < 0 || c >= GRID || r < 0 || r >= GRID) { selected = null; return; }
-
-    if (!selected) {
-      selected = { r: r, c: c };
-    } else {
-      var dr = Math.abs(r - selected.r), dc = Math.abs(c - selected.c);
-      if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
-        trySwap(selected.r, selected.c, r, c);
-      }
-      selected = null;
+  function drawGrid() {
+    for (var r = 0; r < GN; r++) for (var c = 0; c < GN; c++) {
+      var x = OX + c * CELL, y = OY + r * CELL; game.draw.rect(x + 3, y + 3, CELL - 6, CELL - 6, '#2d1044', 0.5);
+      var v = grid[r][c]; if (v < 0) continue; var sel = selected && selected.r === r && selected.c === c;
+      pc(x + CELL / 2, y + CELL / 2, CELL * 0.36, CANDY[v], sel ? 1 : 0.9); pc(x + CELL / 2 - CELL * 0.12, y + CELL / 2 - CELL * 0.12, CELL * 0.08, C.g, 0.4);
+      if (sel) ring(x + CELL / 2, y + CELL / 2, CELL * 0.42, C.g, 0.6);
     }
+    for (var fi = 0; fi < flashCells.length; fi++) ring(OX + flashCells[fi].c * CELL + CELL / 2, OY + flashCells[fi].r * CELL + CELL / 2, CELL * 0.4 * (1 - flashCells[fi].life), C.c, flashCells[fi].life);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || swapping) return;
+    var c = Math.floor((x - OX) / CELL), r = Math.floor((y - OY) / CELL); if (c < 0 || c >= GN || r < 0 || r >= GN) { selected = null; return; }
+    if (!selected) selected = { r: r, c: c };
+    else { var dr = Math.abs(r - selected.r), dc = Math.abs(c - selected.c); if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) trySwap(selected.r, selected.c, r, c); selected = null; }
   });
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
-    if (done || swapping || !selected) return;
-    var dr = 0, dc = 0;
-    if (dir === 'up') dr = -1;
-    if (dir === 'down') dr = 1;
-    if (dir === 'left') dc = -1;
-    if (dir === 'right') dc = 1;
-    trySwap(selected.r, selected.c, selected.r + dr, selected.c + dc);
-    selected = null;
+  game.onSwipe(function(d) {
+    if (state !== S.PLAYING || done || swapping || !selected) return;
+    var dr = d === 'up' ? -1 : d === 'down' ? 1 : 0, dc = d === 'left' ? -1 : d === 'right' ? 1 : 0;
+    trySwap(selected.r, selected.c, selected.r + dr, selected.c + dc); selected = null;
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!grid) initGame(); background(); drawGrid();
+      txt(GAME_TITLE, W / 2, H * 0.14, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SWEET!' : 'TIME OUT', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      for (var fc = flashCells.length - 1; fc >= 0; fc--) { flashCells[fc].life -= dt * 2; if (flashCells[fc].life <= 0) flashCells.splice(fc, 1); }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var fc = flashCells.length - 1; fc >= 0; fc--) {
-      flashCells[fc].life -= dt * 2;
-      if (flashCells[fc].life <= 0) flashCells.splice(fc, 1);
-    }
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawGrid();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Grid cells
-    for (var r2 = 0; r2 < GRID; r2++) {
-      for (var c2 = 0; c2 < GRID; c2++) {
-        var cx = OX + c2 * CELL;
-        var cy = OY + r2 * CELL;
-        game.draw.rect(cx + 3, cy + 3, CELL - 6, CELL - 6, C.panel, 0.5);
-
-        var val = grid[r2][c2];
-        if (val < 0) continue;
-
-        var col = CANDY_COLORS[val];
-        var isSel = selected && selected.r === r2 && selected.c === c2;
-        game.draw.circle(cx + CELL/2, cy + CELL/2, CELL/2 - 8, col, isSel ? 1.0 : 0.85);
-        game.draw.circle(cx + CELL/2 - 18, cy + CELL/2 - 18, CELL/6, '#fff', 0.35);
-        if (isSel) {
-          game.draw.circle(cx + CELL/2, cy + CELL/2, CELL/2 - 2, '#fff', 0.2 + Math.sin(elapsed * 6) * 0.1);
-        }
-      }
-    }
-
-    // Flash cells
-    for (var fc2 = 0; fc2 < flashCells.length; fc2++) {
-      var f = flashCells[fc2];
-      var fx = OX + f.c * CELL + CELL / 2;
-      var fy = OY + f.r * CELL + CELL / 2;
-      game.draw.circle(fx, fy, CELL/2 * f.life * 2, C.match, f.life * 0.5);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    game.draw.text(matches + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.ui : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(matches + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.15);
-    initGrid();
-    // Clear initial matches
-    var m = findMatches();
-    while (m.length > 0) { dropAndFill(); m = findMatches(); }
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
