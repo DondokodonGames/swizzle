@@ -1,218 +1,145 @@
 // 413-paint-mix.js
-// 絵の具混合 — 原色を混ぜて目標の色を作る
-// 操作: 3原色(赤/黄/青)をタップして配合し、目標色に近づける
-// 成功: 8色完成  失敗: 3回大外れ or 60秒
+// ペイントミックス — 赤・黄・青の三原色を配合し、見本と同じ色を作って提出する調色ゲーム
+// 操作: R/Y/Bボタンで絵の具を足し、MIXで提出、RESETでやり直し
+// 成功: 4色 完成  失敗: 3回 大外れ or 25秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0810',
-    canvas2:'#1a1020',
-    red:    '#ef4444',
-    redHi:  '#fca5a5',
-    yellow: '#eab308',
-    yellowHi:'#fde047',
-    blue:   '#3b82f6',
-    blueHi: '#93c5fd',
-    white:  '#f1f5f9',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    close:  '#f97316',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、アトリエ） ──
+  var C = { bg:'#0a0812', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff', red:'#ee3344', yel:'#eec522', blu:'#3377ee' };
 
-  var rAmt = 0, yAmt = 0, bAmt = 0;  // 0-5 each
-  var MAX_AMT = 5;
-
-  // Target colors (r,y,b amounts)
-  var TARGETS = [
-    {r:3,y:0,b:0,name:'赤'},{r:0,y:3,b:0,name:'黄'},{r:0,y:0,b:3,name:'青'},
-    {r:2,y:2,b:0,name:'橙'},{r:0,y:2,b:2,name:'緑'},{r:2,y:0,b:2,name:'紫'},
-    {r:1,y:1,b:1,name:'茶'},{r:3,y:1,b:0,name:'朱'}
-  ];
-  var targetIdx = 0;
-  var correct = 0;
-  var NEEDED = 8;
-  var wrong = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'PAINT MIX';
+  var HOW_TO_PLAY = 'ADD R/Y/B PAINT TO MATCH THE TARGET · MIX TO SUBMIT';
+  var MAX_TIME = 25;
+  var NEEDED   = 4;          // 修正2: 8 → 4
   var MAX_WRONG = 3;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0;
-  var flashCol = C.correct;
-  var resultText = '';
-  var mixAnim = 0;
+  var MAX_AMT = 5;
+  var TARGETS = [{ r: 3, y: 0, b: 0 }, { r: 0, y: 3, b: 0 }, { r: 0, y: 0, b: 3 }, { r: 2, y: 2, b: 0 }, { r: 0, y: 2, b: 2 }, { r: 2, y: 0, b: 2 }, { r: 1, y: 1, b: 1 }, { r: 3, y: 1, b: 0 }];
+  var BSY = snap(H * 0.74), BH = 190, BW3 = W / 3;
 
-  function getTarget() { return TARGETS[targetIdx % TARGETS.length]; }
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function amtToRGB(r, y, b) {
-    // r=red, y=yellow(r+g), b=blue
-    var rComp = Math.min(255, r * 50 + y * 30);
-    var gComp = Math.min(255, y * 40);
-    var bComp = Math.min(255, b * 55);
-    return [rComp, gComp, bComp];
+  // ── ゲーム変数 ──
+  var rA, yA, bA, targetIdx, correct, wrong, timeLeft, done, particles, flash, flashCol, fbText;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function rgbToHex(r, g, b) {
-    return '#' + [r,g,b].map(function(v) { return Math.round(v).toString(16).padStart(2,'0'); }).join('');
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#181030');
   }
 
-  function colorDistance(r1, g1, b1, r2, g2, b2) {
-    return Math.sqrt(Math.pow(r1-r2,2)+Math.pow(g1-g2,2)+Math.pow(b1-b2,2));
+  function background() { game.draw.clear(C.bg); }
+
+  function amtRGB(r, y, b) { return [Math.min(255, r * 50 + y * 30), Math.min(255, y * 40), Math.min(255, b * 55)]; }
+  function hex(rgb) { return '#' + rgb.map(function(v) { return Math.round(v).toString(16).padStart(2, '0'); }).join(''); }
+  function dist(a, b) { return Math.sqrt(Math.pow(a[0] - b[0], 2) + Math.pow(a[1] - b[1], 2) + Math.pow(a[2] - b[2], 2)); }
+  function tgt() { return TARGETS[targetIdx % TARGETS.length]; }
+
+  function initGame() { rA = 0; yA = 0; bA = 0; targetIdx = 0; correct = 0; wrong = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; fbText = ''; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (correct * 600 + Math.ceil(timeLeft) * 100) : correct * 250;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   function submit() {
-    var tgt = getTarget();
-    var mixRGB = amtToRGB(rAmt, yAmt, bAmt);
-    var tgtRGB = amtToRGB(tgt.r, tgt.y, tgt.b);
-    var dist = colorDistance(mixRGB[0],mixRGB[1],mixRGB[2],tgtRGB[0],tgtRGB[1],tgtRGB[2]);
-
-    if (dist < 40) {
-      correct++;
-      flashCol = C.correct;
-      flashAnim = 0.8;
-      resultText = '完璧！';
-      game.audio.play('se_success', 0.6);
-      for (var pi = 0; pi < 12; pi++) {
-        var ang = Math.random()*Math.PI*2;
-        particles.push({ x:W/2, y:H*0.46, vx:Math.cos(ang)*200, vy:Math.sin(ang)*200, life:0.7, col:rgbToHex(mixRGB[0],mixRGB[1],mixRGB[2]) });
-      }
-      if (correct >= NEEDED && !done) { done = true; setTimeout(function(){ game.end.success(correct*500+Math.ceil(timeLeft)*80); }, 700); return; }
-      targetIdx++;
-    } else if (dist < 90) {
-      flashCol = C.close;
-      flashAnim = 0.6;
-      resultText = '惜しい！';
-      game.audio.play('se_failure', 0.2);
-    } else {
-      wrong++;
-      flashCol = C.wrong;
-      flashAnim = 0.7;
-      resultText = 'かなり違う！';
-      game.audio.play('se_failure', 0.4);
-      if (wrong >= MAX_WRONG && !done) { done = true; setTimeout(function(){ game.end.failure(); }, 500); return; }
-    }
-    rAmt = 0; yAmt = 0; bAmt = 0;
-    mixAnim = 0;
+    var t = tgt(), d = dist(amtRGB(rA, yA, bA), amtRGB(t.r, t.y, t.b));
+    if (d < 40) { correct++; flashCol = C.b; flash = 0.8; fbText = 'PERFECT!'; game.audio.play('se_success', 0.6); for (var p = 0; p < 12; p++) { var ang = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: H * 0.44, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.7, col: hex(amtRGB(rA, yA, bA)) }); } if (correct >= NEEDED) { finish(true); return; } targetIdx++; }
+    else if (d < 90) { flashCol = C.c; flash = 0.6; fbText = 'CLOSE'; game.audio.play('se_failure', 0.2); }
+    else { wrong++; flashCol = C.a; flash = 0.7; fbText = 'WAY OFF'; game.audio.play('se_failure', 0.4); if (wrong >= MAX_WRONG) { finish(false); return; } }
+    rA = 0; yA = 0; bA = 0;
   }
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
+  function drawUI() {
+    var t = tgt(), th = hex(amtRGB(t.r, t.y, t.b)), mh = (rA + yA + bA) > 0 ? hex(amtRGB(rA, yA, bA)) : '#2a2040';
+    txt('TARGET', W / 2 - 200, H * 0.20, 40, C.g); pc(W / 2 + 80, H * 0.20, 70, th, 0.95);
+    txt('R ' + rA + '  Y ' + yA + '  B ' + bA, W / 2, H * 0.32, 42, C.e);
+    pc(W / 2, H * 0.44, 110, mh, 0.95); pc(W / 2 - 34, H * 0.44 - 38, 40, C.g, 0.25);
+    // MIX / RESET
+    game.draw.rect(W / 3 + 20, snap(H * 0.62), W / 3 - 40, snap(H * 0.08), C.d, 0.8); txt('MIX', W / 2, snap(H * 0.66), 48, C.b);
+    game.draw.rect(20, snap(H * 0.62), W / 4 - 40, snap(H * 0.08), C.d, 0.5); txt('RESET', W / 8, snap(H * 0.66), 34, C.g);
+    // buttons
+    game.draw.rect(0, BSY, BW3, BH, C.red, 0.9); txt('R', BW3 / 2, BSY + BH / 2 + 20, 72, C.g);
+    game.draw.rect(BW3, BSY, BW3, BH, C.yel, 0.9); txt('Y', BW3 + BW3 / 2, BSY + BH / 2 + 20, 72, C.g);
+    game.draw.rect(BW3 * 2, BSY, BW3, BH, C.blu, 0.9); txt('B', BW3 * 2 + BW3 / 2, BSY + BH / 2 + 20, 72, C.g);
+    for (var di = 0; di < MAX_AMT; di++) { game.draw.rect(snap(BW3 / 2 - (MAX_AMT - 1) * 16 + di * 32) - 6, BSY + BH - 26, 12, 12, di < rA ? C.g : '#3a1010'); game.draw.rect(snap(BW3 + BW3 / 2 - (MAX_AMT - 1) * 16 + di * 32) - 6, BSY + BH - 26, 12, 12, di < yA ? C.g : '#3a2d00'); game.draw.rect(snap(BW3 * 2 + BW3 / 2 - (MAX_AMT - 1) * 16 + di * 32) - 6, BSY + BH - 26, 12, 12, di < bA ? C.g : '#0a1a3a'); }
+  }
 
-    // Three color buttons at bottom
-    var btnY = H * 0.78;
-    var btnH = 200;
-    if (ty >= btnY && ty <= btnY + btnH) {
-      if (tx < W/3) { rAmt = Math.min(MAX_AMT, rAmt+1); mixAnim = 0.3; game.audio.play('se_tap', 0.3); }
-      else if (tx < W*2/3) { yAmt = Math.min(MAX_AMT, yAmt+1); mixAnim = 0.3; game.audio.play('se_tap', 0.3); }
-      else { bAmt = Math.min(MAX_AMT, bAmt+1); mixAnim = 0.3; game.audio.play('se_tap', 0.3); }
-      return;
-    }
-    // Submit button in middle
-    if (ty > H*0.67 && ty < H*0.76 && tx > W/3 && tx < W*2/3) {
-      if (rAmt + yAmt + bAmt > 0) submit();
-    }
-    // Reset
-    if (ty > H*0.67 && ty < H*0.76 && (tx < W/4 || tx > W*3/4)) {
-      rAmt = 0; yAmt = 0; bAmt = 0;
-      mixAnim = 0;
-    }
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (y >= BSY && y <= BSY + BH) { if (x < BW3) rA = Math.min(MAX_AMT, rA + 1); else if (x < BW3 * 2) yA = Math.min(MAX_AMT, yA + 1); else bA = Math.min(MAX_AMT, bA + 1); game.audio.play('se_tap', 0.3); return; }
+    if (y > H * 0.62 && y < H * 0.70) { if (x > W / 3 && x < W * 2 / 3) { if (rA + yA + bA > 0) submit(); } else if (x < W / 4) { rA = 0; yA = 0; bA = 0; } }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (rA === undefined) initGame(); background(); drawUI();
+      txt(GAME_TITLE, W / 2, H * 0.10, 76, C.c);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.54, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.585, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'MASTER MIXER!' : 'OFF PALETTE', W / 2, H * 0.35, 64, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 2;
-    if (mixAnim > 0) mixAnim -= dt * 3;
+    // ---- 描画 ----
+    background(); drawUI();
+    if (flash > 0) { game.draw.rect(0, 0, W, H, flashCol, flash * 0.1); if (flash > 0.4) txt(fbText, W / 2, H * 0.55, 56, flashCol); }
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
 
-    for (var pp = particles.length-1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx*dt;
-      particles[pp].y += particles[pp].vy*dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp,1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, H, C.canvas2, 0.6);
-
-    // Target color display
-    var tgt = getTarget();
-    var tgtRGB = amtToRGB(tgt.r, tgt.y, tgt.b);
-    var tgtHex = rgbToHex(tgtRGB[0],tgtRGB[1],tgtRGB[2]);
-
-    game.draw.text('目標:', W/2-200, H*0.2, { size: 44, color: C.text });
-    game.draw.circle(W/2+60, H*0.2, 80, tgtHex, 0.9);
-    game.draw.circle(W/2+60, H*0.2-28, 32, '#fff', 0.3);
-    game.draw.text(tgt.name, W/2+60, H*0.26, { size: 36, color: C.text });
-
-    // R/Y/B amounts display
-    game.draw.text('R:'+rAmt+' Y:'+yAmt+' B:'+bAmt, W/2-80, H*0.34, { size: 44, color: C.ui });
-
-    // Current mix preview
-    var mixRGB2 = amtToRGB(rAmt, yAmt, bAmt);
-    var mixHex2 = (rAmt+yAmt+bAmt) > 0 ? rgbToHex(mixRGB2[0],mixRGB2[1],mixRGB2[2]) : '#2a2040';
-    game.draw.circle(W/2, H*0.46, 120, mixHex2, 0.9);
-    game.draw.circle(W/2-36, H*0.46-40, 48, '#fff', 0.25);
-    if (mixAnim > 0) game.draw.circle(W/2, H*0.46, 120+mixAnim*30, mixHex2, mixAnim*0.4);
-
-    // Submit button
-    game.draw.rect(W/3+20, H*0.67, W/3-40, H*0.09, '#1e293b', 0.9);
-    game.draw.text('決定', W/2, H*0.72, { size: 52, color: C.correct, bold: true });
-    // Reset button
-    game.draw.rect(20, H*0.67, W/4-40, H*0.09, '#1e293b', 0.7);
-    game.draw.text('リセット', W/8, H*0.72, { size: 36, color: C.ui });
-
-    // Color buttons
-    var btnY2 = H*0.78;
-    var btnH2 = 200;
-    var btnW = W/3;
-    // Red
-    game.draw.rect(0, btnY2, btnW, btnH2, C.red, 0.85);
-    game.draw.text('赤', btnW/2, btnY2+btnH2/2+20, { size: 72, color: C.redHi, bold: true });
-    // Yellow
-    game.draw.rect(btnW, btnY2, btnW, btnH2, C.yellow, 0.85);
-    game.draw.text('黄', btnW+btnW/2, btnY2+btnH2/2+20, { size: 72, color: '#fff', bold: true });
-    // Blue
-    game.draw.rect(btnW*2, btnY2, btnW, btnH2, C.blue, 0.85);
-    game.draw.text('青', btnW*2+btnW/2, btnY2+btnH2/2+20, { size: 72, color: C.blueHi, bold: true });
-
-    // Amount dots per color
-    for (var di = 0; di < MAX_AMT; di++) {
-      game.draw.circle(btnW/2 - (MAX_AMT-1)*16+di*32, btnY2+btnH2-24, 8, di < rAmt ? C.redHi : '#3a1010', 0.9);
-      game.draw.circle(btnW+btnW/2-(MAX_AMT-1)*16+di*32, btnY2+btnH2-24, 8, di < yAmt ? C.yellowHi : '#3a2d00', 0.9);
-      game.draw.circle(btnW*2+btnW/2-(MAX_AMT-1)*16+di*32, btnY2+btnH2-24, 8, di < bAmt ? C.blueHi : '#0a1a3a', 0.9);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim*0.1);
-    if (flashAnim > 0.4) game.draw.text(resultText, W/2, H*0.58, { size: 56, color: flashCol, bold: true });
-
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10*p.life, p.col, p.life*0.8);
-    }
-
-    // Wrong dots
-    for (var wi = 0; wi < MAX_WRONG; wi++) {
-      game.draw.circle(W/2-(MAX_WRONG-1)*40+wi*80, H*0.935, 16, wi < wrong ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(correct + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft/60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*ratio, 72, ratio > 0.3 ? C.yellow : C.wrong);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(correct + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var wi = 0; wi < MAX_WRONG; wi++) game.draw.rect(snap(W / 2 + (wi - (MAX_WRONG - 1) / 2) * 56) - 10, 224, 20, 20, wi < wrong ? C.a : '#181030');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
