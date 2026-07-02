@@ -1,217 +1,136 @@
 // 335-tower-stack.js
-// タワースタック — 落ちてくるブロックを積み上げて高いタワーを作る
-// 操作: タップでブロックを落とす（前のブロックと重なる部分だけ積む）
-// 成功: 15段  失敗: 幅3割以下になる or 45秒
+// タワースタック — 左右に流れるブロックをタップで落とし、重なった幅だけ積み上げる高層建築
+// 操作: タップで動くブロックを落とす（前の段と重なった部分だけ残る）
+// 成功: 3段積む  失敗: 幅が細くなりすぎる or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0c0c14',
-    sky:    '#111827',
-    block:  '#3b82f6',
-    blockHi:'#60a5fa',
-    perfect:'#22c55e',
-    perfectHi:'#86efac',
-    danger: '#ef4444',
-    dangerHi:'#fca5a5',
-    cut:    '#94a3b8',
-    ui:     '#475569',
-    text:   '#f1f5f9',
-    star:   '#fbbf24'
-  };
+  // ── パレット（ネオンアーケード、摩天楼） ──
+  var C = { bg:'#0c0c14', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var BCOLS = [C.e, C.d, C.b, C.f, C.a, C.c];
 
-  var BLOCK_H = 48;
-  var START_W = 400;
-  var SWING_SPEED = 260;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'TOWER STACK';
+  var HOW_TO_PLAY = 'TAP TO DROP THE MOVING BLOCK ON THE STACK';
+  var MAX_TIME = 15;
+  var NEEDED   = 3;          // 修正2: 15 → 3
+  var BLOCK_H = 60, START_W = 380, SWING = 300, BASE_Y = snap(H * 0.84), PERFECT = 16;
 
-  var stack = []; // { x, y, w }
-  var moving = { x: -START_W, w: START_W, dir: 1 };
-  var stageBase = H * 0.88;
-  var cameraY = 0;
-  var layer = 0;
-  var NEEDED = 15;
-  var done = false;
-  var timeLeft = 45;
-  var elapsed = 0;
-  var particles = [];
-  var perfectAnim = 0;
-  var PERFECT_THRESHOLD = 14;
-  var speedMult = 1;
-  var consecutivePerfect = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var BLOCK_COLORS = [C.block, '#a78bfa', '#f59e0b', '#22c55e', '#f87171', '#34d399'];
+  // ── ゲーム変数 ──
+  var stack, moving, layer, cameraY, perfects, timeLeft, done, particles, fbText, fbCol, fbTimer;
 
-  function getBlockColor(idx) {
-    return BLOCK_COLORS[idx % BLOCK_COLORS.length];
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function initGame() {
-    stack = [];
-    // Base block
-    stack.push({ x: W / 2 - START_W / 2, w: START_W, y: stageBase - BLOCK_H, layer: 0 });
-    moving = { x: -START_W, w: START_W, dir: 1 };
-    layer = 0;
-    cameraY = 0;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#12121e');
   }
 
-  function dropBlock() {
-    var prev = stack[stack.length - 1];
-    var mx = moving.x;
-    var mw = moving.w;
-    var px = prev.x, pw = prev.w;
+  function background() { game.draw.clear(C.bg); for (var i = 0; i < 20; i++) { var sx = (i * 137 + 50) % W, sy = (i * 97 + 30) % (H * 0.7); game.draw.rect(snap(sx), snap(sy), 8, 8, C.g, Math.floor(game.time.elapsed * 2 + i) % 3 === 0 ? 0.5 : 0.2); } }
 
-    var overlapLeft = Math.max(mx, px);
-    var overlapRight = Math.min(mx + mw, px + pw);
-    var overlapW = overlapRight - overlapLeft;
+  function initGame() { stack = [{ x: snap(W / 2 - START_W / 2), w: START_W, y: BASE_Y - BLOCK_H, layer: 0 }]; moving = { x: -START_W, w: START_W, dir: 1 }; layer = 0; cameraY = 0; perfects = 0; timeLeft = MAX_TIME; done = false; particles = []; fbText = ''; fbCol = C.g; fbTimer = 0; }
 
-    if (overlapW <= 0) {
-      // Complete miss
-      done = true;
-      game.audio.play('se_failure', 0.7);
-      setTimeout(function() { game.end.failure(); }, 400);
-      return;
-    }
-
-    var cutW = mw - overlapW;
-    var isPerfect = cutW < PERFECT_THRESHOLD;
-
-    if (isPerfect) {
-      // Perfect! Keep same width
-      consecutivePerfect++;
-      perfectAnim = 0.8;
-      game.audio.play('se_success', 0.6);
-      for (var pi = 0; pi < 6; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        var bx = overlapLeft + overlapW / 2;
-        particles.push({ x: bx, y: stageBase - (stack.length) * BLOCK_H - cameraY, vx: Math.cos(ang) * 180, vy: Math.sin(ang) * 180, life: 0.5, col: C.perfectHi });
-      }
-    } else {
-      consecutivePerfect = 0;
-      // Cut particle
-      var cutX = mx < px ? mx : mx + mw - cutW;
-      particles.push({ x: cutX + cutW / 2, y: stageBase - (stack.length) * BLOCK_H - cameraY, vx: (mx < px ? -100 : 100), vy: 200, life: 0.7, col: C.cut });
-    }
-
-    layer++;
-    var newW = isPerfect ? prev.w : overlapW;
-    var newX = isPerfect ? prev.x : overlapLeft;
-
-    stack.push({ x: newX, w: newW, y: stageBase - stack.length * BLOCK_H, layer: layer });
-    game.audio.play('se_tap', isPerfect ? 0.5 : 0.3);
-
-    // Speed up
-    speedMult = 1 + layer * 0.06;
-
-    // Start new moving block
-    moving = {
-      x: Math.random() < 0.5 ? -newW : W,
-      w: newW,
-      dir: Math.random() < 0.5 ? 1 : -1
-    };
-
-    if (newW < START_W * 0.3 && !done) {
-      done = true;
-      game.audio.play('se_failure', 0.5);
-      setTimeout(function() { game.end.failure(); }, 400);
-      return;
-    }
-
-    // Scroll camera
-    if (layer >= 4) {
-      cameraY = (layer - 3) * BLOCK_H;
-    }
-
-    if (layer >= NEEDED && !done) {
-      done = true;
-      game.audio.play('se_success', 0.8);
-      setTimeout(function() { game.end.success(layer * 200 + consecutivePerfect * 50 + Math.ceil(timeLeft) * 80); }, 400);
-    }
-  }
-
-  game.onTap(function() {
+  function finish(success) {
     if (done) return;
-    dropBlock();
+    done = true; resultSuccess = success;
+    finalScore = success ? (layer * 400 + perfects * 100 + Math.ceil(timeLeft) * 100) : layer * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawBlock(x, y, w, col, alpha) { game.draw.rect(snap(x), snap(y), snap(w), BLOCK_H - 4, col, alpha); game.draw.rect(snap(x), snap(y), snap(w), 8, C.g, 0.25); }
+
+  function drop() {
+    var prev = stack[stack.length - 1], oL = Math.max(moving.x, prev.x), oR = Math.min(moving.x + moving.w, prev.x + prev.w), ov = oR - oL;
+    if (ov <= 0) { finish(false); return; }
+    var cut = moving.w - ov, perfect = cut < PERFECT;
+    if (perfect) { perfects++; fbText = 'PERFECT!'; fbCol = C.b; fbTimer = 0.6; game.audio.play('se_success', 0.6); for (var k = 0; k < 6; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: oL + ov / 2, y: BASE_Y - stack.length * BLOCK_H - cameraY, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180, life: 0.5, col: C.b }); } }
+    else { fbText = '+' + Math.round(ov); fbCol = C.c; fbTimer = 0.4; game.audio.play('se_tap', 0.4); }
+    layer++;
+    var nw = perfect ? prev.w : ov, nx = perfect ? prev.x : oL;
+    stack.push({ x: nx, w: nw, y: BASE_Y - stack.length * BLOCK_H, layer: layer });
+    moving = { x: Math.random() < 0.5 ? -nw : W, w: nw, dir: Math.random() < 0.5 ? 1 : -1 };
+    if (nw < START_W * 0.28) { finish(false); return; }
+    if (layer >= 4) cameraY = (layer - 3) * BLOCK_H;
+    if (layer >= NEEDED) { finish(true); return; }
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    drop();
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!stack) initGame(); background();
+      for (var i = 0; i < stack.length; i++) drawBlock(stack[i].x, stack[i].y, stack[i].w, BCOLS[stack[i].layer % 6], 0.9);
+      drawBlock(moving.x, BASE_Y - stack.length * BLOCK_H, moving.w, BCOLS[(layer + 1) % 6], 0.8);
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.40, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.46, 48, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SKYSCRAPER!' : 'TOPPLED', W / 2, H * 0.35, 74, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    if (perfectAnim > 0) perfectAnim -= dt * 2;
-
-    // Move the sliding block
-    if (!done) {
-      moving.x += moving.dir * SWING_SPEED * speedMult * dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (fbTimer > 0) fbTimer -= dt;
+      moving.x += moving.dir * SWING * (1 + layer * 0.08) * dt;
       if (moving.x > W) { moving.x = W; moving.dir = -1; }
       if (moving.x + moving.w < 0) { moving.x = -moving.w; moving.dir = 1; }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 400 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 400 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background();
+    for (var bi = 0; bi < stack.length; bi++) { var y = stack[bi].y - cameraY; if (y > H + BLOCK_H || y < -BLOCK_H) continue; drawBlock(stack[bi].x, y, stack[bi].w, BCOLS[stack[bi].layer % 6], 0.9); }
+    drawBlock(moving.x, stack[stack.length - 1].y - BLOCK_H - cameraY, moving.w, BCOLS[(layer + 1) % 6], 0.85);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (fbTimer > 0) txt(fbText, W / 2, snap(H * 0.62), 52, fbCol);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Stars background
-    for (var si = 0; si < 20; si++) {
-      var sx = (si * 137 + 50) % W;
-      var sy = (si * 97 + 30) % (H * 0.7);
-      game.draw.circle(sx, sy, 2 + si % 2, C.star, 0.3 + 0.2 * Math.sin(elapsed + si));
-    }
-
-    // Stack blocks
-    for (var bli = 0; bli < stack.length; bli++) {
-      var bl = stack[bli];
-      var screenY = bl.y - cameraY;
-      if (screenY > H + BLOCK_H || screenY < -BLOCK_H) continue;
-      var col = getBlockColor(bl.layer);
-      game.draw.rect(bl.x, screenY, bl.w, BLOCK_H - 4, col, 0.9);
-      game.draw.rect(bl.x, screenY, bl.w, 10, col, 0.6);
-      game.draw.rect(bl.x, screenY, bl.w, 4, '#fff', 0.2);
-    }
-
-    // Moving block
-    var topStack = stack[stack.length - 1];
-    var movY = topStack.y - BLOCK_H - cameraY;
-    var col2 = getBlockColor(layer + 1);
-    game.draw.rect(moving.x, movY, moving.w, BLOCK_H - 4, col2, 0.8);
-    game.draw.rect(moving.x, movY, moving.w, 10, col2, 0.5);
-    game.draw.rect(moving.x, movY, moving.w, 4, '#fff', 0.2);
-
-    // Target zone (top of stack)
-    game.draw.rect(topStack.x, topStack.y - BLOCK_H - cameraY, topStack.w, BLOCK_H, '#fff', 0.06);
-
-    // Perfect flash
-    if (perfectAnim > 0) {
-      game.draw.text('PERFECT!', W / 2, H * 0.83, { size: 64, color: C.perfectHi, bold: true });
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    game.draw.text(layer + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.block : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(layer + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.15);
+    state = S.ATTRACT;
     initGame();
   });
 })(game);

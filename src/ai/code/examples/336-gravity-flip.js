@@ -1,231 +1,146 @@
 // 336-gravity-flip.js
-// グラビティフリップ — 重力を反転させながら障害物を避けて進む
-// 操作: タップで重力反転（天井↔床を行き来）
-// 成功: ゴールに到達  失敗: 障害物に当たる3回 or 40秒
+// グラビティフリップ — タップで重力を上下反転し、天井と床のトゲを避けてゴール距離まで走り抜ける
+// 操作: タップで重力反転（床↔天井を行き来）
+// 成功: 600mまで到達  失敗: トゲに3回当たる or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#04020c',
-    ceiling:'#1e1b4b',
-    floor:  '#1e1b4b',
-    ceilHi: '#312e81',
-    floorHi:'#312e81',
-    player: '#f59e0b',
-    playerHi:'#fde68a',
-    spike:  '#ef4444',
-    spikeHi:'#fca5a5',
-    trail:  '#f97316',
-    goal:   '#22c55e',
-    goalHi: '#86efac',
-    ui:     '#475569',
-    text:   '#f1f5f9'
-  };
+  // ── パレット（ネオンアーケード、重力トンネル） ──
+  var C = { bg:'#04020c', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff', wall:'#241a4a' };
 
-  var PLAYER_R = 22;
-  var GRAVITY_FORCE = 1200;
-
-  var playerX = W * 0.15;
-  var playerY = H * 0.5;
-  var playerVY = 0;
-  var gravDir = 1; // 1=down, -1=up
-  var FLOOR_Y = H * 0.88;
-  var CEILING_Y = H * 0.12;
-
-  // Obstacles (spikes from floor and ceiling)
-  var obstacles = [];
-  var scrollX = 0;
-  var SCROLL_SPEED = 180;
-  var hits = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'GRAVITY FLIP';
+  var HOW_TO_PLAY = 'TAP TO FLIP GRAVITY · DODGE THE SPIKES';
+  var MAX_TIME = 15;
+  var GOAL = 600;            // 修正2: 2000m → 600m
   var MAX_HITS = 3;
-  var done = false;
-  var timeLeft = 40;
-  var elapsed = 0;
-  var distance = 0;
-  var GOAL_DIST = 2000;
-  var particles = [];
-  var trails = [];
-  var invincible = 0;
-  var flipAnim = 0;
+  var PR = 24, GFORCE = 1300, SCROLL = 220, FLOOR_Y = snap(H * 0.86), CEIL_Y = snap(H * 0.14), PX = snap(W * 0.18);
 
-  function generateObstacles() {
-    obstacles = [];
-    // Generate obstacles at regular intervals
-    for (var i = 0; i < 20; i++) {
-      var ox = 600 + i * 280 + Math.random() * 80;
-      var side = Math.random() < 0.5 ? 'floor' : 'ceiling';
-      var h = 60 + Math.random() * 100;
-      obstacles.push({ ox: ox, side: side, h: h, w: 50 });
-    }
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var py, pvy, grav, obstacles, scrollX, dist, hits, timeLeft, done, particles, trails, invin, flipAnim;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function() {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function distBar() {
+    var t = Math.ceil(Math.min(1, dist / GOAL) * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.c : '#221400');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(0, 0, W, CEIL_Y, C.wall, 0.9); game.draw.rect(0, FLOOR_Y, W, H, C.wall, 0.9);
+    for (var gx = -(scrollX % 120); gx < W; gx += 120) game.draw.rect(snap(gx), CEIL_Y, 2, FLOOR_Y - CEIL_Y, C.d, 0.15);
+  }
+
+  function makeObstacles() { obstacles = []; for (var i = 0; i < 16; i++) obstacles.push({ ox: 700 + i * 300 + Math.random() * 80, side: Math.random() < 0.5 ? 'floor' : 'ceiling', h: snap(70 + Math.random() * 90), w: 56 }); }
+
+  function initGame() { py = snap(H * 0.5); pvy = 0; grav = 1; scrollX = 0; dist = 0; hits = 0; timeLeft = MAX_TIME; done = false; particles = []; trails = []; invin = 0; flipAnim = 0; makeObstacles(); }
+
+  function finish(success) {
     if (done) return;
-    gravDir = -gravDir;
-    flipAnim = 0.3;
-    game.audio.play('se_tap', 0.3);
-    for (var pi = 0; pi < 4; pi++) {
-      var ang = Math.random() * Math.PI * 2;
-      particles.push({ x: playerX, y: playerY, vx: Math.cos(ang) * 120, vy: Math.sin(ang) * 120, life: 0.3, col: C.playerHi });
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.round(dist) * 20 + (MAX_HITS - hits) * 500 + Math.ceil(timeLeft) * 100) : Math.round(dist) * 20;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    for (var oi = 0; oi < obstacles.length; oi++) {
+      var o = obstacles[oi], sx = o.ox - scrollX + PX; if (sx < -o.w || sx > W + o.w) continue;
+      var oy = o.side === 'floor' ? FLOOR_Y - o.h : CEIL_Y;
+      game.draw.rect(snap(sx - o.w / 2), snap(oy), o.w, o.h, C.a, 0.9); game.draw.rect(snap(sx - o.w / 2), snap(oy), o.w, 8, C.g, 0.4);
+      var tip = o.side === 'floor' ? oy : oy + o.h; pc(sx, tip, 14, C.g, 0.6);
     }
+    for (var ti = 0; ti < trails.length; ti++) pc(trails[ti].x, trails[ti].y, PR * trails[ti].life, C.f, trails[ti].life * 0.4);
+    var al = invin > 0 ? (Math.floor(game.time.elapsed * 16) % 2 ? 0.4 : 0.9) : 0.9;
+    if (flipAnim > 0) pc(PX, py, PR * (1 + flipAnim), C.c, flipAnim * 0.4);
+    pc(PX, py, PR, C.c, al); game.draw.rect(snap(PX) - 3, snap(py), 6, grav * (PR + 12), C.g, 0.6 * al);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    grav = -grav; flipAnim = 0.3; game.audio.play('se_tap', 0.3);
+    for (var k = 0; k < 4; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: PX, y: py, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, life: 0.3, col: C.c }); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!obstacles) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.40, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.46, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.58, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.63, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'GOAL!' : 'CRASHED', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('DIST ' + Math.round(dist) + 'm', W / 2, H * 0.45, 52, C.c);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.54, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.66, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    if (flipAnim > 0) flipAnim -= dt * 3;
-    if (invincible > 0) invincible -= dt;
-
-    // Physics
-    playerVY += GRAVITY_FORCE * gravDir * dt;
-    playerVY = Math.max(-900, Math.min(900, playerVY));
-    playerY += playerVY * dt;
-
-    // Floor/ceiling collision
-    if (playerY > FLOOR_Y - PLAYER_R) {
-      playerY = FLOOR_Y - PLAYER_R;
-      playerVY = 0;
-    }
-    if (playerY < CEILING_Y + PLAYER_R) {
-      playerY = CEILING_Y + PLAYER_R;
-      playerVY = 0;
-    }
-
-    // Trail
-    trails.push({ x: playerX, y: playerY, life: 0.25 });
-    for (var ti = trails.length - 1; ti >= 0; ti--) {
-      trails[ti].life -= dt * 4;
-      if (trails[ti].life <= 0) trails.splice(ti, 1);
-    }
-
-    // Scroll
-    scrollX += SCROLL_SPEED * dt;
-    distance += SCROLL_SPEED * dt;
-
-    // Spawn more obstacles as needed
-    var lastObs = obstacles.length > 0 ? obstacles[obstacles.length - 1].ox : 600;
-    if (lastObs - scrollX < W) {
-      var ox = lastObs + 200 + Math.random() * 120;
-      var side = Math.random() < 0.5 ? 'floor' : 'ceiling';
-      var h = 60 + Math.random() * 100;
-      obstacles.push({ ox: ox, side: side, h: h, w: 50 });
-    }
-
-    // Remove old obstacles
-    while (obstacles.length > 0 && obstacles[0].ox - scrollX < -200) {
-      obstacles.shift();
-    }
-
-    // Obstacle collision
-    if (invincible <= 0) {
-      for (var oi = 0; oi < obstacles.length; oi++) {
-        var obs = obstacles[oi];
-        var oScreenX = obs.ox - scrollX + playerX - playerX; // relative to screen
-        var obsX = obs.ox - scrollX + W * 0.15; // screen x
-        var obsTop = obs.side === 'floor' ? FLOOR_Y - obs.h : CEILING_Y;
-        var obsBot = obs.side === 'floor' ? FLOOR_Y : CEILING_Y + obs.h;
-
-        if (obsX - obs.w / 2 < playerX + PLAYER_R && obsX + obs.w / 2 > playerX - PLAYER_R &&
-            playerY - PLAYER_R < obsBot && playerY + PLAYER_R > obsTop) {
-          hits++;
-          invincible = 1.5;
-          game.audio.play('se_failure', 0.5);
-          for (var pi = 0; pi < 8; pi++) {
-            var ang2 = Math.random() * Math.PI * 2;
-            particles.push({ x: playerX, y: playerY, vx: Math.cos(ang2) * 200, vy: Math.sin(ang2) * 200, life: 0.5, col: C.spikeHi });
-          }
-          if (hits >= MAX_HITS && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 400);
-          }
-          break;
-        }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flipAnim > 0) flipAnim -= dt * 3; if (invin > 0) invin -= dt;
+      pvy += GFORCE * grav * dt; pvy = Math.max(-900, Math.min(900, pvy)); py += pvy * dt;
+      if (py > FLOOR_Y - PR) { py = FLOOR_Y - PR; pvy = 0; } if (py < CEIL_Y + PR) { py = CEIL_Y + PR; pvy = 0; }
+      trails.push({ x: PX, y: py, life: 0.25 }); for (var ti = trails.length - 1; ti >= 0; ti--) { trails[ti].life -= dt * 4; if (trails[ti].life <= 0) trails.splice(ti, 1); }
+      scrollX += SCROLL * dt; dist += SCROLL * dt / 3;
+      var last = obstacles.length ? obstacles[obstacles.length - 1].ox : 700; if (last - scrollX < W) obstacles.push({ ox: last + 260 + Math.random() * 120, side: Math.random() < 0.5 ? 'floor' : 'ceiling', h: snap(70 + Math.random() * 90), w: 56 });
+      while (obstacles.length && obstacles[0].ox - scrollX < -200) obstacles.shift();
+      if (invin <= 0) for (var oi = 0; oi < obstacles.length; oi++) {
+        var o = obstacles[oi], sx = o.ox - scrollX + PX, top = o.side === 'floor' ? FLOOR_Y - o.h : CEIL_Y, bot = o.side === 'floor' ? FLOOR_Y : CEIL_Y + o.h;
+        if (sx - o.w / 2 < PX + PR && sx + o.w / 2 > PX - PR && py - PR < bot && py + PR > top) { hits++; invin = 1.5; game.audio.play('se_failure', 0.5); for (var k = 0; k < 8; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: PX, y: py, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.5, col: C.a }); } if (hits >= MAX_HITS) { finish(false); return; } break; }
       }
+      if (dist >= GOAL) { finish(true); return; }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Goal check
-    if (distance >= GOAL_DIST && !done) {
-      done = true;
-      game.audio.play('se_success', 0.8);
-      setTimeout(function() { game.end.success(Math.round(distance) + (MAX_HITS - hits) * 500 + Math.ceil(timeLeft) * 80); }, 400);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Ceiling and floor
-    game.draw.rect(0, 0, W, CEILING_Y, C.ceiling, 0.9);
-    game.draw.rect(0, 0, W, CEILING_Y - 8, C.ceilHi, 0.8);
-    game.draw.rect(0, FLOOR_Y, W, H - FLOOR_Y, C.floor, 0.9);
-    game.draw.rect(0, FLOOR_Y + 8, W, H - FLOOR_Y - 8, C.floorHi, 0.8);
-
-    // Grid lines (scrolling)
-    var gridStep = 120;
-    for (var gx = -(scrollX % gridStep); gx < W; gx += gridStep) {
-      game.draw.line(gx, CEILING_Y, gx, FLOOR_Y, C.ceilHi, 1);
-    }
-
-    // Obstacles
-    for (var oi2 = 0; oi2 < obstacles.length; oi2++) {
-      var obs2 = obstacles[oi2];
-      var obsScreenX = obs2.ox - scrollX + playerX;
-      if (obsScreenX < -obs2.w || obsScreenX > W + obs2.w) continue;
-      var obsY = obs2.side === 'floor' ? FLOOR_Y - obs2.h : CEILING_Y;
-      game.draw.rect(obsScreenX - obs2.w / 2, obsY, obs2.w, obs2.h, C.spike, 0.9);
-      game.draw.rect(obsScreenX - obs2.w / 2, obsY, obs2.w, 10, C.spikeHi, 0.8);
-      // Spike tip
-      var tipY = obs2.side === 'floor' ? obsY : obsY + obs2.h;
-      game.draw.circle(obsScreenX, tipY, 16, C.spikeHi, 0.7);
-    }
-
-    // Trail
-    for (var ti2 = 0; ti2 < trails.length; ti2++) {
-      var tr = trails[ti2];
-      game.draw.circle(tr.x, tr.y, PLAYER_R * tr.life * 2, C.trail, tr.life * 0.4);
-    }
-
-    // Player
-    var palpha = invincible > 0 ? (Math.sin(elapsed * 20) * 0.4 + 0.5) : 0.9;
-    if (flipAnim > 0) game.draw.circle(playerX, playerY, PLAYER_R * (1 + flipAnim * 0.5), C.playerHi, flipAnim * 0.4);
-    game.draw.circle(playerX, playerY, PLAYER_R + 4, C.playerHi, 0.2 * palpha);
-    game.draw.circle(playerX, playerY, PLAYER_R, C.player, palpha);
-    // Direction indicator
-    game.draw.line(playerX, playerY, playerX, playerY + gravDir * (PLAYER_R + 14), C.playerHi, 4);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    // Hit dots
-    for (var hi = 0; hi < MAX_HITS; hi++) {
-      game.draw.circle(W / 2 - (MAX_HITS - 1) * 28 + hi * 56, H * 0.92, 16, hi < hits ? C.spike : '#04020c');
-    }
-
-    // Distance progress
-    var ratio = Math.min(1, distance / GOAL_DIST);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.7 ? C.goal : C.player);
-    game.draw.text(Math.round(distance) + ' / ' + GOAL_DIST + 'm', W / 2, 36, { size: 36, color: '#fff', bold: true });
-    game.draw.text(Math.ceil(timeLeft) + 's', W * 0.85, 36, { size: 36, color: '#fff', bold: true });
+    distBar();
+    txt(Math.round(dist) + 'm', W / 2, 96, 44, C.c);
+    txt(Math.round(dist) + ' / ' + GOAL + 'm   ' + Math.ceil(timeLeft) + 's', W / 2, 168, 44, C.b);
+    for (var hi = 0; hi < MAX_HITS; hi++) game.draw.rect(snap(W / 2 + (hi - (MAX_HITS - 1) / 2) * 56) - 10, 224, 20, 20, hi < hits ? C.a : '#221400');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    generateObstacles();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
