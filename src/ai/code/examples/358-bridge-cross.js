@@ -1,259 +1,151 @@
 // 358-bridge-cross.js
-// ブリッジクロス — 壊れかけの橋を渡る、崩れる前に次の足場へ
-// 操作: タップで次の石へジャンプ
-// 成功: 川を10本渡る  失敗: 落ちる4回 or 40秒
+// ブリッジクロス — ひび割れた飛び石をタップで一歩ずつ渡り、崩れる前に対岸のゴールへ渡り切る
+// 操作: 隣の石をタップして跳ぶ（ひび石は踏むと崩れ落下）
+// 成功: 川を3回 渡り切る  失敗: 3回 落ちる or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a1628',
-    water:  '#1d4ed8',
-    waterHi:'#3b82f6',
-    waterFoam:'#93c5fd',
-    stone:  '#6b7280',
-    stoneHi:'#9ca3af',
-    stoneCracked:'#d97706',
-    stoneGone:'#ef4444',
-    player: '#fbbf24',
-    playerHi:'#fff',
-    goal:   '#22c55e',
-    goalHi: '#86efac',
-    danger: '#ef4444',
-    ui:     '#475569',
-    text:   '#f1f5f9'
-  };
+  // ── パレット（アイスブルー、渓流の飛び石） ──
+  var C = { bg:'#0a1628', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff', water:'#0a3a70', stone:'#556' };
 
-  var NUM_STONES = 5;
-  var STONE_SPACING = (W - 200) / (NUM_STONES + 1);
-  var stones = [];
-  var playerStoneIdx = 0;
-  var riversCrossed = 0;
-  var NEEDED = 10;
-  var falls = 0;
-  var MAX_FALLS = 4;
-  var done = false;
-  var timeLeft = 40;
-  var elapsed = 0;
-  var particles = [];
-  var jumpAnim = 0;
-  var jumpFrom = 0;
-  var jumpTo = 0;
-  var jumping = false;
-  var waterWave = 0;
-  var resultAnim = 0;
-  var resultText = '';
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'BRIDGE CROSS';
+  var HOW_TO_PLAY = 'TAP THE NEXT STONE TO HOP · CRACKED ONES CRUMBLE';
+  var MAX_TIME = 15;
+  var NEEDED   = 3;          // 修正2: 10 → 3
+  var MAX_FALL = 3;          // 修正2: 4 → 3
+  var NUM = 4, SPACING = (W - 240) / (NUM + 1);
+
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var stones, idx, crossed, falls, timeLeft, done, particles, jumping, jumpFrom, jumpTo, jumpT, fbText, fbCol, fbTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.24) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1a2e');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(0, snap(H * 0.42), W, snap(H * 0.30), C.water, 0.8); for (var wx = 0; wx < W; wx += 96) game.draw.rect(wx, snap(H * 0.42 + Math.sin(game.time.elapsed * 2 + wx * 0.02) * 12), 50, 4, C.e, 0.3); }
 
   function setupRiver() {
-    stones = [];
-    // Starting bank
-    stones.push({ x: 80, y: H * 0.55, r: 60, health: 3, crumbling: false, gone: false });
-    // Stepping stones
-    for (var i = 0; i < NUM_STONES; i++) {
-      var maxHealth = 1 + Math.floor(Math.random() * 3); // 1-3
-      stones.push({
-        x: 100 + (i + 1) * STONE_SPACING,
-        y: H * 0.55 + (Math.random() - 0.5) * 80,
-        r: 44,
-        health: maxHealth,
-        maxHealth: maxHealth,
-        crumbling: false,
-        gone: false
-      });
+    stones = []; stones.push({ x: 90, y: snap(H * 0.56), r: 56, hp: 9, crack: false });
+    for (var i = 0; i < NUM; i++) { var hp = 1 + Math.floor(Math.random() * 3); stones.push({ x: snap(120 + (i + 1) * SPACING), y: snap(H * 0.56 + (Math.random() - 0.5) * 70), r: 44, hp: hp, max: hp, crack: hp < 3 }); }
+    stones.push({ x: W - 90, y: snap(H * 0.56), r: 56, hp: 9, crack: false });
+    idx = 0;
+  }
+
+  function initGame() { crossed = 0; falls = 0; timeLeft = MAX_TIME; done = false; particles = []; jumping = false; jumpT = 0; fbText = ''; fbCol = C.g; fbTimer = 0; setupRiver(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (crossed * 500 + Math.ceil(timeLeft) * 100) : crossed * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    game.draw.rect(0, snap(H * 0.48), 120, snap(H * 0.24), C.stone, 0.8); game.draw.rect(W - 120, snap(H * 0.48), 120, snap(H * 0.24), C.b, 0.5);
+    txt('START', 60, snap(H * 0.50), 26, C.g); txt('GOAL', W - 60, snap(H * 0.50), 26, C.b);
+    for (var si = 0; si < stones.length; si++) {
+      var s = stones[si]; if (s.hp <= 0) { pc(s.x, s.y, s.r, C.water, 0.4); continue; }
+      var col = (s.max && s.hp < s.max) ? C.f : C.stone; pc(s.x, s.y, s.r, col, 0.85);
+      if (s.max && s.hp < s.max) { game.draw.rect(snap(s.x) - 3, snap(s.y - 18), 6, 36, C.a, 0.7); }
+      if (s.max) for (var h = 0; h < s.max; h++) game.draw.rect(snap(s.x - (s.max - 1) * 10 + h * 20) - 6, snap(s.y - s.r - 16), 12, 12, h < s.hp ? C.b : '#334', 0.8);
+      if (Math.abs(si - idx) === 1 && s.hp > 0) ring(s.x, s.y, s.r + 12, C.g, 0.3 + 0.2 * (Math.floor(game.time.elapsed * 4) % 2));
     }
-    // End bank
-    stones.push({ x: W - 80, y: H * 0.55, r: 60, health: 3, crumbling: false, gone: false });
-    playerStoneIdx = 0;
+    if (jumping) { var fs = stones[jumpFrom], ts = stones[jumpTo], t = jumpT, jx = fs.x + (ts.x - fs.x) * t, jy = Math.min(fs.y, ts.y) - 100 * Math.sin(t * Math.PI) - 40; pc(jx, jy, 30, C.c, 0.95); }
+    else { var ps = stones[idx]; if (ps && ps.hp > 0) { pc(ps.x, ps.y - ps.r - 28, 30, C.c, 0.95); pc(ps.x - 8, ps.y - ps.r - 36, 8, C.g, 0.6); } }
   }
 
-  function jump(toIdx) {
-    if (jumping || done) return;
-    var from = stones[playerStoneIdx];
-    var to = stones[toIdx];
-    if (!to || to.gone) return;
-    // Can only jump to adjacent stone
-    if (Math.abs(toIdx - playerStoneIdx) !== 1) return;
-
-    jumping = true;
-    jumpFrom = playerStoneIdx;
-    jumpTo = toIdx;
-    game.audio.play('se_tap', 0.4);
-    setTimeout(function() {
-      jumping = false;
-      playerStoneIdx = toIdx;
-
-      // Damage stone landed on
-      var landed = stones[playerStoneIdx];
-      if (landed.health > 0 && landed.health < 3) {
-        landed.health--;
-        if (landed.health <= 0) {
-          landed.gone = true;
-          // Player falls
-          falls++;
-          game.audio.play('se_failure', 0.5);
-          for (var pi = 0; pi < 10; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: landed.x, y: landed.y, vx: Math.cos(ang)*180, vy: Math.sin(ang)*180, life:0.6, col: C.waterHi });
-          }
-          if (falls >= MAX_FALLS && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
-            return;
-          }
-          // Reset to start
-          setupRiver();
-          playerStoneIdx = 0;
-          return;
-        }
-      }
-
-      // Reached end?
-      if (playerStoneIdx === stones.length - 1) {
-        riversCrossed++;
-        resultText = '渡れた！';
-        resultAnim = 0.7;
-        game.audio.play('se_success', 0.6);
-        for (var pi2 = 0; pi2 < 8; pi2++) {
-          var ang2 = Math.random() * Math.PI * 2;
-          particles.push({ x: stones[stones.length-1].x, y: stones[stones.length-1].y, vx: Math.cos(ang2)*200, vy: Math.sin(ang2)*200, life:0.6, col: C.goalHi });
-        }
-        if (riversCrossed >= NEEDED && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(riversCrossed * 300 + Math.ceil(timeLeft) * 80); }, 600);
-          return;
-        }
-        setupRiver();
-        playerStoneIdx = 0;
-      }
-    }, 250);
+  function hop(to) {
+    if (jumping || done) return; if (Math.abs(to - idx) !== 1) return; var t = stones[to]; if (!t || t.hp <= 0) return;
+    jumping = true; jumpFrom = idx; jumpTo = to; jumpT = 0; game.audio.play('se_tap', 0.4);
   }
 
-  game.onTap(function(tx, ty) {
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || jumping) return;
-    // Find tapped stone
-    for (var i = 0; i < stones.length; i++) {
-      var s = stones[i];
-      if (!s.gone && Math.hypot(tx - s.x, ty - s.y) < s.r + 20) {
-        if (i === playerStoneIdx + 1 || i === playerStoneIdx - 1) {
-          jump(i);
-          return;
-        }
-      }
-    }
+    for (var i = 0; i < stones.length; i++) { var s = stones[i]; if (s.hp > 0 && Math.hypot(x - s.x, y - s.y) < s.r + 24 && Math.abs(i - idx) === 1) { hop(i); return; } }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!stones) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.14, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CROSSED!' : 'SPLASH', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    if (resultAnim > 0) resultAnim -= dt * 2;
-    waterWave += dt;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Water
-    game.draw.rect(0, H * 0.42, W, H * 0.3, C.water, 0.8);
-    for (var wx = 0; wx < W; wx += 120) {
-      var wave = Math.sin(waterWave * 2 + wx * 0.02) * 15;
-      game.draw.circle(wx + 60, H * 0.42 + wave, 60, C.waterHi, 0.2);
-    }
-    // Foam
-    for (var fx = 0; fx < W; fx += 80) {
-      var foam = Math.sin(waterWave * 3 + fx * 0.03) * 10;
-      game.draw.circle(fx + 40, H * 0.42 + 10 + foam, 20, C.waterFoam, 0.3);
-    }
-
-    // Banks
-    game.draw.rect(0, H * 0.45, 110, H * 0.25, C.stoneHi, 0.8);
-    game.draw.rect(W - 110, H * 0.45, 110, H * 0.25, C.goal, 0.6);
-    game.draw.text('START', 55, H * 0.48, { size: 28, color: C.stone });
-    game.draw.text('GOAL', W - 55, H * 0.48, { size: 28, color: C.goalHi });
-
-    // Stones
-    for (var si = 0; si < stones.length; si++) {
-      var s2 = stones[si];
-      if (s2.gone) {
-        game.draw.circle(s2.x, s2.y, s2.r, C.water, 0.3);
-        continue;
-      }
-      var health = s2.health !== undefined ? s2.health : 3;
-      var maxH = s2.maxHealth || 3;
-      var col = health >= 2 ? C.stone : C.stoneCracked;
-      if (health === 1 && maxH > 1) col = C.stoneCracked;
-      game.draw.circle(s2.x, s2.y, s2.r + 6, col, 0.2);
-      game.draw.circle(s2.x, s2.y, s2.r, col, 0.85);
-      // Cracks
-      if (maxH > 1 && health < maxH) {
-        game.draw.line(s2.x - 10, s2.y - 20, s2.x + 10, s2.y + 20, C.stoneCracked, 3);
-        if (health === 1) {
-          game.draw.line(s2.x - 20, s2.y + 5, s2.x + 20, s2.y - 5, C.stoneGone, 3);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (fbTimer > 0) fbTimer -= dt;
+      if (jumping) {
+        jumpT += dt * 4;
+        if (jumpT >= 1) {
+          jumping = false; idx = jumpTo; var landed = stones[idx];
+          if (landed.max && landed.hp > 0) { landed.hp--; if (landed.hp <= 0) { falls++; game.audio.play('se_failure', 0.5); for (var k = 0; k < 10; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: landed.x, y: landed.y, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180, life: 0.6, col: C.e }); } if (falls >= MAX_FALL) { finish(false); return; } setupRiver(); return; } }
+          if (idx === stones.length - 1) { crossed++; fbText = 'CROSSED!'; fbCol = C.b; fbTimer = 0.7; game.audio.play('se_success', 0.6); for (var k2 = 0; k2 < 8; k2++) { var a2 = Math.random() * Math.PI * 2; particles.push({ x: stones[idx].x, y: stones[idx].y, vx: Math.cos(a2) * 200, vy: Math.sin(a2) * 200, life: 0.6, col: C.b }); } if (crossed >= NEEDED) { finish(true); return; } setupRiver(); }
         }
       }
-      // Health dots
-      if (si > 0 && si < stones.length - 1) {
-        for (var h = 0; h < maxH; h++) {
-          var dotCol = h < health ? C.stoneHi : '#333';
-          game.draw.circle(s2.x - (maxH-1)*8 + h*16, s2.y - s2.r - 12, 6, dotCol, 0.8);
-        }
-      }
-      // Tap hint if adjacent
-      if (Math.abs(si - playerStoneIdx) === 1 && !s2.gone) {
-        game.draw.circle(s2.x, s2.y, s2.r + 16, C.playerHi, 0.15 + Math.sin(elapsed * 4) * 0.1);
-      }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Jump animation
-    if (jumping) {
-      var fs = stones[jumpFrom], ts = stones[jumpTo];
-      var t = 0.5 + 0.5 * Math.sin(elapsed * 20);
-      var jx = fs.x + (ts.x - fs.x) * 0.5;
-      var jy = Math.min(fs.y, ts.y) - 100;
-      game.draw.circle(jx, jy, 28, C.player, 0.9);
-    } else {
-      // Player on stone
-      var ps = stones[playerStoneIdx];
-      if (ps && !ps.gone) {
-        game.draw.circle(ps.x, ps.y - ps.r - 20, 32, C.player, 0.95);
-        game.draw.circle(ps.x, ps.y - ps.r - 42, 20, C.playerHi, 0.9);
-      }
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (fbTimer > 0) txt(fbText, W / 2, snap(H * 0.80), 56, fbCol);
 
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    if (resultAnim > 0) {
-      game.draw.text(resultText, W / 2, H * 0.82, { size: 56, color: C.goalHi, bold: true });
-    }
-
-    // Fall dots
-    for (var fi = 0; fi < MAX_FALLS; fi++) {
-      game.draw.circle(W / 2 - (MAX_FALLS - 1) * 28 + fi * 56, H * 0.91, 16, fi < falls ? C.danger : '#0a1628');
-    }
-
-    game.draw.text(riversCrossed + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.water : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(crossed + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var fi = 0; fi < MAX_FALL; fi++) game.draw.rect(snap(W / 2 + (fi - (MAX_FALL - 1) / 2) * 56) - 10, 224, 20, 20, fi < falls ? C.a : '#0a1a2e');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.12);
-    setupRiver();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
