@@ -1,182 +1,158 @@
 // 187-freeze-tag.js
-// フリーズタグ — 青い追跡者から逃げながら仲間を解凍する、マルチタスク判断ゲーム
+// フリーズタグ — 追跡者から逃げながら凍った仲間を解凍するマルチタスク判断
 // 操作: タップで移動先を指定
-// 成功: 4人の仲間を全員解凍  失敗: タッチされる or 30秒
+// 成功: 1人の仲間を解凍  失敗: 追跡者に触れる or 12秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#040810',
-    player:  '#22c55e',
-    playerHi:'#86efac',
-    frozen:  '#3b82f6',
-    frozenHi:'#93c5fd',
-    chaser:  '#ef4444',
-    chaserHi:'#fca5a5',
-    free:    '#f59e0b',
-    freeHi:  '#fde68a',
-    ui:      '#334155'
-  };
+  // ── パレット（ネオンアーケード、鬼ごっこ） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var PLAYER_R = 36;
-  var CHASER_R = 34;
-  var FRIEND_R = 28;
-  var THAW_DIST = 80;
-  var PLAYER_SPEED = 440;
-  var CHASER_SPEED = 280;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'FREEZE TAG';
+  var HOW_TO_PLAY = 'TAP TO MOVE · THAW A FRIEND · DODGE RED';
+  var NEEDED   = 1;              // 修正2: 4 → 1
+  var TOP    = 220, BOTTOM = H - 180;
+  var PLAYER_R = 36, CHASER_R = 34, FRIEND_R = 30, THAW_DIST = 90;
+  var PLAYER_SPEED = 440, CHASER_SPEED = 210;   // 修正2: 追跡を遅く
 
-  var px = W / 2, py = H * 0.5;
-  var pvx = 0, pvy = 0;
-  var targetX = W / 2, targetY = H * 0.5;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var chaser = { x: W * 0.1, y: H * 0.15, vx: 0, vy: 0 };
+  // ── ゲーム変数 ──
+  var px, py, pvx, pvy, targetX, targetY, chaser, friends, thawed, timeLeft, done, particles;
 
-  var friends = [
-    { x: W * 0.2, y: H * 0.35, frozen: true },
-    { x: W * 0.8, y: H * 0.35, frozen: true },
-    { x: W * 0.2, y: H * 0.72, frozen: true },
-    { x: W * 0.8, y: H * 0.72, frozen: true }
-  ];
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  var thawed = 0;
-  var NEEDED = 4;
-  var done = false;
-  var timeLeft = 30;
-  var elapsed = 0;
-  var particles = [];
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
+  }
 
-  game.onTap(function(tx, ty) {
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / 12 * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#2a0a3a');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    for (var gy = TOP; gy < BOTTOM; gy += 96) game.draw.rect(0, gy, W, 2, C.d, 0.15);
+  }
+
+  function drawPlayer(x, y) { pc(x, y, PLAYER_R, C.b, 1); game.draw.rect(x - 14, y - 10, 10, 12, C.bg); game.draw.rect(x + 4, y - 10, 10, 12, C.bg); game.draw.rect(x - 10, y + 12, 20, 6, C.bg); }
+  function drawChaser(x, y) { pc(x, y, CHASER_R, C.a, 1); game.draw.rect(x - 14, y - 10, 10, 12, C.g); game.draw.rect(x + 4, y - 10, 10, 12, C.g); game.draw.rect(x - 12, y + 12, 24, 6, C.g); }
+  function drawFriend(f) {
+    if (f.frozen) { pc(f.x, f.y, FRIEND_R, C.e, 0.9); game.draw.rect(f.x - 4, f.y - FRIEND_R + 4, 8, FRIEND_R * 2 - 8, C.g); game.draw.rect(f.x - FRIEND_R + 4, f.y - 4, FRIEND_R * 2 - 8, 8, C.g); }
+    else { pc(f.x, f.y, FRIEND_R, C.c, 0.9); game.draw.rect(f.x - 4, f.y - 6, 8, 8, C.bg); }
+  }
+
+  function initGame() {
+    px = W / 2; py = H * 0.6; pvx = 0; pvy = 0; targetX = px; targetY = py;
+    chaser = { x: W * 0.15, y: TOP + 60 };
+    friends = [{ x: snap(W * 0.25), y: snap(H * 0.4), frozen: true }, { x: snap(W * 0.75), y: snap(H * 0.4), frozen: true }, { x: snap(W * 0.5), y: snap(H * 0.72), frozen: true }];
+    thawed = 0; timeLeft = 12; done = false; particles = [];
+  }
+
+  function finish(success) {
     if (done) return;
-    targetX = tx; targetY = ty;
+    done = true; resultSuccess = success;
+    finalScore = success ? (thawed * 400 + Math.ceil(timeLeft) * 40) : thawed * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    targetX = x; targetY = Math.max(TOP + PLAYER_R, Math.min(BOTTOM - PLAYER_R, y));
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      drawFriend({ x: W * 0.3, y: H * 0.4, frozen: true }); drawFriend({ x: W * 0.7, y: H * 0.4, frozen: false });
+      drawChaser(W * 0.2, H * 0.6); drawPlayer(W * 0.6, H * 0.62);
+      txt(GAME_TITLE, W / 2, H * 0.16, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 28, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.80, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.86, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.92, 40, '#886699');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'THAWED!' : 'TAGGED', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    // Move player toward target
-    var dx = targetX - px, dy = targetY - py;
-    var dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > 8) {
-      pvx = (dx / dist) * PLAYER_SPEED;
-      pvy = (dy / dist) * PLAYER_SPEED;
-    } else {
-      pvx *= 0.85; pvy *= 0.85;
-    }
-    px += pvx * dt;
-    py += pvy * dt;
-    px = Math.max(PLAYER_R, Math.min(W - PLAYER_R, px));
-    py = Math.max(PLAYER_R, Math.min(H - PLAYER_R, py));
-
-    // Chaser moves toward player
-    var cdx = px - chaser.x, cdy = py - chaser.y;
-    var cdist = Math.sqrt(cdx * cdx + cdy * cdy);
-    if (cdist > 0) {
-      chaser.x += (cdx / cdist) * CHASER_SPEED * dt;
-      chaser.y += (cdy / cdist) * CHASER_SPEED * dt;
-    }
-
-    // Check thaw
-    for (var fi = 0; fi < friends.length; fi++) {
-      var f = friends[fi];
-      if (!f.frozen) continue;
-      var fdx = px - f.x, fdy = py - f.y;
-      if (Math.sqrt(fdx * fdx + fdy * fdy) < PLAYER_R + FRIEND_R + THAW_DIST) {
-        f.frozen = false;
-        thawed++;
-        game.audio.play('se_success', 0.7);
-        for (var pi = 0; pi < 8; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: f.x, y: f.y, vx: Math.cos(ang) * 150, vy: Math.sin(ang) * 150, life: 0.5 });
-        }
-        if (thawed >= NEEDED && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(thawed * 150 + Math.ceil(timeLeft) * 40); }, 400);
+      if (timeLeft <= 0) { finish(false); return; }
+      var dx = targetX - px, dy = targetY - py, dist = Math.hypot(dx, dy);
+      if (dist > 8) { pvx = dx / dist * PLAYER_SPEED; pvy = dy / dist * PLAYER_SPEED; } else { pvx *= 0.85; pvy *= 0.85; }
+      px = Math.max(PLAYER_R, Math.min(W - PLAYER_R, px + pvx * dt));
+      py = Math.max(TOP + PLAYER_R, Math.min(BOTTOM - PLAYER_R, py + pvy * dt));
+      var cdx = px - chaser.x, cdy = py - chaser.y, cd = Math.hypot(cdx, cdy);
+      if (cd > 0) { chaser.x += cdx / cd * CHASER_SPEED * dt; chaser.y += cdy / cd * CHASER_SPEED * dt; }
+      for (var fi = 0; fi < friends.length; fi++) {
+        var f = friends[fi];
+        if (!f.frozen) continue;
+        if (Math.hypot(px - f.x, py - f.y) < PLAYER_R + FRIEND_R + THAW_DIST) {
+          f.frozen = false; thawed++;
+          game.audio.play('se_success', 0.7);
+          for (var pi = 0; pi < 8; pi++) { var ang = Math.random() * Math.PI * 2; particles.push({ x: f.x, y: f.y, vx: Math.cos(ang) * 150, vy: Math.sin(ang) * 150, life: 0.5 }); }
+          if (thawed >= NEEDED) { finish(true); return; }
         }
       }
+      if (Math.hypot(px - chaser.x, py - chaser.y) < PLAYER_R + CHASER_R - 8) { finish(false); return; }
     }
+    for (var p = 0; p < particles.length; p++) { particles[p].x += particles[p].vx * dt; particles[p].y += particles[p].vy * dt; particles[p].vy += 200 * dt; particles[p].life -= dt; }
+    particles = particles.filter(function(pt) { return pt.life > 0; });
 
-    // Chaser catches player
-    var captureDist = Math.sqrt(Math.pow(px - chaser.x, 2) + Math.pow(py - chaser.y, 2));
-    if (captureDist < PLAYER_R + CHASER_R - 8 && !done) {
-      done = true;
-      game.audio.play('se_failure');
-      setTimeout(function() { game.end.failure(); }, 400);
-    }
+    // ---- 描画 ----
+    background();
+    for (var fi2 = 0; fi2 < friends.length; fi2++) drawFriend(friends[fi2]);
+    var cd2 = Math.hypot(px - chaser.x, py - chaser.y);
+    drawChaser(chaser.x, chaser.y);
+    drawPlayer(px, py);
+    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 5, snap(particles[pp].y) - 5, 10, 10, C.c, particles[pp].life * 2);
+    if (cd2 < 200) game.draw.rect(0, 0, W, H, C.a, (1 - cd2 / 200) * 0.2);
 
-    for (var pi2 = 0; pi2 < particles.length; pi2++) {
-      particles[pi2].x += particles[pi2].vx * dt;
-      particles[pi2].y += particles[pi2].vy * dt;
-      particles[pi2].vy += 200 * dt;
-      particles[pi2].life -= dt;
-    }
-    particles = particles.filter(function(p) { return p.life > 0; });
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Thaw radius indicator
-    for (var fi2 = 0; fi2 < friends.length; fi2++) {
-      var f2 = friends[fi2];
-      if (!f2.frozen) continue;
-      var fdx2 = px - f2.x, fdy2 = py - f2.y;
-      var fdist2 = Math.sqrt(fdx2 * fdx2 + fdy2 * fdy2);
-      var thawR = PLAYER_R + FRIEND_R + THAW_DIST;
-      if (fdist2 < thawR * 1.5) {
-        var closeAlpha = (1 - fdist2 / (thawR * 1.5)) * 0.3;
-        game.draw.circle(f2.x, f2.y, thawR, C.frozenHi, closeAlpha);
-      }
-    }
-
-    // Friends
-    for (var fi3 = 0; fi3 < friends.length; fi3++) {
-      var f3 = friends[fi3];
-      if (f3.frozen) {
-        game.draw.circle(f3.x, f3.y, FRIEND_R + 12, C.frozenHi, 0.2 + 0.1 * Math.abs(Math.sin(elapsed * 3)));
-        game.draw.circle(f3.x, f3.y, FRIEND_R, C.frozen, 0.85);
-        game.draw.text('凍', f3.x, f3.y, { size: 36, color: '#fff', bold: true });
-      } else {
-        game.draw.circle(f3.x, f3.y, FRIEND_R + 8, C.freeHi, 0.3);
-        game.draw.circle(f3.x, f3.y, FRIEND_R, C.free, 0.85);
-        game.draw.text('★', f3.x, f3.y, { size: 36, color: '#fff' });
-      }
-    }
-
-    // Chaser
-    var chaserWarning = captureDist < 200 ? (1 - captureDist / 200) * 0.3 : 0;
-    game.draw.circle(chaser.x, chaser.y, CHASER_R + 16, C.chaserHi, 0.15 + chaserWarning);
-    game.draw.circle(chaser.x, chaser.y, CHASER_R, C.chaser, 0.85);
-    game.draw.circle(chaser.x - 10, chaser.y - 8, 9, '#fff', 0.7);
-    game.draw.circle(chaser.x + 10, chaser.y - 8, 9, '#fff', 0.7);
-
-    // Player
-    game.draw.circle(px, py, PLAYER_R + 10, C.playerHi, 0.3);
-    game.draw.circle(px, py, PLAYER_R, C.player, 0.9);
-    game.draw.circle(px - PLAYER_R * 0.3, py - PLAYER_R * 0.3, PLAYER_R * 0.28, '#fff', 0.5);
-
-    // Danger line
-    if (captureDist < 200) {
-      game.draw.line(px, py, chaser.x, chaser.y, C.chaser, 2);
-    }
-
-    // Particles
-    for (var pp = 0; pp < particles.length; pp++) {
-      var part = particles[pp];
-      game.draw.circle(part.x, part.y, 10 * part.life * 2, C.free, part.life);
-    }
-
-    game.draw.text('仲間を解凍: ' + thawed + ' / ' + NEEDED, W / 2, H * 0.92, { size: 40, color: C.ui });
-
-    var ratio = Math.max(0, timeLeft / 30);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.player : C.chaser);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('THAW ' + thawed + ' / ' + NEEDED, W / 2, 168, 44, C.b);
+    scanlines();
   });
 
-  game.onStart(function() { game.audio.bgm('bgm_main', 0.25); });
+  game.onStart(function() {
+    game.audio.bgm('bgm_main', 0.25);
+    state = S.ATTRACT;
+    initGame();
+  });
 })(game);
