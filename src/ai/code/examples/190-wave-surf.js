@@ -1,151 +1,149 @@
 // 190-wave-surf.js
 // 波乗り — サーファーが波の頂点に乗り続けるバランス感覚ゲーム
-// 操作: タップで上下にサーファーを動かす
-// 成功: 25秒波に乗り続ける  失敗: 波から外れる
+// 操作: タップ/スワイプで上下に動かす
+// 成功: 6秒波に乗り続ける  失敗: 波から大きく外れる
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#040a14',
-    sky:     '#0c1a2e',
-    wave1:   '#0d4a7a',
-    wave2:   '#1565c0',
-    waveTop: '#1e88e5',
-    foam:    '#90caf9',
-    surfer:  '#f59e0b',
-    surferHi:'#fde68a',
-    board:   '#7c3aed',
-    danger:  '#ef4444',
-    ui:      '#334155'
-  };
+  // ── パレット（ネオンアーケード、ナイトサーフ） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var SURFER_X = W * 0.35;
-  var surferY = H * 0.5;
-  var surferVY = 0;
-  var SURFER_SPEED = 600;
-  var SURF_R = 28;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'WAVE SURF';
+  var HOW_TO_PLAY = 'TAP UP/DOWN TO STAY ON THE CREST';
+  var NEEDED   = 6;              // 修正2: 25 → 6（サバイバル短縮）
+  var TOP    = 220;
+  var SURFER_X = snap(W * 0.35), SURF_R = 30, SURFER_SPEED = 600;
+  var WAVE_SPEED = 1.6, SAFE_ZONE = 120;   // 修正2: 判定を広く
 
-  var waveTime = 0;
-  var WAVE_SPEED = 1.8;
-  var survived = 0;
-  var NEEDED = 25;
-  var done = false;
-  var elapsed = 0;
-  var goingUp = false;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var foam = [];
+  // ── ゲーム変数 ──
+  var surferY, surferVY, waveTime, survived, timeLeft, done, foam;
 
-  function waveY(t) {
-    return H * 0.5
-      + Math.sin(t * WAVE_SPEED) * 160
-      + Math.sin(t * WAVE_SPEED * 1.7 + 0.5) * 60
-      + Math.sin(t * WAVE_SPEED * 0.5 + 1.2) * 90;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
   }
 
-  game.onTap(function(tx, ty) {
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / NEEDED * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#2a0a3a');
+  }
+
+  function waveY(t) { return H * 0.5 + Math.sin(t * WAVE_SPEED) * 160 + Math.sin(t * WAVE_SPEED * 1.7 + 0.5) * 60 + Math.sin(t * WAVE_SPEED * 0.5 + 1.2) * 90; }
+
+  function drawScene(wy, diff) {
+    game.draw.clear(C.bg);
+    // 海
+    game.draw.rect(0, snap(wy + 24), W, H - wy - 24, C.d, 0.5);
+    for (var wx = 0; wx < W; wx += 24) { var wyo = snap(wy + Math.sin((wx + waveTime * 200) * 0.02) * 8); game.draw.rect(wx, wyo, 16, 16, C.e, 0.7); }
+    // セーフゾーン
+    for (var yy = snap(wy - SAFE_ZONE); yy < wy + SAFE_ZONE; yy += 16) game.draw.rect(SURFER_X - 70, yy, 8, 8, C.b, 0.4);
+    // フォーム
+    for (var fi = 0; fi < foam.length; fi++) game.draw.rect(snap(foam[fi].x) - 6, snap(foam[fi].y) - 6, 12, 12, C.g, foam[fi].life * 0.5);
+    if (diff !== undefined && diff > SAFE_ZONE) game.draw.rect(0, 0, W, H, C.a, Math.min(1, (diff - SAFE_ZONE) / 120) * 0.25);
+    // サーファー＋ボード
+    game.draw.rect(SURFER_X - 56, snap(surferY) + SURF_R - 4, 112, 18, C.d);
+    game.draw.rect(SURFER_X - 56, snap(surferY) + SURF_R - 4, 112, 6, C.a);
+    pc(SURFER_X, surferY, SURF_R, C.c, 1);
+    game.draw.rect(SURFER_X - 8, snap(surferY) - 10, 8, 8, C.bg);
+  }
+
+  function initGame() {
+    surferY = H * 0.5; surferVY = 0; waveTime = 0; survived = 0; timeLeft = NEEDED; done = false; foam = [];
+  }
+
+  function finish(success) {
     if (done) return;
-    goingUp = ty < surferY;
-    surferVY = goingUp ? -SURFER_SPEED : SURFER_SPEED;
+    done = true; resultSuccess = success;
+    finalScore = success ? (600 + Math.round(survived) * 100) : Math.round(survived * 120);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    surferVY = y < surferY ? -SURFER_SPEED : SURFER_SPEED;
+    game.audio.play('se_tap', 0.2);
   });
 
   game.onSwipe(function(dir) {
-    if (done) return;
-    if (dir === 'up') { surferVY = -SURFER_SPEED; goingUp = true; }
-    else if (dir === 'down') { surferVY = SURFER_SPEED; goingUp = false; }
+    if (state !== S.PLAYING || done) return;
+    if (dir === 'up') surferVY = -SURFER_SPEED; else if (dir === 'down') surferVY = SURFER_SPEED;
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      elapsed += dt;
-      waveTime += dt;
-    }
-    if (feedback > 0) feedback -= dt;
-
-    // Move surfer
-    surferY += surferVY * dt;
-    surferVY *= Math.pow(0.88, dt * 60);
-    surferY = Math.max(SURF_R + 80, Math.min(H - SURF_R - 80, surferY));
-
-    var targetWaveY = waveY(waveTime);
-    var diff = Math.abs(surferY - targetWaveY);
-    var SAFE_ZONE = 80;
-
-    if (!done) {
-      if (diff < SAFE_ZONE) {
-        survived += dt;
-        if (survived >= NEEDED) {
-          done = true;
-          game.audio.play('se_success');
-          setTimeout(function() { game.end.success(Math.ceil(survived) * 60 + 500); }, 400);
-        }
-      } else if (diff > 200) {
-        done = true;
-        game.audio.play('se_failure');
-        setTimeout(function() { game.end.failure(); }, 400);
+    if (state === S.ATTRACT) {
+      waveTime += dt; surferY = waveY(waveTime); foam = foam || [];
+      drawScene(waveY(waveTime));
+      txt(GAME_TITLE, W / 2, H * 0.16, 84, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.26, 30, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.80, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.86, 48, C.g);
       }
+      txt('INSERT COIN', W / 2, H * 0.92, 40, '#886699');
+      scanlines();
+      return;
     }
 
-    // Foam particles
-    if (Math.random() < 0.3) {
-      foam.push({ x: Math.random() * W, y: targetWaveY + (Math.random() - 0.5) * 40, life: 0.8 + Math.random() * 0.5, vx: -80 - Math.random() * 60 });
-    }
-    for (var fi = foam.length - 1; fi >= 0; fi--) {
-      foam[fi].x += foam[fi].vx * dt;
-      foam[fi].life -= dt;
-      if (foam[fi].life <= 0 || foam[fi].x < -20) foam.splice(fi, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.sky);
-
-    // Ocean layers
-    game.draw.rect(0, targetWaveY + 30, W, H - targetWaveY - 30, C.wave1, 0.9);
-    game.draw.rect(0, targetWaveY + 10, W, 40, C.wave2, 0.8);
-
-    // Wave crest
-    for (var wx = 0; wx < W; wx += 20) {
-      var wyOff = targetWaveY + Math.sin((wx + elapsed * 200) * 0.02) * 8;
-      game.draw.circle(wx, wyOff, 14, C.waveTop, 0.7);
+    if (state === S.RESULT) {
+      drawScene(waveY(waveTime));
+      txt(resultSuccess ? 'SICK RIDE!' : 'WIPEOUT', W / 2, H * 0.35, 78, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
 
-    // Foam
-    for (var fi2 = 0; fi2 < foam.length; fi2++) {
-      var f2 = foam[fi2];
-      game.draw.circle(f2.x, f2.y, 16 * f2.life, C.foam, f2.life * 0.5);
+    // PLAYING
+    var wy = waveY(waveTime), diff = Math.abs(surferY - wy);
+    if (!done) {
+      waveTime += dt;
+      surferY += surferVY * dt; surferVY *= Math.pow(0.88, dt * 60);
+      surferY = Math.max(TOP + SURF_R, Math.min(H - SURF_R - 80, surferY));
+      wy = waveY(waveTime); diff = Math.abs(surferY - wy);
+      if (diff < SAFE_ZONE) { survived += dt; if (survived >= NEEDED) { finish(true); return; } }
+      else if (diff > 220) { finish(false); return; }
+      if (Math.random() < 0.3) foam.push({ x: game.random(0, W), y: wy + game.random(-40, 40), life: 0.8, vx: -game.random(80, 140) });
+      for (var fi = foam.length - 1; fi >= 0; fi--) { foam[fi].x += foam[fi].vx * dt; foam[fi].life -= dt; if (foam[fi].life <= 0 || foam[fi].x < -20) foam.splice(fi, 1); }
     }
 
-    // Safe zone indicator
-    game.draw.rect(SURFER_X - 60, targetWaveY - SAFE_ZONE, 120, SAFE_ZONE * 2, '#22c55e', 0.08);
-    game.draw.line(SURFER_X - 60, targetWaveY - SAFE_ZONE, SURFER_X + 60, targetWaveY - SAFE_ZONE, '#22c55e', 2);
-    game.draw.line(SURFER_X - 60, targetWaveY + SAFE_ZONE, SURFER_X + 60, targetWaveY + SAFE_ZONE, '#22c55e', 2);
+    // ---- 描画 ----
+    drawScene(wy, diff);
 
-    // Danger indicator
-    if (diff > SAFE_ZONE) {
-      var dangerAlpha = Math.min(1, (diff - SAFE_ZONE) / 120) * 0.25;
-      game.draw.rect(0, 0, W, H, C.danger, dangerAlpha);
-    }
-
-    // Surfer board
-    game.draw.rect(SURFER_X - 56, surferY + SURF_R - 8, 112, 20, C.board, 0.9);
-    game.draw.rect(SURFER_X - 56, surferY + SURF_R - 8, 112, 8, '#a78bfa', 0.5);
-
-    // Surfer body
-    game.draw.circle(SURFER_X, surferY, SURF_R + 8, C.surferHi, 0.25);
-    game.draw.circle(SURFER_X, surferY, SURF_R, C.surfer, 0.9);
-    game.draw.circle(SURFER_X - 8, surferY - 10, SURF_R * 0.3, '#fff', 0.5);
-
-    // Survived display
-    var surviveRatio = Math.min(1, survived / NEEDED);
-    game.draw.text(survived.toFixed(1) + 's / ' + NEEDED + 's', W / 2, H * 0.12, { size: 44, color: '#f1f5f9', bold: true });
-
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * surviveRatio, 72, diff < SAFE_ZONE ? '#22c55e' : '#ef4444');
-    game.draw.text(Math.ceil(NEEDED - survived) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(NEEDED - survived) + 's', W / 2, 96, 44, C.g);
+    txt(diff < SAFE_ZONE ? 'RIDING!' : 'GET BACK ON!', W / 2, 168, 40, diff < SAFE_ZONE ? C.b : C.a);
+    scanlines();
   });
 
-  var feedback = 0;
-
-  game.onStart(function() { game.audio.bgm('bgm_main', 0.3); });
+  game.onStart(function() {
+    game.audio.bgm('bgm_main', 0.3);
+    state = S.ATTRACT;
+    initGame();
+  });
 })(game);
