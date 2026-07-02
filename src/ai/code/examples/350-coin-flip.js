@@ -1,197 +1,136 @@
 // 350-coin-flip.js
-// コインフリップ — 表か裏か予測してタップ、連続正解でスコアアップ
-// 操作: タップ左=表、タップ右=裏 で予測
-// 成功: 20回正解  失敗: 連続5回ミス or 40秒
+// コインフリップ — 弾く前に表(H)か裏(T)かを左右タップで予言し、当て続けてスコアを稼ぐ
+// 操作: 画面左タップ=表(HEADS)、右タップ=裏(TAILS)
+// 成功: 3回的中  失敗: 3回連続ハズレ or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0c0a08',
-    coin:   '#d97706',
-    coinHi: '#fbbf24',
-    coinShad:'#92400e',
-    heads:  '#fef3c7',
-    tails:  '#d4d4d4',
-    correct:'#22c55e',
-    correctHi:'#86efac',
-    wrong:  '#ef4444',
-    wrongHi:'#fca5a5',
-    ui:     '#78716c',
-    text:   '#fef3c7'
-  };
+  // ── パレット（ネオンアーケード、ゴールドコイン） ──
+  var C = { bg:'#0c0a02', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff', gold:'#ffb020' };
 
-  var phase = 'predict'; // predict, flipping, result
-  var flipTimer = 0;
-  var FLIP_TIME = 1.2;
-  var coinAngle = 0;
-  var coinResult = 0; // 0=heads, 1=tails
-  var playerChoice = -1;
-  var correct = 0;
-  var NEEDED = 20;
-  var consecutive = 0;
-  var maxConsecutive = 0;
-  var consecutiveMiss = 0;
-  var MAX_MISS = 5;
-  var done = false;
-  var timeLeft = 40;
-  var elapsed = 0;
-  var particles = [];
-  var resultAnim = 0;
-  var resultText = '';
-  var resultCol = C.correct;
-  var combo = 0;
-  var comboAnim = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'COIN FLIP';
+  var HOW_TO_PLAY = 'TAP LEFT = HEADS · RIGHT = TAILS · CALL IT';
+  var MAX_TIME = 15;
+  var NEEDED   = 3;          // 修正2: 20 → 3
+  var MAX_MISS = 3;          // 修正2: 連続5 → 3
+  var FLIP_T = 1.0, CY = snap(H * 0.44), CR = 140;
 
-  function startFlip(choice) {
-    playerChoice = choice;
-    phase = 'flipping';
-    flipTimer = 0;
-    coinAngle = 0;
-    coinResult = Math.random() < 0.5 ? 0 : 1;
-    game.audio.play('se_tap', 0.4);
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var phase, flipT, flipA, result, choice, correct, combo, missStreak, timeLeft, done, particles, fbText, fbCol, fbTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function finishFlip() {
-    phase = 'result';
-    var won = (playerChoice === coinResult);
-    if (won) {
-      correct++;
-      combo++;
-      maxConsecutive = Math.max(maxConsecutive, combo);
-      consecutiveMiss = 0;
-      resultText = combo > 3 ? combo + '連続！' : '正解！';
-      resultCol = combo > 3 ? C.coinHi : C.correctHi;
-      resultAnim = 0.8;
-      game.audio.play('se_success', 0.5);
-      for (var pi = 0; pi < 8; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        particles.push({ x: W/2, y: H*0.45, vx: Math.cos(ang)*200, vy: Math.sin(ang)*200, life:0.6, col: C.coinHi });
-      }
-      if (correct >= NEEDED && !done) {
-        done = true;
-        setTimeout(function() { game.end.success(correct * 200 + maxConsecutive * 100 + Math.ceil(timeLeft) * 80); }, 500);
-        return;
-      }
-    } else {
-      combo = 0;
-      consecutiveMiss++;
-      resultText = 'ハズレ！';
-      resultCol = C.wrongHi;
-      resultAnim = 0.6;
-      game.audio.play('se_failure', 0.3);
-      if (consecutiveMiss >= MAX_MISS && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 400);
-        return;
-      }
-    }
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a1408');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function drawCoin(faceUp, spin) {
+    var scaleX = Math.abs(Math.cos(spin)), cw = CR * 2 * Math.max(0.1, scaleX), up = faceUp;
+    for (var yy = -CR; yy <= CR; yy += 8) { var half = cw / 2 * Math.sqrt(Math.max(0, 1 - (yy / CR) * (yy / CR))); if (half < 4) continue; game.draw.rect(snap(W / 2 - half), snap(CY + yy), snap(half * 2), 8, up ? C.gold : C.f, 0.95); }
+    if (cw > 80) txt(up ? 'H' : 'T', W / 2, CY + 26, 96, '#000');
+  }
+
+  function startFlip(ch) { choice = ch; phase = 'flip'; flipT = 0; flipA = 0; result = Math.random() < 0.5 ? 0 : 1; game.audio.play('se_tap', 0.4); }
+
+  function initGame() { phase = 'predict'; flipT = 0; flipA = 0; result = 0; choice = -1; correct = 0; combo = 0; missStreak = 0; timeLeft = MAX_TIME; done = false; particles = []; fbText = ''; fbCol = C.g; fbTimer = 0; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (correct * 500 + combo * 100 + Math.ceil(timeLeft) * 100) : correct * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function endFlip() {
+    phase = 'result'; var won = choice === result;
+    if (won) { correct++; combo++; missStreak = 0; fbText = combo > 2 ? combo + ' STREAK!' : 'RIGHT!'; fbCol = C.b; game.audio.play('se_success', 0.5); for (var k = 0; k < 8; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: CY, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.6, col: C.c }); } if (correct >= NEEDED) { finish(true); return; } }
+    else { combo = 0; missStreak++; fbText = 'WRONG!'; fbCol = C.a; game.audio.play('se_failure', 0.3); if (missStreak >= MAX_MISS) { finish(false); return; } }
+    fbTimer = 0.7;
     setTimeout(function() { if (!done) phase = 'predict'; }, 700);
   }
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
-    if (phase !== 'predict') return;
-    var choice = tx < W / 2 ? 0 : 1; // 0=heads(left), 1=tails(right)
-    startFlip(choice);
+  // ── 入力 ──
+  game.onTap(function(x) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || phase !== 'predict') return;
+    startFlip(x < W / 2 ? 0 : 1);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawCoin(Math.floor(game.time.elapsed * 2) % 2 === 0, game.time.elapsed * 3);
+      txt(GAME_TITLE, W / 2, H * 0.14, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'LUCKY!' : 'CURSED', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(correct >= NEEDED); return; }
+      if (fbTimer > 0) fbTimer -= dt;
+      if (phase === 'flip') { flipT += dt; flipA += dt * 15 * (1 + flipT * 2); if (flipT >= FLIP_T) { flipA = result === 0 ? 0 : Math.PI; endFlip(); } }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (resultAnim > 0) resultAnim -= dt * 2;
+    // ---- 描画 ----
+    background();
+    if (phase === 'predict') { game.draw.rect(0, snap(H * 0.70), W / 2 - 4, snap(H * 0.22), '#161005', 0.7); game.draw.rect(W / 2 + 4, snap(H * 0.70), W / 2 - 4, snap(H * 0.22), '#161005', 0.7); txt('HEADS', W * 0.25, snap(H * 0.80), 56, C.gold); txt('TAILS', W * 0.75, snap(H * 0.80), 56, C.e); txt('< TAP', W * 0.25, snap(H * 0.88), 32, C.g); txt('TAP >', W * 0.75, snap(H * 0.88), 32, C.g); }
+    if (phase === 'flip') drawCoin(Math.cos(flipA) > 0 ? result === 0 : result === 1, flipA);
+    else drawCoin(result === 0, phase === 'result' ? flipA : 0);
+    if (phase === 'predict') txt('?', W / 2, CY + 26, 96, '#4a3a10');
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (fbTimer > 0) txt(fbText, W / 2, snap(H * 0.64), 56, fbCol);
 
-    if (phase === 'flipping') {
-      flipTimer += dt;
-      coinAngle += dt * 15 * (1 + flipTimer * 2);
-      if (flipTimer >= FLIP_TIME) {
-        finishFlip();
-      }
-    }
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Split divider
-    game.draw.line(W / 2, H * 0.7, W / 2, H * 0.95, C.ui, 2);
-
-    // Choice indicators
-    if (phase === 'predict') {
-      game.draw.rect(0, H * 0.72, W / 2 - 4, H * 0.21, '#1a1008', 0.7);
-      game.draw.rect(W / 2 + 4, H * 0.72, W / 2 - 4, H * 0.21, '#1a1008', 0.7);
-      game.draw.text('表', W * 0.25, H * 0.82, { size: 72, color: C.coinHi, bold: true });
-      game.draw.text('裏', W * 0.75, H * 0.82, { size: 72, color: C.tails, bold: true });
-      game.draw.text('◀ タップ', W * 0.25, H * 0.92, { size: 32, color: C.ui });
-      game.draw.text('タップ ▶', W * 0.75, H * 0.92, { size: 32, color: C.ui });
-    }
-
-    // Coin
-    var coinY = H * 0.45;
-    var coinR = 140;
-
-    if (phase === 'flipping') {
-      // Spinning coin effect — squish horizontally
-      var squish = Math.abs(Math.cos(coinAngle));
-      var w2 = coinR * squish;
-      var showFace = Math.cos(coinAngle) > 0 ? coinResult : 1 - coinResult;
-      game.draw.circle(W / 2, coinY, coinR + 8, C.coinShad, 0.4);
-      game.draw.rect(W / 2 - w2, coinY - coinR, w2 * 2, coinR * 2, squish < 0.3 ? C.coin : (showFace === 0 ? C.coinHi : C.tails), 0.9);
-      game.draw.circle(W / 2, coinY, 8, '#fff', 0.6);
-    } else {
-      // Static coin showing result
-      var faceColor = (phase === 'result' || phase === 'predict') ? (phase === 'result' ? (coinResult === 0 ? C.coinHi : C.tails) : C.coin) : C.coin;
-      game.draw.circle(W / 2, coinY, coinR + 8, C.coinShad, 0.4);
-      game.draw.circle(W / 2, coinY, coinR, faceColor, 0.95);
-      game.draw.circle(W / 2, coinY, coinR - 20, C.coinShad, 0.2);
-      if (phase === 'result') {
-        game.draw.text(coinResult === 0 ? '表' : '裏', W / 2, coinY + 24, { size: 80, color: C.bg, bold: true });
-      } else if (phase === 'predict') {
-        game.draw.text('?', W / 2, coinY + 24, { size: 80, color: C.coinShad, bold: true });
-      }
-    }
-
-    // Result anim
-    if (resultAnim > 0) {
-      var isCorrect2 = (playerChoice === coinResult);
-      game.draw.text(resultText, W / 2, H * 0.68, { size: 60, color: resultCol, bold: true });
-    }
-
-    // Combo
-    if (combo > 1) {
-      game.draw.text(combo + ' COMBO', W / 2, H * 0.62, { size: 44, color: C.coinHi, bold: true });
-    }
-
-    // Miss indicators
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 28 + mi * 56, H * 0.96, 14, mi < consecutiveMiss ? C.wrong : '#1a1a1a');
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    game.draw.text(correct + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.coin : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(correct + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < missStreak ? C.a : '#1a1408');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.12);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
