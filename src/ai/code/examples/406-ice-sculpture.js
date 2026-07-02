@@ -1,243 +1,147 @@
 // 406-ice-sculpture.js
-// 氷彫刻 — 溶けていく氷ブロックを正確な形に削りだす
-// 操作: スワイプ方向で氷を削る、シルエット通りに
-// 成功: 8つの彫刻完成  失敗: 削りすぎ5回 or 60秒
+// 氷彫刻 — 四角い氷ブロックを上下左右のスワイプで削り、目標シルエットの形に彫り出す
+// 操作: スワイプした向きの端から氷を1マス削る（残すべきマスを削ると削りすぎ）
+// 成功: 3体 彫り上げる  失敗: 3回 削りすぎ or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#040b14',
-    ice:    '#bae6fd',
-    iceHi:  '#e0f2fe',
-    iceShadow:'#1e3a5f',
-    target: '#22c55e',
-    targetHi:'#86efac',
-    chisel: '#94a3b8',
-    chiselHi:'#f1f5f9',
-    chip:   '#7dd3fc',
-    over:   '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（アイスブルー、氷の工房） ──
+  var C = { bg:'#040b16', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Shapes defined as grid of cells (5x5)
   var SHAPES = [
-    // Cross
     [[0,1,0],[1,1,1],[0,1,0]],
-    // L-shape
     [[1,0,0],[1,0,0],[1,1,1]],
-    // T-shape
     [[1,1,1],[0,1,0],[0,1,0]],
-    // Z-shape
     [[1,1,0],[0,1,0],[0,1,1]],
-    // Diamond
-    [[0,1,0],[1,1,1],[0,1,0]],
-    // Step
-    [[1,1,0],[0,1,0],[0,1,1]],
-    // Corner
     [[1,1,1],[1,0,0],[1,0,0]],
-    // Dot
     [[1,1,1],[1,0,1],[1,1,1]]
   ];
 
-  var GRID_N = 3;
-  var CELL_S = 160;
-  var GRID_X = W/2 - GRID_N*CELL_S/2;
-  var GRID_Y = H*0.28;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ICE SCULPTURE';
+  var HOW_TO_PLAY = 'SWIPE TO CARVE THE ICE INTO THE TARGET SHAPE';
+  var MAX_TIME = 20;
+  var NEEDED   = 3;          // 修正2: 8 → 3
+  var MAX_OVER = 3;          // 修正2: 5 → 3
+  var GN = 3, CS = snap(W * 0.24), GX = snap(W / 2 - GN * snap(W * 0.24) / 2), GY = snap(H * 0.34);
 
-  var iceGrid = [];    // current ice block (1=has ice)
-  var targetGrid = []; // what we want (1=keep, 0=remove)
-  var phase = 'sculpt';
-  var sculptIdx = 0;
-  var completed = 0;
-  var NEEDED = 8;
-  var overcuts = 0;
-  var MAX_OVER = 5;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var successFlash = 0;
-  var meltTimer = 0;
-  var lastSwipeDir = '';
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function loadShape(idx) {
-    var shape = SHAPES[idx % SHAPES.length];
-    targetGrid = [];
-    for (var r = 0; r < GRID_N; r++) {
-      targetGrid.push(shape[r].slice());
-    }
-    // Start with full ice block
-    iceGrid = [];
-    for (var r2 = 0; r2 < GRID_N; r2++) {
-      iceGrid.push([1,1,1]);
-    }
-    phase = 'sculpt';
+  // ── ゲーム変数 ──
+  var iceGrid, targetGrid, sculptIdx, completed, overcuts, timeLeft, done, particles, okFlash, locked;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function checkComplete() {
-    for (var r = 0; r < GRID_N; r++) {
-      for (var c = 0; c < GRID_N; c++) {
-        if (iceGrid[r][c] !== targetGrid[r][c]) return false;
-      }
-    }
-    return true;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1a2e');
   }
 
-  // Remove ice from edges matching swipe direction
-  game.onSwipe(function(dir) {
-    if (done || phase !== 'sculpt') return;
-    lastSwipeDir = dir;
+  function background() { game.draw.clear(C.bg); }
+
+  function loadShape(idx) { var sh = SHAPES[idx % SHAPES.length]; targetGrid = []; for (var r = 0; r < GN; r++) targetGrid.push(sh[r].slice()); iceGrid = []; for (var r2 = 0; r2 < GN; r2++) iceGrid.push([1, 1, 1]); locked = false; }
+
+  function checkComplete() { for (var r = 0; r < GN; r++) for (var c = 0; c < GN; c++) if (iceGrid[r][c] !== targetGrid[r][c]) return false; return true; }
+
+  function initGame() { sculptIdx = 0; completed = 0; overcuts = 0; timeLeft = MAX_TIME; done = false; particles = []; okFlash = 0; loadShape(0); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (completed * 700 + Math.ceil(timeLeft) * 100) : completed * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function chip(cx, cy, vx, vy) { particles.push({ x: cx, y: cy, vx: vx, vy: vy, life: 0.6, col: C.e }); }
+
+  function carve(dir) {
+    var over = false;
+    if (dir === 'right') { for (var r = 0; r < GN; r++) for (var c = GN - 1; c >= 0; c--) if (iceGrid[r][c] === 1) { if (targetGrid[r][c] === 1) over = true; iceGrid[r][c] = 0; chip(GX + (c + 1) * CS, GY + (r + 0.5) * CS, 200, 0); break; } }
+    else if (dir === 'left') { for (var r2 = 0; r2 < GN; r2++) for (var c2 = 0; c2 < GN; c2++) if (iceGrid[r2][c2] === 1) { if (targetGrid[r2][c2] === 1) over = true; iceGrid[r2][c2] = 0; chip(GX + c2 * CS, GY + (r2 + 0.5) * CS, -200, 0); break; } }
+    else if (dir === 'up') { for (var c3 = 0; c3 < GN; c3++) for (var r3 = 0; r3 < GN; r3++) if (iceGrid[r3][c3] === 1) { if (targetGrid[r3][c3] === 1) over = true; iceGrid[r3][c3] = 0; chip(GX + (c3 + 0.5) * CS, GY + r3 * CS, 0, -200); break; } }
+    else if (dir === 'down') { for (var c4 = 0; c4 < GN; c4++) for (var r4 = GN - 1; r4 >= 0; r4--) if (iceGrid[r4][c4] === 1) { if (targetGrid[r4][c4] === 1) over = true; iceGrid[r4][c4] = 0; chip(GX + (c4 + 0.5) * CS, GY + (r4 + 1) * CS, 0, 200); break; } }
     game.audio.play('se_tap', 0.4);
-    var removed = 0;
-    var overcut = false;
+    if (over) { overcuts++; game.audio.play('se_failure', 0.3); if (overcuts >= MAX_OVER) { finish(false); return; } }
+    if (checkComplete()) { completed++; okFlash = 0.8; locked = true; game.audio.play('se_success', 0.6); if (completed >= NEEDED) { finish(true); return; } setTimeout(function() { if (!done && state === S.PLAYING) loadShape(++sculptIdx); }, 800); }
+  }
 
-    if (dir === 'right') {
-      // Remove rightmost ice column
-      for (var r = 0; r < GRID_N; r++) {
-        for (var c = GRID_N-1; c >= 0; c--) {
-          if (iceGrid[r][c] === 1) {
-            if (targetGrid[r][c] === 1) overcut = true;
-            iceGrid[r][c] = 0;
-            removed++;
-            particles.push({ x:GRID_X+(c+1)*CELL_S, y:GRID_Y+(r+0.5)*CELL_S, vx:200+Math.random()*150, vy:(Math.random()-0.5)*200, life:0.6, col:C.chip });
-            break;
-          }
-        }
-      }
-    } else if (dir === 'left') {
-      for (var r2 = 0; r2 < GRID_N; r2++) {
-        for (var c2 = 0; c2 < GRID_N; c2++) {
-          if (iceGrid[r2][c2] === 1) {
-            if (targetGrid[r2][c2] === 1) overcut = true;
-            iceGrid[r2][c2] = 0;
-            particles.push({ x:GRID_X+c2*CELL_S, y:GRID_Y+(r2+0.5)*CELL_S, vx:-200-Math.random()*150, vy:(Math.random()-0.5)*200, life:0.6, col:C.chip });
-            break;
-          }
-        }
-      }
-    } else if (dir === 'up') {
-      for (var c3 = 0; c3 < GRID_N; c3++) {
-        for (var r3 = 0; r3 < GRID_N; r3++) {
-          if (iceGrid[r3][c3] === 1) {
-            if (targetGrid[r3][c3] === 1) overcut = true;
-            iceGrid[r3][c3] = 0;
-            particles.push({ x:GRID_X+(c3+0.5)*CELL_S, y:GRID_Y+r3*CELL_S, vx:(Math.random()-0.5)*200, vy:-200-Math.random()*150, life:0.6, col:C.chip });
-            break;
-          }
-        }
-      }
-    } else if (dir === 'down') {
-      for (var c4 = 0; c4 < GRID_N; c4++) {
-        for (var r4 = GRID_N-1; r4 >= 0; r4--) {
-          if (iceGrid[r4][c4] === 1) {
-            if (targetGrid[r4][c4] === 1) overcut = true;
-            iceGrid[r4][c4] = 0;
-            particles.push({ x:GRID_X+(c4+0.5)*CELL_S, y:GRID_Y+(r4+1)*CELL_S, vx:(Math.random()-0.5)*200, vy:200+Math.random()*150, life:0.6, col:C.chip });
-            break;
-          }
-        }
-      }
-    }
+  function drawBoard() {
+    for (var r = 0; r < GN; r++) for (var c = 0; c < GN; c++) { var cx = GX + c * CS, cy = GY + r * CS; if (targetGrid[r][c] === 1) game.draw.rect(cx + 4, cy + 4, CS - 8, CS - 8, C.b, 0.12); if (iceGrid[r][c] === 1) { game.draw.rect(cx + 2, cy + 2, CS - 4, CS - 4, C.e, 0.7); game.draw.rect(cx + 8, cy + 8, CS / 3, CS / 3, C.g, 0.4); if (targetGrid[r][c] === 1) game.draw.rect(cx + 2, cy + 2, CS - 4, CS - 4, C.b, 0.1); } }
+    txt('^', W / 2, GY - 40, 56, C.d); txt('v', W / 2, GY + GN * CS + 56, 56, C.d); txt('<', GX - 40, GY + GN * CS / 2, 56, C.d); txt('>', GX + GN * CS + 40, GY + GN * CS / 2, 56, C.d);
+  }
 
-    if (overcut) {
-      overcuts++;
-      game.audio.play('se_failure', 0.3);
-      if (overcuts >= MAX_OVER && !done) { done = true; setTimeout(function(){ game.end.failure(); }, 500); return; }
-    }
-
-    if (checkComplete()) {
-      completed++;
-      successFlash = 0.8;
-      game.audio.play('se_success', 0.6);
-      if (completed >= NEEDED && !done) { done = true; setTimeout(function(){ game.end.success(completed*500+Math.ceil(timeLeft)*80); }, 700); return; }
-      setTimeout(function(){ loadShape(sculptIdx++); }, 900);
-    }
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
   });
 
+  game.onSwipe(function(d) {
+    if (state !== S.PLAYING || done || locked) return; carve(d);
+  });
+
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!iceGrid) initGame(); background(); drawBoard();
+      txt(GAME_TITLE, W / 2, H * 0.16, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.91, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'MASTERPIECE!' : 'CHIPPED AWAY', W / 2, H * 0.35, 64, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (okFlash > 0) okFlash -= dt * 2;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (successFlash > 0) successFlash -= dt * 2;
+    // ---- 描画 ----
+    background(); drawBoard();
+    txt('TARGET', GX + GN * CS + 40, GY - 40, 30, C.b);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (okFlash > 0) game.draw.rect(0, 0, W, H, C.b, okFlash * 0.1);
 
-    for (var pp = particles.length-1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx*dt;
-      particles[pp].y += particles[pp].vy*dt;
-      particles[pp].vy += 300*dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp,1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Target shape (ghost)
-    for (var r = 0; r < GRID_N; r++) {
-      for (var c = 0; c < GRID_N; c++) {
-        var cx = GRID_X + c*CELL_S + CELL_S/2;
-        var cy = GRID_Y + r*CELL_S + CELL_S/2;
-        if (targetGrid[r][c] === 1) {
-          game.draw.rect(cx-CELL_S/2+4, cy-CELL_S/2+4, CELL_S-8, CELL_S-8, C.target, 0.12);
-        }
-      }
-    }
-
-    // Ice blocks
-    for (var r2 = 0; r2 < GRID_N; r2++) {
-      for (var c2 = 0; c2 < GRID_N; c2++) {
-        if (iceGrid[r2][c2] === 1) {
-          var cx2 = GRID_X + c2*CELL_S;
-          var cy2 = GRID_Y + r2*CELL_S;
-          var shouldKeep = targetGrid[r2][c2] === 1;
-          game.draw.rect(cx2+4, cy2+4, CELL_S-8, CELL_S-8, C.iceShadow, 0.4);
-          game.draw.rect(cx2+2, cy2+2, CELL_S-4, CELL_S-4, C.ice, 0.75);
-          game.draw.rect(cx2+8, cy2+8, CELL_S/3, CELL_S/3, C.iceHi, 0.4);
-          if (shouldKeep) {
-            // Highlight cells that match target
-            game.draw.rect(cx2+2, cy2+2, CELL_S-4, CELL_S-4, C.target, 0.08);
-          }
-        }
-      }
-    }
-
-    // Target outline label
-    game.draw.text('目標', GRID_X + GRID_N*CELL_S + 40, GRID_Y + GRID_N*CELL_S/2, { size: 36, color: C.targetHi });
-
-    // Swipe hints
-    var hintCol = C.ui;
-    game.draw.text('↑', W/2, GRID_Y - 60, { size: 64, color: hintCol });
-    game.draw.text('↓', W/2, GRID_Y + GRID_N*CELL_S + 60, { size: 64, color: hintCol });
-    game.draw.text('←', GRID_X - 60, GRID_Y + GRID_N*CELL_S/2, { size: 64, color: hintCol });
-    game.draw.text('→', GRID_X + GRID_N*CELL_S + 60, GRID_Y + GRID_N*CELL_S/2, { size: 64, color: hintCol });
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10*p.life, p.col, p.life*0.8);
-    }
-
-    if (successFlash > 0) game.draw.rect(0, 0, W, H, C.targetHi, successFlash*0.12);
-
-    // Overcut dots
-    for (var oi = 0; oi < MAX_OVER; oi++) {
-      game.draw.circle(W/2-(MAX_OVER-1)*30+oi*60, H*0.935, 12, oi < overcuts ? C.over : C.ui, 0.9);
-    }
-
-    game.draw.text(completed + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft/60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*ratio, 72, ratio > 0.3 ? C.ice : C.over);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(completed + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var oi = 0; oi < MAX_OVER; oi++) game.draw.rect(snap(W / 2 + (oi - (MAX_OVER - 1) / 2) * 56) - 10, 224, 20, 20, oi < overcuts ? C.a : '#0a1a2e');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.12);
-    loadShape(0);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

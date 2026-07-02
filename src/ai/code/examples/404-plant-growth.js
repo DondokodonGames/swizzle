@@ -1,236 +1,136 @@
 // 404-plant-growth.js
-// 植物育成 — タップで水を与え、光と水のバランスで植物を育てる
-// 操作: 左タップ=水やり、右タップ=日光調整
-// 成功: 植物が満開  失敗: 枯れる or 溺れる or 60秒
+// 植物育成 — 左タップで水、右タップで日光を与え、水と光を適正ゾーンに保って花を満開まで育てる
+// 操作: 画面左タップ=水やり、右タップ=日光
+// 成功: 成長100%（満開）  失敗: 枯れる or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a1608',
-    soil:   '#3d2007',
-    soilHi: '#5c3210',
-    pot:    '#78350f',
-    potHi:  '#92400e',
-    stem:   '#15803d',
-    stemHi: '#166534',
-    leaf:   '#22c55e',
-    leafHi: '#86efac',
-    flower: '#f97316',
-    flowerHi:'#fed7aa',
-    water:  '#3b82f6',
-    waterHi:'#93c5fd',
-    sun:    '#fbbf24',
-    sunHi:  '#fef3c7',
-    wilt:   '#713f12',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、温室） ──
+  var C = { bg:'#04140a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var water = 0.5;    // 0-1
-  var sunlight = 0.5; // 0-1
-  var health = 0.5;   // 0-1
-  var growth = 0;     // 0-1 (1=full bloom)
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'PLANT GROWTH';
+  var HOW_TO_PLAY = 'TAP LEFT FOR WATER, RIGHT FOR SUN · KEEP BOTH IN THE ZONE';
+  var MAX_TIME = 20;
+  var W_MIN = 0.3, W_MAX = 0.7, S_MIN = 0.3, S_MAX = 0.8;
 
-  var WATER_DRAIN = 0.04;  // per second
-  var WATER_ADD = 0.15;    // per tap
-  var WATER_HAPPY_MIN = 0.3;
-  var WATER_HAPPY_MAX = 0.7;
-  var SUN_DRAIN = 0.03;
-  var SUN_ADD = 0.12;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var stemHeight = 0;
-  var leafPhase = 0;
-  var growthFlash = 0;
-  var flowerAnim = 0;
+  // ── ゲーム変数 ──
+  var water, sun, health, growth, timeLeft, done, particles, leafPhase, growFlash;
 
-  var waterDrops = [];
-  var sunRays = [];
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  game.onTap(function(tx, ty) {
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a2010');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function initGame() { water = 0.5; sun = 0.5; health = 0.5; growth = 0; timeLeft = MAX_TIME; done = false; particles = []; leafPhase = 0; growFlash = 0; }
+
+  function finish(success) {
     if (done) return;
-    if (tx < W/2) {
-      // Water
-      water = Math.min(1, water + WATER_ADD);
-      game.audio.play('se_tap', 0.3);
-      for (var pi = 0; pi < 5; pi++) {
-        waterDrops.push({ x: 100+Math.random()*(W/2-150), y: ty, vy: 100+Math.random()*200, life: 0.8 });
-      }
-    } else {
-      // Sunlight
-      sunlight = Math.min(1, sunlight + SUN_ADD);
-      game.audio.play('se_tap', 0.4);
-      for (var pi2 = 0; pi2 < 4; pi2++) {
-        var ang = -Math.PI/2 + (Math.random()-0.5)*Math.PI/3;
-        sunRays.push({ x: W*0.75+Math.random()*100-50, y: 0, vx: Math.cos(ang)*80, vy: Math.sin(ang)*200+100, life: 0.7 });
-      }
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (2000 + Math.ceil(timeLeft) * 100) : Math.round(growth * 1500);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawPlant() {
+    var potX = W / 2, potY = snap(H * 0.78), potW = 200, stemH = 180 + growth * 340, top = potY - stemH;
+    game.draw.rect(potX - potW / 2, potY, potW, 150, C.f, 0.9); game.draw.rect(potX - potW / 2 - 16, potY, potW + 32, 22, C.f, 0.8); game.draw.rect(potX - potW / 2 + 8, potY + 8, potW - 16, 44, '#5a3010', 0.9);
+    var stemCol = health > 0.3 ? C.b : '#6a5020'; game.draw.rect(snap(potX - 8), snap(top), 16, snap(stemH), stemCol, 0.9);
+    if (growth > 0.15) { var sw = Math.sin(leafPhase) * 8; pc(potX - 40 + sw, potY - stemH * 0.4, 34 + growth * 20, stemCol, 0.85); }
+    if (growth > 0.35) pc(potX + 40, potY - stemH * 0.65, 30 + growth * 18, stemCol, 0.85);
+    if (growth > 0.7) { var fr = (growth - 0.7) * 3.3 * 60; for (var fp = 0; fp < 6; fp++) { var fa = fp / 6 * Math.PI * 2 + game.time.elapsed; pc(potX + Math.cos(fa) * fr * 0.6, top + Math.sin(fa) * fr * 0.6, fr * 0.4, C.a, 0.85); } pc(potX, top, fr * 0.4, C.c, 0.9); }
+  }
+
+  function bars() {
+    var bw = W / 2 - 80, by = snap(H * 0.90);
+    game.draw.rect(40, by, bw, 22, '#0a2010', 0.8); game.draw.rect(40 + bw * W_MIN, by, bw * (W_MAX - W_MIN), 22, C.b, 0.2); game.draw.rect(40, by, bw * water, 22, C.e, 0.85); txt('WATER', 40 + bw / 2, by - 16, 28, C.e);
+    game.draw.rect(W / 2 + 40, by, bw, 22, '#0a2010', 0.8); game.draw.rect(W / 2 + 40 + bw * S_MIN, by, bw * (S_MAX - S_MIN), 22, C.b, 0.2); game.draw.rect(W / 2 + 40, by, bw * sun, 22, C.c, 0.85); txt('SUN', W / 2 + 40 + bw / 2, by - 16, 28, C.c);
+    game.draw.rect(W / 4, snap(H * 0.95), W / 2, 14, '#0a2010', 0.7); game.draw.rect(W / 4, snap(H * 0.95), W / 2 * health, 14, health > 0.5 ? C.b : C.a, 0.85);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (x < W / 2) { water = Math.min(1, water + 0.15); game.audio.play('se_tap', 0.3); for (var p = 0; p < 4; p++) particles.push({ x: snap(100 + Math.random() * (W / 2 - 150)), y: H * 0.3, vy: 200, life: 0.8, col: C.e }); }
+    else { sun = Math.min(1, sun + 0.13); game.audio.play('se_tap', 0.4); for (var p2 = 0; p2 < 4; p2++) particles.push({ x: snap(W * 0.6 + Math.random() * (W / 2 - 150)), y: 100, vy: 200, life: 0.7, col: C.c }); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    leafPhase += dt * 2;
+    if (state === S.ATTRACT) {
+      if (growth === undefined) initGame(); background(); drawPlant();
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.60, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.66, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'FULL BLOOM!' : 'WITHERED', W / 2, H * 0.35, 72, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (growFlash > 0) growFlash -= dt * 2;
+      water = Math.max(0, water - 0.045 * dt); sun = Math.max(0, sun - 0.035 * dt);
+      var wg = water >= W_MIN && water <= W_MAX, sg = sun >= S_MIN && sun <= S_MAX;
+      health = (wg && sg) ? Math.min(1, health + dt * 0.25) : Math.max(0, health - dt * 0.18);
+      if (health > 0.6) { var pg = growth; growth = Math.min(1, growth + dt * 0.08); if (Math.floor(growth * 10) > Math.floor(pg * 10)) { growFlash = 0.5; game.audio.play('se_success', 0.3); } if (growth >= 1) { finish(true); return; } }
+      else if (health <= 0) { finish(false); return; }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    leafPhase += dt * 2;
-    if (growthFlash > 0) growthFlash -= dt * 2;
-    if (flowerAnim < 1 && growth > 0.9) flowerAnim = Math.min(1, flowerAnim + dt);
+    // ---- 描画 ----
+    background(); drawPlant();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 0.9);
+    if (growFlash > 0) game.draw.rect(0, 0, W, H, C.b, growFlash * 0.06);
+    bars();
 
-    // Resource drain
-    water = Math.max(0, water - WATER_DRAIN * dt);
-    sunlight = Math.max(0, sunlight - SUN_DRAIN * dt);
-
-    // Health update
-    var waterGood = water >= WATER_HAPPY_MIN && water <= WATER_HAPPY_MAX;
-    var sunGood = sunlight >= 0.3 && sunlight <= 0.8;
-    if (waterGood && sunGood) {
-      health = Math.min(1, health + dt * 0.2);
-    } else {
-      health = Math.max(0, health - dt * 0.15);
-    }
-
-    // Growth
-    if (health > 0.6) {
-      var prevGrowth = growth;
-      growth = Math.min(1, growth + dt * 0.06);
-      if (Math.floor(growth * 10) > Math.floor(prevGrowth * 10)) {
-        growthFlash = 0.5;
-        game.audio.play('se_success', 0.3);
-      }
-      if (growth >= 1 && !done) {
-        done = true;
-        game.audio.play('se_success', 0.8);
-        setTimeout(function(){ game.end.success(1000+Math.ceil(timeLeft)*80); }, 800);
-      }
-    } else if (health <= 0 && !done) {
-      done = true;
-      game.audio.play('se_failure', 0.6);
-      setTimeout(function(){ game.end.failure(); }, 500);
-    }
-
-    stemHeight = 200 + growth * 360;
-
-    // Update particles
-    for (var wd = waterDrops.length-1; wd >= 0; wd--) {
-      waterDrops[wd].y += waterDrops[wd].vy * dt;
-      waterDrops[wd].life -= dt;
-      if (waterDrops[wd].life <= 0) waterDrops.splice(wd,1);
-    }
-    for (var sr = sunRays.length-1; sr >= 0; sr--) {
-      sunRays[sr].x += sunRays[sr].vx * dt;
-      sunRays[sr].y += sunRays[sr].vy * dt;
-      sunRays[sr].life -= dt;
-      if (sunRays[sr].life <= 0) sunRays.splice(sr,1);
-    }
-    for (var pp = particles.length-1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx*dt;
-      particles[pp].y += particles[pp].vy*dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp,1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Sun rays
-    for (var sr2 = 0; sr2 < sunRays.length; sr2++) {
-      var r = sunRays[sr2];
-      game.draw.circle(r.x, r.y, 12*r.life, C.sunHi, r.life*0.7);
-    }
-
-    // Pot
-    var potX = W/2, potY = H*0.82;
-    var potW = 200, potH2 = 160;
-    game.draw.rect(potX-potW/2, potY, potW, potH2, C.pot, 0.9);
-    game.draw.rect(potX-potW/2, potY, potW, 24, C.potHi, 0.7);
-    game.draw.rect(potX-potW/2-16, potY, potW+32, 24, C.potHi, 0.8);
-    // Soil
-    game.draw.rect(potX-potW/2+8, potY+8, potW-16, 48, C.soilHi, 0.9);
-
-    // Stem
-    var stemCol = health > 0.3 ? C.stem : C.wilt;
-    var stemTopY = potY - stemHeight;
-    game.draw.rect(potX-10, stemTopY, 20, stemHeight, stemCol, 0.9);
-    game.draw.rect(potX-5, stemTopY, 8, stemHeight, C.stemHi, 0.2);
-
-    // Leaves (appear as growth increases)
-    if (growth > 0.15) {
-      var leafW = 60 + growth*80;
-      var leafSwing = Math.sin(leafPhase)*8;
-      var leafY1 = potY - stemHeight*0.4;
-      game.draw.circle(potX-leafW/2+leafSwing, leafY1, leafW*0.6, C.leaf, 0.85);
-      game.draw.circle(potX-leafW/2+leafSwing+20, leafY1-20, leafW*0.4, C.leafHi, 0.4);
-    }
-    if (growth > 0.35) {
-      var leafW2 = 50 + growth*70;
-      var leafY2 = potY - stemHeight*0.65;
-      game.draw.circle(potX+leafW2/2-10, leafY2, leafW2*0.6, C.leaf, 0.85);
-    }
-
-    // Flower (appears at high growth)
-    if (growth > 0.7) {
-      var flowerR = (growth-0.7)*3.3*80*flowerAnim;
-      var fx = potX, fy = stemTopY;
-      game.draw.circle(fx, fy, flowerR+12, C.flowerHi, 0.15);
-      for (var fp = 0; fp < 6; fp++) {
-        var fa = fp/6*Math.PI*2+elapsed;
-        game.draw.circle(fx+Math.cos(fa)*flowerR*0.6, fy+Math.sin(fa)*flowerR*0.6, flowerR*0.4, C.flower, 0.85);
-      }
-      game.draw.circle(fx, fy, flowerR*0.4, C.sunHi, 0.9);
-    }
-
-    // Water drops
-    for (var wd2 = 0; wd2 < waterDrops.length; wd2++) {
-      var d = waterDrops[wd2];
-      game.draw.circle(d.x, d.y, 10*d.life, C.water, d.life*0.7);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8*p.life, p.col, p.life*0.8);
-    }
-
-    if (growthFlash > 0) game.draw.rect(0, 0, W, H, C.leafHi, growthFlash*0.08);
-
-    // Status bars
-    var barW = W/2-80;
-    var barY2 = H*0.89;
-    // Water bar
-    game.draw.rect(40, barY2, barW, 24, '#0f172a', 0.8);
-    game.draw.rect(40, barY2, barW*water, 24, C.water, 0.85);
-    // Zone indicator on water bar
-    game.draw.rect(40+barW*WATER_HAPPY_MIN, barY2, barW*(WATER_HAPPY_MAX-WATER_HAPPY_MIN), 24, C.leaf, 0.2);
-    game.draw.text('💧', 40, barY2-8, { size: 32 });
-
-    // Sunlight bar
-    game.draw.rect(W/2+40, barY2, barW, 24, '#0f172a', 0.8);
-    game.draw.rect(W/2+40, barY2, barW*sunlight, 24, C.sun, 0.85);
-    game.draw.text('☀', W/2+40, barY2-8, { size: 32 });
-
-    // Health
-    game.draw.rect(W/4, H*0.93, W/2, 16, '#0f172a', 0.7);
-    game.draw.rect(W/4, H*0.93, W/2*health, 16, health>0.5?C.leafHi:C.wilt, 0.85);
-
-    // Button labels
-    game.draw.text('水やり', W/4, H*0.953, { size: 36, color: C.waterHi });
-    game.draw.text('日光', W*3/4, H*0.953, { size: 36, color: C.sunHi });
-
-    game.draw.text(Math.round(growth*100)+'%', W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft/60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*ratio, 72, ratio > 0.3 ? C.leaf : C.wilt);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.round(growth * 100) + '%', W / 2, 96, 44, C.g);
+    txt('BLOOM ' + Math.round(growth * 100) + '%', W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

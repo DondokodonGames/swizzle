@@ -1,195 +1,141 @@
 // 405-crowd-count.js
-// 群衆カウント — 素早く集まりの人数を目測し正確にタップ
-// 操作: 表示された群衆の数を見て正しい数字ゾーンをタップ
-// 成功: 8問正解  失敗: 3回大外れ or 50秒
+// 群衆カウント — 一瞬映る群衆の人数を目測で記憶し、3択から正しい人数を選ぶ瞬間記憶ゲーム
+// 操作: 表示中に人数を数え、隠れたあと正しい数字をタップ
+// 成功: 4問 正解  失敗: 3回 大外れ or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0a18',
-    crowd:  '#4f46e5',
-    crowdHi:'#818cf8',
-    crowdVar0:'#6d28d9',
-    crowdVar1:'#7c3aed',
-    crowdVar2:'#4f46e5',
-    panel:  '#1e1b4b',
-    correct:'#22c55e',
-    close:  '#f97316',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、広場） ──
+  var C = { bg:'#08061a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var CROWD = [C.e, C.d, C.a, C.b, C.f];
 
-  var phase = 'show';   // show, answer, result
-  var showTimer = 1.8;
-  var crowd = [];
-  var crowdCount = 0;
-  var resultTimer = 0;
-  var correct = 0;
-  var NEEDED = 8;
-  var wrong = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'CROWD COUNT';
+  var HOW_TO_PLAY = 'COUNT THE CROWD FAST · PICK THE RIGHT NUMBER';
+  var MAX_TIME = 20;
+  var NEEDED   = 4;          // 修正2: 8 → 4
   var MAX_WRONG = 3;
-  var done = false;
-  var timeLeft = 50;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var flashCol = C.correct;
-  var resultText = '';
-  var particles = [];
+  var CW = (W - 80) / 3, CH = 150, CY = snap(H * 0.72);
 
-  // Answer choices
-  var choices = [];
-  var choiceW = (W - 80) / 3;
-  var choiceH = 160;
-  var choiceY = H * 0.78;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function generateRound() {
-    crowdCount = 5 + Math.floor(Math.random() * 36);  // 5-40 people
-    crowd = [];
-    for (var i = 0; i < crowdCount; i++) {
-      var bx = 80 + Math.random()*(W-160);
-      var by = H*0.22 + Math.random()*H*0.38;
-      crowd.push({ x:bx, y:by, col:[C.crowd,C.crowdHi,C.crowdVar0,C.crowdVar1,C.crowdVar2][Math.floor(Math.random()*5)], r: 18+Math.random()*10 });
-    }
-    // Generate 3 choices
-    var correctPos = Math.floor(Math.random()*3);
-    choices = [];
-    var used = [crowdCount];
-    for (var ci = 0; ci < 3; ci++) {
-      if (ci === correctPos) {
-        choices.push(crowdCount);
-      } else {
-        var offset = Math.floor(Math.random()*6+2) * (Math.random()<0.5?1:-1);
-        var val = Math.max(1, crowdCount + offset);
-        while (used.indexOf(val) !== -1) { val = Math.max(1, crowdCount + offset + (Math.random()<0.5?1:-1)); }
-        choices.push(val);
-        used.push(val);
-      }
-    }
-    phase = 'show';
-    showTimer = 1.8;
+  // ── ゲーム変数 ──
+  var iphase, showTimer, crowd, count, choices, resultTimer, correct, wrong, timeLeft, done, particles, flash, flashCol, fbText;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
-    if (done || phase !== 'answer') return;
-    if (ty < choiceY || ty > choiceY+choiceH) return;
-    var choiceIdx = Math.floor((tx - 40) / (choiceW));
-    if (choiceIdx < 0 || choiceIdx > 2) return;
-    var chosen = choices[choiceIdx];
-    if (chosen === crowdCount) {
-      correct++;
-      flashCol = C.correct;
-      flashAnim = 0.7;
-      resultText = '正解！' + crowdCount + '人';
-      game.audio.play('se_success', 0.5);
-      for (var pi = 0; pi < 10; pi++) {
-        var ang = Math.random()*Math.PI*2;
-        particles.push({ x:W/2, y:H*0.5, vx:Math.cos(ang)*200, vy:Math.sin(ang)*200, life:0.6, col:C.correct });
-      }
-      if (correct >= NEEDED && !done) { done = true; setTimeout(function(){ game.end.success(correct*400+Math.ceil(timeLeft)*80); }, 700); return; }
-    } else {
-      var diff = Math.abs(chosen - crowdCount);
-      if (diff <= 3) {
-        flashCol = C.close;
-        resultText = '惜しい！' + crowdCount + '人だった';
-      } else {
-        wrong++;
-        flashCol = C.wrong;
-        resultText = 'ハズレ！' + crowdCount + '人だった';
-        game.audio.play('se_failure', 0.4);
-        if (wrong >= MAX_WRONG && !done) { done = true; setTimeout(function(){ game.end.failure(); }, 500); return; }
-      }
-    }
-    phase = 'result';
-    resultTimer = 1.2;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#181030');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function genRound() {
+    count = 5 + Math.floor(Math.random() * 16);   // 修正2: 5-20人（元は5-40）
+    crowd = []; for (var i = 0; i < count; i++) crowd.push({ x: snap(80 + Math.random() * (W - 160)), y: snap(H * 0.30 + Math.random() * H * 0.30), col: CROWD[Math.floor(Math.random() * 5)], r: 16 + Math.random() * 8 });
+    var cp = Math.floor(Math.random() * 3); choices = []; var used = [count];
+    for (var ci = 0; ci < 3; ci++) { if (ci === cp) choices.push(count); else { var off = Math.floor(Math.random() * 5 + 2) * (Math.random() < 0.5 ? 1 : -1), val = Math.max(1, count + off); while (used.indexOf(val) !== -1) val = Math.max(1, val + 1); choices.push(val); used.push(val); } }
+    iphase = 'show'; showTimer = 1.8;
+  }
+
+  function initGame() { correct = 0; wrong = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; fbText = ''; genRound(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (correct * 600 + Math.ceil(timeLeft) * 100) : correct * 250;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawPerson(p, alpha) { pc(p.x, p.y, p.r, p.col, alpha); pc(p.x, p.y - p.r * 0.7, p.r * 0.55, C.g, alpha * 0.8); }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || iphase !== 'answer') return;
+    if (y < CY || y > CY + CH) return;
+    var idx = Math.floor((x - 40) / CW); if (idx < 0 || idx > 2) return;
+    var chosen = choices[idx];
+    if (chosen === count) { correct++; flashCol = C.b; flash = 0.7; fbText = 'CORRECT  ' + count; game.audio.play('se_success', 0.5); for (var p = 0; p < 10; p++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: H * 0.45, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.6, col: C.b }); } if (correct >= NEEDED) { finish(true); return; } }
+    else { var diff = Math.abs(chosen - count); if (diff <= 2) { flashCol = C.c; fbText = 'CLOSE  IT WAS ' + count; } else { wrong++; flashCol = C.a; fbText = 'MISS  IT WAS ' + count; game.audio.play('se_failure', 0.4); if (wrong >= MAX_WRONG) { finish(false); return; } } }
+    iphase = 'result'; resultTimer = 1.1;
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); if (!crowd) { count = 8; crowd = []; for (var i = 0; i < 8; i++) crowd.push({ x: snap(120 + i * 100), y: snap(H * 0.4 + (i % 2) * 60), col: CROWD[i % 5], r: 20 }); }
+      for (var ci = 0; ci < crowd.length; ci++) drawPerson(crowd[ci], 0.9);
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.91, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SHARP EYE!' : 'MISCOUNTED', W / 2, H * 0.35, 72, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2;
+      if (iphase === 'show') { showTimer -= dt; if (showTimer <= 0) iphase = 'answer'; }
+      else if (iphase === 'result') { resultTimer -= dt; if (resultTimer <= 0) genRound(); }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 2;
+    // ---- 描画 ----
+    background();
+    if (iphase === 'show') { for (var c1 = 0; c1 < crowd.length; c1++) drawPerson(crowd[c1], 0.9); txt('COUNT THEM!', W / 2, snap(H * 0.66), 52, C.c); }
+    else if (iphase === 'answer') {
+      for (var c2 = 0; c2 < crowd.length; c2++) pc(crowd[c2].x, crowd[c2].y, crowd[c2].r * 1.4, crowd[c2].col, 0.12);
+      txt('HOW MANY?', W / 2, snap(H * 0.42), 56, C.g); txt('?', W / 2, snap(H * 0.33), 120, C.e);
+      for (var ci = 0; ci < 3; ci++) { var bx = 40 + ci * CW + CW / 2; game.draw.rect(40 + ci * CW + 8, CY, CW - 16, CH, C.d, 0.7); txt(choices[ci] + '', bx, CY + CH / 2 + 20, 68, C.g); }
+    } else { for (var c3 = 0; c3 < crowd.length; c3++) drawPerson(crowd[c3], 0.7); txt(fbText, W / 2, snap(H * 0.66), 48, flashCol); }
 
-    if (phase === 'show') {
-      showTimer -= dt;
-      if (showTimer <= 0) phase = 'answer';
-    }
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
 
-    if (phase === 'result') {
-      resultTimer -= dt;
-      if (resultTimer <= 0) generateRound();
-    }
-
-    for (var pp = particles.length-1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx*dt;
-      particles[pp].y += particles[pp].vy*dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp,1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Crowd area
-    if (phase === 'show') {
-      for (var ci2 = 0; ci2 < crowd.length; ci2++) {
-        var p2 = crowd[ci2];
-        game.draw.circle(p2.x, p2.y, p2.r, p2.col, 0.9);
-        game.draw.circle(p2.x, p2.y-p2.r*0.6, p2.r*0.55, C.crowdHi, 0.7); // head
-      }
-      game.draw.text('何人いる？', W/2, H*0.68, { size: 52, color: C.text, bold: true });
-    } else if (phase === 'answer') {
-      // Show blurred/hidden crowd and choices
-      for (var ci3 = 0; ci3 < crowd.length; ci3++) {
-        var p3 = crowd[ci3];
-        game.draw.circle(p3.x, p3.y, p3.r*1.5, p3.col, 0.15);
-      }
-      game.draw.rect(0, H*0.2, W, H*0.45, '#000', 0.5);
-      game.draw.text('記憶した数は？', W/2, H*0.46, { size: 52, color: C.text, bold: true });
-      game.draw.text('？', W/2, H*0.38, { size: 120, color: C.crowdHi, bold: true });
-
-      // Choice buttons
-      for (var ci4 = 0; ci4 < 3; ci4++) {
-        var bx = 40 + ci4*choiceW + choiceW/2;
-        game.draw.rect(40+ci4*choiceW+8, choiceY, choiceW-16, choiceH, C.panel, 0.9);
-        game.draw.text(choices[ci4]+'', bx, choiceY+choiceH/2+20, { size: 72, color: C.text, bold: true });
-        game.draw.text('人', bx+30, choiceY+choiceH/2+54, { size: 36, color: C.ui });
-      }
-    } else if (phase === 'result') {
-      for (var ci5 = 0; ci5 < crowd.length; ci5++) {
-        var p5 = crowd[ci5];
-        game.draw.circle(p5.x, p5.y, p5.r, p5.col, 0.7);
-        game.draw.circle(p5.x, p5.y-p5.r*0.6, p5.r*0.55, C.crowdHi, 0.5);
-      }
-      game.draw.text(resultText, W/2, H*0.68, { size: 48, color: flashCol, bold: true });
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim*0.1);
-
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var pr = particles[pp2];
-      game.draw.circle(pr.x, pr.y, 9*pr.life, pr.col, pr.life*0.8);
-    }
-
-    // Wrong dots
-    for (var wi = 0; wi < MAX_WRONG; wi++) {
-      game.draw.circle(W/2-(MAX_WRONG-1)*40+wi*80, H*0.935, 16, wi < wrong ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(correct + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft/50);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*ratio, 72, ratio > 0.3 ? C.crowd : C.wrong);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(correct + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var wi = 0; wi < MAX_WRONG; wi++) game.draw.rect(snap(W / 2 + (wi - (MAX_WRONG - 1) / 2) * 56) - 10, 224, 20, 20, wi < wrong ? C.a : '#181030');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    generateRound();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
