@@ -1,184 +1,147 @@
 // 222-wind-kite.js
-// ウィンドカイト — 風に揺れる凧糸をさばいて凧を安定させる繊細な操作ゲーム
-// 操作: タップで凧の左右をコントロール
-// 成功: 30秒安定飛行  失敗: 凧が地面か端に当たる
+// ウィンドカイト — 突風に流される凧を左右タップで引き戻し、空の枠内に留め続ける繊細な操作
+// 操作: 左タップで左へ、右タップで右へ引く
+// 成功: 8秒安定飛行  失敗: 凧が枠の端に当たる
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#06091a',
-    sky:    '#0c1a3a',
-    cloud:  '#1e3a5f',
-    kite:   '#ef4444',
-    kiteHi: '#fca5a5',
-    kiteTr: '#3b82f6',
-    string: '#94a3b8',
-    wind:   '#22c55e',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、夜空の凧揚げ） ──
+  var C = { bg:'#06091a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#1e3a6a', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  // Kite physics
-  var kiteX = W / 2;
-  var kiteY = H * 0.22;
-  var kiteVX = 0;
-  var kiteVY = 0;
-  var KITE_R = 48;
-  var STRING_LENGTH = 400;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'WIND KITE';
+  var HOW_TO_PLAY = 'TAP LEFT OR RIGHT TO PULL THE KITE';
+  var NEEDED   = 8;           // 修正2: 30 → 8（サバイバル短縮）
+  var TOP = 240, LEFT = 80, RIGHT = W - 80, FLOOR = snap(H * 0.78);
+  var KITE_R = 52, ANCHOR_X = snap(W / 2), ANCHOR_Y = snap(H * 0.86), STRING = 520;
 
-  // Anchor (held by player at bottom)
-  var anchorX = W / 2;
-  var anchorY = H * 0.82;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var windX = 0; // current wind X force
-  var windTimer = 0;
-  var survived = 0;
-  var NEEDED = 30;
-  var done = false;
-  var elapsed = 0;
-  var trail = [];
-  var clouds = [];
+  // ── ゲーム変数 ──
+  var kiteX, kiteY, kVX, kVY, windX, windTimer, survived, timeLeft, done, trail, clouds;
 
-  // Generate clouds
-  for (var ci = 0; ci < 5; ci++) {
-    clouds.push({ x: Math.random() * W, y: H * 0.1 + Math.random() * H * 0.35, w: 100 + Math.random() * 150, vx: 20 + Math.random() * 40 });
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
   }
 
-  game.onTap(function(tx, ty) {
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / NEEDED * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1428');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(LEFT, TOP, RIGHT - LEFT, FLOOR - TOP, C.d, 0.2);
+    for (var ci = 0; ci < clouds.length; ci++) { var cl = clouds[ci]; game.draw.rect(snap(cl.x) - cl.w / 2, snap(cl.y), cl.w, 24, C.d, 0.4); game.draw.rect(snap(cl.x) - cl.w / 4, snap(cl.y) - 16, cl.w / 2, 16, C.d, 0.4); }
+    game.draw.rect(0, FLOOR, W, H - FLOOR, C.d, 0.6);
+  }
+
+  function drawKite(x, y) {
+    // ダイヤ形（ドット）
+    var d = [[0,-1],[1,0],[0,1],[-1,0]];
+    for (var r = 8; r <= KITE_R; r += 8) for (var k = 0; k < d.length; k++) game.draw.rect(snap(x + d[k][0] * r) - 4, snap(y + d[k][1] * r) - 4, 8, 8, C.a, 0.5);
+    for (var yy = -KITE_R; yy <= KITE_R; yy += 8) for (var xx = -KITE_R; xx <= KITE_R; xx += 8) { if (Math.abs(xx) + Math.abs(yy) <= KITE_R) game.draw.rect(snap(x) + xx, snap(y) + yy, 8, 8, (xx === 0 || yy === 0) ? C.c : C.a, 0.9); }
+    game.draw.rect(snap(x) - 4, snap(y) - 4, 8, 8, C.g);
+    // しっぽ
+    for (var t = 0; t < 4; t++) game.draw.rect(snap(x + Math.sin(game.time.elapsed * 3 + t) * 14) - 4, snap(y + KITE_R + t * 22), 8, 8, C.e, 0.7 - t * 0.12);
+  }
+
+  function initGame() {
+    kiteX = snap(W / 2); kiteY = snap(H * 0.4); kVX = 0; kVY = 0; windX = 0; windTimer = 0; survived = 0; timeLeft = NEEDED; done = false; trail = [];
+    clouds = []; for (var i = 0; i < 4; i++) clouds.push({ x: Math.random() * W, y: TOP + 40 + Math.random() * (FLOOR - TOP - 200), w: 120 + Math.random() * 120, vx: 20 + Math.random() * 30 });
+  }
+
+  function finish(success) {
     if (done) return;
-    // Tap left side pulls kite left, right side pulls right
-    var pull = (tx - W / 2) / (W / 2);
-    kiteVX += pull * 200;
-    game.audio.play('se_tap', 0.2);
+    done = true; resultSuccess = success;
+    finalScore = success ? (600 + Math.ceil(survived) * 120) : Math.round(survived * 150);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    kVX += (x < W / 2 ? -220 : 220); game.audio.play('se_tap', 0.2);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!clouds) initGame(); background(); game.draw.rect(ANCHOR_X - 2, snap(H * 0.4), 4, ANCHOR_Y - snap(H * 0.4), C.g, 0.3); drawKite(W / 2, H * 0.4);
+      txt(GAME_TITLE, W / 2, H * 0.14, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 28, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'STEADY!' : 'CRASHED', W / 2, H * 0.35, 82, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      survived += dt;
-      elapsed += dt;
-      if (survived >= NEEDED) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() { game.end.success(Math.ceil(survived) * 80 + 500); }, 400);
-        return;
-      }
+      survived += dt; timeLeft -= dt;
+      if (timeLeft <= 0) { finish(true); return; }
+      windTimer -= dt; if (windTimer <= 0) { windX = game.random(-500, 500); windTimer = 1.2 + Math.random() * 2; }
+      kVX += windX * dt * 0.3; kVY += 30 * dt;
+      kiteX += kVX * dt; kiteY += kVY * dt; kVX *= 0.97; kVY *= 0.97;
+      var dx = kiteX - ANCHOR_X, dy = kiteY - ANCHOR_Y, dist = Math.hypot(dx, dy);
+      if (dist > STRING) { kiteX = ANCHOR_X + dx / dist * STRING; kiteY = ANCHOR_Y + dy / dist * STRING; var nx = dx / dist, ny = dy / dist, dot = kVX * nx + kVY * ny; if (dot > 0) { kVX -= dot * nx * 1.5; kVY -= dot * ny * 1.5; } }
+      if (kiteX < LEFT + KITE_R || kiteX > RIGHT - KITE_R || kiteY > FLOOR - KITE_R || kiteY < TOP + KITE_R) { finish(false); return; }
+      trail.push({ x: kiteX, y: kiteY, life: 0.4 });
+      for (var ti = trail.length - 1; ti >= 0; ti--) { trail[ti].life -= dt; if (trail[ti].life <= 0) trail.splice(ti, 1); }
+      for (var ci = 0; ci < clouds.length; ci++) { clouds[ci].x += clouds[ci].vx * dt; if (clouds[ci].x > W + 200) clouds[ci].x = -200; }
     }
 
-    // Wind changes
-    windTimer -= dt;
-    if (windTimer <= 0) {
-      windX = (Math.random() - 0.5) * 500;
-      windTimer = 1.5 + Math.random() * 2.5;
-    }
+    // ---- 描画 ----
+    background();
+    game.draw.rect(ANCHOR_X - 2, snap(kiteY), 4, ANCHOR_Y - snap(kiteY), C.g, 0.3);
+    for (var t2 = 0; t2 < trail.length; t2++) game.draw.rect(snap(trail[t2].x) - 5, snap(trail[t2].y) - 5, 10, 10, C.e, trail[t2].life * 0.5);
+    drawKite(kiteX, kiteY);
+    pc(ANCHOR_X, ANCHOR_Y, 28, C.c, 0.8);
+    // 風向き警告
+    var ws = Math.abs(windX) / 500, wc = ws > 0.6 ? C.a : ws > 0.3 ? C.f : C.b;
+    txt(windX > 0 ? 'WIND ►' : '◄ WIND', W / 2, H - 100, 44, wc);
 
-    // Kite physics
-    kiteVX += windX * dt * 0.3;
-    kiteVY += -50 * dt; // slight upward lift
-    kiteVY += 80 * dt;  // gravity pull down
-
-    kiteX += kiteVX * dt;
-    kiteY += kiteVY * dt;
-    kiteVX *= 0.97;
-    kiteVY *= 0.97;
-
-    // String constraint — kite can't go farther than string length from anchor
-    var dx = kiteX - anchorX;
-    var dy = kiteY - anchorY;
-    var dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > STRING_LENGTH) {
-      kiteX = anchorX + (dx / dist) * STRING_LENGTH;
-      kiteY = anchorY + (dy / dist) * STRING_LENGTH;
-      // Reflect velocity along string
-      var nx = dx / dist, ny = dy / dist;
-      var dot = kiteVX * nx + kiteVY * ny;
-      if (dot > 0) {
-        kiteVX -= dot * nx * 1.5;
-        kiteVY -= dot * ny * 1.5;
-      }
-    }
-
-    // Boundary check
-    if (kiteX < KITE_R || kiteX > W - KITE_R || kiteY > H * 0.78 || kiteY < 20) {
-      if (!done) {
-        done = true;
-        game.audio.play('se_failure');
-        setTimeout(function() { game.end.failure(); }, 400);
-      }
-    }
-
-    // Trail
-    trail.push({ x: kiteX, y: kiteY, life: 0.4 });
-    for (var ti = trail.length - 1; ti >= 0; ti--) {
-      trail[ti].life -= dt;
-      if (trail[ti].life <= 0) trail.splice(ti, 1);
-    }
-
-    // Move clouds
-    for (var ci2 = 0; ci2 < clouds.length; ci2++) {
-      clouds[ci2].x += clouds[ci2].vx * dt;
-      if (clouds[ci2].x > W + 200) clouds[ci2].x = -200;
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, H * 0.85, C.sky, 0.5);
-
-    // Clouds
-    for (var ci3 = 0; ci3 < clouds.length; ci3++) {
-      var cl = clouds[ci3];
-      game.draw.rect(cl.x - cl.w / 2, cl.y - 20, cl.w, 40, C.cloud, 0.4);
-      game.draw.circle(cl.x - cl.w * 0.25, cl.y - 20, 30, C.cloud, 0.4);
-      game.draw.circle(cl.x + cl.w * 0.1, cl.y - 30, 40, C.cloud, 0.4);
-      game.draw.circle(cl.x + cl.w * 0.35, cl.y - 15, 25, C.cloud, 0.4);
-    }
-
-    // Wind indicator
-    var windStrength = Math.abs(windX) / 500;
-    var windDir = windX > 0 ? '→' : '←';
-    var windCol = windStrength > 0.6 ? '#ef4444' : windStrength > 0.3 ? '#f59e0b' : C.wind;
-    game.draw.text('風 ' + windDir, W / 2, H * 0.89, { size: 42, color: windCol, bold: true });
-
-    // String
-    game.draw.line(anchorX, anchorY, kiteX, kiteY, C.string, 2);
-
-    // Trail
-    for (var ti2 = 0; ti2 < trail.length; ti2++) {
-      var t = trail[ti2];
-      game.draw.circle(t.x, t.y, 8 * t.life, C.kiteHi, t.life * 0.2);
-    }
-
-    // Kite (diamond shape)
-    game.draw.line(kiteX, kiteY - KITE_R, kiteX + KITE_R, kiteY, C.kite, 3);
-    game.draw.line(kiteX + KITE_R, kiteY, kiteX, kiteY + KITE_R, C.kite, 3);
-    game.draw.line(kiteX, kiteY + KITE_R, kiteX - KITE_R, kiteY, C.kite, 3);
-    game.draw.line(kiteX - KITE_R, kiteY, kiteX, kiteY - KITE_R, C.kite, 3);
-    // Fill diagonal
-    game.draw.line(kiteX, kiteY - KITE_R, kiteX, kiteY + KITE_R, C.kiteTr, 3);
-    game.draw.line(kiteX - KITE_R, kiteY, kiteX + KITE_R, kiteY, C.kiteHi, 3);
-    game.draw.circle(kiteX, kiteY, 12, '#fff', 0.7);
-
-    // Tail
-    for (var ta = 0; ta < 4; ta++) {
-      var tailX = kiteX + Math.sin(elapsed * 3 + ta * 0.8) * 15;
-      var tailY = kiteY + KITE_R + ta * 24;
-      game.draw.circle(tailX, tailY, 8, C.kiteTr, 0.6 - ta * 0.1);
-    }
-
-    // Anchor person
-    game.draw.circle(anchorX, anchorY, 28, C.kiteHi, 0.7);
-    game.draw.text('✋', anchorX, anchorY, { size: 36 });
-
-    // Controls hint
-    game.draw.text('左右タップで操作', W / 2, H * 0.92, { size: 36, color: C.ui });
-
-    var ratio = Math.min(1, survived / NEEDED);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, '#22c55e');
-    game.draw.text(survived.toFixed(1) + 's', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(timeLeft.toFixed(1) + 's', W / 2, 96, 44, C.g);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
