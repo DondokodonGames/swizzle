@@ -1,248 +1,150 @@
 // 341-ramen-cook.js
-// ラーメンクック — 沸騰したお湯に麺を投入して3分間ちょうどで引き上げる
-// 操作: タップでアクションを実行（投入→待つ→引き上げ）
-// 成功: 5杯完璧調理  失敗: 3杯失敗 or 60秒
+// ラーメンクック — 麺を投入し、ゲージが緑のジャストゾーンに来た瞬間に引き上げる茹で時間タイミング
+// 操作: タップで麺を投入、ジャストゾーンでもう一度タップして引き上げ
+// 成功: 3杯 完璧に茹でる  失敗: 3杯 失敗 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0400',
-    pot:    '#1c1008',
-    potHi:  '#2d1a0e',
-    steam:  '#e2e8f0',
-    water:  '#1d4ed8',
-    waterHi:'#3b82f6',
-    noodle: '#fde68a',
-    noodleHi:'#fff',
-    perfect:'#22c55e',
-    perfectHi:'#86efac',
-    over:   '#ef4444',
-    overHi: '#fca5a5',
-    under:  '#f59e0b',
-    bowl:   '#92400e',
-    bowlHi: '#b45309',
-    ui:     '#78716c',
-    text:   '#fef3c7'
-  };
+  // ── パレット（ネオンアーケード、ラーメン屋台） ──
+  var C = { bg:'#0a0400', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff', pot:'#241408' };
 
-  var COOK_TIME = 3.0; // target cook time in seconds (simplified from 3 min)
-  var COOK_TOLERANCE = 0.5; // ±0.5s is perfect
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'RAMEN COOK';
+  var HOW_TO_PLAY = 'DROP NOODLES · LIFT THEM IN THE GREEN ZONE';
+  var MAX_TIME = 15;
+  var NEEDED   = 3;          // 修正2: 5 → 3
+  var MAX_FAIL = 3;
+  var COOK = 3.0, TOL = 0.5, MAXC = COOK * 2.2;
 
-  var phase = 'idle'; // idle, cooking, done
-  var cookTimer = 0;
-  var steamAnim = 0;
-  var servings = 0;
-  var NEEDED = 5;
-  var failures = 0;
-  var MAX_FAILURES = 3;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var steams = [];
-  var resultAnim = 0;
-  var resultText = '';
-  var resultCol = C.perfect;
-  var noodleYList = [];
-  var bubbles = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function startCooking() {
-    phase = 'cooking';
-    cookTimer = 0;
-    noodleYList = [];
-    for (var i = 0; i < 6; i++) {
-      noodleYList.push(H * 0.58 + Math.random() * 40);
-    }
-    game.audio.play('se_tap', 0.3);
+  // ── ゲーム変数 ──
+  var phase, cookTimer, servings, failures, timeLeft, done, particles, bubbles, fbText, fbCol, fbTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function liftNoodles() {
-    if (phase !== 'cooking') return;
-    phase = 'done';
-    var diff = Math.abs(cookTimer - COOK_TIME);
-    if (diff <= COOK_TOLERANCE) {
-      servings++;
-      resultText = diff < 0.15 ? '完璧！' : '上手い！';
-      resultCol = C.perfectHi;
-      game.audio.play('se_success', 0.7);
-      for (var pi = 0; pi < 10; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        particles.push({ x: W / 2, y: H * 0.55, vx: Math.cos(ang) * 220, vy: Math.sin(ang) * 220, life: 0.7, col: C.noodleHi });
-      }
-      if (servings >= NEEDED && !done) {
-        done = true;
-        setTimeout(function() { game.end.success(servings * 400 + Math.ceil(timeLeft) * 100); }, 600);
-        return;
-      }
-    } else if (cookTimer < COOK_TIME - COOK_TOLERANCE) {
-      failures++;
-      resultText = '生煮え！';
-      resultCol = C.under;
-      game.audio.play('se_failure', 0.5);
-    } else {
-      failures++;
-      resultText = '茹でスギ！';
-      resultCol = C.overHi;
-      game.audio.play('se_failure', 0.5);
-    }
-    resultAnim = 1.0;
-    if (failures >= MAX_FAILURES && !done) {
-      done = true;
-      setTimeout(function() { game.end.failure(); }, 400);
-      return;
-    }
-    setTimeout(function() { if (!done) { phase = 'idle'; } }, 800);
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#221400');
   }
 
-  game.onTap(function() {
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(snap(W * 0.18), snap(H * 0.52), snap(W * 0.64), snap(H * 0.24), C.pot, 0.9); game.draw.rect(snap(W * 0.16), snap(H * 0.52), snap(W * 0.68), 14, C.f, 0.5);
+    game.draw.rect(snap(W * 0.20), snap(H * 0.54), snap(W * 0.60), snap(H * 0.20), C.e, 0.3);
+  }
+
+  function initGame() { phase = 'idle'; cookTimer = 0; servings = 0; failures = 0; timeLeft = MAX_TIME; done = false; particles = []; bubbles = []; fbText = ''; fbCol = C.g; fbTimer = 0; }
+
+  function finish(success) {
     if (done) return;
-    if (phase === 'idle') startCooking();
-    else if (phase === 'cooking') liftNoodles();
+    done = true; resultSuccess = success;
+    finalScore = success ? (servings * 500 + Math.ceil(timeLeft) * 100) : servings * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawNoodles() { for (var ni = 0; ni < 6; ni++) { var nx = snap(W * 0.26 + ni * W * 0.09); for (var ns = 0; ns < 3; ns++) pline(nx + ns * 20, snap(H * 0.56), nx + ns * 20 + 12 * (Math.floor(game.time.elapsed * 4 + ns) % 2 ? 1 : -1), snap(H * 0.56 + 36), C.c, 0.9, 5); } }
+
+  function lift() {
+    if (phase !== 'cooking') return;
+    phase = 'done'; var diff = Math.abs(cookTimer - COOK);
+    if (diff <= TOL) { servings++; fbText = diff < 0.15 ? 'PERFECT!' : 'GOOD!'; fbCol = C.b; game.audio.play('se_success', 0.7); for (var k = 0; k < 10; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: H * 0.55, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, life: 0.7, col: C.c }); } if (servings >= NEEDED) { finish(true); return; } }
+    else { failures++; fbText = cookTimer < COOK - TOL ? 'UNDERCOOKED!' : 'OVERCOOKED!'; fbCol = C.a; game.audio.play('se_failure', 0.5); if (failures >= MAX_FAIL) { finish(false); return; } }
+    fbTimer = 0.9;
+    setTimeout(function() { if (!done) phase = 'idle'; }, 700);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (phase === 'idle') { phase = 'cooking'; cookTimer = 0; game.audio.play('se_tap', 0.3); }
+    else if (phase === 'cooking') lift();
   });
 
+  // ── 更新 & 描画 ──
+  function drawGauge() {
+    var gx = snap(W * 0.10), gy = snap(H * 0.44), gw = snap(W * 0.80);
+    game.draw.rect(gx, gy, gw, 44, '#221400', 0.9);
+    var pl = gx + gw * (COOK - TOL) / MAXC, pr = gx + gw * (COOK + TOL) / MAXC;
+    game.draw.rect(snap(pl), gy - 4, snap(pr - pl), 52, C.b, 0.35);
+    var pct = Math.min(1, cookTimer / MAXC), col = Math.abs(cookTimer - COOK) < TOL ? C.b : cookTimer > COOK ? C.a : C.c;
+    game.draw.rect(gx, gy, snap(gw * pct), 44, col, 0.9);
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawNoodles();
+      txt(GAME_TITLE, W / 2, H * 0.14, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'IRASSHAI!' : 'KITCHEN CLOSED', W / 2, H * 0.35, 64, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (fbTimer > 0) fbTimer -= dt;
+      if (phase === 'cooking') { cookTimer += dt; if (cookTimer > MAXC) { lift(); return; } }
+      if (Math.random() < dt * 8) bubbles.push({ x: snap(W * 0.3 + Math.random() * W * 0.4), y: snap(H * 0.72), vy: -60 - Math.random() * 40, life: 0.8 });
+      for (var bi = bubbles.length - 1; bi >= 0; bi--) { bubbles[bi].y += bubbles[bi].vy * dt; bubbles[bi].life -= dt; if (bubbles[bi].life <= 0) bubbles.splice(bi, 1); }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (resultAnim > 0) resultAnim -= dt * 1.5;
-    steamAnim += dt;
+    // ---- 描画 ----
+    background();
+    for (var bi2 = 0; bi2 < bubbles.length; bi2++) game.draw.rect(snap(bubbles[bi2].x) - 4, snap(bubbles[bi2].y) - 4, 8, 8, C.e, bubbles[bi2].life * 0.6);
+    if (phase === 'cooking' || phase === 'done') drawNoodles();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.4);
 
-    if (phase === 'cooking') {
-      cookTimer += dt;
-      // Over time - auto fail at 2x target
-      if (cookTimer > COOK_TIME * 2.2) {
-        liftNoodles();
-        return;
-      }
-    }
+    if (phase === 'cooking') { drawGauge(); txt(cookTimer.toFixed(1) + 's', W / 2, snap(H * 0.36), 72, Math.abs(cookTimer - COOK) < TOL ? C.b : cookTimer > COOK ? C.a : C.c); txt('LIFT AT ' + COOK + 's', W / 2, snap(H * 0.40) + 8, 32, C.g); }
+    else if (phase === 'idle') txt('TAP TO DROP NOODLES', W / 2, snap(H * 0.40), 46, C.c);
+    if (fbTimer > 0) txt(fbText, W / 2, snap(H * 0.82), 60, fbCol);
 
-    // Bubbles
-    if (Math.random() < dt * 8) {
-      bubbles.push({ x: W * 0.3 + Math.random() * W * 0.4, y: H * 0.65, vy: -60 - Math.random() * 40, r: 8 + Math.random() * 10, life: 0.8 });
-    }
-    for (var bi = bubbles.length - 1; bi >= 0; bi--) {
-      bubbles[bi].y += bubbles[bi].vy * dt;
-      bubbles[bi].x += Math.sin(elapsed * 3 + bi) * 20 * dt;
-      bubbles[bi].life -= dt;
-      if (bubbles[bi].life <= 0) bubbles.splice(bi, 1);
-    }
-
-    // Steam
-    if (Math.random() < dt * 3) {
-      steams.push({ x: W * 0.25 + Math.random() * W * 0.5, y: H * 0.52, vy: -50, vx: (Math.random() - 0.5) * 30, r: 20, life: 1.2 });
-    }
-    for (var si = steams.length - 1; si >= 0; si--) {
-      steams[si].y += steams[si].vy * dt;
-      steams[si].x += steams[si].vx * dt;
-      steams[si].r += 30 * dt;
-      steams[si].life -= dt;
-      if (steams[si].life <= 0) steams.splice(si, 1);
-    }
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Stove
-    game.draw.rect(W * 0.1, H * 0.7, W * 0.8, H * 0.22, C.pot, 0.9);
-    game.draw.rect(W * 0.1, H * 0.7, W * 0.8, 16, C.potHi, 0.8);
-
-    // Pot
-    game.draw.rect(W * 0.2, H * 0.5, W * 0.6, H * 0.22, C.pot, 0.9);
-    game.draw.rect(W * 0.18, H * 0.5, W * 0.64, 16, C.potHi, 0.9);
-
-    // Boiling water
-    var waterY = H * 0.52;
-    game.draw.rect(W * 0.2, waterY, W * 0.6, H * 0.2, C.water, 0.8);
-    // Wave surface
-    for (var wx = W * 0.2; wx < W * 0.8; wx += 60) {
-      var wh = 10 + 6 * Math.sin(elapsed * 5 + wx * 0.02);
-      game.draw.circle(wx + 30, waterY, 30, C.waterHi, 0.5);
-    }
-
-    // Bubbles
-    for (var bi2 = 0; bi2 < bubbles.length; bi2++) {
-      var bb = bubbles[bi2];
-      game.draw.circle(bb.x, bb.y, bb.r, C.waterHi, bb.life * 0.5);
-    }
-
-    // Noodles in water
-    if (phase === 'cooking' || phase === 'done') {
-      for (var ni = 0; ni < noodleYList.length; ni++) {
-        var ny = noodleYList[ni];
-        var nx = W * 0.25 + ni * W * 0.09;
-        // Noodle squiggle
-        for (var ns = 0; ns < 3; ns++) {
-          var nsX = nx + ns * 24;
-          game.draw.line(nsX, ny, nsX + 16 * Math.sin(elapsed * 4 + ns), ny + 40, C.noodle, 6);
-        }
-      }
-    }
-
-    // Steam
-    for (var si2 = 0; si2 < steams.length; si2++) {
-      var st = steams[si2];
-      game.draw.circle(st.x, st.y, st.r, C.steam, st.life * 0.15);
-    }
-
-    // Timer display during cooking
-    if (phase === 'cooking') {
-      var ct = cookTimer;
-      var pct = Math.min(1, ct / COOK_TIME);
-      var timerCol = Math.abs(ct - COOK_TIME) < COOK_TOLERANCE ? C.perfectHi : (ct > COOK_TIME ? C.overHi : C.noodle);
-      // Big timer
-      game.draw.text(ct.toFixed(1) + 's', W / 2, H * 0.35, { size: 80, color: timerCol, bold: true });
-      // Target indicator
-      game.draw.text('目標: ' + COOK_TIME + 's', W / 2, H * 0.43, { size: 40, color: C.ui });
-      // Cook gauge
-      game.draw.rect(W * 0.1, H * 0.46, W * 0.8, 24, '#1c1008', 0.9);
-      game.draw.rect(W * 0.1, H * 0.46, W * 0.8 * Math.min(1, pct), 24, timerCol, 0.9);
-      // Perfect zone marker
-      var perfectLeft = W * 0.1 + W * 0.8 * (COOK_TIME - COOK_TOLERANCE) / (COOK_TIME * 2.2);
-      var perfectRight = W * 0.1 + W * 0.8 * (COOK_TIME + COOK_TOLERANCE) / (COOK_TIME * 2.2);
-      game.draw.rect(perfectLeft, H * 0.46 - 4, perfectRight - perfectLeft, 32, C.perfect, 0.4);
-    } else if (phase === 'idle') {
-      game.draw.text('タップで麺を投入！', W / 2, H * 0.38, { size: 46, color: C.ui });
-    } else {
-      game.draw.text('タップで引き上げ！', W / 2, H * 0.38, { size: 46, color: C.noodleHi, bold: true });
-    }
-
-    // Result anim
-    if (resultAnim > 0) {
-      game.draw.text(resultText, W / 2, H * 0.84, { size: 72, color: resultCol, bold: true });
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    // Fail dots
-    for (var fi = 0; fi < MAX_FAILURES; fi++) {
-      game.draw.circle(W / 2 - (MAX_FAILURES - 1) * 28 + fi * 56, H * 0.91, 16, fi < failures ? C.over : '#0a0400');
-    }
-
-    game.draw.text(servings + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.water : C.over);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(servings + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var fi = 0; fi < MAX_FAIL; fi++) game.draw.rect(snap(W / 2 + (fi - (MAX_FAIL - 1) / 2) * 56) - 10, 224, 20, 20, fi < failures ? C.a : '#221400');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
