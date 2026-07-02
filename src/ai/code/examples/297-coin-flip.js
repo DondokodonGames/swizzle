@@ -1,240 +1,152 @@
 // 297-coin-flip.js
-// コインの予言者 — 投げたコインが着地する前に表か裏かを予言せよ
+// コインの予言者 — 空中のコインが着地する前に、表(HEADS)か裏(TAILS)かをスワイプで予言する
 // 操作: 上スワイプで表、下スワイプで裏を予言
-// 成功: 15回連続正解でなく、20回中14回以上正解  失敗: 間違い7回 or 35秒
+// 成功: 5回中3回以上的中  失敗: 3回はずす or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0c0a02',
-    coin1:   '#f59e0b',
-    coin1Hi: '#fde68a',
-    coin1Lo: '#d97706',
-    coin2:   '#a16207',
-    coin2Hi: '#ca8a04',
-    edge:    '#78350f',
-    heads:   '#fbbf24',
-    tails:   '#b45309',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    predict: '#818cf8',
-    ui:      '#475569',
-    text:    '#f1f5f9'
-  };
+  // ── パレット（ネオンアーケード、ゴールドコイン） ──
+  var C = { bg:'#0c0a02', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff', gold:'#ffb020' };
 
-  var coinY = H * 0.45;
-  var coinVY = 0;
-  var coinX = W / 2;
-  var coinPhase = 'idle'; // idle, thrown, landing, result
-  var coinFlipAngle = 0;
-  var coinScale = 1;
-  var isHeads = false;
-  var prediction = null; // 'heads' | 'tails' | null
-  var landed = false;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'COIN ORACLE';
+  var HOW_TO_PLAY = 'SWIPE UP = HEADS · DOWN = TAILS · BEFORE IT LANDS';
+  var MAX_TIME = 15;
+  var MAX_TOTAL = 5;         // 修正2: 20 → 5
+  var NEEDED    = 3;         // 5回中3回的中
+  var MAX_WRONG = 3;         // 修正2: 7 → 3
+  var CX = snap(W / 2), REST_Y = snap(H * 0.66);
 
-  var correct = 0;
-  var wrong = 0;
-  var total = 0;
-  var NEEDED_CORRECT = 14;
-  var MAX_TOTAL = 20;
-  var MAX_WRONG = 7;
-  var done = false;
-  var timeLeft = 35;
-  var elapsed = 0;
-  var resultTimer = 0;
-  var particles = [];
-  var bounceCount = 0;
-  var coinRestY = H * 0.72;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function throwCoin() {
-    coinY = H * 0.72;
-    coinVY = -1400;
-    coinFlipAngle = 0;
-    isHeads = Math.random() < 0.5;
-    prediction = null;
-    landed = false;
-    coinPhase = 'thrown';
-    bounceCount = 0;
-    game.audio.play('se_tap', 0.2);
+  // ── ゲーム変数 ──
+  var coinY, coinVY, flipA, isHeads, prediction, phase, bounce, resultTimer, correct, wrong, total, timeLeft, done, particles, fbText, fbCol, fbTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a1408');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(0, snap(H * 0.72), W, H, '#161005', 0.9); game.draw.rect(0, snap(H * 0.72), W, 8, C.gold, 0.4); }
+
+  function throwCoin() { coinY = REST_Y; coinVY = -1400; flipA = 0; isHeads = Math.random() < 0.5; prediction = null; phase = 'thrown'; bounce = 0; game.audio.play('se_tap', 0.25); }
+
+  function initGame() { correct = 0; wrong = 0; total = 0; timeLeft = MAX_TIME; done = false; particles = []; fbText = ''; fbCol = C.g; fbTimer = 0; phase = 'idle'; coinY = REST_Y; flipA = 0; isHeads = true; prediction = null; setTimeout(function() { if (state === S.PLAYING && !done) throwCoin(); }, 400); }
+
+  function finish(success) {
     if (done) return;
-    if (coinPhase !== 'thrown') return;
-    if (prediction !== null) return;
-    if (dir === 'up') {
-      prediction = 'heads';
-      game.audio.play('se_tap', 0.25);
-    } else if (dir === 'down') {
-      prediction = 'tails';
-      game.audio.play('se_tap', 0.25);
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (correct * 500 + Math.ceil(timeLeft) * 80) : correct * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawCoin() {
+    var scaleX = Math.abs(Math.cos(flipA)), r = 88, cw = r * 2 * Math.max(0.1, scaleX);
+    var faceUp = Math.cos(flipA) > 0, col = faceUp ? C.gold : C.f;
+    for (var yy = -r; yy <= r; yy += 8) { var half = cw / 2 * Math.sqrt(Math.max(0, 1 - (yy / r) * (yy / r))); if (half < 4) continue; game.draw.rect(snap(CX - half), snap(coinY + yy), snap(half * 2), 8, col, 0.95); }
+    if (cw > 60) txt(faceUp ? 'H' : 'T', CX, coinY + 16, 56, '#000');
+    // 影
+    game.draw.rect(snap(CX - 60), REST_Y + 100, 120, 12, '#000', 0.3 * Math.max(0.2, 1 - (REST_Y - coinY) / 500));
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
   });
 
+  game.onSwipe(function(d) {
+    if (state !== S.PLAYING || done || phase !== 'thrown' || prediction !== null) return;
+    if (d === 'up') { prediction = 'heads'; game.audio.play('se_tap', 0.3); }
+    else if (d === 'down') { prediction = 'tails'; game.audio.play('se_tap', 0.3); }
+  });
+
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); flipA += dt * 3; coinY = REST_Y - 40; drawCoin();
+      txt(GAME_TITLE, W / 2, H * 0.14, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ORACLE!' : 'CURSED', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure');
-        game.end.failure();
-        return;
-      }
-    }
-
-    // Coin physics
-    if (coinPhase === 'thrown') {
-      coinVY += 2200 * dt;
-      coinY += coinVY * dt;
-      coinFlipAngle += dt * 12;
-
-      if (coinY >= coinRestY && coinVY > 0) {
-        bounceCount++;
-        if (bounceCount >= 2) {
-          // Land
-          coinY = coinRestY;
-          coinVY = 0;
-          coinPhase = 'landing';
-          landed = true;
-          resultTimer = 0.9;
-
-          // Evaluate
-          if (prediction !== null) {
-            var correct2 = (prediction === 'heads') === isHeads;
-            if (correct2) {
-              correct++;
-              game.audio.play('se_success', 0.5);
-              for (var pi = 0; pi < 8; pi++) {
-                var ang = Math.random() * Math.PI * 2;
-                particles.push({ x: coinX, y: coinRestY, vx: Math.cos(ang) * 180, vy: Math.sin(ang) * 180 - 100, life: 0.6, col: C.correct });
-              }
-            } else {
-              wrong++;
-              game.audio.play('se_failure', 0.4);
-              for (var pi2 = 0; pi2 < 6; pi2++) {
-                var ang2 = Math.random() * Math.PI * 2;
-                particles.push({ x: coinX, y: coinRestY, vx: Math.cos(ang2) * 150, vy: Math.sin(ang2) * 150, life: 0.5, col: C.wrong });
-              }
-            }
-          } else {
-            wrong++; // No prediction = wrong
-            game.audio.play('se_failure', 0.4);
-          }
-
-          total++;
-
-          if (!done) {
-            if (wrong >= MAX_WRONG) {
-              done = true;
-              setTimeout(function() { game.end.failure(); }, 500);
-              return;
-            }
-            if (total >= MAX_TOTAL) {
-              done = true;
-              if (correct >= NEEDED_CORRECT) {
-                setTimeout(function() { game.end.success(correct * 200 + Math.ceil(timeLeft) * 100); }, 500);
-              } else {
-                setTimeout(function() { game.end.failure(); }, 500);
-              }
-              return;
-            }
-          }
-        } else {
-          coinVY = -coinVY * 0.4;
-          coinY = coinRestY;
-          for (var bi = 0; bi < 3; bi++) {
-            particles.push({ x: coinX + (Math.random()-0.5)*60, y: coinRestY, vx: (Math.random()-0.5)*100, vy: -100-Math.random()*60, life: 0.3, col: C.coin1Hi });
-          }
+      if (timeLeft <= 0) { finish(correct >= NEEDED); return; }
+      if (fbTimer > 0) fbTimer -= dt;
+      if (phase === 'thrown') {
+        coinVY += 2200 * dt; coinY += coinVY * dt; flipA += dt * 12;
+        if (coinY >= REST_Y && coinVY > 0) {
+          bounce++;
+          if (bounce >= 2) {
+            coinY = REST_Y; coinVY = 0; phase = 'landing'; resultTimer = 0.9;
+            var ok = prediction !== null && (prediction === 'heads') === isHeads;
+            if (ok) { correct++; fbText = 'RIGHT!'; fbCol = C.b; game.audio.play('se_success', 0.5); for (var pk = 0; pk < 8; pk++) { var a = Math.random() * Math.PI * 2; particles.push({ x: CX, y: REST_Y, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180 - 100, life: 0.6, col: C.c }); } }
+            else { wrong++; fbText = 'WRONG!'; fbCol = C.a; game.audio.play('se_failure', 0.4); }
+            fbTimer = 0.9; total++;
+            if (wrong >= MAX_WRONG) { finish(false); return; }
+            if (correct >= NEEDED) { finish(true); return; }
+            if (total >= MAX_TOTAL) { finish(correct >= NEEDED); return; }
+          } else { coinVY = -coinVY * 0.4; coinY = REST_Y; }
         }
+      } else if (phase === 'landing') {
+        resultTimer -= dt; flipA = isHeads ? 0 : Math.PI;
+        if (resultTimer <= 0) { phase = 'idle'; setTimeout(function() { if (state === S.PLAYING && !done) throwCoin(); }, 200); }
       }
-    } else if (coinPhase === 'landing') {
-      resultTimer -= dt;
-      coinFlipAngle = isHeads ? 0 : Math.PI; // Show result
-      if (resultTimer <= 0 && !done) {
-        coinPhase = 'idle';
-        setTimeout(throwCoin, 200);
-      }
-    } else if (coinPhase === 'idle') {
-      coinFlipAngle += dt * 0.5;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 300 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background();
+    txt('UP = HEADS', W / 2, snap(H * 0.28), 40, prediction === 'heads' ? C.e : '#66557a');
+    txt('DOWN = TAILS', W / 2, snap(H * 0.86), 40, prediction === 'tails' ? C.e : '#66557a');
+    drawCoin();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (prediction !== null && phase === 'thrown') txt('CALLED ' + (prediction === 'heads' ? 'HEADS' : 'TAILS'), W / 2, snap(H * 0.5), 46, C.d);
+    if (fbTimer > 0) txt(fbText, W / 2, snap(H * 0.55), 60, fbCol);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Table surface
-    game.draw.rect(0, H * 0.78, W, H * 0.22, '#0f0a00', 0.9);
-    game.draw.rect(0, H * 0.78, W, 8, C.coin1Lo, 0.4);
-
-    // Coin (simplified: stretched circle based on flip angle)
-    var scaleX = Math.abs(Math.cos(coinFlipAngle));
-    var coinR = 80;
-    var coinW = coinR * 2 * Math.max(0.08, scaleX);
-    var coinH = coinR * 2;
-    var faceUp = Math.cos(coinFlipAngle) > 0;
-    var faceCol = faceUp ? C.coin1 : C.coin2;
-    var faceHiCol = faceUp ? C.coin1Hi : C.coin2Hi;
-
-    game.draw.circle(coinX, coinY, coinR + 6, C.edge, 0.9);
-    game.draw.rect(coinX - coinW / 2, coinY - coinH / 2, coinW, coinH, faceCol, 0.95);
-    if (coinW > 20) {
-      game.draw.rect(coinX - coinW / 2 + 8, coinY - coinH / 2 + 8, Math.max(0, coinW - 16), coinH - 16, faceHiCol, 0.3);
-      var label = faceUp ? '表' : '裏';
-      if (coinW > 60) {
-        game.draw.text(label, coinX, coinY + 16, { size: 56, color: '#fff', bold: true });
-      }
-    }
-
-    // Shadow
-    game.draw.circle(coinX, coinRestY + 12, 80 * (1 - Math.max(0, (coinRestY - coinY) / 500)), '#000', 0.3);
-
-    // Prediction arrows
-    var arrowY = H * 0.2;
-    game.draw.text('↑ 表 (上スワイプ)', W / 2, arrowY, { size: 38, color: prediction === 'heads' ? C.predict : C.ui });
-    game.draw.text('↓ 裏 (下スワイプ)', W / 2, arrowY + 60, { size: 38, color: prediction === 'tails' ? C.predict : C.ui });
-
-    if (prediction !== null && coinPhase === 'thrown') {
-      game.draw.text((prediction === 'heads' ? '表！' : '裏！') + ' を予言', W / 2, H * 0.87, { size: 50, color: C.predict, bold: true });
-    }
-
-    if (coinPhase === 'landing') {
-      var resultOk = prediction && ((prediction === 'heads') === isHeads);
-      game.draw.text(resultOk ? '正解！' : '外れ！', W / 2, H * 0.84, { size: 60, color: resultOk ? C.correct : C.wrong, bold: true });
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life * 1.5, p.col, p.life * 0.8);
-    }
-
-    // Stats
-    game.draw.text(correct + '正解 / ' + wrong + 'ミス', W / 2, 148, { size: 52, color: C.text, bold: true });
-    game.draw.text('残り ' + (MAX_TOTAL - total) + '回', W / 2, 210, { size: 38, color: C.ui });
-
-    // Wrong dots
-    for (var wi = 0; wi < MAX_WRONG; wi++) {
-      game.draw.circle(W / 2 - (MAX_WRONG - 1) * 22 + wi * 44, H * 0.93, 14, wi < wrong ? C.wrong : '#0c0a00');
-    }
-
-    var ratio = Math.max(0, timeLeft / 35);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.coin1 : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(correct + ' / ' + NEEDED + '   (' + total + '/' + MAX_TOTAL + ')', W / 2, 168, 46, C.b);
+    for (var wi = 0; wi < MAX_WRONG; wi++) game.draw.rect(snap(W / 2 + (wi - (MAX_WRONG - 1) / 2) * 56) - 10, 224, 20, 20, wi < wrong ? C.a : '#1a1408');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.15);
-    setTimeout(throwCoin, 500);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
