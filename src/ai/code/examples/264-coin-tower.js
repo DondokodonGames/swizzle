@@ -1,233 +1,137 @@
 // 264-coin-tower.js
-// コインタワー — 揺れるプラットフォームにコインを積み上げる積み木ゲーム
-// 操作: タップで上から落ちてくるコインを落とすタイミングを決める
-// 成功: 10枚安定して積む  失敗: 3枚落とす or 60秒
+// コインタワー — 左右に揺れる台の中心を狙い、落ちてくるコインをタップで放して積み上げる
+// 操作: タップでコインを落とす（中心に載せる）
+// 成功: 3枚積む  失敗: 3枚こぼす or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#04030a',
-    platform:'#1e3a5f',
-    platHi:  '#3b82f6',
-    coin:    '#f59e0b',
-    coinHi:  '#fde68a',
-    coinDark:'#d97706',
-    fall:    '#ef4444',
-    ui:      '#475569',
-    text:    '#f1f5f9'
-  };
+  // ── パレット（ネオンアーケード、コイン積み） ──
+  var C = { bg:'#04030a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var PLAT_W = 200;
-  var PLAT_H = 20;
-  var PLAT_Y = H * 0.78;
-  var platX = W / 2 - PLAT_W / 2;
-  var platVx = 60;
-  var platSwing = 120;
-  var platCenter = W / 2 - PLAT_W / 2;
-
-  var coins = []; // stacked coins
-  var fallingCoin = null;
-  var COIN_R = 36;
-  var COIN_H_SIZE = 20;
-  var drops = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'COIN TOWER';
+  var HOW_TO_PLAY = 'TAP TO DROP THE COIN ONTO THE SWAYING PLATFORM';
+  var MAX_TIME = 15;
+  var NEEDED   = 3;           // 修正2: 10 → 3
   var MAX_DROPS = 3;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var feedback = '';
-  var feedbackCol = '#fff';
-  var feedbackTimer = 0;
-  var particles = [];
-  var spawnTimer = 0;
+  var PLAT_W = 220, PLAT_H = 24, PLAT_Y = snap(H * 0.78), COIN_R = 44, COIN_H = 28, TOP = 260;
 
-  function topOfStack() {
-    if (coins.length === 0) return PLAT_Y;
-    return PLAT_Y - coins.length * (COIN_H_SIZE + 4);
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var platX, coins, falling, drops, timeLeft, done, spawnTimer, particles, fbText, fbCol, fbTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function stackCenterX() {
-    if (coins.length === 0) return platX + PLAT_W / 2;
-    // Average of stacked coins
-    var sum = 0;
-    for (var i = 0; i < coins.length; i++) sum += coins[i].x;
-    return sum / coins.length;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a1030');
   }
 
-  function spawnFallingCoin() {
-    fallingCoin = {
-      x: W * 0.15 + Math.random() * W * 0.7,
-      y: H * 0.12,
-      vy: 0,
-      landed: false
-    };
+  function background() { game.draw.clear(C.bg); }
+
+  function topOfStack() { return coins.length === 0 ? PLAT_Y : PLAT_Y - coins.length * (COIN_H + 4); }
+  function stackCenter() { if (coins.length === 0) return platX + PLAT_W / 2; var s = 0; for (var i = 0; i < coins.length; i++) s += coins[i].x; return s / coins.length; }
+
+  function drawCoin(x, y, col) { game.draw.rect(snap(x) - COIN_R, snap(y), COIN_R * 2, COIN_H, col, 0.9); game.draw.rect(snap(x) - COIN_R, snap(y), COIN_R * 2, 4, C.g, 0.5); }
+
+  function spawnCoin() { falling = { x: snap(game.random(W * 0.15, W * 0.85)), y: TOP, vy: 0, released: false }; }
+
+  function initGame() { platX = W / 2 - PLAT_W / 2; coins = []; falling = null; drops = 0; timeLeft = MAX_TIME; done = false; spawnTimer = 0.4; particles = []; fbText = ''; fbCol = C.g; fbTimer = 0; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (coins.length * 400 + Math.ceil(timeLeft) * 60) : coins.length * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
-  game.onTap(function(tx, ty) {
-    if (done || !fallingCoin || fallingCoin.landed) return;
-    // Release the coin (let gravity do rest)
-    fallingCoin.vy = 200;
-    game.audio.play('se_tap', 0.3);
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || !falling || falling.released) return;
+    falling.released = true; falling.vy = 300; game.audio.play('se_tap', 0.3);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); game.draw.rect(snap(W / 2 - PLAT_W / 2), PLAT_Y, PLAT_W, PLAT_H, C.d, 0.9); drawCoin(W / 2, PLAT_Y - COIN_H - 4, C.c); drawCoin(W / 2, TOP, C.f);
+      txt(GAME_TITLE, W / 2, H * 0.14, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.40, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.46, 48, C.g);
+      }
+      txt('INSERT COIN', W / 2, H * 0.52, 40, '#554466');
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'TOWER BUILT!' : 'TOPPLED', W / 2, H * 0.35, 68, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    if (feedbackTimer > 0) feedbackTimer -= dt;
-
-    // Platform sway
-    platX = platCenter + Math.sin(elapsed * (1.2 + coins.length * 0.08)) * platSwing;
-
-    // Spawn coin
-    if (!fallingCoin) {
-      spawnTimer -= dt;
-      if (spawnTimer <= 0) spawnFallingCoin();
-    }
-
-    // Move falling coin (drift horizontally, fall when released)
-    if (fallingCoin && !fallingCoin.landed) {
-      if (fallingCoin.vy > 0) {
-        fallingCoin.y += fallingCoin.vy * dt;
-        fallingCoin.vy += 600 * dt;
-      } else {
-        // Drift toward center
-        fallingCoin.x += (W / 2 - fallingCoin.x) * 0.3 * dt;
-        fallingCoin.y += 40 * dt;
-      }
-
-      // Landing check
-      var stackTop = topOfStack();
-      var platRight = platX + PLAT_W;
-      var landOnPlat = coins.length === 0 &&
-        fallingCoin.x >= platX + COIN_R * 0.5 && fallingCoin.x <= platRight - COIN_R * 0.5 &&
-        fallingCoin.y + COIN_R >= stackTop - 10;
-      var landOnCoin = coins.length > 0 &&
-        Math.abs(fallingCoin.x - stackCenterX()) < COIN_R * 1.6 &&
-        fallingCoin.y + COIN_R >= stackTop;
-
-      if (landOnPlat || landOnCoin) {
-        // Check if balanced
-        var offset = Math.abs(fallingCoin.x - (platX + PLAT_W / 2));
-        if (offset > PLAT_W * 0.45 || (coins.length > 0 && Math.abs(fallingCoin.x - stackCenterX()) > COIN_R * 1.2)) {
-          // Fell off
-          drops++;
-          feedback = '落ちた！ (' + drops + '/' + MAX_DROPS + ')';
-          feedbackCol = C.fall;
-          feedbackTimer = 0.7;
-          game.audio.play('se_failure', 0.5);
-          for (var pi = 0; pi < 5; pi++) {
-            var ang = Math.random() * Math.PI + Math.PI / 2;
-            particles.push({ x: fallingCoin.x, y: fallingCoin.y, vx: Math.cos(ang) * 120, vy: Math.sin(ang) * 100, life: 0.6, col: C.coin });
-          }
-          fallingCoin = null;
-          spawnTimer = 1.2;
-          if (drops >= MAX_DROPS && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
-            return;
-          }
-        } else {
-          coins.push({ x: fallingCoin.x, y: stackTop - COIN_H_SIZE, flash: 0.3 });
-          game.audio.play('se_success', 0.5);
-          fallingCoin = null;
-          spawnTimer = 0.8;
-          if (coins.length >= 10 && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(coins.length * 200 + Math.ceil(timeLeft) * 80); }, 500);
-            return;
-          }
-        }
-      } else if (fallingCoin.y > H + 100) {
-        // Fell off screen
-        drops++;
-        game.audio.play('se_failure', 0.4);
-        fallingCoin = null;
-        spawnTimer = 1.0;
-        if (drops >= MAX_DROPS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (fbTimer > 0) fbTimer -= dt;
+      platX = (W / 2 - PLAT_W / 2) + Math.sin(game.time.elapsed * (1.2 + coins.length * 0.15)) * 140;
+      if (!falling) { spawnTimer -= dt; if (spawnTimer <= 0) spawnCoin(); }
+      if (falling && !falling.released) { falling.x += (W / 2 - falling.x) * 0.5 * dt; }
+      if (falling && falling.released) {
+        falling.y += falling.vy * dt; falling.vy += 600 * dt;
+        var stackTop = topOfStack();
+        if (falling.y + COIN_H >= stackTop) {
+          var ok = coins.length === 0 ? (falling.x >= platX + COIN_R * 0.4 && falling.x <= platX + PLAT_W - COIN_R * 0.4) : (Math.abs(falling.x - stackCenter()) < COIN_R * 1.1);
+          if (ok) { coins.push({ x: falling.x, flash: 0.3 }); game.audio.play('se_success', 0.5); falling = null; spawnTimer = 0.5; if (coins.length >= NEEDED) { finish(true); return; } }
+          else { drops++; fbText = 'DROPPED!'; fbCol = C.a; fbTimer = 0.6; game.audio.play('se_failure', 0.5); for (var pi = 0; pi < 5; pi++) { var a = Math.random() * Math.PI + Math.PI / 2; particles.push({ x: falling.x, y: falling.y, vx: Math.cos(a) * 120, vy: Math.sin(a) * 100, life: 0.6 }); } falling = null; spawnTimer = 0.8; if (drops >= MAX_DROPS) { finish(false); return; } }
         }
       }
+      for (var ci = 0; ci < coins.length; ci++) if (coins[ci].flash > 0) coins[ci].flash -= dt;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 400 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Update stacked coin positions (follow platform)
-    for (var ci = 0; ci < coins.length; ci++) {
-      coins[ci].y = PLAT_Y - (ci + 1) * (COIN_H_SIZE + 4);
-      if (coins[ci].flash > 0) coins[ci].flash -= dt;
-    }
+    // ---- 描画 ----
+    background();
+    game.draw.rect(snap(platX), PLAT_Y, PLAT_W, PLAT_H, C.d, 0.9); game.draw.rect(snap(platX), PLAT_Y, PLAT_W, 6, C.g, 0.4);
+    for (var ci2 = 0; ci2 < coins.length; ci2++) drawCoin(coins[ci2].x, PLAT_Y - (ci2 + 1) * (COIN_H + 4), coins[ci2].flash > 0 ? C.g : C.c);
+    if (falling) { drawCoin(falling.x, falling.y, falling.released ? C.g : C.f); if (!falling.released) { for (var y = falling.y + COIN_H; y < topOfStack(); y += 16) game.draw.rect(snap(falling.x) - 2, snap(y), 4, 6, C.e, 0.3); txt('TAP', falling.x, falling.y + 60, 32, C.f); } }
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 5, 12, 10, C.c, particles[pp2].life * 1.4);
+    if (fbTimer > 0) txt(fbText, W / 2, H * 0.6, 48, fbCol);
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 400 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Platform
-    game.draw.rect(platX, PLAT_Y, PLAT_W, PLAT_H, C.platform, 0.9);
-    game.draw.rect(platX, PLAT_Y, PLAT_W, 6, C.platHi, 0.7);
-    // Platform support
-    game.draw.line(platX + PLAT_W / 2, PLAT_Y + PLAT_H, W / 2, H * 0.92, C.ui, 4);
-
-    // Stacked coins
-    for (var ci2 = 0; ci2 < coins.length; ci2++) {
-      var c = coins[ci2];
-      var col = c.flash > 0 ? C.coinHi : C.coin;
-      game.draw.rect(c.x - COIN_R, c.y, COIN_R * 2, COIN_H_SIZE, col, 0.9);
-      game.draw.rect(c.x - COIN_R, c.y, COIN_R * 2, 4, C.coinHi, 0.7);
-      game.draw.rect(c.x - COIN_R, c.y + COIN_H_SIZE - 4, COIN_R * 2, 4, C.coinDark, 0.5);
-    }
-
-    // Falling coin
-    if (fallingCoin) {
-      var release = fallingCoin.vy > 0;
-      var fcol = release ? C.coinHi : C.coin;
-      var pulse = release ? 1 : (0.85 + 0.15 * Math.abs(Math.sin(elapsed * 8)));
-      game.draw.rect(fallingCoin.x - COIN_R * pulse, fallingCoin.y - COIN_H_SIZE / 2, COIN_R * 2 * pulse, COIN_H_SIZE, fcol, 0.9);
-      game.draw.rect(fallingCoin.x - COIN_R * pulse, fallingCoin.y - COIN_H_SIZE / 2, COIN_R * 2 * pulse, 4, '#fff', 0.5);
-
-      if (!release) {
-        game.draw.text('TAP', fallingCoin.x, fallingCoin.y + 60, { size: 36, color: C.coinHi, bold: true });
-        // Guide line
-        game.draw.line(fallingCoin.x, fallingCoin.y, fallingCoin.x, topOfStack() - 10, C.ui, 2);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.rect(p.x - 6, p.y - 4, 12, 8, p.col, p.life);
-    }
-
-    // Feedback
-    if (feedbackTimer > 0) {
-      game.draw.text(feedback, W / 2, H * 0.86, { size: 48, color: feedbackCol, bold: true });
-    }
-
-    // Drop dots
-    for (var di = 0; di < MAX_DROPS; di++) {
-      game.draw.circle(W / 2 - (MAX_DROPS - 1) * 28 + di * 56, H * 0.92, 16, di < drops ? C.fall : '#050310');
-    }
-
-    game.draw.text(coins.length + ' / 10', W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.coin : C.fall);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(coins.length + ' / ' + NEEDED, W / 2, 168, 48, C.c);
+    for (var dd = 0; dd < MAX_DROPS; dd++) game.draw.rect(snap(W / 2 + (dd - (MAX_DROPS - 1) / 2) * 56) - 10, 224, 20, 20, dd < drops ? C.a : '#1a1030');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    spawnTimer = 0.5;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

@@ -1,217 +1,134 @@
 // 263-power-surge.js
-// パワーサージ — 電力メーターを危険ゾーンに入らないよう連打でコントロールする
-// 操作: タップで電力を上げる（自然に下がる）
-// 成功: 緑ゾーン内30秒生存  失敗: 赤ゾーン3回踏む or 黄ゾーン外へ
+// パワーサージ — 連打で電力メーターを上げ、移動する安全ゾーン内に留め続ける電力制御
+// 操作: タップで電力チャージ（自然に減衰する）
+// 成功: 8秒ゾーン内に維持  失敗: 危険ゾーンを3回踏む or レンジ外
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#030208',
-    track:  '#0f0c1e',
-    green:  '#22c55e',
-    grnHi:  '#86efac',
-    yellow: '#f59e0b',
-    yelHi:  '#fde68a',
-    red:    '#ef4444',
-    redHi:  '#fca5a5',
-    power:  '#3b82f6',
-    powHi:  '#93c5fd',
-    ui:     '#475569',
-    text:   '#f1f5f9'
-  };
+  // ── パレット（ネオンアーケード、発電制御室） ──
+  var C = { bg:'#030208', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var METER_W = W - 80;
-  var METER_H = 100;
-  var METER_X = 40;
-  var METER_Y = H * 0.35;
-
-  var power = 0.5; // 0 to 1
-  var DRAIN_RATE = 0.18; // power lost per second
-  var TAP_BOOST = 0.06; // power gained per tap
-
-  // Target zone moves
-  var zoneCenter = 0.5;
-  var zoneLow = 0.35;
-  var zoneHigh = 0.65;
-  var zoneSpeed = 0.08;
-  var zoneMoveTimer = 0;
-  var ZONE_MOVE_INTERVAL = 3;
-
-  var survivalTime = 0;
-  var NEEDED_TIME = 30;
-  var redHits = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'POWER SURGE';
+  var HOW_TO_PLAY = 'TAP TO CHARGE · STAY IN THE GREEN ZONE';
+  var NEEDED   = 8;           // 修正2: 30 → 8（サバイバル短縮）
   var MAX_RED = 3;
-  var done = false;
-  var elapsed = 0;
-  var feedback = '';
-  var feedbackCol = '#fff';
-  var feedbackTimer = 0;
-  var particles = [];
-  var inRed = false;
-  var redTimer = 0;
+  var MW = W - 80, MH = 110, MX = 40, MY = snap(H * 0.36);
+  var DRAIN = 0.18, BOOST = 0.07;
 
-  function updateZone() {
-    var newCenter = 0.2 + Math.random() * 0.6;
-    zoneCenter = newCenter;
-    zoneLow = Math.max(0.1, newCenter - 0.15);
-    zoneHigh = Math.min(0.9, newCenter + 0.15);
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var power, zoneLo, zoneHi, zoneTimer, zoneInterval, survived, timeLeft, redHits, inRed, redTimer, done, particles, fbText, fbCol, fbTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / NEEDED * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a1030');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function moveZone() { var cen = 0.25 + Math.random() * 0.5; zoneLo = Math.max(0.1, cen - 0.14); zoneHi = Math.min(0.9, cen + 0.14); }
+
+  function initGame() { power = 0.5; moveZone(); zoneTimer = 0; zoneInterval = 2.5; survived = 0; timeLeft = NEEDED; redHits = 0; inRed = false; redTimer = 0; done = false; particles = []; fbText = ''; fbCol = C.g; fbTimer = 0; }
+
+  function finish(success) {
     if (done) return;
-    power = Math.min(1, power + TAP_BOOST);
-    game.audio.play('se_tap', 0.2);
-    for (var pi = 0; pi < 2; pi++) {
-      var ang = -Math.PI / 2 + (Math.random() - 0.5) * 1;
-      particles.push({ x: METER_X + power * METER_W, y: METER_Y + METER_H / 2, vx: Math.cos(ang) * 80, vy: Math.sin(ang) * 80, life: 0.3 });
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (600 + Math.ceil(survived) * 120) : Math.round(survived * 100);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawMeter() {
+    game.draw.rect(MX, MY, MW, MH, C.d, 0.3);
+    game.draw.rect(MX, MY, snap(MW * zoneLo), MH, C.a, 0.2); game.draw.rect(MX + snap(MW * zoneHi), MY, MW - snap(MW * zoneHi), MH, C.a, 0.2);
+    game.draw.rect(MX + snap(MW * zoneLo), MY, snap(MW * (zoneHi - zoneLo)), MH, C.b, 0.3);
+    var inGreen = power >= zoneLo && power <= zoneHi, col = inGreen ? C.e : (power < 0.1 || power > 0.9 ? C.a : C.f);
+    game.draw.rect(MX + 4, MY + 4, snap(MW * power), MH - 8, col, 0.9);
+    txt(Math.round(power * 100) + '%', W / 2, MY - 30, 52, col);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    power = Math.min(1, power + BOOST); game.audio.play('se_tap', 0.2);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) elapsed += dt;
-
-    // Drain
-    power = Math.max(0, power - DRAIN_RATE * dt);
-
-    // Move target zone
-    zoneMoveTimer += dt;
-    if (zoneMoveTimer >= ZONE_MOVE_INTERVAL) {
-      zoneMoveTimer = 0;
-      updateZone();
-      ZONE_MOVE_INTERVAL = 2.5 + Math.random() * 2;
-    }
-
-    // Check zone
-    var inGreen = power >= zoneLow && power <= zoneHigh;
-    var inRange = power >= 0.05 && power <= 0.95;
-
-    if (inGreen && !done) {
-      survivalTime += dt;
-      if (survivalTime >= NEEDED_TIME && !done) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() { game.end.success(Math.round(survivalTime * 100) + Math.round((1 - redHits / MAX_RED) * 500)); }, 400);
-        return;
+    if (state === S.ATTRACT) {
+      background(); power = (Math.sin(game.time.elapsed * 2) + 1) / 2; zoneLo = 0.35; zoneHi = 0.65; drawMeter();
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 26, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.60, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.66, 48, C.g);
       }
-    } else if (!inRange && !done) {
-      // Out of bounds
-      done = true;
-      game.audio.play('se_failure');
-      setTimeout(function() { game.end.failure(); }, 400);
+      txt('INSERT COIN', W / 2, H * 0.72, 40, '#554466');
+      scanlines();
       return;
     }
 
-    // Red zone (outside green but in range)
-    if (!inGreen && inRange && !done) {
-      if (!inRed) {
-        inRed = true;
-        redTimer = 0;
-      }
-      redTimer += dt;
-      if (redTimer > 1.0) {
-        redHits++;
-        feedback = '危険ゾーン！ (' + redHits + '/' + MAX_RED + ')';
-        feedbackCol = C.red;
-        feedbackTimer = 0.6;
-        game.audio.play('se_failure', 0.4);
-        redTimer = 0;
-        if (redHits >= MAX_RED && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-          return;
-        }
-      }
-    } else {
-      inRed = false;
-      redTimer = 0;
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'STABLE!' : 'OVERLOAD', W / 2, H * 0.35, 82, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
 
-    if (feedbackTimer > 0) feedbackTimer -= dt;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt; power = Math.max(0, power - DRAIN * dt);
+      if (fbTimer > 0) fbTimer -= dt;
+      zoneTimer += dt; if (zoneTimer >= zoneInterval) { zoneTimer = 0; moveZone(); zoneInterval = 2 + Math.random() * 1.5; }
+      var inGreen = power >= zoneLo && power <= zoneHi, inRange = power >= 0.05 && power <= 0.95;
+      if (inGreen) { survived += dt; if (survived >= NEEDED || timeLeft <= 0) { finish(true); return; } }
+      else if (!inRange) { finish(false); return; }
+      if (timeLeft <= 0) { finish(survived >= NEEDED * 0.9); return; }
+      if (!inGreen && inRange) { if (!inRed) { inRed = true; redTimer = 0; } redTimer += dt; if (redTimer > 1.0) { redHits++; fbText = 'DANGER!'; fbCol = C.a; fbTimer = 0.5; game.audio.play('se_failure', 0.4); redTimer = 0; if (redHits >= MAX_RED) { finish(false); return; } } }
+      else { inRed = false; redTimer = 0; }
     }
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background();
+    var ig = power >= zoneLo && power <= zoneHi;
+    game.draw.rect(0, 0, W, H, ig ? C.b : C.a, ig ? 0.04 : 0.04 + 0.06 * (Math.floor(game.time.elapsed * 4) % 2));
+    drawMeter();
+    // タップターゲット
+    var tp = 0.85 + 0.15 * (Math.floor(game.time.elapsed * 6) % 2);
+    game.draw.rect(snap(W / 2) - snap(80 * tp), snap(H * 0.62) - snap(80 * tp), snap(160 * tp), snap(160 * tp), C.e, 0.25); txt('TAP', W / 2, H * 0.62 + 16, 60, C.e);
+    if (fbTimer > 0) txt(fbText, W / 2, H * 0.80, 48, fbCol);
 
-    // Background glow based on zone
-    var glowCol = inGreen ? C.green : C.red;
-    var glowAmt = inGreen ? 0.05 : (0.05 + 0.08 * Math.abs(Math.sin(elapsed * 4)));
-    game.draw.rect(0, 0, W, H, glowCol, glowAmt);
-
-    // Meter track
-    game.draw.rect(METER_X, METER_Y, METER_W, METER_H, C.track, 0.8);
-
-    // Danger zones (red)
-    game.draw.rect(METER_X, METER_Y, METER_W * zoneLow, METER_H, C.red, 0.25);
-    game.draw.rect(METER_X + METER_W * zoneHigh, METER_Y, METER_W * (1 - zoneHigh), METER_H, C.red, 0.25);
-
-    // Safe zone (green)
-    game.draw.rect(METER_X + METER_W * zoneLow, METER_Y, METER_W * (zoneHigh - zoneLow), METER_H, C.green, 0.3);
-
-    // Meter fill
-    var inGreenNow = power >= zoneLow && power <= zoneHigh;
-    var meterCol = inGreenNow ? C.power : (power < 0.1 || power > 0.9 ? C.red : C.yellow);
-    game.draw.rect(METER_X, METER_Y + 4, METER_W * power, METER_H - 8, meterCol, 0.85);
-
-    // Meter border
-    game.draw.rect(METER_X, METER_Y, METER_W, 4, C.ui, 0.5);
-    game.draw.rect(METER_X, METER_Y + METER_H - 4, METER_W, 4, C.ui, 0.5);
-
-    // Zone labels
-    game.draw.text('LOW', METER_X + METER_W * zoneLow * 0.5, METER_Y + METER_H / 2 + 14, { size: 32, color: C.redHi });
-    game.draw.text('OK', METER_X + METER_W * (zoneLow + (zoneHigh - zoneLow) / 2), METER_Y + METER_H / 2 + 14, { size: 36, color: C.grnHi, bold: true });
-    game.draw.text('HIGH', METER_X + METER_W * zoneHigh + METER_W * (1 - zoneHigh) * 0.5, METER_Y + METER_H / 2 + 14, { size: 32, color: C.redHi });
-
-    // Power value
-    game.draw.text(Math.round(power * 100) + '%', W / 2, METER_Y - 30, { size: 52, color: meterCol, bold: true });
-
-    // Tap instruction
-    game.draw.text('タップで電力チャージ！', W / 2, METER_Y + METER_H + 50, { size: 44, color: C.ui });
-
-    // Big tap target
-    var tapPulse = 0.8 + 0.2 * Math.abs(Math.sin(elapsed * 6));
-    game.draw.circle(W / 2, H * 0.65, 100 * tapPulse, C.power, 0.15);
-    game.draw.circle(W / 2, H * 0.65, 80 * tapPulse, C.power, 0.3);
-    game.draw.text('TAP', W / 2, H * 0.65 + 18, { size: 60, color: C.powHi, bold: true });
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 6 * (p.life / 0.3), C.powHi, p.life);
-    }
-
-    // Feedback
-    if (feedbackTimer > 0) {
-      game.draw.text(feedback, W / 2, H * 0.84, { size: 46, color: feedbackCol, bold: true });
-    }
-
-    // Red hit dots
-    for (var ri = 0; ri < MAX_RED; ri++) {
-      game.draw.circle(W / 2 - (MAX_RED - 1) * 28 + ri * 56, H * 0.88, 16, ri < redHits ? C.red : '#0a0618');
-    }
-
-    // Survival progress
-    var survRatio = Math.min(1, survivalTime / NEEDED_TIME);
-    game.draw.rect(40, H * 0.92, W - 80, 16, C.ui, 0.3);
-    game.draw.rect(40, H * 0.92, (W - 80) * survRatio, 16, C.green, 0.9);
-    game.draw.text(Math.ceil(survivalTime) + 's / ' + NEEDED_TIME + 's', W / 2, H * 0.96, { size: 40, color: C.text, bold: true });
-
-    var ratio = Math.max(0, 1 - elapsed / 90);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, C.power);
-    game.draw.text(Math.ceil(Math.max(0, 90 - elapsed)) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(survived.toFixed(1) + 's / ' + NEEDED, W / 2, 96, 44, C.g);
+    for (var ri = 0; ri < MAX_RED; ri++) game.draw.rect(snap(W / 2 + (ri - (MAX_RED - 1) / 2) * 56) - 10, 168, 20, 20, ri < redHits ? C.a : '#1a1030');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    updateZone();
-    power = 0.5;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
