@@ -1,228 +1,158 @@
 // 235-meteor-shield.js
-// メテオシールド — 街に落ちてくる隕石をシールドでそらし続ける防衛ゲーム
-// 操作: タップでシールドの向きをセット
-// 成功: 30秒守る  失敗: 3個の隕石が街に着弾
+// メテオシールド — 街へ降り注ぐ隕石を、タップで向けたシールドで弾き返す防衛戦
+// 操作: タップした方向にシールドを向ける
+// 成功: 10秒守り切る  失敗: 隕石が3回着弾
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#02040a',
-    city:   '#1e293b',
-    citHi:  '#334155',
-    sky:    '#060c1a',
-    meteor: '#f97316',
-    metHi:  '#fed7aa',
-    shield: '#22c55e',
-    shldHi: '#86efac',
-    deflect:'#f59e0b',
-    hit:    '#ef4444',
-    star:   '#1e3a5f',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、隕石防衛） ──
+  var C = { bg:'#02040a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var CX = W / 2;
-  var SHIELD_Y = H * 0.62;
-  var SHIELD_W = 200;
-  var shieldAngle = 0; // radians, normal to shield surface
-  var meteors = [];
-  var particles = [];
-  var survived = 0;
-  var NEEDED = 30;
-  var hits = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'METEOR SHIELD';
+  var HOW_TO_PLAY = 'TAP TO AIM THE SHIELD AND DEFLECT';
+  var NEEDED   = 10;          // 修正2: 30 → 10（サバイバル短縮）
   var MAX_HITS = 3;
-  var done = false;
-  var elapsed = 0;
-  var spawnTimer = 0;
-  var SPAWN_INTERVAL = 1.4;
-  var stars = [];
-  var buildingDamage = [0, 0, 0, 0, 0]; // damage level per building
+  var CX = snap(W / 2), SHIELD_Y = snap(H * 0.62), SHIELD_W = 220, CITY_Y = snap(H * 0.78), TOP = 220;
 
-  for (var si = 0; si < 50; si++) {
-    stars.push({ x: Math.random() * W, y: Math.random() * H * 0.65 });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var shieldAngle, meteors, particles, survived, timeLeft, done, hits, spawnTimer, stars;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) {
+    var step = 8; cx = snap(cx); cy = snap(cy);
+    for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) {
+      if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha);
+    }
   }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / NEEDED * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#101828');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    for (var si = 0; si < stars.length; si++) game.draw.rect(stars[si].x, stars[si].y, 4, 4, C.g, 0.2 + 0.1 * (Math.floor(game.time.elapsed * 2 + si) % 2));
+    // 街
+    var bw = W / 5, bh = [120, 200, 160, 220, 140];
+    for (var bi = 0; bi < 5; bi++) { game.draw.rect(bi * bw + 10, H - bh[bi] - 30, bw - 20, bh[bi], C.d, 0.7); game.draw.rect(bi * bw + 10, H - bh[bi] - 30, bw - 20, 8, C.e, 0.4); }
+    game.draw.rect(0, H - 30, W, 30, C.e, 0.6);
+  }
+
+  function drawShield() {
+    var x1 = CX + Math.cos(shieldAngle) * SHIELD_W / 2, y1 = SHIELD_Y + Math.sin(shieldAngle) * SHIELD_W / 2;
+    var x2 = CX - Math.cos(shieldAngle) * SHIELD_W / 2, y2 = SHIELD_Y - Math.sin(shieldAngle) * SHIELD_W / 2;
+    var n = 14;
+    for (var i = 0; i <= n; i++) game.draw.rect(snap(x2 + (x1 - x2) * i / n) - 6, snap(y2 + (y1 - y2) * i / n) - 6, 12, 12, C.b, 0.9);
+    pc(CX, SHIELD_Y, 16, C.g, 0.8);
+  }
+
+  function drawMeteor(m) { pc(m.x, m.y, m.r, C.f, 0.9); game.draw.rect(snap(m.x) - 4, snap(m.y) - 4, 8, 8, C.c, 0.8); }
 
   function spawnMeteor() {
-    var x = 40 + Math.random() * (W - 80);
-    var speed = 250 + survived * 10;
-    // Aim roughly at city (bottom center ±200)
-    var targetX = W / 2 + (Math.random() - 0.5) * 400;
-    var targetY = H * 0.82;
-    var dx = targetX - x, dy = targetY - (-40);
-    var dist = Math.sqrt(dx * dx + dy * dy);
-    meteors.push({
-      x: x, y: -40,
-      vx: (dx / dist) * speed,
-      vy: (dy / dist) * speed,
-      r: 20 + Math.random() * 14,
-      deflected: false
-    });
+    var x = game.random(60, W - 60), speed = 250 + survived * 12, txx = W / 2 + game.random(-380, 380), dx = txx - x, dy = CITY_Y + 60, dist = Math.hypot(dx, dy);
+    meteors.push({ x: x, y: TOP, vx: dx / dist * speed, vy: dy / dist * speed, r: 22 + Math.random() * 12, deflected: false });
   }
 
-  game.onTap(function(tx, ty) {
+  function initGame() {
+    shieldAngle = 0; meteors = []; particles = []; survived = 0; timeLeft = NEEDED; done = false; hits = 0; spawnTimer = 0.6;
+    stars = []; for (var i = 0; i < 40; i++) stars.push({ x: snap(Math.random() * W), y: snap(Math.random() * H * 0.6 + TOP) });
+  }
+
+  function finish(success) {
     if (done) return;
-    // Angle shield toward tap from shield center
-    var dx = tx - CX, dy = ty - SHIELD_Y;
-    shieldAngle = Math.atan2(dy, dx);
-    game.audio.play('se_tap', 0.2);
+    done = true; resultSuccess = success;
+    finalScore = success ? (600 + Math.ceil(survived) * 100 + (hits === 0 ? 400 : 0)) : Math.round(survived * 120);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    shieldAngle = Math.atan2(y - SHIELD_Y, x - CX); game.audio.play('se_tap', 0.2);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      survived += dt;
-      elapsed += dt;
-      if (survived >= NEEDED) {
-        done = true;
-        game.audio.play('se_success');
-        setTimeout(function() { game.end.success(Math.ceil(survived) * 60 + hits === 0 ? 1000 : 500); }, 400);
-        return;
+    if (state === S.ATTRACT) {
+      if (!stars) initGame(); background(); drawShield(); drawMeteor({ x: W * 0.5, y: TOP + 120, r: 24 });
+      txt(GAME_TITLE, W / 2, H * 0.14, 72, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 26, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.40, 62, C.a);
+        txt('TAP TO START', W / 2, H * 0.46, 48, C.g);
       }
+      txt('INSERT COIN', W / 2, H * 0.52, 40, '#556677');
+      scanlines();
+      return;
     }
 
-    spawnTimer -= dt;
-    if (spawnTimer <= 0) {
-      spawnMeteor();
-      spawnTimer = SPAWN_INTERVAL * (0.6 + Math.random() * 0.8);
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CITY SAVED!' : 'DESTROYED', W / 2, H * 0.32, 72, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.46, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.6, 52, C.c);
+      scanlines();
+      return;
     }
 
-    // Shield normal vector (perpendicular to shield)
-    var sNX = -Math.sin(shieldAngle);
-    var sNY = Math.cos(shieldAngle);
-
-    for (var mi = meteors.length - 1; mi >= 0; mi--) {
-      var m = meteors[mi];
-      m.x += m.vx * dt;
-      m.y += m.vy * dt;
-
-      // Check shield collision
-      if (!m.deflected) {
-        var dsx = m.x - CX, dsy = m.y - SHIELD_Y;
-        var projAlong = dsx * Math.cos(shieldAngle) + dsy * Math.sin(shieldAngle);
-        var projPerp = dsx * sNX + dsy * sNY;
-
-        if (Math.abs(projAlong) < SHIELD_W / 2 + m.r && Math.abs(projPerp) < 20 + m.r && m.y > SHIELD_Y - 100 && m.y < SHIELD_Y + 60) {
-          // Deflect! Reflect velocity off shield normal
-          var dot = m.vx * sNX + m.vy * sNY;
-          m.vx -= 2 * dot * sNX;
-          m.vy -= 2 * dot * sNY;
-          m.deflected = true;
-          game.audio.play('se_success', 0.5);
-          for (var pi = 0; pi < 6; pi++) {
-            var ang = shieldAngle + Math.PI + (Math.random() - 0.5) * 1.5;
-            particles.push({ x: m.x, y: m.y, vx: Math.cos(ang) * 150, vy: Math.sin(ang) * 150, life: 0.4, col: C.deflect });
+    // PLAYING
+    if (!done) {
+      survived += dt; timeLeft -= dt;
+      if (timeLeft <= 0) { finish(true); return; }
+      spawnTimer -= dt; if (spawnTimer <= 0) { spawnMeteor(); spawnTimer = 1.2 * (0.6 + Math.random() * 0.7); }
+      var sNX = -Math.sin(shieldAngle), sNY = Math.cos(shieldAngle);
+      for (var mi = meteors.length - 1; mi >= 0; mi--) {
+        var m = meteors[mi]; m.x += m.vx * dt; m.y += m.vy * dt;
+        if (!m.deflected) {
+          var dsx = m.x - CX, dsy = m.y - SHIELD_Y, along = dsx * Math.cos(shieldAngle) + dsy * Math.sin(shieldAngle), perp = dsx * sNX + dsy * sNY;
+          if (Math.abs(along) < SHIELD_W / 2 + m.r && Math.abs(perp) < 22 + m.r && m.y > SHIELD_Y - 100 && m.y < SHIELD_Y + 60) {
+            var dot = m.vx * sNX + m.vy * sNY; m.vx -= 2 * dot * sNX; m.vy -= 2 * dot * sNY; m.deflected = true; game.audio.play('se_success', 0.5);
+            for (var pi = 0; pi < 6; pi++) { var a = shieldAngle + Math.PI + game.random(-0.8, 0.8); particles.push({ x: m.x, y: m.y, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, life: 0.4, col: C.c }); }
           }
         }
+        if (m.x < -100 || m.x > W + 100 || m.y < TOP - 200) { meteors.splice(mi, 1); continue; }
+        if (m.y > CITY_Y) { hits++; meteors.splice(mi, 1); for (var pj = 0; pj < 8; pj++) { var a2 = Math.random() * Math.PI * 2; particles.push({ x: m.x, y: CITY_Y, vx: Math.cos(a2) * 100, vy: Math.sin(a2) * 100 - 200, life: 0.6, col: C.a }); } game.audio.play('se_failure', 0.6); if (hits >= MAX_HITS) { finish(false); return; } continue; }
       }
-
-      // Out of bounds
-      if (m.x < -100 || m.x > W + 100 || m.y < -200) {
-        meteors.splice(mi, 1);
-        continue;
-      }
-
-      // Hit city (bottom)
-      if (m.y > H * 0.75 && !done) {
-        hits++;
-        meteors.splice(mi, 1);
-        var buildIdx = Math.floor(Math.random() * 5);
-        buildingDamage[buildIdx] = Math.min(3, (buildingDamage[buildIdx] || 0) + 1);
-        for (var pi2 = 0; pi2 < 8; pi2++) {
-          var ang2 = Math.random() * Math.PI * 2;
-          particles.push({ x: m.x, y: H * 0.78, vx: Math.cos(ang2) * 100, vy: Math.sin(ang2) * 100 - 200, life: 0.6, col: C.hit });
-        }
-        game.audio.play('se_failure', 0.6);
-        if (hits >= MAX_HITS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-        }
-        continue;
-      }
+      for (var pi3 = particles.length - 1; pi3 >= 0; pi3--) { var p = particles[pi3]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pi3, 1); }
     }
 
-    for (var pi3 = particles.length - 1; pi3 >= 0; pi3--) {
-      particles[pi3].x += particles[pi3].vx * dt;
-      particles[pi3].y += particles[pi3].vy * dt;
-      particles[pi3].vy += 300 * dt;
-      particles[pi3].life -= dt;
-      if (particles[pi3].life <= 0) particles.splice(pi3, 1);
-    }
+    // ---- 描画 ----
+    background();
+    for (var mi2 = 0; mi2 < meteors.length; mi2++) drawMeteor(meteors[mi2]);
+    for (var pp = 0; pp < particles.length; pp++) game.draw.rect(snap(particles[pp].x) - 5, snap(particles[pp].y) - 5, 10, 10, particles[pp].col, particles[pp].life * 1.6);
+    drawShield();
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, H * 0.65, C.sky, 0.3);
-
-    // Stars
-    for (var sti = 0; sti < stars.length; sti++) {
-      game.draw.circle(stars[sti].x, stars[sti].y, 2, '#fff', 0.3 + Math.random() * 0.05);
-    }
-
-    // Meteors
-    for (var mi2 = 0; mi2 < meteors.length; mi2++) {
-      var m2 = meteors[mi2];
-      // Trail
-      for (var ti = 1; ti <= 4; ti++) {
-        game.draw.circle(m2.x - m2.vx * dt * ti * 1.5, m2.y - m2.vy * dt * ti * 1.5, m2.r * (1 - ti * 0.2), C.metHi, (1 - ti * 0.2) * 0.3);
-      }
-      game.draw.circle(m2.x, m2.y, m2.r + 5, C.metHi, 0.25);
-      game.draw.circle(m2.x, m2.y, m2.r, C.meteor, 0.9);
-    }
-
-    // Particles
-    for (var pp = 0; pp < particles.length; pp++) {
-      var p = particles[pp];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    // City buildings
-    var buildW = W / 5;
-    var buildHeights = [120, 200, 160, 220, 140];
-    for (var bi = 0; bi < 5; bi++) {
-      var bx = bi * buildW;
-      var bh = buildHeights[bi];
-      var dmg = buildingDamage[bi] || 0;
-      var alpha = 1 - dmg * 0.25;
-      game.draw.rect(bx + 10, H - bh - 30, buildW - 20, bh, C.city, alpha);
-      game.draw.rect(bx + 10, H - bh - 30, buildW - 20, 10, C.citHi, alpha * 0.5);
-      // Windows
-      for (var wr = 0; wr < 3; wr++) {
-        for (var wc = 0; wc < 2; wc++) {
-          var litUp = Math.random() < 0.7;
-          game.draw.rect(bx + 22 + wc * 30, H - bh - 20 + wr * 35, 20, 20, litUp ? '#f59e0b' : C.citHi, litUp ? 0.6 * alpha : 0.2);
-        }
-      }
-      if (dmg > 0) {
-        game.draw.text('💥'.replace(/[^\x00-\x7F]/g, '!'), bx + buildW / 2, H - bh - 50, { size: 32, color: C.hit, bold: true });
-      }
-    }
-    // Ground
-    game.draw.rect(0, H - 30, W, 30, C.citHi, 0.8);
-
-    // Shield
-    var sEndX1 = CX + Math.cos(shieldAngle) * SHIELD_W / 2;
-    var sEndY1 = SHIELD_Y + Math.sin(shieldAngle) * SHIELD_W / 2;
-    var sEndX2 = CX - Math.cos(shieldAngle) * SHIELD_W / 2;
-    var sEndY2 = SHIELD_Y - Math.sin(shieldAngle) * SHIELD_W / 2;
-    game.draw.line(sEndX2, sEndY2, sEndX1, sEndY1, C.shldHi, 10);
-    game.draw.line(sEndX2, sEndY2, sEndX1, sEndY1, C.shield, 4);
-    game.draw.circle(CX, SHIELD_Y, 16, C.shldHi, 0.8);
-
-    // Hits display
-    for (var hi = 0; hi < MAX_HITS; hi++) {
-      game.draw.circle(W / 2 - (MAX_HITS - 1) * 30 + hi * 60, H * 0.88, 18, hi < hits ? C.hit : '#1e293b');
-    }
-
-    game.draw.text(survived.toFixed(1) + 's / ' + NEEDED, W / 2, 148, { size: 56, color: '#f1f5f9', bold: true });
-    game.draw.text('タップでシールドを向ける', W / 2, H * 0.93, { size: 34, color: C.ui });
-
-    var ratio = Math.min(1, survived / NEEDED);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, '#22c55e');
-    game.draw.text(survived.toFixed(1) + 's', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(timeLeft.toFixed(1) + 's', W / 2, 96, 44, C.g);
+    for (var hh = 0; hh < MAX_HITS; hh++) game.draw.rect(snap(W / 2 + (hh - (MAX_HITS - 1) / 2) * 56) - 10, 168, 20, 20, hh < hits ? C.a : '#101828');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    spawnTimer = 0.8;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
