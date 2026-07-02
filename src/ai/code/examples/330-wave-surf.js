@@ -1,231 +1,142 @@
 // 330-wave-surf.js
-// ウェーブサーフ — 押し寄せる波のリズムに合わせてサーフボードでジャンプ
+// ウェーブサーフ — 押し寄せる波をタップジャンプで飛び越え、次々に波をクリアするサーフィン
 // 操作: タップで波を飛び越える（タイミングが命）
-// 成功: 25波クリア  失敗: 5回失敗 or 45秒
+// 成功: 5波クリア  失敗: 3回ワイプアウト or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#020d1a',
-    sky1:   '#0c2340',
-    sky2:   '#163a60',
-    sun:    '#f59e0b',
-    sunHi:  '#fde68a',
-    sea:    '#0369a1',
-    seaHi:  '#0ea5e9',
-    seafoam:'#bae6fd',
-    wave:   '#0284c7',
-    waveHi: '#38bdf8',
-    surfer: '#fde68a',
-    board:  '#ef4444',
-    correct:'#22c55e',
-    correctHi:'#86efac',
-    fail:   '#ef4444',
-    ui:     '#475569',
-    text:   '#f0f9ff'
-  };
+  // ── パレット（アイスブルー、サンセットビーチ） ──
+  var C = { bg:'#020d1a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff', sea:'#0a4a80' };
 
-  var HORIZON_Y = H * 0.55;
-  var surferX = W * 0.28;
-  var surferY = HORIZON_Y - 20;
-  var surferVY = 0;
-  var onBoard = true;
-  var JUMP_FORCE = -700;
-  var GRAVITY = 1400;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'WAVE SURF';
+  var HOW_TO_PLAY = 'TAP TO JUMP OVER THE WAVES · TIMING IS KEY';
+  var MAX_TIME = 15;
+  var NEEDED   = 5;          // 修正2: 25 → 5
+  var MAX_WIPE = 3;          // 修正2: 5 → 3
+  var HORIZON = snap(H * 0.56), SURF_X = snap(W * 0.28), JUMP = -740, GRAV = 1500;
 
-  var waves = [];
-  var waveSpeed = 300;
-  var spawnTimer = 0;
-  var cleared = 0;
-  var NEEDED = 25;
-  var wipeouts = 0;
-  var MAX_WIPEOUTS = 5;
-  var done = false;
-  var timeLeft = 45;
-  var elapsed = 0;
-  var particles = [];
-  var successAnim = 0;
-  var wipeoutAnim = 0;
-  var cloudX = W;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnWave() {
-    var h = 80 + Math.random() * 80;
-    waves.push({ x: W + 100, w: 60 + Math.random() * 40, h: h, scored: false });
+  // ── ゲーム変数 ──
+  var surfY, surfVY, onBoard, waves, cleared, wipeouts, timeLeft, done, spawnTimer, particles, fbText, fbCol, fbTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function() {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1a2a');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(0, 0, W, HORIZON, '#0c2340', 0.9);
+    pc(W * 0.78, H * 0.16, 60, C.f, 0.9); pc(W * 0.78, H * 0.16, 46, C.c, 0.8);
+    game.draw.rect(0, HORIZON, W, H, C.sea, 0.9);
+    for (var ww = 0; ww < W; ww += 80) game.draw.rect(ww, HORIZON + 24, 50, 4, C.e, 0.4);
+  }
+
+  function spawnWave() { waves.push({ x: W + 100, w: snap(70 + Math.random() * 40), h: snap(90 + Math.random() * 70), scored: false }); }
+
+  function initGame() { surfY = HORIZON - 20; surfVY = 0; onBoard = true; waves = []; cleared = 0; wipeouts = 0; timeLeft = MAX_TIME; done = false; spawnTimer = 0.6; particles = []; fbText = ''; fbCol = C.g; fbTimer = 0; }
+
+  function finish(success) {
     if (done) return;
-    if (onBoard) {
-      surferVY = JUMP_FORCE;
-      onBoard = false;
-      game.audio.play('se_tap', 0.3);
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (cleared * 400 + Math.ceil(timeLeft) * 100) : cleared * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawSurfer() {
+    game.draw.rect(snap(SURF_X) - 50, snap(surfY) + 12, 100, 16, C.a, 0.9);
+    pc(SURF_X, surfY - 20, 20, C.c, 0.95);
+    game.draw.rect(snap(SURF_X) - 6, snap(surfY) - 4, 12, 22, C.c, 0.9);
+  }
+
+  function drawWave(w) { var top = HORIZON - w.h; game.draw.rect(snap(w.x), snap(top), w.w, w.h + 4, C.e, 0.9); pc(w.x + w.w / 2, top, w.w * 0.5, C.g, 0.7); }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (onBoard) { surfVY = JUMP; onBoard = false; game.audio.play('se_tap', 0.3); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawSurfer();
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'GNARLY!' : 'WIPEOUT', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
+    var wspeed = 320 + cleared * 20;
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    if (successAnim > 0) successAnim -= dt * 2;
-    if (wipeoutAnim > 0) wipeoutAnim -= dt * 2;
-
-    waveSpeed = 300 + cleared * 4;
-
-    // Surfer physics
-    if (!onBoard) {
-      surferVY += GRAVITY * dt;
-      surferY += surferVY * dt;
-      if (surferY >= HORIZON_Y - 20) {
-        surferY = HORIZON_Y - 20;
-        surferVY = 0;
-        onBoard = true;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (fbTimer > 0) fbTimer -= dt;
+      if (!onBoard) { surfVY += GRAV * dt; surfY += surfVY * dt; if (surfY >= HORIZON - 20) { surfY = HORIZON - 20; surfVY = 0; onBoard = true; } }
+      spawnTimer -= dt; if (spawnTimer <= 0) { spawnWave(); spawnTimer = 1.1 - Math.min(0.4, cleared * 0.06); }
+      for (var wi = waves.length - 1; wi >= 0; wi--) {
+        var w = waves[wi]; w.x -= wspeed * dt;
+        if (!w.scored && w.x + w.w < SURF_X) { w.scored = true; cleared++; fbText = 'NICE!'; fbCol = C.b; fbTimer = 0.5; game.audio.play('se_success', 0.4); for (var k = 0; k < 5; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: SURF_X, y: surfY, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150 - 80, life: 0.5, col: C.b }); } if (cleared >= NEEDED) { finish(true); return; } }
+        if (!w.scored && onBoard) { var top = HORIZON - w.h; if (SURF_X + 20 >= w.x && SURF_X - 20 <= w.x + w.w && surfY >= top - 20) { wipeouts++; w.scored = true; fbText = 'WIPEOUT!'; fbCol = C.a; fbTimer = 0.7; game.audio.play('se_failure', 0.5); for (var k2 = 0; k2 < 8; k2++) { var a2 = Math.random() * Math.PI * 2; particles.push({ x: SURF_X, y: surfY, vx: Math.cos(a2) * 200, vy: Math.sin(a2) * 200 - 100, life: 0.6, col: C.g }); } if (wipeouts >= MAX_WIPE) { finish(false); return; } } }
+        if (w.x + w.w < -100) waves.splice(wi, 1);
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Spawn waves
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && !done) {
-      spawnWave();
-      spawnTimer = 1.0 + Math.random() * 0.5 - Math.min(0.4, cleared * 0.015);
-    }
+    // ---- 描画 ----
+    background();
+    for (var wi2 = 0; wi2 < waves.length; wi2++) drawWave(waves[wi2]);
+    drawSurfer();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (fbTimer > 0) txt(fbText, W / 2, snap(H * 0.42), 56, fbCol);
 
-    // Move waves
-    for (var wi = waves.length - 1; wi >= 0; wi--) {
-      var wave = waves[wi];
-      wave.x -= waveSpeed * dt;
-
-      // Score if passed
-      if (!wave.scored && wave.x + wave.w < surferX) {
-        wave.scored = true;
-        cleared++;
-        successAnim = 0.5;
-        game.audio.play('se_success', 0.4);
-        for (var pi = 0; pi < 5; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: surferX, y: surferY, vx: Math.cos(ang) * 150, vy: Math.sin(ang) * 150 - 80, life: 0.5, col: C.correctHi });
-        }
-        if (cleared >= NEEDED && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(cleared * 120 + Math.ceil(timeLeft) * 80); }, 400);
-        }
-      }
-
-      // Collision check
-      if (!wave.scored && onBoard) {
-        var waveTop = HORIZON_Y - wave.h;
-        if (surferX + 20 >= wave.x && surferX - 20 <= wave.x + wave.w && surferY >= waveTop - 20) {
-          wipeouts++;
-          wipeoutAnim = 0.7;
-          game.audio.play('se_failure', 0.5);
-          for (var pi2 = 0; pi2 < 8; pi2++) {
-            var ang2 = Math.random() * Math.PI * 2;
-            particles.push({ x: surferX, y: surferY, vx: Math.cos(ang2) * 200, vy: Math.sin(ang2) * 200 - 100, life: 0.6, col: C.seafoam });
-          }
-          wave.scored = true; // prevent re-trigger
-          if (wipeouts >= MAX_WIPEOUTS && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 400);
-          }
-        }
-      }
-
-      if (wave.x + wave.w < -100) waves.splice(wi, 1);
-    }
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    cloudX -= 40 * dt;
-    if (cloudX < -200) cloudX = W + 200;
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Sky gradient
-    game.draw.rect(0, 0, W, HORIZON_Y, C.sky1, 0.9);
-    game.draw.rect(0, 0, W, HORIZON_Y * 0.5, C.sky2, 0.4);
-
-    // Sun
-    game.draw.circle(W * 0.8, H * 0.18, 60, C.sun, 0.9);
-    game.draw.circle(W * 0.8, H * 0.18, 50, C.sunHi, 0.8);
-
-    // Clouds
-    game.draw.circle(cloudX, H * 0.15, 50, '#fff', 0.5);
-    game.draw.circle(cloudX + 60, H * 0.13, 60, '#fff', 0.5);
-    game.draw.circle(cloudX + 120, H * 0.15, 45, '#fff', 0.5);
-    game.draw.circle(cloudX + 300, H * 0.22, 40, '#e0f2fe', 0.4);
-    game.draw.circle(cloudX + 360, H * 0.2, 50, '#e0f2fe', 0.4);
-
-    // Ocean
-    game.draw.rect(0, HORIZON_Y, W, H - HORIZON_Y, C.sea, 0.9);
-    // Wave pattern on ocean
-    for (var ww = 0; ww < W; ww += 80) {
-      var wy = HORIZON_Y + 20 + 6 * Math.sin(elapsed * 2 + ww * 0.02);
-      game.draw.line(ww, wy, ww + 50, wy, C.seaHi, 3);
-    }
-
-    // Waves
-    for (var wi2 = 0; wi2 < waves.length; wi2++) {
-      var w2 = waves[wi2];
-      var wTop = HORIZON_Y - w2.h;
-      // Wave body
-      game.draw.rect(w2.x, wTop, w2.w, w2.h + 4, C.wave, 0.9);
-      // Crest
-      game.draw.circle(w2.x + w2.w / 2, wTop, w2.w * 0.6, C.waveHi, 0.8);
-      // Foam
-      game.draw.circle(w2.x + w2.w * 0.3, wTop - 10, 20, C.seafoam, 0.7);
-      game.draw.circle(w2.x + w2.w * 0.7, wTop - 5, 16, C.seafoam, 0.6);
-    }
-
-    // Surfer
-    var boardY = surferY + 12;
-    game.draw.rect(surferX - 50, boardY, 100, 16, C.board, 0.9);
-    // Body
-    game.draw.circle(surferX, surferY - 20, 22, C.surfer, 0.9);
-    game.draw.line(surferX, surferY - 2, surferX - 16, surferY + 10, C.surfer, 14);
-    game.draw.line(surferX, surferY - 2, surferX + 20, surferY + 8, C.surfer, 14);
-
-    // Wipeout overlay
-    if (wipeoutAnim > 0) {
-      game.draw.rect(0, 0, W, H, C.seafoam, wipeoutAnim * 0.3);
-      game.draw.text('WIPEOUT!', W / 2, H * 0.45, { size: 72, color: C.fail, bold: true });
-    }
-
-    // Success anim
-    if (successAnim > 0) {
-      game.draw.text('NICE!', surferX, surferY - 80, { size: 52, color: C.correctHi, bold: true });
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life * 2, p.col, p.life * 0.8);
-    }
-
-    // Wipeout dots
-    for (var wo = 0; wo < MAX_WIPEOUTS; wo++) {
-      game.draw.circle(W / 2 - (MAX_WIPEOUTS - 1) * 28 + wo * 56, H * 0.92, 16, wo < wipeouts ? C.fail : '#020d1a');
-    }
-
-    game.draw.text(cleared + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.seaHi : C.fail);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(cleared + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var wo = 0; wo < MAX_WIPE; wo++) game.draw.rect(snap(W / 2 + (wo - (MAX_WIPE - 1) / 2) * 56) - 10, 224, 20, 20, wo < wipeouts ? C.a : '#0a1a2a');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.15);
-    spawnTimer = 0.5;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
