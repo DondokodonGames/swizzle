@@ -1,236 +1,142 @@
 // 412-bridge-build.js
-// 橋を架ける — 棒を伸ばして向こう岸に届かせる
-// 操作: タップ長押しで棒を伸ばし、離すと倒れる
-// 成功: 10プラットフォームを渡る  失敗: 3回落ちる or 60秒
+// 橋を架ける — 足場の端から棒を伸ばし、ちょうど届く長さで倒して次の足場へ渡っていく
+// 操作: タップで棒を伸ばし始め、もう一度タップで止めて倒す
+// 成功: 3つ 渡る  失敗: 3回 落ちる or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#04080f',
-    sky:    '#0c1828',
-    platform:'#78350f',
-    platHi: '#92400e',
-    platFace:'#b45309',
-    stick:  '#e2e8f0',
-    stickGood:'#22c55e',
-    stickBad:'#ef4444',
-    player: '#f97316',
-    playerHi:'#fed7aa',
-    bonus:  '#fbbf24',
-    abyss:  '#020408',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、夜の谷） ──
+  var C = { bg:'#04080f', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var PLAT_H = 80;
-  var PLAT_Y = H * 0.72;
-  var playerSize = 36;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'BRIDGE BUILD';
+  var HOW_TO_PLAY = 'TAP TO GROW THE STICK · TAP AGAIN TO DROP IT · CROSS OVER';
+  var MAX_TIME = 20;
+  var NEEDED   = 3;          // 修正2: 10 → 3
+  var MAX_FELL = 3;
+  var PLAT_H = 80, PLAT_Y = snap(H * 0.68), PSIZE = 34;
 
-  // Platforms
-  var platforms = [];
-  var nextPlatX = W/2 + 120;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function addPlatform() {
-    var prevX = platforms.length > 0 ? platforms[platforms.length-1].x + platforms[platforms.length-1].w : W*0.1;
-    var gap = 200 + Math.random()*250;
-    var w = 100 + Math.random()*120;
-    var px = prevX + gap;
-    platforms.push({ x: px, y: PLAT_Y, w: w });
+  // ── ゲーム変数 ──
+  var platforms, nextPlatX, curIdx, playerX, playerY, stickLen, stickAng, phase, walkTimer, scrollOff, completed, fell, timeLeft, done, particles, fallFlash;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  // Initialize
-  platforms.push({ x: 0, y: PLAT_Y, w: 200 });
-  for (var pi = 0; pi < 5; pi++) addPlatform();
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-  var currentPlatIdx = 0;
-  var playerX = 100;
-  var playerY = PLAT_Y - playerSize;
-  var stickLength = 0;
-  var stickAngle = -Math.PI/2;  // starts vertical
-  var phase = 'wait';  // wait, grow, fall, walk, fell
-  var stickFalling = false;
-  var walkTimer = 0;
-  var scrollOffset = 0;
-  var completed = 0;
-  var NEEDED = 10;
-  var fell = 0;
-  var MAX_FELL = 3;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var fallAnim = 0;
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1420');
+  }
 
-  function getCurrentPlatform() { return platforms[currentPlatIdx]; }
-  function getNextPlatform() { return platforms[currentPlatIdx+1]; }
+  function background() { game.draw.clear(C.bg); game.draw.rect(0, 0, W, PLAT_Y, '#0c1828', 0.9); game.draw.rect(0, PLAT_Y, W, H - PLAT_Y, '#020408', 0.9); }
 
-  game.onTap(function(tx, ty) {
+  function addPlatform() { var prevX = platforms.length > 0 ? platforms[platforms.length - 1].x + platforms[platforms.length - 1].w : W * 0.1; var gap = 180 + Math.random() * 200, w = 100 + Math.random() * 110; platforms.push({ x: prevX + gap, y: PLAT_Y, w: w }); }
+
+  function initGame() { platforms = [{ x: 0, y: PLAT_Y, w: 200 }]; for (var i = 0; i < 5; i++) addPlatform(); curIdx = 0; playerX = 100; playerY = PLAT_Y - PSIZE; stickLen = 0; stickAng = -Math.PI / 2; phase = 'wait'; walkTimer = 0; scrollOff = 0; completed = 0; fell = 0; timeLeft = MAX_TIME; done = false; particles = []; fallFlash = 0; }
+
+  function finish(success) {
     if (done) return;
-    if (phase === 'wait') {
-      phase = 'grow';
-    } else if (phase === 'grow') {
-      // Stop growing, start falling
-      phase = 'fall';
-      stickFalling = false;
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (completed * 700 + Math.ceil(timeLeft) * 100) : completed * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function resetToCurrent() { if (done) return; stickLen = 0; stickAng = -Math.PI / 2; playerX = platforms[curIdx].x - scrollOff + 50; playerY = PLAT_Y - PSIZE; phase = 'wait'; }
+
+  function drawScene() {
+    for (var pi = 0; pi < platforms.length; pi++) { var plt = platforms[pi], px = plt.x - scrollOff; if (px > W + 200 || px + plt.w < -200) continue; game.draw.rect(snap(px), PLAT_Y, snap(plt.w), PLAT_H, C.d, 0.9); game.draw.rect(snap(px), PLAT_Y, snap(plt.w), 16, C.e, 0.6); }
+    if (phase !== 'wait' && phase !== 'fell') { var cur = platforms[curIdx], bx = cur.x + cur.w - scrollOff, ex = bx + Math.cos(stickAng) * stickLen, ey = PLAT_Y + Math.sin(stickAng) * stickLen; pline(bx, PLAT_Y, ex, ey, phase === 'walk' ? C.b : C.g, 0.95, 8); }
+    pc(playerX, playerY, PSIZE, C.f, 0.9); pc(playerX - 8, playerY - 8, PSIZE * 0.35, C.g, 0.7);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (phase === 'wait') { phase = 'grow'; game.audio.play('se_tap', 0.2); }
+    else if (phase === 'grow') phase = 'fall';
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!platforms) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.91, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CROSSED!' : 'FELL', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    if (fallAnim > 0) fallAnim -= dt * 2;
-
-    var curPlat = getCurrentPlatform();
-    var nxtPlat = getNextPlatform();
-
-    if (phase === 'grow') {
-      stickLength += 400 * dt;
-      if (stickLength > 800) stickLength = 800; // cap
-    }
-
-    if (phase === 'fall') {
-      if (!stickFalling) {
-        stickFalling = true;
-      }
-      stickAngle = Math.min(0, stickAngle + dt * 3.5);  // rotate to horizontal
-
-      if (stickAngle >= 0) {
-        stickAngle = 0;
-        // Check if stick reaches next platform
-        var stickEndX = (curPlat.x + curPlat.w - scrollOffset) + stickLength;
-        var nextPlatLeft = nxtPlat.x - scrollOffset;
-        var nextPlatRight = nxtPlat.x + nxtPlat.w - scrollOffset;
-
-        if (stickEndX >= nextPlatLeft && stickEndX <= nextPlatRight) {
-          // Perfect!
-          phase = 'walk';
-          walkTimer = 0;
-          game.audio.play('se_success', 0.5);
-          // Bonus if on center zone
-          var centerDist = Math.abs(stickEndX - (nextPlatLeft+nextPlatRight)/2);
-          if (centerDist < 30) {
-            for (var pi2 = 0; pi2 < 8; pi2++) {
-              var ang = Math.random()*Math.PI*2;
-              particles.push({ x:stickEndX, y:PLAT_Y-scrollOffset*0, vx:Math.cos(ang)*150, vy:Math.sin(ang)*150, life:0.6, col:C.bonus });
-            }
-          }
-        } else if (stickEndX >= nextPlatLeft) {
-          // Made it but stick extends past
-          phase = 'walk';
-          walkTimer = 0;
-          game.audio.play('se_success', 0.4);
-        } else {
-          // Too short — fall
-          phase = 'fell';
-          fell++;
-          fallAnim = 0.6;
-          game.audio.play('se_failure', 0.5);
-          for (var pi3 = 0; pi3 < 10; pi3++) {
-            var ang2 = Math.random()*Math.PI*2;
-            particles.push({ x:playerX, y:playerY, vx:Math.cos(ang2)*150, vy:Math.sin(ang2)*200, life:0.7, col:C.player });
-          }
-          if (fell >= MAX_FELL && !done) { done = true; setTimeout(function(){ game.end.failure(); }, 600); return; }
-          setTimeout(function(){ resetToCurrentPlatform(); }, 1000);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (fallFlash > 0) fallFlash -= dt * 2;
+      var cur = platforms[curIdx], nxt = platforms[curIdx + 1];
+      if (phase === 'grow') { stickLen += 400 * dt; if (stickLen > 800) stickLen = 800; }
+      else if (phase === 'fall') {
+        stickAng = Math.min(0, stickAng + dt * 4);
+        if (stickAng >= 0) {
+          stickAng = 0; var endX = (cur.x + cur.w - scrollOff) + stickLen, nl = nxt.x - scrollOff, nr = nxt.x + nxt.w - scrollOff;
+          if (endX >= nl && endX <= nr) { phase = 'walk'; walkTimer = 0; game.audio.play('se_success', 0.5); if (Math.abs(endX - (nl + nr) / 2) < 30) for (var k = 0; k < 8; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: endX, y: PLAT_Y, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, life: 0.6, col: C.c }); } }
+          else { phase = 'fell'; fell++; fallFlash = 0.6; game.audio.play('se_failure', 0.5); for (var k2 = 0; k2 < 10; k2++) { var a2 = Math.random() * Math.PI * 2; particles.push({ x: playerX, y: playerY, vx: Math.cos(a2) * 150, vy: Math.sin(a2) * 200, life: 0.7, col: C.f }); } if (fell >= MAX_FELL) { finish(false); return; } setTimeout(function() { resetToCurrent(); }, 900); }
         }
+      } else if (phase === 'walk') {
+        walkTimer += dt; var nl2 = nxt.x - scrollOff; playerX = (cur.x + cur.w - scrollOff) + walkTimer * 280;
+        if (playerX >= nl2 + 40) { completed++; curIdx++; scrollOff = (platforms[curIdx].x + platforms[curIdx].w / 2) - W * 0.3; stickLen = 0; stickAng = -Math.PI / 2; playerX = platforms[curIdx].x - scrollOff + 40; playerY = PLAT_Y - PSIZE; phase = 'wait'; addPlatform(); game.audio.play('se_tap', 0.3); if (completed >= NEEDED) { finish(true); return; } }
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 400 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (phase === 'walk') {
-      walkTimer += dt;
-      var stickEndX2 = (curPlat.x + curPlat.w - scrollOffset) + stickLength;
-      var nextPlatLeft2 = nxtPlat.x - scrollOffset;
-      playerX = (curPlat.x + curPlat.w - scrollOffset) + walkTimer * 280;
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (fallFlash > 0) game.draw.rect(0, 0, W, H, C.a, fallFlash * 0.15);
+    if (phase === 'wait') txt('TAP TO EXTEND', W / 2, snap(H * 0.82), 40, C.e);
 
-      if (playerX >= nextPlatLeft2 + 40) {
-        // Reached next platform
-        completed++;
-        currentPlatIdx++;
-        scrollOffset = (platforms[currentPlatIdx].x + platforms[currentPlatIdx].w/2) - W*0.3;
-        stickLength = 0;
-        stickAngle = -Math.PI/2;
-        playerX = platforms[currentPlatIdx].x - scrollOffset + 40;
-        playerY = PLAT_Y - playerSize;
-        phase = 'wait';
-        addPlatform();
-        game.audio.play('se_tap', 0.3);
-        if (completed >= NEEDED && !done) { done = true; setTimeout(function(){ game.end.success(completed*400+Math.ceil(timeLeft)*80); }, 600); }
-      }
-    }
-
-    for (var pp = particles.length-1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx*dt;
-      particles[pp].y += particles[pp].vy*dt;
-      particles[pp].vy += 400*dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp,1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, PLAT_Y, C.sky, 0.9);
-    game.draw.rect(0, PLAT_Y, W, H-PLAT_Y, C.abyss, 0.9);
-
-    // Platforms
-    for (var pi4 = 0; pi4 < platforms.length; pi4++) {
-      var plt = platforms[pi4];
-      var px2 = plt.x - scrollOffset;
-      if (px2 > W + 200 || px2 + plt.w < -200) continue;
-      game.draw.rect(px2, PLAT_Y, plt.w, PLAT_H, C.platform, 0.9);
-      game.draw.rect(px2, PLAT_Y, plt.w, 20, C.platHi, 0.8);
-      game.draw.rect(px2+8, PLAT_Y+24, plt.w-16, 20, C.platFace, 0.4);
-    }
-
-    // Stick
-    if (phase !== 'wait' && phase !== 'fell') {
-      var curPlat2 = getCurrentPlatform();
-      var stickBaseX = curPlat2.x + curPlat2.w - scrollOffset;
-      var stickBaseY = PLAT_Y;
-      var stickEndX3 = stickBaseX + Math.cos(stickAngle)*stickLength;
-      var stickEndY = stickBaseY + Math.sin(stickAngle)*stickLength;
-      var isGood = phase === 'walk';
-      game.draw.line(stickBaseX, stickBaseY, stickEndX3, stickEndY, isGood ? C.stickGood : C.stick, 10);
-    }
-
-    // Player
-    game.draw.circle(playerX, playerY, playerSize, C.player, 0.9);
-    game.draw.circle(playerX-10, playerY-10, playerSize*0.4, C.playerHi, 0.7);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8*p.life, p.col, p.life*0.8);
-    }
-
-    if (fallAnim > 0) game.draw.rect(0, 0, W, H, C.stickBad, fallAnim*0.15);
-
-    // Fell dots
-    for (var fi = 0; fi < MAX_FELL; fi++) {
-      game.draw.circle(W/2-(MAX_FELL-1)*44+fi*88, H*0.935, 18, fi < fell ? C.stickBad : C.ui, 0.9);
-    }
-
-    game.draw.text(completed + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft/60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*ratio, 72, ratio > 0.3 ? C.platHi : C.stickBad);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(completed + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var fi = 0; fi < MAX_FELL; fi++) game.draw.rect(snap(W / 2 + (fi - (MAX_FELL - 1) / 2) * 56) - 10, 224, 20, 20, fi < fell ? C.a : '#0a1420');
+    scanlines();
   });
-
-  function resetToCurrentPlatform() {
-    if (done) return;
-    stickLength = 0;
-    stickAngle = -Math.PI/2;
-    playerX = platforms[currentPlatIdx].x - scrollOffset + 50;
-    playerY = PLAT_Y - playerSize;
-    phase = 'wait';
-  }
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.12);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
