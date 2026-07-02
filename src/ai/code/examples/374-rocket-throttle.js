@@ -1,222 +1,143 @@
 // 374-rocket-throttle.js
-// ロケットスロットル — 燃料を管理しながら高度目標に到達する
-// 操作: タップ長押しでエンジン噴射
-// 成功: 目標高度5000mに到達  失敗: 燃料切れで落下 or 60秒
+// ロケットスロットル — 連打でエンジンを噴かして高度を稼ぎ、燃料が尽きる前に目標高度へ到達する
+// 操作: 連打（タップ）でエンジン噴射、離すと重力で落下
+// 成功: 目標高度1000mに到達  失敗: 燃料切れで墜落 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#020212',
-    sky:    '#0c1445',
-    skyHi:  '#1e3a8a',
-    cloud:  '#e0f2fe',
-    rocket: '#e2e8f0',
-    rocketHi:'#f8fafc',
-    flame:  '#f97316',
-    flameHi:'#fef3c7',
-    fuelBar:'#22c55e',
-    fuelLow:'#ef4444',
-    altBar: '#3b82f6',
-    star:   '#f1f5f9',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（アイスブルー、宇宙へ） ──
+  var C = { bg:'#02040f', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var altitude = 0;          // meters
-  var GOAL = 5000;
-  var velocity = 0;          // m/s (positive = up)
-  var GRAVITY = -80;         // m/s^2
-  var THRUST = 220;          // m/s^2 when engine on
-  var fuel = 1.0;            // 0-1
-  var FUEL_BURN = 0.025;     // per second of thrust
-  var thrusting = false;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var stars = [];
-  var clouds = [];
-  var cameraY = 0;
-  var rocketY = H * 0.7;
-  var flameSize = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ROCKET THROTTLE';
+  var HOW_TO_PLAY = 'TAP FAST TO THRUST · REACH 1000m BEFORE FUEL RUNS OUT';
+  var MAX_TIME = 15;
+  var GOAL = 1000;           // 修正2: 5000m → 1000m
+  var GRAVITY = -90, IMPULSE = 130, FUEL_BURN = 0.05;
+  var ROCKET_Y = snap(H * 0.68);
 
-  for (var si = 0; si < 60; si++) {
-    stars.push({ x: Math.random() * W, y: Math.random() * 8000, r: 1 + Math.random() * 3 });
-  }
-  for (var ci = 0; ci < 8; ci++) {
-    clouds.push({ x: Math.random() * W, y: Math.random() * 2000, w: 120 + Math.random() * 200 });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var altitude, velocity, fuel, timeLeft, done, particles, stars, flame, thrustTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function() {});  // handled via holding
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1428');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    var frac = Math.min(1, altitude / 600);
+    game.draw.rect(0, 0, W, H, C.d, Math.max(0, 0.5 - frac * 0.5));
+    for (var si = 0; si < stars.length; si++) { var sy = (stars[si].y + altitude * 0.3) % H; game.draw.rect(stars[si].x, snap(sy), stars[si].r, stars[si].r, C.g, (0.3 + frac * 0.5) * (0.5 + Math.sin(game.time.elapsed * 2 + si) * 0.3)); }
+  }
+
+  function initStars() { stars = []; for (var i = 0; i < 50; i++) stars.push({ x: snap(Math.random() * W), y: snap(Math.random() * H), r: Math.random() < 0.5 ? 4 : 8 }); }
+
+  function initGame() { altitude = 0; velocity = 0; fuel = 1.0; timeLeft = MAX_TIME; done = false; particles = []; flame = 0; thrustTimer = 0; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.round(fuel * 3000) + Math.ceil(timeLeft) * 100) : Math.round(altitude);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawRocket() {
+    var y = ROCKET_Y;
+    game.draw.rect(snap(W / 2 - 28), snap(y - 90), 56, 120, C.g, 0.95);
+    pc(W / 2, y - 96, 28, C.e, 0.9);
+    game.draw.rect(snap(W / 2 - 52), snap(y - 6), 24, 44, C.e, 0.85); game.draw.rect(snap(W / 2 + 28), snap(y - 6), 24, 44, C.e, 0.85);
+    pc(W / 2, y - 52, 16, C.d, 0.9);
+    if (flame > 0) { pc(W / 2, y + 44, 16 + flame * 30, C.f, 0.7); pc(W / 2, y + 52, 8 + flame * 16, C.c, 0.85); }
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || fuel <= 0) return;
+    velocity += IMPULSE; fuel -= FUEL_BURN; if (fuel < 0) fuel = 0; thrustTimer = 0.15; flame = 1; game.audio.play('se_tap', 0.3);
+    for (var k = 0; k < 4; k++) { var a = Math.PI / 2 + (Math.random() - 0.5) * 0.5; particles.push({ x: W / 2, y: ROCKET_Y + 60, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.3, col: Math.random() < 0.5 ? C.f : C.c }); }
+  });
+
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    // Detect hold (approximation: use elapsed tap detection)
-    // We'll use onUpdate to check — the game reads touch state via onTap
-    // Simplified: thrusting is set by onTap, cleared automatically
-    // We use an alternate: track last tap time
-    if (elapsed - lastTapTime < 0.12 && fuel > 0) {
-      thrusting = true;
-    } else {
-      thrusting = false;
-    }
-
-    // Physics
-    if (thrusting && fuel > 0) {
-      velocity += THRUST * dt;
-      fuel -= FUEL_BURN * dt;
-      if (fuel < 0) fuel = 0;
-      // Flame particles
-      if (Math.random() < dt * 20) {
-        var ang = Math.PI / 2 + (Math.random() - 0.5) * 0.4;
-        var spd = 200 + Math.random() * 200;
-        particles.push({ x: W / 2, y: rocketY + 80, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 0.3, col: Math.random() < 0.5 ? C.flame : C.flameHi });
+    if (state === S.ATTRACT) {
+      if (altitude === undefined) initGame(); background(); drawRocket();
+      txt(GAME_TITLE, W / 2, H * 0.14, 72, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
       }
-      flameSize = Math.min(1, flameSize + dt * 6);
-    } else {
-      flameSize = Math.max(0, flameSize - dt * 8);
-    }
-
-    velocity += GRAVITY * dt;
-    altitude += velocity * dt;
-
-    if (altitude < 0) {
-      altitude = 0;
-      if (velocity < -50) {
-        // Crash
-        if (!done) {
-          done = true;
-          game.audio.play('se_failure', 0.7);
-          for (var ei = 0; ei < 20; ei++) {
-            var ang2 = Math.random() * Math.PI * 2;
-            particles.push({ x: W / 2, y: rocketY, vx: Math.cos(ang2) * 300, vy: Math.sin(ang2) * 300, life: 0.8, col: C.flame });
-          }
-          setTimeout(function() { game.end.failure(); }, 600);
-        }
-        return;
-      }
-      velocity = 0;
-    }
-
-    if (altitude >= GOAL && !done) {
-      done = true;
-      game.audio.play('se_success', 0.8);
-      game.end.success(Math.round(fuel * 1000) + Math.ceil(timeLeft) * 100);
+      scanlines();
       return;
     }
 
-    // Camera
-    cameraY = altitude;
-
-    // Update particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ORBIT!' : 'CRASH', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
 
-    // ---- draw ----
-    var skyFrac = Math.min(1, altitude / 3000);
-    var skyR = Math.round(2 + skyFrac * (2 - 2));
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, H, C.sky, Math.max(0, 0.9 - skyFrac * 0.8));
-
-    // Stars (appear above 1000m)
-    if (altitude > 500) {
-      var starAlpha = Math.min(1, (altitude - 500) / 2000);
-      for (var si2 = 0; si2 < stars.length; si2++) {
-        var s = stars[si2];
-        var sy = H * 0.5 - (s.y - cameraY) * 0.1;
-        if (sy > 0 && sy < H) {
-          game.draw.circle(s.x, sy, s.r, C.star, starAlpha * 0.8);
-        }
-      }
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (thrustTimer > 0) thrustTimer -= dt; if (flame > 0) flame -= dt * 4;
+      velocity += GRAVITY * dt; altitude += velocity * dt;
+      if (altitude < 0) { altitude = 0; if (velocity < -180) { for (var k = 0; k < 16; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: ROCKET_Y, vx: Math.cos(a) * 300, vy: Math.sin(a) * 300, life: 0.7, col: C.f }); } finish(false); return; } velocity = 0; }
+      if (altitude >= GOAL) { finish(true); return; }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Clouds (visible below 2000m)
-    if (altitude < 3000) {
-      var cloudAlpha = Math.max(0, 1 - altitude / 1500);
-      for (var ci2 = 0; ci2 < clouds.length; ci2++) {
-        var cl = clouds[ci2];
-        var cy2 = H * 0.6 - (cl.y - cameraY) * 0.12;
-        if (cy2 > -60 && cy2 < H + 60) {
-          game.draw.circle(cl.x, cy2, cl.w * 0.5, C.cloud, cloudAlpha * 0.6);
-          game.draw.circle(cl.x - cl.w * 0.3, cy2 + 20, cl.w * 0.35, C.cloud, cloudAlpha * 0.5);
-          game.draw.circle(cl.x + cl.w * 0.35, cy2 + 15, cl.w * 0.4, C.cloud, cloudAlpha * 0.5);
-        }
-      }
-    }
+    // ---- 描画 ----
+    background(); drawRocket();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.8);
 
-    // Rocket
-    // Body
-    game.draw.rect(W / 2 - 30, rocketY - 100, 60, 130, C.rocket, 0.9);
-    // Nose
-    game.draw.circle(W / 2, rocketY - 110, 32, C.rocketHi, 0.9);
-    // Fins
-    game.draw.rect(W / 2 - 56, rocketY - 10, 28, 50, C.rocket, 0.8);
-    game.draw.rect(W / 2 + 28, rocketY - 10, 28, 50, C.rocket, 0.8);
-    // Window
-    game.draw.circle(W / 2, rocketY - 60, 20, C.skyHi, 0.9);
+    // 燃料ゲージ
+    var fh = 360, fy = snap(H * 0.34);
+    game.draw.rect(48, fy, 32, fh, '#122', 0.6); game.draw.rect(50, snap(fy + fh * (1 - fuel)), 28, snap(fh * fuel), fuel > 0.25 ? C.b : C.a, 0.9);
+    txt('FUEL', 64, fy + fh + 30, 24, C.e);
+    // 高度ゲージ
+    var af = Math.min(1, altitude / GOAL);
+    game.draw.rect(W - 80, fy, 32, fh, '#122', 0.6); game.draw.rect(W - 78, snap(fy + fh * (1 - af)), 28, snap(fh * af), C.e, 0.9);
+    txt('ALT', W - 64, fy + fh + 30, 24, C.e);
 
-    // Flame
-    if (flameSize > 0) {
-      game.draw.circle(W / 2, rocketY + 40, 20 + flameSize * 40, C.flame, 0.7);
-      game.draw.circle(W / 2, rocketY + 50, 10 + flameSize * 20, C.flameHi, 0.8);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.9);
-    }
-
-    // Ground indicator
-    if (altitude < 200) {
-      var groundY = rocketY + altitude * 1.5 + 100;
-      game.draw.rect(0, Math.min(groundY, H - 20), W, 40, '#166534', 0.8);
-    }
-
-    // Fuel bar
-    var fuelH = 400;
-    var fuelX = 60;
-    var fuelY = H * 0.3;
-    game.draw.rect(fuelX - 16, fuelY, 32, fuelH, C.ui, 0.4);
-    game.draw.rect(fuelX - 14, fuelY + fuelH * (1 - fuel), 28, fuelH * fuel, fuel > 0.25 ? C.fuelBar : C.fuelLow, 0.9);
-    game.draw.text('燃料', fuelX, fuelY + fuelH + 36, { size: 28, color: C.ui });
-
-    // Altitude bar
-    var altH = 400;
-    var altX = W - 60;
-    var altFrac = Math.min(1, altitude / GOAL);
-    game.draw.rect(altX - 16, fuelY, 32, altH, C.ui, 0.4);
-    game.draw.rect(altX - 14, fuelY + altH * (1 - altFrac), 28, altH * altFrac, C.altBar, 0.9);
-    game.draw.text('高度', altX, fuelY + altH + 36, { size: 28, color: C.ui });
-
-    // Numbers
-    game.draw.text(Math.round(altitude) + 'm', W / 2, 160, { size: 52, color: C.text, bold: true });
-    game.draw.text('目標: ' + GOAL + 'm', W / 2, 220, { size: 34, color: C.ui });
-    game.draw.text('速度: ' + (velocity > 0 ? '+' : '') + Math.round(velocity) + 'm/s', W / 2, 270, { size: 34, color: velocity > 0 ? C.fuelBar : C.fuelLow });
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, C.altBar);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
-  });
-
-  var lastTapTime = -999;
-  game.onTap(function() {
-    lastTapTime = elapsed;
+    timeBar();
+    txt(Math.round(altitude) + 'm', W / 2, 96, 44, C.c);
+    txt(Math.round(altitude) + ' / ' + GOAL + 'm', W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
+    state = S.ATTRACT;
+    initStars();
+    initGame();
   });
 })(game);

@@ -1,208 +1,145 @@
 // 376-domino-push.js
-// ドミノ倒し — 最初の1枚を倒して全部倒れるか見届ける
-// 操作: タップでドミノを押す位置を選ぶ
-// 成功: 全部のドミノを倒す  失敗: 途中で止まる or 30秒
+// ドミノ倒し — 並んだドミノの先頭を押して、連鎖で最後の1枚まですべて倒しきる
+// 操作: 倒したいドミノをタップ（先頭から押さないと手前が残る）
+// 成功: 8枚 すべて倒す  失敗: 途中で止まる or 12秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0f0f1a',
-    floor:  '#1e1b4b',
-    floorHi:'#312e81',
-    domino: '#e2e8f0',
-    dominoFall:'#fbbf24',
-    dominoFallHi:'#fef3c7',
-    dominoStand:'#818cf8',
-    tap:    '#22c55e',
-    tapHi:  '#86efac',
-    danger: '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、ドミノ台） ──
+  var C = { bg:'#0a0818', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var N = 20;
-  var dominoes = [];
-  var falling = false;
-  var allFallen = false;
-  var fallIdx = 0;
-  var fallTimer = 0;
-  var done = false;
-  var timeLeft = 30;
-  var elapsed = 0;
-  var particles = [];
-  var stoppedTimer = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'DOMINO PUSH';
+  var HOW_TO_PLAY = 'PUSH THE FIRST DOMINO · TOPPLE THEM ALL';
+  var MAX_TIME = 12;
+  var N = 8;                 // 修正2: 20 → 8
+  var ROW_Y = snap(H * 0.56), DOM_H = 130;
 
-  // Gap sizes — some wider, creating chain-break risk
-  var gaps = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function setupDominoes() {
-    dominoes = [];
-    gaps = [];
-    var x = 80;
-    var y = H * 0.68;
-    for (var i = 0; i < N; i++) {
-      var gap = 64 + Math.random() * 24;
-      if (i > 0 && Math.random() < 0.25) gap += 40; // wider gap occasionally
-      gaps.push(gap);
-      dominoes.push({
-        x: x,
-        y: y,
-        angle: 0,       // 0 = standing, 90 = fully fallen
-        standing: true,
-        r: 18,
-        h: 90
-      });
-      x += gap;
-      if (x > W - 80) {
-        // Next row
-        x = 80;
-        y += 200;
-      }
-    }
+  // ── ゲーム変数 ──
+  var doms, falling, fallIdx, stopped, timeLeft, done, particles;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.2) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  var pushedIdx = -1;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-  game.onTap(function(tx, ty) {
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#181030');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(0, ROW_Y + 4, W, H, C.d, 0.18); pline(40, ROW_Y + 4, W - 40, ROW_Y + 4, C.e, 0.4, 4); }
+
+  function setup() { doms = []; var x = snap(W * 0.14), gap = snap((W * 0.72) / (N - 1)); for (var i = 0; i < N; i++) { doms.push({ x: x, angle: 0, standing: true }); x += gap; } }
+
+  function initGame() { setup(); falling = false; fallIdx = 0; stopped = false; timeLeft = MAX_TIME; done = false; particles = []; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    var fallen = 0; for (var i = 0; i < N; i++) if (!doms[i].standing) fallen++;
+    finalScore = success ? (N * 400 + Math.ceil(timeLeft) * 100) : fallen * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawDoms() {
+    for (var i = 0; i < N; i++) {
+      var d = doms[i], rad = d.angle / 180 * Math.PI, tx = d.x + Math.sin(rad) * DOM_H, ty = ROW_Y - Math.cos(rad) * DOM_H;
+      pline(d.x, ROW_Y, tx, ty, d.standing ? C.e : C.c, 0.95, 22);
+      pc((d.x + tx) / 2, (ROW_Y + ty) / 2, 6, C.g, 0.6);
+    }
+    if (!falling && !done) { var h = 24 + 6 * (Math.floor(game.time.elapsed * 4) % 2); ring(doms[0].x, ROW_Y - DOM_H / 2, h, C.b, 0.6); txt('PUSH', doms[0].x, ROW_Y - DOM_H - 20, 32, C.b); }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || falling) return;
-    // Find nearest standing domino within touch radius
-    var best = -1, bestDist = 100;
-    for (var i = 0; i < dominoes.length; i++) {
-      if (!dominoes[i].standing) continue;
-      var d = Math.hypot(tx - dominoes[i].x, ty - dominoes[i].y);
-      if (d < bestDist) { bestDist = d; best = i; }
-    }
-    if (best >= 0) {
-      pushedIdx = best;
-      falling = true;
-      fallIdx = best;
-      game.audio.play('se_tap', 0.5);
-    }
+    var best = -1, bd = 120;
+    for (var i = 0; i < N; i++) if (doms[i].standing) { var dd = Math.hypot(x - doms[i].x, y - (ROW_Y - DOM_H / 2)); if (dd < bd) { bd = dd; best = i; } }
+    if (best >= 0) { falling = true; fallIdx = best; game.audio.play('se_tap', 0.5); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+    if (state === S.ATTRACT) {
+      if (!doms) initGame(); background(); drawDoms();
+      txt(GAME_TITLE, W / 2, H * 0.20, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.26, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.84, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.89, 46, C.g);
+      }
+      scanlines();
+      return;
     }
 
-    if (falling) {
-      fallTimer += dt * 3;
+    if (state === S.RESULT) {
+      background(); drawDoms();
+      txt(resultSuccess ? 'ALL DOWN!' : 'STOPPED', W / 2, H * 0.30, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.44, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.60, 52, C.c);
+      scanlines();
+      return;
+    }
 
-      // Advance fall along chain
-      var fallSpeed = 4;
-      if (fallIdx < N && dominoes[fallIdx].standing) {
-        dominoes[fallIdx].angle += fallSpeed * dt * 90;
-        if (dominoes[fallIdx].angle >= 85) {
-          dominoes[fallIdx].angle = 90;
-          dominoes[fallIdx].standing = false;
-          // Particle burst
-          for (var pi = 0; pi < 4; pi++) {
-            var ang = Math.random() * Math.PI;
-            particles.push({ x: dominoes[fallIdx].x, y: dominoes[fallIdx].y, vx: Math.cos(ang)*100, vy: Math.sin(ang)*100-60, life:0.5, col: C.dominoFallHi });
-          }
-          game.audio.play('se_tap', 0.2);
-          // Check if next domino is reachable
-          var nextIdx = fallIdx + 1;
-          if (nextIdx < N) {
-            var gapToNext = dominoes[nextIdx].x - dominoes[fallIdx].x;
-            if (gapToNext <= dominoes[fallIdx].h + 20) {
-              fallIdx = nextIdx;
-            } else {
-              // Gap too large — chain breaks
-              falling = false;
-              stoppedTimer = elapsed;
-              game.audio.play('se_failure', 0.5);
-              // Fail after showing the stop
-              if (!done) {
-                setTimeout(function() {
-                  if (!done) { done = true; game.end.failure(); }
-                }, 1500);
-              }
-            }
-          } else {
-            // All fallen!
-            allFallen = true;
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (falling && fallIdx < N && doms[fallIdx].standing) {
+        doms[fallIdx].angle += 360 * dt;
+        if (doms[fallIdx].angle >= 90) {
+          doms[fallIdx].angle = 90; doms[fallIdx].standing = false; game.audio.play('se_tap', 0.2);
+          for (var k = 0; k < 4; k++) { var a = Math.random() * Math.PI; particles.push({ x: doms[fallIdx].x, y: ROW_Y, vx: Math.cos(a) * 120, vy: -Math.sin(a) * 120 - 40, life: 0.5, col: C.c }); }
+          if (fallIdx + 1 < N) fallIdx++;
+          else {
             falling = false;
-            for (var pi2 = 0; pi2 < 20; pi2++) {
-              var ang2 = Math.random() * Math.PI * 2;
-              particles.push({ x: W/2, y: H*0.5, vx: Math.cos(ang2)*300, vy: Math.sin(ang2)*300, life:0.8, col: C.tap });
-            }
-            game.audio.play('se_success', 0.8);
-            if (!done) {
-              done = true;
-              game.end.success(N * 300 + Math.ceil(timeLeft) * 100);
-            }
+            var all = true; for (var i = 0; i < N; i++) if (doms[i].standing) all = false;
+            if (all) { for (var k2 = 0; k2 < 16; k2++) { var a2 = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: ROW_Y, vx: Math.cos(a2) * 260, vy: Math.sin(a2) * 260, life: 0.7, col: C.b }); } finish(true); }
+            else { stopped = true; setTimeout(function() { if (!done) finish(false); }, 1000); }
           }
         }
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 200 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawDoms();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (stopped) txt('CHAIN BROKE!', W / 2, snap(H * 0.72), 52, C.a);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Floor
-    game.draw.rect(0, H * 0.72, W, H * 0.28, C.floor, 0.8);
-    for (var fi = 0; fi < W; fi += 120) {
-      game.draw.line(fi, H * 0.72, fi, H, C.floorHi, 2);
-    }
-
-    // Dominoes
-    for (var di = 0; di < N; di++) {
-      var d = dominoes[di];
-      var angleRad = (d.angle / 180) * Math.PI;
-      var tipX = d.x + Math.sin(angleRad) * d.h;
-      var tipY = d.y - Math.cos(angleRad) * d.h;
-      var col = d.standing ? C.dominoStand : C.dominoFall;
-      // Draw domino as thick line from base to tip
-      game.draw.line(d.x, d.y, tipX, tipY, col, 24);
-      // Dot
-      game.draw.circle((d.x + tipX) / 2, (d.y + tipY) / 2, 6, '#fff', 0.6);
-    }
-
-    // Push indicator (first domino, pre-push)
-    if (!falling && !allFallen && pushedIdx < 0) {
-      game.draw.text('タップで押す', W / 2, H * 0.2, { size: 48, color: C.tap, bold: true });
-      // Highlight first domino
-      var d0 = dominoes[0];
-      game.draw.circle(d0.x, d0.y - d0.h / 2, 36, C.tap, 0.3 + Math.sin(elapsed * 4) * 0.15);
-    }
-
-    // Chain break warning
-    if (!falling && stoppedTimer > 0 && !done) {
-      game.draw.text('倒れ止まった！', W / 2, H * 0.2, { size: 52, color: C.danger, bold: true });
-    }
-
-    // Progress
-    var fallenCount = 0;
-    for (var fi2 = 0; fi2 < N; fi2++) { if (!dominoes[fi2].standing) fallenCount++; }
-    game.draw.text(fallenCount + ' / ' + N, W / 2, 148, { size: 56, color: C.text, bold: true });
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life, p.col, p.life * 0.8);
-    }
-
-    var ratio = Math.max(0, timeLeft / 30);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.dominoStand : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    var fallen = 0; for (var fi = 0; fi < N; fi++) if (!doms[fi].standing) fallen++;
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(fallen + ' / ' + N, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    setupDominoes();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
