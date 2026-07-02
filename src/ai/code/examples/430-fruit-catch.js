@@ -1,233 +1,147 @@
 // 430-fruit-catch.js
-// フルーツキャッチ — バスケットを動かして果物を受け取り、爆弾は避ける
-// 操作: タップした位置にバスケットが移動
-// 成功: 果物30個キャッチ  失敗: 爆弾3回 or 60秒
+// フルーツキャッチ — 落ちてくる果物をバスケットで受け止める。黒い爆弾は避けること
+// 操作: タップした位置へバスケットが移動／スワイプで左右に寄せる
+// 成功: 果物6個 キャッチ  失敗: 爆弾3回 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a1400',
-    sky:    '#071000',
-    apple:  '#ef4444',
-    appleHi:'#fca5a5',
-    orange: '#f97316',
-    orangeHi:'#fed7aa',
-    banana: '#eab308',
-    bananaHi:'#fef08a',
-    grape:  '#a855f7',
-    grapeHi:'#d8b4fe',
-    bomb:   '#1f2937',
-    bombHi: '#374151',
-    fuse:   '#f97316',
-    basket: '#92400e',
-    basketHi:'#d97706',
-    ground: '#14200a',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、収穫祭） ──
+  var C = { bg:'#0a1400', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var FRUIT = [C.a, C.f, C.c, C.d];
 
-  var FRUITS = [
-    { col: C.apple, hi: C.appleHi, name: 'apple' },
-    { col: C.orange, hi: C.orangeHi, name: 'orange' },
-    { col: C.banana, hi: C.bananaHi, name: 'banana' },
-    { col: C.grape, hi: C.grapeHi, name: 'grape' }
-  ];
-
-  var basketX = W / 2;
-  var BASKET_Y = H * 0.83;
-  var BASKET_W = 200;
-  var BASKET_H = 90;
-  var basketTargetX = W / 2;
-
-  var items = [];
-  var caught = 0;
-  var NEEDED = 30;
-  var bombs = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'FRUIT CATCH';
+  var HOW_TO_PLAY = 'MOVE THE BASKET · CATCH FRUIT · AVOID THE BOMBS';
+  var MAX_TIME = 15;
+  var NEEDED   = 6;          // 修正2: 30 → 6
   var MAX_BOMBS = 3;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var flashCol = C.correct;
-  var particles = [];
-  var spawnTimer = 0;
-  var spawnInterval = 1.0;
+  var BY = snap(H * 0.80), BW = 200, BH = 84;
 
-  function spawnItem() {
-    var isBomb = Math.random() < 0.25 + caught * 0.005;
-    var x = 80 + Math.random() * (W - 160);
-    var speed = 300 + Math.random() * 300 + caught * 3;
-    items.push({
-      x: x, y: -50,
-      r: isBomb ? 38 : 30 + Math.random() * 12,
-      vy: speed,
-      bomb: isBomb,
-      type: isBomb ? null : FRUITS[Math.floor(Math.random() * FRUITS.length)],
-      wobble: Math.random() * Math.PI * 2,
-      spin: (Math.random() - 0.5) * 4
-    });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var bx, btx, items, caught, bombs, timeLeft, done, particles, spawnTimer, flash, flashCol;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.2) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1a00');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(0, BY + BH / 2 + 10, W, H, '#14200a', 0.9); }
+
+  function spawnItem() { var bomb = Math.random() < 0.25; items.push({ x: snap(80 + Math.random() * (W - 160)), y: -50, r: bomb ? 36 : 30, vy: 300 + Math.random() * 200 + (MAX_TIME - timeLeft) * 15, bomb: bomb, col: bomb ? '#181828' : FRUIT[Math.floor(Math.random() * 4)], wob: Math.random() * Math.PI * 2, spin: (Math.random() - 0.5) * 4 }); }
+
+  function initGame() { bx = W / 2; btx = W / 2; items = []; caught = 0; bombs = 0; timeLeft = MAX_TIME; done = false; particles = []; spawnTimer = 0.4; flash = 0; flashCol = C.b; }
+
+  function finish(success) {
     if (done) return;
-    basketTargetX = Math.max(BASKET_W/2 + 20, Math.min(W - BASKET_W/2 - 20, tx));
+    done = true; resultSuccess = success;
+    finalScore = success ? (caught * 400 + Math.ceil(timeLeft) * 100) : caught * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawItem(it) {
+    if (it.bomb) { ring(it.x, it.y, it.r + 6, C.a, 0.5); pc(it.x, it.y, it.r, it.col, 0.95); pline(it.x, it.y - it.r, it.x + 12, it.y - it.r - 26, C.f, 0.9, 5); pc(it.x + 12, it.y - it.r - 30, 6 + 4 * (Math.floor(game.time.elapsed * 8) % 2), C.c, 0.9); }
+    else { var wr = it.r + Math.sin(it.wob) * 3; pc(it.x, it.y, wr, it.col, 0.9); pc(it.x - wr * 0.3, it.y - wr * 0.3, wr * 0.3, C.g, 0.4); game.draw.rect(snap(it.x) - 2, snap(it.y - wr) - 12, 4, 12, C.b, 0.8); }
+  }
+
+  function drawBasket() { game.draw.rect(snap(bx - BW / 2), BY - BH / 2, BW, BH, C.f, 0.9); for (var wi = 0; wi < 3; wi++) game.draw.rect(snap(bx - BW / 2 + wi * (BW / 3)), BY - BH / 2, 4, BH, C.c, 0.4); game.draw.rect(snap(bx - BW / 2), BY - BH / 2, BW, 6, C.c, 0.6); }
+
+  // ── 入力 ──
+  game.onTap(function(x) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return; btx = Math.max(BW / 2 + 20, Math.min(W - BW / 2 - 20, x));
   });
 
-  game.onSwipe(function(dir) {
-    if (done) return;
-    if (dir === 'left') basketTargetX = Math.max(BASKET_W/2 + 20, basketTargetX - 200);
-    else if (dir === 'right') basketTargetX = Math.min(W - BASKET_W/2 - 20, basketTargetX + 200);
+  game.onSwipe(function(d) {
+    if (state !== S.PLAYING || done) return;
+    if (d === 'left') btx = Math.max(BW / 2 + 20, btx - 200); else if (d === 'right') btx = Math.min(W - BW / 2 - 20, btx + 200);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!items) initGame(); background(); drawItem({ x: W * 0.35, y: H * 0.4, r: 30, col: C.a, bomb: false, wob: 0 }); drawItem({ x: W * 0.65, y: H * 0.45, r: 36, col: '#181828', bomb: true }); drawBasket();
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'GOOD HARVEST!' : 'GAME OVER', W / 2, H * 0.35, 66, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-
-    if (flashAnim > 0) flashAnim -= dt * 2;
-
-    // Move basket
-    var bDiff = basketTargetX - basketX;
-    basketX += bDiff * Math.min(1, dt * 10);
-
-    // Spawn
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && !done) {
-      spawnItem();
-      spawnInterval = Math.max(0.5, 1.0 - elapsed * 0.006);
-      spawnTimer = spawnInterval + Math.random() * 0.3;
-    }
-
-    // Update items
-    for (var ii = items.length - 1; ii >= 0; ii--) {
-      var item = items[ii];
-      item.y += item.vy * dt;
-      item.wobble += item.spin * dt;
-
-      // Check basket catch
-      var inBasketX = Math.abs(item.x - basketX) < BASKET_W/2 + item.r * 0.5;
-      var inBasketY = item.y + item.r > BASKET_Y - BASKET_H/2 && item.y - item.r < BASKET_Y + BASKET_H/2;
-
-      if (inBasketX && inBasketY) {
-        items.splice(ii, 1);
-        if (item.bomb) {
-          bombs++;
-          flashCol = C.wrong;
-          flashAnim = 0.8;
-          game.audio.play('se_failure', 0.7);
-          for (var pi = 0; pi < 14; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: item.x, y: item.y, vx: Math.cos(ang)*250, vy: Math.sin(ang)*250-100, life: 0.8, col: C.fuse });
-          }
-          if (bombs >= MAX_BOMBS && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 600);
-          }
-        } else {
-          caught++;
-          flashCol = C.correct;
-          flashAnim = 0.4;
-          game.audio.play('se_tap', 0.4);
-          for (var pi2 = 0; pi2 < 5; pi2++) {
-            var ang2 = Math.random() * Math.PI * 2;
-            particles.push({ x: item.x, y: BASKET_Y - BASKET_H/2, vx: Math.cos(ang2)*120, vy: Math.sin(ang2)*120-80, life: 0.4, col: item.type.col });
-          }
-          if (caught >= NEEDED && !done) {
-            done = true;
-            game.audio.play('se_success', 0.9);
-            setTimeout(function() { game.end.success(caught * 200 + Math.ceil(timeLeft) * 80); }, 600);
-          }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2;
+      bx += (btx - bx) * Math.min(1, dt * 10);
+      spawnTimer -= dt; if (spawnTimer <= 0) { spawnItem(); spawnTimer = Math.max(0.5, 0.9 - (MAX_TIME - timeLeft) * 0.02); }
+      for (var ii = items.length - 1; ii >= 0; ii--) {
+        var it = items[ii]; it.y += it.vy * dt; it.wob += it.spin * dt;
+        if (Math.abs(it.x - bx) < BW / 2 + it.r * 0.5 && it.y + it.r > BY - BH / 2 && it.y - it.r < BY + BH / 2) {
+          items.splice(ii, 1);
+          if (it.bomb) { bombs++; flash = 0.8; flashCol = C.a; game.audio.play('se_failure', 0.7); for (var k = 0; k < 14; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: it.x, y: it.y, vx: Math.cos(a) * 250, vy: Math.sin(a) * 250 - 100, life: 0.8, col: C.f }); } if (bombs >= MAX_BOMBS) { finish(false); return; } }
+          else { caught++; flash = 0.4; flashCol = C.b; game.audio.play('se_tap', 0.4); for (var k2 = 0; k2 < 5; k2++) { var a2 = Math.random() * Math.PI * 2; particles.push({ x: it.x, y: BY - BH / 2, vx: Math.cos(a2) * 120, vy: Math.sin(a2) * 120 - 80, life: 0.4, col: it.col }); } if (caught >= NEEDED) { finish(true); return; } }
+          continue;
         }
-        continue;
+        if (it.y > H + 60) items.splice(ii, 1);
       }
-
-      // Off-screen
-      if (item.y > H + 60) items.splice(ii, 1);
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 400 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 400 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background();
+    for (var ii2 = 0; ii2 < items.length; ii2++) drawItem(items[ii2]);
+    drawBasket();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.08);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, H * 0.78, C.sky, 0.5);
-
-    // Items
-    for (var ii2 = 0; ii2 < items.length; ii2++) {
-      var it = items[ii2];
-      if (it.bomb) {
-        game.draw.circle(it.x, it.y, it.r + 6, C.bomb, 0.3);
-        game.draw.circle(it.x, it.y, it.r, C.bomb, 0.9);
-        game.draw.circle(it.x - it.r*0.3, it.y - it.r*0.3, it.r * 0.25, C.bombHi, 0.4);
-        // Fuse
-        game.draw.line(it.x, it.y - it.r, it.x + 12, it.y - it.r - 30, C.fuse, 4);
-        game.draw.circle(it.x + 12, it.y - it.r - 30, 5, '#fff', 0.8);
-        // Skull-ish
-        game.draw.circle(it.x - 10, it.y - 8, 5, C.bombHi, 0.7);
-        game.draw.circle(it.x + 10, it.y - 8, 5, C.bombHi, 0.7);
-      } else {
-        var wobbleR = it.r + Math.sin(it.wobble) * 3;
-        game.draw.circle(it.x, it.y, wobbleR + 6, it.type.col, 0.15);
-        game.draw.circle(it.x, it.y, wobbleR, it.type.col, 0.9);
-        game.draw.circle(it.x - wobbleR*0.3, it.y - wobbleR*0.3, wobbleR * 0.3, it.type.hi, 0.6);
-        // Stem
-        game.draw.line(it.x, it.y - wobbleR, it.x + 6, it.y - wobbleR - 16, '#22c55e', 4);
-      }
-    }
-
-    // Ground
-    game.draw.rect(0, BASKET_Y + BASKET_H/2 + 10, W, H, C.ground, 0.9);
-
-    // Basket
-    game.draw.rect(basketX - BASKET_W/2, BASKET_Y - BASKET_H/2, BASKET_W, BASKET_H, C.basket, 0.9);
-    game.draw.rect(basketX - BASKET_W/2 + 12, BASKET_Y - BASKET_H/2 + 10, BASKET_W/3, BASKET_H/3, C.basketHi, 0.3);
-    // Weave pattern
-    for (var wi = 0; wi < 3; wi++) {
-      game.draw.line(basketX - BASKET_W/2 + wi*(BASKET_W/3), BASKET_Y - BASKET_H/2,
-                     basketX - BASKET_W/2 + wi*(BASKET_W/3), BASKET_Y + BASKET_H/2, C.basketHi, 3);
-    }
-    game.draw.line(basketX - BASKET_W/2, BASKET_Y - BASKET_H/2, basketX + BASKET_W/2, BASKET_Y - BASKET_H/2, C.basketHi, 5);
-    // Move target
-    game.draw.line(basketTargetX, BASKET_Y + BASKET_H/2 + 15, basketTargetX, BASKET_Y + BASKET_H/2 + 35, C.ui, 3);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.08);
-
-    // Bomb dots
-    for (var bi = 0; bi < MAX_BOMBS; bi++) {
-      game.draw.circle(W/2 - (MAX_BOMBS-1)*44 + bi*88, H*0.935, 18, bi < bombs ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(caught + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.correct : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(caught + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var bi = 0; bi < MAX_BOMBS; bi++) game.draw.rect(snap(W / 2 + (bi - (MAX_BOMBS - 1) / 2) * 56) - 10, 224, 20, 20, bi < bombs ? C.a : '#0a1a00');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.12);
-    spawnTimer = 0.5;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
