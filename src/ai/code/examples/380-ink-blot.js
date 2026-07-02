@@ -1,193 +1,143 @@
 // 380-ink-blot.js
-// インクブロット — 広がるインクが境界線からはみ出す前に止める
-// 操作: タップで広がりを止める
-// 成功: 10回ぴったり止める  失敗: 3回はみ出す or 45秒
+// インクブロット — 用紙の上で広がるインクを、外周リングをはみ出す前にタップで止める
+// 操作: 広がるインクをタップして止める（リングを越えるとはみ出し）
+// 成功: 4回 止める  失敗: 3回 はみ出す or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#f8fafc',
-    paper:  '#f1f5f9',
-    paperBorder:'#cbd5e1',
-    ink:    '#0f172a',
-    inkHi:  '#1e293b',
-    inkSafe:'#3b82f6',
-    inkDanger:'#ef4444',
-    target: '#22c55e',
-    targetHi:'#86efac',
-    over:   '#dc2626',
-    text:   '#0f172a',
-    ui:     '#64748b'
-  };
+  // ── パレット（ネオンアーケード、製図台） ──
+  var C = { bg:'#060614', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff', paper:'#101028' };
 
-  var blobs = [];
-  var stopped = 0;
-  var NEEDED = 10;
-  var overflowed = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'INK BLOT';
+  var HOW_TO_PLAY = 'TAP THE SPREADING INK BEFORE IT CROSSES THE RING';
+  var MAX_TIME = 15;
+  var NEEDED   = 4;          // 修正2: 10 → 4
   var MAX_OVER = 3;
-  var done = false;
-  var timeLeft = 45;
-  var elapsed = 0;
-  var spawnTimer = 0;
-  var particles = [];
+  var PX = snap(W * 0.08), PY = snap(H * 0.30), PW = snap(W * 0.84), PH = snap(H * 0.44);
 
-  var PAPER_X = 80;
-  var PAPER_Y = 180;
-  var PAPER_W = W - 160;
-  var PAPER_H = H - 400;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnBlob() {
-    var x = PAPER_X + 80 + Math.random() * (PAPER_W - 160);
-    var y = PAPER_Y + 80 + Math.random() * (PAPER_H - 160);
-    var maxR = Math.min(x - PAPER_X, PAPER_X + PAPER_W - x, y - PAPER_Y, PAPER_Y + PAPER_H - y) * 0.9;
-    blobs.push({
-      x: x, y: y,
-      r: 0,
-      maxR: maxR,
-      growSpeed: 60 + Math.random() * 60,
-      stopped: false,
-      overflowed: false,
-      alpha: 1
-    });
+  // ── ゲーム変数 ──
+  var blobs, stopped, over, timeLeft, done, spawnTimer, particles;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.18) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#181030');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(PX - 6, PY - 6, PW + 12, PH + 12, C.d, 0.4); game.draw.rect(PX, PY, PW, PH, C.paper, 0.95); }
+
+  function spawnBlob() {
+    var x = snap(PX + 100 + Math.random() * (PW - 200)), y = snap(PY + 100 + Math.random() * (PH - 200));
+    var maxR = Math.min(x - PX, PX + PW - x, y - PY, PY + PH - y) * 0.9;
+    blobs.push({ x: x, y: y, r: 0, maxR: maxR, grow: 55 + Math.random() * 45, stopped: false, over: false, alpha: 1 });
+  }
+
+  function initGame() { blobs = []; stopped = 0; over = 0; timeLeft = MAX_TIME; done = false; spawnTimer = 0.4; particles = []; }
+
+  function finish(success) {
     if (done) return;
-    // Stop the nearest growing blob
-    var best = -1, bestDist = 200;
-    for (var i = 0; i < blobs.length; i++) {
-      if (blobs[i].stopped || blobs[i].overflowed) continue;
-      var d = Math.hypot(tx - blobs[i].x, ty - blobs[i].y);
-      if (d < blobs[i].r + 40 && d < bestDist) {
-        bestDist = d; best = i;
-      }
+    done = true; resultSuccess = success;
+    finalScore = success ? (stopped * 500 + Math.ceil(timeLeft) * 100) : stopped * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawBlobs() {
+    for (var bi = 0; bi < blobs.length; bi++) {
+      var b = blobs[bi]; if (b.alpha <= 0) continue;
+      var col = b.over ? C.a : b.stopped ? C.e : C.g;
+      pc(b.x, b.y, b.r, col, b.alpha * 0.85);
+      if (!b.stopped && !b.over) { ring(b.x, b.y, b.maxR, b.r > b.maxR * 0.7 ? C.a : C.d, 0.6); }
     }
-    if (best >= 0) {
-      var b = blobs[best];
-      b.stopped = true;
-      stopped++;
-      // Particle splash
-      for (var pi = 0; pi < 8; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        particles.push({ x: b.x, y: b.y, vx: Math.cos(ang)*120, vy: Math.sin(ang)*120, life:0.5, col: C.ink });
-      }
-      game.audio.play('se_success', 0.4);
-      if (stopped >= NEEDED && !done) {
-        done = true;
-        game.end.success(stopped * 400 + Math.ceil(timeLeft) * 80);
-      }
-    } else {
-      // Missed
-      game.audio.play('se_failure', 0.2);
-    }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var best = -1, bd = 200;
+    for (var i = 0; i < blobs.length; i++) { if (blobs[i].stopped || blobs[i].over) continue; var d = Math.hypot(x - blobs[i].x, y - blobs[i].y); if (d < blobs[i].r + 50 && d < bd) { bd = d; best = i; } }
+    if (best >= 0) { var b = blobs[best]; b.stopped = true; stopped++; for (var k = 0; k < 8; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: b.x, y: b.y, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, life: 0.5, col: C.e }); } game.audio.play('se_success', 0.4); if (stopped >= NEEDED) { finish(true); return; } }
+    else game.audio.play('se_failure', 0.2);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background();
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      pc(W / 2, H * 0.5, 60, C.g, 0.85); ring(W / 2, H * 0.5, 100, C.d, 0.6);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.84, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.89, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'STEADY HAND!' : 'BLOTTED', W / 2, H * 0.35, 72, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
-    }
-
-    // Spawn blobs
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && !done) {
-      spawnBlob();
-      spawnTimer = 1.5 + Math.random() * 1.5;
-    }
-
-    // Update blobs
-    for (var i = 0; i < blobs.length; i++) {
-      var b = blobs[i];
-      if (b.stopped) {
-        b.alpha -= dt * 0.3;
-        continue;
+      if (timeLeft <= 0) { finish(false); return; }
+      spawnTimer -= dt; if (spawnTimer <= 0 && blobs.length < 4) { spawnBlob(); spawnTimer = 1.0 + Math.random() * 0.8; }
+      for (var i = 0; i < blobs.length; i++) {
+        var b = blobs[i];
+        if (b.stopped) { b.alpha -= dt * 0.3; continue; }
+        if (b.over) { b.alpha -= dt * 0.8; continue; }
+        b.r += b.grow * dt;
+        if (b.r >= b.maxR) { b.over = true; over++; game.audio.play('se_failure', 0.5); for (var k = 0; k < 10; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: b.x, y: b.y, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, life: 0.6, col: C.a }); } if (over >= MAX_OVER) { finish(false); return; } }
       }
-      if (b.overflowed) {
-        b.alpha -= dt * 0.8;
-        continue;
-      }
-      b.r += b.growSpeed * dt;
-      if (b.r >= b.maxR) {
-        b.overflowed = true;
-        overflowed++;
-        game.audio.play('se_failure', 0.5);
-        for (var pi2 = 0; pi2 < 10; pi2++) {
-          var ang2 = Math.random() * Math.PI * 2;
-          particles.push({ x: b.x, y: b.y, vx: Math.cos(ang2)*150, vy: Math.sin(ang2)*150, life:0.6, col: C.over });
-        }
-        if (overflowed >= MAX_OVER && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-        }
-      }
-    }
-    // Remove faded
-    for (var i2 = blobs.length - 1; i2 >= 0; i2--) {
-      if (blobs[i2].alpha <= 0) blobs.splice(i2, 1);
+      for (var i2 = blobs.length - 1; i2 >= 0; i2--) if (blobs[i2].alpha <= 0) blobs.splice(i2, 1);
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawBlobs();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
 
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Paper
-    game.draw.rect(PAPER_X - 8, PAPER_Y - 8, PAPER_W + 16, PAPER_H + 16, C.paperBorder, 0.8);
-    game.draw.rect(PAPER_X, PAPER_Y, PAPER_W, PAPER_H, C.paper, 0.95);
-
-    // Paper lines
-    for (var li = 0; li < 20; li++) {
-      var ly = PAPER_Y + 40 + li * 44;
-      if (ly < PAPER_Y + PAPER_H - 20) {
-        game.draw.line(PAPER_X + 30, ly, PAPER_X + PAPER_W - 30, ly, '#e2e8f0', 2);
-      }
-    }
-
-    // Blobs
-    for (var bi = 0; bi < blobs.length; bi++) {
-      var b2 = blobs[bi];
-      if (b2.alpha <= 0) continue;
-      var col = b2.overflowed ? C.inkDanger : (b2.stopped ? C.inkSafe : C.ink);
-      game.draw.circle(b2.x, b2.y, b2.r, col, b2.alpha * 0.85);
-      if (!b2.stopped && !b2.overflowed) {
-        // Danger ring at 80% max radius
-        var dangerR = b2.maxR * 0.75;
-        if (b2.r > dangerR * 0.6) {
-          game.draw.circle(b2.x, b2.y, dangerR, C.inkDanger, Math.min(0.5, (b2.r - dangerR * 0.6) / dangerR * 0.4) * b2.alpha);
-        }
-        // Target ring
-        game.draw.circle(b2.x, b2.y, b2.maxR, C.paperBorder, 0.6);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life, p.col, p.life * 0.8);
-    }
-
-    // Status
-    game.draw.text('止めた: ' + stopped + ' / ' + NEEDED, W / 2, 148, { size: 52, color: C.ink, bold: true });
-    for (var oi = 0; oi < MAX_OVER; oi++) {
-      game.draw.circle(W / 2 - (MAX_OVER-1)*40 + oi*80, H * 0.93, 18, oi < overflowed ? C.over : C.paperBorder, 0.9);
-    }
-
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.inkSafe : C.over);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: C.text, bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(stopped + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var oi = 0; oi < MAX_OVER; oi++) game.draw.rect(snap(W / 2 + (oi - (MAX_OVER - 1) / 2) * 56) - 10, 224, 20, 20, oi < over ? C.a : '#181030');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    spawnTimer = 0.8;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
