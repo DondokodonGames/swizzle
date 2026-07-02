@@ -1,121 +1,140 @@
 // 195-tile-flip.js
 // タイルフリップ — 全タイルを白に揃える、タップすると周囲も反転するパズル
 // 操作: タップでタイルと隣接タイルをフリップ
-// 成功: 全タイルを白にする  失敗: 30手使い切る
+// 成功: 全タイルを白にする  失敗: 10手使い切る or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#040608',
-    white:  '#e2e8f0',
-    black:  '#0f172a',
-    whiteHi:'#f8fafc',
-    blackHi:'#1e293b',
-    btn:    '#334155',
-    win:    '#22c55e',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、配電盤） ──
+  var C = { bg:'#1a0028', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var SIZE = 5;
-  var CELL = 168;
-  var GAP = 12;
-  var GW = SIZE * CELL + (SIZE - 1) * GAP;
-  var GX = (W - GW) / 2;
-  var GY = H * 0.28;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'TILE FLIP';
+  var HOW_TO_PLAY = 'TAP A TILE · IT AND NEIGHBORS FLIP';
+  var MAX_TIME = 20;
+  var MAX_MOVES = 10;            // 修正2: 30 → 10
+  var SHUFFLE = 3;               // 修正2: 8 → 3（易化）
+  var SIZE = 5, CELL = 168, GAP = 12;
+  var GW = SIZE * CELL + (SIZE - 1) * GAP, GX = snap((W - GW) / 2), GY = snap(360);
 
-  var grid = [];
-  var moves = 0;
-  var MAX_MOVES = 30;
-  var done = false;
-  var elapsed = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var grid, moves, timeLeft, done;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#2a0a3a');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(GX - 16, GY - 16, GW + 32, GW + 32, C.d, 0.4);
+    game.draw.rect(GX - 16, GY - 16, GW + 32, 8, C.a);
+  }
 
   function flip(r, c) {
-    var dirs = [[0,0],[-1,0],[1,0],[0,-1],[0,1]];
-    for (var di = 0; di < dirs.length; di++) {
-      var nr = r + dirs[di][0], nc = c + dirs[di][1];
-      if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) {
-        grid[nr * SIZE + nc] = 1 - grid[nr * SIZE + nc];
-      }
+    var d = [[0, 0], [-1, 0], [1, 0], [0, -1], [0, 1]];
+    for (var di = 0; di < d.length; di++) { var nr = r + d[di][0], nc = c + d[di][1]; if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) grid[nr * SIZE + nc] = 1 - grid[nr * SIZE + nc]; }
+  }
+
+  function drawGrid() {
+    for (var r = 0; r < SIZE; r++) for (var c = 0; c < SIZE; c++) {
+      var on = grid[r * SIZE + c] === 1, cx = GX + c * (CELL + GAP), cy = GY + r * (CELL + GAP);
+      game.draw.rect(cx, cy, CELL, CELL, on ? C.c : '#2a0a3a', 0.9);
+      game.draw.rect(cx, cy, CELL, 8, on ? C.g : C.d, on ? 0.5 : 0.3);
+      if (on) game.draw.rect(cx + CELL / 2 - 12, cy + CELL / 2 - 12, 24, 24, C.g, 0.7);
     }
   }
+
+  function checkWin() { for (var i = 0; i < grid.length; i++) if (grid[i] !== 1) return false; return true; }
 
   function initGrid() {
     grid = [];
-    for (var i = 0; i < SIZE * SIZE; i++) grid.push(0);
-    // Apply random flips to create solvable puzzle
-    for (var s = 0; s < 8; s++) {
-      var r = Math.floor(Math.random() * SIZE);
-      var c = Math.floor(Math.random() * SIZE);
-      flip(r, c);
-    }
+    for (var i = 0; i < SIZE * SIZE; i++) grid.push(1);
+    for (var s = 0; s < SHUFFLE; s++) flip(Math.floor(Math.random() * SIZE), Math.floor(Math.random() * SIZE));
+    if (checkWin()) flip(2, 2);
   }
 
-  function checkWin() {
-    for (var i = 0; i < grid.length; i++) if (grid[i] !== 1) return false;
-    return true;
-  }
+  function initGame() { initGrid(); moves = 0; timeLeft = MAX_TIME; done = false; }
 
-  game.onTap(function(tx, ty) {
+  function finish(success) {
     if (done) return;
-    var col = Math.floor((tx - GX) / (CELL + GAP));
-    var row = Math.floor((ty - GY) / (CELL + GAP));
+    done = true; resultSuccess = success;
+    finalScore = success ? ((MAX_MOVES - moves + 1) * 200 + Math.ceil(timeLeft) * 20) : moves * 40;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var col = Math.floor((x - GX) / (CELL + GAP)), row = Math.floor((y - GY) / (CELL + GAP));
     if (col < 0 || col >= SIZE || row < 0 || row >= SIZE) return;
-    var cx = GX + col * (CELL + GAP);
-    var cy = GY + row * (CELL + GAP);
-    if (tx < cx || tx > cx + CELL || ty < cy || ty > cy + CELL) return;
-    flip(row, col);
-    moves++;
+    var cx = GX + col * (CELL + GAP), cy = GY + row * (CELL + GAP);
+    if (x > cx + CELL || y > cy + CELL) return;
+    flip(row, col); moves++;
     game.audio.play('se_tap', 0.4);
-    if (checkWin()) {
-      done = true;
-      game.audio.play('se_success');
-      var bonus = (MAX_MOVES - moves + 1) * 100 + 400;
-      setTimeout(function() { game.end.success(bonus); }, 400);
-    } else if (moves >= MAX_MOVES) {
-      done = true;
-      game.audio.play('se_failure');
-      setTimeout(function() { game.end.failure(); }, 400);
-    }
+    if (checkWin()) { finish(true); return; }
+    if (moves >= MAX_MOVES) { finish(false); return; }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    elapsed += dt;
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    for (var r = 0; r < SIZE; r++) {
-      for (var c = 0; c < SIZE; c++) {
-        var idx = r * SIZE + c;
-        var cx2 = GX + c * (CELL + GAP);
-        var cy2 = GY + r * (CELL + GAP);
-        var isWhite = grid[idx] === 1;
-        var col2 = isWhite ? C.white : C.black;
-        var hiCol = isWhite ? C.whiteHi : C.blackHi;
-        game.draw.rect(cx2, cy2, CELL, CELL, col2, 0.9);
-        game.draw.rect(cx2 + 8, cy2 + 8, CELL - 16, 24, hiCol, isWhite ? 0.4 : 0.2);
-        if (!isWhite) {
-          // Dark sparkle
-          game.draw.circle(cx2 + CELL / 2, cy2 + CELL / 2, 20, '#1e40af', 0.2);
-        }
+    if (state === S.ATTRACT) {
+      background(); grid = []; for (var i = 0; i < SIZE * SIZE; i++) grid.push((i + Math.floor(game.time.elapsed)) % 2); drawGrid();
+      txt(GAME_TITLE, W / 2, H * 0.14, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.84, 30, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.89, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 48, C.g);
       }
+      scanlines();
+      return;
     }
 
-    var movesLeft = MAX_MOVES - moves;
-    var mc = movesLeft <= 5 ? '#ef4444' : '#f1f5f9';
-    game.draw.text('残り ' + movesLeft + ' 手', W / 2, GY + GW + 70, { size: 52, color: mc, bold: true });
-    game.draw.text('全部を白にしろ！', W / 2, H * 0.93, { size: 40, color: C.ui });
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ALL WHITE!' : 'OUT OF MOVES', W / 2, H * 0.35, 70, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
 
-    var ratio = (MAX_MOVES - moves) / MAX_MOVES;
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.win : '#ef4444');
-    game.draw.text(moves + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    // PLAYING
+    if (!done) { timeLeft -= dt; if (timeLeft <= 0) { finish(false); return; } }
+
+    background(); drawGrid();
+
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('MOVES ' + (MAX_MOVES - moves), W / 2, 168, 44, (MAX_MOVES - moves) <= 3 ? C.a : C.b);
+    txt('MAKE ALL TILES LIT', W / 2, GY + GW + 60, 34, C.c);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.2);
-    initGrid();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
