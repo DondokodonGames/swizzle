@@ -1,231 +1,149 @@
 // 399-soap-bubble.js
-// シャボン玉 — 吹いて大きくして完璧なサイズで飛ばす
-// 操作: タップ長押しで膨らませ、ちょうどいいサイズで離す
-// 成功: 8回完璧なサイズ  失敗: 5回弾ける or 50秒
+// シャボン玉 — タップで膨らませ、緑帯のちょうどいいサイズになったらもう一度タップして飛ばす
+// 操作: タップで膨らませ始め、適正サイズ（緑リング）で再タップして離す
+// 成功: 4回 きれいに飛ばす  失敗: 3回 割る or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#030f1e',
-    sky:    '#0c1a35',
-    bubble: '#7dd3fc',
-    bubbleHi:'#e0f2fe',
-    bubblePop:'#bae6fd',
-    zone:   '#22c55e',
-    zoneHi: '#86efac',
-    oversize:'#ef4444',
-    rainbow0:'#ef4444',
-    rainbow1:'#f97316',
-    rainbow2:'#eab308',
-    rainbow3:'#22c55e',
-    rainbow4:'#3b82f6',
-    rainbow5:'#a855f7',
-    wand:   '#92400e',
-    wandHi: '#b45309',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（アイスブルー、公園の午後） ──
+  var C = { bg:'#03101e', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var RB = [C.a, C.f, C.c, C.b, C.e, C.d];
 
-  var RAINBOW = [C.rainbow0,C.rainbow1,C.rainbow2,C.rainbow3,C.rainbow4,C.rainbow5];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SOAP BUBBLE';
+  var HOW_TO_PLAY = 'TAP TO GROW · RELEASE IN THE GREEN ZONE · DONT OVERBLOW';
+  var MAX_TIME = 15;
+  var NEEDED   = 4;          // 修正2: 8 → 4
+  var MAX_POPS = 3;          // 修正2: 5 → 3
+  var T_MIN = 88, T_MAX = 136, MAX_SIZE = 190, GROW = 60;
+  var WAND_X = snap(W / 2), WAND_Y = snap(H * 0.78);
 
-  var TARGET_MIN = 90;
-  var TARGET_MAX = 140;
-  var MAX_SIZE = 200;
-  var GROW_RATE = 60;  // px per second
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var phase = 'idle';  // idle, growing, floating, popped
-  var bubbleR = 30;
-  var bubbleX = W/2;
-  var bubbleY = H * 0.75;
-  var bubbleVX = 0;
-  var bubbleVY = -60;
-  var holdTime = 0;
-  var floatTimer = 0;
-  var iridPhase = 0;
+  // ── ゲーム変数 ──
+  var phase, bubbleR, bx, by, bvx, bvy, floatTimer, successes, pops, timeLeft, done, particles;
 
-  var successes = 0;
-  var NEEDED = 8;
-  var pops = 0;
-  var MAX_POPS = 5;
-  var done = false;
-  var timeLeft = 50;
-  var elapsed = 0;
-  var particles = [];
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  var WAND_X = W/2;
-  var WAND_Y = H*0.82;
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
 
-  function resetBubble() {
-    phase = 'idle';
-    bubbleR = 30;
-    bubbleX = WAND_X;
-    bubbleY = WAND_Y - 30;
-    bubbleVX = (Math.random()-0.5)*30;
-    bubbleVY = -60;
-    holdTime = 0;
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.1) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1a2e');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function resetBubble() { phase = 'idle'; bubbleR = 28; bx = WAND_X; by = WAND_Y - 30; bvx = (Math.random() - 0.5) * 30; bvy = -60; }
+
+  function initGame() { successes = 0; pops = 0; timeLeft = MAX_TIME; done = false; particles = []; resetBubble(); }
+
+  function finish(success) {
     if (done) return;
-    if (phase === 'idle') {
-      phase = 'growing';
-      holdTime = 0;
-      game.audio.play('se_tap', 0.2);
-    } else if (phase === 'growing') {
-      // Release — check size
-      if (bubbleR >= TARGET_MIN && bubbleR <= TARGET_MAX) {
-        phase = 'floating';
-        floatTimer = 2.0;
-        successes++;
-        game.audio.play('se_success', 0.5);
-        for (var pi = 0; pi < 12; pi++) {
-          var ang = Math.random()*Math.PI*2;
-          particles.push({ x:bubbleX, y:bubbleY, vx:Math.cos(ang)*100, vy:Math.sin(ang)*100-50, life:0.8, col:RAINBOW[Math.floor(Math.random()*6)] });
-        }
-        if (successes >= NEEDED && !done) {
-          done = true;
-          setTimeout(function(){ game.end.success(successes*400+Math.ceil(timeLeft)*80); }, 800);
-        }
-      } else if (bubbleR > TARGET_MAX) {
-        // Too big — pop
-        popBubble();
-      } else {
-        // Too small — shrinks back
-        phase = 'idle';
-        game.audio.play('se_failure', 0.15);
-        setTimeout(function(){ resetBubble(); }, 400);
-      }
+    done = true; resultSuccess = success;
+    finalScore = success ? (successes * 500 + Math.ceil(timeLeft) * 100) : successes * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function popBubble() {
+    phase = 'popped'; pops++; game.audio.play('se_failure', 0.4);
+    for (var p = 0; p < 16; p++) { var a = Math.random() * Math.PI * 2; particles.push({ x: bx, y: by, vx: Math.cos(a) * (100 + Math.random() * 200), vy: Math.sin(a) * (100 + Math.random() * 200), life: 0.5, col: C.e }); }
+    if (pops >= MAX_POPS) { finish(false); return; }
+    setTimeout(function() { if (!done && state === S.PLAYING) resetBubble(); }, 600);
+  }
+
+  function drawWand() { pline(WAND_X - 20, WAND_Y + 80, WAND_X + 40, WAND_Y - 20, C.f, 0.9, 12); ring(WAND_X + 40, WAND_Y - 20, 24, C.g, 0.7); }
+
+  function drawBubble() {
+    if (phase === 'popped' || phase === 'idle') return;
+    var big = bubbleR > T_MAX, good = bubbleR >= T_MIN && bubbleR <= T_MAX, col = big ? C.a : C.e;
+    for (var ii = 0; ii < 6; ii++) { var ia = game.time.elapsed * 3 + ii * Math.PI / 3; pc(bx + Math.cos(ia) * bubbleR * 0.3, by + Math.sin(ia) * bubbleR * 0.3, bubbleR * 0.3, RB[ii], 0.1); }
+    pc(bx, by, bubbleR, col, 0.18); ring(bx, by, bubbleR, good ? C.b : col, 0.7);
+    pc(bx - bubbleR * 0.3, by - bubbleR * 0.35, bubbleR * 0.18, C.g, 0.7);
+    if (good) ring(bx, by, bubbleR + 16, C.b, 0.3 + Math.sin(game.time.elapsed * 6) * 0.1);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (phase === 'idle') { phase = 'growing'; game.audio.play('se_tap', 0.2); }
+    else if (phase === 'growing') {
+      if (bubbleR >= T_MIN && bubbleR <= T_MAX) { phase = 'floating'; floatTimer = 1.4; successes++; game.audio.play('se_success', 0.5); for (var p = 0; p < 12; p++) { var a = Math.random() * Math.PI * 2; particles.push({ x: bx, y: by, vx: Math.cos(a) * 100, vy: Math.sin(a) * 100 - 50, life: 0.8, col: RB[Math.floor(Math.random() * 6)] }); } if (successes >= NEEDED) { finish(true); return; } }
+      else if (bubbleR > T_MAX) popBubble();
+      else { phase = 'idle'; game.audio.play('se_failure', 0.15); setTimeout(function() { if (!done && state === S.PLAYING) resetBubble(); }, 300); }
     }
   });
 
-  function popBubble() {
-    phase = 'popped';
-    pops++;
-    game.audio.play('se_failure', 0.4);
-    for (var pi = 0; pi < 16; pi++) {
-      var ang = Math.random()*Math.PI*2;
-      particles.push({ x:bubbleX, y:bubbleY, vx:Math.cos(ang)*(100+Math.random()*200), vy:Math.sin(ang)*(100+Math.random()*200), life:0.5, col:C.bubblePop });
-    }
-    if (pops >= MAX_POPS && !done) { done = true; setTimeout(function(){ game.end.failure(); }, 500); }
-    setTimeout(function(){ if (!done) resetBubble(); }, 700);
-  }
-
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      background(); drawWand();
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      pc(W / 2, H * 0.44, 100, C.e, 0.18); ring(W / 2, H * 0.44, 100, C.b, 0.6);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'BEAUTIFUL!' : 'ALL POPPED', W / 2, H * 0.35, 74, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (phase === 'growing') { bubbleR += GROW * dt; if (bubbleR >= MAX_SIZE) popBubble(); }
+      if (phase === 'floating') { bx += bvx * dt; by += bvy * dt; bvx += (Math.random() - 0.5) * 20 * dt; bvy -= 5 * dt; floatTimer -= dt; if (floatTimer <= 0 || by < -bubbleR * 2) resetBubble(); }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy -= 30 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    iridPhase += dt * 3;
+    // ---- 描画 ----
+    background(); drawWand(); drawBubble();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (phase === 'idle') txt('TAP TO GROW', W / 2, snap(H * 0.90), 40, C.e);
+    else if (phase === 'growing') { var g = bubbleR >= T_MIN && bubbleR <= T_MAX; txt(g ? 'RELEASE NOW!' : bubbleR > T_MAX ? 'TOO BIG!' : 'GROW MORE', W / 2, snap(H * 0.90), 44, g ? C.b : bubbleR > T_MAX ? C.a : C.e); }
 
-    if (phase === 'growing') {
-      holdTime += dt;
-      bubbleR += GROW_RATE * dt;
-      if (bubbleR >= MAX_SIZE) popBubble();
-    }
-
-    if (phase === 'floating') {
-      bubbleX += bubbleVX * dt;
-      bubbleY += bubbleVY * dt;
-      bubbleVX += (Math.random()-0.5)*20*dt;
-      bubbleVY -= 5*dt; // gradually rise
-      floatTimer -= dt;
-      if (floatTimer <= 0 || bubbleY < -bubbleR*2) { phase = 'idle'; resetBubble(); }
-    }
-
-    for (var pp = particles.length-1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx*dt;
-      particles[pp].y += particles[pp].vy*dt;
-      particles[pp].vy -= 30*dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp,1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, H, C.sky, 0.4);
-
-    // Target size reference rings
-    game.draw.circle(W*0.12, H*0.5, TARGET_MIN, C.zone, 0.08);
-    game.draw.circle(W*0.12, H*0.5, TARGET_MAX, C.zone, 0.05);
-    game.draw.circle(W*0.12, H*0.5, TARGET_MIN, C.zoneHi, 0.0);
-    // Reference label
-    game.draw.text('目安', W*0.12, H*0.56, { size: 32, color: C.zoneHi });
-    game.draw.circle(W*0.12, H*0.5, (TARGET_MIN+TARGET_MAX)/2, C.zone, 0.0);
-
-    // Draw reference circles at left edge as rings
-    for (var ri = 0; ri < 36; ri++) {
-      var ra = ri/36*Math.PI*2;
-      game.draw.circle(W*0.12+Math.cos(ra)*TARGET_MIN, H*0.5+Math.sin(ra)*TARGET_MIN, 4, C.zone, 0.4);
-      game.draw.circle(W*0.12+Math.cos(ra)*TARGET_MAX, H*0.5+Math.sin(ra)*TARGET_MAX, 4, C.zoneHi, 0.3);
-    }
-
-    // Wand
-    game.draw.line(WAND_X-20, WAND_Y+80, WAND_X+40, WAND_Y-20, C.wand, 12);
-    game.draw.line(WAND_X-20, WAND_Y+80, WAND_X+40, WAND_Y-20, C.wandHi, 4);
-    game.draw.circle(WAND_X+40, WAND_Y-20, 24, C.wandHi, 0.9);
-
-    // Bubble
-    if (phase !== 'popped' && phase !== 'idle') {
-      var isBig = bubbleR > TARGET_MAX;
-      var isGood = bubbleR >= TARGET_MIN && bubbleR <= TARGET_MAX;
-      var baseCol = isBig ? C.oversize : C.bubble;
-
-      // Iridescent effect
-      for (var ii = 0; ii < 6; ii++) {
-        var ia = iridPhase + ii*Math.PI/3;
-        var ir = bubbleR * 0.85;
-        var irx = bubbleX + Math.cos(ia)*ir*0.3;
-        var iry = bubbleY + Math.sin(ia)*ir*0.3;
-        game.draw.circle(irx, iry, bubbleR*0.3, RAINBOW[ii], 0.08);
-      }
-      game.draw.circle(bubbleX, bubbleY, bubbleR+4, baseCol, 0.08);
-      game.draw.circle(bubbleX, bubbleY, bubbleR, baseCol, 0.15);
-      // Outline
-      for (var oi = 0; oi < 48; oi++) {
-        var oa = oi/48*Math.PI*2;
-        game.draw.circle(bubbleX+Math.cos(oa)*bubbleR, bubbleY+Math.sin(oa)*bubbleR, 5, isGood ? C.zoneHi : baseCol, 0.6);
-      }
-      // Shine
-      game.draw.circle(bubbleX-bubbleR*0.3, bubbleY-bubbleR*0.35, bubbleR*0.22, '#fff', 0.7);
-      game.draw.circle(bubbleX-bubbleR*0.35, bubbleY-bubbleR*0.4, bubbleR*0.1, '#fff', 0.9);
-
-      if (isGood) {
-        game.draw.circle(bubbleX, bubbleY, bubbleR+18, C.zoneHi, 0.15+Math.sin(elapsed*6)*0.05);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8*p.life, p.col, p.life*0.8);
-    }
-
-    // Instructions
-    if (phase === 'idle') {
-      game.draw.text('タップで膨らませる', W/2, H*0.89, { size: 40, color: C.ui });
-    } else if (phase === 'growing') {
-      var inZone = bubbleR >= TARGET_MIN && bubbleR <= TARGET_MAX;
-      game.draw.text(inZone ? 'いまだ！離す！' : (bubbleR > TARGET_MAX ? '大きすぎ！' : 'もっと膨らませて'), W/2, H*0.89, { size: 40, color: inZone ? C.zoneHi : C.ui, bold: inZone });
-    }
-
-    // Pop dots
-    for (var pi3 = 0; pi3 < MAX_POPS; pi3++) {
-      game.draw.circle(W/2-(MAX_POPS-1)*34+pi3*68, H*0.935, 14, pi3 < pops ? C.oversize : C.ui, 0.9);
-    }
-
-    game.draw.text(successes + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft/50);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*ratio, 72, ratio > 0.3 ? C.bubble : C.oversize);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(successes + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var pi = 0; pi < MAX_POPS; pi++) game.draw.rect(snap(W / 2 + (pi - (MAX_POPS - 1) / 2) * 56) - 10, 224, 20, 20, pi < pops ? C.a : '#0a1a2e');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    resetBubble();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
