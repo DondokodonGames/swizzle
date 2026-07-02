@@ -1,207 +1,138 @@
 // 271-heartbeat-tap.js
-// ハートビートタップ — 心電図の波形に合わせてタップする医療系リズムゲーム
-// 操作: 心電図のピークに合わせてタップ
-// 成功: 20回正確にタップ  失敗: 8回外す or 40秒
+// ハートビートタップ — 流れる心電図の鋭いRピークの瞬間に合わせてタップする医療リズム
+// 操作: 波形が跳ねた瞬間にタップ
+// 成功: 3回ジャストで刻む  失敗: 3回外す or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#030508',
-    grid:   '#0d1f1a',
-    line:   '#22c55e',
-    lineHi: '#86efac',
-    peak:   '#ef4444',
-    peakHi: '#fca5a5',
-    tap:    '#fde68a',
-    miss:   '#ef4444',
-    ui:     '#475569',
-    text:   '#f1f5f9'
-  };
+  // ── パレット（グリーンCRT、心電図モニタ） ──
+  var C = { bg:'#001100', a:'#ff3300', b:'#00ff41', c:'#ccffcc', d:'#009922', e:'#66ff66', f:'#ffcc00', g:'#ffffff' };
 
-  var CY = H * 0.48;
-  var GRAPH_W = W;
-  var history = [];
-  var histMax = W;
-  var phase = 0;
-  var beatPeriod = 1.1; // seconds per beat
-  var beatTimer = 0;
-  var peaked = false;
-  var peakWindow = false;
-  var peakWindowTimer = 0;
-  var PEAK_WINDOW = 0.22;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'HEARTBEAT TAP';
+  var HOW_TO_PLAY = 'TAP EXACTLY ON THE SHARP PEAK';
+  var MAX_TIME = 15;
+  var NEEDED   = 3;           // 修正2: 20 → 3
+  var MAX_MISS = 3;          // 修正2: 8 → 3
+  var CY = snap(H * 0.46), PEAK_WINDOW = 0.24;
 
-  var hits = 0;
-  var NEEDED = 20;
-  var misses = 0;
-  var MAX_MISS = 8;
-  var done = false;
-  var timeLeft = 40;
-  var elapsed = 0;
-  var feedback = '';
-  var feedbackCol = '#fff';
-  var feedbackTimer = 0;
-  var tapFlash = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function ecgSample(t) {
-    // Simplified ECG waveform as function of beat phase
-    var p = t % 1;
-    if (p < 0.1) return Math.sin(p * Math.PI * 10) * 20; // P wave
-    if (p < 0.38) return 0;
-    if (p < 0.4) return -30; // Q dip
-    if (p < 0.43) return 200; // R peak (tall spike)
-    if (p < 0.46) return -40; // S dip
-    if (p < 0.55) return 0;
-    if (p < 0.7) return Math.sin((p - 0.55) / 0.15 * Math.PI) * 35; // T wave
-    return 0;
+  // ── ゲーム変数 ──
+  var history, beatPeriod, beatTimer, peaked, peakWindow, pwTimer, hits, misses, timeLeft, done, fbText, fbCol, fbTimer, flashes;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#003300');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    for (var gy = 0; gy < 8; gy++) game.draw.rect(0, snap(H * 0.24 + gy * H * 0.08), W, 2, C.d, 0.3);
+    for (var gx = 0; gx < 11; gx++) game.draw.rect(snap(gx * W / 10), snap(H * 0.24), 2, snap(H * 0.5), C.d, 0.3);
+  }
+
+  function ecg(t) { var p = t % 1; if (p < 0.1) return Math.sin(p * Math.PI * 10) * 20; if (p < 0.38) return 0; if (p < 0.4) return -30; if (p < 0.43) return 200; if (p < 0.46) return -40; if (p < 0.55) return 0; if (p < 0.7) return Math.sin((p - 0.55) / 0.15 * Math.PI) * 35; return 0; }
+
+  function initGame() { history = []; for (var i = 0; i < W / 8; i++) history.push(CY); beatPeriod = 1.1; beatTimer = 0; peaked = false; peakWindow = false; pwTimer = 0; hits = 0; misses = 0; timeLeft = MAX_TIME; done = false; fbText = ''; fbCol = C.g; fbTimer = 0; flashes = []; }
+
+  function finish(success) {
     if (done) return;
-    if (peakWindow) {
-      hits++;
-      feedback = 'ナイス！ ' + hits + '/' + NEEDED;
-      feedbackCol = C.lineHi;
-      feedbackTimer = 0.5;
-      peakWindow = false;
-      game.audio.play('se_success', 0.5);
-      tapFlash.push({ x: tx, y: ty, life: 0.4 });
-      if (hits >= NEEDED && !done) {
-        done = true;
-        setTimeout(function() { game.end.success(hits * 150 + Math.ceil(timeLeft) * 80); }, 400);
-      }
-    } else {
-      misses++;
-      feedback = 'ミス！ (' + misses + '/' + MAX_MISS + ')';
-      feedbackCol = C.miss;
-      feedbackTimer = 0.5;
-      game.audio.play('se_failure', 0.4);
-      tapFlash.push({ x: tx, y: ty, life: 0.4, bad: true });
-      if (misses >= MAX_MISS && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 400);
-      }
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (hits * 500 + Math.ceil(timeLeft) * 60) : hits * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function addMiss() { misses++; fbText = 'MISS'; fbCol = C.a; fbTimer = 0.5; game.audio.play('se_failure', 0.4); if (misses >= MAX_MISS) finish(false); }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (peakWindow) { hits++; fbText = 'PERFECT!'; fbCol = C.b; fbTimer = 0.5; peakWindow = false; game.audio.play('se_success', 0.6); flashes.push({ x: x, y: y, life: 0.4 }); if (hits >= NEEDED) { finish(true); return; } }
+    else { addMiss(); if (done) return; flashes.push({ x: x, y: y, life: 0.4, bad: true }); }
   });
 
+  // ── 更新 & 描画 ──
+  function drawECG() {
+    var step = W / history.length;
+    for (var i = 1; i < history.length; i++) game.draw.rect(snap((i - 1) * step) - 3, snap(history[i - 1]) - 3, 6, 6, C.b, 0.9);
+  }
+
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!history) initGame(); background();
+      // 静的な心拍の見本
+      for (var i = 0; i < W / 8; i++) history[i] = CY - ecg((i * 8 / W * 3) % 1) ; drawECG();
+      txt(GAME_TITLE, W / 2, H * 0.16, 74, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.84, 26, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 58, C.f);
+        txt('TAP TO START', W / 2, H * 0.95, 44, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'IN RHYTHM!' : 'FLATLINE', W / 2, H * 0.35, 72, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.c);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.e);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (fbTimer > 0) fbTimer -= dt;
+      beatTimer += dt;
+      history.push(CY - ecg(beatTimer / beatPeriod)); if (history.length > W / 8) history.shift();
+      var bp = (beatTimer % beatPeriod) / beatPeriod;
+      if (bp > 0.4 && bp < 0.46 && !peaked) { peaked = true; peakWindow = true; pwTimer = PEAK_WINDOW; }
+      else if (bp > 0.5) { peaked = false; if (peakWindow) { peakWindow = false; addMiss(); if (done) return; } }
+      if (peakWindow) { pwTimer -= dt; if (pwTimer <= 0) peakWindow = false; }
+      beatPeriod = Math.max(0.7, 1.1 - hits * 0.06);
+      for (var f = flashes.length - 1; f >= 0; f--) { flashes[f].life -= dt; if (flashes[f].life <= 0) flashes.splice(f, 1); }
     }
 
-    if (feedbackTimer > 0) feedbackTimer -= dt;
+    // ---- 描画 ----
+    background(); drawECG();
+    if (peakWindow) { game.draw.rect(W - 130, CY - 240, 90, 44, C.a, 0.8); txt('TAP!', W - 85, CY - 210, 34, C.g); }
+    for (var f2 = 0; f2 < flashes.length; f2++) { var fl = flashes[f2]; game.draw.rect(snap(fl.x) - 24, snap(fl.y) - 24, 48, 48, fl.bad ? C.a : C.f, fl.life * 2); }
+    if (fbTimer > 0) txt(fbText, W / 2, H * 0.78, 48, fbCol);
+    txt(Math.round(60 / beatPeriod) + ' BPM', W * 0.8, H * 0.82, 34, C.d);
 
-    beatTimer += dt;
-    phase = beatTimer / beatPeriod;
-    var sample = ecgSample(phase);
-
-    history.push(CY - sample);
-    if (history.length > histMax) history.shift();
-
-    // Detect R peak: phase ~ 0.43 in beat period
-    var beatPhase = (beatTimer % beatPeriod) / beatPeriod;
-    if (beatPhase > 0.4 && beatPhase < 0.46 && !peaked) {
-      peaked = true;
-      peakWindow = true;
-      peakWindowTimer = PEAK_WINDOW;
-    } else if (beatPhase > 0.5) {
-      peaked = false;
-      if (peakWindow) {
-        // Missed the peak
-        misses++;
-        feedback = '外した！ (' + misses + '/' + MAX_MISS + ')';
-        feedbackCol = C.miss;
-        feedbackTimer = 0.5;
-        game.audio.play('se_failure', 0.35);
-        peakWindow = false;
-        if (misses >= MAX_MISS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 400);
-        }
-      }
-    }
-
-    if (peakWindow) {
-      peakWindowTimer -= dt;
-      if (peakWindowTimer <= 0) peakWindow = false;
-    }
-
-    // Speed up over time
-    beatPeriod = Math.max(0.7, 1.1 - hits * 0.02);
-
-    for (var tf = tapFlash.length - 1; tf >= 0; tf--) {
-      tapFlash[tf].life -= dt;
-      if (tapFlash[tf].life <= 0) tapFlash.splice(tf, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Grid lines
-    for (var gy = 0; gy < 8; gy++) {
-      var yy = H * 0.2 + gy * H * 0.1;
-      game.draw.line(0, yy, W, yy, C.grid, 1);
-    }
-    for (var gx = 0; gx < 12; gx++) {
-      game.draw.line(gx * W / 10, H * 0.2, gx * W / 10, H * 0.78, C.grid, 1);
-    }
-
-    // ECG line
-    if (history.length > 1) {
-      var step = W / histMax;
-      for (var i = 1; i < history.length; i++) {
-        var x1 = (i - 1) * step;
-        var x2 = i * step;
-        game.draw.line(x1, history[i - 1], x2, history[i], C.line, 4);
-      }
-    }
-
-    // Peak window indicator
-    if (peakWindow) {
-      game.draw.rect(W - 120, CY - 220, 80, 40, C.peak, 0.8);
-      game.draw.text('TAP!', W - 80, CY - 200, { size: 36, color: '#fff', bold: true });
-      game.draw.circle(W - 30, CY - 200, 18, C.peak, 0.9 + 0.1 * Math.sin(elapsed * 20));
-    }
-
-    // Current ECG dot
-    var curY = history[history.length - 1] || CY;
-    game.draw.circle(W - 10, curY, 10, C.lineHi, 0.9);
-
-    // Tap flashes
-    for (var tf2 = 0; tf2 < tapFlash.length; tf2++) {
-      var t2 = tapFlash[tf2];
-      var a6 = t2.life / 0.4;
-      game.draw.circle(t2.x, t2.y, 50 * (1 - a6) + 20, t2.bad ? C.miss : C.tap, a6 * 0.8);
-    }
-
-    // Heart icon
-    var hb = 0.85 + 0.15 * Math.abs(Math.sin(elapsed * (60 / beatPeriod) * Math.PI / 30));
-    game.draw.text('♥', W * 0.82, H * 0.74, { size: 80 * hb, color: C.peak, bold: true });
-    game.draw.text(Math.round(60 / beatPeriod) + ' bpm', W * 0.82, H * 0.81, { size: 34, color: C.ui });
-
-    // Feedback
-    if (feedbackTimer > 0) {
-      game.draw.text(feedback, W / 2, H * 0.87, { size: 46, color: feedbackCol, bold: true });
-    }
-
-    // Miss dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 24 + mi * 48, H * 0.93, 14, mi < misses ? C.miss : '#060a10');
-    }
-
-    game.draw.text(hits + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 40);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.line : C.peak);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.c);
+    txt(hits + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mm = 0; mm < MAX_MISS; mm++) game.draw.rect(snap(W / 2 + (mm - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mm < misses ? C.a : '#003300');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.15);
-    for (var i = 0; i < histMax; i++) history.push(CY);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
