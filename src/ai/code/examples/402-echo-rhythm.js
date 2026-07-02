@@ -1,210 +1,136 @@
 // 402-echo-rhythm.js
-// エコーリズム — 聞こえたビートを正確に繰り返してタップ
-// 操作: 音のパターンを記憶してタップで再現
-// 成功: 6ラウンドクリア  失敗: 3回ミス or 60秒
+// エコーリズム — 光ったビートの順番を記憶し、同じ順にノードをタップして繰り返すサイモン式
+// 操作: 光る順番を覚え、消えたら同じ順にノードをタップ
+// 成功: 3ラウンド クリア  失敗: 3回 間違える or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#06040f',
-    panel:  '#1a1040',
-    beat:   '#a855f7',
-    beatHi: '#d8b4fe',
-    beatOn: '#f0abfc',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569',
-    note:   '#fbbf24'
-  };
+  // ── パレット（ネオンアーケード、シンセ台） ──
+  var C = { bg:'#06040f', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var BEAT_INTERVAL = 0.5;  // seconds between beats in pattern
-  var MAX_LEN = 4;          // max beats in pattern
-
-  var phase = 'showing';    // showing, waiting, inputting
-  var pattern = [];
-  var playerInput = [];
-  var showIdx = 0;
-  var showTimer = 0;
-  var pauseTimer = 0;
-
-  var round = 0;
-  var NEEDED = 6;
-  var wrong = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ECHO RHYTHM';
+  var HOW_TO_PLAY = 'WATCH THE BEATS LIGHT UP · TAP THEM BACK IN ORDER';
+  var MAX_TIME = 20;
+  var NEEDED   = 3;          // 修正2: 6 → 3
   var MAX_WRONG = 3;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0;
-  var flashCol = C.correct;
-  var beatFlash = -1;
-  var beatFlashTimer = 0;
+  var NBEATS = 4, BEAT_INT = 0.55, MAX_LEN = 4;
 
-  // Beat positions (circle layout)
-  var BEATS = [];
-  var NBEATS = 6;
-  for (var bi = 0; bi < NBEATS; bi++) {
-    var ang = bi / NBEATS * Math.PI * 2 - Math.PI/2;
-    BEATS.push({ x: W/2 + Math.cos(ang)*260, y: H*0.46 + Math.sin(ang)*260, id: bi });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var BEATS, iphase, pattern, input, showIdx, showTimer, pauseTimer, round, wrong, timeLeft, done, particles, flash, flashCol, beatFlash, beatFlashT;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function generatePattern() {
-    var len = 2 + Math.min(round, MAX_LEN-2);
-    pattern = [];
-    for (var i = 0; i < len; i++) {
-      pattern.push(Math.floor(Math.random()*NBEATS));
-    }
-    playerInput = [];
-    showIdx = 0;
-    showTimer = BEAT_INTERVAL;
-    pauseTimer = 0;
-    phase = 'showing';
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a1030');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function initBeats() { BEATS = []; for (var bi = 0; bi < NBEATS; bi++) { var ang = bi / NBEATS * Math.PI * 2 - Math.PI / 2; BEATS.push({ x: snap(W / 2 + Math.cos(ang) * 260), y: snap(H * 0.48 + Math.sin(ang) * 260), id: bi }); } }
+
+  function genPattern() { var len = 2 + Math.min(round, MAX_LEN - 2); pattern = []; for (var i = 0; i < len; i++) pattern.push(Math.floor(Math.random() * NBEATS)); input = []; showIdx = 0; showTimer = BEAT_INT; pauseTimer = 0; iphase = 'showing'; }
+
+  function initGame() { round = 0; wrong = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; beatFlash = -1; beatFlashT = 0; genPattern(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (round * 700 + Math.ceil(timeLeft) * 100) : round * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   function checkInput() {
-    for (var i = 0; i < playerInput.length; i++) {
-      if (playerInput[i] !== pattern[i]) {
-        wrong++;
-        flashCol = C.wrong;
-        flashAnim = 0.7;
-        game.audio.play('se_failure', 0.4);
-        if (wrong >= MAX_WRONG && !done) { done = true; setTimeout(function(){ game.end.failure(); }, 500); }
-        playerInput = [];
-        setTimeout(function(){ generatePattern(); }, 800);
-        return;
-      }
-    }
-    if (playerInput.length === pattern.length) {
-      round++;
-      flashCol = C.correct;
-      flashAnim = 0.6;
-      game.audio.play('se_success', 0.5);
-      for (var pi = 0; pi < 12; pi++) {
-        var ang2 = Math.random()*Math.PI*2;
-        particles.push({ x:W/2, y:H*0.46, vx:Math.cos(ang2)*220, vy:Math.sin(ang2)*220, life:0.7, col:C.beatOn });
-      }
-      if (round >= NEEDED && !done) { done = true; setTimeout(function(){ game.end.success(round*500+Math.ceil(timeLeft)*80); }, 700); return; }
-      setTimeout(function(){ generatePattern(); }, 900);
-    }
+    for (var i = 0; i < input.length; i++) if (input[i] !== pattern[i]) { wrong++; flashCol = C.a; flash = 0.7; game.audio.play('se_failure', 0.4); if (wrong >= MAX_WRONG) { finish(false); return; } input = []; setTimeout(function() { if (!done && state === S.PLAYING) genPattern(); }, 700); return; }
+    if (input.length === pattern.length) { round++; flashCol = C.b; flash = 0.6; game.audio.play('se_success', 0.5); for (var p = 0; p < 12; p++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: H * 0.48, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, life: 0.7, col: C.c }); } if (round >= NEEDED) { finish(true); return; } setTimeout(function() { if (!done && state === S.PLAYING) genPattern(); }, 800); }
   }
 
-  game.onTap(function(tx, ty) {
-    if (done || phase !== 'inputting') return;
-    // Find nearest beat
-    var nearest = -1, nearestDist = 999999;
-    for (var bi2 = 0; bi2 < BEATS.length; bi2++) {
-      var d = Math.hypot(tx-BEATS[bi2].x, ty-BEATS[bi2].y);
-      if (d < nearestDist) { nearestDist = d; nearest = bi2; }
-    }
-    if (nearestDist > 100) return;
-    beatFlash = nearest;
-    beatFlashTimer = 0.25;
-    playerInput.push(nearest);
-    game.audio.play('se_tap', 0.4);
-    checkInput();
+  function drawBeats() {
+    for (var bi = 0; bi < BEATS.length; bi++) { var bt = BEATS[bi], fl = bt.id === beatFlash && beatFlashT > 0; pc(bt.x, bt.y, 52, fl ? C.c : C.d, fl ? 0.95 : 0.5); pc(bt.x, bt.y, 30, C.g, fl ? 0.9 : 0.15); txt((bt.id + 1) + '', bt.x, bt.y + 14, 40, fl ? '#000' : C.g); }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || iphase !== 'inputting') return;
+    var near = -1, nd = 999999;
+    for (var bi = 0; bi < BEATS.length; bi++) { var d = Math.hypot(x - BEATS[bi].x, y - BEATS[bi].y); if (d < nd) { nd = d; near = bi; } }
+    if (nd > 100) return;
+    beatFlash = near; beatFlashT = 0.25; input.push(near); game.audio.play('se_tap', 0.4); checkInput();
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!BEATS) { initBeats(); initGame(); } background(); drawBeats();
+      txt(GAME_TITLE, W / 2, H * 0.14, 80, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'IN SYNC!' : 'OFF BEAT', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) { done = true; game.audio.play('se_failure'); game.end.failure(); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2; if (beatFlashT > 0) beatFlashT -= dt;
+      if (iphase === 'showing') { showTimer -= dt; if (showTimer <= 0) { if (showIdx < pattern.length) { beatFlash = pattern[showIdx]; beatFlashT = BEAT_INT * 0.6; game.audio.play('se_tap', 0.35); showIdx++; showTimer = BEAT_INT; } else { iphase = 'pause'; pauseTimer = 0.4; } } }
+      else if (iphase === 'pause') { pauseTimer -= dt; if (pauseTimer <= 0) { iphase = 'inputting'; input = []; } }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 2;
-    if (beatFlashTimer > 0) beatFlashTimer -= dt;
+    // ---- 描画 ----
+    background(); drawBeats();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (iphase === 'inputting') for (var di = 0; di < pattern.length; di++) game.draw.rect(snap(W / 2 - (pattern.length - 1) * 30 + di * 60) - (di < input.length ? 14 : 8), snap(H * 0.76), di < input.length ? 28 : 16, di < input.length ? 28 : 16, di < input.length ? C.b : '#445');
+    txt(iphase === 'showing' ? 'LISTEN...' : iphase === 'pause' ? '...' : 'ECHO IT!', W / 2, snap(H * 0.82), 50, iphase === 'inputting' ? C.c : C.e);
 
-    if (phase === 'showing') {
-      showTimer -= dt;
-      if (showTimer <= 0) {
-        // Flash beat
-        if (showIdx < pattern.length) {
-          beatFlash = pattern[showIdx];
-          beatFlashTimer = BEAT_INTERVAL * 0.6;
-          game.audio.play('se_tap', 0.35);
-          showIdx++;
-          showTimer = BEAT_INTERVAL;
-        } else {
-          // Done showing
-          phase = 'pause';
-          pauseTimer = 0.4;
-        }
-      }
-    }
-
-    if (phase === 'pause') {
-      pauseTimer -= dt;
-      if (pauseTimer <= 0) {
-        phase = 'inputting';
-        playerInput = [];
-      }
-    }
-
-    for (var pp = particles.length-1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx*dt;
-      particles[pp].y += particles[pp].vy*dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp,1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Connection ring
-    for (var bi3 = 0; bi3 < BEATS.length; bi3++) {
-      var next = (bi3+1) % BEATS.length;
-      game.draw.line(BEATS[bi3].x, BEATS[bi3].y, BEATS[next].x, BEATS[next].y, C.panel, 2);
-    }
-
-    // Beat nodes
-    for (var bi4 = 0; bi4 < BEATS.length; bi4++) {
-      var bt = BEATS[bi4];
-      var isFlashing = (bt.id === beatFlash && beatFlashTimer > 0);
-      var alpha = isFlashing ? 0.95 : 0.5;
-      var col2 = isFlashing ? C.beatOn : C.beat;
-      if (isFlashing) game.draw.circle(bt.x, bt.y, 68, C.beatHi, beatFlashTimer*0.4);
-      game.draw.circle(bt.x, bt.y, 52, col2, alpha);
-      game.draw.circle(bt.x, bt.y, 32, C.beatHi, isFlashing ? 0.8 : 0.15);
-      game.draw.text((bt.id+1)+'', bt.x, bt.y+16, { size: 44, color: isFlashing ? C.bg : C.text, bold: true });
-    }
-
-    // Pattern display (dots showing progress)
-    if (phase === 'inputting') {
-      var dotY = H*0.75;
-      for (var di = 0; di < pattern.length; di++) {
-        var filled = di < playerInput.length;
-        game.draw.circle(W/2-(pattern.length-1)*30+di*60, dotY, filled ? 18 : 12, filled ? C.beatHi : C.ui, 0.9);
-      }
-    }
-
-    // Status text
-    var statusText = phase === 'showing' ? '覚えて！' : (phase === 'pause' ? '...' : '繰り返して！');
-    game.draw.text(statusText, W/2, H*0.8, { size: 52, color: phase === 'inputting' ? C.beatOn : C.ui, bold: phase === 'inputting' });
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim*0.1);
-
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8*p.life, p.col, p.life*0.9);
-    }
-
-    // Wrong dots
-    for (var wi = 0; wi < MAX_WRONG; wi++) {
-      game.draw.circle(W/2-(MAX_WRONG-1)*40+wi*80, H*0.935, 16, wi < wrong ? C.wrong : C.panel, 0.9);
-    }
-
-    game.draw.text(round + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft/60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W*ratio, 72, ratio > 0.3 ? C.beat : C.wrong);
-    game.draw.text(Math.ceil(timeLeft)+'', W/2, 36, { size: 44, color: '#fff', bold: true });
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(round + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var wi = 0; wi < MAX_WRONG; wi++) game.draw.rect(snap(W / 2 + (wi - (MAX_WRONG - 1) / 2) * 56) - 10, 224, 20, 20, wi < wrong ? C.a : '#1a1030');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    generatePattern();
+    state = S.ATTRACT;
+    initBeats();
+    initGame();
   });
 })(game);
