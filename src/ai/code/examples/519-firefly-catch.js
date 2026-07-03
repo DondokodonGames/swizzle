@@ -1,214 +1,130 @@
 // 519-firefly-catch.js
-// ホタル捕獲 — 暗闇の中で光るホタルを素早くタップして捕まえる
-// 操作: 光るホタルをタップ
-// 成功: 20匹捕獲  失敗: 10匹逃げる or 45秒
+// ホタル捕獲 — 暗闇でふわふわ舞うホタルが光った瞬間にタップして捕まえる
+// 操作: 光っているホタルをタップ（暗い間は捕まえられない・逃がすとミス）
+// 成功: 6匹 捕獲  失敗: 3匹 逃す or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#010208',
-    sky:      '#02040f',
-    grass:    '#0a1a05',
-    grassHi:  '#142808',
-    fly:      '#d4f542',
-    flyGlow:  '#a8ff00',
-    flyBody:  '#1a2a00',
-    caught:   '#22c55e',
-    escaped:  '#ef4444',
-    text:     '#f1f5f9',
-    ui:       '#374151'
-  };
+  // ── パレット（グリーンCRT、蛍の草むら） ──
+  var C = { bg:'#000800', a:'#ff3300', b:'#00ff41', c:'#ffe600', d:'#00cc33', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var GROUND_Y = H * 0.85;
-  var flies = [];
-  var caught = 0;
-  var NEEDED = 20;
-  var escaped = 0;
-  var MAX_ESCAPE = 10;
-  var done = false;
-  var timeLeft = 45;
-  var elapsed = 0;
-  var particles = [];
-  var nextSpawn = 0.8;
-  var stars = [];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'FIREFLY CATCH';
+  var HOW_TO_PLAY = 'TAP EACH FIREFLY ONLY WHILE IT GLOWS';
+  var MAX_TIME = 15;
+  var NEEDED   = 6;          // 修正2: 20 → 6
+  var MAX_ESCAPE = 3;        // 修正2: 10 → 3
+  var GROUND_Y = snap(H * 0.86);
 
-  for (var si = 0; si < 50; si++) {
-    stars.push({ x: Math.random() * W, y: Math.random() * GROUND_Y * 0.7, r: 0.5 + Math.random() * 1.5, twinkle: Math.random() * Math.PI * 2 });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var flies, caught, escaped, timeLeft, done, particles, nextSpawn, stars, flash, flashCol;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function spawnFly() {
-    var x = 80 + Math.random() * (W - 160);
-    var y = H * 0.15 + Math.random() * (GROUND_Y - H * 0.2);
-    flies.push({
-      x: x, y: y,
-      vx: (Math.random() - 0.5) * 80,
-      vy: (Math.random() - 0.5) * 80,
-      r: 22,
-      lit: true,
-      litTimer: 0.5 + Math.random() * 1.0,
-      darkTimer: 0,
-      DARK_DUR: 0.4 + Math.random() * 0.6,
-      LIT_DUR: 0.5 + Math.random() * 1.0,
-      life: 3 + Math.random() * 2,
-      glow: Math.random() * Math.PI * 2,
-      caught: false
-    });
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#002200');
   }
 
-  game.onTap(function(tx, ty) {
+  function background() { game.draw.clear(C.bg); for (var si = 0; si < stars.length; si++) game.draw.rect(stars[si].x, stars[si].y, stars[si].r, stars[si].r, C.g, 0.3 + Math.sin(game.time.elapsed * 2 + si) * 0.2); game.draw.rect(0, GROUND_Y, W, H - GROUND_Y, '#031a05', 0.9); }
+
+  function initStars() { stars = []; for (var i = 0; i < 50; i++) stars.push({ x: snap(Math.random() * W), y: snap(Math.random() * GROUND_Y * 0.7), r: Math.random() < 0.5 ? 4 : 8 }); }
+
+  function spawnFly() { flies.push({ x: snap(80 + Math.random() * (W - 160)), y: snap(H * 0.18 + Math.random() * (GROUND_Y - H * 0.24)), vx: (Math.random() - 0.5) * 80, vy: (Math.random() - 0.5) * 80, r: 22, lit: true, litTimer: 0.5 + Math.random(), darkTimer: 0, DARK: 0.4 + Math.random() * 0.5, LIT: 0.5 + Math.random(), life: 3 + Math.random() * 2 }); }
+
+  function initGame() { flies = []; caught = 0; escaped = 0; timeLeft = MAX_TIME; done = false; particles = []; nextSpawn = 0.5; flash = 0; flashCol = C.b; spawnFly(); spawnFly(); }
+
+  function finish(success) {
     if (done) return;
-    var hit = false;
-    for (var i = flies.length - 1; i >= 0; i--) {
-      var f = flies[i];
-      if (!f.lit || f.caught) continue;
-      var dx = tx - f.x, dy = ty - f.y;
-      if (Math.sqrt(dx * dx + dy * dy) < f.r + 40) {
-        f.caught = true;
-        caught++;
-        game.audio.play('se_tap', 0.4);
-        for (var pi = 0; pi < 8; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: f.x, y: f.y, vx: Math.cos(ang) * 120, vy: Math.sin(ang) * 120, life: 0.5, col: C.fly });
-        }
-        flies.splice(i, 1);
-        hit = true;
-        if (caught >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(caught * 300 + Math.ceil(timeLeft) * 100); }, 700);
-        }
-        break;
-      }
-    }
-    if (!hit) {
-      // missed tap — slight penalty feeling but no miss count
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (caught * 500 + Math.ceil(timeLeft) * 100) : caught * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawFlies() { for (var fi = 0; fi < flies.length; fi++) { var f = flies[fi]; if (f.lit) { pc(f.x, f.y, f.r + 14, C.d, 0.1); pc(f.x, f.y, f.r, C.b, 0.9); pc(f.x, f.y - 6, 8, '#0a2a00', 0.9); } else pc(f.x, f.y, 8, '#0a1505', 0.4); } }
+
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    for (var i = flies.length - 1; i >= 0; i--) { var f = flies[i]; if (!f.lit) continue; if (Math.hypot(tx - f.x, ty - f.y) < f.r + 40) { caught++; flash = 0.3; flashCol = C.b; game.audio.play('se_tap', 0.4); for (var pi = 0; pi < 8; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: f.x, y: f.y, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, life: 0.5, col: C.c }); } flies.splice(i, 1); if (caught >= NEEDED) { finish(true); return; } break; } }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!stars) { initStars(); initGame(); } background(); drawFlies();
+      txt(GAME_TITLE, W / 2, H * 0.16, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.60, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.66, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'JAR FULL!' : 'THEY ESCAPED', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3;
+      nextSpawn -= dt; if (nextSpawn <= 0) { if (flies.length < 6) spawnFly(); nextSpawn = 0.5 + Math.random() * 0.7; }
+      for (var fi = flies.length - 1; fi >= 0; fi--) {
+        var f = flies[fi]; f.x += f.vx * dt; f.y += f.vy * dt;
+        if (f.x < 40 || f.x > W - 40) { f.vx = -f.vx; f.x = Math.max(40, Math.min(W - 40, f.x)); } if (f.y < H * 0.14 || f.y > GROUND_Y - 20) f.vy = -f.vy;
+        f.vx += (Math.random() - 0.5) * 30 * dt; f.vy += (Math.random() - 0.5) * 30 * dt; var sp = Math.hypot(f.vx, f.vy); if (sp > 120) { f.vx = f.vx / sp * 120; f.vy = f.vy / sp * 120; }
+        if (f.lit) { f.litTimer -= dt; if (f.litTimer <= 0) { f.lit = false; f.darkTimer = f.DARK; } } else { f.darkTimer -= dt; if (f.darkTimer <= 0) { f.lit = true; f.litTimer = f.LIT; } }
+        f.life -= dt; if (f.life <= 0) { escaped++; flies.splice(fi, 1); flash = 0.3; flashCol = C.a; game.audio.play('se_failure', 0.2); if (escaped >= MAX_ESCAPE) { finish(false); return; } }
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Spawn
-    nextSpawn -= dt;
-    if (nextSpawn <= 0 && !done) {
-      spawnFly();
-      nextSpawn = 0.5 + Math.random() * 0.8;
-    }
+    // ---- 描画 ----
+    background(); drawFlies();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // Stars twinkle
-    for (var si2 = 0; si2 < stars.length; si2++) stars[si2].twinkle += dt;
-
-    // Update flies
-    for (var fi = flies.length - 1; fi >= 0; fi--) {
-      var f = flies[fi];
-      f.x += f.vx * dt;
-      f.y += f.vy * dt;
-      f.glow += dt * 3;
-
-      // Bounce off edges
-      if (f.x < 40 || f.x > W - 40) { f.vx = -f.vx; f.x = Math.max(40, Math.min(W - 40, f.x)); }
-      if (f.y < H * 0.1 || f.y > GROUND_Y - 20) { f.vy = -f.vy; }
-
-      // Slight drift
-      f.vx += (Math.random() - 0.5) * 30 * dt;
-      f.vy += (Math.random() - 0.5) * 30 * dt;
-      var speed = Math.sqrt(f.vx * f.vx + f.vy * f.vy);
-      if (speed > 120) { f.vx = f.vx / speed * 120; f.vy = f.vy / speed * 120; }
-
-      // Blink
-      if (f.lit) {
-        f.litTimer -= dt;
-        if (f.litTimer <= 0) { f.lit = false; f.darkTimer = f.DARK_DUR; }
-      } else {
-        f.darkTimer -= dt;
-        if (f.darkTimer <= 0) { f.lit = true; f.litTimer = f.LIT_DUR; }
-      }
-
-      // Lifetime
-      f.life -= dt;
-      if (f.life <= 0) {
-        escaped++;
-        flies.splice(fi, 1);
-        game.audio.play('se_failure', 0.2);
-        if (escaped >= MAX_ESCAPE && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-      }
-    }
-
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, GROUND_Y * 0.7, C.sky, 0.5);
-
-    // Stars
-    for (var si3 = 0; si3 < stars.length; si3++) {
-      var st = stars[si3];
-      game.draw.circle(st.x, st.y, st.r, '#fff', 0.3 + Math.sin(st.twinkle) * 0.3);
-    }
-
-    // Ground grass
-    game.draw.rect(0, GROUND_Y, W, H - GROUND_Y, C.grass, 0.9);
-    game.draw.rect(0, GROUND_Y, W, 16, C.grassHi, 0.7);
-
-    // Fireflies
-    for (var fi2 = 0; fi2 < flies.length; fi2++) {
-      var f2 = flies[fi2];
-      if (f2.lit) {
-        var glowA = 0.6 + Math.sin(f2.glow) * 0.2;
-        // Glow rings
-        game.draw.circle(f2.x, f2.y, f2.r + 30, C.flyGlow, glowA * 0.08);
-        game.draw.circle(f2.x, f2.y, f2.r + 16, C.flyGlow, glowA * 0.15);
-        game.draw.circle(f2.x, f2.y, f2.r + 6, C.fly, glowA * 0.4);
-        game.draw.circle(f2.x, f2.y, f2.r, C.fly, glowA);
-        // Body
-        game.draw.circle(f2.x, f2.y - 6, 8, C.flyBody, 0.9);
-      } else {
-        // Dark — barely visible
-        game.draw.circle(f2.x, f2.y, f2.r * 0.4, '#333', 0.3);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 14 * p.life, p.col, p.life * 0.9);
-    }
-
-    // Escape dots
-    for (var ei = 0; ei < MAX_ESCAPE; ei++) {
-      game.draw.circle(W / 2 - (MAX_ESCAPE - 1) * 48 + ei * 96, H * 0.955, 18, ei < escaped ? C.escaped : C.ui, 0.9);
-    }
-
-    game.draw.text(caught + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.flyGlow : C.escaped);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(caught + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var ei = 0; ei < MAX_ESCAPE; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_ESCAPE - 1) / 2) * 56) - 10, 224, 20, 20, ei < escaped ? C.a : '#002200');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.05);
-    spawnFly();
-    spawnFly();
+    state = S.ATTRACT;
+    initStars();
+    initGame();
   });
 })(game);
