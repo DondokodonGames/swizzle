@@ -1,236 +1,157 @@
 // 469-earthquake-balance.js
-// 地震バランス — 揺れる台の上でオブジェクトを落とさないように保つ
-// 操作: 左右タップで台を傾けて重心を調整
-// 成功: 30秒間オブジェクトを落とさず維持  失敗: 5個落下 or 60秒
+// 地震バランス — 地震で揺れる台を左右タップで傾け、上の荷物を落とさず耐える
+// 操作: 画面左タップ=左に傾ける、右タップ=右に傾ける（重心を保つ）
+// 成功: 10秒 持ちこたえる  失敗: 3個 落下 or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0808',
-    ground: '#1c1008',
-    plat:   '#8b5e1a',
-    platHi: '#c4892a',
-    obj0:   '#ef4444',
-    obj1:   '#3b82f6',
-    obj2:   '#22c55e',
-    obj3:   '#f59e0b',
-    obj4:   '#a855f7',
-    crack:  '#78350f',
-    text:   '#f1f5f9',
-    ui:     '#475569',
-    wrong:  '#ef4444'
-  };
+  // ── パレット（ネオンアーケード、倒壊寸前の倉庫） ──
+  var C = { bg:'#0a0808', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var OBJ_COLS = [C.a, C.e, C.b, C.c, C.d];
 
-  var PLAT_W = 700;
-  var PLAT_H = 30;
-  var PLAT_X = W / 2;
-  var PLAT_Y = H * 0.62;
-  var platAngle = 0;
-  var platAngVel = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'QUAKE BALANCE';
+  var HOW_TO_PLAY = 'TAP LEFT / RIGHT TO TILT THE PLATFORM · DON\'T DROP THE CARGO';
+  var MAX_TIME = 20;
+  var GOAL      = 10;        // 修正2: 30秒 → 10秒 持ちこたえる
+  var MAX_FALLS = 3;         // 修正2: 5 → 3
+  var PLAT_W = 720, PLAT_H = 32, PLAT_X = W / 2, PLAT_Y = snap(H * 0.62);
 
-  var OBJ_COLORS = [C.obj0, C.obj1, C.obj2, C.obj3, C.obj4];
-  var objects = [];
-  var falls = 0;
-  var MAX_FALLS = 5;
-  var done = false;
-  var survived = 0;
-  var NEEDED = 30;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var quakeTimer = 0;
-  var nextQuake = 2;
-  var particles = [];
-  var tiltDir = 0; // -1 left, 0 none, 1 right
-  var tiltTimer = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnObject() {
-    var r = 28 + Math.random() * 20;
-    var ox = (Math.random() - 0.5) * (PLAT_W - r * 2);
-    objects.push({
-      x: ox, y: -r - 10,
-      vx: 0, vy: 0,
-      r: r,
-      col: OBJ_COLORS[Math.floor(Math.random() * OBJ_COLORS.length)],
-      onPlat: false
-    });
+  // ── ゲーム変数 ──
+  var platAngle, platAngVel, objects, falls, survived, timeLeft, done, quakeTimer, nextQuake, particles, tiltDir, tiltTimer, flash, flashCol;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function arrow(cx, cy, dir, sz, color, alpha) {
+    cx = snap(cx); cy = snap(cy); var s = sz;
+    for (var i = -s; i <= s; i += 8) { var w = s - Math.abs(i); if (dir === 'left') game.draw.rect(cx + i, cy - w, 8, w * 2 + 8, color, alpha); else game.draw.rect(cx - i, cy - w, 8, w * 2 + 8, color, alpha); }
   }
 
-  game.onTap(function(tx, ty) {
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.f : '#1a1008');
+  }
+
+  function survBar() {
+    var t = Math.ceil(Math.min(1, survived / GOAL) * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, H - 60, 72, 40, i < t ? C.b : '#1a1008');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(0, H * 0.92, W, H * 0.08, '#1c1008', 0.9); }
+
+  function spawnObject() { var r = 30 + Math.random() * 18; objects.push({ x: (Math.random() - 0.5) * (PLAT_W - r * 2), y: -r - 10, vx: 0, vy: 0, r: r, col: OBJ_COLS[Math.floor(Math.random() * OBJ_COLS.length)] }); }
+
+  function initGame() { platAngle = 0; platAngVel = 0; objects = []; falls = 0; survived = 0; timeLeft = MAX_TIME; done = false; quakeTimer = 2; nextQuake = 2; particles = []; tiltDir = 0; tiltTimer = 0; flash = 0; flashCol = C.b; spawnObject(); spawnObject(); }
+
+  function finish(success) {
     if (done) return;
-    if (tx < W / 2) {
-      tiltDir = -1;
-    } else {
-      tiltDir = 1;
-    }
-    tiltTimer = 0.25;
-    game.audio.play('se_tap', 0.3);
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.ceil(survived) * 400 + (MAX_FALLS - falls) * 500 + Math.ceil(timeLeft) * 100) : Math.ceil(survived) * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    var cos = Math.cos(platAngle), sin = Math.sin(platAngle), hw = PLAT_W / 2;
+    pline(PLAT_X - hw * cos, PLAT_Y - hw * sin, PLAT_X + hw * cos, PLAT_Y + hw * sin, C.f, 0.9, PLAT_H);
+    for (var oi = 0; oi < objects.length; oi++) { var o = objects[oi], wx = o.x + PLAT_X, wy = o.y + PLAT_Y - 100; pc(wx, wy, o.r, o.col, 0.9); pc(wx - o.r * 0.25, wy - o.r * 0.25, o.r * 0.3, C.g, 0.3); }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    tiltDir = x < W / 2 ? -1 : 1; tiltTimer = 0.25; game.audio.play('se_tap', 0.3);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!objects) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.18, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.24, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.82, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.87, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'STOOD FIRM!' : 'COLLAPSED', W / 2, H * 0.35, 68, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      survived += dt;
-      if (survived >= NEEDED && !done) {
-        done = true;
-        game.audio.play('se_success', 0.8);
-        setTimeout(function() { game.end.success(Math.ceil(survived) * 200 + (MAX_FALLS - falls) * 300); }, 700);
-        return;
-      }
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-
-    // Quake events
-    quakeTimer -= dt;
-    if (quakeTimer <= 0 && !done) {
-      platAngVel += (Math.random() - 0.5) * 2.5;
-      quakeTimer = nextQuake;
-      nextQuake = 1.2 + Math.random() * 2;
-    }
-
-    // Tilt input
-    if (tiltTimer > 0) {
-      tiltTimer -= dt;
-      platAngVel += tiltDir * 1.5 * dt;
-    }
-
-    // Platform physics (pendulum-like)
-    var spring = -platAngle * 3.0;
-    var damp = -platAngVel * 1.8;
-    platAngVel += (spring + damp) * dt;
-    platAngle += platAngVel * dt;
-    platAngle = Math.max(-0.8, Math.min(0.8, platAngle));
-
-    // Object physics
-    var gx = Math.sin(platAngle) * 600;
-    var gy = 700;
-
-    for (var oi = objects.length - 1; oi >= 0; oi--) {
-      var obj = objects[oi];
-
-      // Gravity
-      obj.vx += gx * dt;
-      obj.vy += gy * dt;
-      obj.x += obj.vx * dt;
-      obj.y += obj.vy * dt;
-
-      // Platform surface collision
-      // Transform object to platform local coords
-      var cos = Math.cos(platAngle);
-      var sin = Math.sin(platAngle);
-      var dx = obj.x - 0; // relative to platform center
-      var dy = obj.y - (PLAT_Y - PLAT_H / 2 - W / 2);
-      // Simple: check if near platform surface
-      var localX = dx * cos + dy * sin;
-      var localY = -dx * sin + dy * cos;
-      // Platform top surface is at localY = 0 (roughly), within width
-      var platTop = PLAT_Y - PLAT_H / 2;
-      // World coords of platform top at object's x
-      var ptWorldY = PLAT_Y - PLAT_H / 2 - Math.tan(platAngle) * (obj.x - PLAT_X);
-      if (obj.y + obj.r >= ptWorldY && obj.y - obj.r < ptWorldY + 60 && Math.abs(obj.x - PLAT_X) < PLAT_W / 2) {
-        obj.y = ptWorldY - obj.r;
-        obj.vy = -obj.vy * 0.3;
-        obj.vx *= 0.85;
-        obj.onPlat = true;
-      } else {
-        obj.onPlat = false;
-      }
-
-      // Fell off
-      if (obj.y > H + 100) {
-        objects.splice(oi, 1);
-        falls++;
-        game.audio.play('se_failure', 0.4);
-        for (var pi = 0; pi < 5; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: obj.x + PLAT_X, y: H - 100, vx: Math.cos(ang) * 100, vy: -Math.random() * 200, life: 0.6, col: obj.col });
-        }
-        if (falls >= MAX_FALLS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-          return;
+      timeLeft -= dt; survived += dt;
+      if (survived >= GOAL) { finish(true); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2;
+      quakeTimer -= dt; if (quakeTimer <= 0) { platAngVel += (Math.random() - 0.5) * 2.2; quakeTimer = nextQuake; nextQuake = 1.4 + Math.random() * 2; }
+      if (tiltTimer > 0) { tiltTimer -= dt; platAngVel += tiltDir * 1.5 * dt; }
+      platAngVel += (-platAngle * 3.0 - platAngVel * 1.8) * dt; platAngle += platAngVel * dt; platAngle = Math.max(-0.8, Math.min(0.8, platAngle));
+      var gx = Math.sin(platAngle) * 600, gy = 700;
+      for (var oi = objects.length - 1; oi >= 0; oi--) {
+        var o = objects[oi]; o.vx += gx * dt; o.vy += gy * dt; o.x += o.vx * dt; o.y += o.vy * dt;
+        var ptY = PLAT_Y - PLAT_H / 2 - Math.tan(platAngle) * (o.x + PLAT_X - PLAT_X);
+        var oWorldY = o.y + PLAT_Y - 100;
+        var surfY = PLAT_Y - PLAT_H / 2 - 100 - Math.tan(platAngle) * o.x;
+        if (oWorldY + o.r >= surfY && oWorldY - o.r < surfY + 60 && Math.abs(o.x) < PLAT_W / 2) { o.y = surfY - PLAT_Y + 100 - o.r; o.vy = -o.vy * 0.3; o.vx *= 0.85; }
+        if (o.y + PLAT_Y - 100 > H + 100) {
+          objects.splice(oi, 1); falls++; flash = 0.5; flashCol = C.a; game.audio.play('se_failure', 0.4);
+          for (var pi = 0; pi < 5; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: o.x + PLAT_X, y: H - 120, vx: Math.cos(a) * 100, vy: -Math.random() * 200, life: 0.6, col: o.col }); }
+          if (falls >= MAX_FALLS) { finish(false); return; }
         }
       }
+      if (objects.length < 4 && Math.random() < dt * 0.6) spawnObject();
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 400 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Spawn objects
-    if (objects.length < 4 && Math.random() < dt * 0.6 && !done) {
-      spawnObject();
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    arrow(W * 0.14, PLAT_Y + 140, 'left', 30, tiltTimer > 0 && tiltDir === -1 ? C.g : C.d, 0.8);
+    arrow(W * 0.86, PLAT_Y + 140, 'right', 30, tiltTimer > 0 && tiltDir === 1 ? C.g : C.d, 0.8);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 400 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // --- draw ---
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Ground
-    game.draw.rect(0, H * 0.92, W, H * 0.08, C.ground, 0.9);
-
-    // Platform (rotated via manual drawing)
-    var cos2 = Math.cos(platAngle);
-    var sin2 = Math.sin(platAngle);
-    var hw = PLAT_W / 2;
-    var hh = PLAT_H / 2;
-    // Draw as a line representing platform top
-    var lx1 = PLAT_X - hw * cos2;
-    var ly1 = PLAT_Y - hw * sin2;
-    var lx2 = PLAT_X + hw * cos2;
-    var ly2 = PLAT_Y + hw * sin2;
-    game.draw.line(lx1, ly1, lx2, ly2, C.platHi, PLAT_H + 10);
-    game.draw.line(lx1, ly1, lx2, ly2, C.plat, PLAT_H);
-
-    // Objects
-    for (var oi2 = 0; oi2 < objects.length; oi2++) {
-      var o2 = objects[oi2];
-      var wx = o2.x + PLAT_X;
-      var wy = o2.y + PLAT_Y - 100;
-      game.draw.circle(wx, wy, o2.r + 6, o2.col, 0.2);
-      game.draw.circle(wx, wy, o2.r, o2.col, 0.9);
-      game.draw.circle(wx - o2.r * 0.25, wy - o2.r * 0.25, o2.r * 0.35, '#fff', 0.3);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life);
-    }
-
-    // Fall dots
-    for (var fi = 0; fi < MAX_FALLS; fi++) {
-      game.draw.circle(W / 2 - (MAX_FALLS - 1) * 44 + fi * 88, H * 0.955, 18, fi < falls ? C.wrong : C.ui, 0.9);
-    }
-
-    // Tilt indicators
-    game.draw.text('←', W * 0.15, PLAT_Y + 100, { size: 72, color: tiltTimer > 0 && tiltDir === -1 ? '#fff' : C.ui, bold: true });
-    game.draw.text('→', W * 0.85, PLAT_Y + 100, { size: 72, color: tiltTimer > 0 && tiltDir === 1 ? '#fff' : C.ui, bold: true });
-
-    var survRatio = Math.min(1, survived / NEEDED);
-    game.draw.rect(0, H * 0.88, W * survRatio, 12, C.obj2, 0.8);
-    game.draw.text(Math.floor(survived) + 's / ' + NEEDED + 's', W / 2, H * 0.86, { size: 44, color: C.text, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.platHi : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    survBar();
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(Math.floor(survived) + ' / ' + GOAL + 's', W / 2, 168, 44, C.b);
+    for (var fi = 0; fi < MAX_FALLS; fi++) game.draw.rect(snap(W / 2 + (fi - (MAX_FALLS - 1) / 2) * 56) - 10, 224, 20, 20, fi < falls ? C.a : '#1a1008');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    spawnObject();
-    spawnObject();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
