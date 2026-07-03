@@ -1,220 +1,157 @@
 // 471-speed-typer.js
-// 残像タイパー — フラッシュする数字を記憶して順番にタップ
-// 操作: 表示された数字が消えた後、1→2→3→...の順でタップ
-// 成功: 8ラウンドクリア  失敗: 3ミス or 60秒
+// 残像タイパー — 一瞬表示される数字の配置を記憶し、消えた後に1→2→…の順でタップ
+// 操作: 記憶した位置を 1 から順にタップ（順番を間違えるとミス）
+// 成功: 3ラウンド クリア  失敗: 3ミス or 25秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#020310',
-    card:   '#0d1035',
-    num:    '#60a5fa',
-    numHi:  '#bfdbfe',
-    flash:  '#f0f9ff',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    next:   '#fbbf24',
-    done2:  '#a78bfa',
-    text:   '#f1f5f9',
-    ui:     '#374151'
-  };
+  // ── パレット（ネオンアーケード、記憶テスト） ──
+  var C = { bg:'#020310', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var GRID_COLS = 4;
-  var GRID_ROWS = 4;
-  var CELL_SIZE = 220;
-  var OX = (W - GRID_COLS * CELL_SIZE) / 2;
-  var OY = (H - GRID_ROWS * CELL_SIZE) / 2 - 60;
-
-  var phase = 'show';  // 'show', 'hide', 'input'
-  var round = 0;
-  var NEEDED = 8;
-  var misses = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SPEED TYPER';
+  var HOW_TO_PLAY = 'MEMORIZE THE GRID · THEN TAP 1 TO 9 IN ORDER';
+  var MAX_TIME = 25;
+  var NEEDED   = 3;          // 修正2: 8 → 3
   var MAX_MISS = 3;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0;
-  var flashCol = C.correct;
+  var GC = 3, GR = 3, CS = 280;    // 修正2: 4x4 → 3x3
+  var OX = snap((W - GC * CS) / 2), OY = snap((H - GR * CS) / 2 - 40);
+  var SHOW_DUR = 1.8;
 
-  var numbers = [];   // positions: [{x,y,num}] in grid
-  var nextExpected = 1;
-  var showTimer = 0;
-  var SHOW_DURATION = 1.8;
-  var tapped = [];    // which grid cells have been tapped correctly
-  var wrongAnim = 0;
-  var wrongCell = -1;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function startRound() {
-    round++;
-    nextExpected = 1;
-    tapped = [];
-    wrongAnim = 0;
-    wrongCell = -1;
-    // Shuffle numbers 1..COLS*ROWS into grid
-    var count = GRID_COLS * GRID_ROWS;
-    var positions = [];
-    for (var i = 0; i < count; i++) positions.push(i);
-    // Shuffle
-    for (var j = positions.length - 1; j > 0; j--) {
-      var k = Math.floor(Math.random() * (j + 1));
-      var tmp = positions[j]; positions[j] = positions[k]; positions[k] = tmp;
-    }
-    numbers = [];
-    for (var n = 0; n < count; n++) {
-      var pos = positions[n];
-      var col = pos % GRID_COLS;
-      var row = Math.floor(pos / GRID_COLS);
-      numbers.push({ num: n + 1, col: col, row: row });
-    }
-    phase = 'show';
-    showTimer = SHOW_DURATION;
+  // ── ゲーム変数 ──
+  var iphase, round, misses, timeLeft, done, particles, flash, flashCol, numbers, nextExpected, showTimer, tapped, wrongAnim, wrongNum;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
-    if (done || phase !== 'input') return;
-    // Find which cell was tapped
-    var col = Math.floor((tx - OX) / CELL_SIZE);
-    var row = Math.floor((ty - OY) / CELL_SIZE);
-    if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) return;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-    // Find number at this cell
-    var found = null;
-    for (var i = 0; i < numbers.length; i++) {
-      if (numbers[i].col === col && numbers[i].row === row) {
-        found = numbers[i];
-        break;
-      }
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0d1035');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function startRound() {
+    round++; nextExpected = 1; tapped = []; wrongAnim = 0; wrongNum = -1;
+    var count = GC * GR, positions = [];
+    for (var i = 0; i < count; i++) positions.push(i);
+    for (var j = positions.length - 1; j > 0; j--) { var k = Math.floor(Math.random() * (j + 1)); var t = positions[j]; positions[j] = positions[k]; positions[k] = t; }
+    numbers = [];
+    for (var n = 0; n < count; n++) { var pos = positions[n]; numbers.push({ num: n + 1, col: pos % GC, row: Math.floor(pos / GC) }); }
+    iphase = 'show'; showTimer = SHOW_DUR;
+  }
+
+  function initGame() { round = 0; misses = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; startRound(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (round * 800 + Math.ceil(timeLeft) * 100) : (round - 1) * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawGrid() {
+    for (var ni = 0; ni < numbers.length; ni++) {
+      var n = numbers[ni], cx = OX + n.col * CS + CS / 2, cy = OY + n.row * CS + CS / 2;
+      var isTapped = tapped.indexOf(n.num) >= 0, isWrong = wrongAnim > 0 && wrongNum === n.num;
+      game.draw.rect(OX + n.col * CS + 8, OY + n.row * CS + 8, CS - 16, CS - 16, '#0d1035', 0.8);
+      if (iphase === 'show') txt(n.num + '', cx, cy + 30, 120, n.num === 1 ? C.c : C.e);
+      else if (isTapped) { game.draw.rect(OX + n.col * CS + 8, OY + n.row * CS + 8, CS - 16, CS - 16, C.b, 0.2); txt(n.num + '', cx, cy + 30, 100, C.b); }
+      else if (isWrong) { game.draw.rect(OX + n.col * CS + 8, OY + n.row * CS + 8, CS - 16, CS - 16, C.a, wrongAnim * 0.4); txt('X', cx, cy + 30, 100, C.a); }
+      else txt('?', cx, cy + 30, 100, '#374151');
     }
-    if (!found) return;
+  }
 
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || iphase !== 'input') return;
+    var col = Math.floor((tx - OX) / CS), row = Math.floor((ty - OY) / CS);
+    if (col < 0 || col >= GC || row < 0 || row >= GR) return;
+    var found = null;
+    for (var i = 0; i < numbers.length; i++) if (numbers[i].col === col && numbers[i].row === row) { found = numbers[i]; break; }
+    if (!found) return;
     if (found.num === nextExpected) {
-      tapped.push(found.num);
-      nextExpected++;
-      game.audio.play('se_tap', 0.4);
-      var cx = OX + found.col * CELL_SIZE + CELL_SIZE / 2;
-      var cy = OY + found.row * CELL_SIZE + CELL_SIZE / 2;
-      for (var pi = 0; pi < 5; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        particles.push({ x: cx, y: cy, vx: Math.cos(ang) * 100, vy: Math.sin(ang) * 100, life: 0.5, col: C.correct });
-      }
-      if (nextExpected > GRID_COLS * GRID_ROWS) {
-        // Round complete
-        flashCol = C.correct;
-        flashAnim = 0.5;
-        game.audio.play('se_success', 0.7);
-        if (round >= NEEDED && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(round * 500 + Math.ceil(timeLeft) * 100); }, 700);
-        } else {
-          setTimeout(function() { if (!done) startRound(); }, 800);
-          phase = 'wait';
-        }
+      tapped.push(found.num); nextExpected++; game.audio.play('se_tap', 0.4);
+      var cx = OX + found.col * CS + CS / 2, cy = OY + found.row * CS + CS / 2;
+      for (var pi = 0; pi < 5; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: cx, y: cy, vx: Math.cos(a) * 100, vy: Math.sin(a) * 100, life: 0.5, col: C.b }); }
+      if (nextExpected > GC * GR) {
+        flash = 0.5; flashCol = C.b; game.audio.play('se_success', 0.7);
+        if (round >= NEEDED) { finish(true); return; }
+        iphase = 'wait'; setTimeout(function() { if (!done) startRound(); }, 800);
       }
     } else {
-      misses++;
-      wrongAnim = 0.5;
-      wrongCell = found.num;
-      game.audio.play('se_failure', 0.4);
-      if (misses >= MAX_MISS && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      }
+      misses++; wrongAnim = 0.5; wrongNum = found.num; flash = 0.4; flashCol = C.a; game.audio.play('se_failure', 0.4);
+      if (misses >= MAX_MISS) { finish(false); return; }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!numbers) initGame(); background(); drawGrid();
+      txt(GAME_TITLE, W / 2, H * 0.10, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.155, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'MEMORY ACE!' : 'BLANKED OUT', W / 2, H * 0.35, 64, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (wrongAnim > 0) wrongAnim -= dt * 3;
+      if (iphase === 'show') { showTimer -= dt; if (showTimer <= 0) iphase = 'input'; }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (wrongAnim > 0) wrongAnim -= dt * 3;
+    // ---- 描画 ----
+    background(); drawGrid();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (iphase === 'show') txt('MEMORIZE', W / 2, OY - 60, 52, C.c);
+    else if (iphase === 'input') txt('TAP ' + nextExpected, W / 2, OY - 60, 52, C.c);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    if (phase === 'show') {
-      showTimer -= dt;
-      if (showTimer <= 0) {
-        phase = 'input';
-      }
-    }
-
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // --- draw ---
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Grid cells
-    for (var ni = 0; ni < numbers.length; ni++) {
-      var n = numbers[ni];
-      var cx2 = OX + n.col * CELL_SIZE + CELL_SIZE / 2;
-      var cy2 = OY + n.row * CELL_SIZE + CELL_SIZE / 2;
-      var alreadyTapped = tapped.indexOf(n.num) >= 0;
-      var isWrong = wrongAnim > 0 && wrongCell === n.num;
-
-      game.draw.rect(OX + n.col * CELL_SIZE + 6, OY + n.row * CELL_SIZE + 6, CELL_SIZE - 12, CELL_SIZE - 12, C.card, 0.8);
-
-      if (phase === 'show') {
-        // Show all numbers
-        var blink = showTimer < 0.4 ? Math.sin(showTimer * 30) * 0.5 + 0.5 : 1;
-        game.draw.text(n.num + '', cx2, cy2 + 28, { size: 100, color: n.num === 1 ? C.next : C.num, bold: true });
-      } else if (phase === 'input' || phase === 'wait') {
-        if (alreadyTapped) {
-          game.draw.rect(OX + n.col * CELL_SIZE + 6, OY + n.row * CELL_SIZE + 6, CELL_SIZE - 12, CELL_SIZE - 12, C.correct, 0.15);
-          game.draw.text('✓', cx2, cy2 + 28, { size: 80, color: C.correct, bold: true });
-        } else if (isWrong) {
-          game.draw.rect(OX + n.col * CELL_SIZE + 6, OY + n.row * CELL_SIZE + 6, CELL_SIZE - 12, CELL_SIZE - 12, C.wrong, wrongAnim * 0.3);
-          game.draw.text('✗', cx2, cy2 + 28, { size: 80, color: C.wrong, bold: true });
-        } else {
-          // Hidden — show "?"
-          game.draw.text('?', cx2, cy2 + 28, { size: 80, color: C.ui, bold: true });
-        }
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.12);
-
-    // Phase label
-    if (phase === 'show') {
-      game.draw.text('覚えて！', W / 2, OY - 80, { size: 52, color: C.numHi, bold: true });
-    } else if (phase === 'input') {
-      game.draw.text(nextExpected + ' をタップ！', W / 2, OY - 80, { size: 52, color: C.next, bold: true });
-    }
-
-    // Miss dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 60 + mi * 120, H * 0.955, 22, mi < misses ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text('ラウンド ' + round + ' / ' + NEEDED, W / 2, 148, { size: 52, color: C.text, bold: true });
-    var ratio2 = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio2, 72, ratio2 > 0.3 ? C.num : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('ROUND ' + round + ' / ' + NEEDED, W / 2, 168, 44, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < misses ? C.a : '#0d1035');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.08);
-    startRound();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
