@@ -1,204 +1,144 @@
 // 473-sand-timer.js
-// 砂時計反転 — 砂が落ちきる前にタップして反転させ続ける
-// 操作: タップで砂時計を反転（砂が上に戻る）
-// 成功: 60秒間耐える  失敗: 砂が全部落ちる
+// 砂時計反転 — 砂が上のチェンバーから落ちきる前にタップで反転させ、時間を稼ぎ続ける
+// 操作: タップで砂時計を反転（上の砂が空になると失敗）
+// 成功: 10秒 耐える  失敗: 砂が落ちきる or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#120a00',
-    glass:  '#78716c',
-    glassHi:'#d6d3d1',
-    sand:   '#fbbf24',
-    sandHi: '#fde68a',
-    sandLow:'#d97706',
-    frame:  '#44403c',
-    frameHi:'#78716c',
-    danger: '#ef4444',
-    safe:   '#22c55e',
-    text:   '#f1f5f9',
-    ui:     '#57534e'
-  };
+  // ── パレット（アンバー、時の砂） ──
+  var C = { bg:'#120a00', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var CX = W / 2;
-  var CY = H * 0.5;
-  var GW = 340;   // glass width at widest
-  var GH = 600;   // total height
-  var NECK = 24;  // neck width
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SAND TIMER';
+  var HOW_TO_PLAY = 'TAP TO FLIP BEFORE THE TOP RUNS DRY';
+  var MAX_TIME = 15;
+  var GOAL     = 10;         // 修正2: 60秒 → 10秒 耐える
+  var CX = snap(W / 2), CY = snap(H * 0.46), GW = 340, GHALF = 280, NECK = 32;
+  var FLOW_RATE = 0.055;
 
-  var sandTop = 0.5;  // fraction in top chamber (0=empty, 1=full)
-  var sandBot = 0.5;  // fraction in bottom
-  var FLOW_RATE = 0.022; // per second
-  var flipped = false;
-  var flipAnim = 0;
-  var flipDir = 1;  // rotation animation
-  var survived = 0;
-  var GOAL = 60;
-  var done = false;
-  var timeLeft = 65;
-  var elapsed = 0;
-  var particles = [];
-  var dangerAnim = 0;
-  var shakeX = 0;
-  var shakeTimer = 0;
-  var flipCount = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function flip() {
-    // Swap top and bottom
-    var tmp = sandTop;
-    sandTop = sandBot;
-    sandBot = tmp;
-    flipped = !flipped;
-    flipAnim = 0.4;
-    flipDir *= -1;
-    flipCount++;
-    shakeX = 20;
-    shakeTimer = 0.15;
-    game.audio.play('se_tap', 0.5);
-    for (var i = 0; i < 8; i++) {
-      var ang = Math.random() * Math.PI * 2;
-      particles.push({ x: CX, y: CY, vx: Math.cos(ang) * 120, vy: Math.sin(ang) * 120, life: 0.5, col: C.sandHi });
-    }
+  // ── ゲーム変数 ──
+  var sandTop, sandBot, survived, timeLeft, done, particles, flipCount, shake, flash, flashCol;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.f : '#2a1800');
+  }
+
+  function survBar() {
+    var t = Math.ceil(Math.min(1, survived / GOAL) * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, H - 60, 72, 40, i < t ? C.b : '#2a1800');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function initGame() { sandTop = 0.6; sandBot = 0.4; survived = 0; timeLeft = MAX_TIME; done = false; particles = []; flipCount = 0; shake = 0; flash = 0; flashCol = C.b; }
+
+  function flip() { var tmp = sandTop; sandTop = sandBot; sandBot = tmp; flipCount++; shake = 0.15; game.audio.play('se_tap', 0.5); for (var i = 0; i < 8; i++) { var a = Math.random() * Math.PI * 2; particles.push({ x: CX, y: CY, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, life: 0.5, col: C.c }); } }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (flipCount * 200 + Math.ceil(survived) * 200) : flipCount * 100 + Math.ceil(survived) * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawGlass(ox) {
+    // 砂（上）
+    var topH = GHALF * sandTop;
+    if (topH > 4) { var w = NECK + (GW - NECK) * (topH / GHALF); game.draw.rect(CX - w / 2 + ox, CY - topH, w, topH, C.f, 0.9); game.draw.rect(CX - w / 2 + ox, CY - topH, w, 12, C.c, 0.7); }
+    // 砂（下）
+    var botH = GHALF * sandBot;
+    if (botH > 4) { var w2 = NECK + (GW - NECK) * (botH / GHALF); game.draw.rect(CX - w2 / 2 + ox, CY + (GHALF - botH) + 8, w2, botH, C.f, 0.9); game.draw.rect(CX - w2 / 2 + ox, CY + (GHALF - botH) + 8, w2, 12, C.c, 0.6); }
+    // ガラス枠
+    pline(CX - GW / 2 + ox, CY - GHALF, CX - NECK / 2 + ox, CY, '#d6d3d1', 0.9, 8);
+    pline(CX + NECK / 2 + ox, CY, CX + GW / 2 + ox, CY - GHALF, '#d6d3d1', 0.9, 8);
+    pline(CX - GW / 2 + ox, CY - GHALF, CX + GW / 2 + ox, CY - GHALF, '#d6d3d1', 0.9, 10);
+    pline(CX - NECK / 2 + ox, CY + 8, CX - GW / 2 + ox, CY + GHALF + 8, '#d6d3d1', 0.9, 8);
+    pline(CX + GW / 2 + ox, CY + GHALF + 8, CX + NECK / 2 + ox, CY + 8, '#d6d3d1', 0.9, 8);
+    pline(CX - GW / 2 + ox, CY + GHALF + 8, CX + GW / 2 + ox, CY + GHALF + 8, '#d6d3d1', 0.9, 10);
+    game.draw.rect(CX - GW / 2 - 34 + ox, CY - GHALF - 20, 24, GHALF * 2 + 60, '#57534e', 0.9);
+    game.draw.rect(CX + GW / 2 + 10 + ox, CY - GHALF - 20, 24, GHALF * 2 + 60, '#57534e', 0.9);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done) return;
     flip();
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (sandTop === undefined) initGame(); background(); drawGlass(0);
+      txt(GAME_TITLE, W / 2, H * 0.86, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.91, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.96, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'TIME WON!' : 'SANDS RAN OUT', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      survived += dt;
-      if (survived >= GOAL) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(flipCount * 100 + Math.ceil(survived) * 80); }, 700);
-        return;
-      }
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      timeLeft -= dt; survived += dt;
+      if (survived >= GOAL) { finish(true); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2; if (shake > 0) shake -= dt;
+      if (sandTop > 0) { var flow = Math.min(FLOW_RATE * dt * (1 + flipCount * 0.05), sandTop); sandTop -= flow; sandBot += flow; }
+      if (sandTop <= 0.001) { finish(false); return; }
+      if (sandTop > 0 && Math.random() < dt * 10) particles.push({ x: CX + (Math.random() - 0.5) * NECK, y: CY + 20, vx: 0, vy: 80 + Math.random() * 60, life: 0.4, col: C.f });
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flipAnim > 0) flipAnim -= dt * 4;
-    if (shakeTimer > 0) { shakeTimer -= dt; if (shakeTimer <= 0) shakeX = 0; }
+    // ---- 描画 ----
+    var ox = shake > 0 ? Math.sin(game.time.elapsed * 40) * 20 * (shake / 0.15) : 0;
+    background(); drawGlass(ox);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x + ox) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (sandTop < 0.18 && Math.floor(game.time.elapsed * 8) % 2 === 0) txt('FLIP!', W / 2, H * 0.12, 72, C.a);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // Flow sand from top to bottom
-    if (sandTop > 0) {
-      var flow = FLOW_RATE * dt * (1 + flipCount * 0.05);
-      flow = Math.min(flow, sandTop);
-      sandTop -= flow;
-      sandBot += flow;
-    } else if (sandBot < 1.0) {
-      sandBot = Math.min(1.0, sandBot + 0.001);
-    }
-
-    // Check failure: top empty
-    if (sandTop <= 0.001 && !done) {
-      dangerAnim = 1.0;
-      // Give 1 second grace, then fail
-    }
-
-    if (dangerAnim > 0) dangerAnim -= dt * 0.5;
-
-    // Actually: fail when top has been empty "too long" — simplified: check at end
-    // We end with success if survived >= GOAL, otherwise natural flow continues
-
-    // Particles
-    // Drip particles from neck
-    if (sandTop > 0 && Math.random() < dt * 10) {
-      particles.push({ x: CX + (Math.random() - 0.5) * NECK, y: CY + 20, vx: 0, vy: 80 + Math.random() * 60, life: 0.4, col: C.sand });
-    }
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // --- draw ---
-    var ox = shakeX * Math.sin(elapsed * 40) * (shakeTimer / 0.15);
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Draw hourglass body
-    var topH = GH / 2 - 40;
-    var botH = GH / 2 - 40;
-
-    // Top glass (trapezoid approximated)
-    // Top chamber sand fill
-    var topSandH = topH * sandTop;
-    if (topSandH > 4) {
-      // Sand in top = fills from neck upward
-      var sandTopY = CY - topSandH;
-      // Determine width at that height
-      var sandTopW = NECK + (GW - NECK) * (topSandH / topH);
-      // Draw as triangle-ish shape
-      game.draw.rect(CX - sandTopW / 2 + ox, sandTopY, sandTopW, topSandH, C.sandLow, 0.9);
-      // Surface highlight
-      game.draw.rect(CX - sandTopW / 2 + ox, sandTopY, sandTopW, 16, C.sandHi, 0.7);
-    }
-
-    // Bottom chamber sand fill
-    var botSandH = botH * sandBot;
-    if (botSandH > 4) {
-      var sandBotY = CY + (botH - botSandH) + 40;
-      var sandBotW = NECK + (GW - NECK) * (botSandH / botH);
-      game.draw.rect(CX - sandBotW / 2 + ox, sandBotY, sandBotW, botSandH, C.sand, 0.9);
-      game.draw.rect(CX - sandBotW / 2 + ox, sandBotY, sandBotW, 12, C.sandHi, 0.6);
-    }
-
-    // Glass outline (hourglass shape via lines)
-    // Top trapezoid outline
-    game.draw.line(CX - GW / 2 + ox, CY - topH - 40, CX - NECK / 2 + ox, CY, C.glassHi, 6);
-    game.draw.line(CX + NECK / 2 + ox, CY, CX + GW / 2 + ox, CY - topH - 40, C.glassHi, 6);
-    game.draw.line(CX - GW / 2 + ox, CY - topH - 40, CX + GW / 2 + ox, CY - topH - 40, C.glassHi, 8);
-    // Bottom trapezoid outline
-    game.draw.line(CX - NECK / 2 + ox, CY, CX - GW / 2 + ox, CY + botH + 40, C.glassHi, 6);
-    game.draw.line(CX + GW / 2 + ox, CY + botH + 40, CX + NECK / 2 + ox, CY, C.glassHi, 6);
-    game.draw.line(CX - GW / 2 + ox, CY + botH + 40, CX + GW / 2 + ox, CY + botH + 40, C.glassHi, 8);
-    // Neck
-    game.draw.line(CX - NECK / 2 + ox, CY - 20, CX - NECK / 2 + ox, CY + 20, C.glass, 4);
-    game.draw.line(CX + NECK / 2 + ox, CY - 20, CX + NECK / 2 + ox, CY + 20, C.glass, 4);
-
-    // Frame
-    game.draw.rect(CX - GW / 2 - 30 + ox, CY - topH - 80, 24, GH + 120, C.frame, 0.9);
-    game.draw.rect(CX + GW / 2 + 6 + ox, CY - topH - 80, 24, GH + 120, C.frame, 0.9);
-    game.draw.rect(CX - GW / 2 - 40 + ox, CY - topH - 90, GW + 80, 24, C.frameHi, 0.8);
-    game.draw.rect(CX - GW / 2 - 40 + ox, CY + botH + 56, GW + 80, 24, C.frameHi, 0.8);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x + ox, p.y, 8 * p.life, p.col, p.life);
-    }
-
-    // Danger indicator
-    if (sandTop < 0.15 && !done) {
-      var dangerBlink = Math.sin(elapsed * 10) * 0.5 + 0.5;
-      game.draw.text('反転！', CX, H * 0.13, { size: 72, color: C.danger, bold: true });
-    }
-
-    // Survival progress
-    var survRatio = Math.min(1, survived / GOAL);
-    game.draw.rect(0, H * 0.89, W * survRatio, 14, C.safe, 0.8);
-    game.draw.text(Math.floor(survived) + 's / ' + GOAL + 's', W / 2, H * 0.87, { size: 44, color: C.text, bold: true });
-    game.draw.text('反転 ' + flipCount + '回', W / 2, H * 0.93, { size: 38, color: C.ui });
-
-    var ratio = Math.max(0, timeLeft / 65);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.sand : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    survBar();
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(Math.floor(survived) + ' / ' + GOAL + 's', W / 2, 168, 44, C.b);
+    txt('FLIPS ' + flipCount, W / 2, 224, 30, C.f);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
