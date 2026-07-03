@@ -1,224 +1,132 @@
 // 435-petal-fall.js
-// 花びらの舞 — 舞い落ちる花びらをタップして全て受け止める
-// 操作: 花びらに素早くタップ（地面に落ちると失点）
-// 成功: 30枚キャッチ  失敗: 10枚落とす or 60秒
+// 花びらの舞 — 風に舞って落ちてくる桜の花びらを、地面に落ちる前にタップして受け止める
+// 操作: 落ちてくる花びらをタップ（地面に落ちるとミス）
+// 成功: 6枚 キャッチ  失敗: 3枚 落とす or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0d0408',
-    sky:    '#1a0814',
-    petal0: '#f9a8d4',
-    petal1: '#ec4899',
-    petal2: '#fda4af',
-    petal3: '#fb7185',
-    petal4: '#f0abfc',
-    petal5: '#e879f9',
-    ground: '#1a0d1a',
-    groundHi:'#2d1a2d',
-    tree:   '#3b1a00',
-    treeHi: '#78350f',
-    leaf:   '#166534',
-    correct:'#f9a8d4',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、桜並木） ──
+  var C = { bg:'#0d0408', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var PETAL = [C.a, C.d, C.f, C.c];
 
-  var PETAL_COLORS = [C.petal0, C.petal1, C.petal2, C.petal3, C.petal4, C.petal5];
-  var GROUND_Y = H * 0.87;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'PETAL FALL';
+  var HOW_TO_PLAY = 'TAP THE FALLING PETALS BEFORE THEY HIT THE GROUND';
+  var MAX_TIME = 15;
+  var NEEDED   = 6;          // 修正2: 30 → 6
+  var MAX_DROP = 3;          // 修正2: 10 → 3
+  var GROUND_Y = snap(H * 0.86);
 
-  var petals = [];
-  var caught = 0;
-  var NEEDED = 30;
-  var dropped = 0;
-  var MAX_DROP = 10;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var flashCol = C.correct;
-  var particles = [];
-  var spawnTimer = 0;
-  var spawnInterval = 1.2;
-  var wind = 0;
-  var windTimer = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnPetal() {
-    var col = PETAL_COLORS[Math.floor(Math.random() * PETAL_COLORS.length)];
-    var x = 100 + Math.random() * (W - 200);
-    petals.push({
-      x: x, y: -40,
-      vx: (Math.random() - 0.5) * 80,
-      vy: 60 + Math.random() * 80 + caught * 1.5,
-      r: 20 + Math.random() * 16,
-      col: col,
-      rot: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 4,
-      wobble: Math.random() * Math.PI * 2,
-      touched: false
-    });
+  // ── ゲーム変数 ──
+  var petals, caught, dropped, timeLeft, done, particles, spawnTimer, wind, windTimer, flash, flashCol;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a0814');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(snap(W * 0.5) - 20, snap(H * 0.28), 40, H, '#2a1006', 0.8); pc(W * 0.5, H * 0.22, 90, C.a, 0.15);
+    game.draw.rect(0, GROUND_Y, W, H - GROUND_Y, '#1a0d1a', 0.9); game.draw.rect(0, GROUND_Y, W, 4, C.d, 0.5);
+  }
+
+  function spawnPetal() { petals.push({ x: snap(100 + Math.random() * (W - 200)), y: -40, vx: (Math.random() - 0.5) * 80, vy: 60 + Math.random() * 70 + caught * 4, r: 20 + Math.random() * 12, col: PETAL[Math.floor(Math.random() * PETAL.length)], wob: Math.random() * Math.PI * 2 }); }
+
+  function initGame() { petals = []; caught = 0; dropped = 0; timeLeft = MAX_TIME; done = false; particles = []; spawnTimer = 0.4; wind = 0; windTimer = 0; flash = 0; flashCol = C.b; }
+
+  function finish(success) {
     if (done) return;
-    var hit = false;
-    for (var pi = petals.length - 1; pi >= 0; pi--) {
-      var p = petals[pi];
-      if (p.touched) continue;
-      var dx = tx - p.x;
-      var dy = ty - p.y;
-      if (Math.sqrt(dx*dx + dy*dy) < p.r + 30) {
-        p.touched = true;
-        caught++;
-        flashCol = C.correct;
-        flashAnim = 0.35;
-        game.audio.play('se_tap', 0.3);
-        for (var ci = 0; ci < 6; ci++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: p.x, y: p.y, vx: Math.cos(ang)*100, vy: Math.sin(ang)*100-50, life: 0.5, col: p.col });
-        }
-        petals.splice(pi, 1);
-        hit = true;
-        if (caught >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(caught * 200 + Math.ceil(timeLeft) * 80); }, 600);
-        }
-        break;
-      }
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (caught * 400 + Math.ceil(timeLeft) * 100) : caught * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawPetal(p) { var ws = Math.sin(p.wob) * 8; pc(p.x + ws, p.y, p.r, p.col, 0.9); pc(p.x + ws - p.r * 0.3, p.y - p.r * 0.3, p.r * 0.35, C.g, 0.4); pc(p.x + ws, p.y, p.r * 0.4, C.c, 0.4); }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    for (var pi = petals.length - 1; pi >= 0; pi--) { var p = petals[pi]; if (Math.hypot(x - p.x, y - p.y) < p.r + 30) { caught++; flash = 0.35; flashCol = C.b; game.audio.play('se_tap', 0.3); for (var k = 0; k < 6; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: p.x, y: p.y, vx: Math.cos(a) * 100, vy: Math.sin(a) * 100 - 50, life: 0.5, col: p.col }); } petals.splice(pi, 1); if (caught >= NEEDED) { finish(true); return; } break; } }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!petals) initGame(); background(); drawPetal({ x: W * 0.35, y: H * 0.45, r: 26, col: C.a, wob: 0 }); drawPetal({ x: W * 0.62, y: H * 0.5, r: 24, col: C.d, wob: 1 });
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'PETAL DANCE!' : 'FADED', W / 2, H * 0.35, 72, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3;
+      windTimer += dt; wind = Math.sin(windTimer * 0.4) * 40 + Math.sin(windTimer * 0.9) * 20;
+      spawnTimer -= dt; if (spawnTimer <= 0) { spawnPetal(); spawnTimer = Math.max(0.5, 0.9 - caught * 0.03); }
+      for (var pi = petals.length - 1; pi >= 0; pi--) {
+        var p = petals[pi]; p.vx += (wind - p.vx) * dt * 0.5; p.x += p.vx * dt; p.y += p.vy * dt; p.wob += dt * 3;
+        if (p.x < p.r) { p.x = p.r; p.vx = Math.abs(p.vx) * 0.5; } if (p.x > W - p.r) { p.x = W - p.r; p.vx = -Math.abs(p.vx) * 0.5; }
+        if (p.y > GROUND_Y) { dropped++; flash = 0.4; flashCol = C.a; game.audio.play('se_failure', 0.2); petals.splice(pi, 1); if (dropped >= MAX_DROP) { finish(false); return; } }
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var pt = particles[pp]; pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.vy += 150 * dt; pt.life -= dt; if (pt.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 3;
+    // ---- 描画 ----
+    background();
+    for (var pi2 = 0; pi2 < petals.length; pi2++) drawPetal(petals[pi2]);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.07);
 
-    // Wind
-    windTimer += dt;
-    wind = Math.sin(windTimer * 0.4) * 40 + Math.sin(windTimer * 0.9) * 20;
-
-    // Spawn
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && !done) {
-      spawnPetal();
-      spawnInterval = Math.max(0.6, 1.2 - caught * 0.01);
-      spawnTimer = spawnInterval + Math.random() * 0.3;
-    }
-
-    // Update petals
-    for (var pi2 = petals.length - 1; pi2 >= 0; pi2--) {
-      var p = petals[pi2];
-      p.vx += (wind - p.vx) * dt * 0.5;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.rot += p.rotSpeed * dt;
-      p.wobble += dt * 3;
-
-      // Bounce off walls
-      if (p.x < p.r) { p.x = p.r; p.vx = Math.abs(p.vx) * 0.5; }
-      if (p.x > W - p.r) { p.x = W - p.r; p.vx = -Math.abs(p.vx) * 0.5; }
-
-      // Landed on ground
-      if (p.y > GROUND_Y) {
-        dropped++;
-        flashCol = C.wrong;
-        flashAnim = 0.4;
-        game.audio.play('se_failure', 0.2);
-        petals.splice(pi2, 1);
-        if (dropped >= MAX_DROP && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-      }
-    }
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 150 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, H, C.sky, 0.6);
-
-    // Cherry blossom tree (decorative)
-    game.draw.rect(W*0.5 - 20, H*0.3, 40, H*0.6, C.tree, 0.8);
-    game.draw.rect(W*0.5 - 10, H*0.15, 20, H*0.3, C.treeHi, 0.7);
-    // Blossom clusters
-    for (var bi = 0; bi < 5; bi++) {
-      var bAng = (bi / 5) * Math.PI * 2;
-      var bR = 80 + Math.random() * 30;
-      var bx = W*0.5 + Math.cos(bAng) * bR;
-      var by = H*0.22 + Math.sin(bAng) * bR * 0.4;
-      game.draw.circle(bx, by, 60, C.petal0, 0.3);
-      game.draw.circle(bx, by, 45, C.petal1, 0.25);
-    }
-    game.draw.circle(W*0.5, H*0.2, 90, C.petal0, 0.2);
-
-    // Ground
-    game.draw.rect(0, GROUND_Y, W, H - GROUND_Y, C.ground, 0.9);
-    game.draw.line(0, GROUND_Y, W, GROUND_Y, C.groundHi, 4);
-
-    // Petals on ground (visual indicator of drops)
-    for (var gi = 0; gi < Math.min(dropped, 5); gi++) {
-      game.draw.circle(80 + gi * 100, GROUND_Y + 20, 16, C.petal1, 0.5);
-    }
-
-    // Falling petals
-    for (var pi3 = 0; pi3 < petals.length; pi3++) {
-      var pt = petals[pi3];
-      var wsx = Math.sin(pt.wobble) * 8;
-      var wsy = Math.cos(pt.wobble * 0.7) * 4;
-
-      // Petal shape (ellipse)
-      game.draw.circle(pt.x + wsx, pt.y + wsy, pt.r * 1.2, pt.col, 0.85);
-      game.draw.circle(pt.x + wsx - pt.r * 0.3, pt.y + wsy - pt.r * 0.3, pt.r * 0.4, '#fff', 0.3);
-      // Inner color
-      game.draw.circle(pt.x + wsx, pt.y + wsy, pt.r * 0.5, C.petal4, 0.4);
-
-      // Tap target ring
-      var tDist = Math.min(1, (H - pt.y) / (H * 0.5));
-      if (tDist > 0.2) {
-        game.draw.circle(pt.x + wsx, pt.y + wsy, pt.r + 20, pt.col, tDist * 0.2);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.07);
-
-    // Drop counter
-    game.draw.text('落とした: ' + dropped + '/' + MAX_DROP, W/2, H*0.9, { size: 40, color: dropped >= 7 ? C.wrong : C.ui });
-
-    game.draw.text(caught + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.petal1 : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(caught + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var di = 0; di < MAX_DROP; di++) game.draw.rect(snap(W / 2 + (di - (MAX_DROP - 1) / 2) * 56) - 10, 224, 20, 20, di < dropped ? C.a : '#1a0814');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    spawnTimer = 0.4;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
