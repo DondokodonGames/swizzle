@@ -1,254 +1,151 @@
 // 480-voltage-surge.js
-// 電圧サージ — 急上昇する電圧を適切なタイミングでスワイプしてリリース
-// 操作: 電圧が赤ゾーンに入ったらスワイプ（方向は画面に表示）
-// 成功: 15回成功  失敗: 5回爆発 or 45秒
+// 電圧サージ — 急上昇する電圧計が安全ゾーン（緑）に入った瞬間、指示された向きへスワイプして放電
+// 操作: 針が緑ゾーンにある間に、表示された矢印の向きへスワイプ（早すぎ/過負荷は失敗）
+// 成功: 5回 放電  失敗: 3回 爆発 or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#050010',
-    panel:  '#0a0020',
-    meterBg:'#1a1030',
-    safe:   '#22c55e',
-    warn:   '#f59e0b',
-    danger: '#ef4444',
-    needle: '#f1f5f9',
-    spark:  '#fbbf24',
-    sparkHi:'#fde68a',
-    arrow:  '#60a5fa',
-    arrowHi:'#bfdbfe',
-    explode:'#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#374151'
-  };
-
+  // ── パレット（ネオンアーケード、発電制御室） ──
+  var C = { bg:'#050010', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
   var DIRS = ['up', 'down', 'left', 'right'];
-  var DIR_ARROWS = { up: '↑', down: '↓', left: '←', right: '→' };
 
-  var voltage = 0;
-  var voltageSpeed = 0.3;
-  var SAFE_MIN = 0.55;
-  var SAFE_MAX = 0.75;
-  var WARN_MIN = 0.45;
-  var WARN_MAX = 0.85;
-  var surging = true;
-  var currentDir = 'up';
-  var successes = 0;
-  var NEEDED = 15;
-  var explosions = 0;
-  var MAX_EXPLODE = 5;
-  var done = false;
-  var timeLeft = 45;
-  var elapsed = 0;
-  var particles = [];
-  var resultAnim = 0;
-  var resultText = '';
-  var resultCol = C.safe;
-  var flashAnim = 0;
-  var shakeMag = 0;
-  var shakeTimer = 0;
-  var nextRound = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'VOLTAGE SURGE';
+  var HOW_TO_PLAY = 'SWIPE THE ARROW WHILE THE NEEDLE IS IN THE GREEN ZONE';
+  var MAX_TIME = 20;
+  var NEEDED     = 5;        // 修正2: 15 → 5
+  var MAX_EXPLODE = 3;       // 修正2: 5 → 3
+  var SAFE_MIN = 0.55, SAFE_MAX = 0.78;
 
-  function newRound() {
-    voltage = 0;
-    voltageSpeed = 0.25 + successes * 0.015 + Math.random() * 0.1;
-    currentDir = DIRS[Math.floor(Math.random() * DIRS.length)];
-    surging = true;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var voltage, vspeed, surging, currentDir, successes, explosions, timeLeft, done, particles, resultText, resultCol, resultTimer, flash, flashCol, shake, nextRound;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function arrow(cx, cy, dir, sz, color, alpha) {
+    cx = snap(cx); cy = snap(cy); var s = sz;
+    for (var i = -s; i <= s; i += 8) { var w = s - Math.abs(i); if (dir === 'up') game.draw.rect(cx - w, cy + i, w * 2 + 8, 8, color, alpha); else if (dir === 'down') game.draw.rect(cx - w, cy - i, w * 2 + 8, 8, color, alpha); else if (dir === 'left') game.draw.rect(cx + i, cy - w, 8, w * 2 + 8, color, alpha); else game.draw.rect(cx - i, cy - w, 8, w * 2 + 8, color, alpha); }
   }
 
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a0020');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function newRound() { voltage = 0; vspeed = 0.28 + successes * 0.03 + Math.random() * 0.1; currentDir = DIRS[Math.floor(Math.random() * DIRS.length)]; surging = true; }
+
+  function initGame() { successes = 0; explosions = 0; timeLeft = MAX_TIME; done = false; particles = []; resultText = ''; resultTimer = 0; flash = 0; flashCol = C.b; shake = 0; nextRound = 0; newRound(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (successes * 600 + Math.ceil(timeLeft) * 100) : successes * 250;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function blowUp(reason) { explosions++; resultText = reason; resultCol = C.a; resultTimer = 0.9; flash = 0.5; flashCol = C.a; shake = 0.35; game.audio.play('se_failure', 0.6); surging = false; nextRound = 1.0; for (var pi = 0; pi < 14; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: H * 0.36, vx: Math.cos(a) * 350, vy: Math.sin(a) * 350, life: 0.7, col: C.a }); } if (explosions >= MAX_EXPLODE) finish(false); }
+
+  function drawMeter(sx) {
+    var MX = W / 2 + sx, MY = H * 0.30, MW = 640, MH = 120;
+    game.draw.rect(MX - MW / 2 - 10, MY - 10, MW + 20, MH + 20, '#1a1030', 0.9);
+    game.draw.rect(MX - MW / 2, MY, MW * SAFE_MIN, MH, '#301030', 0.8);
+    game.draw.rect(MX - MW / 2 + MW * SAFE_MIN, MY, MW * (SAFE_MAX - SAFE_MIN), MH, C.b, 0.3);
+    game.draw.rect(MX - MW / 2 + MW * SAFE_MAX, MY, MW * (1 - SAFE_MAX), MH, '#301010', 0.8);
+    var nx = MX - MW / 2 + MW * voltage;
+    game.draw.rect(nx - 6, MY - 18, 12, MH + 36, C.g, 0.9); pc(nx, MY - 18, 14, C.g, 0.9);
+    if (voltage > SAFE_MAX - 0.03 && surging) for (var si = 0; si < 3; si++) pc(nx + (Math.random() - 0.5) * 40, MY + Math.random() * MH, 6, C.c, Math.random() * 0.8);
+    if (surging) arrow(W / 2 + sx, H * 0.56, currentDir, 60, C.e, 0.9);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+  });
+
   game.onSwipe(function(dir) {
-    if (done || !surging) return;
+    if (state !== S.PLAYING || done || !surging) return;
     if (voltage >= SAFE_MIN && voltage <= SAFE_MAX) {
       if (dir === currentDir) {
-        // Success!
-        successes++;
-        resultText = '放電！';
-        resultCol = C.safe;
-        resultAnim = 0.8;
-        flashAnim = 0.4;
-        game.audio.play('se_success', 0.6);
-        for (var pi = 0; pi < 12; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: W / 2, y: H * 0.45, vx: Math.cos(ang) * 300, vy: Math.sin(ang) * 300, life: 0.6, col: C.spark });
-        }
-        surging = false;
-        nextRound = 0.8;
-        if (successes >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(successes * 400 + Math.ceil(timeLeft) * 100); }, 700);
-        }
-      } else {
-        // Wrong direction
-        explosions++;
-        resultText = '方向違う！';
-        resultCol = C.explode;
-        resultAnim = 0.8;
-        shakeMag = 30;
-        shakeTimer = 0.3;
-        game.audio.play('se_failure', 0.5);
-        surging = false;
-        nextRound = 1.0;
-        if (explosions >= MAX_EXPLODE && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 600);
-        }
-      }
-    } else if (voltage < SAFE_MIN) {
-      // Too early
-      resultText = '早すぎ！';
-      resultCol = C.warn;
-      resultAnim = 0.8;
-      game.audio.play('se_failure', 0.3);
-    } else {
-      // Overload!
-      explosions++;
-      resultText = '過負荷！';
-      resultCol = C.explode;
-      resultAnim = 0.8;
-      shakeMag = 40;
-      shakeTimer = 0.35;
-      game.audio.play('se_failure', 0.6);
-      surging = false;
-      nextRound = 1.0;
-      if (explosions >= MAX_EXPLODE && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 600);
-      }
-    }
+        successes++; resultText = 'DISCHARGE!'; resultCol = C.b; resultTimer = 0.8; flash = 0.4; flashCol = C.b; game.audio.play('se_success', 0.6); surging = false; nextRound = 0.8;
+        for (var pi = 0; pi < 12; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: H * 0.36, vx: Math.cos(a) * 300, vy: Math.sin(a) * 300, life: 0.6, col: C.c }); }
+        if (successes >= NEEDED) { finish(true); return; }
+      } else blowUp('WRONG WAY!');
+    } else if (voltage < SAFE_MIN) { resultText = 'TOO SOON!'; resultCol = C.c; resultTimer = 0.8; game.audio.play('se_failure', 0.3); }
+    else blowUp('OVERLOAD!');
   });
 
-  game.onTap(function(tx, ty) {
-    // No-op
-  });
-
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (voltage === undefined) initGame(); background(); drawMeter(0);
+      txt(GAME_TITLE, W / 2, H * 0.12, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.17, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.82, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.87, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'GRID STABLE!' : 'BLACKOUT', W / 2, H * 0.35, 66, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt; if (shake > 0) shake -= dt;
+      if (!surging) { nextRound -= dt; if (nextRound <= 0) newRound(); }
+      else { voltage += vspeed * dt; if (voltage > 1.0) { voltage = 1.0; blowUp('BOOM!'); if (done) return; } }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 200 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultAnim > 0) resultAnim -= dt * 1.5;
-    if (shakeTimer > 0) { shakeTimer -= dt; if (shakeTimer <= 0) shakeMag = 0; }
+    // ---- 描画 ----
+    var sx = shake > 0 ? Math.sin(game.time.elapsed * 40) * 30 * (shake / 0.35) : 0;
+    background(); drawMeter(sx);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x + sx) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.5);
+    if (resultTimer > 0) txt(resultText, W / 2 + sx, H * 0.72, 64, resultCol);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.12);
 
-    if (!surging) {
-      nextRound -= dt;
-      if (nextRound <= 0 && !done) {
-        newRound();
-      }
-    } else {
-      voltage += voltageSpeed * dt;
-      if (voltage > 1.0) {
-        // Overload — auto explosion
-        voltage = 1.0;
-        explosions++;
-        resultText = '爆発！';
-        resultCol = C.explode;
-        resultAnim = 1.0;
-        shakeMag = 50;
-        shakeTimer = 0.4;
-        game.audio.play('se_failure', 0.7);
-        for (var pi2 = 0; pi2 < 16; pi2++) {
-          var ang2 = Math.random() * Math.PI * 2;
-          particles.push({ x: W / 2, y: H * 0.45, vx: Math.cos(ang2) * 400, vy: Math.sin(ang2) * 400, life: 0.8, col: C.explode });
-        }
-        surging = false;
-        nextRound = 1.2;
-        if (explosions >= MAX_EXPLODE && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 700);
-        }
-      }
-    }
-
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 200 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // --- draw ---
-    var sx = shakeMag * Math.sin(elapsed * 40) * (shakeTimer / 0.4);
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Meter background
-    var MX = W / 2 + sx;
-    var MY = H * 0.35;
-    var MW = 500;
-    var MH = 140;
-    game.draw.rect(MX - MW / 2 - 10, MY - 10, MW + 20, MH + 20, C.meterBg, 0.9);
-
-    // Zones
-    game.draw.rect(MX - MW / 2, MY, MW * WARN_MIN, MH, '#1a3a1a', 0.8);
-    game.draw.rect(MX - MW / 2 + MW * WARN_MIN, MY, MW * (SAFE_MIN - WARN_MIN), MH, '#2d2a00', 0.8);
-    game.draw.rect(MX - MW / 2 + MW * SAFE_MIN, MY, MW * (SAFE_MAX - SAFE_MIN), MH, C.safe, 0.3);
-    game.draw.rect(MX - MW / 2 + MW * SAFE_MAX, MY, MW * (WARN_MAX - SAFE_MAX), MH, '#2d2a00', 0.8);
-    game.draw.rect(MX - MW / 2 + MW * WARN_MAX, MY, MW * (1 - WARN_MAX), MH, '#3a1a1a', 0.8);
-
-    // Zone labels
-    game.draw.rect(MX - MW / 2 + MW * SAFE_MIN, MY, MW * (SAFE_MAX - SAFE_MIN), 6, C.safe, 0.8);
-    game.draw.rect(MX - MW / 2 + MW * SAFE_MIN, MY + MH - 6, MW * (SAFE_MAX - SAFE_MIN), 6, C.safe, 0.8);
-
-    // Needle
-    var needleX = MX - MW / 2 + MW * voltage;
-    game.draw.rect(needleX - 6, MY - 20, 12, MH + 40, C.needle, 0.9);
-    game.draw.circle(needleX, MY - 20, 16, C.needle, 0.9);
-
-    // Sparks on needle if in danger
-    if (voltage > WARN_MAX - 0.05 && surging) {
-      for (var si2 = 0; si2 < 3; si2++) {
-        var sparkX = needleX + (Math.random() - 0.5) * 40;
-        var sparkY = MY + Math.random() * MH;
-        game.draw.circle(sparkX, sparkY, 8, C.sparkHi, Math.random() * 0.8);
-      }
-    }
-
-    // Direction arrow
-    if (surging) {
-      var arrowPulse = Math.sin(elapsed * 6) * 0.3 + 0.7;
-      game.draw.circle(W / 2 + sx, H * 0.6, 90, C.arrow, 0.15 * arrowPulse);
-      game.draw.text(DIR_ARROWS[currentDir], W / 2 + sx, H * 0.63, { size: 160, color: C.arrowHi, bold: true });
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x + sx, p.y, 12 * p.life, p.col, p.life * 0.9);
-    }
-
-    // Result
-    if (resultAnim > 0) {
-      game.draw.text(resultText, W / 2 + sx, H * 0.82, { size: 68, color: resultCol, bold: true });
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, resultCol, flashAnim * 0.12);
-
-    // Explosion dots
-    for (var ei = 0; ei < MAX_EXPLODE; ei++) {
-      game.draw.circle(W * 0.14 + ei * (W * 0.72 / (MAX_EXPLODE - 1)), H * 0.955, 18, ei < explosions ? C.explode : C.ui, 0.9);
-    }
-
-    game.draw.text(successes + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.safe : C.explode);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(successes + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var ei = 0; ei < MAX_EXPLODE; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_EXPLODE - 1) / 2) * 56) - 10, 224, 20, 20, ei < explosions ? C.a : '#0a0020');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.08);
-    newRound();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

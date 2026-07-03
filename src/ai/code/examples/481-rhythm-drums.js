@@ -1,241 +1,145 @@
 // 481-rhythm-drums.js
-// リズムドラム — 4つのドラムを光ったタイミングで叩くリズムゲーム
-// 操作: タップで対応するドラムを叩く
-// 成功: 50ヒット  失敗: 15ミス or 60秒
+// リズムドラム — ビートに合わせて光る4つのドラムを、消える前にタップで叩く音ゲー
+// 操作: 光ったドラムをタップ（光っていないドラムを叩く or 見逃すとミス）
+// 成功: 10ヒット  失敗: 3ミス or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0005',
-    drum0:  '#ef4444',
-    drum1:  '#3b82f6',
-    drum2:  '#22c55e',
-    drum3:  '#f59e0b',
-    drumHi: '#fff',
-    hit0:   '#fca5a5',
-    hit1:   '#93c5fd',
-    hit2:   '#86efac',
-    hit3:   '#fde68a',
-    miss:   '#475569',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#374151',
-    bg2:    '#140008'
-  };
+  // ── パレット（ネオンアーケード、ライブステージ） ──
+  var C = { bg:'#0a0005', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var DRUM_COLS = [C.a, C.e, C.b, C.c];
+  var DRUM_POS = [{ x: W * 0.28, y: H * 0.44 }, { x: W * 0.72, y: H * 0.44 }, { x: W * 0.28, y: H * 0.68 }, { x: W * 0.72, y: H * 0.68 }];
+  var DRUM_R = 140;
 
-  var DRUM_COLORS = [C.drum0, C.drum1, C.drum2, C.drum3];
-  var HIT_COLORS  = [C.hit0,  C.hit1,  C.hit2,  C.hit3];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'RHYTHM DRUMS';
+  var HOW_TO_PLAY = 'TAP EACH DRUM WHILE IT GLOWS';
+  var MAX_TIME = 15;
+  var NEEDED   = 10;         // 修正2: 50 → 10
+  var MAX_MISS = 3;          // 修正2: 15 → 3
+  var BEAT_INTERVAL = 0.6, LIT_DUR = 0.55;
+  var PATTERN = [[0, 2], [], [1, 3], [], [0], [2, 3], [1], [0, 1], [3], [0, 2], [1], [1, 3]];
 
-  // 2x2 grid layout
-  var DRUM_POS = [
-    { x: W * 0.28, y: H * 0.42 },
-    { x: W * 0.72, y: H * 0.42 },
-    { x: W * 0.28, y: H * 0.68 },
-    { x: W * 0.72, y: H * 0.68 }
-  ];
-  var DRUM_R = 130;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var hits = 0;
-  var NEEDED = 50;
-  var misses = 0;
-  var MAX_MISS = 15;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
+  // ── ゲーム変数 ──
+  var hits, misses, timeLeft, done, particles, beatTimer, beatCount, drumLit, drumTimer, drumAnim, flash, flashCol;
 
-  // Beat system
-  var BPM = 100;
-  var BEAT_INTERVAL = 60 / BPM;
-  var beatTimer = 0;
-  var beatCount = 0;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  // Active notes
-  var notes = []; // {drum, lit, litTimer, LIT_DURATION}
-  var drumLit = [false, false, false, false];
-  var drumLitTimer = [0, 0, 0, 0];
-  var drumHitAnim = [0, 0, 0, 0];
-  var LIT_DURATION = 0.45;
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
 
-  // Pattern: which drums light up on each beat (16th note grid)
-  // Simple pattern that loops
-  var PATTERN = [
-    [0, 2],     // beat 1
-    [],         // beat 2
-    [1, 3],     // beat 3
-    [],         // beat 4
-    [0],        // beat 5
-    [2, 3],     // beat 6
-    [1],        // beat 7
-    [0, 1, 2],  // beat 8
-    [3],        // beat 9
-    [0, 2],     // beat 10
-    [1],        // beat 11
-    [0, 3],     // beat 12
-    [2],        // beat 13
-    [1, 3],     // beat 14
-    [0],        // beat 15
-    [1, 2, 3]   // beat 16
-  ];
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.12) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
 
-  game.onTap(function(tx, ty) {
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#14000a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function initGame() { hits = 0; misses = 0; timeLeft = MAX_TIME; done = false; particles = []; beatTimer = 0; beatCount = 0; drumLit = [false, false, false, false]; drumTimer = [0, 0, 0, 0]; drumAnim = [0, 0, 0, 0]; flash = 0; flashCol = C.b; }
+
+  function finish(success) {
     if (done) return;
-    var hitDrum = -1;
+    done = true; resultSuccess = success;
+    finalScore = success ? (hits * 400 + Math.ceil(timeLeft) * 100) : hits * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawDrums() {
     for (var di = 0; di < 4; di++) {
-      var dp = DRUM_POS[di];
-      var dx = tx - dp.x;
-      var dy = ty - dp.y;
-      if (Math.sqrt(dx * dx + dy * dy) < DRUM_R + 20) {
-        hitDrum = di;
-        break;
-      }
+      var dp = DRUM_POS[di], lit = drumLit[di], lr = lit ? drumTimer[di] / LIT_DUR : 0;
+      if (lit) ring(dp.x, dp.y, DRUM_R + 20 * lr, DRUM_COLS[di], 0.4 * lr);
+      pc(dp.x, dp.y, DRUM_R, lit ? DRUM_COLS[di] : '#2a1520', lit ? 0.9 : 0.5);
+      pc(dp.x, dp.y, DRUM_R * 0.5, lit ? C.g : '#402030', lit ? 0.4 : 0.2);
+      if (drumAnim[di] > 0) ring(dp.x, dp.y, DRUM_R + 18, C.g, drumAnim[di] * 0.6);
     }
-    if (hitDrum < 0) return;
+  }
 
-    drumHitAnim[hitDrum] = 0.3;
-
-    if (drumLit[hitDrum]) {
-      // Correct hit
-      hits++;
-      drumLit[hitDrum] = false;
-      drumLitTimer[hitDrum] = 0;
-      game.audio.play('se_tap', 0.5);
-      for (var pi = 0; pi < 6; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        particles.push({ x: DRUM_POS[hitDrum].x, y: DRUM_POS[hitDrum].y, vx: Math.cos(ang) * 180, vy: Math.sin(ang) * 180, life: 0.4, col: HIT_COLORS[hitDrum] });
-      }
-      if (hits >= NEEDED && !done) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(hits * 100 + Math.ceil(timeLeft) * 80); }, 700);
-      }
-    } else {
-      // Miss or early hit
-      misses++;
-      game.audio.play('se_failure', 0.2);
-      if (misses >= MAX_MISS && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      }
-    }
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var hd = -1;
+    for (var di = 0; di < 4; di++) if (Math.hypot(tx - DRUM_POS[di].x, ty - DRUM_POS[di].y) < DRUM_R + 20) { hd = di; break; }
+    if (hd < 0) return;
+    drumAnim[hd] = 0.3;
+    if (drumLit[hd]) {
+      hits++; drumLit[hd] = false; drumTimer[hd] = 0; game.audio.play('se_tap', 0.5);
+      for (var pi = 0; pi < 6; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: DRUM_POS[hd].x, y: DRUM_POS[hd].y, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180, life: 0.4, col: DRUM_COLS[hd] }); }
+      if (hits >= NEEDED) { finish(true); return; }
+    } else { misses++; flash = 0.3; flashCol = C.a; game.audio.play('se_failure', 0.2); if (misses >= MAX_MISS) { finish(false); return; } }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!drumLit) initGame(); background(); drawDrums();
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ENCORE!' : 'OFF BEAT', W / 2, H * 0.35, 74, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3;
+      beatTimer += dt;
+      if (beatTimer >= BEAT_INTERVAL) { beatTimer -= BEAT_INTERVAL; var pat = PATTERN[beatCount % PATTERN.length]; for (var di = 0; di < pat.length; di++) { var d = pat[di]; if (!drumLit[d]) { drumLit[d] = true; drumTimer[d] = LIT_DUR; } } beatCount++; }
+      for (var di2 = 0; di2 < 4; di2++) { if (drumLit[di2]) { drumTimer[di2] -= dt; if (drumTimer[di2] <= 0) { drumLit[di2] = false; misses++; flash = 0.3; flashCol = C.a; if (misses >= MAX_MISS) { finish(false); return; } } } if (drumAnim[di2] > 0) drumAnim[di2] -= dt * 4; }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Beat timer
-    beatTimer += dt;
-    if (beatTimer >= BEAT_INTERVAL) {
-      beatTimer -= BEAT_INTERVAL;
-      var patIdx = beatCount % PATTERN.length;
-      var drumsToLight = PATTERN[patIdx];
-      for (var di2 = 0; di2 < drumsToLight.length; di2++) {
-        var d = drumsToLight[di2];
-        if (!drumLit[d]) {
-          drumLit[d] = true;
-          drumLitTimer[d] = LIT_DURATION;
-        }
-      }
-      beatCount++;
-    }
+    // ---- 描画 ----
+    background();
+    // ビートバー
+    var bp = beatTimer / BEAT_INTERVAL; game.draw.rect(snap(W * 0.1 + W * 0.8 * bp) - 8, H * 0.30, 16, 16, C.c, 0.7);
+    drawDrums();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.8);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // Lit timers
-    for (var di3 = 0; di3 < 4; di3++) {
-      if (drumLit[di3]) {
-        drumLitTimer[di3] -= dt;
-        if (drumLitTimer[di3] <= 0) {
-          // Missed note
-          drumLit[di3] = false;
-          misses++;
-          if (misses >= MAX_MISS && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
-          }
-        }
-      }
-      if (drumHitAnim[di3] > 0) drumHitAnim[di3] -= dt * 4;
-    }
-
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // --- draw ---
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Background grid lines (stage feel)
-    game.draw.rect(0, H * 0.28, W, 4, C.bg2, 0.8);
-    game.draw.rect(0, H * 0.55, W, 4, C.bg2, 0.8);
-    game.draw.rect(0, H * 0.82, W, 4, C.bg2, 0.8);
-
-    // Beat visualizer (top)
-    var beatPhase = beatTimer / BEAT_INTERVAL;
-    game.draw.rect(W * beatPhase * 0.8 + W * 0.1, H * 0.17, 14, 14, C.text, 0.6);
-
-    // Drums
-    for (var di4 = 0; di4 < 4; di4++) {
-      var dp2 = DRUM_POS[di4];
-      var isLit = drumLit[di4];
-      var hitA = drumHitAnim[di4];
-      var lifeRatio = drumLit[di4] ? (drumLitTimer[di4] / LIT_DURATION) : 0;
-
-      // Outer glow
-      if (isLit) {
-        game.draw.circle(dp2.x, dp2.y, DRUM_R + 30 * lifeRatio, DRUM_COLORS[di4], 0.2 * lifeRatio);
-      }
-
-      // Drum body
-      var col2 = isLit ? DRUM_COLORS[di4] : C.miss;
-      game.draw.circle(dp2.x, dp2.y, DRUM_R + 8, col2, 0.15);
-      game.draw.circle(dp2.x, dp2.y, DRUM_R, col2, isLit ? 0.9 : 0.4);
-      game.draw.circle(dp2.x, dp2.y, DRUM_R * 0.55, col2, isLit ? 0.5 : 0.15);
-
-      // Hit animation flash
-      if (hitA > 0) {
-        game.draw.circle(dp2.x, dp2.y, DRUM_R + 20, C.drumHi, hitA * 0.4);
-      }
-
-      // Lit progress ring
-      if (isLit) {
-        var ringAlpha = lifeRatio * 0.9;
-        game.draw.circle(dp2.x, dp2.y, DRUM_R + 16, DRUM_COLORS[di4], ringAlpha * 0.5);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 14 * p.life, p.col, p.life * 0.9);
-    }
-
-    // Miss display
-    var missBarW = W * 0.8 * (1 - misses / MAX_MISS);
-    game.draw.rect(W * 0.1, H * 0.87, W * 0.8, 16, C.ui, 0.3);
-    game.draw.rect(W * 0.1, H * 0.87, missBarW, 16, C.drum2, 0.8);
-
-    game.draw.text(hits + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.drum3 : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(hits + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < misses ? C.a : '#14000a');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.15);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
