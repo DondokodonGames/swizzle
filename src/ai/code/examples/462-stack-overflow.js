@@ -1,237 +1,160 @@
 // 462-stack-overflow.js
-// スタックオーバーフロー — 積み上がるデータブロックが溢れる前にスワイプで削除
-// 操作: スワイプでブロックの列を消去する
-// 成功: 100ブロック処理  失敗: スタックが満杯 or 60秒
+// スタックオーバーフロー — 積み上がるデータブロックを、溢れる前にスワイプで列ごと削除
+// 操作: 上下スワイプ=最も高い列を削除、左右スワイプ=左端/右端の列を削除
+// 成功: 30ブロック 処理  失敗: どれかの列が満杯 or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#000d06',
-    col0:   '#22c55e',
-    col1:   '#06b6d4',
-    col2:   '#8b5cf6',
-    col3:   '#f97316',
-    col4:   '#ef4444',
-    blockDk:'#0a1a0a',
-    text2:  '#4ade80',
-    textDk: '#0d2010',
-    overflow:'#ef4444',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
-
-  var COLS = 5;
-  var ROWS = 12;
-  var BLOCK_W = 180;
-  var BLOCK_H = 80;
-  var OX = (W - COLS * BLOCK_W) / 2;
-  var STACK_TOP = 120;
-  var OVERFLOW_Y = STACK_TOP + ROWS * BLOCK_H;
-
-  var BLOCK_COLORS = [C.col0, C.col1, C.col2, C.col3, C.col4];
+  // ── パレット（グリーンCRT、データ端末） ──
+  var C = { bg:'#000d06', a:'#ff3300', b:'#00ff41', c:'#ffe600', d:'#00cc33', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var BLOCK_COLORS = [C.b, C.e, C.d, C.f, C.c];
   var BLOCK_LABELS = ['if', 'for', 'fn', '{}', '=>'];
 
-  var grid = [];  // grid[col][row] = { color, label, age }
-  var spawnTimer = 0;
-  var SPAWN_RATE = 0.6;
-  var processed = 0;
-  var NEEDED = 100;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var flashCol = C.correct;
-  var particles = [];
-  var swipeCol = -1;  // which column was last swiped
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'STACK OVERFLOW';
+  var HOW_TO_PLAY = 'SWIPE UP/DN CLEARS TALLEST · LEFT/RIGHT CLEARS EDGE COLUMN';
+  var MAX_TIME = 20;
+  var NEEDED   = 30;         // 修正2: 100 → 30
+  var COLS = 5, ROWS = 10, BLOCK_W = 180, BLOCK_H = 84;
+  var OX = snap((W - COLS * BLOCK_W) / 2), STACK_TOP = 320, OVERFLOW_Y = 320 + 10 * 84;
 
-  function initGrid() {
-    grid = [];
-    for (var c = 0; c < COLS; c++) {
-      grid.push([]);
-    }
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var grid, spawnTimer, processed, timeLeft, done, flash, flashCol, particles;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function getColHeight(col) {
-    return grid[col].length;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#001a0a');
   }
 
-  function addBlock(col) {
-    var colorIdx = Math.floor(Math.random() * BLOCK_COLORS.length);
-    grid[col].push({ color: BLOCK_COLORS[colorIdx], label: BLOCK_LABELS[colorIdx], age: 0 });
-  }
+  function background() { game.draw.clear(C.bg); }
+
+  function initGrid() { grid = []; for (var c = 0; c < COLS; c++) grid.push([]); }
+
+  function addBlock(col) { var idx = Math.floor(Math.random() * BLOCK_COLORS.length); grid[col].push({ color: BLOCK_COLORS[idx], label: BLOCK_LABELS[idx] }); }
 
   function clearColumn(col) {
-    var count = grid[col].length;
-    if (count === 0) return 0;
-    // Add particles for each block
-    for (var ri = 0; ri < count; ri++) {
-      var bx = OX + col * BLOCK_W + BLOCK_W/2;
-      var by = OVERFLOW_Y - (ri + 0.5) * BLOCK_H;
-      for (var pi = 0; pi < 3; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        particles.push({ x: bx, y: by, vx: Math.cos(ang)*120, vy: Math.sin(ang)*80, life: 0.4, col: grid[col][ri].color });
-      }
-    }
-    grid[col] = [];
-    return count;
+    var count = grid[col].length; if (count === 0) return 0;
+    for (var ri = 0; ri < count; ri++) { var bx = OX + col * BLOCK_W + BLOCK_W / 2, by = OVERFLOW_Y - (ri + 0.5) * BLOCK_H; for (var pi = 0; pi < 3; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: bx, y: by, vx: Math.cos(a) * 120, vy: Math.sin(a) * 80, life: 0.4, col: grid[col][ri].color }); } }
+    grid[col] = []; return count;
   }
 
-  game.onSwipe(function(dir) {
-    if (done) return;
-    // Determine which column based on swipe start (use dir + last touch - simplified)
-    // Use vertical swipe to clear column that matches swipe direction: up=clear tallest col
-    var targetCol = -1;
-    if (dir === 'up' || dir === 'down') {
-      // Clear tallest column
-      var maxH = 0;
-      for (var c = 0; c < COLS; c++) {
-        if (grid[c].length > maxH) { maxH = grid[c].length; targetCol = c; }
-      }
-    } else {
-      // Left/right: clear left-most or right-most column
-      if (dir === 'left') {
-        for (var c2 = 0; c2 < COLS; c2++) {
-          if (grid[c2].length > 0) { targetCol = c2; break; }
-        }
-      } else {
-        for (var c3 = COLS - 1; c3 >= 0; c3--) {
-          if (grid[c3].length > 0) { targetCol = c3; break; }
-        }
-      }
-    }
-    if (targetCol < 0) return;
+  function initGame() { initGrid(); spawnTimer = 0; processed = 0; timeLeft = MAX_TIME; done = false; flash = 0; flashCol = C.b; particles = []; for (var i = 0; i < 6; i++) addBlock(Math.floor(Math.random() * COLS)); }
 
-    swipeCol = targetCol;
-    var count = clearColumn(targetCol);
-    if (count > 0) {
-      processed += count;
-      game.audio.play('se_tap', 0.4);
-      flashCol = C.correct;
-      flashAnim = 0.3;
-      if (processed >= NEEDED && !done) {
-        done = true;
-        game.audio.play('se_success', 0.8);
-        setTimeout(function() { game.end.success(processed * 100 + Math.ceil(timeLeft) * 80); }, 700);
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (processed * 200 + Math.ceil(timeLeft) * 100) : processed * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawStack() {
+    game.draw.rect(OX - 8, STACK_TOP - 8, COLS * BLOCK_W + 16, ROWS * BLOCK_H + 16, '#001a0a', 0.6);
+    var ov = Math.floor(game.time.elapsed * 6) % 2 === 0 ? 0.5 : 0.2;
+    game.draw.rect(OX - 8, STACK_TOP - 8, COLS * BLOCK_W + 16, 8, C.a, ov);
+    txt('OVERFLOW', W / 2, STACK_TOP - 20, 28, C.a);
+    for (var c = 0; c < COLS; c++) {
+      var h = grid[c].length;
+      for (var r = 0; r < h; r++) {
+        var b = grid[c][r], bx = OX + c * BLOCK_W, by = OVERFLOW_Y - (r + 1) * BLOCK_H;
+        game.draw.rect(bx + 4, by + 4, BLOCK_W - 8, BLOCK_H - 8, b.color, 0.85); game.draw.rect(bx + 4, by + 4, BLOCK_W - 8, 8, C.g, 0.15);
+        txt(b.label, bx + BLOCK_W / 2, by + BLOCK_H * 0.62, 34, C.bg);
+        if (r > ROWS - 4) game.draw.rect(bx + 4, by + 4, BLOCK_W - 8, BLOCK_H - 8, C.a, (r - (ROWS - 4)) * 0.14);
       }
+      var hr = h / ROWS; txt(h + '', OX + c * BLOCK_W + BLOCK_W / 2, OVERFLOW_Y + 48, 34, hr > 0.7 ? C.a : hr > 0.4 ? C.f : C.b);
     }
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
   });
 
+  game.onSwipe(function(dir) {
+    if (state !== S.PLAYING || done) return;
+    var targetCol = -1;
+    if (dir === 'up' || dir === 'down') { var maxH = 0; for (var c = 0; c < COLS; c++) if (grid[c].length > maxH) { maxH = grid[c].length; targetCol = c; } }
+    else if (dir === 'left') { for (var c2 = 0; c2 < COLS; c2++) if (grid[c2].length > 0) { targetCol = c2; break; } }
+    else { for (var c3 = COLS - 1; c3 >= 0; c3--) if (grid[c3].length > 0) { targetCol = c3; break; } }
+    if (targetCol < 0) return;
+    var count = clearColumn(targetCol);
+    if (count > 0) { processed += count; flash = 0.3; flashCol = C.b; game.audio.play('se_tap', 0.4); if (processed >= NEEDED) { finish(true); return; } }
+  });
+
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!grid) initGame(); background(); drawStack();
+      txt(GAME_TITLE, W / 2, H * 0.09, 74, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.14, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.92, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.96, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'STACK CLEARED!' : 'OVERFLOW!', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-
-    if (flashAnim > 0) flashAnim -= dt * 3;
-
-    // Spawn blocks
-    spawnTimer += dt;
-    var spawnInterval = Math.max(0.25, SPAWN_RATE - processed * 0.003);
-    if (spawnTimer >= spawnInterval && !done) {
-      var col = Math.floor(Math.random() * COLS);
-      addBlock(col);
-      spawnTimer = 0;
-      // Check overflow
-      if (grid[col].length >= ROWS) {
-        done = true;
-        game.audio.play('se_failure', 0.7);
-        for (var pi2 = 0; pi2 < 16; pi2++) {
-          var ang2 = Math.random() * Math.PI * 2;
-          var bx2 = OX + col * BLOCK_W + BLOCK_W/2;
-          particles.push({ x: bx2, y: STACK_TOP, vx: Math.cos(ang2)*200, vy: Math.sin(ang2)*200, life: 0.6, col: C.overflow });
-        }
-        setTimeout(function() { game.end.failure(); }, 600);
-      }
-    }
-
-    // Age blocks
-    for (var c4 = 0; c4 < COLS; c4++) {
-      for (var r = 0; r < grid[c4].length; r++) {
-        grid[c4][r].age += dt;
-      }
-    }
-
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // --- draw ---
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Stack area background
-    game.draw.rect(OX - 8, STACK_TOP - 8, COLS * BLOCK_W + 16, ROWS * BLOCK_H + 16, C.blockDk, 0.6);
-
-    // Overflow warning line
-    var overflowAlpha = 0.3 + Math.sin(elapsed * 10) * 0.2;
-    game.draw.rect(OX - 8, STACK_TOP - 8, COLS * BLOCK_W + 16, 8, C.overflow, overflowAlpha);
-    game.draw.text('OVERFLOW', OX - 8, STACK_TOP - 12, { size: 24, color: C.overflow });
-
-    // Column dividers
-    for (var c5 = 0; c5 <= COLS; c5++) {
-      game.draw.line(OX + c5 * BLOCK_W, STACK_TOP, OX + c5 * BLOCK_W, OVERFLOW_Y, C.blockDk, 3);
-    }
-
-    // Blocks
-    for (var c6 = 0; c6 < COLS; c6++) {
-      var height = grid[c6].length;
-      for (var r2 = 0; r2 < height; r2++) {
-        var block = grid[c6][r2];
-        var bx3 = OX + c6 * BLOCK_W;
-        var by2 = OVERFLOW_Y - (r2 + 1) * BLOCK_H;
-        game.draw.rect(bx3 + 4, by2 + 4, BLOCK_W - 8, BLOCK_H - 8, block.color, 0.85);
-        game.draw.rect(bx3 + 4, by2 + 4, BLOCK_W - 8, 8, '#fff', 0.15);
-        game.draw.text(block.label, bx3 + BLOCK_W/2, by2 + BLOCK_H*0.6, { size: 34, color: C.textDk, bold: true });
-
-        // Danger glow if near top
-        if (r2 > ROWS - 4) {
-          game.draw.rect(bx3 + 4, by2 + 4, BLOCK_W - 8, BLOCK_H - 8, C.overflow, (r2 - (ROWS-4)) * 0.15);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3;
+      spawnTimer += dt;
+      var interval = Math.max(0.35, 0.7 - processed * 0.008);
+      if (spawnTimer >= interval) {
+        spawnTimer = 0; var col = Math.floor(Math.random() * COLS); addBlock(col);
+        if (grid[col].length >= ROWS) {
+          for (var pi2 = 0; pi2 < 16; pi2++) { var a2 = Math.random() * Math.PI * 2; var bx2 = OX + col * BLOCK_W + BLOCK_W / 2; particles.push({ x: bx2, y: STACK_TOP, vx: Math.cos(a2) * 200, vy: Math.sin(a2) * 200, life: 0.6, col: C.a }); }
+          finish(false); return;
         }
       }
-
-      // Column height indicator
-      var hRatio = height / ROWS;
-      var indCol = hRatio > 0.7 ? C.overflow : hRatio > 0.4 ? C.col3 : C.col0;
-      game.draw.text(height + '', OX + c6 * BLOCK_W + BLOCK_W/2, OVERFLOW_Y + 40, { size: 34, color: indCol, bold: true });
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life, p.col, p.life * 0.8);
-    }
+    // ---- 描画 ----
+    background(); drawStack();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    txt('SWIPE TO CLEAR', W / 2, OVERFLOW_Y + 110, 34, C.d);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    // Instructions
-    game.draw.text('スワイプで列を削除', W/2, OVERFLOW_Y + 80, { size: 36, color: C.ui });
-    game.draw.text('処理済: ' + processed + ' / ' + NEEDED, W/2, OVERFLOW_Y + 120, { size: 38, color: C.text2, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.col0 : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(processed + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.08);
-    initGrid();
-    // Pre-fill a bit
-    for (var i = 0; i < 8; i++) {
-      addBlock(Math.floor(Math.random() * COLS));
-    }
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

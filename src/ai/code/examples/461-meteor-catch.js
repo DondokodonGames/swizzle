@@ -1,217 +1,147 @@
 // 461-meteor-catch.js
-// 隕石キャッチ — 落下する隕石の軌道を予測してバケツを置く
-// 操作: タップでバケツの位置を指定する（隕石が当たれば成功）
-// 成功: 15個キャッチ  失敗: 10個外れ or 60秒
+// 隕石キャッチ — 落下する隕石の軌道を読み、下部タップでバケツを置いて受け止める
+// 操作: 画面下部をタップしてバケツの位置を決める（隕石が入れば成功）
+// 成功: 6個 キャッチ  失敗: 3個 落下 or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#000308',
-    sky:    '#020810',
-    trail:  '#f97316',
-    trailHi:'#fbbf24',
-    meteor: '#ef4444',
-    meteorHi:'#fca5a5',
-    bucket: '#3b82f6',
-    bucketHi:'#93c5fd',
-    ground: '#1e3a5f',
-    groundHi:'#2563eb',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569',
-    star:   '#e2e8f0'
-  };
+  // ── パレット（ネオンアーケード、流星の夜） ──
+  var C = { bg:'#000308', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var BUCKET_W = 110;
-  var BUCKET_H = 70;
-  var GROUND_Y = H * 0.85;
-  var BUCKET_Y = GROUND_Y - BUCKET_H;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'METEOR CATCH';
+  var HOW_TO_PLAY = 'TAP THE LOWER AREA TO POSITION THE BUCKET';
+  var MAX_TIME = 15;
+  var NEEDED   = 6;          // 修正2: 15 → 6
+  var MAX_MISS = 3;          // 修正2: 10 → 3
+  var BUCKET_W = 140, BUCKET_H = 76, GROUND_Y = snap(H * 0.82), BUCKET_Y = snap(H * 0.82) - 76;
 
-  var meteors = [];
-  var bucketX = W / 2;
-  var placed = false;
-  var particles = [];
-  var caught = 0;
-  var NEEDED = 15;
-  var misses = 0;
-  var MAX_MISS = 10;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var flashCol = C.correct;
-  var nextSpawn = 1.0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  // Stars
-  var stars = [];
-  for (var si = 0; si < 70; si++) {
-    stars.push({ x: Math.random() * W, y: Math.random() * H * 0.8, r: 1 + Math.random() * 2 });
+  // ── ゲーム変数 ──
+  var meteors, bucketX, placed, particles, caught, misses, timeLeft, done, flash, flashCol, nextSpawn, stars;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function spawnMeteor() {
-    var x = 50 + Math.random() * (W - 100);
-    var vx = (Math.random() - 0.5) * 200;
-    var vy = 300 + Math.random() * 200;
-    meteors.push({ x: x, y: -40, vx: vx, vy: vy, trail: [], r: 22 + Math.random() * 12 });
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#081020');
   }
 
-  game.onTap(function(tx, ty) {
+  function background() { game.draw.clear(C.bg); for (var si = 0; si < stars.length; si++) game.draw.rect(stars[si].x, stars[si].y, stars[si].r, stars[si].r, C.g, 0.4 + Math.sin(game.time.elapsed * 2 + si) * 0.3); game.draw.rect(0, GROUND_Y, W, H - GROUND_Y, '#0a1828', 0.9); game.draw.rect(0, GROUND_Y, W, 6, C.e, 0.4); }
+
+  function initStars() { stars = []; for (var i = 0; i < 60; i++) stars.push({ x: snap(Math.random() * W), y: snap(Math.random() * H * 0.75), r: Math.random() < 0.5 ? 4 : 8 }); }
+
+  function spawnMeteor() { meteors.push({ x: snap(60 + Math.random() * (W - 120)), y: -40, vx: (Math.random() - 0.5) * 180, vy: 300 + Math.random() * 160, trail: [], r: 22 + Math.random() * 10 }); }
+
+  function initGame() { meteors = []; bucketX = W / 2; placed = false; particles = []; caught = 0; misses = 0; timeLeft = MAX_TIME; done = false; flash = 0; flashCol = C.b; nextSpawn = 0.8; }
+
+  function finish(success) {
     if (done) return;
-    if (ty < GROUND_Y - 100) return; // Only tap in lower area
-    bucketX = Math.max(BUCKET_W/2, Math.min(W - BUCKET_W/2, tx));
-    placed = true;
-    game.audio.play('se_tap', 0.3);
+    done = true; resultSuccess = success;
+    finalScore = success ? (caught * 500 + Math.ceil(timeLeft) * 100) : caught * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawMeteors() {
+    for (var mi = 0; mi < meteors.length; mi++) {
+      var m = meteors[mi];
+      for (var ti = 0; ti < m.trail.length; ti++) { var tr = ti / m.trail.length; pc(m.trail[ti].x, m.trail[ti].y, m.r * tr * 0.6, C.f, tr * 0.4); }
+      pc(m.x, m.y, m.r, C.a, 0.9); pc(m.x - m.r * 0.3, m.y - m.r * 0.3, m.r * 0.3, C.c, 0.5);
+      if (placed) { var predX = m.x + m.vx * (BUCKET_Y - m.y) / m.vy; game.draw.rect(snap(predX) - 4, GROUND_Y - 20, 8, 16, C.g, 0.3); }
+    }
+  }
+
+  function drawBucket() { var bx = snap(bucketX - BUCKET_W / 2); game.draw.rect(bx, BUCKET_Y, BUCKET_W, BUCKET_H, C.e, 0.85); game.draw.rect(bx, BUCKET_Y, BUCKET_W, 10, C.g, 0.6); game.draw.rect(bx + 10, BUCKET_Y + 16, BUCKET_W - 20, BUCKET_H - 16, '#0a2438', 0.6); }
+
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || ty < GROUND_Y - 220) return;
+    bucketX = Math.max(BUCKET_W / 2, Math.min(W - BUCKET_W / 2, tx)); placed = true; game.audio.play('se_tap', 0.3);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!stars) { initStars(); initGame(); } background(); drawBucket();
+      txt(GAME_TITLE, W / 2, H * 0.22, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.28, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.5, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.56, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'STARDUST!' : 'METEORS LOST', W / 2, H * 0.35, 66, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-
-    if (flashAnim > 0) flashAnim -= dt * 2;
-
-    // Spawn
-    nextSpawn -= dt;
-    if (nextSpawn <= 0 && !done) {
-      spawnMeteor();
-      nextSpawn = 0.8 + Math.random() * 0.6 - caught * 0.01;
-      if (nextSpawn < 0.4) nextSpawn = 0.4;
-    }
-
-    // Update meteors
-    for (var mi = meteors.length - 1; mi >= 0; mi--) {
-      var m = meteors[mi];
-      m.trail.push({ x: m.x, y: m.y });
-      if (m.trail.length > 12) m.trail.shift();
-      m.x += m.vx * dt;
-      m.y += m.vy * dt;
-
-      // Hit bucket
-      if (placed && m.y + m.r >= BUCKET_Y && m.y - m.r <= BUCKET_Y + BUCKET_H) {
-        if (Math.abs(m.x - bucketX) < BUCKET_W/2 + m.r * 0.5) {
-          caught++;
-          flashCol = C.correct;
-          flashAnim = 0.5;
-          game.audio.play('se_tap', 0.5);
-          for (var pi = 0; pi < 10; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: m.x, y: BUCKET_Y, vx: Math.cos(ang)*160, vy: Math.sin(ang)*160 - 100, life: 0.5, col: C.trailHi });
-          }
-          meteors.splice(mi, 1);
-          if (caught >= NEEDED && !done) {
-            done = true;
-            game.audio.play('se_success', 0.8);
-            setTimeout(function() { game.end.success(caught * 300 + Math.ceil(timeLeft) * 80); }, 700);
-          }
-          continue;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2;
+      nextSpawn -= dt; if (nextSpawn <= 0) { spawnMeteor(); nextSpawn = Math.max(0.5, 0.9 + Math.random() * 0.4 - caught * 0.04); }
+      for (var mi = meteors.length - 1; mi >= 0; mi--) {
+        var m = meteors[mi]; m.trail.push({ x: m.x, y: m.y }); if (m.trail.length > 10) m.trail.shift(); m.x += m.vx * dt; m.y += m.vy * dt;
+        if (placed && m.y + m.r >= BUCKET_Y && m.y - m.r <= BUCKET_Y + BUCKET_H && Math.abs(m.x - bucketX) < BUCKET_W / 2 + m.r * 0.5) {
+          caught++; flash = 0.5; flashCol = C.b; game.audio.play('se_tap', 0.5);
+          for (var pi = 0; pi < 10; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: m.x, y: BUCKET_Y, vx: Math.cos(a) * 160, vy: Math.sin(a) * 160 - 100, life: 0.5, col: C.c }); }
+          meteors.splice(mi, 1); if (caught >= NEEDED) { finish(true); return; } continue;
         }
-      }
-
-      // Hit ground (missed)
-      if (m.y > GROUND_Y + 50) {
-        misses++;
-        flashCol = C.wrong;
-        flashAnim = 0.4;
-        game.audio.play('se_failure', 0.3);
-        for (var pi2 = 0; pi2 < 6; pi2++) {
-          var ang2 = Math.random() * Math.PI - Math.PI * 0.8;
-          particles.push({ x: m.x, y: GROUND_Y, vx: Math.cos(ang2)*100, vy: Math.sin(ang2)*80, life: 0.4, col: C.meteor });
+        if (m.y > GROUND_Y + 40) {
+          misses++; flash = 0.4; flashCol = C.a; game.audio.play('se_failure', 0.3);
+          for (var pi2 = 0; pi2 < 6; pi2++) { var a2 = Math.random() * Math.PI - Math.PI * 0.8; particles.push({ x: m.x, y: GROUND_Y, vx: Math.cos(a2) * 100, vy: Math.sin(a2) * 80, life: 0.4, col: C.a }); }
+          meteors.splice(mi, 1); if (misses >= MAX_MISS) { finish(false); return; } continue;
         }
-        meteors.splice(mi, 1);
-        if (misses >= MAX_MISS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
+        if (m.x < -100 || m.x > W + 100) meteors.splice(mi, 1);
       }
-
-      // Off sides
-      if (m.x < -100 || m.x > W + 100) meteors.splice(mi, 1);
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 300 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawMeteors();
+    if (placed) drawBucket(); else txt('TAP TO PLACE BUCKET', W / 2, GROUND_Y + 60, 36, C.e);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // --- draw ---
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Stars
-    for (var sti = 0; sti < stars.length; sti++) {
-      game.draw.circle(stars[sti].x, stars[sti].y, stars[sti].r, C.star, 0.5);
-    }
-
-    // Ground
-    game.draw.rect(0, GROUND_Y, W, H - GROUND_Y, C.ground, 0.9);
-    game.draw.rect(0, GROUND_Y, W, 8, C.groundHi, 0.5);
-
-    // Meteor trails and bodies
-    for (var mi2 = 0; mi2 < meteors.length; mi2++) {
-      var m2 = meteors[mi2];
-      for (var ti = 0; ti < m2.trail.length; ti++) {
-        var tRatio = ti / m2.trail.length;
-        game.draw.circle(m2.trail[ti].x, m2.trail[ti].y, m2.r * tRatio * 0.7, C.trail, tRatio * 0.4);
-      }
-      game.draw.circle(m2.x, m2.y, m2.r * 1.4, C.trailHi, 0.15);
-      game.draw.circle(m2.x, m2.y, m2.r, C.meteor, 0.9);
-      game.draw.circle(m2.x - m2.r*0.3, m2.y - m2.r*0.3, m2.r*0.3, C.meteorHi, 0.4);
-
-      // Trajectory preview line
-      if (placed) {
-        var predX = m2.x + m2.vx * (GROUND_Y - m2.y) / m2.vy;
-        game.draw.line(m2.x, m2.y, predX, GROUND_Y, C.ui, 2);
-        game.draw.circle(predX, GROUND_Y - 10, 8, C.ui, 0.5);
-      }
-    }
-
-    // Bucket
-    if (placed) {
-      var bx = bucketX - BUCKET_W/2;
-      game.draw.rect(bx, BUCKET_Y, BUCKET_W, BUCKET_H, C.bucket, 0.85);
-      game.draw.rect(bx, BUCKET_Y, BUCKET_W, 10, C.bucketHi, 0.7);
-      game.draw.rect(bx + 8, BUCKET_Y + 14, BUCKET_W - 16, BUCKET_H - 14, C.bucket, 0.5);
-    } else {
-      game.draw.text('タップでバケツを置く', W/2, GROUND_Y + 60, { size: 38, color: C.ui });
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    // Miss dots
-    var missPerRow = 5;
-    for (var mi3 = 0; mi3 < MAX_MISS; mi3++) {
-      var mx = W*0.1 + (mi3 % missPerRow) * (W*0.8/(missPerRow-1));
-      var my2 = mi3 < missPerRow ? H*0.948 : H*0.963;
-      game.draw.circle(mx, my2, 14, mi3 < misses ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(caught + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.bucket : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(caught + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi2 = 0; mi2 < MAX_MISS; mi2++) game.draw.rect(snap(W / 2 + (mi2 - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi2 < misses ? C.a : '#081020');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.08);
+    state = S.ATTRACT;
+    initStars();
+    initGame();
   });
 })(game);
