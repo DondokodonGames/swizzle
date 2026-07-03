@@ -1,208 +1,135 @@
 // 578-heat-gauge.js
-// ヒートゲージ — ボタンを連打して温度を一定のゾーンに保つ
-// 操作: タップで温度を上げる、放置で下がる
-// 成功: 30秒間ゾーン内維持  失敗: 60秒
+// ヒートゲージ — タップで温度を上げ、放置で下がる。針を緑のゾーン内に一定時間キープする
+// 操作: タップで加熱（連打で上昇、放置で自然冷却）ゲージを目標ゾーンに保つ
+// 成功: ゾーン内 累計8秒 キープ  失敗: 18秒経過
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0a0404',
-    cold:    '#3b82f6',
-    cool:    '#22c55e',
-    warm:    '#f59e0b',
-    hot:     '#ef4444',
-    zone:    '#22c55e',
-    zoneHi:  '#86efac',
-    gauge:   '#1a0000',
-    gaugeHi: '#330000',
-    text:    '#f1f5f9',
-    ui:      '#374151',
-    win:     '#22c55e'
-  };
+  // ── パレット（ネオンアーケード、溶鉱炉） ──
+  var C = { bg:'#0a0404', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var GAUGE_X = W / 2 - 40;
-  var GAUGE_Y = H * 0.15;
-  var GAUGE_W = 80;
-  var GAUGE_H = H * 0.55;
-  var ZONE_MIN = 0.45;
-  var ZONE_MAX = 0.70;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'HEAT GAUGE';
+  var HOW_TO_PLAY = 'TAP TO HEAT · IT COOLS ON ITS OWN · HOLD THE NEEDLE IN THE ZONE';
+  var MAX_TIME = 18;
+  var NEEDED_TIME = 8;       // 修正2: 30 → 8
+  var GX = W / 2 - 44, GY = snap(H * 0.16), GW = 88, GH = snap(H * 0.52), ZMIN = 0.45, ZMAX = 0.70;
 
-  var temperature = 0.3; // 0-1
-  var coolRate = 0.12; // per second
-  var heatPerTap = 0.08;
-  var inZoneTime = 0;
-  var NEEDED_TIME = 30;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0;
-  var tapFlash = 0;
-  var lastTapTime = -10;
-  var streak = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function getColor(t) {
-    if (t < 0.3) return C.cold;
-    if (t < 0.5) return C.cool;
-    if (t < 0.7) return C.warm;
-    return C.hot;
+  // ── ゲーム変数 ──
+  var temp, inZoneTime, timeLeft, done, particles, tapFlash, lastTap;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
-    temperature = Math.min(1, temperature + heatPerTap);
-    tapFlash = 0.15;
-    lastTapTime = elapsed;
-    streak++;
-    game.audio.play('se_tap', 0.2 + Math.min(0.3, streak * 0.02));
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-    // Heat particles
-    var fireY = GAUGE_Y + GAUGE_H * (1 - temperature);
-    for (var pi = 0; pi < 2; pi++) {
-      particles.push({
-        x: GAUGE_X + GAUGE_W / 2 + (Math.random() - 0.5) * 30,
-        y: fireY + 20,
-        vx: (Math.random() - 0.5) * 80,
-        vy: -80 - Math.random() * 80,
-        life: 0.3 + Math.random() * 0.2,
-        col: temperature > 0.7 ? C.hot : C.warm
-      });
-    }
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.f : '#1a0000');
+  }
+
+  function tcol(t) { return t < 0.3 ? C.e : t < 0.5 ? C.b : t < 0.7 ? C.c : C.f; }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function initGame() { temp = 0.2; inZoneTime = 0; timeLeft = MAX_TIME; done = false; particles = []; tapFlash = 0; lastTap = -10; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.round(inZoneTime) * 500 + Math.ceil(timeLeft) * 100) : Math.round(inZoneTime) * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    game.draw.rect(GX - 4, GY - 4, GW + 8, GH + 8, '#330000', 0.9); game.draw.rect(GX, GY, GW, GH, '#1a0000', 0.95);
+    var zy1 = GY + GH * (1 - ZMAX), zh = GH * (ZMAX - ZMIN), inZone = temp >= ZMIN && temp <= ZMAX;
+    game.draw.rect(GX, zy1, GW, zh, C.b, 0.12 + (inZone ? Math.sin(game.time.elapsed * 4) * 0.05 : 0));
+    game.draw.rect(GX - 10, zy1 - 2, GW + 20, 4, C.b, 0.9); game.draw.rect(GX - 10, zy1 + zh - 2, GW + 20, 4, C.b, 0.9);
+    txt('ZONE', GX + GW + 60, zy1 + zh / 2 + 12, 28, C.b);
+    var fillH = GH * temp, fillY = GY + GH - fillH, tc = tcol(temp);
+    for (var gi = 0; gi < 8; gi++) { var gT = temp * (gi / 8), gH = fillH / 8, gY = fillY + fillH - (gi + 1) * gH; game.draw.rect(GX + 4, gY, GW - 8, gH + 2, tcol(gT), 0.85); }
+    if (fillH > 10) game.draw.rect(GX + 4, fillY, GW - 8, 12, tc, 0.7 + Math.sin(game.time.elapsed * 8) * 0.2);
+    txt(Math.round(temp * 100) + '°', GX - 90, fillY + 16, 44, tc);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    temp = Math.min(1, temp + 0.08); tapFlash = 0.15; lastTap = game.time.elapsed; game.audio.play('se_tap', 0.3);
+    var fy = GY + GH * (1 - temp); for (var pi = 0; pi < 2; pi++) particles.push({ x: GX + GW / 2 + (Math.random() - 0.5) * 30, y: fy + 20, vx: (Math.random() - 0.5) * 80, vy: -80 - Math.random() * 80, life: 0.4, col: temp > 0.7 ? C.f : C.c });
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (temp === undefined) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.13, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.175, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'PERFECT HEAT!' : 'BURNED / FROZE', W / 2, H * 0.35, 60, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (tapFlash > 0) tapFlash -= dt * 5;
-
-    // Cool down over time
-    var timeSinceT = elapsed - lastTapTime;
-    temperature = Math.max(0, temperature - coolRate * dt * (1 + timeSinceT * 0.3));
-    if (timeSinceT > 0.5) streak = 0;
-
-    // Check zone
-    var inZone = temperature >= ZONE_MIN && temperature <= ZONE_MAX;
-    if (inZone) {
-      inZoneTime += dt;
-      if (inZoneTime >= NEEDED_TIME && !done) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(Math.round(inZoneTime * 100) + Math.ceil(timeLeft) * 100); }, 700);
-      }
+      if (timeLeft <= 0) { finish(inZoneTime >= NEEDED_TIME); return; }
+      if (tapFlash > 0) tapFlash -= dt * 5;
+      var since = game.time.elapsed - lastTap; temp = Math.max(0, temp - 0.12 * dt * (1 + since * 0.3));
+      if (temp >= ZMIN && temp <= ZMAX) { inZoneTime += dt; if (inZoneTime >= NEEDED_TIME) { finish(true); return; } }
+      if (Math.random() < temp * 0.3) particles.push({ x: GX + Math.random() * GW, y: GY + GH * (1 - temp), vx: (Math.random() - 0.5) * 60, vy: -40 - Math.random() * 60, life: 0.4, col: tcol(temp) });
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Spawn ambient particles based on temperature
-    if (Math.random() < temperature * 0.3) {
-      var fx = GAUGE_X + Math.random() * GAUGE_W;
-      var fy = GAUGE_Y + GAUGE_H * (1 - temperature);
-      particles.push({
-        x: fx, y: fy,
-        vx: (Math.random() - 0.5) * 60,
-        vy: -40 - Math.random() * 60,
-        life: 0.4,
-        col: getColor(temperature)
-      });
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.4);
+    if (tapFlash > 0) game.draw.rect(0, 0, W, H, tcol(temp), tapFlash * 0.08);
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    var inZone = temp >= ZMIN && temp <= ZMAX;
+    txt(inZone ? 'PERFECT!' : (temp < ZMIN ? 'TOO COLD' : 'TOO HOT'), W / 2, snap(H * 0.76), 40, inZone ? C.b : tcol(temp));
+    var pw = W * 0.6, px = (W - pw) / 2, py = snap(H * 0.82);
+    game.draw.rect(px, py, pw, 28, '#374151', 0.4); game.draw.rect(px, py, pw * (inZoneTime / NEEDED_TIME), 28, C.b, 0.9);
+    txt(Math.round(inZoneTime) + ' / ' + NEEDED_TIME + 's', W / 2, py + 62, 44, C.g);
+    txt('TAP TO HEAT', W / 2, snap(H * 0.92), 40, C.f);
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Gauge background
-    game.draw.rect(GAUGE_X - 4, GAUGE_Y - 4, GAUGE_W + 8, GAUGE_H + 8, C.gaugeHi, 0.9);
-    game.draw.rect(GAUGE_X, GAUGE_Y, GAUGE_W, GAUGE_H, C.gauge, 0.95);
-
-    // Zone indicator
-    var zoneY1 = GAUGE_Y + GAUGE_H * (1 - ZONE_MAX);
-    var zoneH = GAUGE_H * (ZONE_MAX - ZONE_MIN);
-    game.draw.rect(GAUGE_X, zoneY1, GAUGE_W, zoneH, C.zone, 0.12 + (inZone ? Math.sin(elapsed * 4) * 0.05 : 0));
-    game.draw.line(GAUGE_X - 10, zoneY1, GAUGE_X + GAUGE_W + 10, zoneY1, C.zoneHi, 3);
-    game.draw.line(GAUGE_X - 10, zoneY1 + zoneH, GAUGE_X + GAUGE_W + 10, zoneY1 + zoneH, C.zoneHi, 3);
-    game.draw.text('目標', GAUGE_X + GAUGE_W + 40, zoneY1 + zoneH / 2 + 14, { size: 28, color: C.zoneHi });
-
-    // Temperature fill
-    var fillH = GAUGE_H * temperature;
-    var fillY = GAUGE_Y + GAUGE_H - fillH;
-    var tCol = getColor(temperature);
-
-    // Gradient-like: draw multiple thin strips
-    for (var gi = 0; gi < 8; gi++) {
-      var gfrac = gi / 8;
-      var gT = temperature * gfrac;
-      var gCol = getColor(gT);
-      var gH = fillH / 8;
-      var gY = fillY + fillH - (gi + 1) * gH;
-      game.draw.rect(GAUGE_X + 4, gY, GAUGE_W - 8, gH + 2, gCol, 0.85);
-    }
-
-    // Surface glow
-    if (fillH > 10) {
-      game.draw.rect(GAUGE_X + 4, fillY, GAUGE_W - 8, 12, tCol, 0.7 + Math.sin(elapsed * 8) * 0.2);
-    }
-
-    // Temperature value
-    game.draw.text(Math.round(temperature * 100) + '°', GAUGE_X - 100, fillY + 16, { size: 44, color: tCol, bold: true });
-
-    // Gauge decorations
-    for (var li = 0; li <= 10; li++) {
-      var ly = GAUGE_Y + GAUGE_H * (1 - li / 10);
-      game.draw.line(GAUGE_X - 20, ly, GAUGE_X, ly, C.ui, li % 5 === 0 ? 3 : 1);
-      if (li % 5 === 0) {
-        game.draw.text(li * 10 + '', GAUGE_X - 50, ly + 10, { size: 24, color: C.ui });
-      }
-    }
-
-    // Particles (fire)
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 14 * p.life, p.col, p.life * 0.6);
-    }
-
-    if (tapFlash > 0) game.draw.rect(0, 0, W, H, tCol, tapFlash * 0.08);
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, C.win, flashAnim * 0.1);
-
-    // Zone time progress
-    var progW = W * 0.6;
-    var progX = (W - progW) / 2;
-    var progY = H * 0.8;
-    game.draw.rect(progX, progY, progW, 28, C.ui, 0.4);
-    game.draw.rect(progX, progY, progW * (inZoneTime / NEEDED_TIME), 28, C.zone, 0.9);
-    game.draw.text(Math.round(inZoneTime) + ' / ' + NEEDED_TIME + '秒', W / 2, progY + 60, { size: 44, color: C.text, bold: true });
-
-    // Tap instruction
-    game.draw.circle(W / 2, H * 0.91, 80, tCol, 0.15 + Math.sin(elapsed * 5) * 0.08);
-    game.draw.circle(W / 2, H * 0.91, 60, tCol, 0.25);
-    game.draw.text('TAP', W / 2, H * 0.91 + 18, { size: 44, color: '#fff', bold: true });
-
-    // Status
-    var status = inZone ? '適正温度!' : (temperature < ZONE_MIN ? '温度が低い!' : '熱すぎ!');
-    game.draw.text(status, W / 2, H * 0.76, { size: 36, color: inZone ? C.zone : tCol });
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.warm : C.hot);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.07);
-    temperature = 0.2;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

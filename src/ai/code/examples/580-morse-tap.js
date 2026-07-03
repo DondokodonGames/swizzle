@@ -1,238 +1,149 @@
 // 580-morse-tap.js
-// モールスタップ — 画面に表示されるモールス信号をタップで入力する
-// 操作: 短タップ=dot、長タップ=dash（1秒以上）
-// 成功: 8文字正解  失敗: 5文字ミス or 90秒
+// モールスタップ — 表示された文字のモールス符号（・とー）を、左右タップ/スワイプで順に入力する
+// 操作: 画面左タップ/下スワイプ=・(dot) / 右タップ/上スワイプ=ー(dash) 符号の長さ分そろえる
+// 成功: 3文字 正解  失敗: 3文字 ミス or 25秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#020810',
-    dot:     '#3b82f6',
-    dotHi:   '#93c5fd',
-    dash:    '#f59e0b',
-    dashHi:  '#fcd34d',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#334455',
-    signal:  '#00ddff',
-    glow:    '#00ddff22'
-  };
+  // ── パレット（グリーンCRT、通信端末） ──
+  var C = { bg:'#000a02', a:'#ff3300', b:'#00ff41', c:'#ffe600', d:'#00cc33', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var MORSE = { 'A': '.-', 'E': '.', 'I': '..', 'M': '--', 'N': '-.', 'O': '---', 'R': '.-.', 'S': '...', 'T': '-', 'U': '..-' };
+  var LETTERS = ['E', 'T', 'A', 'I', 'N', 'M', 'S', 'O', 'U', 'R'];
 
-  var MORSE = {
-    'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
-    'F': '..-.', 'G': '--.', 'H': '....', 'I': '..', 'J': '.---',
-    'K': '-.-', 'L': '.-..', 'M': '--', 'N': '-.', 'O': '---',
-    'P': '.--.', 'Q': '--.-', 'R': '.-.', 'S': '...', 'T': '-',
-    'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-', 'Y': '-.--',
-    'Z': '--..'
-  };
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'MORSE TAP';
+  var HOW_TO_PLAY = 'TAP LEFT / SWIPE DOWN = DOT · TAP RIGHT / SWIPE UP = DASH';
+  var MAX_TIME = 25;
+  var NEEDED   = 3;          // 修正2: 8 → 3
+  var MAX_WRONG = 3;         // 修正2: 5 → 3
 
-  var EASY_LETTERS = ['E', 'T', 'A', 'I', 'N', 'M', 'S', 'O', 'U', 'R'];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var currentLetter = 'E';
-  var currentMorse = '.';
-  var userInput = '';
-  var inputSymbols = []; // visual symbols entered
-  var holding = false;
-  var holdStart = 0;
-  var holdIndicator = 0; // 0-1
-  var DASH_THRESHOLD = 0.6;
-  var consecutiveTimeout = 1.5; // time without input to submit
-  var lastInputTime = -999;
-  var correctCount = 0;
-  var NEEDED = 8;
-  var wrongCount = 0;
-  var MAX_WRONG = 5;
-  var done = false;
-  var timeLeft = 90;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0;
-  var resultText = '';
+  // ── ゲーム変数 ──
+  var letter, morse, userInput, correctCount, wrongCount, timeLeft, done, particles, flash, flashCol, resultText, resultTimer, lastInput;
 
-  function nextLetter() {
-    var pool = EASY_LETTERS;
-    currentLetter = pool[Math.floor(Math.random() * pool.length)];
-    currentMorse = MORSE[currentLetter];
-    userInput = '';
-    inputSymbols = [];
-    lastInputTime = elapsed;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#002200');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function nextLetter() { letter = LETTERS[Math.floor(Math.random() * LETTERS.length)]; morse = MORSE[letter]; userInput = ''; lastInput = game.time.elapsed; }
+
+  function initGame() { correctCount = 0; wrongCount = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; nextLetter(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (correctCount * 1000 + Math.ceil(timeLeft) * 100) : correctCount * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
   function checkInput() {
-    if (userInput === currentMorse) {
-      correctCount++;
-      flashCol = C.correct;
-      flashAnim = 0.4;
-      resultText = '正解!';
-      resultTimer = 0.8;
-      game.audio.play('se_success', 0.8);
-      for (var pi = 0; pi < 10; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        particles.push({ x: W / 2, y: H * 0.5, vx: Math.cos(ang) * 220, vy: Math.sin(ang) * 220, life: 0.5, col: C.correct });
-      }
-      if (correctCount >= NEEDED && !done) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(correctCount * 500 + Math.ceil(timeLeft) * 80); }, 800);
-      } else {
-        setTimeout(function() { if (!done) nextLetter(); }, 900);
-      }
-    } else {
-      wrongCount++;
-      flashCol = C.wrong;
-      flashAnim = 0.35;
-      resultText = '×';
-      resultTimer = 0.7;
-      game.audio.play('se_failure', 0.4);
-      if (wrongCount >= MAX_WRONG && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      } else {
-        setTimeout(function() { if (!done) nextLetter(); }, 900);
-      }
-    }
+    if (userInput === morse) {
+      correctCount++; flash = 0.4; flashCol = C.b; resultText = 'OK!'; resultTimer = 0.8; game.audio.play('se_success', 0.8);
+      for (var pi = 0; pi < 10; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: H * 0.5, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, life: 0.5, col: C.b }); }
+      if (correctCount >= NEEDED) { finish(true); return; }
+      setTimeout(function() { if (!done) nextLetter(); }, 800);
+    } else { wrongCount++; flash = 0.35; flashCol = C.a; resultText = 'NG'; resultTimer = 0.7; game.audio.play('se_failure', 0.4); if (wrongCount >= MAX_WRONG) { finish(false); return; } setTimeout(function() { if (!done) nextLetter(); }, 800); }
     userInput = '';
-    inputSymbols = [];
   }
 
+  function addSym(sym) { userInput += sym; lastInput = game.time.elapsed; game.audio.play('se_tap', sym === '-' ? 0.3 : 0.2); if (userInput.length >= morse.length) checkInput(); }
+
+  function drawScene() {
+    txt(letter, W / 2, snap(H * 0.20), 120, C.b);
+    var morseY = snap(H * 0.30);
+    for (var mi = 0; mi < morse.length; mi++) { var mx = W / 2 + (mi - morse.length / 2 + 0.5) * 88; if (morse[mi] === '.') pc(mx, morseY, 22, C.e, 0.8); else game.draw.rect(mx - 40, morseY - 14, 80, 28, C.c, 0.8); }
+    var inputY = snap(H * 0.46); txt('INPUT', W / 2 - 200, inputY + 14, 34, C.d, 'center');
+    for (var ii = 0; ii < userInput.length; ii++) { var ix = W / 2 - (userInput.length - 1) * 44 + ii * 88; if (userInput[ii] === '.') pc(ix, inputY, 24, C.e, 0.9); else game.draw.rect(ix - 40, inputY - 14, 80, 28, C.c, 0.9); }
+    // ボタン
+    var btnY = snap(H * 0.72);
+    game.draw.rect(60, btnY - 90, W / 2 - 120, 180, '#001a06', 0.8); game.draw.rect(60, btnY - 90, W / 2 - 120, 8, C.e, 0.5); pc(W / 4, btnY, 34, C.e, 0.7); txt('DOT', W / 4, btnY + 70, 40, C.e);
+    game.draw.rect(W / 2 + 60, btnY - 90, W / 2 - 120, 180, '#1a1400', 0.8); game.draw.rect(W / 2 + 60, btnY - 90, W / 2 - 120, 8, C.c, 0.5); game.draw.rect(W * 0.75 - 44, btnY - 14, 88, 28, C.c, 0.8); txt('DASH', W * 0.75, btnY + 70, 40, C.c);
+  }
+
+  // ── 入力 ──
   game.onTap(function(tx, ty) {
-    // Handled via hold detection in onUpdate
-  });
-
-  // Use hold detection pattern via press/release
-  var pressTime = -1;
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || resultTimer > 0) return;
-    // Swipe up = dash, swipe down = dot (quick alternative)
-    var sym = dir === 'up' ? '-' : '.';
-    userInput += sym;
-    inputSymbols.push({ sym: sym, t: 0.8 });
-    lastInputTime = elapsed;
-    game.audio.play('se_tap', sym === '-' ? 0.3 : 0.2);
-    if (userInput.length >= currentMorse.length) {
-      checkInput();
-    }
+    addSym(tx < W / 2 ? '.' : '-');
   });
 
+  game.onSwipe(function(dir) {
+    if (state !== S.PLAYING || done || resultTimer > 0) return;
+    addSym(dir === 'up' ? '-' : '.');
+  });
+
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!letter) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.075, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.11, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 52, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 40, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'MESSAGE SENT!' : 'SIGNAL LOST', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    // Check input timeout
-    if (userInput.length > 0 && resultTimer <= 0) {
-      var timeSince = elapsed - lastInputTime;
-      if (timeSince > consecutiveTimeout) {
-        checkInput();
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
+      if (userInput.length > 0 && resultTimer <= 0 && game.time.elapsed - lastInput > 1.5) checkInput();
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Update symbol animations
-    for (var si = inputSymbols.length - 1; si >= 0; si--) {
-      inputSymbols[si].t -= dt * 1.5;
-      if (inputSymbols[si].t <= 0) inputSymbols.splice(si, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.40), 90, resultText === 'NG' ? C.a : C.b);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.08);
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // CRT scanline effect
-    for (var li = 0; li < H; li += 6) {
-      game.draw.line(0, li, W, li, '#000033', 0.15);
-    }
-
-    // Morse display for current letter
-    var morseY = H * 0.28;
-    game.draw.text(currentLetter, W / 2, H * 0.18, { size: 120, color: C.signal, bold: true });
-
-    var morseX = W / 2 - currentMorse.length * 30;
-    for (var mi = 0; mi < currentMorse.length; mi++) {
-      var sym = currentMorse[mi];
-      var mx = W / 2 + (mi - currentMorse.length / 2 + 0.5) * 80;
-      if (sym === '.') {
-        game.draw.circle(mx, morseY, 22, C.dot, 0.8);
-        game.draw.circle(mx, morseY, 26, C.dotHi, 0.2);
-      } else {
-        game.draw.rect(mx - 40, morseY - 14, 80, 28, C.dash, 0.8);
-        game.draw.rect(mx - 40, morseY - 14, 80, 8, C.dashHi, 0.3);
-      }
-    }
-
-    // User input display
-    var inputY = H * 0.5;
-    game.draw.text('入力:', W / 2 - 160, inputY + 14, { size: 36, color: C.ui });
-    for (var ii = 0; ii < userInput.length; ii++) {
-      var isym = userInput[ii];
-      var ix = W / 2 - (userInput.length - 1) * 44 + ii * 88;
-      if (isym === '.') {
-        game.draw.circle(ix, inputY, 26, C.dotHi, 0.9);
-      } else {
-        game.draw.rect(ix - 40, inputY - 14, 80, 28, C.dashHi, 0.9);
-      }
-    }
-
-    // Controls hint
-    game.draw.text('上スワイプ = ー', W / 2, H * 0.63, { size: 36, color: C.ui });
-    game.draw.text('下スワイプ = ・', W / 2, H * 0.69, { size: 36, color: C.ui });
-
-    // Tap buttons
-    var btnY = H * 0.77;
-    game.draw.circle(W / 2 - 140, btnY, 68, C.dotHi, 0.15 + Math.sin(elapsed * 4) * 0.05);
-    game.draw.circle(W / 2 - 140, btnY, 56, C.dot, 0.6);
-    game.draw.text('・', W / 2 - 140, btnY + 18, { size: 50, color: '#fff', bold: true });
-
-    game.draw.rect(W / 2 + 60, btnY - 30, 160, 60, C.dash, 0.6);
-    game.draw.rect(W / 2 + 60, btnY - 30, 160, 16, C.dashHi, 0.3);
-    game.draw.text('ー', W / 2 + 140, btnY + 12, { size: 44, color: '#fff', bold: true });
-
-    // Result
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.42, { size: 90, color: flashCol, bold: true });
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.08);
-
-    // Wrong dots
-    for (var wi = 0; wi < MAX_WRONG; wi++) {
-      game.draw.circle(W / 2 - (MAX_WRONG - 1) * 50 + wi * 100, H * 0.955, 20, wi < wrongCount ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(correctCount + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 90);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.signal : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(correctCount + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var wi = 0; wi < MAX_WRONG; wi++) game.draw.rect(snap(W / 2 + (wi - (MAX_WRONG - 1) / 2) * 56) - 10, 224, 20, 20, wi < wrongCount ? C.a : '#002200');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.05);
-    nextLetter();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
