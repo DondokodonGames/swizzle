@@ -1,212 +1,134 @@
 // 567-orbit-catch.js
-// オービットキャッチ — 惑星の軌道を周回するアイテムをタイミング良くキャッチ
-// 操作: タップで惑星の引力をオン/オフしてアイテムを引き寄せる
-// 成功: 20個キャッチ  失敗: 8個取り逃す or 60秒
+// オービットキャッチ — 惑星を周回するアイテムを、タップで引力をON/OFFして引き寄せ捕獲する
+// 操作: タップで惑星の引力をON/OFF切替（ONで軌道アイテムが内側へ、OFFで外へ流れる）
+// 成功: 8個 キャッチ  失敗: 3個 取り逃す or 18秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#00020f',
-    planet:  '#4466ff',
-    planetHi:'#88aaff',
-    orbit:   '#1a1a44',
-    item:    '#f59e0b',
-    itemHi:  '#fcd34d',
-    attract: '#ff6633',
-    catchFx: '#22c55e',
-    miss:    '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#334466'
-  };
+  // ── パレット（アイスブルー、重力捕獲） ──
+  var C = { bg:'#00020f', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var CX = W / 2, CY = snap(H * 0.44), PLANET_R = 80, ORBIT_R = 320, ITEM_R = 28, ATTRACT_R = 200;
 
-  var CX = W / 2;
-  var CY = H * 0.42;
-  var PLANET_R = 80;
-  var ORBIT_R = 320;
-  var ITEM_R = 28;
-  var ATTRACT_R = 200;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ORBIT CATCH';
+  var HOW_TO_PLAY = 'TAP TO TOGGLE GRAVITY · PULL ORBITING ITEMS INTO THE PLANET';
+  var MAX_TIME = 18;
+  var NEEDED   = 8;          // 修正2: 20 → 8
+  var MAX_MISS = 3;          // 修正2: 8 → 3
 
-  var items = [];
-  var attracting = false;
-  var catches = 0;
-  var NEEDED = 20;
-  var misses = 0;
-  var MAX_MISS = 8;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var nextSpawn = 1.5;
-  var attractAnim = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnItem() {
-    var startAngle = Math.random() * Math.PI * 2;
-    var speed = (Math.random() < 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.8);
-    items.push({
-      angle: startAngle,
-      speed: speed,
-      orbitR: ORBIT_R * (0.7 + Math.random() * 0.6),
-      life: 6.0,
-      maxLife: 6.0,
-      caught: false
-    });
+  // ── ゲーム変数 ──
+  var items, attracting, catches, misses, timeLeft, done, particles, nextSpawn, stars;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#0a0a24');
+  }
+
+  function background() { game.draw.clear(C.bg); for (var s = 0; s < stars.length; s++) { var st = stars[s]; game.draw.rect(snap(st.x), snap(st.y), 8, 8, C.g, 0.3 + Math.sin(game.time.elapsed + st.t) * 0.2); } }
+
+  function spawnItem() { items.push({ angle: Math.random() * Math.PI * 2, speed: (Math.random() < 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.8), orbitR: ORBIT_R * (0.7 + Math.random() * 0.6), life: 6.0, maxLife: 6.0, caught: false }); }
+
+  function initGame() { items = []; attracting = false; catches = 0; misses = 0; timeLeft = MAX_TIME; done = false; particles = []; nextSpawn = 1.0; stars = []; for (var s = 0; s < 40; s++) stars.push({ x: Math.random() * W, y: Math.random() * H, t: Math.random() * Math.PI * 2 }); }
+
+  function finish(success) {
     if (done) return;
-    attracting = !attracting;
-    attractAnim = 0.3;
-    game.audio.play('se_tap', 0.3);
+    done = true; resultSuccess = success;
+    finalScore = success ? (catches * 700 + Math.ceil(timeLeft) * 100) : catches * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    for (var oi = 1; oi <= 3; oi++) pc(CX, CY, ORBIT_R * 0.7 * oi / 2, '#1a1a44', 0.3);
+    if (attracting) pc(CX, CY, ATTRACT_R + ORBIT_R * 0.6, C.f, 0.08 + Math.sin(game.time.elapsed * 8) * 0.04);
+    for (var i = 0; i < items.length; i++) { var it = items[i], ix = CX + Math.cos(it.angle) * it.orbitR, iy = CY + Math.sin(it.angle) * it.orbitR, lr = it.life / it.maxLife; pc(ix, iy, ITEM_R + 4, C.c, lr * 0.2); pc(ix, iy, ITEM_R, C.c, lr * 0.9); pc(ix - 8, iy - 8, ITEM_R * 0.3, C.g, 0.5); }
+    pc(CX, CY, PLANET_R, C.d, 0.95); pc(CX - 20, CY - 20, PLANET_R * 0.35, C.e, 0.4);
+    txt(attracting ? 'PULL ON' : 'PULL OFF', CX, CY + 14, 30, attracting ? C.f : C.g);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    attracting = !attracting; game.audio.play('se_tap', 0.3);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!stars) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.12, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.165, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.90, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ALL CAUGHT!' : 'DRIFTED AWAY', W / 2, H * 0.35, 64, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
+      if (timeLeft <= 0) { finish(false); return; }
+      for (var s = 0; s < stars.length; s++) stars[s].t += dt;
+      nextSpawn -= dt; if (nextSpawn <= 0) { spawnItem(); nextSpawn = Math.max(0.8, 1.4 - catches * 0.05); }
+      for (var i = items.length - 1; i >= 0; i--) {
+        var it = items[i]; it.angle += it.speed * dt;
+        var ix = CX + Math.cos(it.angle) * it.orbitR, iy = CY + Math.sin(it.angle) * it.orbitR;
+        if (attracting) { if (Math.hypot(CX - ix, CY - iy) < ATTRACT_R + it.orbitR) it.orbitR = Math.max(PLANET_R + ITEM_R + 4, it.orbitR - 200 * dt); }
+        else it.orbitR = Math.min(ORBIT_R * 1.3, it.orbitR + 60 * dt);
+        if (it.orbitR <= PLANET_R + ITEM_R + 8 && !it.caught) { it.caught = true; catches++; game.audio.play('se_success', 0.7); for (var pi = 0; pi < 8; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: ix, y: iy, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180, life: 0.4, col: C.b }); } items.splice(i, 1); if (catches >= NEEDED) { finish(true); return; } continue; }
+        it.life -= dt;
+        if (it.life <= 0 || it.orbitR > ORBIT_R * 1.8) { if (!it.caught) { misses++; game.audio.play('se_failure', 0.3); if (misses >= MAX_MISS) { finish(false); return; } } items.splice(i, 1); }
       }
-    }
-    if (attractAnim > 0) attractAnim -= dt * 3;
-
-    // Spawn items
-    nextSpawn -= dt;
-    if (nextSpawn <= 0 && !done) {
-      spawnItem();
-      nextSpawn = Math.max(0.8, 1.5 - catches * 0.03);
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Update items
-    for (var i = items.length - 1; i >= 0; i--) {
-      var item = items[i];
-      item.angle += item.speed * dt;
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.5);
 
-      var ix = CX + Math.cos(item.angle) * item.orbitR;
-      var iy = CY + Math.sin(item.angle) * item.orbitR;
-
-      // Attraction: pull toward planet when attract is on
-      if (attracting) {
-        var dx = CX - ix, dy = CY - iy;
-        var dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < ATTRACT_R + item.orbitR) {
-          item.orbitR = Math.max(PLANET_R + ITEM_R + 4, item.orbitR - 200 * dt);
-        }
-      } else {
-        // Drift back outward
-        item.orbitR = Math.min(ORBIT_R * 1.3, item.orbitR + 60 * dt);
-      }
-
-      // Catch
-      if (item.orbitR <= PLANET_R + ITEM_R + 8 && !item.caught) {
-        item.caught = true;
-        catches++;
-        game.audio.play('se_success', 0.7);
-        for (var pi = 0; pi < 8; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: ix, y: iy, vx: Math.cos(ang) * 180, vy: Math.sin(ang) * 180, life: 0.4, col: C.catchFx });
-        }
-        items.splice(i, 1);
-        if (catches >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(catches * 400 + Math.ceil(timeLeft) * 100); }, 700);
-        }
-        continue;
-      }
-
-      // Miss: item drifts too far or times out
-      item.life -= dt;
-      if (item.life <= 0 || item.orbitR > ORBIT_R * 1.8) {
-        if (!item.caught) {
-          misses++;
-          game.audio.play('se_failure', 0.3);
-          if (misses >= MAX_MISS && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
-          }
-        }
-        items.splice(i, 1);
-      }
-    }
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Stars
-    for (var si = 0; si < 40; si++) {
-      var sx = (si * 137 + 13) % W;
-      var sy = (si * 97 + 41) % H;
-      game.draw.circle(sx, sy, 2 + Math.sin(elapsed * 2 + si) * 1, '#ffffff', 0.3 + Math.sin(elapsed + si * 0.5) * 0.2);
-    }
-
-    // Orbit rings
-    for (var oi = 1; oi <= 3; oi++) {
-      game.draw.circle(CX, CY, ORBIT_R * 0.7 * oi / 2, C.orbit, 0.4);
-    }
-    game.draw.circle(CX, CY, ORBIT_R, C.orbit, 0.6);
-    game.draw.circle(CX, CY, ORBIT_R * 1.3, C.orbit, 0.3);
-
-    // Attract field
-    if (attracting) {
-      var aAlpha = 0.08 + Math.sin(elapsed * 8) * 0.04;
-      game.draw.circle(CX, CY, ATTRACT_R + ORBIT_R, C.attract, aAlpha);
-      game.draw.circle(CX, CY, ATTRACT_R + ORBIT_R * 0.6, C.attract, aAlpha * 1.5);
-    }
-
-    // Items
-    for (var i2 = 0; i2 < items.length; i2++) {
-      var item2 = items[i2];
-      var ix2 = CX + Math.cos(item2.angle) * item2.orbitR;
-      var iy2 = CY + Math.sin(item2.angle) * item2.orbitR;
-      var lifeRatio = item2.life / item2.maxLife;
-      game.draw.circle(ix2, iy2, ITEM_R + 6, C.item, lifeRatio * 0.2);
-      game.draw.circle(ix2, iy2, ITEM_R, C.item, lifeRatio * 0.9);
-      game.draw.circle(ix2 - 8, iy2 - 8, ITEM_R * 0.3, C.itemHi, 0.5);
-    }
-
-    // Planet
-    game.draw.circle(CX + 6, CY + 6, PLANET_R, '#001', 0.4);
-    game.draw.circle(CX, CY, PLANET_R, C.planet, 0.95);
-    game.draw.circle(CX - 20, CY - 20, PLANET_R * 0.35, C.planetHi, 0.4);
-    // Planet ring
-    game.draw.line(CX - PLANET_R - 30, CY + 20, CX + PLANET_R + 30, CY - 20, C.planetHi, 10);
-
-    var attractLabel = attracting ? '引力ON' : '引力OFF';
-    var attractCol = attracting ? C.attract : C.ui;
-    game.draw.circle(CX, CY, PLANET_R - 10, attractCol, 0.15 + Math.sin(elapsed * 6) * 0.05);
-    game.draw.text(attractLabel, CX, CY + 16, { size: 32, color: attracting ? C.attract : '#fff', bold: true });
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    // Miss dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 50 + mi * 100, H * 0.955, 20, mi < misses ? C.miss : C.ui, 0.9);
-    }
-
-    game.draw.text(catches + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.planet : C.miss);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(catches + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < misses ? C.a : '#0a0a24');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.06);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
