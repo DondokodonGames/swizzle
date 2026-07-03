@@ -1,219 +1,142 @@
 // 439-ice-slide.js
-// 氷上スライド — 氷の上を滑るペンギンをゴールへ誘導
-// 操作: スワイプでペンギンの進む方向を決める（滑って壁まで止まらない）
-// 成功: 10面クリア  失敗: 60秒
+// 氷上スライド — スワイプした方向へペンギンが滑り出し、壁にぶつかるまで止まらない。ゴールへ導く
+// 操作: スワイプ（上下左右）でペンギンを滑らせる。壁で止まる特性を使ってゴールへ
+// 成功: 2面 クリア  失敗: 30秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#020c18',
-    ice:    '#bfdbfe',
-    iceHi:  '#eff6ff',
-    iceSh:  '#93c5fd',
-    wall:   '#1e40af',
-    wallHi: '#3b82f6',
-    penguin:'#1e293b',
-    penguinHi:'#94a3b8',
-    belly:  '#f1f5f9',
-    beak:   '#f97316',
-    eye:    '#fff',
-    goal:   '#22c55e',
-    goalHi: '#bbf7d0',
-    trail:  '#60a5fa',
-    text:   '#f1f5f9',
-    ui:     '#475569',
-    wrong:  '#ef4444'
-  };
+  // ── パレット（アイスブルー、氷原） ──
+  var C = { bg:'#020c18', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var GRID = 7;
-  var CELL = 130;
-  var OX = (W - GRID * CELL) / 2;
-  var OY = (H - GRID * CELL) / 2 - 20;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ICE SLIDE';
+  var HOW_TO_PLAY = 'SWIPE TO SLIDE THE PENGUIN · IT STOPS AT WALLS · REACH THE GOAL';
+  var MAX_TIME = 30;
+  var NEEDED   = 2;          // 修正2: 10 → 2
+  var GRID = 7, CELL = snap(W * 0.13), OX = snap((W - GRID * snap(W * 0.13)) / 2), OY = snap((H - GRID * snap(W * 0.13)) / 2);
 
   var levels = [
-    { peng:[1,1], goal:[5,5], walls:[[3,1],[3,2],[3,3],[1,4]] },
-    { peng:[0,3], goal:[6,3], walls:[[2,3],[2,2],[4,3],[4,4]] },
-    { peng:[0,0], goal:[6,6], walls:[[2,0],[2,2],[4,2],[4,4],[6,4]] },
-    { peng:[3,0], goal:[3,6], walls:[[1,2],[5,2],[1,4],[5,4],[3,3]] },
-    { peng:[0,6], goal:[6,0], walls:[[2,4],[4,4],[2,2],[4,2],[3,3]] },
-    { peng:[0,0], goal:[6,3], walls:[[2,1],[2,3],[4,2],[4,5],[1,5]] },
-    { peng:[6,6], goal:[0,0], walls:[[4,4],[4,2],[2,4],[2,2],[3,3]] },
-    { peng:[0,3], goal:[6,3], walls:[[1,1],[1,5],[3,3],[5,1],[5,5]] },
-    { peng:[3,6], goal:[3,0], walls:[[1,4],[5,4],[2,2],[4,2],[3,4]] },
-    { peng:[0,0], goal:[6,6], walls:[[1,2],[2,4],[3,1],[4,3],[5,5]] }
+    { peng: [1, 1], goal: [5, 5], walls: [[3, 1], [3, 2], [3, 3], [1, 4]] },
+    { peng: [0, 3], goal: [6, 3], walls: [[2, 3], [2, 2], [4, 3], [4, 4]] },
+    { peng: [0, 0], goal: [6, 6], walls: [[2, 0], [2, 2], [4, 2], [4, 4], [6, 4]] }
   ];
 
-  var currentLevel = 0;
-  var pengX = 0, pengY = 0;
-  var goalX = 0, goalY = 0;
-  var walls = [];
-  var moving = false;
-  var moveVX = 0, moveVY = 0;
-  var solved = 0;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var trail = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function loadLevel(idx) {
-    var lv = levels[idx % levels.length];
-    pengX = lv.peng[0];
-    pengY = lv.peng[1];
-    goalX = lv.goal[0];
-    goalY = lv.goal[1];
-    walls = lv.walls.map(function(w) { return { x: w[0], y: w[1] }; });
-    moving = false;
-    trail = [];
+  // ── ゲーム変数 ──
+  var level, pengX, pengY, goalX, goalY, walls, moving, mvx, mvy, solved, timeLeft, done, flash, trail;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.18) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function isWall(x, y) {
-    if (x < 0 || x >= GRID || y < 0 || y >= GRID) return true;
-    for (var i = 0; i < walls.length; i++) {
-      if (walls[i].x === x && walls[i].y === y) return true;
-    }
-    return false;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1a2e');
   }
 
-  function slide(dx, dy) {
-    if (moving) return;
-    var nx = pengX + dx;
-    var ny = pengY + dy;
-    if (isWall(nx, ny)) return;
-    moveVX = dx;
-    moveVY = dy;
-    moving = true;
+  function background() { game.draw.clear(C.bg); }
+
+  function loadLevel(idx) { var lv = levels[idx % levels.length]; pengX = lv.peng[0]; pengY = lv.peng[1]; goalX = lv.goal[0]; goalY = lv.goal[1]; walls = lv.walls.map(function(w) { return { x: w[0], y: w[1] }; }); moving = false; trail = []; }
+
+  function isWall(x, y) { if (x < 0 || x >= GRID || y < 0 || y >= GRID) return true; for (var i = 0; i < walls.length; i++) if (walls[i].x === x && walls[i].y === y) return true; return false; }
+
+  function slide(dx, dy) { if (moving) return; if (isWall(pengX + dx, pengY + dy)) return; mvx = dx; mvy = dy; moving = true; game.audio.play('se_tap', 0.3); }
+
+  function initGame() { level = 0; solved = 0; timeLeft = MAX_TIME; done = false; flash = 0; loadLevel(0); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (solved * 700 + Math.ceil(timeLeft) * 100) : solved * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
-  game.onSwipe(function(dir) {
-    if (done || moving) return;
-    if (dir === 'up') slide(0, -1);
-    else if (dir === 'down') slide(0, 1);
-    else if (dir === 'left') slide(-1, 0);
-    else if (dir === 'right') slide(1, 0);
-    game.audio.play('se_tap', 0.3);
+  function drawBoard() {
+    for (var r = 0; r < GRID; r++) for (var c = 0; c < GRID; c++) { var cx = OX + c * CELL, cy = OY + r * CELL; if (isWall(c, r) && c >= 0 && c < GRID && r >= 0 && r < GRID) { game.draw.rect(cx + 2, cy + 2, CELL - 4, CELL - 4, C.d, 0.9); game.draw.rect(cx + 2, cy + 2, CELL - 4, 8, C.e, 0.4); } else { game.draw.rect(cx + 2, cy + 2, CELL - 4, CELL - 4, C.e, 0.12); if ((c + r) % 2 === 0) game.draw.rect(cx + 2, cy + 2, CELL - 4, CELL - 4, C.g, 0.05); } }
+    for (var ti = 0; ti < trail.length; ti++) pc(OX + trail[ti].x * CELL + CELL / 2, OY + trail[ti].y * CELL + CELL / 2, 14 * (ti / trail.length), C.e, ti / trail.length * 0.4);
+    var gx = OX + goalX * CELL + CELL / 2, gy = OY + goalY * CELL + CELL / 2; ring(gx, gy, CELL * 0.32, C.b, 0.5); pc(gx, gy, CELL * 0.16, C.b, 0.8); txt('G', gx, gy + 12, 34, '#000');
+    var px = OX + pengX * CELL + CELL / 2, py = OY + pengY * CELL + CELL / 2;
+    pc(px, py, 34, '#1a2838', 0.95); pc(px, py + 6, 22, C.g, 0.85); pc(px - 10, py - 14, 6, C.g, 0.9); pc(px + 10, py - 14, 6, C.g, 0.9); pc(px, py - 2, 8, C.f, 0.9);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
   });
 
-  game.onTap(function(tx, ty) {
-    if (done || moving) return;
-    var col = Math.floor((tx - OX) / CELL);
-    var row = Math.floor((ty - OY) / CELL);
-    if (col < 0 || col >= GRID || row < 0 || row >= GRID) return;
-    var dx = col - pengX;
-    var dy = row - pengY;
-    if (Math.abs(dx) > Math.abs(dy)) slide(dx > 0 ? 1 : -1, 0);
-    else if (dy !== 0) slide(0, dy > 0 ? 1 : -1);
+  game.onSwipe(function(d) {
+    if (state !== S.PLAYING || done || moving) return;
+    if (d === 'up') slide(0, -1); else if (d === 'down') slide(0, 1); else if (d === 'left') slide(-1, 0); else if (d === 'right') slide(1, 0);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!walls) initGame(); background(); drawBoard();
+      txt(GAME_TITLE, W / 2, H * 0.10, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.15, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SLID HOME!' : 'TIME OUT', W / 2, H * 0.35, 78, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2;
+      if (moving) {
+        var nx = pengX + mvx, ny = pengY + mvy;
+        if (isWall(nx, ny)) { moving = false; mvx = 0; mvy = 0; if (pengX === goalX && pengY === goalY) { solved++; flash = 0.8; game.audio.play('se_success', 0.7); if (solved >= NEEDED) { finish(true); return; } level++; setTimeout(function() { if (!done && state === S.PLAYING) loadLevel(level); }, 800); } }
+        else { trail.push({ x: pengX, y: pengY }); if (trail.length > 8) trail.shift(); pengX = nx; pengY = ny; }
       }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 2;
+    // ---- 描画 ----
+    background(); drawBoard();
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.b, flash * 0.1);
+    txt('LEVEL ' + (level + 1) + ' / ' + NEEDED, W / 2, snap(H * 0.88), 40, C.e);
 
-    if (moving) {
-      var nx = pengX + moveVX;
-      var ny = pengY + moveVY;
-      if (isWall(nx, ny)) {
-        moving = false;
-        moveVX = 0; moveVY = 0;
-        // Check goal
-        if (pengX === goalX && pengY === goalY) {
-          solved++;
-          flashAnim = 0.8;
-          game.audio.play('se_success', 0.7);
-          if (solved >= 10 && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(solved * 500 + Math.ceil(timeLeft) * 80); }, 700);
-            return;
-          }
-          currentLevel++;
-          setTimeout(function() { loadLevel(currentLevel); }, 900);
-        }
-      } else {
-        trail.push({ x: pengX, y: pengY });
-        if (trail.length > 8) trail.shift();
-        pengX = nx;
-        pengY = ny;
-      }
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Grid cells
-    for (var r = 0; r < GRID; r++) {
-      for (var c = 0; c < GRID; c++) {
-        var cx2 = OX + c * CELL;
-        var cy2 = OY + r * CELL;
-        if (isWall(c, r) && !(c < 0 || c >= GRID || r < 0 || r >= GRID)) {
-          game.draw.rect(cx2 + 2, cy2 + 2, CELL - 4, CELL - 4, C.wall, 0.9);
-          game.draw.rect(cx2 + 2, cy2 + 2, CELL - 4, 8, C.wallHi, 0.4);
-        } else {
-          game.draw.rect(cx2 + 2, cy2 + 2, CELL - 4, CELL - 4, C.ice, 0.15);
-          // Ice sheen
-          if ((c + r) % 2 === 0) game.draw.rect(cx2 + 2, cy2 + 2, CELL - 4, CELL - 4, C.iceHi, 0.05);
-        }
-      }
-    }
-
-    // Trail
-    for (var ti = 0; ti < trail.length; ti++) {
-      var tx2 = OX + trail[ti].x * CELL + CELL/2;
-      var ty2 = OY + trail[ti].y * CELL + CELL/2;
-      game.draw.circle(tx2, ty2, 20 * (ti/trail.length), C.trail, (ti/trail.length) * 0.4);
-    }
-
-    // Goal
-    var gx = OX + goalX * CELL + CELL/2;
-    var gy = OY + goalY * CELL + CELL/2;
-    game.draw.circle(gx, gy, CELL*0.42, C.goalHi, 0.2);
-    game.draw.circle(gx, gy, CELL*0.32, C.goal, 0.7);
-    game.draw.circle(gx, gy, CELL*0.16, C.goalHi, 0.8);
-    game.draw.text('★', gx, gy + 16, { size: 48, color: C.goalHi, bold: true });
-
-    // Penguin
-    var px = OX + pengX * CELL + CELL/2;
-    var py = OY + pengY * CELL + CELL/2;
-    // Body
-    game.draw.circle(px, py, 40, C.penguin, 0.9);
-    // Belly
-    game.draw.circle(px, py + 6, 26, C.belly, 0.8);
-    // Eyes
-    game.draw.circle(px - 12, py - 16, 8, C.eye, 0.9);
-    game.draw.circle(px + 12, py - 16, 8, C.eye, 0.9);
-    game.draw.circle(px - 10, py - 16, 4, C.penguin, 1);
-    game.draw.circle(px + 14, py - 16, 4, C.penguin, 1);
-    // Beak
-    game.draw.circle(px, py - 4, 10, C.beak, 0.9);
-    // Flippers
-    game.draw.circle(px - 44, py, 16, C.penguinHi, 0.8);
-    game.draw.circle(px + 44, py, 16, C.penguinHi, 0.8);
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, C.goal, flashAnim * 0.1);
-
-    // Level indicator
-    game.draw.text('レベル ' + (currentLevel + 1) + ' / 10', W/2, H*0.88, { size: 44, color: C.text });
-
-    game.draw.text(solved + ' / 10', W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.ice : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: C.penguin, bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(solved + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    loadLevel(0);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
