@@ -1,214 +1,148 @@
 // 514-time-bomb.js
-// タイムボム — カウントダウン中の爆弾をタップで解除せよ（ワイヤーは毎回ランダム）
-// 操作: 表示された順番でボタンをタップして爆弾を解除
-// 成功: 5つの爆弾を解除  失敗: 1回でも爆発 or 60秒
+// タイムボム — カウントダウン中の爆弾を、指示された順番でワイヤーボタンをタップして解除する
+// 操作: 「CUT ORDER」の色の順にワイヤーボタンをタップ（順番を間違えると即爆発）
+// 成功: 3個 解除  失敗: 1回でも誤爆 or 30秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#0a0000',
-    bomb:     '#1a0000',
-    bombRim:  '#7f1d1d',
-    wire0:    '#ef4444',
-    wire1:    '#3b82f6',
-    wire2:    '#22c55e',
-    wire3:    '#f59e0b',
-    wire4:    '#a855f7',
-    cutWire:  '#374151',
-    correct:  '#22c55e',
-    wrong:    '#ef4444',
-    text:     '#f1f5f9',
-    ui:       '#374151',
-    display:  '#22c55e',
-    digit:    '#00ff41'
-  };
+  // ── パレット（グリーンCRT、爆発物処理） ──
+  var C = { bg:'#000a00', a:'#ff3300', b:'#00ff41', c:'#ffe600', d:'#00cc33', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var WIRE_COLS = [C.a, C.e, C.b, C.c, C.f];
+  var WIRE_NAMES = ['RED', 'BLU', 'GRN', 'YEL', 'ORG'];
 
-  var WIRE_COLORS = [C.wire0, C.wire1, C.wire2, C.wire3, C.wire4];
-  var WIRE_NAMES = ['赤', '青', '緑', '黄', '紫'];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'TIME BOMB';
+  var HOW_TO_PLAY = 'CUT THE WIRES IN THE ORDER SHOWN · ONE MISTAKE AND BOOM';
+  var MAX_TIME = 30;
+  var NEEDED   = 3;          // 修正2: 5 → 3
   var WIRE_COUNT = 4;
+  var BTN_W = 420, BTN_H = 110, BOX = snap((W - 420) / 2), BOY = snap(H * 0.52), GAP = 24;
 
-  var bombs = 0;
-  var NEEDED = 5;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0;
-  var flashCol = C.correct;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var countdown = 10; // seconds per bomb
-  var sequence = [];  // order to cut
-  var cutIdx = 0;
-  var cutWires = []; // which wires are cut already
-  var bombTimer = 0;
-  var wireOrder = []; // display order
+  // ── ゲーム変数 ──
+  var bombs, sequence, cutIdx, cutWires, wireOrder, bombTimer, timeLeft, done, particles, flash, flashCol;
 
-  var BTN_W = 380, BTN_H = 100;
-  var BTN_OX = (W - BTN_W) / 2;
-  var BTN_OY = H * 0.52;
-  var BTN_GAP = 24;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  function newBomb() {
-    // Generate random wire order
-    wireOrder = [0, 1, 2, 3].sort(function() { return Math.random() - 0.5; });
-    // Random cut sequence (subset of wires)
-    var seqLen = 2 + Math.floor(Math.random() * 3);
-    sequence = [];
-    var available = wireOrder.slice();
-    for (var i = 0; i < seqLen && available.length > 0; i++) {
-      var pick = Math.floor(Math.random() * available.length);
-      sequence.push(available[pick]);
-      available.splice(pick, 1);
-    }
-    cutIdx = 0;
-    cutWires = [false, false, false, false];
-    bombTimer = 10 + (5 - bombs);
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
-    // Find which button was tapped
-    for (var bi = 0; bi < WIRE_COUNT; bi++) {
-      var bx = BTN_OX;
-      var by = BTN_OY + bi * (BTN_H + BTN_GAP);
-      if (tx >= bx && tx <= bx + BTN_W && ty >= by && ty <= by + BTN_H) {
-        var wireIdx = wireOrder[bi];
-        if (cutWires[wireIdx]) return; // already cut
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-        if (wireIdx === sequence[cutIdx]) {
-          // Correct!
-          cutWires[wireIdx] = true;
-          cutIdx++;
-          game.audio.play('se_tap', 0.5);
-          for (var pi = 0; pi < 6; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: bx + BTN_W / 2, y: by + BTN_H / 2, vx: Math.cos(ang) * 120, vy: Math.sin(ang) * 120, life: 0.35, col: WIRE_COLORS[wireIdx] });
-          }
-          if (cutIdx >= sequence.length) {
-            // Bomb defused!
-            bombs++;
-            flashCol = C.correct;
-            flashAnim = 0.5;
-            game.audio.play('se_success', 0.8);
-            if (bombs >= NEEDED && !done) {
-              done = true;
-              game.audio.play('se_success', 0.9);
-              setTimeout(function() { game.end.success(bombs * 800 + Math.ceil(timeLeft) * 100); }, 700);
-            } else {
-              setTimeout(function() { if (!done) newBomb(); }, 600);
-            }
-          }
-        } else {
-          // Wrong wire — BOOM!
-          flashCol = C.wrong;
-          flashAnim = 0.8;
-          game.audio.play('se_failure', 0.9);
-          done = true;
-          for (var pi2 = 0; pi2 < 20; pi2++) {
-            var ang2 = Math.random() * Math.PI * 2;
-            particles.push({ x: W / 2, y: H * 0.35, vx: Math.cos(ang2) * 300, vy: Math.sin(ang2) * 300, life: 0.7, col: C.wrong });
-          }
-          setTimeout(function() { game.end.failure(); }, 700);
-        }
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a0000');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function newBomb() {
+    wireOrder = [0, 1, 2, 3].sort(function() { return Math.random() - 0.5; });
+    var seqLen = 2 + Math.floor(Math.random() * 2), avail = wireOrder.slice(); sequence = [];
+    for (var i = 0; i < seqLen && avail.length > 0; i++) { var pick = Math.floor(Math.random() * avail.length); sequence.push(avail[pick]); avail.splice(pick, 1); }
+    cutIdx = 0; cutWires = [false, false, false, false]; bombTimer = 12;
+  }
+
+  function initGame() { bombs = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; newBomb(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (bombs * 1000 + Math.ceil(timeLeft) * 100) : bombs * 400;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function boom() { flash = 0.8; flashCol = C.a; game.audio.play('se_failure', 0.9); for (var pi = 0; pi < 20; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: H * 0.30, vx: Math.cos(a) * 300, vy: Math.sin(a) * 300, life: 0.7, col: C.a }); } finish(false); }
+
+  function drawBomb() {
+    var secs = Math.ceil(bombTimer);
+    game.draw.rect(W / 2 - 200, H * 0.14, 400, 200, '#1a0000', 0.95);
+    game.draw.rect(W / 2 - 100, H * 0.18, 200, 80, '#001a00', 0.95);
+    txt(secs + '', W / 2, H * 0.235, 72, bombTimer < 5 ? C.a : C.b);
+    // CUT ORDER
+    txt('CUT ORDER', W / 2, H * 0.42, 34, C.d);
+    for (var si = 0; si < sequence.length; si++) { var x = W / 2 - (sequence.length - 1) * 90 + si * 180; txt(si < cutIdx ? 'OK' : WIRE_NAMES[sequence[si]], x, H * 0.47, 40, si < cutIdx ? C.d : WIRE_COLS[sequence[si]]); }
+    for (var bi = 0; bi < WIRE_COUNT; bi++) {
+      var bx = BOX, by = BOY + bi * (BTN_H + GAP), wi = wireOrder[bi], cut = cutWires[wi];
+      game.draw.rect(bx + 4, by + 4, BTN_W - 8, BTN_H - 8, cut ? '#204020' : WIRE_COLS[wi], cut ? 0.4 : 0.9);
+      game.draw.rect(bx + 4, by + 4, BTN_W - 8, 10, C.g, cut ? 0.05 : 0.2);
+      txt(cut ? 'CUT' : WIRE_NAMES[wi], bx + BTN_W / 2, by + BTN_H / 2 + 16, 44, cut ? '#406040' : C.bg);
+    }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    for (var bi = 0; bi < WIRE_COUNT; bi++) {
+      var bx = BOX, by = BOY + bi * (BTN_H + GAP);
+      if (tx >= bx && tx <= bx + BTN_W && ty >= by && ty <= by + BTN_H) {
+        var wi = wireOrder[bi]; if (cutWires[wi]) return;
+        if (wi === sequence[cutIdx]) {
+          cutWires[wi] = true; cutIdx++; game.audio.play('se_tap', 0.5);
+          for (var pi = 0; pi < 6; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: bx + BTN_W / 2, y: by + BTN_H / 2, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, life: 0.35, col: WIRE_COLS[wi] }); }
+          if (cutIdx >= sequence.length) { bombs++; flash = 0.5; flashCol = C.b; game.audio.play('se_success', 0.8); if (bombs >= NEEDED) { finish(true); return; } setTimeout(function() { if (!done) newBomb(); }, 600); }
+        } else boom();
         return;
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!sequence) initGame(); background(); drawBomb();
+      txt(GAME_TITLE, W / 2, H * 0.08, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.115, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.95, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'DEFUSED!' : 'BOOM!', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      bombTimer -= dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-      if (bombTimer <= 0) {
-        // Timed out — BOOM!
-        flashCol = C.wrong;
-        flashAnim = 0.8;
-        game.audio.play('se_failure', 0.9);
-        done = true;
-        for (var pi3 = 0; pi3 < 20; pi3++) {
-          var ang3 = Math.random() * Math.PI * 2;
-          particles.push({ x: W / 2, y: H * 0.35, vx: Math.cos(ang3) * 300, vy: Math.sin(ang3) * 300, life: 0.7, col: C.wrong });
-        }
-        setTimeout(function() { game.end.failure(); }, 700);
-        return;
-      }
+      timeLeft -= dt; bombTimer -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (bombTimer <= 0) { boom(); return; }
+      if (flash > 0) flash -= dt * 3;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 3;
+    // ---- 描画 ----
+    background(); drawBomb();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.5);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.2);
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // --- draw ---
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Bomb body
-    game.draw.circle(W / 2, H * 0.29, 160, C.bombRim, 0.3);
-    game.draw.circle(W / 2, H * 0.29, 148, C.bomb, 0.95);
-    // Countdown display on bomb
-    var secsLeft = Math.ceil(bombTimer);
-    var urgency = bombTimer < 5 ? Math.sin(elapsed * 10) * 0.3 + 0.7 : 1.0;
-    var timerCol = bombTimer < 5 ? C.wrong : C.digit;
-    game.draw.rect(W / 2 - 100, H * 0.24, 200, 70, '#001a00', 0.95);
-    game.draw.text(secsLeft + '', W / 2, H * 0.275, { size: 68, color: timerCol, bold: true });
-
-    // Sequence display
-    game.draw.text('切る順番:', W / 2, H * 0.45, { size: 36, color: C.ui });
-    var seqStr = '';
-    for (var si = 0; si < sequence.length; si++) {
-      seqStr += (si < cutIdx ? '✓' : WIRE_NAMES[sequence[si]]);
-      if (si < sequence.length - 1) seqStr += ' → ';
-    }
-    game.draw.text(seqStr, W / 2, H * 0.49, { size: 40, color: C.display, bold: true });
-
-    // Wire buttons
-    for (var bi2 = 0; bi2 < WIRE_COUNT; bi2++) {
-      var bx2 = BTN_OX;
-      var by2 = BTN_OY + bi2 * (BTN_H + BTN_GAP);
-      var wireIdx2 = wireOrder[bi2];
-      var isCut = cutWires[wireIdx2];
-      var wCol = isCut ? C.cutWire : WIRE_COLORS[wireIdx2];
-      game.draw.rect(bx2 + 4, by2 + 4, BTN_W - 8, BTN_H - 8, wCol, isCut ? 0.4 : 0.85);
-      game.draw.rect(bx2 + 4, by2 + 4, BTN_W - 8, 10, '#fff', isCut ? 0.05 : 0.2);
-      var label = isCut ? ('✓ ' + WIRE_NAMES[wireIdx2] + 'ワイヤー') : (WIRE_NAMES[wireIdx2] + 'ワイヤーを切る');
-      game.draw.text(label, bx2 + BTN_W / 2, by2 + BTN_H / 2 + 16, { size: 40, color: isCut ? '#555' : '#fff', bold: true });
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 12 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.2);
-
-    // Bomb counter
-    for (var bci = 0; bci < NEEDED; bci++) {
-      game.draw.circle(W / 2 - (NEEDED - 1) * 60 + bci * 120, H * 0.955, 22, bci < bombs ? C.correct : C.ui, 0.9);
-    }
-
-    game.draw.text(bombs + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.wire0 : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(bombs + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.06);
-    newBomb();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

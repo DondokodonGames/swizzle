@@ -1,242 +1,143 @@
 // 513-penguin-slide.js
-// ペンギンスライド — 氷の坂を滑るペンギンを上下スワイプで障害物を避けさせる
-// 操作: 上スワイプでジャンプ、下スワイプでしゃがむ
-// 成功: 500m走破  失敗: 3回衝突 or 60秒
+// ペンギンスライド — 氷の坂を滑るペンギンを、上スワイプでジャンプ/下スワイプでしゃがませ障害物を避ける
+// 操作: 上スワイプ/上半分タップ=ジャンプ（低い障害物）、下スワイプ/下半分タップ=しゃがむ（高い障害物）
+// 成功: 300m 走破  失敗: 3回 衝突 or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#010a14',
-    sky:    '#0c1e30',
-    snow:   '#cce8f4',
-    snowHi: '#f0f9ff',
-    ice:    '#7dd3fc',
-    penguin:'#1e293b',
-    penguinBelly:'#f1f5f9',
-    penguinBeak:'#f59e0b',
-    obLow:  '#3b82f6',  // low obstacle (jump over)
-    obHigh: '#a855f7',  // high obstacle (duck under)
-    hit:    '#ef4444',
-    safe:   '#22c55e',
-    text:   '#f1f5f9',
-    ui:     '#374151'
-  };
+  // ── パレット（アイスブルー、南極の坂） ──
+  var C = { bg:'#010a14', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var GROUND_Y = H * 0.72;
-  var PENGUIN_X = W * 0.25;
-  var PENGUIN_R = 52;
-  var penguin = { y: GROUND_Y - PENGUIN_R, vy: 0, crouching: false, jumpTimer: 0 };
-  var obstacles = [];
-  var score = 0;
-  var GOAL = 500;
-  var hits = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'PENGUIN SLIDE';
+  var HOW_TO_PLAY = 'SWIPE UP TO JUMP · SWIPE DOWN TO DUCK · DODGE OBSTACLES';
+  var MAX_TIME = 20;
+  var GOAL     = 300;        // 修正2: 500m → 300m
   var MAX_HITS = 3;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var nextObstacle = 1.5;
-  var speed = 400;
-  var flashAnim = 0;
-  var invincible = 0;
-  var snowflakes = [];
+  var GROUND_Y = snap(H * 0.70), PX = snap(W * 0.25), PR = 50;
 
-  // Background snowflakes
-  for (var si = 0; si < 30; si++) {
-    snowflakes.push({ x: Math.random() * W, y: Math.random() * H, r: 2 + Math.random() * 4, vy: 40 + Math.random() * 60 });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var penguin, obstacles, score, hits, timeLeft, done, particles, nextOb, speed, flash, invincible, snow;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onSwipe(function(dir) {
-    if (done) return;
-    if (dir === 'up' && !penguin.jumpTimer && penguin.y >= GROUND_Y - PENGUIN_R - 5) {
-      penguin.vy = -900;
-      penguin.jumpTimer = 0.6;
-      penguin.crouching = false;
-      game.audio.play('se_tap', 0.4);
-    } else if (dir === 'down') {
-      penguin.crouching = true;
-      game.audio.play('se_tap', 0.2);
-    }
-  });
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#0c1e30');
+  }
+
+  function distBar() {
+    var t = Math.ceil(Math.min(1, score / GOAL) * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, H - 60, 72, 40, i < t ? C.b : '#0c1e30');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(0, 0, W, H * 0.64, '#0c1e30', 0.5); for (var si = 0; si < snow.length; si++) game.draw.rect(snow[si].x, snow[si].y, snow[si].r, snow[si].r, C.g, 0.5); game.draw.rect(0, GROUND_Y, W, H - GROUND_Y, '#cce8f4', 0.9); game.draw.rect(0, GROUND_Y, W, 12, C.g, 0.7); }
+
+  function initGame() { penguin = { y: GROUND_Y - PR, vy: 0, crouch: false, crouchT: 0 }; obstacles = []; score = 0; hits = 0; timeLeft = MAX_TIME; done = false; particles = []; nextOb = 1.5; speed = 380; flash = 0; invincible = 0; snow = []; for (var si = 0; si < 30; si++) snow.push({ x: snap(Math.random() * W), y: snap(Math.random() * H), r: 4 + Math.random() * 4, vy: 40 + Math.random() * 60 }); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.floor(score) * 15 + (MAX_HITS - hits) * 500 + Math.ceil(timeLeft) * 100) : Math.floor(score) * 10;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function doJump() { if (penguin.crouchT <= 0 && penguin.y >= GROUND_Y - PR - 5) { penguin.vy = -900; penguin.crouch = false; game.audio.play('se_tap', 0.4); } }
+  function doDuck() { penguin.crouch = true; penguin.crouchT = 0.4; game.audio.play('se_tap', 0.2); }
+
+  function drawScene() {
+    for (var oi = 0; oi < obstacles.length; oi++) { var o = obstacles[oi]; game.draw.rect(snap(o.x), snap(o.y - o.h), o.w, o.h, o.high ? C.d : C.a, 0.9); game.draw.rect(snap(o.x), snap(o.y - o.h), o.w, 8, C.g, 0.3); }
+    var pr = penguin.crouch ? PR * 0.55 : PR, py = penguin.crouch ? GROUND_Y - pr : penguin.y;
+    var blink = invincible > 0 ? (Math.floor(game.time.elapsed * 12) % 2) : 1;
+    if (blink) { pc(PX, py, pr, '#1e293b', 0.95); pc(PX, py + pr * 0.1, pr * 0.55, C.g, 0.8); pc(PX + pr * 0.35, py - pr * 0.15, pr * 0.14, C.f, 0.9); pc(PX - pr * 0.2, py - pr * 0.25, pr * 0.1, C.g, 0.9); }
+  }
+
+  // ── 入力 ──
   game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done) return;
-    if (ty < H * 0.5) {
-      // Top half = jump
-      if (!penguin.jumpTimer && penguin.y >= GROUND_Y - PENGUIN_R - 5) {
-        penguin.vy = -900;
-        penguin.jumpTimer = 0.6;
-        penguin.crouching = false;
-        game.audio.play('se_tap', 0.4);
-      }
-    } else {
-      // Bottom half = crouch
-      penguin.crouching = true;
-      game.audio.play('se_tap', 0.2);
-    }
+    if (ty < H * 0.5) doJump(); else doDuck();
   });
 
+  game.onSwipe(function(dir) { if (state === S.PLAYING && !done) { if (dir === 'up') doJump(); else if (dir === 'down') doDuck(); } });
+
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!penguin) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.16, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.40, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.46, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background(); drawScene();
+      txt(resultSuccess ? 'GOAL REACHED!' : 'CRASHED', W / 2, H * 0.16, 62, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.22, 52, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.28, 44, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      score += speed * dt / 10;
-      if (score >= GOAL) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(Math.floor(score) * 10 + (MAX_HITS - hits) * 500 + Math.ceil(timeLeft) * 100); }, 700);
-        return;
+      timeLeft -= dt; score += speed * dt / 10;
+      if (score >= GOAL) { finish(true); return; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (invincible > 0) invincible -= dt;
+      if (penguin.crouchT > 0) { penguin.crouchT -= dt; if (penguin.crouchT <= 0) penguin.crouch = false; }
+      if (!penguin.crouch) { penguin.vy += 2200 * dt; penguin.y += penguin.vy * dt; if (penguin.y >= GROUND_Y - PR) { penguin.y = GROUND_Y - PR; penguin.vy = 0; } }
+      speed = 380 + score * 1.2;
+      nextOb -= dt; if (nextOb <= 0) { var high = Math.random() < 0.5; obstacles.push({ x: W + 60, y: high ? GROUND_Y - PR * 2.2 : GROUND_Y, w: 44, h: high ? 120 : 84, high: high }); nextOb = 0.8 + Math.random() * 0.8; }
+      for (var oi = obstacles.length - 1; oi >= 0; oi--) {
+        obstacles[oi].x -= speed * dt; if (obstacles[oi].x < -80) { obstacles.splice(oi, 1); continue; }
+        if (invincible <= 0) { var o = obstacles[oi], pr = penguin.crouch ? PR * 0.55 : PR, py = penguin.crouch ? GROUND_Y - pr : penguin.y; if (Math.abs(PX - (o.x + o.w / 2)) < pr + o.w / 2 - 10 && Math.abs(py - (o.y - o.h / 2)) < pr + o.h / 2 - 10) { hits++; flash = 0.7; invincible = 1.2; game.audio.play('se_failure', 0.6); for (var pi = 0; pi < 8; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: PX, y: penguin.y, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, life: 0.4, col: C.a }); } if (hits >= MAX_HITS) { finish(false); return; } } }
       }
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      for (var sf = 0; sf < snow.length; sf++) { snow[sf].x -= speed * 0.1 * dt; snow[sf].y += snow[sf].vy * dt; if (snow[sf].x < 0) snow[sf].x = W; if (snow[sf].y > H) snow[sf].y = 0; }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (invincible > 0) invincible -= dt;
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.a, flash * 0.15);
 
-    // Penguin physics
-    if (penguin.jumpTimer > 0) penguin.jumpTimer -= dt;
-    if (!penguin.crouching) {
-      penguin.vy += 2200 * dt;
-    }
-    penguin.y += penguin.vy * dt;
-    if (penguin.y >= GROUND_Y - PENGUIN_R) {
-      penguin.y = GROUND_Y - PENGUIN_R;
-      penguin.vy = 0;
-      penguin.jumpTimer = 0;
-    }
-    // Auto-stand after crouch
-    if (penguin.crouching && penguin.y >= GROUND_Y - PENGUIN_R - 2) {
-      setTimeout(function() { if (!done) penguin.crouching = false; }, 300);
-    }
-
-    // Increase speed
-    speed = 400 + score * 0.8;
-
-    // Spawn obstacles
-    nextObstacle -= dt;
-    if (nextObstacle <= 0 && !done) {
-      var isHigh = Math.random() < 0.5; // high (duck) or low (jump)
-      obstacles.push({
-        x: W + 60,
-        y: isHigh ? GROUND_Y - PENGUIN_R * 2.5 : GROUND_Y,
-        w: 40,
-        h: isHigh ? 120 : 80,
-        high: isHigh
-      });
-      nextObstacle = 0.8 + Math.random() * 0.8;
-    }
-
-    // Update obstacles
-    for (var oi = obstacles.length - 1; oi >= 0; oi--) {
-      obstacles[oi].x -= speed * dt;
-      if (obstacles[oi].x < -80) { obstacles.splice(oi, 1); continue; }
-
-      // Collision
-      if (invincible <= 0) {
-        var ob = obstacles[oi];
-        var penR = penguin.crouching ? PENGUIN_R * 0.55 : PENGUIN_R;
-        var penY = penguin.crouching ? GROUND_Y - penR : penguin.y;
-        var dx2 = Math.abs(PENGUIN_X - (ob.x + ob.w / 2));
-        var dy2 = Math.abs(penY - (ob.y - ob.h / 2));
-        if (dx2 < penR + ob.w / 2 - 10 && dy2 < penR + ob.h / 2 - 10) {
-          hits++;
-          flashAnim = 0.7;
-          invincible = 1.2;
-          game.audio.play('se_failure', 0.6);
-          for (var pi = 0; pi < 8; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: PENGUIN_X, y: penguin.y, vx: Math.cos(ang) * 150, vy: Math.sin(ang) * 150, life: 0.4, col: C.hit });
-          }
-          if (hits >= MAX_HITS && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 600);
-          }
-        }
-      }
-    }
-
-    // Snowflakes
-    for (var sfi = 0; sfi < snowflakes.length; sfi++) {
-      snowflakes[sfi].x -= speed * 0.1 * dt;
-      snowflakes[sfi].y += snowflakes[sfi].vy * dt;
-      if (snowflakes[sfi].x < 0) snowflakes[sfi].x = W;
-      if (snowflakes[sfi].y > H) snowflakes[sfi].y = 0;
-    }
-
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // --- draw ---
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, H * 0.65, C.sky, 0.5);
-
-    // Snowflakes
-    for (var sfi2 = 0; sfi2 < snowflakes.length; sfi2++) {
-      game.draw.circle(snowflakes[sfi2].x, snowflakes[sfi2].y, snowflakes[sfi2].r, C.snowHi, 0.5);
-    }
-
-    // Ground
-    game.draw.rect(0, GROUND_Y, W, H - GROUND_Y, C.snow, 0.9);
-    game.draw.rect(0, GROUND_Y, W, 12, C.snowHi, 0.7);
-    // Ice sparkles
-    for (var isi = 0; isi < 8; isi++) {
-      var sparkX = (isi * 140 + elapsed * 60) % W;
-      game.draw.circle(sparkX, GROUND_Y + 6, 3, C.ice, 0.6);
-    }
-
-    // Obstacles
-    for (var oi2 = 0; oi2 < obstacles.length; oi2++) {
-      var ob2 = obstacles[oi2];
-      var obCol = ob2.high ? C.obHigh : C.obLow;
-      game.draw.rect(ob2.x, ob2.y - ob2.h, ob2.w, ob2.h, obCol, 0.9);
-      game.draw.rect(ob2.x, ob2.y - ob2.h, ob2.w, 8, '#fff', 0.3);
-    }
-
-    // Penguin
-    var penR2 = penguin.crouching ? PENGUIN_R * 0.55 : PENGUIN_R;
-    var penY2 = penguin.crouching ? GROUND_Y - penR2 : penguin.y;
-    var invBlink = invincible > 0 ? (Math.sin(elapsed * 20) > 0 ? 0.5 : 0.9) : 0.9;
-    game.draw.circle(PENGUIN_X, penY2, penR2, C.penguin, invBlink);
-    game.draw.circle(PENGUIN_X, penY2 + penR2 * 0.1, penR2 * 0.6, C.penguinBelly, 0.8);
-    game.draw.circle(PENGUIN_X + penR2 * 0.35, penY2 - penR2 * 0.15, penR2 * 0.1, C.penguinBeak, 0.9);
-    game.draw.circle(PENGUIN_X - penR2 * 0.2, penY2 - penR2 * 0.25, penR2 * 0.1, '#fff', 0.9);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, C.hit, flashAnim * 0.15);
-
-    // Score
-    game.draw.text(Math.floor(score) + 'm', W * 0.75, H * 0.14, { size: 56, color: C.text, bold: true });
-    game.draw.text('Goal ' + GOAL + 'm', W * 0.75, H * 0.20, { size: 36, color: C.ui });
-
-    // Hit dots
-    for (var hiti = 0; hiti < MAX_HITS; hiti++) {
-      game.draw.circle(W / 2 - (MAX_HITS - 1) * 60 + hiti * 120, H * 0.955, 22, hiti < hits ? C.hit : C.ui, 0.9);
-    }
-
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.ice : C.hit);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    distBar();
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(Math.floor(score) + ' / ' + GOAL + 'm', W / 2, 168, 44, C.e);
+    for (var hi = 0; hi < MAX_HITS; hi++) game.draw.rect(snap(W / 2 + (hi - (MAX_HITS - 1) / 2) * 56) - 10, 224, 20, 20, hi < hits ? C.a : '#0c1e30');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.08);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
