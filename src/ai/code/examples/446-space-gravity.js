@@ -1,269 +1,143 @@
 // 446-space-gravity.js
-// 宇宙重力 — 惑星の重力を使って探査機を目標へ誘導
-// 操作: タップで探査機を発射する方向と強さを決める
-// 成功: 5つの目標を捕捉  失敗: 5回外れ or 60秒
+// 宇宙重力 — 惑星の重力で探査機の軌道が曲がる。それを見越して発射し、光る目標にヒットさせる
+// 操作: 目標のいる方向をタップして探査機を発射（惑星に落ちると失敗）
+// 成功: 目標3個 捕捉  失敗: 3回 外す or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#000814',
-    star:   '#e2e8f0',
-    planet: '#7c3aed',
-    planetHi:'#a855f7',
-    moon:   '#64748b',
-    probe:  '#22d3ee',
-    probeHi:'#cffafe',
-    trail:  '#0891b2',
-    target: '#fbbf24',
-    targetHi:'#fef08a',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（アイスブルー、宇宙） ──
+  var C = { bg:'#000814', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var stars = [];
-  for (var si = 0; si < 80; si++) {
-    stars.push({ x: Math.random() * W, y: Math.random() * H, r: 1 + Math.random() * 2, blink: Math.random() * Math.PI * 2 });
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SPACE GRAVITY';
+  var HOW_TO_PLAY = 'TAP TO LAUNCH · GRAVITY CURVES THE PROBE · HIT THE STAR';
+  var MAX_TIME = 20;
+  var NEEDED   = 3;          // 修正2: 5 → 3
+  var MAX_MISS = 3;          // 修正2: 5 → 3
+  var PX = snap(W / 2), PY = snap(H / 2), PLANET_R = 96, MASS = 80000, LAUNCH_Y = snap(H * 0.88);
+
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var probe, probeTrail, target, stars, caught, misses, timeLeft, done, particles, flash, flashCol;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.14) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  var PLANET_X = W / 2;
-  var PLANET_Y = H / 2;
-  var PLANET_R = 100;
-  var PLANET_MASS = 80000;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-  var probe = null;
-  var probeTrail = [];
-  var target = null;
-  var aimStart = null;
-  var aimCurrent = null;
-
-  var caught = 0;
-  var NEEDED = 5;
-  var misses = 0;
-  var MAX_MISS = 5;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var flashCol = C.correct;
-  var particles = [];
-
-  function spawnTarget() {
-    var angle = Math.random() * Math.PI * 2;
-    var dist = 280 + Math.random() * 200;
-    target = {
-      x: W/2 + Math.cos(angle) * dist,
-      y: H/2 + Math.sin(angle) * dist,
-      pulse: 0
-    };
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#081428');
   }
 
-  function launchProbe(fromX, fromY, toX, toY) {
-    var dx = toX - fromX;
-    var dy = toY - fromY;
-    var len = Math.sqrt(dx*dx + dy*dy);
-    var speed = Math.min(len * 1.5, 600);
-    probe = {
-      x: fromX,
-      y: fromY,
-      vx: (dx / len) * speed,
-      vy: (dy / len) * speed,
-      life: 4.0
-    };
-    probeTrail = [];
+  function background() { game.draw.clear(C.bg); for (var si = 0; si < stars.length; si++) game.draw.rect(stars[si].x, stars[si].y, stars[si].r, stars[si].r, C.g, 0.4 + Math.sin(game.time.elapsed * 2 + si) * 0.3); }
+
+  function initStars() { stars = []; for (var i = 0; i < 60; i++) stars.push({ x: snap(Math.random() * W), y: snap(Math.random() * H), r: Math.random() < 0.5 ? 4 : 8 }); }
+
+  function spawnTarget() { var ang = Math.random() * Math.PI * 2, dist = 280 + Math.random() * 160; target = { x: snap(PX + Math.cos(ang) * dist), y: snap(PY + Math.sin(ang) * dist), pulse: 0 }; }
+
+  function initGame() { probe = null; probeTrail = []; caught = 0; misses = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; spawnTarget(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (caught * 700 + Math.ceil(timeLeft) * 100) : caught * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
-  game.onTap(function(tx, ty) {
+  function fail() { misses++; flash = 0.5; flashCol = C.a; game.audio.play('se_failure', 0.4); probe = null; probeTrail = []; if (misses >= MAX_MISS) { finish(false); return true; } return false; }
+
+  function drawScene() {
+    pc(PX, PY, PLANET_R, C.d, 0.9); pc(PX - PLANET_R * 0.3, PY - PLANET_R * 0.3, PLANET_R * 0.25, C.e, 0.3); ring(PX, PY, PLANET_R + 20, C.d, 0.2);
+    if (target) { ring(target.x, target.y, 40 + Math.sin(target.pulse) * 10, C.c, 0.4); pc(target.x, target.y, 24, C.c, 0.8); pc(target.x, target.y, 12, C.g, 0.9); }
+    for (var ti = 0; ti < probeTrail.length; ti++) pc(probeTrail[ti].x, probeTrail[ti].y, 8 * (ti / probeTrail.length), C.e, ti / probeTrail.length * 0.5);
+    if (probe) { pc(probe.x, probe.y, 14, C.b, 0.9); pc(probe.x, probe.y, 7, C.g, 0.8); }
+    else { pc(W / 2, LAUNCH_Y, 20, C.e, 0.6); pc(W / 2, LAUNCH_Y, 12, C.g, 0.8); }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || probe) return;
-    // Launch from bottom area
-    var launchX = W / 2;
-    var launchY = H * 0.88;
-    launchProbe(launchX, launchY, tx, ty);
-    game.audio.play('se_tap', 0.4);
+    var fx = W / 2, fy = LAUNCH_Y, dx = x - fx, dy = y - fy, len = Math.max(1, Math.hypot(dx, dy)), sp = Math.min(len * 1.5, 600);
+    probe = { x: fx, y: fy, vx: dx / len * sp, vy: dy / len * sp, life: 4.0 }; probeTrail = []; game.audio.play('se_tap', 0.4);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!stars) { initStars(); initGame(); } background(); if (target) target.pulse += dt * 3; drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.14, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.20, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.92, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.96, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background(); drawScene();
+      txt(resultSuccess ? 'CAPTURED!' : 'LOST IN SPACE', W / 2, H * 0.14, 60, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.20, 52, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.26, 44, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2; if (target) target.pulse += dt * 3;
+      if (probe) {
+        probe.life -= dt;
+        var gdx = PX - probe.x, gdy = PY - probe.y, gd = Math.hypot(gdx, gdy); if (gd > 0) { var grav = Math.min(MASS / (gd * gd), 1200); probe.vx += gdx / gd * grav * dt; probe.vy += gdy / gd * grav * dt; }
+        probeTrail.push({ x: probe.x, y: probe.y }); if (probeTrail.length > 26) probeTrail.shift();
+        probe.x += probe.vx * dt; probe.y += probe.vy * dt;
+        if (gd < PLANET_R + 10) { for (var k = 0; k < 10; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: probe.x, y: probe.y, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, life: 0.5, col: C.a }); } if (fail()) return; }
+        else if (probe && (probe.x < -100 || probe.x > W + 100 || probe.y < -100 || probe.y > H + 100 || probe.life <= 0)) { if (fail()) return; }
+        else if (probe && target && Math.hypot(target.x - probe.x, target.y - probe.y) < 46) { caught++; flash = 0.8; flashCol = C.b; game.audio.play('se_success', 0.7); for (var k2 = 0; k2 < 12; k2++) { var a2 = Math.random() * Math.PI * 2; particles.push({ x: target.x, y: target.y, vx: Math.cos(a2) * 180, vy: Math.sin(a2) * 180, life: 0.6, col: C.c }); } probe = null; probeTrail = []; target = null; if (caught >= NEEDED) { finish(true); return; } setTimeout(function() { if (!done && state === S.PLAYING) spawnTarget(); }, 700); }
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 2;
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (!probe) txt('TAP TO LAUNCH', W / 2, snap(H * 0.94), 36, C.e);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // Planet rotation visual
-    elapsed += 0;
-
-    // Update probe
-    if (probe) {
-      probe.life -= dt;
-
-      // Gravity from planet
-      var pdx = PLANET_X - probe.x;
-      var pdy = PLANET_Y - probe.y;
-      var pdist = Math.sqrt(pdx*pdx + pdy*pdy);
-      if (pdist > 0) {
-        var grav = PLANET_MASS / (pdist * pdist);
-        grav = Math.min(grav, 1200);
-        probe.vx += (pdx / pdist) * grav * dt;
-        probe.vy += (pdy / pdist) * grav * dt;
-      }
-
-      probeTrail.push({ x: probe.x, y: probe.y });
-      if (probeTrail.length > 30) probeTrail.shift();
-
-      probe.x += probe.vx * dt;
-      probe.y += probe.vy * dt;
-
-      // Hit planet
-      if (pdist < PLANET_R + 10) {
-        for (var pi = 0; pi < 10; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: probe.x, y: probe.y, vx: Math.cos(ang)*150, vy: Math.sin(ang)*150, life: 0.5, col: C.wrong });
-        }
-        probe = null;
-        probeTrail = [];
-        misses++;
-        flashCol = C.wrong;
-        flashAnim = 0.6;
-        game.audio.play('se_failure', 0.4);
-        if (misses >= MAX_MISS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-        return;
-      }
-
-      // Out of bounds
-      if (probe.x < -100 || probe.x > W + 100 || probe.y < -100 || probe.y > H + 100 || probe.life <= 0) {
-        probe = null;
-        probeTrail = [];
-        misses++;
-        flashCol = C.wrong;
-        flashAnim = 0.4;
-        game.audio.play('se_failure', 0.3);
-        if (misses >= MAX_MISS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-        return;
-      }
-
-      // Hit target
-      if (target) {
-        var tdx = target.x - probe.x;
-        var tdy = target.y - probe.y;
-        if (Math.sqrt(tdx*tdx + tdy*tdy) < 50) {
-          caught++;
-          flashCol = C.correct;
-          flashAnim = 0.8;
-          game.audio.play('se_success', 0.7);
-          for (var pi2 = 0; pi2 < 12; pi2++) {
-            var ang2 = Math.random() * Math.PI * 2;
-            particles.push({ x: target.x, y: target.y, vx: Math.cos(ang2)*180, vy: Math.sin(ang2)*180, life: 0.6, col: C.targetHi });
-          }
-          probe = null;
-          probeTrail = [];
-          target = null;
-          if (caught >= NEEDED && !done) {
-            done = true;
-            setTimeout(function() { game.end.success(caught * 800 + Math.ceil(timeLeft) * 80); }, 700);
-            return;
-          }
-          setTimeout(function() { spawnTarget(); }, 800);
-        }
-      }
-    }
-
-    // Target pulse
-    if (target) target.pulse += dt * 3;
-
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // --- draw ---
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Stars
-    for (var sti = 0; sti < stars.length; sti++) {
-      var s = stars[sti];
-      s.blink += dt * 2;
-      var sa = 0.4 + Math.sin(s.blink) * 0.3;
-      game.draw.circle(s.x, s.y, s.r, C.star, sa);
-    }
-
-    // Planet
-    game.draw.circle(PLANET_X, PLANET_Y, PLANET_R + 30, C.planetHi, 0.08);
-    game.draw.circle(PLANET_X, PLANET_Y, PLANET_R + 15, C.planet, 0.15);
-    game.draw.circle(PLANET_X, PLANET_Y, PLANET_R, C.planet, 0.9);
-    game.draw.circle(PLANET_X - PLANET_R*0.3, PLANET_Y - PLANET_R*0.3, PLANET_R*0.25, C.planetHi, 0.3);
-    // Ring
-    game.draw.line(PLANET_X - PLANET_R*1.5, PLANET_Y + 20, PLANET_X + PLANET_R*1.5, PLANET_Y - 20, C.moon, 8);
-
-    // Target
-    if (target) {
-      var tpulse = Math.sin(target.pulse) * 0.3;
-      game.draw.circle(target.x, target.y, 50 + tpulse*20, C.target, 0.15);
-      game.draw.circle(target.x, target.y, 38, C.target, 0.8);
-      game.draw.circle(target.x, target.y, 22, C.targetHi, 0.9);
-      game.draw.text('★', target.x, target.y + 14, { size: 36, color: '#fff', bold: true });
-    }
-
-    // Probe trail
-    for (var ti = 0; ti < probeTrail.length; ti++) {
-      var tRatio = ti / probeTrail.length;
-      game.draw.circle(probeTrail[ti].x, probeTrail[ti].y, 8 * tRatio, C.trail, tRatio * 0.5);
-    }
-
-    // Probe
-    if (probe) {
-      game.draw.circle(probe.x, probe.y, 20, C.probeHi, 0.3);
-      game.draw.circle(probe.x, probe.y, 14, C.probe, 0.9);
-      game.draw.circle(probe.x, probe.y, 7, '#fff', 0.8);
-    }
-
-    // Launch point
-    if (!probe) {
-      game.draw.circle(W/2, H*0.88, 28, C.probe, 0.5);
-      game.draw.circle(W/2, H*0.88, 18, C.probeHi, 0.8);
-      game.draw.text('タップして発射', W/2, H*0.93, { size: 38, color: C.ui });
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    // Miss dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W/2 - (MAX_MISS-1)*44 + mi*88, H*0.955, 18, mi < misses ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(caught + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.probe : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(caught + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < misses ? C.a : '#081428');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.07);
-    spawnTarget();
+    state = S.ATTRACT;
+    initStars();
+    initGame();
   });
 })(game);
