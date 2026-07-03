@@ -1,27 +1,16 @@
 // 534-typewriter.js
-// タイプライター — 流れてくる文字を正確にタップして原稿を完成させる
-// 操作: 光っている文字をタップ（日本語ボタン）
-// 成功: 20文字正確入力  失敗: 8ミス or 60秒
+// タイプライター — 指定された文字（かな）を素早く探してキーをタップし、原稿を打ち上げる
+// 操作: 中央に光る指定文字を、下のかなキーボードから探してタップ（違うキーはミス）
+// 成功: 8文字 正確入力  失敗: 3ミス or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#08050a',
-    paper:   '#f8f4e8',
-    ink:     '#1a0a00',
-    key:     '#2d2020',
-    keyHi:   '#4a3030',
-    keyLit:  '#f59e0b',
-    keyText: '#f1f5f9',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#374151',
-    typed:   '#0a0a0a'
-  };
+  // ── パレット（ネオンアーケード、活版印刷） ──
+  var C = { bg:'#08050a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
+  // かな入力はゲーム内容そのもの → キー文字は維持し、周辺UIのみ英語化
   var KEYS = [
     ['あ', 'い', 'う', 'え', 'お'],
     ['か', 'き', 'く', 'け', 'こ'],
@@ -30,176 +19,141 @@
     ['な', 'に', 'ぬ', 'ね', 'の']
   ];
   var ALL_KEYS = [];
-  for (var ri = 0; ri < KEYS.length; ri++)
-    for (var ci = 0; ci < KEYS[ri].length; ci++)
-      ALL_KEYS.push(KEYS[ri][ci]);
+  for (var ri = 0; ri < KEYS.length; ri++) for (var ci = 0; ci < KEYS[ri].length; ci++) ALL_KEYS.push(KEYS[ri][ci]);
 
-  var BTN_W = 180, BTN_H = 120;
-  var BTN_GAP = 12;
-  var BTN_OX = (W - (5 * (BTN_W + BTN_GAP) - BTN_GAP)) / 2;
-  var BTN_OY = H * 0.55;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'TYPEWRITER';
+  var HOW_TO_PLAY = 'FIND THE GLOWING KANA ON THE KEYBOARD · TAP IT FAST';
+  var MAX_TIME = 20;
+  var NEEDED   = 8;          // 修正2: 20 → 8
+  var MAX_MISS = 3;          // 修正2: 8 → 3
+  var BTN_W = 180, BTN_H = 120, BTN_GAP = 16;
+  var BTN_OX = snap((W - (5 * (BTN_W + BTN_GAP) - BTN_GAP)) / 2), BTN_OY = snap(H * 0.52);
 
-  var targetKey = '';
-  var typedText = '';
-  var NEEDED = 20;
-  var misses = 0;
-  var MAX_MISS = 8;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0;
-  var flashCol = C.correct;
-  var score = 0;
-  var keyPressAnim = {}; // key -> anim timer
-  var wrongKey = '';
-  var wrongTimer = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function pickTarget() {
-    var idx = Math.floor(Math.random() * ALL_KEYS.length);
-    targetKey = ALL_KEYS[idx];
+  // ── ゲーム変数 ──
+  var targetKey, typedText, score, misses, timeLeft, done, particles, flash, flashCol, keyAnim, wrongKey, wrongTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
-    // Check key buttons
-    for (var ri2 = 0; ri2 < KEYS.length; ri2++) {
-      for (var ci2 = 0; ci2 < KEYS[ri2].length; ci2++) {
-        var bx = BTN_OX + ci2 * (BTN_W + BTN_GAP);
-        var by = BTN_OY + ri2 * (BTN_H + BTN_GAP);
-        if (tx >= bx && tx <= bx + BTN_W && ty >= by && ty <= by + BTN_H) {
-          var key = KEYS[ri2][ci2];
-          keyPressAnim[key] = 0.25;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-          if (key === targetKey) {
-            score++;
-            typedText += key;
-            flashCol = C.correct;
-            flashAnim = 0.25;
-            game.audio.play('se_tap', 0.4);
-            for (var pi = 0; pi < 5; pi++) {
-              var ang = Math.random() * Math.PI * 2;
-              particles.push({ x: bx + BTN_W / 2, y: by + BTN_H / 2, vx: Math.cos(ang) * 100, vy: Math.sin(ang) * 100, life: 0.3, col: C.keyLit });
-            }
-            if (score >= NEEDED && !done) {
-              done = true;
-              game.audio.play('se_success', 0.9);
-              setTimeout(function() { game.end.success(score * 200 + Math.ceil(timeLeft) * 100); }, 700);
-            } else {
-              pickTarget();
-            }
-          } else {
-            misses++;
-            wrongKey = key;
-            wrongTimer = 0.5;
-            flashCol = C.wrong;
-            flashAnim = 0.3;
-            game.audio.play('se_failure', 0.3);
-            if (misses >= MAX_MISS && !done) {
-              done = true;
-              setTimeout(function() { game.end.failure(); }, 500);
-            }
-          }
-          return;
-        }
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.c : '#1a1210');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function pickTarget() { targetKey = ALL_KEYS[Math.floor(Math.random() * ALL_KEYS.length)]; }
+
+  function initGame() { typedText = ''; score = 0; misses = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; keyAnim = {}; wrongKey = ''; wrongTimer = 0; pickTarget(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 500 + Math.ceil(timeLeft) * 100) : score * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    // 原稿ディスプレイ
+    game.draw.rect(60, snap(H * 0.15), W - 120, 200, '#0e1420', 0.9);
+    game.draw.rect(60, snap(H * 0.15), W - 120, 6, C.e, 0.5);
+    txt(typedText.slice(-16) || '_', W / 2, snap(H * 0.15) + 120, 48, C.b);
+    // ターゲット
+    txt('> ' + targetKey + ' <', W / 2, snap(H * 0.42), 80, C.c);
+    // キーボード
+    for (var r = 0; r < KEYS.length; r++) for (var c = 0; c < KEYS[r].length; c++) {
+      var bx = BTN_OX + c * (BTN_W + BTN_GAP), by = BTN_OY + r * (BTN_H + BTN_GAP), k = KEYS[r][c];
+      var isT = k === targetKey, isW = k === wrongKey && wrongTimer > 0, pa = keyAnim[k] || 0;
+      var bgc = isT ? '#2a2400' : (isW ? '#2a0010' : '#1c1418'), bd = isT ? C.c : (isW ? C.a : C.d);
+      game.draw.rect(bx + 4, by + 4 + pa * 6, BTN_W - 8, BTN_H - 8, bgc, 0.9);
+      game.draw.rect(bx + 4, by + 4 + pa * 6, BTN_W - 8, 8, bd, isT ? 0.7 : 0.3);
+      if (isT) game.draw.rect(bx + 4, by + 4, BTN_W - 8, BTN_H - 8, C.c, 0.12);
+      txt(k, bx + BTN_W / 2, by + BTN_H * 0.62 + pa * 6, 52, isT ? C.c : C.g);
+    }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    for (var r = 0; r < KEYS.length; r++) for (var c = 0; c < KEYS[r].length; c++) {
+      var bx = BTN_OX + c * (BTN_W + BTN_GAP), by = BTN_OY + r * (BTN_H + BTN_GAP);
+      if (tx >= bx && tx <= bx + BTN_W && ty >= by && ty <= by + BTN_H) {
+        var key = KEYS[r][c]; keyAnim[key] = 0.25;
+        if (key === targetKey) {
+          score++; typedText += key; flash = 0.25; flashCol = C.b; game.audio.play('se_tap', 0.4);
+          for (var pi = 0; pi < 5; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: bx + BTN_W / 2, y: by + BTN_H / 2, vx: Math.cos(a) * 110, vy: Math.sin(a) * 110, life: 0.3, col: C.c }); }
+          if (score >= NEEDED) { finish(true); return; }
+          pickTarget();
+        } else { misses++; wrongKey = key; wrongTimer = 0.5; flash = 0.3; flashCol = C.a; game.audio.play('se_failure', 0.3); if (misses >= MAX_MISS) { finish(false); return; } }
+        return;
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!targetKey) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.075, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.11, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.94, 52, C.a);
+        txt('TAP TO START', W / 2, H * 0.975, 40, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'MANUSCRIPT DONE!' : 'TYPO!', W / 2, H * 0.35, 58, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 4;
-    if (wrongTimer > 0) wrongTimer -= dt;
-
-    for (var k in keyPressAnim) {
-      keyPressAnim[k] -= dt * 4;
-      if (keyPressAnim[k] <= 0) delete keyPressAnim[k];
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 4; if (wrongTimer > 0) wrongTimer -= dt;
+      for (var k in keyAnim) { keyAnim[k] -= dt * 4; if (keyAnim[k] <= 0) delete keyAnim[k]; }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 3; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 3;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.08);
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Paper area (typed text display)
-    game.draw.rect(60, H * 0.18, W - 120, 240, C.paper, 0.95);
-    game.draw.rect(60, H * 0.18, W - 120, 8, '#ddd', 0.9);
-
-    // Lines on paper
-    for (var li = 1; li < 3; li++) {
-      game.draw.line(60, H * 0.18 + li * 80, W - 60, H * 0.18 + li * 80, '#ddd', 2);
-    }
-
-    // Typed text
-    var displayText = typedText.slice(-18);
-    game.draw.text(displayText, W / 2, H * 0.18 + 120, { size: 48, color: C.typed, bold: false });
-
-    // Cursor blink
-    if (Math.sin(elapsed * 5) > 0) {
-      var cursorX = W / 2 + displayText.length * 28 - 200;
-      game.draw.rect(W / 2 + (displayText.length - 9) * 28, H * 0.18 + 80, 4, 60, C.ink, 0.8);
-    }
-
-    // Target display
-    game.draw.text('→ ' + targetKey + ' ←', W / 2, H * 0.46, { size: 80, color: C.keyLit, bold: true });
-
-    // Keyboard
-    for (var ri3 = 0; ri3 < KEYS.length; ri3++) {
-      for (var ci3 = 0; ci3 < KEYS[ri3].length; ci3++) {
-        var bx2 = BTN_OX + ci3 * (BTN_W + BTN_GAP);
-        var by2 = BTN_OY + ri3 * (BTN_H + BTN_GAP);
-        var k2 = KEYS[ri3][ci3];
-        var isTarget = k2 === targetKey;
-        var isWrong = k2 === wrongKey && wrongTimer > 0;
-        var pressAnim = keyPressAnim[k2] || 0;
-
-        var bgCol = isTarget ? '#3a2800' : (isWrong ? '#3a0000' : C.key);
-        var borderCol = isTarget ? C.keyLit : (isWrong ? C.wrong : C.keyHi);
-        game.draw.rect(bx2 + 4, by2 + 4 + pressAnim * 6, BTN_W - 8, BTN_H - 8, bgCol, 0.9);
-        game.draw.rect(bx2 + 4, by2 + 4 + pressAnim * 6, BTN_W - 8, 8, borderCol, isTarget ? 0.6 : 0.2);
-        if (isTarget) {
-          game.draw.rect(bx2 + 4, by2 + 4, BTN_W - 8, BTN_H - 8, C.keyLit, 0.12);
-        }
-        game.draw.text(k2, bx2 + BTN_W / 2, by2 + BTN_H * 0.6 + pressAnim * 6, { size: 52, color: isTarget ? C.keyLit : C.keyText, bold: isTarget });
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.9);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.08);
-
-    // Miss dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 44 + mi * 88, H * 0.955, 18, mi < misses ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(score + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.keyLit : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < misses ? C.a : '#1a1210');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.07);
-    pickTarget();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
