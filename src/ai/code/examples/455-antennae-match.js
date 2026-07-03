@@ -1,229 +1,155 @@
 // 455-antennae-match.js
-// アンテナ合わせ — 2つのアンテナを同じ角度に揃えて電波を受信
-// 操作: 左右タップで自分のアンテナを回転させる
-// 成功: 10回受信成功  失敗: 5回外れ or 60秒
+// アンテナ合わせ — 電波塔と同じ角度に自分のアンテナを回して電波を受信する
+// 操作: 画面の左半分/右半分タップでアンテナを左右に回転。角度が合ったら保持
+// 成功: 4回 受信  失敗: 3回 外す or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#04080f',
-    sky:    '#0a1628',
-    tower:  '#1e3a5f',
-    towerHi:'#2563eb',
-    antenna:'#94a3b8',
-    antennaHi:'#e2e8f0',
-    signal: '#22d3ee',
-    signalHi:'#cffafe',
-    match:  '#22c55e',
-    matchHi:'#bbf7d0',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569',
-    stars:  '#e2e8f0'
-  };
+  // ── パレット（アイスブルー、深夜の電波塔） ──
+  var C = { bg:'#000814', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var STATION_X = W * 0.18;
-  var PLAYER_X = W * 0.82;
-  var BASE_Y = H * 0.62;
-  var ANTENNA_LEN = 200;
-  var ROTATE_SPEED = 2.2;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ANTENNA MATCH';
+  var HOW_TO_PLAY = 'TAP LEFT / RIGHT TO ROTATE · HOLD THE MATCHING ANGLE';
+  var MAX_TIME = 20;
+  var NEEDED   = 4;          // 修正2: 10 → 4
+  var MAX_MISS = 3;          // 修正2: 5 → 3
+  var STA_X = snap(W * 0.24), PL_X = snap(W * 0.76), BASE_Y = snap(H * 0.60), ALEN = 220, ROT = 2.2, TOL = 0.16, HOLD = 0.7;
 
-  var stationAngle = 0;
-  var playerAngle = 0;
-  var targetAngle = 0;
-  var turning = 0;  // -1, 0, 1
-  var matchTimer = 0;
-  var MATCH_HOLD = 0.8;
-  var signalWaves = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var received = 0;
-  var NEEDED = 10;
-  var misses = 0;
-  var MAX_MISS = 5;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var flashCol = C.match;
-  var particles = [];
+  // ── ゲーム変数 ──
+  var stationAngle, playerAngle, targetAngle, turning, matchTimer, waves, received, misses, timeLeft, done, particles, flash, flashCol, stars;
 
-  // Stars
-  var stars = [];
-  for (var si = 0; si < 60; si++) {
-    stars.push({ x: Math.random() * W, y: Math.random() * H * 0.55, r: 1 + Math.random() * 2 });
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.16) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function newSignal() {
-    targetAngle = (Math.random() - 0.5) * Math.PI * 0.8;
-    stationAngle = targetAngle;
-    matchTimer = 0;
-    signalWaves = [];
-    // Emit waves from station
-    for (var i = 0; i < 3; i++) {
-      signalWaves.push({ x: STATION_X, r: 10 + i * 40, alpha: 1 - i * 0.3, maxR: 300 + i * 50 });
-    }
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#081428');
   }
 
-  game.onTap(function(tx, ty) {
+  function background() { game.draw.clear(C.bg); for (var si = 0; si < stars.length; si++) game.draw.rect(stars[si].x, stars[si].y, stars[si].r, stars[si].r, C.g, 0.4 + Math.sin(game.time.elapsed * 2 + si) * 0.3); }
+
+  function initStars() { stars = []; for (var i = 0; i < 50; i++) stars.push({ x: snap(Math.random() * W), y: snap(Math.random() * H * 0.5), r: Math.random() < 0.5 ? 4 : 8 }); }
+
+  function newSignal() { targetAngle = (Math.random() - 0.5) * Math.PI * 0.8; stationAngle = targetAngle; matchTimer = 0; waves = [{ r: 10, alpha: 0.8 }, { r: 50, alpha: 0.5 }]; }
+
+  function initGame() { playerAngle = 0; turning = 0; received = 0; misses = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; newSignal(); }
+
+  function finish(success) {
     if (done) return;
-    if (tx < W / 2) {
-      turning = -1;
-    } else {
-      turning = 1;
-    }
-    setTimeout(function() { turning = 0; }, 100);
+    done = true; resultSuccess = success;
+    finalScore = success ? (received * 600 + Math.ceil(timeLeft) * 100) : received * 250;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function tower(x, angle, matched, ratio) {
+    game.draw.rect(x - 16, BASE_Y - 120, 32, 120, C.d, 0.9); game.draw.rect(x - 22, BASE_Y - 20, 44, 30, C.e, 0.5);
+    var tx = x + Math.sin(angle) * ALEN, ty = (BASE_Y - 120) - Math.cos(angle) * ALEN;
+    pline(x, BASE_Y - 120, tx, ty, matched ? C.b : '#90a0b0', 0.9, 8); pc(tx, ty, 14, matched ? C.b : C.e, 0.9);
+    if (matched && ratio !== undefined) ring(x, BASE_Y - 120, ratio * 90, C.b, 0.4);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    turning = x < W / 2 ? -1 : 1; game.audio.play('se_tap', 0.2);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!stars) { initStars(); initGame(); } background(); tower(STA_X, stationAngle, false); tower(PL_X, playerAngle, false);
+      txt(GAME_TITLE, W / 2, H * 0.72, 74, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.78, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SIGNAL LOCKED!' : 'LOST SIGNAL', W / 2, H * 0.35, 58, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
+    var diff = Math.abs(playerAngle - targetAngle), matched = diff < TOL;
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-
-    if (flashAnim > 0) flashAnim -= dt * 2;
-
-    // Rotate player antenna
-    playerAngle += turning * ROTATE_SPEED * dt;
-    if (playerAngle > Math.PI/2) playerAngle = Math.PI/2;
-    if (playerAngle < -Math.PI/2) playerAngle = -Math.PI/2;
-
-    // Signal waves expand
-    for (var wi = 0; wi < signalWaves.length; wi++) {
-      signalWaves[wi].r += 200 * dt;
-      signalWaves[wi].alpha -= dt * 0.8;
-    }
-    signalWaves = signalWaves.filter(function(w) { return w.alpha > 0 && w.r < w.maxR; });
-    // Respawn
-    if (signalWaves.length === 0 && !done) {
-      for (var i2 = 0; i2 < 3; i2++) {
-        signalWaves.push({ x: STATION_X, r: 10 + i2 * 40, alpha: 0.8 - i2 * 0.25, maxR: 280 });
-      }
-    }
-
-    // Check angle match
-    var diff = Math.abs(playerAngle - targetAngle);
-    var TOLERANCE = 0.12;
-    if (diff < TOLERANCE) {
-      matchTimer += dt;
-      if (matchTimer >= MATCH_HOLD) {
-        // Success!
-        received++;
-        flashCol = C.match;
-        flashAnim = 0.8;
-        game.audio.play('se_success', 0.7);
-        for (var pi = 0; pi < 12; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: PLAYER_X, y: BASE_Y - ANTENNA_LEN * 0.6, vx: Math.cos(ang)*150, vy: Math.sin(ang)*150, life: 0.6, col: C.signalHi });
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2;
+      playerAngle += turning * ROT * dt; turning *= 0.85;
+      if (playerAngle > Math.PI / 2) playerAngle = Math.PI / 2; if (playerAngle < -Math.PI / 2) playerAngle = -Math.PI / 2;
+      for (var wi = waves.length - 1; wi >= 0; wi--) { waves[wi].r += 200 * dt; waves[wi].alpha -= dt * 0.8; if (waves[wi].alpha <= 0) waves.splice(wi, 1); }
+      if (waves.length === 0) waves.push({ r: 10, alpha: 0.8 });
+      diff = Math.abs(playerAngle - targetAngle); matched = diff < TOL;
+      if (matched) {
+        matchTimer += dt;
+        if (matchTimer >= HOLD) {
+          received++; flash = 0.8; flashCol = C.b; game.audio.play('se_success', 0.7);
+          for (var pi = 0; pi < 12; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: PL_X, y: BASE_Y - 120, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, life: 0.6, col: C.e }); }
+          if (received >= NEEDED) { finish(true); return; }
+          setTimeout(function() { if (!done) newSignal(); }, 700);
         }
-        if (received >= NEEDED && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(received * 500 + Math.ceil(timeLeft) * 80); }, 700);
-          return;
-        }
-        setTimeout(function() { newSignal(); }, 900);
+      } else {
+        if (matchTimer > 0.45) { misses++; flash = 0.5; flashCol = C.a; game.audio.play('se_failure', 0.3); if (misses >= MAX_MISS) { finish(false); return; } }
+        matchTimer = 0;
       }
-    } else {
-      if (matchTimer > 0.4) {
-        // Was matching then moved away
-        misses++;
-        flashCol = C.wrong;
-        flashAnim = 0.5;
-        game.audio.play('se_failure', 0.3);
-        if (misses >= MAX_MISS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-      }
-      matchTimer = 0;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background();
+    for (var wi2 = 0; wi2 < waves.length; wi2++) ring(STA_X, BASE_Y - 120, waves[wi2].r, C.e, Math.max(0, waves[wi2].alpha));
+    tower(STA_X, stationAngle, false); tower(PL_X, playerAngle, matched, matchTimer / HOLD);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    // シグナル強度バー
+    var sr = Math.max(0, 1 - diff / 0.6);
+    game.draw.rect(snap(W * 0.32), snap(H * 0.80), snap(W * 0.36), 28, '#081428', 0.7); game.draw.rect(snap(W * 0.32), snap(H * 0.80), snap(W * 0.36 * sr), 28, matched ? C.b : C.e, 0.9);
+    txt('SIGNAL', W / 2, snap(H * 0.80) + 60, 34, matched ? C.b : C.e);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // --- draw ---
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(0, 0, W, H * 0.6, C.sky, 0.5);
-
-    // Stars
-    for (var sti = 0; sti < stars.length; sti++) {
-      game.draw.circle(stars[sti].x, stars[sti].y, stars[sti].r, C.stars, 0.6);
-    }
-
-    // Signal waves from station
-    for (var wi2 = 0; wi2 < signalWaves.length; wi2++) {
-      var w2 = signalWaves[wi2];
-      game.draw.circle(w2.x, BASE_Y - 80, w2.r, C.signal, Math.max(0, w2.alpha));
-    }
-
-    // Station tower
-    game.draw.rect(STATION_X - 15, BASE_Y - 120, 30, 120, C.tower, 0.9);
-    game.draw.rect(STATION_X - 20, BASE_Y - 20, 40, 30, C.towerHi, 0.6);
-    // Station antenna
-    var staTipX = STATION_X + Math.sin(stationAngle) * ANTENNA_LEN;
-    var staTipY = (BASE_Y - 120) - Math.cos(stationAngle) * ANTENNA_LEN;
-    game.draw.line(STATION_X, BASE_Y - 120, staTipX, staTipY, C.antenna, 6);
-    game.draw.circle(staTipX, staTipY, 14, C.signal, 0.8);
-
-    // Player tower
-    game.draw.rect(PLAYER_X - 15, BASE_Y - 120, 30, 120, C.tower, 0.9);
-    game.draw.rect(PLAYER_X - 20, BASE_Y - 20, 40, 30, C.towerHi, 0.6);
-    // Player antenna
-    var diff2 = Math.abs(playerAngle - targetAngle);
-    var matched = diff2 < 0.12;
-    var matchRatio = Math.max(0, 1 - diff2 / 0.5);
-    var pCol = matched ? C.match : C.antenna;
-    var plaTipX = PLAYER_X + Math.sin(playerAngle) * ANTENNA_LEN;
-    var plaTipY = (BASE_Y - 120) - Math.cos(playerAngle) * ANTENNA_LEN;
-    game.draw.line(PLAYER_X, BASE_Y - 120, plaTipX, plaTipY, pCol, 6);
-    game.draw.circle(plaTipX, plaTipY, 14, matched ? C.matchHi : C.antennaHi, 0.8);
-    if (matched) {
-      game.draw.circle(PLAYER_X, BASE_Y - 120, matchTimer / MATCH_HOLD * 80, C.match, 0.2);
-    }
-
-    // Signal strength bar
-    game.draw.rect(W*0.35, H*0.73, W*0.3, 24, C.ui, 0.4);
-    game.draw.rect(W*0.35, H*0.73, W*0.3*matchRatio, 24, matched ? C.match : C.signal, 0.8);
-    game.draw.text('受信強度', W/2, H*0.77 + 20, { size: 32, color: C.ui });
-
-    // Button hints
-    game.draw.text('←', W * 0.14, H * 0.85, { size: 72, color: C.ui });
-    game.draw.text('→', W * 0.86, H * 0.85, { size: 72, color: C.ui });
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life, p.col, p.life * 0.9);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    // Miss dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W/2 - (MAX_MISS-1)*44 + mi*88, H*0.955, 18, mi < misses ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(received + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.signal : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(received + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < misses ? C.a : '#081428');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.08);
-    newSignal();
+    state = S.ATTRACT;
+    initStars();
+    initGame();
   });
 })(game);
