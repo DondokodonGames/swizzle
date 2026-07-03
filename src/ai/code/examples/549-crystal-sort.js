@@ -1,246 +1,154 @@
 // 549-crystal-sort.js
-// クリスタルソート — 3本の試験管にランダム色クリスタルをタップで移し替えてソート
-// 操作: タップで試験管を選択→別の試験管タップで上のクリスタルを移動
-// 成功: 全試験管を同色でソート  失敗: 詰まって動けなくなる or 90秒
+// クリスタルソート — 試験管間でクリスタルを移し替え、各試験管を同色でそろえる（水ソートパズル）
+// 操作: 試験管をタップで選択 → 別の試験管をタップで上のクリスタルを移動（同色/空にのみ）
+// 成功: 全試験管を同色にそろえる  失敗: 手詰まり or 30秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0d0d20',
-    tube:    '#1a2040',
-    tubeHi:  '#2a3060',
-    tubeRim: '#4466aa',
-    crystal0:'#ef4444',
-    crystal1:'#3b82f6',
-    crystal2:'#22c55e',
-    crystal3:'#f59e0b',
-    selected:'#ffffff',
-    done:    '#ffffff55',
-    text:    '#f1f5f9',
-    ui:      '#374151',
-    glow:    '#ffffff22'
-  };
+  // ── パレット（ネオンアーケード、錬金ラボ） ──
+  var C = { bg:'#0d0d20', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var CRYSTAL_COLS = [C.a, C.e, C.b];  // 3色（内容そのもの）
 
-  var TUBE_COUNT = 4; // 3 color tubes + 1 empty buffer
-  var CAPACITY = 4;
-  var CRYSTAL_COLORS = [C.crystal0, C.crystal1, C.crystal2];
-  var TUBE_W = 140;
-  var TUBE_H = CAPACITY * 88 + 40;
-  var TUBE_SPACING = (W - TUBE_COUNT * TUBE_W) / (TUBE_COUNT + 1);
-  var TUBE_Y = H * 0.28;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'CRYSTAL SORT';
+  var HOW_TO_PLAY = 'TAP A TUBE TO PICK · TAP ANOTHER TO POUR · MATCH EACH TUBE';
+  var MAX_TIME = 30;
+  var TUBE_COUNT = 4, CAPACITY = 4;
+  var TUBE_W = 140, TUBE_H = CAPACITY * 88 + 40, TUBE_GAP = (W - TUBE_COUNT * TUBE_W) / (TUBE_COUNT + 1), TUBE_Y = snap(H * 0.30);
 
-  var tubes = [];
-  var selectedTube = -1;
-  var moves = 0;
-  var done = false;
-  var timeLeft = 90;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0;
-  var solvedAnim = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function getTubeX(i) {
-    return TUBE_SPACING + i * (TUBE_W + TUBE_SPACING) + TUBE_W / 2;
+  // ── ゲーム変数 ──
+  var tubes, selected, moves, timeLeft, done, particles, flash, solvedAnim;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#141428');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function tubeX(i) { return TUBE_GAP + i * (TUBE_W + TUBE_GAP) + TUBE_W / 2; }
 
   function initTubes() {
-    // Create a solvable scramble
-    var allCrystals = [];
-    for (var ci = 0; ci < CRYSTAL_COLORS.length; ci++) {
-      for (var j = 0; j < CAPACITY; j++) allCrystals.push(ci);
-    }
-    // Shuffle
-    for (var si = allCrystals.length - 1; si > 0; si--) {
-      var sj = Math.floor(Math.random() * (si + 1));
-      var tmp = allCrystals[si]; allCrystals[si] = allCrystals[sj]; allCrystals[sj] = tmp;
-    }
-    tubes = [];
-    for (var ti = 0; ti < TUBE_COUNT; ti++) {
-      var tube = [];
-      if (ti < CRYSTAL_COLORS.length) {
-        for (var j2 = 0; j2 < CAPACITY; j2++) {
-          tube.push(allCrystals[ti * CAPACITY + j2]);
-        }
-      }
-      tubes.push(tube);
-    }
+    var all = []; for (var ci = 0; ci < CRYSTAL_COLS.length; ci++) for (var j = 0; j < CAPACITY; j++) all.push(ci);
+    for (var si = all.length - 1; si > 0; si--) { var sj = Math.floor(Math.random() * (si + 1)); var t = all[si]; all[si] = all[sj]; all[sj] = t; }
+    tubes = []; for (var ti = 0; ti < TUBE_COUNT; ti++) { var tube = []; if (ti < CRYSTAL_COLS.length) for (var j2 = 0; j2 < CAPACITY; j2++) tube.push(all[ti * CAPACITY + j2]); tubes.push(tube); }
   }
 
-  function isTubeSolved(idx) {
-    var t = tubes[idx];
-    if (t.length === 0) return true;
-    if (t.length !== CAPACITY) return false;
-    var first = t[0];
-    for (var i = 1; i < t.length; i++) if (t[i] !== first) return false;
-    return true;
-  }
+  function tubeSolved(idx) { var t = tubes[idx]; if (t.length === 0) return true; if (t.length !== CAPACITY) return false; for (var i = 1; i < t.length; i++) if (t[i] !== t[0]) return false; return true; }
+  function solvedCount() { var n = 0; for (var i = 0; i < TUBE_COUNT; i++) if (tubes[i].length === CAPACITY && tubeSolved(i)) n++; return n; }
+  function isSolved() { for (var i = 0; i < TUBE_COUNT; i++) if (!tubeSolved(i)) return false; return true; }
+  function canMove(from, to) { if (from === to) return false; var f = tubes[from], tt = tubes[to]; if (f.length === 0 || tt.length >= CAPACITY) return false; if (tt.length === 0) return true; return f[f.length - 1] === tt[tt.length - 1]; }
+  function hasAnyMove() { for (var i = 0; i < TUBE_COUNT; i++) for (var j = 0; j < TUBE_COUNT; j++) if (canMove(i, j)) return true; return false; }
 
-  function isSolved() {
-    for (var i = 0; i < TUBE_COUNT; i++) {
-      if (!isTubeSolved(i)) return false;
-    }
-    return true;
-  }
+  function initGame() { selected = -1; moves = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; solvedAnim = 0; initTubes(); }
 
-  function canMove(from, to) {
-    if (from === to) return false;
-    var fromTube = tubes[from], toTube = tubes[to];
-    if (fromTube.length === 0) return false;
-    if (toTube.length >= CAPACITY) return false;
-    if (toTube.length === 0) return true;
-    return fromTube[fromTube.length - 1] === toTube[toTube.length - 1];
-  }
-
-  function hasAnyMove() {
-    for (var i = 0; i < TUBE_COUNT; i++) {
-      for (var j = 0; j < TUBE_COUNT; j++) {
-        if (canMove(i, j)) return true;
-      }
-    }
-    return false;
-  }
-
-  game.onTap(function(tx, ty) {
+  function finish(success) {
     if (done) return;
-    // Find tapped tube
-    var tapped = -1;
-    for (var ti = 0; ti < TUBE_COUNT; ti++) {
-      var tx2 = getTubeX(ti);
-      if (Math.abs(tx - tx2) < TUBE_W / 2 + 20 && ty > TUBE_Y - 20 && ty < TUBE_Y + TUBE_H + 20) {
-        tapped = ti;
-        break;
-      }
-    }
-    if (tapped === -1) { selectedTube = -1; return; }
+    done = true; resultSuccess = success;
+    finalScore = success ? Math.max(1000, 12000 - moves * 150 + Math.ceil(timeLeft) * 100) : solvedCount() * 800;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    if (selectedTube === -1) {
-      if (tubes[tapped].length > 0) {
-        selectedTube = tapped;
-        game.audio.play('se_tap', 0.3);
-      }
-    } else {
-      if (tapped === selectedTube) {
-        selectedTube = -1;
-        return;
-      }
-      if (canMove(selectedTube, tapped)) {
-        var crystal = tubes[selectedTube].pop();
-        tubes[tapped].push(crystal);
-        moves++;
-        game.audio.play('se_tap', 0.4);
-        // Particle
-        var tx3 = getTubeX(tapped);
-        var cy2 = TUBE_Y + TUBE_H - (tubes[tapped].length - 0.5) * 88;
-        for (var pi = 0; pi < 5; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: tx3, y: cy2, vx: Math.cos(ang) * 120, vy: Math.sin(ang) * 120, life: 0.3, col: CRYSTAL_COLORS[crystal] });
-        }
-        if (isSolved()) {
-          done = true;
-          solvedAnim = 1.0;
-          game.audio.play('se_success', 0.9);
-          for (var pi2 = 0; pi2 < 24; pi2++) {
-            var ang2 = Math.random() * Math.PI * 2;
-            particles.push({ x: W / 2, y: H / 2, vx: Math.cos(ang2) * 300, vy: Math.sin(ang2) * 300, life: 0.6, col: CRYSTAL_COLORS[Math.floor(Math.random() * 3)] });
-          }
-          setTimeout(function() { game.end.success(10000 - moves * 100 + Math.ceil(timeLeft) * 50); }, 800);
-        } else if (!hasAnyMove()) {
-          done = true;
-          game.audio.play('se_failure', 0.6);
-          setTimeout(function() { game.end.failure(); }, 600);
-        }
-        selectedTube = -1;
-      } else {
-        // Can't move — select new tube
-        selectedTube = tubes[tapped].length > 0 ? tapped : -1;
-        game.audio.play('se_failure', 0.2);
-      }
+  function drawScene() {
+    for (var ti = 0; ti < TUBE_COUNT; ti++) {
+      var tx = tubeX(ti), isSel = selected === ti, rim = isSel ? C.g : C.d;
+      game.draw.rect(tx - TUBE_W / 2 + 4, TUBE_Y + 8, TUBE_W - 8, TUBE_H - 8, isSel ? C.g : '#1a2040', isSel ? 0.15 : 0.2);
+      game.draw.rect(tx - TUBE_W / 2 + 4, TUBE_Y, 6, TUBE_H, rim, 0.9);
+      game.draw.rect(tx + TUBE_W / 2 - 10, TUBE_Y, 6, TUBE_H, rim, 0.9);
+      game.draw.rect(tx - TUBE_W / 2 + 4, TUBE_Y + TUBE_H - 6, TUBE_W - 8, 6, rim, 0.9);
+      game.draw.rect(tx - TUBE_W / 2, TUBE_Y - 4, TUBE_W, 8, C.d, 0.9);
+      for (var ci = 0; ci < tubes[ti].length; ci++) { var col = CRYSTAL_COLS[tubes[ti][ci]], cy = TUBE_Y + TUBE_H - (ci + 0.5) * 88; pc(tx, cy, 40, col, 0.9); pc(tx - 10, cy - 12, 10, C.g, 0.4); }
+      if (isSel && tubes[ti].length > 0 && Math.floor(game.time.elapsed * 6) % 2 === 0) { var top = TUBE_Y + TUBE_H - (tubes[ti].length - 0.5) * 88; game.draw.rect(tx - 12, top - 78, 24, 24, C.g, 0.9); }
     }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var tapped = -1;
+    for (var ti = 0; ti < TUBE_COUNT; ti++) { if (Math.abs(tx - tubeX(ti)) < TUBE_W / 2 + 20 && ty > TUBE_Y - 20 && ty < TUBE_Y + TUBE_H + 20) { tapped = ti; break; } }
+    if (tapped === -1) { selected = -1; return; }
+    if (selected === -1) { if (tubes[tapped].length > 0) { selected = tapped; game.audio.play('se_tap', 0.3); } return; }
+    if (tapped === selected) { selected = -1; return; }
+    if (canMove(selected, tapped)) {
+      var cr = tubes[selected].pop(); tubes[tapped].push(cr); moves++; game.audio.play('se_tap', 0.4);
+      var tx3 = tubeX(tapped), cy = TUBE_Y + TUBE_H - (tubes[tapped].length - 0.5) * 88;
+      for (var pi = 0; pi < 5; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: tx3, y: cy, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, life: 0.3, col: CRYSTAL_COLS[cr] }); }
+      selected = -1;
+      if (isSolved()) { flash = 0.5; solvedAnim = 1.0; for (var pi2 = 0; pi2 < 24; pi2++) { var a2 = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: H / 2, vx: Math.cos(a2) * 300, vy: Math.sin(a2) * 300, life: 0.6, col: CRYSTAL_COLS[Math.floor(Math.random() * 3)] }); } finish(true); return; }
+      if (!hasAnyMove()) { finish(false); return; }
+    } else { selected = tubes[tapped].length > 0 ? tapped : -1; game.audio.play('se_failure', 0.2); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!tubes) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.14, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.185, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.86, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.90, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SORTED!' : 'STUCK', W / 2, H * 0.35, 72, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (solvedAnim > 0) solvedAnim -= dt * 2;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (solvedAnim > 0) solvedAnim -= dt * 2;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 7, snap(particles[pp2].y) - 7, 14, 14, particles[pp2].col, particles[pp2].life * 1.5);
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.g, flash * 0.12);
 
-    // Tubes
-    for (var ti2 = 0; ti2 < TUBE_COUNT; ti2++) {
-      var tx4 = getTubeX(ti2);
-      var isSel = selectedTube === ti2;
-      var isSolvedTube = isTubeSolved(ti2);
-      var tubeCol = isSolvedTube ? C.done : isSel ? C.selected : C.tube;
-      var tubeAlpha = isSel ? 0.9 : 0.7;
-
-      // Tube body
-      game.draw.rect(tx4 - TUBE_W / 2 + 4, TUBE_Y + 8, TUBE_W - 8, TUBE_H - 8, tubeCol, tubeAlpha * 0.3);
-      // Tube walls
-      game.draw.line(tx4 - TUBE_W / 2 + 6, TUBE_Y, tx4 - TUBE_W / 2 + 6, TUBE_Y + TUBE_H, isSel ? C.selected : C.tubeRim, isSel ? 6 : 4);
-      game.draw.line(tx4 + TUBE_W / 2 - 6, TUBE_Y, tx4 + TUBE_W / 2 - 6, TUBE_Y + TUBE_H, isSel ? C.selected : C.tubeRim, isSel ? 6 : 4);
-      game.draw.line(tx4 - TUBE_W / 2 + 6, TUBE_Y + TUBE_H, tx4 + TUBE_W / 2 - 6, TUBE_Y + TUBE_H, isSel ? C.selected : C.tubeRim, isSel ? 6 : 4);
-      // Rim
-      game.draw.line(tx4 - TUBE_W / 2, TUBE_Y, tx4 + TUBE_W / 2, TUBE_Y, C.tubeRim, 8);
-
-      // Crystals
-      for (var ci2 = 0; ci2 < tubes[ti2].length; ci2++) {
-        var col = CRYSTAL_COLORS[tubes[ti2][ci2]];
-        var cy3 = TUBE_Y + TUBE_H - (ci2 + 0.5) * 88;
-        var cr = 38;
-        // Crystal glow
-        game.draw.circle(tx4, cy3, cr + 8, col, 0.15);
-        // Crystal body (diamond shape using overlapping circles)
-        game.draw.circle(tx4, cy3, cr, col, 0.9);
-        game.draw.circle(tx4, cy3 - cr * 0.3, cr * 0.4, '#ffffff', 0.3);
-        // Shine
-        game.draw.circle(tx4 - 10, cy3 - 12, 10, '#fff', 0.4);
-      }
-
-      // Selected indicator
-      if (isSel && tubes[ti2].length > 0) {
-        var topCy = TUBE_Y + TUBE_H - (tubes[ti2].length - 0.5) * 88;
-        game.draw.circle(tx4, topCy - 70, 12, C.selected, 0.8 + Math.sin(elapsed * 6) * 0.2);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 14 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (solvedAnim > 0) game.draw.rect(0, 0, W, H, '#ffffff', solvedAnim * 0.15);
-
-    game.draw.text('手数: ' + moves, W / 2, H * 0.82, { size: 48, color: C.text });
-    game.draw.text('試験管タップで移動', W / 2, H * 0.87, { size: 36, color: C.ui });
-
-    var ratio = Math.max(0, timeLeft / 90);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.tubeRim : '#ef4444');
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    txt('MOVES ' + moves, W / 2, snap(TUBE_Y + TUBE_H + 80), 44, C.c);
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('SORTED ' + solvedCount() + ' / ' + CRYSTAL_COLS.length, W / 2, 168, 44, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.07);
-    initTubes();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
