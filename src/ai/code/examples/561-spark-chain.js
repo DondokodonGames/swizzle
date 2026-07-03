@@ -1,308 +1,167 @@
 // 561-spark-chain.js
-// スパークチェーン — 電気スパークが流れるルートをタップで完成させる
-// 操作: タップでノードを繋いでスパークのルートを作る
-// 成功: 12回ルート完成  失敗: 10回失敗 or 75秒
+// スパークチェーン — 上端のスタートから下端のゴールまで、正しいノードを順にタップして回路を繋ぐ
+// 操作: スタート（橙）から隣接ノードを辿ってゴール（緑）へ。正解ルートと一致すればスパーク走行
+// 成功: ルート 3回 完成  失敗: 3回 誤配線 or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#000810',
-    node:    '#0044aa',
-    nodeHi:  '#0088ff',
-    nodeGlow:'#0088ff22',
-    start:   '#ff6600',
-    startHi: '#ffaa44',
-    end:     '#22ff88',
-    endHi:   '#88ffcc',
-    spark:   '#88ddff',
-    sparkHi: '#ffffff',
-    wire:    '#004488',
-    wireHi:  '#0066cc',
-    wrong:   '#ff2244',
-    correct: '#22ff88',
-    text:    '#f1f5f9',
-    ui:      '#334466'
-  };
+  // ── パレット（アイスブルー、回路基板） ──
+  var C = { bg:'#000810', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var COLS = 5, ROWS = 7;
-  var CELL = 180;
-  var OX = (W - (COLS - 1) * CELL) / 2;
-  var OY = H * 0.14;
-  var NODE_R = 36;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SPARK CHAIN';
+  var HOW_TO_PLAY = 'TRACE FROM START (ORANGE) TO GOAL (GREEN) ALONG THE RIGHT ROUTE';
+  var MAX_TIME = 20;
+  var NEEDED   = 3;          // 修正2: 12 → 3
+  var MAX_FAIL = 3;          // 修正2: 10 → 3
+  var COLS = 5, ROWS = 6, CELL = 176, NODE_R = 36;
+  var OX = snap((W - (COLS - 1) * CELL) / 2), OY = snap(H * 0.20);
 
-  var nodes = [];
-  var correctPath = [];
-  var playerPath = [];
-  var selectedNode = -1;
-  var sparkPos = 0; // animation along path
-  var sparkPhase = 'idle'; // 'idle' | 'animating' | 'result'
-  var completions = 0;
-  var NEEDED = 12;
-  var failures = 0;
-  var MAX_FAIL = 10;
-  var done = false;
-  var timeLeft = 75;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function nodeX(i) { return OX + (nodes[i].col) * CELL; }
-  function nodeY(i) { return OY + (nodes[i].row) * CELL; }
+  // ── ゲーム変数 ──
+  var nodes, correctPath, playerPath, selected, sparkPos, sparkPhase, completions, failures, timeLeft, done, particles, flash, flashCol;
 
-  function generatePuzzle() {
-    nodes = [];
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        nodes.push({ col: c, row: r, isStart: false, isEnd: false });
-      }
-    }
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-    // Generate a random path from top to bottom
-    correctPath = [];
-    var startCol = Math.floor(Math.random() * COLS);
-    var endCol = Math.floor(Math.random() * COLS);
-    var startIdx = startCol;
-    var endIdx = (ROWS - 1) * COLS + endCol;
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
 
-    nodes[startIdx].isStart = true;
-    nodes[endIdx].isEnd = true;
-
-    // Simple path: zigzag from top to bottom
-    correctPath = [startIdx];
-    var curRow = 0, curCol = startCol;
-    while (curRow < ROWS - 1) {
-      curRow++;
-      if (curCol !== endCol) {
-        var diff = endCol - curCol;
-        if (Math.abs(diff) > 0 && Math.random() < 0.6) {
-          curCol += diff > 0 ? 1 : -1;
-        }
-      }
-      curPath_next: {
-        // Shuffle possible moves
-        var moves = [0, -1, 1];
-        for (var mi = moves.length - 1; mi > 0; mi--) {
-          var mj = Math.floor(Math.random() * (mi + 1));
-          var tmp = moves[mi]; moves[mi] = moves[mj]; moves[mj] = tmp;
-        }
-        for (var mi2 = 0; mi2 < moves.length; mi2++) {
-          var nc = curCol + moves[mi2];
-          if (nc >= 0 && nc < COLS) {
-            curCol = nc;
-            break;
-          }
-        }
-      }
-      correctPath.push(curRow * COLS + curCol);
-    }
-    // Ensure path ends at endIdx by fixing last node
-    correctPath[correctPath.length - 1] = endIdx;
-    nodes[endIdx].isEnd = true;
-
-    playerPath = [];
-    selectedNode = -1;
-    sparkPhase = 'idle';
-    sparkPos = 0;
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#001830');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function nodeX(i) { return OX + nodes[i].col * CELL; }
+  function nodeY(i) { return OY + nodes[i].row * CELL; }
+
+  function generatePuzzle() {
+    nodes = []; for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) nodes.push({ col: c, row: r, isStart: false, isEnd: false });
+    var startCol = Math.floor(Math.random() * COLS), endCol = Math.floor(Math.random() * COLS), startIdx = startCol, endIdx = (ROWS - 1) * COLS + endCol;
+    nodes[startIdx].isStart = true; nodes[endIdx].isEnd = true;
+    correctPath = [startIdx]; var curRow = 0, curCol = startCol;
+    while (curRow < ROWS - 1) {
+      curRow++;
+      if (curCol !== endCol && Math.random() < 0.6) curCol += endCol > curCol ? 1 : -1;
+      var moves = [0, -1, 1]; for (var mi = moves.length - 1; mi > 0; mi--) { var mj = Math.floor(Math.random() * (mi + 1)); var t = moves[mi]; moves[mi] = moves[mj]; moves[mj] = t; }
+      for (var mi2 = 0; mi2 < moves.length; mi2++) { var nc = curCol + moves[mi2]; if (nc >= 0 && nc < COLS) { curCol = nc; break; } }
+      correctPath.push(curRow * COLS + curCol);
+    }
+    correctPath[correctPath.length - 1] = endIdx;
+    playerPath = []; selected = -1; sparkPhase = 'idle'; sparkPos = 0;
+  }
+
+  function initGame() { completions = 0; failures = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; generatePuzzle(); }
+
+  function finish(success) {
     if (done) return;
-    if (sparkPhase === 'animating') return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (completions * 1200 + Math.ceil(timeLeft) * 100) : completions * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    // Find tapped node
+  function drawScene() {
+    for (var i = 0; i < nodes.length; i++) { var n = nodes[i]; if (n.col < COLS - 1) game.draw.line(nodeX(i), nodeY(i), nodeX(i + 1), nodeY(i + 1), '#004488', 4); if (n.row < ROWS - 1) game.draw.line(nodeX(i), nodeY(i), nodeX(i + COLS), nodeY(i + COLS), '#004488', 4); }
+    for (var pi = 1; pi < playerPath.length; pi++) { var pa = playerPath[pi - 1], pb = playerPath[pi]; game.draw.line(nodeX(pa), nodeY(pa), nodeX(pb), nodeY(pb), C.e, 8); }
+    if (sparkPhase === 'animating' && playerPath.length > 1) { var si = Math.floor(sparkPos), fr = sparkPos - si, sa = playerPath[Math.min(si, playerPath.length - 1)], sb = playerPath[Math.min(si + 1, playerPath.length - 1)], sx = nodeX(sa) + (nodeX(sb) - nodeX(sa)) * fr, sy = nodeY(sa) + (nodeY(sb) - nodeY(sa)) * fr; pc(sx, sy, 22, C.g, 0.9); pc(sx, sy, 36, C.e, 0.3); }
+    for (var i2 = 0; i2 < nodes.length; i2++) { var n2 = nodes[i2], inP = playerPath.indexOf(i2) !== -1, col = n2.isStart ? C.f : n2.isEnd ? C.b : (inP ? C.e : C.d); pc(nodeX(i2), nodeY(i2), NODE_R, col, 0.9); if (i2 === selected) pc(nodeX(i2), nodeY(i2), NODE_R + 12, C.g, 0.3 + Math.sin(game.time.elapsed * 6) * 0.1); }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || sparkPhase === 'animating') return;
     var tapped = -1;
-    for (var i = 0; i < nodes.length; i++) {
-      var nx = nodeX(i), ny = nodeY(i);
-      var dx = tx - nx, dy = ty - ny;
-      if (Math.sqrt(dx * dx + dy * dy) < NODE_R + 20) {
-        tapped = i;
-        break;
-      }
-    }
-
-    if (tapped === -1) { selectedNode = -1; playerPath = []; return; }
-
+    for (var i = 0; i < nodes.length; i++) if (Math.hypot(tx - nodeX(i), ty - nodeY(i)) < NODE_R + 20) { tapped = i; break; }
+    if (tapped === -1) { selected = -1; playerPath = []; return; }
     var n = nodes[tapped];
-    if (n.isStart && playerPath.length === 0) {
-      playerPath = [tapped];
-      selectedNode = tapped;
-      game.audio.play('se_tap', 0.3);
-      return;
-    }
-
-    if (playerPath.length === 0) {
-      selectedNode = -1;
-      return;
-    }
-
-    // Check adjacency
-    var lastIdx = playerPath[playerPath.length - 1];
-    var lastN = nodes[lastIdx];
-    var dr = Math.abs(n.row - lastN.row), dc = Math.abs(n.col - lastN.col);
+    if (n.isStart && playerPath.length === 0) { playerPath = [tapped]; selected = tapped; game.audio.play('se_tap', 0.3); return; }
+    if (playerPath.length === 0) { selected = -1; return; }
+    var last = nodes[playerPath[playerPath.length - 1]], dr = Math.abs(n.row - last.row), dc = Math.abs(n.col - last.col);
     if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
-      // Adjacent
-      if (playerPath.indexOf(tapped) !== -1) {
-        // Already in path — trim
-        var cutIdx = playerPath.indexOf(tapped);
-        playerPath = playerPath.slice(0, cutIdx + 1);
-        selectedNode = tapped;
-        game.audio.play('se_tap', 0.2);
-        return;
-      }
-      playerPath.push(tapped);
-      selectedNode = tapped;
-      game.audio.play('se_tap', 0.3);
-
+      if (playerPath.indexOf(tapped) !== -1) { playerPath = playerPath.slice(0, playerPath.indexOf(tapped) + 1); selected = tapped; game.audio.play('se_tap', 0.2); return; }
+      playerPath.push(tapped); selected = tapped; game.audio.play('se_tap', 0.3);
       if (n.isEnd) {
-        // Check if correct
         var correct = playerPath.length === correctPath.length;
-        if (correct) {
-          for (var ci = 0; ci < playerPath.length; ci++) {
-            if (playerPath[ci] !== correctPath[ci]) { correct = false; break; }
-          }
-        }
-        if (correct) {
-          sparkPhase = 'animating';
-          sparkPos = 0;
-          game.audio.play('se_success', 0.7);
-        } else {
-          failures++;
-          flashCol = C.wrong;
-          flashAnim = 0.4;
-          resultTimer = 0.8;
-          game.audio.play('se_failure', 0.4);
-          playerPath = [];
-          selectedNode = -1;
-          if (failures >= MAX_FAIL && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
-          }
-        }
+        if (correct) for (var ci = 0; ci < playerPath.length; ci++) if (playerPath[ci] !== correctPath[ci]) { correct = false; break; }
+        if (correct) { sparkPhase = 'animating'; sparkPos = 0; game.audio.play('se_success', 0.7); }
+        else { failures++; flash = 0.4; flashCol = C.a; game.audio.play('se_failure', 0.4); playerPath = []; selected = -1; if (failures >= MAX_FAIL) { finish(false); return; } }
       }
-    } else {
-      game.audio.play('se_failure', 0.1);
-    }
+    } else game.audio.play('se_failure', 0.1);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!nodes) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.075, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.11, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.92, 52, C.a);
+        txt('TAP TO START', W / 2, H * 0.96, 40, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'CIRCUIT LIVE!' : 'SHORT CIRCUIT', W / 2, H * 0.35, 60, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    if (sparkPhase === 'animating') {
-      sparkPos += dt * 6;
-      if (sparkPos >= playerPath.length - 1) {
-        sparkPos = playerPath.length - 1;
-        sparkPhase = 'result';
-        completions++;
-        flashCol = C.correct;
-        flashAnim = 0.5;
-        game.audio.play('se_success', 0.9);
-        var lastN2 = nodes[playerPath[playerPath.length - 1]];
-        for (var pi = 0; pi < 14; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: nodeX(playerPath[playerPath.length-1]), y: nodeY(playerPath[playerPath.length-1]), vx: Math.cos(ang) * 220, vy: Math.sin(ang) * 220, life: 0.5, col: C.endHi });
-        }
-        if (completions >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(completions * 500 + Math.ceil(timeLeft) * 100); }, 700);
-        } else {
-          setTimeout(function() { if (!done) generatePuzzle(); }, 900);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3;
+      if (sparkPhase === 'animating') {
+        sparkPos += dt * 6;
+        if (sparkPos >= playerPath.length - 1) {
+          sparkPos = playerPath.length - 1; sparkPhase = 'result'; completions++; flash = 0.5; flashCol = C.b; game.audio.play('se_success', 0.9);
+          var li = playerPath[playerPath.length - 1]; for (var pi = 0; pi < 14; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: nodeX(li), y: nodeY(li), vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, life: 0.5, col: C.b }); }
+          if (completions >= NEEDED) { finish(true); return; }
+          setTimeout(function() { if (!done) generatePuzzle(); }, 800);
         }
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.5);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Wires (all possible connections)
-    for (var i = 0; i < nodes.length; i++) {
-      var n2 = nodes[i];
-      // Right
-      if (n2.col < COLS - 1) {
-        var r2 = i + 1;
-        game.draw.line(nodeX(i), nodeY(i), nodeX(r2), nodeY(r2), C.wire, 4);
-      }
-      // Down
-      if (n2.row < ROWS - 1) {
-        var d2 = i + COLS;
-        game.draw.line(nodeX(i), nodeY(i), nodeX(d2), nodeY(d2), C.wire, 4);
-      }
-    }
-
-    // Player path
-    for (var pi2 = 1; pi2 < playerPath.length; pi2++) {
-      var pa = playerPath[pi2 - 1], pb = playerPath[pi2];
-      game.draw.line(nodeX(pa), nodeY(pa), nodeX(pb), nodeY(pb), C.wireHi, 8);
-    }
-
-    // Spark animation
-    if (sparkPhase === 'animating' && playerPath.length > 1) {
-      var sIdx = Math.floor(sparkPos);
-      var sFrac = sparkPos - sIdx;
-      var sa = playerPath[Math.min(sIdx, playerPath.length - 1)];
-      var sb = playerPath[Math.min(sIdx + 1, playerPath.length - 1)];
-      var sx = nodeX(sa) + (nodeX(sb) - nodeX(sa)) * sFrac;
-      var sy = nodeY(sa) + (nodeY(sb) - nodeY(sa)) * sFrac;
-      game.draw.circle(sx, sy, 24, C.sparkHi, 0.9);
-      game.draw.circle(sx, sy, 40, C.spark, 0.3);
-    }
-
-    // Nodes
-    for (var i2 = 0; i2 < nodes.length; i2++) {
-      var n3 = nodes[i2];
-      var nx2 = nodeX(i2), ny2 = nodeY(i2);
-      var inPath = playerPath.indexOf(i2) !== -1;
-      var col = n3.isStart ? C.start : n3.isEnd ? C.end : (inPath ? C.nodeHi : C.node);
-      game.draw.circle(nx2, ny2, NODE_R + 6, col, 0.15);
-      game.draw.circle(nx2, ny2, NODE_R, col, 0.9);
-      if (i2 === selectedNode) {
-        game.draw.circle(nx2, ny2, NODE_R + 14, C.sparkHi, 0.3 + Math.sin(elapsed * 6) * 0.1);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 12 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    // Fail dots
-    for (var fi = 0; fi < MAX_FAIL; fi++) {
-      game.draw.circle(W / 2 - (MAX_FAIL - 1) * 40 + fi * 80, H * 0.955, 16, fi < failures ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(completions + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 75);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.nodeHi : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(completions + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var fi = 0; fi < MAX_FAIL; fi++) game.draw.rect(snap(W / 2 + (fi - (MAX_FAIL - 1) / 2) * 56) - 10, 224, 20, 20, fi < failures ? C.a : '#001830');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.06);
-    generatePuzzle();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

@@ -1,268 +1,154 @@
 // 560-bouncy-wall.js
-// バウンシーウォール — 壁に向かってボールを投げてはね返りでターゲット破壊
-// 操作: スワイプでボールを投げる方向と強さを決める
-// 成功: 20ターゲット破壊  失敗: 12個ボール消費 or 60秒
+// バウンシーウォール — 壁で跳ね返るボールをスワイプで投げ、上部のターゲットを撃ち抜く
+// 操作: スワイプで投げる方向と強さを決める（タップした方向へも投げられる）壁で反射
+// 成功: ターゲット 6個 破壊  失敗: ボール 5球 使い切る or 18秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0a0814',
-    wall:    '#334466',
-    wallHi:  '#4466aa',
-    ball:    '#ff6633',
-    ballHi:  '#ffaa66',
-    target:  '#22c55e',
-    targetHi:'#86efac',
-    broken:  '#ef4444',
-    trail:   '#ff663344',
-    text:    '#f1f5f9',
-    ui:      '#374151',
-    arrow:   '#4488ff',
-    arrowHi: '#88bbff'
-  };
+  // ── パレット（ネオンアーケード、反射台） ──
+  var C = { bg:'#0a0814', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var WALL_THICKNESS = 40;
-  var PLAY_X = WALL_THICKNESS;
-  var PLAY_Y = H * 0.12;
-  var PLAY_W = W - WALL_THICKNESS * 2;
-  var PLAY_H = H * 0.72;
-  var BALL_SPAWN_X = W / 2;
-  var BALL_SPAWN_Y = PLAY_Y + PLAY_H - 100;
-  var BALL_R = 30;
-  var MAX_BOUNCES = 6;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'BOUNCY WALL';
+  var HOW_TO_PLAY = 'SWIPE TO THROW THE BALL · IT BOUNCES OFF WALLS · HIT TARGETS';
+  var MAX_TIME = 18;
+  var NEEDED   = 6;          // 修正2: 20 → 6
+  var MAX_BALLS = 5;         // 修正2: 12 → 5
+  var WT = 40, PLAY_X = 40, PLAY_Y = snap(H * 0.14), PLAY_W = W - 80, PLAY_H = snap(H * 0.70), BALL_R = 30, MAX_BOUNCES = 6;
+  var SPAWN_X = W / 2, SPAWN_Y = snap(H * 0.14) + snap(H * 0.70) - 100;
 
-  var ball = null;
-  var targets = [];
-  var broken = 0;
-  var NEEDED = 20;
-  var ballsUsed = 0;
-  var MAX_BALLS = 12;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var trail = [];
-  var swipeStart = null;
-  var aiming = false;
-  var aimVX = 0, aimVY = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnTargets() {
-    targets = [];
-    var cols = 5, rows = 4;
-    for (var r = 0; r < rows; r++) {
-      for (var c = 0; c < cols; c++) {
-        if (Math.random() < 0.7) {
-          targets.push({
-            x: PLAY_X + (c + 0.5) * PLAY_W / cols,
-            y: PLAY_Y + (r + 0.5) * (PLAY_H * 0.5) / rows,
-            r: 40,
-            hp: Math.random() < 0.3 ? 2 : 1,
-            maxHp: 1
-          });
-        }
-      }
-    }
-    // Ensure enough targets
-    targets.forEach(function(t) { t.maxHp = t.hp; });
+  // ── ゲーム変数 ──
+  var ball, targets, broken, ballsUsed, timeLeft, done, particles, trail;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#151022');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    game.draw.rect(0, PLAY_Y, WT, PLAY_H, C.d, 0.7); game.draw.rect(W - WT, PLAY_Y, WT, PLAY_H, C.d, 0.7); game.draw.rect(PLAY_X, PLAY_Y, PLAY_W, WT / 2, C.d, 0.7);
+    game.draw.rect(WT - 4, PLAY_Y, 4, PLAY_H, C.e, 0.5); game.draw.rect(W - WT, PLAY_Y, 4, PLAY_H, C.e, 0.5);
+  }
+
+  function spawnTargets() {
+    targets = []; var cols = 5, rows = 3;
+    for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) if (Math.random() < 0.7) { var hp = Math.random() < 0.3 ? 2 : 1; targets.push({ x: PLAY_X + (c + 0.5) * PLAY_W / cols, y: PLAY_Y + (r + 0.5) * (PLAY_H * 0.42) / rows, r: 40, hp: hp }); }
+    if (targets.length < 6) for (var i = targets.length; i < 6; i++) targets.push({ x: PLAY_X + Math.random() * PLAY_W, y: PLAY_Y + 60 + Math.random() * PLAY_H * 0.3, r: 40, hp: 1 });
+  }
+
+  function initGame() { ball = null; broken = 0; ballsUsed = 0; timeLeft = MAX_TIME; done = false; particles = []; trail = []; spawnTargets(); }
+
+  function finish(success) {
     if (done) return;
-    if (ball) return; // ball in flight
-    var dx = x2 - x1, dy = y2 - y1;
-    var len = Math.sqrt(dx * dx + dy * dy);
-    if (len < 30) return;
-    var speed = Math.min(len * 5, 1400);
-    ball = {
-      x: BALL_SPAWN_X, y: BALL_SPAWN_Y,
-      vx: (dx / len) * speed,
-      vy: (dy / len) * speed,
-      bounces: 0,
-      r: BALL_R
-    };
-    ballsUsed++;
-    trail = [];
-    game.audio.play('se_tap', 0.4);
-    aimVX = (dx / len) * speed;
-    aimVY = (dy / len) * speed;
-    aiming = false;
+    done = true; resultSuccess = success;
+    finalScore = success ? (broken * 500 + Math.ceil(timeLeft) * 100) : broken * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function launch(dx, dy, speed) { var len = Math.hypot(dx, dy); if (len < 1) return; ball = { x: SPAWN_X, y: SPAWN_Y, vx: dx / len * speed, vy: dy / len * speed, bounces: 0, r: BALL_R }; ballsUsed++; trail = []; game.audio.play('se_tap', 0.4); }
+
+  function drawScene() {
+    for (var ti = 0; ti < targets.length; ti++) { var t = targets[ti], col = t.hp > 1 ? C.c : C.b, pu = 1 + Math.sin(game.time.elapsed * 3 + ti * 0.5) * 0.06; pc(t.x, t.y, (t.r) * pu, col, 0.9); pc(t.x - t.r * 0.3, t.y - t.r * 0.3, t.r * 0.25, C.g, 0.3); if (t.hp > 1) txt('2', t.x, t.y + 14, 36, C.bg); }
+    for (var tri = 0; tri < trail.length; tri++) game.draw.rect(snap(trail[tri].x) - BALL_R * 0.3 * trail[tri].t, snap(trail[tri].y) - BALL_R * 0.3 * trail[tri].t, BALL_R * 0.6 * trail[tri].t, BALL_R * 0.6 * trail[tri].t, C.f, trail[tri].t * 0.5);
+    if (ball) { pc(ball.x, ball.y, ball.r + 6, C.f, 0.2); pc(ball.x, ball.y, ball.r, C.f, 0.95); pc(ball.x - 8, ball.y - 8, ball.r * 0.35, C.g, 0.5); }
+    else { pc(SPAWN_X, SPAWN_Y, BALL_R + 8, C.e, 0.2 + Math.sin(game.time.elapsed * 3) * 0.1); pc(SPAWN_X, SPAWN_Y, BALL_R, C.f, 0.7); txt('SWIPE TO THROW', SPAWN_X, SPAWN_Y + 80, 34, C.e); }
+  }
+
+  // ── 入力 ──
+  game.onSwipe(function(dir, x1, y1, x2, y2) {
+    if (state !== S.PLAYING || done || ball) return;
+    var dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy); if (len < 30) return; launch(dx, dy, Math.min(len * 5, 1400));
   });
 
   game.onTap(function(tx, ty) {
-    if (done) return;
-    if (ball) return;
-    // Simple tap: launch at tap position
-    var dx = tx - BALL_SPAWN_X, dy = ty - BALL_SPAWN_Y;
-    var len = Math.sqrt(dx * dx + dy * dy);
-    if (len < 1) return;
-    var speed = 900;
-    ball = {
-      x: BALL_SPAWN_X, y: BALL_SPAWN_Y,
-      vx: (dx / len) * speed,
-      vy: (dy / len) * speed,
-      bounces: 0,
-      r: BALL_R
-    };
-    ballsUsed++;
-    trail = [];
-    game.audio.play('se_tap', 0.4);
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || ball) return;
+    launch(tx - SPAWN_X, ty - SPAWN_Y, 900);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!targets) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.30, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.345, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.50, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.54, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ALL BROKEN!' : 'OUT OF BALLS', W / 2, H * 0.35, 64, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-
-    if (ball) {
-      var prevX = ball.x, prevY = ball.y;
-      ball.x += ball.vx * dt;
-      ball.y += ball.vy * dt;
-
-      // Trail
-      trail.push({ x: ball.x, y: ball.y, t: 0.35 });
-      if (trail.length > 30) trail.shift();
-
-      // Wall bounces
-      if (ball.x - ball.r < PLAY_X) {
-        ball.x = PLAY_X + ball.r;
-        ball.vx = Math.abs(ball.vx) * 0.95;
-        ball.bounces++;
-        game.audio.play('se_tap', 0.3);
-      }
-      if (ball.x + ball.r > PLAY_X + PLAY_W) {
-        ball.x = PLAY_X + PLAY_W - ball.r;
-        ball.vx = -Math.abs(ball.vx) * 0.95;
-        ball.bounces++;
-        game.audio.play('se_tap', 0.3);
-      }
-      if (ball.y - ball.r < PLAY_Y) {
-        ball.y = PLAY_Y + ball.r;
-        ball.vy = Math.abs(ball.vy) * 0.95;
-        ball.bounces++;
-        game.audio.play('se_tap', 0.3);
-      }
-
-      // Target collision
-      for (var ti = targets.length - 1; ti >= 0; ti--) {
-        var t = targets[ti];
-        var dx = ball.x - t.x, dy = ball.y - t.y;
-        if (Math.sqrt(dx * dx + dy * dy) < ball.r + t.r) {
-          t.hp--;
-          ball.vy = -Math.abs(ball.vy) * 0.85;
-          ball.vx += (Math.random() - 0.5) * 200;
-          game.audio.play('se_success', 0.6);
-          for (var pi = 0; pi < 6; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: t.x, y: t.y, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.4, col: C.targetHi });
+      if (timeLeft <= 0) { finish(false); return; }
+      if (ball) {
+        ball.x += ball.vx * dt; ball.y += ball.vy * dt; trail.push({ x: ball.x, y: ball.y, t: 0.35 }); if (trail.length > 30) trail.shift();
+        if (ball.x - ball.r < PLAY_X) { ball.x = PLAY_X + ball.r; ball.vx = Math.abs(ball.vx) * 0.95; ball.bounces++; game.audio.play('se_tap', 0.3); }
+        if (ball.x + ball.r > PLAY_X + PLAY_W) { ball.x = PLAY_X + PLAY_W - ball.r; ball.vx = -Math.abs(ball.vx) * 0.95; ball.bounces++; game.audio.play('se_tap', 0.3); }
+        if (ball.y - ball.r < PLAY_Y) { ball.y = PLAY_Y + ball.r; ball.vy = Math.abs(ball.vy) * 0.95; ball.bounces++; game.audio.play('se_tap', 0.3); }
+        for (var ti = targets.length - 1; ti >= 0; ti--) {
+          var t = targets[ti]; if (Math.hypot(ball.x - t.x, ball.y - t.y) < ball.r + t.r) {
+            t.hp--; ball.vy = -Math.abs(ball.vy) * 0.85; ball.vx += (Math.random() - 0.5) * 200; game.audio.play('se_success', 0.6);
+            for (var pi = 0; pi < 6; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: t.x, y: t.y, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.4, col: C.b }); }
+            if (t.hp <= 0) { broken++; targets.splice(ti, 1); if (targets.length < 4) spawnTargets(); if (broken >= NEEDED) { finish(true); return; } }
+            ball.bounces++;
           }
-          if (t.hp <= 0) {
-            broken++;
-            targets.splice(ti, 1);
-            // Replenish targets when low
-            if (targets.length < 8 && !done) spawnTargets();
-            if (broken >= NEEDED && !done) {
-              done = true;
-              game.audio.play('se_success', 0.9);
-              setTimeout(function() { game.end.success(broken * 200 + Math.ceil(timeLeft) * 100); }, 700);
-            }
-          }
-          ball.bounces++;
         }
+        if (ball.y > PLAY_Y + PLAY_H + 60 || ball.bounces > MAX_BOUNCES) { ball = null; trail = []; if (ballsUsed >= MAX_BALLS) { finish(false); return; } }
       }
-
-      // Ball lost
-      if (ball.y > PLAY_Y + PLAY_H + 60 || ball.bounces > MAX_BOUNCES) {
-        ball = null;
-        trail = [];
-        if (ballsUsed >= MAX_BALLS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-      }
+      for (var ti2 = trail.length - 1; ti2 >= 0; ti2--) { trail[ti2].t -= dt * 2.5; if (trail[ti2].t <= 0) trail.splice(ti2, 1); }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var ti2 = trail.length - 1; ti2 >= 0; ti2--) {
-      trail[ti2].t -= dt * 2.5;
-      if (trail[ti2].t <= 0) trail.splice(ti2, 1);
-    }
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Walls
-    game.draw.rect(0, PLAY_Y, WALL_THICKNESS, PLAY_H, C.wall, 0.9);
-    game.draw.rect(W - WALL_THICKNESS, PLAY_Y, WALL_THICKNESS, PLAY_H, C.wall, 0.9);
-    game.draw.rect(PLAY_X, PLAY_Y, PLAY_W, WALL_THICKNESS / 2, C.wall, 0.9);
-    // Wall highlights
-    game.draw.line(WALL_THICKNESS, PLAY_Y, WALL_THICKNESS, PLAY_Y + PLAY_H, C.wallHi, 4);
-    game.draw.line(W - WALL_THICKNESS, PLAY_Y, W - WALL_THICKNESS, PLAY_Y + PLAY_H, C.wallHi, 4);
-
-    // Targets
-    for (var ti3 = 0; ti3 < targets.length; ti3++) {
-      var t3 = targets[ti3];
-      var pulse = 1 + Math.sin(elapsed * 3 + ti3 * 0.5) * 0.06;
-      var col = t3.hp > 1 ? '#f59e0b' : C.target;
-      game.draw.circle(t3.x, t3.y, (t3.r + 6) * pulse, col, 0.15);
-      game.draw.circle(t3.x, t3.y, t3.r * pulse, col, 0.9);
-      game.draw.circle(t3.x - t3.r * 0.3, t3.y - t3.r * 0.3, t3.r * 0.25, '#ffffff', 0.3);
-      if (t3.hp > 1) {
-        game.draw.text('2', t3.x, t3.y + 14, { size: 36, color: '#fff', bold: true });
-      }
-    }
-
-    // Trail
-    for (var tri = 0; tri < trail.length; tri++) {
-      var tp = trail[tri];
-      game.draw.circle(tp.x, tp.y, BALL_R * 0.6 * tp.t, C.trail, tp.t * 0.5);
-    }
-
-    // Ball
-    if (ball) {
-      game.draw.circle(ball.x, ball.y, ball.r + 6, C.ball, 0.2);
-      game.draw.circle(ball.x, ball.y, ball.r, C.ball, 0.95);
-      game.draw.circle(ball.x - 8, ball.y - 8, ball.r * 0.35, C.ballHi, 0.5);
-    } else {
-      // Show launcher position
-      game.draw.circle(BALL_SPAWN_X, BALL_SPAWN_Y, BALL_R + 10, C.arrow, 0.2 + Math.sin(elapsed * 3) * 0.1);
-      game.draw.circle(BALL_SPAWN_X, BALL_SPAWN_Y, BALL_R, C.ball, 0.7);
-      game.draw.text('スワイプで投げる', BALL_SPAWN_X, BALL_SPAWN_Y + 80, { size: 36, color: C.arrowHi });
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    // Ball counter
-    for (var bi = 0; bi < MAX_BALLS; bi++) {
-      game.draw.circle(W / 2 - (MAX_BALLS - 1) * 34 + bi * 68, H * 0.955, 16, bi < ballsUsed ? C.broken : C.ball, 0.9);
-    }
-
-    game.draw.text(broken + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.target : C.broken);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(broken + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var bi = 0; bi < MAX_BALLS; bi++) game.draw.rect(snap(W / 2 + (bi - (MAX_BALLS - 1) / 2) * 56) - 10, 224, 20, 20, bi < ballsUsed ? C.a : C.f);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.08);
-    spawnTargets();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
