@@ -1,231 +1,142 @@
 // 537-rhythm-fall.js
-// リズムフォール — 4レーンを落ちてくるノートをタップのみで撃退
-// 操作: 画面の左1/4, 左中, 右中, 右1/4をタップして対応レーンのノートを叩く
-// 成功: 40ヒット  失敗: 15ミス or 60秒
+// リズムフォール — 4レーンを落ちてくるノートを、判定ラインでレーンをタップして叩く
+// 操作: 画面を縦4分割、落ちるノートがラインに来た瞬間その列をタップ
+// 成功: 12ヒット  失敗: 5ミス or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:       '#03000a',
-    lane0:    '#ef4444',
-    lane1:    '#3b82f6',
-    lane2:    '#22c55e',
-    lane3:    '#f59e0b',
-    note:     '#f1f5f9',
-    hit:      '#ffffff',
-    perfect:  '#fde68a',
-    good:     '#22c55e',
-    miss:     '#ef4444',
-    text:     '#f1f5f9',
-    ui:       '#374151',
-    judge:    '#1a1a2e'
-  };
+  // ── パレット（ネオンアーケード、音ゲー筐体） ──
+  var C = { bg:'#03000a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var LANE_COLS = [C.a, C.e, C.b, C.c];
 
-  var LANE_COLORS = [C.lane0, C.lane1, C.lane2, C.lane3];
-  var LANE_COUNT = 4;
-  var LANE_W = W / LANE_COUNT;
-  var HIT_Y = H * 0.82;
-  var NOTE_R = 52;
-  var NOTE_SPEED = 550;
-  var JUDGE_RANGE = 100;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'RHYTHM FALL';
+  var HOW_TO_PLAY = 'TAP THE LANE WHEN ITS NOTE HITS THE JUDGE LINE';
+  var MAX_TIME = 20;
+  var NEEDED   = 12;         // 修正2: 40 → 12
+  var MAX_MISS = 5;          // 修正2: 15 → 5
+  var LANES = 4, LANE_W = W / 4, HIT_Y = snap(H * 0.80), NOTE_R = 52, NOTE_SPEED = 520, JUDGE = 100;
 
-  var notes = [];
-  var hits = 0;
-  var NEEDED = 40;
-  var misses = 0;
-  var MAX_MISS = 15;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var hitAnims = [0, 0, 0, 0]; // per lane
-  var lastResult = '';
-  var lastResultTimer = 0;
-  var lastResultCol = C.good;
-  var nextNote = 0.4;
-  var laneFlash = [0, 0, 0, 0];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnNote() {
-    var lane = Math.floor(Math.random() * LANE_COUNT);
-    notes.push({ lane: lane, y: -NOTE_R, hit: false });
+  // ── ゲーム変数 ──
+  var notes, hits, misses, timeLeft, done, particles, hitAnims, lastResult, lastTimer, lastCol, nextNote, laneFlash;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#0a0a1e');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    for (var li = 0; li < LANES; li++) { var lx = li * LANE_W; game.draw.rect(lx + 4, 280, LANE_W - 8, H - 280, LANE_COLS[li], 0.04); if (li > 0) game.draw.rect(lx - 1, 280, 2, H - 280, '#111122', 0.9); if (laneFlash && laneFlash[li] > 0) game.draw.rect(lx, HIT_Y - NOTE_R, LANE_W, NOTE_R * 2, LANE_COLS[li], laneFlash[li] * 0.3); }
+    game.draw.rect(0, HIT_Y - 4, W, 8, C.g, 0.4);
+  }
+
+  function initGame() { notes = []; hits = 0; misses = 0; timeLeft = MAX_TIME; done = false; particles = []; hitAnims = [0, 0, 0, 0]; lastResult = ''; lastTimer = 0; lastCol = C.b; nextNote = 0.5; laneFlash = [0, 0, 0, 0]; }
+
+  function finish(success) {
     if (done) return;
-    var lane = Math.floor(tx / LANE_W);
-    if (lane < 0 || lane >= LANE_COUNT) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (hits * 300 + Math.ceil(timeLeft) * 100) : hits * 100;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    laneFlash[lane] = 0.3;
+  function drawScene() {
+    for (var li = 0; li < LANES; li++) { var lx = li * LANE_W + LANE_W / 2, ba = hitAnims[li] > 0 ? 0.9 : 0.5; pc(lx, HIT_Y, NOTE_R + 8, LANE_COLS[li], 0.15); pc(lx, HIT_Y, NOTE_R, LANE_COLS[li], ba); }
+    for (var ni = 0; ni < notes.length; ni++) { var n = notes[ni]; if (n.hit) continue; var nx = n.lane * LANE_W + LANE_W / 2, al = Math.min(1, Math.max(0.3, 1 - (HIT_Y - n.y) / H)); pc(nx, n.y, NOTE_R, LANE_COLS[n.lane], al * 0.9); pc(nx, n.y, NOTE_R * 0.4, C.g, al * 0.5); }
+  }
 
-    // Find nearest note in this lane within hit zone
-    var bestNote = null, bestDist = Infinity;
-    for (var ni = 0; ni < notes.length; ni++) {
-      if (notes[ni].lane !== lane || notes[ni].hit) continue;
-      var dist = Math.abs(notes[ni].y - HIT_Y);
-      if (dist < JUDGE_RANGE && dist < bestDist) {
-        bestDist = dist;
-        bestNote = notes[ni];
-      }
-    }
-
-    if (bestNote) {
-      bestNote.hit = true;
-      hits++;
-      hitAnims[lane] = 0.4;
-
-      if (bestDist < JUDGE_RANGE * 0.3) {
-        lastResult = 'PERFECT!';
-        lastResultCol = C.perfect;
-        game.audio.play('se_success', 0.8);
-      } else {
-        lastResult = 'GOOD';
-        lastResultCol = C.good;
-        game.audio.play('se_tap', 0.5);
-      }
-      lastResultTimer = 0.6;
-
-      for (var pi = 0; pi < 8; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        var cx = lane * LANE_W + LANE_W / 2;
-        particles.push({ x: cx, y: HIT_Y, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.35, col: LANE_COLORS[lane] });
-      }
-
-      if (hits >= NEEDED && !done) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(hits * 150 + Math.ceil(timeLeft) * 100); }, 700);
-      }
-    } else {
-      // Empty tap (miss)
-      misses++;
-      lastResult = 'MISS';
-      lastResultCol = C.miss;
-      lastResultTimer = 0.5;
-      game.audio.play('se_failure', 0.3);
-      if (misses >= MAX_MISS && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      }
-    }
+  // ── 入力 ──
+  game.onTap(function(tx) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var lane = Math.floor(tx / LANE_W); if (lane < 0 || lane >= LANES) return; laneFlash[lane] = 0.3;
+    var best = null, bd = Infinity;
+    for (var ni = 0; ni < notes.length; ni++) { if (notes[ni].lane !== lane || notes[ni].hit) continue; var d = Math.abs(notes[ni].y - HIT_Y); if (d < JUDGE && d < bd) { bd = d; best = notes[ni]; } }
+    if (best) {
+      best.hit = true; hits++; hitAnims[lane] = 0.4;
+      if (bd < JUDGE * 0.35) { lastResult = 'PERFECT!'; lastCol = C.c; game.audio.play('se_success', 0.8); } else { lastResult = 'GOOD'; lastCol = C.b; game.audio.play('se_tap', 0.5); }
+      lastTimer = 0.6;
+      for (var pi = 0; pi < 8; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: lane * LANE_W + LANE_W / 2, y: HIT_Y, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.35, col: LANE_COLS[lane] }); }
+      if (hits >= NEEDED) { finish(true); return; }
+    } else { misses++; lastResult = 'MISS'; lastCol = C.a; lastTimer = 0.5; game.audio.play('se_failure', 0.3); if (misses >= MAX_MISS) { finish(false); return; } }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!notes) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.30, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.35, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.52, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.56, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'FULL COMBO!' : 'GAME OVER', W / 2, H * 0.35, 68, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (lastTimer > 0) lastTimer -= dt;
+      for (var li = 0; li < LANES; li++) { if (hitAnims[li] > 0) hitAnims[li] -= dt * 3; if (laneFlash[li] > 0) laneFlash[li] -= dt * 4; }
+      nextNote -= dt;
+      if (nextNote <= 0) { notes.push({ lane: Math.floor(Math.random() * LANES), y: 280 - NOTE_R, hit: false }); if (game.time.elapsed > 8 && Math.random() < 0.25) notes.push({ lane: Math.floor(Math.random() * LANES), y: 280 - NOTE_R, hit: false }); nextNote = 0.5 + Math.random() * 0.4; }
+      for (var ni = notes.length - 1; ni >= 0; ni--) {
+        var n = notes[ni]; n.y += NOTE_SPEED * dt;
+        if (n.y > HIT_Y + JUDGE && !n.hit) { misses++; notes.splice(ni, 1); game.audio.play('se_failure', 0.2); if (misses >= MAX_MISS) { finish(false); return; } }
+        else if (n.hit && n.y > HIT_Y + 100) notes.splice(ni, 1);
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (lastResultTimer > 0) lastResultTimer -= dt;
-    for (var li = 0; li < LANE_COUNT; li++) {
-      if (hitAnims[li] > 0) hitAnims[li] -= dt * 3;
-      if (laneFlash[li] > 0) laneFlash[li] -= dt * 4;
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 7, snap(particles[pp2].y) - 7, 14, 14, particles[pp2].col, particles[pp2].life * 1.5);
+    if (lastTimer > 0) txt(lastResult, W / 2, HIT_Y - 160, 64, lastCol);
 
-    // Spawn notes
-    nextNote -= dt;
-    if (nextNote <= 0 && !done) {
-      spawnNote();
-      if (elapsed > 10 && Math.random() < 0.3) spawnNote(); // double notes
-      nextNote = 0.3 + Math.random() * 0.4;
-    }
-
-    // Update notes
-    for (var ni2 = notes.length - 1; ni2 >= 0; ni2--) {
-      var note = notes[ni2];
-      note.y += NOTE_SPEED * dt;
-      if (note.y > HIT_Y + JUDGE_RANGE && !note.hit) {
-        // Missed note
-        misses++;
-        notes.splice(ni2, 1);
-        game.audio.play('se_failure', 0.2);
-        if (misses >= MAX_MISS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-      } else if (note.hit && note.y > HIT_Y + 100) {
-        notes.splice(ni2, 1);
-      }
-    }
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Lanes
-    for (var li2 = 0; li2 < LANE_COUNT; li2++) {
-      var lx = li2 * LANE_W;
-      game.draw.rect(lx + 4, 0, LANE_W - 8, H, LANE_COLORS[li2], 0.04);
-      // Lane separator
-      if (li2 > 0) game.draw.line(lx, 0, lx, H, '#111', 2);
-      // Hit zone
-      if (laneFlash[li2] > 0) {
-        game.draw.rect(lx, HIT_Y - NOTE_R, LANE_W, NOTE_R * 2, LANE_COLORS[li2], laneFlash[li2] * 0.3);
-      }
-    }
-
-    // Judge line
-    game.draw.rect(0, HIT_Y - 4, W, 8, '#444', 0.6);
-    game.draw.rect(0, HIT_Y - NOTE_R - 8, W, 4, '#222', 0.5);
-    game.draw.rect(0, HIT_Y + NOTE_R + 4, W, 4, '#222', 0.5);
-
-    // Hit buttons at bottom
-    for (var li3 = 0; li3 < LANE_COUNT; li3++) {
-      var lx3 = li3 * LANE_W + LANE_W / 2;
-      var btnAlpha = hitAnims[li3] > 0 ? 0.9 : 0.5;
-      game.draw.circle(lx3, HIT_Y, NOTE_R + 8, LANE_COLORS[li3], 0.15);
-      game.draw.circle(lx3, HIT_Y, NOTE_R, LANE_COLORS[li3], btnAlpha);
-    }
-
-    // Notes
-    for (var ni3 = 0; ni3 < notes.length; ni3++) {
-      var note3 = notes[ni3];
-      if (note3.hit) continue;
-      var nx = note3.lane * LANE_W + LANE_W / 2;
-      var distToHit = HIT_Y - note3.y;
-      var approachAlpha = Math.min(1, Math.max(0.3, 1 - distToHit / H));
-      game.draw.circle(nx, note3.y, NOTE_R + 4, LANE_COLORS[note3.lane], approachAlpha * 0.2);
-      game.draw.circle(nx, note3.y, NOTE_R, LANE_COLORS[note3.lane], approachAlpha * 0.9);
-      game.draw.circle(nx, note3.y, NOTE_R * 0.4, '#fff', approachAlpha * 0.4);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 14 * p.life, p.col, p.life * 0.8);
-    }
-
-    // Result text
-    if (lastResultTimer > 0) {
-      game.draw.text(lastResult, W / 2, HIT_Y - 150, { size: 64, color: lastResultCol, bold: true });
-    }
-
-    // Miss dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 34 + mi * 68, H * 0.955, 14, mi < misses ? C.miss : C.ui, 0.9);
-    }
-
-    game.draw.text(hits + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.lane1 : C.miss);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(hits + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < misses ? C.a : '#0a0a1e');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.09);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
