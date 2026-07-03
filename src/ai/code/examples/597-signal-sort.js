@@ -1,251 +1,149 @@
 // 597-signal-sort.js
-// シグナルソート — 混線した無線信号を周波数帯で仕分ける管制ゲーム
-// 操作: スワイプで信号を正しいチャンネルへ振り分ける
-// 成功: 30本仕分け成功  失敗: 8本ミス or 60秒
+// シグナルソート — 浮かぶ信号の波形を見極め、下段の同じ波形チャンネルへスワイプで振り分ける
+// 操作: 信号をつかんで（スワイプ開始）下の一致するチャンネル帯へスワイプで放り込む
+// 成功: 8本 仕分け  失敗: 3本 誤仕分け or 18秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#020810',
-    panel:   '#050f1a',
-    channel: ['#ff4466', '#44aaff', '#44ffaa', '#ffcc00'],
-    channelDk:['#330010', '#001535', '#003320', '#332800'],
-    signal:  '#ffffff',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#0a1a2a'
-  };
-
-  var NUM_CHANNELS = 4;
-  var CHANNEL_W = W / NUM_CHANNELS;
-  var ZONE_Y = H * 0.82;
-  var ZONE_H = H * 0.15;
-
-  var signals = [];
-  var sorted = 0;
-  var NEEDED = 30;
-  var mistakes = 0;
-  var MAX_MISTAKES = 8;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var nextSignal = 0.8;
-  var resultText = '';
-  var resultTimer = 0;
-
-  var WAVE_SHAPES = [
-    // Channel 0: narrow wave (high frequency)
-    function(x, t, amp) { return Math.sin(x * 0.06 + t * 4) * amp; },
-    // Channel 1: slow sine (low frequency)
-    function(x, t, amp) { return Math.sin(x * 0.015 + t) * amp; },
-    // Channel 2: sawtooth-ish
-    function(x, t, amp) { return ((x * 0.02 + t * 2) % (Math.PI * 2) - Math.PI) / Math.PI * amp; },
-    // Channel 3: square-ish
-    function(x, t, amp) { return Math.sign(Math.sin(x * 0.03 + t * 1.5)) * amp; }
+  // ── パレット（グリーンCRT、通信管制） ──
+  var C = { bg:'#000a02', a:'#ff3300', b:'#00ff41', c:'#ffe600', d:'#00cc33', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var CH = [C.a, C.e, C.b, C.c], CHDK = ['#1a0800', '#001a1e', '#002200', '#1a1600'];
+  var WAVES = [
+    function(x, t, a) { return Math.sin(x * 0.06 + t * 4) * a; },
+    function(x, t, a) { return Math.sin(x * 0.015 + t) * a; },
+    function(x, t, a) { return ((x * 0.02 + t * 2) % (Math.PI * 2) - Math.PI) / Math.PI * a; },
+    function(x, t, a) { return Math.sign(Math.sin(x * 0.03 + t * 1.5)) * a; }
   ];
 
-  function spawnSignal() {
-    var ch = Math.floor(Math.random() * NUM_CHANNELS);
-    var x = 120 + Math.random() * (W - 240);
-    var y = H * 0.2 + Math.random() * (H * 0.45);
-    signals.push({
-      x: x, y: y,
-      channel: ch,
-      phase: Math.random() * Math.PI * 2,
-      speed: 0.8 + Math.random() * 0.4,
-      dragging: false,
-      dragX: 0, dragY: 0,
-      placed: false,
-      life: 1.0
-    });
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SIGNAL SORT';
+  var HOW_TO_PLAY = 'MATCH EACH SIGNAL WAVEFORM · SWIPE IT INTO ITS CHANNEL BAND';
+  var MAX_TIME = 18;
+  var NEEDED   = 8;          // 修正2: 30 → 8
+  var MAX_MISTAKES = 3;      // 修正2: 8 → 3
+  var NUM_CH = 4, CH_W = W / 4, ZONE_Y = snap(H * 0.80), ZONE_H = snap(H * 0.16);
+
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var signals, sorted, mistakes, timeLeft, done, particles, flash, flashCol, nextSignal, resultText, resultTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  var draggingIdx = -1;
-  var dragStartX = 0, dragStartY = 0;
-  var dragCurX = 0, dragCurY = 0;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#002200');
+  }
+
+  function background() {
+    game.draw.clear(C.bg);
+    for (var ch = 0; ch < NUM_CH; ch++) {
+      game.draw.rect(ch * CH_W + 2, ZONE_Y, CH_W - 4, ZONE_H, CHDK[ch], 0.9); game.draw.rect(ch * CH_W + 2, ZONE_Y, CH_W - 4, 4, CH[ch], 0.8);
+      var py = ZONE_Y + ZONE_H / 2;
+      for (var xi = 1; xi < 40; xi++) { var wx = ch * CH_W + 8 + xi * (CH_W - 16) / 40, wy = py + WAVES[ch](xi * 8, game.time.elapsed, 18), px = ch * CH_W + 8 + (xi - 1) * (CH_W - 16) / 40, pyy = py + WAVES[ch]((xi - 1) * 8, game.time.elapsed, 18); game.draw.line(px, pyy, wx, wy, CH[ch], 3); }
+    }
+    for (var di = 1; di < NUM_CH; di++) game.draw.rect(di * CH_W - 1, ZONE_Y, 2, H - ZONE_Y, '#0a1a2a', 0.9);
+  }
+
+  function spawnSignal() { signals.push({ x: 140 + Math.random() * (W - 280), y: snap(H * 0.30) + Math.random() * (H * 0.38), channel: Math.floor(Math.random() * NUM_CH), phase: Math.random() * Math.PI * 2, speed: 0.8 + Math.random() * 0.4, placed: false, life: 1.0 }); }
+
+  function initGame() { signals = []; sorted = 0; mistakes = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; nextSignal = 0.6; resultText = ''; resultTimer = 0; spawnSignal(); spawnSignal(); }
+
+  function finish(success) {
     if (done) return;
-    // Find signal near swipe start
-    var hit = -1;
+    done = true; resultSuccess = success;
+    finalScore = success ? (sorted * 500 + Math.ceil(timeLeft) * 100) : sorted * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
     for (var si = 0; si < signals.length; si++) {
-      var s = signals[si];
-      if (s.placed) continue;
-      var dx = x1 - s.x, dy = y1 - s.y;
-      if (dx * dx + dy * dy < 70 * 70) { hit = si; break; }
+      var s = signals[si]; if (s.placed) continue; var col = CH[s.channel], waveW = 150, waveH = 40;
+      for (var xi = 1; xi < 30; xi++) { var r1 = xi / 30 * waveW, r0 = (xi - 1) / 30 * waveW, wy = s.y + WAVES[s.channel](xi * 6, s.phase, waveH * 0.4), wy0 = s.y + WAVES[s.channel]((xi - 1) * 6, s.phase, waveH * 0.4); game.draw.line(s.x - waveW / 2 + r0, wy0, s.x - waveW / 2 + r1, wy, col, 4); }
+      game.draw.rect(s.x - waveW / 2 - 8, s.y - waveH - 8, waveW + 16, waveH * 2 + 16, col, 0.08);
     }
+  }
+
+  // ── 入力 ──
+  game.onSwipe(function(dir, x1, y1, x2, y2) {
+    if (state !== S.PLAYING || done) return;
+    var hit = -1; for (var si = 0; si < signals.length; si++) { var s = signals[si]; if (s.placed) continue; if ((x1 - s.x) * (x1 - s.x) + (y1 - s.y) * (y1 - s.y) < 90 * 90) { hit = si; break; } }
     if (hit < 0) return;
-
-    // Determine target channel from swipe endpoint
-    var targetChannel = Math.floor(x2 / CHANNEL_W);
-    targetChannel = Math.max(0, Math.min(NUM_CHANNELS - 1, targetChannel));
-
-    // Is endpoint in the zone area?
-    if (y2 >= ZONE_Y) {
-      var s2 = signals[hit];
-      if (targetChannel === s2.channel) {
-        // Correct!
-        s2.placed = true;
-        sorted++;
-        flashCol = C.correct;
-        flashAnim = 0.2;
-        resultText = 'OK!';
-        resultTimer = 0.4;
-        game.audio.play('se_success', 0.5);
-        for (var pi = 0; pi < 6; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({
-            x: (targetChannel + 0.5) * CHANNEL_W, y: ZONE_Y + ZONE_H / 2,
-            vx: Math.cos(ang) * 150, vy: Math.sin(ang) * 150, life: 0.4,
-            col: C.channel[s2.channel]
-          });
-        }
-        if (sorted >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(sorted * 200 + Math.ceil(timeLeft) * 100); }, 700);
-        }
-      } else {
-        // Wrong channel
-        mistakes++;
-        flashCol = C.wrong;
-        flashAnim = 0.25;
-        resultText = 'まちがい';
-        resultTimer = 0.4;
-        game.audio.play('se_failure', 0.3);
-        if (mistakes >= MAX_MISTAKES && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-      }
-    }
+    if (y2 < ZONE_Y) return;
+    var tc = Math.max(0, Math.min(NUM_CH - 1, Math.floor(x2 / CH_W))), s2 = signals[hit];
+    if (tc === s2.channel) { s2.placed = true; sorted++; flash = 0.2; flashCol = C.b; resultText = 'OK!'; resultTimer = 0.4; game.audio.play('se_success', 0.5); for (var pi = 0; pi < 6; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: (tc + 0.5) * CH_W, y: ZONE_Y + ZONE_H / 2, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150, life: 0.4, col: CH[s2.channel] }); } if (sorted >= NEEDED) { finish(true); return; } }
+    else { mistakes++; flash = 0.25; flashCol = C.a; resultText = 'WRONG'; resultTimer = 0.4; game.audio.play('se_failure', 0.3); if (mistakes >= MAX_MISTAKES) { finish(false); return; } }
   });
 
-  game.onTap(function(tx, ty) {
-    if (done) return;
-    game.audio.play('se_tap', 0.05);
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!signals) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.10, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.14, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.66, 52, C.a);
+        txt('TAP TO START', W / 2, H * 0.70, 40, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ALL SORTED!' : 'CROSS TALK', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 4;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    // Spawn signals
-    nextSignal -= dt;
-    if (nextSignal <= 0 && !done) {
-      var active = signals.filter(function(s) { return !s.placed; }).length;
-      if (active < 5) spawnSignal();
-      nextSignal = Math.max(0.4, 1.0 - elapsed * 0.01);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 4; if (resultTimer > 0) resultTimer -= dt;
+      nextSignal -= dt; if (nextSignal <= 0) { if (signals.filter(function(s) { return !s.placed; }).length < 4) spawnSignal(); nextSignal = Math.max(0.4, 0.9 - (MAX_TIME - timeLeft) * 0.02); }
+      for (var si = signals.length - 1; si >= 0; si--) { var s = signals[si]; s.phase += s.speed * dt; if (s.placed) { s.life -= dt * 3; if (s.life <= 0) signals.splice(si, 1); } }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Update signals
-    for (var si = signals.length - 1; si >= 0; si--) {
-      var s = signals[si];
-      s.phase += s.speed * dt;
-      if (s.placed) {
-        s.life -= dt * 3;
-        if (s.life <= 0) signals.splice(si, 1);
-      }
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 4, snap(particles[pp2].y) - 4, 8, 8, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.74), 52, flashCol);
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Channel zones at bottom
-    for (var ch = 0; ch < NUM_CHANNELS; ch++) {
-      game.draw.rect(ch * CHANNEL_W + 2, ZONE_Y, CHANNEL_W - 4, ZONE_H, C.channelDk[ch], 0.9);
-      game.draw.rect(ch * CHANNEL_W + 2, ZONE_Y, CHANNEL_W - 4, 4, C.channel[ch], 0.8);
-
-      // Channel label wave preview
-      var previewY = ZONE_Y + ZONE_H / 2;
-      var cx2 = (ch + 0.5) * CHANNEL_W;
-      for (var xi = 0; xi < 40; xi++) {
-        var wx = ch * CHANNEL_W + 8 + xi * (CHANNEL_W - 16) / 40;
-        var wy = previewY + WAVE_SHAPES[ch](xi * 8, elapsed, 18);
-        if (xi > 0) {
-          var prevX = ch * CHANNEL_W + 8 + (xi - 1) * (CHANNEL_W - 16) / 40;
-          var prevY = previewY + WAVE_SHAPES[ch]((xi - 1) * 8, elapsed, 18);
-          game.draw.line(prevX, prevY, wx, wy, C.channel[ch], 3);
-        }
-      }
-    }
-
-    // Dividers
-    for (var di = 1; di < NUM_CHANNELS; di++) {
-      game.draw.line(di * CHANNEL_W, ZONE_Y, di * CHANNEL_W, H, C.ui, 2);
-    }
-
-    // Signals
-    for (var si2 = 0; si2 < signals.length; si2++) {
-      var s2 = signals[si2];
-      if (s2.placed) continue;
-      var sigCol = C.channel[s2.channel];
-      var sigAlpha = s2.placed ? s2.life : 0.9;
-
-      // Draw waveform for this signal
-      var waveW = 150, waveH = 40;
-      for (var xi2 = 0; xi2 < 30; xi2++) {
-        var relX = xi2 / 30 * waveW;
-        var relX2 = (xi2 + 1) / 30 * waveW;
-        var wy2 = s2.y + WAVE_SHAPES[s2.channel](xi2 * 6, s2.phase, waveH * 0.4);
-        var wy3 = s2.y + WAVE_SHAPES[s2.channel]((xi2 + 1) * 6, s2.phase, waveH * 0.4);
-        if (xi2 > 0) {
-          game.draw.line(s2.x - waveW / 2 + relX, wy2, s2.x - waveW / 2 + relX2, wy3, sigCol, 4);
-        }
-      }
-      // Signal box
-      game.draw.rect(s2.x - waveW / 2 - 8, s2.y - waveH - 8, waveW + 16, waveH * 2 + 16, sigCol, 0.08);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 8 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.74, { size: 52, color: flashCol, bold: true });
-    }
-
-    // Mistake dots
-    for (var mi = 0; mi < MAX_MISTAKES; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISTAKES - 1) * 44 + mi * 88, H * 0.955, 18, mi < mistakes ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(sorted + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.channel[0] : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(sorted + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISTAKES; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISTAKES - 1) / 2) * 56) - 10, 224, 20, 20, mi < mistakes ? C.a : '#002200');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.05);
-    spawnSignal();
-    spawnSignal();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
