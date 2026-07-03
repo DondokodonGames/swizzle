@@ -1,242 +1,160 @@
 // 542-mud-stomp.js
-// マッドストンプ — 地面から飛び出すモグラを素早くタップで踏む
-// 操作: タップで叩く
-// 成功: 30匹撃破  失敗: 10匹逃がす or 45秒
+// マッドストンプ — 穴から飛び出すモグラを、引っ込む前に素早くタップで叩く
+// 操作: 顔を出したモグラをタップ（星付きの紫モグラは2点）
+// 成功: 8匹 撃破  失敗: 3匹 逃がす or 18秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#1a0e06',
-    ground:  '#2d1a08',
-    hole:    '#0a0604',
-    mole:    '#8b5e3c',
-    moleHi:  '#c4874a',
-    moleEye: '#111',
-    star:    '#fbbf24',
-    text:    '#f1f5f9',
-    ui:      '#374151',
-    miss:    '#ef4444',
-    hit:     '#22c55e',
-    special: '#a855f7',
-    speHi:   '#d8b4fe'
-  };
+  // ── パレット（ネオンアーケード、泥場） ──
+  var C = { bg:'#1a0e06', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var COLS = 3;
-  var ROWS = 4;
-  var HOLE_R = 100;
-  var OX = W / 2 - COLS * 200;
-  var OY = H * 0.22;
-  var CELL_W = W / COLS;
-  var CELL_H = (H * 0.62) / ROWS;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'MUD STOMP';
+  var HOW_TO_PLAY = 'TAP THE MOLES BEFORE THEY DUCK BACK · STAR MOLE = 2PT';
+  var MAX_TIME = 18;
+  var NEEDED   = 8;          // 修正2: 30 → 8
+  var MAX_ESCAPE = 3;        // 修正2: 10 → 3
+  var COLS = 3, ROWS = 4, HOLE_R = 100;
+  var CELL_W = W / COLS, CELL_H = (H * 0.60) / ROWS, OY = snap(H * 0.24);
 
-  var holes = [];
-  var smacked = 0;
-  var NEEDED = 30;
-  var escaped = 0;
-  var MAX_ESCAPE = 10;
-  var done = false;
-  var timeLeft = 45;
-  var elapsed = 0;
-  var particles = [];
-  var stars = [];
-  var flashCol = C.hit;
-  var flashAnim = 0;
-  var smackAnim = 0;
-  var nextSpawn = 0.6;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  for (var r = 0; r < ROWS; r++) {
-    for (var c = 0; c < COLS; c++) {
-      holes.push({
-        x: CELL_W * c + CELL_W / 2,
-        y: OY + CELL_H * r + CELL_H / 2 + 60,
-        mole: null
-      });
-    }
+  // ── ゲーム変数 ──
+  var holes, smacked, escaped, timeLeft, done, particles, pops, flash, flashCol, nextSpawn;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function star(cx, cy, r, color) { cx = snap(cx); cy = snap(cy); for (var a = 0; a < 5; a++) { var ang = -Math.PI / 2 + a * Math.PI * 2 / 5; pc(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r, r * 0.32, color, 0.95); } pc(cx, cy, r * 0.4, color, 0.95); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.f : '#2d1a08');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(0, OY - 20, W, H, '#2d1a08', 0.7); }
+
+  function makeHoles() { holes = []; for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) holes.push({ x: CELL_W * c + CELL_W / 2, y: OY + CELL_H * r + CELL_H / 2 + 40, mole: null }); }
 
   function spawnMole() {
-    var empties = holes.filter(function(h) { return h.mole === null; });
-    if (empties.length === 0) return;
+    var empties = holes.filter(function(h) { return h.mole === null; }); if (empties.length === 0) return;
     var hole = empties[Math.floor(Math.random() * empties.length)];
-    var duration = 1.0 + Math.random() * 1.5 - Math.min(smacked * 0.02, 0.7);
-    hole.mole = {
-      phase: 'rising',
-      t: 0,
-      riseTime: 0.25,
-      holdTime: duration,
-      fallTime: 0.2,
-      rise: 0,
-      special: Math.random() < 0.15
-    };
+    hole.mole = { phase: 'rising', t: 0, riseTime: 0.25, holdTime: 0.9 + Math.random() * 1.2 - Math.min(smacked * 0.03, 0.5), fallTime: 0.2, rise: 0, special: Math.random() < 0.18 };
   }
 
-  game.onTap(function(tx, ty) {
+  function initGame() { makeHoles(); smacked = 0; escaped = 0; timeLeft = MAX_TIME; done = false; particles = []; pops = []; flash = 0; flashCol = C.b; nextSpawn = 0.5; spawnMole(); }
+
+  function finish(success) {
     if (done) return;
-    var hit = false;
+    done = true; resultSuccess = success;
+    finalScore = success ? (smacked * 500 + Math.ceil(timeLeft) * 100) : smacked * 150;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
     for (var i = 0; i < holes.length; i++) {
-      var h = holes[i];
-      if (!h.mole) continue;
-      if (h.mole.phase === 'falling') continue;
-      var moleY = h.y - h.mole.rise * 80;
-      var dx = tx - h.x, dy = ty - moleY;
-      if (Math.sqrt(dx * dx + dy * dy) < HOLE_R) {
-        // Hit!
-        var pts = h.mole.special ? 2 : 1;
-        smacked += pts;
-        smackAnim = 0.3;
-        flashCol = C.hit;
-        flashAnim = 0.2;
-        game.audio.play('se_success', h.mole.special ? 0.9 : 0.6);
-        for (var pi = 0; pi < (h.mole.special ? 12 : 6); pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: h.x, y: moleY, vx: Math.cos(ang) * 220, vy: Math.sin(ang) * 220 - 60, life: 0.4, col: h.mole.special ? C.speHi : C.moleHi });
-        }
-        stars.push({ x: h.x, y: moleY - 80, t: 0.8, pts: '+' + pts });
-        h.mole = null;
-        hit = true;
-        if (smacked >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(smacked * 200 + Math.ceil(timeLeft) * 100); }, 700);
-        }
-        break;
+      var h = holes[i]; pc(h.x, h.y, HOLE_R, '#0a0604', 1); pc(h.x, h.y, HOLE_R - 8, '#0c0805', 0.8);
+      if (h.mole) {
+        var m = h.mole, my = h.y - m.rise * 80, R = 68, col = m.special ? C.d : '#8b5e3c', hi = m.special ? C.g : '#c4874a';
+        pc(h.x, my + R * 0.5, R * 0.7, '#2d1a08', 0.9);
+        pc(h.x, my, R, col, 0.95);
+        game.draw.rect(snap(h.x) - 26, snap(my) - 22, 12, 12, '#111111', 0.9); game.draw.rect(snap(h.x) + 14, snap(my) - 22, 12, 12, '#111111', 0.9);
+        pc(h.x, my + 12, 16, '#5a2a00', 0.7); pc(h.x - 24, my - 28, 12, hi, 0.4);
+        if (m.special) star(h.x, my - R - 24, 28, C.c);
       }
     }
-    if (!hit) {
-      game.audio.play('se_tap', 0.1);
-    }
-  });
+    for (var pi = 0; pi < pops.length; pi++) txt(pops[pi].pts, pops[pi].x, pops[pi].y, 52, C.c);
+  }
 
-  game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    for (var i = 0; i < holes.length; i++) {
+      var h = holes[i]; if (!h.mole || h.mole.phase === 'falling') continue;
+      var my = h.y - h.mole.rise * 80;
+      if (Math.hypot(tx - h.x, ty - my) < HOLE_R) {
+        var pts = h.mole.special ? 2 : 1; smacked += pts; flash = 0.2; flashCol = C.b; game.audio.play('se_success', h.mole.special ? 0.9 : 0.6);
+        for (var pi = 0; pi < (h.mole.special ? 12 : 6); pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: h.x, y: my, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220 - 60, life: 0.4, col: h.mole.special ? C.g : C.f }); }
+        pops.push({ x: h.x, y: my - 80, t: 0.8, pts: '+' + pts }); h.mole = null;
+        if (smacked >= NEEDED) { finish(true); return; }
         return;
       }
     }
-    if (flashAnim > 0) flashAnim -= dt * 4;
-    if (smackAnim > 0) smackAnim -= dt * 4;
+    game.audio.play('se_tap', 0.1);
+  });
 
-    // Spawn
-    nextSpawn -= dt;
-    if (nextSpawn <= 0 && !done) {
-      spawnMole();
-      nextSpawn = Math.max(0.3, 0.6 - smacked * 0.005);
-    }
-
-    // Update moles
-    for (var i = 0; i < holes.length; i++) {
-      var h = holes[i];
-      if (!h.mole) continue;
-      var m = h.mole;
-      m.t += dt;
-      if (m.phase === 'rising') {
-        m.rise = Math.min(1, m.t / m.riseTime);
-        if (m.t >= m.riseTime) { m.phase = 'hold'; m.t = 0; m.rise = 1; }
-      } else if (m.phase === 'hold') {
-        if (m.t >= m.holdTime) { m.phase = 'falling'; m.t = 0; }
-      } else if (m.phase === 'falling') {
-        m.rise = Math.max(0, 1 - m.t / m.fallTime);
-        if (m.t >= m.fallTime) {
-          // Escaped
-          escaped++;
-          flashCol = C.miss;
-          flashAnim = 0.3;
-          game.audio.play('se_failure', 0.3);
-          h.mole = null;
-          if (escaped >= MAX_ESCAPE && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 500);
-          }
-        }
+  // ── 更新 & 描画 ──
+  game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!holes) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.14, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.185, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 42, C.g);
       }
+      scanlines();
+      return;
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 300 * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-    for (var ss = stars.length - 1; ss >= 0; ss--) {
-      stars[ss].t -= dt * 1.5;
-      stars[ss].y -= 40 * dt;
-      if (stars[ss].t <= 0) stars.splice(ss, 1);
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'STOMPED ALL!' : 'TOO SLOW', W / 2, H * 0.35, 68, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Ground
-    game.draw.rect(0, OY - 20, W, H, C.ground, 0.7);
-
-    // Holes and moles
-    for (var i2 = 0; i2 < holes.length; i2++) {
-      var h2 = holes[i2];
-      game.draw.circle(h2.x, h2.y, HOLE_R, C.hole, 1);
-      game.draw.circle(h2.x, h2.y, HOLE_R - 8, '#0c0805', 0.8);
-
-      if (h2.mole) {
-        var m2 = h2.mole;
-        var moleY = h2.y - m2.rise * 80;
-        var bodyR = 68;
-
-        // Clip by drawing ground over bottom
-        game.draw.circle(h2.x, moleY + bodyR * 0.5, bodyR * 0.7, C.ground, 0.9);
-
-        // Body
-        var col = m2.special ? C.special : C.mole;
-        var hi = m2.special ? C.speHi : C.moleHi;
-        game.draw.circle(h2.x, moleY, bodyR + 4, col, 0.15);
-        game.draw.circle(h2.x, moleY, bodyR, col, 0.95);
-        // Face
-        game.draw.circle(h2.x - 20, moleY - 16, 12, C.moleEye, 0.9);
-        game.draw.circle(h2.x + 20, moleY - 16, 12, C.moleEye, 0.9);
-        game.draw.circle(h2.x, moleY + 12, 18, '#5a2a00', 0.7);
-        // Highlight
-        game.draw.circle(h2.x - 24, moleY - 28, 14, hi, 0.4);
-        if (m2.special) {
-          game.draw.circle(h2.x, moleY, bodyR + 16 + Math.sin(elapsed * 6) * 4, col, 0.2);
-          game.draw.text('★', h2.x, moleY - bodyR - 20, { size: 40, color: C.star });
-        }
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 4;
+      nextSpawn -= dt; if (nextSpawn <= 0) { spawnMole(); nextSpawn = Math.max(0.3, 0.6 - smacked * 0.01); }
+      for (var i = 0; i < holes.length; i++) {
+        var h = holes[i]; if (!h.mole) continue; var m = h.mole; m.t += dt;
+        if (m.phase === 'rising') { m.rise = Math.min(1, m.t / m.riseTime); if (m.t >= m.riseTime) { m.phase = 'hold'; m.t = 0; m.rise = 1; } }
+        else if (m.phase === 'hold') { if (m.t >= m.holdTime) { m.phase = 'falling'; m.t = 0; } }
+        else if (m.phase === 'falling') { m.rise = Math.max(0, 1 - m.t / m.fallTime); if (m.t >= m.fallTime) { escaped++; flash = 0.3; flashCol = C.a; game.audio.play('se_failure', 0.3); h.mole = null; if (escaped >= MAX_ESCAPE) { finish(false); return; } } }
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
+      for (var ss = pops.length - 1; ss >= 0; ss--) { pops[ss].t -= dt * 1.5; pops[ss].y -= 40 * dt; if (pops[ss].t <= 0) pops.splice(ss, 1); }
     }
 
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.5);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // Score popups
-    for (var ss2 = 0; ss2 < stars.length; ss2++) {
-      var st = stars[ss2];
-      game.draw.text(st.pts, st.x, st.y, { size: 52, color: C.star, bold: true });
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    // Escaped dots
-    for (var ei = 0; ei < MAX_ESCAPE; ei++) {
-      game.draw.circle(W / 2 - (MAX_ESCAPE - 1) * 44 + ei * 88, H * 0.955, 18, ei < escaped ? C.miss : C.ui, 0.9);
-    }
-
-    game.draw.text(smacked + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.mole : C.miss);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(smacked + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var ei = 0; ei < MAX_ESCAPE; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_ESCAPE - 1) / 2) * 56) - 10, 224, 20, 20, ei < escaped ? C.a : '#2d1a08');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    spawnMole();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
