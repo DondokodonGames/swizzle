@@ -1,211 +1,145 @@
 // 460-clock-stop.js
-// 時計停止 — 秒針が12を指した瞬間にタップ
-// 操作: タップで秒針を止める（ぴったり12時を狙う）
-// 成功: 5回成功  失敗: 5回ミス or 60秒
+// 時計停止 — ぐるぐる回る秒針が12時ちょうどを指した瞬間にタップして止める
+// 操作: タップで秒針を止める（真上=12時にぴったり合わせる）
+// 成功: 3回 成功  失敗: 3回 ミス or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0810',
-    clock:  '#1a1830',
-    clockHi:'#2d2a50',
-    rim:    '#3b3870',
-    rimHi:  '#6060b0',
-    hand:   '#22d3ee',
-    handHi: '#cffafe',
-    secondH:'#f43f5e',
-    twelve: '#fbbf24',
-    twelveHi:'#fef08a',
-    tick:   '#475569',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、時計塔） ──
+  var C = { bg:'#08060f', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var CX = W / 2;
-  var CY = H * 0.43;
-  var CLOCK_R = 280;
-  var TOLERANCE = 0.06;  // radians ≈ 3.4 degrees
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'CLOCK STOP';
+  var HOW_TO_PLAY = 'TAP WHEN THE SECOND HAND POINTS STRAIGHT UP AT 12';
+  var MAX_TIME = 20;
+  var NEEDED   = 3;          // 修正2: 5 → 3
+  var MAX_MISS = 3;          // 修正2: 5 → 3
+  var CX = snap(W / 2), CY = snap(H * 0.44), CLOCK_R = 300, TOL = 0.09;
 
-  var secondAngle = 0;
-  var secondSpeed = 2.5;  // radians per second initially
-  var stopped = false;
-  var stopAnim = 0;
-  var resultAnim = 0;
-  var lastResult = '';
-  var lastResultCol = C.correct;
-  var particles = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var successes = 0;
-  var NEEDED = 5;
-  var misses = 0;
-  var MAX_MISS = 5;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var flashCol = C.correct;
+  // ── ゲーム変数 ──
+  var secondAngle, secondSpeed, stopped, resultText, resultCol, resultTimer, particles, successes, misses, timeLeft, done, flash, flashCol;
 
-  function resetHand() {
-    secondAngle = Math.random() * Math.PI * 2;
-    secondSpeed = 2.5 + successes * 0.3;
-    stopped = false;
-    stopAnim = 0;
-    resultAnim = 0;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.1) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function pline(x1, y1, x2, y2, color, alpha, w) { var dx = x2 - x1, dy = y2 - y1, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 8)); w = w || 8; for (var i = 0; i <= n; i++) game.draw.rect(snap(x1 + dx * i / n) - w / 2, snap(y1 + dy * i / n) - w / 2, w, w, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#12081a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function resetHand() { secondAngle = Math.random() * Math.PI * 2; secondSpeed = 2.5 + successes * 0.4; stopped = false; }
+
+  function initGame() { successes = 0; misses = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; resetHand(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (successes * 800 + Math.ceil(timeLeft) * 100) : successes * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawClock() {
+    pc(CX, CY, CLOCK_R, '#12081a', 0.95); ring(CX, CY, CLOCK_R, C.d, 0.6);
+    for (var ti = 0; ti < 12; ti++) { var ta = ti * Math.PI / 6 - Math.PI / 2; game.draw.rect(snap(CX + Math.cos(ta) * (CLOCK_R - 30)) - 6, snap(CY + Math.sin(ta) * (CLOCK_R - 30)) - 6, 12, 12, C.g, 0.5); }
+    // 12マーカー
+    pc(CX, CY - CLOCK_R + 44, 28, C.c, 0.9); txt('12', CX, CY - CLOCK_R + 58, 34, C.bg);
+    // 装飾の短針・長針
+    pline(CX, CY, CX, CY - CLOCK_R * 0.42, C.e, 0.8, 14); pline(CX, CY, CX + Math.cos(-Math.PI / 2 + 0.8) * CLOCK_R * 0.6, CY + Math.sin(-Math.PI / 2 + 0.8) * CLOCK_R * 0.6, C.e, 0.8, 10);
+    // 秒針
+    var sa = secondAngle - Math.PI / 2, tx = CX + Math.cos(sa) * CLOCK_R * 0.86, ty = CY + Math.sin(sa) * CLOCK_R * 0.86;
+    pline(CX - Math.cos(sa) * 40, CY - Math.sin(sa) * 40, tx, ty, C.a, 0.95, 8); pc(CX, CY, 14, C.a, 1.0);
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || stopped) return;
     stopped = true;
-    stopAnim = 0.6;
-
-    // 12 o'clock is at angle = -PI/2 (pointing up)
-    // Normalize to 0..2PI
-    var norm = ((secondAngle + Math.PI/2) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
-    var distTo12 = Math.min(norm, Math.PI * 2 - norm);
-
-    if (distTo12 < TOLERANCE) {
-      successes++;
-      lastResult = 'ぴったり！';
-      lastResultCol = C.correct;
-      flashCol = C.correct;
-      flashAnim = 0.8;
-      game.audio.play('se_success', 0.8);
-      for (var pi = 0; pi < 14; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        particles.push({ x: CX, y: CY - CLOCK_R * 0.8, vx: Math.cos(ang)*180, vy: Math.sin(ang)*180, life: 0.7, col: C.twelveHi });
-      }
-      if (successes >= NEEDED && !done) {
-        done = true;
-        setTimeout(function() { game.end.success(successes * 600 + Math.ceil(timeLeft) * 80); }, 700);
-        return;
-      }
+    var norm = ((secondAngle + Math.PI / 2) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2), dist = Math.min(norm, Math.PI * 2 - norm);
+    if (dist < TOL) {
+      successes++; resultText = 'PERFECT!'; resultCol = C.b; flash = 0.8; flashCol = C.b; game.audio.play('se_success', 0.8);
+      for (var pi = 0; pi < 14; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: CX, y: CY - CLOCK_R * 0.8, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180, life: 0.7, col: C.c }); }
+      if (successes >= NEEDED) { finish(true); return; }
     } else {
-      misses++;
-      lastResult = 'ズレてる！';
-      lastResultCol = C.wrong;
-      flashCol = C.wrong;
-      flashAnim = 0.6;
-      game.audio.play('se_failure', 0.5);
-      if (misses >= MAX_MISS && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-        return;
-      }
+      misses++; resultText = 'OFF!'; resultCol = C.a; flash = 0.6; flashCol = C.a; game.audio.play('se_failure', 0.5);
+      if (misses >= MAX_MISS) { finish(false); return; }
     }
-    resultAnim = 1.0;
-    setTimeout(function() { resetHand(); }, 900);
+    resultTimer = 1.0; setTimeout(function() { if (!done) resetHand(); }, 900);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (secondAngle === undefined) initGame(); background(); if (!stopped) secondAngle += 2.5 * dt; drawClock();
+      txt(GAME_TITLE, W / 2, H * 0.80, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.86, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.91, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.955, 44, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background(); drawClock();
+      txt(resultSuccess ? 'ON THE DOT!' : 'MISTIMED', W / 2, H * 0.82, 58, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.88, 52, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.94, 44, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2; if (resultTimer > 0) resultTimer -= dt;
+      if (!stopped) secondAngle += secondSpeed * dt;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 2;
-    if (stopAnim > 0) stopAnim -= dt * 3;
-    if (resultAnim > 0) resultAnim -= dt * 2;
+    // ---- 描画 ----
+    background(); drawClock();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.78), 56, resultCol);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    if (!stopped) {
-      secondAngle += secondSpeed * dt;
-    }
-
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // --- draw ---
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Clock face
-    game.draw.circle(CX, CY, CLOCK_R + 20, C.rim, 0.3);
-    game.draw.circle(CX, CY, CLOCK_R + 10, C.rim, 0.6);
-    game.draw.circle(CX, CY, CLOCK_R, C.clock, 0.95);
-
-    // Tick marks
-    for (var ti = 0; ti < 60; ti++) {
-      var ta = ti * Math.PI / 30 - Math.PI / 2;
-      var isHour = ti % 5 === 0;
-      var tickR1 = CLOCK_R - (isHour ? 28 : 16);
-      var tickR2 = CLOCK_R - 6;
-      var tx2 = CX + Math.cos(ta);
-      var ty2 = CY + Math.sin(ta);
-      game.draw.line(CX + Math.cos(ta)*tickR1, CY + Math.sin(ta)*tickR1,
-                     CX + Math.cos(ta)*tickR2, CY + Math.sin(ta)*tickR2,
-                     isHour ? C.rimHi : C.tick, isHour ? 6 : 3);
-    }
-
-    // 12 highlight
-    var twelveX = CX;
-    var twelveY = CY - CLOCK_R + 40;
-    game.draw.circle(twelveX, twelveY, 32, C.twelve, 0.9);
-    game.draw.text('12', twelveX, twelveY + 14, { size: 36, color: '#000', bold: true });
-
-    // Hour and minute hands (decorative, fixed)
-    game.draw.line(CX, CY, CX + Math.cos(-Math.PI/2) * CLOCK_R*0.45, CY + Math.sin(-Math.PI/2) * CLOCK_R*0.45, C.hand, 16);
-    game.draw.line(CX, CY, CX + Math.cos(-Math.PI/2 + 0.8) * CLOCK_R*0.65, CY + Math.sin(-Math.PI/2 + 0.8) * CLOCK_R*0.65, C.hand, 10);
-
-    // Second hand
-    var sAngle = secondAngle - Math.PI/2;
-    var sLen = CLOCK_R * 0.88;
-    var sTipX = CX + Math.cos(sAngle) * sLen;
-    var sTipY = CY + Math.sin(sAngle) * sLen;
-    var sTailX = CX - Math.cos(sAngle) * sLen * 0.18;
-    var sTailY = CY - Math.sin(sAngle) * sLen * 0.18;
-    game.draw.line(sTailX, sTailY, sTipX, sTipY, C.secondH, 5);
-    game.draw.circle(CX, CY, 18, C.clockHi, 0.9);
-    game.draw.circle(CX, CY, 10, C.secondH, 1.0);
-
-    // Stop flash
-    if (stopAnim > 0) {
-      game.draw.circle(sTipX, sTipY, 24, C.secondH, stopAnim * 0.6);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.9);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    // Result text
-    if (resultAnim > 0 && lastResult) {
-      game.draw.text(lastResult, W/2, H * 0.75, { size: 56, color: lastResultCol, bold: true });
-    }
-
-    // Speed indicator
-    var speedLabel = secondSpeed < 3 ? '普通' : secondSpeed < 4 ? '速い' : 'とても速い！';
-    game.draw.text('速度: ' + speedLabel, W/2, H * 0.87, { size: 38, color: C.ui });
-
-    // Miss dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W/2 - (MAX_MISS-1)*44 + mi*88, H*0.955, 18, mi < misses ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(successes + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.hand : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(successes + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < misses ? C.a : '#12081a');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.07);
-    resetHand();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
