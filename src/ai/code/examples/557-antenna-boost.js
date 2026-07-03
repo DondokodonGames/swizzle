@@ -1,223 +1,139 @@
 // 557-antenna-boost.js
-// アンテナブースト — 信号強度バーを見てタップのタイミングでブースト
-// 操作: タップでブースト（信号が高い時にタップするほど効果大）
-// 成功: 15ブースト成功  失敗: 10ミス or 60秒
+// アンテナブースト — 揺らぐ信号強度を見て、閾値を超えて跳ね上がった瞬間にタップでブースト
+// 操作: 信号バーが上のTAP ZONEに入った瞬間タップ（平常時に押すとミス）
+// 成功: ブースト 6回 成功  失敗: 3回 ミス or 18秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#020810',
-    panel:   '#050f1a',
-    bar:     '#001a2a',
-    signal0: '#003355',
-    signal1: '#0066aa',
-    signal2: '#00aaff',
-    signal3: '#44ddff',
-    peak:    '#ffffff',
-    boost:   '#ff6600',
-    boostHi: '#ffcc44',
-    hit:     '#22ff88',
-    miss:    '#ff2244',
-    antenna: '#334455',
-    text:    '#a0d8ef',
-    ui:      '#224466'
-  };
+  // ── パレット（アイスブルー、無線塔） ──
+  var C = { bg:'#020810', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var CX = W / 2;
-  var BAR_X = 120;
-  var BAR_Y = H * 0.25;
-  var BAR_W = W - 240;
-  var BAR_H = 200;
-  var SIGNAL_Y = BAR_Y + BAR_H + 80;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'ANTENNA BOOST';
+  var HOW_TO_PLAY = 'TAP WHEN THE SIGNAL SPIKES ABOVE THE TAP ZONE LINE';
+  var MAX_TIME = 18;
+  var NEEDED   = 6;          // 修正2: 15 → 6
+  var MAX_MISS = 3;          // 修正2: 10 → 3
+  var BAR_X = 120, BAR_Y = snap(H * 0.26), BAR_W = W - 240, BAR_H = 260, THRESH = 0.65;
 
-  var signalStrength = 0.3; // 0-1
-  var signalVel = 0;
-  var boostCount = 0;
-  var NEEDED = 15;
-  var misses = 0;
-  var MAX_MISS = 10;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.hit;
-  var boostAnim = 0;
-  var lastResult = '', lastResultTimer = 0, lastResultCol = C.hit;
-  var totalBoost = 0;
-  var signalHistory = [];
-  var HISTORY_LEN = 60;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  for (var i = 0; i < HISTORY_LEN; i++) signalHistory.push(0.3);
+  // ── ゲーム変数 ──
+  var signal, sigVel, boostCount, misses, timeLeft, done, particles, flash, flashCol, boostAnim, lastResult, lastTimer, lastCol, spikeTimer, spikePhase, spikeT;
 
-  var spikeTimer = 2.0;
-  var spikePhase = 'none';
-  var spikeTimer2 = 0;
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
 
-  game.onTap(function(tx, ty) {
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#050f1a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function initGame() { signal = 0.3; sigVel = 0; boostCount = 0; misses = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; boostAnim = 0; lastResult = ''; lastTimer = 0; lastCol = C.b; spikeTimer = 1.5; spikePhase = 'none'; spikeT = 0; }
+
+  function finish(success) {
     if (done) return;
-    if (signalStrength > 0.65) {
-      // Good boost!
-      var quality = (signalStrength - 0.65) / 0.35; // 0-1 within boost zone
-      boostCount++;
-      totalBoost += quality;
-      boostAnim = 0.5;
-      flashCol = C.hit;
-      flashAnim = 0.3;
-      lastResult = quality > 0.7 ? 'PERFECT!' : 'GOOD';
-      lastResultCol = quality > 0.7 ? C.peak : C.hit;
-      lastResultTimer = 0.7;
-      game.audio.play('se_success', 0.7 + quality * 0.2);
-      for (var pi = 0; pi < 12; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        particles.push({ x: CX, y: BAR_Y + BAR_H / 2, vx: Math.cos(ang) * 240, vy: Math.sin(ang) * 240, life: 0.5, col: quality > 0.7 ? C.peak : C.boostHi });
-      }
-      signalStrength = 0.2; // drop after boost
-      if (boostCount >= NEEDED && !done) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(boostCount * 300 + Math.ceil(totalBoost * 300) + Math.ceil(timeLeft) * 100); }, 700);
-      }
-    } else {
-      // Miss
-      misses++;
-      flashCol = C.miss;
-      flashAnim = 0.3;
-      lastResult = 'MISS';
-      lastResultCol = C.miss;
-      lastResultTimer = 0.6;
-      game.audio.play('se_failure', 0.3);
-      if (misses >= MAX_MISS && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      }
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (boostCount * 700 + Math.ceil(timeLeft) * 100) : boostCount * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    game.draw.rect(BAR_X - 20, BAR_Y - 20, BAR_W + 40, BAR_H + 40, '#050f1a', 0.9);
+    game.draw.rect(BAR_X, BAR_Y, BAR_W, BAR_H, '#001a2a', 0.9);
+    var fillH = BAR_H * signal, barCol = signal > THRESH ? C.e : signal > 0.4 ? C.d : '#0066aa';
+    game.draw.rect(BAR_X, BAR_Y + BAR_H - fillH, BAR_W, fillH, barCol, 0.9);
+    var threshY = BAR_Y + BAR_H * (1 - THRESH);
+    game.draw.rect(BAR_X, threshY - 2, BAR_W, 4, C.f, 0.9); txt('TAP ZONE', BAR_X + BAR_W - 40, threshY - 14, 24, C.f, 'right');
+    if (signal > THRESH) txt('BOOST!', W / 2, BAR_Y - 40, 52, C.c);
+    // アンテナ
+    var antH = 200 + signal * 100;
+    game.draw.rect(W / 2 - 6, snap(H * 0.82) - antH, 12, antH, '#334455', 0.9);
+    game.draw.rect(W / 2 - 80, snap(H * 0.82) - antH * 0.5, 160, 6, '#334455', 0.9);
+    for (var ri = 0; ri < 3; ri++) { var rr = (ri + 1) * 40 + boostAnim * 60; pc(W / 2, snap(H * 0.82) - antH, rr, signal > THRESH ? C.c : C.d, (1 - ri * 0.3) * signal * 0.5); }
+  }
+
+  // ── 入力 ──
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    if (signal > THRESH) {
+      var q = (signal - THRESH) / (1 - THRESH); boostCount++; boostAnim = 0.5; flash = 0.3; flashCol = C.b; lastResult = q > 0.7 ? 'PERFECT!' : 'GOOD'; lastCol = q > 0.7 ? C.c : C.b; lastTimer = 0.7; game.audio.play('se_success', 0.7 + q * 0.2);
+      for (var pi = 0; pi < 12; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: BAR_Y + BAR_H / 2, vx: Math.cos(a) * 240, vy: Math.sin(a) * 240, life: 0.5, col: q > 0.7 ? C.c : C.e }); }
+      signal = 0.2; if (boostCount >= NEEDED) { finish(true); return; }
+    } else { misses++; flash = 0.3; flashCol = C.a; lastResult = 'MISS'; lastCol = C.a; lastTimer = 0.6; game.audio.play('se_failure', 0.3); if (misses >= MAX_MISS) { finish(false); return; } }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (signal === undefined) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.13, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.175, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.92, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.96, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SIGNAL MAX!' : 'NO SIGNAL', W / 2, H * 0.35, 66, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (boostAnim > 0) boostAnim -= dt * 2.5;
-    if (lastResultTimer > 0) lastResultTimer -= dt;
-
-    // Signal simulation
-    if (spikePhase === 'none') {
-      spikeTimer -= dt;
-      signalVel += (Math.random() - 0.5) * 1.5 * dt;
-      signalVel *= 0.85;
-      signalStrength += signalVel;
-      signalStrength = Math.max(0.05, Math.min(0.55, signalStrength));
-      signalStrength += (0.3 - signalStrength) * dt * 1.5;
-      if (spikeTimer <= 0) {
-        spikePhase = 'rising';
-        spikeTimer2 = 0.25;
-        spikeTimer = 1.5 + Math.random() * 3.0;
-      }
-    } else if (spikePhase === 'rising') {
-      spikeTimer2 -= dt;
-      signalStrength = 0.3 + (0.7 - 0.3) * (1 - spikeTimer2 / 0.25);
-      if (spikeTimer2 <= 0) { spikePhase = 'hold'; spikeTimer2 = 0.2 + Math.random() * 0.3; signalStrength = 0.9; }
-    } else if (spikePhase === 'hold') {
-      spikeTimer2 -= dt;
-      signalStrength = 0.85 + Math.random() * 0.1;
-      if (spikeTimer2 <= 0) { spikePhase = 'falling'; spikeTimer2 = 0.3; }
-    } else if (spikePhase === 'falling') {
-      spikeTimer2 -= dt;
-      signalStrength = 0.3 + (0.7 - 0.3) * (spikeTimer2 / 0.3);
-      if (spikeTimer2 <= 0) { spikePhase = 'none'; signalStrength = 0.3; }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (boostAnim > 0) boostAnim -= dt * 2.5; if (lastTimer > 0) lastTimer -= dt;
+      if (spikePhase === 'none') { spikeTimer -= dt; sigVel += (Math.random() - 0.5) * 1.5 * dt; sigVel *= 0.85; signal += sigVel; signal = Math.max(0.05, Math.min(0.55, signal)); signal += (0.3 - signal) * dt * 1.5; if (spikeTimer <= 0) { spikePhase = 'rising'; spikeT = 0.25; spikeTimer = 1.2 + Math.random() * 2.4; } }
+      else if (spikePhase === 'rising') { spikeT -= dt; signal = 0.3 + 0.4 * (1 - spikeT / 0.25); if (spikeT <= 0) { spikePhase = 'hold'; spikeT = 0.2 + Math.random() * 0.3; signal = 0.9; } }
+      else if (spikePhase === 'hold') { spikeT -= dt; signal = 0.85 + Math.random() * 0.1; if (spikeT <= 0) { spikePhase = 'falling'; spikeT = 0.3; } }
+      else if (spikePhase === 'falling') { spikeT -= dt; signal = 0.3 + 0.4 * (spikeT / 0.3); if (spikeT <= 0) { spikePhase = 'none'; signal = 0.3; } }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    signalHistory.push(signalStrength);
-    if (signalHistory.length > HISTORY_LEN) signalHistory.shift();
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.5);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
+    if (lastTimer > 0) txt(lastResult, W / 2, BAR_Y + BAR_H + 120, 56, lastCol);
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(BAR_X - 20, BAR_Y - 20, BAR_W + 40, BAR_H + 40, C.panel, 0.9);
-
-    // Signal bar background
-    game.draw.rect(BAR_X, BAR_Y, BAR_W, BAR_H, C.bar, 0.9);
-
-    // Signal bar fill
-    var fillH = BAR_H * signalStrength;
-    var fillY = BAR_Y + BAR_H - fillH;
-    var barCol = signalStrength > 0.65 ? C.signal3 : signalStrength > 0.4 ? C.signal2 : C.signal1;
-    game.draw.rect(BAR_X, fillY, BAR_W, fillH, barCol, 0.9);
-    if (signalStrength > 0.65) {
-      game.draw.rect(BAR_X, fillY, BAR_W, fillH, C.signal3, 0.2);
-    }
-
-    // Threshold line
-    var threshY = BAR_Y + BAR_H * (1 - 0.65);
-    game.draw.line(BAR_X, threshY, BAR_X + BAR_W, threshY, C.boost, 4);
-    game.draw.text('タップゾーン', BAR_X + BAR_W + 20, threshY + 8, { size: 28, color: C.boost });
-
-    // Signal history (mini-graph)
-    for (var hi = 1; hi < signalHistory.length; hi++) {
-      var gx1 = BAR_X + (hi - 1) / (HISTORY_LEN - 1) * BAR_W;
-      var gx2 = BAR_X + hi / (HISTORY_LEN - 1) * BAR_W;
-      var gy1 = SIGNAL_Y + 60 - signalHistory[hi - 1] * 80;
-      var gy2 = SIGNAL_Y + 60 - signalHistory[hi] * 80;
-      game.draw.line(gx1, gy1, gx2, gy2, signalHistory[hi] > 0.65 ? C.boost : C.signal1, signalHistory[hi] > 0.65 ? 4 : 2);
-    }
-    game.draw.text('信号履歴', BAR_X, SIGNAL_Y + 100, { size: 28, color: C.ui });
-
-    // Boost indicator
-    if (signalStrength > 0.65) {
-      game.draw.rect(0, 0, W, H, C.boost, 0.03 + Math.sin(elapsed * 12) * 0.02);
-      game.draw.text('⚡ BOOST!', CX, BAR_Y - 60, { size: 52, color: C.boostHi, bold: true });
-    }
-
-    // Antenna visual
-    var antH = 200 + signalStrength * 100;
-    game.draw.line(CX, H * 0.82, CX, H * 0.82 - antH, C.antenna, 12);
-    game.draw.line(CX - 80, H * 0.82 - antH * 0.5, CX + 80, H * 0.82 - antH * 0.5, C.antenna, 6);
-    for (var ri = 0; ri < 3; ri++) {
-      var rr = (ri + 1) * 40 + boostAnim * 60;
-      game.draw.circle(CX, H * 0.82 - antH, rr, signalStrength > 0.65 ? C.boostHi : C.signal2, (1 - ri * 0.3) * signalStrength * 0.5);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 12 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    if (lastResultTimer > 0) {
-      game.draw.text(lastResult, CX, BAR_Y + BAR_H + 160, { size: 56, color: lastResultCol, bold: true });
-    }
-
-    // Miss dots
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 44 + mi * 88, H * 0.955, 18, mi < misses ? C.miss : C.ui, 0.9);
-    }
-
-    game.draw.text(boostCount + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.signal2 : C.miss);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(boostCount + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 224, 20, 20, mi < misses ? C.a : '#050f1a');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.06);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
