@@ -1,214 +1,130 @@
 // 441-neon-catcher.js
-// ネオンキャッチ — 高速で動くネオン球をタップ連打でキャッチ
-// 操作: 画面をタップして光の球を捕まえる
-// 成功: 40個キャッチ  失敗: 45秒
+// ネオンキャッチ — 画面を高速で跳ね回るネオン球を、狙ってタップで次々にキャッチする
+// 操作: 光の球をタップして捕まえる（連続で取るとコンボ）
+// 成功: 8個 キャッチ  失敗: 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#03001a',
-    neon0:  '#f0abfc',
-    neon1:  '#a78bfa',
-    neon2:  '#22d3ee',
-    neon3:  '#4ade80',
-    neon4:  '#fbbf24',
-    neon5:  '#f87171',
-    trail0: '#7c3aed',
-    trail1: '#0e7490',
-    text:   '#f1f5f9',
-    ui:     '#475569',
-    wrong:  '#ef4444'
-  };
+  // ── パレット（ネオンアーケード、ライトショー） ──
+  var C = { bg:'#03001a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var NEON = [C.a, C.d, C.e, C.b, C.c, C.f];
 
-  var NEONS = [C.neon0, C.neon1, C.neon2, C.neon3, C.neon4, C.neon5];
-  var TRAILS = [C.trail0, C.trail1, C.neon3, C.neon4];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'NEON CATCHER';
+  var HOW_TO_PLAY = 'TAP THE BOUNCING NEON ORBS TO CATCH THEM';
+  var MAX_TIME = 15;
+  var NEEDED   = 8;          // 修正2: 40 → 8
 
-  var balls = [];
-  var particles = [];
-  var caught = 0;
-  var NEEDED = 40;
-  var done = false;
-  var timeLeft = 45;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var combo = 0;
-  var comboTimer = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnBall() {
-    var col = NEONS[Math.floor(Math.random() * NEONS.length)];
-    var r = 28 + Math.random() * 20;
-    var margin = r + 20;
-    var x = margin + Math.random() * (W - margin * 2);
-    var y = margin + Math.random() * (H * 0.8 - margin * 2) + 80;
-    var speed = 180 + Math.random() * 300 + caught * 3;
-    var angle = Math.random() * Math.PI * 2;
-    balls.push({
-      x: x, y: y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      r: r,
-      col: col,
-      trail: [],
-      pulse: Math.random() * Math.PI * 2,
-      spawning: 0.3
-    });
+  // ── ゲーム変数 ──
+  var balls, particles, caught, combo, comboTimer, timeLeft, done, flash, flashCol;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onTap(function(tx, ty) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#100828');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function spawnBall() { var r = 30 + Math.random() * 18, m = r + 20, ang = Math.random() * Math.PI * 2, sp = 180 + Math.random() * 240 + caught * 15; balls.push({ x: snap(m + Math.random() * (W - m * 2)), y: snap(m + 200 + Math.random() * (H * 0.7 - m * 2)), vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, r: r, col: NEON[Math.floor(Math.random() * NEON.length)], trail: [], pulse: Math.random() * Math.PI * 2, spawning: 0.3 }); }
+
+  function initGame() { balls = []; particles = []; caught = 0; combo = 0; comboTimer = 0; timeLeft = MAX_TIME; done = false; flash = 0; flashCol = C.b; spawnBall(); spawnBall(); spawnBall(); }
+
+  function finish(success) {
     if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (caught * 400 + combo * 50 + Math.ceil(timeLeft) * 100) : caught * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    var hit = -1;
-    var hitDist = 999;
-    for (var bi = balls.length - 1; bi >= 0; bi--) {
-      var b = balls[bi];
-      if (b.spawning > 0) continue;
-      var dx = tx - b.x;
-      var dy = ty - b.y;
-      var d = Math.sqrt(dx*dx + dy*dy);
-      if (d < b.r + 20 && d < hitDist) {
-        hitDist = d;
-        hit = bi;
-      }
-    }
+  function drawBall(b) {
+    var pulse = Math.sin(b.pulse) * 0.15, sa = b.spawning > 0 ? 1 - b.spawning : 1;
+    for (var ti = 0; ti < b.trail.length; ti++) { var tr = ti / b.trail.length; pc(b.trail[ti].x, b.trail[ti].y, b.r * tr * 0.6, b.col, tr * 0.3 * sa); }
+    pc(b.x, b.y, b.r * (1.3 + pulse), b.col, 0.15 * sa); pc(b.x, b.y, b.r, b.col, 0.9 * sa); pc(b.x - b.r * 0.25, b.y - b.r * 0.25, b.r * 0.3, C.g, 0.6 * sa);
+  }
 
-    if (hit >= 0) {
-      var b2 = balls[hit];
-      caught++;
-      combo++;
-      comboTimer = 1.5;
-      flashAnim = 0.3;
-      game.audio.play('se_tap', 0.3 + Math.min(0.4, combo * 0.05));
-
-      // Burst particles
-      for (var pi = 0; pi < 10; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        var speed2 = 150 + Math.random() * 150;
-        particles.push({ x: b2.x, y: b2.y, vx: Math.cos(ang)*speed2, vy: Math.sin(ang)*speed2, life: 0.5, maxLife: 0.5, col: b2.col, r: 5 + Math.random()*5 });
-      }
-      balls.splice(hit, 1);
-
-      if (caught >= NEEDED && !done) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(caught * 150 + combo * 30 + Math.ceil(timeLeft) * 80); }, 600);
-      }
-    } else {
-      combo = 0;
-    }
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var hit = -1, hd = 999;
+    for (var bi = balls.length - 1; bi >= 0; bi--) { var b = balls[bi]; if (b.spawning > 0) continue; var d = Math.hypot(x - b.x, y - b.y); if (d < b.r + 24 && d < hd) { hd = d; hit = bi; } }
+    if (hit >= 0) { var b2 = balls[hit]; caught++; combo++; comboTimer = 1.5; flash = 0.3; flashCol = b2.col; game.audio.play('se_tap', 0.3 + Math.min(0.4, combo * 0.05)); for (var k = 0; k < 10; k++) { var a = Math.random() * Math.PI * 2, sp = 150 + Math.random() * 150; particles.push({ x: b2.x, y: b2.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.5, col: b2.col }); } balls.splice(hit, 1); if (caught >= NEEDED) { finish(true); return; } }
+    else combo = 0;
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!balls) initGame(); background();
+      for (var bi0 = 0; bi0 < balls.length; bi0++) { balls[bi0].pulse += dt * 4; drawBall(balls[bi0]); }
+      txt(GAME_TITLE, W / 2, H * 0.30, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.36, 24, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.62, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.68, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'DAZZLING!' : 'TIME OUT', W / 2, H * 0.35, 80, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 4;
+      if (comboTimer > 0) comboTimer -= dt; else combo = Math.max(0, combo - 1);
+      var target = 3 + Math.floor(caught / 3); while (balls.length < target) spawnBall();
+      for (var bi = 0; bi < balls.length; bi++) { var b = balls[bi]; if (b.spawning > 0) { b.spawning -= dt * 3; continue; } b.trail.push({ x: b.x, y: b.y }); if (b.trail.length > 10) b.trail.shift(); b.x += b.vx * dt; b.y += b.vy * dt; b.pulse += dt * 4; if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx); } if (b.x > W - b.r) { b.x = W - b.r; b.vx = -Math.abs(b.vx); } if (b.y < b.r + 200) { b.y = b.r + 200; b.vy = Math.abs(b.vy); } if (b.y > H - b.r - 80) { b.y = H - b.r - 80; b.vy = -Math.abs(b.vy); } }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= (1 - dt * 2); p.vy *= (1 - dt * 2); p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 4;
-    if (comboTimer > 0) comboTimer -= dt;
-    else combo = Math.max(0, combo - 1);
+    // ---- 描画 ----
+    background();
+    for (var bi2 = 0; bi2 < balls.length; bi2++) drawBall(balls[bi2]);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.12);
+    if (combo >= 3) txt('x' + combo + ' COMBO!', W / 2, snap(H * 0.9), 50, NEON[combo % NEON.length]);
 
-    // Maintain ball count
-    var targetCount = 3 + Math.floor(caught / 8);
-    while (balls.length < targetCount && !done) {
-      spawnBall();
-    }
-
-    // Update balls
-    for (var bi2 = 0; bi2 < balls.length; bi2++) {
-      var b3 = balls[bi2];
-      if (b3.spawning > 0) { b3.spawning -= dt * 3; continue; }
-
-      b3.trail.push({ x: b3.x, y: b3.y });
-      if (b3.trail.length > 12) b3.trail.shift();
-
-      b3.x += b3.vx * dt;
-      b3.y += b3.vy * dt;
-      b3.pulse += dt * 4;
-
-      // Bounce
-      if (b3.x < b3.r) { b3.x = b3.r; b3.vx = Math.abs(b3.vx); }
-      if (b3.x > W - b3.r) { b3.x = W - b3.r; b3.vx = -Math.abs(b3.vx); }
-      if (b3.y < b3.r + 80) { b3.y = b3.r + 80; b3.vy = Math.abs(b3.vy); }
-      if (b3.y > H - b3.r - 80) { b3.y = H - b3.r - 80; b3.vy = -Math.abs(b3.vy); }
-    }
-
-    // Particles
-    for (var pp = particles.length-1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vx *= (1 - dt * 2);
-      particles[pp].vy *= (1 - dt * 2);
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Scanlines effect
-    for (var sl = 0; sl < H; sl += 6) {
-      game.draw.line(0, sl, W, sl, '#000', 2);
-    }
-
-    // Draw trails
-    for (var bi3 = 0; bi3 < balls.length; bi3++) {
-      var b4 = balls[bi3];
-      if (b4.spawning > 0) continue;
-      for (var ti = 0; ti < b4.trail.length; ti++) {
-        var tRatio = ti / b4.trail.length;
-        game.draw.circle(b4.trail[ti].x, b4.trail[ti].y, b4.r * tRatio * 0.6, b4.col, tRatio * 0.3);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      var lifeRatio = p.life / p.maxLife;
-      game.draw.circle(p.x, p.y, p.r * lifeRatio, p.col, lifeRatio);
-    }
-
-    // Draw balls
-    for (var bi4 = 0; bi4 < balls.length; bi4++) {
-      var b5 = balls[bi4];
-      var pulse = Math.sin(b5.pulse) * 0.15;
-      var spawnAlpha = b5.spawning > 0 ? 1 - b5.spawning : 1;
-
-      // Outer glow
-      game.draw.circle(b5.x, b5.y, b5.r * (1.6 + pulse), b5.col, 0.1 * spawnAlpha);
-      game.draw.circle(b5.x, b5.y, b5.r * (1.2 + pulse), b5.col, 0.2 * spawnAlpha);
-      // Core
-      game.draw.circle(b5.x, b5.y, b5.r, b5.col, 0.9 * spawnAlpha);
-      game.draw.circle(b5.x, b5.y, b5.r * 0.6, '#fff', 0.5 * spawnAlpha);
-      game.draw.circle(b5.x - b5.r*0.25, b5.y - b5.r*0.25, b5.r * 0.25, '#fff', 0.6 * spawnAlpha);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, balls.length > 0 ? balls[0].col : C.neon0, flashAnim * 0.15);
-
-    // Combo
-    if (combo >= 3) {
-      var comboCol = NEONS[combo % NEONS.length];
-      game.draw.text('x' + combo + ' コンボ！', W/2, H*0.87, { size: 52, color: comboCol, bold: true });
-    }
-
-    game.draw.text(caught + ' / ' + NEEDED, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 45);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.neon2 : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(caught + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    spawnBall();
-    spawnBall();
-    spawnBall();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

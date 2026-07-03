@@ -1,243 +1,132 @@
 // 440-treasure-dig.js
-// 宝掘り — 限られた回数で宝を掘り当てる
-// 操作: タップでマス目を掘る（熱感知器が近さを教える）
-// 成功: 4つの宝を全て発見  失敗: 掘削回数オーバー or 60秒
+// 宝掘り — 熱感知（近いほど赤）を頼りに、限られた回数でマスを掘って埋もれた宝を掘り当てる
+// 操作: マスをタップして掘る（掘った跡の色が宝への近さ＝赤いほど近い）
+// 成功: 宝2個 発見  失敗: 掘削10回 使い切る or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0600',
-    soil:   '#3d1f00',
-    soilHi: '#5c2d00',
-    soilDark:'#1a0b00',
-    dug:    '#0f0700',
-    treasure:'#fbbf24',
-    treasureHi:'#fef08a',
-    chest:  '#d97706',
-    chestHi:'#fbbf24',
-    hot:    '#ef4444',
-    warm:   '#f97316',
-    cool:   '#3b82f6',
-    cold:   '#1d4ed8',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、発掘現場） ──
+  var C = { bg:'#0a0600', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff', soil:'#4a2800' };
 
-  var GRID = 8;
-  var CELL = 120;
-  var OX = (W - GRID * CELL) / 2;
-  var OY = (H - GRID * CELL) / 2 - 60;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'TREASURE DIG';
+  var HOW_TO_PLAY = 'DIG WITH THE HEAT SENSOR (RED=CLOSE) · FIND THE TREASURE';
+  var MAX_TIME = 20;
+  var GRID = 6, TREAS = 2, MAX_DIGS = 10;
+  var CELL = snap(W * 0.14), OX = snap((W - GRID * snap(W * 0.14)) / 2), OY = snap((H - GRID * snap(W * 0.14)) / 2);
 
-  var cells = [];  // { dug, treasure, hint }
-  var treasures = [];  // { x, y }
-  var NUM_TREASURES = 4;
-  var MAX_DIGS = 20;
-  var digs = 0;
-  var found = 0;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var flashCol = C.correct;
-  var particles = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function init() {
-    cells = [];
-    for (var r = 0; r < GRID; r++) {
-      for (var c = 0; c < GRID; c++) {
-        cells.push({ dug: false, treasure: false, dist: 999 });
-      }
-    }
-    // Place treasures
-    treasures = [];
-    while (treasures.length < NUM_TREASURES) {
-      var tx = Math.floor(Math.random() * GRID);
-      var ty = Math.floor(Math.random() * GRID);
-      var dup = false;
-      for (var i = 0; i < treasures.length; i++) {
-        if (treasures[i].x === tx && treasures[i].y === ty) { dup = true; break; }
-      }
-      if (!dup) {
-        treasures.push({ x: tx, y: ty, found: false });
-        cells[ty * GRID + tx].treasure = true;
-      }
-    }
-    // Calculate distances
-    for (var ri = 0; ri < GRID; ri++) {
-      for (var ci = 0; ci < GRID; ci++) {
-        var minDist = 999;
-        for (var ti = 0; ti < treasures.length; ti++) {
-          if (treasures[ti].found) continue;
-          var dx = ci - treasures[ti].x;
-          var dy = ri - treasures[ti].y;
-          var d = Math.sqrt(dx*dx + dy*dy);
-          if (d < minDist) minDist = d;
-        }
-        cells[ri * GRID + ci].dist = minDist;
-      }
-    }
+  // ── ゲーム変数 ──
+  var cells, treasures, digs, found, timeLeft, done, particles, flash, flashCol;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function getHintColor(dist) {
-    if (dist < 1.5) return C.hot;
-    if (dist < 2.5) return C.warm;
-    if (dist < 4) return C.correct;
-    if (dist < 5.5) return C.cool;
-    return C.cold;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#1a1000');
   }
 
-  game.onTap(function(tx, ty) {
+  function background() { game.draw.clear(C.bg); game.draw.rect(OX - 10, OY - 10, GRID * CELL + 20, GRID * CELL + 20, '#1a0e00', 0.8); }
+
+  function hintColor(d) { if (d < 1.5) return C.a; if (d < 2.5) return C.f; if (d < 4) return C.c; if (d < 5.5) return C.e; return C.d; }
+
+  function recalc() { for (var r = 0; r < GRID; r++) for (var c = 0; c < GRID; c++) { var md = 999; for (var t = 0; t < treasures.length; t++) { if (treasures[t].found) continue; var d = Math.hypot(c - treasures[t].x, r - treasures[t].y); if (d < md) md = d; } cells[r * GRID + c].dist = md; } }
+
+  function initGame() {
+    cells = []; for (var r = 0; r < GRID; r++) for (var c = 0; c < GRID; c++) cells.push({ dug: false, treasure: false, dist: 999 });
+    treasures = []; while (treasures.length < TREAS) { var tx = Math.floor(Math.random() * GRID), ty = Math.floor(Math.random() * GRID), dup = false; for (var i = 0; i < treasures.length; i++) if (treasures[i].x === tx && treasures[i].y === ty) dup = true; if (!dup) { treasures.push({ x: tx, y: ty, found: false }); cells[ty * GRID + tx].treasure = true; } }
+    recalc(); digs = 0; found = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.c;
+  }
+
+  function finish(success) {
     if (done) return;
-    var col = Math.floor((tx - OX) / CELL);
-    var row = Math.floor((ty - OY) / CELL);
-    if (col < 0 || col >= GRID || row < 0 || row >= GRID) return;
-    var idx = row * GRID + col;
-    var cell = cells[idx];
-    if (cell.dug) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (found * 700 + (MAX_DIGS - digs) * 150 + Math.ceil(timeLeft) * 100) : found * 400;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    cell.dug = true;
-    digs++;
-    game.audio.play('se_tap', 0.3);
+  function drawBoard() {
+    for (var r = 0; r < GRID; r++) for (var c = 0; c < GRID; c++) { var cell = cells[r * GRID + c], cx = OX + c * CELL, cy = OY + r * CELL; if (cell.dug) { game.draw.rect(cx + 2, cy + 2, CELL - 4, CELL - 4, '#0f0700', 0.95); if (cell.tFound) { pc(cx + CELL / 2, cy + CELL / 2, CELL * 0.3, C.c, 0.9); pc(cx + CELL / 2 - 8, cy + CELL / 2 - 8, CELL * 0.1, C.g, 0.5); } else pc(cx + CELL / 2, cy + CELL / 2, CELL * 0.28, hintColor(cell.dist), 0.7); } else { game.draw.rect(cx + 2, cy + 2, CELL - 4, CELL - 4, C.soil, 0.85); game.draw.rect(cx + 12, cy + 12, 6, 6, '#2a1600', 0.5); } }
+  }
 
-    if (cell.treasure) {
-      found++;
-      cell.treasureFound = true;
-      flashCol = C.correct;
-      flashAnim = 0.8;
-      game.audio.play('se_success', 0.7);
-      for (var pi = 0; pi < 12; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        var cx2 = OX + col * CELL + CELL/2;
-        var cy2 = OY + row * CELL + CELL/2;
-        particles.push({ x: cx2, y: cy2, vx: Math.cos(ang)*180, vy: Math.sin(ang)*180-100, life: 0.7, col: C.treasureHi });
-      }
-      // Mark this treasure found and recalculate distances
-      for (var ti2 = 0; ti2 < treasures.length; ti2++) {
-        if (treasures[ti2].x === col && treasures[ti2].y === row) {
-          treasures[ti2].found = true;
-          break;
-        }
-      }
-      // Recalculate distances
-      for (var ri2 = 0; ri2 < GRID; ri2++) {
-        for (var ci2 = 0; ci2 < GRID; ci2++) {
-          var minDist = 999;
-          for (var ti3 = 0; ti3 < treasures.length; ti3++) {
-            if (treasures[ti3].found) continue;
-            var dx2 = ci2 - treasures[ti3].x;
-            var dy2 = ri2 - treasures[ti3].y;
-            var d = Math.sqrt(dx2*dx2 + dy2*dy2);
-            if (d < minDist) minDist = d;
-          }
-          cells[ri2 * GRID + ci2].dist = minDist;
-        }
-      }
-      if (found >= NUM_TREASURES && !done) {
-        done = true;
-        setTimeout(function() { game.end.success(found * 600 + (MAX_DIGS - digs) * 100 + Math.ceil(timeLeft) * 80); }, 700);
-        return;
-      }
-    } else {
-      flashCol = C.soilHi;
-      flashAnim = 0.2;
-    }
-
-    if (digs >= MAX_DIGS && !done) {
-      done = true;
-      game.audio.play('se_failure', 0.6);
-      setTimeout(function() { game.end.failure(); }, 500);
-    }
+  // ── 入力 ──
+  game.onTap(function(x, y) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var c = Math.floor((x - OX) / CELL), r = Math.floor((y - OY) / CELL); if (c < 0 || c >= GRID || r < 0 || r >= GRID) return;
+    var cell = cells[r * GRID + c]; if (cell.dug) return;
+    cell.dug = true; digs++; game.audio.play('se_tap', 0.3);
+    if (cell.treasure) { found++; cell.tFound = true; flash = 0.8; flashCol = C.c; game.audio.play('se_success', 0.7); for (var k = 0; k < 12; k++) { var a = Math.random() * Math.PI * 2; particles.push({ x: OX + c * CELL + CELL / 2, y: OY + r * CELL + CELL / 2, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180 - 100, life: 0.7, col: C.c }); } for (var t = 0; t < treasures.length; t++) if (treasures[t].x === c && treasures[t].y === r) treasures[t].found = true; recalc(); if (found >= TREAS) { finish(true); return; } }
+    else { flash = 0.2; flashCol = C.soil; }
+    if (digs >= MAX_DIGS) { finish(false); return; }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!cells) initGame(); background(); drawBoard();
+      txt(GAME_TITLE, W / 2, H * 0.12, 78, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.17, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.88, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.93, 46, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'TREASURE!' : 'DUG DRY', W / 2, H * 0.35, 78, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    if (flashAnim > 0) flashAnim -= dt * 2;
+    // ---- 描画 ----
+    background(); drawBoard();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.08);
+    var dl = MAX_DIGS - digs; txt('DIGS LEFT ' + dl, W / 2, snap(H * 0.86), 44, dl <= 3 ? C.a : C.g);
+    pc(W * 0.16, H * 0.91, 12, C.a, 0.8); txt('HOT', W * 0.24, H * 0.918, 26, C.a); pc(W * 0.62, H * 0.91, 12, C.e, 0.8); txt('COLD', W * 0.72, H * 0.918, 26, C.e);
 
-    for (var pp = particles.length-1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 300 * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // ---- draw ----
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Soil background
-    game.draw.rect(OX - 10, OY - 10, GRID*CELL + 20, GRID*CELL + 20, C.soilDark, 0.8);
-
-    // Grid cells
-    for (var ri3 = 0; ri3 < GRID; ri3++) {
-      for (var ci3 = 0; ci3 < GRID; ci3++) {
-        var cell2 = cells[ri3 * GRID + ci3];
-        var cx3 = OX + ci3 * CELL;
-        var cy3 = OY + ri3 * CELL;
-
-        if (cell2.dug) {
-          game.draw.rect(cx3 + 2, cy3 + 2, CELL - 4, CELL - 4, C.dug, 0.95);
-          if (cell2.treasureFound) {
-            game.draw.circle(cx3 + CELL/2, cy3 + CELL/2, CELL*0.35, C.chestHi, 0.3);
-            game.draw.circle(cx3 + CELL/2, cy3 + CELL/2, CELL*0.28, C.treasure, 0.9);
-            game.draw.circle(cx3 + CELL/2 - 10, cy3 + CELL/2 - 10, CELL*0.1, '#fff', 0.5);
-          } else {
-            // Show hint color
-            var hCol = getHintColor(cell2.dist);
-            game.draw.circle(cx3 + CELL/2, cy3 + CELL/2, CELL * 0.3, hCol, 0.7);
-            game.draw.circle(cx3 + CELL/2, cy3 + CELL/2, CELL * 0.15, hCol, 0.5);
-          }
-        } else {
-          game.draw.rect(cx3 + 2, cy3 + 2, CELL - 4, CELL - 4, C.soil, 0.85);
-          // Texture dots
-          game.draw.circle(cx3 + 24, cy3 + 24, 4, C.soilDark, 0.5);
-          game.draw.circle(cx3 + CELL - 28, cy3 + 32, 3, C.soilHi, 0.3);
-          game.draw.circle(cx3 + 36, cy3 + CELL - 28, 3, C.soilDark, 0.4);
-        }
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.08);
-
-    // Info
-    var digsLeft = MAX_DIGS - digs;
-    var digCol = digsLeft <= 5 ? C.wrong : C.text;
-    game.draw.text('掘削残り: ' + digsLeft, W/2, H*0.88, { size: 44, color: digCol, bold: digsLeft <= 5 });
-
-    // Legend
-    game.draw.circle(W*0.12, H*0.91, 12, C.hot, 0.8);
-    game.draw.text('熱い', W*0.12 + 50, H*0.912, { size: 28, color: C.hot });
-    game.draw.circle(W*0.45, H*0.91, 12, C.cool, 0.8);
-    game.draw.text('冷たい', W*0.45 + 60, H*0.912, { size: 28, color: C.cool });
-
-    game.draw.text(found + ' / ' + NUM_TREASURES, W/2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.treasure : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(found + ' / ' + TREAS, W / 2, 168, 48, C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    init();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
