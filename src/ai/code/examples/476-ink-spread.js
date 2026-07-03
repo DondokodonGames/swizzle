@@ -1,189 +1,146 @@
 // 476-ink-spread.js
-// インク広がり — タップで落としたインクが広がる前にエリアを塗りつくす
-// 操作: タップでインクを落とす
-// 成功: 画面の80%を塗る  失敗: 20秒経過
+// インク広がり — タップで落としたネオンインクが四方へ滲み広がる。制限時間内に盤面を塗る
+// 操作: 未塗りのマスをタップしてインクを落とす（複数落として素早く塗り広げる）
+// 成功: 盤面の60%を塗る  失敗: 15秒 タイムアップ
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#f8f5f0',
-    ink0:   '#1e1b4b',
-    ink1:   '#312e81',
-    ink2:   '#4338ca',
-    ink3:   '#6d28d9',
-    ink4:   '#7c3aed',
-    ripple: '#a5b4fc',
-    paper:  '#faf9f6',
-    border: '#e2e8f0',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    text:   '#1e293b',
-    ui:     '#94a3b8'
-  };
+  // ── パレット（ネオンアーケード、暗室の滲み） ──
+  var C = { bg:'#0a0016', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var INK_COLS = [C.d, C.e, C.a, C.b, C.f];
 
-  var INK_COLORS = [C.ink0, C.ink1, C.ink2, C.ink3, C.ink4];
-  var CELL_SIZE = 60;
-  var COLS = Math.floor(W / CELL_SIZE);
-  var ROWS = Math.floor((H * 0.78) / CELL_SIZE);
-  var OX = (W - COLS * CELL_SIZE) / 2;
-  var OY = (H - ROWS * CELL_SIZE) / 2 - 60;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'INK SPREAD';
+  var HOW_TO_PLAY = 'TAP TO DROP INK · SPREAD IT ACROSS THE BOARD';
+  var MAX_TIME = 15;
+  var NEEDED_RATIO = 0.6;    // 修正2: 80% → 60%
+  var CELL = 72;
+  var COLS = Math.floor(W / CELL), ROWS = Math.floor((H * 0.7) / CELL);
+  var OX = snap((W - COLS * CELL) / 2), OY = snap((H - ROWS * CELL) / 2 - 20);
 
-  var grid = [];       // 0 = unpainted, 1..N = ink drop index
-  var inkDrops = [];   // { col, row, color, spreadRadius, speed }
-  var totalCells = COLS * ROWS;
-  var painted = 0;
-  var NEEDED_RATIO = 0.80;
-  var done = false;
-  var timeLeft = 20;
-  var elapsed = 0;
-  var dropCount = 0;
-  var particles = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  for (var r = 0; r < ROWS; r++) {
-    grid.push([]);
-    for (var cc = 0; cc < COLS; cc++) {
-      grid[r].push(0);
+  // ── ゲーム変数 ──
+  var grid, drops, painted, totalCells, dropCount, timeLeft, done, particles;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#1a0a2a');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function initGame() {
+    grid = []; for (var r = 0; r < ROWS; r++) { grid.push([]); for (var c = 0; c < COLS; c++) grid[r].push(0); }
+    drops = []; painted = 0; totalCells = COLS * ROWS; dropCount = 0; timeLeft = MAX_TIME; done = false; particles = [];
+  }
+
+  function paintCell(col, row, idx) { if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return false; if (grid[row][col] !== 0) return false; grid[row][col] = idx; painted++; return true; }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    var ratio = painted / totalCells;
+    finalScore = success ? (Math.floor(ratio * 1000) + Math.ceil(timeLeft) * 100) : Math.floor(ratio * 500);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawBoard() {
+    game.draw.rect(OX - 6, OY - 6, COLS * CELL + 12, ROWS * CELL + 12, '#1a0a2a', 0.8);
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      var v = grid[r][c], cx = OX + c * CELL, cy = OY + r * CELL;
+      if (v === 0) game.draw.rect(cx + 2, cy + 2, CELL - 4, CELL - 4, '#140820', 0.9);
+      else { var col = drops[v - 1] ? drops[v - 1].color : C.d; game.draw.rect(cx + 2, cy + 2, CELL - 4, CELL - 4, col, 0.85); game.draw.rect(cx + 2, cy + 2, CELL - 4, 4, C.g, 0.15); }
     }
   }
 
-  function paintCell(col, row, dropIdx) {
-    if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return false;
-    if (grid[row][col] !== 0) return false;
-    grid[row][col] = dropIdx;
-    painted++;
-    return true;
-  }
-
+  // ── 入力 ──
   game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done) return;
-    var col = Math.floor((tx - OX) / CELL_SIZE);
-    var row = Math.floor((ty - OY) / CELL_SIZE);
+    var col = Math.floor((tx - OX) / CELL), row = Math.floor((ty - OY) / CELL);
     if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
-
-    dropCount++;
-    var dropIdx = dropCount;
-    var col2 = INK_COLORS[dropCount % INK_COLORS.length];
-    paintCell(col, row, dropIdx);
-    inkDrops.push({
-      col: col, row: row,
-      color: col2,
-      dropIdx: dropIdx,
-      spreadRadius: 0,
-      speed: 3.5 + Math.random() * 2,
-      frontier: [{ col: col, row: row }]
-    });
+    dropCount++; var color = INK_COLS[dropCount % INK_COLS.length];
+    paintCell(col, row, dropCount);
+    drops.push({ color: color, dropIdx: dropCount, spread: 0, speed: 3.5 + Math.random() * 2, frontier: [{ col: col, row: row }] });
     game.audio.play('se_tap', 0.3);
-
-    // Ripple visual
-    particles.push({ x: OX + col * CELL_SIZE + CELL_SIZE / 2, y: OY + row * CELL_SIZE + CELL_SIZE / 2, r: 10, maxR: 120, life: 0.5, col: col2 });
+    particles.push({ x: OX + col * CELL + CELL / 2, y: OY + row * CELL + CELL / 2, r: 10, maxR: 100, life: 0.5, col: color });
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        var ratio = painted / totalCells;
-        if (ratio >= NEEDED_RATIO) {
-          game.audio.play('se_success', 0.8);
-          setTimeout(function() { game.end.success(Math.floor(ratio * 1000) + Math.ceil(painted / 10) * 50); }, 500);
-        } else {
-          game.audio.play('se_failure', 0.6);
-          game.end.failure();
-        }
-        return;
+    if (state === S.ATTRACT) {
+      if (!grid) initGame(); background(); drawBoard();
+      txt(GAME_TITLE, W / 2, H * 0.10, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.155, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.95, 46, C.g);
       }
-    }
-
-    // Check win
-    if (painted >= Math.floor(totalCells * NEEDED_RATIO) && !done) {
-      done = true;
-      game.audio.play('se_success', 0.9);
-      setTimeout(function() { game.end.success(Math.ceil(timeLeft) * 200 + painted * 20); }, 600);
+      scanlines();
       return;
     }
 
-    // Spread ink
-    for (var di = 0; di < inkDrops.length; di++) {
-      var drop = inkDrops[di];
-      drop.spreadRadius += drop.speed * dt;
-      var newRadius = Math.floor(drop.spreadRadius);
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'FLOODED!' : 'TOO DRY', W / 2, H * 0.35, 70, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
 
-      // BFS-like spreading
-      if (newRadius > 0 && drop.frontier.length > 0) {
-        var newFrontier = [];
-        var expandCount = Math.ceil(drop.speed * dt * 4);
-        for (var fi = 0; fi < Math.min(expandCount, drop.frontier.length); fi++) {
-          var cell = drop.frontier[fi];
-          var neighbors = [
-            { col: cell.col - 1, row: cell.row },
-            { col: cell.col + 1, row: cell.row },
-            { col: cell.col, row: cell.row - 1 },
-            { col: cell.col, row: cell.row + 1 }
-          ];
-          for (var ni = 0; ni < neighbors.length; ni++) {
-            var nc = neighbors[ni];
-            if (paintCell(nc.col, nc.row, drop.dropIdx)) {
-              newFrontier.push(nc);
-            }
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (painted >= Math.floor(totalCells * NEEDED_RATIO)) { finish(true); return; }
+      if (timeLeft <= 0) { finish(painted / totalCells >= NEEDED_RATIO); return; }
+      for (var di = 0; di < drops.length; di++) {
+        var d = drops[di]; d.spread += d.speed * dt;
+        if (d.frontier.length > 0) {
+          var expand = Math.ceil(d.speed * dt * 4), newFront = [];
+          for (var fi = 0; fi < Math.min(expand, d.frontier.length); fi++) {
+            var cell = d.frontier[fi], nb = [{ col: cell.col - 1, row: cell.row }, { col: cell.col + 1, row: cell.row }, { col: cell.col, row: cell.row - 1 }, { col: cell.col, row: cell.row + 1 }];
+            for (var ni = 0; ni < nb.length; ni++) if (paintCell(nb[ni].col, nb[ni].row, d.dropIdx)) newFront.push(nb[ni]);
           }
-        }
-        drop.frontier = drop.frontier.slice(expandCount).concat(newFrontier);
-      }
-    }
-
-    // Ripple particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].r += (particles[pp].maxR - particles[pp].r) * dt * 6;
-      particles[pp].life -= dt * 3;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // --- draw ---
-    game.draw.rect(0, 0, W, H, C.bg);
-    game.draw.rect(OX - 4, OY - 4, COLS * CELL_SIZE + 8, ROWS * CELL_SIZE + 8, C.border, 0.8);
-
-    // Paint grid cells
-    for (var r2 = 0; r2 < ROWS; r2++) {
-      for (var c2 = 0; c2 < COLS; c2++) {
-        var cellVal = grid[r2][c2];
-        var cx3 = OX + c2 * CELL_SIZE;
-        var cy3 = OY + r2 * CELL_SIZE;
-        if (cellVal === 0) {
-          game.draw.rect(cx3, cy3, CELL_SIZE, CELL_SIZE, C.paper, 0.95);
-        } else {
-          var dropColor = inkDrops[cellVal - 1] ? inkDrops[cellVal - 1].color : C.ink0;
-          game.draw.rect(cx3, cy3, CELL_SIZE, CELL_SIZE, dropColor, 0.88);
-          // Edge darkening
-          game.draw.rect(cx3, cy3, CELL_SIZE, 3, '#000', 0.08);
-          game.draw.rect(cx3, cy3, 3, CELL_SIZE, '#000', 0.08);
+          d.frontier = d.frontier.slice(expand).concat(newFront);
         }
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.r += (p.maxR - p.r) * dt * 6; p.life -= dt * 3; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Ripple animations
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, p.r, p.col, p.life * 0.5);
-    }
-
-    // Progress
+    // ---- 描画 ----
+    background(); drawBoard();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) { var pt = particles[pp2]; for (var a = 0; a < Math.PI * 2; a += 0.4) game.draw.rect(snap(pt.x + Math.cos(a) * pt.r) - 4, snap(pt.y + Math.sin(a) * pt.r) - 4, 8, 8, pt.col, pt.life * 0.5); }
     var ratio = painted / totalCells;
-    var ratioBar = ratio / NEEDED_RATIO;
-    game.draw.rect(OX, OY + ROWS * CELL_SIZE + 20, COLS * CELL_SIZE * ratioBar, 20, C.ink2, 0.9);
-    game.draw.rect(OX, OY + ROWS * CELL_SIZE + 20, COLS * CELL_SIZE, 20, C.border, 0.3);
-    game.draw.text(Math.floor(ratio * 100) + '% / ' + Math.floor(NEEDED_RATIO * 100) + '%', W / 2, OY + ROWS * CELL_SIZE + 75, { size: 48, color: C.text, bold: true });
+    txt(Math.floor(ratio * 100) + '% / ' + Math.floor(NEEDED_RATIO * 100) + '%', W / 2, OY + ROWS * CELL + 70, 48, ratio >= NEEDED_RATIO ? C.b : C.c);
 
-    var timeRatio = Math.max(0, timeLeft / 20);
-    game.draw.rect(0, 0, W, 72, C.text);
-    game.draw.rect(0, 0, W * timeRatio, 72, timeRatio > 0.4 ? C.ink2 : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.07);
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
