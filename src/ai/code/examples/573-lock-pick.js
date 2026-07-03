@@ -1,287 +1,151 @@
 // 573-lock-pick.js
-// ロックピック — 鍵穴の内部構造をスワイプで探って開錠する
-// 操作: スワイプで探針を動かし、手触りの違いでピンの位置を感じる
-// 成功: 5個の錠前を開ける  失敗: 10回失敗 or 90秒
+// ロックピック — 鍵穴のピンを探針で押し上げ、セット位置で右スワイプして固定し開錠する
+// 操作: 上下スワイプで探針を動かし、ピンをセット帯に合わせて「右スワイプ」で固定。テンション超過で戻る
+// 成功: 錠前 2個 開錠  失敗: 3回 失敗 or 25秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0a0a0a',
-    lock:    '#334444',
-    lockHi:  '#446655',
-    keyhole: '#001a00',
-    pin:     '#888866',
-    pinSet:  '#44ff88',
-    pinReset:'#ff4444',
-    probe:   '#ffcc44',
-    probeHi: '#ffee88',
-    text:    '#f1f5f9',
-    ui:      '#374151',
-    win:     '#22c55e',
-    lose:    '#ef4444',
-    spring:  '#556677'
-  };
+  // ── パレット（アイスブルー、開錠工房） ──
+  var C = { bg:'#0a0a12', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var NUM_PINS = 5;
-  var PIN_SPACING = 110;
-  var PIN_START_X = (W - (NUM_PINS - 1) * PIN_SPACING) / 2;
-  var KEYHOLE_Y = H * 0.4;
-  var PIN_H = 120;
-  var SET_ZONE = 20; // pixels from top where pin can be "set"
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'LOCK PICK';
+  var HOW_TO_PLAY = 'SWIPE TO PROBE PINS · ALIGN TO THE SET ZONE · SWIPE RIGHT TO SET';
+  var MAX_TIME = 25;
+  var NEEDED   = 2;          // 修正2: 5 → 2
+  var MAX_FAIL = 3;          // 修正2: 10 → 3
+  var NUM_PINS = 4, PIN_SPACING = 130, PIN_START_X = (W - (4 - 1) * 130) / 2, KEYHOLE_Y = snap(H * 0.36), PIN_H = 120, SET_ZONE = 24;
 
-  var pins = []; // {x, y, target, set, wobble}
-  var probe = { x: W / 2, y: KEYHOLE_Y };
-  var openCount = 0;
-  var NEEDED = 5;
-  var fails = 0;
-  var MAX_FAIL = 10;
-  var done = false;
-  var timeLeft = 90;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.win;
-  var openAnim = 0;
-  var currentLock = 0;
-  var tension = 0; // 0-1, higher = more chance of reset
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function initLock() {
-    pins = [];
-    for (var i = 0; i < NUM_PINS; i++) {
-      var target = PIN_H * 0.2 + Math.random() * PIN_H * 0.5;
-      pins.push({
-        x: PIN_START_X + i * PIN_SPACING,
-        y: KEYHOLE_Y + PIN_H * 0.8,
-        target: target, // distance from top of keyhole when "set"
-        set: false,
-        wobble: 0,
-        springBack: 0
-      });
-    }
-    probe.x = W / 2;
-    probe.y = KEYHOLE_Y + PIN_H * 0.5;
-    tension = 0;
+  // ── ゲーム変数 ──
+  var pins, probe, openCount, fails, timeLeft, done, particles, flash, flashCol, openAnim, tension;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function countSet() {
-    var n = 0;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#12121a');
+  }
+
+  function background() { game.draw.clear(C.bg); game.draw.rect(W / 2 - 300, KEYHOLE_Y - 60, 600, PIN_H + 120, '#1a2432', 0.9); game.draw.rect(PIN_START_X - 70, KEYHOLE_Y - 4, (NUM_PINS - 1) * PIN_SPACING + 140, PIN_H + 8, '#050d14', 0.95); }
+
+  function initLock() { pins = []; for (var i = 0; i < NUM_PINS; i++) pins.push({ x: PIN_START_X + i * PIN_SPACING, y: KEYHOLE_Y + PIN_H * 0.8, target: PIN_H * 0.2 + Math.random() * PIN_H * 0.5, set: false, wobble: 0, springBack: 0 }); probe = { x: W / 2, y: KEYHOLE_Y + PIN_H * 0.5 }; tension = 0; }
+
+  function countSet() { var n = 0; for (var i = 0; i < pins.length; i++) if (pins[i].set) n++; return n; }
+  function allSet() { for (var i = 0; i < pins.length; i++) if (!pins[i].set) return false; return true; }
+
+  function initGame() { openCount = 0; fails = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; openAnim = 0; initLock(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (openCount * 1200 + Math.ceil(timeLeft) * 100) : openCount * 400;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
     for (var i = 0; i < pins.length; i++) {
-      if (pins[i].set) n++;
+      var pin = pins[i], px = pin.x, py = pin.y, wob = Math.sin(game.time.elapsed * 20 + i) * pin.wobble * 8, col = pin.set ? C.b : (pin.springBack > 0 ? C.a : '#888866');
+      game.draw.rect(px - 18 + wob, KEYHOLE_Y, 36, py - KEYHOLE_Y, col, pin.set ? 0.9 : 0.8); game.draw.rect(px - 18 + wob, py - 8, 36, 24, col, 0.9);
+      game.draw.rect(px - 24, KEYHOLE_Y + pin.target - SET_ZONE, 48, SET_ZONE * 2, pin.set ? C.b : '#334', 0.3); game.draw.rect(px - 24, KEYHOLE_Y + pin.target - 1, 48, 3, pin.set ? C.b : C.e, 0.6);
     }
-    return n;
+    var pulse = 1 + Math.sin(game.time.elapsed * 8) * 0.1; pc(probe.x, probe.y, 18 * pulse, C.c, 0.9); game.draw.rect(snap(probe.x) - 3, snap(probe.y), 6, 40, C.c, 0.9);
+    var tw = W * 0.6, tx = (W - tw) / 2, ty = KEYHOLE_Y + PIN_H + 60;
+    game.draw.rect(tx, ty, tw, 20, '#374151', 0.4); game.draw.rect(tx, ty, tw * tension, 20, tension > 0.6 ? C.a : C.c, 0.8); txt('TENSION', W / 2, ty + 52, 30, tension > 0.6 ? C.a : C.e);
+    var sc = countSet(); for (var si = 0; si < NUM_PINS; si++) pc(W / 2 - (NUM_PINS - 1) * 44 + si * 88, ty + 110, 20, si < sc ? C.b : '#374151', 0.9);
   }
 
-  function checkAllSet() {
-    for (var i = 0; i < pins.length; i++) {
-      if (!pins[i].set) return false;
-    }
-    return true;
-  }
-
+  // ── 入力 ──
   game.onSwipe(function(dir, x1, y1, x2, y2) {
-    if (done || openAnim > 0) return;
-
-    // Move probe up/down and interact with pins
-    var dy = y2 - y1;
-    probe.y = Math.max(KEYHOLE_Y, Math.min(KEYHOLE_Y + PIN_H, probe.y + dy * 0.5));
-
-    // Interact with nearest pin
-    var nearPin = null, nearDist = 80;
-    for (var i = 0; i < pins.length; i++) {
-      var d = Math.abs(probe.x - pins[i].x);
-      if (d < nearDist) { nearDist = d; nearPin = pins[i]; }
-    }
-
-    if (nearPin && !nearPin.set) {
-      // Push pin upward with probe
-      nearPin.y = Math.max(KEYHOLE_Y + nearPin.target - SET_ZONE, Math.min(KEYHOLE_Y + PIN_H, probe.y + 20));
-      nearPin.wobble = 0.3;
-
-      // Check if pin is at setting position
-      var distFromTarget = Math.abs(nearPin.y - (KEYHOLE_Y + nearPin.target));
-      if (distFromTarget < SET_ZONE && dir === 'right') {
-        nearPin.set = true;
-        nearPin.wobble = 0.5;
-        game.audio.play('se_success', 0.5);
-
-        if (checkAllSet()) {
-          openAnim = 1.0;
-          openCount++;
-          game.audio.play('se_success', 0.9);
-          flashCol = C.win;
-          flashAnim = 0.5;
-          for (var pi = 0; pi < 12; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: W / 2, y: KEYHOLE_Y, vx: Math.cos(ang) * 250, vy: Math.sin(ang) * 250, life: 0.5, col: C.pinSet });
-          }
-          if (openCount >= NEEDED && !done) {
-            done = true;
-            game.audio.play('se_success', 0.9);
-            setTimeout(function() { game.end.success(openCount * 800 + Math.ceil(timeLeft) * 80); }, 800);
-          } else {
-            setTimeout(function() { if (!done) initLock(); openAnim = 0; }, 1200);
-          }
-        }
+    if (state !== S.PLAYING || done || openAnim > 0) return;
+    probe.y = Math.max(KEYHOLE_Y, Math.min(KEYHOLE_Y + PIN_H, probe.y + (y2 - y1) * 0.5));
+    var near = null, nd = 90; for (var i = 0; i < pins.length; i++) { var d = Math.abs(probe.x - pins[i].x); if (d < nd) { nd = d; near = pins[i]; } }
+    if (near && !near.set) {
+      near.y = Math.max(KEYHOLE_Y + near.target - SET_ZONE, Math.min(KEYHOLE_Y + PIN_H, probe.y + 20)); near.wobble = 0.3;
+      if (Math.abs(near.y - (KEYHOLE_Y + near.target)) < SET_ZONE && dir === 'right') {
+        near.set = true; near.wobble = 0.5; game.audio.play('se_success', 0.5);
+        if (allSet()) { openAnim = 1.0; openCount++; flash = 0.5; flashCol = C.b; game.audio.play('se_success', 0.9); for (var pi = 0; pi < 12; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: KEYHOLE_Y, vx: Math.cos(a) * 250, vy: Math.sin(a) * 250, life: 0.5, col: C.b }); } if (openCount >= NEEDED) { finish(true); return; } setTimeout(function() { if (!done) { initLock(); openAnim = 0; } }, 1000); }
       }
     }
-
-    // Horizontal move changes which pin we're at
     probe.x = Math.max(PIN_START_X - 60, Math.min(PIN_START_X + (NUM_PINS - 1) * PIN_SPACING + 60, probe.x + (x2 - x1) * 0.6));
-
-    // Too much tension causes reset
     tension += 0.05;
-    if (tension > 0.8 && Math.random() < 0.2) {
-      // Reset unset pins
-      for (var ri = 0; ri < pins.length; ri++) {
-        if (!pins[ri].set) {
-          pins[ri].y = KEYHOLE_Y + PIN_H * 0.8;
-          pins[ri].springBack = 0.4;
-          pins[ri].set = false;
-        }
-      }
-      fails++;
-      flashCol = C.lose;
-      flashAnim = 0.3;
-      tension = 0;
-      game.audio.play('se_failure', 0.3);
-      if (fails >= MAX_FAIL && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      }
-    }
+    if (tension > 0.8 && Math.random() < 0.2) { for (var ri = 0; ri < pins.length; ri++) if (!pins[ri].set) { pins[ri].y = KEYHOLE_Y + PIN_H * 0.8; pins[ri].springBack = 0.4; } fails++; flash = 0.3; flashCol = C.a; tension = 0; game.audio.play('se_failure', 0.3); if (fails >= MAX_FAIL) { finish(false); return; } }
     game.audio.play('se_tap', 0.1);
   });
 
-  game.onTap(function(tx, ty) {
+  game.onTap(function(tx) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done) return;
-    // Tap to test a pin (without swipe)
-    for (var i = 0; i < pins.length; i++) {
-      if (Math.abs(tx - pins[i].x) < 40 && !pins[i].set) {
-        pins[i].y = Math.max(KEYHOLE_Y, pins[i].y - 30);
-        pins[i].wobble = 0.2;
-        game.audio.play('se_tap', 0.1);
-        return;
-      }
-    }
+    for (var i = 0; i < pins.length; i++) if (Math.abs(tx - pins[i].x) < 50) { probe.x = pins[i].x; game.audio.play('se_tap', 0.1); return; }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!pins) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.14, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.185, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ALL UNLOCKED!' : 'BROKEN PICK', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (openAnim > 0) openAnim -= dt * 1.5;
-    tension = Math.max(0, tension - dt * 0.1);
-
-    // Spring unset pins back down
-    for (var i = 0; i < pins.length; i++) {
-      if (!pins[i].set) {
-        var restY = KEYHOLE_Y + PIN_H * 0.8;
-        pins[i].y += (restY - pins[i].y) * dt * 3;
-      }
-      if (pins[i].wobble > 0) pins[i].wobble -= dt * 4;
-      if (pins[i].springBack > 0) pins[i].springBack -= dt * 3;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (openAnim > 0) openAnim -= dt * 1.5; tension = Math.max(0, tension - dt * 0.1);
+      for (var i = 0; i < pins.length; i++) { if (!pins[i].set) { var rest = KEYHOLE_Y + PIN_H * 0.8; pins[i].y += (rest - pins[i].y) * dt * 3; } if (pins[i].wobble > 0) pins[i].wobble -= dt * 4; if (pins[i].springBack > 0) pins[i].springBack -= dt * 3; }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (openAnim > 0) { game.draw.rect(0, 0, W, H, C.b, openAnim * 0.12); txt('UNLOCKED!', W / 2, H / 2, 90, C.b); }
+    if (flash > 0 && openAnim <= 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.08);
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Lock body
-    game.draw.rect(W / 2 - 280, KEYHOLE_Y - 60, 560, PIN_H + 120, C.lock, 0.9);
-    game.draw.rect(W / 2 - 280, KEYHOLE_Y - 60, 560, 16, C.lockHi, 0.6);
-
-    // Keyhole cutout
-    game.draw.rect(PIN_START_X - 70, KEYHOLE_Y - 4, (NUM_PINS - 1) * PIN_SPACING + 140, PIN_H + 8, C.keyhole, 0.95);
-    game.draw.rect(PIN_START_X - 70, KEYHOLE_Y - 4, 6, PIN_H + 8, C.lockHi, 0.3);
-    game.draw.rect(PIN_START_X - 70 + (NUM_PINS - 1) * PIN_SPACING + 134, KEYHOLE_Y - 4, 6, PIN_H + 8, C.lockHi, 0.3);
-
-    // Pins
-    for (var i2 = 0; i2 < pins.length; i2++) {
-      var pin = pins[i2];
-      var px = pin.x;
-      var py = pin.y;
-      var wobAmt = Math.sin(elapsed * 20 + i2) * pin.wobble * 8;
-      var col = pin.set ? C.pinSet : (pin.springBack > 0 ? C.pinReset : C.pin);
-      var alpha = pin.set ? 0.9 : 0.8;
-
-      // Pin body
-      game.draw.rect(px - 18 + wobAmt, KEYHOLE_Y, 36, py - KEYHOLE_Y, col, alpha);
-      game.draw.rect(px - 18 + wobAmt, py - 8, 36, 24, col, alpha * 1.1);
-
-      // Target zone marker
-      game.draw.rect(px - 24, KEYHOLE_Y + pin.target - SET_ZONE, 48, SET_ZONE * 2, pin.set ? C.pinSet : '#334', 0.3);
-      game.draw.line(px - 24, KEYHOLE_Y + pin.target, px + 24, KEYHOLE_Y + pin.target, pin.set ? C.pinSet : '#556', 3);
-
-      // Spring below
-      for (var si = 0; si < 4; si++) {
-        var sy1 = KEYHOLE_Y + PIN_H - 30 + si * 10;
-        var sy2 = sy1 + 8;
-        game.draw.line(px - 12 + (si % 2) * 24, sy1, px + 12 - (si % 2) * 24, sy2, C.spring, 3);
-      }
-    }
-
-    // Probe
-    var probePulse = 1 + Math.sin(elapsed * 8) * 0.1;
-    game.draw.circle(probe.x, probe.y, 20 * probePulse, C.probeHi, 0.3);
-    game.draw.circle(probe.x, probe.y, 14 * probePulse, C.probe, 0.9);
-    game.draw.line(probe.x, probe.y, probe.x, probe.y + 40, C.probe, 6);
-
-    // Tension bar
-    var tensionW = W * 0.6;
-    var tensionX = (W - tensionW) / 2;
-    var tensionY = KEYHOLE_Y + PIN_H + 60;
-    game.draw.rect(tensionX, tensionY, tensionW, 20, C.ui, 0.4);
-    game.draw.rect(tensionX, tensionY, tensionW * tension, 20, tension > 0.6 ? C.lose : C.probeHi, 0.8);
-    game.draw.text('テンション', W / 2, tensionY + 52, { size: 30, color: tension > 0.6 ? C.lose : C.ui });
-
-    // Set count
-    var setCount = countSet();
-    for (var si2 = 0; si2 < NUM_PINS; si2++) {
-      game.draw.circle(W / 2 - (NUM_PINS - 1) * 40 + si2 * 80, tensionY + 110, 22, si2 < setCount ? C.pinSet : C.ui, 0.9);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (openAnim > 0) {
-      game.draw.rect(0, 0, W, H, C.win, openAnim * 0.12);
-      game.draw.text('開錠!', W / 2, H / 2, { size: 100, color: C.win, bold: true });
-    }
-
-    if (flashAnim > 0 && openAnim <= 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.08);
-
-    // Fail dots
-    for (var fi = 0; fi < MAX_FAIL; fi++) {
-      game.draw.circle(W / 2 - (MAX_FAIL - 1) * 44 + fi * 88, H * 0.955, 18, fi < fails ? C.lose : C.ui, 0.9);
-    }
-
-    game.draw.text(openCount + ' / ' + NEEDED + ' 開錠', W / 2, 148, { size: 52, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 90);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.lockHi : C.lose);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(openCount + ' / ' + NEEDED + ' LOCKS', W / 2, 168, 46, C.b);
+    for (var fi = 0; fi < MAX_FAIL; fi++) game.draw.rect(snap(W / 2 + (fi - (MAX_FAIL - 1) / 2) * 56) - 10, 224, 20, 20, fi < fails ? C.a : '#12121a');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.06);
-    initLock();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
