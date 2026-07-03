@@ -1,260 +1,160 @@
 // 576-number-snake.js
-// ナンバースネーク — 数字をスワイプでなぞって順番に繋ぐ
-// 操作: スワイプで1から始まる数字を順番になぞる
-// 成功: 8問クリア  失敗: 5回ミス or 90秒
+// ナンバースネーク — 盤面に散った数字を、1から順に隣接マスをなぞって繋いでいく
+// 操作: スワイプ（またはタップ）で 1→2→3… と隣り合う数字を順番になぞる。順番違いはミス
+// 成功: 3問 完成  失敗: 3回 ミス or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0a0a1a',
-    cell:    '#12121f',
-    num:     '#f1f5f9',
-    numHi:   '#ffffff',
-    path:    '#3b82f6',
-    pathHi:  '#93c5fd',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    next:    '#f59e0b',
-    text:    '#f1f5f9',
-    ui:      '#374151',
-    border:  '#1a1a2e'
-  };
+  // ── パレット（ネオンアーケード、数字回路） ──
+  var C = { bg:'#0a0a1a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var GRID = 5;
-  var CELL = Math.floor(W * 0.8 / GRID);
-  var OX = (W - GRID * CELL) / 2;
-  var OY = H * 0.2;
-  var NUM_CELLS = GRID * GRID;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'NUMBER SNAKE';
+  var HOW_TO_PLAY = 'TRACE 1-2-3... THROUGH ADJACENT NUMBERS IN ORDER';
+  var MAX_TIME = 20;
+  var NEEDED   = 3;          // 修正2: 8 → 3
+  var MAX_FAIL = 3;          // 修正2: 5 → 3
+  var GRID = 5, CELL = Math.floor(W * 0.8 / 5), NUM_CELLS = 25;
+  var OX = snap((W - GRID * CELL) / 2), OY = snap(H * 0.24);
 
-  var numbers = []; // number placed at each cell (-1 = empty)
-  var path = []; // user's drawn path (cell indices)
-  var lastCell = -1;
-  var expectedNext = 1;
-  var totalNums = 0;
-  var completions = 0;
-  var NEEDED = 8;
-  var fails = 0;
-  var MAX_FAIL = 5;
-  var done = false;
-  var timeLeft = 90;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.correct;
-  var resultTimer = 0;
-  var swiping = false;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var numbers, path, lastCell, expectedNext, totalNums, completions, fails, timeLeft, done, particles, flash, flashCol, resultTimer;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#12121f');
+  }
+
+  function background() { game.draw.clear(C.bg); }
 
   function cellOf(r, c) { return r * GRID + c; }
-  function rowOf(idx) { return Math.floor(idx / GRID); }
-  function colOf(idx) { return idx % GRID; }
-  function cellX(idx) { return OX + colOf(idx) * CELL + CELL / 2; }
-  function cellY(idx) { return OY + rowOf(idx) * CELL + CELL / 2; }
+  function rowOf(i) { return Math.floor(i / GRID); }
+  function colOf(i) { return i % GRID; }
+  function cellX(i) { return OX + colOf(i) * CELL + CELL / 2; }
+  function cellY(i) { return OY + rowOf(i) * CELL + CELL / 2; }
 
   function generatePuzzle() {
-    numbers = [];
-    for (var i = 0; i < NUM_CELLS; i++) numbers.push(-1);
-
-    // Place a snake path with numbers
-    var pathLen = 10 + Math.floor(Math.random() * 5);
-    pathLen = Math.min(pathLen, NUM_CELLS);
-
-    var snake = [Math.floor(Math.random() * NUM_CELLS)];
-    var used = {};
-    used[snake[0]] = true;
-
-    while (snake.length < pathLen) {
-      var cur = snake[snake.length - 1];
-      var r = rowOf(cur), c = colOf(cur);
-      var moves = [];
-      if (r > 0 && !used[cellOf(r-1,c)]) moves.push(cellOf(r-1,c));
-      if (r < GRID-1 && !used[cellOf(r+1,c)]) moves.push(cellOf(r+1,c));
-      if (c > 0 && !used[cellOf(r,c-1)]) moves.push(cellOf(r,c-1));
-      if (c < GRID-1 && !used[cellOf(r,c+1)]) moves.push(cellOf(r,c+1));
-      if (moves.length === 0) break;
-      var next = moves[Math.floor(Math.random() * moves.length)];
-      snake.push(next);
-      used[next] = true;
-    }
-
-    for (var si = 0; si < snake.length; si++) {
-      numbers[snake[si]] = si + 1;
-    }
-    totalNums = snake.length;
-    path = [];
-    lastCell = -1;
-    expectedNext = 1;
-    swiping = false;
+    numbers = []; for (var i = 0; i < NUM_CELLS; i++) numbers.push(-1);
+    var pathLen = Math.min(8 + Math.floor(Math.random() * 4), NUM_CELLS), snake = [Math.floor(Math.random() * NUM_CELLS)], used = {}; used[snake[0]] = true;
+    while (snake.length < pathLen) { var cur = snake[snake.length - 1], r = rowOf(cur), c = colOf(cur), moves = []; if (r > 0 && !used[cellOf(r - 1, c)]) moves.push(cellOf(r - 1, c)); if (r < GRID - 1 && !used[cellOf(r + 1, c)]) moves.push(cellOf(r + 1, c)); if (c > 0 && !used[cellOf(r, c - 1)]) moves.push(cellOf(r, c - 1)); if (c < GRID - 1 && !used[cellOf(r, c + 1)]) moves.push(cellOf(r, c + 1)); if (moves.length === 0) break; var nx = moves[Math.floor(Math.random() * moves.length)]; snake.push(nx); used[nx] = true; }
+    for (var si = 0; si < snake.length; si++) numbers[snake[si]] = si + 1;
+    totalNums = snake.length; path = []; lastCell = -1; expectedNext = 1;
   }
 
-  function getCellAt(tx, ty) {
-    var c = Math.floor((tx - OX) / CELL);
-    var r = Math.floor((ty - OY) / CELL);
-    if (c < 0 || c >= GRID || r < 0 || r >= GRID) return -1;
-    return cellOf(r, c);
+  function initGame() { completions = 0; fails = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; resultTimer = 0; generatePuzzle(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (completions * 1200 + Math.ceil(timeLeft) * 100) : completions * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
   }
 
-  function tryConnect(cellIdx) {
-    if (cellIdx < 0 || numbers[cellIdx] < 0) return;
-    if (numbers[cellIdx] !== expectedNext) {
-      // Wrong order — fail
-      fails++;
-      flashCol = C.wrong;
-      flashAnim = 0.35;
-      resultTimer = 0.7;
-      game.audio.play('se_failure', 0.4);
-      path = [];
-      lastCell = -1;
-      expectedNext = 1;
-      if (fails >= MAX_FAIL && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      }
-      return;
-    }
+  function getCellAt(tx, ty) { var c = Math.floor((tx - OX) / CELL), r = Math.floor((ty - OY) / CELL); if (c < 0 || c >= GRID || r < 0 || r >= GRID) return -1; return cellOf(r, c); }
 
-    // Check adjacency
-    if (lastCell >= 0) {
-      var dr = Math.abs(rowOf(cellIdx) - rowOf(lastCell));
-      var dc = Math.abs(colOf(cellIdx) - colOf(lastCell));
-      if (dr + dc !== 1) {
-        path = [];
-        lastCell = -1;
-        expectedNext = 1;
-        return;
-      }
-    }
-
-    path.push(cellIdx);
-    lastCell = cellIdx;
-    expectedNext++;
-    game.audio.play('se_tap', 0.2);
-
+  function tryConnect(ci) {
+    if (ci < 0 || numbers[ci] < 0) return;
+    if (numbers[ci] !== expectedNext) { fails++; flash = 0.35; flashCol = C.a; resultTimer = 0.7; game.audio.play('se_failure', 0.4); path = []; lastCell = -1; expectedNext = 1; if (fails >= MAX_FAIL) { finish(false); } return; }
+    if (lastCell >= 0) { if (Math.abs(rowOf(ci) - rowOf(lastCell)) + Math.abs(colOf(ci) - colOf(lastCell)) !== 1) { path = []; lastCell = -1; expectedNext = 1; return; } }
+    path.push(ci); lastCell = ci; expectedNext++; game.audio.play('se_tap', 0.2);
     if (expectedNext > totalNums) {
-      // Completed!
-      completions++;
-      flashCol = C.correct;
-      flashAnim = 0.4;
-      resultTimer = 0.9;
-      game.audio.play('se_success', 0.8);
-      for (var pi = 0; pi < 10; pi++) {
-        var ang = Math.random() * Math.PI * 2;
-        var cx2 = cellX(cellIdx), cy2 = cellY(cellIdx);
-        particles.push({ x: cx2, y: cy2, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.5, col: C.correct });
-      }
-      if (completions >= NEEDED && !done) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(completions * 600 + Math.ceil(timeLeft) * 80); }, 800);
-      } else {
-        setTimeout(function() { if (!done) generatePuzzle(); }, 1000);
-      }
+      completions++; flash = 0.4; flashCol = C.b; resultTimer = 0.9; game.audio.play('se_success', 0.8);
+      for (var pi = 0; pi < 10; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: cellX(ci), y: cellY(ci), vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.5, col: C.b }); }
+      if (completions >= NEEDED) { finish(true); return; }
+      setTimeout(function() { if (!done) generatePuzzle(); }, 900);
     }
   }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
-    if (done || resultTimer > 0) return;
-    // Trace along swipe
-    var steps = Math.ceil(Math.sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)) / (CELL * 0.4));
-    steps = Math.max(1, Math.min(steps, 20));
-    for (var s = 0; s <= steps; s++) {
-      var sx = x1 + (x2 - x1) * s / steps;
-      var sy = y1 + (y2 - y1) * s / steps;
-      var ci = getCellAt(sx, sy);
-      if (ci >= 0 && ci !== lastCell && path.indexOf(ci) === -1) {
-        tryConnect(ci);
-        if (resultTimer > 0) break;
-      }
+  function drawScene() {
+    for (var pi = 1; pi < path.length; pi++) { var pa = path[pi - 1], pb = path[pi]; game.draw.line(cellX(pa), cellY(pa), cellX(pb), cellY(pb), C.e, 12); }
+    for (var ci = 0; ci < NUM_CELLS; ci++) {
+      var gx = OX + colOf(ci) * CELL, gy = OY + rowOf(ci) * CELL, num = numbers[ci];
+      game.draw.rect(gx + 3, gy + 3, CELL - 6, CELL - 6, '#12121f', 0.9);
+      if (num > 0) { var inP = path.indexOf(ci) >= 0, isN = num === expectedNext, col = inP ? C.b : (isN ? C.c : C.d); pc(cellX(ci), cellY(ci), CELL * 0.32, col, inP ? 0.7 : (isN ? 0.5 : 0.35)); txt('' + num, cellX(ci), cellY(ci) + 14, 42, inP ? C.g : C.g); }
     }
+  }
+
+  // ── 入力 ──
+  game.onSwipe(function(dir, x1, y1, x2, y2) {
+    if (state !== S.PLAYING || done || resultTimer > 0) return;
+    var steps = Math.max(1, Math.min(20, Math.ceil(Math.hypot(x2 - x1, y2 - y1) / (CELL * 0.4))));
+    for (var s = 0; s <= steps; s++) { var ci = getCellAt(x1 + (x2 - x1) * s / steps, y1 + (y2 - y1) * s / steps); if (ci >= 0 && ci !== lastCell && path.indexOf(ci) === -1) { tryConnect(ci); if (resultTimer > 0) break; } }
   });
 
   game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done || resultTimer > 0) return;
-    var ci = getCellAt(tx, ty);
-    if (ci >= 0 && ci !== lastCell && path.indexOf(ci) === -1) {
-      tryConnect(ci);
-    }
+    var ci = getCellAt(tx, ty); if (ci >= 0 && ci !== lastCell && path.indexOf(ci) === -1) tryConnect(ci);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!numbers) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.13, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.175, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ALL LINKED!' : 'WRONG ORDER', W / 2, H * 0.35, 64, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (resultTimer > 0) resultTimer -= dt;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // Path lines
-    for (var pi2 = 1; pi2 < path.length; pi2++) {
-      var pa = path[pi2 - 1], pb = path[pi2];
-      game.draw.line(cellX(pa), cellY(pa), cellX(pb), cellY(pb), C.pathHi, 20);
-      game.draw.line(cellX(pa), cellY(pa), cellX(pb), cellY(pb), C.path, 12);
-    }
-
-    // Cells
-    for (var ci2 = 0; ci2 < NUM_CELLS; ci2++) {
-      var gx = OX + colOf(ci2) * CELL;
-      var gy = OY + rowOf(ci2) * CELL;
-      var num = numbers[ci2];
-
-      game.draw.rect(gx + 3, gy + 3, CELL - 6, CELL - 6, C.cell, 0.9);
-
-      if (num > 0) {
-        var inPath = path.indexOf(ci2) >= 0;
-        var isNext = num === expectedNext;
-        var cellCol = inPath ? C.correct : (isNext ? C.next : C.path);
-        game.draw.rect(gx + 8, gy + 8, CELL - 16, CELL - 16, cellCol, inPath ? 0.3 : (isNext ? 0.2 : 0.12));
-        if (isNext && !inPath) {
-          game.draw.rect(gx + 8, gy + 8, CELL - 16, CELL - 16, C.next, 0.08 + Math.sin(elapsed * 6) * 0.06);
-        }
-        game.draw.circle(OX + colOf(ci2) * CELL + CELL / 2, OY + rowOf(ci2) * CELL + CELL / 2, CELL * 0.32, cellCol, inPath ? 0.7 : 0.4);
-        game.draw.text('' + num, cellX(ci2), cellY(ci2) + 14, { size: 42, color: inPath ? C.numHi : C.num, bold: true });
-      }
-
-      // Grid
-      game.draw.line(gx, gy, gx + CELL, gy, C.border, 2);
-      game.draw.line(gx, gy, gx, gy + CELL, C.border, 2);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    // Progress
-    for (var fi = 0; fi < MAX_FAIL; fi++) {
-      game.draw.circle(W / 2 - (MAX_FAIL - 1) * 50 + fi * 100, H * 0.955, 20, fi < fails ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(completions + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    game.draw.text('次: ' + expectedNext, W / 2, 210, { size: 40, color: C.next });
-    var ratio = Math.max(0, timeLeft / 90);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.path : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(completions + ' / ' + NEEDED + '   NEXT ' + Math.min(expectedNext, totalNums), W / 2, 168, 42, C.b);
+    for (var fi = 0; fi < MAX_FAIL; fi++) game.draw.rect(snap(W / 2 + (fi - (MAX_FAIL - 1) / 2) * 56) - 10, 224, 20, 20, fi < fails ? C.a : '#12121f');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.07);
-    generatePuzzle();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
