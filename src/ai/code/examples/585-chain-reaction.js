@@ -1,266 +1,153 @@
 // 585-chain-reaction.js
-// チェーンリアクション — 1つのタップで連鎖爆発を最大化する戦略
-// 操作: タップで爆発を開始する位置を選ぶ
-// 成功: 80%の爆弾を連鎖爆発  失敗: 5回挑戦してクリアできない
+// チェーンリアクション — 1回のタップで爆弾を起爆し、爆風の連鎖で盤面の爆弾を巻き込み尽くす
+// 操作: 爆弾群のどこか1点をタップして起爆（爆風が近くの爆弾を誘爆→連鎖）位置取りが鍵
+// 成功: 爆弾の60%以上を連鎖爆発  失敗: 3回 挑戦しても未達 or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#06040a',
-    bomb:    '#cc3344',
-    bombHi:  '#ff6677',
-    lit:     '#ff8800',
-    litHi:   '#ffcc00',
-    explode: '#ff4400',
-    explodeHi:'#ffaa00',
-    smoke:   '#443322',
-    text:    '#f1f5f9',
-    ui:      '#374151',
-    win:     '#22c55e',
-    lose:    '#ef4444'
-  };
+  // ── パレット（ネオンアーケード、爆破解体） ──
+  var C = { bg:'#06040a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var BOMB_R = 36;
-  var EXPLODE_R = 100;
-  var bombs = [];
-  var exploding = [];
-  var chainActive = false;
-  var chainDone = false;
-  var attempts = 0;
-  var MAX_ATTEMPTS = 5;
-  var totalBombs = 0;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.win;
-  var evalTimer = 0;
-  var resultText = '';
-  var resultTimer = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'CHAIN REACTION';
+  var HOW_TO_PLAY = 'TAP ONE BOMB TO IGNITE · BLASTS CHAIN TO NEARBY BOMBS · 60% WINS';
+  var MAX_TIME = 20;
+  var THRESHOLD = 0.6;      // 修正2: 80% → 60%
+  var MAX_ATTEMPTS = 3;     // 修正2: 5 → 3
+  var BOMB_R = 36, EXPLODE_R = 130;
+
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var bombs, totalBombs, chainActive, chainDone, attempts, timeLeft, done, particles, flash, flashCol, resultText, resultTimer, bestRatio;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.f : '#1a0a10');
+  }
+
+  function background() { game.draw.clear(C.bg); }
 
   function spawnBombs() {
-    bombs = [];
-    var count = 20 + Math.floor(Math.random() * 10);
-    for (var i = 0; i < count; i++) {
-      bombs.push({
-        x: 80 + Math.random() * (W - 160),
-        y: H * 0.15 + Math.random() * (H * 0.65),
-        r: BOMB_R,
-        state: 'idle', // idle | lit | exploding | done
-        litTimer: 0,
-        explodeTimer: 0,
-        explodeR: 0
-      });
-    }
-    totalBombs = bombs.length;
-    chainActive = false;
-    chainDone = false;
-    evalTimer = 0;
+    bombs = []; var count = 12 + Math.floor(Math.random() * 5);
+    for (var i = 0; i < count; i++) bombs.push({ x: 80 + Math.random() * (W - 160), y: H * 0.20 + Math.random() * (H * 0.55), r: BOMB_R, state: 'idle', litTimer: 0, explodeTimer: 0, explodeR: 0 });
+    totalBombs = bombs.length; chainActive = false; chainDone = false;
   }
 
-  function triggerBomb(idx) {
-    if (bombs[idx].state !== 'idle') return;
-    bombs[idx].state = 'lit';
-    bombs[idx].litTimer = 0.4 + Math.random() * 0.3;
-    game.audio.play('se_tap', 0.2);
-  }
+  function initGame() { attempts = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; resultText = ''; resultTimer = 0; bestRatio = 0; spawnBombs(); }
 
-  function startChain(tx, ty) {
-    if (chainActive || chainDone) return;
-    // Find closest bomb to tap
-    var best = -1, bestDist = 80;
-    for (var i = 0; i < bombs.length; i++) {
-      var dx = tx - bombs[i].x, dy = ty - bombs[i].y;
-      var d = Math.sqrt(dx * dx + dy * dy);
-      if (d < bestDist) { bestDist = d; best = i; }
-    }
-    if (best >= 0) {
-      triggerBomb(best);
-      chainActive = true;
-      attempts++;
-      game.audio.play('se_tap', 0.4);
-    }
-  }
-
-  game.onTap(function(tx, ty) {
+  function finish(success) {
     if (done) return;
-    if (!chainActive && !chainDone) {
-      startChain(tx, ty);
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.round(bestRatio * 3000) + Math.ceil(timeLeft) * 100) : Math.round(bestRatio * 1000);
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function ignite(i) { if (bombs[i].state !== 'idle') return; bombs[i].state = 'lit'; bombs[i].litTimer = 0.35 + Math.random() * 0.25; }
+
+  function drawScene() {
+    for (var i = 0; i < bombs.length; i++) {
+      var b = bombs[i]; if (b.state === 'done') continue;
+      if (b.state === 'exploding') { pc(b.x, b.y, b.explodeR, C.f, 0.3); pc(b.x, b.y, b.explodeR * 0.6, C.c, 0.5); pc(b.x, b.y, b.explodeR * 0.3, C.g, 0.5); continue; }
+      var col = b.state === 'lit' ? C.c : C.a, pulse = b.state === 'lit' ? 1 + Math.sin(game.time.elapsed * 15) * 0.15 : 1;
+      if (!chainActive && !chainDone) pc(b.x, b.y, EXPLODE_R, col, 0.04);
+      pc(b.x, b.y, b.r * pulse, col, 0.9); pc(b.x - b.r * 0.25, b.y - b.r * 0.25, b.r * 0.3, C.g, 0.4);
+      if (b.state === 'lit') pc(b.x + 12, b.y - b.r - 16, 8, C.c, 0.9 + Math.sin(game.time.elapsed * 20) * 0.1);
     }
+  }
+
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done || chainActive || chainDone) return;
+    var best = -1, bd = 90; for (var i = 0; i < bombs.length; i++) { var d = Math.hypot(tx - bombs[i].x, ty - bombs[i].y); if (d < bd) { bd = d; best = i; } }
+    if (best >= 0) { ignite(best); chainActive = true; attempts++; game.audio.play('se_tap', 0.4); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!bombs) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.12, 72, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.16, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 52, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 40, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'BOOM! CLEARED!' : 'FIZZLED OUT', W / 2, H * 0.35, 60, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 2.5;
-    if (resultTimer > 0) resultTimer -= dt;
-
-    if (chainActive) {
-      var anyActive = false;
-
-      for (var i = 0; i < bombs.length; i++) {
-        var b = bombs[i];
-        if (b.state === 'lit') {
-          anyActive = true;
-          b.litTimer -= dt;
-          if (b.litTimer <= 0) {
-            b.state = 'exploding';
-            b.explodeTimer = 0.5;
-            b.explodeR = 0;
-            game.audio.play('se_success', 0.4);
-            // Spark particles
-            for (var pi = 0; pi < 8; pi++) {
-              var ang = Math.random() * Math.PI * 2;
-              particles.push({ x: b.x, y: b.y, vx: Math.cos(ang) * 250, vy: Math.sin(ang) * 250, life: 0.4, col: C.explodeHi });
-            }
-          }
-        } else if (b.state === 'exploding') {
-          anyActive = true;
-          b.explodeTimer -= dt;
-          b.explodeR = EXPLODE_R * (1 - b.explodeTimer / 0.5);
-
-          // Chain: light nearby idle bombs
-          for (var j = 0; j < bombs.length; j++) {
-            if (bombs[j].state === 'idle') {
-              var dx = bombs[j].x - b.x, dy = bombs[j].y - b.y;
-              if (Math.sqrt(dx * dx + dy * dy) < b.explodeR + bombs[j].r) {
-                triggerBomb(j);
-              }
-            }
-          }
-
-          if (b.explodeTimer <= 0) {
-            b.state = 'done';
-          }
+      if (timeLeft <= 0) { finish(bestRatio >= THRESHOLD); return; }
+      if (flash > 0) flash -= dt * 2.5; if (resultTimer > 0) resultTimer -= dt;
+      if (chainActive) {
+        var any = false;
+        for (var i = 0; i < bombs.length; i++) {
+          var b = bombs[i];
+          if (b.state === 'lit') { any = true; b.litTimer -= dt; if (b.litTimer <= 0) { b.state = 'exploding'; b.explodeTimer = 0.5; b.explodeR = 0; game.audio.play('se_success', 0.4); for (var pi = 0; pi < 8; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: b.x, y: b.y, vx: Math.cos(a) * 250, vy: Math.sin(a) * 250, life: 0.4, col: C.c }); } } }
+          else if (b.state === 'exploding') { any = true; b.explodeTimer -= dt; b.explodeR = EXPLODE_R * (1 - b.explodeTimer / 0.5); for (var j = 0; j < bombs.length; j++) if (bombs[j].state === 'idle' && Math.hypot(bombs[j].x - b.x, bombs[j].y - b.y) < b.explodeR + bombs[j].r) ignite(j); if (b.explodeTimer <= 0) b.state = 'done'; }
+        }
+        if (!any) {
+          chainDone = true; chainActive = false; var ex = 0; for (var i2 = 0; i2 < bombs.length; i2++) if (bombs[i2].state === 'done') ex++; var ratio = ex / totalBombs; bestRatio = Math.max(bestRatio, ratio);
+          if (ratio >= THRESHOLD) { resultText = Math.round(ratio * 100) + '%!'; flash = 0.5; flashCol = C.b; game.audio.play('se_success', 0.9); finish(true); return; }
+          resultText = Math.round(ratio * 100) + '%'; flash = 0.4; flashCol = C.a; game.audio.play('se_failure', 0.4); resultTimer = 1.2;
+          if (attempts >= MAX_ATTEMPTS) { finish(false); return; }
+          setTimeout(function() { if (!done) spawnBombs(); }, 1200);
         }
       }
-
-      if (!anyActive) {
-        // Chain finished — evaluate
-        chainDone = true;
-        chainActive = false;
-        var explodedCount = 0;
-        for (var i2 = 0; i2 < bombs.length; i2++) {
-          if (bombs[i2].state === 'done') explodedCount++;
-        }
-        var ratio2 = explodedCount / totalBombs;
-
-        if (ratio2 >= 0.8) {
-          resultText = Math.round(ratio2 * 100) + '%! クリア!';
-          flashCol = C.win;
-          flashAnim = 0.5;
-          resultTimer = 1.5;
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(Math.round(ratio2 * 3000) + Math.ceil(timeLeft) * 100); }, 800);
-        } else {
-          resultText = Math.round(ratio2 * 100) + '% (残り' + (attempts < MAX_ATTEMPTS ? MAX_ATTEMPTS - attempts + '回)' : '0回)');
-          flashCol = C.lose;
-          flashAnim = 0.4;
-          resultTimer = 1.5;
-          game.audio.play('se_failure', 0.4);
-          if (attempts >= MAX_ATTEMPTS && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 600);
-          } else {
-            setTimeout(function() { if (!done) spawnBombs(); }, 1500);
-          }
-        }
-      }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; p.life -= dt * 2; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 300 * dt;
-      particles[pp].life -= dt * 2;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.4);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
+    if (resultTimer > 0) txt(resultText, W / 2, snap(H * 0.86), 60, flashCol);
+    else if (!chainActive && !chainDone) txt('TAP TO IGNITE', W / 2, snap(H * 0.86), 44, C.c);
 
-    // Explosion radius indicators (for done bombs)
-    for (var i3 = 0; i3 < bombs.length; i3++) {
-      var b3 = bombs[i3];
-      if (b3.state === 'done') {
-        game.draw.circle(b3.x, b3.y, EXPLODE_R, C.smoke, 0.08);
-      }
-    }
-
-    // Bombs
-    for (var i4 = 0; i4 < bombs.length; i4++) {
-      var b4 = bombs[i4];
-      if (b4.state === 'done') continue;
-
-      var bx = b4.x, by = b4.y;
-
-      if (b4.state === 'exploding') {
-        // Explosion
-        game.draw.circle(bx, by, b4.explodeR, C.explode, 0.3);
-        game.draw.circle(bx, by, b4.explodeR * 0.6, C.explodeHi, 0.5);
-        game.draw.circle(bx, by, b4.explodeR * 0.3, '#fff', 0.5);
-        continue;
-      }
-
-      var bCol = b4.state === 'lit' ? C.lit : C.bomb;
-      var bHi = b4.state === 'lit' ? C.litHi : C.bombHi;
-      var pulse = b4.state === 'lit' ? 1 + Math.sin(elapsed * 15) * 0.15 : 1;
-
-      // Explosion radius preview (faint)
-      if (!chainActive && !chainDone) {
-        game.draw.circle(bx, by, EXPLODE_R, bCol, 0.04);
-      }
-
-      game.draw.circle(bx + 4, by + 4, b4.r * pulse, '#000', 0.2);
-      game.draw.circle(bx, by, b4.r * pulse, bCol, 0.9);
-      game.draw.circle(bx - b4.r * 0.25, by - b4.r * 0.25, b4.r * 0.3, bHi, 0.5);
-      // Fuse
-      var fuseY = by - b4.r;
-      game.draw.line(bx, fuseY, bx + 12, fuseY - 20, bHi, 3);
-      if (b4.state === 'lit') {
-        game.draw.circle(bx + 12, fuseY - 20, 8, C.litHi, 0.9 + Math.sin(elapsed * 20) * 0.1);
-      }
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 12 * p.life, p.col, p.life * 0.7);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    if (resultTimer > 0) {
-      game.draw.text(resultText, W / 2, H * 0.88, { size: 44, color: flashCol, bold: true });
-    } else if (!chainActive && !chainDone) {
-      game.draw.text('タップして爆発を開始!', W / 2, H * 0.88, { size: 40, color: C.ui });
-    }
-
-    // Attempt dots
-    for (var ai = 0; ai < MAX_ATTEMPTS; ai++) {
-      game.draw.circle(W / 2 - (MAX_ATTEMPTS - 1) * 50 + ai * 100, H * 0.955, 20, ai < attempts ? (chainDone && flashCol === C.win ? C.win : C.lose) : C.ui, 0.9);
-    }
-
-    game.draw.text('挑戦: ' + attempts + ' / ' + MAX_ATTEMPTS, W / 2, 148, { size: 52, color: C.text, bold: true });
-    var ratio3 = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio3, 12, ratio3 > 0.3 ? C.bomb : C.lose);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt('TRIES ' + attempts + ' / ' + MAX_ATTEMPTS, W / 2, 168, 46, C.b);
+    for (var ai = 0; ai < MAX_ATTEMPTS; ai++) game.draw.rect(snap(W / 2 + (ai - (MAX_ATTEMPTS - 1) / 2) * 56) - 10, 224, 20, 20, ai < attempts ? C.f : '#1a0a10');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.07);
-    spawnBombs();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

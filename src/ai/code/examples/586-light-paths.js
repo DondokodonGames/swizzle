@@ -1,93 +1,66 @@
 // 586-light-paths.js
-// ライトパス — 暗闇の中で光の道を辿って出口に辿り着く
-// 操作: スワイプで光の方向を進む、光が消える前に出口へ
-// 成功: 10回脱出  失敗: 5回迷子 or 75秒
+// ライトパス — 暗い迷路を、通った先だけ数秒だけ光る手がかりを頼りにスワイプで出口へ進む
+// 操作: 上下左右スワイプで移動（壁があると進めず迷子カウント）。タップで現在地を再点灯
+// 成功: 出口 3回 到達  失敗: 3回 迷子 or 25秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#000000',
-    wall:    '#0a0a1a',
-    path:    '#1a1a3a',
-    light:   '#ffee88',
-    lightHi: '#ffffff',
-    player:  '#ffaa00',
-    playerHi:'#ffdd88',
-    exit:    '#22c55e',
-    exitHi:  '#86efac',
-    wrong:   '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#334455'
-  };
+  // ── パレット（アイスブルー、暗黒迷路） ──
+  var C = { bg:'#000000', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var GRID = 7;
-  var CELL = Math.floor(W * 0.85 / GRID);
-  var OX = (W - GRID * CELL) / 2;
-  var OY = H * 0.2;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'LIGHT PATHS';
+  var HOW_TO_PLAY = 'SWIPE TO MOVE THROUGH THE DARK MAZE · REACH THE GLOWING EXIT';
+  var MAX_TIME = 25;
+  var NEEDED   = 3;          // 修正2: 10 → 3
+  var MAX_LOST = 3;          // 修正2: 5 → 3
+  var GRID = 5, CELL = Math.floor(W * 0.84 / 5), LIGHT_LIFE = 3.0;
+  var OX = snap((W - GRID * CELL) / 2), OY = snap(H * 0.24);
 
-  var playerPos = { r: 0, c: 0 };
-  var exitPos = { r: GRID - 1, c: GRID - 1 };
-  var lightPath = []; // revealed path cells
-  var lightLife = 3.0; // seconds light stays on
-  var lightTimers = {};
-  var maze = []; // adjacency: can we go right/down?
-  var escapes = 0;
-  var NEEDED = 10;
-  var lost = 0;
-  var MAX_LOST = 5;
-  var done = false;
-  var timeLeft = 75;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0, flashCol = C.exit;
-  var lightFlashTimer = 0;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var maze, playerPos, exitPos, lightPath, lightTimers, escapes, lost, timeLeft, done, particles, flash, flashCol;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#0a0a18');
+  }
+
+  function background() { game.draw.clear(C.bg); }
 
   function cellIdx(r, c) { return r * GRID + c; }
 
-  function generateMaze() {
-    maze = [];
-    for (var i = 0; i < GRID * GRID; i++) {
-      maze.push({ right: false, down: false });
-    }
-    // DFS maze generation
-    var visited = [];
-    for (var j = 0; j < GRID * GRID; j++) visited.push(false);
+  function revealCell(r, c, life) { var key = r + ',' + c; lightTimers[key] = life; if (lightPath.indexOf(key) < 0) lightPath.push(key); }
 
+  function generateMaze() {
+    maze = []; for (var i = 0; i < GRID * GRID; i++) maze.push({ right: false, down: false });
+    var visited = []; for (var j = 0; j < GRID * GRID; j++) visited.push(false);
     function dfs(r, c) {
       visited[cellIdx(r, c)] = true;
-      var dirs = [[0,1,'right'],[1,0,'down'],[0,-1,'left'],[-1,0,'up']];
-      for (var di = dirs.length - 1; di > 0; di--) {
-        var dj = Math.floor(Math.random() * (di + 1));
-        var tmp = dirs[di]; dirs[di] = dirs[dj]; dirs[dj] = tmp;
-      }
-      for (var di2 = 0; di2 < dirs.length; di2++) {
-        var nr = r + dirs[di2][0], nc = c + dirs[di2][1];
-        if (nr >= 0 && nr < GRID && nc >= 0 && nc < GRID && !visited[cellIdx(nr, nc)]) {
-          if (dirs[di2][2] === 'right') maze[cellIdx(r, c)].right = true;
-          if (dirs[di2][2] === 'down') maze[cellIdx(r, c)].down = true;
-          if (dirs[di2][2] === 'left') maze[cellIdx(r, nc)].right = true;
-          if (dirs[di2][2] === 'up') maze[cellIdx(nr, c)].down = true;
-          dfs(nr, nc);
-        }
-      }
+      var dirs = [[0, 1, 'right'], [1, 0, 'down'], [0, -1, 'left'], [-1, 0, 'up']];
+      for (var di = dirs.length - 1; di > 0; di--) { var dj = Math.floor(Math.random() * (di + 1)); var t = dirs[di]; dirs[di] = dirs[dj]; dirs[dj] = t; }
+      for (var di2 = 0; di2 < dirs.length; di2++) { var nr = r + dirs[di2][0], nc = c + dirs[di2][1]; if (nr >= 0 && nr < GRID && nc >= 0 && nc < GRID && !visited[cellIdx(nr, nc)]) { if (dirs[di2][2] === 'right') maze[cellIdx(r, c)].right = true; if (dirs[di2][2] === 'down') maze[cellIdx(r, c)].down = true; if (dirs[di2][2] === 'left') maze[cellIdx(r, nc)].right = true; if (dirs[di2][2] === 'up') maze[cellIdx(nr, c)].down = true; dfs(nr, nc); } }
     }
     dfs(0, 0);
-
-    playerPos = { r: 0, c: 0 };
-    exitPos = { r: GRID - 1, c: GRID - 1 };
-    lightPath = [];
-    lightTimers = {};
-
-    // Reveal initial position
-    revealCell(0, 0, lightLife);
-  }
-
-  function revealCell(r, c, life) {
-    var key = r + ',' + c;
-    lightTimers[key] = life;
-    if (lightPath.indexOf(key) < 0) lightPath.push(key);
+    playerPos = { r: 0, c: 0 }; exitPos = { r: GRID - 1, c: GRID - 1 }; lightPath = []; lightTimers = {}; revealCell(0, 0, LIGHT_LIFE);
   }
 
   function canMove(r, c, dr, dc) {
@@ -99,179 +72,113 @@
   }
 
   function tryMove(dr, dc) {
-    var nr = playerPos.r + dr, nc = playerPos.c + dc;
-    if (nr < 0 || nr >= GRID || nc < 0 || nc >= GRID) return false;
+    var nr = playerPos.r + dr, nc = playerPos.c + dc; if (nr < 0 || nr >= GRID || nc < 0 || nc >= GRID) return false;
     if (!canMove(playerPos.r, playerPos.c, dr, dc)) return false;
-    playerPos.r = nr;
-    playerPos.c = nc;
-    revealCell(nr, nc, lightLife);
-    // Also reveal adjacent connected cells briefly
-    var nDirs = [[0,1],[1,0],[0,-1],[-1,0]];
-    for (var di = 0; di < nDirs.length; di++) {
-      var ar = nr + nDirs[di][0], ac = nc + nDirs[di][1];
-      if (ar >= 0 && ar < GRID && ac >= 0 && ac < GRID && canMove(nr, nc, nDirs[di][0], nDirs[di][1])) {
-        revealCell(ar, ac, lightLife * 0.4);
-      }
-    }
+    playerPos.r = nr; playerPos.c = nc; revealCell(nr, nc, LIGHT_LIFE);
+    var nd = [[0, 1], [1, 0], [0, -1], [-1, 0]]; for (var di = 0; di < nd.length; di++) { var ar = nr + nd[di][0], ac = nc + nd[di][1]; if (ar >= 0 && ar < GRID && ac >= 0 && ac < GRID && canMove(nr, nc, nd[di][0], nd[di][1])) revealCell(ar, ac, LIGHT_LIFE * 0.4); }
     return true;
   }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
-    if (done) return;
-    var moved = false;
-    if (dir === 'up') moved = tryMove(-1, 0);
-    else if (dir === 'down') moved = tryMove(1, 0);
-    else if (dir === 'left') moved = tryMove(0, -1);
-    else if (dir === 'right') moved = tryMove(0, 1);
+  function initGame() { escapes = 0; lost = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; generateMaze(); }
 
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (escapes * 1000 + Math.ceil(timeLeft) * 100) : escapes * 300;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    for (var r = 0; r < GRID; r++) for (var c = 0; c < GRID; c++) {
+      var key = r + ',' + c, gx = OX + c * CELL, gy = OY + r * CELL;
+      if (lightTimers[key] !== undefined) {
+        var life = Math.min(1, lightTimers[key] / LIGHT_LIFE);
+        game.draw.rect(gx + 2, gy + 2, CELL - 4, CELL - 4, C.d, life * 0.5); game.draw.rect(gx + 2, gy + 2, CELL - 4, CELL - 4, C.c, life * 0.12);
+        var cell = maze[cellIdx(r, c)];
+        if (!cell.right && c < GRID - 1) game.draw.rect(gx + CELL - 3, gy, 6, CELL, '#0a0a1a', life * 0.9);
+        if (!cell.down && r < GRID - 1) game.draw.rect(gx, gy + CELL - 3, CELL, 6, '#0a0a1a', life * 0.9);
+      } else game.draw.rect(gx + 2, gy + 2, CELL - 4, CELL - 4, '#050510', 0.9);
+    }
+    var exX = OX + exitPos.c * CELL + CELL / 2, exY = OY + exitPos.r * CELL + CELL / 2;
+    pc(exX, exY, CELL * 0.32, C.b, 0.1 + Math.sin(game.time.elapsed * 3) * 0.05);
+    if (lightTimers[exitPos.r + ',' + exitPos.c]) { pc(exX, exY, CELL * 0.32, C.b, 0.5); txt('EXIT', exX, exY + 12, 28, C.g); }
+    var px = OX + playerPos.c * CELL + CELL / 2, py = OY + playerPos.r * CELL + CELL / 2;
+    pc(px, py, 28 + Math.sin(game.time.elapsed * 6) * 6, C.f, 0.2); pc(px, py, 26, C.f, 0.9); pc(px - 8, py - 8, 10, C.g, 0.5);
+  }
+
+  // ── 入力 ──
+  game.onSwipe(function(dir) {
+    if (state !== S.PLAYING || done) return;
+    var moved = false;
+    if (dir === 'up') moved = tryMove(-1, 0); else if (dir === 'down') moved = tryMove(1, 0); else if (dir === 'left') moved = tryMove(0, -1); else if (dir === 'right') moved = tryMove(0, 1);
     if (moved) {
       game.audio.play('se_tap', 0.2);
-      // Check exit
       if (playerPos.r === exitPos.r && playerPos.c === exitPos.c) {
-        escapes++;
-        flashCol = C.exit;
-        flashAnim = 0.4;
-        game.audio.play('se_success', 0.8);
-        for (var pi = 0; pi < 10; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          var ex2 = OX + exitPos.c * CELL + CELL / 2;
-          var ey2 = OY + exitPos.r * CELL + CELL / 2;
-          particles.push({ x: ex2, y: ey2, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.5, col: C.exitHi });
-        }
-        if (escapes >= NEEDED && !done) {
-          done = true;
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(escapes * 500 + Math.ceil(timeLeft) * 80); }, 800);
-        } else {
-          setTimeout(function() { if (!done) generateMaze(); }, 900);
-        }
+        escapes++; flash = 0.4; flashCol = C.b; game.audio.play('se_success', 0.8);
+        var ex2 = OX + exitPos.c * CELL + CELL / 2, ey2 = OY + exitPos.r * CELL + CELL / 2;
+        for (var pi = 0; pi < 10; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: ex2, y: ey2, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.5, col: C.b }); }
+        if (escapes >= NEEDED) { finish(true); return; }
+        setTimeout(function() { if (!done) generateMaze(); }, 800);
       }
-    } else {
-      // Hit wall
-      lost++;
-      flashCol = C.wrong;
-      flashAnim = 0.25;
-      game.audio.play('se_failure', 0.2);
-      if (lost >= MAX_LOST && !done) {
-        done = true;
-        setTimeout(function() { game.end.failure(); }, 500);
-      }
-    }
+    } else { lost++; flash = 0.25; flashCol = C.a; game.audio.play('se_failure', 0.2); if (lost >= MAX_LOST) { finish(false); return; } }
   });
 
-  game.onTap(function(tx, ty) {
+  game.onTap(function() {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done) return;
-    // Tap reveals current cell light
-    var key = playerPos.r + ',' + playerPos.c;
-    lightTimers[key] = lightLife;
-    lightFlashTimer = 0.2;
-    game.audio.play('se_tap', 0.1);
+    revealCell(playerPos.r, playerPos.c, LIGHT_LIFE); game.audio.play('se_tap', 0.1);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!maze) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.12, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.165, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ESCAPED!' : 'LOST IN DARK', W / 2, H * 0.35, 64, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (lightFlashTimer > 0) lightFlashTimer -= dt * 5;
-
-    // Update light timers
-    for (var li = lightPath.length - 1; li >= 0; li--) {
-      var key = lightPath[li];
-      lightTimers[key] -= dt;
-      if (lightTimers[key] <= 0) {
-        delete lightTimers[key];
-        lightPath.splice(li, 1);
-      }
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3;
+      for (var li = lightPath.length - 1; li >= 0; li--) { var key = lightPath[li]; lightTimers[key] -= dt; if (lightTimers[key] <= 0) { delete lightTimers[key]; lightPath.splice(li, 1); } }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Grid cells (only revealed ones)
-    for (var r = 0; r < GRID; r++) {
-      for (var c = 0; c < GRID; c++) {
-        var key2 = r + ',' + c;
-        var gx = OX + c * CELL;
-        var gy = OY + r * CELL;
-
-        if (lightTimers[key2] !== undefined) {
-          var life = lightTimers[key2] / lightLife;
-          life = Math.min(1, life);
-          game.draw.rect(gx + 2, gy + 2, CELL - 4, CELL - 4, C.path, life * 0.8);
-          game.draw.rect(gx + 2, gy + 2, CELL - 4, CELL - 4, C.light, life * 0.15);
-
-          // Walls (no passage = wall)
-          var cell = maze[cellIdx(r, c)];
-          // Right wall
-          if (!cell.right && c < GRID - 1) {
-            game.draw.line(gx + CELL, gy, gx + CELL, gy + CELL, C.wall, 6);
-          }
-          // Bottom wall
-          if (!cell.down && r < GRID - 1) {
-            game.draw.line(gx, gy + CELL, gx + CELL, gy + CELL, C.wall, 6);
-          }
-        } else {
-          // Dark cell — barely visible
-          game.draw.rect(gx + 2, gy + 2, CELL - 4, CELL - 4, '#050510', 0.9);
-        }
-      }
-    }
-
-    // Exit marker (always faintly visible)
-    var exX = OX + exitPos.c * CELL + CELL / 2;
-    var exY = OY + exitPos.r * CELL + CELL / 2;
-    game.draw.circle(exX, exY, CELL * 0.35, C.exit, 0.1 + Math.sin(elapsed * 3) * 0.05);
-    var exKey = exitPos.r + ',' + exitPos.c;
-    if (lightTimers[exKey]) {
-      game.draw.circle(exX, exY, CELL * 0.35, C.exitHi, 0.5);
-      game.draw.text('出口', exX, exY + 12, { size: 28, color: C.exitHi, bold: true });
-    }
-
-    // Player
-    var px = OX + playerPos.c * CELL + CELL / 2;
-    var py = OY + playerPos.r * CELL + CELL / 2;
-    var glow = 20 + Math.sin(elapsed * 6) * 6;
-    game.draw.circle(px, py, glow + 20, C.player, 0.15);
-    game.draw.circle(px, py, 28, C.player, 0.9);
-    game.draw.circle(px - 8, py - 8, 10, C.playerHi, 0.5);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    // Lose dots
-    for (var wi = 0; wi < MAX_LOST; wi++) {
-      game.draw.circle(W / 2 - (MAX_LOST - 1) * 50 + wi * 100, H * 0.955, 20, wi < lost ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(escapes + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 75);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.light : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(escapes + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var wi = 0; wi < MAX_LOST; wi++) game.draw.rect(snap(W / 2 + (wi - (MAX_LOST - 1) / 2) * 56) - 10, 224, 20, 20, wi < lost ? C.a : '#0a0a18');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.05);
-    generateMaze();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);

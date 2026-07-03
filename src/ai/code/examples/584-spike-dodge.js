@@ -1,218 +1,138 @@
 // 584-spike-dodge.js
-// スパイクドッジ — 上下から迫るスパイクをスワイプで左右に回避
-// 操作: 左右スワイプで移動、スパイクの隙間を抜ける
-// 成功: 30秒生存  失敗: スパイクに3回刺さる
+// スパイクドッジ — 上下から降ってくるスパイクを、レーンを左右に移動して隙間で回避し続ける
+// 操作: 左右スワイプ（またはタップした列へ）でレーン移動。スパイクの当たらない列へ逃げる
+// 成功: 12秒 生き残る  失敗: 3回 被弾
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#08030a',
-    spike:   '#cc2244',
-    spikeHi: '#ff4466',
-    player:  '#22aaff',
-    playerHi:'#88ddff',
-    trail:   '#22aaff33',
-    safe:    '#22c55e',
-    danger:  '#ef4444',
-    text:    '#f1f5f9',
-    ui:      '#334466'
-  };
+  // ── パレット（ネオンアーケード、トラップ回廊） ──
+  var C = { bg:'#08030a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var LANES = 5;
-  var LANE_W = W / LANES;
-  var playerLane = 2;
-  var playerX = W / 2;
-  var playerY = H / 2;
-  var PLAYER_R = 36;
-  var spikes = [];
-  var hits = 0;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'SPIKE DODGE';
+  var HOW_TO_PLAY = 'SWIPE / TAP TO CHANGE LANE · SLIP THROUGH THE SPIKE GAPS';
+  var MAX_TIME = 12;
   var MAX_HITS = 3;
-  var SURVIVE_TIME = 30;
-  var done = false;
-  var timeLeft = SURVIVE_TIME;
-  var elapsed = 0;
-  var particles = [];
-  var trail = [];
-  var nextSpike = 1.0;
-  var hitFlash = 0;
-  var invincible = 0;
-  var difficulty = 1;
+  var LANES = 5, LANE_W = W / 5, PLAYER_R = 36, PLAYER_Y = snap(H * 0.5);
 
-  function laneX(lane) { return (lane + 0.5) * LANE_W; }
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function spawnSpikePair() {
-    var lane = Math.floor(Math.random() * LANES);
-    // Top spike
-    spikes.push({ lane: lane, y: -80, vy: 280 + difficulty * 40, fromTop: true, r: 28 });
-    // Sometimes also bottom spike in different lane
-    if (Math.random() < 0.5) {
-      var lane2 = (lane + 1 + Math.floor(Math.random() * (LANES - 1))) % LANES;
-      spikes.push({ lane: lane2, y: H + 80, vy: -(280 + difficulty * 40), fromTop: false, r: 28 });
-    }
+  // ── ゲーム変数 ──
+  var lane, playerX, spikes, hits, timeLeft, done, particles, trail, nextSpike, flash, invincible;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  game.onSwipe(function(dir, x1, y1, x2, y2) {
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#1a0a20');
+  }
+
+  function laneX(l) { return (l + 0.5) * LANE_W; }
+
+  function background() { game.draw.clear(C.bg); for (var li = 0; li <= LANES; li++) game.draw.rect(li * LANE_W - 1, 0, 2, H, '#1a0a20', 0.9); game.draw.rect(lane * LANE_W + 2, 0, LANE_W - 4, H, C.e, 0.04); }
+
+  function spawnSpikes() { var l = Math.floor(Math.random() * LANES), diff = 1 + (MAX_TIME - timeLeft) / 6; spikes.push({ lane: l, y: -80, vy: 300 + diff * 40, r: 28 }); if (Math.random() < 0.5) { var l2 = (l + 1 + Math.floor(Math.random() * (LANES - 1))) % LANES; spikes.push({ lane: l2, y: H + 80, vy: -(300 + diff * 40), r: 28 }); } }
+
+  function initGame() { lane = 2; playerX = W / 2; spikes = []; hits = 0; timeLeft = MAX_TIME; done = false; particles = []; trail = []; nextSpike = 0.8; flash = 0; invincible = 0; }
+
+  function finish(success) {
     if (done) return;
-    if (dir === 'left') {
-      playerLane = Math.max(0, playerLane - 1);
-      game.audio.play('se_tap', 0.2);
-    } else if (dir === 'right') {
-      playerLane = Math.min(LANES - 1, playerLane + 1);
-      game.audio.play('se_tap', 0.2);
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (Math.round(MAX_TIME) * 400 + (MAX_HITS - hits) * 800) : (MAX_TIME - Math.ceil(timeLeft)) * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawScene() {
+    for (var si = 0; si < spikes.length; si++) { var sp = spikes[si], sx = laneX(sp.lane); pc(sx, sp.y, sp.r, C.a, 0.9); pc(sx, sp.y, sp.r * 0.55, C.g, 0.4); }
+    for (var ti = 0; ti < trail.length; ti++) pc(trail[ti].x, PLAYER_Y, PLAYER_R * 0.5 * (trail[ti].life / 0.2), C.e, trail[ti].life * 0.4);
+    var blink = invincible > 0 ? (Math.floor(game.time.elapsed * 12) % 2 ? 0.5 : 0.9) : 0.9;
+    pc(playerX, PLAYER_Y, PLAYER_R, flash > 0 ? C.a : C.e, blink); pc(playerX - 10, PLAYER_Y - 10, PLAYER_R * 0.35, C.g, blink * 0.5);
+  }
+
+  // ── 入力 ──
+  game.onSwipe(function(dir) {
+    if (state !== S.PLAYING || done) return;
+    if (dir === 'left') lane = Math.max(0, lane - 1); else if (dir === 'right') lane = Math.min(LANES - 1, lane + 1);
+    game.audio.play('se_tap', 0.2);
   });
 
-  game.onTap(function(tx, ty) {
+  game.onTap(function(tx) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done) return;
-    var newLane = Math.floor(tx / LANE_W);
-    playerLane = Math.max(0, Math.min(LANES - 1, newLane));
-    game.audio.play('se_tap', 0.15);
+    lane = Math.max(0, Math.min(LANES - 1, Math.floor(tx / LANE_W))); game.audio.play('se_tap', 0.15);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!spikes) initGame(); background(); drawScene();
+      txt(GAME_TITLE, W / 2, H * 0.30, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.345, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.62, 56, C.a);
+        txt('TAP TO START', W / 2, H * 0.66, 42, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SURVIVED!' : 'IMPALED', W / 2, H * 0.35, 72, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      difficulty = 1 + elapsed / 10;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_success', 0.9);
-        setTimeout(function() { game.end.success(Math.ceil(elapsed) * 200 + (MAX_HITS - hits) * 500); }, 700);
-        return;
+      if (timeLeft <= 0) { finish(true); return; }
+      if (flash > 0) flash -= dt * 3; if (invincible > 0) invincible -= dt;
+      playerX += (laneX(lane) - playerX) * Math.min(1, dt * 12);
+      nextSpike -= dt; if (nextSpike <= 0) { spawnSpikes(); nextSpike = Math.max(0.35, 0.9 - (MAX_TIME - timeLeft) * 0.03); }
+      trail.push({ x: playerX, life: 0.2 }); for (var ti = trail.length - 1; ti >= 0; ti--) { trail[ti].life -= dt * 4; if (trail[ti].life <= 0) trail.splice(ti, 1); }
+      for (var si = spikes.length - 1; si >= 0; si--) {
+        var sp = spikes[si]; sp.y += sp.vy * dt;
+        if (invincible <= 0 && Math.abs(playerX - laneX(sp.lane)) < sp.r + PLAYER_R * 0.7 && Math.abs(PLAYER_Y - sp.y) < sp.r + PLAYER_R * 0.7) { hits++; invincible = 1.2; flash = 0.5; game.audio.play('se_failure', 0.5); for (var pi = 0; pi < 8; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: playerX, y: PLAYER_Y, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.4, col: C.a }); } spikes.splice(si, 1); if (hits >= MAX_HITS) { finish(false); return; } continue; }
+        if (sp.y > H + 100 || sp.y < -100) spikes.splice(si, 1);
       }
-    }
-    if (hitFlash > 0) hitFlash -= dt * 3;
-    if (invincible > 0) invincible -= dt;
-
-    // Move player toward lane
-    var targetX = laneX(playerLane);
-    playerX += (targetX - playerX) * Math.min(1, dt * 12);
-
-    // Spawn spikes
-    nextSpike -= dt;
-    if (nextSpike <= 0 && !done) {
-      spawnSpikePair();
-      nextSpike = Math.max(0.35, 1.0 - elapsed * 0.012);
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Trail
-    trail.push({ x: playerX, y: playerY, life: 0.2 });
-    for (var ti = trail.length - 1; ti >= 0; ti--) {
-      trail[ti].life -= dt * 4;
-      if (trail[ti].life <= 0) trail.splice(ti, 1);
-    }
+    // ---- 描画 ----
+    background(); drawScene();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.a, flash * 0.12);
 
-    // Update spikes
-    for (var si = spikes.length - 1; si >= 0; si--) {
-      var sp = spikes[si];
-      sp.y += sp.vy * dt;
-
-      // Hit check
-      if (invincible <= 0) {
-        var spX = laneX(sp.lane);
-        var dx = Math.abs(playerX - spX);
-        var dy = Math.abs(playerY - sp.y);
-        if (dx < sp.r + PLAYER_R * 0.7 && dy < sp.r + PLAYER_R * 0.7) {
-          hits++;
-          invincible = 1.2;
-          hitFlash = 0.5;
-          game.audio.play('se_failure', 0.5);
-          for (var pi = 0; pi < 8; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            particles.push({ x: playerX, y: playerY, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.4, col: C.spikeHi });
-          }
-          spikes.splice(si, 1);
-          if (hits >= MAX_HITS && !done) {
-            done = true;
-            game.audio.play('se_failure', 0.7);
-            setTimeout(function() { game.end.failure(); }, 600);
-          }
-          continue;
-        }
-      }
-
-      // Remove if off screen
-      if ((sp.fromTop && sp.y > H + 100) || (!sp.fromTop && sp.y < -100)) {
-        spikes.splice(si, 1);
-      }
-    }
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
-
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Lane lines
-    for (var li = 0; li <= LANES; li++) {
-      game.draw.line(li * LANE_W, 0, li * LANE_W, H, '#1a0a20', 1);
-    }
-
-    // Lane highlight for player
-    game.draw.rect(playerLane * LANE_W + 2, 0, LANE_W - 4, H, C.player, 0.04);
-
-    // Spikes
-    for (var si2 = 0; si2 < spikes.length; si2++) {
-      var sp2 = spikes[si2];
-      var spX2 = laneX(sp2.lane);
-      var spY2 = sp2.y;
-      var sDir = sp2.fromTop ? 1 : -1;
-      var tipY = spY2 + sDir * sp2.r * 2;
-      var baseY = spY2 - sDir * sp2.r;
-
-      // Warning zone
-      var warnY = sp2.fromTop ? 0 : H;
-      game.draw.rect(sp2.lane * LANE_W + 6, Math.min(spY2, warnY), LANE_W - 12, Math.abs(spY2 - warnY), C.spike, 0.08);
-
-      // Spike body
-      game.draw.circle(spX2, spY2, sp2.r, C.spike, 0.9);
-      game.draw.circle(spX2, spY2, sp2.r * 0.6, C.spikeHi, 0.5);
-      // Tip
-      game.draw.circle(spX2, tipY, 10, C.spikeHi, 0.9);
-      // Shaft
-      game.draw.line(spX2, spY2, spX2, tipY, C.spike, 8);
-    }
-
-    // Trail
-    for (var ti2 = 0; ti2 < trail.length; ti2++) {
-      var tp = trail[ti2];
-      game.draw.circle(tp.x, tp.y, PLAYER_R * 0.6 * (tp.life / 0.2), C.trail, tp.life * 0.4);
-    }
-
-    // Player
-    var pCol = hitFlash > 0 ? C.danger : C.player;
-    game.draw.circle(playerX + 4, playerY + 4, PLAYER_R, '#000', 0.2);
-    game.draw.circle(playerX, playerY, PLAYER_R, pCol, 0.9 - (invincible > 0 && Math.floor(elapsed * 8) % 2 === 0 ? 0.5 : 0));
-    game.draw.circle(playerX - 10, playerY - 10, PLAYER_R * 0.35, C.playerHi, 0.5);
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (hitFlash > 0) game.draw.rect(0, 0, W, H, C.danger, hitFlash * 0.12);
-
-    // Lives
-    for (var hi = 0; hi < MAX_HITS; hi++) {
-      game.draw.circle(W / 2 - (MAX_HITS - 1) * 60 + hi * 120, H * 0.955, 24, hi < hits ? C.danger : C.safe, 0.9);
-    }
-
-    var ratio = Math.max(0, timeLeft / SURVIVE_TIME);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 12, ratio > 0.3 ? C.safe : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '秒', W / 2, 36, { size: 44, color: '#fff', bold: true });
-    game.draw.text('生存中...', W / 2, 80, { size: 36, color: ratio > 0.3 ? C.safe : C.danger });
+    timeBar();
+    txt(Math.ceil(timeLeft) + 's', W / 2, 96, 44, C.g);
+    for (var hi = 0; hi < MAX_HITS; hi++) game.draw.rect(snap(W / 2 + (hi - (MAX_HITS - 1) / 2) * 56) - 10, 168, 20, 20, hi < hits ? C.a : C.b);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.08);
-    playerY = H / 2;
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
