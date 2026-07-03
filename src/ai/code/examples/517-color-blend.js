@@ -1,214 +1,136 @@
 // 517-color-blend.js
-// カラーブレンド — 混色パズルで指定色を作る
-// 操作: 色ボタンをタップして混色、目標色に近づける
-// 成功: 10色達成  失敗: 5ミス or 60秒
+// カラーブレンド — 5色の絵の具ボタンを混ぜて、お手本の色に近づけてから決定する
+// 操作: 色ボタンをタップして混色、RESETでやり直し、SUBMITで判定
+// 成功: 3色 一致  失敗: 3ミス or 25秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0a0505',
-    panel:   '#150a0a',
-    text:    '#f1f5f9',
-    ui:      '#374151',
-    correct: '#22c55e',
-    wrong:   '#ef4444',
-    border:  '#4b2020'
-  };
+  // ── パレット（ネオンアーケード、調色台。スウォッチは実色） ──
+  var C = { bg:'#0a0505', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
+  var PAINTS = [ { name: 'RED', r: 220, g: 40, b: 40 }, { name: 'BLU', r: 40, g: 80, b: 220 }, { name: 'YEL', r: 230, g: 200, b: 20 }, { name: 'WHT', r: 240, g: 240, b: 240 }, { name: 'BLK', r: 20, g: 20, b: 20 } ];
 
-  var COLORS = [
-    { name: '赤', r: 220, g: 40,  b: 40  },
-    { name: '青', r: 40,  g: 80,  b: 220 },
-    { name: '黄', r: 230, g: 200, b: 20  },
-    { name: '白', r: 240, g: 240, b: 240 },
-    { name: '黒', r: 20,  g: 20,  b: 20  }
-  ];
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'COLOR BLEND';
+  var HOW_TO_PLAY = 'TAP PAINTS TO MIX · RESET TO REDO · SUBMIT WHEN CLOSE';
+  var MAX_TIME = 25;
+  var NEEDED   = 3;          // 修正2: 10 → 3
+  var MAX_MISS = 3;          // 修正2: 5 → 3
+  var BTN_W = 176, BTN_H = 160, GAP = 20, BROW = snap((W - (5 * (176 + 20) - 20)) / 2), BTN_Y = snap(H * 0.68);
 
-  var BTN_W = 160, BTN_H = 160;
-  var BTN_GAP = 20;
-  var BTN_ROW_X = (W - (COLORS.length * (BTN_W + BTN_GAP) - BTN_GAP)) / 2;
-  var BTN_Y = H * 0.72;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  var mixR = 128, mixG = 128, mixB = 128;
-  var targetR, targetG, targetB;
-  var score = 0;
-  var NEEDED = 10;
-  var misses = 0;
-  var MAX_MISS = 5;
-  var done = false;
-  var timeLeft = 60;
-  var elapsed = 0;
-  var flashAnim = 0;
-  var flashCol = C.correct;
-  var particles = [];
-  var feedback = '';
-  var feedbackTimer = 0;
+  // ── ゲーム変数 ──
+  var mixR, mixG, mixB, tgtR, tgtG, tgtB, score, misses, timeLeft, done, particles, flash, flashCol, feedback, feedbackTimer;
 
-  function rgb(r, g, b) {
-    return 'rgb(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ')';
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+  function rgb(r, g, b) { return 'rgb(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ')'; }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function genTarget() {
-    targetR = 40 + Math.floor(Math.random() * 180);
-    targetG = 40 + Math.floor(Math.random() * 180);
-    targetB = 40 + Math.floor(Math.random() * 180);
-    mixR = 128; mixG = 128; mixB = 128;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#150a0a');
   }
 
-  function colorDist() {
-    var dr = mixR - targetR, dg = mixG - targetG, db = mixB - targetB;
-    return Math.sqrt(dr * dr + dg * dg + db * db);
-  }
+  function background() { game.draw.clear(C.bg); }
 
-  game.onTap(function(tx, ty) {
+  function colorDist() { return Math.sqrt((mixR - tgtR) * (mixR - tgtR) + (mixG - tgtG) * (mixG - tgtG) + (mixB - tgtB) * (mixB - tgtB)); }
+
+  function genTarget() { tgtR = 40 + Math.floor(Math.random() * 180); tgtG = 40 + Math.floor(Math.random() * 180); tgtB = 40 + Math.floor(Math.random() * 180); mixR = 128; mixG = 128; mixB = 128; }
+
+  function initGame() { score = 0; misses = 0; timeLeft = MAX_TIME; done = false; particles = []; flash = 0; flashCol = C.b; feedback = ''; feedbackTimer = 0; genTarget(); }
+
+  function finish(success) {
     if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (score * 700 + Math.ceil(timeLeft) * 100) : score * 250;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    // Check color buttons
-    for (var i = 0; i < COLORS.length; i++) {
-      var bx = BTN_ROW_X + i * (BTN_W + BTN_GAP);
-      if (tx >= bx && tx <= bx + BTN_W && ty >= BTN_Y && ty <= BTN_Y + BTN_H) {
-        var col = COLORS[i];
-        mixR = (mixR * 0.6 + col.r * 0.4);
-        mixG = (mixG * 0.6 + col.g * 0.4);
-        mixB = (mixB * 0.6 + col.b * 0.4);
-        game.audio.play('se_tap', 0.3);
-        return;
-      }
-    }
+  function drawBoard() {
+    game.draw.rect(W / 2 - 220, H * 0.18, 200, 200, rgb(tgtR, tgtG, tgtB), 0.95); txt('TARGET', W / 2 - 120, H * 0.175, 30, C.c);
+    game.draw.rect(W / 2 + 20, H * 0.18, 200, 200, rgb(mixR, mixG, mixB), 0.95); txt('MIX', W / 2 + 120, H * 0.175, 30, C.e);
+    var match = Math.max(0, 1 - colorDist() / 150);
+    game.draw.rect(W / 2 - 220, H * 0.40, 440, 24, '#150a0a', 0.7); game.draw.rect(W / 2 - 220, H * 0.40, 440 * match, 24, match > 0.7 ? C.b : match > 0.4 ? C.c : C.a, 0.9);
+    txt(Math.round(match * 100) + '% MATCH', W / 2, H * 0.44, 40, match > 0.7 ? C.b : C.c);
+    for (var i = 0; i < PAINTS.length; i++) { var bx = BROW + i * (BTN_W + GAP), p = PAINTS[i]; game.draw.rect(bx + 4, BTN_Y + 4, BTN_W - 8, BTN_H - 8, rgb(p.r, p.g, p.b), 0.9); game.draw.rect(bx + 4, BTN_Y + 4, BTN_W - 8, 12, C.g, 0.2); txt(p.name, bx + BTN_W / 2, BTN_Y + BTN_H * 0.65, 34, p.name === 'BLK' ? C.g : C.bg); }
+    game.draw.rect(W / 2 - 260, H * 0.86, 240, 100, '#2a1010', 0.9); txt('RESET', W / 2 - 140, H * 0.86 + 60, 44, C.g);
+    game.draw.rect(W / 2 + 20, H * 0.86, 240, 100, match > 0.5 ? '#0a3020' : '#2a1010', 0.9); txt('SUBMIT', W / 2 + 140, H * 0.86 + 60, 44, C.g);
+  }
 
-    // Submit button
-    var subX = W / 2 - 200, subY = H * 0.88;
-    if (tx >= subX && tx <= subX + 400 && ty >= subY && ty <= subY + 100) {
-      var dist = colorDist();
-      if (dist < 40) {
-        score++;
-        flashCol = C.correct;
-        flashAnim = 0.5;
-        feedback = '完璧！';
-        feedbackTimer = 1.2;
-        game.audio.play('se_success', 0.7);
-        for (var pi = 0; pi < 10; pi++) {
-          var ang = Math.random() * Math.PI * 2;
-          particles.push({ x: W / 2, y: H * 0.4, vx: Math.cos(ang) * 200, vy: Math.sin(ang) * 200, life: 0.5, col: rgb(targetR, targetG, targetB) });
-        }
-        if (score >= NEEDED && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(score * 500 + Math.ceil(timeLeft) * 100); }, 700);
-        } else {
-          setTimeout(function() { if (!done) genTarget(); }, 600);
-        }
-      } else if (dist < 80) {
-        score++;
-        flashCol = C.correct;
-        flashAnim = 0.3;
-        feedback = 'OK！';
-        feedbackTimer = 1.0;
-        game.audio.play('se_success', 0.5);
-        if (score >= NEEDED && !done) {
-          done = true;
-          setTimeout(function() { game.end.success(score * 300 + Math.ceil(timeLeft) * 80); }, 700);
-        } else {
-          setTimeout(function() { if (!done) genTarget(); }, 600);
-        }
-      } else {
-        misses++;
-        flashCol = C.wrong;
-        flashAnim = 0.5;
-        feedback = 'もっと近く！';
-        feedbackTimer = 1.0;
-        game.audio.play('se_failure', 0.4);
-        if (misses >= MAX_MISS && !done) {
-          done = true;
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    for (var i = 0; i < PAINTS.length; i++) { var bx = BROW + i * (BTN_W + GAP); if (tx >= bx && tx <= bx + BTN_W && ty >= BTN_Y && ty <= BTN_Y + BTN_H) { var p = PAINTS[i]; mixR = mixR * 0.6 + p.r * 0.4; mixG = mixG * 0.6 + p.g * 0.4; mixB = mixB * 0.6 + p.b * 0.4; game.audio.play('se_tap', 0.3); return; } }
+    if (ty >= H * 0.86 && ty <= H * 0.86 + 100) {
+      if (tx >= W / 2 - 260 && tx <= W / 2 - 20) { mixR = 128; mixG = 128; mixB = 128; game.audio.play('se_tap', 0.2); return; }
+      if (tx >= W / 2 + 20 && tx <= W / 2 + 260) {
+        var dist = colorDist();
+        if (dist < 55) { score++; flash = 0.5; flashCol = C.b; feedback = dist < 30 ? 'PERFECT!' : 'CLOSE!'; feedbackTimer = 1.0; game.audio.play('se_success', 0.7); for (var pi = 0; pi < 10; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: W / 2, y: H * 0.4, vx: Math.cos(a) * 200, vy: Math.sin(a) * 200, life: 0.5, col: rgb(tgtR, tgtG, tgtB) }); } if (score >= NEEDED) { finish(true); return; } setTimeout(function() { if (!done) genTarget(); }, 600); }
+        else { misses++; flash = 0.5; flashCol = C.a; feedback = 'TOO FAR!'; feedbackTimer = 1.0; game.audio.play('se_failure', 0.4); if (misses >= MAX_MISS) { finish(false); return; } }
       }
     }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (mixR === undefined) initGame(); background(); drawBoard();
+      txt(GAME_TITLE, W / 2, H * 0.08, 72, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.115, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) txt('► 100円 投入 ◄ TAP TO START', W / 2, H * 0.55, 40, C.a);
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'MASTER MIXER!' : 'OFF COLOR', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-    if (feedbackTimer > 0) feedbackTimer -= dt;
-
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3; if (feedbackTimer > 0) feedbackTimer -= dt;
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.bg);
+    // ---- 描画 ----
+    background(); drawBoard();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 6, snap(particles[pp2].y) - 6, 12, 12, particles[pp2].col, particles[pp2].life * 1.5);
+    if (feedbackTimer > 0) txt(feedback, W / 2, H * 0.52, 60, flashCol);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // Target color
-    game.draw.rect(W / 2 - 220, H * 0.18, 200, 200, rgb(targetR, targetG, targetB), 0.95);
-    game.draw.rect(W / 2 - 220, H * 0.18, 200, 200, '#fff', 0.08);
-    game.draw.text('目標', W / 2 - 120, H * 0.175, { size: 36, color: C.ui });
-
-    // Mix color
-    game.draw.rect(W / 2 + 20, H * 0.18, 200, 200, rgb(mixR, mixG, mixB), 0.95);
-    game.draw.rect(W / 2 + 20, H * 0.18, 200, 200, '#fff', 0.08);
-    game.draw.text('現在', W / 2 + 120, H * 0.175, { size: 36, color: C.ui });
-
-    // Distance bar
-    var dist = colorDist();
-    var match = Math.max(0, 1 - dist / 150);
-    var barCol = match > 0.7 ? C.correct : match > 0.4 ? '#f59e0b' : C.wrong;
-    game.draw.rect(W / 2 - 220, H * 0.42, 440, 20, C.ui, 0.4);
-    game.draw.rect(W / 2 - 220, H * 0.42, 440 * match, 20, barCol, 0.9);
-    game.draw.text(Math.round(match * 100) + '% 一致', W / 2, H * 0.46, { size: 40, color: barCol, bold: true });
-
-    // Color buttons
-    for (var i = 0; i < COLORS.length; i++) {
-      var bx = BTN_ROW_X + i * (BTN_W + BTN_GAP);
-      var col = COLORS[i];
-      game.draw.rect(bx + 4, BTN_Y + 4, BTN_W - 8, BTN_H - 8, rgb(col.r, col.g, col.b), 0.9);
-      game.draw.rect(bx + 4, BTN_Y + 4, BTN_W - 8, 16, '#fff', 0.2);
-      game.draw.text(col.name, bx + BTN_W / 2, BTN_Y + BTN_H * 0.65 + 8, { size: 36, color: '#fff', bold: true });
-    }
-
-    // Reset button
-    game.draw.rect(W / 2 - 80, H * 0.65, 160, 64, C.border, 0.8);
-    game.draw.text('リセット', W / 2, H * 0.651 + 32, { size: 36, color: '#ccc' });
-
-    // Submit
-    game.draw.rect(W / 2 - 200, H * 0.88, 400, 100, match > 0.5 ? '#14532d' : '#4b1919', 0.9);
-    game.draw.text('決定！', W / 2, H * 0.88 + 50, { size: 52, color: '#fff', bold: true });
-
-    if (feedbackTimer > 0) {
-      game.draw.text(feedback, W / 2, H * 0.55, { size: 60, color: match > 0.5 ? C.correct : C.wrong, bold: true });
-    }
-
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 14 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, flashCol, flashAnim * 0.1);
-
-    for (var mi = 0; mi < MAX_MISS; mi++) {
-      game.draw.circle(W / 2 - (MAX_MISS - 1) * 56 + mi * 112, H * 0.955, 20, mi < misses ? C.wrong : C.ui, 0.9);
-    }
-
-    game.draw.text(score + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio = Math.max(0, timeLeft / 60);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? '#3b82f6' : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(score + ' / ' + NEEDED, W / 2, 148, 44, C.b);
+    for (var mi = 0; mi < MAX_MISS; mi++) game.draw.rect(snap(W / 2 + (mi - (MAX_MISS - 1) / 2) * 56) - 10, 200, 20, 20, mi < misses ? C.a : '#150a0a');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.07);
-    genTarget();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
