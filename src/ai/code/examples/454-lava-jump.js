@@ -1,247 +1,160 @@
 // 454-lava-jump.js
-// 溶岩ジャンプ — 上昇する溶岩から逃げながらプラットフォームを跳び越える
-// 操作: タップでジャンプ（長押しで高くジャンプ）
-// 成功: 高さ2000m到達  失敗: 溶岩に飲まれる or 90秒
+// 溶岩ジャンプ — 上昇する溶岩から逃げ、自動で跳ねる主人公を左右に操ってプラットフォームを登る
+// 操作: 画面の左半分/右半分をタップで着地時に左右へ移動（接地すると自動ジャンプ）
+// 成功: 高さ600m 到達  失敗: 溶岩に飲まれる or 20秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#0a0300',
-    lava:   '#dc2626',
-    lavaHi: '#f97316',
-    lavaGlo:'#fbbf24',
-    platform:'#78350f',
-    platformHi:'#d97706',
-    player: '#e2e8f0',
-    playerHi:'#fff',
-    cave:   '#1c0a00',
-    caveHi: '#2d1000',
-    rock:   '#374151',
-    correct:'#22c55e',
-    wrong:  '#ef4444',
-    text:   '#f1f5f9',
-    ui:     '#475569'
-  };
+  // ── パレット（ネオンアーケード、火山洞窟） ──
+  var C = { bg:'#12060a', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#7700ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var GRAVITY = 1800;
-  var JUMP_VEL = -800;
-  var PLATFORM_W = 180;
-  var PLATFORM_H = 24;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'LAVA JUMP';
+  var HOW_TO_PLAY = 'TAP LEFT / RIGHT TO STEER · AUTO-JUMP · CLIMB AWAY FROM THE LAVA';
+  var MAX_TIME = 20;
+  var GOAL = 600;            // 修正2: 2000m → 600m
+  var GRAVITY = 1800, JUMP_VEL = -880, PLAT_W = 200, PLAT_H = 24;
 
-  var player = { x: W/2, y: H*0.5, vy: 0, onGround: false };
-  var platforms = [];
-  var lavaY = H + 100;
-  var lavaSpeed = 60;
-  var scrollY = 0;
-  var maxHeight = 0;
-  var targetHeight = 2000;
-  var holding = false;
-  var holdTime = 0;
-  var done = false;
-  var timeLeft = 90;
-  var elapsed = 0;
-  var lavaAnim = 0;
-  var particles = [];
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
 
-  function addPlatform(y) {
-    var x = 100 + Math.random() * (W - 300);
-    platforms.push({ x: x, y: y, w: PLATFORM_W - Math.floor(maxHeight/200) * 10 });
+  // ── ゲーム変数 ──
+  var player, platforms, lavaY, lavaSpeed, scrollY, maxHeight, moveDir, timeLeft, done, lavaAnim, particles, flash, flashCol;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function initPlatforms() {
-    platforms = [];
-    var y = H * 0.7;
-    for (var i = 0; i < 15; i++) {
-      addPlatform(y);
-      y -= 160 + Math.random() * 80;
-    }
-    player.x = platforms[0].x + platforms[0].w/2;
-    player.y = platforms[0].y - 40;
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#2a1008');
   }
 
-  game.onTap(function(tx, ty) {
+  function altBar() {
+    var t = Math.ceil(Math.min(1, maxHeight / GOAL) * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(W - 60, H - 120 - i * 72, 40, 60, i < t ? C.f : '#2a1008');
+  }
+
+  function background() { game.draw.clear(C.bg); for (var cw = 0; cw < 6; cw++) { var ry = (cw * 340 + scrollY) % (H + 200) - 100; pc(48, ry, 30, '#3a1810', 0.5); pc(W - 60, ry + 130, 26, '#3a1810', 0.4); } }
+
+  function addPlatform(y) { platforms.push({ x: snap(120 + Math.random() * (W - 360)), y: y, w: Math.max(120, PLAT_W - Math.floor(maxHeight / 120) * 12) }); }
+
+  function initGame() {
+    platforms = []; maxHeight = 0; scrollY = 0; var y = H * 0.72;
+    for (var i = 0; i < 14; i++) { addPlatform(y); y -= 150 + Math.random() * 70; }
+    player = { x: platforms[0].x + platforms[0].w / 2, y: platforms[0].y - 40, vx: 0, vy: 0, onGround: false };
+    lavaY = H + 80; lavaSpeed = 90; moveDir = 0; timeLeft = MAX_TIME; done = false; lavaAnim = 0; particles = []; flash = 0; flashCol = C.b;
+  }
+
+  function finish(success) {
     if (done) return;
-    if (player.onGround && !holding) {
-      holding = true;
-      holdTime = 0;
-    }
+    done = true; resultSuccess = success;
+    finalScore = success ? (maxHeight * 30 + Math.ceil(timeLeft) * 100) : maxHeight * 20;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  // ── 入力 ──
+  game.onTap(function(x) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    moveDir = x < W / 2 ? -1 : 1; player.vx = moveDir * 360; game.audio.play('se_tap', 0.2);
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
+    if (state === S.ATTRACT) {
+      if (!player) initGame(); background();
+      for (var ai = 0; ai < platforms.length; ai++) { var pa = platforms[ai], pya = pa.y + scrollY; if (pya < -40 || pya > H + 40) continue; game.draw.rect(pa.x, snap(pya), pa.w, PLAT_H, C.f, 0.8); game.draw.rect(pa.x, snap(pya), pa.w, 6, C.c, 0.7); }
+      pc(player.x, player.y, 24, C.g, 0.9); pc(player.x, player.y - 8, 14, C.e, 0.6);
+      txt(GAME_TITLE, W / 2, H * 0.16, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.22, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.60, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.66, 46, C.g);
       }
-    }
-
-    lavaAnim += dt * 3;
-
-    // Hold detection (simplified: tap releases on next frame)
-    if (holding) {
-      holdTime += dt;
-      if (holdTime > 0.3) {
-        // Perform jump
-        var jumpPower = 1 + Math.min(holdTime - 0.3, 0.3) * 2;
-        player.vy = JUMP_VEL * jumpPower;
-        player.onGround = false;
-        holding = false;
-        game.audio.play('se_tap', 0.4);
-        for (var pi = 0; pi < 5; pi++) {
-          var ang = Math.PI + (Math.random() - 0.5) * 1.5;
-          particles.push({ x: player.x, y: player.y + 20, vx: Math.cos(ang)*80, vy: Math.sin(ang)*80, life: 0.4, col: C.lavaGlo });
-        }
-      }
-    }
-
-    // Physics
-    player.vy += GRAVITY * dt;
-    player.y += player.vy * dt;
-    player.onGround = false;
-
-    // Platform collision
-    for (var pi2 = 0; pi2 < platforms.length; pi2++) {
-      var p = platforms[pi2];
-      var py = p.y + scrollY;
-      if (player.vy > 0 && player.y + 20 >= py && player.y + 20 <= py + PLATFORM_H + 20 &&
-          player.x > p.x + scrollY*0 && player.x < p.x + p.w) {
-        player.y = py - 20;
-        player.vy = 0;
-        player.onGround = true;
-        // Auto-jump if not holding
-        if (!holding) {
-          holding = true;
-          holdTime = 0.2;
-        }
-        break;
-      }
-    }
-
-    // Auto jump release after short time
-    if (holding && holdTime > 0.5) {
-      player.vy = JUMP_VEL * (1 + (holdTime - 0.3));
-      player.onGround = false;
-      holding = false;
-    }
-
-    // Scroll
-    var screenPlayerY = player.y;
-    if (screenPlayerY < H * 0.4) {
-      var scroll = H * 0.4 - screenPlayerY;
-      scrollY += scroll;
-      player.y += scroll;
-      lavaY += scroll;
-    }
-
-    // Height
-    var height = Math.floor(scrollY / 10);
-    if (height > maxHeight) {
-      maxHeight = height;
-      lavaSpeed = 60 + maxHeight * 0.03;
-    }
-
-    // Lava rises
-    lavaY -= lavaSpeed * dt;
-
-    // Spawn more platforms
-    var topPlatY = platforms.length > 0 ? Math.min.apply(null, platforms.map(function(p) { return p.y + scrollY; })) : 0;
-    while (topPlatY > -200) {
-      var newY = topPlatY - (160 + Math.random() * 80);
-      addPlatform(newY - scrollY);
-      topPlatY = newY;
-    }
-    // Remove offscreen platforms
-    platforms = platforms.filter(function(p) { return p.y + scrollY < H + 100; });
-
-    // Check lava death
-    if (player.y + 25 > lavaY && !done) {
-      done = true;
-      game.audio.play('se_failure', 0.7);
-      setTimeout(function() { game.end.failure(); }, 600);
+      scanlines();
       return;
     }
 
-    // Check win
-    if (maxHeight >= targetHeight && !done) {
-      done = true;
-      game.audio.play('se_success', 0.8);
-      setTimeout(function() { game.end.success(maxHeight * 20 + Math.ceil(timeLeft) * 80); }, 700);
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'SUMMIT!' : 'BURNED UP', W / 2, H * 0.35, 72, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
 
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 2;
+      lavaAnim += dt * 3;
+      // 横移動（惰性）
+      player.vx *= (1 - dt * 2.5); player.x += player.vx * dt;
+      if (player.x < 40) { player.x = 40; player.vx = Math.abs(player.vx) * 0.4; } if (player.x > W - 40) { player.x = W - 40; player.vx = -Math.abs(player.vx) * 0.4; }
+      // 縦（重力）
+      player.vy += GRAVITY * dt; player.y += player.vy * dt; player.onGround = false;
+      for (var pi2 = 0; pi2 < platforms.length; pi2++) {
+        var p = platforms[pi2], py = p.y + scrollY;
+        if (player.vy > 0 && player.y + 22 >= py && player.y + 22 <= py + PLAT_H + 22 && player.x > p.x && player.x < p.x + p.w) {
+          player.y = py - 22; player.vy = JUMP_VEL; player.onGround = true; game.audio.play('se_tap', 0.25);
+          for (var k = 0; k < 4; k++) { var a = Math.PI + (Math.random() - 0.5) * 1.4; particles.push({ x: player.x, y: player.y + 20, vx: Math.cos(a) * 90, vy: Math.sin(a) * 90, life: 0.4, col: C.c }); }
+          break;
+        }
+      }
+      // スクロール
+      if (player.y < H * 0.4) { var sc = H * 0.4 - player.y; scrollY += sc; player.y += sc; lavaY += sc; }
+      var h = Math.floor(scrollY / 10); if (h > maxHeight) { maxHeight = h; lavaSpeed = 90 + maxHeight * 0.05; }
+      // 溶岩上昇
+      lavaY -= lavaSpeed * dt;
+      // プラットフォーム補充/除去
+      var topY = 99999; for (var ti = 0; ti < platforms.length; ti++) topY = Math.min(topY, platforms[ti].y + scrollY);
+      while (topY > -200) { var ny = topY - (150 + Math.random() * 70); addPlatform(ny - scrollY); topY = ny; }
+      platforms = platforms.filter(function(pp) { return pp.y + scrollY < H + 100; });
+      // 判定
+      if (player.y + 24 > lavaY) { finish(false); return; }
+      if (maxHeight >= GOAL) { finish(true); return; }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var pt = particles[pp]; pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.life -= dt; if (pt.life <= 0) particles.splice(pp, 1); }
     }
 
-    // --- draw ---
-    game.draw.rect(0, 0, W, H, C.cave);
-    // Cave walls
-    for (var cw = 0; cw < 5; cw++) {
-      var rockY = (cw * 380 + scrollY) % H;
-      game.draw.circle(40, rockY, 30 + Math.sin(cw)*10, C.rock, 0.5);
-      game.draw.circle(W-50, rockY + 120, 25 + Math.cos(cw)*8, C.rock, 0.4);
-    }
+    // ---- 描画 ----
+    background();
+    for (var pi3 = 0; pi3 < platforms.length; pi3++) { var pl = platforms[pi3], ply = pl.y + scrollY; if (ply < -40 || ply > H + 40) continue; game.draw.rect(pl.x, snap(ply), pl.w, PLAT_H, C.f, 0.9); game.draw.rect(pl.x, snap(ply), pl.w, 6, C.c, 0.7); }
+    pc(player.x, player.y, 24, C.g, 0.9); pc(player.x, player.y - 8, 14, C.e, 0.6);
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    // 溶岩
+    var lt = snap(lavaY); game.draw.rect(0, lt, W, H - lt + 100, C.a, 0.9);
+    for (var lw = 0; lw < 9; lw++) pc(lw * (W / 8), lt, 20 + Math.sin(lavaAnim + lw) * 12, C.f, 0.8);
+    game.draw.rect(0, lt - 8, W, 12, C.c, 0.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // Platforms
-    for (var pi3 = 0; pi3 < platforms.length; pi3++) {
-      var pl = platforms[pi3];
-      var plY = pl.y + scrollY;
-      if (plY < -40 || plY > H + 40) continue;
-      game.draw.rect(pl.x, plY, pl.w, PLATFORM_H, C.platform, 0.9);
-      game.draw.rect(pl.x, plY, pl.w, 6, C.platformHi, 0.7);
-    }
-
-    // Player
-    game.draw.circle(player.x, player.y, 24, C.player, 0.9);
-    game.draw.circle(player.x, player.y - 8, 18, C.playerHi, 0.6);
-    // Jump animation
-    if (!player.onGround) {
-      game.draw.circle(player.x, player.y + 20, 10, C.lavaGlo, 0.3);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p2 = particles[pp2];
-      game.draw.circle(p2.x, p2.y, 8 * p2.life, p2.col, p2.life * 0.8);
-    }
-
-    // Lava
-    var lavaTop = lavaY;
-    game.draw.rect(0, lavaTop, W, H - lavaTop + 100, C.lava, 0.9);
-    // Lava surface waves
-    for (var lw = 0; lw < 8; lw++) {
-      var lwX = lw * (W/7);
-      var lwH = 20 + Math.sin(lavaAnim + lw) * 15;
-      game.draw.circle(lwX, lavaTop, lwH, C.lavaHi, 0.8);
-    }
-    game.draw.rect(0, lavaTop - 8, W, 16, C.lavaGlo, 0.6);
-
-    // Height indicator
-    game.draw.text(maxHeight + 'm', W/2, H * 0.88, { size: 44, color: C.lavaGlo, bold: true });
-    game.draw.text('目標: ' + targetHeight + 'm', W/2, H * 0.92, { size: 32, color: C.ui });
-
-    var ratio = Math.max(0, timeLeft / 90);
-    game.draw.rect(0, 0, W, 72, C.cave);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.lavaHi : C.wrong);
-    game.draw.text(Math.ceil(timeLeft) + '', W/2, 36, { size: 44, color: '#fff', bold: true });
-
-    // Progress bar (height)
-    var hRatio = Math.min(1, maxHeight / targetHeight);
-    game.draw.rect(W - 24, 80, 18, H - 160, C.cave, 0.7);
-    game.draw.rect(W - 24, 80 + (H - 160) * (1 - hRatio), 18, (H - 160) * hRatio, C.lavaHi, 0.9);
+    altBar();
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(maxHeight + ' / ' + GOAL + 'm', W / 2, 168, 44, C.f);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.1);
-    initPlatforms();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
