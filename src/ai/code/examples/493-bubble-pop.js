@@ -1,217 +1,141 @@
 // 493-bubble-pop.js
-// バブルポップ — 大きくなったシャボン玉をジャストタイミングで割る
-// 操作: バブルが最大サイズに近づいたらタップで割る
-// 成功: 20個割る  失敗: 5個割れずに飛んでいく or 50秒
+// バブルポップ — 膨らみながら浮かぶシャボン玉を、最大サイズ付近でタップして割る
+// 操作: バブルが十分大きくなった瞬間にタップ（小さいうちは得点にならない）
+// 成功: 6個 割る  失敗: 3個 逃す or 15秒
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:     '#020818',
-    sky:    '#041028',
-    bubble: '#7dd3fc',
-    bubbleHi:'#e0f2fe',
-    bubbleRim:'#0ea5e9',
-    pop:    '#f0f9ff',
-    danger: '#ef4444',
-    safe:   '#22c55e',
-    text:   '#f1f5f9',
-    ui:     '#374151'
-  };
+  // ── パレット（アイスブルー、水中の泡） ──
+  var C = { bg:'#020818', a:'#ff2079', b:'#00ff9f', c:'#ffe600', d:'#3355ff', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var bubbles = [];
-  var particles = [];
-  var popped = 0;
-  var NEEDED = 20;
-  var escaped = 0;
-  var MAX_ESCAPE = 5;
-  var done = false;
-  var timeLeft = 50;
-  var elapsed = 0;
-  var nextSpawn = 1.5;
-  var spawnInterval = 1.5;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'BUBBLE POP';
+  var HOW_TO_PLAY = 'TAP EACH BUBBLE WHEN IT SWELLS TO FULL SIZE';
+  var MAX_TIME = 15;
+  var NEEDED     = 6;        // 修正2: 20 → 6
+  var MAX_ESCAPE = 3;        // 修正2: 5 → 3
 
-  function spawnBubble() {
-    var x = 120 + Math.random() * (W - 240);
-    var startY = H * 0.85;
-    var maxR = 60 + Math.random() * 80;
-    bubbles.push({
-      x: x,
-      y: startY,
-      r: 8,
-      maxR: maxR,
-      growing: true,
-      growRate: 30 + Math.random() * 30,
-      floatVy: -(30 + Math.random() * 40),
-      wobble: Math.random() * Math.PI * 2,
-      wobbleSpeed: 1.5 + Math.random() * 2,
-      wobbleAmp: 15 + Math.random() * 20,
-      shimmer: Math.random() * Math.PI * 2,
-      life: 1.0,
-      popping: false,
-      popTimer: 0
-    });
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var bubbles, particles, popped, escaped, timeLeft, done, nextSpawn, spawnInterval, flash, flashCol;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function ring(cx, cy, r, color, alpha) { for (var a = 0; a < Math.PI * 2; a += 0.12) game.draw.rect(snap(cx + Math.cos(a) * r) - 4, snap(cy + Math.sin(a) * r) - 4, 8, 8, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
   }
 
-  function tryPop(tx, ty) {
-    for (var i = bubbles.length - 1; i >= 0; i--) {
-      var b = bubbles[i];
-      if (b.popping) continue;
-      var dx = tx - b.x, dy = ty - b.y;
-      if (dx * dx + dy * dy <= b.r * b.r) {
-        b.popping = true;
-        b.popTimer = 0.3;
-        var ratio = b.r / b.maxR;
-        if (ratio >= 0.75) {
-          popped++;
-          game.audio.play('se_success', 0.7);
-          for (var pi = 0; pi < 12; pi++) {
-            var ang = Math.random() * Math.PI * 2;
-            var spd = 100 + Math.random() * 200;
-            particles.push({ x: b.x, y: b.y, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, life: 0.5, r: 8 + Math.random() * 8, col: C.bubbleHi });
-          }
-        } else {
-          game.audio.play('se_tap', 0.3);
-          for (var pi2 = 0; pi2 < 6; pi2++) {
-            var ang2 = Math.random() * Math.PI * 2;
-            particles.push({ x: b.x, y: b.y, vx: Math.cos(ang2) * 80, vy: Math.sin(ang2) * 80, life: 0.3, r: 4, col: C.bubble });
-          }
-        }
-        return;
-      }
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.e : '#041028');
+  }
+
+  function background() { game.draw.clear(C.bg); }
+
+  function spawnBubble() { bubbles.push({ x: snap(120 + Math.random() * (W - 240)), y: H * 0.82, r: 8, maxR: 70 + Math.random() * 60, growing: true, growRate: 30 + Math.random() * 30, floatVy: -(30 + Math.random() * 40), wob: Math.random() * Math.PI * 2, wobSp: 1.5 + Math.random() * 2, wobAmp: 15 + Math.random() * 20, popping: false, popTimer: 0 }); }
+
+  function initGame() { bubbles = []; particles = []; popped = 0; escaped = 0; timeLeft = MAX_TIME; done = false; nextSpawn = 0.8; spawnInterval = 1.2; flash = 0; flashCol = C.b; spawnBubble(); }
+
+  function finish(success) {
+    if (done) return;
+    done = true; resultSuccess = success;
+    finalScore = success ? (popped * 500 + Math.ceil(timeLeft) * 100) : popped * 200;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
+
+  function drawBubbles() {
+    for (var bi = 0; bi < bubbles.length; bi++) {
+      var b = bubbles[bi], ratio = b.r / b.maxR;
+      if (!b.popping) { var ready = !b.growing; var col = ready ? C.b : (ratio >= 0.75 ? C.e : '#305060'); if (ready) ring(b.r + 8 > 0 ? b.x : b.x, b.y, b.r + 8, C.b, 0.3); ring(b.x, b.y, b.r, col, 0.6); pc(b.x, b.y, b.r * 0.3, C.e, 0.15); pc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.14, C.g, 0.5); }
+      else pc(b.x, b.y, b.r, C.g, (1 - b.popTimer / 0.3) * 0.5);
     }
   }
 
+  // ── 入力 ──
   game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
     if (done) return;
-    tryPop(tx, ty);
+    for (var i = bubbles.length - 1; i >= 0; i--) {
+      var b = bubbles[i]; if (b.popping) continue;
+      if ((tx - b.x) * (tx - b.x) + (ty - b.y) * (ty - b.y) <= (b.r + 12) * (b.r + 12)) {
+        b.popping = true; b.popTimer = 0.3;
+        if (b.r / b.maxR >= 0.75) { popped++; flash = 0.3; flashCol = C.b; game.audio.play('se_success', 0.7); for (var pi = 0; pi < 12; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: b.x, y: b.y, vx: Math.cos(a) * 180, vy: Math.sin(a) * 180, life: 0.5, col: C.e }); } if (popped >= NEEDED) { finish(true); return; } }
+        else game.audio.play('se_tap', 0.3);
+        return;
+      }
+    }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
-    if (!done) {
-      timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        game.end.failure();
-        return;
+    if (state === S.ATTRACT) {
+      if (!bubbles) initGame(); background(); drawBubbles();
+      txt(GAME_TITLE, W / 2, H * 0.20, 82, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.26, 22, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.50, 60, C.a);
+        txt('TAP TO START', W / 2, H * 0.56, 46, C.g);
       }
-    }
-
-    // Spawn
-    nextSpawn -= dt;
-    if (nextSpawn <= 0 && !done) {
-      spawnBubble();
-      spawnInterval = Math.max(0.8, spawnInterval - 0.03);
-      nextSpawn = spawnInterval;
-    }
-
-    // Update bubbles
-    for (var i = bubbles.length - 1; i >= 0; i--) {
-      var b = bubbles[i];
-      b.wobble += b.wobbleSpeed * dt;
-      b.shimmer += 3 * dt;
-      b.x += Math.sin(b.wobble) * b.wobbleAmp * dt;
-
-      if (b.popping) {
-        b.r *= (1 + dt * 5);
-        b.popTimer -= dt;
-        if (b.popTimer <= 0) bubbles.splice(i, 1);
-        continue;
-      }
-
-      if (b.growing) {
-        b.r += b.growRate * dt;
-        if (b.r >= b.maxR) {
-          b.r = b.maxR;
-          b.growing = false;
-        }
-      } else {
-        // Float upward
-        b.y += b.floatVy * dt;
-        if (b.y + b.r < -20) {
-          escaped++;
-          bubbles.splice(i, 1);
-          game.audio.play('se_failure', 0.3);
-          if (escaped >= MAX_ESCAPE && !done) {
-            done = true;
-            setTimeout(function() { game.end.failure(); }, 400);
-          }
-        }
-      }
-    }
-
-    if (popped >= NEEDED && !done) {
-      done = true;
-      game.audio.play('se_success', 0.9);
-      setTimeout(function() { game.end.success(popped * 200 + Math.ceil(timeLeft) * 100); }, 700);
+      scanlines();
       return;
     }
 
-    // Particles
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].life -= dt;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'ALL POPPED!' : 'FLOATED AWAY', W / 2, H * 0.35, 66, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
     }
 
-    // --- draw ---
-    game.draw.rect(0, 0, W, H, C.bg);
-
-    // Background gradient hint
-    for (var gi = 0; gi < 4; gi++) {
-      game.draw.rect(0, H * 0.7 + gi * H * 0.08, W, H * 0.08, C.sky, 0.2 - gi * 0.04);
-    }
-
-    // Bubbles
-    for (var bi = 0; bi < bubbles.length; bi++) {
-      var bub = bubbles[bi];
-      var ratio = bub.r / bub.maxR;
-      var alpha = bub.popping ? (1 - bub.popTimer / 0.3) * 0.5 : 0.85;
-
-      if (!bub.popping) {
-        var isReady = !bub.growing && ratio >= 1.0;
-        var rimCol = isReady ? C.safe : (ratio >= 0.75 ? C.bubbleRim : C.ui);
-        // Outer glow
-        game.draw.circle(bub.x, bub.y, bub.r + 12, rimCol, isReady ? 0.3 : 0.1);
-        // Bubble body
-        game.draw.circle(bub.x, bub.y, bub.r, C.bubble, 0.18);
-        // Rim
-        game.draw.circle(bub.x, bub.y, bub.r, rimCol, 0.5);
-        // Shimmer
-        var shx = bub.x - bub.r * 0.3;
-        var shy = bub.y - bub.r * 0.3;
-        game.draw.circle(shx, shy, bub.r * 0.2, '#fff', 0.5 + Math.sin(bub.shimmer) * 0.2);
-        // Small shimmer
-        game.draw.circle(bub.x + bub.r * 0.2, bub.y - bub.r * 0.4, bub.r * 0.08, '#fff', 0.7);
-      } else {
-        game.draw.circle(bub.x, bub.y, bub.r, C.pop, alpha);
+    // PLAYING
+    if (!done) {
+      timeLeft -= dt;
+      if (timeLeft <= 0) { finish(false); return; }
+      if (flash > 0) flash -= dt * 3;
+      nextSpawn -= dt; if (nextSpawn <= 0) { spawnBubble(); spawnInterval = Math.max(0.7, spawnInterval - 0.04); nextSpawn = spawnInterval; }
+      for (var i = bubbles.length - 1; i >= 0; i--) {
+        var b = bubbles[i]; b.wob += b.wobSp * dt; b.x += Math.sin(b.wob) * b.wobAmp * dt;
+        if (b.popping) { b.r *= (1 + dt * 5); b.popTimer -= dt; if (b.popTimer <= 0) bubbles.splice(i, 1); continue; }
+        if (b.growing) { b.r += b.growRate * dt; if (b.r >= b.maxR) { b.r = b.maxR; b.growing = false; } }
+        else { b.y += b.floatVy * dt; if (b.y + b.r < -20) { escaped++; bubbles.splice(i, 1); flash = 0.3; flashCol = C.a; game.audio.play('se_failure', 0.3); if (escaped >= MAX_ESCAPE) { finish(false); return; } } }
       }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, p.r * p.life, p.col, p.life * 0.7);
-    }
+    // ---- 描画 ----
+    background(); drawBubbles();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, flashCol, flash * 0.1);
 
-    // Escape dots
-    for (var ei = 0; ei < MAX_ESCAPE; ei++) {
-      game.draw.circle(W / 2 - (MAX_ESCAPE - 1) * 60 + ei * 120, H * 0.955, 22, ei < escaped ? C.danger : C.ui, 0.9);
-    }
-
-    game.draw.text(popped + ' / ' + NEEDED, W / 2, 148, { size: 60, color: C.text, bold: true });
-    var ratio2 = Math.max(0, timeLeft / 50);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio2, 72, ratio2 > 0.3 ? C.bubbleRim : C.danger);
-    game.draw.text(Math.ceil(timeLeft) + '', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    timeBar();
+    txt(Math.ceil(timeLeft) + '', W / 2, 96, 44, C.g);
+    txt(popped + ' / ' + NEEDED, W / 2, 168, 48, C.b);
+    for (var ei = 0; ei < MAX_ESCAPE; ei++) game.draw.rect(snap(W / 2 + (ei - (MAX_ESCAPE - 1) / 2) * 56) - 10, 224, 20, 20, ei < escaped ? C.a : '#041028');
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.07);
-    spawnBubble();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
