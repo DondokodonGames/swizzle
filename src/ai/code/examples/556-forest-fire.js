@@ -1,247 +1,151 @@
 // 556-forest-fire.js
-// フォレストファイア — 燃え広がる火をタップで水をかけて消火する
-// 操作: タップで消火（タップした場所が冷却される）
-// 成功: 30秒間森林30%以上を守る  失敗: 森林が20%未満に
+// フォレストファイア — 燃え広がる山火事を、タップで放水して消し止め、森を守り抜く
+// 操作: タップした場所（3x3）に放水して延焼を消火。制限時間まで森林を一定以上残せば成功
+// 成功: 12秒 経過時に森林 30%以上  失敗: 森林が 20%未満に
 
 (function(game) {
-  var W = game.canvas.width;
-  var H = game.canvas.height;
+  var W = game.canvas.width;   // 1080
+  var H = game.canvas.height;  // 1920
 
-  var C = {
-    bg:      '#0a1a08',
-    tree:    '#1a5c14',
-    treeHi:  '#2a8c20',
-    fire0:   '#ff2200',
-    fire1:   '#ff6600',
-    fire2:   '#ffaa00',
-    ember:   '#ff440088',
-    ash:     '#222222',
-    water:   '#4488ff',
-    waterHi: '#88aaff',
-    sky:     '#0a1428',
-    text:    '#f1f5f9',
-    ui:      '#334422',
-    safe:    '#22c55e'
-  };
+  // ── パレット（グリーンCRT、防災司令室） ──
+  var C = { bg:'#0a1a08', a:'#ff3300', b:'#00ff41', c:'#ffe600', d:'#00cc33', e:'#00cfff', f:'#ff6600', g:'#ffffff' };
 
-  var COLS = 12, ROWS = 16;
-  var CELL = Math.floor(W / COLS);
-  var OY = H * 0.1;
-  var GRID_H = ROWS * CELL;
+  // ── ゲーム定数 ──
+  var GAME_TITLE  = 'FOREST FIRE';
+  var HOW_TO_PLAY = 'TAP TO SPRAY WATER (3x3) · KEEP THE FOREST FROM BURNING DOWN';
+  var MAX_TIME = 12;
+  var SUCCESS_PCT = 30, FAIL_PCT = 20;
+  var COLS = 12, ROWS = 15, CELL = Math.floor(W / 12), OY = snap(H * 0.16), GRID_H = 15 * Math.floor(W / 12);
 
-  var grid = []; // 0=empty, 1=tree, 2=burning, 3=ash, 4=wet
-  var fireParticles = [];
-  var treeCount = 0;
-  var initialTreeCount = 0;
-  var done = false;
-  var timeLeft = 30;
-  var elapsed = 0;
-  var particles = [];
-  var flashAnim = 0;
-  var nextSpread = 0.4;
-  var waterAnims = [];
-  var survivalPct = 100;
+  // ── ステート ──
+  var S = { ATTRACT: 0, PLAYING: 1, RESULT: 2 };
+  var state = S.ATTRACT;
+  var resultSuccess = false, finalScore = 0;
+
+  // ── ゲーム変数 ──
+  var grid, treeCount, initialTrees, timeLeft, done, particles, flash, nextSpread, waterAnims;
+
+  // ── ピクセル描画ヘルパー ──
+  function snap(v) { return Math.round(v / 8) * 8; }
+
+  function pc(cx, cy, r, color, alpha) { var step = 8; cx = snap(cx); cy = snap(cy); for (var qy = -r; qy <= r; qy += step) for (var qx = -r; qx <= r; qx += step) if (qx * qx + qy * qy <= r * r) game.draw.rect(cx + qx, cy + qy, step, step, color, alpha); }
+
+  function txt(str, x, y, sz, color, align) {
+    game.draw.text(str, x + 3, y + 3, { size: sz, color: '#000000', bold: true, align: align || 'center' });
+    game.draw.text(str, x, y, { size: sz, color: color, bold: true, align: align || 'center' });
+  }
+
+  function scanlines() { for (var s = 0; s < H; s += 8) game.draw.rect(0, s, W, 2, '#000000', 0.18); }
+
+  function timeBar() {
+    var t = Math.ceil(timeLeft / MAX_TIME * 12);
+    for (var i = 0; i < 12; i++) game.draw.rect(40 + i * 84, 20, 72, 40, i < t ? C.b : '#0a1a08');
+  }
+
+  function background() { game.draw.clear('#0a1428'); game.draw.rect(0, OY, W, GRID_H, C.bg, 0.9); }
+
+  function idx(c, r) { return r * COLS + c; }
 
   function initGrid() {
-    grid = [];
-    treeCount = 0;
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        var isTree = Math.random() < 0.75;
-        grid.push(isTree ? 1 : 0);
-        if (isTree) treeCount++;
-      }
-    }
-    initialTreeCount = treeCount;
-    // Start fires at random spots
-    for (var fi = 0; fi < 3; fi++) {
-      var idx;
-      do { idx = Math.floor(Math.random() * grid.length); } while (grid[idx] !== 1);
-      grid[idx] = 2;
-      treeCount--;
-    }
+    grid = []; treeCount = 0;
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) { var isTree = Math.random() < 0.75; grid.push(isTree ? 1 : 0); if (isTree) treeCount++; }
+    initialTrees = treeCount;
+    for (var fi = 0; fi < 3; fi++) { var i; do { i = Math.floor(Math.random() * grid.length); } while (grid[i] !== 1); grid[i] = 2; treeCount--; }
   }
-
-  function getIdx(c, r) { return r * COLS + c; }
 
   function spreadFire() {
-    var dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-    var newFires = [];
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        if (grid[getIdx(c, r)] !== 2) continue;
-        for (var di = 0; di < dirs.length; di++) {
-          var nc = c + dirs[di][0], nr = r + dirs[di][1];
-          if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
-          var nidx = getIdx(nc, nr);
-          if (grid[nidx] === 1 && Math.random() < 0.25) {
-            newFires.push(nidx);
-          }
-        }
-        // Burn out
-        if (Math.random() < 0.08) {
-          newFires.push(-getIdx(c, r) - 1); // negative = ash
-        }
-      }
+    var dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]], nf = [];
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      if (grid[idx(c, r)] !== 2) continue;
+      for (var di = 0; di < dirs.length; di++) { var nc = c + dirs[di][0], nr = r + dirs[di][1]; if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue; var ni = idx(nc, nr); if (grid[ni] === 1 && Math.random() < 0.22) nf.push(ni); }
+      if (Math.random() < 0.08) nf.push(-idx(c, r) - 1);
     }
-    for (var ni = 0; ni < newFires.length; ni++) {
-      if (newFires[ni] < 0) {
-        var ashIdx = -newFires[ni] - 1;
-        if (grid[ashIdx] === 2) grid[ashIdx] = 3;
-      } else {
-        if (grid[newFires[ni]] === 1) {
-          grid[newFires[ni]] = 2;
-          treeCount--;
-          // Fire particles
-          var fr = Math.floor(newFires[ni] / COLS);
-          var fc = newFires[ni] % COLS;
-          fireParticles.push({ x: fc * CELL + CELL / 2, y: OY + fr * CELL + CELL / 2, t: 0.3 });
-        }
-      }
-    }
-
-    // Wet cells dry out slightly
-    for (var wi = 0; wi < grid.length; wi++) {
-      if (grid[wi] === 4 && Math.random() < 0.05) grid[wi] = 1;
-    }
+    for (var n = 0; n < nf.length; n++) { if (nf[n] < 0) { var ai = -nf[n] - 1; if (grid[ai] === 2) grid[ai] = 3; } else if (grid[nf[n]] === 1) { grid[nf[n]] = 2; treeCount--; } }
+    for (var wi = 0; wi < grid.length; wi++) if (grid[wi] === 4 && Math.random() < 0.05) grid[wi] = 1;
   }
 
-  game.onTap(function(tx, ty) {
+  function initGame() { timeLeft = MAX_TIME; done = false; particles = []; flash = 0; nextSpread = 0.4; waterAnims = []; initGrid(); }
+
+  function finish(success) {
     if (done) return;
-    var c = Math.floor(tx / CELL);
-    var r = Math.floor((ty - OY) / CELL);
-    if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return;
+    done = true; resultSuccess = success;
+    var pct = Math.round(treeCount / initialTrees * 100);
+    finalScore = success ? (pct * 200 + Math.round(MAX_TIME) * 100) : pct * 80;
+    game.audio.play(success ? 'se_success' : 'se_failure');
+    state = S.RESULT;
+    setTimeout(function() { if (success) game.end.success(finalScore); else game.end.failure(); }, 1800);
+  }
 
-    // Extinguish 3x3 area
-    for (var dc = -1; dc <= 1; dc++) {
-      for (var dr = -1; dr <= 1; dr++) {
-        var nc = c + dc, nr = r + dr;
-        if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
-        var nidx = getIdx(nc, nr);
-        if (grid[nidx] === 2) {
-          grid[nidx] = 4; // wet (fire extinguished)
-          treeCount++;
-        } else if (grid[nidx] === 1) {
-          grid[nidx] = 4; // pre-wet
-        }
-      }
+  function drawGrid() {
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      var v = grid[idx(c, r)], gx = c * CELL, gy = OY + r * CELL;
+      if (v === 1) { game.draw.rect(gx + 4, gy + 4, CELL - 8, CELL - 8, C.d, 0.9); pc(gx + CELL / 2, gy + CELL / 2, CELL * 0.28, C.b, 0.5); }
+      else if (v === 2) { game.draw.rect(gx + 2, gy + 2, CELL - 4, CELL - 4, C.a, 0.9); game.draw.rect(gx + 6, gy + 6, CELL - 12, CELL - 12, C.f, 0.7); if (Math.sin(game.time.elapsed * 8 + c * 0.7 + r * 0.9) > 0) pc(gx + CELL / 2, gy + CELL / 2, CELL * 0.32, C.c, 0.5); }
+      else if (v === 3) game.draw.rect(gx + 4, gy + 4, CELL - 8, CELL - 8, '#222222', 0.8);
+      else if (v === 4) { game.draw.rect(gx + 4, gy + 4, CELL - 8, CELL - 8, C.e, 0.4); pc(gx + CELL / 2, gy + CELL / 2, CELL * 0.22, C.e, 0.5); }
     }
-    game.audio.play('se_tap', 0.4);
+    for (var wi = 0; wi < waterAnims.length; wi++) { var wa = waterAnims[wi]; pc(wa.x, wa.y, 90 * wa.t, C.e, wa.t * 0.3); pc(wa.x, wa.y, 54 * wa.t, C.g, wa.t * 0.4); }
+  }
 
-    waterAnims.push({ x: tx, y: ty, t: 0.4 });
-    for (var pi = 0; pi < 6; pi++) {
-      var ang = Math.random() * Math.PI * 2;
-      particles.push({ x: tx, y: ty, vx: Math.cos(ang) * 160, vy: Math.sin(ang) * 160 - 60, life: 0.4, col: C.waterHi });
-    }
+  // ── 入力 ──
+  game.onTap(function(tx, ty) {
+    if (state === S.ATTRACT) { game.audio.play('se_tap', 1.0); state = S.PLAYING; initGame(); return; }
+    if (state === S.RESULT) { state = S.ATTRACT; return; }
+    if (done) return;
+    var c = Math.floor(tx / CELL), r = Math.floor((ty - OY) / CELL); if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return;
+    for (var dc = -1; dc <= 1; dc++) for (var dr = -1; dr <= 1; dr++) { var nc = c + dc, nr = r + dr; if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue; var ni = idx(nc, nr); if (grid[ni] === 2) { grid[ni] = 4; treeCount++; } else if (grid[ni] === 1) grid[ni] = 4; }
+    game.audio.play('se_tap', 0.4); waterAnims.push({ x: tx, y: ty, t: 0.4 });
+    for (var pi = 0; pi < 6; pi++) { var a = Math.random() * Math.PI * 2; particles.push({ x: tx, y: ty, vx: Math.cos(a) * 160, vy: Math.sin(a) * 160 - 60, life: 0.4, col: C.e }); }
   });
 
+  // ── 更新 & 描画 ──
   game.onUpdate(function(dt) {
+    if (state === S.ATTRACT) {
+      if (!grid) initGame(); background(); drawGrid();
+      txt(GAME_TITLE, W / 2, H * 0.075, 76, C.c);
+      txt(HOW_TO_PLAY, W / 2, H * 0.11, 20, C.b);
+      if (Math.floor(game.time.elapsed * 8) % 2 === 0) {
+        txt('► 100円 投入 ◄', W / 2, H * 0.90, 52, C.a);
+        txt('TAP TO START', W / 2, H * 0.94, 40, C.g);
+      }
+      scanlines();
+      return;
+    }
+
+    if (state === S.RESULT) {
+      background();
+      txt(resultSuccess ? 'FOREST SAVED!' : 'BURNED DOWN', W / 2, H * 0.35, 62, resultSuccess ? C.b : C.a);
+      txt('SCORE  ' + String(finalScore).padStart(6, '0'), W / 2, H * 0.5, 60, C.g);
+      if (Math.floor(game.time.elapsed * 2) % 2 === 0) txt('TAP TO CONTINUE', W / 2, H * 0.65, 52, C.c);
+      scanlines();
+      return;
+    }
+
+    // PLAYING
     if (!done) {
       timeLeft -= dt;
-      elapsed += dt;
-      if (timeLeft <= 0) {
-        done = true;
-        survivalPct = Math.round(treeCount / initialTreeCount * 100);
-        if (survivalPct >= 30) {
-          game.audio.play('se_success', 0.9);
-          setTimeout(function() { game.end.success(survivalPct * 100 + Math.ceil(elapsed) * 50); }, 700);
-        } else {
-          game.audio.play('se_failure', 0.6);
-          setTimeout(function() { game.end.failure(); }, 500);
-        }
-        return;
-      }
-    }
-    if (flashAnim > 0) flashAnim -= dt * 3;
-
-    nextSpread -= dt;
-    if (nextSpread <= 0) {
-      spreadFire();
-      nextSpread = 0.35;
-      survivalPct = Math.round(treeCount / initialTreeCount * 100);
-      if (survivalPct < 20 && !done) {
-        done = true;
-        game.audio.play('se_failure', 0.6);
-        flashAnim = 0.8;
-        setTimeout(function() { game.end.failure(); }, 500);
-      }
+      if (timeLeft <= 0) { var pctT = Math.round(treeCount / initialTrees * 100); finish(pctT >= SUCCESS_PCT); return; }
+      if (flash > 0) flash -= dt * 3;
+      nextSpread -= dt; if (nextSpread <= 0) { spreadFire(); nextSpread = 0.35; if (Math.round(treeCount / initialTrees * 100) < FAIL_PCT) { flash = 0.8; finish(false); return; } }
+      for (var wai = waterAnims.length - 1; wai >= 0; wai--) { waterAnims[wai].t -= dt * 2.5; if (waterAnims[wai].t <= 0) waterAnims.splice(wai, 1); }
+      for (var pp = particles.length - 1; pp >= 0; pp--) { var p = particles[pp]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 200 * dt; p.life -= dt * 2.5; if (p.life <= 0) particles.splice(pp, 1); }
     }
 
-    for (var fpi = fireParticles.length - 1; fpi >= 0; fpi--) {
-      fireParticles[fpi].t -= dt * 2;
-      if (fireParticles[fpi].t <= 0) fireParticles.splice(fpi, 1);
-    }
-    for (var wai = waterAnims.length - 1; wai >= 0; wai--) {
-      waterAnims[wai].t -= dt * 2.5;
-      if (waterAnims[wai].t <= 0) waterAnims.splice(wai, 1);
-    }
-    for (var pp = particles.length - 1; pp >= 0; pp--) {
-      particles[pp].x += particles[pp].vx * dt;
-      particles[pp].y += particles[pp].vy * dt;
-      particles[pp].vy += 200 * dt;
-      particles[pp].life -= dt * 2.5;
-      if (particles[pp].life <= 0) particles.splice(pp, 1);
-    }
+    // ---- 描画 ----
+    background(); drawGrid();
+    for (var pp2 = 0; pp2 < particles.length; pp2++) game.draw.rect(snap(particles[pp2].x) - 5, snap(particles[pp2].y) - 5, 10, 10, particles[pp2].col, particles[pp2].life * 1.6);
+    if (flash > 0) game.draw.rect(0, 0, W, H, C.a, flash * 0.15);
 
-    // Draw
-    game.draw.rect(0, 0, W, H, C.sky);
-    game.draw.rect(0, OY, W, GRID_H, C.bg, 0.9);
-
-    // Grid
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        var idx = getIdx(c, r);
-        var gx = c * CELL, gy = OY + r * CELL;
-        var v = grid[idx];
-        if (v === 1) {
-          // Tree
-          game.draw.rect(gx + 4, gy + 4, CELL - 8, CELL - 8, C.tree, 0.9);
-          game.draw.circle(gx + CELL / 2, gy + CELL / 2, CELL * 0.3, C.treeHi, 0.5);
-        } else if (v === 2) {
-          // Fire
-          game.draw.rect(gx + 2, gy + 2, CELL - 4, CELL - 4, C.fire0, 0.9);
-          var pulse = Math.sin(elapsed * 8 + c * 0.7 + r * 0.9);
-          game.draw.rect(gx + 6, gy + 6, CELL - 12, CELL - 12, C.fire1, 0.7);
-          if (pulse > 0) game.draw.circle(gx + CELL / 2, gy + CELL / 2, CELL * 0.4 * pulse, C.fire2, 0.5);
-        } else if (v === 3) {
-          // Ash
-          game.draw.rect(gx + 4, gy + 4, CELL - 8, CELL - 8, C.ash, 0.8);
-        } else if (v === 4) {
-          // Wet
-          game.draw.rect(gx + 4, gy + 4, CELL - 8, CELL - 8, C.water, 0.4);
-          game.draw.circle(gx + CELL / 2, gy + CELL / 2, CELL * 0.25, C.waterHi, 0.5);
-        }
-      }
-    }
-
-    // Water animations
-    for (var wai2 = 0; wai2 < waterAnims.length; wai2++) {
-      var wa = waterAnims[wai2];
-      game.draw.circle(wa.x, wa.y, 100 * wa.t, C.water, wa.t * 0.3);
-      game.draw.circle(wa.x, wa.y, 60 * wa.t, C.waterHi, wa.t * 0.4);
-    }
-
-    // Particles
-    for (var pp2 = 0; pp2 < particles.length; pp2++) {
-      var p = particles[pp2];
-      game.draw.circle(p.x, p.y, 10 * p.life, p.col, p.life * 0.8);
-    }
-
-    if (flashAnim > 0) game.draw.rect(0, 0, W, H, C.fire0, flashAnim * 0.15);
-
-    // Survival %
-    var pct = Math.round(treeCount / initialTreeCount * 100);
-    var pctCol = pct >= 50 ? C.safe : pct >= 30 ? C.fire2 : C.fire0;
-    game.draw.text('森林残存: ' + pct + '%', W / 2, OY + GRID_H + 60, { size: 48, color: pctCol, bold: true });
-
-    var ratio = Math.max(0, timeLeft / 30);
-    game.draw.rect(0, 0, W, 72, C.bg);
-    game.draw.rect(0, 0, W * ratio, 72, ratio > 0.3 ? C.safe : C.fire0);
-    game.draw.text(Math.ceil(timeLeft) + 's', W / 2, 36, { size: 44, color: '#fff', bold: true });
+    var pct = Math.round(treeCount / initialTrees * 100), pctCol = pct >= 50 ? C.b : pct >= SUCCESS_PCT ? C.c : C.a;
+    txt('FOREST ' + pct + '%', W / 2, snap(OY + GRID_H + 60), 48, pctCol);
+    timeBar();
+    txt(Math.ceil(timeLeft) + 's', W / 2, 96, 44, C.g);
+    scanlines();
   });
 
   game.onStart(function() {
     game.audio.bgm('bgm_main', 0.08);
-    initGrid();
+    state = S.ATTRACT;
+    initGame();
   });
 })(game);
